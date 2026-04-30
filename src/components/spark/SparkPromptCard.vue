@@ -1,0 +1,27 @@
+<script setup>
+defineProps({
+  prompt: String
+})
+
+const emit = defineEmits(['insert', 'regenerate'])
+</script>
+
+<template>
+  <div class="rounded-lg p-4 bg-bg-tertiary border border-border-subtle">
+    <p class="text-text-secondary text-sm leading-relaxed italic font-body border-l-2 border-accent-muted pl-3">{{ prompt }}</p>
+    <div class="flex gap-2 mt-4">
+      <button
+        @click="emit('insert', prompt)"
+        class="flex-1 py-1.5 bg-accent text-white text-sm rounded-md hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+      >
+        Insert into Flow
+      </button>
+      <button
+        @click="emit('regenerate')"
+        class="px-4 py-1.5 bg-bg-secondary text-text-hint text-sm rounded-md hover:text-text-secondary hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+      >
+        ↻
+      </button>
+    </div>
+  </div>
+</template>
