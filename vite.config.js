@@ -12,6 +12,11 @@ export default defineConfig({
         target: ollamaTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/ollama/, '')
+      },
+      '/sdapi': {
+        target: 'http://127.0.0.1:7860',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/sdapi/, '/sdapi')
       }
     }
   }

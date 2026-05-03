@@ -47,7 +47,9 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     scenes.value = await getScenes(projectId)
     storyElements.value = await getStoryElements(projectId)
     relationships.value = await getCharacterRelationships(projectId)
-    warmEmbeddingCache(projectId).catch(() => {})
+    warmEmbeddingCache(projectId).catch((err) => {
+      console.error('Failed to warm embedding cache:', err)
+    })
   }
 
   async function addChapterData(projectId, data) {

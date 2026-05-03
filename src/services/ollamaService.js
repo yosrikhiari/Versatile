@@ -1,4 +1,5 @@
 import { OLLAMA_MODEL, OLLAMA_BASE_URL } from '../config/ollama'
+import Dexie from 'dexie'
 
 const LOG_PREFIX = '[OllamaService]'
 
@@ -8,17 +9,51 @@ function log(...args) {
 
 const OPENAI_KEY_STORAGE = 'versatile_openai_key'
 const OPENAI_FALLBACK_PROMPTED = 'versatile_openai_prompted'
+const ENCRYPTION_KEY = 'versatile_secure_salt'
 
 const EMBEDDING_MODEL_STORAGE = 'versatile_embedding_model'
 const DEFAULT_EMBEDDING_MODEL = 'nomic-embed-text'
 const EMBEDDING_CACHE_KEY = 'versatile_embedding_cache'
 
+// Use IndexedDB for embedding cache instead of localStorage
+const embeddingDB = new Dexie('VersatileEmbeddings')
+embeddingDB.version(1).stores({
+  embeddings: 'key, embedding, text, timestamp'
+})
+
+// Simple encryption for localStorage (note: not truly secure without backend, but obfuscates from casual XSS)
+export function simpleEncrypt(text) {
+  try {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(text)
+    return btoa(String.fromCharCode(...data))
+  } catch {
+    return text
+  }
+}
+
+export function simpleDecrypt(encoded) {
+  try {
+    const binaryString = atob(encoded)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    return new TextDecoder().decode(bytes)
+  } catch {
+    return encoded
+  }
+}
+
 export function getStoredOpenAIKey() {
-  return localStorage.getItem(OPENAI_KEY_STORAGE)
+  const encrypted = localStorage.getItem(OPENAI_KEY_STORAGE)
+  if (!encrypted) return null
+  return simpleDecrypt(encrypted)
 }
 
 export function setStoredOpenAIKey(key) {
-  localStorage.setItem(OPENAI_KEY_STORAGE, key)
+  const encrypted = simpleEncrypt(key)
+  localStorage.setItem(OPENAI_KEY_STORAGE, encrypted)
 }
 
 export function hasOpenAIKey() {
@@ -41,21 +76,35 @@ export function setEmbeddingModel(model) {
   localStorage.setItem(EMBEDDING_MODEL_STORAGE, model)
 }
 
-export function getEmbeddingCache() {
+export async function getEmbeddingCache() {
   try {
-    const cached = localStorage.getItem(EMBEDDING_CACHE_KEY)
-    return cached ? JSON.parse(cached) : {}
+    const all = await embeddingDB.embeddings.toArray()
+    return all.reduce((acc, item) => {
+      acc[item.key] = { embedding: item.embedding, text: item.text, timestamp: item.timestamp }
+      return acc
+    }, {})
   } catch {
     return {}
   }
 }
 
-export function setEmbeddingCache(cache) {
-  localStorage.setItem(EMBEDDING_CACHE_KEY, JSON.stringify(cache))
+export async function setEmbeddingCache(cache) {
+  try {
+    const entries = Object.entries(cache).map(([key, value]) => ({
+      key,
+      embedding: value.embedding,
+      text: value.text,
+      timestamp: value.timestamp
+    }))
+    await embeddingDB.embeddings.clear()
+    await embeddingDB.embeddings.bulkAdd(entries)
+  } catch (e) {
+    console.warn('Failed to save embedding cache:', e)
+  }
 }
 
-export function clearEmbeddingCache() {
-  localStorage.removeItem(EMBEDDING_CACHE_KEY)
+export async function clearEmbeddingCache() {
+  await embeddingDB.embeddings.clear()
 }
 
 export function cosineSimilarity(a, b) {
@@ -113,7 +162,7 @@ export async function ollamaEmbeddings(text, model = null) {
 }
 
 export async function getEmbedding(entityType, entityId, fullText) {
-  const cache = getEmbeddingCache()
+  const cache = await getEmbeddingCache()
   const cacheKey = `${entityType}_${entityId}`
   const cached = cache[cacheKey]
 
@@ -126,7 +175,7 @@ export async function getEmbedding(entityType, entityId, fullText) {
     const embedding = await ollamaEmbeddings(fullText)
     if (embedding) {
       cache[cacheKey] = { embedding, text: fullText, timestamp: Date.now() }
-      setEmbeddingCache(cache)
+      await setEmbeddingCache(cache)
     }
     return embedding
   } catch (error) {

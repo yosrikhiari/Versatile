@@ -33,6 +33,30 @@ db.version(11).stores({
   volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
 })
 
+db.version(12).stores({
+  projects: '++id, name, createdAt, updatedAt, genre, synopsis',
+  manuscripts: '++id, projectId, content, wordCount, updatedAt',
+  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait',
+  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes',
+  locations: '++id, projectId, name, description, notes',
+  plotThreads: '++id, projectId, title, status, notes',
+  chapters: '++id, projectId, title, summary, order, status, *tags, volumeId',
+  scenes: '++id, projectId, chapterId, title, summary, order, content, *tags',
+  sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
+  annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
+  snippets: '++id, projectId, word, count, lastSeen',
+  dailyGoals: '++id, projectId, date, [projectId+date]',
+  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  storyElements: '++id, projectId, type, title, x, y, width, height, data',
+  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
+  nodePositions: '++id, projectId',
+  graphGroups: '++id, projectId',
+  snapshots: '++id, projectId, chapterId, timestamp, label',
+  volumes: '++id, projectId, title, description, color, chapterIds',
+  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
+})
+
 // Migration from v10 to v11: Add volumeId to graphEdges, create volumeEntities table
 db.version(11).upgrade(async (trans) => {
   // Add volumeId to existing graphEdges (set to null for all existing edges)
@@ -112,6 +136,15 @@ export async function addCharacter(projectId, data) {
 
 export async function updateCharacter(id, data) {
   return db.characters.update(id, data)
+}
+
+export async function updateCharacterPortrait(characterId, portraitDataUrl) {
+  return db.characters.update(characterId, { portrait: portraitDataUrl })
+}
+
+export async function getCharacterPortrait(characterId) {
+  const character = await db.characters.get(characterId)
+  return character?.portrait || null
 }
 
 export async function deleteCharacter(id) {
@@ -421,10 +454,28 @@ export async function exportProject(projectId) {
 }
 
 export async function importProject(data) {
-  if (!data.version || !data.project) {
-    throw new Error('Invalid project file')
+  // Validate input structure
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid project file: not an object')
   }
-  
+  if (!data.version || typeof data.version !== 'number') {
+    throw new Error('Invalid project file: missing or invalid version')
+  }
+  if (!data.project || typeof data.project !== 'object' || !data.project.name) {
+    throw new Error('Invalid project file: missing or invalid project data')
+  }
+
+  // Validate max items to prevent abuse
+  const MAX_ITEMS = 10000
+  const arraysToCheck = ['characters', 'locations', 'chapters', 'scenes', 'relationships', 
+                          'storyElements', 'sparkHistory', 'annotations', 'snippets', 
+                          'volumes', 'volumeEntities', 'graphEdges']
+  for (const key of arraysToCheck) {
+    if (data[key] && data[key].length > MAX_ITEMS) {
+      throw new Error(`Invalid project file: too many ${key} (max ${MAX_ITEMS})`)
+    }
+  }
+
   const projectId = await db.projects.add({
     ...data.project,
     id: undefined,
@@ -440,63 +491,77 @@ export async function importProject(data) {
     })
   }
   
-  for (const char of data.characters || []) {
-    await db.characters.add({ ...char, id: undefined, projectId })
+  // Use bulkAdd for better performance
+  if (data.characters?.length > 0) {
+    const chars = data.characters.map(c => ({ ...c, id: undefined, projectId }))
+    await db.characters.bulkAdd(chars)
   }
   
-  for (const loc of data.locations || []) {
-    await db.locations.add({ ...loc, id: undefined, projectId })
+  if (data.locations?.length > 0) {
+    const locs = data.locations.map(l => ({ ...l, id: undefined, projectId }))
+    await db.locations.bulkAdd(locs)
   }
   
-  for (const thread of data.plotThreads || []) {
-    await db.plotThreads.add({ ...thread, id: undefined, projectId })
+  if (data.plotThreads?.length > 0) {
+    const threads = data.plotThreads.map(t => ({ ...t, id: undefined, projectId }))
+    await db.plotThreads.bulkAdd(threads)
   }
   
-  for (const chapter of data.chapters || []) {
-    await db.chapters.add({ ...chapter, id: undefined, projectId })
+  if (data.chapters?.length > 0) {
+    const chapters = data.chapters.map(c => ({ ...c, id: undefined, projectId }))
+    await db.chapters.bulkAdd(chapters)
   }
   
-  for (const scene of data.scenes || []) {
-    await db.scenes.add({ ...scene, id: undefined, projectId })
+  if (data.scenes?.length > 0) {
+    const scenes = data.scenes.map(s => ({ ...s, id: undefined, projectId }))
+    await db.scenes.bulkAdd(scenes)
   }
   
-  for (const rel of data.relationships || []) {
-    await db.characterRelationships.add({ ...rel, id: undefined, projectId })
+  if (data.relationships?.length > 0) {
+    const rels = data.relationships.map(r => ({ ...r, id: undefined, projectId }))
+    await db.characterRelationships.bulkAdd(rels)
   }
   
-  for (const elem of data.storyElements || []) {
-    await db.storyElements.add({ ...elem, id: undefined, projectId })
+  if (data.storyElements?.length > 0) {
+    const elems = data.storyElements.map(e => ({ ...e, id: undefined, projectId }))
+    await db.storyElements.bulkAdd(elems)
   }
   
-  for (const history of data.sparkHistory || []) {
-    await db.sparkHistory.add({ ...history, id: undefined, projectId })
+  if (data.sparkHistory?.length > 0) {
+    const history = data.sparkHistory.map(h => ({ ...h, id: undefined, projectId }))
+    await db.sparkHistory.bulkAdd(history)
   }
   
-  for (const annotation of data.annotations || []) {
-    await db.annotations.add({ ...annotation, id: undefined, projectId })
+  if (data.annotations?.length > 0) {
+    const annotations = data.annotations.map(a => ({ ...a, id: undefined, projectId }))
+    await db.annotations.bulkAdd(annotations)
   }
   
-  for (const snippet of data.snippets || []) {
-    await db.snippets.add({ ...snippet, id: undefined, projectId })
+  if (data.snippets?.length > 0) {
+    const snippets = data.snippets.map(s => ({ ...s, id: undefined, projectId }))
+    await db.snippets.bulkAdd(snippets)
   }
   
   // Import volumes (v2+)
-  for (const vol of data.volumes || []) {
-    await db.volumes.add({ ...vol, id: undefined, projectId })
+  if (data.volumes?.length > 0) {
+    const vols = data.volumes.map(v => ({ ...v, id: undefined, projectId }))
+    await db.volumes.bulkAdd(vols)
   }
   
   // Import volume entities (v3+)
-  if (data.version >= 3) {
-    for (const ve of data.volumeEntities || []) {
-      await db.volumeEntities.add({ ...ve, id: undefined, projectId })
-    }
+  if (data.version >= 3 && data.volumeEntities?.length > 0) {
+    const entities = data.volumeEntities.map(ve => ({ 
+      ...ve, id: undefined, projectId, volumeId: ve.volumeId || null 
+    }))
+    await db.volumeEntities.bulkAdd(entities)
   }
   
   // Import graph edges (v3+)
-  if (data.version >= 3) {
-    for (const edge of data.graphEdges || []) {
-      await db.graphEdges.add({ ...edge, id: undefined, projectId })
-    }
+  if (data.version >= 3 && data.graphEdges?.length > 0) {
+    const edges = data.graphEdges.map(edge => ({ 
+      ...edge, id: undefined, projectId, volumeId: edge.volumeId || null 
+    }))
+    await db.graphEdges.bulkAdd(edges)
   }
   
   return projectId
@@ -661,7 +726,9 @@ export async function getScenes(projectId, chapterId = null) {
 export async function addScene(projectId, data) {
   const result = await db.scenes.add({ projectId, ...data })
   if (data.content) {
-    getEmbedding('scene', result, data.content).catch(() => {})
+    getEmbedding('scene', result, data.content).catch((err) => {
+      console.error('Failed to generate embedding for new scene:', result, err)
+    })
   }
   return result
 }
@@ -669,7 +736,9 @@ export async function addScene(projectId, data) {
 export async function updateScene(id, data) {
   await db.scenes.update(id, data)
   if (data.content) {
-    getEmbedding('scene', id, data.content).catch(() => {})
+    getEmbedding('scene', id, data.content).catch((err) => {
+      console.error('Failed to generate embedding for scene update:', id, err)
+    })
   }
 }
 
@@ -690,7 +759,7 @@ export async function getChapterWordCounts(projectId) {
     
     for (const scene of chapterScenes) {
       if (scene.content) {
-        wordCount += scene.content.split(/\s+/).filter(w => w.length > 0).length
+        wordCount += countWords(scene.content)
       }
     }
     

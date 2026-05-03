@@ -64,10 +64,12 @@ export function useFlowTimer(projectStore) {
     initAudio()
 
     timerInterval = setInterval(() => {
-      if (remaining.value > 0) {
-        remaining.value--
-      } else {
-        endSession()
+      if (isRunning.value && !isPaused.value) {
+        if (remaining.value > 0) {
+          remaining.value--
+        } else {
+          endSession()
+        }
       }
     }, 1000)
 

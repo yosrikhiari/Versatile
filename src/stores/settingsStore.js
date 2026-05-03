@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { simpleEncrypt, simpleDecrypt } from '../services/ollamaService'
 
 const STORAGE_KEY = 'versatile_settings'
 
@@ -23,8 +24,16 @@ export const useSettingsStore = defineStore('settings', () => {
         const data = JSON.parse(stored)
         if (data.ollamaEndpoint) ollamaEndpoint.value = data.ollamaEndpoint
         if (data.ollamaModel) ollamaModel.value = data.ollamaModel
-        if (data.openaiApiKey) openaiApiKey.value = data.openaiApiKey
         if (data.autoSaveInterval) autoSaveInterval.value = data.autoSaveInterval
+      }
+      // Load API key from encrypted localStorage
+      const encryptedKey = localStorage.getItem('versatile_openai_key')
+      if (encryptedKey) {
+        try {
+          openaiApiKey.value = simpleDecrypt(encryptedKey)
+        } catch {
+          openaiApiKey.value = ''
+        }
       }
     } catch (e) {
       console.warn('Failed to load settings:', e)
@@ -56,6 +65,12 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setOpenaiApiKey(key) {
     openaiApiKey.value = key
+    // Save encrypted to localStorage for persistence
+    if (key) {
+      localStorage.setItem('versatile_openai_key', simpleEncrypt(key))
+    } else {
+      localStorage.removeItem('versatile_openai_key')
+    }
     saveSettings()
   }
 

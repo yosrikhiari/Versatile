@@ -4,10 +4,13 @@ import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
 import BaseIcon from '../shared/BaseIcon.vue'
+import CharacterPortrait from './CharacterPortrait.vue'
 
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const volumeStore = useVolumeStore()
+
+const characterPortraitRef = ref(null)
 
 const activeTab = ref('characters')
 const searchQuery = ref('')
@@ -182,14 +185,27 @@ defineExpose({
     </div>
 
     <div v-if="activeTab === 'characters'" class="flex-1 overflow-y-auto p-4 space-y-3">
-      <div
-        v-for="character in filteredCharacters"
-        :key="character.id"
-        class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
-      >
+        <div
+          v-for="character in filteredCharacters"
+          :key="character.id"
+          class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
+        >
+          <CharacterPortrait
+            v-if="editingId === character.id"
+            :character="editData"
+            :project-id="projectStore.currentProjectId"
+            @updated="refresh"
+            class="mb-3"
+          />
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <BaseIcon name="user" :size="18" class="text-text-hint" />
+            <img
+              v-if="character.portrait && editingId !== character.id"
+              :src="character.portrait"
+              :alt="character.name"
+              class="w-8 h-8 rounded-full object-cover flex-shrink-0"
+            />
+            <BaseIcon v-else name="user" :size="18" class="text-text-hint" />
             <input
               v-if="editingId === character.id"
               v-model="editData.name"
@@ -237,11 +253,18 @@ defineExpose({
             </button>
           </div>
         </div>
-        <div v-if="character.notes && editingId !== character.id" class="mt-2 text-sm text-text-secondary">
-          {{ character.notes }}
-        </div>
-        <div v-if="editingId === character.id" class="mt-2 space-y-2">
-          <input
+          <div v-if="character.notes && editingId !== character.id" class="mt-2 text-sm text-text-secondary">
+            {{ character.notes }}
+          </div>
+          <CharacterPortrait
+            v-if="editingId !== character.id && character.portrait"
+            :character="character"
+            :project-id="projectStore.currentProjectId"
+            @updated="refresh"
+            class="mt-2"
+          />
+          <div v-if="editingId === character.id" class="mt-2 space-y-2">
+            <input
             v-model="editData.role"
             placeholder="Role (e.g., Protagonist)"
             class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"

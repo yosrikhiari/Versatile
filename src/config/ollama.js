@@ -1,4 +1,5 @@
 import { useSettingsStore } from '../stores/settingsStore'
+import { simpleDecrypt } from '../services/ollamaService'
 
 let settingsStore = null
 
@@ -54,11 +55,17 @@ export function getOpenAIKey() {
   if (store) {
     return store.openaiApiKey
   }
-  return localStorage.getItem('versatile_openai_key') || ''
+  // Read encrypted key from localStorage
+  const encrypted = localStorage.getItem('versatile_openai_key')
+  if (!encrypted) return ''
+  try {
+    return simpleDecrypt(encrypted)
+  } catch {
+    return ''
+  }
 }
 
 export function setOpenAIKey(key) {
-  localStorage.setItem('versatile_openai_key', key)
   const store = getSettingsStore()
   if (store) {
     store.setOpenaiApiKey(key)

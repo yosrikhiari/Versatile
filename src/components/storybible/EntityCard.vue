@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useVolumeStore } from '../../stores/volumeStore'
 import BaseIcon from '../shared/BaseIcon.vue'
 import VolumeAssignmentPanel from '../volume/VolumeAssignmentPanel.vue'
+import CharacterPortrait from './CharacterPortrait.vue'
 
 const props = defineProps({
   entity: {
@@ -13,10 +14,14 @@ const props = defineProps({
     type: String,
     required: true,
     validator: (v) => ['character', 'location', 'plotThread'].includes(v)
+  },
+  projectId: {
+    type: Number,
+    default: null
   }
 })
 
-const emit = defineEmits(['update', 'delete'])
+const emit = defineEmits(['update', 'delete', 'updated'])
 
 const volumeStore = useVolumeStore()
 
@@ -36,6 +41,10 @@ const assignedVolumes = computed(() => {
 function onVolumeAssignUpdate() {
   emit('update')
 }
+
+function onPortraitUpdated() {
+  emit('updated')
+}
 </script>
 
 <template>
@@ -45,7 +54,16 @@ function onVolumeAssignUpdate() {
       class="flex items-center justify-between p-3 cursor-pointer hover:bg-surface-hover"
     >
       <div class="flex items-center gap-2">
-        <BaseIcon :name="iconNames[entityType]" :size="18" class="text-text-hint" />
+        <div v-if="entityType === 'character'" class="flex-shrink-0">
+          <img
+            v-if="entity.portrait"
+            :src="entity.portrait"
+            :alt="entity.name"
+            class="w-8 h-8 rounded-full object-cover"
+          />
+          <BaseIcon v-else :name="iconNames[entityType]" :size="18" class="text-text-hint" />
+        </div>
+        <BaseIcon v-else :name="iconNames[entityType]" :size="18" class="text-text-hint" />
         <span class="font-medium text-text-primary">{{ entity.name }}</span>
         <div v-if="assignedVolumes.length > 0" class="flex gap-0.5 ml-1">
           <div
@@ -98,6 +116,13 @@ function onVolumeAssignUpdate() {
         <span class="text-text-hint">Description:</span>
         <span class="text-text-primary ml-1">{{ entity.description }}</span>
       </div>
+      <CharacterPortrait
+        v-if="entityType === 'character'"
+        :character="entity"
+        :project-id="projectId"
+        @updated="onPortraitUpdated"
+        class="mt-2"
+      />
       <div class="flex gap-2">
         <button
           @click="$emit('delete', entity.id)"
