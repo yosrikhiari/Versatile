@@ -1,15 +1,10 @@
 <script setup>
-import { ref, onMounted, watch, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { useProjectStore } from './stores/projectStore'
-import { useSparkStore } from './stores/sparkStore'
-import { usePolishStore } from './stores/polishStore'
-import { useStoryBibleStore } from './stores/storyBibleStore'
-import { useManuscriptStore } from './stores/manuscriptStore'
 import { useFlowTimer } from './composables/useFlowTimer'
-import { checkOllamaConnection } from './services/ollamaService'
-import { OLLAMA_MODEL } from './config/ollama'
-import { exportProject, importProject } from './services/dbService'
-import { exportManuscriptToPDF, exportToEpub } from './services/exportService'
+import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts'
+import { useAppInitialization } from './composables/useAppInitialization'
+import { useExportImport } from './composables/useExportImport'
 import AppShell from './components/layout/AppShell.vue'
 import SettingsModal from './components/layout/SettingsModal.vue'
 import WelcomeOnboarding from './components/layout/WelcomeOnboarding.vue'
@@ -28,178 +23,47 @@ import TimelineView from './components/manuscript/TimelineView.vue'
 import SearchOverlay from './components/manuscript/SearchOverlay.vue'
 
 const projectStore = useProjectStore()
-const sparkStore = useSparkStore()
-const polishStore = usePolishStore()
-const storyBibleStore = useStoryBibleStore()
-const manuscriptStore = useManuscriptStore()
 const timer = useFlowTimer(projectStore)
 
 const showSettingsModal = ref(false)
-const hasLoaded = ref(false)
-const showImportModal = ref(false)
-const importStatus = ref('')
 const showShortcutsModal = ref(false)
 const showOnboarding = ref(false)
-const ollamaAvailable = ref(true)
-const modelNotFound = ref(false)
-const showModelBanner = ref(false)
-const toastMessage = ref('')
-const toastKey = ref(0)
+const polishDrawerRef = ref(null)
+const flowEditorRef = ref(null)
+const appShell = ref(null)
+const showSearchOverlay = ref(false)
+const focusMode = ref(false)
 
-function showToast(msg) {
-  toastMessage.value = msg
-  toastKey.value++
-}
+const { ollamaAvailable, modelNotFound, showModelBanner, hasLoaded, initializeApp, onOnboardingComplete, onOnboardingSkip } = useAppInitialization()
+const { importStatus, showImportModal, toastMessage, toastKey, handleExport, handleExportPDF, handleExportEpub, handleImport } = useExportImport()
 
-async function checkModelAvailability() {
-  try {
-    const response = await fetch('/ollama/api/tags')
-    if (response.ok) {
-      const data = await response.json()
-      const modelNames = data.models?.map(m => m.name) || []
-      if (!modelNames.includes(OLLAMA_MODEL)) {
-        modelNotFound.value = true
-        showModelBanner.value = true
-      }
-    }
-  } catch (e) {
-    // Ollama not available
-  }
-}
+useKeyboardShortcuts({
+  onSearchClose: () => { showSearchOverlay.value = false },
+  onToggleShortcuts: () => { showShortcutsModal.value = !showShortcutsModal.value },
+  onExport: () => { showSearchOverlay.value = true },
+  onImport: handleImport,
+  onSave: handleExport,
+  onToggleFocusMode: () => { focusMode.value = !focusMode.value },
+  onToggleFlow: (running) => { running ? timer.startSession(20) : timer.endSession() },
+  timerIsRunning: timer.isRunning.value,
+  onToggleSpark: () => appShell.value?.toggleSpark(),
+  onTogglePolish: () => appShell.value?.togglePolish(),
+  onToggleStoryBible: () => appShell.value?.toggleStoryBible(),
+  onToggleRevise: () => appShell.value?.toggleRevise(),
+  onToggleCanvas: () => appShell.value?.toggleCanvas(),
+  onToggleOutline: () => appShell.value?.toggleOutline(),
+  onToggleChapters: () => appShell.value?.toggleChapters(),
+  onToggleNetwork: () => appShell.value?.toggleNetwork(),
+  onToggleTimeline: () => appShell.value?.toggleTimeline(),
+  onCloseModal: () => { showShortcutsModal.value = false },
+  appShell: appShell.value
+})
 
-function handleKeydown(e) {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.closest('.ProseMirror')) {
-    if (e.key === 'Escape') {
-      if (showSearchOverlay.value) {
-        showSearchOverlay.value = false
-      } else {
-        e.target.blur()
-      }
-    }
-    return
-  }
-
-  if (e.key === '?') {
-    showShortcutsModal.value = !showShortcutsModal.value
-    return
-  }
-  
-  if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault()
-    showSearchOverlay.value = true
-    return
-  }
-  
-  if (e.key === 'F' && (e.ctrlKey || e.metaKey) && (e.shiftKey)) {
-    e.preventDefault()
-    focusMode.value = !focusMode.value
-    return
-  }
-  
-  if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault()
-    handleExport()
-    return
-  }
-  
-  if (e.key === 'i' && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault()
-    handleImportClick()
-    return
-  }
-  
-  if (e.key === '1') {
-    if (appShell.value) appShell.value.toggleSpark()
-    return
-  }
-  
-  if (e.key === '2') {
-    if (appShell.value) appShell.value.togglePolish()
-    return
-  }
-  
-  if (e.key === '3') {
-    if (appShell.value) appShell.value.toggleStoryBible()
-    return
-  }
-  
-  if (e.key === '4') {
-    if (appShell.value) appShell.value.toggleRevise()
-    return
-  }
-  
-  if (e.key === '5') {
-    if (appShell.value) appShell.value.toggleCanvas()
-    return
-  }
-  
-  if (e.key === '6') {
-    if (appShell.value) appShell.value.toggleOutline()
-    return
-  }
-  
-  if (e.key === '7') {
-    if (appShell.value) appShell.value.toggleChapters()
-    return
-  }
-  
-  if (e.key === '8') {
-    if (appShell.value) appShell.value.toggleNetwork()
-    return
-  }
-  
-  if (e.key === 't' && !e.ctrlKey && !e.metaKey) {
-    if (appShell.value) appShell.value.toggleTimeline()
-    return
-  }
-  
-  if (e.key === 'f' && !e.ctrlKey && !e.metaKey) {
-    if (timer.isRunning.value) {
-      timer.endSession()
-    } else {
-      timer.startSession(20)
-    }
-    return
-  }
-
-  if (e.key === 'Escape' && showShortcutsModal.value) {
-    showShortcutsModal.value = false
-    return
-  }
-}
-
-onMounted(async () => {
-  window.addEventListener('keydown', handleKeydown)
-  const ollamaOk = await checkOllamaConnection()
-  ollamaAvailable.value = ollamaOk
-  
-  if (ollamaOk) {
-    await checkModelAvailability()
-  }
-  
-  const hasProject = await projectStore.loadLastProject()
-  if (!hasProject && !isOnboardingDismissed()) {
+initializeApp().then(result => {
+  if (result?.showOnboarding) {
     showOnboarding.value = true
-  } else {
-    if (projectStore.currentProjectId) {
-      await sparkStore.loadHistory(projectStore.currentProjectId)
-      await polishStore.loadAnnotations(projectStore.currentProjectId)
-      await polishStore.loadSnippets(projectStore.currentProjectId)
-      await storyBibleStore.loadAll(projectStore.currentProjectId)
-      await manuscriptStore.loadManuscript(projectStore.currentProjectId)
-      sparkStore.setProjectId(projectStore.currentProjectId)
-    }
   }
-  hasLoaded.value = true
 })
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
-})
-
-function isOnboardingDismissed() {
-  return localStorage.getItem('versatile_onboarding_v2') === 'done'
-}
 
 function handleParagraphClick(text, index) {
   if (polishDrawerRef.value) {
@@ -215,90 +79,15 @@ function handleEndFlow() {
   timer.endSession()
 }
 
-async function handleExport() {
-  if (!projectStore.currentProjectId) return
-   
-  const data = await exportProject(projectStore.currentProjectId)
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${projectStore.currentProjectName || 'project'}.versatile.json`
-  a.click()
-  URL.revokeObjectURL(url)
-  showToast('Project exported')
-}
-
-async function handleExportPDF() {
-  if (!projectStore.currentProjectId) return
-  await exportManuscriptToPDF(projectStore.currentProjectId, projectStore.currentProjectName)
-  showToast('PDF exported')
-}
-
-function handleExportEpub() {
-  if (!projectStore.currentProjectId) return
-  exportToEpub(projectStore.currentProjectId, projectStore.currentProjectName)
-}
-
-function handleImportClick() {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.json,.versatile'
-  input.onchange = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    
-    try {
-      const text = await file.text()
-      const data = JSON.parse(text)
-      importStatus.value = 'Importing...'
-      showImportModal.value = true
-      
-      const newProjectId = await importProject(data)
-      await projectStore.loadProject(newProjectId)
-      
-      await sparkStore.loadHistory(newProjectId)
-      await polishStore.loadAnnotations(newProjectId)
-      await polishStore.loadSnippets(newProjectId)
-      await storyBibleStore.loadAll(newProjectId)
-      sparkStore.setProjectId(newProjectId)
-      
-      importStatus.value = 'Import complete!'
-      showToast('Project imported')
-      setTimeout(() => {
-        showImportModal.value = false
-      }, 1500)
-    } catch (err) {
-      importStatus.value = 'Import failed: ' + err.message
-    }
-  }
-  input.click()
-}
-
-async function handleOnboardingComplete() {
-  localStorage.setItem('versatile_onboarding_v2', 'done')
+async function handleOnboardingCompleteWrapper() {
   showOnboarding.value = false
-  
-  if (projectStore.currentProjectId) {
-    await sparkStore.loadHistory(projectStore.currentProjectId)
-    await polishStore.loadAnnotations(projectStore.currentProjectId)
-    await polishStore.loadSnippets(projectStore.currentProjectId)
-    await storyBibleStore.loadAll(projectStore.currentProjectId)
-    await manuscriptStore.loadManuscript(projectStore.currentProjectId)
-    sparkStore.setProjectId(projectStore.currentProjectId)
-  }
+  await onOnboardingComplete()
 }
 
-function handleOnboardingSkip() {
-  localStorage.setItem('versatile_onboarding_v2', 'done')
+function handleOnboardingSkipWrapper() {
   showOnboarding.value = false
+  onOnboardingSkip()
 }
-
-const polishDrawerRef = ref(null)
-const flowEditorRef = ref(null)
-const appShell = ref(null)
-const showSearchOverlay = ref(false)
-const focusMode = ref(false)
 </script>
 
 <template>
@@ -391,8 +180,8 @@ const focusMode = ref(false)
 
     <WelcomeOnboarding 
       :show="showOnboarding && hasLoaded" 
-      @complete="handleOnboardingComplete"
-      @skip="handleOnboardingSkip"
+      @complete="handleOnboardingCompleteWrapper"
+      @skip="handleOnboardingSkipWrapper"
     />
 
     <div v-if="timer.showSessionEndModal.value" class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
