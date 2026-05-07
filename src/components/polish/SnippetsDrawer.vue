@@ -35,8 +35,8 @@ const sortedSnippets = computed(() => {
             <td class="py-2 text-center text-text-hint font-mono text-xs">{{ snippet.count }}</td>
             <td class="py-2 text-right">
               <button
-                @click="emit('remove', snippet.id)"
                 class="text-text-hint hover:text-danger text-xs focus:outline-none focus:ring-2 focus:ring-accent rounded"
+                @click="emit('remove', snippet.id)"
               >
                 ×
               </button>

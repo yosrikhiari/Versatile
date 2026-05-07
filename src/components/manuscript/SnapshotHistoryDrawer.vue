@@ -129,15 +129,15 @@ onUnmounted(() => {
           <span class="font-spark text-accent tracking-wide">History</span>
           <div class="flex items-center gap-2">
             <button
-              @click="showLabelInput = true"
               class="px-2 py-1 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui"
               title="Save snapshot with label"
+              @click="showLabelInput = true"
             >
               <BaseIcon name="save" :size="14" />
             </button>
             <button
-              @click="emit('close')"
               class="text-text-hint hover:text-text-secondary"
+              @click="emit('close')"
             >
               <BaseIcon name="x" :size="18" />
             </button>
@@ -177,9 +177,9 @@ onUnmounted(() => {
                     </div>
                   </div>
                   <button
-                    @click.stop="removeSnapshot(snapshot)"
                     class="text-text-hint hover:text-danger shrink-0 p-1"
                     title="Delete snapshot"
+                    @click.stop="removeSnapshot(snapshot)"
                   >
                     <BaseIcon name="trash-2" :size="14" />
                   </button>
@@ -191,8 +191,8 @@ onUnmounted(() => {
                     {{ previewDiff(snapshot).slice(0, 500) }}{{ previewDiff(snapshot).length > 500 ? '...' : '' }}
                   </div>
                   <button
-                    @click.stop="confirmRestore"
                     class="mt-2 w-full py-1.5 bg-accent text-white text-xs rounded font-ui hover:bg-accent/90"
+                    @click.stop="confirmRestore"
                   >
                     Restore this version
                   </button>
@@ -204,8 +204,8 @@ onUnmounted(() => {
 
         <div class="px-4 py-3 border-t border-border-subtle shrink-0">
           <button
-            @click="autoSaveManual"
             class="w-full py-2 bg-bg-tertiary text-text-secondary text-sm rounded-lg hover:bg-surface-hover font-ui"
+            @click="autoSaveManual"
           >
             Save Snapshot Now
           </button>
@@ -226,14 +226,14 @@ onUnmounted(() => {
         </p>
         <div class="flex gap-2">
           <button
-            @click="showConfirmRestore = false"
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
+            @click="showConfirmRestore = false"
           >
             Cancel
           </button>
           <button
-            @click="doRestore"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui"
+            @click="doRestore"
           >
             Restore
           </button>
@@ -253,20 +253,20 @@ onUnmounted(() => {
           type="text"
           placeholder="e.g. Before adding climax..."
           class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm mb-4 font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
-          @keyup.enter="saveWithLabel"
           autofocus
+          @keyup.enter="saveWithLabel"
         />
         <div class="flex gap-2">
           <button
-            @click="showLabelInput = false; newLabel = ''"
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
+            @click="showLabelInput = false; newLabel = ''"
           >
             Cancel
           </button>
           <button
-            @click="saveWithLabel"
             :disabled="!newLabel.trim()"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui disabled:opacity-50"
+            @click="saveWithLabel"
           >
             Save
           </button>

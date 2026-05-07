@@ -19,7 +19,7 @@ const lensOptions = [
   { key: 'weakVerbs', label: 'Weak Verbs' },
   { key: 'repetition', label: 'Repetition' },
   { key: 'pacing', label: 'Pacing' },
-  { key: 'antecedents', label: 'Antecedents' }
+  { key: 'clarity', label: 'Clarity Issues' }
 ]
 
 const currentAnnotations = computed(() => {
@@ -36,7 +36,7 @@ const lensIssueCounts = computed(() => {
       weakVerbs: 'weak_verb',
       repetition: 'repetition',
       pacing: 'pacing',
-      antecedents: 'antecedent'
+      clarity: 'unclear_references'
     }
     const type = typeMap[lens.key]
     counts[lens.key] = polishStore.annotations.filter(
@@ -104,13 +104,13 @@ defineExpose({
         <button
           v-for="lens in lensOptions"
           :key="lens.key"
-          @click="toggleLens(lens.key)"
-            :class="[
+          :class="[
               'px-2 py-1 text-xs rounded-full transition-colors font-ui relative focus:outline-none focus:ring-2 focus:ring-accent',
               polishStore.activeLenses[lens.key]
                 ? 'bg-accent text-white'
                 : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
             ]"
+            @click="toggleLens(lens.key)"
         >
           {{ lens.label }}
           <span v-if="lensIssueCounts[lens.key] > 0 && polishStore.activeLenses[lens.key]" class="ml-1 opacity-75">
@@ -121,10 +121,10 @@ defineExpose({
       <div class="flex items-center gap-2">
         <button
           v-if="polishStore.selectedParagraphIndex !== null"
-          @click="analyzeNow"
           :disabled="polishStore.isAnalyzing"
           class="px-2 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           title="Analyze selected paragraph"
+          @click="analyzeNow"
         >
           {{ polishStore.isAnalyzing ? '...' : 'Analyze' }}
         </button>
@@ -137,8 +137,8 @@ defineExpose({
           Analyze
         </button>
         <button
-          @click="expanded = !expanded"
           class="text-text-hint hover:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent rounded px-1"
+          @click="expanded = !expanded"
         >
           {{ expanded ? '▼' : '▲' }}
         </button>

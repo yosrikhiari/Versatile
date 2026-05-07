@@ -102,27 +102,27 @@ watch(() => props.show, (newVal) => {
       <div class="bg-bg-secondary border border-border-subtle rounded-xl shadow-xl p-6 max-w-md w-full">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-semibold text-text-primary">Settings</h2>
-          <button @click="emit('close')" class="text-text-hint hover:text-text-primary">
+          <button class="text-text-hint hover:text-text-primary" @click="emit('close')">
             <BaseIcon name="x" :size="20" />
           </button>
         </div>
 
         <div class="flex gap-2 mb-6 border-b border-border-subtle pb-2">
           <button
-            @click="activeTab = 'goals'"
             :class="[
               'px-3 py-1.5 text-sm rounded-t',
               activeTab === 'goals' ? 'bg-bg-tertiary text-text-primary' : 'text-text-hint hover:text-text-secondary'
             ]"
+            @click="activeTab = 'goals'"
           >
             Goals
           </button>
           <button
-            @click="activeTab = 'ai'"
             :class="[
               'px-3 py-1.5 text-sm rounded-t',
               activeTab === 'ai' ? 'bg-bg-tertiary text-text-primary' : 'text-text-hint hover:text-text-secondary'
             ]"
+            @click="activeTab = 'ai'"
           >
             AI Settings
           </button>
@@ -156,14 +156,15 @@ watch(() => props.show, (newVal) => {
                 class="flex-1 px-4 py-2 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
               <button
-                @click="testConnection"
                 :disabled="testingConnection"
                 class="px-4 py-2 bg-bg-tertiary text-text-secondary rounded-lg hover:bg-surface-hover disabled:opacity-50"
+                @click="testConnection"
               >
                 {{ testingConnection ? 'Testing...' : 'Test' }}
               </button>
             </div>
-            <div v-if="connectionStatus" :class="[
+            <div
+v-if="connectionStatus" :class="[
               'mt-2 text-xs px-2 py-1 rounded',
               connectionStatus.success ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger'
             ]">
@@ -207,22 +208,22 @@ watch(() => props.show, (newVal) => {
 
         <div class="flex gap-3 mt-6">
           <button
-            @click="emit('close')"
             class="flex-1 py-2 bg-surface-hover text-text-secondary rounded-lg font-medium hover:bg-bg-tertiary focus:outline-none focus:ring-2 focus:ring-accent"
+            @click="emit('close')"
           >
             Cancel
           </button>
           <button
             v-if="activeTab === 'goals'"
-            @click="saveGoal"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+            @click="saveGoal"
           >
             Save
           </button>
           <button
             v-if="activeTab === 'ai'"
-            @click="saveEndpoint(); saveModel(); saveOpenAIKey(); emit('close')"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+            @click="saveEndpoint(); saveModel(); saveOpenAIKey(); emit('close')"
           >
             Save
           </button>

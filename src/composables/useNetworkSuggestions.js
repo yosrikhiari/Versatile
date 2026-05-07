@@ -712,12 +712,12 @@ Analyze these elements using semantic understanding and suggest meaningful new c
         storyGraphStore.edges.map(e => canonicalKey(e.sourceType, String(e.sourceId), e.targetType, String(e.targetId)))
       )
 
-      const synopsisContext = projectStore.currentSynopsis?.trim()
-        ? `Novel Synopsis:\n${projectStore.currentSynopsis.trim()}\n\n`
+      const synopsisContext = projectStore.currentDescription?.trim()
+        ? `Description:\n${projectStore.currentDescription.trim()}\n\n`
         : ''
       
-      const genreContext = projectStore.currentGenre?.trim()
-        ? `Genre: ${projectStore.currentGenre.trim()}\n\n`
+      const genreContext = projectStore.currentCategory?.trim()
+        ? `Category: ${projectStore.currentCategory.trim()}\n\n`
         : ''
       
       const contextLine = prompt?.trim()

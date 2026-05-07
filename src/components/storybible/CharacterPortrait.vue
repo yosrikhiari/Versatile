@@ -58,9 +58,9 @@ async function generate() {
       <BaseIcon v-else name="user" :size="32" class="text-text-hint" />
     </div>
     <button
-      @click="generate"
       :disabled="isGenerating"
       class="text-xs px-3 py-1 rounded bg-accent text-white hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      @click="generate"
     >
       <span v-if="isGenerating" class="flex items-center gap-1">
         <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24">

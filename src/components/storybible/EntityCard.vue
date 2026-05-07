@@ -50,8 +50,8 @@ function onPortraitUpdated() {
 <template>
   <div class="bg-bg-tertiary border border-border-subtle rounded-lg overflow-hidden">
     <div 
-      @click="expanded = !expanded"
       class="flex items-center justify-between p-3 cursor-pointer hover:bg-surface-hover"
+      @click="expanded = !expanded"
     >
       <div class="flex items-center gap-2">
         <div v-if="entityType === 'character'" class="flex-shrink-0">
@@ -85,9 +85,9 @@ function onPortraitUpdated() {
           {{ entity.role }}
         </span>
         <button
-          @click.stop="showVolumeAssignment = !showVolumeAssignment"
           class="p-0.5 hover:bg-surface-hover rounded transition-colors"
           title="Assign to volumes"
+          @click.stop="showVolumeAssignment = !showVolumeAssignment"
         >
           <BaseIcon name="layers" :size="14" class="text-text-hint" />
         </button>
@@ -120,13 +120,13 @@ function onPortraitUpdated() {
         v-if="entityType === 'character'"
         :character="entity"
         :project-id="projectId"
-        @updated="onPortraitUpdated"
         class="mt-2"
+        @updated="onPortraitUpdated"
       />
       <div class="flex gap-2">
         <button
-          @click="$emit('delete', entity.id)"
           class="text-xs text-red-400 hover:text-red-300"
+          @click="$emit('delete', entity.id)"
         >
           Delete
         </button>

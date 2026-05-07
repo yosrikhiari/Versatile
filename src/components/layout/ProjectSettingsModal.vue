@@ -21,8 +21,8 @@ const isGeneratingSynopsis = ref(false)
 watch(() => props.show, (show) => {
   if (show) {
     localName.value = projectStore.currentProjectName
-    localGenre.value = projectStore.currentGenre
-    localSynopsis.value = projectStore.currentSynopsis
+    localGenre.value = projectStore.currentCategory
+    localSynopsis.value = projectStore.currentDescription
   }
 })
 
@@ -111,17 +111,17 @@ async function findRelevantChunks(content, topN = 3) {
   return rerankedChunks
 }
 
-async function handleGenerateSynopsis() {
-  const manuscriptContent = projectStore.manuscriptContent
+  async function handleGenerateSynopsis() {
+  const documentContent = projectStore.documentContent
   
-  if (!manuscriptContent || manuscriptContent.trim().length < 100) {
+  if (!documentContent || documentContent.trim().length < 100) {
     return
   }
   
   isGeneratingSynopsis.value = true
   
   try {
-    const relevantChunks = await findRelevantChunks(manuscriptContent, 3)
+    const relevantChunks = await findRelevantChunks(documentContent, 3)
     
     const contextText = relevantChunks.join('\n\n')
     
@@ -151,8 +151,8 @@ async function handleSave() {
   try {
     await projectStore.updateProjectInfo({
       name: localName.value.trim(),
-      genre: localGenre.value,
-      synopsis: localSynopsis.value.trim()
+      category: localGenre.value,
+      description: localSynopsis.value.trim()
     })
     emit('close')
   } catch (e) {
@@ -184,8 +184,8 @@ function handleOverlayClick(event) {
               <h2 class="font-medium text-text-primary">Project Settings</h2>
             </div>
             <button
-              @click="$emit('close')"
               class="p-1 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover transition-colors"
+              @click="$emit('close')"
             >
               <BaseIcon name="x" :size="18" />
             </button>
@@ -223,10 +223,10 @@ function handleOverlayClick(event) {
                   Synopsis
                 </label>
                 <button
-                  v-if="projectStore.manuscriptContent && projectStore.manuscriptContent.length > 100"
-                  @click="handleGenerateSynopsis"
+                  v-if="projectStore.documentContent && projectStore.documentContent.length > 100"
                   :disabled="isGeneratingSynopsis"
                   class="flex items-center gap-1.5 px-2 py-1 text-xs bg-accent/10 text-accent rounded hover:bg-accent/20 transition-colors disabled:opacity-50"
+                  @click="handleGenerateSynopsis"
                 >
                   <BaseIcon v-if="isGeneratingSynopsis" name="loader" :size="12" class="animate-spin" />
                   <BaseIcon v-else name="sparkles" :size="12" />
@@ -247,15 +247,15 @@ function handleOverlayClick(event) {
 
           <div class="flex items-center justify-end gap-3 px-5 py-4 bg-bg-tertiary/50 border-t border-border-subtle">
             <button
-              @click="$emit('close')"
               class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary font-ui transition-colors"
+              @click="$emit('close')"
             >
               Cancel
             </button>
             <button
-              @click="handleSave"
               :disabled="!localName.trim() || isSaving"
               class="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent/90 font-ui flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="handleSave"
             >
               {{ isSaving ? 'Saving...' : 'Save Changes' }}
             </button>

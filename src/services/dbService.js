@@ -31,6 +31,10 @@ db.version(11).stores({
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
   volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
+}).upgrade(async (trans) => {
+  // Migration from v10 to v11: Add volumeId to graphEdges, create volumeEntities table
+  await trans.graphEdges.toCollection().modify({ volumeId: null })
+  // Note: volumeEntities table is empty initially, entities need to be assigned
 })
 
 db.version(12).stores({
@@ -57,15 +61,64 @@ db.version(12).stores({
   volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
 })
 
-// Migration from v10 to v11: Add volumeId to graphEdges, create volumeEntities table
-db.version(11).upgrade(async (trans) => {
-  // Add volumeId to existing graphEdges (set to null for all existing edges)
-  await trans.graphEdges.toCollection().modify({ volumeId: null })
-  // Note: volumeEntities table is empty initially, entities need to be assigned
+db.version(13).stores({
+  projects: '++id, name, createdAt, updatedAt, genre, synopsis',
+  manuscripts: '++id, projectId, content, wordCount, updatedAt',
+  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait',
+  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes',
+  locations: '++id, projectId, name, description, notes',
+  plotThreads: '++id, projectId, title, status, notes',
+  chapters: '++id, projectId, title, summary, order, status, *tags, volumeId',
+  scenes: '++id, projectId, chapterId, title, summary, order, content, *tags',
+  // New tables (v13)
+  sections: '++id, projectId, title, summary, order, status, *tags, volumeId',
+  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags',
+  sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
+  annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
+  snippets: '++id, projectId, word, count, lastSeen',
+  dailyGoals: '++id, projectId, date, [projectId+date]',
+  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  storyElements: '++id, projectId, type, title, x, y, width, height, data',
+  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
+  nodePositions: '++id, projectId',
+  graphGroups: '++id, projectId',
+  snapshots: '++id, projectId, chapterId, timestamp, label',
+  volumes: '++id, projectId, title, description, color, chapterIds',
+  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
+}).upgrade(async (trans) => {
+  // Migrate chapters → sections
+  const chapters = await trans.chapters.toArray()
+  for (const ch of chapters) {
+    await trans.sections.add({
+      ...ch,
+      projectId: ch.projectId,
+      title: ch.title,
+      summary: ch.summary,
+      order: ch.order,
+      status: ch.status,
+      tags: ch.tags,
+      volumeId: ch.volumeId
+    })
+  }
+  
+  // Migrate scenes → subsections
+  const scenes = await trans.scenes.toArray()
+  for (const sc of scenes) {
+    await trans.subsections.add({
+      ...sc,
+      projectId: sc.projectId,
+      sectionId: sc.chapterId,
+      title: sc.title,
+      summary: sc.summary,
+      order: sc.order,
+      content: sc.content,
+      tags: sc.tags
+    })
+  }
 })
 
 db.on('ready', async () => {
-  // Ensure default volume exists
   const volumeCount = await db.volumes.count()
   if (volumeCount === 0) {
     await db.volumes.add({
@@ -77,35 +130,51 @@ db.on('ready', async () => {
   }
 })
 
+// ========== PROJECTS ==========
 
 export async function createProject(name, genre = '', synopsis = '') {
-  const now = new Date().toISOString()
-  const projectId = await db.projects.add({
-    name,
-    genre,
-    synopsis,
-    createdAt: now,
-    updatedAt: now
-  })
-  await db.manuscripts.add({
-    projectId,
-    content: '',
-    wordCount: 0,
-    updatedAt: now
-  })
-  return projectId
+  try {
+    const now = new Date().toISOString()
+    const projectId = await db.projects.add({
+      name,
+      genre,
+      synopsis,
+      createdAt: now,
+      updatedAt: now
+    })
+    await db.manuscripts.add({
+      projectId,
+      content: '',
+      wordCount: 0,
+      updatedAt: now
+    })
+    return projectId
+  } catch (error) {
+    console.error('Failed to create project:', error)
+    throw error
+  }
 }
 
 export async function updateProject(id, data) {
-  const now = new Date().toISOString()
-  await db.projects.update(id, {
-    ...data,
-    updatedAt: now
-  })
+  try {
+    const now = new Date().toISOString()
+    await db.projects.update(id, {
+      ...data,
+      updatedAt: now
+    })
+  } catch (error) {
+    console.error('Failed to update project:', error)
+    throw error
+  }
 }
 
 export async function getProject(id) {
-  return db.projects.get(id)
+  try {
+    return await db.projects.get(id)
+  } catch (error) {
+    console.error('Failed to get project:', error)
+    throw error
+  }
 }
 
 export async function getAllProjects() {
@@ -113,29 +182,56 @@ export async function getAllProjects() {
 }
 
 export async function getManuscript(projectId) {
-  return db.manuscripts.where('projectId').equals(projectId).first()
+  try {
+    return await db.manuscripts.where('projectId').equals(projectId).first()
+  } catch (error) {
+    console.error('Failed to get manuscript:', error)
+    throw error
+  }
 }
 
 export async function saveManuscript(projectId, content) {
-  const wordCount = countWords(content)
-  const now = new Date().toISOString()
-  const existing = await db.manuscripts.where('projectId').equals(projectId).first()
-  if (existing) {
-    return db.manuscripts.update(existing.id, { content, wordCount, updatedAt: now })
+  try {
+    const wordCount = countWords(content)
+    const now = new Date().toISOString()
+    const existing = await db.manuscripts.where('projectId').equals(projectId).first()
+    if (existing) {
+      return await db.manuscripts.update(existing.id, { content, wordCount, updatedAt: now })
+    }
+    return await db.manuscripts.add({ projectId, content, wordCount, updatedAt: now })
+  } catch (error) {
+    console.error('Failed to save manuscript:', error)
+    throw error
   }
-  return db.manuscripts.add({ projectId, content, wordCount, updatedAt: now })
 }
 
+// ========== CHARACTERS ==========
+
 export async function getCharacters(projectId) {
-  return db.characters.where('projectId').equals(projectId).toArray()
+  try {
+    return await db.characters.where('projectId').equals(projectId).toArray()
+  } catch (error) {
+    console.error('Failed to get characters:', error)
+    throw error
+  }
 }
 
 export async function addCharacter(projectId, data) {
-  return db.characters.add({ projectId, ...data })
+  try {
+    return await db.characters.add({ projectId, ...data })
+  } catch (error) {
+    console.error('Failed to add character:', error)
+    throw error
+  }
 }
 
 export async function updateCharacter(id, data) {
-  return db.characters.update(id, data)
+  try {
+    return await db.characters.update(id, data)
+  } catch (error) {
+    console.error('Failed to update character:', error)
+    throw error
+  }
 }
 
 export async function updateCharacterPortrait(characterId, portraitDataUrl) {
@@ -150,6 +246,8 @@ export async function getCharacterPortrait(characterId) {
 export async function deleteCharacter(id) {
   return db.characters.delete(id)
 }
+
+// ========== LOCATIONS ==========
 
 export async function getLocations(projectId) {
   return db.locations.where('projectId').equals(projectId).toArray()
@@ -167,6 +265,8 @@ export async function deleteLocation(id) {
   return db.locations.delete(id)
 }
 
+// ========== PLOT THREADS ==========
+
 export async function getPlotThreads(projectId) {
   return db.plotThreads.where('projectId').equals(projectId).toArray()
 }
@@ -183,6 +283,8 @@ export async function deletePlotThread(id) {
   return db.plotThreads.delete(id)
 }
 
+// ========== CHAPTERS (OLD - kept for backward compatibility) ==========
+
 export async function getChapters(projectId) {
   return db.chapters.where('projectId').equals(projectId).toArray()
 }
@@ -198,6 +300,168 @@ export async function updateChapter(id, data) {
 export async function deleteChapter(id) {
   return db.chapters.delete(id)
 }
+
+// ========== SECTIONS (NEW - replaces Chapters) ==========
+
+export async function getSections(projectId) {
+  return db.sections.where('projectId').equals(projectId).toArray()
+}
+
+export async function addSection(projectId, data) {
+  return db.sections.add({ projectId, ...data })
+}
+
+export async function updateSection(id, data) {
+  return db.sections.update(id, data)
+}
+
+export async function deleteSection(id) {
+  return db.sections.delete(id)
+}
+
+export async function reorderSections(sectionIds) {
+  for (let i = 0; i < sectionIds.length; i++) {
+    await db.sections.update(sectionIds[i], { order: i })
+  }
+}
+
+// ========== SCENES (OLD - kept for backward compatibility) ==========
+
+export async function getScenes(projectId, chapterId = null) {
+  if (chapterId) {
+    return db.scenes.where({ projectId, chapterId }).sortBy('order')
+  }
+  return db.scenes.where('projectId').equals(projectId).toArray()
+}
+
+export async function addScene(projectId, data) {
+  const result = await db.scenes.add({ projectId, ...data })
+  if (data.content) {
+    getEmbedding('scene', result, data.content).catch((err) => {
+      console.error('Failed to generate embedding for new scene:', result, err)
+    })
+  }
+  return result
+}
+
+export async function updateScene(id, data) {
+  await db.scenes.update(id, data)
+  if (data.content) {
+    getEmbedding('scene', id, data.content).catch((err) => {
+      console.error('Failed to generate embedding for scene update:', id, err)
+    })
+  }
+}
+
+export async function deleteScene(id) {
+  return db.scenes.delete(id)
+}
+
+export async function reorderScenes(sceneIds) {
+  for (let i = 0; i < sceneIds.length; i++) {
+    await db.scenes.update(sceneIds[i], { order: i })
+  }
+}
+
+export async function getChapterWordCounts(projectId) {
+  const chapters = await getChapters(projectId)
+  const scenes = await getScenes(projectId)
+  
+  const chapterCounts = {}
+  let totalWords = 0
+    
+  for (const chapter of chapters) {
+    const chapterScenes = scenes.filter(s => s.chapterId === chapter.id)
+    let wordCount = 0
+      
+    for (const scene of chapterScenes) {
+      if (scene.content) {
+        wordCount += countWords(scene.content)
+      }
+    }
+      
+    chapterCounts[chapter.id] = {
+      chapterId: chapter.id,
+      title: chapter.title,
+      status: chapter.status,
+      summary: chapter.summary,
+      wordCount
+    }
+    totalWords += wordCount
+  }
+    
+  return { chapterCounts, totalWords }
+}
+
+// ========== SUBSECTIONS (NEW - replaces Scenes) ==========
+
+export async function getSubsections(projectId, sectionId = null) {
+  if (sectionId) {
+    return db.subsections.where({ projectId, sectionId }).sortBy('order')
+  }
+  return db.subsections.where('projectId').equals(projectId).toArray()
+}
+
+export async function addSubsection(projectId, data) {
+  const result = await db.subsections.add({ projectId, ...data })
+  if (data.content) {
+    getEmbedding('subsection', result, data.content).catch((err) => {
+      console.error('Failed to generate embedding for new subsection:', result, err)
+    })
+  }
+  return result
+}
+
+export async function updateSubsection(id, data) {
+  await db.subsections.update(id, data)
+  if (data.content) {
+    getEmbedding('subsection', id, data.content).catch((err) => {
+      console.error('Failed to generate embedding for subsection update:', id, err)
+    })
+  }
+}
+
+export async function deleteSubsection(id) {
+  return db.subsections.delete(id)
+}
+
+export async function reorderSubsections(subsectionIds) {
+  for (let i = 0; i < subsectionIds.length; i++) {
+    await db.subsections.update(subsectionIds[i], { order: i })
+  }
+}
+
+export async function getSectionWordCounts(projectId) {
+  const sections = await getSections(projectId)
+  const subsections = await getSubsections(projectId)
+  
+  const sectionCounts = {}
+  let totalWords = 0
+    
+  for (const section of sections) {
+    const sectionSubsections = subsections.filter(s => s.sectionId === section.id)
+    let wordCount = 0
+      
+    for (const subsection of sectionSubsections) {
+      if (subsection.content) {
+        wordCount += countWords(subsection.content)
+      }
+    }
+      
+    sectionCounts[section.id] = {
+      sectionId: section.id,
+      title: section.title,
+      status: section.status,
+      summary: section.summary,
+      wordCount
+    }
+    totalWords += wordCount
+  }
+    
+  return { sectionCounts, totalWords }
+}
+
+// ========== VOLUMES ==========
 
 export async function getVolumes(projectId) {
   return db.volumes.where('projectId').equals(projectId).toArray()
@@ -242,7 +506,6 @@ export async function getVolumeEntities(projectId, volumeId, entityType = null) 
     query = query.filter(item => item.entityType === entityType)
   }
   const entities = await query.toArray()
-  // Fetch actual entity data
   const results = await Promise.all(entities.map(async (item) => {
     let entity = null
     switch (item.entityType) {
@@ -263,16 +526,15 @@ export async function getVolumeEntities(projectId, volumeId, entityType = null) 
 
 export async function addEntityToVolume(projectId, entityType, entityId, volumeId, isPrimary = false) {
   const now = new Date().toISOString()
-  // Check for existing assignment
   const existing = await db.volumeEntities
     .where('volumeId').equals(volumeId)
     .and(item => item.entityType === entityType && item.entityId === entityId)
     .first()
-  
+    
   if (existing) {
     return existing.id
   }
-  
+    
   return db.volumeEntities.add({
     volumeId,
     entityType,
@@ -320,7 +582,6 @@ export async function getVolumeEdgeCount(volumeId, includeGlobal = false) {
 }
 
 export async function addVolumeEdge(projectId, sourceType, sourceId, targetType, targetId, relationshipType, volumeId = null) {
-  // Check if edge already exists
   const existing = await db.graphEdges
     .where('sourceId').equals(sourceId)
     .and(e => e.sourceType === sourceType)
@@ -329,11 +590,11 @@ export async function addVolumeEdge(projectId, sourceType, sourceId, targetType,
     .and(e => e.relationshipType === relationshipType)
     .and(e => e.volumeId === volumeId)
     .first()
-  
+    
   if (existing) {
     return existing.id
   }
-  
+    
   return db.graphEdges.add({
     projectId,
     sourceType,
@@ -359,6 +620,8 @@ export async function getVolumeEdges(volumeId, includeGlobal = true) {
   return db.graphEdges.where('volumeId').equals(volumeId).toArray()
 }
 
+// ========== SPARK HISTORY ==========
+
 export async function getSparkHistory(projectId) {
   return db.sparkHistory.where('projectId').equals(projectId).reverse().toArray()
 }
@@ -370,6 +633,8 @@ export async function addSparkHistory(projectId, data) {
 export async function clearSparkHistory(projectId) {
   return db.sparkHistory.where('projectId').equals(projectId).delete()
 }
+
+// ========== ANNOTATIONS ==========
 
 export async function getAnnotations(projectId) {
   return db.annotations.where('projectId').equals(projectId).toArray()
@@ -390,6 +655,8 @@ export async function deleteAnnotation(id) {
 export async function clearAnnotations(projectId) {
   return db.annotations.where('projectId').equals(projectId).delete()
 }
+
+// ========== SNIPPETS ==========
 
 export async function getSnippets(projectId) {
   return db.snippets.where('projectId').equals(projectId).toArray()
@@ -415,6 +682,8 @@ export async function incrementSnippetWord(projectId, word) {
   return db.snippets.add({ projectId, word, count: 1, lastSeen: new Date().toISOString() })
 }
 
+// ========== EXPORT ==========
+
 export async function exportProject(projectId) {
   const project = await db.projects.get(projectId)
   const manuscript = await db.manuscripts.where('projectId').equals(projectId).first()
@@ -431,7 +700,7 @@ export async function exportProject(projectId) {
   const volumes = await db.volumes.where('projectId').equals(projectId).toArray()
   const volumeEntities = await db.volumeEntities.where('projectId').equals(projectId).toArray()
   const graphEdges = await db.graphEdges.where('projectId').equals(projectId).toArray()
-  
+    
   return {
     version: 3,
     exportedAt: new Date().toISOString(),
@@ -454,7 +723,6 @@ export async function exportProject(projectId) {
 }
 
 export async function importProject(data) {
-  // Validate input structure
   if (!data || typeof data !== 'object') {
     throw new Error('Invalid project file: not an object')
   }
@@ -465,7 +733,6 @@ export async function importProject(data) {
     throw new Error('Invalid project file: missing or invalid project data')
   }
 
-  // Validate max items to prevent abuse
   const MAX_ITEMS = 10000
   const arraysToCheck = ['characters', 'locations', 'chapters', 'scenes', 'relationships', 
                           'storyElements', 'sparkHistory', 'annotations', 'snippets', 
@@ -482,7 +749,7 @@ export async function importProject(data) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   })
-  
+    
   if (data.manuscript) {
     await db.manuscripts.add({
       ...data.manuscript,
@@ -490,82 +757,80 @@ export async function importProject(data) {
       projectId
     })
   }
-  
-  // Use bulkAdd for better performance
+    
   if (data.characters?.length > 0) {
     const chars = data.characters.map(c => ({ ...c, id: undefined, projectId }))
     await db.characters.bulkAdd(chars)
   }
-  
+    
   if (data.locations?.length > 0) {
     const locs = data.locations.map(l => ({ ...l, id: undefined, projectId }))
     await db.locations.bulkAdd(locs)
   }
-  
+    
   if (data.plotThreads?.length > 0) {
     const threads = data.plotThreads.map(t => ({ ...t, id: undefined, projectId }))
     await db.plotThreads.bulkAdd(threads)
   }
-  
+    
   if (data.chapters?.length > 0) {
     const chapters = data.chapters.map(c => ({ ...c, id: undefined, projectId }))
     await db.chapters.bulkAdd(chapters)
   }
-  
+    
   if (data.scenes?.length > 0) {
     const scenes = data.scenes.map(s => ({ ...s, id: undefined, projectId }))
     await db.scenes.bulkAdd(scenes)
   }
-  
+    
   if (data.relationships?.length > 0) {
     const rels = data.relationships.map(r => ({ ...r, id: undefined, projectId }))
     await db.characterRelationships.bulkAdd(rels)
   }
-  
+    
   if (data.storyElements?.length > 0) {
     const elems = data.storyElements.map(e => ({ ...e, id: undefined, projectId }))
     await db.storyElements.bulkAdd(elems)
   }
-  
+    
   if (data.sparkHistory?.length > 0) {
     const history = data.sparkHistory.map(h => ({ ...h, id: undefined, projectId }))
     await db.sparkHistory.bulkAdd(history)
   }
-  
+    
   if (data.annotations?.length > 0) {
     const annotations = data.annotations.map(a => ({ ...a, id: undefined, projectId }))
     await db.annotations.bulkAdd(annotations)
   }
-  
+    
   if (data.snippets?.length > 0) {
     const snippets = data.snippets.map(s => ({ ...s, id: undefined, projectId }))
     await db.snippets.bulkAdd(snippets)
   }
-  
-  // Import volumes (v2+)
+    
   if (data.volumes?.length > 0) {
     const vols = data.volumes.map(v => ({ ...v, id: undefined, projectId }))
     await db.volumes.bulkAdd(vols)
   }
-  
-  // Import volume entities (v3+)
+    
   if (data.version >= 3 && data.volumeEntities?.length > 0) {
     const entities = data.volumeEntities.map(ve => ({ 
       ...ve, id: undefined, projectId, volumeId: ve.volumeId || null 
     }))
     await db.volumeEntities.bulkAdd(entities)
   }
-  
-  // Import graph edges (v3+)
+    
   if (data.version >= 3 && data.graphEdges?.length > 0) {
     const edges = data.graphEdges.map(edge => ({ 
       ...edge, id: undefined, projectId, volumeId: edge.volumeId || null 
     }))
     await db.graphEdges.bulkAdd(edges)
   }
-  
+    
   return projectId
 }
+
+// ========== DAILY GOALS & STREAKS ==========
 
 export function getTodayDateString() {
   return new Date().toISOString().split('T')[0]
@@ -600,21 +865,21 @@ export async function getStreakData(projectId) {
     .equals(projectId)
     .filter(e => e.wordCount > 0)
     .toArray()
-  
+    
   if (entries.length === 0) {
     return { currentStreak: 0, longestStreak: 0, lastWrittenDate: null }
   }
-  
+    
   entries.sort((a, b) => b.date.localeCompare(a.date))
-  
+    
   const today = getTodayDateString()
   const yesterday = getYesterdayDateString()
-  
+    
   let currentStreak = 0
   let longestStreak = 0
   let tempStreak = 0
   let prevDate = null
-  
+    
   for (const entry of entries) {
     if (prevDate === null) {
       if (entry.date === today || entry.date === yesterday) {
@@ -636,10 +901,10 @@ export async function getStreakData(projectId) {
     }
     prevDate = entry.date
   }
-  
+    
   longestStreak = Math.max(longestStreak, tempStreak)
   if (currentStreak > 0) currentStreak = longestStreak
-  
+    
   return {
     currentStreak,
     longestStreak,
@@ -666,19 +931,21 @@ export async function getLastSessionData(projectId) {
     .equals(projectId)
     .filter(e => e.wordCount > 0)
     .toArray()
-  
+    
   if (entries.length === 0) return null
-  
+    
   entries.sort((a, b) => b.date.localeCompare(a.date))
-  
+    
   const today = getTodayDateString()
   if (entries[0].date === today) return null
-  
+    
   return {
     date: entries[0].date,
     wordCount: entries[0].wordCount
   }
 }
+
+// ========== REVISION COMMENTS ==========
 
 export async function getRevisionComments(projectId) {
   return db.revisionComments.where('projectId').equals(projectId).toArray()
@@ -700,6 +967,8 @@ export async function deleteRevisionComment(id) {
   return db.revisionComments.delete(id)
 }
 
+// ========== CHARACTER RELATIONSHIPS ==========
+
 export async function getCharacterRelationships(projectId) {
   return db.characterRelationships.where('projectId').equals(projectId).toArray()
 }
@@ -716,77 +985,7 @@ export async function deleteCharacterRelationship(id) {
   return db.characterRelationships.delete(id)
 }
 
-export async function getScenes(projectId, chapterId = null) {
-  if (chapterId) {
-    return db.scenes.where({ projectId, chapterId }).sortBy('order')
-  }
-  return db.scenes.where('projectId').equals(projectId).toArray()
-}
-
-export async function addScene(projectId, data) {
-  const result = await db.scenes.add({ projectId, ...data })
-  if (data.content) {
-    getEmbedding('scene', result, data.content).catch((err) => {
-      console.error('Failed to generate embedding for new scene:', result, err)
-    })
-  }
-  return result
-}
-
-export async function updateScene(id, data) {
-  await db.scenes.update(id, data)
-  if (data.content) {
-    getEmbedding('scene', id, data.content).catch((err) => {
-      console.error('Failed to generate embedding for scene update:', id, err)
-    })
-  }
-}
-
-export async function deleteScene(id) {
-  return db.scenes.delete(id)
-}
-
-export async function getChapterWordCounts(projectId) {
-  const chapters = await getChapters(projectId)
-  const scenes = await getScenes(projectId)
-  
-  const chapterCounts = {}
-  let totalWords = 0
-  
-  for (const chapter of chapters) {
-    const chapterScenes = scenes.filter(s => s.chapterId === chapter.id)
-    let wordCount = 0
-    
-    for (const scene of chapterScenes) {
-      if (scene.content) {
-        wordCount += countWords(scene.content)
-      }
-    }
-    
-    chapterCounts[chapter.id] = {
-      chapterId: chapter.id,
-      title: chapter.title,
-      status: chapter.status,
-      summary: chapter.summary,
-      wordCount
-    }
-    totalWords += wordCount
-  }
-  
-  return { chapterCounts, totalWords }
-}
-
-export async function reorderScenes(sceneIds) {
-  for (let i = 0; i < sceneIds.length; i++) {
-    await db.scenes.update(sceneIds[i], { order: i })
-  }
-}
-
-export async function reorderChapters(chapterIds) {
-  for (let i = 0; i < chapterIds.length; i++) {
-    await db.chapters.update(chapterIds[i], { order: i })
-  }
-}
+// ========== STORY ELEMENTS ==========
 
 export async function getStoryElements(projectId) {
   return db.storyElements.where('projectId').equals(projectId).toArray()
@@ -804,6 +1003,8 @@ export async function deleteStoryElement(id) {
   return db.storyElements.delete(id)
 }
 
+// ========== PDF EXPORT ==========
+
 export async function exportToPDF(projectId) {
   const project = await db.projects.get(projectId)
   const manuscript = await db.manuscripts.where('projectId').equals(projectId).first()
@@ -811,13 +1012,15 @@ export async function exportToPDF(projectId) {
   const characters = await db.characters.where('projectId').equals(projectId).toArray()
   const locations = await db.locations.where('projectId').equals(projectId).toArray()
   const plotThreads = await db.plotThreads.where('projectId').equals(projectId).toArray()
-  
+    
   return { project, manuscript, chapters, characters, locations, plotThreads }
 }
 
 export async function updateProjectMeta(projectId, data) {
   return db.projects.update(projectId, data)
 }
+
+// ========== GRAPH EDGES ==========
 
 export async function getGraphEdges(projectId) {
   return db.graphEdges.where('projectId').equals(projectId).toArray()
@@ -843,6 +1046,8 @@ export async function clearAllGraphEdges(projectId) {
   }
   return edgeIds.length
 }
+
+// ========== NODE POSITIONS ==========
 
 export async function getNodePositions(projectId) {
   const result = await db.nodePositions.where('projectId').equals(projectId).first()
@@ -874,6 +1079,8 @@ export async function saveNodeInstances(projectId, instances) {
   }
 }
 
+// ========== GRAPH GROUPS ==========
+
 export async function getGraphGroups(projectId) {
   const result = await db.graphGroups.where('projectId').equals(projectId).first()
   return result?.groups || []
@@ -904,6 +1111,8 @@ export async function saveNodeParents(projectId, nodeParents) {
   }
 }
 
+// ========== GROUP EDGES ==========
+
 export async function getGroupEdges(projectId) {
   return db.groupEdges.where('projectId').equals(projectId).toArray()
 }
@@ -920,6 +1129,8 @@ export async function updateGroupEdge(id, data) {
 export async function deleteGroupEdge(id) {
   return db.groupEdges.delete(id)
 }
+
+// ========== SNAPSHOTS ==========
 
 export async function getSnapshots(projectId, chapterId = null) {
   let query = db.snapshots.where('projectId').equals(projectId)

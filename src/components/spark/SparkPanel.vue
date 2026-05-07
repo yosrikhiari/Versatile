@@ -51,27 +51,27 @@ async function generatePrompt() {
   }
 }
 
-async function generateBlueprint() {
+async function generateOutline() {
   const characterNames = storyBibleStore.getCharacterNames()
   const context = await getManuscriptContext()
   try {
-    await sparkStore.generateBlueprintAction(idea.value, tone.value, characterNames, targetLength.value, context)
+    await sparkStore.generateOutlineAction(idea.value, tone.value, characterNames, targetLength.value, context)
   } catch (error) {
-    console.error('Failed to generate blueprint:', error)
+    console.error('Failed to generate outline:', error)
   }
 }
 
-async function generateChapter() {
+async function generateContent() {
   const characterNames = storyBibleStore.getCharacterNames()
   try {
-    await sparkStore.generateChapterStreamingAction(idea.value, tone.value, characterNames, targetLength.value)
+    await sparkStore.generateContentStreamingAction(idea.value, tone.value, characterNames, targetLength.value)
   } catch (error) {
-    console.error('Failed to generate chapter:', error)
+    console.error('Failed to generate content:', error)
   }
 }
 
 function insertIntoFlow(text) {
-  projectStore.updateContent(projectStore.manuscriptContent + '\n\n' + text)
+  projectStore.updateContent(projectStore.documentContent + '\n\n' + text)
 }
 
 function saveOpenAIKeyLocal() {
@@ -108,46 +108,46 @@ function switchTab(tab) {
       </div>
       <div class="flex mt-3 gap-1">
         <button
-          @click="switchTab('prompt')"
           :class="[
             'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
             activeTab === 'prompt' 
               ? 'bg-accent/10 text-accent' 
               : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
+          @click="switchTab('prompt')"
         >
           Prompt
         </button>
         <button
-          @click="switchTab('blueprint')"
           :class="[
             'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
             activeTab === 'blueprint' 
               ? 'bg-accent/10 text-accent' 
               : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
+          @click="switchTab('blueprint')"
         >
           Blueprint
         </button>
         <button
-          @click="switchTab('chapter')"
           :class="[
             'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
             activeTab === 'chapter' 
               ? 'bg-accent/10 text-accent' 
               : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
+          @click="switchTab('chapter')"
         >
           Chapter
         </button>
         <button
-          @click="switchTab('history')"
           :class="[
             'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
             activeTab === 'history' 
               ? 'bg-accent/10 text-accent' 
               : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
+          @click="switchTab('history')"
         >
           History
         </button>
@@ -162,13 +162,13 @@ function switchTab(tab) {
             <button
               v-for="type in promptTypes"
               :key="type.value"
-              @click="sparkStore.selectedPromptType = type.value"
               :class="[
                 'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent',
                 sparkStore.selectedPromptType === type.value
                   ? 'bg-accent text-white'
                   : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
               ]"
+              @click="sparkStore.selectedPromptType = type.value"
             >
               {{ type.label }}
             </button>
@@ -177,9 +177,9 @@ function switchTab(tab) {
 
         <div class="flex items-center gap-2">
           <input
-            type="checkbox"
             id="relateToProject"
             v-model="sparkStore.relateToProject"
+            type="checkbox"
             class="w-4 h-4 rounded accent-accent"
           />
           <label for="relateToProject" class="text-sm text-text-secondary font-ui">
@@ -190,10 +190,10 @@ function switchTab(tab) {
         <ChapterContextSelector ref="contextSelectorRef" panel-id="spark" />
 
         <button
-          @click="generatePrompt"
-          @keydown.enter="generatePrompt"
           :disabled="sparkStore.isGenerating"
-              class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          @click="generatePrompt"
+              @keydown.enter="generatePrompt"
         >
           <span v-if="sparkStore.isGenerating" class="flex items-center justify-center gap-2">
             <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -227,22 +227,22 @@ function switchTab(tab) {
         <IdeaInput
           v-model:idea="idea"
           v-model:tone="tone"
-          v-model:targetLength="targetLength"
+          v-model:target-length="targetLength"
         />
 
         <ChapterContextSelector ref="contextSelectorRef" panel-id="spark-blueprint" />
 
         <button
-          @click="generateBlueprint"
-          @keydown.enter="generateBlueprint"
           :disabled="sparkStore.isGenerating || !idea"
-              class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          @click="generateOutline"
+               @keydown.enter="generateOutline"
         >
           <span v-if="sparkStore.isGenerating" class="flex items-center justify-center gap-2">
             <BaseIcon name="loader-2" :size="16" class="animate-spin" />
             Generating...
           </span>
-          <span v-else>Generate Blueprint</span>
+           <span v-else>Generate Outline</span>
         </button>
 
         <div v-if="sparkStore.isGenerating" class="rounded-lg p-4 space-y-4 animate-pulse bg-surface-hover">
@@ -273,20 +273,20 @@ function switchTab(tab) {
         <IdeaInput
           v-model:idea="idea"
           v-model:tone="tone"
-          v-model:targetLength="targetLength"
+          v-model:target-length="targetLength"
         />
 
         <button
-          @click="generateChapter"
-          @keydown.enter="generateChapter"
           :disabled="sparkStore.isGenerating || !idea"
-              class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          @click="generateContent"
+               @keydown.enter="generateContent"
         >
           <span v-if="sparkStore.isGenerating" class="flex items-center justify-center gap-2">
             <BaseIcon name="loader-2" :size="16" class="animate-spin" />
             Generating...
           </span>
-          <span v-else>Write Chapter</span>
+           <span v-else>Write Content</span>
         </button>
 
         <div v-if="sparkStore.isGenerating" class="rounded-lg p-4 space-y-3 bg-bg-tertiary border border-border-subtle">
@@ -307,8 +307,8 @@ function switchTab(tab) {
           <div class="flex justify-between items-start">
             <h3 class="font-semibold text-text-primary font-body">Generated Chapter</h3>
             <button
-              @click="insertIntoFlow(sparkStore.currentChapter)"
               class="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+              @click="insertIntoFlow(sparkStore.currentChapter)"
             >
               Insert
             </button>
@@ -325,8 +325,8 @@ function switchTab(tab) {
 
       <div v-if="activeTab === 'history'">
         <button
-          @click="historyOpen = !historyOpen"
           class="w-full flex items-center justify-between py-2 text-[11px] uppercase tracking-widest text-text-hint font-ui hover:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent rounded"
+          @click="historyOpen = !historyOpen"
         >
           <span>History ({{ sparkStore.history.length }})</span>
           <span>{{ historyOpen ? '▼' : '▶' }}</span>
@@ -345,16 +345,16 @@ function switchTab(tab) {
             <p class="text-sm text-text-secondary line-clamp-2 font-body">{{ item.prompt }}</p>
             <button
               v-if="item.prompt"
-              @click="insertIntoFlow(item.prompt)"
               class="mt-2 text-xs text-accent hover:text-accent-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
+              @click="insertIntoFlow(item.prompt)"
             >
               Insert
             </button>
           </div>
           <button
             v-if="sparkStore.history.length > 0"
-            @click="clearHistory"
             class="w-full py-1.5 text-xs text-text-hint hover:text-danger transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
+            @click="clearHistory"
           >
             Clear history
           </button>
@@ -377,15 +377,15 @@ function switchTab(tab) {
         />
         <div class="flex gap-2">
           <button
-            @click="saveOpenAIKeyLocal"
             :disabled="!openaiKeyInput.trim()"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 font-ui"
+            @click="saveOpenAIKeyLocal"
           >
             Save Key
           </button>
           <button
-            @click="showOpenAISettings = false"
             class="px-4 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
+            @click="showOpenAISettings = false"
           >
             Cancel
           </button>

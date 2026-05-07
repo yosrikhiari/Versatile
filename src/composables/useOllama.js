@@ -32,11 +32,11 @@ const FIELD_LENGTH_CONSTRAINTS = {
 function getProjectContext() {
   const projectStore = useProjectStore()
   const parts = []
-  if (projectStore.currentGenre) {
-    parts.push(`Genre: ${projectStore.currentGenre}`)
+  if (projectStore.currentCategory) {
+    parts.push(`Category: ${projectStore.currentCategory}`)
   }
-  if (projectStore.currentSynopsis) {
-    parts.push(`Story synopsis: ${projectStore.currentSynopsis}`)
+  if (projectStore.currentDescription) {
+    parts.push(`Description: ${projectStore.currentDescription}`)
   }
   return parts.length > 0 ? `\n\n${parts.join('\n')}` : ''
 }
@@ -230,7 +230,7 @@ Make it vivid and specific. Do not write the scene.`
   return ollamaGenerate(userPrompt, SPARK_SYSTEM_PROMPT)
 }
 
-export async function generateBlueprint(idea, tone, characterNames = [], targetLength = 'full', manuscriptContext = null) {
+export async function generateOutline(idea, tone, characterNames = [], targetLength = 'full', manuscriptContext = null) {
   const projectContext = getProjectContext()
   
   let contextInstruction = ''
@@ -371,7 +371,7 @@ Be concise and only extract what is clearly present in the text.`
   }
 }
 
-export async function generateChapter(idea, tone, characterNames = [], targetLength = 'short') {
+export async function generateContent(idea, tone, characterNames = [], targetLength = 'short') {
   const lengthInstructions = targetLength === 'short' 
     ? 'Write a short scene of about 300-500 words.'
     : 'Write a full chapter of about 1500-2000 words.'
@@ -396,7 +396,7 @@ Scene idea: ${idea}${projectContext}`
   }
 }
 
-export async function generateChapterStreaming(idea, tone, characterNames = [], targetLength = 'short', onProgress) {
+export async function generateContentStreaming(idea, tone, characterNames = [], targetLength = 'short', onProgress) {
   const lengthInstructions = targetLength === 'short' 
     ? 'Write a short scene of about 300-500 words.'
     : 'Write a full chapter of about 1500-2000 words.'

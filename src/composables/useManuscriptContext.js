@@ -1,5 +1,5 @@
 import { useManuscriptStore } from '../stores/manuscriptStore'
-import { ollamaEmbeddings, getEmbeddingCache, setEmbeddingCache, cosineSimilarity } from '../services/ollamaService'
+import { ollamaEmbeddings, getEmbedding, getEmbeddingCache, setEmbeddingCache, cosineSimilarity } from '../services/ollamaService'
 import { getScenes } from '../services/dbService'
 
 const MAX_CONTEXT_CHARS = 3500
@@ -14,7 +14,6 @@ export async function warmEmbeddingCache(projectId) {
       if (!scene.content) continue
       const key = `scene_${scene.id}`
       if (!cache[key] || cache[key].text !== scene.content) {
-        const { getEmbedding } = await import('../services/ollamaService')
         getEmbedding('scene', scene.id, scene.content).catch(() => {})
         warmed++
       }
@@ -71,36 +70,36 @@ export function useManuscriptContext() {
     return null
   }
 
-  function resolveChapterIds(parsed, sortedChapters) {
-    const chapters = [...sortedChapters].sort((a, b) => (a.order || 0) - (b.order || 0))
+  function resolveSectionIds(parsed, sortedSections) {
+    const sections = [...sortedSections].sort((a, b) => (a.order || 0) - (b.order || 0))
     
     switch (parsed.type) {
       case 'current': {
-        const activeId = manuscriptStore.activeChapterId
+        const activeId = manuscriptStore.activeSectionId
         if (activeId) {
-          const chapter = chapters.find(c => c.id === activeId)
-          return chapter ? [chapter] : []
+          const section = sections.find(s => s.id === activeId)
+          return section ? [section] : []
         }
-        return chapters.length > 0 ? [chapters[chapters.length - 1]] : []
+        return sections.length > 0 ? [sections[sections.length - 1]] : []
       }
       
       case 'all':
-        return chapters
+        return sections
       
       case 'last':
-        return chapters.slice(-parsed.count)
+        return sections.slice(-parsed.count)
       
       case 'first':
-        return chapters.slice(0, parsed.count)
+        return sections.slice(0, parsed.count)
       
-      case 'chapter': {
-        const chapter = chapters.find(c => c.order === parsed.chapterNum - 1 || c.id === parsed.chapterNum)
-        return chapter ? [chapter] : []
+      case 'section': {
+        const section = sections.find(s => s.order === parsed.sectionNum - 1 || s.id === parsed.sectionNum)
+        return section ? [section] : []
       }
       
-      case 'chapters':
-        return chapters.filter(c => 
-          parsed.chapterNums.includes(c.order + 1) || parsed.chapterNums.includes(c.id)
+      case 'sections':
+        return sections.filter(s => 
+          parsed.sectionNums.includes(s.order + 1) || parsed.sectionNums.includes(s.id)
         )
       
       default:
@@ -108,43 +107,43 @@ export function useManuscriptContext() {
     }
   }
 
-  function getSceneContentForChapter(chapterId) {
-    const scenes = manuscriptStore.scenes
-      .filter(s => s.chapterId === chapterId)
+  function getSubsectionContentForSection(sectionId) {
+    const subsections = manuscriptStore.subsectionsBySection
+      .filter(s => s.sectionId === sectionId)
       .sort((a, b) => (a.order || 0) - (b.order || 0))
     
-    return scenes.map(s => s.content || '').join('\n\n')
+    return subsections.map(s => s.content || '').join('\n\n')
   }
 
-  function buildContextText(chapters, maxChars) {
+  function buildContextText(sections, maxChars) {
     const parts = []
     let totalChars = 0
     let truncated = false
     
-    for (const chapter of chapters) {
-      const chapterContent = getSceneContentForChapter(chapter.id)
-      const chapterText = chapterContent.trim()
+    for (const section of sections) {
+      const sectionContent = getSubsectionContentForSection(section.id)
+      const sectionText = sectionContent.trim()
       
-      if (!chapterText) continue
+      if (!sectionText) continue
       
-      const chapterHeader = `[Chapter ${(chapter.order || 0) + 1}: ${chapter.title || 'Untitled'}]\n`
-      const chapterChars = chapterHeader.length + chapterText.length + 2
+      const sectionHeader = `[Section ${(section.order || 0) + 1}: ${section.title || 'Untitled'}]\n`
+      const sectionChars = sectionHeader.length + sectionText.length + 2
       
-      if (totalChars + chapterChars > maxChars && totalChars > 0) {
+      if (totalChars + sectionChars > maxChars && totalChars > 0) {
         truncated = true
         const remainingChars = maxChars - totalChars
         if (remainingChars > 50) {
-          parts.push(chapterHeader)
-          parts.push(chapterText.slice(0, remainingChars - chapterHeader.length))
+          parts.push(sectionHeader)
+          parts.push(sectionText.slice(0, remainingChars - sectionHeader.length))
         }
-        totalChars += chapterChars
+        totalChars += sectionChars
         break
       }
       
-      parts.push(chapterHeader)
-      parts.push(chapterText)
+      parts.push(sectionHeader)
+      parts.push(sectionText)
       parts.push('')
-      totalChars += chapterChars
+      totalChars += sectionChars
     }
     
     return {
@@ -154,29 +153,29 @@ export function useManuscriptContext() {
     }
   }
 
-  function getAllSceneEmbeddings() {
+  function getAllSubsectionEmbeddings() {
     const cache = getEmbeddingCache()
-    const sceneEmbeddings = []
+    const subsectionEmbeddings = []
     for (const [key, value] of Object.entries(cache)) {
-      if (key.startsWith('scene_') && value.embedding && value.text) {
-        const sceneId = parseInt(key.replace('scene_', ''), 10)
-        sceneEmbeddings.push({
-          sceneId,
+      if (key.startsWith('subsection_') && value.embedding && value.text) {
+        const subsectionId = parseInt(key.replace('subsection_', ''), 10)
+        subsectionEmbeddings.push({
+          subsectionId,
           embedding: value.embedding,
           text: value.text
         })
       }
     }
-    return sceneEmbeddings
+    return subsectionEmbeddings
   }
 
-  function getSceneById(sceneId) {
-    return manuscriptStore.scenes.find(s => s.id === sceneId)
+  function getSubsectionById(subsectionId) {
+    return manuscriptStore.subsections.find(s => s.id === subsectionId)
   }
 
-  function getChapterOrder(chapterId) {
-    const chapter = manuscriptStore.sortedChapters.find(c => c.id === chapterId)
-    return chapter?.order ?? 0
+  function getSectionOrder(sectionId) {
+    const section = manuscriptStore.sortedSections.find(s => s.id === sectionId)
+    return section?.order ?? 0
   }
 
   async function retrieveRelevantChunks(generatorType, maxChars) {
@@ -187,50 +186,47 @@ export function useManuscriptContext() {
         return null
       }
 
-      const sceneEmbeddings = getAllSceneEmbeddings()
-      if (sceneEmbeddings.length === 0) {
+      const subsectionEmbeddings = getAllSubsectionEmbeddings()
+      if (subsectionEmbeddings.length === 0) {
         return null
       }
 
-      const sortedChapters = [...manuscriptStore.sortedChapters].sort((a, b) => (a.order || 0) - (b.order || 0))
-      const maxChapterOrder = sortedChapters.length > 0 ? Math.max(...sortedChapters.map(c => c.order || 0)) : 1
-
-      const scoredScenes = sceneEmbeddings.map(scene => {
-        const sceneData = getSceneById(scene.sceneId)
-        if (!sceneData || !sceneData.content) {
+      const scoredSubsections = subsectionEmbeddings.map(subsection => {
+        const subsectionData = getSubsectionById(subsection.subsectionId)
+        if (!subsectionData || !subsectionData.content) {
           return null
         }
-        const similarity = cosineSimilarity(queryEmbedding, scene.embedding)
-        const chapterOrder = getChapterOrder(sceneData.chapterId)
-        const recencyMultiplier = 1 + (chapterOrder / maxChapterOrder) * 0.5
+        const similarity = cosineSimilarity(queryEmbedding, subsection.embedding)
+        const sectionOrder = getSectionOrder(subsectionData.sectionId)
+        const recencyMultiplier = 1 + (sectionOrder / maxSectionOrder) * 0.5
         const finalScore = similarity * recencyMultiplier
         return {
-          sceneId: scene.sceneId,
-          chapterId: sceneData.chapterId,
-          content: sceneData.content,
+          subsectionId: subsection.subsectionId,
+          sectionId: subsectionData.sectionId,
+          content: subsectionData.content,
           score: finalScore,
-          chapterOrder
+          sectionOrder
         }
       }).filter(Boolean)
 
-      scoredScenes.sort((a, b) => b.score - a.score)
+      scoredSubsections.sort((a, b) => b.score - a.score)
 
       const chunks = []
       let totalChars = 0
-      for (const scene of scoredScenes) {
-        const sceneText = scene.content.trim()
-        if (!sceneText) continue
+      for (const subsection of scoredSubsections) {
+        const subsectionText = subsection.content.trim()
+        if (!subsectionText) continue
 
-        const chapter = manuscriptStore.sortedChapters.find(c => c.id === scene.chapterId)
-        const header = `[Chapter ${(chapter?.order || 0) + 1}: ${chapter?.title || 'Untitled'}]\n`
-        const sceneHeader = `[Scene ${scene.sceneId}]\n`
-        const chunkChars = header.length + sceneHeader.length + sceneText.length + 2
+        const section = manuscriptStore.sortedSections.find(s => s.id === subsection.sectionId)
+        const header = `[Section ${(section?.order || 0) + 1}: ${section?.title || 'Untitled'}]\n`
+        const subsectionHeader = `[Subsection ${subsection.subsectionId}]\n`
+        const chunkChars = header.length + subsectionHeader.length + subsectionText.length + 2
 
         if (totalChars + chunkChars > maxChars && totalChars > 0) {
           break
         }
 
-        chunks.push({ scene, header, sceneHeader, text: sceneText, chars: chunkChars })
+        chunks.push({ subsection, header, subsectionHeader, text: subsectionText, chars: chunkChars })
         totalChars += chunkChars
       }
 
@@ -239,17 +235,17 @@ export function useManuscriptContext() {
       }
 
       const contextText = chunks.map(c => 
-        c.header + c.sceneHeader + c.text
+        c.header + c.subsectionHeader + c.text
       ).join('\n\n')
 
-      const chapterTitles = [...new Set(chunks.map(c => {
-        const chapter = manuscriptStore.sortedChapters.find(ch => ch.id === c.scene.chapterId)
-        return chapter?.title || `Chapter ${(chapter?.order || 0) + 1}`
+      const sectionTitles = [...new Set(chunks.map(c => {
+        const section = manuscriptStore.sortedSections.find(s => s.id === c.subsection.sectionId)
+        return section?.title || `Section ${(section?.order || 0) + 1}`
       }))]
 
       return {
         contextText,
-        chapterTitles,
+        sectionTitles,
         totalChars,
         truncated: false
       }
@@ -259,13 +255,13 @@ export function useManuscriptContext() {
     }
   }
 
-  async function getChapterContext(selector = 'current', generatorType = 'spark') {
-    const sortedChapters = manuscriptStore.sortedChapters
+  async function getSectionContext(selector = 'current', generatorType = 'spark') {
+    const sortedSections = manuscriptStore.sortedSections
     
-    if (sortedChapters.length === 0) {
+    if (sortedSections.length === 0) {
       return {
         contextText: '',
-        chapterTitles: [],
+        sectionTitles: [],
         truncated: false,
         totalChars: 0
       }
@@ -276,62 +272,62 @@ export function useManuscriptContext() {
     if (!parsed) {
       return {
         contextText: '',
-        chapterTitles: [],
+        sectionTitles: [],
         truncated: false,
         totalChars: 0
       }
     }
     
-    const selectedChapters = resolveChapterIds(parsed, sortedChapters)
+    const selectedSections = resolveSectionIds(parsed, sortedSections)
     
-    if (selectedChapters.length === 0) {
+    if (selectedSections.length === 0) {
       return {
         contextText: '',
-        chapterTitles: [],
+        sectionTitles: [],
         truncated: false,
         totalChars: 0
       }
     }
     
-    const chapterTitles = selectedChapters.map(c => c.title || `Chapter ${(c.order || 0) + 1}`)
+    const sectionTitles = selectedSections.map(s => s.title || `Section ${(s.order || 0) + 1}`)
     
     const embeddingResult = await retrieveRelevantChunks(generatorType, MAX_CONTEXT_CHARS)
     
     if (embeddingResult) {
       return {
         contextText: embeddingResult.contextText,
-        chapterTitles: embeddingResult.chapterTitles,
+        sectionTitles: embeddingResult.sectionTitles,
         truncated: embeddingResult.truncated,
         totalChars: embeddingResult.totalChars
       }
     }
-
-    const { contextText, totalChars, truncated } = buildContextText(selectedChapters, MAX_CONTEXT_CHARS)
+    
+    const { contextText, totalChars, truncated } = buildContextText(selectedSections, MAX_CONTEXT_CHARS)
     
     return {
       contextText,
-      chapterTitles,
+      sectionTitles,
       truncated,
       totalChars
     }
   }
 
-  function getChapterCount() {
-    return manuscriptStore.sortedChapters.length
+  function getSectionCount() {
+    return manuscriptStore.sortedSections.length
   }
 
-  function getChapterList() {
-    return manuscriptStore.sortedChapters.map((c, i) => ({
-      id: c.id,
+  function getSectionList() {
+    return manuscriptStore.sortedSections.map((s, i) => ({
+      id: s.id,
       order: i + 1,
-      title: c.title || `Chapter ${i + 1}`
+      title: s.title || `Section ${i + 1}`
     }))
   }
 
   return {
-    getChapterContext,
-    getChapterCount,
-    getChapterList,
+    getSectionContext,
+    getSectionCount,
+    getSectionList,
     MAX_CONTEXT_CHARS
   }
 }

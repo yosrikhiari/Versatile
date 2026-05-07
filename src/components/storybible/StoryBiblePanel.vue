@@ -147,7 +147,6 @@ defineExpose({
 
     <div class="flex border-b border-border-subtle px-4">
       <button
-        @click="activeTab = 'characters'"
         :class="[
           'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
           activeTab === 'characters' 
@@ -155,11 +154,11 @@ defineExpose({
             : 'text-text-hint hover:text-text-secondary'
         ]"
         role="tab"
+        @click="activeTab = 'characters'"
       >
         Characters <span class="text-[10px] opacity-60">{{ filteredCharacters.length }}</span>
       </button>
       <button
-        @click="activeTab = 'plotThreads'"
         :class="[
           'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
           activeTab === 'plotThreads' 
@@ -167,11 +166,11 @@ defineExpose({
             : 'text-text-hint hover:text-text-secondary'
         ]"
         role="tab"
+        @click="activeTab = 'plotThreads'"
       >
         Threads <span class="text-[10px] opacity-60">{{ filteredPlotThreads.length }}</span>
       </button>
       <button
-        @click="activeTab = 'locations'"
         :class="[
           'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
           activeTab === 'locations' 
@@ -179,6 +178,7 @@ defineExpose({
             : 'text-text-hint hover:text-text-secondary'
         ]"
         role="tab"
+        @click="activeTab = 'locations'"
       >
         Locations <span class="text-[10px] opacity-60">{{ filteredLocations.length }}</span>
       </button>
@@ -194,8 +194,8 @@ defineExpose({
             v-if="editingId === character.id"
             :character="editData"
             :project-id="projectStore.currentProjectId"
-            @updated="refresh"
             class="mb-3"
+            @updated="refresh"
           />
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -221,33 +221,33 @@ defineExpose({
             </span>
             <button
               v-if="editingId !== character.id"
-              @click="startEdit(character, 'character')"
               class="p-1 hover:bg-surface-hover rounded"
               title="Edit"
+              @click="startEdit(character, 'character')"
             >
               <BaseIcon name="edit-2" :size="14" class="text-text-hint" />
             </button>
             <button
               v-if="editingId === character.id"
-              @click="saveEdit(character.id, 'character')"
               class="p-1 hover:bg-surface-hover rounded"
               title="Save"
+              @click="saveEdit(character.id, 'character')"
             >
               <BaseIcon name="check" :size="14" class="text-green-400" />
             </button>
             <button
               v-if="editingId === character.id"
-              @click="cancelEdit"
               class="p-1 hover:bg-surface-hover rounded"
               title="Cancel"
+              @click="cancelEdit"
             >
               <BaseIcon name="x" :size="14" class="text-text-hint" />
             </button>
             <button
               v-if="editingId !== character.id"
-              @click="deleteCharacter(character.id)"
               class="p-1 hover:bg-surface-hover rounded"
               title="Delete"
+              @click="deleteCharacter(character.id)"
             >
               <BaseIcon name="trash-2" :size="14" class="text-red-400" />
             </button>
@@ -260,8 +260,8 @@ defineExpose({
             v-if="editingId !== character.id && character.portrait"
             :character="character"
             :project-id="projectStore.currentProjectId"
-            @updated="refresh"
             class="mt-2"
+            @updated="refresh"
           />
           <div v-if="editingId === character.id" class="mt-2 space-y-2">
             <input
@@ -278,8 +278,8 @@ defineExpose({
         </div>
       </div>
       <button
-        @click="addCharacter"
         class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
+        @click="addCharacter"
       >
         + Add character
       </button>
@@ -304,7 +304,8 @@ defineExpose({
             <span v-else class="font-medium text-text-primary">{{ thread.title }}</span>
           </div>
           <div class="flex items-center gap-1">
-            <span :class="[
+            <span
+:class="[
               'text-xs px-2 py-0.5 rounded',
               thread.status === 'open' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
             ]">
@@ -312,33 +313,33 @@ defineExpose({
             </span>
             <button
               v-if="editingId !== thread.id"
-              @click="startEdit(thread, 'plotThread')"
               class="p-1 hover:bg-surface-hover rounded"
               title="Edit"
+              @click="startEdit(thread, 'plotThread')"
             >
               <BaseIcon name="edit-2" :size="14" class="text-text-hint" />
             </button>
             <button
               v-if="editingId === thread.id"
-              @click="saveEdit(thread.id, 'plotThread')"
               class="p-1 hover:bg-surface-hover rounded"
               title="Save"
+              @click="saveEdit(thread.id, 'plotThread')"
             >
               <BaseIcon name="check" :size="14" class="text-green-400" />
             </button>
             <button
               v-if="editingId === thread.id"
-              @click="cancelEdit"
               class="p-1 hover:bg-surface-hover rounded"
               title="Cancel"
+              @click="cancelEdit"
             >
               <BaseIcon name="x" :size="14" class="text-text-hint" />
             </button>
             <button
               v-if="editingId !== thread.id"
-              @click="deletePlotThread(thread.id)"
               class="p-1 hover:bg-surface-hover rounded"
               title="Delete"
+              @click="deletePlotThread(thread.id)"
             >
               <BaseIcon name="trash-2" :size="14" class="text-red-400" />
             </button>
@@ -366,8 +367,8 @@ defineExpose({
         </div>
       </div>
       <button
-        @click="addPlotThread"
         class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
+        @click="addPlotThread"
       >
         + Add thread
       </button>
@@ -394,33 +395,33 @@ defineExpose({
           <div class="flex items-center gap-1">
             <button
               v-if="editingId !== location.id"
-              @click="startEdit(location, 'location')"
               class="p-1 hover:bg-surface-hover rounded"
               title="Edit"
+              @click="startEdit(location, 'location')"
             >
               <BaseIcon name="edit-2" :size="14" class="text-text-hint" />
             </button>
             <button
               v-if="editingId === location.id"
-              @click="saveEdit(location.id, 'location')"
               class="p-1 hover:bg-surface-hover rounded"
               title="Save"
+              @click="saveEdit(location.id, 'location')"
             >
               <BaseIcon name="check" :size="14" class="text-green-400" />
             </button>
             <button
               v-if="editingId === location.id"
-              @click="cancelEdit"
               class="p-1 hover:bg-surface-hover rounded"
               title="Cancel"
+              @click="cancelEdit"
             >
               <BaseIcon name="x" :size="14" class="text-text-hint" />
             </button>
             <button
               v-if="editingId !== location.id"
-              @click="deleteLocation(location.id)"
               class="p-1 hover:bg-surface-hover rounded"
               title="Delete"
+              @click="deleteLocation(location.id)"
             >
               <BaseIcon name="trash-2" :size="14" class="text-red-400" />
             </button>
@@ -439,8 +440,8 @@ defineExpose({
         </div>
       </div>
       <button
-        @click="addLocation"
         class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
+        @click="addLocation"
       >
         + Add location
       </button>

@@ -309,7 +309,7 @@ const focusMode = ref(false)
 
     <div v-if="showModelBanner && modelNotFound" class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200 flex items-center justify-between">
       <span>AI model not found. Responses may fail — check your Ollama setup in Settings.</span>
-      <button @click="showModelBanner = false" class="text-amber-200 hover:text-white">
+      <button class="text-amber-200 hover:text-white" @click="showModelBanner = false">
         <BaseIcon name="x" :size="16" />
       </button>
     </div>
@@ -354,7 +354,7 @@ const focusMode = ref(false)
       </template>
 
       <template #polish>
-        <PolishDrawer ref="polishDrawerRef" v-if="ollamaAvailable" />
+        <PolishDrawer v-if="ollamaAvailable" ref="polishDrawerRef" />
         <div v-else class="p-4 text-center text-text-secondary">
           AI features disabled — Ollama unavailable
         </div>
@@ -404,14 +404,14 @@ const focusMode = ref(false)
         </p>
         <div class="flex gap-3">
           <button
-            @click="timer.startNewSession(20)"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+            @click="timer.startNewSession(20)"
           >
             Start new session
           </button>
           <button
-            @click="timer.dismissModal()"
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
+            @click="timer.dismissModal()"
           >
             Keep writing (no timer)
           </button>
@@ -436,7 +436,7 @@ const focusMode = ref(false)
       <div class="bg-bg-tertiary rounded-xl shadow-xl p-6 max-w-lg w-full border border-border-subtle">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-text-primary">Keyboard Shortcuts</h2>
-          <button @click="showShortcutsModal = false" class="text-text-secondary hover:text-text-primary text-xl focus:outline-none focus:ring-2 focus:ring-accent rounded">&times;</button>
+          <button class="text-text-secondary hover:text-text-primary text-xl focus:outline-none focus:ring-2 focus:ring-accent rounded" @click="showShortcutsModal = false">&times;</button>
         </div>
         
         <div class="space-y-4">
@@ -490,6 +490,6 @@ const focusMode = ref(false)
 
     <SettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @model-changed="checkModelAvailability" />
 
-    <Toast :key="toastKey" v-if="toastMessage" :message="toastMessage" @dismiss="toastMessage = ''" />
+    <Toast v-if="toastMessage" :key="toastKey" :message="toastMessage" @dismiss="toastMessage = ''" />
   </div>
 </template>

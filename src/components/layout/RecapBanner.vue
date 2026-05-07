@@ -69,8 +69,8 @@ onUnmounted(() => {
       </span>
     </div>
     <button 
-      @click="handleDismiss"
       class="text-text-hint hover:text-text-secondary transition-colors"
+      @click="handleDismiss"
     >
       <BaseIcon name="x" :size="14" />
     </button>

@@ -1497,28 +1497,28 @@ async function arrangeExtendedStarLayout() {
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-1 border-l border-border-subtle pl-3">
           <button
-            @click="showCharEdges = !showCharEdges"
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-all"
             :class="showCharEdges ? 'bg-bg-tertiary text-text-primary' : 'bg-bg-secondary text-text-hint opacity-50'"
             title="Toggle character relationships"
+            @click="showCharEdges = !showCharEdges"
           >
             <span class="w-2 h-2 rounded-full bg-[#f48fb1]"></span>
             Characters
           </button>
           <button
-            @click="showLocEdges = !showLocEdges"
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-all"
             :class="showLocEdges ? 'bg-bg-tertiary text-text-primary' : 'bg-bg-secondary text-text-hint opacity-50'"
             title="Toggle location connections"
+            @click="showLocEdges = !showLocEdges"
           >
             <span class="w-2 h-2 rounded-full bg-[#4fc3f7]"></span>
             Locations
           </button>
           <button
-            @click="showThreadEdges = !showThreadEdges"
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-all"
             :class="showThreadEdges ? 'bg-bg-tertiary text-text-primary' : 'bg-bg-secondary text-text-hint opacity-50'"
             title="Toggle plot thread connections"
+            @click="showThreadEdges = !showThreadEdges"
           >
             <span class="w-2 h-2 rounded-full bg-[#ce93d8]"></span>
             Plot Threads
@@ -1526,45 +1526,45 @@ async function arrangeExtendedStarLayout() {
         </div>
 
         <button
-          @click="toggleSidebar"
           class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
           :title="showSidebar ? 'Hide sidebar' : 'Show sidebar'"
+          @click="toggleSidebar"
         >
           <BaseIcon :name="showSidebar ? 'panel-left-close' : 'panel-left-open'" :size="18" />
         </button>
         <button
-          @click="openCreateGroupModal"
           class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
           title="Add group"
+          @click="openCreateGroupModal"
         >
           <BaseIcon name="folder-plus" :size="18" />
         </button>
         <button
-          @click="arrangeExtendedStarLayout"
           class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
           title="Extended star layout - group clusters with mini-stars"
+          @click="arrangeExtendedStarLayout"
         >
           <BaseIcon name="circle" :size="18" />
         </button>
         <button
-          @click="openAutoGenerateModal"
           class="px-3 py-1.5 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui flex items-center gap-1.5"
           title="Automatically generate connections"
+          @click="openAutoGenerateModal"
         >
           <BaseIcon name="sparkles" :size="14" />
           Auto-generate
         </button>
         <button
-          @click="handleGetSuggestions"
           class="px-3 py-1.5 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui flex items-center gap-1.5"
           title="Get AI suggestions"
+          @click="handleGetSuggestions"
         >
           <BaseIcon name="lightbulb" :size="14" />
           Ideas
         </button>
         <button
-          @click="openAddConnectionModal"
           class="px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+          @click="openAddConnectionModal"
         >
           + Connection
         </button>
@@ -1580,11 +1580,11 @@ async function arrangeExtendedStarLayout() {
           :plot-threads="storyBibleStore.plotThreads"
           :existing-node-ids="existingNodeIds"
           :edges="storyGraphStore.edges"
+          class="w-64 shrink-0 absolute md:relative z-10 h-full"
           @quick-add="handleQuickAdd"
           @toggle-sidebar="toggleSidebar"
           @edit-connection="editConnection"
           @delete-connection="handleSidebarDeleteConnection"
-          class="w-64 shrink-0 absolute md:relative z-10 h-full"
         />
       </Transition>
 
@@ -1598,15 +1598,15 @@ async function arrangeExtendedStarLayout() {
           :min-zoom="0.2"
           :max-zoom="2"
           fit-view-on-init
+          class="story-network"
+          :class="{ 'drag-over': isDraggingOver }"
+          style="height: 100%; width: 100%; position: relative;"
           @node-double-click="handleNodeDoubleClick"
           @edge-click="handleEdgeClick"
           @dragover="handleDragOver"
           @dragleave="handleDragLeave"
           @drop="handleDrop"
           @connect="handleConnect"
-          class="story-network"
-          :class="{ 'drag-over': isDraggingOver }"
-          style="height: 100%; width: 100%; position: relative;"
         >
           <template #edge-custom="{ id, sourceX, sourceY, targetX, targetY, data }">
             <path
@@ -1697,39 +1697,39 @@ async function arrangeExtendedStarLayout() {
                 <button
                   class="w-3 h-3 rounded-full shrink-0 border border-white/20 hover:scale-125 transition-transform cursor-pointer"
                   :style="{ backgroundColor: data.color }"
-                  @click.stop="cycleGroupColor(id)"
                   title="Change color"
+                  @click.stop="cycleGroupColor(id)"
                 />
                 <input
                   :value="data.label"
+                  class="bg-transparent text-xs font-semibold text-text-primary outline-none flex-1 min-w-0"
+                  placeholder="Group name"
                   @change="renameGroup(id, $event.target.value)"
                   @click.stop
                   @mousedown.stop
-                  class="bg-transparent text-xs font-semibold text-text-primary outline-none flex-1 min-w-0"
-                  placeholder="Group name"
                 />
                 <span v-if="data.nodeCount" class="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-mono" :style="{ backgroundColor: data.color + '30', color: data.color }">
                   {{ data.nodeCount }}
                 </span>
                 <button 
-                  @click.stop="deleteGroup(id)" 
-                  class="p-1 rounded shrink-0 text-text-hint hover:text-danger hover:bg-danger/10 transition-colors"
+                  class="p-1 rounded shrink-0 text-text-hint hover:text-danger hover:bg-danger/10 transition-colors" 
                   title="Delete group"
+                  @click.stop="deleteGroup(id)"
                 >
                   <BaseIcon name="trash-2" :size="12" />
                 </button>
               </div>
               <div
                 class="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize group-resize-handle"
-                @mousedown.stop="startGroupResize($event, id)"
                 title="Resize"
+                @mousedown.stop="startGroupResize($event, id)"
               >
                 <svg viewBox="0 0 10 10" class="w-full h-full opacity-30 hover:opacity-70 transition-opacity">
                   <path d="M 10 0 L 10 10 L 0 10" :fill="data.color" />
                 </svg>
               </div>
-              <Handle type="source" :position="Position.Right" id="source" class="!bg-accent !w-3 !h-3 !border-2 !border-white" />
-              <Handle type="target" :position="Position.Left" id="target" class="!bg-accent !w-3 !h-3 !border-2 !border-white" />
+              <Handle id="source" type="source" :position="Position.Right" class="!bg-accent !w-3 !h-3 !border-2 !border-white" />
+              <Handle id="target" type="target" :position="Position.Left" class="!bg-accent !w-3 !h-3 !border-2 !border-white" />
             </div>
           </template>
 
@@ -1743,8 +1743,8 @@ async function arrangeExtendedStarLayout() {
             <p class="text-xs text-text-hint mb-4">Drag items from the sidebar to add them</p>
             <button
               v-if="!showSidebar"
-              @click="toggleSidebar"
               class="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent/90 font-ui"
+              @click="toggleSidebar"
             >
               Show Entities Panel
             </button>
@@ -1765,7 +1765,7 @@ async function arrangeExtendedStarLayout() {
         <div v-if="selectedConnection" class="absolute bottom-4 left-4 right-4 bg-bg-tertiary rounded-lg border border-border-subtle p-4 shadow-lg">
           <div class="flex items-center justify-between mb-2">
             <h3 class="font-medium text-sm text-text-primary">Connection Details</h3>
-            <button @click="selectedConnection = null" class="text-text-hint hover:text-text-primary">
+            <button class="text-text-hint hover:text-text-primary" @click="selectedConnection = null">
               <BaseIcon name="x" :size="16" />
             </button>
           </div>
@@ -1781,14 +1781,14 @@ async function arrangeExtendedStarLayout() {
           </p>
           <div class="flex gap-2">
             <button
-              @click="editConnection(selectedConnection)"
               class="flex-1 py-1.5 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+              @click="editConnection(selectedConnection)"
             >
               Edit
             </button>
             <button
-              @click="deleteConnection(selectedConnection)"
               class="px-4 py-1.5 text-xs text-danger hover:bg-danger/10 rounded font-ui"
+              @click="deleteConnection(selectedConnection)"
             >
               Delete
             </button>
@@ -1850,8 +1850,8 @@ async function arrangeExtendedStarLayout() {
       @close="showAutoGenerateModal = false"
       @generate="handleAutoGenerate"
       @update:prompt="autoGeneratePrompt = $event"
-      @update:createGroups="autoGenerateCreateGroups = $event"
-      @update:fromScratch="autoGenerateFromScratch = $event"
+      @update:create-groups="autoGenerateCreateGroups = $event"
+      @update:from-scratch="autoGenerateFromScratch = $event"
     />
 
     <Teleport to="body">
@@ -1867,22 +1867,22 @@ async function arrangeExtendedStarLayout() {
               v-model="newGroupName"
               class="w-full px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary text-sm mb-3"
               placeholder="Group name..."
-              @keyup.enter="confirmCreateGroup"
               autofocus
+              @keyup.enter="confirmCreateGroup"
             />
             <div class="flex gap-2 flex-wrap mb-4">
               <button
                 v-for="color in groupColors"
                 :key="color"
-                @click="newGroupColor = color"
                 class="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
                 :class="newGroupColor === color ? 'border-white scale-110' : 'border-transparent'"
                 :style="{ backgroundColor: color }"
+                @click="newGroupColor = color"
               />
             </div>
             <div class="flex gap-2">
-              <button @click="showCreateGroupModal = false" class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg text-sm hover:bg-surface-hover font-ui">Cancel</button>
-              <button @click="confirmCreateGroup" class="flex-1 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent/90 font-ui">Create</button>
+              <button class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg text-sm hover:bg-surface-hover font-ui" @click="showCreateGroupModal = false">Cancel</button>
+              <button class="flex-1 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent/90 font-ui" @click="confirmCreateGroup">Create</button>
             </div>
           </div>
         </div>

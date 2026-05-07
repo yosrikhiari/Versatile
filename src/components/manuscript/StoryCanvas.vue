@@ -17,7 +17,7 @@ const newElementTitle = ref('')
 const newElementType = ref('chapter')
 
 const elementTypes = [
-  { value: 'chapter', label: 'Chapter', color: '#6366f1', iconName: 'book-open' },
+  { value: 'section', label: 'Section', color: '#6366f1', iconName: 'book-open' },
   { value: 'character', label: 'Character', color: '#ec4899', iconName: 'user' },
   { value: 'location', label: 'Location', color: '#10b981', iconName: 'map-pin' },
   { value: 'plotpoint', label: 'Plot Point', color: '#f59e0b', iconName: 'zap' },
@@ -91,12 +91,12 @@ function deleteElement(element) {
   }
 }
 
-function getChaptersAsElements() {
-  return manuscriptStore.sortedChapters.map(c => ({
-    id: `chapter-${c.id}`,
-    type: 'chapter',
-    title: c.title || `Chapter ${c.order + 1}`,
-    data: { chapterId: c.id, status: c.status }
+function getSectionsAsElements() {
+  return manuscriptStore.sortedSections.map(s => ({
+    id: `section-${s.id}`,
+    type: 'section',
+    title: s.title || `Section ${s.order + 1}`,
+    data: { sectionId: s.id, status: s.status }
   }))
 }
 
@@ -113,8 +113,8 @@ onMounted(() => {
       <span class="font-spark text-accent tracking-wide">Story Canvas</span>
       <div class="flex gap-2">
         <button
-          @click="showAddModal = true"
           class="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+          @click="showAddModal = true"
         >
           + Add Element
         </button>
@@ -126,7 +126,6 @@ onMounted(() => {
         <button
           v-for="type in elementTypes"
           :key="type.value"
-          @click="newElementType = type.value"
           :class="[
             'px-3 py-1 text-xs rounded-full border font-ui',
             newElementType === type.value
@@ -134,25 +133,26 @@ onMounted(() => {
               : 'border-border-subtle text-text-hint hover:border-text-hint'
           ]"
           :style="newElementType === type.value ? { borderColor: type.color } : {}"
+          @click="newElementType = type.value"
         >
           {{ type.icon }} {{ type.label }}
         </button>
       </div>
 
       <div class="mb-4 p-3 bg-surface-hover rounded-lg">
-        <div class="text-xs text-text-hint font-ui mb-2">Quick Add from Manuscript</div>
+        <div class="text-xs text-text-hint font-ui mb-2">Quick Add from Document</div>
         <draggable
-          :list="manuscriptStore.sortedChapters"
+          :list="manuscriptStore.sortedSections"
           item-key="id"
           v-bind="canvasDragOptions"
-          :clone="(el) => ({ id: `chapter-${el.id}`, type: 'chapter', title: el.title || `Chapter ${el.order + 1}`, data: { chapterId: el.id } })"
+          :clone="(el) => ({ id: `section-${el.id}`, type: 'section', title: el.title || `Section ${el.order + 1}`, data: { sectionId: el.id } })"
           class="flex gap-2 flex-wrap"
         >
           <template #item="{ element }">
             <div
               class="px-3 py-2 bg-bg-tertiary rounded border border-border-subtle text-sm font-ui cursor-grab hover:border-accent/50"
             >
-              📖 {{ element.title || `Chapter ${element.order + 1}` }}
+              📖 {{ element.title || `Section ${element.order + 1}` }}
             </div>
           </template>
         </draggable>
@@ -169,7 +169,6 @@ onMounted(() => {
       >
         <template #item="{ element }">
           <div
-            @click="selectElement(element)"
             :class="[
               'p-3 rounded-lg border-2 cursor-pointer transition-all',
               selectedElement?.id === element.id
@@ -177,6 +176,7 @@ onMounted(() => {
                 : 'border-border-subtle hover:border-accent/50'
             ]"
             :style="{ borderLeftColor: getElementColor(element.type), borderLeftWidth: '4px' }"
+            @click="selectElement(element)"
           >
             <div class="flex items-start justify-between">
               <div class="flex items-center gap-2">
@@ -184,15 +184,15 @@ onMounted(() => {
                 <span class="font-semibold text-sm text-text-primary font-ui">{{ element.title }}</span>
               </div>
               <button
-                @click.stop="deleteElement(element)"
                 class="text-text-hint hover:text-danger"
                 title="Delete element"
+                @click.stop="deleteElement(element)"
               >
                 <BaseIcon name="x" :size="14" />
               </button>
             </div>
             <div class="mt-2 text-xs text-text-hint capitalize font-ui">
-              {{ element.type }}
+              {{ element.type === 'section' ? 'section' : element.type }}
             </div>
           </div>
         </template>
@@ -217,28 +217,28 @@ onMounted(() => {
           <button
             v-for="type in elementTypes"
             :key="type.value"
-            @click="newElementType = type.value"
             :class="[
               'flex-1 px-2 py-1 text-xs rounded border font-ui',
               newElementType === type.value
                 ? 'border-accent bg-accent/10 text-accent'
                 : 'border-border-subtle text-text-hint'
             ]"
+            @click="newElementType = type.value"
           >
             {{ type.icon }}
           </button>
         </div>
         <div class="flex gap-2">
           <button
-            @click="addNewElement"
             :disabled="!newElementTitle.trim()"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 font-ui"
+            @click="addNewElement"
           >
             Add
           </button>
           <button
-            @click="showAddModal = false"
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
+            @click="showAddModal = false"
           >
             Cancel
           </button>

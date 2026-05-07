@@ -36,11 +36,11 @@ const isSaving = ref(false)
 const debouncedSave = useDebounceFn(async () => {
   if (projectStore.currentProjectId) {
     isSaving.value = true
-    projectStore.saveManuscriptDebounced()
+    projectStore.saveDocumentDebounced()
     await snapshotStore.saveNewSnapshot(
       projectStore.currentProjectId,
       null,
-      projectStore.manuscriptContent,
+      projectStore.documentContent,
       'manuscript auto-save'
     )
     setTimeout(() => { isSaving.value = false }, 1500)
@@ -48,7 +48,7 @@ const debouncedSave = useDebounceFn(async () => {
 }, 10000)
 
 const editor = useEditor({
-  content: projectStore.manuscriptContent || '',
+  content: projectStore.documentContent || '',
   extensions: [
     StarterKit.configure({
       heading: false,
@@ -123,7 +123,7 @@ function handleClick(event) {
   }
 }
 
-watch(() => projectStore.manuscriptContent, (newContent) => {
+watch(() => projectStore.documentContent, (newContent) => {
   if (editor.value && editor.value.getText() !== newContent) {
     editor.value.commands.setContent(newContent || '')
   }
@@ -144,8 +144,8 @@ defineExpose({
   <div class="h-full flex flex-col bg-manuscript relative">
     <button
       v-if="isRunning"
-      @click="handleExitFlow"
       class="absolute top-4 right-4 z-10 text-xs text-text-hint hover:text-text-secondary font-ui transition-colors focus:outline-none focus:ring-2 focus:ring-accent rounded px-2 py-1"
+      @click="handleExitFlow"
     >
       Exit Flow
     </button>

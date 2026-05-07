@@ -221,9 +221,9 @@ const inNetworkCount = computed(() =>
       <div class="flex items-center justify-between mb-2">
         <span class="text-xs font-medium text-text-secondary font-ui">Entities</span>
         <button
-          @click="emit('toggle-sidebar')"
           class="p-1 text-text-hint hover:text-text-primary rounded focus:outline-none focus:ring-2 focus:ring-accent"
           title="Hide sidebar"
+          @click="emit('toggle-sidebar')"
         >
           <BaseIcon name="panel-left-close" :size="16" />
         </button>
@@ -245,8 +245,8 @@ const inNetworkCount = computed(() =>
     <div class="flex-1 overflow-y-auto">
       <div v-for="section in [{ key: 'characters', label: 'Characters', items: filteredCharacters, type: 'character' }, { key: 'locations', label: 'Locations', items: filteredLocations, type: 'location' }, { key: 'plotThreads', label: 'Plot Threads', items: filteredPlotThreads, type: 'plotThread' }]" :key="section.key" class="border-b border-border-subtle last:border-b-0">
         <button
-          @click="toggleSection(section.key)"
           class="w-full px-3 py-2 flex items-center justify-between hover:bg-surface-hover transition-colors"
+          @click="toggleSection(section.key)"
         >
           <div class="flex items-center gap-2">
             <BaseIcon 
@@ -269,19 +269,19 @@ const inNetworkCount = computed(() =>
             v-for="entity in section.items"
             :key="entity.id"
             draggable="true"
-            @dragstart="(e) => handleDragStart(e, section.type, entity)"
-            @dragend="emit('drag-start', null)"
             :class="[
               'mx-2 my-1 px-2 py-1.5 rounded-lg border transition-all cursor-grab',
               isInNetwork(section.type, entity.id)
                 ? 'border-border-subtle bg-bg-tertiary/50'
                 : 'border-transparent hover:border-border-subtle hover:bg-bg-tertiary'
             ]"
+            @dragstart="(e) => handleDragStart(e, section.type, entity)"
+            @dragend="emit('drag-start', null)"
           >
             <div class="flex items-center justify-between">
               <button
-                @click.stop="toggleEntity(entity.id)"
                 class="flex items-center gap-2 min-w-0 flex-1 text-left"
+                @click.stop="toggleEntity(entity.id)"
               >
                 <BaseIcon 
                   :name="expandedEntities[entity.id] ? 'chevron-down' : 'chevron-right'" 
@@ -297,9 +297,9 @@ const inNetworkCount = computed(() =>
               <div class="flex items-center gap-1 shrink-0">
                 <button
                   v-if="!isInNetwork(section.type, entity.id)"
-                  @click.stop="handleQuickAdd(section.type, entity)"
                   class="p-1 text-text-hint hover:text-accent rounded focus:outline-none focus:ring-1 focus:ring-accent"
                   title="Add to network"
+                  @click.stop="handleQuickAdd(section.type, entity)"
                 >
                   <BaseIcon name="plus" :size="12" />
                 </button>
@@ -334,16 +334,16 @@ const inNetworkCount = computed(() =>
                 <span class="text-[9px] text-text-hint capitalize px-1 rounded bg-bg-tertiary">{{ conn.relationshipType }}</span>
                 <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    @click.stop="handleEditConnection(conn)"
                     class="p-0.5 text-text-hint hover:text-accent rounded"
                     title="Edit connection"
+                    @click.stop="handleEditConnection(conn)"
                   >
                     <BaseIcon name="pencil" :size="10" />
                   </button>
                   <button
-                    @click.stop="handleDeleteConnection(conn)"
                     class="p-0.5 text-text-hint hover:text-danger rounded"
                     title="Delete connection"
+                    @click.stop="handleDeleteConnection(conn)"
                   >
                     <BaseIcon name="trash-2" :size="10" />
                   </button>

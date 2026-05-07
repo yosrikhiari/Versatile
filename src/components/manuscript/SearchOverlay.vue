@@ -178,27 +178,27 @@ onMounted(() => {
     
     <div class="flex items-center gap-1">
       <button 
-        @click="handlePrev"
         :disabled="matches.length === 0"
         class="p-1 hover:bg-bg-tertiary rounded disabled:opacity-50"
         title="Previous (Shift+Enter)"
+        @click="handlePrev"
       >
         <BaseIcon name="chevron-up" :size="14" />
       </button>
       <button 
-        @click="handleNext"
         :disabled="matches.length === 0"
         class="p-1 hover:bg-bg-tertiary rounded disabled:opacity-50"
         title="Next (Enter)"
+        @click="handleNext"
       >
         <BaseIcon name="chevron-down" :size="14" />
       </button>
     </div>
     
     <button 
-      @click="handleClose"
       class="p-1 hover:bg-bg-tertiary rounded"
       title="Close (Esc)"
+      @click="handleClose"
     >
       <BaseIcon name="x" :size="16" />
     </button>

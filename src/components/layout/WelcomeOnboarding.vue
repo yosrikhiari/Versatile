@@ -98,11 +98,11 @@ function handleSkipSetup() {
                 </label>
                 <input
                   v-model="projectName"
-                  @keyup.enter="handleNextStep1"
                   type="text"
                   class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
                   placeholder="My novel"
                   autofocus
+                  @keyup.enter="handleNextStep1"
                 />
               </div>
               <div>
@@ -133,15 +133,15 @@ function handleSkipSetup() {
           </div>
           <div class="flex gap-3">
             <button
-              @click="handleSkipSetup"
               class="flex-1 py-3 text-text-secondary hover:text-text-primary transition-colors text-sm"
+              @click="handleSkipSetup"
             >
               Skip setup
             </button>
             <button
-              @click="handleNextStep1"
               :disabled="!canProceedStep1"
               class="flex-1 py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="handleNextStep1"
             >
               Next
             </button>
@@ -158,11 +158,11 @@ function handleSkipSetup() {
                 </label>
                 <input
                   v-model="characterName"
-                  @keyup.enter="handleNextStep2"
                   type="text"
                   class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
                   placeholder="Elena"
                   autofocus
+                  @keyup.enter="handleNextStep2"
                 />
               </div>
               <div>
@@ -180,15 +180,15 @@ function handleSkipSetup() {
           </div>
           <div class="flex gap-3">
             <button
-              @click="handleSkipSetup"
               class="flex-1 py-3 text-text-secondary hover:text-text-primary transition-colors text-sm"
+              @click="handleSkipSetup"
             >
               Skip setup
             </button>
             <button
-              @click="handleNextStep2"
               :disabled="!canProceedStep2 || isCreating"
               class="flex-1 py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="handleNextStep2"
             >
               {{ isCreating ? 'Creating...' : 'Next' }}
             </button>
@@ -220,8 +220,8 @@ function handleSkipSetup() {
             </p>
           </div>
           <button
-            @click="handleComplete"
             class="w-full py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors"
+            @click="handleComplete"
           >
             Start Writing
           </button>

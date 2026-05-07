@@ -6,6 +6,9 @@ const ollamaTarget = isDocker ? 'http://ollama:11434' : 'http://localhost:11434'
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    chunkSizeWarningLimit: 2500
+  },
   server: {
     proxy: {
       '/ollama': {

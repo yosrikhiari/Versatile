@@ -1,10 +1,10 @@
 import { ref } from 'vue'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useProjectStore } from '../stores/projectStore'
-import { CHAPTER_STATUSES } from '../config/statuses'
+import { SECTION_STATUSES } from '../config/statuses'
 import { countWords } from '../utils/textUtils'
 
-export { CHAPTER_STATUSES }
+export { SECTION_STATUSES }
 
 export function useChapterSceneManager() {
   const manuscriptStore = useManuscriptStore()
@@ -12,49 +12,49 @@ export function useChapterSceneManager() {
 
   const editingScene = ref(null)
   const showSceneModal = ref(false)
-  const activeChapterId = ref(null)
+  const activeSectionId = ref(null)
   const newScene = ref({ title: '', summary: '', content: '', tags: [] })
 
   function getStatusColor(status) {
-    return CHAPTER_STATUSES.find(s => s.value === status)?.color || '#6b7280'
+    return SECTION_STATUSES.find(s => s.value === status)?.color || '#6b7280'
   }
 
   function getStatusLabel(status) {
-    return CHAPTER_STATUSES.find(s => s.value === status)?.label || status
+    return SECTION_STATUSES.find(s => s.value === status)?.label || status
   }
 
-  function getSceneWordCount(scene) {
-    return countWords(scene.content)
+  function getSubsectionWordCount(subsection) {
+    return countWords(subsection.content)
   }
 
-  function getChapterWordCount(chapterId) {
-    const scenes = manuscriptStore.scenesByChapter[chapterId] || []
-    return scenes.reduce((sum, s) => sum + getSceneWordCount(s), 0)
+  function getSectionWordCount(sectionId) {
+    const subsections = manuscriptStore.subsectionsBySection[sectionId] || []
+    return subsections.reduce((sum, s) => sum + getSubsectionWordCount(s), 0)
   }
 
-  function openAddScene(chapterId) {
+  function openAddSubsection(sectionId) {
     editingScene.value = null
     newScene.value = { title: '', summary: '', content: '' }
-    activeChapterId.value = chapterId
+    activeSectionId.value = sectionId
     showSceneModal.value = true
   }
 
-  function openEditScene(scene) {
-    editingScene.value = scene
+  function openEditSubsection(subsection) {
+    editingScene.value = subsection
     newScene.value = { 
-      title: scene.title || '',
-      summary: scene.summary || '', 
-      content: scene.content || '',
-      tags: scene.tags ? [...scene.tags] : []
+      title: subsection.title || '',
+      summary: subsection.summary || '', 
+      content: subsection.content || '',
+      tags: subsection.tags ? [...subsection.tags] : []
     }
     showSceneModal.value = true
   }
 
-  function saveScene() {
+  function saveSubsection() {
     if (!newScene.value.title?.trim()) return
 
     if (editingScene.value) {
-      manuscriptStore.updateSceneData(
+      manuscriptStore.updateSubsectionData(
         editingScene.value.id,
         { 
           title: newScene.value.title, 
@@ -64,32 +64,32 @@ export function useChapterSceneManager() {
         },
         projectStore.currentProjectId
       )
-    } else if (activeChapterId.value) {
-      manuscriptStore.addSceneData(projectStore.currentProjectId, activeChapterId.value, newScene.value)
+    } else if (activeSectionId.value) {
+      manuscriptStore.addSubsectionData(projectStore.currentProjectId, activeSectionId.value, newScene.value)
     }
 
     showSceneModal.value = false
   }
 
-  function deleteScene(scene) {
-    if (confirm(`Delete "${scene.title || 'Untitled'}"?`)) {
-      manuscriptStore.deleteSceneData(scene.id, projectStore.currentProjectId)
+  function deleteSubsection(subsection) {
+    if (confirm(`Delete "${subsection.title || 'Untitled'}"?`)) {
+      manuscriptStore.deleteSubsectionData(subsection.id, projectStore.currentProjectId)
     }
   }
 
   return {
     editingScene,
     showSceneModal,
-    activeChapterId,
+    activeSectionId,
     newScene,
-    CHAPTER_STATUSES,
+    SECTION_STATUSES,
     getStatusColor,
     getStatusLabel,
-    getSceneWordCount,
-    getChapterWordCount,
-    openAddScene,
-    openEditScene,
-    saveScene,
-    deleteScene
+    getSubsectionWordCount,
+    getSectionWordCount,
+    openAddSubsection,
+    openEditSubsection,
+    saveSubsection,
+    deleteSubsection
   }
 }

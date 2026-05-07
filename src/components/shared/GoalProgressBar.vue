@@ -46,8 +46,8 @@ const goalReached = computed(() => {
     </span>
     <button 
       v-else
-      @click="emit('open-settings')"
       class="text-[10px] text-text-hint hover:text-accent transition-colors"
+      @click="emit('open-settings')"
     >
       Set a goal
     </button>

@@ -27,11 +27,11 @@ const lengths = [
       <label class="block text-[11px] uppercase tracking-widest text-text-hint font-ui mb-2">Your chapter idea</label>
       <textarea
         :value="idea"
-        @input="emit('update:idea', $event.target.value)"
         maxlength="200"
         rows="3"
         class="w-full px-3 py-2 border border-border-subtle rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/50 bg-bg-tertiary text-text-primary font-ui placeholder:text-text-hint"
         placeholder="What happens in this chapter?"
+        @input="emit('update:idea', $event.target.value)"
       ></textarea>
     </div>
 
@@ -41,13 +41,13 @@ const lengths = [
         <button
           v-for="t in tones"
           :key="t.value"
-          @click="emit('update:tone', t.value)"
           :class="[
             'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent',
             tone === t.value
               ? 'bg-accent text-white'
               : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
+          @click="emit('update:tone', t.value)"
         >
           {{ t.label }}
         </button>
@@ -60,13 +60,13 @@ const lengths = [
         <button
           v-for="len in lengths"
           :key="len.value"
-          @click="emit('update:targetLength', len.value)"
           :class="[
             'flex-1 px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent',
             targetLength === len.value
               ? 'bg-accent text-white'
               : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
+          @click="emit('update:targetLength', len.value)"
         >
           {{ len.label }}
         </button>

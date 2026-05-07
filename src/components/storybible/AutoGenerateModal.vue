@@ -75,8 +75,8 @@ function handleOverlayClick(event) {
               <h2 class="font-medium text-text-primary">Auto-generate Network</h2>
             </div>
             <button
-              @click="$emit('close')"
               class="p-1 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover transition-colors"
+              @click="$emit('close')"
             >
               <BaseIcon name="x" :size="18" />
             </button>
@@ -84,14 +84,15 @@ function handleOverlayClick(event) {
 
           <div class="p-5 space-y-5">
             <div class="space-y-2">
-              <label class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
+              <label
+class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
                 :class="{ 'border-accent bg-accent/5': !localFromScratch }"
               >
                 <input
                   type="radio"
                   :checked="!localFromScratch"
-                  @change="handleFromScratchChange(false)"
                   class="mt-0.5 w-4 h-4 text-accent focus:ring-accent"
+                  @change="handleFromScratchChange(false)"
                 />
                 <div>
                   <p class="text-sm font-medium text-text-primary">Add to existing</p>
@@ -102,14 +103,15 @@ function handleOverlayClick(event) {
                 </div>
               </label>
 
-              <label class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
+              <label
+class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
                 :class="{ 'border-accent bg-accent/5': localFromScratch }"
               >
                 <input
                   type="radio"
                   :checked="localFromScratch"
-                  @change="handleFromScratchChange(true)"
                   class="mt-0.5 w-4 h-4 text-accent focus:ring-accent"
+                  @change="handleFromScratchChange(true)"
                 />
                 <div>
                   <p class="text-sm font-medium text-text-primary">Generate from scratch</p>
@@ -133,14 +135,15 @@ function handleOverlayClick(event) {
             </div>
 
             <div>
-              <label class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
+              <label
+class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
                 :class="{ 'border-accent bg-accent/5': localCreateGroups }"
               >
                 <input
                   type="checkbox"
                   :checked="localCreateGroups"
-                  @change="handleCreateGroupsChange($event.target.checked)"
                   class="mt-0.5 w-4 h-4 text-accent focus:ring-accent rounded"
+                  @change="handleCreateGroupsChange($event.target.checked)"
                 />
                 <div>
                   <p class="text-sm font-medium text-text-primary">Create groups</p>
@@ -154,14 +157,14 @@ function handleOverlayClick(event) {
 
           <div class="px-5 py-4 border-t border-border-subtle flex justify-end gap-3">
             <button
-              @click="$emit('close')"
               class="px-4 py-2 text-text-secondary hover:text-text-primary font-medium transition-colors"
+              @click="$emit('close')"
             >
               Cancel
             </button>
             <button
-              @click="handleGenerate"
               class="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors"
+              @click="handleGenerate"
             >
               Generate
             </button>

@@ -71,8 +71,8 @@ function handleDismiss() {
         <p class="text-xs text-amber-400 font-ui">Suggestion matches original text</p>
         <div class="mt-2">
           <button
-            @click="handleDismiss"
             class="py-1 px-3 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            @click="handleDismiss"
           >
             Dismiss
           </button>
@@ -97,31 +97,31 @@ function handleDismiss() {
     
     <div class="flex gap-2 mt-3">
       <button
-        @click="handleAccept"
         class="flex-1 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        @click="handleAccept"
       >
         {{ showDiff ? 'Confirm' : 'Accept' }}
       </button>
       <template v-if="showDiff">
         <button
-          @click="handleCancel"
           class="py-1 px-3 text-xs bg-bg-secondary text-text-secondary rounded hover:bg-surface-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          @click="handleCancel"
         >
           Cancel
         </button>
       </template>
       <template v-else>
         <button
-          @click="emit('flag', annotation.id)"
           class="p-1.5 text-text-hint hover:text-text-secondary font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
           title="Decide later"
+          @click="emit('flag', annotation.id)"
         >
           <BaseIcon name="clock" :size="14" />
         </button>
         <button
-          @click="emit('reject', annotation.id)"
           class="p-1.5 text-text-hint hover:text-danger font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
           title="Reject"
+          @click="emit('reject', annotation.id)"
         >
           <BaseIcon name="x" :size="14" />
         </button>

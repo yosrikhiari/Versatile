@@ -10,7 +10,7 @@ const props = defineProps({
   }
 })
 
-const { getChapterContext, getChapterCount, getChapterList, MAX_CONTEXT_CHARS } = useManuscriptContext()
+const { getChapterContext, getChapterCount, MAX_CONTEXT_CHARS } = useManuscriptContext()
 
 const STORAGE_KEY = `versatile_context_selector_${props.panelId}`
 
@@ -68,26 +68,30 @@ const currentSelector = computed(() => {
   return selectedSelector.value
 })
 
-const contextPreview = computed(async () => {
-  if (currentSelector.value === 'none') {
-    return null
+const contextPreview = ref(null)
+
+watch(currentSelector, async (val) => {
+  if (val === 'none') {
+    contextPreview.value = null
+    return
   }
   
-  const result = await getChapterContext(currentSelector.value, 'spark')
+  const result = await getChapterContext(val, 'spark')
   if (!result.contextText) {
-    return null
+    contextPreview.value = null
+    return
   }
   
   const chapterLabel = result.chapterTitles.length === 1 
     ? result.chapterTitles[0]
     : `${result.chapterTitles.length} chapters`
   
-  return {
+  contextPreview.value = {
     label: chapterLabel,
     chars: result.totalChars,
     truncated: result.truncated
   }
-})
+}, { immediate: true })
 
 async function getContext() {
   if (currentSelector.value === 'none') {

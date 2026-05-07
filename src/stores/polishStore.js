@@ -19,7 +19,7 @@ export const usePolishStore = defineStore('polish', () => {
     weakVerbs: true,
     repetition: true,
     pacing: true,
-    antecedents: true
+    clarity: true
   })
   const error = ref(null)
   
@@ -125,7 +125,7 @@ export const usePolishStore = defineStore('polish', () => {
   async function acceptAnnotation(id, projectId, projectStore) {
     const annotation = annotations.value.find(a => a.id === id)
     if (annotation && annotation.suggestion && projectStore) {
-      const content = projectStore.manuscriptContent
+      const content = projectStore.documentContent
       const updated = content.replace(annotation.original, annotation.suggestion)
       projectStore.updateContent(updated)
     }
