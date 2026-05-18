@@ -1,21 +1,85 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
+import { generateRandomCharacter, enhanceExistingCharacter } from '../../composables/useOllama'
+import { useManuscriptContext } from '../../composables/useManuscriptContext'
 import BaseIcon from '../shared/BaseIcon.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
+import GenerateCharacterModal from './GenerateCharacterModal.vue'
 
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const volumeStore = useVolumeStore()
+const { getSectionContext } = useManuscriptContext()
 
 const characterPortraitRef = ref(null)
 
 const activeTab = ref('characters')
 const searchQuery = ref('')
 const editingId = ref(null)
-const editData = ref({ name: '', role: '', notes: '' })
+const editData = ref({ name: '', role: '', goal: '', voice: '', notes: '' })
+const isEnhancing = ref(false)
+
+const showGenerateModal = ref(false)
+const generateMode = ref('generate')
+const characterToEnhance = ref(null)
+
+const generateModalRef = ref(null)
+
+watch(showGenerateModal, async (val) => {
+  if (val) {
+    await nextTick()
+    await onModalGenerate()
+  }
+})
+
+function handleGenerateCharacter() {
+  generateMode.value = 'generate'
+  characterToEnhance.value = null
+  showGenerateModal.value = true
+}
+
+function handleEnhanceCharacter(character) {
+  generateMode.value = 'enhance'
+  characterToEnhance.value = { ...character }
+  showGenerateModal.value = true
+}
+
+async function onModalGenerate() {
+  if (!generateModalRef.value) return
+  generateModalRef.value.setLoading()
+  try {
+    const context = await getSectionContext('current', 'character')
+    let result
+    if (generateMode.value === 'enhance' && characterToEnhance.value) {
+      result = await enhanceExistingCharacter(characterToEnhance.value, context)
+    } else {
+      result = await generateRandomCharacter(context)
+    }
+    if (result) {
+      generateModalRef.value.setGenerated(result)
+    } else {
+      generateModalRef.value.setError('AI returned empty response. Please try again.')
+    }
+  } catch (e) {
+    generateModalRef.value.setError('Failed to generate. Check your Ollama connection and try again.')
+  }
+}
+
+async function onCreateCharacter(charData) {
+  if (!projectStore.currentProjectId) return
+  await storyBibleStore.addCharacterData(projectStore.currentProjectId, charData)
+  showGenerateModal.value = false
+}
+
+async function onUpdateCharacter(charData) {
+  if (!projectStore.currentProjectId || !characterToEnhance.value) return
+  await storyBibleStore.updateCharacterData(characterToEnhance.value.id, charData, projectStore.currentProjectId)
+  showGenerateModal.value = false
+  characterToEnhance.value = null
+}
 
 onMounted(async () => {
   if (projectStore.currentProjectId) {
@@ -114,7 +178,7 @@ function startEdit(entity, type) {
 
 function cancelEdit() {
   editingId.value = null
-  editData.value = { name: '', role: '', notes: '' }
+  editData.value = { name: '', role: '', goal: '', voice: '', notes: '' }
 }
 
 async function saveEdit(id, type) {
@@ -185,6 +249,15 @@ defineExpose({
     </div>
 
     <div v-if="activeTab === 'characters'" class="flex-1 overflow-y-auto p-4 space-y-3">
+      <div class="flex items-center gap-2 mb-2">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui"
+          @click="handleGenerateCharacter"
+        >
+          <BaseIcon name="sparkles" :size="12" />
+          Generate
+        </button>
+      </div>
         <div
           v-for="character in filteredCharacters"
           :key="character.id"
@@ -219,6 +292,14 @@ defineExpose({
             <span v-if="character.role" class="text-xs px-2 py-0.5 bg-bg-secondary text-text-secondary rounded">
               {{ character.role }}
             </span>
+            <button
+              v-if="editingId !== character.id && !isEnhancing"
+              class="p-1 hover:bg-accent/10 rounded"
+              title="Enhance with AI"
+              @click="handleEnhanceCharacter(character)"
+            >
+              <BaseIcon name="sparkles" :size="14" class="text-text-hint hover:text-accent" />
+            </button>
             <button
               v-if="editingId !== character.id"
               class="p-1 hover:bg-surface-hover rounded"
@@ -267,6 +348,16 @@ defineExpose({
             <input
             v-model="editData.role"
             placeholder="Role (e.g., Protagonist)"
+            class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"
+          />
+          <input
+            v-model="editData.goal"
+            placeholder="Goal — what do they want?"
+            class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"
+          />
+          <input
+            v-model="editData.voice"
+            placeholder="Voice — how do they speak?"
             class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"
           />
           <textarea
@@ -446,5 +537,16 @@ defineExpose({
         + Add location
       </button>
     </div>
+
+    <GenerateCharacterModal
+      ref="generateModalRef"
+      :show="showGenerateModal"
+      :mode="generateMode"
+      :existing-character="characterToEnhance"
+      @close="showGenerateModal = false; characterToEnhance = null"
+      @generate="onModalGenerate"
+      @create="onCreateCharacter"
+      @update="onUpdateCharacter"
+    />
   </div>
 </template>

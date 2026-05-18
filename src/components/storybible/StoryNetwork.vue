@@ -1169,6 +1169,35 @@ onMounted(async () => {
       }
       await storyGraphStore.saveAllNodePositions(projectStore.currentProjectId, positions)
     }
+
+    if (Object.keys(nodeInstances.value).length === 0) {
+      const positions = {}
+      let idx = 0
+
+      for (const char of storyBibleStore.characters) {
+        const baseId = `char-${char.id}`
+        nodeInstances.value[baseId] = [baseId]
+        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
+        idx++
+      }
+      for (const loc of storyBibleStore.locations) {
+        const baseId = `loc-${loc.id}`
+        nodeInstances.value[baseId] = [baseId]
+        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
+        idx++
+      }
+      for (const thread of storyBibleStore.plotThreads) {
+        const baseId = `thread-${thread.id}`
+        nodeInstances.value[baseId] = [baseId]
+        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
+        idx++
+      }
+
+      await Promise.all([
+        storyGraphStore.saveNodeInstances(projectStore.currentProjectId),
+        storyGraphStore.saveAllNodePositions(projectStore.currentProjectId, positions)
+      ])
+    }
   }
 })
 
@@ -1225,6 +1254,35 @@ watch(() => projectStore.currentProjectId, async (newId) => {
         }
       }
       await storyGraphStore.saveAllNodePositions(newId, positions)
+    }
+
+    if (Object.keys(nodeInstances.value).length === 0) {
+      const positions = {}
+      let idx = 0
+
+      for (const char of storyBibleStore.characters) {
+        const baseId = `char-${char.id}`
+        nodeInstances.value[baseId] = [baseId]
+        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
+        idx++
+      }
+      for (const loc of storyBibleStore.locations) {
+        const baseId = `loc-${loc.id}`
+        nodeInstances.value[baseId] = [baseId]
+        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
+        idx++
+      }
+      for (const thread of storyBibleStore.plotThreads) {
+        const baseId = `thread-${thread.id}`
+        nodeInstances.value[baseId] = [baseId]
+        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
+        idx++
+      }
+
+      await Promise.all([
+        storyGraphStore.saveNodeInstances(newId),
+        storyGraphStore.saveAllNodePositions(newId, positions)
+      ])
     }
   }
 })

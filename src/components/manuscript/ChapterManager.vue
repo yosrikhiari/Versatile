@@ -80,7 +80,7 @@ const assignVolumeId = ref(null)
 
 const totalWordCount = computed(() => {
   let total = 0
-  for (const chapter of sortedChapters.value) {
+  for (const chapter of sortedSections.value) {
     const wc = getChapterWordCount(chapter.id)
     total += wc
   }
@@ -373,7 +373,7 @@ function getSectionsInVolume(volumeId) {
         </div>
       </div>
 
-      <div v-if="filteredChapters.length === 0 && sortedChapters.length > 0" class="text-center py-12">
+      <div v-if="filteredSections.length === 0 && sortedSections.length > 0" class="text-center py-12">
         <p class="text-text-hint font-ui text-sm mb-4">No sections match the selected tags.</p>
         <button
           class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-ui"
@@ -382,7 +382,7 @@ function getSectionsInVolume(volumeId) {
           Clear Filters
         </button>
       </div>
-      <div v-else-if="filteredChapters.length === 0" class="text-center py-12">
+      <div v-else-if="filteredSections.length === 0" class="text-center py-12">
         <p class="text-text-hint font-ui text-sm mb-4">No sections yet. Start planning your document!</p>
         <button
           class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-ui"

@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { exportProject, importProject } from '../services/dbService'
 import { exportManuscriptToPDF, exportToEpub } from '../services/exportService'
-import { useProjectStore } from '../services/dbService'
+import { useProjectStore } from '../stores/projectStore'
 
 export function useExportImport() {
   const projectStore = useProjectStore()

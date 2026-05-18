@@ -866,6 +866,55 @@ All values must be strings. No markdown.`
   }
 }
 
+export async function enhanceExistingCharacter(charData, manuscriptContext = null) {
+  const projectContext = getProjectContext()
+  const entityContext = getExistingEntitiesContext()
+
+  let contextInstruction = ''
+  if (manuscriptContext?.contextText) {
+    contextInstruction = `\n\nManuscript context:\n${manuscriptContext.contextText}`
+  }
+
+  const userPrompt = `You are a creative writing assistant helping improve a fictional character.
+
+Here is the current character data:
+${JSON.stringify(charData, null, 2)}
+${projectContext}${entityContext}${contextInstruction}
+
+Your task: Return an enhanced version of ALL fields. Keep the core identity and essence, but make each field richer, more specific, and more compelling. Improve the writing quality, add depth, and ensure all fields are internally consistent with each other.
+
+Respond ONLY with a valid JSON object with these exact keys:
+{
+  "name": "improved name",
+  "role": "improved role",
+  "goal": "improved goal",
+  "voice": "improved voice",
+  "notes": "improved notes"
+}
+
+No markdown, no explanation, no preamble. JSON only.`
+
+  try {
+    const response = await retryWithBackoff(() =>
+      ollamaGenerate(userPrompt, 'You are a creative character designer.')
+    )
+    const parsed = sanitizeJsonResponse(response)
+    if (!parsed) {
+      throw new Error('Invalid JSON')
+    }
+
+    return {
+      name: parsed.name || parsed.Name || charData.name || '',
+      role: parsed.role || parsed.Role || charData.role || '',
+      goal: parsed.goal || parsed.Goal || charData.goal || '',
+      voice: parsed.voice || parsed.Voice || charData.voice || '',
+      notes: parsed.notes || parsed.Notes || charData.notes || ''
+    }
+  } catch (error) {
+    return null
+  }
+}
+
 export async function enhanceSingleField(entityType, fieldName, currentValue, allFields, manuscriptContext = null) {
   const projectContext = getProjectContext()
   const entityContext = getExistingEntitiesContext()

@@ -135,7 +135,7 @@ onMounted(() => {
 
       <div v-else-if="viewMode === 'sections'" class="space-y-4">
         <div
-          v-for="chapter in filteredChapters"
+          v-for="chapter in filteredSections"
           :key="chapter.id"
           class="bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden"
         >
@@ -252,7 +252,7 @@ onMounted(() => {
         </h3>
         
         <div v-if="!editingScene" class="mb-3 text-xs text-text-hint font-ui">
-          Adding to: {{ sortedChapters.find(c => c.id === activeChapterId)?.title || 'Unknown Chapter' }}
+          Adding to: {{ sortedSections.find(c => c.id === activeChapterId)?.title || 'Unknown Section' }}
         </div>
 
         <div class="mb-3">

@@ -1,9 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-const isDocker = process.env.DOCKER === 'true' || process.env.NODE_ENV === 'production'
-const ollamaTarget = isDocker ? 'http://ollama:11434' : 'http://localhost:11434'
-
 export default defineConfig({
   plugins: [vue()],
   build: {
@@ -12,7 +9,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/ollama': {
-        target: ollamaTarget,
+        target: 'http://localhost:11434',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/ollama/, '')
       },
@@ -20,6 +17,10 @@ export default defineConfig({
         target: 'http://127.0.0.1:7860',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/sdapi/, '/sdapi')
+      },
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
       }
     }
   }
