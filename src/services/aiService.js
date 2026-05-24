@@ -37,7 +37,7 @@ function resolveFeatureConfig(feature) {
   }
   return {
     provider: store.aiProvider,
-    model: null
+    model: store.aiProvider === PROVIDERS.OLLAMA ? store.ollamaModel : null
   }
 }
 
