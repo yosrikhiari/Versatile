@@ -21,6 +21,7 @@ import ChapterManager from './components/manuscript/ChapterManager.vue'
 import StoryNetwork from './components/storybible/StoryNetwork.vue'
 import TimelineView from './components/manuscript/TimelineView.vue'
 import SearchOverlay from './components/manuscript/SearchOverlay.vue'
+import ArchiveDrawer from './components/layout/ArchiveDrawer.vue'
 
 const projectStore = useProjectStore()
 const timer = useFlowTimer(projectStore)
@@ -55,6 +56,7 @@ useKeyboardShortcuts({
   onToggleChapters: () => appShell.value?.toggleChapters(),
   onToggleNetwork: () => appShell.value?.toggleNetwork(),
   onToggleTimeline: () => appShell.value?.toggleTimeline(),
+  onToggleArchive: () => appShell.value?.toggleArchive(),
   onCloseModal: () => { showShortcutsModal.value = false },
   appShell: appShell.value
 })
@@ -175,6 +177,10 @@ function handleOnboardingSkipWrapper() {
 
       <template #timeline>
         <TimelineView @open-chapters="appShell?.toggleChapters()" />
+      </template>
+
+      <template #archive>
+        <ArchiveDrawer />
       </template>
     </AppShell>
 

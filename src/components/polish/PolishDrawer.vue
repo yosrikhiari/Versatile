@@ -2,14 +2,40 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePolishStore } from '../../stores/polishStore'
 import { useProjectStore } from '../../stores/projectStore'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { useCompactConversation } from '../../composables/useOllama'
+import { PROVIDER_LABELS, FEATURES } from '../../config/ai'
 import PolishAnnotation from './PolishAnnotation.vue'
 import SnippetsDrawer from './SnippetsDrawer.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const polishStore = usePolishStore()
 const projectStore = useProjectStore()
+const settingsStore = useSettingsStore()
+
+const polishModelLabel = computed(() => {
+  const provider = settingsStore.resolveFeatureProvider(FEATURES.POLISH)
+  const model = settingsStore.resolveFeatureModel(FEATURES.POLISH)
+  const label = PROVIDER_LABELS[provider] || provider
+  return model ? `${label} · ${model}` : label
+})
 
 const expanded = ref(false)
+
+const {
+  compactConversation,
+  isCompacting: compactIsCompacting,
+  addTurn
+} = useCompactConversation()
+const compactCallId = 'polish_main'
+
+async function handleCompactPolish() {
+  addTurn(compactCallId, 'user', 'User requested Polish analysis')
+  const result = await compactConversation(compactCallId)
+  if (result.compacted) {
+    addTurn(compactCallId, 'system', `Conversation compacted: ${result.summarizedCount} previous turns summarized`)
+  }
+}
 
 onMounted(() => {
   polishStore.setProjectStore(projectStore)
@@ -65,7 +91,10 @@ function handleParagraphClick(text, index) {
 
 async function analyzeNow() {
   if (polishStore.selectedParagraphText && polishStore.selectedParagraphIndex !== null && projectStore.currentProjectId) {
+    addTurn(compactCallId, 'user', `Analyze paragraph ${polishStore.selectedParagraphIndex} (${polishStore.selectedParagraphText.slice(0, 80)}...)`)
     await polishStore.analyzeNow(polishStore.selectedParagraphText, polishStore.selectedParagraphIndex, projectStore.currentProjectId)
+    const pendingCount = polishStore.annotations.filter(a => a.paragraphIndex === polishStore.selectedParagraphIndex && a.status === 'pending').length
+    addTurn(compactCallId, 'assistant', `Analysis complete: ${pendingCount} issues found`)
   }
 }
 
@@ -119,6 +148,7 @@ defineExpose({
         </button>
       </div>
       <div class="flex items-center gap-2">
+        <span class="text-[10px] text-text-hint font-ui truncate max-w-[140px]" :title="polishModelLabel">{{ polishModelLabel }}</span>
         <button
           v-if="polishStore.selectedParagraphIndex !== null"
           :disabled="polishStore.isAnalyzing"
@@ -135,6 +165,21 @@ defineExpose({
           title="Select a paragraph in the editor first"
         >
           Analyze
+        </button>
+        <button
+          v-if="compactIsCompacting"
+          class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint rounded font-ui"
+          disabled
+        >
+          Compact...
+        </button>
+        <button
+          v-else
+          class="text-text-hint hover:text-text-secondary text-[10px] font-ui px-1"
+          title="Compact conversation"
+          @click="handleCompactPolish"
+        >
+          Compact
         </button>
         <button
           class="text-text-hint hover:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent rounded px-1"

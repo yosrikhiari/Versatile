@@ -10,6 +10,7 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import GoalProgressBar from '../shared/GoalProgressBar.vue'
 import ProjectSettingsModal from './ProjectSettingsModal.vue'
 import RecapBanner from './RecapBanner.vue'
+import ContextStatusIndicator from './ContextStatusIndicator.vue'
 
 const projectStore = useProjectStore()
 const sparkStore = useSparkStore()
@@ -25,6 +26,7 @@ const outlineOpen = ref(false)
 const chaptersOpen = ref(false)
 const networkOpen = ref(false)
 const timelineOpen = ref(false)
+const archiveOpen = ref(false)
 const focusMode = ref(false)
 const flowMode = ref(false)
 const showProjectSettings = ref(false)
@@ -91,6 +93,7 @@ function closeAllPanels() {
   outlineOpen.value = false
   chaptersOpen.value = false
   networkOpen.value = false
+  archiveOpen.value = false
 }
 
 function toggleSpark() {
@@ -173,6 +176,15 @@ function toggleTimeline() {
   } else {
     closeAllPanels()
     timelineOpen.value = true
+  }
+}
+
+function toggleArchive() {
+  if (archiveOpen.value) {
+    archiveOpen.value = false
+  } else {
+    closeAllPanels()
+    archiveOpen.value = true
   }
 }
 
@@ -285,9 +297,22 @@ onMounted(async () => {
         >
           <BaseIcon name="clock" :size="18" />
         </button>
+        <button
+          :class="[
+            'p-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent',
+            archiveOpen
+              ? 'bg-accent text-bg-primary shadow-md'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+          ]"
+          title="Archive"
+          @click="toggleArchive"
+        >
+          <BaseIcon name="archive" :size="18" />
+        </button>
       </div>
 
       <div class="flex items-center gap-4 text-sm text-text-secondary">
+        <ContextStatusIndicator />
         <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded p-1" title="Export project (Ctrl+S)" @click="emit('export')" @keydown.enter="emit('export')">
           <BaseIcon name="upload" :size="18" />
         </button>
@@ -442,6 +467,13 @@ onMounted(async () => {
         class="w-[320px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-300"
       >
         <slot name="spark"></slot>
+      </aside>
+
+      <aside 
+        v-if="archiveOpen && !flowMode" 
+        class="w-[320px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-300"
+      >
+        <slot name="archive"></slot>
       </aside>
     </div>
 

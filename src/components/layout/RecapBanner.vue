@@ -6,6 +6,7 @@ import BaseIcon from '../shared/BaseIcon.vue'
 const projectStore = useProjectStore()
 
 const emit = defineEmits(['dismiss'])
+const showRecap = ref(false)
 
 const visible = ref(true)
 let dismissTimeout = null
@@ -33,10 +34,15 @@ function handleDismiss() {
 }
 
 onMounted(() => {
-  if (!projectStore.lastSessionDate || !projectStore.lastSessionWords) {
+  const hasOldRecap = projectStore.lastSessionDate && projectStore.lastSessionWords > 0
+  const hasNewRecap = projectStore.lastSessionRecap
+
+  if (!hasOldRecap && !hasNewRecap) {
     visible.value = false
     return
   }
+
+  showRecap.value = !!hasNewRecap
   
   dismissTimeout = setTimeout(() => {
     handleDismiss()
@@ -58,12 +64,15 @@ onUnmounted(() => {
 
 <template>
   <div 
-    v-if="visible && projectStore.lastSessionDate && projectStore.lastSessionWords > 0"
+    v-if="visible"
     class="bg-bg-tertiary border-b border-border-subtle px-4 py-2 flex items-center justify-between animate-fade-in"
   >
     <div class="flex items-center gap-2 text-sm text-text-secondary">
       <BaseIcon name="clock" :size="14" class="text-text-hint" />
-      <span>
+      <span v-if="showRecap && projectStore.lastSessionRecap">
+        {{ projectStore.lastSessionRecap }}
+      </span>
+      <span v-else-if="projectStore.lastSessionDate && projectStore.lastSessionWords > 0">
         Last session: <span class="text-text-muted">{{ formatDate(projectStore.lastSessionDate) }}</span> — 
         you wrote <span class="text-accent font-medium">{{ projectStore.lastSessionWords.toLocaleString() }} words</span>
       </span>

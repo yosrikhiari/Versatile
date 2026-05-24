@@ -132,3 +132,14 @@ export {
   deleteSnapshot,
   getSceneSnapshots
 } from './db-snapshots'
+export {
+  saveSessionArchive,
+  getSessionArchive,
+  searchSessionArchive,
+  saveStateSnapshot,
+  getLatestStateSnapshot,
+  getStateSnapshotHistory,
+  saveAuthorProfile,
+  getAuthorProfile,
+  pruneSessionArchive
+} from './db-archive'

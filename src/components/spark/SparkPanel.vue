@@ -3,7 +3,10 @@ import { ref, computed } from 'vue'
 import { useSparkStore } from '../../stores/sparkStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
-import { isUsingOpenAI, saveOpenAIKey as saveKeyFromOllama } from '../../composables/useOllama'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { saveOpenAIKey as saveKeyFromOllama, useCompactConversation } from '../../composables/useOllama'
+import { useContextRetrieval } from '../../composables/useContextRetrieval'
+import { PROVIDER_LABELS, FEATURES } from '../../config/ai'
 import SparkPromptCard from './SparkPromptCard.vue'
 import BlueprintResult from './BlueprintResult.vue'
 import IdeaInput from './IdeaInput.vue'
@@ -13,11 +16,19 @@ import BaseIcon from '../shared/BaseIcon.vue'
 const sparkStore = useSparkStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
+const settingsStore = useSettingsStore()
+const { dryRun } = useContextRetrieval()
+
+const sparkModelLabel = computed(() => {
+  const provider = settingsStore.resolveFeatureProvider(FEATURES.SPARK)
+  const model = settingsStore.resolveFeatureModel(FEATURES.SPARK)
+  const label = PROVIDER_LABELS[provider] || provider
+  return model ? `${label} · ${model}` : label
+})
 
 const contextSelectorRef = ref(null)
 
 const activeTab = ref('prompt')
-const promptType = ref('seed')
 const idea = ref('')
 const tone = ref('tense')
 const targetLength = ref('full')
@@ -25,6 +36,38 @@ const currentPrompt = ref('')
 const showOpenAISettings = ref(false)
 const openaiKeyInput = ref('')
 const historyOpen = ref(false)
+const showContextPreview = ref(false)
+const contextPreview = ref(null)
+const contextPreviewLoading = ref(false)
+const compactConversationId = ref('spark_default')
+
+const {
+  compactConversation,
+  shouldSuggestCompact,
+  isCompacting: compactIsCompacting,
+  startConversation,
+  addTurn,
+  clearConversation
+} = useCompactConversation()
+
+async function handleCompact() {
+  const result = await compactConversation(compactConversationId.value)
+  if (result.compacted) {
+    addTurn(compactConversationId.value, 'system', `Conversation compacted: ${result.summarizedCount} previous turns summarized into 1.`)
+  }
+}
+
+async function toggleContextPreview() {
+  showContextPreview.value = !showContextPreview.value
+  if (showContextPreview.value && !contextPreview.value) {
+    contextPreviewLoading.value = true
+    try {
+      contextPreview.value = await dryRun(projectStore.currentProjectId)
+    } finally {
+      contextPreviewLoading.value = false
+    }
+  }
+}
 
 const promptTypes = [
   { value: 'seed', label: 'Story Seed' },
@@ -45,7 +88,9 @@ async function generatePrompt() {
   const type = sparkStore.selectedPromptType
   const context = await getManuscriptContext()
   try {
+    addTurn(compactConversationId.value, 'user', `Generate a ${type} writing prompt`)
     currentPrompt.value = await sparkStore.generatePrompt(type, characterNames, context)
+    addTurn(compactConversationId.value, 'assistant', currentPrompt.value)
   } catch (error) {
     console.error('Failed to generate prompt:', error)
   }
@@ -55,7 +100,9 @@ async function generateOutline() {
   const characterNames = storyBibleStore.getCharacterNames()
   const context = await getManuscriptContext()
   try {
+    addTurn(compactConversationId.value, 'user', `Generate outline for: ${idea.value} (tone: ${tone.value})`)
     await sparkStore.generateOutlineAction(idea.value, tone.value, characterNames, targetLength.value, context)
+    addTurn(compactConversationId.value, 'assistant', `Outline generated: ${sparkStore.currentOutline?.title || 'Untitled'}`)
   } catch (error) {
     console.error('Failed to generate outline:', error)
   }
@@ -64,7 +111,9 @@ async function generateOutline() {
 async function generateContent() {
   const characterNames = storyBibleStore.getCharacterNames()
   try {
+    addTurn(compactConversationId.value, 'user', `Write content: ${idea.value} (tone: ${tone.value}, length: ${targetLength.value})`)
     await sparkStore.generateContentStreamingAction(idea.value, tone.value, characterNames, targetLength.value)
+    addTurn(compactConversationId.value, 'assistant', `Content generated (${sparkStore.currentContent?.length || 0} chars)`)
   } catch (error) {
     console.error('Failed to generate content:', error)
   }
@@ -105,6 +154,7 @@ function switchTab(tab) {
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between">
         <span class="font-spark text-accent tracking-wide">Spark</span>
+        <span class="text-[10px] text-text-hint font-ui truncate max-w-[180px]" :title="sparkModelLabel">{{ sparkModelLabel }}</span>
       </div>
       <div class="flex mt-3 gap-1">
         <button
@@ -151,7 +201,24 @@ function switchTab(tab) {
         >
           History
         </button>
+      <div class="flex items-center justify-end mt-2 gap-1">
+        <button
+          v-if="compactIsCompacting"
+          class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint rounded font-ui"
+          disabled
+        >
+          Compacting...
+        </button>
+        <button
+          v-else
+          class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui"
+          title="Compact conversation — summarizes earlier exchanges to keep context fresh"
+          @click="handleCompact"
+        >
+          Compact
+        </button>
       </div>
+    </div>
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
@@ -360,6 +427,33 @@ function switchTab(tab) {
           </button>
         </div>
       </div>
+
+      <details class="mt-2">
+        <summary
+          class="py-1.5 text-[10px] uppercase tracking-widest text-text-hint font-ui cursor-pointer hover:text-text-secondary"
+          @click.prevent="toggleContextPreview"
+        >
+          {{ showContextPreview ? '▼' : '▶' }} Context Preview
+        </summary>
+        <div v-if="contextPreviewLoading" class="mt-2 p-2 bg-bg-tertiary rounded text-xs text-text-hint">
+          Loading context...
+        </div>
+        <div v-else-if="contextPreview" class="mt-2 space-y-1">
+          <div class="text-xs text-text-hint font-ui">{{ contextPreview.sourceDescription }}</div>
+          <div v-for="(line, i) in contextPreview.previewLines" :key="i" class="flex items-start gap-1.5 text-xs">
+            <span class="text-text-hint shrink-0 mt-0.5">•</span>
+            <span class="text-text-secondary">
+              <span v-if="line.signal" :class="line.signal === 'accepted' ? 'text-accent' : 'text-text-hint'">[{{ line.signal }}]</span>
+              {{ line.summary }}
+            </span>
+          </div>
+          <details class="mt-1">
+            <summary class="text-[10px] text-text-hint cursor-pointer hover:text-text-secondary">Full context text</summary>
+            <pre class="mt-1 p-2 bg-bg-tertiary rounded text-[10px] text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto">{{ contextPreview.contextText || '(empty)' }}</pre>
+          </details>
+        </div>
+        <div v-else class="mt-2 text-xs text-text-hint font-ui">No context loaded for this project</div>
+      </details>
     </div>
 
     <div v-if="showOpenAISettings" class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">

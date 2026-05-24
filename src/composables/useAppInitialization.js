@@ -6,6 +6,9 @@ import { useSparkStore } from '../stores/sparkStore'
 import { usePolishStore } from '../stores/polishStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
+import { useArchiveStore } from '../stores/archiveStore'
+import { getLatestStateSnapshot } from '../services/dbService'
+import { useStateSummarizer } from './useStateSummarizer'
 
 export function useAppInitialization() {
   const projectStore = useProjectStore()
@@ -63,6 +66,15 @@ export function useAppInitialization() {
     await storyBibleStore.loadAll(projectStore.currentProjectId)
     await manuscriptStore.loadManuscript(projectStore.currentProjectId)
     sparkStore.setProjectId(projectStore.currentProjectId)
+
+    const archiveStore = useArchiveStore()
+    await projectStore.loadAuthorProfile()
+    await archiveStore.loadStateSnapshots(projectStore.currentProjectId)
+    const { snapshotToRecap } = useStateSummarizer()
+    const latest = await getLatestStateSnapshot(projectStore.currentProjectId)
+    if (latest) {
+      projectStore.lastSessionRecap = snapshotToRecap(latest.state)
+    }
   }
 
   function isOnboardingDismissed() {

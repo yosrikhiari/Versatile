@@ -74,3 +74,19 @@ export function setOpenAIKey(key) {
 
 export const OLLAMA_MODEL = getOllamaModel()
 export const OLLAMA_BASE_URL = getOllamaEndpoint()
+
+export function getConfiguredModel(feature) {
+  const store = getSettingsStore()
+  if (!store) return getOllamaModel()
+  const override = store.featureModels?.[feature]
+  if (override?.model) return override.model
+  return getOllamaModel()
+}
+
+export function getConfiguredProvider(feature) {
+  const store = getSettingsStore()
+  if (!store) return 'ollama'
+  const override = store.featureModels?.[feature]
+  if (override?.provider && override.provider !== 'default') return override.provider
+  return store.aiProvider || 'ollama'
+}

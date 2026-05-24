@@ -1,4 +1,6 @@
-import { OLLAMA_MODEL, OLLAMA_BASE_URL } from '../config/ollama'
+import { OLLAMA_BASE_URL } from '../config/ollama'
+import { aiGenerate, aiStream } from './aiService'
+import { PROVIDERS, FEATURES } from '../config/ai'
 import Dexie from 'dexie'
 
 const LOG_PREFIX = '[OllamaService]'
@@ -9,19 +11,15 @@ function log(...args) {
 
 const OPENAI_KEY_STORAGE = 'versatile_openai_key'
 const OPENAI_FALLBACK_PROMPTED = 'versatile_openai_prompted'
-const ENCRYPTION_KEY = 'versatile_secure_salt'
 
 const EMBEDDING_MODEL_STORAGE = 'versatile_embedding_model'
 const DEFAULT_EMBEDDING_MODEL = 'nomic-embed-text'
-const EMBEDDING_CACHE_KEY = 'versatile_embedding_cache'
 
-// Use IndexedDB for embedding cache instead of localStorage
 const embeddingDB = new Dexie('VersatileEmbeddings')
 embeddingDB.version(1).stores({
   embeddings: 'key, embedding, text, timestamp'
 })
 
-// Simple encryption for localStorage (note: not truly secure without backend, but obfuscates from casual XSS)
 export function simpleEncrypt(text) {
   try {
     const encoder = new TextEncoder()
@@ -232,147 +230,11 @@ function parseJSONWithRetry(text, retries = 3) {
 }
 
 export async function ollamaGenerate(prompt, systemPrompt) {
-  const openaiKey = getStoredOpenAIKey()
-  
-  if (openaiKey) {
-    try {
-      return await openaiGenerateWithOpenAI(prompt, systemPrompt, openaiKey)
-    } catch (error) {
-      throw error
-    }
-  }
-  
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 180000)
-
-  try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        system: systemPrompt,
-        prompt: prompt,
-        stream: false
-      }),
-      signal: controller.signal
-    })
-    
-    clearTimeout(timeout)
-    
-    if (!response.ok) {
-      if (response.status === 500 || response.status === 503) {
-        return await handleOllamaFallback(prompt, systemPrompt)
-      }
-      throw new Error(`Ollama error: ${response.status}`)
-    }
-    const data = await response.json()
-    return data.response
-  } catch (error) {
-    clearTimeout(timeout)
-    if (error.name === 'AbortError' || error.message.includes('Ollama error')) {
-      return await handleOllamaFallback(prompt, systemPrompt)
-    }
-    throw error
-  }
+  return await aiGenerate(prompt, systemPrompt, { feature: FEATURES.CONTENT })
 }
 
 export async function ollamaStream(prompt, systemPrompt, onChunk) {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 120000)
-
-  try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        system: systemPrompt,
-        prompt: prompt,
-        stream: true
-      }),
-      signal: controller.signal
-    })
-
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      if (response.status === 500 || response.status === 503) {
-        return await handleOllamaFallback(prompt, systemPrompt)
-      }
-      throw new Error(`Ollama error: ${response.status}`)
-    }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let fullResponse = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value)
-      const lines = chunk.split('\n').filter(line => line.trim())
-
-      for (const line of lines) {
-        try {
-          const parsed = JSON.parse(line)
-          if (parsed.response) {
-            fullResponse += parsed.response
-            if (onChunk) {
-              onChunk(parsed.response, fullResponse)
-            }
-          }
-        } catch {}
-      }
-    }
-
-    return fullResponse
-  } catch (error) {
-    clearTimeout(timeout)
-    if (error.name === 'AbortError' || error.message.includes('Ollama error')) {
-      return await handleOllamaFallback(prompt, systemPrompt)
-    }
-    throw error
-  }
-}
-
-async function handleOllamaFallback(prompt, systemPrompt) {
-  if (hasOpenAIKey()) {
-    return await openaiGenerateWithOpenAI(prompt, systemPrompt, getStoredOpenAIKey())
-  }
-  
-  if (hasPromptedForOpenAI()) {
-    throw new Error('Ollama unavailable. Please configure OpenAI API key in settings.')
-  }
-  
-  throw new Error('Ollama unavailable. Would you like to use OpenAI instead?')
-}
-
-async function openaiGenerateWithOpenAI(prompt, systemPrompt, apiKey) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7
-    })
-  })
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.error?.message || `OpenAI error: ${response.status}`)
-  }
-  
-  const data = await response.json()
-  return data.choices[0]?.message?.content || ''
+  return await aiStream(prompt, systemPrompt, onChunk, { feature: FEATURES.CONTENT })
 }
 
 export async function checkOllamaConnection() {

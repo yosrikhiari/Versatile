@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getManuscript, saveManuscript, getProject, createProject, updateProject, getAllProjects, updateDailyWordCount, getDailyGoal, getStreakData, getLastSessionData } from '../services/dbService'
+import { getManuscript, saveManuscript, getProject, createProject, updateProject, getAllProjects, updateDailyWordCount, getDailyGoal, getStreakData, getLastSessionData, saveAuthorProfile, getAuthorProfile } from '../services/dbService'
 import { countWords } from '../utils/textUtils'
 
 export const useProjectStore = defineStore('project', () => {
@@ -21,6 +21,8 @@ export const useProjectStore = defineStore('project', () => {
   const longestStreak = ref(0)
   const lastSessionDate = ref(null)
   const lastSessionWords = ref(0)
+  const authorVoiceProfile = ref(null)
+  const lastSessionRecap = ref(null)
 
   const sessionProgress = computed(() => {
     return Math.min((sessionWordCount.value / sessionGoal.value) * 100, 100)
@@ -71,6 +73,17 @@ export const useProjectStore = defineStore('project', () => {
       lastSessionDate.value = null
       lastSessionWords.value = 0
     }
+  }
+
+  async function loadAuthorProfile() {
+    if (!currentProjectId.value) return
+    authorVoiceProfile.value = await getAuthorProfile(currentProjectId.value)
+  }
+
+  async function updateAuthorVoiceProfile(data) {
+    if (!currentProjectId.value) return
+    await saveAuthorProfile(currentProjectId.value, data)
+    authorVoiceProfile.value = { ...authorVoiceProfile.value, ...data }
   }
 
   async function updateStreakAfterSave() {
@@ -174,6 +187,8 @@ export const useProjectStore = defineStore('project', () => {
     longestStreak,
     lastSessionDate,
     lastSessionWords,
+    authorVoiceProfile,
+    lastSessionRecap,
     loadProject,
     saveDocumentDebounced,
     updateContent,
@@ -184,6 +199,8 @@ export const useProjectStore = defineStore('project', () => {
     updateDailyWordCountFromTotal,
     createNewProject,
     updateProjectInfo,
-    loadLastProject
+    loadLastProject,
+    loadAuthorProfile,
+    updateAuthorVoiceProfile
   }
 })

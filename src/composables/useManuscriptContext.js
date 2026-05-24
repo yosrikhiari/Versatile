@@ -1,6 +1,10 @@
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { ollamaEmbeddings, getEmbedding, getEmbeddingCache, setEmbeddingCache, cosineSimilarity } from '../services/ollamaService'
+import { getEmbedding as getEmbeddingFromConfig, getEmbeddings } from '../services/embeddingService'
+import { computeSemanticChunks } from './useSemanticChunking'
 import { getScenes } from '../services/dbService'
+import { useSettingsStore } from '../stores/settingsStore'
+import { EMBEDDING_DEFAULTS } from '../config/ai'
 
 const MAX_CONTEXT_CHARS = 3500
 
@@ -37,6 +41,7 @@ const GENERATOR_TYPE_QUERIES = {
 
 export function useManuscriptContext() {
   const manuscriptStore = useManuscriptStore()
+  const settingsStore = useSettingsStore()
 
   function parseSelector(selector) {
     if (selector === 'current') {
@@ -115,42 +120,96 @@ export function useManuscriptContext() {
     return subsections.map(s => s.content || '').join('\n\n')
   }
 
-  function buildContextText(sections, maxChars) {
+  function getFullText(sections) {
+    const parts = []
+    for (const section of sections) {
+      const sectionContent = getSubsectionContentForSection(section.id).trim()
+      if (!sectionContent) continue
+      parts.push(`[Section ${(section.order || 0) + 1}: ${section.title || 'Untitled'}]`)
+      parts.push(sectionContent)
+    }
+    return parts.join('\n\n')
+  }
+
+  async function buildContextText(sections, maxChars) {
+    const fullText = getFullText(sections)
+    if (!fullText.trim()) {
+      return { contextText: '', totalChars: 0, truncated: false }
+    }
+
+    const embeddingProvider = settingsStore.embeddingProvider || EMBEDDING_DEFAULTS.provider
+    const embeddingModel = settingsStore.embeddingModel || EMBEDDING_DEFAULTS.model
+    const threshold = settingsStore.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
+
+    try {
+      const chunks = await computeSemanticChunks(fullText, {
+        maxChunkSize: maxChars,
+        embeddingProvider,
+        embeddingModel,
+        threshold
+      })
+
+      const parts = []
+      let totalChars = 0
+      let truncated = false
+
+      for (const chunk of chunks) {
+        if (!chunk.text.trim()) continue
+        const chunkChars = chunk.text.length + 2
+        if (totalChars + chunkChars > maxChars && totalChars > 0) {
+          const remaining = maxChars - totalChars
+          if (remaining > 50) {
+            parts.push(chunk.text.slice(0, remaining))
+            totalChars += remaining
+          }
+          truncated = true
+          break
+        }
+        parts.push(chunk.text)
+        parts.push('')
+        totalChars += chunkChars
+      }
+
+      return {
+        contextText: parts.join('\n'),
+        totalChars,
+        truncated
+      }
+    } catch (error) {
+      console.warn('[useManuscriptContext] Semantic chunking failed, falling back to truncation:', error.message)
+      return truncateFallback(sections, maxChars)
+    }
+  }
+
+  function truncateFallback(sections, maxChars) {
     const parts = []
     let totalChars = 0
     let truncated = false
-    
+
     for (const section of sections) {
-      const sectionContent = getSubsectionContentForSection(section.id)
-      const sectionText = sectionContent.trim()
-      
-      if (!sectionText) continue
-      
+      const sectionContent = getSubsectionContentForSection(section.id).trim()
+      if (!sectionContent) continue
       const sectionHeader = `[Section ${(section.order || 0) + 1}: ${section.title || 'Untitled'}]\n`
-      const sectionChars = sectionHeader.length + sectionText.length + 2
-      
+      const sectionChars = sectionHeader.length + sectionContent.length + 2
+
       if (totalChars + sectionChars > maxChars && totalChars > 0) {
         truncated = true
         const remainingChars = maxChars - totalChars
         if (remainingChars > 50) {
           parts.push(sectionHeader)
-          parts.push(sectionText.slice(0, remainingChars - sectionHeader.length))
+          parts.push(sectionContent.slice(0, remainingChars - sectionHeader.length))
         }
         totalChars += sectionChars
         break
       }
-      
+
       parts.push(sectionHeader)
-      parts.push(sectionText)
+      parts.push(sectionContent)
       parts.push('')
       totalChars += sectionChars
     }
-    
-    return {
-      contextText: parts.join('\n'),
-      totalChars,
-      truncated
-    }
+
+    return { contextText: parts.join('\n'), totalChars, truncated }
   }
 
   function getAllSubsectionEmbeddings() {
@@ -182,75 +241,65 @@ export function useManuscriptContext() {
     try {
       const queryText = GENERATOR_TYPE_QUERIES[generatorType] || GENERATOR_TYPE_QUERIES.spark
       const queryEmbedding = await ollamaEmbeddings(queryText)
-      if (!queryEmbedding) {
-        return null
-      }
+      if (!queryEmbedding) return null
 
-      const subsectionEmbeddings = getAllSubsectionEmbeddings()
-      if (subsectionEmbeddings.length === 0) {
-        return null
-      }
+      const embeddingProvider = settingsStore.embeddingProvider || EMBEDDING_DEFAULTS.provider
+      const embeddingModel = settingsStore.embeddingModel || EMBEDDING_DEFAULTS.model
+      const threshold = settingsStore.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
 
-      const scoredSubsections = subsectionEmbeddings.map(subsection => {
-        const subsectionData = getSubsectionById(subsection.subsectionId)
-        if (!subsectionData || !subsectionData.content) {
-          return null
-        }
-        const similarity = cosineSimilarity(queryEmbedding, subsection.embedding)
-        const sectionOrder = getSectionOrder(subsectionData.sectionId)
-        const recencyMultiplier = 1 + (sectionOrder / maxSectionOrder) * 0.5
-        const finalScore = similarity * recencyMultiplier
+      const sortedSections = manuscriptStore.sortedSections
+      const fullText = getFullText(sortedSections)
+      if (!fullText.trim()) return null
+
+      const chunks = await computeSemanticChunks(fullText, {
+        maxChunkSize: maxChars,
+        embeddingProvider,
+        embeddingModel,
+        threshold
+      })
+
+      const chunkTexts = chunks.map(c => c.text).filter(Boolean)
+      if (chunkTexts.length === 0) return null
+
+      const chunkEmbeddings = await getEmbeddings(chunkTexts, {
+        provider: embeddingProvider,
+        model: embeddingModel
+      })
+
+      const scored = chunks.map((chunk, i) => {
+        const emb = chunkEmbeddings[i]
+        if (!emb || !chunk.text.trim()) return null
+        const similarity = cosineSimilarity(queryEmbedding, emb)
         return {
-          subsectionId: subsection.subsectionId,
-          sectionId: subsectionData.sectionId,
-          content: subsectionData.content,
-          score: finalScore,
-          sectionOrder
+          text: chunk.text,
+          score: similarity,
+          sentences: chunk.sentences
         }
       }).filter(Boolean)
 
-      scoredSubsections.sort((a, b) => b.score - a.score)
+      scored.sort((a, b) => b.score - a.score)
 
-      const chunks = []
+      const selected = []
       let totalChars = 0
-      for (const subsection of scoredSubsections) {
-        const subsectionText = subsection.content.trim()
-        if (!subsectionText) continue
+      const sectionTitles = new Set()
 
-        const section = manuscriptStore.sortedSections.find(s => s.id === subsection.sectionId)
-        const header = `[Section ${(section?.order || 0) + 1}: ${section?.title || 'Untitled'}]\n`
-        const subsectionHeader = `[Subsection ${subsection.subsectionId}]\n`
-        const chunkChars = header.length + subsectionHeader.length + subsectionText.length + 2
-
-        if (totalChars + chunkChars > maxChars && totalChars > 0) {
-          break
-        }
-
-        chunks.push({ subsection, header, subsectionHeader, text: subsectionText, chars: chunkChars })
-        totalChars += chunkChars
+      for (const item of scored) {
+        const chars = item.text.length + 2
+        if (totalChars + chars > maxChars && totalChars > 0) break
+        selected.push(item.text)
+        totalChars += chars
       }
 
-      if (chunks.length === 0) {
-        return null
-      }
-
-      const contextText = chunks.map(c => 
-        c.header + c.subsectionHeader + c.text
-      ).join('\n\n')
-
-      const sectionTitles = [...new Set(chunks.map(c => {
-        const section = manuscriptStore.sortedSections.find(s => s.id === c.subsection.sectionId)
-        return section?.title || `Section ${(section?.order || 0) + 1}`
-      }))]
+      if (selected.length === 0) return null
 
       return {
-        contextText,
-        sectionTitles,
+        contextText: selected.join('\n\n'),
+        sectionTitles: [],
         totalChars,
         truncated: false
       }
     } catch (error) {
-      console.warn('[useManuscriptContext] Embedding retrieval failed, falling back to truncation:', error.message)
+      console.warn('[useManuscriptContext] Retrieval failed:', error.message)
       return null
     }
   }
@@ -302,7 +351,7 @@ export function useManuscriptContext() {
       }
     }
     
-    const { contextText, totalChars, truncated } = buildContextText(selectedSections, MAX_CONTEXT_CHARS)
+    const { contextText, totalChars, truncated } = await buildContextText(selectedSections, MAX_CONTEXT_CHARS)
     
     return {
       contextText,
