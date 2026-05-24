@@ -2,3 +2,12 @@ node_modules/
 dist/
 *.zip
 test-results/
+.env
+docker-compose.yml
+vite_err.txt
+vite_out.txt
+server/api.exe
+server/go.mod
+server/server_err.txt
+server/go.sum
+server/server_out.txt

@@ -1,4 +1,7 @@
-import { OLLAMA_MODEL, OLLAMA_BASE_URL } from '../config/ollama'
+import { OLLAMA_BASE_URL } from '../config/ollama'
+import { aiGenerate, aiStream } from './aiService'
+import { PROVIDERS, FEATURES } from '../config/ai'
+import Dexie from 'dexie'
 
 const LOG_PREFIX = '[OllamaService]'
 
@@ -11,14 +14,44 @@ const OPENAI_FALLBACK_PROMPTED = 'versatile_openai_prompted'
 
 const EMBEDDING_MODEL_STORAGE = 'versatile_embedding_model'
 const DEFAULT_EMBEDDING_MODEL = 'nomic-embed-text'
-const EMBEDDING_CACHE_KEY = 'versatile_embedding_cache'
+
+const embeddingDB = new Dexie('VersatileEmbeddings')
+embeddingDB.version(1).stores({
+  embeddings: 'key, embedding, text, timestamp'
+})
+
+export function simpleEncrypt(text) {
+  try {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(text)
+    return btoa(String.fromCharCode(...data))
+  } catch {
+    return text
+  }
+}
+
+export function simpleDecrypt(encoded) {
+  try {
+    const binaryString = atob(encoded)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    return new TextDecoder().decode(bytes)
+  } catch {
+    return encoded
+  }
+}
 
 export function getStoredOpenAIKey() {
-  return localStorage.getItem(OPENAI_KEY_STORAGE)
+  const encrypted = localStorage.getItem(OPENAI_KEY_STORAGE)
+  if (!encrypted) return null
+  return simpleDecrypt(encrypted)
 }
 
 export function setStoredOpenAIKey(key) {
-  localStorage.setItem(OPENAI_KEY_STORAGE, key)
+  const encrypted = simpleEncrypt(key)
+  localStorage.setItem(OPENAI_KEY_STORAGE, encrypted)
 }
 
 export function hasOpenAIKey() {
@@ -41,21 +74,35 @@ export function setEmbeddingModel(model) {
   localStorage.setItem(EMBEDDING_MODEL_STORAGE, model)
 }
 
-export function getEmbeddingCache() {
+export async function getEmbeddingCache() {
   try {
-    const cached = localStorage.getItem(EMBEDDING_CACHE_KEY)
-    return cached ? JSON.parse(cached) : {}
+    const all = await embeddingDB.embeddings.toArray()
+    return all.reduce((acc, item) => {
+      acc[item.key] = { embedding: item.embedding, text: item.text, timestamp: item.timestamp }
+      return acc
+    }, {})
   } catch {
     return {}
   }
 }
 
-export function setEmbeddingCache(cache) {
-  localStorage.setItem(EMBEDDING_CACHE_KEY, JSON.stringify(cache))
+export async function setEmbeddingCache(cache) {
+  try {
+    const entries = Object.entries(cache).map(([key, value]) => ({
+      key,
+      embedding: value.embedding,
+      text: value.text,
+      timestamp: value.timestamp
+    }))
+    await embeddingDB.embeddings.clear()
+    await embeddingDB.embeddings.bulkAdd(entries)
+  } catch (e) {
+    console.warn('Failed to save embedding cache:', e)
+  }
 }
 
-export function clearEmbeddingCache() {
-  localStorage.removeItem(EMBEDDING_CACHE_KEY)
+export async function clearEmbeddingCache() {
+  await embeddingDB.embeddings.clear()
 }
 
 export function cosineSimilarity(a, b) {
@@ -113,7 +160,7 @@ export async function ollamaEmbeddings(text, model = null) {
 }
 
 export async function getEmbedding(entityType, entityId, fullText) {
-  const cache = getEmbeddingCache()
+  const cache = await getEmbeddingCache()
   const cacheKey = `${entityType}_${entityId}`
   const cached = cache[cacheKey]
 
@@ -126,7 +173,7 @@ export async function getEmbedding(entityType, entityId, fullText) {
     const embedding = await ollamaEmbeddings(fullText)
     if (embedding) {
       cache[cacheKey] = { embedding, text: fullText, timestamp: Date.now() }
-      setEmbeddingCache(cache)
+      await setEmbeddingCache(cache)
     }
     return embedding
   } catch (error) {
@@ -183,147 +230,11 @@ function parseJSONWithRetry(text, retries = 3) {
 }
 
 export async function ollamaGenerate(prompt, systemPrompt) {
-  const openaiKey = getStoredOpenAIKey()
-  
-  if (openaiKey) {
-    try {
-      return await openaiGenerateWithOpenAI(prompt, systemPrompt, openaiKey)
-    } catch (error) {
-      throw error
-    }
-  }
-  
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 180000)
-
-  try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        system: systemPrompt,
-        prompt: prompt,
-        stream: false
-      }),
-      signal: controller.signal
-    })
-    
-    clearTimeout(timeout)
-    
-    if (!response.ok) {
-      if (response.status === 500 || response.status === 503) {
-        return await handleOllamaFallback(prompt, systemPrompt)
-      }
-      throw new Error(`Ollama error: ${response.status}`)
-    }
-    const data = await response.json()
-    return data.response
-  } catch (error) {
-    clearTimeout(timeout)
-    if (error.name === 'AbortError' || error.message.includes('Ollama error')) {
-      return await handleOllamaFallback(prompt, systemPrompt)
-    }
-    throw error
-  }
+  return await aiGenerate(prompt, systemPrompt, { feature: FEATURES.CONTENT })
 }
 
 export async function ollamaStream(prompt, systemPrompt, onChunk) {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 120000)
-
-  try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        system: systemPrompt,
-        prompt: prompt,
-        stream: true
-      }),
-      signal: controller.signal
-    })
-
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      if (response.status === 500 || response.status === 503) {
-        return await handleOllamaFallback(prompt, systemPrompt)
-      }
-      throw new Error(`Ollama error: ${response.status}`)
-    }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let fullResponse = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value)
-      const lines = chunk.split('\n').filter(line => line.trim())
-
-      for (const line of lines) {
-        try {
-          const parsed = JSON.parse(line)
-          if (parsed.response) {
-            fullResponse += parsed.response
-            if (onChunk) {
-              onChunk(parsed.response, fullResponse)
-            }
-          }
-        } catch {}
-      }
-    }
-
-    return fullResponse
-  } catch (error) {
-    clearTimeout(timeout)
-    if (error.name === 'AbortError' || error.message.includes('Ollama error')) {
-      return await handleOllamaFallback(prompt, systemPrompt)
-    }
-    throw error
-  }
-}
-
-async function handleOllamaFallback(prompt, systemPrompt) {
-  if (hasOpenAIKey()) {
-    return await openaiGenerateWithOpenAI(prompt, systemPrompt, getStoredOpenAIKey())
-  }
-  
-  if (hasPromptedForOpenAI()) {
-    throw new Error('Ollama unavailable. Please configure OpenAI API key in settings.')
-  }
-  
-  throw new Error('Ollama unavailable. Would you like to use OpenAI instead?')
-}
-
-async function openaiGenerateWithOpenAI(prompt, systemPrompt, apiKey) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7
-    })
-  })
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.error?.message || `OpenAI error: ${response.status}`)
-  }
-  
-  const data = await response.json()
-  return data.choices[0]?.message?.content || ''
+  return await aiStream(prompt, systemPrompt, onChunk, { feature: FEATURES.CONTENT })
 }
 
 export async function checkOllamaConnection() {

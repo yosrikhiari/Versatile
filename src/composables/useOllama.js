@@ -1,8 +1,11 @@
-import { ollamaGenerate, ollamaStream, getStoredOpenAIKey, setStoredOpenAIKey, setPromptedForOpenAI, hasOpenAIKey, hasPromptedForOpenAI, getEmbedding, cosineSimilarity } from '../services/ollamaService'
+import { getStoredOpenAIKey, setStoredOpenAIKey, setPromptedForOpenAI, hasOpenAIKey, hasPromptedForOpenAI, getEmbedding, cosineSimilarity } from '../services/ollamaService'
+import { aiGenerate, aiStream } from '../services/aiService'
+import { FEATURES } from '../config/ai'
 import { useProjectStore } from '../stores/projectStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useGraphContext } from './useGraphContext'
 import { useNetworkSuggestions } from './useNetworkSuggestions'
+import { useContextCompactor } from './useContextCompactor'
 
 const SPARK_SYSTEM_PROMPT = `You are a creative writing prompt generator for fiction writers.
 You generate short, specific, evocative prompts that inspire a writer 
@@ -32,11 +35,11 @@ const FIELD_LENGTH_CONSTRAINTS = {
 function getProjectContext() {
   const projectStore = useProjectStore()
   const parts = []
-  if (projectStore.currentGenre) {
-    parts.push(`Genre: ${projectStore.currentGenre}`)
+  if (projectStore.currentCategory) {
+    parts.push(`Category: ${projectStore.currentCategory}`)
   }
-  if (projectStore.currentSynopsis) {
-    parts.push(`Story synopsis: ${projectStore.currentSynopsis}`)
+  if (projectStore.currentDescription) {
+    parts.push(`Description: ${projectStore.currentDescription}`)
   }
   return parts.length > 0 ? `\n\n${parts.join('\n')}` : ''
 }
@@ -159,7 +162,7 @@ export async function testOllamaConnection() {
   
   try {
     const response = await retryWithBackoff(() => 
-      ollamaGenerate(TEST_PROMPT, 'You are a helpful assistant.')
+      aiGenerate(TEST_PROMPT, 'You are a helpful assistant.', { feature: FEATURES.CONTENT })
     )
     const trimmed = response.trim().toUpperCase()
     return { success: trimmed === 'OK', message: trimmed }
@@ -227,10 +230,10 @@ Make the prompt specific to these characters.`
 Make it vivid and specific. Do not write the scene.`
   }
 
-  return ollamaGenerate(userPrompt, SPARK_SYSTEM_PROMPT)
+  return aiGenerate(userPrompt, SPARK_SYSTEM_PROMPT, { feature: FEATURES.SPARK })
 }
 
-export async function generateBlueprint(idea, tone, characterNames = [], targetLength = 'full', manuscriptContext = null) {
+export async function generateOutline(idea, tone, characterNames = [], targetLength = 'full', manuscriptContext = null) {
   const projectContext = getProjectContext()
   
   let contextInstruction = ''
@@ -244,7 +247,7 @@ Idea: ${idea}
 Tone: ${tone}${projectContext}${contextInstruction}`
 
   try {
-    const response = await ollamaGenerate(userPrompt, BLUEPRINT_SYSTEM_PROMPT)
+    const response = await aiGenerate(userPrompt, BLUEPRINT_SYSTEM_PROMPT, { feature: FEATURES.SPARK })
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
       return getDefaultBlueprint(idea, tone)
@@ -316,7 +319,7 @@ If no issues are found, return: { "issues": [], "overallNote": "..." }`
 
   try {
     const response = await retryWithBackoff(() => 
-      ollamaGenerate(userPrompt, POLISH_SYSTEM_PROMPT)
+      aiGenerate(userPrompt, POLISH_SYSTEM_PROMPT, { feature: FEATURES.POLISH })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
@@ -355,7 +358,7 @@ Be concise and only extract what is clearly present in the text.`
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, DETECT_SYSTEM_PROMPT)
+      aiGenerate(userPrompt, DETECT_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
@@ -371,7 +374,7 @@ Be concise and only extract what is clearly present in the text.`
   }
 }
 
-export async function generateChapter(idea, tone, characterNames = [], targetLength = 'short') {
+export async function generateContent(idea, tone, characterNames = [], targetLength = 'short') {
   const lengthInstructions = targetLength === 'short' 
     ? 'Write a short scene of about 300-500 words.'
     : 'Write a full chapter of about 1500-2000 words.'
@@ -388,7 +391,7 @@ Scene idea: ${idea}${projectContext}`
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, 'You are a creative fiction writer. Write engaging prose.')
+      aiGenerate(userPrompt, 'You are a creative fiction writer. Write engaging prose.', { feature: FEATURES.CONTENT })
     )
     return { text: response, error: null }
   } catch (error) {
@@ -396,7 +399,7 @@ Scene idea: ${idea}${projectContext}`
   }
 }
 
-export async function generateChapterStreaming(idea, tone, characterNames = [], targetLength = 'short', onProgress) {
+export async function generateContentStreaming(idea, tone, characterNames = [], targetLength = 'short', onProgress) {
   const lengthInstructions = targetLength === 'short' 
     ? 'Write a short scene of about 300-500 words.'
     : 'Write a full chapter of about 1500-2000 words.'
@@ -413,7 +416,7 @@ Scene idea: ${idea}${projectContext}`
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaStream(userPrompt, 'You are a creative fiction writer. Write engaging prose.', onProgress)
+      aiStream(userPrompt, 'You are a creative fiction writer. Write engaging prose.', onProgress, { feature: FEATURES.CONTENT })
     )
     return { text: response, error: null }
   } catch (error) {
@@ -454,7 +457,7 @@ Examples of varied outputs:
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, CHARACTER_SYSTEM_PROMPT)
+      aiGenerate(userPrompt, CHARACTER_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed || !parsed.name && !parsed.Name) {
@@ -533,7 +536,7 @@ Example outputs:
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, IDEA_CHARACTER_SYSTEM_PROMPT)
+      aiGenerate(userPrompt, IDEA_CHARACTER_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed || !parsed.name && !parsed.Name) {
@@ -611,7 +614,7 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, IDEA_CHARACTER_SYSTEM_PROMPT)
+      aiGenerate(userPrompt, IDEA_CHARACTER_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
     )
     
     let parsed = sanitizeJsonResponse(response)
@@ -664,7 +667,7 @@ Do NOT generate name identical to any existing location. Be creative and distinc
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, LOCATION_SYSTEM_PROMPT)
+      aiGenerate(userPrompt, LOCATION_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
     )
     
     let parsed = sanitizeJsonResponse(response)
@@ -722,7 +725,7 @@ Examples:
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, LOCATION_SYSTEM_PROMPT)
+      aiGenerate(userPrompt, LOCATION_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed || !parsed.name && !parsed.Name) {
@@ -774,7 +777,7 @@ Examples:
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, PLOT_SYSTEM_PROMPT)
+      aiGenerate(userPrompt, PLOT_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed || !parsed.title && !parsed.Title) {
@@ -845,7 +848,7 @@ All values must be strings. No markdown.`
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, 'You are a creative character designer.')
+      aiGenerate(userPrompt, 'You are a creative character designer.', { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
@@ -861,6 +864,55 @@ All values must be strings. No markdown.`
     }
     
     return result
+  } catch (error) {
+    return null
+  }
+}
+
+export async function enhanceExistingCharacter(charData, manuscriptContext = null) {
+  const projectContext = getProjectContext()
+  const entityContext = getExistingEntitiesContext()
+
+  let contextInstruction = ''
+  if (manuscriptContext?.contextText) {
+    contextInstruction = `\n\nManuscript context:\n${manuscriptContext.contextText}`
+  }
+
+  const userPrompt = `You are a creative writing assistant helping improve a fictional character.
+
+Here is the current character data:
+${JSON.stringify(charData, null, 2)}
+${projectContext}${entityContext}${contextInstruction}
+
+Your task: Return an enhanced version of ALL fields. Keep the core identity and essence, but make each field richer, more specific, and more compelling. Improve the writing quality, add depth, and ensure all fields are internally consistent with each other.
+
+Respond ONLY with a valid JSON object with these exact keys:
+{
+  "name": "improved name",
+  "role": "improved role",
+  "goal": "improved goal",
+  "voice": "improved voice",
+  "notes": "improved notes"
+}
+
+No markdown, no explanation, no preamble. JSON only.`
+
+  try {
+    const response = await retryWithBackoff(() =>
+      aiGenerate(userPrompt, 'You are a creative character designer.', { feature: FEATURES.WORLDBUILDING })
+    )
+    const parsed = sanitizeJsonResponse(response)
+    if (!parsed) {
+      throw new Error('Invalid JSON')
+    }
+
+    return {
+      name: parsed.name || parsed.Name || charData.name || '',
+      role: parsed.role || parsed.Role || charData.role || '',
+      goal: parsed.goal || parsed.Goal || charData.goal || '',
+      voice: parsed.voice || parsed.Voice || charData.voice || '',
+      notes: parsed.notes || parsed.Notes || charData.notes || ''
+    }
   } catch (error) {
     return null
   }
@@ -961,7 +1013,7 @@ Single string value, no markdown.`
   
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, 'You are a creative writing assistant.')
+      aiGenerate(userPrompt, 'You are a creative writing assistant.', { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed || (!parsed[fieldName] && !parsed[fieldName.charAt(0).toUpperCase() + fieldName.slice(1)])) {
@@ -1037,7 +1089,7 @@ All values must be strings. No markdown.`
 
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, 'You are a creative location designer.')
+      aiGenerate(userPrompt, 'You are a creative location designer.', { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
@@ -1053,6 +1105,19 @@ All values must be strings. No markdown.`
     return result
   } catch (error) {
     return null
+  }
+}
+
+export function useCompactConversation() {
+  const compactor = useContextCompactor()
+  return {
+    compactConversation: compactor.compactConversation,
+    shouldSuggestCompact: compactor.shouldSuggestCompact,
+    isCompacting: compactor.isCompacting,
+    startConversation: compactor.startConversation,
+    addTurn: compactor.addTurn,
+    getTurns: compactor.getTurns,
+    clearConversation: compactor.clearConversation
   }
 }
 
@@ -1108,7 +1173,7 @@ All values must be strings or arrays. No markdown.`
   
   try {
     const response = await retryWithBackoff(() =>
-      ollamaGenerate(userPrompt, 'You are a creative plot designer.')
+      aiGenerate(userPrompt, 'You are a creative plot designer.', { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {

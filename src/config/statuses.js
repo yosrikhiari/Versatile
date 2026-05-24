@@ -1,21 +1,20 @@
-export const CHAPTER_STATUSES = [
+export const SECTION_STATUSES = [
   { value: 'planning', label: 'Planning', color: '#6b7280' },
-  { value: 'outline', label: 'Outlined', color: '#3b82f6' },
-  { value: 'writing', label: 'Writing', color: '#f59e0b' },
-  { value: 'revision', label: 'Revision', color: '#8b5cf6' },
-  { value: 'complete', label: 'Complete', color: '#10b981' }
+  { value: 'drafting', label: 'Drafting', color: '#3b82f6' },
+  { value: 'review', label: 'Under Review', color: '#f59e0b' },
+  { value: 'final', label: 'Final', color: '#10b981' }
 ]
 
 export const LENS_MAP = {
   weakVerbs: 'weak_verb',
   repetition: 'repetition',
   pacing: 'pacing',
-  antecedents: 'antecedent'
+  clarity: 'unclear_references'
 }
 
 export const LENS_LABELS = {
   weak_verb: 'Weak Verbs',
   repetition: 'Repetition',
   pacing: 'Pacing',
-  antecedent: 'Unclear Antecedents'
+  unclear_references: 'Clarity Issues'
 }

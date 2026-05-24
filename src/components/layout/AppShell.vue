@@ -10,6 +10,7 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import GoalProgressBar from '../shared/GoalProgressBar.vue'
 import ProjectSettingsModal from './ProjectSettingsModal.vue'
 import RecapBanner from './RecapBanner.vue'
+import ContextStatusIndicator from './ContextStatusIndicator.vue'
 
 const projectStore = useProjectStore()
 const sparkStore = useSparkStore()
@@ -25,6 +26,7 @@ const outlineOpen = ref(false)
 const chaptersOpen = ref(false)
 const networkOpen = ref(false)
 const timelineOpen = ref(false)
+const archiveOpen = ref(false)
 const focusMode = ref(false)
 const flowMode = ref(false)
 const showProjectSettings = ref(false)
@@ -91,6 +93,7 @@ function closeAllPanels() {
   outlineOpen.value = false
   chaptersOpen.value = false
   networkOpen.value = false
+  archiveOpen.value = false
 }
 
 function toggleSpark() {
@@ -176,6 +179,15 @@ function toggleTimeline() {
   }
 }
 
+function toggleArchive() {
+  if (archiveOpen.value) {
+    archiveOpen.value = false
+  } else {
+    closeAllPanels()
+    archiveOpen.value = true
+  }
+}
+
 function toggleFlow() {
   markCoreLoop('write')
   if (flowMode.value) {
@@ -209,11 +221,11 @@ onMounted(async () => {
       <div class="flex items-center">
         <h1 class="text-xl font-semibold text-accent">Versatile</h1>
         <nav v-if="showCoreLoop && !flowMode" class="ml-6 flex items-center gap-3 text-xs text-text-hint opacity-40 tracking-wide">
-          <button @click="activateFlow(); flowMode = true" class="hover:text-text-primary transition-colors">Write</button>
+          <button class="hover:text-text-primary transition-colors" @click="activateFlow(); flowMode = true">Write</button>
           <span>·</span>
-          <button @click="togglePolish" class="hover:text-text-primary transition-colors">Analyze</button>
+          <button class="hover:text-text-primary transition-colors" @click="togglePolish">Analyze</button>
           <span>·</span>
-          <button @click="toggleStoryBible" class="hover:text-text-primary transition-colors">Build</button>
+          <button class="hover:text-text-primary transition-colors" @click="toggleStoryBible">Build</button>
         </nav>
       </div>
 
@@ -262,7 +274,6 @@ onMounted(async () => {
           @click="toggleChapters" 
         />
         <button
-          @click="toggleNetwork"
           :class="[
             'p-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent',
             networkOpen 
@@ -270,11 +281,11 @@ onMounted(async () => {
               : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
           ]"
           title="Network (8)"
+          @click="toggleNetwork"
         >
           <BaseIcon name="network" :size="18" />
         </button>
         <button 
-          @click="toggleTimeline"
           :class="[
             'p-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent',
             timelineOpen 
@@ -282,28 +293,42 @@ onMounted(async () => {
               : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
           ]"
           title="Timeline (t)"
+          @click="toggleTimeline"
         >
           <BaseIcon name="clock" :size="18" />
+        </button>
+        <button
+          :class="[
+            'p-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent',
+            archiveOpen
+              ? 'bg-accent text-bg-primary shadow-md'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+          ]"
+          title="Archive"
+          @click="toggleArchive"
+        >
+          <BaseIcon name="archive" :size="18" />
         </button>
       </div>
 
       <div class="flex items-center gap-4 text-sm text-text-secondary">
-        <button @click="emit('export')" @keydown.enter="emit('export')" class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded p-1" title="Export project (Ctrl+S)">
+        <ContextStatusIndicator />
+        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded p-1" title="Export project (Ctrl+S)" @click="emit('export')" @keydown.enter="emit('export')">
           <BaseIcon name="upload" :size="18" />
         </button>
-        <button @click="emit('export-pdf')" class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded p-1" title="Export to PDF">
+        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded p-1" title="Export to PDF" @click="emit('export-pdf')">
           <BaseIcon name="file-text" :size="18" />
         </button>
-        <button @click="emit('import')" @keydown.enter="emit('import')" class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded p-1" title="Import project (Ctrl+I)">
+        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded p-1" title="Import project (Ctrl+I)" @click="emit('import')" @keydown.enter="emit('import')">
           <BaseIcon name="download" :size="18" />
         </button>
         <div class="flex items-center gap-2">
           <div class="relative">
             <button 
               v-if="projectName" 
-              @click="showProjectDropdown = !showProjectDropdown"
               class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded p-1 flex items-center gap-1 transition-colors"
               title="Switch project"
+              @click="showProjectDropdown = !showProjectDropdown"
             >
               {{ projectName }}
               <BaseIcon name="chevron-down" :size="14" />
@@ -316,17 +341,17 @@ onMounted(async () => {
               <div v-if="isCreatingProject" class="px-3 py-2 border-b border-border-subtle">
                 <input
                   v-model="newProjectName"
-                  @keydown.enter="createProject"
-                  @keydown.escape="isCreatingProject = false"
                   placeholder="Project name..."
                   class="w-full px-2 py-1.5 text-sm bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent/50"
                   autofocus
+                  @keydown.enter="createProject"
+                  @keydown.escape="isCreatingProject = false"
                 />
               </div>
               <button
                 v-else
-                @click="isCreatingProject = true"
                 class="w-full text-left px-3 py-2 text-sm text-accent hover:bg-surface-hover flex items-center gap-2"
+                @click="isCreatingProject = true"
               >
                 <BaseIcon name="plus" :size="14" />
                 Create new project
@@ -334,18 +359,18 @@ onMounted(async () => {
               <button
                 v-for="project in projects"
                 :key="project.id"
-                @click="switchProject(project.id)"
                 :class="[
                   'w-full text-left px-3 py-2 text-sm hover:bg-surface-hover',
                   project.id === projectStore.currentProjectId ? 'text-accent font-medium' : 'text-text-secondary'
                 ]"
+                @click="switchProject(project.id)"
               >
                 {{ project.name }}
               </button>
               <hr class="my-1 border-border-subtle" />
               <button 
-                @click="showProjectDropdown = false; showProjectSettings = true"
                 class="w-full text-left px-3 py-2 text-sm text-text-hint hover:bg-surface-hover flex items-center gap-2"
+                @click="showProjectDropdown = false; showProjectSettings = true"
               >
                 <BaseIcon name="settings" :size="14" />
                 Project Settings
@@ -442,6 +467,13 @@ onMounted(async () => {
         class="w-[320px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-300"
       >
         <slot name="spark"></slot>
+      </aside>
+
+      <aside 
+        v-if="archiveOpen && !flowMode" 
+        class="w-[320px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-300"
+      >
+        <slot name="archive"></slot>
       </aside>
     </div>
 

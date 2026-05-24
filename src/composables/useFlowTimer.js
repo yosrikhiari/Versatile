@@ -1,4 +1,7 @@
 import { ref, onUnmounted } from 'vue'
+import { useArchiveStore } from '../stores/archiveStore'
+import { useAuthorModel } from './useAuthorModel'
+import { useStateSummarizer } from './useStateSummarizer'
 
 export function useFlowTimer(projectStore) {
   const duration = ref(1200)
@@ -64,10 +67,12 @@ export function useFlowTimer(projectStore) {
     initAudio()
 
     timerInterval = setInterval(() => {
-      if (remaining.value > 0) {
-        remaining.value--
-      } else {
-        endSession()
+      if (isRunning.value && !isPaused.value) {
+        if (remaining.value > 0) {
+          remaining.value--
+        } else {
+          endSession()
+        }
       }
     }, 1000)
 
@@ -100,7 +105,7 @@ export function useFlowTimer(projectStore) {
     showSessionEndModal.value = true
     isRunning.value = false
     isPaused.value = false
-    
+
     if (timerInterval) {
       clearInterval(timerInterval)
       timerInterval = null
@@ -108,6 +113,27 @@ export function useFlowTimer(projectStore) {
     if (idleInterval) {
       clearInterval(idleInterval)
       idleInterval = null
+    }
+
+    const projectId = projectStore.currentProjectId
+    if (projectId) {
+      const archiveStore = useArchiveStore()
+      const { summarize, snapshotToRecap } = useStateSummarizer()
+      const { buildProfileFromSession } = useAuthorModel()
+
+      const state = summarize()
+      if (state) {
+        archiveStore.saveEndOfSessionState(projectId, Date.now().toString(), state).then(() => {
+          projectStore.lastSessionRecap = snapshotToRecap(state)
+        })
+      }
+
+      const sessionData = {
+        wordCountDelta: projectStore.sessionWordCount,
+        genre: projectStore.currentCategory
+      }
+      const updatedProfile = buildProfileFromSession(sessionData)
+      projectStore.updateAuthorVoiceProfile({ data: updatedProfile })
     }
   }
 

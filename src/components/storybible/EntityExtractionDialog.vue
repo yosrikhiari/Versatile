@@ -94,15 +94,16 @@ function selectAllNew() {
               <h2 class="font-medium text-text-primary">Extracted Entities</h2>
             </div>
             <button
-              @click="$emit('close')"
               class="p-1 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover transition-colors"
+              @click="$emit('close')"
             >
               <BaseIcon name="x" :size="18" />
             </button>
           </div>
 
           <div class="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
-            <div v-if="extractedEntities.characters.length === 0 && extractedEntities.locations.length === 0" 
+            <div
+v-if="extractedEntities.characters.length === 0 && extractedEntities.locations.length === 0" 
                  class="text-center py-8 text-text-hint">
               <BaseIcon name="search-x" :size="32" class="mx-auto mb-2 opacity-50" />
               <p>No potential entities found in the text.</p>
@@ -114,7 +115,8 @@ function selectAllNew() {
                 <div class="flex items-center gap-2">
                   <BaseIcon name="user" :size="16" class="text-text-secondary" />
                   <h3 class="text-sm font-medium text-text-primary">Characters</h3>
-                  <span v-if="newCharacterCount > 0" 
+                  <span
+v-if="newCharacterCount > 0" 
                         class="text-xs px-1.5 py-0.5 bg-accent/20 text-accent rounded">
                     {{ newCharacterCount }} new
                   </span>
@@ -124,11 +126,11 @@ function selectAllNew() {
                 <button
                   v-for="char in extractedEntities.characters"
                   :key="'char-' + char.name"
-                  @click="toggleCharacter(char)"
                   class="w-full flex items-center gap-3 p-2.5 rounded-lg border transition-colors text-left"
                   :class="isCharacterSelected(char) 
                     ? 'bg-accent/10 border-accent/30' 
                     : 'bg-bg-tertiary border-border-subtle hover:border-accent/30'"
+                  @click="toggleCharacter(char)"
                 >
                   <div 
                     class="w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
@@ -141,11 +143,13 @@ function selectAllNew() {
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                       <span class="text-sm text-text-primary truncate">{{ char.name }}</span>
-                      <span v-if="char.isNew" 
+                      <span
+v-if="char.isNew" 
                             class="text-xs px-1.5 py-0.5 bg-accent/20 text-accent rounded flex-shrink-0">
                         New
                       </span>
-                      <span v-else 
+                      <span
+v-else 
                             class="text-xs text-text-hint flex-shrink-0">
                         Existing
                       </span>
@@ -160,7 +164,8 @@ function selectAllNew() {
                 <div class="flex items-center gap-2">
                   <BaseIcon name="map-pin" :size="16" class="text-text-secondary" />
                   <h3 class="text-sm font-medium text-text-primary">Locations</h3>
-                  <span v-if="newLocationCount > 0" 
+                  <span
+v-if="newLocationCount > 0" 
                         class="text-xs px-1.5 py-0.5 bg-accent/20 text-accent rounded">
                     {{ newLocationCount }} new
                   </span>
@@ -170,11 +175,11 @@ function selectAllNew() {
                 <button
                   v-for="loc in extractedEntities.locations"
                   :key="'loc-' + loc.name"
-                  @click="toggleLocation(loc)"
                   class="w-full flex items-center gap-3 p-2.5 rounded-lg border transition-colors text-left"
                   :class="isLocationSelected(loc) 
                     ? 'bg-accent/10 border-accent/30' 
                     : 'bg-bg-tertiary border-border-subtle hover:border-accent/30'"
+                  @click="toggleLocation(loc)"
                 >
                   <div 
                     class="w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
@@ -187,11 +192,13 @@ function selectAllNew() {
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                       <span class="text-sm text-text-primary truncate">{{ loc.name }}</span>
-                      <span v-if="loc.isNew" 
+                      <span
+v-if="loc.isNew" 
                             class="text-xs px-1.5 py-0.5 bg-accent/20 text-accent rounded flex-shrink-0">
                         New
                       </span>
-                      <span v-else 
+                      <span
+v-else 
                             class="text-xs text-text-hint flex-shrink-0">
                         Existing
                       </span>
@@ -205,8 +212,8 @@ function selectAllNew() {
           <div class="px-5 py-4 border-t border-border-subtle flex items-center justify-between gap-3">
             <button
               v-if="totalNew > 0"
-              @click="selectAllNew"
               class="text-sm text-text-secondary hover:text-text-primary transition-colors"
+              @click="selectAllNew"
             >
               Select all new ({{ totalNew }})
             </button>
@@ -214,18 +221,18 @@ function selectAllNew() {
             
             <div class="flex items-center gap-3">
               <button
-                @click="$emit('close')"
                 class="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+                @click="$emit('close')"
               >
                 Cancel
               </button>
               <button
-                @click="handleCreate"
                 :disabled="totalNew === 0"
                 class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
                 :class="totalNew > 0 
                   ? 'bg-accent text-white hover:bg-accent/90' 
                   : 'bg-bg-tertiary text-text-hint cursor-not-allowed'"
+                @click="handleCreate"
               >
                 Create {{ totalNew > 0 ? `${totalNew} New` : '' }} {{ totalNew === 1 ? 'Entity' : 'Entities' }}
               </button>

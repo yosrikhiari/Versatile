@@ -86,8 +86,8 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
           Assign "{{ entityName }}" to Volumes
         </h3>
         <button
-          @click="$emit('close')"
           class="text-text-hint hover:text-text-primary transition-colors"
+          @click="$emit('close')"
         >
           <BaseIcon name="x" :size="16" />
         </button>
@@ -107,12 +107,12 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
       <div
         v-for="volume in filteredVolumes"
         :key="volume.id"
-        @click="!loading && toggleVolume(volume.id)"
         class="flex items-center gap-2 p-2 rounded cursor-pointer transition-colors"
         :class="{
           'bg-accent/10 border border-accent/30': assignedVolumeIds.includes(volume.id),
           'hover:bg-surface-hover': !loading
         }"
+        @click="!loading && toggleVolume(volume.id)"
       >
         <div
           class="w-3 h-3 rounded-full flex-shrink-0"
@@ -138,15 +138,15 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
       </span>
       <div class="flex gap-1">
         <button
-          @click="removeFromAllVolumes"
           :disabled="loading || assignedVolumeIds.length === 0"
           class="text-xs px-2 py-1 text-danger hover:bg-danger/10 rounded disabled:opacity-50"
+          @click="removeFromAllVolumes"
         >
           Remove from all
         </button>
         <button
-          @click="$emit('close')"
           class="text-xs px-2 py-1 bg-accent text-white rounded"
+          @click="$emit('close')"
         >
           Done
         </button>

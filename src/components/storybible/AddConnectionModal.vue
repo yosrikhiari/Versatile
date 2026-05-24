@@ -237,7 +237,7 @@ function handleSave() {
               <h2 class="text-lg font-semibold text-text-primary">
                 {{ existingEdge ? 'Edit Connection' : 'Add Connection' }}
               </h2>
-              <button @click="emit('close')" class="text-text-hint hover:text-text-primary">
+              <button class="text-text-hint hover:text-text-primary" @click="emit('close')">
                 <BaseIcon name="x" :size="20" />
               </button>
             </div>
@@ -248,8 +248,8 @@ function handleSave() {
                 <div class="flex gap-2">
                   <select
                     v-model="sourceType"
-                    @change="handleSourceChange"
                     class="flex-1 px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
+                    @change="handleSourceChange"
                   >
                     <option value="">Type</option>
                     <option value="character">Character</option>
@@ -260,9 +260,9 @@ function handleSave() {
                   <select
                     v-if="sourceType !== 'group'"
                     v-model="sourceId"
-                    @change="handleSourceChange"
                     class="flex-[2] px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
                     :disabled="!sourceType"
+                    @change="handleSourceChange"
                   >
                     <option value="">Select...</option>
                     <option
@@ -276,9 +276,9 @@ function handleSave() {
                   <select
                     v-else
                     v-model="sourceId"
-                    @change="handleSourceChange"
                     class="flex-[2] px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
                     :disabled="!sourceType"
+                    @change="handleSourceChange"
                   >
                     <option value="">Select...</option>
                     <option
@@ -309,9 +309,9 @@ function handleSave() {
                   <select
                     v-if="targetType !== 'group'"
                     v-model="targetId"
-                    @change="handleTargetChange"
                     class="flex-[2] px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
                     :disabled="!sourceId"
+                    @change="handleTargetChange"
                   >
                     <option value="">Select...</option>
                     <option
@@ -325,9 +325,9 @@ function handleSave() {
                   <select
                     v-else
                     v-model="targetId"
-                    @change="() => handleGroupTargetChange(targetId)"
                     class="flex-[2] px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
                     :disabled="!sourceId"
+                    @change="() => handleGroupTargetChange(targetId)"
                   >
                     <option value="">Select...</option>
                     <option
@@ -349,13 +349,13 @@ function handleSave() {
                   <button
                     v-for="rel in relationshipTypes"
                     :key="rel.value"
-                    @click="relationshipType = rel.value"
                     :class="[
                       'p-2 text-left border rounded-lg transition-colors',
                       relationshipType === rel.value
                         ? 'border-accent bg-accent/10 text-text-primary'
                         : 'border-border-subtle hover:border-accent/50'
                     ]"
+                    @click="relationshipType = rel.value"
                   >
                     <div class="text-sm font-medium font-ui">{{ rel.label }}</div>
                     <div class="text-[10px] text-text-hint">{{ rel.description }}</div>
@@ -376,23 +376,23 @@ function handleSave() {
 
             <div v-if="removableNode" class="mt-6 pt-4 border-t border-border-subtle">
               <button
-                @click="emit('remove-node', removableNode)"
                 class="w-full py-2 bg-red-600/20 text-red-400 rounded-lg font-medium hover:bg-red-600/30 font-ui"
+                @click="emit('remove-node', removableNode)"
               >
                 Remove from canvas
               </button>
             </div>
             <div class="flex gap-3 mt-4">
               <button
-                @click="emit('close')"
                 class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
+                @click="emit('close')"
               >
                 Cancel
               </button>
               <button
-                @click="handleSave"
                 :disabled="!isValid"
                 class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui"
+                @click="handleSave"
               >
                 {{ existingEdge ? 'Save Changes' : 'Add Connection' }}
               </button>

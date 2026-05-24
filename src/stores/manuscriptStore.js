@@ -1,40 +1,40 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
-  getChapters, addChapter, updateChapter, deleteChapter,
-  getScenes, addScene, updateScene, deleteScene, reorderScenes, reorderChapters,
+  getSections, addSection, updateSection, deleteSection,
+  getSubsections, addSubsection, updateSubsection, deleteSubsection, reorderSubsections, reorderSections,
   getStoryElements, addStoryElement, updateStoryElement, deleteStoryElement,
   getCharacterRelationships, addCharacterRelationship, updateCharacterRelationship, deleteCharacterRelationship
 } from '../services/dbService'
 import { warmEmbeddingCache } from '../composables/useManuscriptContext'
 
 export const useManuscriptStore = defineStore('manuscript', () => {
-  const chapters = ref([])
-  const scenes = ref([])
+  const sections = ref([])
+  const subsections = ref([])
   const storyElements = ref([])
   const relationships = ref([])
-  const activeChapterId = ref(null)
-  const activeSceneId = ref(null)
+  const activeSectionId = ref(null)
+  const activeSubsectionId = ref(null)
 
-  const sortedChapters = computed(() => {
-    return [...chapters.value].sort((a, b) => (a.order || 0) - (b.order || 0))
+  const sortedSections = computed(() => {
+    return [...sections.value].sort((a, b) => (a.order || 0) - (b.order || 0))
   })
 
-  const activeChapter = computed(() => {
-    return chapters.value.find(c => c.id === activeChapterId.value)
+  const activeSection = computed(() => {
+    return sections.value.find(c => c.id === activeSectionId.value)
   })
 
-  const activeScene = computed(() => {
-    return scenes.value.find(s => s.id === activeSceneId.value)
+  const activeSubsection = computed(() => {
+    return subsections.value.find(s => s.id === activeSubsectionId.value)
   })
 
-  const scenesByChapter = computed(() => {
+  const subsectionsBySection = computed(() => {
     const grouped = {}
-    for (const scene of scenes.value) {
-      if (!grouped[scene.chapterId]) {
-        grouped[scene.chapterId] = []
+    for (const subsection of subsections.value) {
+      if (!grouped[subsection.sectionId]) {
+        grouped[subsection.sectionId] = []
       }
-      grouped[scene.chapterId].push(scene)
+      grouped[subsection.sectionId].push(subsection)
     }
     for (const key in grouped) {
       grouped[key].sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -43,72 +43,74 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   })
 
   async function loadManuscript(projectId) {
-    chapters.value = await getChapters(projectId)
-    scenes.value = await getScenes(projectId)
+    sections.value = await getSections(projectId)
+    subsections.value = await getSubsections(projectId)
     storyElements.value = await getStoryElements(projectId)
     relationships.value = await getCharacterRelationships(projectId)
-    warmEmbeddingCache(projectId).catch(() => {})
-  }
-
-  async function addChapterData(projectId, data) {
-    const order = chapters.value.length
-    const id = await addChapter(projectId, { ...data, order, status: 'planning' })
-    chapters.value.push({ id, projectId, order, status: 'planning', ...data })
-    return id
-  }
-
-  async function updateChapterData(id, data, projectId) {
-    await updateChapter(id, data)
-    const index = chapters.value.findIndex(c => c.id === id)
-    if (index !== -1) {
-      chapters.value[index] = { ...chapters.value[index], ...data }
-    }
-  }
-
-  async function deleteChapterData(id, projectId) {
-    const chapterScenes = scenes.value.filter(s => s.chapterId === id)
-    for (const scene of chapterScenes) {
-      await deleteScene(scene.id)
-    }
-    await deleteChapter(id)
-    chapters.value = chapters.value.filter(c => c.id !== id)
-    scenes.value = scenes.value.filter(s => s.chapterId !== id)
-  }
-
-  async function reorderChaptersData(chapterIds, projectId) {
-    await reorderChapters(chapterIds)
-    chapterIds.forEach((id, index) => {
-      const chapter = chapters.value.find(c => c.id === id)
-      if (chapter) chapter.order = index
+    warmEmbeddingCache(projectId).catch((err) => {
+      console.error('Failed to warm embedding cache:', err)
     })
   }
 
-  async function addSceneData(projectId, chapterId, data) {
-    const chapterScenes = scenes.value.filter(s => s.chapterId === chapterId)
-    const order = chapterScenes.length
-    const id = await addScene(projectId, { ...data, chapterId, order })
-    scenes.value.push({ id, projectId, chapterId, order, ...data })
+  async function addSectionData(projectId, data) {
+    const order = sections.value.length
+    const id = await addSection(projectId, { ...data, order, status: 'planning' })
+    sections.value.push({ id, projectId, order, status: 'planning', ...data })
     return id
   }
 
-  async function updateSceneData(id, data, projectId) {
-    await updateScene(id, data)
-    const index = scenes.value.findIndex(s => s.id === id)
+  async function updateSectionData(id, data, projectId) {
+    await updateSection(id, data)
+    const index = sections.value.findIndex(c => c.id === id)
     if (index !== -1) {
-      scenes.value[index] = { ...scenes.value[index], ...data }
+      sections.value[index] = { ...sections.value[index], ...data }
     }
   }
 
-  async function deleteSceneData(id, projectId) {
-    await deleteScene(id)
-    scenes.value = scenes.value.filter(s => s.id !== id)
+  async function deleteSectionData(id, projectId) {
+    const sectionSubsections = subsections.value.filter(s => s.sectionId === id)
+    for (const subsection of sectionSubsections) {
+      await deleteSubsection(subsection.id)
+    }
+    await deleteSection(id)
+    sections.value = sections.value.filter(c => c.id !== id)
+    subsections.value = subsections.value.filter(s => s.sectionId !== id)
   }
 
-  async function reorderScenesData(sceneIds, projectId) {
-    await reorderScenes(sceneIds)
-    sceneIds.forEach((id, index) => {
-      const scene = scenes.value.find(s => s.id === id)
-      if (scene) scene.order = index
+  async function reorderSectionsData(sectionIds, projectId) {
+    await reorderSections(sectionIds)
+    sectionIds.forEach((id, index) => {
+      const section = sections.value.find(c => c.id === id)
+      if (section) section.order = index
+    })
+  }
+
+  async function addSubsectionData(projectId, sectionId, data) {
+    const sectionSubsections = subsections.value.filter(s => s.sectionId === sectionId)
+    const order = sectionSubsections.length
+    const id = await addSubsection(projectId, { ...data, sectionId, order })
+    subsections.value.push({ id, projectId, sectionId, order, ...data })
+    return id
+  }
+
+  async function updateSubsectionData(id, data, projectId) {
+    await updateSubsection(id, data)
+    const index = subsections.value.findIndex(s => s.id === id)
+    if (index !== -1) {
+      subsections.value[index] = { ...subsections.value[index], ...data }
+    }
+  }
+
+  async function deleteSubsectionData(id, projectId) {
+    await deleteSubsection(id)
+    subsections.value = subsections.value.filter(s => s.id !== id)
+  }
+
+  async function reorderSubsectionsData(subsectionIds, projectId) {
+    await reorderSubsections(subsectionIds)
+    subsectionIds.forEach((id, index) => {
+      const subsection = subsections.value.find(s => s.id === id)
+      if (subsection) subsection.order = index
     })
   }
 
@@ -150,41 +152,41 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     relationships.value = relationships.value.filter(r => r.id !== id)
   }
 
-  function setActiveChapter(id) {
-    activeChapterId.value = id
+  function setActiveSection(id) {
+    activeSectionId.value = id
   }
 
-  function setActiveScene(id) {
-    activeSceneId.value = id
+  function setActiveSubsection(id) {
+    activeSubsectionId.value = id
   }
 
   return {
-    chapters,
-    scenes,
+    sections,
+    subsections,
     storyElements,
     relationships,
-    activeChapterId,
-    activeSceneId,
-    sortedChapters,
-    activeChapter,
-    activeScene,
-    scenesByChapter,
+    activeSectionId,
+    activeSubsectionId,
+    sortedSections,
+    activeSection,
+    activeSubsection,
+    subsectionsBySection,
     loadManuscript,
-    addChapterData,
-    updateChapterData,
-    deleteChapterData,
-    reorderChaptersData,
-    addSceneData,
-    updateSceneData,
-    deleteSceneData,
-    reorderScenesData,
+    addSectionData,
+    updateSectionData,
+    deleteSectionData,
+    reorderSectionsData,
+    addSubsectionData,
+    updateSubsectionData,
+    deleteSubsectionData,
+    reorderSubsectionsData,
     addStoryElementData,
     updateStoryElementData,
     deleteStoryElementData,
     addRelationshipData,
     updateRelationshipData,
     deleteRelationshipData,
-    setActiveChapter,
-    setActiveScene
+    setActiveSection,
+    setActiveSubsection
   }
 })

@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { generateSparkPrompt, generateBlueprint, generateChapter, generateChapterStreaming, testOllamaConnection } from '../composables/useOllama'
+import { ref, computed } from 'vue'
+import { generateSparkPrompt, generateOutline, generateContent, generateContentStreaming, testOllamaConnection } from '../composables/useOllama'
 import { addSparkHistory, getSparkHistory, clearSparkHistory } from '../services/dbService'
 
 export const useSparkStore = defineStore('spark', () => {
   const history = ref([])
-  const currentBlueprint = ref(null)
-  const currentChapter = ref(null)
-  const currentStreamingChapter = ref('')
+  const currentOutline = ref(null)
+  const currentContent = ref(null)
+  const currentStreamingContent = ref('')
   const isGenerating = ref(false)
   const selectedPromptType = ref('seed')
   const relateToProject = ref(false)
@@ -44,50 +44,50 @@ export const useSparkStore = defineStore('spark', () => {
     }
   }
 
-  async function generateBlueprintAction(idea, tone, characterNames = [], targetLength = 'full', manuscriptContext = null) {
+  async function generateOutlineAction(idea, tone, characterNames = [], targetLength = 'full', manuscriptContext = null) {
     isGenerating.value = true
     error.value = null
-    currentBlueprint.value = null
+    currentOutline.value = null
     try {
-      const blueprint = await generateBlueprint(idea, tone, characterNames, targetLength, manuscriptContext)
+      const outline = await generateOutline(idea, tone, characterNames, targetLength, manuscriptContext)
       
-      if (blueprint.error) {
-        error.value = blueprint.error
-        currentBlueprint.value = null
+      if (outline.error) {
+        error.value = outline.error
+        currentOutline.value = null
         return null
       }
       
-      currentBlueprint.value = blueprint
-      const result = { type: 'blueprint', prompt: idea, blueprint }
+      currentOutline.value = outline
+      const result = { type: 'outline', prompt: idea, outline: outline }
       history.value.unshift(result)
       if (currentProjectId.value) {
         await addSparkHistory(currentProjectId.value, result)
       }
-      return blueprint
+      return outline
     } catch (err) {
       error.value = err.message
-      currentBlueprint.value = null
+      currentOutline.value = null
       throw err
     } finally {
       isGenerating.value = false
     }
   }
 
-  async function generateChapterAction(idea, tone, characterNames = [], targetLength = 'short') {
+  async function generateContentAction(idea, tone, characterNames = [], targetLength = 'short') {
     isGenerating.value = true
     error.value = null
-    currentChapter.value = null
+    currentContent.value = null
     try {
-      const result = await generateChapter(idea, tone, characterNames, targetLength)
+      const result = await generateContent(idea, tone, characterNames, targetLength)
       
       if (result.error) {
         error.value = result.error
-        currentChapter.value = null
+        currentContent.value = null
         return null
       }
       
-      currentChapter.value = result.text
-      const historyItem = { type: 'chapter', prompt: idea, chapter: result.text }
+      currentContent.value = result.text
+      const historyItem = { type: 'content', prompt: idea, content: result.text }
       history.value.unshift(historyItem)
       if (currentProjectId.value) {
         await addSparkHistory(currentProjectId.value, historyItem)
@@ -95,34 +95,34 @@ export const useSparkStore = defineStore('spark', () => {
       return result.text
     } catch (err) {
       error.value = err.message
-      currentChapter.value = null
+      currentContent.value = null
       throw err
     } finally {
       isGenerating.value = false
     }
   }
 
-  async function generateChapterStreamingAction(idea, tone, characterNames = [], targetLength = 'short') {
+  async function generateContentStreamingAction(idea, tone, characterNames = [], targetLength = 'short') {
     isGenerating.value = true
     error.value = null
-    currentStreamingChapter.value = ''
-    currentChapter.value = null
+    currentStreamingContent.value = ''
+    currentContent.value = null
     try {
-      const result = await generateChapterStreaming(
+      const result = await generateContentStreaming(
         idea, tone, characterNames, targetLength,
         (chunk, full) => {
-          currentStreamingChapter.value = full
+          currentStreamingContent.value = full
         }
       )
       
       if (result.error) {
         error.value = result.error
-        currentStreamingChapter.value = ''
+        currentStreamingContent.value = ''
         return null
       }
       
-      currentChapter.value = result.text
-      const historyItem = { type: 'chapter', prompt: idea, chapter: result.text }
+      currentContent.value = result.text
+      const historyItem = { type: 'content', prompt: idea, content: result.text }
       history.value.unshift(historyItem)
       if (currentProjectId.value) {
         await addSparkHistory(currentProjectId.value, historyItem)
@@ -130,7 +130,7 @@ export const useSparkStore = defineStore('spark', () => {
       return result.text
     } catch (err) {
       error.value = err.message
-      currentStreamingChapter.value = ''
+      currentStreamingContent.value = ''
       throw err
     } finally {
       isGenerating.value = false
@@ -138,7 +138,7 @@ export const useSparkStore = defineStore('spark', () => {
   }
 
   function insertIntoFlow(text, projectStore) {
-    projectStore.updateContent(projectStore.manuscriptContent + '\n\n' + text)
+    projectStore.updateContent(projectStore.documentContent + '\n\n' + text)
   }
 
   async function clearHistoryData(projectId) {
@@ -153,9 +153,9 @@ export const useSparkStore = defineStore('spark', () => {
 
   return {
     history,
-    currentBlueprint,
-    currentChapter,
-    currentStreamingChapter,
+    currentOutline,
+    currentContent,
+    currentStreamingContent,
     currentProjectId,
     isGenerating,
     selectedPromptType,
@@ -165,11 +165,15 @@ export const useSparkStore = defineStore('spark', () => {
     loadHistory,
     testConnection,
     generatePrompt,
-    generateBlueprintAction,
-    generateChapterAction,
-    generateChapterStreamingAction,
+    generateOutlineAction,
+    generateContentAction,
+    generateContentStreamingAction,
     insertIntoFlow,
     clearHistoryData,
-    setProjectId
+    setProjectId,
+    currentBlueprint: computed(() => currentOutline.value),
+    currentChapter: computed(() => currentContent.value),
+    currentStreamingChapter: computed(() => currentStreamingContent.value)
   }
 })
+

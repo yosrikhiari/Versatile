@@ -1,0 +1,9 @@
+* text=auto
+*.js eol=lf
+*.vue eol=lf
+*.json eol=lf
+*.css eol=lf
+*.cjs eol=lf
+*.mjs eol=lf
+*.html eol=lf
+*.yml eol=lf

@@ -42,9 +42,9 @@ const progressPercent = computed(() => {
       </span>
 
       <button
-        @click="emit('open-settings')"
         class="text-text-hint hover:text-accent text-sm ml-2 focus:outline-none focus:ring-2 focus:ring-accent rounded p-1"
         title="Daily goal settings"
+        @click="emit('open-settings')"
       >
         <BaseIcon name="settings" :size="16" />
       </button>

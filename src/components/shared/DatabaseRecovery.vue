@@ -4,7 +4,7 @@
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-text-primary">Database Recovery</h2>
-          <button @click="$emit('close')" class="text-text-secondary hover:text-text-primary">
+          <button class="text-text-secondary hover:text-text-primary" @click="$emit('close')">
             <BaseIcon name="x" :size="20" />
           </button>
         </div>
@@ -52,18 +52,18 @@
         <!-- Actions -->
         <div class="space-y-3">
           <button 
-            @click="checkHealth"
             :disabled="working"
             class="w-full py-2 px-4 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+            @click="checkHealth"
           >
             <BaseIcon v-if="working" name="loader-2" :size="16" class="animate-spin mr-2" />
             Check Database Health
           </button>
 
           <button 
-            @click="exportData"
             :disabled="working"
             class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-surface-hover/80 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+            @click="exportData"
           >
             Export All Data
           </button>
@@ -73,15 +73,15 @@
             <input 
               type="file" 
               accept=".json" 
-              @change="handleFileImport"
               class="hidden"
               :disabled="working"
+              @change="handleFileImport"
             >
           </label>
 
           <button 
-            @click="showResetConfirm = true"
             class="w-full py-2 px-4 text-danger hover:bg-danger/10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-danger"
+            @click="showResetConfirm = true"
           >
             Reset Database (Destructive)
           </button>
@@ -95,17 +95,17 @@
           </p>
           <div class="flex gap-2">
             <button 
-              @click="resetDatabase"
               :disabled="working"
               class="flex-1 py-2 px-4 bg-danger text-white rounded-lg font-medium hover:bg-danger/90 disabled:opacity-50"
+              @click="resetDatabase"
             >
               <BaseIcon v-if="working" name="loader-2" :size="14" class="animate-spin mr-1" />
               Yes, Reset Database
             </button>
             <button 
-              @click="showResetConfirm = false"
               :disabled="working"
               class="px-4 py-2 bg-surface-hover text-text-primary rounded-lg font-medium"
+              @click="showResetConfirm = false"
             >
               Cancel
             </button>

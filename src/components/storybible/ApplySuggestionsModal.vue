@@ -117,8 +117,8 @@ function handleApply() {
               <h2 class="font-medium text-text-primary">Apply Suggestions</h2>
             </div>
             <button
-              @click="emit('close')"
               class="p-1 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover transition-colors"
+              @click="emit('close')"
             >
               <BaseIcon name="x" :size="18" />
             </button>
@@ -228,29 +228,29 @@ function handleApply() {
           <div class="p-4 border-t border-border-subtle flex justify-between items-center shrink-0">
             <div class="flex gap-2">
               <button 
-                @click="selectAll"
                 class="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary rounded font-medium transition-colors"
+                @click="selectAll"
               >
                 Select All
               </button>
               <button 
-                @click="selectNone"
                 class="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary rounded font-medium transition-colors"
+                @click="selectNone"
               >
                 Clear All
               </button>
             </div>
             <div class="flex gap-3">
               <button 
-                @click="emit('close')"
                 class="px-4 py-2 text-text-secondary hover:text-text-primary rounded-lg font-medium transition-colors"
+                @click="emit('close')"
               >
                 Cancel
               </button>
               <button 
-                @click="handleApply"
                 :disabled="!canApply"
                 class="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                @click="handleApply"
               >
                 Apply ({{ totalSelected }})
               </button>

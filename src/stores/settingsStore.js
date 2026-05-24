@@ -1,13 +1,22 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { simpleEncrypt, simpleDecrypt } from '../services/ollamaService'
+import { PROVIDERS, FEATURES, FEATURE_LIST, PROVIDER_LIST, PROVIDER_DEFAULT, API_KEY_STORAGE_PREFIX, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS, EMBEDDING_PROVIDERS } from '../config/ai'
+import { aiTestConnection } from '../services/aiService'
 
 const STORAGE_KEY = 'versatile_settings'
+const FEATURE_MODELS_KEY = 'versatile_feature_models'
 
 const DEFAULT_SETTINGS = {
   ollamaEndpoint: 'http://localhost:11434',
   ollamaModel: 'dolphin-mistral:7b',
   openaiApiKey: '',
-  autoSaveInterval: 5
+  autoSaveInterval: 5,
+  aiProvider: PROVIDER_DEFAULT,
+  aiProviderFallback: 'none',
+  embeddingProvider: EMBEDDING_DEFAULTS.provider,
+  embeddingModel: EMBEDDING_DEFAULTS.model,
+  embeddingThreshold: EMBEDDING_DEFAULTS.threshold
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -15,6 +24,31 @@ export const useSettingsStore = defineStore('settings', () => {
   const ollamaModel = ref(DEFAULT_SETTINGS.ollamaModel)
   const openaiApiKey = ref(DEFAULT_SETTINGS.openaiApiKey)
   const autoSaveInterval = ref(DEFAULT_SETTINGS.autoSaveInterval)
+  const aiProvider = ref(DEFAULT_SETTINGS.aiProvider)
+  const aiProviderFallback = ref(DEFAULT_SETTINGS.aiProviderFallback)
+  const embeddingProvider = ref(DEFAULT_SETTINGS.embeddingProvider)
+  const embeddingModel = ref(DEFAULT_SETTINGS.embeddingModel)
+  const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
+
+  const featureModels = ref({})
+
+  function getFeatureDefault(feature) {
+    return FEATURE_DEFAULTS[feature] || { provider: null, model: null }
+  }
+
+  function resolveFeatureProvider(feature) {
+    const override = featureModels.value[feature]
+    if (override?.provider && override.provider !== 'default') return override.provider
+    return aiProvider.value
+  }
+
+  function resolveFeatureModel(feature) {
+    const override = featureModels.value[feature]
+    if (override?.model) return override.model
+    const def = getFeatureDefault(feature)
+    if (def.model) return def.model
+    return null
+  }
 
   function loadSettings() {
     try {
@@ -23,8 +57,28 @@ export const useSettingsStore = defineStore('settings', () => {
         const data = JSON.parse(stored)
         if (data.ollamaEndpoint) ollamaEndpoint.value = data.ollamaEndpoint
         if (data.ollamaModel) ollamaModel.value = data.ollamaModel
-        if (data.openaiApiKey) openaiApiKey.value = data.openaiApiKey
         if (data.autoSaveInterval) autoSaveInterval.value = data.autoSaveInterval
+        if (data.aiProvider) aiProvider.value = data.aiProvider
+        if (data.aiProviderFallback) aiProviderFallback.value = data.aiProviderFallback
+        if (data.embeddingProvider) embeddingProvider.value = data.embeddingProvider
+        if (data.embeddingModel) embeddingModel.value = data.embeddingModel
+        if (data.embeddingThreshold !== undefined) embeddingThreshold.value = data.embeddingThreshold
+      }
+
+      const encryptedKey = localStorage.getItem('versatile_openai_key')
+      if (encryptedKey) {
+        try {
+          openaiApiKey.value = simpleDecrypt(encryptedKey)
+        } catch {
+          openaiApiKey.value = ''
+        }
+      }
+
+      const fmStored = localStorage.getItem(FEATURE_MODELS_KEY)
+      if (fmStored) {
+        try {
+          featureModels.value = JSON.parse(fmStored)
+        } catch {}
       }
     } catch (e) {
       console.warn('Failed to load settings:', e)
@@ -37,8 +91,14 @@ export const useSettingsStore = defineStore('settings', () => {
         ollamaEndpoint: ollamaEndpoint.value,
         ollamaModel: ollamaModel.value,
         openaiApiKey: openaiApiKey.value,
-        autoSaveInterval: autoSaveInterval.value
+        autoSaveInterval: autoSaveInterval.value,
+        aiProvider: aiProvider.value,
+        aiProviderFallback: aiProviderFallback.value,
+        embeddingProvider: embeddingProvider.value,
+        embeddingModel: embeddingModel.value,
+        embeddingThreshold: embeddingThreshold.value
       }))
+      localStorage.setItem(FEATURE_MODELS_KEY, JSON.stringify(featureModels.value))
     } catch (e) {
       console.warn('Failed to save settings:', e)
     }
@@ -56,6 +116,11 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setOpenaiApiKey(key) {
     openaiApiKey.value = key
+    if (key) {
+      localStorage.setItem('versatile_openai_key', simpleEncrypt(key))
+    } else {
+      localStorage.removeItem('versatile_openai_key')
+    }
     saveSettings()
   }
 
@@ -64,11 +129,72 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
+  function setAIProvider(provider) {
+    aiProvider.value = provider
+    saveSettings()
+  }
+
+  function setAIProviderFallback(fallback) {
+    aiProviderFallback.value = fallback
+    saveSettings()
+  }
+
+  function setFeatureModel(feature, provider, model) {
+    featureModels.value = {
+      ...featureModels.value,
+      [feature]: { provider: provider || 'default', model: model || null }
+    }
+    saveSettings()
+  }
+
+  function getApiKeyStorageKey(provider) {
+    return `${API_KEY_STORAGE_PREFIX}${provider}`
+  }
+
+  function getStoredApiKey(provider) {
+    const encrypted = localStorage.getItem(getApiKeyStorageKey(provider))
+    if (!encrypted) return ''
+    try {
+      return simpleDecrypt(encrypted)
+    } catch {
+      return ''
+    }
+  }
+
+  function setStoredApiKey(provider, key) {
+    if (key) {
+      localStorage.setItem(getApiKeyStorageKey(provider), simpleEncrypt(key))
+    } else {
+      localStorage.removeItem(getApiKeyStorageKey(provider))
+    }
+  }
+
+  function setEmbeddingProvider(provider) {
+    embeddingProvider.value = provider
+    saveSettings()
+  }
+
+  function setEmbeddingModel(model) {
+    embeddingModel.value = model
+    saveSettings()
+  }
+
+  function setEmbeddingThreshold(threshold) {
+    embeddingThreshold.value = threshold
+    saveSettings()
+  }
+
   function resetToDefaults() {
     ollamaEndpoint.value = DEFAULT_SETTINGS.ollamaEndpoint
     ollamaModel.value = DEFAULT_SETTINGS.ollamaModel
     openaiApiKey.value = ''
     autoSaveInterval.value = DEFAULT_SETTINGS.autoSaveInterval
+    aiProvider.value = DEFAULT_SETTINGS.aiProvider
+    aiProviderFallback.value = DEFAULT_SETTINGS.aiProviderFallback
+    embeddingProvider.value = DEFAULT_SETTINGS.embeddingProvider
+    embeddingModel.value = DEFAULT_SETTINGS.embeddingModel
+    embeddingThreshold.value = DEFAULT_SETTINGS.embeddingThreshold
+    featureModels.value = {}
     saveSettings()
   }
 
@@ -87,6 +213,24 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  async function testProviderConnection(provider) {
+    if (provider === PROVIDERS.OLLAMA) {
+      return await testOllamaConnection()
+    }
+    const key = getStoredApiKey(provider)
+    if (!key) {
+      return { success: false, message: 'No API key configured' }
+    }
+    try {
+      const ok = await aiTestConnection(provider, key)
+      return ok
+        ? { success: true, message: 'Connection successful' }
+        : { success: false, message: 'Connection failed' }
+    } catch (err) {
+      return { success: false, message: err.message }
+    }
+  }
+
   loadSettings()
 
   return {
@@ -94,13 +238,31 @@ export const useSettingsStore = defineStore('settings', () => {
     ollamaModel,
     openaiApiKey,
     autoSaveInterval,
+    aiProvider,
+    aiProviderFallback,
+    embeddingProvider,
+    embeddingModel,
+    embeddingThreshold,
+    featureModels,
+    resolveFeatureProvider,
+    resolveFeatureModel,
     loadSettings,
     saveSettings,
     setOllamaEndpoint,
     setOllamaModel,
     setOpenaiApiKey,
     setAutoSaveInterval,
+    setAIProvider,
+    setAIProviderFallback,
+    setFeatureModel,
+    getStoredApiKey,
+    setStoredApiKey,
+    getApiKeyStorageKey,
+    setEmbeddingProvider,
+    setEmbeddingModel,
+    setEmbeddingThreshold,
     resetToDefaults,
-    testOllamaConnection
+    testOllamaConnection,
+    testProviderConnection
   }
 })

@@ -55,9 +55,9 @@ function handleKeydown(e) {
     >
       <span>{{ tag }}</span>
       <button
-        @click="removeTag(index)"
         class="text-accent hover:text-white focus:outline-none focus:ring-1 focus:ring-accent rounded"
         type="button"
+        @click="removeTag(index)"
       >
         <BaseIcon name="x" :size="12" />
       </button>

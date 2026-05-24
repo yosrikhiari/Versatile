@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\Versatile.Api.props" />
+</Project>

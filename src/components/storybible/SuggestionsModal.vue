@@ -94,7 +94,7 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
                   {{ suggestions.length }} suggestions found. Select which to apply.
                 </p>
               </div>
-              <button @click="emit('close')" class="text-text-hint hover:text-text-primary">
+              <button class="text-text-hint hover:text-text-primary" @click="emit('close')">
                 <BaseIcon name="x" :size="20" />
               </button>
             </div>
@@ -125,14 +125,14 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
             <div class="flex items-center justify-between mb-2">
               <div class="flex gap-2">
                 <button
-                  @click="selectAll"
                   class="text-xs text-accent hover:underline"
+                  @click="selectAll"
                 >
                   Select all
                 </button>
                 <button
-                  @click="selectNone"
                   class="text-xs text-text-hint hover:text-text-secondary"
+                  @click="selectNone"
                 >
                   Clear
                 </button>
@@ -145,13 +145,13 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
             <div
               v-for="(suggestion, index) in suggestions"
               :key="index"
-              @click="toggleSuggestion(index)"
               :class="[
                 'p-4 rounded-lg border cursor-pointer transition-all',
                 selectedSuggestions.has(index)
                   ? 'border-accent bg-accent/10'
                   : 'border-border-subtle hover:border-accent/50'
               ]"
+              @click="toggleSuggestion(index)"
             >
               <div class="flex items-start gap-3">
                 <div
@@ -207,15 +207,15 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
 
           <div class="p-4 border-t border-border-subtle flex gap-3">
             <button
-              @click="emit('close')"
               class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
+              @click="emit('close')"
             >
               Cancel
             </button>
             <button
-              @click="emit('apply', Array.from(selectedSuggestions))"
               :disabled="!canApply"
               class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui"
+              @click="emit('apply', Array.from(selectedSuggestions))"
             >
               Apply Selected ({{ selectedSuggestions.size }})
             </button>

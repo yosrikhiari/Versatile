@@ -87,7 +87,7 @@ function getCommentsForParagraph(index) {
 }
 
 const paragraphs = computed(() => {
-  const paras = projectStore.manuscriptContent.split('\n').filter(p => p.trim())
+  const paras = projectStore.documentContent.split('\n').filter(p => p.trim())
   return paras.map((text, index) => ({
     index,
     text,
@@ -138,8 +138,8 @@ watch(() => projectStore.currentProjectId, loadComments)
                   <p class="text-text-secondary mt-1 font-ui text-sm">{{ comment.comment }}</p>
                 </div>
                 <button
-                  @click="removeComment(comment.id)"
                   class="text-text-hint hover:text-danger text-lg leading-none shrink-0 focus:outline-none focus:ring-2 focus:ring-accent rounded"
+                  @click="removeComment(comment.id)"
                 >
                   ×
                 </button>
@@ -162,21 +162,21 @@ watch(() => projectStore.currentProjectId, loadComments)
       </div>
       <textarea
         v-model="commentInput"
-        @keydown.enter.ctrl="saveComment"
         class="w-64 h-20 px-2 py-1 border border-border-subtle rounded text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/50 bg-bg-secondary text-text-primary font-ui placeholder:text-text-hint"
         placeholder="Add your comment..."
         autofocus
+        @keydown.enter.ctrl="saveComment"
       ></textarea>
       <div class="flex justify-end gap-2 mt-2">
         <button
-          @click="showCommentInput = false"
           class="px-3 py-1 text-xs text-text-hint hover:text-text-secondary font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
+          @click="showCommentInput = false"
         >
           Cancel
         </button>
         <button
-          @click="saveComment"
           class="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          @click="saveComment"
         >
           Save
         </button>

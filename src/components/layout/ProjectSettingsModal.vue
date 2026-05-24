@@ -17,12 +17,13 @@ const localGenre = ref('')
 const localSynopsis = ref('')
 const isSaving = ref(false)
 const isGeneratingSynopsis = ref(false)
+const isEnhancingSynopsis = ref(false)
 
 watch(() => props.show, (show) => {
   if (show) {
     localName.value = projectStore.currentProjectName
-    localGenre.value = projectStore.currentGenre
-    localSynopsis.value = projectStore.currentSynopsis
+    localGenre.value = projectStore.currentCategory
+    localSynopsis.value = projectStore.currentDescription
   }
 })
 
@@ -111,17 +112,17 @@ async function findRelevantChunks(content, topN = 3) {
   return rerankedChunks
 }
 
-async function handleGenerateSynopsis() {
-  const manuscriptContent = projectStore.manuscriptContent
+  async function handleGenerateSynopsis() {
+  const documentContent = projectStore.documentContent
   
-  if (!manuscriptContent || manuscriptContent.trim().length < 100) {
+  if (!documentContent || documentContent.trim().length < 100) {
     return
   }
   
   isGeneratingSynopsis.value = true
   
   try {
-    const relevantChunks = await findRelevantChunks(manuscriptContent, 3)
+    const relevantChunks = await findRelevantChunks(documentContent, 3)
     
     const contextText = relevantChunks.join('\n\n')
     
@@ -144,6 +145,51 @@ Write a clear, engaging synopsis that could hook a reader or serve as a blurb.`
   }
 }
 
+async function handleEnhanceSynopsis() {
+  const currentSynopsis = localSynopsis.value?.trim()
+  const documentContent = projectStore.documentContent
+
+  if (!currentSynopsis || currentSynopsis.length < 10) {
+    return
+  }
+
+  isEnhancingSynopsis.value = true
+
+  try {
+    let contextText = ''
+    if (documentContent && documentContent.trim().length >= 100) {
+      const relevantChunks = await findRelevantChunks(documentContent, 2)
+      contextText = relevantChunks.join('\n\n')
+    }
+
+    const contextSection = contextText
+      ? `\n\nManuscript excerpts for additional context:\n"""\n${contextText}\n"""`
+      : ''
+
+    const userPrompt = `You are improving an existing story synopsis. Keep all the core elements and key details intact, but make the writing more compelling, polished, and engaging.
+
+Current synopsis:
+"""
+${currentSynopsis}
+"""${contextSection}
+
+Improve this synopsis by:
+1. Enhancing the prose to be more vivid and engaging
+2. Improving the flow and structure
+3. Keeping all existing plot points, characters, and setting details intact
+4. Making it sound professional and hook-like
+
+Return ONLY the improved synopsis text, no preamble or explanation.`
+
+    const response = await ollamaGenerate(userPrompt, 'You are a professional editor who improves synopses while preserving the original content.')
+    localSynopsis.value = response.trim()
+  } catch (e) {
+    console.error('Failed to enhance synopsis:', e.message || e)
+  } finally {
+    isEnhancingSynopsis.value = false
+  }
+}
+
 async function handleSave() {
   if (!localName.value.trim()) return
   
@@ -151,8 +197,8 @@ async function handleSave() {
   try {
     await projectStore.updateProjectInfo({
       name: localName.value.trim(),
-      genre: localGenre.value,
-      synopsis: localSynopsis.value.trim()
+      category: localGenre.value,
+      description: localSynopsis.value.trim()
     })
     emit('close')
   } catch (e) {
@@ -184,8 +230,8 @@ function handleOverlayClick(event) {
               <h2 class="font-medium text-text-primary">Project Settings</h2>
             </div>
             <button
-              @click="$emit('close')"
               class="p-1 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover transition-colors"
+              @click="$emit('close')"
             >
               <BaseIcon name="x" :size="18" />
             </button>
@@ -222,16 +268,27 @@ function handleOverlayClick(event) {
                 <label class="block text-sm font-medium text-text-primary">
                   Synopsis
                 </label>
-                <button
-                  v-if="projectStore.manuscriptContent && projectStore.manuscriptContent.length > 100"
-                  @click="handleGenerateSynopsis"
-                  :disabled="isGeneratingSynopsis"
-                  class="flex items-center gap-1.5 px-2 py-1 text-xs bg-accent/10 text-accent rounded hover:bg-accent/20 transition-colors disabled:opacity-50"
-                >
-                  <BaseIcon v-if="isGeneratingSynopsis" name="loader" :size="12" class="animate-spin" />
-                  <BaseIcon v-else name="sparkles" :size="12" />
-                  {{ isGeneratingSynopsis ? 'Generating...' : 'Generate from manuscript' }}
-                </button>
+                <div class="flex items-center gap-1.5">
+                  <button
+                    :disabled="isGeneratingSynopsis || isEnhancingSynopsis || !localSynopsis?.trim()"
+                    class="flex items-center gap-1.5 px-2 py-1 text-xs bg-accent/10 text-accent rounded hover:bg-accent/20 transition-colors disabled:opacity-50"
+                    @click="handleEnhanceSynopsis"
+                  >
+                    <BaseIcon v-if="isEnhancingSynopsis" name="loader" :size="12" class="animate-spin" />
+                    <BaseIcon v-else name="wand-2" :size="12" />
+                    {{ isEnhancingSynopsis ? 'Enhancing...' : 'Enhance' }}
+                  </button>
+                  <button
+                    v-if="projectStore.documentContent && projectStore.documentContent.length > 100"
+                    :disabled="isGeneratingSynopsis || isEnhancingSynopsis"
+                    class="flex items-center gap-1.5 px-2 py-1 text-xs bg-bg-secondary text-text-secondary rounded hover:bg-surface-hover transition-colors disabled:opacity-50"
+                    @click="handleGenerateSynopsis"
+                  >
+                    <BaseIcon v-if="isGeneratingSynopsis" name="loader" :size="12" class="animate-spin" />
+                    <BaseIcon v-else name="sparkles" :size="12" />
+                    {{ isGeneratingSynopsis ? 'Generating...' : 'From manuscript' }}
+                  </button>
+                </div>
               </div>
               <textarea
                 v-model="localSynopsis"
@@ -247,15 +304,15 @@ function handleOverlayClick(event) {
 
           <div class="flex items-center justify-end gap-3 px-5 py-4 bg-bg-tertiary/50 border-t border-border-subtle">
             <button
-              @click="$emit('close')"
               class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary font-ui transition-colors"
+              @click="$emit('close')"
             >
               Cancel
             </button>
             <button
-              @click="handleSave"
               :disabled="!localName.trim() || isSaving"
               class="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent/90 font-ui flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="handleSave"
             >
               {{ isSaving ? 'Saving...' : 'Save Changes' }}
             </button>

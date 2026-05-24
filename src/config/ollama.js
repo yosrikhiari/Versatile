@@ -1,4 +1,5 @@
 import { useSettingsStore } from '../stores/settingsStore'
+import { simpleDecrypt } from '../services/ollamaService'
 
 let settingsStore = null
 
@@ -54,11 +55,17 @@ export function getOpenAIKey() {
   if (store) {
     return store.openaiApiKey
   }
-  return localStorage.getItem('versatile_openai_key') || ''
+  // Read encrypted key from localStorage
+  const encrypted = localStorage.getItem('versatile_openai_key')
+  if (!encrypted) return ''
+  try {
+    return simpleDecrypt(encrypted)
+  } catch {
+    return ''
+  }
 }
 
 export function setOpenAIKey(key) {
-  localStorage.setItem('versatile_openai_key', key)
   const store = getSettingsStore()
   if (store) {
     store.setOpenaiApiKey(key)
@@ -67,3 +74,19 @@ export function setOpenAIKey(key) {
 
 export const OLLAMA_MODEL = getOllamaModel()
 export const OLLAMA_BASE_URL = getOllamaEndpoint()
+
+export function getConfiguredModel(feature) {
+  const store = getSettingsStore()
+  if (!store) return getOllamaModel()
+  const override = store.featureModels?.[feature]
+  if (override?.model) return override.model
+  return getOllamaModel()
+}
+
+export function getConfiguredProvider(feature) {
+  const store = getSettingsStore()
+  if (!store) return 'ollama'
+  const override = store.featureModels?.[feature]
+  if (override?.provider && override.provider !== 'default') return override.provider
+  return store.aiProvider || 'ollama'
+}

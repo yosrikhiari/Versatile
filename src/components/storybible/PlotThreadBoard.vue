@@ -314,8 +314,8 @@ async function handleCreateEntities(data) {
         :list="threadsByColumn[column.status].value"
         item-key="id"
         v-bind="dragOptions"
-        @end="syncStatusChanges"
         class="space-y-2 min-h-[80px] rounded"
+        @end="syncStatusChanges"
       >
         <template #item="{ element: thread }">
           <div 
@@ -343,9 +343,9 @@ async function handleCreateEntities(data) {
             <div v-if="expandedThreadId === thread.id" class="p-3 border-t border-border-subtle bg-bg-tertiary space-y-3">
               <div class="flex items-center gap-2">
                 <button
-                  @click.stop="completeAllWithAI"
                   :disabled="isGenerating === editingThread?.id"
                   class="flex items-center gap-1.5 px-2 py-1 text-xs bg-accent/10 text-accent rounded hover:bg-accent/20 transition-colors disabled:opacity-50"
+                  @click.stop="completeAllWithAI"
                 >
                   <BaseIcon v-if="isGenerating === editingThread?.id && !generatingField" name="loader-2" :size="10" class="animate-spin" />
                   <BaseIcon v-else name="sparkles" :size="10" />
@@ -368,10 +368,10 @@ async function handleCreateEntities(data) {
                 <div class="flex items-center justify-between mb-1">
                   <label class="text-[10px] uppercase tracking-wider text-text-hint">Title</label>
                   <button
-                    @click.stop="completeFieldWithAI('title')"
                     :disabled="isGenerating === editingThread?.id"
                     :title="editingThread?.title ? 'Regenerate with AI' : 'Complete with AI'"
                     class="p-1 text-text-hint hover:text-accent hover:bg-accent/10 rounded transition-colors disabled:opacity-50"
+                    @click.stop="completeFieldWithAI('title')"
                   >
                     <BaseIcon 
                       :name="generatingField === 'title' ? 'loader-2' : 'sparkles'" 
@@ -392,17 +392,17 @@ async function handleCreateEntities(data) {
                   <label class="text-[10px] uppercase tracking-wider text-text-hint">Notes</label>
                   <div class="flex items-center gap-1">
                     <button
-                      @click="scanForEntities"
                       title="Extract entities (works with [Characters:] [Locations:] blocks)"
                       class="p-1 text-text-hint hover:text-accent hover:bg-accent/10 rounded transition-colors"
+                      @click="scanForEntities"
                     >
                       <BaseIcon name="scan" :size="10" />
                     </button>
                     <button
-                      @click.stop="completeFieldWithAI('notes')"
                       :disabled="isGenerating === editingThread?.id"
                       :title="editingThread?.notes ? 'Regenerate with AI' : 'Complete with AI'"
                       class="p-1 text-text-hint hover:text-accent hover:bg-accent/10 rounded transition-colors disabled:opacity-50"
+                      @click.stop="completeFieldWithAI('notes')"
                     >
                       <BaseIcon 
                         :name="generatingField === 'notes' ? 'loader-2' : 'sparkles'" 
@@ -422,20 +422,20 @@ async function handleCreateEntities(data) {
               
               <div class="flex gap-2">
                 <button
-                  @click.stop="saveThread"
                   class="flex-1 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+                  @click.stop="saveThread"
                 >
                   Save
                 </button>
                 <button
-                  @click.stop="deleteThread(thread)"
                   class="px-3 py-1 text-xs text-danger hover:bg-danger/10 rounded font-ui"
+                  @click.stop="deleteThread(thread)"
                 >
                   Delete
                 </button>
                 <button
-                  @click.stop="toggleExpand(thread)"
                   class="px-3 py-1 text-xs text-text-hint hover:bg-surface-hover rounded font-ui"
+                  @click.stop="toggleExpand(thread)"
                 >
                   Cancel
                 </button>

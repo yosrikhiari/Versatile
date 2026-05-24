@@ -1,14 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getManuscript, saveManuscript, getProject, createProject, updateProject, getAllProjects, updateDailyWordCount, getDailyGoal, getStreakData, getLastSessionData } from '../services/dbService'
+import { getManuscript, saveManuscript, getProject, createProject, updateProject, getAllProjects, updateDailyWordCount, getDailyGoal, getStreakData, getLastSessionData, saveAuthorProfile, getAuthorProfile } from '../services/dbService'
 import { countWords } from '../utils/textUtils'
 
 export const useProjectStore = defineStore('project', () => {
   const currentProjectId = ref(null)
   const currentProjectName = ref('')
-  const currentSynopsis = ref('')
-  const currentGenre = ref('')
-  const manuscriptContent = ref('')
+  const currentDescription = ref('')
+  const currentCategory = ref('')
+  const documentContent = ref('')
   const wordCount = ref(0)
   const sessionWordCount = ref(0)
   const sessionGoal = ref(500)
@@ -21,6 +21,8 @@ export const useProjectStore = defineStore('project', () => {
   const longestStreak = ref(0)
   const lastSessionDate = ref(null)
   const lastSessionWords = ref(0)
+  const authorVoiceProfile = ref(null)
+  const lastSessionRecap = ref(null)
 
   const sessionProgress = computed(() => {
     return Math.min((sessionWordCount.value / sessionGoal.value) * 100, 100)
@@ -38,13 +40,13 @@ export const useProjectStore = defineStore('project', () => {
 
     currentProjectId.value = id
     currentProjectName.value = project.name
-    currentSynopsis.value = project.synopsis || ''
-    currentGenre.value = project.genre || ''
+    currentDescription.value = project.description || ''
+    currentCategory.value = project.category || ''
     lastWrittenAt.value = project.updatedAt
 
     const manuscript = await getManuscript(id)
     if (manuscript) {
-      manuscriptContent.value = manuscript.content || ''
+      documentContent.value = manuscript.content || ''
       wordCount.value = manuscript.wordCount || 0
       initialWordCount.value = manuscript.wordCount || 0
     }
@@ -73,6 +75,17 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  async function loadAuthorProfile() {
+    if (!currentProjectId.value) return
+    authorVoiceProfile.value = await getAuthorProfile(currentProjectId.value)
+  }
+
+  async function updateAuthorVoiceProfile(data) {
+    if (!currentProjectId.value) return
+    await saveAuthorProfile(currentProjectId.value, data)
+    authorVoiceProfile.value = { ...authorVoiceProfile.value, ...data }
+  }
+
   async function updateStreakAfterSave() {
     if (!currentProjectId.value) return
     const data = await getStreakData(currentProjectId.value)
@@ -80,10 +93,10 @@ export const useProjectStore = defineStore('project', () => {
     longestStreak.value = data.longestStreak || 0
   }
 
-  async function saveManuscriptDebounced() {
+  async function saveDocumentDebounced() {
     if (!currentProjectId.value) return
     try {
-      await saveManuscript(currentProjectId.value, manuscriptContent.value)
+      await saveManuscript(currentProjectId.value, documentContent.value)
       lastSavedAt.value = new Date().toISOString()
       await updateDailyWordCount(currentProjectId.value, wordCount.value)
       dailyWordCount.value = wordCount.value
@@ -94,7 +107,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   function updateContent(newContent) {
-    manuscriptContent.value = newContent
+    documentContent.value = newContent
     const words = countWords(newContent)
     wordCount.value = words
     sessionWordCount.value = Math.max(0, words - initialWordCount.value)
@@ -128,8 +141,8 @@ export const useProjectStore = defineStore('project', () => {
     await updateDailyWordCount(currentProjectId.value, wordCount.value)
   }
 
-  async function createNewProject(name, genre = '', synopsis = '') {
-    const id = await createProject(name, genre, synopsis)
+  async function createNewProject(name, category = '', description = '') {
+    const id = await createProject(name, category, description)
     await loadProject(id)
     return id
   }
@@ -138,8 +151,8 @@ export const useProjectStore = defineStore('project', () => {
     if (!currentProjectId.value) return
     await updateProject(currentProjectId.value, data)
     if (data.name !== undefined) currentProjectName.value = data.name
-    if (data.genre !== undefined) currentGenre.value = data.genre
-    if (data.synopsis !== undefined) currentSynopsis.value = data.synopsis
+    if (data.category !== undefined) currentCategory.value = data.category
+    if (data.description !== undefined) currentDescription.value = data.description
   }
 
   async function loadLastProject() {
@@ -157,9 +170,9 @@ export const useProjectStore = defineStore('project', () => {
   return {
     currentProjectId,
     currentProjectName,
-    currentSynopsis,
-    currentGenre,
-    manuscriptContent,
+    currentDescription,
+    currentCategory,
+    documentContent,
     wordCount,
     sessionWordCount,
     sessionGoal,
@@ -174,8 +187,10 @@ export const useProjectStore = defineStore('project', () => {
     longestStreak,
     lastSessionDate,
     lastSessionWords,
+    authorVoiceProfile,
+    lastSessionRecap,
     loadProject,
-    saveManuscriptDebounced,
+    saveDocumentDebounced,
     updateContent,
     setSessionGoal,
     setDailyGoal,
@@ -184,6 +199,8 @@ export const useProjectStore = defineStore('project', () => {
     updateDailyWordCountFromTotal,
     createNewProject,
     updateProjectInfo,
-    loadLastProject
+    loadLastProject,
+    loadAuthorProfile,
+    updateAuthorVoiceProfile
   }
 })

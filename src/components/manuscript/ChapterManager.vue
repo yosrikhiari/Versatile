@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
-import { useChapterSceneManager, CHAPTER_STATUSES } from '../../composables/useChapterSceneManager'
+import { useChapterSceneManager, SECTION_STATUSES } from '../../composables/useChapterSceneManager'
 import { useDraggableList, DRAG_OPTIONS } from '../../composables/useDraggableList'
 import { getChapterWordCounts } from '../../services/dbService'
 import Modal from '../shared/Modal.vue'
@@ -19,16 +19,16 @@ const { endDrag } = useDraggableList()
 
 const {
   showSceneModal,
-  activeChapterId,
+  activeSectionId,
   newScene,
   editingScene,
   getStatusColor,
   getStatusLabel,
-  getChapterWordCount,
-  openAddScene,
-  openEditScene,
-  saveScene,
-  deleteScene
+  getSectionWordCount,
+  openAddSubsection,
+  openEditSubsection,
+  saveSubsection,
+  deleteSubsection
 } = useChapterSceneManager()
 
 const showChapterModal = ref(false)
@@ -43,9 +43,9 @@ const snapshotSceneId = ref(null)
 const tagFilter = ref([])
 const allTags = computed(() => {
   const tags = new Set()
-  for (const chapter of sortedChapters.value) {
-    if (chapter.tags) {
-      for (const tag of chapter.tags) {
+  for (const section of sortedSections.value) {
+    if (section.tags) {
+      for (const tag of section.tags) {
         tags.add(tag)
       }
     }
@@ -53,9 +53,9 @@ const allTags = computed(() => {
   return Array.from(tags).sort()
 })
 
-const filteredChapters = computed(() => {
-  if (tagFilter.value.length === 0) return sortedChapters.value
-  return sortedChapters.value.filter(c => 
+const filteredSections = computed(() => {
+  if (tagFilter.value.length === 0) return sortedSections.value
+  return sortedSections.value.filter(c => 
     c.tags && c.tags.some(t => tagFilter.value.includes(t))
   )
 })
@@ -68,8 +68,8 @@ function toggleTagFilter(tag) {
   }
 }
 
-const sortedChapters = computed(() => manuscriptStore.sortedChapters)
-const scenesByChapter = computed(() => manuscriptStore.scenesByChapter)
+const sortedSections = computed(() => manuscriptStore.sortedSections)
+const subsectionsBySection = computed(() => manuscriptStore.subsectionsBySection)
 
 const showVolumeModal = ref(false)
 const editingVolume = ref(null)
@@ -80,21 +80,21 @@ const assignVolumeId = ref(null)
 
 const totalWordCount = computed(() => {
   let total = 0
-  for (const chapter of sortedChapters.value) {
+  for (const chapter of sortedSections.value) {
     const wc = getChapterWordCount(chapter.id)
     total += wc
   }
   return total
 })
 
-const chapterDragOptions = {
+const sectionDragOptions = {
   ...DRAG_OPTIONS,
-  group: 'chapters'
+  group: 'sections'
 }
 
-const sceneDragOptions = {
+const subsectionDragOptions = {
   ...DRAG_OPTIONS,
-  group: 'scenes'
+  group: 'subsections'
 }
 
 function openAddChapter() {
@@ -118,38 +118,38 @@ function saveChapter() {
   if (!newChapter.value.title.trim()) return
   
   if (editingChapter.value) {
-    manuscriptStore.updateChapterData(
+    manuscriptStore.updateSectionData(
       editingChapter.value.id,
       newChapter.value,
       projectStore.currentProjectId
     )
   } else {
-    manuscriptStore.addChapterData(projectStore.currentProjectId, newChapter.value)
+    manuscriptStore.addSectionData(projectStore.currentProjectId, newChapter.value)
   }
   
   showChapterModal.value = false
 }
 
-function deleteChapter(chapter) {
-  if (confirm(`Delete "${chapter.title || 'Chapter ' + (chapter.order + 1)}"? This will also delete all scenes in this chapter.`)) {
-    manuscriptStore.deleteChapterData(chapter.id, projectStore.currentProjectId)
+function deleteChapter(section) {
+  if (confirm(`Delete "${section.title || 'Section ' + (section.order + 1)}"? This will also delete all subsections in this section.`)) {
+    manuscriptStore.deleteSectionData(section.id, projectStore.currentProjectId)
   }
 }
 
-function updateChapterOrder() {
+function updateSectionOrder() {
   endDrag()
-  const ids = sortedChapters.value.map(c => c.id)
-  manuscriptStore.reorderChaptersData(ids, projectStore.currentProjectId)
+  const ids = sortedSections.value.map(s => s.id)
+  manuscriptStore.reorderSectionsData(ids, projectStore.currentProjectId)
 }
 
-function selectChapter(chapterId) {
-  activeChapterId.value = activeChapterId.value === chapterId ? null : chapterId
+function selectSection(sectionId) {
+  activeSectionId.value = activeSectionId.value === sectionId ? null : sectionId
 }
 
-function updateSceneOrder(chapterId) {
+function updateSubsectionOrder(sectionId) {
   endDrag()
-  const sceneIds = scenesByChapter.value[chapterId]?.map(s => s.id) || []
-  manuscriptStore.reorderScenesData(sceneIds, projectStore.currentProjectId)
+  const subsectionIds = subsectionsBySection.value[sectionId]?.map(s => s.id) || []
+  manuscriptStore.reorderSubsectionsData(subsectionIds, projectStore.currentProjectId)
 }
 
 onMounted(() => {
@@ -247,20 +247,20 @@ async function assignChapterToVolume(chapterId) {
   assignVolumeId.value = null
 }
 
-function getChaptersInVolume(volumeId) {
-  return sortedChapters.value.filter(c => c.volumeId === volumeId)
+function getSectionsInVolume(volumeId) {
+  return sortedSections.value.filter(s => s.volumeId === volumeId)
 }
 </script>
 
 <template>
   <div class="h-full flex flex-col bg-bg-secondary">
     <div class="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
-      <span class="font-spark text-accent tracking-wide">Chapter Manager</span>
+      <span class="font-spark text-accent tracking-wide">Section Manager</span>
       <button
-        @click="openAddChapter"
         class="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+        @click="openAddChapter"
       >
-        + Add Chapter
+        + Add Section
       </button>
     </div>
 
@@ -269,20 +269,20 @@ function getChaptersInVolume(volumeId) {
       <button
         v-for="tag in allTags"
         :key="tag"
-        @click="toggleTagFilter(tag)"
         :class="[
           'px-2 py-0.5 text-xs rounded-full font-ui shrink-0',
           tagFilter.includes(tag)
             ? 'bg-accent text-white'
             : 'bg-bg-tertiary text-text-hint hover:text-text-secondary'
         ]"
+        @click="toggleTagFilter(tag)"
       >
         {{ tag }}
       </button>
       <button
         v-if="tagFilter.length > 0"
-        @click="tagFilter = []"
         class="text-xs text-text-hint hover:text-danger font-ui shrink-0"
+        @click="tagFilter = []"
       >
         Clear
       </button>
@@ -292,8 +292,8 @@ function getChaptersInVolume(volumeId) {
       <div class="flex items-center gap-2">
         <span class="text-xs text-text-hint font-ui">Volumes</span>
         <button
-          @click="openAddVolume"
           class="px-2 py-0.5 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover"
+          @click="openAddVolume"
         >
           + Add
         </button>
@@ -319,30 +319,30 @@ function getChaptersInVolume(volumeId) {
                 class="text-text-hint" 
               />
               <span class="font-medium text-text-primary font-ui text-sm">{{ volume.title }}</span>
-              <span class="text-xs text-text-hint">({{ getChaptersInVolume(volume.id).length }} chapters)</span>
+              <span class="text-xs text-text-hint">({{ getSectionsInVolume(volume.id).length }} sections)</span>
             </div>
             <div class="flex items-center gap-1">
               <button
-                @click.stop="toggleAssignMode(volume.id)"
                 :class="[
                   'px-2 py-1 text-xs rounded',
                   assignMode && assignVolumeId === volume.id
                     ? 'bg-accent text-white'
                     : 'bg-bg-secondary text-text-hint hover:text-text-secondary'
                 ]"
-                title="Assign chapters"
+                  title="Assign sections"
+                @click.stop="toggleAssignMode(volume.id)"
               >
                 <BaseIcon name="folder-plus" :size="12" />
               </button>
               <button
-                @click.stop="openEditVolume(volume)"
                 class="p-1 text-text-hint hover:text-text-secondary"
+                @click.stop="openEditVolume(volume)"
               >
                 <BaseIcon name="edit-2" :size="12" />
               </button>
               <button
-                @click.stop="deleteVolume(volume)"
                 class="p-1 text-text-hint hover:text-danger"
+                @click.stop="deleteVolume(volume)"
               >
                 <BaseIcon name="trash-2" :size="12" />
               </button>
@@ -360,44 +360,44 @@ function getChaptersInVolume(volumeId) {
                 <span class="text-sm text-text-primary">{{ chapter.title || `Chapter ${chapter.order + 1}` }}</span>
               </div>
               <button
-                @click="volumeStore.removeChapter(chapter.id, projectStore.currentProjectId)"
                 class="text-text-hint hover:text-danger"
+                @click="volumeStore.removeChapter(chapter.id, projectStore.currentProjectId)"
               >
                 <BaseIcon name="x" :size="12" />
               </button>
             </div>
             <div v-if="getChaptersInVolume(volume.id).length === 0" class="text-center py-2">
-              <p class="text-xs text-text-hint">No chapters assigned. Click the folder icon to add.</p>
+                <p class="text-xs text-text-hint">No sections assigned. Click the folder icon to add.</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div v-if="filteredChapters.length === 0 && sortedChapters.length > 0" class="text-center py-12">
-        <p class="text-text-hint font-ui text-sm mb-4">No chapters match the selected tags.</p>
+      <div v-if="filteredSections.length === 0 && sortedSections.length > 0" class="text-center py-12">
+        <p class="text-text-hint font-ui text-sm mb-4">No sections match the selected tags.</p>
         <button
-          @click="tagFilter = []"
           class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-ui"
+          @click="tagFilter = []"
         >
           Clear Filters
         </button>
       </div>
-      <div v-else-if="filteredChapters.length === 0" class="text-center py-12">
-        <p class="text-text-hint font-ui text-sm mb-4">No chapters yet. Start planning your manuscript!</p>
+      <div v-else-if="filteredSections.length === 0" class="text-center py-12">
+        <p class="text-text-hint font-ui text-sm mb-4">No sections yet. Start planning your document!</p>
         <button
-          @click="openAddChapter"
           class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-ui"
+          @click="openAddChapter"
         >
-          Add First Chapter
+          Add First Section
         </button>
       </div>
 
       <draggable
-        :list="filteredChapters"
+        :list="filteredSections"
         item-key="id"
-        v-bind="chapterDragOptions"
-        @end="updateChapterOrder"
+        v-bind="sectionDragOptions"
         class="space-y-3"
+        @end="updateSectionOrder"
       >
         <template #item="{ element: chapter }">
           <div
@@ -407,11 +407,11 @@ function getChaptersInVolume(volumeId) {
             ]"
           >
             <div
-              @click="assignMode ? assignChapterToVolume(chapter.id) : selectChapter(chapter.id)"
               :class="[
                 'p-3 flex items-center justify-between transition-colors',
                 assignMode ? 'hover:bg-accent/10' : 'hover:bg-surface-hover cursor-pointer'
               ]"
+              @click="assignMode ? assignChapterToVolume(chapter.id) : selectChapter(chapter.id)"
             >
               <div class="flex items-center gap-3">
                 <BaseIcon name="grip-vertical" :size="16" class="text-text-hint cursor-grab" />
@@ -432,80 +432,80 @@ function getChaptersInVolume(volumeId) {
                   {{ getStatusLabel(chapter.status) }}
                 </span>
                 <span class="text-xs text-text-hint font-ui">
-                  {{ getChapterWordCount(chapter.id) }} words
+                  {{ getSectionWordCount(chapter.id) }} words
                 </span>
-                <span class="text-text-hint">{{ scenesByChapter[chapter.id]?.length || 0 }} scenes</span>
+                <span class="text-text-hint">{{ subsectionsBySection[chapter.id]?.length || 0 }} subsections</span>
               </div>
             </div>
 
-            <div v-if="activeChapterId === chapter.id" class="border-t border-border-subtle p-3 bg-surface-hover">
+              <div v-if="activeSectionId === chapter.id" class="border-t border-border-subtle p-3 bg-surface-hover">
               <div class="flex gap-2 mb-3">
                 <button
-                  @click="openAddScene(chapter.id)"
                   class="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+                  @click="openAddSubsection(chapter.id)"
                 >
-                  + Add Scene
+                  + Add Subsection
                 </button>
                 <button
-                  @click="openEditChapter(chapter)"
                   class="px-3 py-1 text-xs bg-bg-secondary text-text-secondary rounded hover:bg-surface-hover font-ui"
+                  @click="openEditChapter(chapter)"
                 >
                   Edit
                 </button>
                 <button
+                  class="px-3 py-1 text-xs text-danger hover:bg-danger/10 font-ui"
                   @click="deleteChapter(chapter)"
-                  class="px-3 py-1 text-xs text-danger hover:bg-danger/10 rounded font-ui"
                 >
                   Delete
                 </button>
                 <button
-                  @click="openChapterSnapshot(chapter)"
                   class="px-3 py-1 text-xs bg-bg-secondary text-text-secondary rounded hover:bg-surface-hover font-ui"
                   title="Version history"
+                  @click="openChapterSnapshot(chapter)"
                 >
                   History
                 </button>
               </div>
 
               <draggable
-                :list="scenesByChapter[chapter.id]"
+                :list="subsectionsBySection[chapter.id]"
                 item-key="id"
-                v-bind="sceneDragOptions"
-                @end="() => updateSceneOrder(chapter.id)"
+                v-bind="subsectionDragOptions"
                 class="space-y-2 min-h-[50px]"
+                @end="() => updateSubsectionOrder(chapter.id)"
               >
-                <template #item="{ element: scene, index }">
+                <template #item="{ element: scene }">
                   <div
                     class="bg-bg-secondary rounded p-2 flex items-center justify-between cursor-grab"
                   >
                     <div class="flex items-center gap-2">
                       <BaseIcon name="grip-vertical" :size="14" class="text-text-hint cursor-grab" />
                       <div>
-                        <div class="text-sm text-text-primary font-ui">{{ scene.title || 'Untitled Scene' }}</div>
+                        <div class="text-sm text-text-primary font-ui">{{ scene.title || 'Untitled Subsection' }}</div>
                         <div v-if="scene.summary" class="text-xs text-text-hint font-ui">
                           {{ scene.summary.length > 50 ? scene.summary.slice(0, 50) + '...' : scene.summary }}
                         </div>
                       </div>
                     </div>
                     <div class="flex gap-1">
+                        <button
+                          class="px-2 py-1 text-xs text-text-hint hover:text-text-secondary font-ui"
+                          title="Edit subsection"
+                          @click="openEditSubsection(scene)"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          class="px-2 py-1 text-xs text-danger hover:bg-danger/10 font-ui"
+                          title="Delete subsection"
+                          @click="deleteSubsection(scene)"
+                        >
+                          <BaseIcon name="x" :size="12" />
+                        </button>
                       <button
-                        @click="openEditScene(scene)"
-                        class="px-2 py-1 text-xs text-text-hint hover:text-text-secondary font-ui"
-                        title="Edit scene"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        @click="deleteScene(scene)"
-                        class="px-2 py-1 text-xs text-danger hover:bg-danger/10 font-ui"
-                        title="Delete scene"
-                      >
-                        <BaseIcon name="x" :size="12" />
-                      </button>
-                      <button
-                        @click="openSceneSnapshot(scene)"
                         class="px-2 py-1 text-xs text-text-hint hover:text-text-secondary font-ui"
                         title="Version history"
+                        @click="openSceneSnapshot(scene)"
                       >
                         History
                       </button>
@@ -514,15 +514,15 @@ function getChaptersInVolume(volumeId) {
                 </template>
               </draggable>
 
-              <div v-if="!scenesByChapter[chapter.id]?.length" class="text-center py-4">
-                <p class="text-xs text-text-hint font-ui">No scenes yet. Break down this chapter into scenes.</p>
+              <div v-if="!subsectionsBySection[chapter.id]?.length" class="text-center py-4">
+                <p class="text-xs text-text-hint font-ui">No subsections yet. Break down this section into subsections.</p>
               </div>
             </div>
           </div>
         </template>
       </draggable>
 
-      <div v-if="sortedChapters.length > 0" class="mt-4 pt-3 border-t border-border-subtle">
+      <div v-if="sortedSections.length > 0" class="mt-4 pt-3 border-t border-border-subtle">
         <div class="text-xs text-text-hint font-ui">
           Total: {{ totalWordCount.toLocaleString() }} words
         </div>
@@ -532,36 +532,35 @@ function getChaptersInVolume(volumeId) {
     <Modal :show="showChapterModal" @close="showChapterModal = false">
       <div class="p-6">
         <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
-          {{ editingChapter ? 'Edit Chapter' : 'Add Chapter' }}
+          {{ editingChapter ? 'Edit Section' : 'Add Section' }}
         </h3>
         
         <div class="mb-3">
-          <label class="block text-xs text-text-hint font-ui mb-1">Title</label>
-          <input
-            v-model="newChapter.title"
-            type="text"
-            placeholder="Chapter title..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
-          />
+                <label class="block text-xs text-text-hint font-ui mb-1">Title</label>
+                <input
+                  v-model="newChapter.title"
+                  type="text"
+                  placeholder="Section title..."
+                  class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
         </div>
 
         <div class="mb-3">
-          <label class="block text-xs text-text-hint font-ui mb-1">Summary</label>
-          <textarea
-            v-model="newChapter.summary"
-            rows="3"
-            placeholder="Brief summary of what happens in this chapter..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
-          ></textarea>
+                <label class="block text-xs text-text-hint font-ui mb-1">Summary</label>
+                <textarea
+                  v-model="newChapter.summary"
+                  rows="3"
+                  placeholder="Brief summary of what happens in this section..."
+                  class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
+                ></textarea>
         </div>
 
         <div class="mb-4">
           <label class="block text-xs text-text-hint font-ui mb-1">Status</label>
           <div class="flex flex-wrap gap-2">
             <button
-              v-for="status in CHAPTER_STATUSES"
+              v-for="status in SECTION_STATUSES"
               :key="status.value"
-              @click="newChapter.status = status.value"
               :class="[
                 'px-3 py-1 text-xs rounded-full border font-ui',
                 newChapter.status === status.value
@@ -569,6 +568,7 @@ function getChaptersInVolume(volumeId) {
                   : 'border-border-subtle text-text-hint'
               ]"
               :style="newChapter.status === status.value ? { backgroundColor: status.color } : {}"
+              @click="newChapter.status = status.value"
             >
               {{ status.label }}
             </button>
@@ -582,14 +582,14 @@ function getChaptersInVolume(volumeId) {
 
         <div class="flex gap-2">
           <button
-            @click="saveChapter"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui"
+            @click="saveChapter"
           >
             {{ editingChapter ? 'Save' : 'Add' }}
           </button>
           <button
-            @click="showChapterModal = false"
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
+            @click="showChapterModal = false"
           >
             Cancel
           </button>
@@ -600,11 +600,11 @@ function getChaptersInVolume(volumeId) {
     <Modal :show="showSceneModal" @close="showSceneModal = false">
       <div class="p-6">
         <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
-          {{ editingScene ? 'Edit Scene' : 'New Scene' }}
+          {{ editingScene ? 'Edit Subsection' : 'New Subsection' }}
         </h3>
         
         <div class="mb-3">
-          <label class="block text-xs text-text-hint font-ui mb-1">Scene Title</label>
+                <label class="block text-xs text-text-hint font-ui mb-1">Subsection Title</label>
           <input
             v-model="newScene.title"
             type="text"
@@ -630,14 +630,14 @@ function getChaptersInVolume(volumeId) {
 
         <div class="flex gap-2">
           <button
-            @click="saveScene"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui"
+            @click="saveScene"
           >
             {{ editingScene ? 'Save' : 'Add' }}
           </button>
           <button
-            @click="showSceneModal = false"
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
+            @click="showSceneModal = false"
           >
             Cancel
           </button>
@@ -691,26 +691,26 @@ function getChaptersInVolume(volumeId) {
             <button
               v-for="color in volumeStore.VOLUME_COLORS"
               :key="color"
-              @click="newVolume.color = color"
               :class="[
                 'w-6 h-6 rounded-full border-2',
                 newVolume.color === color ? 'border-white scale-110' : 'border-transparent'
               ]"
               :style="{ backgroundColor: color }"
+              @click="newVolume.color = color"
             ></button>
           </div>
         </div>
 
         <div class="flex gap-2">
           <button
-            @click="saveVolume"
             class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui"
+            @click="saveVolume"
           >
             {{ editingVolume ? 'Save' : 'Add' }}
           </button>
           <button
-            @click="showVolumeModal = false"
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
+            @click="showVolumeModal = false"
           >
             Cancel
           </button>
