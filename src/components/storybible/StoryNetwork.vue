@@ -293,15 +293,13 @@ const nodes = computed(() => {
     
     let entity
     if (type === 'character') {
-      const char = storyBibleStore.characters.find(c => String(c.id) === entityId)
-      entity = char || { id: entityId, name: `Character ${entityId}`, role: 'Legacy relationship' }
+      entity = storyBibleStore.characters.find(c => String(c.id) === entityId)
     } else if (type === 'location') {
-      const loc = storyBibleStore.locations.find(l => String(l.id) === entityId)
-      entity = loc || { id: entityId, name: `Location ${entityId}`, description: '' }
+      entity = storyBibleStore.locations.find(l => String(l.id) === entityId)
     } else {
-      const thread = storyBibleStore.plotThreads.find(t => String(t.id) === entityId)
-      entity = thread || { id: entityId, title: `Plot Thread ${entityId}`, description: '' }
+      entity = storyBibleStore.plotThreads.find(t => String(t.id) === entityId)
     }
+    if (!entity) continue
 
     for (const instanceId of instanceIds) {
       const parentId = nodeParents.value[instanceId]

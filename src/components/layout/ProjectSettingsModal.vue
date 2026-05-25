@@ -220,17 +220,17 @@ function handleOverlayClick(event) {
     <Transition name="modal">
       <div
         v-if="show"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
         @click="handleOverlayClick"
       >
-        <div class="bg-bg-secondary border border-border-subtle rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
+        <div class="glass-modal rounded-xl shadow-warm-lg w-full max-w-lg mx-4 overflow-hidden animate-scale-in">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-border-subtle/50">
             <div class="flex items-center gap-2">
               <BaseIcon name="settings" :size="18" class="text-accent" />
-              <h2 class="font-medium text-text-primary">Project Settings</h2>
+              <h2 class="font-medium text-text-primary font-display tracking-wide">Project Settings</h2>
             </div>
             <button
-              class="p-1 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover transition-colors"
+              class="p-1.5 text-text-hint/50 hover:text-text-primary rounded-lg hover:bg-accent-glass transition-all duration-150 btn-ghost"
               @click="$emit('close')"
             >
               <BaseIcon name="x" :size="18" />
@@ -302,7 +302,7 @@ function handleOverlayClick(event) {
             </div>
           </div>
 
-          <div class="flex items-center justify-end gap-3 px-5 py-4 bg-bg-tertiary/50 border-t border-border-subtle">
+          <div class="flex items-center justify-end gap-3 px-5 py-4 bg-bg-tertiary/30 border-t border-border-subtle/30">
             <button
               class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary font-ui transition-colors"
               @click="$emit('close')"

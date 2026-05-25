@@ -65,7 +65,7 @@ onUnmounted(() => {
 <template>
   <div 
     v-if="visible"
-    class="bg-bg-tertiary border-b border-border-subtle px-4 py-2 flex items-center justify-between animate-fade-in"
+    class="glass border-b border-border-subtle/30 px-4 py-2 flex items-center justify-between animate-fade-in"
   >
     <div class="flex items-center gap-2 text-sm text-text-secondary">
       <BaseIcon name="clock" :size="14" class="text-text-hint" />
