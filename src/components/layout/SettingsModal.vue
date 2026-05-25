@@ -179,24 +179,51 @@ watch(() => props.show, (newVal) => {
 
 <template>
   <Teleport to="body">
-    <div v-if="show" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50" @click.self="emit('close')">
-      <div class="bg-bg-secondary border border-border-subtle rounded-xl shadow-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div v-if="show" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" @click.self="emit('close')">
+      <div class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-thin animate-scale-in">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-semibold text-text-primary">Settings</h2>
-          <button class="text-text-hint hover:text-text-primary" @click="emit('close')">
+          <h2 class="text-lg font-display font-semibold text-text-primary tracking-wide">Settings</h2>
+          <button class="text-text-hint/50 hover:text-text-primary transition-all duration-150 btn-ghost rounded-lg p-1" @click="emit('close')">
             <BaseIcon name="x" :size="20" />
           </button>
         </div>
 
-        <div class="flex gap-2 mb-6 border-b border-border-subtle pb-2">
+        <div class="flex gap-1 mb-6 border-b border-border-subtle/50 pb-2">
           <button
             :class="[
-              'px-3 py-1.5 text-sm rounded-t',
-              activeTab === 'goals' ? 'bg-bg-tertiary text-text-primary' : 'text-text-hint hover:text-text-secondary'
+              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
+              activeTab === 'goals' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
             ]"
             @click="activeTab = 'goals'"
           >
             Goals
+          </button>
+          <button
+            :class="[
+              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
+              activeTab === 'ai' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
+            ]"
+            @click="activeTab = 'ai'"
+          >
+            AI Providers
+          </button>
+          <button
+            :class="[
+              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
+              activeTab === 'embedding' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
+            ]"
+            @click="activeTab = 'embedding'"
+          >
+            Embeddings
+          </button>
+          <button
+            :class="[
+              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
+              activeTab === 'features' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
+            ]"
+            @click="activeTab = 'features'"
+          >
+            Features
           </button>
           <button
             :class="[

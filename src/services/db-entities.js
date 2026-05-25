@@ -13,7 +13,7 @@ export async function getCharacters(projectId) {
 
 export async function addCharacter(projectId, data) {
   try {
-    return await db.characters.add({ projectId, ...data })
+    return await db.characters.add({ projectId, ...data, lastEditedAt: Date.now() })
   } catch (error) {
     console.error('Failed to add character:', error)
     throw error
@@ -22,7 +22,7 @@ export async function addCharacter(projectId, data) {
 
 export async function updateCharacter(id, data) {
   try {
-    return await db.characters.update(id, data)
+    return await db.characters.update(id, { ...data, lastEditedAt: Date.now() })
   } catch (error) {
     console.error('Failed to update character:', error)
     throw error
@@ -94,4 +94,14 @@ export async function updateCharacterRelationship(id, data) {
 
 export async function deleteCharacterRelationship(id) {
   return db.characterRelationships.delete(id)
+}
+
+export async function deleteCharacterRelationshipsByCharacter(characterId) {
+  const rels = await db.characterRelationships
+    .filter(r => r.fromCharacterId === characterId || r.toCharacterId === characterId)
+    .toArray()
+  if (rels.length > 0) {
+    await db.characterRelationships.bulkDelete(rels.map(r => r.id))
+  }
+  return rels.length
 }

@@ -141,22 +141,22 @@ defineExpose({
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-manuscript relative">
+  <div class="h-full flex flex-col bg-manuscript relative editor-glow">
     <button
       v-if="isRunning"
-      class="absolute top-4 right-4 z-10 text-xs text-text-hint hover:text-text-secondary font-ui transition-colors focus:outline-none focus:ring-2 focus:ring-accent rounded px-2 py-1"
+      class="absolute top-4 right-4 z-10 text-xs text-text-hint/60 hover:text-text-secondary font-ui transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2.5 py-1.5 btn-ghost"
       @click="handleExitFlow"
     >
       Exit Flow
     </button>
     <div 
       :class="[
-        'flex-1 overflow-y-auto',
+        'flex-1 overflow-y-auto scrollbar-thin',
         isDesaturated ? 'desaturated' : ''
       ]"
     >
       <div 
-        class="editor-wrapper max-w-[680px] mx-auto px-8 py-12"
+        class="editor-wrapper max-w-[680px] mx-auto px-8 py-16 relative z-1"
         @keydown="handleKeydown"
         @click="handleClick"
       >
@@ -182,31 +182,14 @@ defineExpose({
 
     <div 
       v-if="isSaving"
-      class="absolute bottom-2 right-4 text-[10px] text-text-hint font-ui flex items-center gap-1"
+      class="absolute bottom-3 right-4 text-[10px] text-text-hint/50 font-ui flex items-center gap-1.5"
     >
-      <BaseIcon name="loader-2" :size="12" class="animate-spin" />
-      Saving...
+      <BaseIcon name="loader-2" :size="10" class="animate-spin" />
+      <span class="tracking-wide">Saving...</span>
     </div>
 
     <FlowNudge v-if="isNudging" @dismiss="handleDismissNudge" />
   </div>
 </template>
 
-<style>
-.tiptap-editor .ProseMirror {
-  outline: none;
-  min-height: 60vh;
-}
 
-.tiptap-editor .ProseMirror p {
-  margin-bottom: 1em;
-}
-
-.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  color: #9e9080;
-  pointer-events: none;
-  height: 0;
-}
-</style>

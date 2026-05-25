@@ -1,72 +1,220 @@
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html, body, #app {
-  height: 100%;
-  margin: 0;
-  padding: 0;
+@layer base {
+  html, body, #app {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: #0f0e0d;
+    color: #e8e0d5;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  ::selection {
+    background: rgba(201, 169, 110, 0.3);
+    color: #e8e0d5;
+  }
+
+  *:focus-visible {
+    outline: 2px solid #c9a96e;
+    outline-offset: 2px;
+  }
 }
 
-body {
-  background-color: #0f0e0d;
-  color: #e8e0d5;
-  font-family: 'Inter', system-ui, sans-serif;
+@layer components {
+  /* ── Glass Surface ── */
+  .glass {
+    background: rgba(26, 24, 22, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(201, 169, 110, 0.06);
+  }
+
+  .glass-panel {
+    background: rgba(36, 34, 32, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(201, 169, 110, 0.08);
+  }
+
+  .glass-modal {
+    background: rgba(26, 24, 22, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(201, 169, 110, 0.1);
+  }
+
+  /* ── Ambient Glow ── */
+  .ambient-glow {
+    position: relative;
+  }
+
+  .ambient-glow::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201, 169, 110, 0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 30% 100%, rgba(201, 169, 110, 0.03) 0%, transparent 60%);
+  }
+
+  /* ── Editor Ambient Glow ── */
+  .editor-glow {
+    position: relative;
+  }
+
+  .editor-glow::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(800px, 100vw);
+    height: 600px;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201, 169, 110, 0.07) 0%, transparent 70%);
+  }
+
+  /* ── Paper Grain Texture ── */
+  .grain {
+    position: relative;
+  }
+
+  .grain::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+
+  /* ── Scrollbar ── */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(74, 69, 64, 0.5);
+    border-radius: 2px;
+    transition: background 0.2s ease;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(90, 85, 80, 0.7);
+  }
+
+  /* ── Interactive Elements ── */
+  .btn-ghost {
+    @apply transition-all duration-150 ease-out;
+  }
+
+  .btn-ghost:hover {
+    @apply scale-[1.02];
+  }
+
+  .btn-ghost:active {
+    @apply scale-[0.98];
+  }
+
+  .btn-elevated {
+    @apply transition-all duration-150 ease-out;
+  }
+
+  .btn-elevated:hover {
+    @apply -translate-y-[1px];
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 1px rgba(201,169,110,0.08);
+  }
+
+  .btn-elevated:active {
+    @apply translate-y-0;
+  }
+
+  /* ── Panel Transition ── */
+  .panel-enter-active {
+    transition: all 0.2s ease-out;
+  }
+
+  .panel-leave-active {
+    transition: all 0.15s ease-in;
+  }
+
+  .panel-enter-from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+
+  .panel-leave-to {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+
+  /* ── Editor Content ── */
+  .editor-content {
+    font-family: 'Crimson Pro', Georgia, serif;
+    font-size: 19px;
+    line-height: 2;
+    letter-spacing: 0.01em;
+  }
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #4a4540;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #5a5550;
-}
-
-::selection {
-  background: rgba(201, 169, 110, 0.3);
-  color: #e8e0d5;
-}
-
-.editor-content {
-  font-family: 'Crimson Pro', Georgia, serif;
-  font-size: 18px;
-  line-height: 1.9;
-}
-
+/* ── TipTap Editor ── */
 .tiptap-editor .ProseMirror {
   font-family: 'Crimson Pro', Georgia, serif;
-  font-size: 18px;
-  line-height: 1.9;
-  color: #e8e0d5;
-  background-color: #1a1816;
+  font-size: 19px;
+  line-height: 2;
+  color: #ede5d8;
+  background-color: transparent;
+  outline: none;
+  min-height: 60vh;
+  position: relative;
+  z-index: 1;
 }
 
 .tiptap-editor .ProseMirror p {
-  color: #e8e0d5;
+  color: #ede5d8;
+  margin-bottom: 1em;
+}
+
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9e9080;
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
 }
 
 .tiptap-editor .ProseMirror::selection {
-  background: rgba(201, 169, 110, 0.3);
-  color: #e8e0d5;
+  background: rgba(201, 169, 110, 0.25);
+  color: #ede5d8;
 }
 
+/* ── Flow Mode Desaturation ── */
 .desaturated {
   filter: saturate(0.3) brightness(0.95);
   transition: filter 1.5s ease;
 }
 
+/* ── Animations ── */
 @keyframes pulse-dot {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
@@ -84,43 +232,24 @@ body {
 }
 
 @keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 16px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .toast-slide-up {
   animation: slide-up 0.3s ease-out forwards;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes glow-progress {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
-.fade-in {
-  animation: fade-in 0.3s ease-out forwards;
+.glow-progress {
+  animation: glow-progress 2s ease-in-out infinite;
 }
 
-@keyframes fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
-.fade-out {
-  animation: fade-out 0.3s ease-out forwards;
-}
-
-*:focus-visible {
-  outline: 2px solid #c9a96e;
-  outline-offset: 2px;
-}
-
+/* ── Reduced Motion ── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

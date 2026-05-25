@@ -50,28 +50,38 @@ watch(() => props.show, (show) => {
 <template>
   <Teleport to="body">
     <Transition
-      enter-active-class="transition-opacity duration-200"
+      enter-active-class="transition-all duration-200 ease-out"
       enter-from-class="opacity-0"
       enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-150"
+      leave-active-class="transition-all duration-150 ease-in"
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
       <div
         v-if="show"
-        :class="['fixed inset-0 flex items-center justify-center z-50 p-4', backdropClass]"
+        :class="['fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm', backdropClass]"
         @click.self="handleBackdropClick"
       >
-        <div
-          :class="[
-            'bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full overflow-y-auto max-h-[90vh]',
-            maxWidth,
-            panelClass
-          ]"
-          @click.stop
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          enter-from-class="opacity-0 scale-95"
+          enter-to-class="opacity-100 scale-100"
+          leave-active-class="transition-all duration-150 ease-in"
+          leave-from-class="opacity-100 scale-100"
+          leave-to-class="opacity-0 scale-95"
         >
-          <slot />
-        </div>
+          <div
+            v-if="show"
+            :class="[
+              'glass-modal rounded-xl shadow-warm-lg w-full overflow-y-auto max-h-[90vh]',
+              maxWidth,
+              panelClass
+            ]"
+            @click.stop
+          >
+            <slot />
+          </div>
+        </Transition>
       </div>
     </Transition>
   </Teleport>

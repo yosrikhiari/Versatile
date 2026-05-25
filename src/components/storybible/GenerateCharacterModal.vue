@@ -14,7 +14,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'create', 'update', 'generate'])
+const emit = defineEmits(['close', 'create', 'update', 'generate', 'reject'])
 
 const isGenerating = ref(false)
 const error = ref('')
@@ -43,6 +43,16 @@ function setGenerated(data) {
   error.value = ''
 }
 
+function getCharacterData() {
+  const fields = ['name', 'role', 'goal', 'voice', 'notes']
+  const data = {}
+  for (const key of fields) {
+    const val = character.value[key]
+    if (typeof val === 'string' && val.trim()) data[key] = val
+  }
+  return data
+}
+
 function setLoading() {
   isGenerating.value = true
   error.value = ''
@@ -61,12 +71,20 @@ function handleUpdate() {
   emit('update', { ...character.value })
 }
 
+function handleGenerateAgain() {
+  const prev = getCharacterData()
+  if (Object.keys(prev).length > 0) {
+    emit('reject', prev)
+  }
+  emit('generate')
+}
+
 function handleClose() {
   if (isGenerating.value) return
   emit('close')
 }
 
-defineExpose({ setGenerated, setLoading, setError })
+defineExpose({ setGenerated, setLoading, setError, getCharacterData })
 </script>
 
 <template>
@@ -179,7 +197,7 @@ defineExpose({ setGenerated, setLoading, setError })
             <button
               class="px-4 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover disabled:opacity-50 font-ui flex items-center gap-1.5"
               :disabled="isGenerating"
-              @click="$emit('generate')"
+              @click="handleGenerateAgain"
             >
               <BaseIcon name="sparkles" :size="14" />
               {{ mode === 'enhance' ? 'Regenerate' : 'Generate Again' }}

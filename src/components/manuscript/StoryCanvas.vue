@@ -152,7 +152,7 @@ onMounted(() => {
             <div
               class="px-3 py-2 bg-bg-tertiary rounded border border-border-subtle text-sm font-ui cursor-grab hover:border-accent/50"
             >
-              📖 {{ element.title || `Section ${element.order + 1}` }}
+              <BaseIcon name="book-open" :size="14" class="inline mr-1" />{{ element.title || `Section ${element.order + 1}` }}
             </div>
           </template>
         </draggable>

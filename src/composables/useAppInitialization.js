@@ -9,6 +9,7 @@ import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useArchiveStore } from '../stores/archiveStore'
 import { getLatestStateSnapshot } from '../services/dbService'
 import { useStateSummarizer } from './useStateSummarizer'
+import { useStoryDocuments } from './useStoryDocuments'
 
 export function useAppInitialization() {
   const projectStore = useProjectStore()
@@ -75,6 +76,9 @@ export function useAppInitialization() {
     if (latest) {
       projectStore.lastSessionRecap = snapshotToRecap(latest.state)
     }
+
+    const { regenerateAllDocuments } = useStoryDocuments()
+    await regenerateAllDocuments(projectStore.currentProjectId)
   }
 
   function isOnboardingDismissed() {

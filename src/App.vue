@@ -6,6 +6,7 @@ import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts'
 import { useAppInitialization } from './composables/useAppInitialization'
 import { useExportImport } from './composables/useExportImport'
 import AppShell from './components/layout/AppShell.vue'
+import AmbientShader from './components/shared/AmbientShader.vue'
 import SettingsModal from './components/layout/SettingsModal.vue'
 import WelcomeOnboarding from './components/layout/WelcomeOnboarding.vue'
 import Toast from './components/layout/Toast.vue'
@@ -93,7 +94,8 @@ function handleOnboardingSkipWrapper() {
 </script>
 
 <template>
-  <div class="h-screen bg-manuscript">
+  <div class="h-screen bg-manuscript ambient-glow grain relative">
+    <AmbientShader />
     <div v-if="!ollamaAvailable" class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200">
       Ollama is not reachable at localhost:11434. AI features are disabled. Start your Ollama container to enable them.
     </div>
@@ -190,8 +192,8 @@ function handleOnboardingSkipWrapper() {
       @skip="handleOnboardingSkipWrapper"
     />
 
-    <div v-if="timer.showSessionEndModal.value" class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div class="bg-bg-tertiary rounded-xl shadow-xl p-8 max-w-md text-center border border-border-subtle">
+    <div v-if="timer.showSessionEndModal.value" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+      <div class="glass-modal rounded-xl shadow-warm-lg p-8 max-w-md text-center animate-scale-in">
         <BaseIcon name="waves" :size="48" class="mb-4 mx-auto text-accent" />
         <h2 class="text-xl font-semibold text-text-primary mb-2">Session complete</h2>
         <p class="text-text-secondary mb-6">
@@ -221,14 +223,14 @@ function handleOnboardingSkipWrapper() {
       @dismiss="timer.dismissBackspaceToast()" 
     />
 
-    <div v-if="showImportModal" class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div class="bg-bg-tertiary rounded-xl shadow-xl p-8 max-w-md text-center border border-border-subtle">
+    <div v-if="showImportModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+      <div class="glass-modal rounded-xl shadow-warm-lg p-8 max-w-md text-center">
         <p class="text-text-primary">{{ importStatus }}</p>
       </div>
     </div>
 
-    <div v-if="showShortcutsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showShortcutsModal = false">
-      <div class="bg-bg-tertiary rounded-xl shadow-xl p-6 max-w-lg w-full border border-border-subtle">
+    <div v-if="showShortcutsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" @click.self="showShortcutsModal = false">
+      <div class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full animate-scale-in">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-text-primary">Keyboard Shortcuts</h2>
           <button class="text-text-secondary hover:text-text-primary text-xl focus:outline-none focus:ring-2 focus:ring-accent rounded" @click="showShortcutsModal = false">&times;</button>

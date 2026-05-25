@@ -6,6 +6,7 @@ import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useGraphContext } from './useGraphContext'
 import { useNetworkSuggestions } from './useNetworkSuggestions'
 import { useContextCompactor } from './useContextCompactor'
+import { useStoryDocuments } from './useStoryDocuments'
 
 const SPARK_SYSTEM_PROMPT = `You are a creative writing prompt generator for fiction writers.
 You generate short, specific, evocative prompts that inspire a writer 
@@ -44,28 +45,12 @@ function getProjectContext() {
   return parts.length > 0 ? `\n\n${parts.join('\n')}` : ''
 }
 
-function getExistingEntitiesContext() {
+async function getExistingEntitiesContext() {
   try {
-    const storyBibleStore = useStoryBibleStore()
-    
-    const characterList = storyBibleStore.characters
-      .map(c => `- ${c.name}${c.role ? ` (${c.role})` : ''}${c.goal ? `: ${c.goal}` : ''}`)
-      .join('\n')
-    
-    const locationList = storyBibleStore.locations
-      .map(l => `- ${l.name}${l.description ? `: ${l.description.slice(0, 100)}` : ''}`)
-      .join('\n')
-    
-    const threadList = storyBibleStore.plotThreads
-      .map(t => `- ${t.title}${t.notes ? `: ${t.notes.slice(0, 100)}` : ''}`)
-      .join('\n')
-    
-    const parts = []
-    if (characterList) parts.push(`EXISTING CHARACTERS:\n${characterList}`)
-    if (locationList) parts.push(`\nEXISTING LOCATIONS:\n${locationList}`)
-    if (threadList) parts.push(`\nEXISTING PLOT THREADS:\n${threadList}`)
-    
-    return parts.length > 0 ? `\n\n${parts.join('\n')}` : ''
+    const projectStore = useProjectStore()
+    const { getStoryDocumentContext } = useStoryDocuments()
+    const context = await getStoryDocumentContext(projectStore.currentProjectId)
+    return context ? `\n\n${context}` : ''
   } catch {
     return ''
   }
@@ -426,9 +411,9 @@ Scene idea: ${idea}${projectContext}`
 
 const CHARACTER_SYSTEM_PROMPT = `You generate diverse, unique fictional characters. Vary: genre (fantasy, sci-fi, noir, romance, horror, historical), time period, culture, personality type, and naming conventions. Names should be culturally appropriate and distinct. Avoid clichés.`
 
-export async function generateRandomCharacter(manuscriptContext = null) {
+export async function generateRandomCharacter(manuscriptContext = null, partialData = null) {
   const projectContext = getProjectContext()
-  const entityContext = getExistingEntitiesContext()
+  const entityContext = await getExistingEntitiesContext()
   const { getEntityRelationshipContext } = useGraphContext()
   
   const allCharacters = useStoryBibleStore().characters
@@ -444,8 +429,14 @@ export async function generateRandomCharacter(manuscriptContext = null) {
   if (manuscriptContext?.contextText) {
     contextInstruction = `\n\nThe following excerpts establish the world and existing cast. Generate a character who fits a gap in this narrative — a missing role, an implied but unseen person, or a logical addition to the existing dynamics.\n\n${manuscriptContext.contextText}`
   }
+
+  const partialKeys = partialData ? Object.keys(partialData) : []
+  let partialDataSection = ''
+  if (partialKeys.length > 0) {
+    partialDataSection = `\n\nThe user has already provided these character details. Stay consistent with them and generate the remaining missing fields naturally. Do NOT change the provided values.\n${JSON.stringify(partialData, null, 2)}\n`
+  }
   
-  const userPrompt = `Generate one random fictional character that is DISTINCT from typical archetypes. Vary the genre, time period, culture, and personality. Return ONLY valid JSON. Keys: name, role, goal, voice, notes. All string values. No markdown.${projectContext}${entityContext}${relationshipContextSection}${contextInstruction}
+  const userPrompt = `Generate one random fictional character that is DISTINCT from typical archetypes. Vary the genre, time period, culture, and personality. Return ONLY valid JSON. Keys: name, role, goal, voice, notes. All string values. No markdown.${projectContext}${entityContext}${relationshipContextSection}${contextInstruction}${partialDataSection}
 
 IMPORTANT: Do NOT generate any of the characters listed above. Create someone entirely new with a different name, role, goal, and personality.
 
@@ -479,7 +470,7 @@ const IDEA_CHARACTER_SYSTEM_PROMPT = `You are a creative character designer. Giv
 
 export async function generateCharacterFromIdea(characterIdea, manuscriptContext = null) {
   const projectContext = getProjectContext()
-  const entityContext = getExistingEntitiesContext()
+  const entityContext = await getExistingEntitiesContext()
   const { getRelationshipContext } = useGraphContext()
   const { loadEmbeddings, buildEntityText, getEntityEmbedding, entityEmbeddings, embeddingsLoaded } = useNetworkSuggestions()
   
@@ -556,7 +547,7 @@ Example outputs:
 
 export async function generateCharactersForPlotThread(plotThread, count = 3, manuscriptContext = null) {
   const projectContext = getProjectContext()
-  const entityContext = getExistingEntitiesContext()
+  const entityContext = await getExistingEntitiesContext()
   const { getRelationshipContext } = useGraphContext()
   const { loadEmbeddings, getEntityEmbedding } = useNetworkSuggestions()
   
@@ -640,7 +631,7 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
 
 export async function generateLocationsForPlotThread(plotThread, count = 3, manuscriptContext = null) {
   const projectContext = getProjectContext()
-  const entityContext = getExistingEntitiesContext()
+  const entityContext = await getExistingEntitiesContext()
   
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
@@ -693,7 +684,7 @@ const LOCATION_SYSTEM_PROMPT = `You generate diverse, unique fictional locations
 
 export async function generateRandomLocation(manuscriptContext = null) {
   const projectContext = getProjectContext()
-  const entityContext = getExistingEntitiesContext()
+  const entityContext = await getExistingEntitiesContext()
   const { getRelationshipContext } = useGraphContext()
   
   const allLocations = useStoryBibleStore().locations
@@ -745,7 +736,7 @@ const PLOT_SYSTEM_PROMPT = `You generate diverse, compelling plot conflicts. Var
 
 export async function generateRandomPlotThread(manuscriptContext = null) {
   const projectContext = getProjectContext()
-  const entityContext = getExistingEntitiesContext()
+  const entityContext = await getExistingEntitiesContext()
   const { getRelationshipContext } = useGraphContext()
   
   const allThreads = useStoryBibleStore().plotThreads
@@ -794,7 +785,7 @@ Examples:
 
 export async function enhanceCharacter(partialData, manuscriptContext = null) {
   const projectContext = getProjectContext()
-  const entityContext = getExistingEntitiesContext()
+  const entityContext = await getExistingEntitiesContext()
   
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
@@ -871,7 +862,7 @@ All values must be strings. No markdown.`
 
 export async function enhanceExistingCharacter(charData, manuscriptContext = null) {
   const projectContext = getProjectContext()
-  const entityContext = getExistingEntitiesContext()
+  const entityContext = await getExistingEntitiesContext()
 
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
@@ -920,7 +911,7 @@ No markdown, no explanation, no preamble. JSON only.`
 
 export async function enhanceSingleField(entityType, fieldName, currentValue, allFields, manuscriptContext = null) {
   const projectContext = getProjectContext()
-  const entityContext = getExistingEntitiesContext()
+  const entityContext = await getExistingEntitiesContext()
   
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
@@ -1063,6 +1054,8 @@ export async function enhanceLocation(partialData, manuscriptContext = null) {
     .map(([field, constraint]) => `- ${field}: max ${constraint.maxSentences} sentence(s), ~${constraint.maxWords} words (${constraint.guidance})`)
     .join('\n')
   
+  const entityContext = await getExistingEntitiesContext()
+  
   const userPrompt = `You are a location design assistant. Given partial location information, manuscript context, and existing story elements, complete the location profile.
 
 IMPORTANT: Location fields are interconnected. A location's name often reflects its nature, the description should match the atmosphere, and notes should add depth that fits with both.
@@ -1070,7 +1063,7 @@ IMPORTANT: Location fields are interconnected. A location's name often reflects 
 LENGTH CONSTRAINTS (follow these strictly):
 ${locationLengthGuidance}
 
-${projectContext}${existingPart}${getExistingEntitiesContext()}${contextInstruction}
+${projectContext}${existingPart}${entityContext}${contextInstruction}
 
 Generate a complete location profile as JSON. Keys: name, description, notes.
 ${existingFields.length > 0 ? `
@@ -1140,6 +1133,8 @@ export async function enhancePlotThread(partialData, manuscriptContext = null) {
     .map(([field, constraint]) => `- ${field}: max ${constraint.maxSentences} sentence(s), ~${constraint.maxWords} words (${constraint.guidance})`)
     .join('\n')
   
+  const entityContext = await getExistingEntitiesContext()
+  
   const userPrompt = `You are a plot design assistant. Given partial plot thread information, manuscript context, and existing story elements, complete the plot thread.
 
 CRITICAL TITLE CONSTRAINT:
@@ -1148,7 +1143,7 @@ ${title ? `The title "${title}" is the PRIMARY context anchor. All generated con
 LENGTH CONSTRAINTS (follow these strictly):
 ${plotLengthGuidance}
 
-${projectContext}${existingPart}${getExistingEntitiesContext()}${contextInstruction}
+${projectContext}${existingPart}${entityContext}${contextInstruction}
 
 Generate a complete plot thread as JSON with keys: title, notes, characters, locations.
 

@@ -37,6 +37,56 @@ export async function deleteGraphEdge(id) {
   return db.graphEdges.delete(id)
 }
 
+export async function deleteGraphEdgesByEntity(projectId, entityType, entityId) {
+  const edges = await db.graphEdges
+    .where('projectId')
+    .equals(projectId)
+    .filter(e =>
+      (e.sourceType === entityType && e.sourceId === entityId) ||
+      (e.targetType === entityType && e.targetId === entityId)
+    )
+    .toArray()
+  if (edges.length > 0) {
+    await db.graphEdges.bulkDelete(edges.map(e => e.id))
+  }
+  return edges.length
+}
+
+async function getNodePositionsRecord(projectId) {
+  return db.nodePositions.where('projectId').equals(projectId).first()
+}
+
+export async function removeEntityFromNodeInstances(projectId, entityType, entityId) {
+  const prefix = entityType === 'character' ? 'char' : entityType === 'location' ? 'loc' : 'thread'
+  const nodeId = `${prefix}-${entityId}`
+  const record = await getNodePositionsRecord(projectId)
+  if (!record) return
+  if (record.instances && record.instances[nodeId] !== undefined) {
+    delete record.instances[nodeId]
+    await db.nodePositions.update(record.id, { instances: record.instances })
+  }
+}
+
+export async function removeEntityFromNodePositions(projectId, entityType, entityId) {
+  const prefix = entityType === 'character' ? 'char' : entityType === 'location' ? 'loc' : 'thread'
+  const nodeId = `${prefix}-${entityId}`
+  const record = await getNodePositionsRecord(projectId)
+  if (!record) return
+  if (record.positions && record.positions[nodeId] !== undefined) {
+    delete record.positions[nodeId]
+    await db.nodePositions.update(record.id, { positions: record.positions })
+  }
+}
+
+export async function removeEntityFromNodeParents(projectId, entityType, entityId) {
+  const prefix = entityType === 'character' ? 'char' : entityType === 'location' ? 'loc' : 'thread'
+  const nodeId = `${prefix}-${entityId}`
+  const record = await db.graphGroups.where('projectId').equals(projectId).first()
+  if (!record || !record.nodeParents || record.nodeParents[nodeId] === undefined) return
+  delete record.nodeParents[nodeId]
+  await db.graphGroups.update(record.id, { nodeParents: record.nodeParents })
+}
+
 export async function clearAllGraphEdges(projectId) {
   const allEdges = await db.graphEdges.where('projectId').equals(projectId).toArray()
   const edgeIds = allEdges.map(e => e.id)

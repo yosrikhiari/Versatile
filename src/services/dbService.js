@@ -27,7 +27,8 @@ export {
   getCharacterRelationships,
   addCharacterRelationship,
   updateCharacterRelationship,
-  deleteCharacterRelationship
+  deleteCharacterRelationship,
+  deleteCharacterRelationshipsByCharacter
 } from './db-entities'
 export { 
   getChapters,

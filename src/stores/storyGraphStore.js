@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, toRaw } from 'vue'
 import { getGraphEdges, addGraphEdge, updateGraphEdge, deleteGraphEdge, clearAllGraphEdges, getNodePositions, saveNodePositions, getNodeInstances, saveNodeInstances as dbSaveNodeInstances, getCharacterRelationships, deleteCharacterRelationship, getGraphGroups, saveGraphGroups, getNodeParents as dbGetNodeParents, saveNodeParents as dbSaveNodeParents, getGroupEdges, addGroupEdge, updateGroupEdge, deleteGroupEdge } from '../services/dbService'
+import { useStoryBibleStore } from './storyBibleStore'
 
 export const useStoryGraphStore = defineStore('storyGraph', () => {
   const edges = ref([])
@@ -14,17 +15,21 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
   async function loadEdges(projectId) {
     const graphEdgesData = await getGraphEdges(projectId)
     const charRelationshipsData = await getCharacterRelationships(projectId)
+    const storyBibleStore = useStoryBibleStore()
+    const existingCharIds = new Set(storyBibleStore.characters.map(c => c.id))
     
-    const charEdges = charRelationshipsData.map(rel => ({
-      id: `char-rel-${rel.id}`,
-      sourceId: rel.fromCharacterId,
-      sourceType: 'character',
-      targetId: rel.toCharacterId,
-      targetType: 'character',
-      relationshipType: rel.type,
-      description: rel.notes || '',
-      isLegacy: true
-    }))
+    const charEdges = charRelationshipsData
+      .filter(rel => existingCharIds.has(rel.fromCharacterId) && existingCharIds.has(rel.toCharacterId))
+      .map(rel => ({
+        id: `char-rel-${rel.id}`,
+        sourceId: rel.fromCharacterId,
+        sourceType: 'character',
+        targetId: rel.toCharacterId,
+        targetType: 'character',
+        relationshipType: rel.type,
+        description: rel.notes || '',
+        isLegacy: true
+      }))
     
     edges.value = [...graphEdgesData, ...charEdges]
     
@@ -40,6 +45,30 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
   async function loadNodePositions(projectId) {
     const positions = await getNodePositions(projectId)
     nodePositions.value = positions || {}
+    const storyBibleStore = useStoryBibleStore()
+    const cleaned = {}
+    let changed = false
+    for (const [key, pos] of Object.entries(nodePositions.value)) {
+      const type = key.startsWith('char') ? 'character' : key.startsWith('loc') ? 'location' : 'plotThread'
+      const entityId = key.replace(/^(char|loc|thread)-/, '')
+      let exists = false
+      if (type === 'character') {
+        exists = storyBibleStore.characters.some(c => String(c.id) === entityId)
+      } else if (type === 'location') {
+        exists = storyBibleStore.locations.some(l => String(l.id) === entityId)
+      } else {
+        exists = storyBibleStore.plotThreads.some(t => String(t.id) === entityId)
+      }
+      if (exists) {
+        cleaned[key] = pos
+      } else {
+        changed = true
+      }
+    }
+    if (changed) {
+      nodePositions.value = cleaned
+      await saveNodePositions(projectId, toRaw(cleaned))
+    }
   }
 
   async function saveNodePosition(projectId, nodeId, position) {
@@ -54,7 +83,27 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
 
   async function loadNodeInstances(projectId) {
     const instances = await getNodeInstances(projectId)
-    nodeInstances.value = instances || {}
+    const storyBibleStore = useStoryBibleStore()
+    const cleaned = {}
+    for (const [baseId, instanceIds] of Object.entries(instances || {})) {
+      const type = baseId.startsWith('char') ? 'character' : baseId.startsWith('loc') ? 'location' : 'plotThread'
+      const entityId = baseId.replace(/^(char|loc|thread)-/, '')
+      let exists = false
+      if (type === 'character') {
+        exists = storyBibleStore.characters.some(c => String(c.id) === entityId)
+      } else if (type === 'location') {
+        exists = storyBibleStore.locations.some(l => String(l.id) === entityId)
+      } else {
+        exists = storyBibleStore.plotThreads.some(t => String(t.id) === entityId)
+      }
+      if (exists) {
+        cleaned[baseId] = instanceIds
+      }
+    }
+    nodeInstances.value = cleaned
+    if (Object.keys(cleaned).length < Object.keys(instances || {}).length) {
+      await dbSaveNodeInstances(projectId, toRaw(cleaned))
+    }
   }
 
   async function saveNodeInstances(projectId) {

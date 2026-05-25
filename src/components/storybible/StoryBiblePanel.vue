@@ -1,10 +1,12 @@
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
 import { generateRandomCharacter, enhanceExistingCharacter } from '../../composables/useOllama'
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
+import { DOC_TYPES } from '../../services/db-story-documents'
+import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import BaseIcon from '../shared/BaseIcon.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
 import GenerateCharacterModal from './GenerateCharacterModal.vue'
@@ -28,13 +30,6 @@ const characterToEnhance = ref(null)
 
 const generateModalRef = ref(null)
 
-watch(showGenerateModal, async (val) => {
-  if (val) {
-    await nextTick()
-    await onModalGenerate()
-  }
-})
-
 function handleGenerateCharacter() {
   generateMode.value = 'generate'
   characterToEnhance.value = null
@@ -49,6 +44,7 @@ function handleEnhanceCharacter(character) {
 
 async function onModalGenerate() {
   if (!generateModalRef.value) return
+  const partialData = generateModalRef.value.getCharacterData()
   generateModalRef.value.setLoading()
   try {
     const context = await getSectionContext('current', 'character')
@@ -56,7 +52,7 @@ async function onModalGenerate() {
     if (generateMode.value === 'enhance' && characterToEnhance.value) {
       result = await enhanceExistingCharacter(characterToEnhance.value, context)
     } else {
-      result = await generateRandomCharacter(context)
+      result = await generateRandomCharacter(context, partialData)
     }
     if (result) {
       generateModalRef.value.setGenerated(result)
@@ -64,7 +60,8 @@ async function onModalGenerate() {
       generateModalRef.value.setError('AI returned empty response. Please try again.')
     }
   } catch (e) {
-    generateModalRef.value.setError('Failed to generate. Check your Ollama connection and try again.')
+    console.error('Generate failed:', e)
+    generateModalRef.value.setError(`Failed to generate: ${e.message || e}`)
   }
 }
 
@@ -81,11 +78,38 @@ async function onUpdateCharacter(charData) {
   characterToEnhance.value = null
 }
 
+async function onRejectGeneration(rejectedData) {
+  if (!projectStore.currentProjectId) return
+  const { logRejectedPattern } = useStoryDocuments()
+  await logRejectedPattern(projectStore.currentProjectId, rejectedData)
+}
+
 onMounted(async () => {
   if (projectStore.currentProjectId) {
     await storyBibleStore.loadAll(projectStore.currentProjectId)
     await volumeStore.loadVolumes(projectStore.currentProjectId)
+    const { regenerateAllDocuments } = useStoryDocuments()
+    await regenerateAllDocuments(projectStore.currentProjectId)
   }
+})
+
+watch(() => storyBibleStore.characters.length, async () => {
+  if (!projectStore.currentProjectId) return
+  const { regenerateDocument } = useStoryDocuments()
+  await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.CHARACTERS)
+  await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.RELATIONSHIPS)
+})
+
+watch(() => storyBibleStore.locations.length, async () => {
+  if (!projectStore.currentProjectId) return
+  const { regenerateDocument } = useStoryDocuments()
+  await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.WORLD)
+})
+
+watch(() => storyBibleStore.plotThreads.length, async () => {
+  if (!projectStore.currentProjectId) return
+  const { regenerateDocument } = useStoryDocuments()
+  await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.TIMELINE)
 })
 
 const filteredCharacters = computed(() => {
@@ -545,6 +569,7 @@ defineExpose({
       :existing-character="characterToEnhance"
       @close="showGenerateModal = false; characterToEnhance = null"
       @generate="onModalGenerate"
+      @reject="onRejectGeneration"
       @create="onCreateCharacter"
       @update="onUpdateCharacter"
     />

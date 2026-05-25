@@ -200,17 +200,17 @@ function handleSkipSetup() {
             <h2 class="text-lg font-medium text-text-primary mb-4">You're all set!</h2>
             <div class="grid grid-cols-3 gap-3">
               <div class="p-4 bg-bg-tertiary rounded-lg text-center">
-                <div class="text-2xl mb-2">✍️</div>
+                <BaseIcon name="pen-tool" :size="24" class="mx-auto mb-2 text-accent" />
                 <div class="text-sm font-medium text-text-primary">Write</div>
                 <div class="text-xs text-text-hint mt-1">Flow mode</div>
               </div>
               <div class="p-4 bg-bg-tertiary rounded-lg text-center">
-                <div class="text-2xl mb-2">🔍</div>
+                <BaseIcon name="search" :size="24" class="mx-auto mb-2 text-accent" />
                 <div class="text-sm font-medium text-text-primary">Analyze</div>
                 <div class="text-xs text-text-hint mt-1">Polish mode</div>
               </div>
               <div class="p-4 bg-bg-tertiary rounded-lg text-center">
-                <div class="text-2xl mb-2">📖</div>
+                <BaseIcon name="book-open" :size="24" class="mx-auto mb-2 text-accent" />
                 <div class="text-sm font-medium text-text-primary">Build</div>
                 <div class="text-xs text-text-hint mt-1">Story Bible</div>
               </div>

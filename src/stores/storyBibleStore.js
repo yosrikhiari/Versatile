@@ -3,8 +3,15 @@ import { ref } from 'vue'
 import {
   getCharacters, addCharacter, updateCharacter, deleteCharacter,
   getLocations, addLocation, updateLocation, deleteLocation,
-  getPlotThreads, addPlotThread, updatePlotThread, deletePlotThread
+  getPlotThreads, addPlotThread, updatePlotThread, deletePlotThread,
+  deleteCharacterRelationshipsByCharacter
 } from '../services/dbService'
+import {
+  deleteGraphEdgesByEntity,
+  removeEntityFromNodeInstances,
+  removeEntityFromNodePositions,
+  removeEntityFromNodeParents
+} from '../services/db-graph'
 
 export const useStoryBibleStore = defineStore('storyBible', () => {
   const characters = ref([])
@@ -19,19 +26,26 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
 
   async function addCharacterData(projectId, data) {
     const id = await addCharacter(projectId, data)
-    characters.value.push({ id, projectId, ...data })
+    characters.value.push({ id, projectId, ...data, lastEditedAt: Date.now() })
     return id
   }
 
   async function updateCharacterData(id, data, projectId) {
-    await updateCharacter(id, data)
+    await updateCharacter(id, { ...data, lastEditedAt: Date.now() })
     const index = characters.value.findIndex(c => c.id === id)
     if (index !== -1) {
-      characters.value[index] = { ...characters.value[index], ...data }
+      characters.value[index] = { ...characters.value[index], ...data, lastEditedAt: Date.now() }
     }
   }
 
   async function deleteCharacterData(id, projectId) {
+    await Promise.all([
+      deleteCharacterRelationshipsByCharacter(id),
+      deleteGraphEdgesByEntity(projectId, 'character', id),
+      removeEntityFromNodeInstances(projectId, 'character', id),
+      removeEntityFromNodePositions(projectId, 'character', id),
+      removeEntityFromNodeParents(projectId, 'character', id)
+    ])
     await deleteCharacter(id)
     characters.value = characters.value.filter(c => c.id !== id)
   }

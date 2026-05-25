@@ -86,6 +86,34 @@ db.version(14).stores({
   storyStateSnapshots: '++id, projectId, timestamp'
 })
 
+db.version(15).stores({
+  projects: '++id, name, createdAt, updatedAt, genre, synopsis',
+  manuscripts: '++id, projectId, content, wordCount, updatedAt',
+  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt',
+  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes',
+  locations: '++id, projectId, name, description, notes',
+  plotThreads: '++id, projectId, title, status, notes',
+  sections: '++id, projectId, title, summary, order, status, *tags, volumeId',
+  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags',
+  sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
+  annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
+  snippets: '++id, projectId, word, count, lastSeen',
+  dailyGoals: '++id, projectId, date, [projectId+date]',
+  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  storyElements: '++id, projectId, type, title, x, y, width, height, data',
+  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
+  nodePositions: '++id, projectId',
+  graphGroups: '++id, projectId',
+  snapshots: '++id, projectId, chapterId, timestamp, label',
+  volumes: '++id, projectId, title, description, color, chapterIds',
+  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
+  sessionArchive: '++id, projectId, timestamp, type, signal',
+  authorProfile: '++id, projectId',
+  storyStateSnapshots: '++id, projectId, timestamp',
+  storyDocuments: '++id, projectId, docType, content, updatedAt'
+})
+
 db.version(13).stores({
   projects: '++id, name, createdAt, updatedAt, genre, synopsis',
   manuscripts: '++id, projectId, content, wordCount, updatedAt',
