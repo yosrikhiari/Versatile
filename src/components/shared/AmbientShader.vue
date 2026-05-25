@@ -1,24 +1,22 @@
 <script setup>
-import { Shader, FlowingGradient, Vignette } from 'shaders/vue'
+import { Shader, Aurora } from 'shaders/vue'
 </script>
 
 <template>
   <div class="fixed inset-0 pointer-events-none z-0">
     <Shader class="w-full h-full">
-      <FlowingGradient
-        color-a="#0a0806"
-        color-b="#1a1510"
-        color-c="#2a2018"
-        color-d="#1a1410"
-        :speed="0.2"
-        :distortion="0.15"
-        :opacity="0.5"
-      />
-      <Vignette
-        color="#000000"
-        :radius="0.4"
-        :falloff="0.6"
-        :intensity="0.4"
+      <Aurora
+        color-a="#5c3a1e"
+        color-b="#c9a96e"
+        color-c="#8b6914"
+        :intensity="35"
+        :speed="3"
+        :curtain-count="3"
+        :waviness="30"
+        :ray-density="15"
+        :height="80"
+        :center="{ x: 0.5, y: 0.2 }"
+        :opacity="0.55"
       />
     </Shader>
   </div>

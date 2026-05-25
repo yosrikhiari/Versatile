@@ -18,15 +18,15 @@ const emit = defineEmits(['close', 'create', 'update', 'generate', 'reject'])
 
 const isGenerating = ref(false)
 const error = ref('')
-const character = ref({ name: '', role: '', goal: '', voice: '', notes: '' })
+const character = ref({ name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' })
 
 watch(() => props.show, (val) => {
   if (val) {
     error.value = ''
     if (props.mode === 'enhance' && props.existingCharacter) {
-      character.value = { ...props.existingCharacter }
+      character.value = { ...props.existingCharacter, sampleDialogue: props.existingCharacter.sampleDialogue || '' }
     } else {
-      character.value = { name: '', role: '', goal: '', voice: '', notes: '' }
+      character.value = { name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' }
     }
   }
 })
@@ -37,14 +37,15 @@ function setGenerated(data) {
     role: data.role || '',
     goal: data.goal || '',
     voice: data.voice || '',
-    notes: data.notes || ''
+    notes: data.notes || '',
+    sampleDialogue: data.sampleDialogue || ''
   }
   isGenerating.value = false
   error.value = ''
 }
 
 function getCharacterData() {
-  const fields = ['name', 'role', 'goal', 'voice', 'notes']
+  const fields = ['name', 'role', 'goal', 'voice', 'notes', 'sampleDialogue']
   const data = {}
   for (const key of fields) {
     const val = character.value[key]
@@ -181,6 +182,15 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
                 v-model="character.notes"
                 placeholder="Backstory, personality, quirks..."
                 rows="3"
+                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent resize-none"
+              />
+            </div>
+            <div>
+              <label class="text-[10px] uppercase tracking-wider text-text-hint font-ui mb-1 block">Sample Dialogue</label>
+              <textarea
+                v-model="character.sampleDialogue"
+                placeholder="A single line this character would say — e.g. &quot;Get out of my sight.&quot;"
+                rows="2"
                 class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent resize-none"
               />
             </div>

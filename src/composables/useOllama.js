@@ -7,6 +7,7 @@ import { useGraphContext } from './useGraphContext'
 import { useNetworkSuggestions } from './useNetworkSuggestions'
 import { useContextCompactor } from './useContextCompactor'
 import { useStoryDocuments } from './useStoryDocuments'
+import { useAuthorModel } from './useAuthorModel'
 
 const SPARK_SYSTEM_PROMPT = `You are a creative writing prompt generator for fiction writers.
 You generate short, specific, evocative prompts that inspire a writer 
@@ -20,7 +21,8 @@ const FIELD_LENGTH_CONSTRAINTS = {
     role: { maxSentences: 2, maxWords: 10, guidance: '1-2 short sentences, describes their archetype or function (e.g., "Retired detective haunted by the past.")' },
     goal: { maxSentences: 2, maxWords: 20, guidance: '1-2 sentences, what the character wants to achieve' },
     voice: { maxSentences: 2, maxWords: 25, guidance: '1-2 sentences, how they speak - accent, vocabulary, rhythm' },
-    notes: { maxSentences: 4, maxWords: 60, guidance: '2-4 sentences, backstory snippets or story hooks' }
+    notes: { maxSentences: 4, maxWords: 60, guidance: '2-4 sentences, backstory snippets or story hooks' },
+    sampleDialogue: { maxSentences: 3, maxWords: 50, guidance: 'A single line this character would actually say — not a description of how they speak, but the actual words (e.g., "Get out of my sight.")' }
   },
   location: {
     name: { maxSentences: 1, maxWords: 4, guidance: '1-3 words, evocative name' },
@@ -365,6 +367,10 @@ export async function generateContent(idea, tone, characterNames = [], targetLen
     : 'Write a full chapter of about 1500-2000 words.'
   
   const projectContext = getProjectContext()
+  const { profileToContextString } = useAuthorModel()
+  const profileStr = profileToContextString(useProjectStore().authorVoiceProfile)
+  const systemPrompt = 'You are a creative fiction writer. Write engaging prose.' +
+    (profileStr ? '\n\n' + profileStr : '')
   
   const userPrompt = `Write fiction in third person. ${lengthInstructions}
 Include sensory details, dialogue, and emotional interiority.
@@ -376,7 +382,7 @@ Scene idea: ${idea}${projectContext}`
 
   try {
     const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative fiction writer. Write engaging prose.', { feature: FEATURES.CONTENT })
+      aiGenerate(userPrompt, systemPrompt, { feature: FEATURES.CONTENT })
     )
     return { text: response, error: null }
   } catch (error) {
@@ -390,6 +396,10 @@ export async function generateContentStreaming(idea, tone, characterNames = [], 
     : 'Write a full chapter of about 1500-2000 words.'
   
   const projectContext = getProjectContext()
+  const { profileToContextString } = useAuthorModel()
+  const profileStr = profileToContextString(useProjectStore().authorVoiceProfile)
+  const systemPrompt = 'You are a creative fiction writer. Write engaging prose.' +
+    (profileStr ? '\n\n' + profileStr : '')
   
   const userPrompt = `Write fiction in third person. ${lengthInstructions}
 Include sensory details, dialogue, and emotional interiority.
@@ -401,7 +411,7 @@ Scene idea: ${idea}${projectContext}`
 
   try {
     const response = await retryWithBackoff(() =>
-      aiStream(userPrompt, 'You are a creative fiction writer. Write engaging prose.', onProgress, { feature: FEATURES.CONTENT })
+      aiStream(userPrompt, systemPrompt, onProgress, { feature: FEATURES.CONTENT })
     )
     return { text: response, error: null }
   } catch (error) {
@@ -436,7 +446,7 @@ export async function generateRandomCharacter(manuscriptContext = null, partialD
     partialDataSection = `\n\nThe user has already provided these character details. Stay consistent with them and generate the remaining missing fields naturally. Do NOT change the provided values.\n${JSON.stringify(partialData, null, 2)}\n`
   }
   
-  const userPrompt = `Generate one random fictional character that is DISTINCT from typical archetypes. Vary the genre, time period, culture, and personality. Return ONLY valid JSON. Keys: name, role, goal, voice, notes. All string values. No markdown.${projectContext}${entityContext}${relationshipContextSection}${contextInstruction}${partialDataSection}
+  const userPrompt = `Generate one random fictional character that is DISTINCT from typical archetypes. Vary the genre, time period, culture, and personality. Return ONLY valid JSON. Keys: name, role, goal, voice, notes, sampleDialogue. All string values. No markdown.${projectContext}${entityContext}${relationshipContextSection}${contextInstruction}${partialDataSection}
 
 IMPORTANT: Do NOT generate any of the characters listed above. Create someone entirely new with a different name, role, goal, and personality.
 
@@ -459,7 +469,8 @@ Examples of varied outputs:
       role: parsed.role || parsed.Role || '',
       goal: parsed.goal || parsed.Goal || '',
       voice: parsed.voice || parsed.Voice || '',
-      notes: parsed.notes || parsed.Notes || ''
+      notes: parsed.notes || parsed.Notes || '',
+      sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || ''
     }
   } catch (error) {
     return null
@@ -509,7 +520,7 @@ export async function generateCharacterFromIdea(characterIdea, manuscriptContext
 
 CHARACTER IDEA: "${characterIdea}"
 
-Create a complete character as JSON with these keys: name, role, goal, voice, notes.
+Create a complete character as JSON with these keys: name, role, goal, voice, notes, sampleDialogue.
 All values must be strings. No markdown.
 
 IMPORTANT:
@@ -538,7 +549,8 @@ Example outputs:
       role: parsed.role || parsed.Role || '',
       goal: parsed.goal || parsed.Goal || '',
       voice: parsed.voice || parsed.Voice || '',
-      notes: parsed.notes || parsed.Notes || ''
+      notes: parsed.notes || parsed.Notes || '',
+      sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || ''
     }
   } catch (error) {
     return null
@@ -589,10 +601,10 @@ export async function generateCharactersForPlotThread(plotThread, count = 3, man
     : ''
   
   const userPrompt = `Generate ${count} distinct fictional characters that could appear in or relate to this plot thread.${plotThreadInfo}
-Each character must have a unique name, role, goal, voice, and notes.
+Each character must have a unique name, role, goal, voice, notes, and sampleDialogue.
 
 Return JSON array with ${count} character objects:
-[{"name": "...", "role": "...", "goal": "...", "voice": "...", "notes": "..."}]
+[{"name": "...", "role": "...", "goal": "...", "voice": "...", "notes": "...", "sampleDialogue": "..."}]
 
 IMPORTANT for each character:
 - Character goals should connect to or influence the plot thread
@@ -622,7 +634,8 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
       role: p.role || p.Role || '',
       goal: p.goal || p.Goal || '',
       voice: p.voice || p.Voice || '',
-      notes: p.notes || p.Notes || ''
+      notes: p.notes || p.Notes || '',
+      sampleDialogue: p.sampleDialogue || p.SampleDialogue || ''
     }))
   } catch (error) {
     return []
@@ -798,6 +811,7 @@ export async function enhanceCharacter(partialData, manuscriptContext = null) {
   if (partialData.goal) existingFields.push(`Goal: "${partialData.goal}"`)
   if (partialData.voice) existingFields.push(`Voice: "${partialData.voice}"`)
   if (partialData.notes) existingFields.push(`Notes: "${partialData.notes}"`)
+  if (partialData.sampleDialogue) existingFields.push(`SampleDialogue: "${partialData.sampleDialogue}"`)
   
   const existingPart = existingFields.length > 0 
     ? `\n\nExisting information to respect and build upon:\n${existingFields.join('\n')}`
@@ -816,7 +830,7 @@ ${lengthGuidance}
 
 ${projectContext}${existingPart}${entityContext}${contextInstruction}
 
-Generate a complete character profile as JSON. Keys: name, role, goal, voice, notes.
+Generate a complete character profile as JSON. Keys: name, role, goal, voice, notes, sampleDialogue.
 ${existingFields.length > 0 ? `
 - The provided fields are your anchor points - build everything else to support them
 - Each new field must be consistent with and complement the existing fields
@@ -851,7 +865,8 @@ All values must be strings. No markdown.`
       role: partialData.role || parsed.role || parsed.Role || '',
       goal: partialData.goal || parsed.goal || parsed.Goal || '',
       voice: partialData.voice || parsed.voice || parsed.Voice || '',
-      notes: partialData.notes || parsed.notes || parsed.Notes || ''
+      notes: partialData.notes || parsed.notes || parsed.Notes || '',
+      sampleDialogue: partialData.sampleDialogue || parsed.sampleDialogue || parsed.SampleDialogue || ''
     }
     
     return result
@@ -883,7 +898,8 @@ Respond ONLY with a valid JSON object with these exact keys:
   "role": "improved role",
   "goal": "improved goal",
   "voice": "improved voice",
-  "notes": "improved notes"
+  "notes": "improved notes",
+  "sampleDialogue": "a single line this character would say"
 }
 
 No markdown, no explanation, no preamble. JSON only.`
@@ -902,7 +918,8 @@ No markdown, no explanation, no preamble. JSON only.`
       role: parsed.role || parsed.Role || charData.role || '',
       goal: parsed.goal || parsed.Goal || charData.goal || '',
       voice: parsed.voice || parsed.Voice || charData.voice || '',
-      notes: parsed.notes || parsed.Notes || charData.notes || ''
+      notes: parsed.notes || parsed.Notes || charData.notes || '',
+      sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || charData.sampleDialogue || ''
     }
   } catch (error) {
     return null
@@ -924,7 +941,8 @@ export async function enhanceSingleField(entityType, fieldName, currentValue, al
       role: 'the character\'s role or archetype',
       goal: 'the character\'s motivation and what they want to achieve',
       voice: 'how the character speaks - their speech patterns, vocabulary, tone',
-      notes: 'additional character details, backstory snippets, or story hooks'
+      notes: 'additional character details, backstory snippets, or story hooks',
+      sampleDialogue: 'a single line this character would actually say — not a description of how they speak, but the actual words'
     },
     location: {
       name: 'the location\'s name',

@@ -28,7 +28,7 @@ const sparkModelLabel = computed(() => {
 
 const contextSelectorRef = ref(null)
 
-const activeTab = ref('prompt')
+const activeTab = ref('blueprint')
 const idea = ref('')
 const tone = ref('tense')
 const targetLength = ref('full')

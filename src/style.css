@@ -17,6 +17,10 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
+  .bg-manuscript-editor {
+    background-color: #141210;
+  }
+
   ::selection {
     background: rgba(201, 169, 110, 0.3);
     color: #e8e0d5;
@@ -31,24 +35,24 @@
 @layer components {
   /* ── Glass Surface ── */
   .glass {
-    background: rgba(26, 24, 22, 0.75);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(201, 169, 110, 0.06);
+    background: rgba(26, 24, 22, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(201, 169, 110, 0.1);
   }
 
   .glass-panel {
-    background: rgba(36, 34, 32, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(201, 169, 110, 0.08);
+    background: rgba(36, 34, 32, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(201, 169, 110, 0.14);
   }
 
   .glass-modal {
-    background: rgba(26, 24, 22, 0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(201, 169, 110, 0.1);
+    background: rgba(26, 24, 22, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(201, 169, 110, 0.18);
   }
 
   /* ── Ambient Glow ── */

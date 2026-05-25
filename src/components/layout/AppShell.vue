@@ -217,7 +217,7 @@ onMounted(async () => {
 
 <template>
   <div class="h-full flex flex-col">
-    <header class="h-14 glass flex items-center justify-between px-4 shrink-0 z-10">
+    <header class="h-14 glass flex items-center justify-between px-4 shrink-0 z-10 border-b border-border-subtle/60">
       <div class="flex items-center">
         <h1 class="text-xl font-semibold text-accent">Versatile</h1>
         <nav v-if="showCoreLoop && !flowMode" class="ml-6 flex items-center gap-3 text-xs text-text-hint/50 tracking-[0.08em] uppercase">

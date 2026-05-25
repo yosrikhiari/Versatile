@@ -21,7 +21,7 @@ const characterPortraitRef = ref(null)
 const activeTab = ref('characters')
 const searchQuery = ref('')
 const editingId = ref(null)
-const editData = ref({ name: '', role: '', goal: '', voice: '', notes: '' })
+const editData = ref({ name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' })
 const isEnhancing = ref(false)
 
 const showGenerateModal = ref(false)
@@ -29,6 +29,39 @@ const generateMode = ref('generate')
 const characterToEnhance = ref(null)
 
 const generateModalRef = ref(null)
+
+const selectedDocType = ref('synopsis')
+const documentContent = ref('')
+const docReloadKey = ref(0)
+
+const documentTypes = [
+  { key: 'synopsis', label: 'Synopsis' },
+  { key: 'characters', label: 'Characters' },
+  { key: 'world', label: 'World' },
+  { key: 'timeline', label: 'Timeline' },
+  { key: 'relationships', label: 'Relationships' },
+  { key: 'rejected_patterns', label: 'Rejected' }
+]
+
+async function loadDocument() {
+  if (!projectStore.currentProjectId) return
+  const { getDocument } = useStoryDocuments()
+  const doc = await getDocument(projectStore.currentProjectId, selectedDocType.value)
+  documentContent.value = doc?.content || ''
+}
+
+watch(selectedDocType, loadDocument, { immediate: true })
+watch(docReloadKey, loadDocument)
+
+watch(() => storyBibleStore.characters.length, () => {
+  if (activeTab.value === 'documents') docReloadKey.value++
+})
+watch(() => storyBibleStore.locations.length, () => {
+  if (activeTab.value === 'documents') docReloadKey.value++
+})
+watch(() => storyBibleStore.plotThreads.length, () => {
+  if (activeTab.value === 'documents') docReloadKey.value++
+})
 
 function handleGenerateCharacter() {
   generateMode.value = 'generate'
@@ -143,7 +176,8 @@ async function addCharacter() {
     role: '',
     goal: '',
     voice: '',
-    notes: ''
+    notes: '',
+    sampleDialogue: ''
   })
 }
 
@@ -202,7 +236,7 @@ function startEdit(entity, type) {
 
 function cancelEdit() {
   editingId.value = null
-  editData.value = { name: '', role: '', goal: '', voice: '', notes: '' }
+  editData.value = { name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' }
 }
 
 async function saveEdit(id, type) {
@@ -269,6 +303,18 @@ defineExpose({
         @click="activeTab = 'locations'"
       >
         Locations <span class="text-[10px] opacity-60">{{ filteredLocations.length }}</span>
+      </button>
+      <button
+        :class="[
+          'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
+          activeTab === 'documents' 
+            ? 'text-accent border-b-2 border-accent' 
+            : 'text-text-hint hover:text-text-secondary'
+        ]"
+        role="tab"
+        @click="activeTab = 'documents'"
+      >
+        Documents
       </button>
     </div>
 
@@ -361,6 +407,9 @@ defineExpose({
           <div v-if="character.notes && editingId !== character.id" class="mt-2 text-sm text-text-secondary">
             {{ character.notes }}
           </div>
+          <div v-if="character.sampleDialogue && editingId !== character.id" class="mt-2 text-sm italic text-text-hint border-l-2 border-accent/30 pl-3">
+            &ldquo;{{ character.sampleDialogue }}&rdquo;
+          </div>
           <CharacterPortrait
             v-if="editingId !== character.id && character.portrait"
             :character="character"
@@ -388,6 +437,12 @@ defineExpose({
             v-model="editData.notes"
             placeholder="Notes"
             rows="2"
+            class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
+          />
+          <textarea
+            v-model="editData.sampleDialogue"
+            placeholder="Sample dialogue — &quot;A line this character would actually say.&quot;"
+            rows="1"
             class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
           />
         </div>
@@ -547,9 +602,21 @@ defineExpose({
         </div>
         <div v-if="editingId === location.id" class="mt-2 space-y-2">
           <textarea
-            v-model="editData.description"
-            placeholder="Description"
+            v-model="editData.notes"
+            placeholder="Notes"
             rows="2"
+            class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
+          />
+          <textarea
+            v-model="editData.notes"
+            placeholder="Notes"
+            rows="2"
+            class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
+          />
+          <textarea
+            v-model="editData.sampleDialogue"
+            placeholder="Sample dialogue — &quot;A line this character would actually say.&quot;"
+            rows="1"
             class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
           />
         </div>
@@ -560,6 +627,27 @@ defineExpose({
       >
         + Add location
       </button>
+    </div>
+
+    <div v-if="activeTab === 'documents'" class="flex-1 overflow-y-auto p-4">
+      <div class="flex gap-1.5 flex-wrap mb-4">
+        <button
+          v-for="dt in documentTypes"
+          :key="dt.key"
+          :class="[
+            'px-2.5 py-1 text-[11px] font-medium rounded-lg font-ui transition-colors',
+            selectedDocType === dt.key
+              ? 'bg-accent text-white'
+              : 'bg-bg-secondary text-text-secondary hover:bg-surface-hover'
+          ]"
+          @click="selectedDocType = dt.key"
+        >
+          {{ dt.label }}
+        </button>
+      </div>
+      <pre
+        class="p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary whitespace-pre-wrap font-mono leading-relaxed min-h-[200px] overflow-y-auto"
+      >{{ documentContent || 'No content yet. Add some story elements first.' }}</pre>
     </div>
 
     <GenerateCharacterModal
