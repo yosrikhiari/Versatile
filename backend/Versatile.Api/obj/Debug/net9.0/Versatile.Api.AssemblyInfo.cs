@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Versatile.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5442cf2dd70ccc85655105d7e9935139b8ed5ecd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ae3513c8ea25c5c84df5f6877eafae376cb7ba9c")]
 [assembly: System.Reflection.AssemblyProductAttribute("Versatile.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Versatile.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

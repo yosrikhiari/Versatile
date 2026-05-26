@@ -17,16 +17,7 @@ const sparkStore = useSparkStore()
 const polishStore = usePolishStore()
 const storyBibleStore = useStoryBibleStore()
 
-const sparkOpen = ref(false)
-const polishOpen = ref(false)
-const storyBibleOpen = ref(false)
-const reviseOpen = ref(false)
-const canvasOpen = ref(false)
-const outlineOpen = ref(false)
-const chaptersOpen = ref(false)
-const networkOpen = ref(false)
-const timelineOpen = ref(false)
-const archiveOpen = ref(false)
+const activePanelName = ref(null)
 const focusMode = ref(false)
 const flowMode = ref(false)
 const showProjectSettings = ref(false)
@@ -85,107 +76,57 @@ async function createProject() {
 }
 
 function closeAllPanels() {
-  sparkOpen.value = false
-  polishOpen.value = false
-  storyBibleOpen.value = false
-  reviseOpen.value = false
-  canvasOpen.value = false
-  outlineOpen.value = false
-  chaptersOpen.value = false
-  networkOpen.value = false
-  archiveOpen.value = false
+  activePanelName.value = null
 }
 
 function toggleSpark() {
-  if (sparkOpen.value) {
-    sparkOpen.value = false
-  } else {
-    closeAllPanels()
-    sparkOpen.value = true
-  }
+  activePanelName.value = activePanelName.value === 'spark' ? null : 'spark'
 }
 
 function togglePolish() {
-  if (polishOpen.value) {
-    polishOpen.value = false
-  } else {
-    closeAllPanels()
-    polishOpen.value = true
+  if (activePanelName.value !== 'polish') {
+    activePanelName.value = 'polish'
     markCoreLoop('analyze')
+  } else {
+    activePanelName.value = null
   }
 }
 
 function toggleStoryBible() {
-  if (storyBibleOpen.value) {
-    storyBibleOpen.value = false
-  } else {
-    closeAllPanels()
-    storyBibleOpen.value = true
+  if (activePanelName.value !== 'story-bible') {
+    activePanelName.value = 'story-bible'
     markCoreLoop('build')
+  } else {
+    activePanelName.value = null
   }
 }
 
 function toggleRevise() {
-  if (reviseOpen.value) {
-    reviseOpen.value = false
-  } else {
-    closeAllPanels()
-    reviseOpen.value = true
-  }
+  activePanelName.value = activePanelName.value === 'revise' ? null : 'revise'
 }
 
 function toggleCanvas() {
-  if (canvasOpen.value) {
-    canvasOpen.value = false
-  } else {
-    closeAllPanels()
-    canvasOpen.value = true
-  }
+  activePanelName.value = activePanelName.value === 'canvas' ? null : 'canvas'
 }
 
 function toggleOutline() {
-  if (outlineOpen.value) {
-    outlineOpen.value = false
-  } else {
-    closeAllPanels()
-    outlineOpen.value = true
-  }
+  activePanelName.value = activePanelName.value === 'outline' ? null : 'outline'
 }
 
 function toggleChapters() {
-  if (chaptersOpen.value) {
-    chaptersOpen.value = false
-  } else {
-    closeAllPanels()
-    chaptersOpen.value = true
-  }
+  activePanelName.value = activePanelName.value === 'chapters' ? null : 'chapters'
 }
 
 function toggleNetwork() {
-  if (networkOpen.value) {
-    networkOpen.value = false
-  } else {
-    closeAllPanels()
-    networkOpen.value = true
-  }
+  activePanelName.value = activePanelName.value === 'network' ? null : 'network'
 }
 
 function toggleTimeline() {
-  if (timelineOpen.value) {
-    timelineOpen.value = false
-  } else {
-    closeAllPanels()
-    timelineOpen.value = true
-  }
+  activePanelName.value = activePanelName.value === 'timeline' ? null : 'timeline'
 }
 
 function toggleArchive() {
-  if (archiveOpen.value) {
-    archiveOpen.value = false
-  } else {
-    closeAllPanels()
-    archiveOpen.value = true
-  }
+  activePanelName.value = activePanelName.value === 'archive' ? null : 'archive'
 }
 
 function toggleFlow() {
@@ -217,7 +158,7 @@ onMounted(async () => {
 
 <template>
   <div class="h-full flex flex-col">
-    <header class="h-14 glass flex items-center justify-between px-4 shrink-0 z-10">
+    <header class="h-14 glass flex items-center justify-between px-4 shrink-0 z-10 border-b border-border-subtle/60">
       <div class="flex items-center">
         <h1 class="text-xl font-semibold text-accent">Versatile</h1>
         <nav v-if="showCoreLoop && !flowMode" class="ml-6 flex items-center gap-3 text-xs text-text-hint/50 tracking-[0.08em] uppercase">
@@ -232,7 +173,7 @@ onMounted(async () => {
       <div class="flex items-center gap-2">
         <ModeButton 
           label="Spark" 
-          :active="sparkOpen" 
+          :active="activePanelName === 'spark'" 
           shortcut="1"
           @click="toggleSpark" 
         />
@@ -245,38 +186,38 @@ onMounted(async () => {
         />
         <ModeButton 
           label="Polish" 
-          :active="polishOpen" 
+          :active="activePanelName === 'polish'" 
           shortcut="2"
           @click="togglePolish" 
         />
         <ModeButton 
           label="Story Bible" 
-          :active="storyBibleOpen" 
+          :active="activePanelName === 'story-bible'" 
           shortcut="3"
           @click="toggleStoryBible" 
         />
         <ModeButton 
           label="Canvas" 
-          :active="canvasOpen" 
+          :active="activePanelName === 'canvas'" 
           shortcut="5"
           @click="toggleCanvas" 
         />
         <ModeButton 
           label="Outline" 
-          :active="outlineOpen" 
+          :active="activePanelName === 'outline'" 
           shortcut="6"
           @click="toggleOutline" 
         />
         <ModeButton 
           label="Chapters" 
-          :active="chaptersOpen" 
+          :active="activePanelName === 'chapters'" 
           shortcut="7"
           @click="toggleChapters" 
         />
         <button
           :class="[
             'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
-            networkOpen 
+            activePanelName === 'network'
               ? 'bg-accent text-bg-primary shadow-warm-sm' 
               : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
           ]"
@@ -288,7 +229,7 @@ onMounted(async () => {
         <button 
           :class="[
             'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
-            timelineOpen 
+            activePanelName === 'timeline'
               ? 'bg-accent text-bg-primary shadow-warm-sm' 
               : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
           ]"
@@ -300,7 +241,7 @@ onMounted(async () => {
         <button
           :class="[
             'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
-            archiveOpen
+            activePanelName === 'archive'
               ? 'bg-accent text-bg-primary shadow-warm-sm'
               : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
           ]"
@@ -403,42 +344,42 @@ onMounted(async () => {
 
     <div class="flex-1 flex overflow-hidden">
       <aside 
-        v-if="storyBibleOpen && !flowMode" 
+        v-if="activePanelName === 'story-bible' && !flowMode" 
         class="w-[600px] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
       >
         <slot name="story-bible"></slot>
       </aside>
 
       <aside 
-        v-if="canvasOpen && !flowMode" 
+        v-if="activePanelName === 'canvas' && !flowMode" 
         class="w-[400px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="canvas"></slot>
       </aside>
 
       <aside 
-        v-if="outlineOpen && !flowMode" 
+        v-if="activePanelName === 'outline' && !flowMode" 
         class="w-[350px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="outline"></slot>
       </aside>
 
       <aside 
-        v-if="chaptersOpen && !flowMode" 
+        v-if="activePanelName === 'chapters' && !flowMode" 
         class="w-[320px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="chapters"></slot>
       </aside>
 
       <aside 
-        v-if="networkOpen && !flowMode" 
+        v-if="activePanelName === 'network' && !flowMode" 
         class="w-[900px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="network"></slot>
       </aside>
 
       <aside 
-        v-if="timelineOpen && !flowMode" 
+        v-if="activePanelName === 'timeline' && !flowMode" 
         class="w-[600px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="timeline"></slot>
@@ -449,13 +390,13 @@ onMounted(async () => {
           <slot name="editor"></slot>
         </div>
         <div 
-          v-if="polishOpen && !flowMode" 
+          v-if="activePanelName === 'polish' && !flowMode" 
           class="h-[320px] bg-bg-secondary border-t border-border-subtle overflow-hidden transition-all duration-200"
         >
           <slot name="polish"></slot>
         </div>
         <div 
-          v-if="reviseOpen && !flowMode" 
+          v-if="activePanelName === 'revise' && !flowMode" 
           class="flex-1 overflow-hidden transition-all duration-200"
         >
           <slot name="revise"></slot>
@@ -463,14 +404,14 @@ onMounted(async () => {
       </main>
 
       <aside 
-        v-if="sparkOpen && !flowMode" 
+        v-if="activePanelName === 'spark' && !flowMode" 
         class="w-[320px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
       >
         <slot name="spark"></slot>
       </aside>
 
       <aside 
-        v-if="archiveOpen && !flowMode" 
+        v-if="activePanelName === 'archive' && !flowMode" 
         class="w-[320px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
       >
         <slot name="archive"></slot>
