@@ -6,7 +6,8 @@ export const DOC_TYPES = {
   WORLD: 'world',
   TIMELINE: 'timeline',
   RELATIONSHIPS: 'relationships',
-  REJECTED_PATTERNS: 'rejected_patterns'
+  REJECTED_PATTERNS: 'rejected_patterns',
+  STYLE_GUIDE: 'style_guide'
 }
 
 export async function getStoryDocument(projectId, docType) {

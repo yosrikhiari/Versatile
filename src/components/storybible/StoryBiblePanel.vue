@@ -3,8 +3,10 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
+import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { generateRandomCharacter, enhanceExistingCharacter } from '../../composables/useOllama'
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
+import { countWords } from '../../utils/textUtils'
 import { DOC_TYPES } from '../../services/db-story-documents'
 import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import BaseIcon from '../shared/BaseIcon.vue'
@@ -30,9 +32,12 @@ const characterToEnhance = ref(null)
 
 const generateModalRef = ref(null)
 
+const manuscriptStore = useManuscriptStore()
 const selectedDocType = ref('synopsis')
 const documentContent = ref('')
 const docReloadKey = ref(0)
+const lastStyleGuideWordCount = ref(0)
+let styleGuideDebounceTimer = null
 
 const documentTypes = [
   { key: 'synopsis', label: 'Synopsis' },
@@ -40,7 +45,8 @@ const documentTypes = [
   { key: 'world', label: 'World' },
   { key: 'timeline', label: 'Timeline' },
   { key: 'relationships', label: 'Relationships' },
-  { key: 'rejected_patterns', label: 'Rejected' }
+  { key: 'rejected_patterns', label: 'Rejected' },
+  { key: 'style_guide', label: 'Style' }
 ]
 
 async function loadDocument() {
@@ -123,6 +129,7 @@ onMounted(async () => {
     await volumeStore.loadVolumes(projectStore.currentProjectId)
     const { regenerateAllDocuments } = useStoryDocuments()
     await regenerateAllDocuments(projectStore.currentProjectId)
+    lastStyleGuideWordCount.value = manuscriptWordCount.value
   }
 })
 
@@ -137,6 +144,24 @@ watch(() => storyBibleStore.locations.length, async () => {
   if (!projectStore.currentProjectId) return
   const { regenerateDocument } = useStoryDocuments()
   await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.WORLD)
+})
+
+const manuscriptWordCount = computed(() =>
+  manuscriptStore.subsections.reduce((sum, s) => sum + countWords(s.content || ''), 0)
+)
+
+watch(manuscriptWordCount, (newCount) => {
+  if (Math.abs(newCount - lastStyleGuideWordCount.value) > 200) {
+    lastStyleGuideWordCount.value = newCount
+    clearTimeout(styleGuideDebounceTimer)
+    styleGuideDebounceTimer = setTimeout(async () => {
+      if (projectStore.currentProjectId) {
+        const { regenerateDocument } = useStoryDocuments()
+        await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.STYLE_GUIDE)
+        docReloadKey.value++
+      }
+    }, 3000)
+  }
 })
 
 watch(() => storyBibleStore.plotThreads.length, async () => {
