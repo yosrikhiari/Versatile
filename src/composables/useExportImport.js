@@ -10,6 +10,11 @@ export function useExportImport() {
   const showImportModal = ref(false)
   const toastMessage = ref('')
   const toastKey = ref(0)
+  const exportProgress = ref(0)
+
+  function resetExportProgress() {
+    exportProgress.value = 0
+  }
 
   function showToast(msg) {
     toastMessage.value = msg
@@ -18,8 +23,11 @@ export function useExportImport() {
 
   async function handleExport() {
     if (!projectStore.currentProjectId) return
+    resetExportProgress()
+    exportProgress.value = 10
      
     const data = await exportProject(projectStore.currentProjectId)
+    exportProgress.value = 60
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -27,7 +35,9 @@ export function useExportImport() {
     a.download = `${projectStore.currentProjectName || 'project'}.versatile.json`
     a.click()
     URL.revokeObjectURL(url)
+    exportProgress.value = 100
     showToast('Project exported')
+    setTimeout(() => resetExportProgress(), 2000)
   }
 
   async function handleExportPDF() {
@@ -88,6 +98,7 @@ export function useExportImport() {
     showImportModal,
     toastMessage,
     toastKey,
+    exportProgress,
     showToast,
     handleExport,
     handleExportPDF,

@@ -3,11 +3,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
-import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { generateRandomCharacter, enhanceExistingCharacter } from '../../composables/useOllama'
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
-import { countWords } from '../../utils/textUtils'
-import { DOC_TYPES } from '../../services/db-story-documents'
+import { upsertStoryDocument } from '../../services/db-story-documents'
 import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import BaseIcon from '../shared/BaseIcon.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
@@ -25,6 +23,7 @@ const searchQuery = ref('')
 const editingId = ref(null)
 const editData = ref({ name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' })
 const isEnhancing = ref(false)
+const isGenerating = ref(false)
 
 const showGenerateModal = ref(false)
 const generateMode = ref('generate')
@@ -32,12 +31,14 @@ const characterToEnhance = ref(null)
 
 const generateModalRef = ref(null)
 
-const manuscriptStore = useManuscriptStore()
 const selectedDocType = ref('synopsis')
 const documentContent = ref('')
-const docReloadKey = ref(0)
-const lastStyleGuideWordCount = ref(0)
-let styleGuideDebounceTimer = null
+const savedContents = ref({})
+const fileInput = ref(null)
+
+const hasUnsavedChanges = computed(() =>
+  documentContent.value !== (savedContents.value[selectedDocType.value] ?? '')
+)
 
 const documentTypes = [
   { key: 'synopsis', label: 'Synopsis' },
@@ -54,25 +55,69 @@ async function loadDocument() {
   const { getDocument } = useStoryDocuments()
   const doc = await getDocument(projectStore.currentProjectId, selectedDocType.value)
   documentContent.value = doc?.content || ''
+  if (!(selectedDocType.value in savedContents.value)) {
+    savedContents.value[selectedDocType.value] = documentContent.value
+  }
+}
+
+async function saveDocument() {
+  if (!projectStore.currentProjectId) return
+  await upsertStoryDocument(projectStore.currentProjectId, selectedDocType.value, documentContent.value)
+  savedContents.value[selectedDocType.value] = documentContent.value
+}
+
+function downloadDocument() {
+  const blob = new Blob([documentContent.value || ''], { type: 'text/markdown' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${selectedDocType.value}.md`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function uploadDocument(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    documentContent.value = e.target?.result || ''
+    await saveDocument()
+  }
+  reader.readAsText(file)
+  event.target.value = ''
+}
+
+async function regenerateDocumentWithConfirm() {
+  if (hasUnsavedChanges.value) {
+    if (!confirm('This will overwrite your edits. Continue?')) return
+  }
+  if (!projectStore.currentProjectId) return
+  const { regenerateDocument } = useStoryDocuments()
+  await regenerateDocument(projectStore.currentProjectId, selectedDocType.value)
+  const { getDocument } = useStoryDocuments()
+  const doc = await getDocument(projectStore.currentProjectId, selectedDocType.value)
+  documentContent.value = doc?.content || ''
+  savedContents.value[selectedDocType.value] = documentContent.value
 }
 
 watch(selectedDocType, loadDocument, { immediate: true })
-watch(docReloadKey, loadDocument)
 
-watch(() => storyBibleStore.characters.length, () => {
-  if (activeTab.value === 'documents') docReloadKey.value++
-})
-watch(() => storyBibleStore.locations.length, () => {
-  if (activeTab.value === 'documents') docReloadKey.value++
-})
-watch(() => storyBibleStore.plotThreads.length, () => {
-  if (activeTab.value === 'documents') docReloadKey.value++
-})
-
-function handleGenerateCharacter() {
-  generateMode.value = 'generate'
-  characterToEnhance.value = null
-  showGenerateModal.value = true
+async function handleGenerateCharacter() {
+  if (!projectStore.currentProjectId || isGenerating.value) return
+  isGenerating.value = true
+  try {
+    const context = await getSectionContext('current', 'character')
+    const result = await generateRandomCharacter(context, null)
+    if (result) {
+      await storyBibleStore.addCharacterData(projectStore.currentProjectId, result)
+    }
+  } catch (e) {
+    console.error('Generate failed:', e)
+    alert(e.message || 'Failed to generate character')
+  } finally {
+    isGenerating.value = false
+  }
 }
 
 function handleEnhanceCharacter(character) {
@@ -129,45 +174,7 @@ onMounted(async () => {
     await volumeStore.loadVolumes(projectStore.currentProjectId)
     const { regenerateAllDocuments } = useStoryDocuments()
     await regenerateAllDocuments(projectStore.currentProjectId)
-    lastStyleGuideWordCount.value = manuscriptWordCount.value
   }
-})
-
-watch(() => storyBibleStore.characters.length, async () => {
-  if (!projectStore.currentProjectId) return
-  const { regenerateDocument } = useStoryDocuments()
-  await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.CHARACTERS)
-  await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.RELATIONSHIPS)
-})
-
-watch(() => storyBibleStore.locations.length, async () => {
-  if (!projectStore.currentProjectId) return
-  const { regenerateDocument } = useStoryDocuments()
-  await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.WORLD)
-})
-
-const manuscriptWordCount = computed(() =>
-  manuscriptStore.subsections.reduce((sum, s) => sum + countWords(s.content || ''), 0)
-)
-
-watch(manuscriptWordCount, (newCount) => {
-  if (Math.abs(newCount - lastStyleGuideWordCount.value) > 200) {
-    lastStyleGuideWordCount.value = newCount
-    clearTimeout(styleGuideDebounceTimer)
-    styleGuideDebounceTimer = setTimeout(async () => {
-      if (projectStore.currentProjectId) {
-        const { regenerateDocument } = useStoryDocuments()
-        await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.STYLE_GUIDE)
-        docReloadKey.value++
-      }
-    }, 3000)
-  }
-})
-
-watch(() => storyBibleStore.plotThreads.length, async () => {
-  if (!projectStore.currentProjectId) return
-  const { regenerateDocument } = useStoryDocuments()
-  await regenerateDocument(projectStore.currentProjectId, DOC_TYPES.TIMELINE)
 })
 
 const filteredCharacters = computed(() => {
@@ -346,11 +353,16 @@ defineExpose({
     <div v-if="activeTab === 'characters'" class="flex-1 overflow-y-auto p-4 space-y-3">
       <div class="flex items-center gap-2 mb-2">
         <button
-          class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="isGenerating"
           @click="handleGenerateCharacter"
         >
-          <BaseIcon name="sparkles" :size="12" />
-          Generate
+          <svg v-if="isGenerating" class="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-20" />
+            <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+          </svg>
+          <BaseIcon v-else name="sparkles" :size="12" />
+          {{ isGenerating ? 'Generating...' : 'Generate' }}
         </button>
       </div>
         <div
@@ -670,9 +682,51 @@ defineExpose({
           {{ dt.label }}
         </button>
       </div>
-      <pre
-        class="p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary whitespace-pre-wrap font-mono leading-relaxed min-h-[200px] overflow-y-auto"
-      >{{ documentContent || 'No content yet. Add some story elements first.' }}</pre>
+
+      <div class="flex items-center gap-2 mb-3 flex-wrap">
+        <button
+          class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-accent text-white disabled:opacity-40"
+          :disabled="!hasUnsavedChanges"
+          @click="saveDocument"
+        >
+          Save
+        </button>
+        <button
+          class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-bg-secondary text-text-secondary hover:bg-surface-hover"
+          @click="downloadDocument"
+        >
+          Download .md
+        </button>
+        <button
+          class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-bg-secondary text-text-secondary hover:bg-surface-hover"
+          @click="regenerateDocumentWithConfirm"
+        >
+          Regenerate
+        </button>
+        <button
+          class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-bg-secondary text-text-secondary hover:bg-surface-hover"
+          @click="fileInput.click()"
+        >
+          Upload .md
+        </button>
+        <input
+          ref="fileInput"
+          type="file"
+          accept=".md,.markdown,.txt"
+          class="hidden"
+          @change="uploadDocument"
+        />
+        <span
+          v-if="hasUnsavedChanges"
+          class="text-xs text-amber-400 ml-auto"
+        >Unsaved changes</span>
+      </div>
+
+      <textarea
+        v-model="documentContent"
+        class="w-full p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary font-mono leading-relaxed min-h-[300px] resize-y focus:outline-none focus:ring-1 focus:ring-accent/50"
+        placeholder="No content yet. Add some story elements first."
+      ></textarea>
     </div>
 
     <GenerateCharacterModal

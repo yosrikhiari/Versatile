@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { checkOllamaConnection } from '../services/ollamaService'
-import { OLLAMA_MODEL } from '../config/ollama'
+import { getOllamaModel, getOllamaEndpoint } from '../config/ollama'
 import { useProjectStore } from '../stores/projectStore'
 import { useSparkStore } from '../stores/sparkStore'
 import { usePolishStore } from '../stores/polishStore'
@@ -25,17 +25,17 @@ export function useAppInitialization() {
 
   async function checkModelAvailability() {
     try {
-      const response = await fetch('/ollama/api/tags')
+      const response = await fetch(`${getOllamaEndpoint()}/api/tags`)
       if (response.ok) {
         const data = await response.json()
         const modelNames = data.models?.map(m => m.name) || []
-        if (!modelNames.includes(OLLAMA_MODEL)) {
+        if (!modelNames.includes(getOllamaModel())) {
           modelNotFound.value = true
           showModelBanner.value = true
         }
       }
     } catch (e) {
-      // Ollama not available
+      console.error('[useAppInitialization] checkModelAvailability failed:', e)
     }
   }
 

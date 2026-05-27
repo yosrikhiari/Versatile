@@ -39,9 +39,11 @@ export async function deleteSection(id) {
 }
 
 export async function reorderSections(sectionIds) {
-  for (let i = 0; i < sectionIds.length; i++) {
-    await db.sections.update(sectionIds[i], { order: i })
-  }
+  await db.transaction('rw', db.sections, async () => {
+    for (let i = 0; i < sectionIds.length; i++) {
+      await db.sections.update(sectionIds[i], { order: i })
+    }
+  })
 }
 
 // ========== SCENES (OLD - kept for backward compatibility) ==========
@@ -77,9 +79,11 @@ export async function deleteScene(id) {
 }
 
 export async function reorderScenes(sceneIds) {
-  for (let i = 0; i < sceneIds.length; i++) {
-    await db.scenes.update(sceneIds[i], { order: i })
-  }
+  await db.transaction('rw', db.scenes, async () => {
+    for (let i = 0; i < sceneIds.length; i++) {
+      await db.scenes.update(sceneIds[i], { order: i })
+    }
+  })
 }
 
 export async function getChapterWordCounts(projectId) {
@@ -145,9 +149,11 @@ export async function deleteSubsection(id) {
 }
 
 export async function reorderSubsections(subsectionIds) {
-  for (let i = 0; i < subsectionIds.length; i++) {
-    await db.subsections.update(subsectionIds[i], { order: i })
-  }
+  await db.transaction('rw', db.subsections, async () => {
+    for (let i = 0; i < subsectionIds.length; i++) {
+      await db.subsections.update(subsectionIds[i], { order: i })
+    }
+  })
 }
 
 export async function getSectionWordCounts(projectId) {

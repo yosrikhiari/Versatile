@@ -153,9 +153,8 @@ function generateTimelineDoc() {
 
   if (threads.length === 0) return ''
 
-  const statusOrder = { in_progress: 0, open: 1, resolved: 2, closed: 3 }
   const sorted = [...threads].sort((a, b) => {
-    return (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99)
+    return (a.timelineOrder ?? 999) - (b.timelineOrder ?? 999)
   })
 
   const parts = ['# Timeline']
@@ -176,20 +175,29 @@ function generateRelationshipsDoc() {
 
   if (edges.length === 0) return ''
 
-  const charEdges = edges.filter(
-    e => e.sourceType === 'character' && e.targetType === 'character'
+  const relevantEdges = edges.filter(
+    e => (e.sourceType === 'character' && e.targetType === 'character') ||
+         (e.sourceType === 'character' && e.targetType === 'location') ||
+         (e.sourceType === 'character' && e.targetType === 'plotThread') ||
+         (e.sourceType === 'location' && e.targetType === 'character') ||
+         (e.sourceType === 'plotThread' && e.targetType === 'character')
   )
 
-  if (charEdges.length === 0) return ''
+  if (relevantEdges.length === 0) return ''
 
   const byCharacter = {}
-  for (const e of charEdges) {
-    const sourceName = getEntityName(e.sourceType, e.sourceId)
-    const targetName = getEntityName(e.targetType, e.targetId)
+  for (const e of relevantEdges) {
+    const isCharSource = e.sourceType === 'character'
+    const charName = isCharSource
+      ? getEntityName(e.sourceType, e.sourceId)
+      : getEntityName(e.targetType, e.targetId)
+    const otherName = isCharSource
+      ? getEntityName(e.targetType, e.targetId)
+      : getEntityName(e.sourceType, e.sourceId)
     const label = getRelationshipLabel(e.relationshipType)
 
-    if (!byCharacter[sourceName]) byCharacter[sourceName] = []
-    byCharacter[sourceName].push(`- **${label}** ${targetName}${e.description ? `: ${e.description}` : ''}`)
+    if (!byCharacter[charName]) byCharacter[charName] = []
+    byCharacter[charName].push(`- **${label}** ${otherName}${e.description ? `: ${e.description}` : ''}`)
   }
 
   const parts = ['# Relationships']
@@ -387,15 +395,22 @@ export function useStoryDocuments() {
 
   async function regenerateAllDocuments(projectId) {
     if (!projectId) return
-    await Promise.all([
-      regenerateDocument(projectId, DOC_TYPES.SYNOPSIS),
-      regenerateDocument(projectId, DOC_TYPES.CHARACTERS),
-      regenerateDocument(projectId, DOC_TYPES.WORLD),
-      regenerateDocument(projectId, DOC_TYPES.TIMELINE),
-      regenerateDocument(projectId, DOC_TYPES.RELATIONSHIPS),
-      regenerateDocument(projectId, DOC_TYPES.REJECTED_PATTERNS),
-      regenerateDocument(projectId, DOC_TYPES.STYLE_GUIDE)
-    ])
+    const existing = await getAllStoryDocuments(projectId)
+    const existingTypes = new Set(existing.filter(d => d.content).map(d => d.docType))
+    const allTypes = [
+      DOC_TYPES.SYNOPSIS,
+      DOC_TYPES.CHARACTERS,
+      DOC_TYPES.WORLD,
+      DOC_TYPES.TIMELINE,
+      DOC_TYPES.RELATIONSHIPS,
+      DOC_TYPES.REJECTED_PATTERNS,
+      DOC_TYPES.STYLE_GUIDE
+    ]
+    await Promise.all(
+      allTypes
+        .filter(dt => !existingTypes.has(dt))
+        .map(dt => regenerateDocument(projectId, dt))
+    )
   }
 
   async function getStoryDocumentContext(projectId, budgetTokens = STORY_DOC_BUDGET_TOKENS) {

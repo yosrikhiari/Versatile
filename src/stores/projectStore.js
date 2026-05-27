@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { getManuscript, saveManuscript, getProject, createProject, updateProject, getAllProjects, updateDailyWordCount, getDailyGoal, getStreakData, getLastSessionData, saveAuthorProfile, getAuthorProfile } from '../services/dbService'
 import { countWords } from '../utils/textUtils'
 
@@ -14,6 +14,10 @@ export const useProjectStore = defineStore('project', () => {
   const sessionGoal = ref(500)
   const dailyGoal = ref(500)
   const dailyWordCount = ref(0)
+
+  const savedGoal = localStorage.getItem('pref_sessionGoal')
+  if (savedGoal) sessionGoal.value = parseInt(savedGoal, 10)
+  watch(sessionGoal, val => localStorage.setItem('pref_sessionGoal', String(val)))
   const lastSavedAt = ref(null)
   const lastWrittenAt = ref(null)
   const initialWordCount = ref(0)

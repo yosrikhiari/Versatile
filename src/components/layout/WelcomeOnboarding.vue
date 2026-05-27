@@ -34,8 +34,6 @@ async function handleNextStep2() {
   
   try {
     const projectId = await projectStore.createNewProject(projectName.value.trim(), projectGenre.value, projectSynopsis.value.trim())
-    projectStore.currentProjectId = projectId
-    projectStore.currentProjectName = projectName.value.trim()
     
     if (characterName.value.trim()) {
       await storyBibleStore.addCharacterData(projectId, {

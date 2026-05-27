@@ -111,7 +111,11 @@ export {
   getGroupEdges,
   addGroupEdge,
   updateGroupEdge,
-  deleteGroupEdge
+  deleteGroupEdge,
+  deleteGraphEdgesByEntity,
+  removeEntityFromNodeInstances,
+  removeEntityFromNodePositions,
+  removeEntityFromNodeParents
 } from './db-graph'
 export {
   getTodayDateString,
@@ -133,6 +137,13 @@ export {
   deleteSnapshot,
   getSceneSnapshots
 } from './db-snapshots'
+export {
+  getStoryDocument,
+  getAllStoryDocuments,
+  upsertStoryDocument,
+  deleteStoryDocument,
+  appendRejectedPattern
+} from './db-story-documents'
 export {
   saveSessionArchive,
   getSessionArchive,

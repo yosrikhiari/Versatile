@@ -3,12 +3,13 @@ import { ref, computed } from 'vue'
 import { simpleEncrypt, simpleDecrypt } from '../services/ollamaService'
 import { PROVIDERS, FEATURES, FEATURE_LIST, PROVIDER_LIST, PROVIDER_DEFAULT, API_KEY_STORAGE_PREFIX, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS, EMBEDDING_PROVIDERS } from '../config/ai'
 import { aiTestConnection } from '../services/aiService'
+import { setOllamaEndpoint as setOllamaConfigEndpoint } from '../config/ollama'
 
 const STORAGE_KEY = 'versatile_settings'
 const FEATURE_MODELS_KEY = 'versatile_feature_models'
 
 const DEFAULT_SETTINGS = {
-  ollamaEndpoint: 'http://localhost:11434',
+  ollamaEndpoint: '/ollama',
   ollamaModel: 'dolphin-mistral:7b',
   openaiApiKey: '',
   autoSaveInterval: 5,
@@ -55,7 +56,10 @@ export const useSettingsStore = defineStore('settings', () => {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const data = JSON.parse(stored)
-        if (data.ollamaEndpoint) ollamaEndpoint.value = data.ollamaEndpoint
+        if (data.ollamaEndpoint) {
+          ollamaEndpoint.value = data.ollamaEndpoint
+          setOllamaConfigEndpoint(data.ollamaEndpoint)
+        }
         if (data.ollamaModel) ollamaModel.value = data.ollamaModel
         if (data.autoSaveInterval) autoSaveInterval.value = data.autoSaveInterval
         if (data.aiProvider) aiProvider.value = data.aiProvider
@@ -106,6 +110,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setOllamaEndpoint(url) {
     ollamaEndpoint.value = url
+    setOllamaConfigEndpoint(url)
     saveSettings()
   }
 
@@ -186,6 +191,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function resetToDefaults() {
     ollamaEndpoint.value = DEFAULT_SETTINGS.ollamaEndpoint
+    setOllamaConfigEndpoint(DEFAULT_SETTINGS.ollamaEndpoint)
     ollamaModel.value = DEFAULT_SETTINGS.ollamaModel
     openaiApiKey.value = ''
     autoSaveInterval.value = DEFAULT_SETTINGS.autoSaveInterval

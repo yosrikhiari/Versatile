@@ -78,12 +78,13 @@ export async function getStateSnapshotHistory(projectId, limit = 20) {
 }
 
 export async function saveAuthorProfile(projectId, profile) {
+  const safe = JSON.parse(JSON.stringify(profile))
   const existing = await db.authorProfile.where('projectId').equals(projectId).first()
   if (existing) {
-    await db.authorProfile.update(existing.id, { ...profile, updatedAt: new Date().toISOString() })
+    await db.authorProfile.update(existing.id, { ...safe, updatedAt: new Date().toISOString() })
     return existing.id
   }
-  return db.authorProfile.add({ projectId, ...profile, updatedAt: new Date().toISOString() })
+  return db.authorProfile.add({ projectId, ...safe, updatedAt: new Date().toISOString() })
 }
 
 export async function getAuthorProfile(projectId) {

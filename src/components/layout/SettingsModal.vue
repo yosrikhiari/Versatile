@@ -257,8 +257,9 @@ watch(() => props.show, (newVal) => {
             <div>
               <label class="block text-xs text-text-secondary mb-1">Default Provider</label>
               <select
-                v-model="settingsStore.aiProvider"
+                :value="settingsStore.aiProvider"
                 class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                @change="settingsStore.setAIProvider($event.target.value)"
               >
                 <option v-for="p in PROVIDER_LIST" :key="p" :value="p">
                   {{ PROVIDER_LABELS[p] }}
@@ -268,8 +269,9 @@ watch(() => props.show, (newVal) => {
             <div>
               <label class="block text-xs text-text-secondary mb-1">Fallback Provider</label>
               <select
-                v-model="settingsStore.aiProviderFallback"
+                :value="settingsStore.aiProviderFallback"
                 class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                @change="settingsStore.setAIProviderFallback($event.target.value)"
               >
                 <option value="none">No fallback</option>
                 <option v-for="p in PROVIDER_LIST" :key="p" :value="p">
@@ -389,8 +391,9 @@ watch(() => props.show, (newVal) => {
             <div>
               <label class="block text-xs text-text-secondary mb-1">Provider</label>
               <select
-                v-model="settingsStore.embeddingProvider"
+                :value="settingsStore.embeddingProvider"
                 class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                @change="settingsStore.setEmbeddingProvider($event.target.value)"
               >
                 <option v-for="(label, key) in EMBEDDING_PROVIDER_LABELS" :key="key" :value="key">
                   {{ label }}
@@ -400,8 +403,9 @@ watch(() => props.show, (newVal) => {
             <div>
               <label class="block text-xs text-text-secondary mb-1">Model</label>
               <select
-                v-model="settingsStore.embeddingModel"
+                :value="settingsStore.embeddingModel"
                 class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                @change="settingsStore.setEmbeddingModel($event.target.value)"
               >
                 <option value="nomic-embed-text">nomic-embed-text</option>
                 <option v-for="m in (EMBEDDING_MODELS[settingsStore.embeddingProvider] || [])" :key="m" :value="m">
@@ -414,8 +418,9 @@ watch(() => props.show, (newVal) => {
                 Topic-shift threshold: {{ settingsStore.embeddingThreshold?.toFixed(2) }}
               </label>
               <input
-                v-model.number="settingsStore.embeddingThreshold"
+                :value="settingsStore.embeddingThreshold"
                 type="range"
+                @input="settingsStore.setEmbeddingThreshold(parseFloat($event.target.value))"
                 :min="EMBEDDING_THRESHOLD_MIN"
                 :max="EMBEDDING_THRESHOLD_MAX"
                 :step="EMBEDDING_THRESHOLD_STEP"

@@ -21,35 +21,29 @@ export function useFlowTimer(projectStore) {
   let backspaceStartTime = null
   let backspaceToastTimeout = null
   let audioContext = null
-  let nudgeAudio = null
 
   function initAudio() {
     try {
+      if (audioContext && audioContext.state !== 'closed') return
       audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      fetch('/assets/sounds/nudge.mp3')
-        .then(response => response.arrayBuffer())
-        .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-        .then(audioBuffer => {
-          nudgeAudio = audioBuffer
-        })
-        .catch(() => {
-          console.log('Sound file not found, continuing silently')
-        })
-    } catch {
-      console.log('Audio not supported')
+    } catch (e) {
+      console.error('[useFlowTimer] Audio not supported:', e)
     }
   }
 
   function playNudgeSound() {
-    if (!nudgeAudio || !audioContext) return
+    if (!audioContext) return
     try {
-      const source = audioContext.createBufferSource()
-      const gainNode = audioContext.createGain()
-      gainNode.gain.value = 0.3
-      source.buffer = nudgeAudio
-      source.connect(gainNode)
-      gainNode.connect(audioContext.destination)
-      source.start(0)
+      const osc = audioContext.createOscillator()
+      const gain = audioContext.createGain()
+      osc.frequency.value = 660
+      osc.type = 'sine'
+      gain.gain.value = 0.15
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2)
+      osc.connect(gain)
+      gain.connect(audioContext.destination)
+      osc.start()
+      osc.stop(audioContext.currentTime + 0.2)
     } catch {
       console.log('Failed to play nudge sound')
     }
@@ -202,6 +196,9 @@ export function useFlowTimer(projectStore) {
     if (timerInterval) clearInterval(timerInterval)
     if (idleInterval) clearInterval(idleInterval)
     if (backspaceToastTimeout) clearTimeout(backspaceToastTimeout)
+    if (audioContext && audioContext.state !== 'closed') {
+      audioContext.close()
+    }
   })
 
   return {

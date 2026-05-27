@@ -18,7 +18,14 @@
   }
 
   .bg-manuscript-editor {
-    background-color: #141210;
+    background-color: #1a1816;
+  }
+
+  .editor-wrapper {
+    background: #242220;
+    border: 1px solid rgba(201, 169, 110, 0.08);
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
   }
 
   ::selection {
