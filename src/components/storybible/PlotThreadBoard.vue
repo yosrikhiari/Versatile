@@ -14,7 +14,7 @@ const props = defineProps({
 
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
-const { getChapterContext } = useManuscriptContext()
+const { getSectionContext } = useManuscriptContext()
 
 const expandedThreadId = ref(null)
 const editingThread = ref(null)
@@ -23,6 +23,7 @@ const generatingField = ref(null)
 const contextSelector = ref('current')
 const showExtractionDialog = ref(false)
 const extractedEntities = ref({ characters: [], locations: [] })
+const enhanceError = ref('')
 
 const columns = [
   { status: 'open', label: 'Open' },
@@ -115,12 +116,13 @@ async function syncStatusChanges() {
 
 async function getContext() {
   if (contextSelector.value === 'none') return null
-  return await getChapterContext(contextSelector.value, 'plotThread')
+  return await getSectionContext(contextSelector.value, 'plotThread')
 }
 
 async function completeAllWithAI() {
   if (!projectStore.currentProjectId || !editingThread.value || isGenerating.value) return
   
+  enhanceError.value = ''
   isGenerating.value = editingThread.value.id
   try {
     const context = await getContext()
@@ -141,7 +143,7 @@ async function completeAllWithAI() {
       }
     }
   } catch (error) {
-    console.error('Failed to enhance plot thread:', error)
+    enhanceError.value = error.message || 'Failed to enhance plot thread'
   } finally {
     isGenerating.value = null
   }
@@ -181,6 +183,7 @@ function parseEntitiesFromNotes(notes) {
 async function completeFieldWithAI(fieldKey) {
   if (!editingThread.value || isGenerating.value || generatingField.value) return
   
+  enhanceError.value = ''
   isGenerating.value = editingThread.value.id
   generatingField.value = fieldKey
   try {
@@ -210,7 +213,7 @@ async function completeFieldWithAI(fieldKey) {
       }
     }
   } catch (error) {
-    console.error('Failed to enhance field:', error)
+    enhanceError.value = error.message || 'Failed to enhance field'
   } finally {
     isGenerating.value = null
     generatingField.value = null
@@ -362,6 +365,10 @@ async function handleCreateEntities(data) {
                   <option value="all">All chapters</option>
                   <option value="none">No context</option>
                 </select>
+              </div>
+              
+              <div v-if="enhanceError" class="p-2 bg-danger/10 border border-danger/20 rounded text-xs text-danger">
+                {{ enhanceError }}
               </div>
               
               <div class="relative">

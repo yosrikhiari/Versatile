@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { generateSparkPrompt, generateOutline, generateContent, generateContentStreaming, testOllamaConnection } from '../composables/useOllama'
 import { addSparkHistory, getSparkHistory, clearSparkHistory } from '../services/dbService'
 
@@ -13,6 +13,14 @@ export const useSparkStore = defineStore('spark', () => {
   const relateToProject = ref(false)
   const error = ref(null)
   const ollamaStatus = ref('unknown')
+
+  const savedType = localStorage.getItem('pref_selectedPromptType')
+  if (savedType) selectedPromptType.value = savedType
+  watch(selectedPromptType, val => localStorage.setItem('pref_selectedPromptType', val))
+
+  const savedRelate = localStorage.getItem('pref_relateToProject')
+  if (savedRelate) relateToProject.value = savedRelate === 'true'
+  watch(relateToProject, val => localStorage.setItem('pref_relateToProject', String(val)))
 
   async function loadHistory(projectId) {
     history.value = await getSparkHistory(projectId)

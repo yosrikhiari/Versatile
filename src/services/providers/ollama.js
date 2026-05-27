@@ -1,11 +1,38 @@
-import { OLLAMA_BASE_URL } from '../../config/ollama'
+import { getOllamaEndpoint } from '../../config/ollama'
+
+const modelCache = new Set()
+let modelCacheLoaded = false
+
+async function ensureModelAvailable(model) {
+  if (!model) return
+  if (modelCache.has(model)) return
+
+  if (!modelCacheLoaded) {
+    try {
+      const response = await fetch(`${getOllamaEndpoint()}/api/tags`)
+      if (response.ok) {
+        const data = await response.json()
+        for (const m of (data.models || [])) {
+          modelCache.add(m.name)
+        }
+        modelCacheLoaded = true
+      }
+    } catch {}
+  }
+
+  if (modelCacheLoaded && !modelCache.has(model)) {
+    throw new Error(`Model "${model}" not found in Ollama. Pull it first with: ollama pull ${model}`)
+  }
+}
 
 export async function generate(prompt, systemPrompt, model, options = {}) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeout || 180000)
 
   try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+    await ensureModelAvailable(model)
+
+    const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -20,7 +47,12 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     clearTimeout(timeout)
 
     if (!response.ok) {
-      throw new Error(`Ollama error: ${response.status}`)
+      let detail = ''
+      try {
+        const errBody = await response.json()
+        detail = errBody.error || JSON.stringify(errBody)
+      } catch {}
+      throw new Error(`Ollama error (${response.status}): ${detail}`.trim())
     }
 
     const data = await response.json()
@@ -36,7 +68,9 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
   const timeout = setTimeout(() => controller.abort(), options.timeout || 120000)
 
   try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+    await ensureModelAvailable(model)
+
+    const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -51,7 +85,12 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     clearTimeout(timeout)
 
     if (!response.ok) {
-      throw new Error(`Ollama error: ${response.status}`)
+      let detail = ''
+      try {
+        const errBody = await response.json()
+        detail = errBody.error || JSON.stringify(errBody)
+      } catch {}
+      throw new Error(`Ollama error (${response.status}): ${detail}`.trim())
     }
 
     const reader = response.body.getReader()
@@ -85,7 +124,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
 
 export async function listModels() {
   try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`)
+    const response = await fetch(`${getOllamaEndpoint()}/api/tags`)
     if (response.ok) {
       const data = await response.json()
       return data.models?.map(m => m.name) || []
@@ -100,7 +139,7 @@ export async function testConnection() {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`, { signal: controller.signal })
+    const response = await fetch(`${getOllamaEndpoint()}/api/tags`, { signal: controller.signal })
     clearTimeout(timeout)
     return response.ok
   } catch {
@@ -113,7 +152,7 @@ export async function generateEmbedding(text, model = 'nomic-embed-text') {
   const timeout = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
+    const response = await fetch(`${getOllamaEndpoint()}/api/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, prompt: text }),

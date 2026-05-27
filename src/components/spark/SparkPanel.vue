@@ -141,10 +141,10 @@ function clearHistory() {
 function switchTab(tab) {
   activeTab.value = tab
   if (tab !== 'chapter') {
-    sparkStore.currentChapter = null
+    sparkStore.currentContent = null
   }
   if (tab !== 'blueprint') {
-    sparkStore.currentBlueprint = null
+    sparkStore.currentOutline = null
   }
 }
 </script>
@@ -278,6 +278,10 @@ function switchTab(tab) {
           <div class="h-4 bg-bg-tertiary rounded w-5/6"></div>
         </div>
 
+        <div v-if="sparkStore.error" class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui">
+          {{ sparkStore.error }}
+        </div>
+
         <SparkPromptCard
           v-if="currentPrompt"
           :prompt="currentPrompt"
@@ -285,7 +289,7 @@ function switchTab(tab) {
           @regenerate="generatePrompt"
         />
 
-        <div v-if="!currentPrompt && !sparkStore.isGenerating" class="text-center py-8">
+        <div v-if="!currentPrompt && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8">
           <p class="text-sm italic text-text-hint font-body">Select a type and generate to get a writing prompt</p>
         </div>
       </div>

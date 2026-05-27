@@ -32,7 +32,7 @@ function resolveFeatureConfig(feature) {
   if (override?.provider && override.provider !== 'default') {
     return {
       provider: override.provider,
-      model: override.model || null
+      model: override.model || (override.provider === PROVIDERS.OLLAMA ? store.ollamaModel : null)
     }
   }
   return {

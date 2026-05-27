@@ -114,7 +114,7 @@ function handleOnboardingSkipWrapper() {
       @export="handleExport"
       @export-pdf="handleExportPDF"
       @export-epub="handleExportEpub"
-      @import="handleImportClick"
+      @import="handleImport"
       @open-settings="showSettingsModal = true"
     >
       <template #editor>
@@ -178,7 +178,7 @@ function handleOnboardingSkipWrapper() {
       </template>
 
       <template #timeline>
-        <TimelineView @open-chapters="appShell?.toggleChapters()" />
+        <TimelineView />
       </template>
 
       <template #archive>

@@ -17,11 +17,22 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   const characters = ref([])
   const locations = ref([])
   const plotThreads = ref([])
+  const isLoading = ref(false)
+  const loadError = ref(null)
 
   async function loadAll(projectId) {
-    characters.value = await getCharacters(projectId)
-    locations.value = await getLocations(projectId)
-    plotThreads.value = await getPlotThreads(projectId)
+    isLoading.value = true
+    loadError.value = null
+    try {
+      characters.value = await getCharacters(projectId)
+      locations.value = await getLocations(projectId)
+      plotThreads.value = await getPlotThreads(projectId)
+    } catch (e) {
+      loadError.value = e.message
+      console.error('[storyBibleStore] loadAll failed:', e)
+    } finally {
+      isLoading.value = false
+    }
   }
 
   async function addCharacterData(projectId, data) {
@@ -70,9 +81,20 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   }
 
   async function addPlotThreadData(projectId, data) {
-    const id = await addPlotThread(projectId, data)
-    plotThreads.value.push({ id, projectId, ...data })
+    const maxOrder = plotThreads.value.reduce((max, t) => Math.max(max, t.timelineOrder ?? 0), 0)
+    const id = await addPlotThread(projectId, { ...data, timelineOrder: maxOrder + 1 })
+    plotThreads.value.push({ id, projectId, ...data, timelineOrder: maxOrder + 1 })
     return id
+  }
+
+  async function reorderPlotThreads(orderedIds) {
+    await Promise.all(
+      orderedIds.map((id, i) => {
+        const thread = plotThreads.value.find(t => t.id === id)
+        if (thread) thread.timelineOrder = i
+        return updatePlotThread(id, { timelineOrder: i })
+      })
+    )
   }
 
   async function updatePlotThreadData(id, data, projectId) {
@@ -115,6 +137,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     updatePlotThreadData,
     deletePlotThreadData,
     updateThreadStatus,
+    reorderPlotThreads,
     getCharacterNames
   }
 })

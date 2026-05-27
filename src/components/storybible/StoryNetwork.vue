@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, toRaw } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, toRaw } from 'vue'
 import { VueFlow, useVueFlow, Position, Handle } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import '@vue-flow/core/dist/style.css'
@@ -940,7 +940,7 @@ async function handleAutoGenerate() {
     console.log('[AutoGenerate] From scratch - clearing connections and groups, keeping nodes')
     manualGroups.value = []
     nodeParents.value = {}
-    storyGraphStore.edges.value = []
+    storyGraphStore.edges = []
     if (projectStore.currentProjectId) {
       await storyGraphStore.clearAllEdges(projectStore.currentProjectId)
       await storyGraphStore.saveGroups(projectStore.currentProjectId, [])
@@ -1111,6 +1111,11 @@ watch(() => showSuggestionsModal.value, async (show) => {
       networkSuggestions.suggestions.value = []
     }
   }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', handleGroupResizeMove)
+  document.removeEventListener('mouseup', handleGroupResizeEnd)
 })
 
 onMounted(async () => {

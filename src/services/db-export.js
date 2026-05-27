@@ -14,7 +14,7 @@ export async function exportProject(projectId) {
   const annotations = await db.annotations.where('projectId').equals(projectId).toArray()
   const snippets = await db.snippets.where('projectId').equals(projectId).toArray()
   const volumes = await db.volumes.where('projectId').equals(projectId).toArray()
-  const volumeEntities = await db.volumeEntities.where('projectId').equals(projectId).toArray()
+  const volumeEntities = await db.volumeEntities.filter(e => e.projectId === projectId).toArray()
   const graphEdges = await db.graphEdges.where('projectId').equals(projectId).toArray()
     
   return {

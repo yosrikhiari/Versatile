@@ -78,6 +78,20 @@ function getSectionTotalSubsections(sectionId) {
   return subsectionsBySection.value[sectionId]?.length || 0
 }
 
+const selectedChapterId = selectedSectionId
+
+function selectChapter(sectionId) {
+  selectSection(sectionId)
+}
+
+function getSceneWordCount(scene) {
+  return getSubsectionWordCount(scene)
+}
+
+function saveScene() {
+  saveSubsection()
+}
+
 onMounted(() => {
   if (projectStore.currentProjectId) {
     manuscriptStore.loadManuscript(projectStore.currentProjectId)
@@ -252,7 +266,7 @@ onMounted(() => {
         </h3>
         
         <div v-if="!editingScene" class="mb-3 text-xs text-text-hint font-ui">
-          Adding to: {{ sortedSections.find(c => c.id === activeChapterId)?.title || 'Unknown Section' }}
+          Adding to: {{ sortedSections.find(c => c.id === activeSectionId)?.title || 'Unknown Section' }}
         </div>
 
         <div class="mb-3">

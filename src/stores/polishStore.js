@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { analyzePolish } from '../composables/useOllama'
 import { LENS_MAP } from '../config/statuses'
 import {
@@ -22,6 +22,14 @@ export const usePolishStore = defineStore('polish', () => {
     clarity: true
   })
   const error = ref(null)
+
+  const savedLenses = localStorage.getItem('pref_activeLenses')
+  if (savedLenses) {
+    try {
+      activeLenses.value = { ...activeLenses.value, ...JSON.parse(savedLenses) }
+    } catch {}
+  }
+  watch(activeLenses, val => localStorage.setItem('pref_activeLenses', JSON.stringify(val)), { deep: true })
   
   let debounceTimer = null
 

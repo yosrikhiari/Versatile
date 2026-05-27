@@ -11,8 +11,13 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
   const selectedEdge = ref(null)
   const selectedNode = ref(null)
   const missingCharacterPositions = ref([])
+  const isLoading = ref(false)
+  const loadError = ref(null)
 
   async function loadEdges(projectId) {
+    isLoading.value = true
+    loadError.value = null
+    try {
     const graphEdgesData = await getGraphEdges(projectId)
     const charRelationshipsData = await getCharacterRelationships(projectId)
     const storyBibleStore = useStoryBibleStore()
@@ -40,6 +45,12 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     }
     
     missingCharacterPositions.value = Array.from(charIds)
+    } catch (e) {
+      loadError.value = e.message
+      console.error('[storyGraphStore] loadEdges failed:', e)
+    } finally {
+      isLoading.value = false
+    }
   }
 
   async function loadNodePositions(projectId) {

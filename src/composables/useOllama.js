@@ -74,6 +74,16 @@ function randomJitter(baseMs) {
   return baseMs + Math.random() * baseMs * 0.5
 }
 
+const PERMANENT_ERROR_PATTERNS = [
+  'not found',
+  'not found in Ollama',
+  'API key',
+  'Unauthorized',
+  'Forbidden',
+  '401',
+  '403'
+]
+
 async function retryWithBackoff(fn, maxRetries = 5) {
   const delays = [1000, 2000, 4000, 6000, 8000]
   
@@ -81,11 +91,13 @@ async function retryWithBackoff(fn, maxRetries = 5) {
     try {
       return await fn()
     } catch (error) {
-      if (attempt < maxRetries - 1) {
-        await sleep(randomJitter(delays[attempt]))
-      } else {
+      const isPermanent = PERMANENT_ERROR_PATTERNS.some(p =>
+        error.message?.includes(p)
+      )
+      if (isPermanent || attempt >= maxRetries - 1) {
         throw error
       }
+      await sleep(randomJitter(delays[attempt]))
     }
   }
 }
@@ -172,7 +184,7 @@ export function isUsingOpenAI() {
 
 async function getIdeaEmbedding(idea) {
   const text = idea
-  const cacheKey = `idea_${Buffer.from(text).toString('base64').slice(0, 32)}`
+  const cacheKey = `idea_${btoa(unescape(encodeURIComponent(text))).slice(0, 32)}`
   const cached = localStorage.getItem(`versatile_embedding_${cacheKey}`)
   if (cached) {
     try {
@@ -249,7 +261,8 @@ Tone: ${tone}${projectContext}${contextInstruction}`
     
     return parsed
   } catch (error) {
-    return getDefaultBlueprint(idea, tone)
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -314,7 +327,8 @@ If no issues are found, return: { "issues": [], "overallNote": "..." }`
     }
     return parsed
   } catch (error) {
-    return { issues: [], overallNote: 'AI response was not valid. Please rephrase or try again.', error: true }
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -357,7 +371,8 @@ Be concise and only extract what is clearly present in the text.`
       plotThreads: parsed.plotThreads || []
     }
   } catch (error) {
-    return { error: 'AI response was not valid. Please rephrase or try again.', characters: [], locations: [], plotThreads: [] }
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -386,7 +401,8 @@ Scene idea: ${idea}${projectContext}`
     )
     return { text: response, error: null }
   } catch (error) {
-    return { text: '', error: 'AI response failed. Please try again.' }
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -415,7 +431,8 @@ Scene idea: ${idea}${projectContext}`
     )
     return { text: response, error: null }
   } catch (error) {
-    return { text: '', error: 'AI response failed. Please try again.' }
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -426,7 +443,8 @@ export async function generateRandomCharacter(manuscriptContext = null, partialD
   const entityContext = await getExistingEntitiesContext()
   const { getEntityRelationshipContext } = useGraphContext()
   
-  const allCharacters = useStoryBibleStore().characters
+  const storyBible = useStoryBibleStore()
+  const allCharacters = storyBible.characters
   let relationshipContextSection = ''
   if (allCharacters.length > 0) {
     const relationshipContext = await getEntityRelationshipContext('character', allCharacters[0].id, 2)
@@ -434,7 +452,20 @@ export async function generateRandomCharacter(manuscriptContext = null, partialD
       relationshipContextSection = `\n\nRelationship context:\n${relationshipContext}\n`
     }
   }
-  
+
+  const existingCharsSection = allCharacters.length > 0
+    ? `\n\nEXISTING CHARACTERS (DO NOT CREATE DUPLICATES):\n${allCharacters.map(c => `- "${c.name}"${c.role ? ` — ${c.role}` : ''}`).join('\n')}`
+    : ''
+
+  const allThreads = storyBible.plotThreads
+  const plotThreadSection = allThreads.length > 0
+    ? `\n\nACTIVE PLOT THREADS (new character should feel connected):\n${[...allThreads]
+        .sort((a, b) => (a.timelineOrder ?? 0) - (b.timelineOrder ?? 0))
+        .slice(0, 3)
+        .map(t => `- "${t.title}"${t.notes ? `: ${t.notes.slice(0, 120)}` : ''}`)
+        .join('\n')}`
+    : ''
+
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
     contextInstruction = `\n\nThe following excerpts establish the world and existing cast. Generate a character who fits a gap in this narrative — a missing role, an implied but unseen person, or a logical addition to the existing dynamics.\n\n${manuscriptContext.contextText}`
@@ -446,15 +477,15 @@ export async function generateRandomCharacter(manuscriptContext = null, partialD
     partialDataSection = `\n\nThe user has already provided these character details. Stay consistent with them and generate the remaining missing fields naturally. Do NOT change the provided values.\n${JSON.stringify(partialData, null, 2)}\n`
   }
   
-  const userPrompt = `Generate one random fictional character that is DISTINCT from typical archetypes. Vary the genre, time period, culture, and personality. Return ONLY valid JSON. Keys: name, role, goal, voice, notes, sampleDialogue. All string values. No markdown.${projectContext}${entityContext}${relationshipContextSection}${contextInstruction}${partialDataSection}
+  const userPrompt = `Generate one character for this story.${projectContext}${existingCharsSection}${plotThreadSection}${entityContext}${relationshipContextSection}${contextInstruction}${partialDataSection}
 
-IMPORTANT: Do NOT generate any of the characters listed above. Create someone entirely new with a different name, role, goal, and personality.
+Return ONLY valid JSON. Keys: name, role, goal, voice, notes, sampleDialogue. All string values. No markdown.
 
-Examples of varied outputs:
-- A 1920s speakeasy pianist who hides coded messages
-- A cloned bioengineer questioning her own memories
-- A nomadic desert cartographer mapping forgotten trade routes
-- A retiring poison tester for medieval royalty`
+The character must:
+- Have a distinct name and role not duplicating existing characters above
+- Fit the project's genre and narrative context
+- Have a goal that connects to or reacts against the active plot threads
+- Feel like they belong in this story world`
 
   try {
     const response = await retryWithBackoff(() =>
@@ -473,7 +504,8 @@ Examples of varied outputs:
       sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || ''
     }
   } catch (error) {
-    return null
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -553,7 +585,8 @@ Example outputs:
       sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || ''
     }
   } catch (error) {
-    return null
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -638,7 +671,8 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
       sampleDialogue: p.sampleDialogue || p.SampleDialogue || ''
     }))
   } catch (error) {
-    return []
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -689,7 +723,8 @@ Do NOT generate name identical to any existing location. Be creative and distinc
       notes: p.notes || p.Notes || ''
     }))
   } catch (error) {
-    return []
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -741,7 +776,8 @@ Examples:
       notes: parsed.notes || parsed.Notes || ''
     }
   } catch (error) {
-    return null
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -792,7 +828,8 @@ Examples:
       notes: parsed.notes || parsed.Notes || ''
     }
   } catch (error) {
-    return null
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -871,7 +908,8 @@ All values must be strings. No markdown.`
     
     return result
   } catch (error) {
-    return null
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -922,7 +960,8 @@ No markdown, no explanation, no preamble. JSON only.`
       sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || charData.sampleDialogue || ''
     }
   } catch (error) {
-    return null
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -1047,7 +1086,8 @@ Single string value, no markdown.`
     
     return result
   } catch (error) {
-    return currentValue
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -1115,7 +1155,8 @@ All values must be strings. No markdown.`
     
     return result
   } catch (error) {
-    return null
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 
@@ -1211,6 +1252,7 @@ All values must be strings or arrays. No markdown.`
     
     return result
   } catch (error) {
-    return null
+    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
+    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }

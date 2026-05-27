@@ -85,7 +85,7 @@ export async function addVolumeEdge(projectId, sourceType, sourceId, targetType,
   const existing = await db.graphEdges
     .where('sourceId').equals(sourceId)
     .and(e => e.sourceType === sourceType)
-    .and('targetId').equals(targetId)
+    .filter(e => e.targetId === targetId)
     .and(e => e.targetType === targetType)
     .and(e => e.relationshipType === relationshipType)
     .and(e => e.volumeId === volumeId)

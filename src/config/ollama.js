@@ -1,92 +1,21 @@
-import { useSettingsStore } from '../stores/settingsStore'
-import { simpleDecrypt } from '../services/ollamaService'
-
-let settingsStore = null
-
-function getSettingsStore() {
-  if (!settingsStore) {
-    try {
-      const { useSettingsStore } = require('../stores/settingsStore')
-      settingsStore = useSettingsStore()
-    } catch (e) {
-      return null
-    }
-  }
-  return settingsStore
-}
-
 const MODEL_STORAGE_KEY = 'versatile_ollama_model'
+const ENDPOINT_STORAGE_KEY = 'versatile_ollama_endpoint'
 const DEFAULT_MODEL = 'dolphin-mistral:7b'
+const DEFAULT_ENDPOINT = '/ollama'
 
 export function getOllamaEndpoint() {
-  const store = getSettingsStore()
-  if (store) {
-    return store.ollamaEndpoint
-  }
-  return localStorage.getItem('versatile_ollama_endpoint') || 'http://localhost:11434'
+  return localStorage.getItem(ENDPOINT_STORAGE_KEY) || DEFAULT_ENDPOINT
 }
 
 export function setOllamaEndpoint(url) {
-  localStorage.setItem('versatile_ollama_endpoint', url)
-  const store = getSettingsStore()
-  if (store) {
-    store.setOllamaEndpoint(url)
-  }
+  localStorage.setItem(ENDPOINT_STORAGE_KEY, url)
 }
 
 export function getOllamaModel() {
-  const store = getSettingsStore()
-  if (store) {
-    return store.ollamaModel
-  }
   return localStorage.getItem(MODEL_STORAGE_KEY) || DEFAULT_MODEL
 }
 
 export function setOllamaModel(model) {
   localStorage.setItem(MODEL_STORAGE_KEY, model)
-  const store = getSettingsStore()
-  if (store) {
-    store.setOllamaModel(model)
-  }
 }
 
-export function getOpenAIKey() {
-  const store = getSettingsStore()
-  if (store) {
-    return store.openaiApiKey
-  }
-  // Read encrypted key from localStorage
-  const encrypted = localStorage.getItem('versatile_openai_key')
-  if (!encrypted) return ''
-  try {
-    return simpleDecrypt(encrypted)
-  } catch {
-    return ''
-  }
-}
-
-export function setOpenAIKey(key) {
-  const store = getSettingsStore()
-  if (store) {
-    store.setOpenaiApiKey(key)
-  }
-}
-
-export const OLLAMA_MODEL = getOllamaModel()
-export const OLLAMA_BASE_URL = getOllamaEndpoint()
-
-export function getConfiguredModel(feature) {
-  const store = getSettingsStore()
-  if (!store) return getOllamaModel()
-  const override = store.featureModels?.[feature]
-  if (override?.model) return override.model
-  return getOllamaModel()
-}
-
-export function getConfiguredProvider(feature) {
-  const store = getSettingsStore()
-  if (!store) return 'ollama'
-  const override = store.featureModels?.[feature]
-  if (override?.provider && override.provider !== 'default') return override.provider
-  return store.aiProvider || 'ollama'
-}

@@ -1,4 +1,4 @@
-import { OLLAMA_BASE_URL } from '../config/ollama'
+import { getOllamaEndpoint } from '../config/ollama'
 import { aiGenerate, aiStream } from './aiService'
 import { PROVIDERS, FEATURES } from '../config/ai'
 import Dexie from 'dexie'
@@ -131,7 +131,7 @@ export async function ollamaEmbeddings(text, model = null) {
   const timeout = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
+    const response = await fetch(`${getOllamaEndpoint()}/api/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -184,7 +184,10 @@ export async function getEmbedding(entityType, entityId, fullText) {
 
 export async function getAvailableEmbeddingModels() {
   try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+    const response = await fetch(`${getOllamaEndpoint()}/api/tags`, { signal: controller.signal })
+    clearTimeout(timeout)
     if (response.ok) {
       const data = await response.json()
       const allModels = data.models?.map(m => m.name) || []
@@ -237,12 +240,22 @@ export async function ollamaStream(prompt, systemPrompt, onChunk) {
   return await aiStream(prompt, systemPrompt, onChunk, { feature: FEATURES.CONTENT })
 }
 
+export async function checkOllamaHealth() {
+  try {
+    const ok = await checkOllamaConnection()
+    if (!ok) return { online: false, message: 'Ollama is not reachable. Make sure it is running on port 11434.' }
+    return { online: true, message: 'Ollama is reachable.' }
+  } catch {
+    return { online: false, message: 'Ollama is not reachable. Make sure it is running on port 11434.' }
+  }
+}
+
 export async function checkOllamaConnection() {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
     
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`, {
+    const response = await fetch(`${getOllamaEndpoint()}/api/tags`, {
       signal: controller.signal
     })
     
@@ -255,11 +268,15 @@ export async function checkOllamaConnection() {
 
 export async function checkOpenAIConnection(apiKey) {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
     const response = await fetch('https://api.openai.com/v1/models', {
       headers: {
         'Authorization': `Bearer ${apiKey}`
-      }
+      },
+      signal: controller.signal
     })
+    clearTimeout(timeout)
     return response.ok
   } catch {
     return false
@@ -268,7 +285,10 @@ export async function checkOpenAIConnection(apiKey) {
 
 export async function getAvailableModels() {
   try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+    const response = await fetch(`${getOllamaEndpoint()}/api/tags`, { signal: controller.signal })
+    clearTimeout(timeout)
     if (response.ok) {
       const data = await response.json()
       return data.models?.map(m => m.name) || []

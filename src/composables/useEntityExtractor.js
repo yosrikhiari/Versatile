@@ -233,7 +233,7 @@ export function useEntityExtractor() {
           }
         }
         const singleGeneric = ['realm', 'world', 'land', 'gate', 'grounds', 'domain', 'territory', 'gate', 'woods', 'forest', 'river', 'sea', 'ocean']
-        if (words => name.split(/\s+/).length === 1 && singleGeneric.includes(lower)) return false
+        if (name.split(/\s+/).length === 1 && singleGeneric.includes(lower)) return false
         return true
       })
     

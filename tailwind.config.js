@@ -4,6 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
+  safelist: ['animate-spin'],
   darkMode: 'class',
   theme: {
     extend: {
@@ -66,6 +67,7 @@ export default {
         'out-quart': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
       },
       animation: {
+        spin: 'spin 1s linear infinite',
         'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'fade-in': 'fade-in 0.2s ease-out forwards',
         'fade-out': 'fade-out 0.15s ease-out forwards',
@@ -76,6 +78,7 @@ export default {
         'glow-pulse': 'glow-pulse 3s ease-in-out infinite',
       },
       keyframes: {
+        spin: { to: { transform: 'rotate(360deg)' } },
         'fade-in': {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },

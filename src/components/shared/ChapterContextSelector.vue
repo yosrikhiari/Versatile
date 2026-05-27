@@ -10,7 +10,7 @@ const props = defineProps({
   }
 })
 
-const { getChapterContext, getChapterCount, MAX_CONTEXT_CHARS } = useManuscriptContext()
+const { getSectionContext, getSectionCount, MAX_CONTEXT_CHARS } = useManuscriptContext()
 
 const STORAGE_KEY = `versatile_context_selector_${props.panelId}`
 
@@ -34,7 +34,7 @@ watch(specificChapters, (val) => {
 })
 
 const options = computed(() => {
-  const chapterCount = getChapterCount()
+  const chapterCount = getSectionCount()
   const opts = [
     { value: 'current', label: 'Current chapter' }
   ]
@@ -76,15 +76,15 @@ watch(currentSelector, async (val) => {
     return
   }
   
-  const result = await getChapterContext(val, 'spark')
+  const result = await getSectionContext(val, 'spark')
   if (!result.contextText) {
     contextPreview.value = null
     return
   }
   
-  const chapterLabel = result.chapterTitles.length === 1 
-    ? result.chapterTitles[0]
-    : `${result.chapterTitles.length} chapters`
+  const chapterLabel = result.sectionTitles.length === 1 
+    ? result.sectionTitles[0]
+    : `${result.sectionTitles.length} chapters`
   
   contextPreview.value = {
     label: chapterLabel,
@@ -97,7 +97,7 @@ async function getContext() {
   if (currentSelector.value === 'none') {
     return null
   }
-  return await getChapterContext(currentSelector.value, 'spark')
+  return await getSectionContext(currentSelector.value, 'spark')
 }
 
 defineExpose({

@@ -15,6 +15,8 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   const relationships = ref([])
   const activeSectionId = ref(null)
   const activeSubsectionId = ref(null)
+  const isLoading = ref(false)
+  const loadError = ref(null)
 
   const sortedSections = computed(() => {
     return [...sections.value].sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -43,13 +45,22 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   })
 
   async function loadManuscript(projectId) {
-    sections.value = await getSections(projectId)
-    subsections.value = await getSubsections(projectId)
-    storyElements.value = await getStoryElements(projectId)
-    relationships.value = await getCharacterRelationships(projectId)
-    warmEmbeddingCache(projectId).catch((err) => {
-      console.error('Failed to warm embedding cache:', err)
-    })
+    isLoading.value = true
+    loadError.value = null
+    try {
+      sections.value = await getSections(projectId)
+      subsections.value = await getSubsections(projectId)
+      storyElements.value = await getStoryElements(projectId)
+      relationships.value = await getCharacterRelationships(projectId)
+      warmEmbeddingCache(projectId).catch((err) => {
+        console.error('Failed to warm embedding cache:', err)
+      })
+    } catch (e) {
+      loadError.value = e.message
+      console.error('[manuscriptStore] loadManuscript failed:', e)
+    } finally {
+      isLoading.value = false
+    }
   }
 
   async function addSectionData(projectId, data) {
@@ -171,6 +182,8 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     activeSection,
     activeSubsection,
     subsectionsBySection,
+    isLoading,
+    loadError,
     loadManuscript,
     addSectionData,
     updateSectionData,
