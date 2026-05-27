@@ -8,6 +8,7 @@ import { useNetworkSuggestions } from './useNetworkSuggestions'
 import { useContextCompactor } from './useContextCompactor'
 import { useStoryDocuments } from './useStoryDocuments'
 import { useAuthorModel } from './useAuthorModel'
+import { generateEntity } from './generation'
 
 const SPARK_SYSTEM_PROMPT = `You are a creative writing prompt generator for fiction writers.
 You generate short, specific, evocative prompts that inspire a writer 
@@ -439,74 +440,16 @@ Scene idea: ${idea}${projectContext}`
 const CHARACTER_SYSTEM_PROMPT = `You generate diverse, unique fictional characters. Vary: genre (fantasy, sci-fi, noir, romance, horror, historical), time period, culture, personality type, and naming conventions. Names should be culturally appropriate and distinct. Avoid clichés.`
 
 export async function generateRandomCharacter(manuscriptContext = null, partialData = null) {
-  const projectContext = getProjectContext()
-  const entityContext = await getExistingEntitiesContext()
-  const { getEntityRelationshipContext } = useGraphContext()
-  
-  const storyBible = useStoryBibleStore()
-  const allCharacters = storyBible.characters
-  let relationshipContextSection = ''
-  if (allCharacters.length > 0) {
-    const relationshipContext = await getEntityRelationshipContext('character', allCharacters[0].id, 2)
-    if (relationshipContext) {
-      relationshipContextSection = `\n\nRelationship context:\n${relationshipContext}\n`
+  let instructions = ''
+  if (partialData) {
+    const fields = Object.entries(partialData)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k}: "${v}"`)
+    if (fields.length > 0) {
+      instructions = `The user has already provided these character details. Stay consistent with them and generate the remaining missing fields naturally. Do NOT change the provided values.\n${fields.join('\n')}`
     }
   }
-
-  const existingCharsSection = allCharacters.length > 0
-    ? `\n\nEXISTING CHARACTERS (DO NOT CREATE DUPLICATES):\n${allCharacters.map(c => `- "${c.name}"${c.role ? ` — ${c.role}` : ''}`).join('\n')}`
-    : ''
-
-  const allThreads = storyBible.plotThreads
-  const plotThreadSection = allThreads.length > 0
-    ? `\n\nACTIVE PLOT THREADS (new character should feel connected):\n${[...allThreads]
-        .sort((a, b) => (a.timelineOrder ?? 0) - (b.timelineOrder ?? 0))
-        .slice(0, 3)
-        .map(t => `- "${t.title}"${t.notes ? `: ${t.notes.slice(0, 120)}` : ''}`)
-        .join('\n')}`
-    : ''
-
-  let contextInstruction = ''
-  if (manuscriptContext?.contextText) {
-    contextInstruction = `\n\nThe following excerpts establish the world and existing cast. Generate a character who fits a gap in this narrative — a missing role, an implied but unseen person, or a logical addition to the existing dynamics.\n\n${manuscriptContext.contextText}`
-  }
-
-  const partialKeys = partialData ? Object.keys(partialData) : []
-  let partialDataSection = ''
-  if (partialKeys.length > 0) {
-    partialDataSection = `\n\nThe user has already provided these character details. Stay consistent with them and generate the remaining missing fields naturally. Do NOT change the provided values.\n${JSON.stringify(partialData, null, 2)}\n`
-  }
-  
-  const userPrompt = `Generate one character for this story.${projectContext}${existingCharsSection}${plotThreadSection}${entityContext}${relationshipContextSection}${contextInstruction}${partialDataSection}
-
-Return ONLY valid JSON. Keys: name, role, goal, voice, notes, sampleDialogue. All string values. No markdown.
-
-The character must:
-- Have a distinct name and role not duplicating existing characters above
-- Fit the project's genre and narrative context
-- Have a goal that connects to or reacts against the active plot threads
-- Feel like they belong in this story world`
-
-  try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, CHARACTER_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
-    )
-    const parsed = sanitizeJsonResponse(response)
-    if (!parsed || !parsed.name && !parsed.Name) {
-      throw new Error('Invalid JSON')
-    }
-    return {
-      name: parsed.name || parsed.Name || 'Unnamed Character',
-      role: parsed.role || parsed.Role || '',
-      goal: parsed.goal || parsed.Goal || '',
-      voice: parsed.voice || parsed.Voice || '',
-      notes: parsed.notes || parsed.Notes || '',
-      sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || ''
-    }
-  } catch (error) {
-    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
-  }
+  return generateEntity('character', instructions, { manuscriptContext })
 }
 
 const IDEA_CHARACTER_SYSTEM_PROMPT = `You are a creative character designer. Given a character idea or description, you expand it into a full character profile that stays true to the user's intent while adding depth and detail.`
@@ -731,106 +674,13 @@ Do NOT generate name identical to any existing location. Be creative and distinc
 const LOCATION_SYSTEM_PROMPT = `You generate diverse, unique fictional locations. Vary: genre, time period, culture, environment type (urban, rural, underwater, airborne, underground, cosmic). Avoid generic fantasy tropes.`
 
 export async function generateRandomLocation(manuscriptContext = null) {
-  const projectContext = getProjectContext()
-  const entityContext = await getExistingEntitiesContext()
-  const { getRelationshipContext } = useGraphContext()
-  
-  const allLocations = useStoryBibleStore().locations
-  let relationshipContextSection = ''
-  if (allLocations.length > 0) {
-    const sampleSize = Math.min(3, allLocations.length)
-    const shuffled = [...allLocations].sort(() => Math.random() - 0.5)
-    const topIds = shuffled.slice(0, sampleSize).map(l => ({ type: 'location', id: l.id }))
-    const relationshipContext = await getRelationshipContext(topIds, 2)
-    if (relationshipContext) {
-      relationshipContextSection = `\n\nRelationship context:\n${relationshipContext}\n`
-    }
-  }
-  
-  let contextInstruction = ''
-  if (manuscriptContext?.contextText) {
-    contextInstruction = `\n\nThe following excerpts establish existing settings. Generate a location that is either complementary (shares the world's logic) or deliberately contrasting (creates narrative tension with the established spaces).\n\n${manuscriptContext.contextText}`
-  }
-  
-  const userPrompt = `Generate one random fictional location that is UNIQUE and atmospheric. Vary genre, environment, and setting. Return ONLY valid JSON. Keys: name, description, notes. All string values. No markdown.${projectContext}${entityContext}${relationshipContextSection}${contextInstruction}
-
-IMPORTANT: Do NOT generate any of the locations listed above. Create a completely new place with a different name and description.
-
-Examples:
-- A lighthouse at the edge of a dimensional rift
-- An underground market powered by bioluminescent fungi
-- A floating library that drifts between cloud layers
-- A train station frozen in time for 200 years`
-
-  try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, LOCATION_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
-    )
-    const parsed = sanitizeJsonResponse(response)
-    if (!parsed || !parsed.name && !parsed.Name) {
-      throw new Error('Invalid JSON')
-    }
-    return {
-      name: parsed.name || parsed.Name || 'Unnamed Location',
-      description: parsed.description || parsed.Description || '',
-      notes: parsed.notes || parsed.Notes || ''
-    }
-  } catch (error) {
-    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
-  }
+  return generateEntity('location', '', { manuscriptContext })
 }
 
 const PLOT_SYSTEM_PROMPT = `You generate diverse, compelling plot conflicts. Vary: genre, stakes (personal, societal, cosmic), type (mystery, heist, survival, romance, betrayal, discovery), and moral complexity. Avoid tired tropes.`
 
 export async function generateRandomPlotThread(manuscriptContext = null) {
-  const projectContext = getProjectContext()
-  const entityContext = await getExistingEntitiesContext()
-  const { getRelationshipContext } = useGraphContext()
-  
-  const allThreads = useStoryBibleStore().plotThreads
-  let relationshipContextSection = ''
-  if (allThreads.length > 0) {
-    const sampleSize = Math.min(3, allThreads.length)
-    const shuffled = [...allThreads].sort(() => Math.random() - 0.5)
-    const topIds = shuffled.slice(0, sampleSize).map(t => ({ type: 'plotThread', id: t.id }))
-    const relationshipContext = await getRelationshipContext(topIds, 2)
-    if (relationshipContext) {
-      relationshipContextSection = `\n\nRelationship context:\n${relationshipContext}\n`
-    }
-  }
-  
-  let contextInstruction = ''
-  if (manuscriptContext?.contextText) {
-    contextInstruction = `\n\nThe following excerpts contain active story threads. Generate a new plot thread that either complicates an existing one or could resolve a dangling tension.\n\n${manuscriptContext.contextText}`
-  }
-  
-  const userPrompt = `Generate one random plot thread that creates tension and intrigue. Vary the genre, stakes, and conflict type. Return ONLY valid JSON. Keys: title, notes. All string values. No markdown.${projectContext}${entityContext}${relationshipContextSection}${contextInstruction}
-
-IMPORTANT: Do NOT generate any of the plot threads listed above. Create a completely new storyline with different characters and conflicts.
-
-Examples:
-- A courier discovers their package contains their own stolen memories
-- Two rival spies realize they share the same handler
-- A healer must cure a plague but the cure is lethal
-- An archivist finds proof their civilization never existed`
-
-  try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, PLOT_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
-    )
-    const parsed = sanitizeJsonResponse(response)
-    if (!parsed || !parsed.title && !parsed.Title) {
-      throw new Error('Invalid JSON')
-    }
-    return {
-      title: parsed.title || parsed.Title || 'Unnamed Plot Thread',
-      notes: parsed.notes || parsed.Notes || ''
-    }
-  } catch (error) {
-    const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
-  }
+  return generateEntity('plotThread', '', { manuscriptContext })
 }
 
 export async function enhanceCharacter(partialData, manuscriptContext = null) {
