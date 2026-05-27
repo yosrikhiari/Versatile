@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
-import { generateRandomCharacter, enhanceExistingCharacter } from '../../composables/useOllama'
+import { generateRandomCharacter, generateRandomPlotThread, generateRandomLocation, enhanceExistingCharacter } from '../../composables/useOllama'
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
 import { upsertStoryDocument } from '../../services/db-story-documents'
 import { useStoryDocuments } from '../../composables/useStoryDocuments'
@@ -24,6 +24,8 @@ const editingId = ref(null)
 const editData = ref({ name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' })
 const isEnhancing = ref(false)
 const isGenerating = ref(false)
+const isGeneratingPlotThread = ref(false)
+const isGeneratingLocation = ref(false)
 
 const showGenerateModal = ref(false)
 const generateMode = ref('generate')
@@ -117,6 +119,40 @@ async function handleGenerateCharacter() {
     alert(e.message || 'Failed to generate character')
   } finally {
     isGenerating.value = false
+  }
+}
+
+async function handleGeneratePlotThread() {
+  if (!projectStore.currentProjectId || isGeneratingPlotThread.value) return
+  isGeneratingPlotThread.value = true
+  try {
+    const context = await getSectionContext('current', 'plotThread')
+    const result = await generateRandomPlotThread(context)
+    if (result) {
+      await storyBibleStore.addPlotThreadData(projectStore.currentProjectId, result)
+    }
+  } catch (e) {
+    console.error('Generate failed:', e)
+    alert(e.message || 'Failed to generate plot thread')
+  } finally {
+    isGeneratingPlotThread.value = false
+  }
+}
+
+async function handleGenerateLocation() {
+  if (!projectStore.currentProjectId || isGeneratingLocation.value) return
+  isGeneratingLocation.value = true
+  try {
+    const context = await getSectionContext('current', 'location')
+    const result = await generateRandomLocation(context)
+    if (result) {
+      await storyBibleStore.addLocationData(projectStore.currentProjectId, result)
+    }
+  } catch (e) {
+    console.error('Generate failed:', e)
+    alert(e.message || 'Failed to generate location')
+  } finally {
+    isGeneratingLocation.value = false
   }
 }
 
@@ -493,6 +529,20 @@ defineExpose({
     </div>
 
     <div v-if="activeTab === 'plotThreads'" class="flex-1 overflow-y-auto p-4 space-y-3">
+      <div class="flex items-center gap-2 mb-2">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="isGeneratingPlotThread"
+          @click="handleGeneratePlotThread"
+        >
+          <svg v-if="isGeneratingPlotThread" class="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-20" />
+            <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+          </svg>
+          <BaseIcon v-else name="sparkles" :size="12" />
+          {{ isGeneratingPlotThread ? 'Generating...' : 'Generate' }}
+        </button>
+      </div>
       <div
         v-for="thread in filteredPlotThreads"
         :key="thread.id"
@@ -582,6 +632,20 @@ defineExpose({
     </div>
 
     <div v-if="activeTab === 'locations'" class="flex-1 overflow-y-auto p-4 space-y-3">
+      <div class="flex items-center gap-2 mb-2">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="isGeneratingLocation"
+          @click="handleGenerateLocation"
+        >
+          <svg v-if="isGeneratingLocation" class="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-20" />
+            <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+          </svg>
+          <BaseIcon v-else name="sparkles" :size="12" />
+          {{ isGeneratingLocation ? 'Generating...' : 'Generate' }}
+        </button>
+      </div>
       <div
         v-for="location in filteredLocations"
         :key="location.id"
