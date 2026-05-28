@@ -207,7 +207,7 @@ function switchTab(tab) {
         >
           History
         </button>
-      <div class="flex items-center justify-end mt-2 gap-1">
+      <div v-if="!embedded" class="flex items-center justify-end mt-2 gap-1">
         <button
           v-if="compactIsCompacting"
           class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint rounded font-ui"

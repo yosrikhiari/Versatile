@@ -100,12 +100,7 @@ async function handleVolumeGenerate() {
     wordTarget: wordTarget.value,
     singleChapter: mode.value === 'chapter',
     sparkContext: sparkContext.value,
-    onPhaseChange: (p) => {},
-    onChunk: ({ sceneIndex, total, chunk, fullProse, scene }) => {
-      volumeCurrentScene.value = sceneIndex
-      volumeTotalScenes.value = total
-      volumeStreamingText.value = fullProse
-    }
+    onPhaseChange: (p) => {}
   })
 
   if (result) {
@@ -158,7 +153,7 @@ async function handleVolumeExportTxt() {
   ).join('\n\n')
   await exportAsText({
     title: `Generated Story`,
-    scenes: scenes.map((s, i) => ({ number: i + 1, brief: { title: s.title }, prose: s.prose }))
+    scenes: scenes.map(s => ({ title: s.title, prose: s.prose }))
   })
 }
 
@@ -167,7 +162,7 @@ async function handleVolumeExportMd() {
   if (scenes.length === 0) return
   await exportAsMarkdown({
     title: `Generated Story`,
-    scenes: scenes.map((s, i) => ({ number: i + 1, brief: { title: s.title }, prose: s.prose }))
+    scenes: scenes.map(s => ({ title: s.title, prose: s.prose }))
   })
 }
 
@@ -233,25 +228,31 @@ function getPhaseLabel(phase) {
       <div>
         <h2 class="text-lg font-semibold text-text-primary font-ui">Story Tools</h2>
       </div>
-      <div class="flex items-center gap-1 bg-bg-tertiary rounded-lg p-0.5">
+      <div class="flex items-center gap-1">
         <button
           :class="[
-            'px-3 py-1 text-xs rounded-md font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent',
-            tab === 'brainstorm' ? 'bg-accent text-white' : 'text-text-hint hover:text-text-secondary'
+            'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent font-ui',
+            tab === 'brainstorm'
+              ? 'bg-gradient-to-b from-accent to-[#c09a5e] text-bg-primary shadow-warm-sm btn-elevated'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
           ]"
           @click="tab = 'brainstorm'"
         >Brainstorm</button>
         <button
           :class="[
-            'px-3 py-1 text-xs rounded-md font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent',
-            tab === 'chapter' ? 'bg-accent text-white' : 'text-text-hint hover:text-text-secondary'
+            'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent font-ui',
+            tab === 'chapter'
+              ? 'bg-gradient-to-b from-accent to-[#c09a5e] text-bg-primary shadow-warm-sm btn-elevated'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
           ]"
           @click="tab = 'chapter'"
         >Chapter</button>
         <button
           :class="[
-            'px-3 py-1 text-xs rounded-md font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent',
-            tab === 'volume' ? 'bg-accent text-white' : 'text-text-hint hover:text-text-secondary'
+            'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent font-ui',
+            tab === 'volume'
+              ? 'bg-gradient-to-b from-accent to-[#c09a5e] text-bg-primary shadow-warm-sm btn-elevated'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
           ]"
           @click="tab = 'volume'"
         >Volume</button>
@@ -280,7 +281,7 @@ function getPhaseLabel(phase) {
       <!-- ==================== CHAPTER / VOLUME TABS ==================== -->
       <template v-if="tab !== 'brainstorm'">
       <!-- ==================== IDLE / CONTROLS ==================== -->
-      <template v-if="volumeGenerator.phase.value === 'idle' || volumeGenerator.phase.value === 'error'">
+      <template v-if="volumeGenerator.phase.value === 'idle'">
         <div class="p-4 space-y-5">
           <div>
             <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Story Synopsis</label>

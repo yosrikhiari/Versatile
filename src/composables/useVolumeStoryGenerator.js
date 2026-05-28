@@ -180,14 +180,16 @@ export function useVolumeStoryGenerator() {
         }, projectId)
       }
 
-      // Update section word count
+      // Update section word count (in-memory accumulation)
       const sectionIdx = Math.floor(i / 3)
       if (sections[sectionIdx]) {
         const sectionId = sections[sectionIdx].id
-        const sectionData = await manuscriptStore.getSectionData?.(projectId, sectionId) || {}
-        const existingWords = sectionData.wordCount || 0
+        const writtenInSection = writtenScenes.value
+          .slice(sectionIdx * 3, (sectionIdx + 1) * 3)
+        const totalWords = writtenInSection.reduce((sum, s) => sum + s.prose.split(/\s+/).length, 0)
+          + fullProse.split(/\s+/).length
         await manuscriptStore.updateSectionData(sectionId, {
-          wordCount: existingWords + fullProse.split(/\s+/).length
+          wordCount: totalWords
         }, projectId)
       }
 
