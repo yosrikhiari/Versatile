@@ -233,25 +233,31 @@ function getPhaseLabel(phase) {
       <div>
         <h2 class="text-lg font-semibold text-text-primary font-ui">Story Tools</h2>
       </div>
-      <div class="flex items-center gap-1 bg-bg-tertiary rounded-lg p-0.5">
+      <div class="flex items-center gap-1">
         <button
           :class="[
-            'px-3 py-1 text-xs rounded-md font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent',
-            tab === 'brainstorm' ? 'bg-accent text-white' : 'text-text-hint hover:text-text-secondary'
+            'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent font-ui',
+            tab === 'brainstorm'
+              ? 'bg-gradient-to-b from-accent to-[#c09a5e] text-bg-primary shadow-warm-sm btn-elevated'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
           ]"
           @click="tab = 'brainstorm'"
         >Brainstorm</button>
         <button
           :class="[
-            'px-3 py-1 text-xs rounded-md font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent',
-            tab === 'chapter' ? 'bg-accent text-white' : 'text-text-hint hover:text-text-secondary'
+            'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent font-ui',
+            tab === 'chapter'
+              ? 'bg-gradient-to-b from-accent to-[#c09a5e] text-bg-primary shadow-warm-sm btn-elevated'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
           ]"
           @click="tab = 'chapter'"
         >Chapter</button>
         <button
           :class="[
-            'px-3 py-1 text-xs rounded-md font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent',
-            tab === 'volume' ? 'bg-accent text-white' : 'text-text-hint hover:text-text-secondary'
+            'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent font-ui',
+            tab === 'volume'
+              ? 'bg-gradient-to-b from-accent to-[#c09a5e] text-bg-primary shadow-warm-sm btn-elevated'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
           ]"
           @click="tab = 'volume'"
         >Volume</button>
