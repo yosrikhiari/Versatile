@@ -11,7 +11,6 @@ import SettingsModal from './components/layout/SettingsModal.vue'
 import WelcomeOnboarding from './components/layout/WelcomeOnboarding.vue'
 import Toast from './components/layout/Toast.vue'
 import FlowEditor from './components/flow/FlowEditor.vue'
-import SparkPanel from './components/spark/SparkPanel.vue'
 import PolishDrawer from './components/polish/PolishDrawer.vue'
 import StoryBiblePanel from './components/storybible/StoryBiblePanel.vue'
 import RevisePanel from './components/revise/RevisePanel.vue'
@@ -23,6 +22,7 @@ import StoryNetwork from './components/storybible/StoryNetwork.vue'
 import TimelineView from './components/manuscript/TimelineView.vue'
 import SearchOverlay from './components/manuscript/SearchOverlay.vue'
 import ArchiveDrawer from './components/layout/ArchiveDrawer.vue'
+import StoryGeneratorPanel from './components/story/StoryGeneratorPanel.vue'
 
 const projectStore = useProjectStore()
 const timer = useFlowTimer(projectStore)
@@ -49,6 +49,7 @@ useKeyboardShortcuts({
   onToggleFlow: (running) => { running ? timer.startSession(20) : timer.endSession() },
   timerIsRunning: timer.isRunning.value,
   onToggleSpark: () => appShell.value?.toggleSpark(),
+  onToggleStoryGenerator: () => appShell.value?.toggleStoryGenerator(),
   onTogglePolish: () => appShell.value?.togglePolish(),
   onToggleStoryBible: () => appShell.value?.toggleStoryBible(),
   onToggleRevise: () => appShell.value?.toggleRevise(),
@@ -139,8 +140,8 @@ function handleOnboardingSkipWrapper() {
         />
       </template>
 
-      <template #spark>
-        <SparkPanel v-if="ollamaAvailable" />
+      <template #story-generator>
+        <StoryGeneratorPanel v-if="ollamaAvailable" @open-chapters="appShell?.toggleChapters()" />
         <div v-else class="p-4 text-center text-text-secondary">
           AI features disabled — Ollama unavailable
         </div>
@@ -262,6 +263,7 @@ function handleOnboardingSkipWrapper() {
             <div>
               <h3 class="text-sm font-medium text-accent mb-2">Actions</h3>
               <div class="space-y-2 text-sm">
+                <div class="flex justify-between"><span class="text-text-secondary">Story Generator</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">g</kbd></div>
                 <div class="flex justify-between"><span class="text-text-secondary">Start/Stop Flow</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">f</kbd></div>
                 <div class="flex justify-between"><span class="text-text-secondary">Export</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">Ctrl+S</kbd></div>
                 <div class="flex justify-between"><span class="text-text-secondary">Import</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">Ctrl+I</kbd></div>

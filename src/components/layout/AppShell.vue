@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
-import { useSparkStore } from '../../stores/sparkStore'
 import { usePolishStore } from '../../stores/polishStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { getAllProjects } from '../../services/dbService'
@@ -13,10 +12,8 @@ import RecapBanner from './RecapBanner.vue'
 import ContextStatusIndicator from './ContextStatusIndicator.vue'
 
 const projectStore = useProjectStore()
-const sparkStore = useSparkStore()
 const polishStore = usePolishStore()
 const storyBibleStore = useStoryBibleStore()
-
 const activePanelName = ref(null)
 const focusMode = ref(false)
 const flowMode = ref(false)
@@ -79,8 +76,8 @@ function closeAllPanels() {
   activePanelName.value = null
 }
 
-function toggleSpark() {
-  activePanelName.value = activePanelName.value === 'spark' ? null : 'spark'
+function toggleStoryGenerator() {
+  activePanelName.value = activePanelName.value === 'story-generator' ? null : 'story-generator'
 }
 
 function togglePolish() {
@@ -172,10 +169,10 @@ onMounted(async () => {
 
       <div class="flex items-center gap-2">
         <ModeButton 
-          label="Spark" 
-          :active="activePanelName === 'spark'" 
+          label="Story Tools" 
+          :active="activePanelName === 'story-generator'" 
           shortcut="1"
-          @click="toggleSpark" 
+          @click="toggleStoryGenerator" 
         />
         <ModeButton 
           label="Flow" 
@@ -344,6 +341,13 @@ onMounted(async () => {
 
     <div class="flex-1 flex overflow-hidden">
       <aside 
+        v-if="activePanelName === 'story-generator' && !flowMode" 
+        class="w-[500px] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
+      >
+        <slot name="story-generator"></slot>
+      </aside>
+
+      <aside 
         v-if="activePanelName === 'story-bible' && !flowMode" 
         class="w-[600px] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
       >
@@ -402,13 +406,6 @@ onMounted(async () => {
           <slot name="revise"></slot>
         </div>
       </main>
-
-      <aside 
-        v-if="activePanelName === 'spark' && !flowMode" 
-        class="w-[320px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
-      >
-        <slot name="spark"></slot>
-      </aside>
 
       <aside 
         v-if="activePanelName === 'archive' && !flowMode" 

@@ -13,6 +13,10 @@ import IdeaInput from './IdeaInput.vue'
 import ChapterContextSelector from '../shared/ChapterContextSelector.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
+const props = defineProps({
+  embedded: Boolean
+})
+
 const sparkStore = useSparkStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
@@ -150,12 +154,14 @@ function switchTab(tab) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div :class="embedded ? '' : 'h-full flex flex-col'">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
+      <template v-if="!embedded">
       <div class="flex items-center justify-between">
         <span class="font-spark text-accent tracking-wide">Spark</span>
         <span class="text-[10px] text-text-hint font-ui truncate max-w-[180px]" :title="sparkModelLabel">{{ sparkModelLabel }}</span>
       </div>
+      </template>
       <div class="flex mt-3 gap-1">
         <button
           :class="[

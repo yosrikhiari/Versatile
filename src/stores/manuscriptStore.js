@@ -7,6 +7,10 @@ import {
   getCharacterRelationships, addCharacterRelationship, updateCharacterRelationship, deleteCharacterRelationship
 } from '../services/dbService'
 import { warmEmbeddingCache } from '../composables/useManuscriptContext'
+import { useStoryDocuments } from '../composables/useStoryDocuments'
+import { useProjectStore } from '../stores/projectStore'
+
+const STYLE_GUIDE_DEBOUNCE = 1500
 
 export const useManuscriptStore = defineStore('manuscript', () => {
   const sections = ref([])
@@ -17,6 +21,23 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   const activeSubsectionId = ref(null)
   const isLoading = ref(false)
   const loadError = ref(null)
+
+  let styleGuideTimer = null
+
+  function queueStyleGuideRegen() {
+    if (styleGuideTimer) clearTimeout(styleGuideTimer)
+    styleGuideTimer = setTimeout(async () => {
+      const projectStore = useProjectStore()
+      const projectId = projectStore.currentProjectId
+      if (!projectId) return
+      const storyDocs = useStoryDocuments()
+      try {
+        await storyDocs.regenerateDocument(projectId, 'style_guide')
+      } catch (err) {
+        console.error('[manuscriptStore] Failed to regenerate style guide:', err)
+      }
+    }, STYLE_GUIDE_DEBOUNCE)
+  }
 
   const sortedSections = computed(() => {
     return [...sections.value].sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -67,6 +88,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     const order = sections.value.length
     const id = await addSection(projectId, { ...data, order, status: 'planning' })
     sections.value.push({ id, projectId, order, status: 'planning', ...data })
+    queueStyleGuideRegen()
     return id
   }
 
@@ -76,6 +98,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     if (index !== -1) {
       sections.value[index] = { ...sections.value[index], ...data }
     }
+    queueStyleGuideRegen()
   }
 
   async function deleteSectionData(id, projectId) {
@@ -86,6 +109,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     await deleteSection(id)
     sections.value = sections.value.filter(c => c.id !== id)
     subsections.value = subsections.value.filter(s => s.sectionId !== id)
+    queueStyleGuideRegen()
   }
 
   async function reorderSectionsData(sectionIds, projectId) {
@@ -101,6 +125,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     const order = sectionSubsections.length
     const id = await addSubsection(projectId, { ...data, sectionId, order })
     subsections.value.push({ id, projectId, sectionId, order, ...data })
+    queueStyleGuideRegen()
     return id
   }
 
@@ -110,11 +135,13 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     if (index !== -1) {
       subsections.value[index] = { ...subsections.value[index], ...data }
     }
+    queueStyleGuideRegen()
   }
 
   async function deleteSubsectionData(id, projectId) {
     await deleteSubsection(id)
     subsections.value = subsections.value.filter(s => s.id !== id)
+    queueStyleGuideRegen()
   }
 
   async function reorderSubsectionsData(subsectionIds, projectId) {
