@@ -12,6 +12,10 @@ import {
   removeEntityFromNodePositions,
   removeEntityFromNodeParents
 } from '../services/db-graph'
+import { useStoryDocuments } from '../composables/useStoryDocuments'
+import { useProjectStore } from '../stores/projectStore'
+
+const DOC_REGEN_DEBOUNCE = 1500
 
 export const useStoryBibleStore = defineStore('storyBible', () => {
   const characters = ref([])
@@ -19,6 +23,22 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   const plotThreads = ref([])
   const isLoading = ref(false)
   const loadError = ref(null)
+  const storyBibleReady = ref(false)
+
+  let docsDebounceTimer = null
+
+  function queueDocumentRegeneration(docTypes) {
+    if (docsDebounceTimer) clearTimeout(docsDebounceTimer)
+    docsDebounceTimer = setTimeout(async () => {
+      const projectStore = useProjectStore()
+      const projectId = projectStore.currentProjectId
+      if (!projectId) return
+      const storyDocs = useStoryDocuments()
+      await Promise.all(docTypes.map(dt => storyDocs.regenerateDocument(projectId, dt).catch(err => {
+        console.error(`[storyBibleStore] Failed to regenerate ${dt}:`, err)
+      })))
+    }, DOC_REGEN_DEBOUNCE)
+  }
 
   async function loadAll(projectId) {
     isLoading.value = true
@@ -27,6 +47,9 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
       characters.value = await getCharacters(projectId)
       locations.value = await getLocations(projectId)
       plotThreads.value = await getPlotThreads(projectId)
+      const storyDocs = useStoryDocuments()
+      await storyDocs.regenerateAllDocuments(projectId)
+      storyBibleReady.value = true
     } catch (e) {
       loadError.value = e.message
       console.error('[storyBibleStore] loadAll failed:', e)
@@ -38,6 +61,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   async function addCharacterData(projectId, data) {
     const id = await addCharacter(projectId, data)
     characters.value.push({ id, projectId, ...data, lastEditedAt: Date.now() })
+    queueDocumentRegeneration(['characters', 'relationships'])
     return id
   }
 
@@ -47,6 +71,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     if (index !== -1) {
       characters.value[index] = { ...characters.value[index], ...data, lastEditedAt: Date.now() }
     }
+    queueDocumentRegeneration(['characters', 'relationships'])
   }
 
   async function deleteCharacterData(id, projectId) {
@@ -59,11 +84,13 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     ])
     await deleteCharacter(id)
     characters.value = characters.value.filter(c => c.id !== id)
+    queueDocumentRegeneration(['characters', 'relationships'])
   }
 
   async function addLocationData(projectId, data) {
     const id = await addLocation(projectId, data)
     locations.value.push({ id, projectId, ...data })
+    queueDocumentRegeneration(['world', 'relationships'])
     return id
   }
 
@@ -73,17 +100,20 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     if (index !== -1) {
       locations.value[index] = { ...locations.value[index], ...data }
     }
+    queueDocumentRegeneration(['world', 'relationships'])
   }
 
   async function deleteLocationData(id, projectId) {
     await deleteLocation(id)
     locations.value = locations.value.filter(l => l.id !== id)
+    queueDocumentRegeneration(['world', 'relationships'])
   }
 
   async function addPlotThreadData(projectId, data) {
     const maxOrder = plotThreads.value.reduce((max, t) => Math.max(max, t.timelineOrder ?? 0), 0)
     const id = await addPlotThread(projectId, { ...data, timelineOrder: maxOrder + 1 })
     plotThreads.value.push({ id, projectId, ...data, timelineOrder: maxOrder + 1 })
+    queueDocumentRegeneration(['timeline', 'relationships'])
     return id
   }
 
@@ -95,6 +125,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
         return updatePlotThread(id, { timelineOrder: i })
       })
     )
+    queueDocumentRegeneration(['timeline'])
   }
 
   async function updatePlotThreadData(id, data, projectId) {
@@ -103,11 +134,13 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     if (index !== -1) {
       plotThreads.value[index] = { ...plotThreads.value[index], ...data }
     }
+    queueDocumentRegeneration(['timeline', 'relationships'])
   }
 
   async function deletePlotThreadData(id, projectId) {
     await deletePlotThread(id)
     plotThreads.value = plotThreads.value.filter(t => t.id !== id)
+    queueDocumentRegeneration(['timeline', 'relationships'])
   }
 
   async function updateThreadStatus(id, status, projectId) {
@@ -116,6 +149,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     if (index !== -1) {
       plotThreads.value[index].status = status
     }
+    queueDocumentRegeneration(['timeline'])
   }
 
   function getCharacterNames() {
@@ -126,6 +160,9 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     characters,
     locations,
     plotThreads,
+    isLoading,
+    loadError,
+    storyBibleReady,
     loadAll,
     addCharacterData,
     updateCharacterData,

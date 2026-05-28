@@ -113,8 +113,8 @@ export function useManuscriptContext() {
   }
 
   function getSubsectionContentForSection(sectionId) {
-    const subsections = manuscriptStore.subsectionsBySection
-      .filter(s => s.sectionId === sectionId)
+    const subsections = (manuscriptStore.subsectionsBySection[sectionId] || [])
+      .slice()
       .sort((a, b) => (a.order || 0) - (b.order || 0))
     
     return subsections.map(s => s.content || '').join('\n\n')

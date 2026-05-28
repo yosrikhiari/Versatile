@@ -71,6 +71,7 @@ const editingVolume = ref(null)
 const newVolume = ref({ title: '', description: '', color: '' })
 const assignMode = ref(false)
 const assignVolumeId = ref(null)
+const expandedVolumes = ref(new Set())
 
 const totalWordCount = computed(() => {
   let total = 0
@@ -204,9 +205,20 @@ function saveVolume() {
 }
 
 function deleteVolume(volume) {
-  if (confirm(`Delete "${volume.title}"? Chapters will be unassigned from this volume.`)) {
+  if (confirm(`Delete "${volume.title}"? Sections will be unassigned from this volume.`)) {
     volumeStore.deleteVolumeData(volume.id, projectStore.currentProjectId)
+    manuscriptStore.loadManuscript(projectStore.currentProjectId)
   }
+}
+
+function toggleVolumeExpand(volumeId) {
+  const set = new Set(expandedVolumes.value)
+  if (set.has(volumeId)) {
+    set.delete(volumeId)
+  } else {
+    set.add(volumeId)
+  }
+  expandedVolumes.value = set
 }
 
 function toggleAssignMode(volumeId) {
@@ -222,12 +234,23 @@ function toggleAssignMode(volumeId) {
 async function assignChapterToVolume(chapterId) {
   if (!assignVolumeId.value || !projectStore.currentProjectId) return
   await volumeStore.assignChapter(chapterId, assignVolumeId.value, projectStore.currentProjectId)
+  manuscriptStore.updateSectionData(chapterId, { volumeId: assignVolumeId.value }, projectStore.currentProjectId)
   assignMode.value = false
   assignVolumeId.value = null
 }
 
+function removeFromVolume(section) {
+  volumeStore.removeChapter(section.id, projectStore.currentProjectId)
+  manuscriptStore.updateSectionData(section.id, { volumeId: null }, projectStore.currentProjectId)
+}
+
 function getSectionsInVolume(volumeId) {
   return sortedSections.value.filter(s => s.volumeId === volumeId)
+}
+
+function getVolumeForSection(section) {
+  if (!section.volumeId) return null
+  return volumeStore.volumes.find(v => v.id === section.volumeId) || null
 }
 
 </script>
@@ -283,39 +306,71 @@ function getSectionsInVolume(volumeId) {
       <div
         v-for="volume in volumeStore.volumes"
         :key="volume.id"
-        class="flex items-center justify-between px-2.5 py-2 rounded-md bg-bg-secondary"
+        class="bg-bg-secondary rounded-md overflow-hidden"
       >
-        <div class="flex items-center gap-2 min-w-0">
-          <span
-            class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-            :style="{ background: volume.color || '#6366f1' }"
-          ></span>
-          <span class="text-sm font-medium text-text-primary">{{ volume.title }}</span>
-          <span class="text-xs text-text-tertiary bg-bg-primary border border-border-subtle rounded-full px-2 py-0.5 whitespace-nowrap">
-            {{ getSectionsInVolume(volume.id).length }} sections
-          </span>
+        <div
+          class="flex items-center justify-between px-2.5 py-2 cursor-pointer"
+          @click="toggleVolumeExpand(volume.id)"
+        >
+          <div class="flex items-center gap-2 min-w-0">
+            <BaseIcon
+              :name="expandedVolumes.has(volume.id) ? 'chevron-down' : 'chevron-right'"
+              :size="14"
+              class="text-text-tertiary flex-shrink-0"
+            />
+            <span
+              class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              :style="{ background: volume.color || '#6366f1' }"
+            ></span>
+            <span class="text-sm font-medium text-text-primary">{{ volume.title }}</span>
+            <span class="text-xs text-text-tertiary bg-bg-primary border border-border-subtle rounded-full px-2 py-0.5 whitespace-nowrap">
+              {{ getSectionsInVolume(volume.id).length }} sections
+            </span>
+          </div>
+          <div class="flex items-center gap-0.5" @click.stop>
+            <button
+              class="p-1 text-text-tertiary hover:text-text-secondary rounded"
+              title="Assign sections"
+              :class="assignMode && assignVolumeId === volume.id ? 'bg-accent/10 text-accent' : ''"
+              @click="toggleAssignMode(volume.id)"
+            >
+              <BaseIcon name="folder-plus" :size="14" />
+            </button>
+            <button
+              class="p-1 text-text-tertiary hover:text-text-secondary rounded"
+              @click="openEditVolume(volume)"
+            >
+              <BaseIcon name="pencil" :size="14" />
+            </button>
+            <button
+              class="p-1 text-text-tertiary hover:text-danger rounded"
+              @click="deleteVolume(volume)"
+            >
+              <BaseIcon name="trash-2" :size="14" />
+            </button>
+          </div>
         </div>
-        <div class="flex items-center gap-0.5">
-          <button
-            class="p-1 text-text-tertiary hover:text-text-secondary rounded"
-            title="Assign sections"
-            :class="assignMode && assignVolumeId === volume.id ? 'bg-accent/10 text-accent' : ''"
-            @click.stop="toggleAssignMode(volume.id)"
+
+        <div v-if="expandedVolumes.has(volume.id)" class="border-t border-border-subtle px-3 py-2 space-y-1.5">
+          <div
+            v-for="section in getSectionsInVolume(volume.id)"
+            :key="section.id"
+            class="flex items-center justify-between bg-bg-primary rounded px-2.5 py-1.5"
           >
-            <BaseIcon name="folder-plus" :size="14" />
-          </button>
-          <button
-            class="p-1 text-text-tertiary hover:text-text-secondary rounded"
-            @click.stop="openEditVolume(volume)"
-          >
-            <BaseIcon name="pencil" :size="14" />
-          </button>
-          <button
-            class="p-1 text-text-tertiary hover:text-danger rounded"
-            @click.stop="deleteVolume(volume)"
-          >
-            <BaseIcon name="trash-2" :size="14" />
-          </button>
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-sm text-text-primary font-medium">{{ section.title || `Section ${section.order + 1}` }}</span>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-bg-secondary text-text-secondary">{{ getStatusLabel(section.status) }}</span>
+            </div>
+            <button
+              class="p-1 text-text-tertiary hover:text-danger rounded"
+              @click="removeFromVolume(section)"
+            >
+              <BaseIcon name="x" :size="12" />
+            </button>
+          </div>
+          <div v-if="getSectionsInVolume(volume.id).length === 0" class="text-center py-2">
+            <p class="text-xs text-text-tertiary">No sections assigned</p>
+          </div>
         </div>
       </div>
     </div>
@@ -364,6 +419,10 @@ function getSectionsInVolume(volumeId) {
               @click="assignMode ? assignChapterToVolume(section.id) : selectSection(section.id)"
             >
               <BaseIcon name="grip-vertical" :size="14" class="text-text-tertiary flex-shrink-0 cursor-grab" />
+              <span
+                class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                :style="{ background: (getVolumeForSection(section)?.color) || '#9ca3af' }"
+              ></span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="text-sm font-medium text-text-primary">{{ section.title || `Section ${section.order + 1}` }}</span>
@@ -388,32 +447,43 @@ function getSectionsInVolume(volumeId) {
             </div>
 
             <div v-if="activeSectionExpanded === section.id" class="border-t border-border-subtle bg-bg-secondary p-3">
-              <div class="flex items-center gap-1.5 mb-2.5">
-                <button
-                  class="text-xs px-2.5 py-1 bg-bg-info text-text-info rounded-md font-medium hover:opacity-90"
-                  @click="openAddSubsection(section.id)"
-                >
-                  + Subsection
-                </button>
-                <button
-                  class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-                  @click="openEditChapter(section)"
-                >
-                  Edit
-                </button>
-                <button
-                  class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-                  @click="openChapterSnapshot(section)"
-                >
-                  History
-                </button>
-                <button
-                  class="text-xs px-2.5 py-1 bg-bg-primary text-text-danger border border-border-subtle rounded-md hover:bg-danger/10 ml-auto"
-                  @click="deleteChapter(section)"
-                >
-                  Delete
-                </button>
-              </div>
+              <div class="flex flex-col gap-1.5 mb-2.5">
+  <!-- Row 1: action buttons -->
+  <div class="flex items-center gap-1">
+    <button
+      class="text-xs px-2.5 py-1 bg-bg-info text-text-info rounded-md font-medium hover:opacity-90"
+      @click="openAddSubsection(section.id)"
+    >
+      + Subsection
+    </button>
+    <button
+      class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
+      @click="openEditChapter(section)"
+    >
+      Edit
+    </button>
+    <button
+      class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
+      @click="openChapterSnapshot(section)"
+    >
+      History
+    </button>
+    <button
+      v-if="section.volumeId"
+      class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
+      @click="removeFromVolume(section)"
+    >
+      Unassign
+    </button>
+  </div>
+  <!-- Row 2: destructive action, full width -->
+  <button
+    class="w-full text-xs px-2.5 py-1 bg-bg-primary text-text-danger border border-border-subtle rounded-md hover:bg-danger/10 text-center"
+    @click="deleteChapter(section)"
+  >
+    Delete
+  </button>
+</div>
 
               <draggable
                 :list="subsectionsBySection[section.id]"

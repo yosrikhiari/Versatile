@@ -71,6 +71,11 @@ export function useKeyboardShortcuts(shortcuts) {
       return
     }
 
+    if (e.key === 'g' && !e.ctrlKey && !e.metaKey && shortcuts.onToggleStoryGenerator) {
+      shortcuts.onToggleStoryGenerator()
+      return
+    }
+
     if (e.key === 't' && !e.ctrlKey && !e.metaKey && shortcuts.onToggleTimeline) {
       shortcuts.onToggleTimeline()
       return

@@ -57,7 +57,8 @@ export const FEATURES = {
   POLISH: 'polish',
   CONTENT: 'content',
   WORLDBUILDING: 'worldbuilding',
-  COMPACTION: 'compaction'
+  COMPACTION: 'compaction',
+  STORY_GENERATION: 'story_generation'
 }
 
 export const FEATURE_LABELS = {
@@ -65,7 +66,8 @@ export const FEATURE_LABELS = {
   [FEATURES.POLISH]: 'Polish (prose analysis)',
   [FEATURES.CONTENT]: 'Content generation',
   [FEATURES.WORLDBUILDING]: 'Worldbuilding (characters, locations, plots)',
-  [FEATURES.COMPACTION]: 'Context compaction'
+  [FEATURES.COMPACTION]: 'Context compaction',
+  [FEATURES.STORY_GENERATION]: 'Story Generation (Director/Writer/Critic)'
 }
 
 export const FEATURE_DEFAULTS = {
@@ -73,7 +75,8 @@ export const FEATURE_DEFAULTS = {
   [FEATURES.POLISH]: { provider: PROVIDERS.OLLAMA, model: null },
   [FEATURES.CONTENT]: { provider: PROVIDERS.OLLAMA, model: null },
   [FEATURES.WORLDBUILDING]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.COMPACTION]: { provider: PROVIDERS.OLLAMA, model: null }
+  [FEATURES.COMPACTION]: { provider: PROVIDERS.OLLAMA, model: null },
+  [FEATURES.STORY_GENERATION]: { provider: PROVIDERS.OLLAMA, model: null }
 }
 
 export const PROVIDER_DEFAULT = PROVIDERS.OLLAMA

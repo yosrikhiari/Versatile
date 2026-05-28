@@ -131,12 +131,12 @@ export async function ollamaEmbeddings(text, model = null) {
   const timeout = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const response = await fetch(`${getOllamaEndpoint()}/api/embeddings`, {
+    const response = await fetch(`${getOllamaEndpoint()}/api/embed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: embeddingModel,
-        prompt: text
+        input: text
       }),
       signal: controller.signal
     })
@@ -150,8 +150,9 @@ export async function ollamaEmbeddings(text, model = null) {
     }
 
     const data = await response.json()
-    log('Embedding generated, dimensions:', data.embedding?.length || 0)
-    return data.embedding
+    const embedding = data.embeddings?.[0]
+    log('Embedding generated, dimensions:', embedding?.length || 0)
+    return embedding
   } catch (error) {
     clearTimeout(timeout)
     log('Ollama embeddings failed:', error.message)
