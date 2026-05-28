@@ -100,12 +100,7 @@ async function handleVolumeGenerate() {
     wordTarget: wordTarget.value,
     singleChapter: mode.value === 'chapter',
     sparkContext: sparkContext.value,
-    onPhaseChange: (p) => {},
-    onChunk: ({ sceneIndex, total, chunk, fullProse, scene }) => {
-      volumeCurrentScene.value = sceneIndex
-      volumeTotalScenes.value = total
-      volumeStreamingText.value = fullProse
-    }
+    onPhaseChange: (p) => {}
   })
 
   if (result) {
@@ -158,7 +153,7 @@ async function handleVolumeExportTxt() {
   ).join('\n\n')
   await exportAsText({
     title: `Generated Story`,
-    scenes: scenes.map((s, i) => ({ number: i + 1, brief: { title: s.title }, prose: s.prose }))
+    scenes: scenes.map(s => ({ title: s.title, prose: s.prose }))
   })
 }
 
@@ -167,7 +162,7 @@ async function handleVolumeExportMd() {
   if (scenes.length === 0) return
   await exportAsMarkdown({
     title: `Generated Story`,
-    scenes: scenes.map((s, i) => ({ number: i + 1, brief: { title: s.title }, prose: s.prose }))
+    scenes: scenes.map(s => ({ title: s.title, prose: s.prose }))
   })
 }
 
@@ -286,7 +281,7 @@ function getPhaseLabel(phase) {
       <!-- ==================== CHAPTER / VOLUME TABS ==================== -->
       <template v-if="tab !== 'brainstorm'">
       <!-- ==================== IDLE / CONTROLS ==================== -->
-      <template v-if="volumeGenerator.phase.value === 'idle' || volumeGenerator.phase.value === 'error'">
+      <template v-if="volumeGenerator.phase.value === 'idle'">
         <div class="p-4 space-y-5">
           <div>
             <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Story Synopsis</label>
