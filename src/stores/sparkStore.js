@@ -81,12 +81,12 @@ export const useSparkStore = defineStore('spark', () => {
     }
   }
 
-  async function generateContentAction(idea, tone, characterNames = [], targetLength = 'short') {
+  async function generateContentAction(idea, tone, characterNames = [], targetLength = 'short', manuscriptContext = null) {
     isGenerating.value = true
     error.value = null
     currentContent.value = null
     try {
-      const result = await generateContent(idea, tone, characterNames, targetLength)
+      const result = await generateContent(idea, tone, characterNames, targetLength, manuscriptContext)
       
       if (result.error) {
         error.value = result.error
@@ -110,7 +110,7 @@ export const useSparkStore = defineStore('spark', () => {
     }
   }
 
-  async function generateContentStreamingAction(idea, tone, characterNames = [], targetLength = 'short') {
+  async function generateContentStreamingAction(idea, tone, characterNames = [], targetLength = 'short', manuscriptContext = null) {
     isGenerating.value = true
     error.value = null
     currentStreamingContent.value = ''
@@ -120,7 +120,8 @@ export const useSparkStore = defineStore('spark', () => {
         idea, tone, characterNames, targetLength,
         (chunk, full) => {
           currentStreamingContent.value = full
-        }
+        },
+        manuscriptContext
       )
       
       if (result.error) {

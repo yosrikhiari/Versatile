@@ -377,7 +377,7 @@ Be concise and only extract what is clearly present in the text.`
   }
 }
 
-export async function generateContent(idea, tone, characterNames = [], targetLength = 'short') {
+export async function generateContent(idea, tone, characterNames = [], targetLength = 'short', manuscriptContext = null) {
   const lengthInstructions = targetLength === 'short' 
     ? 'Write a short scene of about 300-500 words.'
     : 'Write a full chapter of about 1500-2000 words.'
@@ -388,13 +388,18 @@ export async function generateContent(idea, tone, characterNames = [], targetLen
   const systemPrompt = 'You are a creative fiction writer. Write engaging prose.' +
     (profileStr ? '\n\n' + profileStr : '')
   
+  let contextInstruction = ''
+  if (manuscriptContext?.contextText) {
+    contextInstruction = `\n\nThe following excerpts establish the current narrative. Write prose that continues naturally from this context.\n\n${manuscriptContext.contextText}`
+  }
+  
   const userPrompt = `Write fiction in third person. ${lengthInstructions}
 Include sensory details, dialogue, and emotional interiority.
 No preamble. No explanation. Just the story.
 
 Tone: ${tone}
 ${characterNames.length > 0 ? 'Characters: ' + characterNames.join(', ') : ''}
-Scene idea: ${idea}${projectContext}`
+Scene idea: ${idea}${projectContext}${contextInstruction}`
 
   try {
     const response = await retryWithBackoff(() =>
@@ -407,7 +412,7 @@ Scene idea: ${idea}${projectContext}`
   }
 }
 
-export async function generateContentStreaming(idea, tone, characterNames = [], targetLength = 'short', onProgress) {
+export async function generateContentStreaming(idea, tone, characterNames = [], targetLength = 'short', onProgress, manuscriptContext = null) {
   const lengthInstructions = targetLength === 'short' 
     ? 'Write a short scene of about 300-500 words.'
     : 'Write a full chapter of about 1500-2000 words.'
@@ -418,13 +423,18 @@ export async function generateContentStreaming(idea, tone, characterNames = [], 
   const systemPrompt = 'You are a creative fiction writer. Write engaging prose.' +
     (profileStr ? '\n\n' + profileStr : '')
   
+  let contextInstruction = ''
+  if (manuscriptContext?.contextText) {
+    contextInstruction = `\n\nThe following excerpts establish the current narrative. Write prose that continues naturally from this context.\n\n${manuscriptContext.contextText}`
+  }
+  
   const userPrompt = `Write fiction in third person. ${lengthInstructions}
 Include sensory details, dialogue, and emotional interiority.
 No preamble. No explanation. Just the story.
 
 Tone: ${tone}
 ${characterNames.length > 0 ? 'Characters: ' + characterNames.join(', ') : ''}
-Scene idea: ${idea}${projectContext}`
+Scene idea: ${idea}${projectContext}${contextInstruction}`
 
   try {
     const response = await retryWithBackoff(() =>

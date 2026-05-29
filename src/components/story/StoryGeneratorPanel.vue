@@ -30,18 +30,58 @@ const wordTarget = ref(3500)
 const sparkContext = ref('')
 
 const hasSparkResponse = computed(() => {
-  if (sparkStore.currentContent || sparkStore.currentStreamingContent || sparkStore.currentOutline) return true
+  if (sparkStore.currentOutline || sparkStore.currentContent || sparkStore.currentStreamingContent) return true
   const turns = getTurns('spark_default')
   return turns.some(t => t.role === 'assistant')
 })
 
+// Human-readable label for what's about to be sent to the generator
+const sparkContextLabel = computed(() => {
+  if (sparkStore.currentOutline) {
+    const title = sparkStore.currentOutline.title
+    return title ? `Blueprint: "${title}"` : 'Chapter Blueprint'
+  }
+  if (sparkStore.currentContent) {
+    const snippet = sparkStore.currentContent.slice(0, 60).replace(/\n/g, ' ')
+    return `Content: "${snippet}${sparkStore.currentContent.length > 60 ? '…' : ''}"`
+  }
+  return 'Spark output'
+})
+
+function formatBlueprintAsContext(blueprint) {
+  const lines = [
+    blueprint.title       ? `Chapter: ${blueprint.title}`             : null,
+    blueprint.openingBeat     ? `Opening beat: ${blueprint.openingBeat}`     : null,
+    blueprint.turningPoint    ? `Turning point: ${blueprint.turningPoint}`   : null,
+    blueprint.confrontationBeat ? `Confrontation: ${blueprint.confrontationBeat}` : null,
+    blueprint.closingBeat     ? `Closing beat: ${blueprint.closingBeat}`     : null,
+    blueprint.sensoryAnchor   ? `Sensory anchor: ${blueprint.sensoryAnchor}` : null,
+    blueprint.dialogueHook    ? `Dialogue hook: ${blueprint.dialogueHook}`   : null,
+    blueprint.writingNotes    ? `Notes: ${blueprint.writingNotes}`           : null,
+  ].filter(Boolean)
+  return lines.join('\n')
+}
+
 function handleSendSparkToGenerator() {
+  // Priority 1: blueprint — the most structured context; must be formatted from the object,
+  // not from the conversation turn (turns only store a compact summary string)
+  if (sparkStore.currentOutline) {
+    sparkContext.value = formatBlueprintAsContext(sparkStore.currentOutline)
+    tab.value = 'chapter'
+    return
+  }
+
+  // Priority 2: generated chapter content
+  if (sparkStore.currentContent) {
+    sparkContext.value = sparkStore.currentContent
+    tab.value = 'chapter'
+    return
+  }
+
+  // Priority 3: last assistant turn in the conversation (prompt / partial streaming)
   const turns = getTurns('spark_default')
   const lastAssistant = [...turns].reverse().find(t => t.role === 'assistant')
-  sparkContext.value = lastAssistant?.content
-    || sparkStore.currentStreamingContent
-    || sparkStore.currentContent
-    || ''
+  sparkContext.value = lastAssistant?.content || sparkStore.currentStreamingContent || ''
   tab.value = 'chapter'
 }
 
@@ -265,16 +305,20 @@ function getPhaseLabel(phase) {
         <div class="flex-1 overflow-y-auto">
           <SparkPanel embedded />
         </div>
-        <div v-if="hasSparkResponse" class="px-4 py-3 border-t border-border-subtle bg-bg-secondary">
+        <div v-if="hasSparkResponse" class="px-4 py-3 border-t border-border-subtle bg-bg-secondary space-y-2">
+          <p class="text-[10px] uppercase tracking-widest text-text-hint font-ui text-center">Ready to generate</p>
           <button
             class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleSendSparkToGenerator"
           >
             <span class="flex items-center justify-center gap-2">
-              <BaseIcon name="send" :size="16" />
-              Send to Generator
+              <BaseIcon name="arrow-right" :size="16" />
+              Use as Generator Context
             </span>
           </button>
+          <p class="text-[10px] text-text-hint font-ui text-center truncate px-1" :title="sparkContextLabel">
+            {{ sparkContextLabel }}
+          </p>
         </div>
       </div>
 
@@ -336,15 +380,19 @@ function getPhaseLabel(phase) {
           </div>
 
           <!-- Spark context badge -->
-          <div v-if="sparkContext" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/10 border border-accent/20">
-            <BaseIcon name="sparkles" :size="14" class="text-accent shrink-0" />
-            <span class="text-xs text-text-secondary font-ui flex-1">Spark context active</span>
-            <button
-              class="text-text-hover hover:text-text-primary focus:outline-none focus:ring-1 focus:ring-accent rounded"
-              @click="clearSparkContext"
-            >
-              <BaseIcon name="x" :size="14" />
-            </button>
+          <div v-if="sparkContext" class="rounded-lg bg-accent/10 border border-accent/20 px-3 py-2.5 space-y-1">
+            <div class="flex items-center gap-2">
+              <BaseIcon name="sparkles" :size="14" class="text-accent shrink-0" />
+              <span class="text-xs text-accent font-semibold font-ui flex-1 truncate">Spark context active</span>
+              <button
+                class="text-text-hint hover:text-text-primary focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                title="Remove Spark context"
+                @click="clearSparkContext"
+              >
+                <BaseIcon name="x" :size="14" />
+              </button>
+            </div>
+            <p class="text-[10px] text-text-hint font-ui truncate pl-5" :title="sparkContext">{{ sparkContextLabel }}</p>
           </div>
 
           <button
