@@ -39,7 +39,6 @@ const targetLength = ref('full')
 const currentPrompt = ref('')
 const showOpenAISettings = ref(false)
 const openaiKeyInput = ref('')
-const historyOpen = ref(false)
 const showContextPreview = ref(false)
 const contextPreview = ref(null)
 const contextPreviewLoading = ref(false)
@@ -144,7 +143,7 @@ function clearHistory() {
 
 function switchTab(tab) {
   activeTab.value = tab
-  if (tab !== 'chapter') {
+  if (tab !== 'freewrite') {
     sparkStore.currentContent = null
   }
   if (tab !== 'blueprint') {
@@ -154,59 +153,76 @@ function switchTab(tab) {
 </script>
 
 <template>
-  <div :class="embedded ? '' : 'h-full flex flex-col'">
-    <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
+  <div :class="embedded ? 'flex flex-col min-h-0' : 'h-full flex flex-col'">
+    <div class="px-4 pt-4 pb-3 border-b border-border-subtle flex-shrink-0">
       <template v-if="!embedded">
-      <div class="flex items-center justify-between">
-        <span class="font-spark text-accent tracking-wide">Spark</span>
-        <span class="text-[10px] text-text-hint font-ui truncate max-w-[180px]" :title="sparkModelLabel">{{ sparkModelLabel }}</span>
-      </div>
+        <div class="flex items-center justify-between">
+          <span class="font-spark text-accent tracking-wide">Spark</span>
+          <span class="text-[10px] text-text-hint font-ui truncate max-w-[180px]" :title="sparkModelLabel">{{ sparkModelLabel }}</span>
+        </div>
       </template>
-      <div class="flex mt-3 gap-1">
+
+      <!-- Pipeline hint shown in embedded (brainstorm) mode -->
+      <template v-if="embedded">
+        <div class="flex items-center gap-2 py-1 mb-1">
+          <span class="text-[10px] text-text-hint font-ui">Brainstorm here</span>
+          <BaseIcon name="arrow-right" :size="10" class="text-text-hint" />
+          <span class="text-[10px] text-accent font-ui font-semibold">Use as Generator Context</span>
+          <BaseIcon name="arrow-right" :size="10" class="text-text-hint" />
+          <span class="text-[10px] text-text-hint font-ui">Chapter / Volume</span>
+        </div>
+      </template>
+
+      <div class="flex mt-2 gap-1">
         <button
           :class="[
             'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
-            activeTab === 'prompt' 
-              ? 'bg-accent/10 text-accent' 
+            activeTab === 'prompt'
+              ? 'bg-accent/10 text-accent'
               : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
           @click="switchTab('prompt')"
+          title="Generate a writing prompt to spark ideas"
         >
           Prompt
         </button>
         <button
           :class="[
             'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
-            activeTab === 'blueprint' 
-              ? 'bg-accent/10 text-accent' 
+            activeTab === 'blueprint'
+              ? 'bg-accent/10 text-accent'
               : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
           @click="switchTab('blueprint')"
+          title="Turn your idea into a structured scene blueprint (beats, hooks, notes)"
         >
           Blueprint
         </button>
         <button
           :class="[
             'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
-            activeTab === 'chapter' 
-              ? 'bg-accent/10 text-accent' 
+            activeTab === 'freewrite'
+              ? 'bg-accent/10 text-accent'
               : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
-          @click="switchTab('chapter')"
+          @click="switchTab('freewrite')"
+          title="Generate full prose from your idea — a quick draft to react to"
         >
-          Chapter
+          Freewrite
         </button>
         <button
           :class="[
             'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
-            activeTab === 'history' 
-              ? 'bg-accent/10 text-accent' 
+            activeTab === 'history'
+              ? 'bg-accent/10 text-accent'
               : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
           @click="switchTab('history')"
+          title="Your past Spark generations"
         >
           History
         </button>
+      </div>
       <div v-if="!embedded" class="flex items-center justify-end mt-2 gap-1">
         <button
           v-if="compactIsCompacting"
@@ -225,9 +241,8 @@ function switchTab(tab) {
         </button>
       </div>
     </div>
-    </div>
 
-    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 scrollbar-thin">
       <div v-if="activeTab === 'prompt'" class="space-y-4">
         <div>
           <label class="block text-[11px] uppercase tracking-widest text-text-hint font-ui mb-2">Prompt Type</label>
@@ -295,12 +310,20 @@ function switchTab(tab) {
           @regenerate="generatePrompt"
         />
 
-        <div v-if="!currentPrompt && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8">
-          <p class="text-sm italic text-text-hint font-body">Select a type and generate to get a writing prompt</p>
+        <div v-if="!currentPrompt && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8 space-y-2">
+          <BaseIcon name="lightbulb" :size="24" class="mx-auto text-text-hint" />
+          <p class="text-sm text-text-hint font-body">Pick a prompt type above and hit Generate.</p>
+          <p class="text-xs text-text-hint font-ui opacity-70">Once you have a prompt you like, use<br><span class="text-accent">Use as Generator Context</span> to turn it into a full chapter.</p>
         </div>
       </div>
 
       <div v-if="activeTab === 'blueprint'" class="space-y-4">
+        <div class="rounded-lg bg-accent/5 border border-accent/15 px-3 py-2">
+          <p class="text-[11px] text-text-hint font-ui leading-relaxed">
+            Describe your scene idea and get a structured blueprint with beats, a sensory anchor, and a dialogue hook.
+            Then use <span class="text-accent font-semibold">Use as Generator Context</span> to write the full chapter.
+          </p>
+        </div>
         <IdeaInput
           v-model:idea="idea"
           v-model:tone="tone"
@@ -341,12 +364,21 @@ function switchTab(tab) {
           @insert="insertIntoFlow"
         />
 
-        <div v-if="!sparkStore.currentBlueprint && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8">
-          <p class="text-sm italic text-text-hint font-body">Describe your chapter idea and generate a structural blueprint</p>
+        <div v-if="!sparkStore.currentBlueprint && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8 space-y-2">
+          <BaseIcon name="map" :size="24" class="mx-auto text-text-hint" />
+          <p class="text-sm text-text-hint font-body">Describe your scene and generate a blueprint.</p>
+          <p class="text-xs text-text-hint font-ui opacity-70">Beats, hooks, and notes — everything the generator needs.</p>
         </div>
       </div>
 
-      <div v-if="activeTab === 'chapter'" class="space-y-4">
+      <div v-if="activeTab === 'freewrite'" class="space-y-4">
+        <div class="rounded-lg bg-accent/5 border border-accent/15 px-3 py-2">
+          <p class="text-[11px] text-text-hint font-ui leading-relaxed">
+            Write a quick draft to react to. Once generated, use
+            <span class="text-accent font-semibold">Use as Generator Context</span>
+            below to feed it into the Chapter or Volume generator.
+          </p>
+        </div>
         <IdeaInput
           v-model:idea="idea"
           v-model:tone="tone"
@@ -395,45 +427,44 @@ function switchTab(tab) {
           </div>
         </div>
 
-        <div v-if="!sparkStore.currentChapter && !sparkStore.currentStreamingChapter && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8">
-          <p class="text-sm italic text-text-hint font-body">Describe your chapter idea and generate full prose</p>
+        <div v-if="!sparkStore.currentChapter && !sparkStore.currentStreamingChapter && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8 space-y-2">
+          <BaseIcon name="pencil-line" :size="24" class="mx-auto text-text-hint" />
+          <p class="text-sm text-text-hint font-body">Describe your scene and generate quick prose.</p>
+          <p class="text-xs text-text-hint font-ui opacity-70">React to it, then send it to the generator as context.</p>
         </div>
       </div>
 
-      <div v-if="activeTab === 'history'">
-        <button
-          class="w-full flex items-center justify-between py-2 text-[11px] uppercase tracking-widest text-text-hint font-ui hover:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent rounded"
-          @click="historyOpen = !historyOpen"
-        >
-          <span>History ({{ sparkStore.history.length }})</span>
-          <span>{{ historyOpen ? '▼' : '▶' }}</span>
-        </button>
-
-        <div v-if="historyOpen" class="mt-3 space-y-3">
-          <div v-if="sparkStore.history.length === 0" class="text-center py-8">
-            <p class="text-sm italic text-text-hint font-body">Generated prompts and blueprints will appear here</p>
-          </div>
-          <div
-            v-for="(item, index) in sparkStore.history"
-            :key="index"
-            class="p-3 rounded-lg bg-bg-tertiary border border-border-subtle"
-          >
-            <div class="text-[10px] uppercase tracking-wider text-text-hint font-ui mb-1">{{ item.type }}</div>
-            <p class="text-sm text-text-secondary line-clamp-2 font-body">{{ item.prompt }}</p>
-            <button
-              v-if="item.prompt"
-              class="mt-2 text-xs text-accent hover:text-accent-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
-              @click="insertIntoFlow(item.prompt)"
-            >
-              Insert
-            </button>
-          </div>
+      <div v-if="activeTab === 'history'" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] uppercase tracking-widest text-text-hint font-ui">{{ sparkStore.history.length }} saved</span>
           <button
             v-if="sparkStore.history.length > 0"
-            class="w-full py-1.5 text-xs text-text-hint hover:text-danger transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
+            class="text-xs text-text-hint hover:text-danger transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded px-1"
             @click="clearHistory"
           >
-            Clear history
+            Clear all
+          </button>
+        </div>
+
+        <div v-if="sparkStore.history.length === 0" class="text-center py-8 space-y-2">
+          <BaseIcon name="clock" :size="24" class="mx-auto text-text-hint" />
+          <p class="text-sm text-text-hint font-body">No history yet.</p>
+          <p class="text-xs text-text-hint font-ui opacity-70">Prompts, blueprints, and freewrites you generate will appear here.</p>
+        </div>
+
+        <div
+          v-for="(item, index) in sparkStore.history"
+          :key="index"
+          class="p-3 rounded-lg bg-bg-tertiary border border-border-subtle"
+        >
+          <div class="text-[10px] uppercase tracking-wider text-text-hint font-ui mb-1">{{ item.type }}</div>
+          <p class="text-sm text-text-secondary line-clamp-2 font-body">{{ item.prompt }}</p>
+          <button
+            v-if="item.prompt"
+            class="mt-2 text-xs text-accent hover:text-accent-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
+            @click="insertIntoFlow(item.prompt)"
+          >
+            Insert into editor
           </button>
         </div>
       </div>
