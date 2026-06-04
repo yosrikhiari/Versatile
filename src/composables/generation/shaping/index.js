@@ -62,3 +62,5 @@ function formatPlotThread(t) {
   const notesSuffix = t.notes ? `: ${t.notes.slice(0, 80)}` : ''
   return `- "${t.title}"${notesSuffix}`
 }
+
+export { buildEntityBlock, formatCharacter, formatLocation, formatPlotThread }

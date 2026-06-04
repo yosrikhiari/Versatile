@@ -73,7 +73,7 @@ Write ONLY the detailed content for this section. Do not summarize. Start writin
 
       const contractSection = storyContract ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n` : ''
 
-      const briefLines = sceneBrief.emotionalGoal === undefined
+      const briefLines = sceneBrief.emotionalGoal !== undefined
         ? [
             `- Emotional goal: ${sceneBrief.emotionalGoal}`,
             `- What changes: ${sceneBrief.whatChanges}`,
@@ -150,6 +150,8 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     isWriting.value = true
     writeError.value = null
 
+    let accumulated = ''
+
     try {
       const styleGuide = extractDoc(storyBible || '', 'Style Guide')
       const rejectedPatterns = extractDoc(storyBible || '', 'Avoid These Patterns')
@@ -187,7 +189,7 @@ Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside t
 
       const contractSection = storyContract ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n` : ''
 
-      const briefLines = sceneBrief.emotionalGoal === undefined
+      const briefLines = sceneBrief.emotionalGoal !== undefined
         ? [
             `- Emotional goal: ${sceneBrief.emotionalGoal}`,
             `- What changes: ${sceneBrief.whatChanges}`,
@@ -259,8 +261,6 @@ Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No e
 }
 
 IMPORTANT: The prose field must be at least 800 words. Do not truncate the story to save tokens.`
-
-      let accumulated = ''
 
       if (onChunk) {
         await aiStream(userPrompt, systemPrompt, (chunk) => {

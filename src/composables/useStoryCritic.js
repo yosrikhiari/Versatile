@@ -236,3 +236,5 @@ Return JSON evaluation.`
 
   return { evaluateScene, isEvaluating, checkContradictions, isCheckingConsistency, consistencyReport }
 }
+
+export { sanitizeJson, countCharacters, formatCharacterCheck, formatLocationCheck }

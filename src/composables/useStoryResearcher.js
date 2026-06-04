@@ -105,3 +105,5 @@ export function useStoryResearcher() {
 
   return { gatherEvidence, isResearching, researchError }
 }
+
+export { filterRelevant }

@@ -200,7 +200,7 @@ export const useFlowStore = defineStore('flow', () => {
     if (timerInterval) clearInterval(timerInterval)
     if (idleInterval) clearInterval(idleInterval)
     if (backspaceToastTimeout) clearTimeout(backspaceToastTimeout)
-    if (audioContext?.state !== 'closed') {
+    if (audioContext && audioContext.state !== 'closed') {
       audioContext.close()
     }
   }

@@ -217,3 +217,5 @@ Scene idea: ${idea}${projectContext}${contextInstruction}`
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
+
+export { getDefaultBlueprint }
