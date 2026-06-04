@@ -84,11 +84,12 @@ function sanitizeJson(raw) {
   cleaned = cleaned.replace(/```$/i, '')
   cleaned = cleaned.replace(/```json$/i, '')
   cleaned = cleaned.trim()
-  const regex = /\{[\s\S]*\}/
-  const execResult = regex.exec(cleaned)
-  if (!execResult) return null
+  const start = cleaned.indexOf('{')
+  const end = cleaned.lastIndexOf('}')
+  if (start === -1 || end === -1 || end <= start) return null
+  const jsonStr = cleaned.slice(start, end + 1)
   try {
-    return JSON.parse(execResult[0])
+    return JSON.parse(jsonStr)
   } catch {
     return null
   }

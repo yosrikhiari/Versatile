@@ -45,6 +45,16 @@ import { getEmbeddingStorageKey } from '../../config/storageKeys'
  * @property {string[]} locations
  */
 
+// --- Helpers ---
+
+function extractBracketContent(text, startIdx) {
+  const endIdx = text.indexOf(']', startIdx)
+  if (endIdx === -1) return null
+  const colonIdx = text.indexOf(':', startIdx)
+  if (colonIdx === -1 || colonIdx > endIdx) return null
+  return text.slice(colonIdx + 1, endIdx).trim()
+}
+
 // --- Embedding helpers ---
 
 async function getIdeaEmbedding(idea) {
@@ -547,17 +557,17 @@ export async function enhanceSingleField(entityType, fieldName, currentValue, al
     titleContext = `\nCRITICAL: The title "${allFields.title}" is the PRIMARY context anchor. All generated content must be directly related to this title.`
   }
 
-  const CHARS_RE = /\[Characters:\s*([^\]]+)\]/
-  const LOCS_RE = /\[Locations:\s*([^\]]+)\]/
   let structuredBlock = ''
   if (entityType === 'plotThread' && fieldName === 'notes' && currentValue) {
-    const charsExec = CHARS_RE.exec(currentValue)
-    const locsExec = LOCS_RE.exec(currentValue)
+    const charsIdx = currentValue.indexOf('[Characters:')
+    const locsIdx = currentValue.indexOf('[Locations:')
+    const chars = charsIdx !== -1 ? extractBracketContent(currentValue, charsIdx) : null
+    const locs = locsIdx !== -1 ? extractBracketContent(currentValue, locsIdx) : null
 
-    if (charsExec || locsExec) {
-      const chars = charsExec ? charsExec[1].trim() : 'None'
-      const locs = locsExec ? locsExec[1].trim() : 'None'
-      structuredBlock = `\n\nIMPORTANT: Preserve this structured block at the END of your response (do not modify it):\n[Characters: ${chars}]\n[Locations: ${locs}]`
+    if (chars || locs) {
+      const charsVal = chars || 'None'
+      const locsVal = locs || 'None'
+      structuredBlock = `\n\nIMPORTANT: Preserve this structured block at the END of your response (do not modify it):\n[Characters: ${charsVal}]\n[Locations: ${locsVal}]`
     }
   }
 
