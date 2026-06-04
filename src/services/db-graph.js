@@ -183,3 +183,5 @@ export async function updateGroupEdge(id, data) {
 export async function deleteGroupEdge(id) {
   return db.groupEdges.delete(id)
 }
+
+export { getNodePrefix }

@@ -480,3 +480,5 @@ export function useVolumeStoryGenerator() {
     reset
   }
 }
+
+export { buildEmbeddingContext }

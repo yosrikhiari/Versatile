@@ -807,6 +807,8 @@ All values must be strings or arrays. No markdown.`
   }
 }
 
+export { extractBracketContent }
+
 // --- Context compaction re-export ---
 
 export function useCompactConversation() {

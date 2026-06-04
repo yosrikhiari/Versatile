@@ -293,3 +293,5 @@ IMPORTANT: The prose field must be at least 800 words. Do not truncate the story
 
   return { writeScene, writeSceneStructured, isWriting, writeError }
 }
+
+export { extractDoc, summarizeLog }
