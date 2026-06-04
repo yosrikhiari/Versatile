@@ -184,6 +184,8 @@ export function useGraphContext() {
     getEntityRelationshipContext,
     getEntityName,
     buildNodeId,
-    parseNodeId
+    parseNodeId,
+    getEntityTypePrefix,
+    getRelationshipLabel
   }
 }
