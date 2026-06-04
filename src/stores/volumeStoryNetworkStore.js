@@ -118,6 +118,36 @@ export const useVolumeStoryNetworkStore = defineStore('volumeStoryNetwork', () =
     return volumeEdges.value[volumeId] || []
   }
 
+  async function applyEventToVolumeNetwork(event, volumeId, nameToId, projectId) {
+    if (!event.from || !event.to) return null
+
+    const from = nameToId[event.from]
+    const to = nameToId[event.to]
+    if (!from || !to) {
+      console.warn(`[volumeStoryNetwork] Could not resolve network event: ${event.from} -> ${event.to}`)
+      return null
+    }
+
+    // Assign both entities to volume if not already (idempotent at db level)
+    await assignEntityToVolume(from.type, from.id, volumeId, false).catch(() => {})
+    await assignEntityToVolume(to.type, to.id, volumeId, false).catch(() => {})
+
+    // Create the edge
+    try {
+      const edgeId = await createVolumeEdge(
+        projectId,
+        from.type, from.id,
+        to.type, to.id,
+        event.label || 'relates_to',
+        volumeId
+      )
+      return edgeId
+    } catch (err) {
+      console.error(`[volumeStoryNetwork] Failed to create edge for ${event.from} -> ${event.to}:`, err)
+      return null
+    }
+  }
+
   async function getVolumeEntityCounts(volumeId) {
     const counts = {}
     const types = ['character', 'location', 'plotThread']
@@ -141,6 +171,7 @@ export const useVolumeStoryNetworkStore = defineStore('volumeStoryNetwork', () =
     removeEntityFromVolume: removeEntityFromVolumeAction,
     removeEntityFromAllVolumes: removeEntityFromAllVolumesAction,
     createVolumeEdge,
+    applyEventToVolumeNetwork,
 
     // Cached getters
     getCachedEntities,

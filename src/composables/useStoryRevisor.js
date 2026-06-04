@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 
@@ -54,7 +55,12 @@ ${draft}
 
 Revise the draft to address ONLY the issues listed above. Output the full revised text.`
 
-      const response = await aiGenerate(userPrompt, REVISOR_SYSTEM_PROMPT, {
+      const projectStore = useProjectStore()
+      const categoryType = projectStore.activeWorkspaceType || 'creative'
+      const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
+      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+
+      const response = await aiGenerate(userPrompt, activePrompts.revisor, {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.4
       })

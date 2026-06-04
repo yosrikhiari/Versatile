@@ -87,7 +87,7 @@ function getCommentsForParagraph(index) {
 }
 
 const paragraphs = computed(() => {
-  const paras = projectStore.documentContent.split('\n').filter(p => p.trim())
+  const paras = projectStore.documentContentRaw.split('\n').filter(p => p.trim())
   return paras.map((text, index) => ({
     index,
     text,

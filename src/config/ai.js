@@ -58,7 +58,8 @@ export const FEATURES = {
   CONTENT: 'content',
   WORLDBUILDING: 'worldbuilding',
   COMPACTION: 'compaction',
-  STORY_GENERATION: 'story_generation'
+  STORY_GENERATION: 'story_generation',
+  NETWORK: 'network'
 }
 
 export const FEATURE_LABELS = {
@@ -67,7 +68,8 @@ export const FEATURE_LABELS = {
   [FEATURES.CONTENT]: 'Content generation',
   [FEATURES.WORLDBUILDING]: 'Worldbuilding (characters, locations, plots)',
   [FEATURES.COMPACTION]: 'Context compaction',
-  [FEATURES.STORY_GENERATION]: 'Story Generation (Director/Writer/Critic)'
+  [FEATURES.STORY_GENERATION]: 'Story Generation (Director/Writer/Critic)',
+  [FEATURES.NETWORK]: 'Network (relationship suggestions)'
 }
 
 export const FEATURE_DEFAULTS = {
@@ -76,7 +78,8 @@ export const FEATURE_DEFAULTS = {
   [FEATURES.CONTENT]: { provider: PROVIDERS.OLLAMA, model: null },
   [FEATURES.WORLDBUILDING]: { provider: PROVIDERS.OLLAMA, model: null },
   [FEATURES.COMPACTION]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.STORY_GENERATION]: { provider: PROVIDERS.OLLAMA, model: null }
+  [FEATURES.STORY_GENERATION]: { provider: PROVIDERS.OLLAMA, model: null },
+  [FEATURES.NETWORK]: { provider: PROVIDERS.OLLAMA, model: null }
 }
 
 export const PROVIDER_DEFAULT = PROVIDERS.OLLAMA

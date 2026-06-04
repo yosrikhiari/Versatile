@@ -244,34 +244,36 @@ export function useEntityExtractor() {
   }
 
   function getNewEntities(extracted, existingCharacters, existingLocations) {
-    const existingCharacterNames = new Set(
-      existingCharacters.map(c => c.name?.toLowerCase().trim())
+    const characterMap = new Map(
+      existingCharacters.map(c => [c.name?.toLowerCase().trim(), c])
     )
-    const existingLocationNames = new Set(
-      existingLocations.map(l => l.name?.toLowerCase().trim())
+    const locationMap = new Map(
+      existingLocations.map(l => [l.name?.toLowerCase().trim(), l])
     )
 
-    const newCharacters = extracted.characters
-      .filter(name => !existingCharacterNames.has(name.toLowerCase()))
-      .map(name => ({ name, isNew: true }))
-      
-    const existingCharactersList = extracted.characters
-      .filter(name => existingCharacterNames.has(name.toLowerCase()))
-      .map(name => {
-        const existing = existingCharacters.find(c => c.name?.toLowerCase() === name.toLowerCase())
-        return { name, isNew: false, id: existing?.id }
-      })
+    const newCharacters = []
+    const existingCharactersList = []
+    for (const name of extracted.characters) {
+      const cleanName = name.toLowerCase().trim()
+      const existing = characterMap.get(cleanName)
+      if (existing) {
+        existingCharactersList.push({ name, isNew: false, id: existing.id })
+      } else {
+        newCharacters.push({ name, isNew: true })
+      }
+    }
 
-    const newLocations = extracted.locations
-      .filter(name => !existingLocationNames.has(name.toLowerCase()))
-      .map(name => ({ name, isNew: true }))
-      
-    const existingLocationsList = extracted.locations
-      .filter(name => existingLocationNames.has(name.toLowerCase()))
-      .map(name => {
-        const existing = existingLocations.find(l => l.name?.toLowerCase() === name.toLowerCase())
-        return { name, isNew: false, id: existing?.id }
-      })
+    const newLocations = []
+    const existingLocationsList = []
+    for (const name of extracted.locations) {
+      const cleanName = name.toLowerCase().trim()
+      const existing = locationMap.get(cleanName)
+      if (existing) {
+        existingLocationsList.push({ name, isNew: false, id: existing.id })
+      } else {
+        newLocations.push({ name, isNew: true })
+      }
+    }
 
     return {
       characters: [...newCharacters, ...existingCharactersList],

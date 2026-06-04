@@ -5,6 +5,7 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
 import { useChapterSceneManager, SECTION_STATUSES } from '../../composables/useChapterSceneManager'
 import { useDraggableList, DRAG_OPTIONS } from '../../composables/useDraggableList'
+import { useNotifications } from '../../composables/useNotifications'
 
 import Modal from '../shared/Modal.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
@@ -15,6 +16,7 @@ import TagInput from '../shared/TagInput.vue'
 const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
 const volumeStore = useVolumeStore()
+const { showConfirm } = useNotifications()
 const { endDrag } = useDraggableList()
 
 const {
@@ -131,8 +133,8 @@ function saveChapter() {
   showChapterModal.value = false
 }
 
-function deleteChapter(section) {
-  if (confirm(`Delete "${section.title || 'Section ' + (section.order + 1)}"? This will also delete all subsections in this section.`)) {
+async function deleteChapter(section) {
+  if (await showConfirm('Delete Chapter', `Delete "${section.title || 'Section ' + (section.order + 1)}"? This will also delete all subsections in this section.`, 'Delete', 'danger')) {
     manuscriptStore.deleteSectionData(section.id, projectStore.currentProjectId)
   }
 }
@@ -204,8 +206,8 @@ function saveVolume() {
   showVolumeModal.value = false
 }
 
-function deleteVolume(volume) {
-  if (confirm(`Delete "${volume.title}"? Sections will be unassigned from this volume.`)) {
+async function deleteVolume(volume) {
+  if (await showConfirm('Delete Volume', `Delete "${volume.title}"? Sections will be unassigned from this volume.`, 'Delete', 'danger')) {
     volumeStore.deleteVolumeData(volume.id, projectStore.currentProjectId)
     manuscriptStore.loadManuscript(projectStore.currentProjectId)
   }
@@ -478,7 +480,7 @@ function getVolumeForSection(section) {
   </div>
   <!-- Row 2: destructive action, full width -->
   <button
-    class="w-full text-xs px-2.5 py-1 bg-bg-primary text-text-danger border border-border-subtle rounded-md hover:bg-danger/10 text-center"
+    class="w-full text-xs px-2.5 py-1 bg-bg-primary text-danger border border-border-subtle rounded-md hover:bg-danger/10 text-center"
     @click="deleteChapter(section)"
   >
     Delete
@@ -503,7 +505,7 @@ function getVolumeForSection(section) {
                       Edit
                     </button>
                     <button
-                      class="bg-transparent border-none text-xs text-text-danger cursor-pointer px-1.5 py-0.5 hover:opacity-80"
+                      class="bg-transparent border-none text-xs text-danger cursor-pointer px-1.5 py-0.5 hover:opacity-80"
                       @click="deleteSubsection(subsection)"
                     >
                       <BaseIcon name="x" :size="12" />

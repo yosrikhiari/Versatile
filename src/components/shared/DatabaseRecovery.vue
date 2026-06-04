@@ -127,9 +127,12 @@
 import { ref } from 'vue'
 import { checkDatabaseHealth, exportAllData, importData, resetDatabaseVersion, getDatabaseSize } from '../../services/dbRecovery'
 import { exportProject } from '../../services/dbService'
+import { useNotifications } from '../../composables/useNotifications'
 import BaseIcon from './BaseIcon.vue'
 
 defineEmits(['close'])
+
+const { showConfirm } = useNotifications()
 
 const working = ref(false)
 const healthCheck = ref(null)
@@ -186,7 +189,7 @@ async function handleFileImport(event) {
     const text = await file.text()
     const data = JSON.parse(text)
     
-    if (!confirm('This will replace ALL existing data. Continue?')) {
+    if (!(await showConfirm('Import Backup', 'This will replace ALL existing data. Continue?', 'Import', 'danger'))) {
       working.value = false
       return
     }
@@ -205,7 +208,7 @@ async function handleFileImport(event) {
 }
 
 async function resetDatabase() {
-  if (!confirm('ARE YOU SURE? This will delete ALL data permanently!')) {
+  if (!(await showConfirm('Reset Database', 'ARE YOU SURE? This will delete ALL data permanently!', 'Delete Data', 'danger'))) {
     return
   }
   

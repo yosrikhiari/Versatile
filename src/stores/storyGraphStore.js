@@ -59,16 +59,21 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     const storyBibleStore = useStoryBibleStore()
     const cleaned = {}
     let changed = false
+
+    const existingCharIds = new Set(storyBibleStore.characters.map(c => String(c.id)))
+    const existingLocIds = new Set(storyBibleStore.locations.map(l => String(l.id)))
+    const existingThreadIds = new Set(storyBibleStore.plotThreads.map(t => String(t.id)))
+
     for (const [key, pos] of Object.entries(nodePositions.value)) {
       const type = key.startsWith('char') ? 'character' : key.startsWith('loc') ? 'location' : 'plotThread'
       const entityId = key.replace(/^(char|loc|thread)-/, '')
       let exists = false
       if (type === 'character') {
-        exists = storyBibleStore.characters.some(c => String(c.id) === entityId)
+        exists = existingCharIds.has(entityId)
       } else if (type === 'location') {
-        exists = storyBibleStore.locations.some(l => String(l.id) === entityId)
+        exists = existingLocIds.has(entityId)
       } else {
-        exists = storyBibleStore.plotThreads.some(t => String(t.id) === entityId)
+        exists = existingThreadIds.has(entityId)
       }
       if (exists) {
         cleaned[key] = pos
@@ -96,16 +101,21 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     const instances = await getNodeInstances(projectId)
     const storyBibleStore = useStoryBibleStore()
     const cleaned = {}
+
+    const existingCharIds = new Set(storyBibleStore.characters.map(c => String(c.id)))
+    const existingLocIds = new Set(storyBibleStore.locations.map(l => String(l.id)))
+    const existingThreadIds = new Set(storyBibleStore.plotThreads.map(t => String(t.id)))
+
     for (const [baseId, instanceIds] of Object.entries(instances || {})) {
       const type = baseId.startsWith('char') ? 'character' : baseId.startsWith('loc') ? 'location' : 'plotThread'
       const entityId = baseId.replace(/^(char|loc|thread)-/, '')
       let exists = false
       if (type === 'character') {
-        exists = storyBibleStore.characters.some(c => String(c.id) === entityId)
+        exists = existingCharIds.has(entityId)
       } else if (type === 'location') {
-        exists = storyBibleStore.locations.some(l => String(l.id) === entityId)
+        exists = existingLocIds.has(entityId)
       } else {
-        exists = storyBibleStore.plotThreads.some(t => String(t.id) === entityId)
+        exists = existingThreadIds.has(entityId)
       }
       if (exists) {
         cleaned[baseId] = instanceIds

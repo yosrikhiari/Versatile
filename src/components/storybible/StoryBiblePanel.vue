@@ -7,6 +7,7 @@ import { generateRandomCharacter, generateRandomPlotThread, generateRandomLocati
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
 import { upsertStoryDocument } from '../../services/db-story-documents'
 import { useStoryDocuments } from '../../composables/useStoryDocuments'
+import { useNotifications } from '../../composables/useNotifications'
 import BaseIcon from '../shared/BaseIcon.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
 import GenerateCharacterModal from './GenerateCharacterModal.vue'
@@ -14,6 +15,7 @@ import GenerateCharacterModal from './GenerateCharacterModal.vue'
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const volumeStore = useVolumeStore()
+const { showConfirm } = useNotifications()
 const { getSectionContext } = useManuscriptContext()
 
 const characterPortraitRef = ref(null)
@@ -92,7 +94,7 @@ function uploadDocument(event) {
 
 async function regenerateDocumentWithConfirm() {
   if (hasUnsavedChanges.value) {
-    if (!confirm('This will overwrite your edits. Continue?')) return
+    if (!(await showConfirm('Overwrite Edits', 'This will overwrite your edits. Continue?', 'Overwrite', 'danger'))) return
   }
   if (!projectStore.currentProjectId) return
   const { regenerateDocument } = useStoryDocuments()
@@ -254,7 +256,7 @@ async function updateCharacter(id, data) {
 }
 
 async function deleteCharacter(id) {
-  if (confirm('Delete this character?')) {
+  if (await showConfirm('Delete Character', 'Delete this character?', 'Delete', 'danger')) {
     await storyBibleStore.deleteCharacterData(id, projectStore.currentProjectId)
   }
 }
@@ -273,7 +275,7 @@ async function updateLocation(id, data) {
 }
 
 async function deleteLocation(id) {
-  if (confirm('Delete this location?')) {
+  if (await showConfirm('Delete Location', 'Delete this location?', 'Delete', 'danger')) {
     await storyBibleStore.deleteLocationData(id, projectStore.currentProjectId)
   }
 }
@@ -292,7 +294,7 @@ async function updatePlotThread(id, data) {
 }
 
 async function deletePlotThread(id) {
-  if (confirm('Delete this thread?')) {
+  if (await showConfirm('Delete Plot Thread', 'Delete this thread?', 'Delete', 'danger')) {
     await storyBibleStore.deletePlotThreadData(id, projectStore.currentProjectId)
   }
 }
@@ -331,10 +333,19 @@ defineExpose({
   <div class="h-full flex flex-col">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-3">
-        <span class="font-storybible text-accent tracking-wide">Story Bible</span>
+        <span class="font-storybible text-accent tracking-wide">{{ projectStore.terminology.bible }}</span>
       </div>
     </div>
 
+    <!-- Loading state: shown while story bible data is being fetched -->
+    <div v-if="storyBibleStore.isLoading" class="flex-1 flex items-center justify-center">
+      <div class="flex flex-col items-center gap-3">
+        <BaseIcon name="loader-2" :size="24" class="animate-spin text-accent" />
+        <span class="text-xs text-text-hint font-ui">Loading story bible…</span>
+      </div>
+    </div>
+
+    <template v-else>
     <div class="flex border-b border-border-subtle px-4">
       <button
         :class="[
@@ -346,7 +357,7 @@ defineExpose({
         role="tab"
         @click="activeTab = 'characters'"
       >
-        Characters <span class="text-[10px] opacity-60">{{ filteredCharacters.length }}</span>
+        {{ projectStore.terminology.characters }} <span class="text-[10px] opacity-60">{{ filteredCharacters.length }}</span>
       </button>
       <button
         :class="[
@@ -358,7 +369,7 @@ defineExpose({
         role="tab"
         @click="activeTab = 'plotThreads'"
       >
-        Threads <span class="text-[10px] opacity-60">{{ filteredPlotThreads.length }}</span>
+        {{ projectStore.terminology.plotThreads }} <span class="text-[10px] opacity-60">{{ filteredPlotThreads.length }}</span>
       </button>
       <button
         :class="[
@@ -370,7 +381,7 @@ defineExpose({
         role="tab"
         @click="activeTab = 'locations'"
       >
-        Locations <span class="text-[10px] opacity-60">{{ filteredLocations.length }}</span>
+        {{ projectStore.terminology.locations }} <span class="text-[10px] opacity-60">{{ filteredLocations.length }}</span>
       </button>
       <button
         :class="[
@@ -524,7 +535,7 @@ defineExpose({
         class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
         @click="addCharacter"
       >
-        + Add character
+        + Add {{ projectStore.terminology.characters.toLowerCase() }}
       </button>
     </div>
 
@@ -627,7 +638,7 @@ defineExpose({
         class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
         @click="addPlotThread"
       >
-        + Add thread
+        + Add {{ projectStore.terminology.plotThreads.toLowerCase() }}
       </button>
     </div>
 
@@ -726,7 +737,7 @@ defineExpose({
         class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
         @click="addLocation"
       >
-        + Add location
+        + Add {{ projectStore.terminology.locations.toLowerCase() }}
       </button>
     </div>
 
@@ -804,5 +815,6 @@ defineExpose({
       @create="onCreateCharacter"
       @update="onUpdateCharacter"
     />
+    </template>
   </div>
 </template>

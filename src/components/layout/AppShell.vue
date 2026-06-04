@@ -10,6 +10,8 @@ import GoalProgressBar from '../shared/GoalProgressBar.vue'
 import ProjectSettingsModal from './ProjectSettingsModal.vue'
 import RecapBanner from './RecapBanner.vue'
 import ContextStatusIndicator from './ContextStatusIndicator.vue'
+import { STORAGE_KEYS } from '../../config/storageKeys'
+import { useLocalStorage } from '../../composables/useLocalStorage'
 
 const projectStore = useProjectStore()
 const polishStore = usePolishStore()
@@ -24,27 +26,26 @@ const isCreatingProject = ref(false)
 const newProjectName = ref('')
 
 const showCoreLoop = ref(true)
-const coreLoopSeen = ref({ write: false, analyze: false, build: false })
+const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, { write: false, analyze: false, build: false })
 
-const emit = defineEmits(['start-flow', 'end-flow', 'export', 'import', 'export-pdf', 'open-settings', 'complete-onboarding'])
+const emit = defineEmits(['start-flow', 'end-flow', 'export', 'import', 'export-pdf', 'open-settings', 'complete-onboarding', 'create-project'])
 
 const wordCount = computed(() => projectStore.wordCount)
 const projectName = computed(() => projectStore.currentProjectName)
 
 onMounted(() => {
-  const saved = localStorage.getItem('versatile_core_loop_seen')
-  if (saved) {
-    coreLoopSeen.value = JSON.parse(saved)
-    if (coreLoopSeen.value.write && coreLoopSeen.value.analyze && coreLoopSeen.value.build) {
-      showCoreLoop.value = false
-    }
+  if (coreLoopSeen.value.write && coreLoopSeen.value.analyze && coreLoopSeen.value.build) {
+    showCoreLoop.value = false
   }
 })
 
 function markCoreLoop(mode) {
   if (!coreLoopSeen.value[mode]) {
-    coreLoopSeen.value[mode] = true
-    localStorage.setItem('versatile_core_loop_seen', JSON.stringify(coreLoopSeen.value))
+    // Re-assign object to trigger customRef setter properly
+    coreLoopSeen.value = {
+      ...coreLoopSeen.value,
+      [mode]: true
+    }
     
     if (coreLoopSeen.value.write && coreLoopSeen.value.analyze && coreLoopSeen.value.build) {
       showCoreLoop.value = false
@@ -62,14 +63,9 @@ async function switchProject(projectId) {
   await loadProjects()
 }
 
-async function createProject() {
-  if (!newProjectName.value.trim()) return
-  
-  const newId = await projectStore.createNewProject(newProjectName.value.trim())
-  newProjectName.value = ''
-  isCreatingProject.value = false
-  await loadProjects()
-  await projectStore.loadProject(newId)
+function handleCreateProjectClick() {
+  showProjectDropdown.value = false
+  emit('create-project')
 }
 
 function closeAllPanels() {
@@ -169,7 +165,7 @@ onMounted(async () => {
 
       <div class="flex items-center gap-2">
         <ModeButton 
-          label="Story Tools" 
+          :label="projectStore.terminology.generatorLabel" 
           :active="activePanelName === 'story-generator'" 
           shortcut="1"
           @click="toggleStoryGenerator" 
@@ -188,7 +184,7 @@ onMounted(async () => {
           @click="togglePolish" 
         />
         <ModeButton 
-          label="Story Bible" 
+          :label="projectStore.terminology.bible" 
           :active="activePanelName === 'story-bible'" 
           shortcut="3"
           @click="toggleStoryBible" 
@@ -206,12 +202,13 @@ onMounted(async () => {
           @click="toggleOutline" 
         />
         <ModeButton 
-          label="Chapters" 
+          :label="projectStore.terminology.sections" 
           :active="activePanelName === 'chapters'" 
           shortcut="7"
           @click="toggleChapters" 
         />
         <button
+          v-if="projectStore.activeWorkspaceType === 'creative'"
           :class="[
             'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
             activePanelName === 'network'
@@ -224,6 +221,7 @@ onMounted(async () => {
           <BaseIcon name="network" :size="18" />
         </button>
         <button 
+          v-if="projectStore.activeWorkspaceType === 'creative'"
           :class="[
             'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
             activePanelName === 'timeline'
@@ -276,20 +274,9 @@ onMounted(async () => {
               class="absolute right-0 top-full mt-1 glass-panel rounded-lg shadow-warm-md py-1 z-50 min-w-[220px] animate-scale-in"
               @click.stop
             >
-              <div v-if="isCreatingProject" class="px-3 py-2 border-b border-border-subtle/50">
-                <input
-                  v-model="newProjectName"
-                  placeholder="Project name..."
-                  class="w-full px-2.5 py-1.5 text-sm bg-bg-tertiary/50 border border-border-subtle rounded-lg text-text-primary placeholder:text-text-hint/60 focus:outline-none focus:ring-1 focus:ring-accent/50 transition-all duration-150"
-                  autofocus
-                  @keydown.enter="createProject"
-                  @keydown.escape="isCreatingProject = false"
-                />
-              </div>
               <button
-                v-else
                 class="w-full text-left px-3 py-2 text-sm text-accent hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
-                @click="isCreatingProject = true"
+                @click="handleCreateProjectClick"
               >
                 <BaseIcon name="plus" :size="14" />
                 Create new project

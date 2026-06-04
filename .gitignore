@@ -9,3 +9,8 @@ vite_out.txt
 # Backend (disconnected dead code - removed)
 /server/
 /backend/
+dir_check.txt
+elevation_test.txt
+perm_check.txt
+.gitignore
+perm_result.txt

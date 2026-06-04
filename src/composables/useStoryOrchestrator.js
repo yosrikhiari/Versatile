@@ -3,6 +3,8 @@ import { useStoryDirector } from './useStoryDirector'
 import { useStoryWriter } from './useStoryWriter'
 import { useStoryCritic } from './useStoryCritic'
 import { useStoryRevisor } from './useStoryRevisor'
+import { useStoryResearcher } from './useStoryResearcher'
+import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { db, deepPlain } from '../services/db-core'
 
@@ -11,11 +13,21 @@ function countWords(text) {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
+function classifyGoal(premise) {
+  const p = (premise || '').toLowerCase()
+  if (p.includes('write') || p.includes('scene') || p.includes('brainstorm') || p.includes('twist') || p.includes('develop') || p.includes('character')) {
+    return { type: 'short_term_intent', horizon: 'short_term' }
+  }
+  return { type: 'generate_story', horizon: 'long_term' }
+}
+
 export function useStoryOrchestrator() {
   const director = useStoryDirector()
   const writer = useStoryWriter()
   const critic = useStoryCritic()
   const revisor = useStoryRevisor()
+  const researcher = useStoryResearcher()
+  const storyBibleStore = useStoryBibleStore()
 
   const phase = ref('idle')
   const progress = ref(0)
@@ -50,9 +62,19 @@ export function useStoryOrchestrator() {
     synopsis.value = premise
 
     try {
-      const plan = await director.generateStoryPlan({
-        premise, genre, tone, wordTarget
-      })
+      const classified = classifyGoal(premise)
+      const goal = {
+        type: classified.type,
+        horizon: classified.horizon,
+        premise,
+        genre,
+        tone,
+        wordTarget
+      }
+
+      const evidence = await researcher.gatherEvidence(projectId, goal)
+
+      const plan = await director.generateStoryPlan({ goal, evidence })
 
       if (cancelled) {
         await savePartial(projectId, premise)
@@ -60,7 +82,7 @@ export function useStoryOrchestrator() {
         return
       }
 
-      storyPlan.value = plan
+      storyPlan.value = { ...plan, goal }
       phase.value = 'planning'
       return
 
@@ -81,18 +103,52 @@ export function useStoryOrchestrator() {
     cancelled = false
     phase.value = 'writing'
     const plan = storyPlan.value
-    const scenes = plan.scenes
-    totalScenes.value = scenes.length
+    const actions = plan.actions || []
+    totalScenes.value = actions.length
     let chapterLog = []
 
     try {
-      for (let i = 0; i < scenes.length; i++) {
+      for (let i = 0; i < actions.length; i++) {
         if (cancelled) break
+
+        const action = actions[i]
+        
+        if (action.type === 'develop_character') {
+          const payload = action.payload || {}
+          await storyBibleStore.addCharacterData(projectId, {
+            name: payload.name || 'Unknown Character',
+            role: payload.role || '',
+            goal: payload.goal || '',
+            voice: payload.voice || '',
+            notes: payload.notes || ''
+          })
+          chapterLog.push(`[Character Developed] — ${payload.name || 'Unknown'}`)
+          progress.value = ((i + 1) / actions.length) * 100
+          continue
+        }
+
+        if (action.type === 'brainstorm_twist') {
+          const payload = action.payload || {}
+          await storyBibleStore.addPlotThreadData(projectId, {
+            title: payload.title || 'Untitled Twist',
+            description: payload.description || '',
+            notes: payload.notes || ''
+          })
+          chapterLog.push(`[Twist Brainstormed] — ${payload.title || 'Untitled Twist'}`)
+          progress.value = ((i + 1) / actions.length) * 100
+          continue
+        }
+
+        if (action.type !== 'write_scene') {
+          console.warn('[Action Dispatcher] Unknown action type:', action.type, action.payload)
+          progress.value = ((i + 1) / actions.length) * 100
+          continue
+        }
 
         currentSceneIndex.value = i
         streamingText.value = ''
 
-        const sceneBrief = scenes[i]
+        const sceneBrief = action.payload
 
         try {
           const prose = await writer.writeScene({
@@ -107,7 +163,7 @@ export function useStoryOrchestrator() {
 
           if (cancelled) break
 
-          progress.value = ((i + 0.7) / scenes.length) * 100
+          progress.value = ((i + 0.7) / actions.length) * 100
 
           let critiqueResult
           try {
@@ -157,7 +213,7 @@ export function useStoryOrchestrator() {
             critiqueResult
           }]
 
-          progress.value = ((i + 1) / scenes.length) * 100
+          progress.value = ((i + 1) / actions.length) * 100
 
         } catch (sceneErr) {
           completedScenes.value = [...completedScenes.value, {
@@ -168,13 +224,27 @@ export function useStoryOrchestrator() {
             critiqueResult: { pass: false, score: 0, issues: [{ type: 'generation', description: sceneErr.message, severity: 'major' }], strengths: [] }
           }]
           chapterLog.push(`[Scene ${sceneBrief.sceneNumber}: ${sceneBrief.title}] — Generation failed`)
-          progress.value = ((i + 1) / scenes.length) * 100
+          progress.value = ((i + 1) / actions.length) * 100
         }
       }
 
       if (cancelled) {
         await savePartial(projectId, plan.storyArc.premise)
         phase.value = 'idle'
+        return
+      }
+
+      if (storyPlan.value.goal && storyPlan.value.goal.horizon === 'short_term') {
+        finalStory.value = {
+          title: `Action Log: ${storyPlan.value.goal.premise.slice(0, 50)}...`,
+          scenes: [],
+          fullText: chapterLog.join('\n\n'),
+          totalWords: countWords(chapterLog.join('\n\n')),
+          generatedAt: new Date().toISOString(),
+          projectId,
+          qualityScore: 10
+        }
+        phase.value = 'complete'
         return
       }
 
@@ -195,7 +265,9 @@ export function useStoryOrchestrator() {
     if (!storyPlan.value || !finalStory.value) return
     if (sceneIndex < 0 || sceneIndex >= finalStory.value.scenes.length) return
 
-    const sceneBrief = storyPlan.value.scenes[sceneIndex]
+    const action = storyPlan.value.actions[sceneIndex]
+    if (!action || action.type !== 'write_scene') return
+    const sceneBrief = action.payload
 
     let chapterLog = []
     for (let j = 0; j < sceneIndex; j++) {
@@ -405,6 +477,7 @@ export function useStoryOrchestrator() {
     finalStory,
     orchestratorError,
     directorError: director.planError,
-    writerError: writer.writeError
+    writerError: writer.writeError,
+    researcherError: researcher.researchError
   }
 }

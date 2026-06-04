@@ -1,12 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { simpleEncrypt, simpleDecrypt } from '../services/ollamaService'
-import { PROVIDERS, FEATURES, FEATURE_LIST, PROVIDER_LIST, PROVIDER_DEFAULT, API_KEY_STORAGE_PREFIX, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS, EMBEDDING_PROVIDERS } from '../config/ai'
+import { PROVIDERS, FEATURES, FEATURE_LIST, PROVIDER_LIST, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS, EMBEDDING_PROVIDERS } from '../config/ai'
 import { aiTestConnection } from '../services/aiService'
 import { setOllamaEndpoint as setOllamaConfigEndpoint } from '../config/ollama'
-
-const STORAGE_KEY = 'versatile_settings'
-const FEATURE_MODELS_KEY = 'versatile_feature_models'
+import { STORAGE_KEYS, getApiKeyStorageKey } from '../config/storageKeys'
 
 const DEFAULT_SETTINGS = {
   ollamaEndpoint: '/ollama',
@@ -53,7 +51,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function loadSettings() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
+      // STORAGE_KEYS ref
+      const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS)
       if (stored) {
         const data = JSON.parse(stored)
         if (data.ollamaEndpoint) {
@@ -69,7 +68,8 @@ export const useSettingsStore = defineStore('settings', () => {
         if (data.embeddingThreshold !== undefined) embeddingThreshold.value = data.embeddingThreshold
       }
 
-      const encryptedKey = localStorage.getItem('versatile_openai_key')
+      // STORAGE_KEYS ref
+      const encryptedKey = localStorage.getItem(STORAGE_KEYS.OPENAI_KEY)
       if (encryptedKey) {
         try {
           openaiApiKey.value = simpleDecrypt(encryptedKey)
@@ -78,7 +78,8 @@ export const useSettingsStore = defineStore('settings', () => {
         }
       }
 
-      const fmStored = localStorage.getItem(FEATURE_MODELS_KEY)
+      // STORAGE_KEYS ref
+      const fmStored = localStorage.getItem(STORAGE_KEYS.FEATURE_MODELS)
       if (fmStored) {
         try {
           featureModels.value = JSON.parse(fmStored)
@@ -91,7 +92,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function saveSettings() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      // STORAGE_KEYS ref
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify({
         ollamaEndpoint: ollamaEndpoint.value,
         ollamaModel: ollamaModel.value,
         openaiApiKey: openaiApiKey.value,
@@ -102,7 +104,8 @@ export const useSettingsStore = defineStore('settings', () => {
         embeddingModel: embeddingModel.value,
         embeddingThreshold: embeddingThreshold.value
       }))
-      localStorage.setItem(FEATURE_MODELS_KEY, JSON.stringify(featureModels.value))
+      // STORAGE_KEYS ref
+      localStorage.setItem(STORAGE_KEYS.FEATURE_MODELS, JSON.stringify(featureModels.value))
     } catch (e) {
       console.warn('Failed to save settings:', e)
     }
@@ -119,12 +122,21 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
+  /**
+   * SECURITY NOTE: API keys are stored in localStorage with basic obfuscation
+   * (simpleEncrypt). This is NOT real encryption — any script running on the
+   * page can read and decode the key. This is a known limitation of a local-first
+   * browser app. Users should treat stored keys as low-privilege and avoid using
+   * high-spend keys.
+   */
   function setOpenaiApiKey(key) {
     openaiApiKey.value = key
     if (key) {
-      localStorage.setItem('versatile_openai_key', simpleEncrypt(key))
+      // STORAGE_KEYS ref
+      localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, simpleEncrypt(key))
     } else {
-      localStorage.removeItem('versatile_openai_key')
+      // STORAGE_KEYS ref
+      localStorage.removeItem(STORAGE_KEYS.OPENAI_KEY)
     }
     saveSettings()
   }

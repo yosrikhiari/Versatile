@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 
@@ -127,7 +128,12 @@ ${draft.slice(0, 4000)}
 
 Return JSON evaluation.`
 
-      const response = await aiGenerate(userPrompt, CRITIC_SYSTEM_PROMPT, {
+      const projectStore = useProjectStore()
+      const categoryType = projectStore.activeWorkspaceType || 'creative'
+      const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
+      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+
+      const response = await aiGenerate(userPrompt, activePrompts.critic, {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.3,
         maxTokens: 1000

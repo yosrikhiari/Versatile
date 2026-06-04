@@ -1,6 +1,8 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
+import { STORAGE_KEYS } from '../../config/storageKeys'
+import { useLocalStorage } from '../../composables/useLocalStorage'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
@@ -12,15 +14,11 @@ const props = defineProps({
 
 const { getSectionContext, getSectionCount, MAX_CONTEXT_CHARS } = useManuscriptContext()
 
-const STORAGE_KEY = `versatile_context_selector_${props.panelId}`
-
-const savedSelector = localStorage.getItem(STORAGE_KEY) || 'current'
-const selectedSelector = ref(savedSelector)
+const selectedSelector = useLocalStorage(STORAGE_KEYS.CHAPTER_CONTEXT, 'current')
 const specificChapters = ref('')
 const showSpecificInput = ref(false)
 
 watch(selectedSelector, (val) => {
-  localStorage.setItem(STORAGE_KEY, val)
   showSpecificInput.value = val.startsWith('chapters:')
 })
 

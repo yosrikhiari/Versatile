@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useDraggableList, DRAG_OPTIONS } from '../../composables/useDraggableList'
+import { useNotifications } from '../../composables/useNotifications'
 import Modal from '../shared/Modal.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import draggable from 'vuedraggable'
@@ -10,6 +11,7 @@ import draggable from 'vuedraggable'
 const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
 const { startDrag, endDrag } = useDraggableList()
+const { showConfirm } = useNotifications()
 
 const selectedElement = ref(null)
 const showAddModal = ref(false)
@@ -82,8 +84,8 @@ function updateElementPosition(element, index) {
   })
 }
 
-function deleteElement(element) {
-  if (confirm('Delete this element?')) {
+async function deleteElement(element) {
+  if (await showConfirm('Delete Element', 'Delete this element?', 'Delete', 'danger')) {
     manuscriptStore.deleteStoryElementData(element.id, projectStore.currentProjectId)
     if (selectedElement.value?.id === element.id) {
       selectedElement.value = null

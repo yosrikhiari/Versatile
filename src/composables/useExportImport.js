@@ -2,23 +2,19 @@ import { ref } from 'vue'
 import { exportProject, importProject } from '../services/dbService'
 import { exportManuscriptToPDF, exportToEpub } from '../services/exportService'
 import { useProjectStore } from '../stores/projectStore'
+import { useNotifications } from './useNotifications'
 
 export function useExportImport() {
   const projectStore = useProjectStore()
   
   const importStatus = ref('')
   const showImportModal = ref(false)
-  const toastMessage = ref('')
-  const toastKey = ref(0)
   const exportProgress = ref(0)
+  
+  const { addToast } = useNotifications()
 
   function resetExportProgress() {
     exportProgress.value = 0
-  }
-
-  function showToast(msg) {
-    toastMessage.value = msg
-    toastKey.value++
   }
 
   async function handleExport() {
@@ -36,14 +32,14 @@ export function useExportImport() {
     a.click()
     URL.revokeObjectURL(url)
     exportProgress.value = 100
-    showToast('Project exported')
+    addToast('Project exported', 'success')
     setTimeout(() => resetExportProgress(), 2000)
   }
 
   async function handleExportPDF() {
     if (!projectStore.currentProjectId) return
     await exportManuscriptToPDF(projectStore.currentProjectId, projectStore.currentProjectName)
-    showToast('PDF exported')
+    addToast('PDF exported', 'success')
   }
 
   function handleExportEpub() {
@@ -82,7 +78,7 @@ export function useExportImport() {
         if (sparkStore) sparkStore.setProjectId(newProjectId)
         
         importStatus.value = 'Import complete!'
-        showToast('Project imported')
+        addToast('Project imported', 'success')
         setTimeout(() => {
           showImportModal.value = false
         }, 1500)
@@ -96,10 +92,7 @@ export function useExportImport() {
   return {
     importStatus,
     showImportModal,
-    toastMessage,
-    toastKey,
     exportProgress,
-    showToast,
     handleExport,
     handleExportPDF,
     handleExportEpub,
