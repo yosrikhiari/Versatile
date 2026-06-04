@@ -1,6 +1,6 @@
 import { getOllamaEndpoint } from '../config/ollama'
 import { aiGenerate, aiStream } from './aiService'
-import { PROVIDERS, FEATURES } from '../config/ai'
+import { FEATURES } from '../config/ai'
 import { STORAGE_KEYS } from '../config/storageKeys'
 import Dexie from 'dexie'
 

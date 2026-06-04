@@ -73,7 +73,7 @@ Write ONLY the detailed content for this section. Do not summarize. Start writin
 
       const contractSection = storyContract ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n` : ''
 
-      const briefLines = sceneBrief.emotionalGoal !== undefined
+      const briefLines = sceneBrief.emotionalGoal === undefined
         ? [
             `- Emotional goal: ${sceneBrief.emotionalGoal}`,
             `- What changes: ${sceneBrief.whatChanges}`,
@@ -187,7 +187,7 @@ Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside t
 
       const contractSection = storyContract ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n` : ''
 
-      const briefLines = sceneBrief.emotionalGoal !== undefined
+      const briefLines = sceneBrief.emotionalGoal === undefined
         ? [
             `- Emotional goal: ${sceneBrief.emotionalGoal}`,
             `- What changes: ${sceneBrief.whatChanges}`,
@@ -281,7 +281,7 @@ IMPORTANT: The prose field must be at least 800 words. Do not truncate the story
       }
     } catch (err) {
       // Graceful degradation: return raw text if JSON parsing failed
-      if (err.message && err.message.includes('JSON')) {
+      if (err.message?.includes('JSON')) {
         return { prose: accumulated || '', structured: null }
       }
       writeError.value = err.message || 'Scene writing failed'

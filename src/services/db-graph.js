@@ -56,30 +56,36 @@ async function getNodePositionsRecord(projectId) {
   return db.nodePositions.where('projectId').equals(projectId).first()
 }
 
+function getNodePrefix(entityType) {
+  if (entityType === 'character') return 'char'
+  if (entityType === 'location') return 'loc'
+  return 'thread'
+}
+
 export async function removeEntityFromNodeInstances(projectId, entityType, entityId) {
-  const prefix = entityType === 'character' ? 'char' : entityType === 'location' ? 'loc' : 'thread'
+  const prefix = getNodePrefix(entityType)
   const nodeId = `${prefix}-${entityId}`
   const record = await getNodePositionsRecord(projectId)
   if (!record) return
-  if (record.instances && record.instances[nodeId] !== undefined) {
+  if (record.instances?.[nodeId] !== undefined) {
     delete record.instances[nodeId]
     await db.nodePositions.update(record.id, { instances: record.instances })
   }
 }
 
 export async function removeEntityFromNodePositions(projectId, entityType, entityId) {
-  const prefix = entityType === 'character' ? 'char' : entityType === 'location' ? 'loc' : 'thread'
+  const prefix = getNodePrefix(entityType)
   const nodeId = `${prefix}-${entityId}`
   const record = await getNodePositionsRecord(projectId)
   if (!record) return
-  if (record.positions && record.positions[nodeId] !== undefined) {
+  if (record.positions?.[nodeId] !== undefined) {
     delete record.positions[nodeId]
     await db.nodePositions.update(record.id, { positions: record.positions })
   }
 }
 
 export async function removeEntityFromNodeParents(projectId, entityType, entityId) {
-  const prefix = entityType === 'character' ? 'char' : entityType === 'location' ? 'loc' : 'thread'
+  const prefix = getNodePrefix(entityType)
   const nodeId = `${prefix}-${entityId}`
   const record = await db.graphGroups.where('projectId').equals(projectId).first()
   if (!record || !record.nodeParents || record.nodeParents[nodeId] === undefined) return

@@ -113,7 +113,6 @@ export async function generateRandomCharacter(manuscriptContext = null, partialD
  * @throws {Error} If generation or parsing fails.
  */
 export async function generateCharacterFromIdea(characterIdea, manuscriptContext = null) {
-  const projectContext = getProjectContext()
   const entityContext = await getExistingEntitiesContext()
   const { getRelationshipContext } = useGraphContext()
   const { loadEmbeddings, getEntityEmbedding } = useNetworkSuggestions()
@@ -532,32 +531,13 @@ export async function enhanceSingleField(entityType, fieldName, currentValue, al
     contextInstruction = `\n\nManuscript context:\n${manuscriptContext.contextText}`
   }
 
-  const fieldDescriptions = {
-    character: {
-      name: 'the character\'s name',
-      role: 'the character\'s role or archetype',
-      goal: 'the character\'s motivation and what they want to achieve',
-      voice: 'how the character speaks - their speech patterns, vocabulary, tone',
-      notes: 'additional character details, backstory snippets, or story hooks',
-      sampleDialogue: 'a single line this character would actually say — not a description of how they speak, but the actual words'
-    },
-    location: {
-      name: 'the location\'s name',
-      description: 'physical description of the location',
-      notes: 'location history, secrets, or narrative significance'
-    },
-    plotThread: {
-      title: 'the plot thread\'s name or topic',
-      notes: 'details about the conflict, tension, or unresolved question'
-    }
-  }
-
   const otherFieldsPart = Object.entries(allFields)
     .filter(([key, value]) => key !== fieldName && value)
     .map(([key, value]) => `${key}: "${value}"`)
     .join('\n')
 
-  const fieldType = entityType === 'character' ? 'character' : entityType === 'location' ? 'location' : 'plot thread'
+  const typeLabels = { character: 'character', location: 'location', plotThread: 'plot thread' }
+  const fieldType = typeLabels[entityType] || 'plot thread'
   const entityName = allFields?.name || allFields?.title || 'the entity'
 
   const fieldConstraints = FIELD_LENGTH_CONSTRAINTS[entityType]?.[fieldName] || { maxSentences: 3, maxWords: 40, guidance: 'be concise' }
@@ -567,14 +547,16 @@ export async function enhanceSingleField(entityType, fieldName, currentValue, al
     titleContext = `\nCRITICAL: The title "${allFields.title}" is the PRIMARY context anchor. All generated content must be directly related to this title.`
   }
 
+  const CHARS_RE = /\[Characters:\s*([^\]]+)\]/
+  const LOCS_RE = /\[Locations:\s*([^\]]+)\]/
   let structuredBlock = ''
   if (entityType === 'plotThread' && fieldName === 'notes' && currentValue) {
-    const charsMatch = currentValue.match(/\[Characters:\s*([^\]]+)\]/)
-    const locsMatch = currentValue.match(/\[Locations:\s*([^\]]+)\]/)
+    const charsExec = CHARS_RE.exec(currentValue)
+    const locsExec = LOCS_RE.exec(currentValue)
 
-    if (charsMatch || locsMatch) {
-      const chars = charsMatch ? charsMatch[1].trim() : 'None'
-      const locs = locsMatch ? locsMatch[1].trim() : 'None'
+    if (charsExec || locsExec) {
+      const chars = charsExec ? charsExec[1].trim() : 'None'
+      const locs = locsExec ? locsExec[1].trim() : 'None'
       structuredBlock = `\n\nIMPORTANT: Preserve this structured block at the END of your response (do not modify it):\n[Characters: ${chars}]\n[Locations: ${locs}]`
     }
   }
@@ -629,12 +611,12 @@ Single string value, no markdown.`
     let result = parsed[fieldName] || parsed[fieldName.charAt(0).toUpperCase() + fieldName.slice(1)] || currentValue
 
     if (entityType === 'plotThread' && fieldName === 'notes' && currentValue) {
-      const charsMatch = currentValue.match(/\[Characters:\s*([^\]]+)\]/)
-      const locsMatch = currentValue.match(/\[Locations:\s*([^\]]+)\]/)
+      const charsExec = CHARS_RE.exec(currentValue)
+      const locsExec = LOCS_RE.exec(currentValue)
 
-      if (charsMatch || locsMatch) {
-        const chars = charsMatch ? charsMatch[0] : '[Characters: None]'
-        const locs = locsMatch ? locsMatch[0] : '[Locations: None]'
+      if (charsExec || locsExec) {
+        const chars = charsExec ? charsExec[0] : '[Characters: None]'
+        const locs = locsExec ? locsExec[0] : '[Locations: None]'
 
         if (!result.includes('[Characters:') && !result.includes('[Locations:')) {
           result = result.trim() + '\n\n' + chars + '\n' + locs
@@ -658,6 +640,7 @@ Single string value, no markdown.`
  */
 export async function enhanceLocation(partialData, manuscriptContext = null) {
   const projectContext = getProjectContext()
+  const entityContext = await getExistingEntitiesContext()
 
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
@@ -676,8 +659,6 @@ export async function enhanceLocation(partialData, manuscriptContext = null) {
   const locationLengthGuidance = Object.entries(FIELD_LENGTH_CONSTRAINTS.location)
     .map(([field, constraint]) => `- ${field}: max ${constraint.maxSentences} sentence(s), ~${constraint.maxWords} words (${constraint.guidance})`)
     .join('\n')
-
-  const entityContext = await getExistingEntitiesContext()
 
   const userPrompt = `You are a location design assistant. Given partial location information, manuscript context, and existing story elements, complete the location profile.
 

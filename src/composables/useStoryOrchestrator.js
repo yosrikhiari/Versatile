@@ -1,4 +1,4 @@
-import { ref, toRaw } from 'vue'
+import { ref } from 'vue'
 import { useStoryDirector } from './useStoryDirector'
 import { useStoryWriter } from './useStoryWriter'
 import { useStoryCritic } from './useStoryCritic'
@@ -234,7 +234,7 @@ export function useStoryOrchestrator() {
         return
       }
 
-      if (storyPlan.value.goal && storyPlan.value.goal.horizon === 'short_term') {
+      if (storyPlan.value.goal?.horizon === 'short_term') {
         finalStory.value = {
           title: `Action Log: ${storyPlan.value.goal.premise.slice(0, 50)}...`,
           scenes: [],

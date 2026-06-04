@@ -2,7 +2,6 @@ import { ref, reactive } from 'vue'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
-import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useStoryDirector } from './useStoryDirector'
 import { useEntityBootstrapper } from './useEntityBootstrapper'
@@ -20,6 +19,39 @@ const MAX_REJECTED_PATTERNS = 5
 // 'embedding' — future: embedding-similarity retrieval (for 25+ scenes).
 const CONTEXT_STRATEGY = 'prose'
 const PROSE_EXCERPT_MAX_SCENES = 25
+
+function buildEmbeddingContext(currentScene, priorScenes) {
+  if (priorScenes.length === 0) return ''
+
+  if (priorScenes.length > PROSE_EXCERPT_MAX_SCENES) {
+    console.warn(
+      `[VolumeStoryGenerator] Story has ${priorScenes.length} scenes — ` +
+      `prose excerpt context strategy may be insufficient. ` +
+      `Consider switching CONTEXT_STRATEGY to 'embedding'.`
+    )
+  }
+
+  if (CONTEXT_STRATEGY === 'embedding') {
+    // Future: implement embedding-similarity retrieval here
+  }
+
+  let context = ''
+
+  const precedingScene = priorScenes.at(-1)
+  if (precedingScene) {
+    const endingExcerpt = precedingScene.prose.length > 1200
+      ? '...' + precedingScene.prose.slice(-1200)
+      : precedingScene.prose
+    context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}"]\n${endingExcerpt}\n\n`
+  }
+
+  const olderScene = priorScenes.at(-2)
+  if (olderScene && context.length < EMBEDDING_CONTEXT_MAX_CHARS) {
+    context += `[Summary of Scene ${olderScene.sceneNumber}: "${olderScene.title}"]\n${olderScene.summary || olderScene.prose.slice(0, 300) + '...'}\n\n`
+  }
+
+  return context.trim()
+}
 
 export function useVolumeStoryGenerator() {
   const phase = ref('idle')
@@ -41,7 +73,6 @@ export function useVolumeStoryGenerator() {
   const storyBibleStore = useStoryBibleStore()
   const volumeStore = useVolumeStore()
   const manuscriptStore = useManuscriptStore()
-  const networkStore = useVolumeStoryNetworkStore()
 
   function logRejectedPattern(context, prose) {
     rejectedPatterns.value.push({ context, prose, timestamp: Date.now() })
@@ -78,7 +109,7 @@ export function useVolumeStoryGenerator() {
       onPhaseChange?.('bootstrapping')
       progress.statusText = 'Initializing world elements, seeding character sheets, and drafting narrative structure...'
 
-      const [bootstrapResult, directorResult] = await Promise.all([
+      const [, directorResult] = await Promise.all([
         bootstrapper.bootstrapEntities({ synopsis: enhancedSynopsis, projectId, volumeId: vId }),
         director.generateStoryPlan({ premise: enhancedSynopsis, genre, tone, wordTarget })
       ])
@@ -201,7 +232,7 @@ export function useVolumeStoryGenerator() {
           feature: FEATURES.STORY_GENERATION,
           temperature: 0.3
         })
-        summary = summaryResponse.replace(/^Summary:\s*/i, '').replace(/^"|"/g, '').trim()
+        summary = summaryResponse.replace(/^Summary:\s*/i, '').replace(/(^")|("$)/g, '').trim()
       } catch (err) {
         console.warn('[useVolumeStoryGenerator] Fallback slice summary used:', err)
         summary = fullProse.slice(0, 150).replace(/\s+\S*$/, '') + '...'
@@ -364,14 +395,11 @@ export function useVolumeStoryGenerator() {
   async function buildPreliminaryEdges(projectId, volumeId, plan) {
     try {
       const bibleStore = useStoryBibleStore()
-
-      // Build name-to-ID maps from currently loaded bible data
       const charByName = {}
       for (const c of bibleStore.characters) charByName[c.name.toLowerCase().trim()] = c.id
       const locByName = {}
       for (const l of bibleStore.locations) locByName[l.name.toLowerCase().trim()] = l.id
 
-      // Collect unique character-location pairs from the plan
       const pairs = new Set()
       for (const scene of plan) {
         const chars = scene.characters || scene.charactersPresent || []
@@ -382,14 +410,12 @@ export function useVolumeStoryGenerator() {
         for (const charName of chars) {
           const charId = charByName[charName.toLowerCase().trim()]
           if (!charId) continue
-          const key = `${charId}|${locId}`
           pairs.add({ charId, locId, charName, location })
         }
       }
 
       if (pairs.size === 0) return
 
-      // Load existing edges to avoid duplicates
       const graphStore = useStoryGraphStore()
       await graphStore.loadEdges(projectId)
 
@@ -399,7 +425,6 @@ export function useVolumeStoryGenerator() {
         existingEdgeKeys.add(`${edge.targetId}|${edge.sourceId}`)
       }
 
-      // Create planned edges for new pairs
       for (const pair of pairs) {
         const key = `${pair.charId}|${pair.locId}`
         if (!existingEdgeKeys.has(key)) {
@@ -417,44 +442,7 @@ export function useVolumeStoryGenerator() {
       }
     } catch (err) {
       console.warn('[VolumeStoryGenerator] buildPreliminaryEdges failed:', err)
-      // Non-critical — edge creation is advisory
     }
-  }
-
-  function buildEmbeddingContext(currentScene, priorScenes) {
-    if (priorScenes.length === 0) return ''
-
-    if (priorScenes.length > PROSE_EXCERPT_MAX_SCENES) {
-      console.warn(
-        `[VolumeStoryGenerator] Story has ${priorScenes.length} scenes — ` +
-        `prose excerpt context strategy may be insufficient. ` +
-        `Consider switching CONTEXT_STRATEGY to 'embedding'.`
-      )
-    }
-
-    if (CONTEXT_STRATEGY === 'embedding') {
-      // Future: implement embedding-similarity retrieval here
-      // For now, fall through to prose strategy
-    }
-
-    let context = ''
-
-    // Grab ending excerpt of the immediately preceding scene for immediate transition continuity
-    const precedingScene = priorScenes[priorScenes.length - 1]
-    if (precedingScene) {
-      const endingExcerpt = precedingScene.prose.length > 1200
-        ? '...' + precedingScene.prose.slice(-1200)
-        : precedingScene.prose
-      context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}"]\n${endingExcerpt}\n\n`
-    }
-
-    // Grab summary or beginning of the scene before that (for additional depth)
-    const olderScene = priorScenes[priorScenes.length - 2]
-    if (olderScene && context.length < EMBEDDING_CONTEXT_MAX_CHARS) {
-      context += `[Summary of Scene ${olderScene.sceneNumber}: "${olderScene.title}"]\n${olderScene.summary || olderScene.prose.slice(0, 300) + '...'}\n\n`
-    }
-
-    return context.trim()
   }
 
   function reset() {

@@ -146,7 +146,8 @@ function generateCharactersDoc() {
           ? getEntityName(r.targetType, r.targetId, maps)
           : getEntityName(r.sourceType, r.sourceId, maps)
         const label = getRelationshipLabel(r.relationshipType)
-        entry.push(`- ${label} ${otherName}${r.description ? `: ${r.description}` : ''}`)
+        const desc = r.description ? `: ${r.description}` : ''
+      entry.push(`- ${label} ${otherName}${desc}`)
       }
     }
 
@@ -230,7 +231,8 @@ function generateRelationshipsDoc() {
     const label = getRelationshipLabel(e.relationshipType)
 
     if (!byCharacter[charName]) byCharacter[charName] = []
-    byCharacter[charName].push(`- **${label}** ${otherName}${e.description ? `: ${e.description}` : ''}`)
+    const relDesc = e.description ? `: ${e.description}` : ''
+    byCharacter[charName].push(`- **${label}** ${otherName}${relDesc}`)
   }
 
   const parts = ['# Relationships']
@@ -387,115 +389,115 @@ async function generateRejectedPatternsDoc(projectId) {
   return parts.join('\n')
 }
 
-export function useStoryDocuments() {
-  async function loadDocuments(projectId) {
-    return getAllStoryDocuments(projectId)
+async function loadDocuments(projectId) {
+  return getAllStoryDocuments(projectId)
+}
+
+async function getDocument(projectId, docType) {
+  const docs = await getAllStoryDocuments(projectId)
+  return docs.find(d => d.docType === docType) || null
+}
+
+async function regenerateDocument(projectId, docType) {
+  if (!projectId) return
+  let content = ''
+  switch (docType) {
+    case DOC_TYPES.SYNOPSIS:
+      content = generateSynopsisDoc()
+      break
+    case DOC_TYPES.CHARACTERS:
+      content = generateCharactersDoc()
+      break
+    case DOC_TYPES.WORLD:
+      content = generateWorldDoc()
+      break
+    case DOC_TYPES.TIMELINE:
+      content = generateTimelineDoc()
+      break
+    case DOC_TYPES.RELATIONSHIPS:
+      content = generateRelationshipsDoc()
+      break
+    case DOC_TYPES.REJECTED_PATTERNS:
+      content = await generateRejectedPatternsDoc(projectId)
+      break
+    case DOC_TYPES.STYLE_GUIDE:
+      content = generateStyleGuideDoc()
+      break
+  }
+  await upsertStoryDocument(projectId, docType, content)
+}
+
+async function regenerateAllDocuments(projectId) {
+  if (!projectId) return
+  const existing = await getAllStoryDocuments(projectId)
+  const existingTypes = new Set(existing.filter(d => d.content).map(d => d.docType))
+  const allTypes = [
+    DOC_TYPES.SYNOPSIS,
+    DOC_TYPES.CHARACTERS,
+    DOC_TYPES.WORLD,
+    DOC_TYPES.TIMELINE,
+    DOC_TYPES.RELATIONSHIPS,
+    DOC_TYPES.REJECTED_PATTERNS,
+    DOC_TYPES.STYLE_GUIDE
+  ]
+  await Promise.all(
+    allTypes
+      .filter(dt => !existingTypes.has(dt))
+      .map(dt => regenerateDocument(projectId, dt))
+  )
+}
+
+async function getStoryDocumentContext(projectId, budgetTokens = STORY_DOC_BUDGET_TOKENS) {
+  if (!projectId) return ''
+
+  const docs = await getAllStoryDocuments(projectId)
+  const docMap = {}
+  for (const d of docs) {
+    docMap[d.docType] = d.content
   }
 
-  async function getDocument(projectId, docType) {
-    const docs = await getAllStoryDocuments(projectId)
-    return docs.find(d => d.docType === docType) || null
+  const parts = []
+  let remaining = budgetTokens
+
+  const synopsis = docMap[DOC_TYPES.SYNOPSIS]
+  if (synopsis) {
+    parts.push(synopsis)
+    remaining -= tokenCount(synopsis)
   }
 
-  async function regenerateDocument(projectId, docType) {
-    if (!projectId) return
-    let content = ''
-    switch (docType) {
-      case DOC_TYPES.SYNOPSIS:
-        content = generateSynopsisDoc()
-        break
-      case DOC_TYPES.CHARACTERS:
-        content = generateCharactersDoc()
-        break
-      case DOC_TYPES.WORLD:
-        content = generateWorldDoc()
-        break
-      case DOC_TYPES.TIMELINE:
-        content = generateTimelineDoc()
-        break
-      case DOC_TYPES.RELATIONSHIPS:
-        content = generateRelationshipsDoc()
-        break
-      case DOC_TYPES.REJECTED_PATTERNS:
-        content = await generateRejectedPatternsDoc(projectId)
-        break
-      case DOC_TYPES.STYLE_GUIDE:
-        content = generateStyleGuideDoc()
-        break
-    }
-    await upsertStoryDocument(projectId, docType, content)
-  }
+  const priorityOrder = [
+    DOC_TYPES.CHARACTERS,
+    DOC_TYPES.WORLD,
+    DOC_TYPES.TIMELINE,
+    DOC_TYPES.RELATIONSHIPS,
+    DOC_TYPES.REJECTED_PATTERNS,
+    DOC_TYPES.STYLE_GUIDE
+  ]
 
-  async function regenerateAllDocuments(projectId) {
-    if (!projectId) return
-    const existing = await getAllStoryDocuments(projectId)
-    const existingTypes = new Set(existing.filter(d => d.content).map(d => d.docType))
-    const allTypes = [
-      DOC_TYPES.SYNOPSIS,
-      DOC_TYPES.CHARACTERS,
-      DOC_TYPES.WORLD,
-      DOC_TYPES.TIMELINE,
-      DOC_TYPES.RELATIONSHIPS,
-      DOC_TYPES.REJECTED_PATTERNS,
-      DOC_TYPES.STYLE_GUIDE
-    ]
-    await Promise.all(
-      allTypes
-        .filter(dt => !existingTypes.has(dt))
-        .map(dt => regenerateDocument(projectId, dt))
-    )
-  }
-
-  async function getStoryDocumentContext(projectId, budgetTokens = STORY_DOC_BUDGET_TOKENS) {
-    if (!projectId) return ''
-
-    const docs = await getAllStoryDocuments(projectId)
-    const docMap = {}
-    for (const d of docs) {
-      docMap[d.docType] = d.content
-    }
-
-    const parts = []
-    let remaining = budgetTokens
-
-    const synopsis = docMap[DOC_TYPES.SYNOPSIS]
-    if (synopsis) {
-      parts.push(synopsis)
-      remaining -= tokenCount(synopsis)
-    }
-
-    const priorityOrder = [
-      DOC_TYPES.CHARACTERS,
-      DOC_TYPES.WORLD,
-      DOC_TYPES.TIMELINE,
-      DOC_TYPES.RELATIONSHIPS,
-      DOC_TYPES.REJECTED_PATTERNS,
-      DOC_TYPES.STYLE_GUIDE
-    ]
-
-    for (const docType of priorityOrder) {
-      if (remaining <= 0) break
-      const content = docMap[docType]
-      if (content) {
-        const docBudget = docType === DOC_TYPES.STYLE_GUIDE ? 150 : MAX_DOC_TOKENS
-        const budget = Math.min(remaining, docBudget)
-        const truncated = truncateToBudget(content, budget)
-        if (truncated) {
-          parts.push(truncated)
-          remaining -= tokenCount(truncated)
-        }
+  for (const docType of priorityOrder) {
+    if (remaining <= 0) break
+    const content = docMap[docType]
+    if (content) {
+      const docBudget = docType === DOC_TYPES.STYLE_GUIDE ? 150 : MAX_DOC_TOKENS
+      const budget = Math.min(remaining, docBudget)
+      const truncated = truncateToBudget(content, budget)
+      if (truncated) {
+        parts.push(truncated)
+        remaining -= tokenCount(truncated)
       }
     }
-
-    return parts.join('\n\n')
   }
 
-  async function logRejectedPattern(projectId, pattern) {
-    if (!projectId) return
-    await appendRejectedPattern(projectId, pattern)
-    await regenerateDocument(projectId, DOC_TYPES.REJECTED_PATTERNS)
-  }
+  return parts.join('\n\n')
+}
 
+async function logRejectedPattern(projectId, pattern) {
+  if (!projectId) return
+  await appendRejectedPattern(projectId, pattern)
+  await regenerateDocument(projectId, DOC_TYPES.REJECTED_PATTERNS)
+}
+
+export function useStoryDocuments() {
   return {
     loadDocuments,
     getDocument,
