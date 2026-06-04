@@ -4,6 +4,7 @@ import { applyTokenBudget } from './tokenBudget'
 const MAX_CHARACTERS = 8
 const MAX_LOCATIONS = 6
 const MAX_PLOT_THREADS = 5
+const LABEL_HEADINGS = { characters: 'EXISTING CHARACTERS:', locations: 'EXISTING LOCATIONS:' }
 
 export function shapeContext(rawContext, options = {}) {
   const { entities } = rawContext
@@ -42,17 +43,22 @@ export function shapeContext(rawContext, options = {}) {
 
 function buildEntityBlock(entities, label, formatter) {
   if (entities.length === 0) return ''
-  return `\n\n${label === 'characters' ? 'EXISTING CHARACTERS:' : label === 'locations' ? 'EXISTING LOCATIONS:' : 'ACTIVE PLOT THREADS:'}\n${entities.map(formatter).join('\n')}`
+  const heading = LABEL_HEADINGS[label] || 'ACTIVE PLOT THREADS:'
+  return `\n\n${heading}\n${entities.map(formatter).join('\n')}`
 }
 
 function formatCharacter(c) {
-  return `- "${c.name}"${c.role ? ` (${c.role})` : ''}${c.goal ? ` — ${c.goal.slice(0, 80)}` : ''}`
+  const roleSuffix = c.role ? ` (${c.role})` : ''
+  const goalSuffix = c.goal ? ` — ${c.goal.slice(0, 80)}` : ''
+  return `- "${c.name}"${roleSuffix}${goalSuffix}`
 }
 
 function formatLocation(l) {
-  return `- "${l.name}"${l.description ? `: ${l.description.slice(0, 80)}` : ''}`
+  const descSuffix = l.description ? `: ${l.description.slice(0, 80)}` : ''
+  return `- "${l.name}"${descSuffix}`
 }
 
 function formatPlotThread(t) {
-  return `- "${t.title}"${t.notes ? `: ${t.notes.slice(0, 80)}` : ''}`
+  const notesSuffix = t.notes ? `: ${t.notes.slice(0, 80)}` : ''
+  return `- "${t.title}"${notesSuffix}`
 }

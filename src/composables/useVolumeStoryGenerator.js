@@ -301,7 +301,7 @@ export function useVolumeStoryGenerator() {
           sceneNumber: scene.sceneNumber
         }
         const subId = await manuscriptStore.addSubsectionData(projectId, sectionId, subData)
-        sections[sections.length - 1].subsectionIds.push(subId)
+        sections.at(-1).subsectionIds.push(subId)
         scene.subsectionId = subId
       }
 

@@ -1,5 +1,4 @@
-import { db } from './db-core'
-import { deepPlain } from './db-core'
+import { db, deepPlain } from './db-core'
 
 // ========== STORY ELEMENTS ==========
 

@@ -1,6 +1,6 @@
 import { useManuscriptStore } from '../stores/manuscriptStore'
-import { ollamaEmbeddings, getEmbeddingCache, setEmbeddingCache, cosineSimilarity } from '../services/ollamaService'
-import { getEmbedding as getEmbeddingFromConfig, getEmbeddings } from '../services/embeddingService'
+import { ollamaEmbeddings, getEmbeddingCache, cosineSimilarity } from '../services/ollamaService'
+import { getEmbeddings } from '../services/embeddingService'
 import { computeSemanticChunks } from './useSemanticChunking'
 import { getScenes } from '../services/dbService'
 import { useSettingsStore } from '../stores/settingsStore'
@@ -85,7 +85,7 @@ export function useManuscriptContext() {
           const section = sections.find(s => s.id === activeId)
           return section ? [section] : []
         }
-        return sections.length > 0 ? [sections[sections.length - 1]] : []
+        return sections.length > 0 ? [sections.at(-1)] : []
       }
       
       case 'all':
@@ -165,8 +165,7 @@ export function useManuscriptContext() {
           truncated = true
           break
         }
-        parts.push(chunk.text)
-        parts.push('')
+        parts.push(chunk.text, '')
         totalChars += chunkChars
       }
 
@@ -203,9 +202,7 @@ export function useManuscriptContext() {
         break
       }
 
-      parts.push(sectionHeader)
-      parts.push(sectionContent)
-      parts.push('')
+      parts.push(sectionHeader, sectionContent, '')
       totalChars += sectionChars
     }
 

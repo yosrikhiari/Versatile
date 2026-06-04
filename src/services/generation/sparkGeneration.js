@@ -183,7 +183,7 @@ Scene idea: ${idea}${projectContext}${contextInstruction}`
  * @returns {Promise<GeneratedContentResult>} The generated content result.
  * @throws {Error} If generation fails.
  */
-export async function generateContentStreaming(idea, tone, characterNames = [], targetLength = 'short', onProgress, manuscriptContext = null) {
+export async function generateContentStreaming(idea, tone, characterNames = [], targetLength = 'short', onProgress = null, manuscriptContext = null) {
   const lengthInstructions = targetLength === 'short'
     ? 'Write a short scene of about 300-500 words.'
     : 'Write a full chapter of about 1500-2000 words.'

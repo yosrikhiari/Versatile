@@ -26,7 +26,7 @@ export function useAuthorModel() {
       profile.genreFocus = sessionData.genre
     }
 
-    if (sessionData.acceptedLenses && sessionData.acceptedLenses.length > 0) {
+    if (sessionData.acceptedLenses?.length > 0) {
       const current = new Set(profile.favoriteLenses || [])
       for (const lens of sessionData.acceptedLenses) {
         current.add(lens)
@@ -34,7 +34,7 @@ export function useAuthorModel() {
       profile.favoriteLenses = [...current]
     }
 
-    if (sessionData.rejectedLenses && sessionData.rejectedLenses.length > 0) {
+    if (sessionData.rejectedLenses?.length > 0) {
       const current = new Set(profile.rejectedLenses || [])
       for (const lens of sessionData.rejectedLenses) {
         current.add(lens)
@@ -73,9 +73,9 @@ export function useAuthorModel() {
     const parts = []
     if (p.genreFocus) parts.push(`Genre: ${p.genreFocus}`)
     if (p.preferredTone) parts.push(`Preferred tone: ${p.preferredTone}`)
-    if (p.favoriteLenses && p.favoriteLenses.length > 0) parts.push(`The author frequently uses these critique lenses: ${p.favoriteLenses.join(', ')}`)
-    if (p.commonStrengths && p.commonStrengths.length > 0) parts.push(`The author's writing strengths: ${p.commonStrengths.join(', ')}`)
-    if (p.commonWeaknesses && p.commonWeaknesses.length > 0) parts.push(`Areas the author is working on: ${p.commonWeaknesses.join(', ')}`)
+    if (p.favoriteLenses?.length > 0) parts.push(`The author frequently uses these critique lenses: ${p.favoriteLenses.join(', ')}`)
+    if (p.commonStrengths?.length > 0) parts.push(`The author's writing strengths: ${p.commonStrengths.join(', ')}`)
+    if (p.commonWeaknesses?.length > 0) parts.push(`Areas the author is working on: ${p.commonWeaknesses.join(', ')}`)
     if (p.sessionCount) parts.push(`Writing sessions completed: ${p.sessionCount}`)
     if (p.totalWordsWritten) parts.push(`Total words written: ${p.totalWordsWritten}`)
     return parts.length > 0 ? `[Author Profile]\n${parts.join('\n')}` : ''

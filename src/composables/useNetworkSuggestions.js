@@ -7,6 +7,219 @@ import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { useGraphContext } from './useGraphContext'
 
+function buildEntityText(entity, type) {
+  switch (type) {
+    case 'character':
+      const charParts = [
+        entity.name,
+        entity.role && `Role: ${entity.role}`,
+        entity.goal && `Goal: ${entity.goal}`,
+        entity.backstory && `Background: ${entity.backstory}`,
+        entity.description && `Description: ${entity.description}`
+      ].filter(Boolean)
+      return charParts.join('. ')
+      
+    case 'location':
+      const locParts = [
+        entity.name,
+        entity.description && `Description: ${entity.description}`,
+        entity.atmosphere && `Atmosphere: ${entity.atmosphere}`,
+        entity.history && `History: ${entity.history}`
+      ].filter(Boolean)
+      return locParts.join('. ')
+      
+    case 'plotThread':
+      const threadParts = [
+        entity.title,
+        entity.description && `Description: ${entity.description}`,
+        entity.status && `Status: ${entity.status}`,
+        entity.arc && `Story Arc: ${entity.arc}`
+      ].filter(Boolean)
+      return threadParts.join('. ')
+      
+    default:
+      return JSON.stringify(entity)
+  }
+}
+
+function generateEmbeddingRationale(source, target, sourceType, targetType, relationshipType, similarity) {
+  const sourceName = source.name || source.title || 'Entity'
+  const targetName = target.name || target.title || 'Entity'
+  
+  const relationshipDesc = {
+    'involves': 'involved in',
+    'appears_in': 'appears at',
+    'located_at': 'located at',
+    'connects_to': 'connected to',
+    'intersects_with': 'intersects with',
+    'features': 'features',
+    'ally': 'allied with',
+    'enemy': 'opposed to',
+    'family': 'family of',
+    'romantic': 'romantically connected to',
+    'mentor': 'mentors',
+    'rival': 'rivals with',
+    'neutral': 'neutral toward'
+  }
+  
+  const connectionType = relationshipDesc[relationshipType] || 'connected to'
+  
+  let rationale = ''
+  if (similarity >= 0.7) {
+    rationale = `${sourceName} and ${targetName} share strong thematic similarity (${Math.round(similarity * 100)}% match). ${sourceName} is ${connectionType} ${targetName}.`
+  } else if (similarity >= 0.5) {
+    rationale = `${sourceName} relates to ${targetName} (${Math.round(similarity * 100)}% match).`
+  } else if (similarity >= 0.3) {
+    rationale = `${sourceName} may be ${connectionType} ${targetName}.`
+  } else {
+    rationale = `${sourceName} is ${connectionType} ${targetName}.`
+  }
+  
+  return rationale
+}
+
+function calculateEmbeddingConfidence(sourceType, targetType, source, target, similarity) {
+  let confidence = similarity
+  
+  if (sourceType === 'character' && targetType === 'character') {
+    const role1 = ((source.role || '') + ' ' + (source.goal || '')).toLowerCase()
+    const role2 = ((target.role || '') + ' ' + (target.goal || '')).toLowerCase()
+    
+    const opposingPairs = [
+      ['hero', 'villain'], ['protagonist', 'antagonist'], ['leader', 'follower'],
+      ['mentor', 'student'], ['guardian', 'threat'], ['ruler', 'rebel'],
+      ['hunter', 'prey'], ['detective', 'criminal'], ['protector', 'destroyer']
+    ]
+    
+    for (const [a, b] of opposingPairs) {
+      if ((role1.includes(a) && role2.includes(b)) || (role1.includes(b) && role2.includes(a))) {
+        confidence += 0.15
+        break
+      }
+    }
+    
+    const complementaryRoles = [
+      ['protagonist', 'protagonist'], ['ally', 'ally'],
+      ['guard', 'protect'], ['guide', 'guide']
+    ]
+    
+    for (const [a, b] of complementaryRoles) {
+      if (role1.includes(a) && role2.includes(b)) {
+        confidence += 0.1
+        break
+      }
+    }
+  }
+  
+  return Math.min(confidence, 0.95)
+}
+
+function getEntityLabel(entity, type) {
+  if (type === 'plotThread') return entity.title
+  return entity.name
+}
+
+function canonicalKey(type1, id1, type2, id2) {
+  const a = `${type1}-${id1}`
+  const b = `${type2}-${id2}`
+  return a < b ? `${a}|${b}` : `${b}|${a}`
+}
+
+function limitConnectionsPerEntity(suggestions, maxPerEntity = 3, maxTotal = Infinity) {
+  const entityConnectionCount = {}
+  const result = []
+  const crossTypeLimit = Math.ceil(maxTotal * 0.7)
+
+  for (const suggestion of suggestions) {
+    if (suggestion.sourceType === suggestion.targetType) continue
+    if (result.length >= crossTypeLimit) break
+    
+    const sourceKey = `${suggestion.sourceType}-${suggestion.sourceId}`
+    const targetKey = `${suggestion.targetType}-${suggestion.targetId}`
+    const sourceCount = entityConnectionCount[sourceKey] || 0
+    const targetCount = entityConnectionCount[targetKey] || 0
+
+    if (sourceCount < maxPerEntity && targetCount < maxPerEntity) {
+      result.push(suggestion)
+      entityConnectionCount[sourceKey] = sourceCount + 1
+      entityConnectionCount[targetKey] = targetCount + 1
+    }
+  }
+
+  const remainingSlots = maxTotal - result.length
+  const sameTypePerTypeCap = Math.ceil(remainingSlots / 3)
+  const sameTypeCounts = { character: 0, location: 0, plotThread: 0 }
+
+  for (const suggestion of suggestions) {
+    if (result.length >= maxTotal) break
+    if (suggestion.sourceType !== suggestion.targetType) continue
+    
+    if (sameTypeCounts[suggestion.sourceType] >= sameTypePerTypeCap) continue
+    if (sameTypeCounts[suggestion.targetType] >= sameTypePerTypeCap) continue
+    
+    const sourceKey = `${suggestion.sourceType}-${suggestion.sourceId}`
+    const targetKey = `${suggestion.targetType}-${suggestion.targetId}`
+    const sourceCount = entityConnectionCount[sourceKey] || 0
+    const targetCount = entityConnectionCount[targetKey] || 0
+
+    if (sourceCount < maxPerEntity && targetCount < maxPerEntity) {
+      result.push(suggestion)
+      entityConnectionCount[sourceKey] = sourceCount + 1
+      entityConnectionCount[targetKey] = targetCount + 1
+      sameTypeCounts[suggestion.sourceType]++
+      sameTypeCounts[suggestion.targetType]++
+    }
+  }
+
+  return result
+}
+
+const groupColors = [
+  '#f48fb1', '#ef5350', '#ce93d8', '#f06292', '#ba68c8',
+  '#ff7043', '#90a4ae', '#4fc3f7', '#80cbc4', '#aed581'
+]
+
+function generateGroupName(cluster, type) {
+  const names = cluster.members.map(m => {
+    const entity = m.char || m.loc
+    return entity?.name || entity?.title || 'Unknown'
+  })
+
+  if (names.length === 2) {
+    return `${names[0]} & ${names[1]}`
+  }
+
+  const commonPrefix = findCommonPrefix(names)
+  if (commonPrefix.length > 3) {
+    return `${commonPrefix} Group`
+  }
+
+  return `Group of ${names.length} ${type}`
+}
+
+function findCommonPrefix(strings) {
+  if (strings.length === 0) return ''
+  if (strings.length === 1) return strings[0]
+
+  let prefix = strings[0]
+  for (let i = 1; i < strings.length; i++) {
+    while (!strings[i].startsWith(prefix)) {
+      prefix = prefix.slice(0, -1)
+      if (prefix.length === 0) return ''
+    }
+  }
+  return prefix
+}
+
+function getEntityTypePrefix(type) {
+  switch (type) {
+    case 'character': return 'char'
+    case 'location': return 'loc'
+    case 'plotThread': return 'thread'
+    default: return 'unknown'
+  }
+}
+
 export function useNetworkSuggestions() {
   const storyBibleStore = useStoryBibleStore()
   const storyGraphStore = useStoryGraphStore()
@@ -20,15 +233,6 @@ export function useNetworkSuggestions() {
   const embeddingError = ref('')
   
   const entityEmbeddings = ref({})
-
-  function getEntityTypePrefix(type) {
-    switch (type) {
-      case 'character': return 'char'
-      case 'location': return 'loc'
-      case 'plotThread': return 'thread'
-      default: return 'unknown'
-    }
-  }
 
   function getEntityById(type, id) {
     switch (type) {
@@ -105,7 +309,7 @@ export function useNetworkSuggestions() {
         } else {
           failCount++
         }
-      } catch (error) {
+      } catch {
         failCount++
       }
     }
@@ -116,41 +320,6 @@ export function useNetworkSuggestions() {
     
     embeddingsLoaded.value = true
     return successCount > 0
-  }
-
-  function buildEntityText(entity, type) {
-    switch (type) {
-      case 'character':
-        const charParts = [
-          entity.name,
-          entity.role && `Role: ${entity.role}`,
-          entity.goal && `Goal: ${entity.goal}`,
-          entity.backstory && `Background: ${entity.backstory}`,
-          entity.description && `Description: ${entity.description}`
-        ].filter(Boolean)
-        return charParts.join('. ')
-        
-      case 'location':
-        const locParts = [
-          entity.name,
-          entity.description && `Description: ${entity.description}`,
-          entity.atmosphere && `Atmosphere: ${entity.atmosphere}`,
-          entity.history && `History: ${entity.history}`
-        ].filter(Boolean)
-        return locParts.join('. ')
-        
-      case 'plotThread':
-        const threadParts = [
-          entity.title,
-          entity.description && `Description: ${entity.description}`,
-          entity.status && `Status: ${entity.status}`,
-          entity.arc && `Story Arc: ${entity.arc}`
-        ].filter(Boolean)
-        return threadParts.join('. ')
-        
-      default:
-        return JSON.stringify(entity)
-    }
   }
 
   function getEntityEmbedding(type, id) {
@@ -167,83 +336,6 @@ export function useNetworkSuggestions() {
     }
     
     return cosineSimilarity(emb1, emb2)
-  }
-
-  function generateEmbeddingRationale(source, target, sourceType, targetType, relationshipType, similarity) {
-    const sourceName = source.name || source.title || 'Entity'
-    const targetName = target.name || target.title || 'Entity'
-    
-    const relationshipDesc = {
-      'involves': 'involved in',
-      'appears_in': 'appears at',
-      'located_at': 'located at',
-      'connects_to': 'connected to',
-      'intersects_with': 'intersects with',
-      'features': 'features',
-      'ally': 'allied with',
-      'enemy': 'opposed to',
-      'family': 'family of',
-      'romantic': 'romantically connected to',
-      'mentor': 'mentors',
-      'rival': 'rivals with',
-      'neutral': 'neutral toward'
-    }
-    
-    const connectionType = relationshipDesc[relationshipType] || 'connected to'
-    
-    let rationale = ''
-    if (similarity >= 0.7) {
-      rationale = `${sourceName} and ${targetName} share strong thematic similarity (${Math.round(similarity * 100)}% match). ${sourceName} is ${connectionType} ${targetName}.`
-    } else if (similarity >= 0.5) {
-      rationale = `${sourceName} relates to ${targetName} (${Math.round(similarity * 100)}% match).`
-    } else if (similarity >= 0.3) {
-      rationale = `${sourceName} may be ${connectionType} ${targetName}.`
-    } else {
-      rationale = `${sourceName} is ${connectionType} ${targetName}.`
-    }
-    
-    return rationale
-  }
-
-  function calculateEmbeddingConfidence(sourceType, targetType, source, target, similarity) {
-    let confidence = similarity
-    
-    if (sourceType === 'character' && targetType === 'character') {
-      const role1 = ((source.role || '') + ' ' + (source.goal || '')).toLowerCase()
-      const role2 = ((target.role || '') + ' ' + (target.goal || '')).toLowerCase()
-      
-      const opposingPairs = [
-        ['hero', 'villain'], ['protagonist', 'antagonist'], ['leader', 'follower'],
-        ['mentor', 'student'], ['guardian', 'threat'], ['ruler', 'rebel'],
-        ['hunter', 'prey'], ['detective', 'criminal'], ['protector', 'destroyer']
-      ]
-      
-      for (const [a, b] of opposingPairs) {
-        if ((role1.includes(a) && role2.includes(b)) || (role1.includes(b) && role2.includes(a))) {
-          confidence += 0.15
-          break
-        }
-      }
-      
-      const complementaryRoles = [
-        ['protagonist', 'protagonist'], ['ally', 'ally'],
-        ['guard', 'protect'], ['guide', 'guide']
-      ]
-      
-      for (const [a, b] of complementaryRoles) {
-        if (role1.includes(a) && role2.includes(b)) {
-          confidence += 0.1
-          break
-        }
-      }
-    }
-    
-    return Math.min(confidence, 0.95)
-  }
-
-  function getEntityLabel(entity, type) {
-    if (type === 'plotThread') return entity.title
-    return entity.name
   }
 
   function getEntitiesByType(type) {
@@ -302,12 +394,6 @@ export function useNetworkSuggestions() {
     }
 
     return results
-  }
-
-  function canonicalKey(type1, id1, type2, id2) {
-    const a = `${type1}-${id1}`
-    const b = `${type2}-${id2}`
-    return a < b ? `${a}|${b}` : `${b}|${a}`
   }
 
   function getAllSuggestions() {
@@ -704,60 +790,6 @@ Rules:
     }
   }
 
-  function limitConnectionsPerEntity(suggestions, maxPerEntity = 3, maxTotal = Infinity) {
-    const entityConnectionCount = {}
-    const result = []
-    const crossTypeLimit = Math.ceil(maxTotal * 0.7)
-
-    for (const suggestion of suggestions) {
-      if (suggestion.sourceType === suggestion.targetType) continue
-      if (result.length >= crossTypeLimit) break
-      
-      const sourceKey = `${suggestion.sourceType}-${suggestion.sourceId}`
-      const targetKey = `${suggestion.targetType}-${suggestion.targetId}`
-      const sourceCount = entityConnectionCount[sourceKey] || 0
-      const targetCount = entityConnectionCount[targetKey] || 0
-
-      if (sourceCount < maxPerEntity && targetCount < maxPerEntity) {
-        result.push(suggestion)
-        entityConnectionCount[sourceKey] = sourceCount + 1
-        entityConnectionCount[targetKey] = targetCount + 1
-      }
-    }
-
-    const remainingSlots = maxTotal - result.length
-    const sameTypePerTypeCap = Math.ceil(remainingSlots / 3)
-    const sameTypeCounts = { character: 0, location: 0, plotThread: 0 }
-
-    for (const suggestion of suggestions) {
-      if (result.length >= maxTotal) break
-      if (suggestion.sourceType !== suggestion.targetType) continue
-      
-      if (sameTypeCounts[suggestion.sourceType] >= sameTypePerTypeCap) continue
-      if (sameTypeCounts[suggestion.targetType] >= sameTypePerTypeCap) continue
-      
-      const sourceKey = `${suggestion.sourceType}-${suggestion.sourceId}`
-      const targetKey = `${suggestion.targetType}-${suggestion.targetId}`
-      const sourceCount = entityConnectionCount[sourceKey] || 0
-      const targetCount = entityConnectionCount[targetKey] || 0
-
-      if (sourceCount < maxPerEntity && targetCount < maxPerEntity) {
-        result.push(suggestion)
-        entityConnectionCount[sourceKey] = sourceCount + 1
-        entityConnectionCount[targetKey] = targetCount + 1
-        sameTypeCounts[suggestion.sourceType]++
-        sameTypeCounts[suggestion.targetType]++
-      }
-    }
-
-    return result
-  }
-
-  const groupColors = [
-    '#f48fb1', '#ef5350', '#ce93d8', '#f06292', '#ba68c8',
-    '#ff7043', '#90a4ae', '#4fc3f7', '#80cbc4', '#aed581'
-  ]
-
   function generateGroupSuggestions(options = {}) {
     const { minGroupSize = 2, confidenceThreshold = 0.3 } = options
 
@@ -934,38 +966,6 @@ Rules:
     }
 
     return clusters
-  }
-
-  function generateGroupName(cluster, type) {
-    const names = cluster.members.map(m => {
-      const entity = m.char || m.loc
-      return entity?.name || entity?.title || 'Unknown'
-    })
-
-    if (names.length === 2) {
-      return `${names[0]} & ${names[1]}`
-    }
-
-    const commonPrefix = findCommonPrefix(names)
-    if (commonPrefix.length > 3) {
-      return `${commonPrefix} Group`
-    }
-
-    return `Group of ${names.length} ${type}`
-  }
-
-  function findCommonPrefix(strings) {
-    if (strings.length === 0) return ''
-    if (strings.length === 1) return strings[0]
-
-    let prefix = strings[0]
-    for (let i = 1; i < strings.length; i++) {
-      while (!strings[i].startsWith(prefix)) {
-        prefix = prefix.slice(0, -1)
-        if (prefix.length === 0) return ''
-      }
-    }
-    return prefix
   }
 
   async function autoGenerateNetworkWithGroups(options = {}) {

@@ -28,7 +28,7 @@ export const useFlowStore = defineStore('flow', () => {
 
   function initAudio() {
     try {
-      if (audioContext && audioContext.state !== 'closed') return
+      if (audioContext?.state !== 'closed') return
       audioContext = new (window.AudioContext || window.webkitAudioContext)()
     } catch (e) {
       console.error('[flowStore] Audio not supported:', e)
@@ -200,7 +200,7 @@ export const useFlowStore = defineStore('flow', () => {
     if (timerInterval) clearInterval(timerInterval)
     if (idleInterval) clearInterval(idleInterval)
     if (backspaceToastTimeout) clearTimeout(backspaceToastTimeout)
-    if (audioContext && audioContext.state !== 'closed') {
+    if (audioContext?.state !== 'closed') {
       audioContext.close()
     }
   }

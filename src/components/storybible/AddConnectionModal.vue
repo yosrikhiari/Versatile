@@ -98,6 +98,11 @@ const relationshipTypes = computed(() => {
   return isCharToChar.value ? charCharTypes : crossEntityTypes
 })
 
+const relationshipLabel = computed(() => {
+  if (isGroupToGroup.value) return 'Group Relationship'
+  return isCharToChar.value ? 'Relationship Type' : 'Connection Type'
+})
+
 const targetOptions = computed(() => {
   if (!sourceId.value || !sourceType.value) return []
   
@@ -127,7 +132,8 @@ watch(() => props.show, (newVal) => {
         sourceType.value = 'group'
         sourceId.value = props.sourceNode.id
       } else {
-        sourceType.value = prefix === 'char' ? 'character' : prefix === 'loc' ? 'location' : 'plotThread'
+        const PREFIX_MAP = { char: 'character', loc: 'location' }
+        sourceType.value = PREFIX_MAP[prefix] || 'plotThread'
         sourceId.value = id
       }
       
@@ -343,7 +349,7 @@ function handleSave() {
 
               <div v-if="sourceId && targetId">
                 <label class="block text-xs text-text-hint font-ui mb-1.5">
-                  {{ isGroupToGroup ? 'Group Relationship' : (isCharToChar ? 'Relationship Type' : 'Connection Type') }}
+                  {{ relationshipLabel }}
                 </label>
                 <div class="grid grid-cols-2 gap-2">
                   <button

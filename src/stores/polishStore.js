@@ -95,7 +95,7 @@ export const usePolishStore = defineStore('polish', () => {
     try {
       const result = await analyzePolish(text, lenses)
       
-      if (result.issues && result.issues.length > 0) {
+      if (result.issues?.length > 0) {
         for (const issue of result.issues) {
           await addAnnotation(projectId, {
             paragraphIndex: index,
@@ -137,7 +137,7 @@ export const usePolishStore = defineStore('polish', () => {
 
   async function acceptAnnotation(id, projectId, projectStore) {
     const annotation = annotations.value.find(a => a.id === id)
-    if (annotation && annotation.suggestion && projectStore) {
+    if (annotation?.suggestion && projectStore) {
       const content = projectStore.documentContent
       const updated = content.replace(annotation.original, annotation.suggestion)
       projectStore.updateContent(updated)

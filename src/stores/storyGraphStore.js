@@ -3,6 +3,12 @@ import { ref, toRaw } from 'vue'
 import { getGraphEdges, addGraphEdge, updateGraphEdge, deleteGraphEdge, clearAllGraphEdges, getNodePositions, saveNodePositions, getNodeInstances, saveNodeInstances as dbSaveNodeInstances, getCharacterRelationships, deleteCharacterRelationship, getGraphGroups, saveGraphGroups, getNodeParents as dbGetNodeParents, saveNodeParents as dbSaveNodeParents, getGroupEdges, addGroupEdge, updateGroupEdge, deleteGroupEdge } from '../services/dbService'
 import { useStoryBibleStore } from './storyBibleStore'
 
+function typeFromKey(key) {
+  if (key.startsWith('char')) return 'character'
+  if (key.startsWith('loc')) return 'location'
+  return 'plotThread'
+}
+
 export const useStoryGraphStore = defineStore('storyGraph', () => {
   const edges = ref([])
   const groupEdges = ref([])
@@ -65,7 +71,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     const existingThreadIds = new Set(storyBibleStore.plotThreads.map(t => String(t.id)))
 
     for (const [key, pos] of Object.entries(nodePositions.value)) {
-      const type = key.startsWith('char') ? 'character' : key.startsWith('loc') ? 'location' : 'plotThread'
+      const type = typeFromKey(key)
       const entityId = key.replace(/^(char|loc|thread)-/, '')
       let exists = false
       if (type === 'character') {
@@ -107,7 +113,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     const existingThreadIds = new Set(storyBibleStore.plotThreads.map(t => String(t.id)))
 
     for (const [baseId, instanceIds] of Object.entries(instances || {})) {
-      const type = baseId.startsWith('char') ? 'character' : baseId.startsWith('loc') ? 'location' : 'plotThread'
+      const type = typeFromKey(baseId)
       const entityId = baseId.replace(/^(char|loc|thread)-/, '')
       let exists = false
       if (type === 'character') {

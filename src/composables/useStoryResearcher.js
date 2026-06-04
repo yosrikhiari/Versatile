@@ -51,7 +51,7 @@ export function useStoryResearcher() {
       }
 
       let evidenceText = `## Author Style\n`
-      if (authorProfile && authorProfile.preferences) {
+      if (authorProfile?.preferences) {
         evidenceText += `Prose Style: ${authorProfile.preferences.proseStyle || 'Standard'}\n`
         evidenceText += `Pacing: ${authorProfile.preferences.pacing || 'Standard'}\n`
         evidenceText += `Dialogue Style: ${authorProfile.preferences.dialogueStyle || 'Standard'}\n`
