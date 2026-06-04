@@ -561,8 +561,8 @@ export async function enhanceSingleField(entityType, fieldName, currentValue, al
   if (entityType === 'plotThread' && fieldName === 'notes' && currentValue) {
     const charsIdx = currentValue.indexOf('[Characters:')
     const locsIdx = currentValue.indexOf('[Locations:')
-    const chars = charsIdx !== -1 ? extractBracketContent(currentValue, charsIdx) : null
-    const locs = locsIdx !== -1 ? extractBracketContent(currentValue, locsIdx) : null
+    const chars = charsIdx === -1 ? null : extractBracketContent(currentValue, charsIdx)
+    const locs = locsIdx === -1 ? null : extractBracketContent(currentValue, locsIdx)
 
     if (chars || locs) {
       const charsVal = chars || 'None'
