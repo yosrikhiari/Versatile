@@ -508,4 +508,4 @@ export function useStoryDocuments() {
   }
 }
 
-export { tokenCount, truncateToBudget, getRelationshipLabel }
+export { tokenCount, truncateToBudget, getRelationshipLabel, generateSynopsisDoc, generateCharactersDoc, generateWorldDoc, generateTimelineDoc, generateRelationshipsDoc, generateStyleGuideDoc }
