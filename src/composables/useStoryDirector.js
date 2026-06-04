@@ -4,7 +4,12 @@ import { FEATURES } from '../config/ai'
 import { useStoryDocuments } from './useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
 
-const DIRECTOR_SYSTEM_PROMPT = `You are a story architect, not a writer. Your role is to plan story structure.
+const DIRECTOR_SYSTEM_PROMPT = `You are a story architect, not a writer. Your role is to plan story structure based on the provided EVIDENCE.
+
+EVIDENCE INTEGRATION RULES:
+- You MUST ground your plan in the provided STORY BIBLE evidence.
+- Use existing characters, locations, and plot threads wherever relevant.
+- Adhere strictly to the AUTHOR STYLE GUIDELINES.
 
 TENSION ARC RULES:
 - Vary tension across scenes. Do NOT escalate linearly.
@@ -35,10 +40,12 @@ WORD BUDGET DISTRIBUTION:
 
 OUTPUT FORMAT:
 Return ONLY valid JSON with no markdown, no explanation, no code fences.
-The JSON must have exactly two keys: "scenes" (array of scene objects) and "storyArc" (object).
+The JSON must have exactly two keys: "actions" (array of action objects) and "storyArc" (object).
 
-Each scene object:
+Each action object in the "actions" array must have this structure:
 {
+  "type": "write_scene",
+  "payload": {
   "sceneNumber": number,
   "title": "string",
   "emotionalGoal": "string — what the reader should feel",
@@ -53,6 +60,7 @@ Each scene object:
   "tension": "low" | "medium" | "high" | "peak",
   "pacing": "slow" | "medium" | "fast",
   "estimatedWords": number
+  }
 }
 
 StoryArc object:
@@ -67,7 +75,7 @@ StoryArc object:
   "totalEstimatedWords": number
 }
 
-Minimum 6 scenes, maximum 15 scenes. Total estimated words should match the target.`
+Minimum 6 actions, maximum 15 actions. Total estimated words across all write_scene payloads should match the target.`
 
 function sanitizeJson(raw) {
   if (!raw || typeof raw !== 'string') return null
@@ -90,29 +98,51 @@ export function useStoryDirector() {
   const isPlanning = ref(false)
   const planError = ref(null)
 
-  async function generateStoryPlan({ premise, genre, tone, wordTarget }) {
+  async function generateStoryPlan({ goal, evidence }) {
     isPlanning.value = true
     planError.value = null
 
     try {
-      const userPrompt = `Plan a complete story based on this premise.
+      const projectStore = useProjectStore()
+      const categoryType = projectStore.activeWorkspaceType || 'creative'
+      const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
+      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
 
-PREMISE: "${premise}"
-GENRE: "${genre || 'Literary'}"
-TONE: "${tone || 'Atmospheric'}"
-TARGET WORD COUNT: ${wordTarget || 4000}
+      const userPrompt = `Plan a complete document structure based on this GOAL.
 
-Generate a complete story plan as JSON with "scenes" array and "storyArc" object.
-Follow the tension arc rules, setup/payoff rules, character integrity rules, and word budget distribution precisely.`
+### GOAL
+OBJECTIVE/PREMISE: "${goal.premise}"
+DOCUMENT TYPE/GENRE: "${goal.genre || 'Standard'}"
+TONE: "${goal.tone || 'Professional'}"
+TARGET WORD COUNT: ${goal.wordTarget || 4000}
 
-      const response = await aiGenerate(userPrompt, DIRECTOR_SYSTEM_PROMPT, {
+Generate a complete plan as JSON with "actions" array and "storyArc" object.`
+
+      let baseDirectorPrompt = activePrompts.director
+      if (goal.horizon === 'short_term') {
+        baseDirectorPrompt = `You are a story architect and worldbuilder. Your task is to fulfill a targeted short-term GOAL based on the EVIDENCE provided.
+
+OUTPUT FORMAT:
+Return ONLY valid JSON with no markdown, no explanation, no code fences.
+The JSON must have an "actions" array.
+Each action object must have a "type" (e.g., "develop_character", "brainstorm_twist") and a "payload" object containing the specific details relevant to the action.`
+      } else {
+        baseDirectorPrompt = baseDirectorPrompt
+          .replace(/"scenes"/g, '"actions"')
+          .replace(/scene object/g, 'action object')
+          .replace(/totalScenes/g, 'totalActions')
+      }
+
+      const finalSystemPrompt = `${baseDirectorPrompt}\n\n${evidence}`
+
+      const response = await aiGenerate(userPrompt, finalSystemPrompt, {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.7
       })
 
       let parsed = sanitizeJson(response)
       if (!parsed) {
-        const retryResponse = await aiGenerate(userPrompt, DIRECTOR_SYSTEM_PROMPT, {
+        const retryResponse = await aiGenerate(userPrompt, finalSystemPrompt, {
           feature: FEATURES.STORY_GENERATION,
           temperature: 0.5
         })
@@ -123,42 +153,53 @@ Follow the tension arc rules, setup/payoff rules, character integrity rules, and
         throw new Error('Failed to parse story plan JSON after retry. The model returned invalid output.')
       }
 
-      const scenes = parsed.scenes || []
+      const actions = parsed.actions || []
       const storyArc = parsed.storyArc || {}
 
-      if (!Array.isArray(scenes) || scenes.length < 6) {
-        throw new Error(`Story plan has ${scenes.length} scenes. Minimum is 6.`)
-      }
-      if (scenes.length > 15) {
-        throw new Error(`Story plan has ${scenes.length} scenes. Maximum is 15.`)
+      if (goal.horizon === 'long_term') {
+        if (!Array.isArray(actions) || actions.length < 6) {
+          throw new Error(`Story plan has ${actions.length} actions. Minimum is 6.`)
+        }
+        if (actions.length > 15) {
+          throw new Error(`Story plan has ${actions.length} actions. Maximum is 15.`)
+        }
       }
 
-      const validatedScenes = scenes.map((s, i) => ({
-        sceneNumber: s.sceneNumber || i + 1,
-        title: s.title || `Scene ${i + 1}`,
-        emotionalGoal: s.emotionalGoal || '',
-        whatChanges: s.whatChanges || '',
-        charactersPresent: Array.isArray(s.charactersPresent) ? s.charactersPresent : [],
-        characterWants: (s.characterWants && typeof s.characterWants === 'object') ? s.characterWants : {},
-        setup: s.setup || '',
-        payoff: s.payoff || 'none',
-        sensoryAnchor: s.sensoryAnchor || '',
-        tension: ['low', 'medium', 'high', 'peak'].includes(s.tension) ? s.tension : 'medium',
-        pacing: ['slow', 'medium', 'fast'].includes(s.pacing) ? s.pacing : 'medium',
-        estimatedWords: typeof s.estimatedWords === 'number' ? s.estimatedWords : Math.round((wordTarget || 4000) / scenes.length)
-      }))
+      const validatedActions = actions.map((a, i) => {
+        if (a.type === 'write_scene') {
+          const s = a.payload || {}
+          return {
+            type: 'write_scene',
+            payload: {
+              sceneNumber: s.sceneNumber || i + 1,
+              title: s.title || `Scene ${i + 1}`,
+              emotionalGoal: s.emotionalGoal || '',
+              whatChanges: s.whatChanges || '',
+              charactersPresent: Array.isArray(s.charactersPresent) ? s.charactersPresent : [],
+              characterWants: (s.characterWants && typeof s.characterWants === 'object') ? s.characterWants : {},
+              setup: s.setup || '',
+              payoff: s.payoff || 'none',
+              sensoryAnchor: s.sensoryAnchor || '',
+              tension: ['low', 'medium', 'high', 'peak'].includes(s.tension) ? s.tension : 'medium',
+              pacing: ['slow', 'medium', 'fast'].includes(s.pacing) ? s.pacing : 'medium',
+              estimatedWords: typeof s.estimatedWords === 'number' ? s.estimatedWords : Math.round((goal.wordTarget || 4000) / actions.length)
+            }
+          }
+        }
+        return a // Fallback for other action types in the future
+      })
 
       return {
-        scenes: validatedScenes,
+        actions: validatedActions,
         storyArc: {
-          premise: storyArc.premise || premise,
-          genre: storyArc.genre || genre || 'Literary',
-          tone: storyArc.tone || tone || 'Atmospheric',
+          premise: storyArc.premise || goal.premise,
+          genre: storyArc.genre || goal.genre || 'Literary',
+          tone: storyArc.tone || goal.tone || 'Atmospheric',
           emotionalJourney: storyArc.emotionalJourney || '',
           centralConflict: storyArc.centralConflict || '',
           resolution: storyArc.resolution || '',
-          totalScenes: validatedScenes.length,
-          totalEstimatedWords: validatedScenes.reduce((sum, s) => sum + s.estimatedWords, 0)
+          totalActions: validatedActions.length,
+          totalEstimatedWords: validatedActions.reduce((sum, a) => sum + (a.payload?.estimatedWords || 0), 0)
         }
       }
     } catch (err) {

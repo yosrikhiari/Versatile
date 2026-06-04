@@ -9,6 +9,7 @@ import { useSparkStore } from '../../stores/sparkStore'
 import { useCompactConversation } from '../../composables/useOllama'
 import SparkPanel from '../spark/SparkPanel.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import GenerationSyncPreview from './GenerationSyncPreview.vue'
 
 const emit = defineEmits(['openChapters'])
 
@@ -174,6 +175,20 @@ async function handleVolumeConfirmPlan() {
   }
 }
 
+async function handleVolumeConfirmSync(acceptedEntities) {
+  if (!projectStore.currentProjectId) return
+  try {
+    await volumeGenerator.confirmSync({
+      acceptedEntities,
+      projectId: projectStore.currentProjectId,
+      volumeId: volumeGenerator.volumeId.value,
+      chapterId: null
+    })
+  } catch {
+    // error handled internally
+  }
+}
+
 function handleVolumeReset() {
   volumeGenerator.reset()
   volumeStreamingText.value = ''
@@ -254,6 +269,7 @@ function getPhaseLabel(phase) {
     planning: 'Planning Scenes',
     'plan-preview': 'Review Plan',
     writing: 'Writing',
+    'sync-preview': 'Review New Entities',
     'consistency-check': 'Checking Consistency',
     complete: 'Complete',
     error: 'Error'
@@ -420,10 +436,10 @@ function getPhaseLabel(phase) {
         <div v-if="volumeGenerator.phase.value === 'bootstrapping' || volumeGenerator.phase.value === 'planning'" class="p-8 text-center space-y-4">
           <div class="flex items-center justify-center gap-3 py-8">
             <BaseIcon name="loader-2" :size="24" class="animate-spin text-accent" />
-            <span class="text-lg text-text-primary font-ui animate-pulse">{{ volumeGenerator.phase.value === 'bootstrapping' ? 'Bootstrapping entities...' : 'Architecting story...' }}</span>
+            <span class="text-lg text-text-primary font-ui animate-pulse">Initializing story blueprint...</span>
           </div>
           <p class="text-sm text-text-hint font-body">
-            {{ volumeGenerator.phase.value === 'bootstrapping' ? 'Checking story bible, generating missing entities' : 'Designing scene structure with tension arc' }}
+            {{ volumeGenerator.progress.statusText || (volumeGenerator.phase.value === 'bootstrapping' ? 'Checking story bible, generating missing entities' : 'Designing scene structure with tension arc') }}
           </p>
         </div>
 
@@ -510,6 +526,9 @@ function getPhaseLabel(phase) {
             <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
               <div class="h-full bg-accent rounded-full transition-all duration-300 ease-out" :style="{ width: volumeTotalScenes > 0 ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%' : '0%' }"></div>
             </div>
+            <div v-if="volumeGenerator.progress.statusText" class="text-[11px] text-text-hint font-ui text-center italic mt-1.5">
+              {{ volumeGenerator.progress.statusText }}
+            </div>
           </div>
 
           <div class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin">
@@ -525,13 +544,28 @@ function getPhaseLabel(phase) {
           >Cancel</button>
         </div>
 
+        <!-- SYNC PREVIEW STATE -->
+        <div v-if="volumeGenerator.phase.value === 'sync-preview'" class="p-4 space-y-4">
+          <GenerationSyncPreview
+            :changes="volumeGenerator.syncPreview.value"
+            :loading="false"
+            @confirm="handleVolumeConfirmSync"
+          />
+          <button
+            class="w-full py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            @click="handleVolumeReset"
+          >Cancel</button>
+        </div>
+
         <!-- CONSISTENCY CHECK STATE -->
         <div v-if="volumeGenerator.phase.value === 'consistency-check'" class="p-8 text-center space-y-4">
           <div class="flex items-center justify-center gap-3 py-8">
             <BaseIcon name="loader-2" :size="24" class="animate-spin text-accent" />
             <span class="text-lg text-text-primary font-ui animate-pulse">Checking continuity...</span>
           </div>
-          <p class="text-sm text-text-hint font-body">Comparing character and location depictions across all scenes</p>
+          <p class="text-sm text-text-hint font-body">
+            {{ volumeGenerator.progress.statusText || 'Comparing character and location depictions across all scenes' }}
+          </p>
         </div>
 
         <!-- COMPLETE STATE -->

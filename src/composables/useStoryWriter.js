@@ -1,6 +1,8 @@
 import { ref } from 'vue'
+import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate, aiStream } from '../services/aiService'
 import { FEATURES } from '../config/ai'
+import { finalizeStream } from '../services/jsonExtractor'
 
 const DEFAULT_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
 
@@ -53,14 +55,19 @@ export function useStoryWriter() {
         ? `AVOID producing output resembling these rejected examples:\n${allRejected.join('\n')}`
         : ''
 
-      const systemPrompt = `You are a fiction writer. Write compelling prose.
+      const projectStore = useProjectStore()
+      const categoryType = projectStore.activeWorkspaceType || 'creative'
+      const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
+      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+      const activeCraftRules = categoryType === 'creative' ? `\n\n${CRAFT_RULES}` : ''
+
+      const systemPrompt = `${activePrompts.writer}
 
 ${voiceInstruction}
 
-${antiPatterns ? antiPatterns + '\n' : ''}
-${CRAFT_RULES}
+${antiPatterns ? antiPatterns + '\n' : ''}${activeCraftRules}
 
-Write ONLY the prose for this scene. Do not summarize. Do not add headings like "Scene 1". Do not break the fourth wall. Start writing immediately.`
+Write ONLY the detailed content for this section. Do not summarize. Start writing immediately.`
 
       const logSummary = summarizeLog(chapterLog)
 
@@ -139,5 +146,150 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     }
   }
 
-  return { writeScene, isWriting, writeError }
+  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson }) {
+    isWriting.value = true
+    writeError.value = null
+
+    try {
+      const styleGuide = extractDoc(storyBible || '', 'Style Guide')
+      const rejectedPatterns = extractDoc(storyBible || '', 'Avoid These Patterns')
+      const charactersSection = extractDoc(storyBible || '', 'Characters')
+      const worldSection = extractDoc(storyBible || '', 'World')
+
+      const voiceInstruction = styleGuide || DEFAULT_VOICE
+
+      const allRejected = []
+      if (rejectedPatterns) allRejected.push(rejectedPatterns)
+      if (extraRejected && extraRejected.length > 0) {
+        allRejected.push(extraRejected.map((p, i) =>
+          `${i + 1}. Context: "${p.context}" — AVOID generating similar content`
+        ).join('\n'))
+      }
+      const antiPatterns = allRejected.length > 0
+        ? `AVOID producing output resembling these rejected examples:\n${allRejected.join('\n')}`
+        : ''
+
+      const projectStore = useProjectStore()
+      const categoryType = projectStore.activeWorkspaceType || 'creative'
+      const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
+      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+      const activeCraftRules = categoryType === 'creative' ? `\n\n${CRAFT_RULES}` : ''
+
+      const systemPrompt = `${activePrompts.writer}
+
+${voiceInstruction}
+
+${antiPatterns ? antiPatterns + '\n' : ''}${activeCraftRules}
+
+Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside the JSON.`
+
+      const logSummary = summarizeLog(chapterLog)
+
+      const contractSection = storyContract ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n` : ''
+
+      const briefLines = sceneBrief.emotionalGoal !== undefined
+        ? [
+            `- Emotional goal: ${sceneBrief.emotionalGoal}`,
+            `- What changes: ${sceneBrief.whatChanges}`,
+            `- Characters present: ${(sceneBrief.charactersPresent || []).join(', ')}`,
+            `- Character wants: ${JSON.stringify(sceneBrief.characterWants || {}, null, 2)}`,
+            `- Setup to plant: ${sceneBrief.setup || ''}`,
+            `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
+            `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
+            `- Tension: ${sceneBrief.tension || 'medium'}`,
+            `- Pacing: ${sceneBrief.pacing || 'medium'}`
+          ]
+        : [
+            `- Goal: ${sceneBrief.goal || ''}`,
+            `- Obstacle: ${sceneBrief.obstacle || ''}`,
+            `- Characters: ${(sceneBrief.characters || []).join(', ')}`,
+            `- Location: ${sceneBrief.location || ''}`,
+            `- What changes: ${sceneBrief.change || ''}`,
+            `- Tone note: ${sceneBrief.toneNote || ''}`
+          ]
+
+      const briefSection = briefLines.join('\n')
+
+      const sceneId = sceneBrief.sceneNumber || sceneBrief.sceneIndex || 1
+      const sceneTitle = sceneBrief.title || `Scene ${sceneId}`
+
+      const existingContext = existingEntitiesJson
+        ? `\nEXISTING WORLD CONTEXT:\n${existingEntitiesJson}\n`
+        : ''
+
+      const userPrompt = `${contractSection}
+Write scene ${sceneId}: "${sceneTitle}"
+
+CHAPTER LOG (what has happened before this scene):
+${logSummary || '(This is the first scene — nothing has happened yet.)'}
+
+${embeddingContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${embeddingContext}\n` : ''}
+SCENE BRIEF:
+${briefSection}
+
+STORY ARC (for tonal reference):
+- Genre: ${storyArc?.genre || ''}
+- Tone: ${storyArc?.tone || ''}
+- Central conflict: ${storyArc?.centralConflict || ''}
+
+CHARACTER SHEETS:
+${charactersSection || '(No character sheets available)'}
+
+WORLD CONTEXT:
+${worldSection || '(No world context available)'}${existingContext}
+Target word count: approximately ${sceneBrief.estimatedWords || 800} words.
+
+Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No explanation outside the JSON.
+
+{
+  "prose": "...",
+  "usedEntities": {
+    "characterNames": [...],
+    "locationNames": [...],
+    "plotThreadTitles": [...]
+  },
+  "newEntities": {
+    "characters": [{ "name": "...", "role": "...", "description": "..." }],
+    "locations": [{ "name": "...", "type": "...", "description": "..." }],
+    "plotThreads": [{ "title": "...", "status": "open", "summary": "..." }]
+  },
+  "networkEvents": [
+    { "type": "relationship", "from": "EntityName", "to": "EntityName", "label": "arrives at" }
+  ]
+}
+
+IMPORTANT: The prose field must be at least 800 words. Do not truncate the story to save tokens.`
+
+      let accumulated = ''
+
+      if (onChunk) {
+        await aiStream(userPrompt, systemPrompt, (chunk) => {
+          accumulated += chunk
+          onChunk(chunk, accumulated)
+        }, { feature: FEATURES.STORY_GENERATION, maxTokens: 6000 })
+      } else {
+        accumulated = await aiGenerate(userPrompt, systemPrompt, {
+          feature: FEATURES.STORY_GENERATION, maxTokens: 6000
+        })
+      }
+
+      // Extract structured JSON after streaming completes
+      const parsed = finalizeStream(accumulated)
+      return {
+        prose: parsed.prose || accumulated,
+        structured: parsed
+      }
+    } catch (err) {
+      // Graceful degradation: return raw text if JSON parsing failed
+      if (err.message && err.message.includes('JSON')) {
+        return { prose: accumulated || '', structured: null }
+      }
+      writeError.value = err.message || 'Scene writing failed'
+      throw err
+    } finally {
+      isWriting.value = false
+    }
+  }
+
+  return { writeScene, writeSceneStructured, isWriting, writeError }
 }

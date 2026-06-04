@@ -1,27 +1,20 @@
 <script setup>
 import { computed } from 'vue'
+import { useFlowSession } from '../../composables/useFlowSession'
 import BaseIcon from '../shared/BaseIcon.vue'
 
-const props = defineProps({
-  remaining: Number,
-  sessionWordCount: Number,
-  sessionGoal: Number,
-  sessionProgress: Number,
-  dailyWordCount: Number,
-  dailyGoal: Number,
-  dailyProgress: Number
-})
+const flow = useFlowSession()
 
 const emit = defineEmits(['open-settings'])
 
 const formattedTime = computed(() => {
-  const mins = Math.floor(props.remaining / 60)
-  const secs = props.remaining % 60
+  const mins = Math.floor(flow.remaining.value / 60)
+  const secs = flow.remaining.value % 60
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 })
 
 const progressPercent = computed(() => {
-  return Math.min((props.sessionWordCount / props.sessionGoal) * 100, 100)
+  return Math.min((flow.sessionWordCount.value / flow.sessionGoal.value) * 100, 100)
 })
 </script>
 
@@ -38,7 +31,7 @@ const progressPercent = computed(() => {
       </div>
       
       <span class="text-xs text-text-hint/70 font-ui whitespace-nowrap tabular-nums">
-        {{ sessionWordCount }} / {{ sessionGoal }} words
+        {{ flow.sessionWordCount.value }} / {{ flow.sessionGoal.value }} words
       </span>
 
       <button
@@ -56,12 +49,12 @@ const progressPercent = computed(() => {
       <div class="flex-1 h-1 bg-bg-tertiary/50 rounded-full overflow-hidden">
         <div 
           class="h-full bg-gradient-to-r from-success/70 to-success transition-all duration-500 rounded-full"
-          :style="{ width: `${dailyProgress}%` }"
+          :style="{ width: `${flow.dailyProgress.value}%` }"
         ></div>
       </div>
       
       <span class="text-xs text-text-hint/70 font-ui whitespace-nowrap tabular-nums">
-        {{ dailyWordCount }} / {{ dailyGoal }} words
+        {{ flow.dailyWordCount.value }} / {{ flow.dailyGoal.value }} words
       </span>
     </div>
   </div>

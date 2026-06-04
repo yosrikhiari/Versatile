@@ -3,12 +3,14 @@ import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useProjectStore } from '../stores/projectStore'
 import { SECTION_STATUSES } from '../config/statuses'
 import { countWords } from '../utils/textUtils'
+import { useNotifications } from './useNotifications'
 
 export { SECTION_STATUSES }
 
 export function useChapterSceneManager() {
   const manuscriptStore = useManuscriptStore()
   const projectStore = useProjectStore()
+  const { showConfirm } = useNotifications()
 
   const editingScene = ref(null)
   const showSceneModal = ref(false)
@@ -71,8 +73,8 @@ export function useChapterSceneManager() {
     showSceneModal.value = false
   }
 
-  function deleteSubsection(subsection) {
-    if (confirm(`Delete "${subsection.title || 'Untitled'}"?`)) {
+  async function deleteSubsection(subsection) {
+    if (await showConfirm('Delete Scene', `Delete "${subsection.title || 'Untitled'}"?`, 'Delete', 'danger')) {
       manuscriptStore.deleteSubsectionData(subsection.id, projectStore.currentProjectId)
     }
   }

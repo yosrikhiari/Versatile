@@ -7,6 +7,8 @@ import { getAvailableModels, getStoredOpenAIKey, setStoredOpenAIKey } from '../.
 import { PROVIDERS, PROVIDER_LABELS, PROVIDER_LIST, PROVIDER_MODELS, FEATURES, FEATURE_LIST, FEATURE_LABELS, FEATURE_DEFAULTS, EMBEDDING_PROVIDERS, EMBEDDING_PROVIDER_LABELS, EMBEDDING_MODELS, EMBEDDING_THRESHOLD_MIN, EMBEDDING_THRESHOLD_MAX, EMBEDDING_THRESHOLD_STEP } from '../../config/ai'
 import BaseIcon from '../shared/BaseIcon.vue'
 import DatabaseRecovery from '../shared/DatabaseRecovery.vue'
+import { STORAGE_KEYS } from '../../config/storageKeys'
+import { useLocalStorage } from '../../composables/useLocalStorage'
 
 const props = defineProps({
   show: Boolean
@@ -18,15 +20,13 @@ const projectStore = useProjectStore()
 const settingsStore = useSettingsStore()
 const goalInput = ref(500)
 const availableModels = ref([])
-const selectedModel = ref('')
+const selectedModel = useLocalStorage(STORAGE_KEYS.OLLAMA_MODEL, '')
 const openAIKey = ref('')
 const activeTab = ref('goals')
 const ollamaEndpoint = ref('')
 const testingConnection = ref(false)
 const connectionStatus = ref(null)
 const showRecovery = ref(false)
-
-const MODEL_STORAGE_KEY = 'versatile_ollama_model'
 
 const apiKeys = ref({})
 const testingProvider = ref(null)
@@ -78,7 +78,9 @@ async function saveGoal() {
 
 async function loadModels() {
   availableModels.value = await getAvailableModels()
-  selectedModel.value = settingsStore.ollamaModel || localStorage.getItem(MODEL_STORAGE_KEY) || ''
+  if (!selectedModel.value && settingsStore.ollamaModel) {
+    selectedModel.value = settingsStore.ollamaModel
+  }
 }
 
 async function testConnection() {
@@ -92,7 +94,6 @@ async function testConnection() {
 function saveModel() {
   if (selectedModel.value) {
     settingsStore.setOllamaModel(selectedModel.value)
-    localStorage.setItem(MODEL_STORAGE_KEY, selectedModel.value)
     emit('model-changed')
   }
 }
@@ -225,15 +226,6 @@ watch(() => props.show, (newVal) => {
           >
             Features
           </button>
-          <button
-            :class="[
-              'px-3 py-1.5 text-sm rounded-t',
-              activeTab === 'ai' ? 'bg-bg-tertiary text-text-primary' : 'text-text-hint hover:text-text-secondary'
-            ]"
-            @click="activeTab = 'ai'"
-          >
-            AI Providers
-          </button>
         </div>
 
         <div v-if="activeTab === 'goals'">
@@ -326,6 +318,9 @@ watch(() => props.show, (newVal) => {
 
           <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
             <h3 class="text-sm font-medium text-text-primary">API Keys</h3>
+            <p class="text-[11px] text-warning/90 leading-snug">
+              ⚠ Stored locally in your browser. Do not use a high-spend key.
+            </p>
             <div v-for="p in NON_OLLAMA_PROVIDERS" :key="p" class="space-y-1">
               <label class="block text-xs text-text-secondary">{{ PROVIDER_LABELS[p] }}</label>
               <div class="flex gap-2">

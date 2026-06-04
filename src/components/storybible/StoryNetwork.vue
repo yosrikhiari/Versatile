@@ -7,6 +7,7 @@ import '@vue-flow/core/dist/theme-default.css'
 import { useStoryGraphStore } from '../../stores/storyGraphStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
+import { useNotifications } from '../../composables/useNotifications'
 import { useNetworkSuggestions } from '../../composables/useNetworkSuggestions'
 import BaseIcon from '../shared/BaseIcon.vue'
 import EntitySidebar from './EntitySidebar.vue'
@@ -42,8 +43,7 @@ const editingEdge = ref(null)
 const selectedConnection = ref(null)
 const nodeToConnect = ref(null)
 const isDraggingOver = ref(false)
-const toastMessage = ref('')
-const showToast = ref(false)
+const { addToast, showConfirm } = useNotifications()
 const nodePositions = ref({})
 const autoGeneratePrompt = ref('')
 const autoGenerateCreateGroups = ref(false)
@@ -560,7 +560,7 @@ onNodeDragStop(({ node }) => {
           nodePositions.value[node.id] = prevPos
           storyGraphStore.saveNodePosition(projectStore.currentProjectId, node.id, prevPos)
         }
-        displayToast('Already in this group')
+        addToast('Already in this group')
         return
       }
       
@@ -643,8 +643,8 @@ function editConnection(edge) {
   showConnectionModal.value = true
 }
 
-function deleteConnection(edge) {
-  if (confirm('Delete this connection?')) {
+async function deleteConnection(edge) {
+  if (await showConfirm('Delete Connection', 'Are you sure you want to delete this connection?')) {
     if (edge.isLegacy) {
       const originalId = parseInt(edge.id.replace('char-rel-', ''))
       storyGraphStore.deleteLegacyEdge(originalId)
@@ -657,8 +657,8 @@ function deleteConnection(edge) {
   }
 }
 
-function handleSidebarDeleteConnection(edge) {
-  if (confirm('Delete this connection?')) {
+async function handleSidebarDeleteConnection(edge) {
+  if (await showConfirm('Delete Connection', 'Are you sure you want to delete this connection?')) {
     if (edge.isLegacy) {
       const originalId = parseInt(edge.id.replace('char-rel-', ''))
       storyGraphStore.deleteLegacyEdge(originalId)
@@ -826,7 +826,7 @@ function handleDrop(event) {
     }
     
     if (isDuplicateInScope(baseId, parentId)) {
-      displayToast('Already in this group')
+      addToast('Already in this group')
       return
     }
     
@@ -856,7 +856,7 @@ function handleDrop(event) {
         storyGraphStore.saveNodePosition(projectStore.currentProjectId, instanceId, flowPosition)
         storyGraphStore.saveNodeInstances(projectStore.currentProjectId)
       }
-      displayToast(`Added "${entityLabel}" to network`)
+      addToast(`Added "${entityLabel}" to network`)
     }
     
   } catch (e) {
@@ -868,7 +868,7 @@ function handleQuickAdd(entity) {
   const baseId = `${entity.type === 'character' ? 'char' : entity.type === 'location' ? 'loc' : 'thread'}-${entity.id}`
   
   if (isDuplicateInScope(baseId, null)) {
-    displayToast('Already in network')
+    addToast('Already in network')
     return
   }
   
@@ -900,17 +900,10 @@ function handleQuickAdd(entity) {
   if (projectStore.currentProjectId) {
     storyGraphStore.saveNodePosition(projectStore.currentProjectId, instanceId, nextPosition)
     storyGraphStore.saveNodeInstances(projectStore.currentProjectId)
-    displayToast(`Added "${entity.label}" to network`)
+    addToast(`Added "${entity.label}" to network`)
   }
 }
 
-function displayToast(message) {
-  toastMessage.value = message
-  showToast.value = true
-  setTimeout(() => {
-    showToast.value = false
-  }, 2000)
-}
 
 function toggleSidebar() {
   showSidebar.value = !showSidebar.value
@@ -971,7 +964,7 @@ async function handleAutoGenerate() {
     pendingSuggestions.value = suggestions
     pendingGroups.value = groups
   } else {
-    displayToast('No connections found with current threshold')
+    addToast('No connections found with current threshold')
   }
 }
 
@@ -1001,9 +994,9 @@ async function handleApplySuggestions(selectedIndices) {
   
   showSuggestionsModal.value = false
   if (skipped > 0) {
-    displayToast(`Applied ${applied} connections, ${skipped} skipped`)
+    addToast(`Applied ${applied} connections, ${skipped} skipped`)
   } else {
-    displayToast(`Applied ${applied} connections`)
+    addToast(`Applied ${applied} connections`)
   }
 }
 
@@ -1098,7 +1091,7 @@ async function handleApplyPendingSuggestions(checkedIndices) {
     toastMsg += `, ${totalFailures} skipped`
     if (failures.already_connected > 0) toastMsg += ` (${failures.already_connected} duplicates)`
   }
-  displayToast(toastMsg)
+  addToast(toastMsg)
 }
 
 watch(() => showSuggestionsModal.value, async (show) => {
@@ -1118,176 +1111,107 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', handleGroupResizeEnd)
 })
 
-onMounted(async () => {
-  if (projectStore.currentProjectId) {
-    if (storyBibleStore.characters.length === 0) {
-      await storyBibleStore.loadAll(projectStore.currentProjectId)
-    }
-    await storyGraphStore.loadNodePositions(projectStore.currentProjectId)
-    await storyGraphStore.loadNodeInstances(projectStore.currentProjectId)
-    await storyGraphStore.loadEdges(projectStore.currentProjectId)
-    await storyGraphStore.loadGroupEdges(projectStore.currentProjectId)
-    
-    const [groups, parents] = await Promise.all([
-      storyGraphStore.loadGroups(projectStore.currentProjectId),
-      storyGraphStore.loadNodeParents(projectStore.currentProjectId)
-    ])
-    manualGroups.value = groups || []
-    nodeParents.value = parents || {}
-    nodeInstances.value = storyGraphStore.nodeInstances || {}
-    
-    const validGroupIds = new Set(manualGroups.value.map(g => g.id))
-    for (const nodeId in nodeParents.value) {
-      const parentId = nodeParents.value[nodeId]
-      if (parentId && !validGroupIds.has(parentId)) {
-        nodeParents.value[nodeId] = null
-      }
-    }
-    await storyGraphStore.saveNodeParents(projectStore.currentProjectId, nodeParents.value)
-    
-    if (Object.keys(nodeInstances.value).length === 0 && Object.keys(storyGraphStore.nodePositions).length > 0) {
-      for (const key of Object.keys(storyGraphStore.nodePositions)) {
-        const baseId = getRealEntityId(key)
-        if (!nodeInstances.value[baseId]) nodeInstances.value[baseId] = []
-        if (!nodeInstances.value[baseId].includes(key)) nodeInstances.value[baseId].push(key)
-      }
-      await storyGraphStore.saveNodeInstances(projectStore.currentProjectId)
-    }
-    
-    const missingCharIds = storyGraphStore.missingCharacterPositions
-    if (missingCharIds.length > 0) {
-      const positions = { ...storyGraphStore.nodePositions }
-      const existingCharIds = new Set(storyBibleStore.characters.map(c => String(c.id)))
-      let charCount = storyBibleStore.characters.length
-      for (const charId of missingCharIds) {
-        if (!existingCharIds.has(charId)) continue
-        const nodeId = `char-${charId}`
-        if (!positions[nodeId]) {
-          positions[nodeId] = { 
-            x: 100 + (charCount % 5) * 250, 
-            y: 100 + Math.floor(charCount / 5) * 150 
-          }
-          charCount++
-        }
-      }
-      await storyGraphStore.saveAllNodePositions(projectStore.currentProjectId, positions)
-    }
+/**
+ * Consolidated graph initialization — loads all graph data for a project,
+ * repairs orphan parents, backfills missing node instances/positions.
+ * Called from both onMounted and the project watcher.
+ */
+async function initGraph(projectId) {
+  if (!projectId) return
 
-    if (Object.keys(nodeInstances.value).length === 0) {
-      const positions = {}
-      let idx = 0
-
-      for (const char of storyBibleStore.characters) {
-        const baseId = `char-${char.id}`
-        nodeInstances.value[baseId] = [baseId]
-        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
-        idx++
-      }
-      for (const loc of storyBibleStore.locations) {
-        const baseId = `loc-${loc.id}`
-        nodeInstances.value[baseId] = [baseId]
-        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
-        idx++
-      }
-      for (const thread of storyBibleStore.plotThreads) {
-        const baseId = `thread-${thread.id}`
-        nodeInstances.value[baseId] = [baseId]
-        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
-        idx++
-      }
-
-      await Promise.all([
-        storyGraphStore.saveNodeInstances(projectStore.currentProjectId),
-        storyGraphStore.saveAllNodePositions(projectStore.currentProjectId, positions)
-      ])
+  if (storyBibleStore.characters.length === 0) {
+    await storyBibleStore.loadAll(projectId)
+  }
+  await storyGraphStore.loadNodePositions(projectId)
+  await storyGraphStore.loadNodeInstances(projectId)
+  await storyGraphStore.loadEdges(projectId)
+  await storyGraphStore.loadGroupEdges(projectId)
+  
+  const [groups, parents] = await Promise.all([
+    storyGraphStore.loadGroups(projectId),
+    storyGraphStore.loadNodeParents(projectId)
+  ])
+  manualGroups.value = groups || []
+  nodeParents.value = parents || {}
+  nodeInstances.value = storyGraphStore.nodeInstances || {}
+  
+  // Repair: remove parent references to deleted groups
+  const validGroupIds = new Set(manualGroups.value.map(g => g.id))
+  for (const nodeId in nodeParents.value) {
+    const parentId = nodeParents.value[nodeId]
+    if (parentId && !validGroupIds.has(parentId)) {
+      nodeParents.value[nodeId] = null
     }
   }
+  await storyGraphStore.saveNodeParents(projectId, nodeParents.value)
+  
+  // Backfill: rebuild node instances from existing positions
+  if (Object.keys(nodeInstances.value).length === 0 && Object.keys(storyGraphStore.nodePositions).length > 0) {
+    for (const key of Object.keys(storyGraphStore.nodePositions)) {
+      const baseId = getRealEntityId(key)
+      if (!nodeInstances.value[baseId]) nodeInstances.value[baseId] = []
+      if (!nodeInstances.value[baseId].includes(key)) nodeInstances.value[baseId].push(key)
+    }
+    await storyGraphStore.saveNodeInstances(projectId)
+  }
+  
+  // Backfill: assign positions to characters that lack them
+  const missingCharIds = storyGraphStore.missingCharacterPositions
+  if (missingCharIds.length > 0) {
+    const positions = { ...storyGraphStore.nodePositions }
+    const existingCharIds = new Set(storyBibleStore.characters.map(c => String(c.id)))
+    let charCount = storyBibleStore.characters.length
+    for (const charId of missingCharIds) {
+      if (!existingCharIds.has(charId)) continue
+      const nodeId = `char-${charId}`
+      if (!positions[nodeId]) {
+        positions[nodeId] = { 
+          x: 100 + (charCount % 5) * 250, 
+          y: 100 + Math.floor(charCount / 5) * 150 
+        }
+        charCount++
+      }
+    }
+    await storyGraphStore.saveAllNodePositions(projectId, positions)
+  }
+
+  // Backfill: create default positions for all entities if none exist
+  if (Object.keys(nodeInstances.value).length === 0) {
+    const positions = {}
+    let idx = 0
+
+    for (const char of storyBibleStore.characters) {
+      const baseId = `char-${char.id}`
+      nodeInstances.value[baseId] = [baseId]
+      positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
+      idx++
+    }
+    for (const loc of storyBibleStore.locations) {
+      const baseId = `loc-${loc.id}`
+      nodeInstances.value[baseId] = [baseId]
+      positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
+      idx++
+    }
+    for (const thread of storyBibleStore.plotThreads) {
+      const baseId = `thread-${thread.id}`
+      nodeInstances.value[baseId] = [baseId]
+      positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
+      idx++
+    }
+
+    await Promise.all([
+      storyGraphStore.saveNodeInstances(projectId),
+      storyGraphStore.saveAllNodePositions(projectId, positions)
+    ])
+  }
+}
+
+onMounted(() => {
+  initGraph(projectStore.currentProjectId)
 })
 
-watch(() => projectStore.currentProjectId, async (newId) => {
-  if (newId) {
-    if (storyBibleStore.characters.length === 0) {
-      await storyBibleStore.loadAll(newId)
-    }
-    await storyGraphStore.loadNodePositions(newId)
-    await storyGraphStore.loadNodeInstances(newId)
-    await storyGraphStore.loadEdges(newId)
-    await storyGraphStore.loadGroupEdges(newId)
-    
-    const [groups, parents] = await Promise.all([
-      storyGraphStore.loadGroups(newId),
-      storyGraphStore.loadNodeParents(newId)
-    ])
-    manualGroups.value = groups || []
-    nodeParents.value = parents || {}
-    nodeInstances.value = storyGraphStore.nodeInstances || {}
-    
-    const validGroupIds = new Set(manualGroups.value.map(g => g.id))
-    for (const nodeId in nodeParents.value) {
-      const parentId = nodeParents.value[nodeId]
-      if (parentId && !validGroupIds.has(parentId)) {
-        nodeParents.value[nodeId] = null
-      }
-    }
-    await storyGraphStore.saveNodeParents(newId, nodeParents.value)
-    
-    if (Object.keys(nodeInstances.value).length === 0 && Object.keys(storyGraphStore.nodePositions).length > 0) {
-      for (const key of Object.keys(storyGraphStore.nodePositions)) {
-        const baseId = getRealEntityId(key)
-        if (!nodeInstances.value[baseId]) nodeInstances.value[baseId] = []
-        if (!nodeInstances.value[baseId].includes(key)) nodeInstances.value[baseId].push(key)
-      }
-      await storyGraphStore.saveNodeInstances(newId)
-    }
-    
-    const missingCharIds = storyGraphStore.missingCharacterPositions
-    if (missingCharIds.length > 0) {
-      const positions = { ...storyGraphStore.nodePositions }
-      const existingCharIds = new Set(storyBibleStore.characters.map(c => String(c.id)))
-      let charCount = storyBibleStore.characters.length
-      for (const charId of missingCharIds) {
-        if (!existingCharIds.has(charId)) continue
-        const nodeId = `char-${charId}`
-        if (!positions[nodeId]) {
-          positions[nodeId] = { 
-            x: 100 + (charCount % 5) * 250, 
-            y: 100 + Math.floor(charCount / 5) * 150 
-          }
-          charCount++
-        }
-      }
-      await storyGraphStore.saveAllNodePositions(newId, positions)
-    }
-
-    if (Object.keys(nodeInstances.value).length === 0) {
-      const positions = {}
-      let idx = 0
-
-      for (const char of storyBibleStore.characters) {
-        const baseId = `char-${char.id}`
-        nodeInstances.value[baseId] = [baseId]
-        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
-        idx++
-      }
-      for (const loc of storyBibleStore.locations) {
-        const baseId = `loc-${loc.id}`
-        nodeInstances.value[baseId] = [baseId]
-        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
-        idx++
-      }
-      for (const thread of storyBibleStore.plotThreads) {
-        const baseId = `thread-${thread.id}`
-        nodeInstances.value[baseId] = [baseId]
-        positions[baseId] = { x: 100 + (idx % 5) * 250, y: 100 + Math.floor(idx / 5) * 150 }
-        idx++
-      }
-
-      await Promise.all([
-        storyGraphStore.saveNodeInstances(newId),
-        storyGraphStore.saveAllNodePositions(newId, positions)
-      ])
-    }
-  }
+watch(() => projectStore.currentProjectId, (newId) => {
+  initGraph(newId)
 })
 
 async function arrangeExtendedStarLayout() {
@@ -1299,7 +1223,7 @@ async function arrangeExtendedStarLayout() {
   const plotThreads = storyBibleStore.plotThreads
 
   if (edges.length === 0) {
-    displayToast('No connections to arrange')
+    addToast('No connections to arrange')
     return
   }
 
@@ -1543,7 +1467,7 @@ async function arrangeExtendedStarLayout() {
   nodePositions.value = { ...positions }
 
   const orphanTotal = orphanChars.length + orphanLocs.length + orphanThreads.length
-  displayToast(`Star layout: ${allGroupIds.length} groups, ${orphanTotal} orphans grouped`)
+  addToast(`Star layout: ${allGroupIds.length} groups, ${orphanTotal} orphans grouped`)
 
   setTimeout(() => fitView({ padding: 0.15 }), 150)
 }
@@ -1856,14 +1780,7 @@ async function arrangeExtendedStarLayout() {
           </div>
         </div>
 
-        <Transition name="fade">
-          <div
-            v-if="showToast"
-            class="absolute top-4 left-1/2 -translate-x-1/2 bg-bg-tertiary border border-border-subtle px-4 py-2 rounded-lg shadow-lg"
-          >
-            <p class="text-sm text-text-primary font-ui">{{ toastMessage }}</p>
-          </div>
-        </Transition>
+        
       </div>
     </div>
 

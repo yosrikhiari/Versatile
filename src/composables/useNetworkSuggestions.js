@@ -2,7 +2,9 @@ import { ref } from 'vue'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useProjectStore } from '../stores/projectStore'
-import { ollamaGenerate, getEmbedding, cosineSimilarity, clearEmbeddingCache } from '../services/ollamaService'
+import { getEmbedding, cosineSimilarity, clearEmbeddingCache } from '../services/ollamaService'
+import { aiGenerate } from '../services/aiService'
+import { FEATURES } from '../config/ai'
 import { useGraphContext } from './useGraphContext'
 
 export function useNetworkSuggestions() {
@@ -239,229 +241,67 @@ export function useNetworkSuggestions() {
     return Math.min(confidence, 0.95)
   }
 
-  function getCharacterSuggestions() {
-    const suggestions = []
-    const characters = storyBibleStore.characters
-    const plotThreads = storyBibleStore.plotThreads
-    
-    for (const char of characters) {
-      for (const thread of plotThreads) {
-        if (!isConnected('character', char.id, 'plotThread', thread.id)) {
-          const similarity = calculateEmbeddingSimilarity('character', char.id, 'plotThread', thread.id)
-          const confidence = calculateEmbeddingConfidence('character', 'plotThread', char, thread, similarity)
-          const rationale = generateEmbeddingRationale(char, thread, 'character', 'plotThread', 'involved_in', similarity)
-          
-          suggestions.push({
-            sourceType: 'character',
-            sourceId: char.id,
-            sourceLabel: char.name,
-            targetType: 'plotThread',
-            targetId: thread.id,
-            targetLabel: thread.title,
-            relationshipType: 'involved_in',
-            rationale,
-            confidence,
-            similarity
-          })
-        }
-      }
-    }
-    
-    return suggestions
+  function getEntityLabel(entity, type) {
+    if (type === 'plotThread') return entity.title
+    return entity.name
   }
 
-  function getLocationSuggestions() {
-    const suggestions = []
-    const characters = storyBibleStore.characters
-    const locations = storyBibleStore.locations
-    
-    for (const char of characters) {
-      for (const loc of locations) {
-        if (!isConnected('character', char.id, 'location', loc.id)) {
-          const similarity = calculateEmbeddingSimilarity('character', char.id, 'location', loc.id)
-          const confidence = calculateEmbeddingConfidence('character', 'location', char, loc, similarity)
-          const rationale = generateEmbeddingRationale(char, loc, 'character', 'location', 'appears_in', similarity)
-          
-          suggestions.push({
-            sourceType: 'character',
-            sourceId: char.id,
-            sourceLabel: char.name,
-            targetType: 'location',
-            targetId: loc.id,
-            targetLabel: loc.name,
-            relationshipType: 'appears_in',
-            rationale,
-            confidence,
-            similarity
-          })
-        }
-      }
+  function getEntitiesByType(type) {
+    switch (type) {
+      case 'character': return storyBibleStore.characters
+      case 'location': return storyBibleStore.locations
+      case 'plotThread': return storyBibleStore.plotThreads
+      default: return []
     }
-    
-    return suggestions
   }
 
-  function getPlotThreadSuggestions() {
-    const suggestions = []
-    const locations = storyBibleStore.locations
-    const plotThreads = storyBibleStore.plotThreads
-    
-    for (const loc of locations) {
-      for (const thread of plotThreads) {
-        if (!isConnected('location', loc.id, 'plotThread', thread.id)) {
-          const similarity = calculateEmbeddingSimilarity('location', loc.id, 'plotThread', thread.id)
-          const confidence = calculateEmbeddingConfidence('location', 'plotThread', loc, thread, similarity)
-          const rationale = generateEmbeddingRationale(loc, thread, 'location', 'plotThread', 'located_at', similarity)
-          
-          suggestions.push({
-            sourceType: 'location',
-            sourceId: loc.id,
-            sourceLabel: loc.name,
-            targetType: 'plotThread',
-            targetId: thread.id,
-            targetLabel: thread.title,
-            relationshipType: 'located_at',
-            rationale,
-            confidence,
-            similarity
-          })
-        }
-      }
-    }
-    
-    return suggestions
-  }
+  /**
+   * Generic suggestion generator that replaces 7 near-identical functions.
+   *
+   * @param {string} typeA - Source entity type ('character'|'location'|'plotThread')
+   * @param {string} typeB - Target entity type
+   * @param {string} relType - Relationship type label
+   * @param {object} [opts]
+   * @param {number} [opts.similarityThreshold] - Min similarity to include (for same-type pairs)
+   * @returns {Array} Suggestion objects with the standard shape
+   */
+  function getSuggestionsForPair(typeA, typeB, relType, opts = {}) {
+    const listA = getEntitiesByType(typeA)
+    const listB = getEntitiesByType(typeB)
+    const { similarityThreshold = 0 } = opts
+    const sameType = typeA === typeB
+    const results = []
 
-  function getLocationRelationshipSuggestions() {
-    const suggestions = []
-    const locations = storyBibleStore.locations
-    
-    for (let i = 0; i < locations.length; i++) {
-      for (let j = i + 1; j < locations.length; j++) {
-        const loc1 = locations[i]
-        const loc2 = locations[j]
-        
-        if (!isConnected('location', loc1.id, 'location', loc2.id)) {
-          const similarity = calculateEmbeddingSimilarity('location', loc1.id, 'location', loc2.id)
-          if (similarity > 0.7) {
-            const confidence = calculateEmbeddingConfidence('location', 'location', loc1, loc2, similarity)
-            const rationale = generateEmbeddingRationale(loc1, loc2, 'location', 'location', 'connects_to', similarity)
-            suggestions.push({
-              sourceType: 'location',
-              sourceId: loc1.id,
-              sourceLabel: loc1.name,
-              targetType: 'location',
-              targetId: loc2.id,
-              targetLabel: loc2.name,
-              relationshipType: 'connects_to',
-              rationale,
-              confidence,
-              similarity
-            })
-          }
-        }
-      }
-    }
-    
-    return suggestions
-  }
+    for (let i = 0; i < listA.length; i++) {
+      const startJ = sameType ? i + 1 : 0
+      for (let j = startJ; j < listB.length; j++) {
+        const a = listA[i]
+        const b = listB[j]
 
-  function getPlotThreadRelationshipSuggestions() {
-    const suggestions = []
-    const plotThreads = storyBibleStore.plotThreads
-    
-    for (let i = 0; i < plotThreads.length; i++) {
-      for (let j = i + 1; j < plotThreads.length; j++) {
-        const thread1 = plotThreads[i]
-        const thread2 = plotThreads[j]
-        
-        if (!isConnected('plotThread', thread1.id, 'plotThread', thread2.id)) {
-          const similarity = calculateEmbeddingSimilarity('plotThread', thread1.id, 'plotThread', thread2.id)
-          if (similarity > 0.7) {
-            const confidence = calculateEmbeddingConfidence('plotThread', 'plotThread', thread1, thread2, similarity)
-            const rationale = generateEmbeddingRationale(thread1, thread2, 'plotThread', 'plotThread', 'intersects_with', similarity)
-            suggestions.push({
-              sourceType: 'plotThread',
-              sourceId: thread1.id,
-              sourceLabel: thread1.title,
-              targetType: 'plotThread',
-              targetId: thread2.id,
-              targetLabel: thread2.title,
-              relationshipType: 'intersects_with',
-              rationale,
-              confidence,
-              similarity
-            })
-          }
-        }
-      }
-    }
-    
-    return suggestions
-  }
+        if (isConnected(typeA, a.id, typeB, b.id)) continue
 
-  function getThreadCharacterSuggestions() {
-    const suggestions = []
-    const characters = storyBibleStore.characters
-    const plotThreads = storyBibleStore.plotThreads
-    
-    for (const thread of plotThreads) {
-      for (const char of characters) {
-        if (!isConnected('plotThread', thread.id, 'character', char.id)) {
-          const similarity = calculateEmbeddingSimilarity('plotThread', thread.id, 'character', char.id)
-          const confidence = calculateEmbeddingConfidence('plotThread', 'character', thread, char, similarity)
-          const rationale = generateEmbeddingRationale(thread, char, 'plotThread', 'character', 'features', similarity)
-          suggestions.push({
-            sourceType: 'plotThread',
-            sourceId: thread.id,
-            sourceLabel: thread.title,
-            targetType: 'character',
-            targetId: char.id,
-            targetLabel: char.name,
-            relationshipType: 'features',
-            rationale,
-            confidence,
-            similarity
-          })
-        }
-      }
-    }
-    
-    return suggestions
-  }
+        const similarity = calculateEmbeddingSimilarity(typeA, a.id, typeB, b.id)
+        if (similarity < similarityThreshold) continue
 
-  function getCharacterRelationshipSuggestions() {
-    const suggestions = []
-    const characters = storyBibleStore.characters
-    
-    for (let i = 0; i < characters.length; i++) {
-      for (let j = i + 1; j < characters.length; j++) {
-        const char1 = characters[i]
-        const char2 = characters[j]
-        
-        if (!isConnected('character', char1.id, 'character', char2.id)) {
-          const similarity = calculateEmbeddingSimilarity('character', char1.id, 'character', char2.id)
-          if (similarity > 0.7) {
-            const confidence = calculateEmbeddingConfidence('character', 'character', char1, char2, similarity)
-            const rationale = generateEmbeddingRationale(char1, char2, 'character', 'character', 'connects_to', similarity)
-            suggestions.push({
-              sourceType: 'character',
-              sourceId: char1.id,
-              sourceLabel: char1.name,
-              targetType: 'character',
-              targetId: char2.id,
-              targetLabel: char2.name,
-              relationshipType: 'connects_to',
-              rationale,
-              confidence,
-              similarity
-            })
-          }
-        }
+        const confidence = calculateEmbeddingConfidence(typeA, typeB, a, b, similarity)
+        const rationale = generateEmbeddingRationale(a, b, typeA, typeB, relType, similarity)
+
+        results.push({
+          sourceType: typeA,
+          sourceId: a.id,
+          sourceLabel: getEntityLabel(a, typeA),
+          targetType: typeB,
+          targetId: b.id,
+          targetLabel: getEntityLabel(b, typeB),
+          relationshipType: relType,
+          rationale,
+          confidence,
+          similarity
+        })
       }
     }
-    
-    return suggestions
+
+    return results
   }
 
   function canonicalKey(type1, id1, type2, id2) {
@@ -473,12 +313,13 @@ export function useNetworkSuggestions() {
   function getAllSuggestions() {
     const seen = new Set()
     const raw = [
-      ...getCharacterRelationshipSuggestions(),
-      ...getCharacterSuggestions(),
-      ...getLocationRelationshipSuggestions(),
-      ...getLocationSuggestions(),
-      ...getPlotThreadRelationshipSuggestions(),
-      ...getPlotThreadSuggestions()
+      ...getSuggestionsForPair('character', 'character', 'connects_to', { similarityThreshold: 0.7 }),
+      ...getSuggestionsForPair('character', 'plotThread', 'involved_in'),
+      ...getSuggestionsForPair('location', 'location', 'connects_to', { similarityThreshold: 0.7 }),
+      ...getSuggestionsForPair('character', 'location', 'appears_in'),
+      ...getSuggestionsForPair('plotThread', 'plotThread', 'intersects_with', { similarityThreshold: 0.7 }),
+      ...getSuggestionsForPair('location', 'plotThread', 'located_at'),
+      ...getSuggestionsForPair('plotThread', 'character', 'features')
     ]
     return raw.filter(s => {
       const key = canonicalKey(s.sourceType, s.sourceId, s.targetType, s.targetId)
@@ -542,7 +383,7 @@ export function useNetworkSuggestions() {
 
 Analyze these elements using semantic understanding and suggest meaningful new connections. Consider:\n1. Character-character: Protagonist/antagonist relationships, mentor/student, allies, rivals, family bonds\n2. Character-location: Where characters spend time, where key scenes happen, emotional connections\n3. Character-plotThread: Which characters are involved in which plot threads, motivations\n4. Location-plotThread: Where plot threads unfold, atmosphere fit\n5. Location-location: Connected through character travel or story events\n6. PlotThread-plotThread: Subplots that intersect or influence each other, thematic parallels\n\nFor each connection, consider semantic similarity in goals, themes, atmospheres, and story arcs - not just word matching.\n\nRespond with a JSON array of suggested connections, each with:\n- sourceType: "character" or "location" or "plotThread"\n- sourceId: the numeric id of the source element from the input\n- targetType: "character" or "location" or "plotThread"\n- targetId: the numeric id of the target element\n- relationshipType: "appears_in" | "involved_in" | "located_at" | "connects_to" | "intersects_with" | "features" | "ally" | "enemy" | "family" | "romantic" | "mentor" | "rival"\n- rationale: brief explanation of why this connection makes semantic sense\n- confidence: a number from 0.0 to 1.0 indicating how confident you are\n\nOnly suggest connections between elements that exist. Respond with valid JSON array only, no markdown.`
 
-      const response = await ollamaGenerate(prompt, systemPrompt)
+      const response = await aiGenerate(prompt, systemPrompt, { feature: FEATURES.NETWORK })
       
       let parsedSuggestions = []
       try {
@@ -766,7 +607,7 @@ Rules:
 
       try {
         console.log('[AutoGenerate] Attempting AI generation...')
-        const response = await ollamaGenerate(userPrompt, systemPrompt)
+        const response = await aiGenerate(userPrompt, systemPrompt, { feature: FEATURES.NETWORK })
         const cleaned = response.replace(/```json\s*/gi, '').replace(/```/g, '').trim()
         const match = cleaned.match(/\[[\s\S]*\]/)
         if (match) {
@@ -1201,7 +1042,7 @@ You MUST include cross-type connections: character→location (appears_in), char
 Suggest max 10 connections. Each:
 {"sourceType": "character"|"location"|"plotThread", "sourceId": <id>, "targetType": "...", "targetId": <id>, "relationshipType": "ally"|"enemy"|"family"|"romantic"|"mentor"|"rival"|"involved_in"|"located_at"|"connects_to", "rationale": "<one sentence>", "confidence": <0.6-1.0>}`
 
-        const response = await ollamaGenerate(userPrompt, systemPrompt)
+        const response = await aiGenerate(userPrompt, systemPrompt, { feature: FEATURES.NETWORK })
         const cleaned = response.replace(/```json\s*/gi, '').replace(/```/g, '').trim()
         const match = cleaned.match(/\[[\s\S]*\]/)
         if (match) {
@@ -1287,13 +1128,7 @@ return {
     getEntityEmbedding,
     calculateEmbeddingSimilarity,
     getAllSuggestions,
-    getCharacterSuggestions,
-    getLocationSuggestions,
-    getPlotThreadSuggestions,
-    getCharacterRelationshipSuggestions,
-    getLocationRelationshipSuggestions,
-    getPlotThreadRelationshipSuggestions,
-    getThreadCharacterSuggestions,
+
     generateNetworkWithAI,
     applySuggestion,
     autoGenerateWithAI,

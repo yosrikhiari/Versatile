@@ -1,6 +1,7 @@
 import { getOllamaEndpoint } from '../config/ollama'
 import { aiGenerate, aiStream } from './aiService'
 import { PROVIDERS, FEATURES } from '../config/ai'
+import { STORAGE_KEYS } from '../config/storageKeys'
 import Dexie from 'dexie'
 
 const LOG_PREFIX = '[OllamaService]'
@@ -9,10 +10,6 @@ function log(...args) {
   console.log(LOG_PREFIX, ...args)
 }
 
-const OPENAI_KEY_STORAGE = 'versatile_openai_key'
-const OPENAI_FALLBACK_PROMPTED = 'versatile_openai_prompted'
-
-const EMBEDDING_MODEL_STORAGE = 'versatile_embedding_model'
 const DEFAULT_EMBEDDING_MODEL = 'nomic-embed-text'
 
 const embeddingDB = new Dexie('VersatileEmbeddings')
@@ -44,14 +41,16 @@ export function simpleDecrypt(encoded) {
 }
 
 export function getStoredOpenAIKey() {
-  const encrypted = localStorage.getItem(OPENAI_KEY_STORAGE)
+  // STORAGE_KEYS ref
+  const encrypted = localStorage.getItem(STORAGE_KEYS.OPENAI_KEY)
   if (!encrypted) return null
   return simpleDecrypt(encrypted)
 }
 
 export function setStoredOpenAIKey(key) {
   const encrypted = simpleEncrypt(key)
-  localStorage.setItem(OPENAI_KEY_STORAGE, encrypted)
+  // STORAGE_KEYS ref
+  localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, encrypted)
 }
 
 export function hasOpenAIKey() {
@@ -59,19 +58,23 @@ export function hasOpenAIKey() {
 }
 
 export function hasPromptedForOpenAI() {
-  return localStorage.getItem(OPENAI_FALLBACK_PROMPTED) === 'true'
+  // STORAGE_KEYS ref
+  return localStorage.getItem(STORAGE_KEYS.OPENAI_FALLBACK_PROMPTED) === 'true'
 }
 
 export function setPromptedForOpenAI() {
-  localStorage.setItem(OPENAI_FALLBACK_PROMPTED, 'true')
+  // STORAGE_KEYS ref
+  localStorage.setItem(STORAGE_KEYS.OPENAI_FALLBACK_PROMPTED, 'true')
 }
 
 export function getEmbeddingModel() {
-  return localStorage.getItem(EMBEDDING_MODEL_STORAGE) || DEFAULT_EMBEDDING_MODEL
+  // STORAGE_KEYS ref
+  return localStorage.getItem(STORAGE_KEYS.EMBEDDING_MODEL) || DEFAULT_EMBEDDING_MODEL
 }
 
 export function setEmbeddingModel(model) {
-  localStorage.setItem(EMBEDDING_MODEL_STORAGE, model)
+  // STORAGE_KEYS ref
+  localStorage.setItem(STORAGE_KEYS.EMBEDDING_MODEL, model)
 }
 
 export async function getEmbeddingCache() {

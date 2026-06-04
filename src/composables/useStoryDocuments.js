@@ -57,7 +57,29 @@ const relationshipLabels = {
   features: 'features'
 }
 
-function getEntityName(type, id) {
+function getLookupMaps() {
+  const store = useStoryBibleStore()
+  return {
+    characters: new Map(store.characters.map(c => [c.id, c])),
+    locations: new Map(store.locations.map(l => [l.id, l])),
+    plotThreads: new Map(store.plotThreads.map(t => [t.id, t]))
+  }
+}
+
+function getEntityName(type, id, maps = null) {
+  if (maps) {
+    switch (type) {
+      case 'character':
+        return maps.characters.get(id)?.name || `Character ${id}`
+      case 'location':
+        return maps.locations.get(id)?.name || `Location ${id}`
+      case 'plotThread':
+        return maps.plotThreads.get(id)?.title || `Plot ${id}`
+      default:
+        return `Entity ${id}`
+    }
+  }
+
   const store = useStoryBibleStore()
   switch (type) {
     case 'character':
@@ -71,13 +93,15 @@ function getEntityName(type, id) {
   }
 }
 
+
 function getRelationshipLabel(type) {
   return relationshipLabels[type] || type
 }
 
 function generateSynopsisDoc() {
   const projectStore = useProjectStore()
-  const lines = ['# Story Synopsis']
+  const terms = projectStore.terminology
+  const lines = [`# ${terms.synopsisLabel || 'Synopsis'}`]
   if (projectStore.currentCategory) {
     lines.push(`**Category:** ${projectStore.currentCategory}`)
   }
@@ -90,6 +114,8 @@ function generateSynopsisDoc() {
 function generateCharactersDoc() {
   const storyBibleStore = useStoryBibleStore()
   const storyGraphStore = useStoryGraphStore()
+  const projectStore = useProjectStore()
+  const terms = projectStore.terminology
 
   const sorted = [...storyBibleStore.characters].sort(
     (a, b) => (b.lastEditedAt || 0) - (a.lastEditedAt || 0)
@@ -97,12 +123,13 @@ function generateCharactersDoc() {
 
   if (sorted.length === 0) return ''
 
-  const parts = ['# Characters']
+  const parts = [`# ${terms.characters || 'Characters'}`]
+  const maps = getLookupMaps()
 
   for (const c of sorted) {
     const entry = [`## ${c.name}`]
-    if (c.role) entry.push(`**Role:** ${c.role}`)
-    if (c.goal) entry.push(`**Goal:** ${c.goal}`)
+    if (c.role) entry.push(`**${terms.characterRole || 'Role'}:** ${c.role}`)
+    if (c.goal) entry.push(`**Goal / Objective:** ${c.goal}`)
     if (c.voice) entry.push(`**Voice:** ${c.voice}`)
     if (c.notes) entry.push(`**Notes:** ${c.notes}`)
 
@@ -116,8 +143,8 @@ function generateCharactersDoc() {
       for (const r of relationships) {
         const isSource = r.sourceId === c.id && r.sourceType === 'character'
         const otherName = isSource
-          ? getEntityName(r.targetType, r.targetId)
-          : getEntityName(r.sourceType, r.sourceId)
+          ? getEntityName(r.targetType, r.targetId, maps)
+          : getEntityName(r.sourceType, r.sourceId, maps)
         const label = getRelationshipLabel(r.relationshipType)
         entry.push(`- ${label} ${otherName}${r.description ? `: ${r.description}` : ''}`)
       }
@@ -131,11 +158,13 @@ function generateCharactersDoc() {
 
 function generateWorldDoc() {
   const storyBibleStore = useStoryBibleStore()
+  const projectStore = useProjectStore()
+  const terms = projectStore.terminology
   const locations = storyBibleStore.locations
 
   if (locations.length === 0) return ''
 
-  const parts = ['# World']
+  const parts = [`# ${terms.locations || 'World'}`]
 
   for (const l of locations) {
     const entry = [`## ${l.name}`]
@@ -149,6 +178,8 @@ function generateWorldDoc() {
 
 function generateTimelineDoc() {
   const storyBibleStore = useStoryBibleStore()
+  const projectStore = useProjectStore()
+  const terms = projectStore.terminology
   const threads = storyBibleStore.plotThreads
 
   if (threads.length === 0) return ''
@@ -157,7 +188,7 @@ function generateTimelineDoc() {
     return (a.timelineOrder ?? 999) - (b.timelineOrder ?? 999)
   })
 
-  const parts = ['# Timeline']
+  const parts = [`# ${terms.plotThreads || 'Timeline'}`]
 
   for (const t of sorted) {
     const statusLabel = t.status ? t.status.replace('_', ' ') : 'unknown'
@@ -186,14 +217,16 @@ function generateRelationshipsDoc() {
   if (relevantEdges.length === 0) return ''
 
   const byCharacter = {}
+  const maps = getLookupMaps()
+
   for (const e of relevantEdges) {
     const isCharSource = e.sourceType === 'character'
     const charName = isCharSource
-      ? getEntityName(e.sourceType, e.sourceId)
-      : getEntityName(e.targetType, e.targetId)
+      ? getEntityName(e.sourceType, e.sourceId, maps)
+      : getEntityName(e.targetType, e.targetId, maps)
     const otherName = isCharSource
-      ? getEntityName(e.targetType, e.targetId)
-      : getEntityName(e.sourceType, e.sourceId)
+      ? getEntityName(e.targetType, e.targetId, maps)
+      : getEntityName(e.sourceType, e.sourceId, maps)
     const label = getRelationshipLabel(e.relationshipType)
 
     if (!byCharacter[charName]) byCharacter[charName] = []

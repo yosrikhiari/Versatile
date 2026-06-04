@@ -1,4 +1,5 @@
-import { PROVIDERS, FEATURES, API_KEY_STORAGE_PREFIX } from '../config/ai'
+import { PROVIDERS, FEATURES } from '../config/ai'
+import { getApiKeyStorageKey } from '../config/storageKeys'
 import { useSettingsStore } from '../stores/settingsStore'
 import { simpleDecrypt } from './ollamaService'
 import * as ollamaProvider from './providers/ollama'
@@ -17,7 +18,9 @@ const PROVIDER_MAP = {
 
 function getApiKey(provider) {
   if (provider === PROVIDERS.OLLAMA) return null
-  const encrypted = localStorage.getItem(`${API_KEY_STORAGE_PREFIX}${provider}`)
+  const storageKey = getApiKeyStorageKey(provider)
+  // STORAGE_KEYS ref
+  const encrypted = localStorage.getItem(storageKey)
   if (!encrypted) return ''
   try {
     return simpleDecrypt(encrypted)

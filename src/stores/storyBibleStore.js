@@ -58,9 +58,9 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     }
   }
 
-  async function addCharacterData(projectId, data) {
-    const id = await addCharacter(projectId, data)
-    characters.value.push({ id, projectId, ...data, lastEditedAt: Date.now() })
+  async function addCharacterData(projectId, data, source = 'manual', chapterId = null) {
+    const id = await addCharacter(projectId, { ...data, source, chapterId })
+    characters.value.push({ id, projectId, ...data, source, chapterId, lastEditedAt: Date.now() })
     queueDocumentRegeneration(['characters', 'relationships'])
     return id
   }
@@ -87,9 +87,9 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     queueDocumentRegeneration(['characters', 'relationships'])
   }
 
-  async function addLocationData(projectId, data) {
-    const id = await addLocation(projectId, data)
-    locations.value.push({ id, projectId, ...data })
+  async function addLocationData(projectId, data, source = 'manual', chapterId = null) {
+    const id = await addLocation(projectId, { ...data, source, chapterId })
+    locations.value.push({ id, projectId, ...data, source, chapterId })
     queueDocumentRegeneration(['world', 'relationships'])
     return id
   }
@@ -109,10 +109,10 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     queueDocumentRegeneration(['world', 'relationships'])
   }
 
-  async function addPlotThreadData(projectId, data) {
+  async function addPlotThreadData(projectId, data, source = 'manual', chapterId = null) {
     const maxOrder = plotThreads.value.reduce((max, t) => Math.max(max, t.timelineOrder ?? 0), 0)
-    const id = await addPlotThread(projectId, { ...data, timelineOrder: maxOrder + 1 })
-    plotThreads.value.push({ id, projectId, ...data, timelineOrder: maxOrder + 1 })
+    const id = await addPlotThread(projectId, { ...data, source, chapterId, timelineOrder: maxOrder + 1 })
+    plotThreads.value.push({ id, projectId, ...data, source, chapterId, timelineOrder: maxOrder + 1 })
     queueDocumentRegeneration(['timeline', 'relationships'])
     return id
   }

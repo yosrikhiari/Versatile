@@ -10,6 +10,8 @@ import { useArchiveStore } from '../stores/archiveStore'
 import { getLatestStateSnapshot } from '../services/dbService'
 import { useStateSummarizer } from './useStateSummarizer'
 import { useStoryDocuments } from './useStoryDocuments'
+import { STORAGE_KEYS } from '../config/storageKeys'
+import { useLocalStorage } from './useLocalStorage'
 
 export function useAppInitialization() {
   const projectStore = useProjectStore()
@@ -22,6 +24,7 @@ export function useAppInitialization() {
   const modelNotFound = ref(false)
   const showModelBanner = ref(false)
   const hasLoaded = ref(false)
+  const onboardingStatus = useLocalStorage(STORAGE_KEYS.ONBOARDING_V2, '')
 
   async function checkModelAvailability() {
     try {
@@ -82,11 +85,11 @@ export function useAppInitialization() {
   }
 
   function isOnboardingDismissed() {
-    return localStorage.getItem('versatile_onboarding_v2') === 'done'
+    return onboardingStatus.value === 'done'
   }
 
   async function onOnboardingComplete() {
-    localStorage.setItem('versatile_onboarding_v2', 'done')
+    onboardingStatus.value = 'done'
     
     if (projectStore.currentProjectId) {
       await loadProjectData()
@@ -96,7 +99,7 @@ export function useAppInitialization() {
   }
 
   function onOnboardingSkip() {
-    localStorage.setItem('versatile_onboarding_v2', 'done')
+    onboardingStatus.value = 'done'
     return { showOnboarding: false }
   }
 

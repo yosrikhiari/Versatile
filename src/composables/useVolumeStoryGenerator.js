@@ -3,10 +3,14 @@ import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
+import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useStoryDirector } from './useStoryDirector'
 import { useEntityBootstrapper } from './useEntityBootstrapper'
 import { useStoryWriter } from './useStoryWriter'
 import { useStoryCritic } from './useStoryCritic'
+import { useChapterGenerationSync } from './useChapterGenerationSync'
+import { aiGenerate } from '../services/aiService'
+import { FEATURES } from '../config/ai'
 
 const EMBEDDING_CONTEXT_MAX_CHARS = 1400
 const MAX_REJECTED_PATTERNS = 5
@@ -19,18 +23,21 @@ const PROSE_EXCERPT_MAX_SCENES = 25
 
 export function useVolumeStoryGenerator() {
   const phase = ref('idle')
-  const progress = reactive({ current: 0, total: 0, sceneLabel: '' })
+  const progress = reactive({ current: 0, total: 0, sceneLabel: '', statusText: '' })
   const error = ref(null)
   const volumeId = ref(null)
   const scenePlan = ref([])
   const writtenScenes = ref([])
   const consistencyReport = ref(null)
   const rejectedPatterns = ref([])
+  const syncPreview = ref([])
+  let structuredResults = []
 
   const director = useStoryDirector()
   const bootstrapper = useEntityBootstrapper()
   const writer = useStoryWriter()
   const critic = useStoryCritic()
+  const sync = useChapterGenerationSync()
   const storyBibleStore = useStoryBibleStore()
   const volumeStore = useVolumeStore()
   const manuscriptStore = useManuscriptStore()
@@ -66,15 +73,16 @@ export function useVolumeStoryGenerator() {
       })
       volumeId.value = vId
 
-      // Phase 1: Bootstrap entities (now has a real volumeId)
+      // Phase 1 & 2: Concurrently bootstrap entities and generate story plan
       phase.value = 'bootstrapping'
       onPhaseChange?.('bootstrapping')
-      await bootstrapper.bootstrapEntities({ synopsis: enhancedSynopsis, projectId, volumeId: vId })
+      progress.statusText = 'Initializing world elements, seeding character sheets, and drafting narrative structure...'
 
-      // Phase 2: Scene planning via Director
-      phase.value = 'planning'
-      onPhaseChange?.('planning')
-      const directorResult = await director.generateStoryPlan({ premise: enhancedSynopsis, genre, tone, wordTarget })
+      const [bootstrapResult, directorResult] = await Promise.all([
+        bootstrapper.bootstrapEntities({ synopsis: enhancedSynopsis, projectId, volumeId: vId }),
+        director.generateStoryPlan({ premise: enhancedSynopsis, genre, tone, wordTarget })
+      ])
+
       const scenes = directorResult.scenes
       const storyArc = directorResult.storyArc
 
@@ -110,6 +118,9 @@ export function useVolumeStoryGenerator() {
       const totalScenes = scenePlan.value.length
       progress.total = totalScenes
 
+      // Build preliminary network edges from scene plan
+      await buildPreliminaryEdges(projectId, vId, scenePlan.value)
+
       // Build story contract from the plan
       const storyContract = [
         `Genre: ${genre}`,
@@ -140,6 +151,7 @@ export function useVolumeStoryGenerator() {
       const scene = editedPlan[i]
       progress.current = i + 1
       progress.sceneLabel = scene.title || `Scene ${scene.sceneNumber}`
+      progress.statusText = `Drafting scene details, building continuity context, and streaming prose...`
 
       // Retrieve context from prior scenes (prose excerpts, not embeddings)
       const embeddingContext = buildEmbeddingContext(scene, writtenScenes.value)
@@ -153,9 +165,16 @@ export function useVolumeStoryGenerator() {
       // Retrieve rejected patterns for Writer
       const extraRejected = rejectedPatterns.value.length > 0 ? rejectedPatterns.value : undefined
 
-      // Write the scene with streaming
+      // Build existing entities JSON for structured writing
+      const existingEntitiesJson = JSON.stringify({
+        characters: storyBibleStore.characters.map(c => ({ name: c.name, role: c.role, description: c.description })),
+        locations: storyBibleStore.locations.map(l => ({ name: l.name, type: l.type, description: l.description })),
+        plotThreads: storyBibleStore.plotThreads.map(t => ({ title: t.title, status: t.status, summary: t.summary }))
+      }, null, 2)
+
+      // Write the scene with structured output
       let fullProse = ''
-      await writer.writeScene({
+      const result = await writer.writeSceneStructured({
         sceneBrief: scene,
         storyArc,
         chapterLog,
@@ -166,11 +185,27 @@ export function useVolumeStoryGenerator() {
         },
         embeddingContext,
         storyContract,
-        rejectedPatterns: extraRejected
+        rejectedPatterns: extraRejected,
+        existingEntitiesJson
       })
 
+      fullProse = result.prose
+      structuredResults.push({ sceneIndex: i, structured: result.structured })
+
       // Summarize for chapter log
-      const summary = fullProse.slice(0, 150).replace(/\s+\S*$/, '') + '...'
+      progress.statusText = `Compiling prose and generating plot-accurate continuity summaries...`
+      let summary = ''
+      try {
+        const summaryPrompt = `You are a copyeditor. Summarize the following narrative scene in exactly one concise sentence:\n\n"${fullProse.slice(0, 3000)}"`
+        const summaryResponse = await aiGenerate(summaryPrompt, "Summarize the scene in one sentence.", {
+          feature: FEATURES.STORY_GENERATION,
+          temperature: 0.3
+        })
+        summary = summaryResponse.replace(/^Summary:\s*/i, '').replace(/^"|"/g, '').trim()
+      } catch (err) {
+        console.warn('[useVolumeStoryGenerator] Fallback slice summary used:', err)
+        summary = fullProse.slice(0, 150).replace(/\s+\S*$/, '') + '...'
+      }
 
       // Save prose to manuscript subsection
       if (scene.subsectionId) {
@@ -211,6 +246,7 @@ export function useVolumeStoryGenerator() {
 
     scenePlan.value = editedPlan
     progress.total = editedPlan.length
+    progress.statusText = 'Building manuscript structure, initializing sections, and assigning chapters...'
 
     // Create sections for scene groups (3 scenes per section)
     const sections = []
@@ -248,6 +284,7 @@ export function useVolumeStoryGenerator() {
     phase.value = 'writing'
     onPhaseChange?.('writing')
     error.value = null
+    progress.statusText = 'Entering incremental drafting pipeline...'
 
     const enhancedSynopsis = sparkContext
       ? `${synopsis}\n\nAdditional context from brainstorming:\n${sparkContext}`
@@ -255,10 +292,40 @@ export function useVolumeStoryGenerator() {
 
     await writeAllScenes({ projectId, editedPlan, sections, storyArc, storyContract, synopsis: enhancedSynopsis, onChunk })
 
+    // Phase 3.5: Sync preview — discover new entities from all scenes
+    phase.value = 'sync-preview'
+    onPhaseChange?.('sync-preview')
+    progress.statusText = 'Scanning written chapters to discover organically introduced characters & locations...'
+
+    // Merge structured results: discover entities across all scenes
+    const allChanges = []
+    for (const sr of structuredResults) {
+      if (sr.structured) {
+        const sceneChanges = sync.discoverSync(sr.structured)
+        allChanges.push(...sceneChanges)
+      }
+    }
+    syncPreview.value = allChanges
+  }
+
+  async function confirmSync({ acceptedEntities, projectId, volumeId, chapterId }) {
+    if (phase.value !== 'sync-preview') return
+    progress.statusText = 'Integrating accepted entities and syncing story graph network...'
+
+    // Commit accepted entities to bible + volume network + graph
+    const validStructured = structuredResults.filter(sr => sr.structured).map(sr => sr.structured)
+    await sync.commitSync({
+      structuredOutputs: validStructured,
+      acceptedEntities,
+      projectId,
+      volumeId: volumeId || volumeId.value,
+      chapterId: chapterId || null
+    })
+
     // Phase 4: Consistency critic
     phase.value = 'consistency-check'
-    onPhaseChange?.('consistency-check')
-
+    progress.statusText = 'Auditing written prose against character bio sheets to find narrative contradictions...'
+    // onPhaseChange is internal; store ref if needed
     const characters = storyBibleStore.characters
     const locations = storyBibleStore.locations
 
@@ -267,14 +334,14 @@ export function useVolumeStoryGenerator() {
         characters,
         locations,
         sceneProse: writtenScenes.value,
-        synopsis: enhancedSynopsis
+        synopsis: ''  // enhancedSynopsis not stored; prose is primary input
       })
       consistencyReport.value = report
     }
 
     // Phase 5: Complete
     phase.value = 'complete'
-    onPhaseChange?.('complete')
+    progress.statusText = 'Volume generation complete!'
 
     // Save story to generatedStories Dexie table
     try {
@@ -282,7 +349,7 @@ export function useVolumeStoryGenerator() {
       const totalWords = writtenScenes.value.reduce((sum, s) => sum + s.prose.split(/\s+/).length, 0)
       await db.generatedStories.add({
         projectId,
-        title: `${synopsis.slice(0, 60)}...`,
+        title: `Volume Story — ${new Date().toLocaleDateString()}`,
         generatedAt: new Date().toISOString(),
         totalWords,
         qualityScore: consistencyReport.value
@@ -291,6 +358,66 @@ export function useVolumeStoryGenerator() {
       })
     } catch {
       // Non-critical: generatedStories save
+    }
+  }
+
+  async function buildPreliminaryEdges(projectId, volumeId, plan) {
+    try {
+      const bibleStore = useStoryBibleStore()
+
+      // Build name-to-ID maps from currently loaded bible data
+      const charByName = {}
+      for (const c of bibleStore.characters) charByName[c.name.toLowerCase().trim()] = c.id
+      const locByName = {}
+      for (const l of bibleStore.locations) locByName[l.name.toLowerCase().trim()] = l.id
+
+      // Collect unique character-location pairs from the plan
+      const pairs = new Set()
+      for (const scene of plan) {
+        const chars = scene.characters || scene.charactersPresent || []
+        const location = scene.location || ''
+        if (!location || chars.length === 0) continue
+        const locId = locByName[location.toLowerCase().trim()]
+        if (!locId) continue
+        for (const charName of chars) {
+          const charId = charByName[charName.toLowerCase().trim()]
+          if (!charId) continue
+          const key = `${charId}|${locId}`
+          pairs.add({ charId, locId, charName, location })
+        }
+      }
+
+      if (pairs.size === 0) return
+
+      // Load existing edges to avoid duplicates
+      const graphStore = useStoryGraphStore()
+      await graphStore.loadEdges(projectId)
+
+      const existingEdgeKeys = new Set()
+      for (const edge of graphStore.edges.value) {
+        existingEdgeKeys.add(`${edge.sourceId}|${edge.targetId}`)
+        existingEdgeKeys.add(`${edge.targetId}|${edge.sourceId}`)
+      }
+
+      // Create planned edges for new pairs
+      for (const pair of pairs) {
+        const key = `${pair.charId}|${pair.locId}`
+        if (!existingEdgeKeys.has(key)) {
+          await graphStore.addEdgeData(projectId, {
+            sourceId: String(pair.charId),
+            sourceType: 'character',
+            targetId: String(pair.locId),
+            targetType: 'location',
+            relationshipType: 'planned',
+            description: `${pair.charName} visits ${pair.location} (planned)`,
+            planned: true,
+            volumeId: volumeId || null
+          })
+        }
+      }
+    } catch (err) {
+      console.warn('[VolumeStoryGenerator] buildPreliminaryEdges failed:', err)
+      // Non-critical — edge creation is advisory
     }
   }
 
@@ -310,14 +437,21 @@ export function useVolumeStoryGenerator() {
       // For now, fall through to prose strategy
     }
 
-    // Take the last 2 scenes — most relevant for immediate continuity
-    const relevant = priorScenes.slice(-2)
-
     let context = ''
-    for (const scene of relevant) {
-      const excerpt = scene.prose.slice(0, 400).replace(/\s+\S*$/, '') + '...'
-      context += `[Scene ${scene.sceneNumber}: "${scene.title}"]\n${excerpt}\n\n`
-      if (context.length >= EMBEDDING_CONTEXT_MAX_CHARS) break
+
+    // Grab ending excerpt of the immediately preceding scene for immediate transition continuity
+    const precedingScene = priorScenes[priorScenes.length - 1]
+    if (precedingScene) {
+      const endingExcerpt = precedingScene.prose.length > 1200
+        ? '...' + precedingScene.prose.slice(-1200)
+        : precedingScene.prose
+      context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}"]\n${endingExcerpt}\n\n`
+    }
+
+    // Grab summary or beginning of the scene before that (for additional depth)
+    const olderScene = priorScenes[priorScenes.length - 2]
+    if (olderScene && context.length < EMBEDDING_CONTEXT_MAX_CHARS) {
+      context += `[Summary of Scene ${olderScene.sceneNumber}: "${olderScene.title}"]\n${olderScene.summary || olderScene.prose.slice(0, 300) + '...'}\n\n`
     }
 
     return context.trim()
@@ -333,6 +467,8 @@ export function useVolumeStoryGenerator() {
     scenePlan.value = []
     writtenScenes.value = []
     consistencyReport.value = null
+    syncPreview.value = []
+    structuredResults = []
     rejectedPatterns.value = []
   }
 
@@ -350,6 +486,8 @@ export function useVolumeStoryGenerator() {
     isCheckingConsistency: critic.isCheckingConsistency,
     startGeneration,
     confirmPlan,
+    confirmSync,
+    syncPreview,
     logRejectedPattern,
     reset
   }

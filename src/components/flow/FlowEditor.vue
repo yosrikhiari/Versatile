@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useSnapshotStore } from '../../stores/snapshotStore'
+import { useFlowSession } from '../../composables/useFlowSession'
 import { useDebounceFn } from '@vueuse/core'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
@@ -10,20 +11,9 @@ import FlowTimer from './FlowTimer.vue'
 import FlowNudge from './FlowNudge.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
-const props = defineProps({
-  isDesaturated: Boolean,
-  isRunning: Boolean,
-  isNudging: Boolean,
-  remaining: Number,
-  sessionWordCount: Number,
-  sessionGoal: Number,
-  sessionProgress: Number,
-  dailyWordCount: Number,
-  dailyGoal: Number,
-  dailyProgress: Number
-})
+const flow = useFlowSession()
 
-const emit = defineEmits(['keystroke', 'backspace', 'paragraph-click', 'open-settings', 'dismiss-nudge', 'exit-flow'])
+const emit = defineEmits(['paragraph-click', 'open-settings', 'exit-flow'])
 
 function handleExitFlow() {
   emit('exit-flow')
@@ -68,29 +58,37 @@ const editor = useEditor({
     }
   },
   onUpdate: ({ editor }) => {
-    const content = editor.getText()
+    const content = editor.getHTML()
     projectStore.updateContent(content)
     debouncedSave()
-    emit('keystroke')
+    flow.handleKeystroke()
   },
   onSelectionUpdate: ({ editor }) => {
-    emit('keystroke')
+    flow.handleKeystroke()
   }
 })
 
+const hasShownFlowHint = ref(false)
+const flowHintVisible = ref(false)
+
 function handleKeydown(event) {
-  if (props.isRunning && event.key === 'Backspace') {
+  if (flow.isRunning.value && event.key === 'Backspace') {
     event.preventDefault()
+    if (!hasShownFlowHint.value) {
+      hasShownFlowHint.value = true
+      flowHintVisible.value = true
+      setTimeout(() => { flowHintVisible.value = false }, 1500)
+    }
     return
   }
   if (event.key === 'Backspace') {
-    emit('backspace', event)
+    flow.handleBackspace(event)
   }
-  emit('keystroke')
+  flow.handleKeystroke()
 }
 
 function handleDismissNudge() {
-  emit('dismiss-nudge')
+  flow.dismissNudge()
 }
 
 function handleClick(event) {
@@ -124,7 +122,7 @@ function handleClick(event) {
 }
 
 watch(() => projectStore.documentContent, (newContent) => {
-  if (editor.value && editor.value.getText() !== newContent) {
+  if (editor.value && editor.value.getHTML() !== newContent) {
     editor.value.commands.setContent(newContent || '')
   }
 })
@@ -135,15 +133,22 @@ onBeforeUnmount(() => {
   }
 })
 
+function insertAtCursor(text) {
+  if (!editor.value) return
+  const { anchor } = editor.value.state.selection
+  editor.value.commands.insertContentAt(anchor, text)
+}
+
 defineExpose({
-  editor
+  editor,
+  insertAtCursor
 })
 </script>
 
 <template>
   <div class="h-full flex flex-col bg-manuscript-editor relative editor-glow">
     <button
-      v-if="isRunning"
+      v-if="flow.isRunning.value"
       class="absolute top-4 right-4 z-10 text-xs text-text-hint/60 hover:text-text-secondary font-ui transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2.5 py-1.5 btn-ghost"
       @click="handleExitFlow"
     >
@@ -152,7 +157,7 @@ defineExpose({
     <div 
       :class="[
         'flex-1 overflow-y-auto scrollbar-thin',
-        isDesaturated ? 'desaturated' : ''
+        flow.isDesaturated ? 'desaturated' : ''
       ]"
     >
       <div 
@@ -169,14 +174,7 @@ defineExpose({
     </div>
 
     <FlowTimer
-      v-if="isRunning"
-      :remaining="remaining"
-      :session-word-count="sessionWordCount"
-      :session-goal="sessionGoal"
-      :session-progress="sessionProgress"
-      :daily-word-count="dailyWordCount"
-      :daily-goal="dailyGoal"
-      :daily-progress="dailyProgress"
+      v-if="flow.isRunning.value"
       @open-settings="emit('open-settings')"
     />
 
@@ -188,8 +186,32 @@ defineExpose({
       <span class="tracking-wide">Saving...</span>
     </div>
 
-    <FlowNudge v-if="isNudging" @dismiss="handleDismissNudge" />
+    <FlowNudge v-if="flow.isNudging.value" @dismiss="handleDismissNudge" />
+
+    <Transition name="flow-hint">
+      <div
+        v-if="flowHintVisible"
+        class="absolute top-8 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-lg bg-bg-tertiary/90 backdrop-blur-sm border border-border-subtle text-text-secondary text-xs font-ui shadow-warm-md pointer-events-none"
+      >
+        Flow mode — keep writing forward.
+      </div>
+    </Transition>
   </div>
 </template>
 
-
+<style scoped>
+.flow-hint-enter-active {
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+.flow-hint-leave-active {
+  transition: opacity 0.4s ease-in, transform 0.4s ease-in;
+}
+.flow-hint-enter-from {
+  opacity: 0;
+  transform: translate(-50%, -4px);
+}
+.flow-hint-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -4px);
+}
+</style>

@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSnapshotStore } from '../../stores/snapshotStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
+import { useNotifications } from '../../composables/useNotifications'
 import { useDebounceFn } from '@vueuse/core'
 import BaseIcon from '../shared/BaseIcon.vue'
 
@@ -16,10 +17,9 @@ const emit = defineEmits(['close', 'restored'])
 const snapshotStore = useSnapshotStore()
 const projectStore = useProjectStore()
 const manuscriptStore = useManuscriptStore()
+const { showConfirm } = useNotifications()
 
 const selectedSnapshot = ref(null)
-const showConfirmRestore = ref(false)
-const pendingRestore = ref(null)
 const labelInput = ref('')
 const showLabelInput = ref(false)
 const newLabel = ref('')
@@ -58,23 +58,17 @@ function selectSnapshot(snapshot) {
 }
 
 async function confirmRestore() {
-  if (!selectedSnapshot.value) return
-  pendingRestore.value = selectedSnapshot.value
-  showConfirmRestore.value = true
-}
-
-async function doRestore() {
-  if (!pendingRestore.value || !projectStore.currentProjectId) return
-  await snapshotStore.restoreSnapshot(pendingRestore.value.id, projectStore.currentProjectId)
-  emit('restored', pendingRestore.value.content)
-  showConfirmRestore.value = false
-  pendingRestore.value = null
-  selectedSnapshot.value = null
+  if (!selectedSnapshot.value || !projectStore.currentProjectId) return
+  if (await showConfirm('Restore Snapshot?', `This will replace the current scene content with the snapshot from ${formatDate(selectedSnapshot.value.timestamp)}.\nThis cannot be undone.`, 'Restore', 'accent')) {
+    await snapshotStore.restoreSnapshot(selectedSnapshot.value.id, projectStore.currentProjectId)
+    emit('restored', selectedSnapshot.value.content)
+    selectedSnapshot.value = null
+  }
 }
 
 async function removeSnapshot(snapshot) {
   if (!projectStore.currentProjectId) return
-  if (confirm(`Delete this snapshot from ${formatDate(snapshot.timestamp)}?`)) {
+  if (await showConfirm('Delete Snapshot', `Delete this snapshot from ${formatDate(snapshot.timestamp)}?`, 'Delete', 'danger')) {
     await snapshotStore.removeSnapshot(snapshot.id, projectStore.currentProjectId)
     if (selectedSnapshot.value?.id === snapshot.id) {
       selectedSnapshot.value = null
@@ -208,34 +202,6 @@ onUnmounted(() => {
             @click="autoSaveManual"
           >
             Save Snapshot Now
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="showConfirmRestore"
-      class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
-      @click.self="showConfirmRestore = false"
-    >
-      <div class="bg-bg-tertiary rounded-xl shadow-xl p-6 max-w-sm w-full border border-border-subtle">
-        <h3 class="text-lg font-semibold text-text-primary mb-2 font-ui">Restore Snapshot?</h3>
-        <p class="text-sm text-text-secondary mb-4 font-ui">
-          This will replace the current scene content with the snapshot from {{ pendingRestore ? formatDate(pendingRestore.timestamp) : '' }}.
-          This cannot be undone.
-        </p>
-        <div class="flex gap-2">
-          <button
-            class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
-            @click="showConfirmRestore = false"
-          >
-            Cancel
-          </button>
-          <button
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui"
-            @click="doRestore"
-          >
-            Restore
           </button>
         </div>
       </div>

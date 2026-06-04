@@ -4,6 +4,7 @@ import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { enhancePlotThread, enhanceSingleField } from '../../composables/useOllama'
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
+import { useNotifications } from '../../composables/useNotifications'
 import draggable from 'vuedraggable'
 import BaseIcon from '../shared/BaseIcon.vue'
 import EntityExtractionDialog from './EntityExtractionDialog.vue'
@@ -15,6 +16,7 @@ const props = defineProps({
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const { getSectionContext } = useManuscriptContext()
+const { showConfirm } = useNotifications()
 
 const expandedThreadId = ref(null)
 const editingThread = ref(null)
@@ -81,7 +83,7 @@ async function saveThread() {
 
 async function deleteThread(thread) {
   if (!projectStore.currentProjectId) return
-  if (confirm(`Delete "${thread.title}"?`)) {
+  if (await showConfirm('Delete Plot Thread', `Delete "${thread.title}"?`, 'Delete', 'danger')) {
     await storyBibleStore.deletePlotThreadData(thread.id, projectStore.currentProjectId)
   }
 }

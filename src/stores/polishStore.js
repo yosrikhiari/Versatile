@@ -6,6 +6,7 @@ import {
   getAnnotations, addAnnotation, updateAnnotation, deleteAnnotation, clearAnnotations,
   getSnippets, addSnippet, updateSnippet, deleteSnippet, incrementSnippetWord
 } from '../services/dbService'
+import { STORAGE_KEYS } from '../config/storageKeys'
 
 export const usePolishStore = defineStore('polish', () => {
   const annotations = ref([])
@@ -23,13 +24,17 @@ export const usePolishStore = defineStore('polish', () => {
   })
   const error = ref(null)
 
-  const savedLenses = localStorage.getItem('pref_activeLenses')
+  // STORAGE_KEYS ref
+  const savedLenses = localStorage.getItem(STORAGE_KEYS.ACTIVE_LENSES)
   if (savedLenses) {
     try {
       activeLenses.value = { ...activeLenses.value, ...JSON.parse(savedLenses) }
     } catch {}
   }
-  watch(activeLenses, val => localStorage.setItem('pref_activeLenses', JSON.stringify(val)), { deep: true })
+  watch(activeLenses, val => {
+    // STORAGE_KEYS ref
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_LENSES, JSON.stringify(val))
+  }, { deep: true })
   
   let debounceTimer = null
 

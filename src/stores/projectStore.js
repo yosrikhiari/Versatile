@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { getManuscript, saveManuscript, getProject, createProject, updateProject, getAllProjects, updateDailyWordCount, getDailyGoal, getStreakData, getLastSessionData, saveAuthorProfile, getAuthorProfile } from '../services/dbService'
-import { countWords } from '../utils/textUtils'
+import { countWords, stripHtmlTags } from '../utils/textUtils'
+import { WORKSPACE_TYPES, WORKSPACE_TERMINOLOGY } from '../config/workspace'
+import { STORAGE_KEYS } from '../config/storageKeys'
 
 export const useProjectStore = defineStore('project', () => {
   const currentProjectId = ref(null)
@@ -9,15 +11,20 @@ export const useProjectStore = defineStore('project', () => {
   const currentDescription = ref('')
   const currentCategory = ref('')
   const documentContent = ref('')
+  const documentContentRaw = computed(() => stripHtmlTags(documentContent.value))
   const wordCount = ref(0)
   const sessionWordCount = ref(0)
   const sessionGoal = ref(500)
   const dailyGoal = ref(500)
   const dailyWordCount = ref(0)
 
-  const savedGoal = localStorage.getItem('pref_sessionGoal')
+  // STORAGE_KEYS ref
+  const savedGoal = localStorage.getItem(STORAGE_KEYS.SESSION_GOAL)
   if (savedGoal) sessionGoal.value = parseInt(savedGoal, 10)
-  watch(sessionGoal, val => localStorage.setItem('pref_sessionGoal', String(val)))
+  watch(sessionGoal, val => {
+    // STORAGE_KEYS ref
+    localStorage.setItem(STORAGE_KEYS.SESSION_GOAL, String(val))
+  })
   const lastSavedAt = ref(null)
   const lastWrittenAt = ref(null)
   const initialWordCount = ref(0)
@@ -27,6 +34,16 @@ export const useProjectStore = defineStore('project', () => {
   const lastSessionWords = ref(0)
   const authorVoiceProfile = ref(null)
   const lastSessionRecap = ref(null)
+
+  const activeWorkspaceType = computed(() => {
+    const val = (currentCategory.value || '').toLowerCase().trim()
+    const types = Object.values(WORKSPACE_TYPES)
+    return types.includes(val) ? val : WORKSPACE_TYPES.CREATIVE
+  })
+
+  const terminology = computed(() => {
+    return WORKSPACE_TERMINOLOGY[activeWorkspaceType.value]
+  })
 
   const sessionProgress = computed(() => {
     return Math.min((sessionWordCount.value / sessionGoal.value) * 100, 100)
@@ -112,7 +129,8 @@ export const useProjectStore = defineStore('project', () => {
 
   function updateContent(newContent) {
     documentContent.value = newContent
-    const words = countWords(newContent)
+    const plainText = stripHtmlTags(newContent)
+    const words = countWords(plainText)
     wordCount.value = words
     sessionWordCount.value = Math.max(0, words - initialWordCount.value)
   }
@@ -145,9 +163,39 @@ export const useProjectStore = defineStore('project', () => {
     await updateDailyWordCount(currentProjectId.value, wordCount.value)
   }
 
-  async function createNewProject(name, category = '', description = '') {
+  async function createNewProject(name, category = '', description = '', blueprintId = null) {
     const id = await createProject(name, category, description)
     await loadProject(id)
+
+    if (blueprintId) {
+      try {
+        const { BLUEPRINTS } = await import('../config/blueprints')
+        const { useManuscriptStore } = await import('./manuscriptStore')
+        const categoryBlueprints = BLUEPRINTS[category] || []
+        const blueprint = categoryBlueprints.find(b => b.id === blueprintId)
+        if (blueprint) {
+          const manuscriptStore = useManuscriptStore()
+          for (const section of blueprint.sections) {
+            const sectionId = await manuscriptStore.addSectionData(id, {
+              title: section.title,
+              summary: section.summary,
+              status: 'draft'
+            })
+            for (const sub of section.subsections) {
+              await manuscriptStore.addSubsectionData(id, sectionId, {
+                title: sub.title,
+                summary: sub.summary,
+                content: sub.content,
+                status: 'draft'
+              })
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to apply blueprint during project creation:', err)
+      }
+    }
+
     return id
   }
 
@@ -176,7 +224,10 @@ export const useProjectStore = defineStore('project', () => {
     currentProjectName,
     currentDescription,
     currentCategory,
+    activeWorkspaceType,
+    terminology,
     documentContent,
+    documentContentRaw,
     wordCount,
     sessionWordCount,
     sessionGoal,

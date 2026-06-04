@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, provide } from 'vue'
 import { useProjectStore } from './stores/projectStore'
-import { useFlowTimer } from './composables/useFlowTimer'
+import { useFlowSession } from './composables/useFlowSession'
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts'
 import { useAppInitialization } from './composables/useAppInitialization'
 import { useExportImport } from './composables/useExportImport'
@@ -9,7 +9,7 @@ import AppShell from './components/layout/AppShell.vue'
 import AmbientShader from './components/shared/AmbientShader.vue'
 import SettingsModal from './components/layout/SettingsModal.vue'
 import WelcomeOnboarding from './components/layout/WelcomeOnboarding.vue'
-import Toast from './components/layout/Toast.vue'
+import NotificationHost from './components/shared/NotificationHost.vue'
 import FlowEditor from './components/flow/FlowEditor.vue'
 import PolishDrawer from './components/polish/PolishDrawer.vue'
 import StoryBiblePanel from './components/storybible/StoryBiblePanel.vue'
@@ -25,7 +25,7 @@ import ArchiveDrawer from './components/layout/ArchiveDrawer.vue'
 import StoryGeneratorPanel from './components/story/StoryGeneratorPanel.vue'
 
 const projectStore = useProjectStore()
-const timer = useFlowTimer(projectStore)
+const timer = useFlowSession()
 
 const showSettingsModal = ref(false)
 const showShortcutsModal = ref(false)
@@ -36,8 +36,14 @@ const appShell = ref(null)
 const showSearchOverlay = ref(false)
 const focusMode = ref(false)
 
-const { ollamaAvailable, modelNotFound, showModelBanner, hasLoaded, initializeApp, onOnboardingComplete, onOnboardingSkip } = useAppInitialization()
-const { importStatus, showImportModal, toastMessage, toastKey, handleExport, handleExportPDF, handleExportEpub, handleImport } = useExportImport()
+// Provide insertAtCursor to child components (SparkPanel, etc.)
+// so they can insert generated text at the editor cursor position.
+provide('insertAtCursor', (text) => {
+  flowEditorRef.value?.insertAtCursor(text)
+})
+
+const { ollamaAvailable, modelNotFound, showModelBanner, hasLoaded, initializeApp, checkModelAvailability, onOnboardingComplete, onOnboardingSkip } = useAppInitialization()
+const { importStatus, showImportModal, handleExport, handleExportPDF, handleExportEpub, handleImport } = useExportImport()
 
 useKeyboardShortcuts({
   onSearchClose: () => { showSearchOverlay.value = false },
@@ -117,25 +123,13 @@ function handleOnboardingSkipWrapper() {
       @export-epub="handleExportEpub"
       @import="handleImport"
       @open-settings="showSettingsModal = true"
+      @create-project="showOnboarding = true"
     >
       <template #editor>
         <FlowEditor
           ref="flowEditorRef"
-          :is-desaturated="timer.isDesaturated.value"
-          :is-running="timer.isRunning.value"
-          :is-nudging="timer.isNudging.value"
-          :remaining="timer.remaining.value"
-          :session-word-count="projectStore.sessionWordCount"
-          :session-goal="projectStore.sessionGoal"
-          :session-progress="projectStore.sessionProgress"
-          :daily-word-count="projectStore.dailyWordCount"
-          :daily-goal="projectStore.dailyGoal"
-          :daily-progress="projectStore.dailyProgress"
-          @keystroke="timer.handleKeystroke"
-          @backspace="timer.handleBackspace"
           @paragraph-click="handleParagraphClick"
           @open-settings="showSettingsModal = true"
-          @dismiss-nudge="timer.dismissNudge()"
           @exit-flow="handleEndFlow"
         />
       </template>
@@ -188,7 +182,8 @@ function handleOnboardingSkipWrapper() {
     </AppShell>
 
     <WelcomeOnboarding 
-      :show="showOnboarding && hasLoaded" 
+      v-if="showOnboarding && hasLoaded"
+      :show="true"
       @complete="handleOnboardingCompleteWrapper"
       @skip="handleOnboardingSkipWrapper"
     />
@@ -216,13 +211,6 @@ function handleOnboardingSkipWrapper() {
         </div>
       </div>
     </div>
-
-    <Toast 
-      v-if="timer.showBackspaceToast.value" 
-      :key="'backspace'"
-      message="Keep moving — fix it later" 
-      @dismiss="timer.dismissBackspaceToast()" 
-    />
 
     <div v-if="showImportModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
       <div class="glass-modal rounded-xl shadow-warm-lg p-8 max-w-md text-center">
@@ -289,6 +277,6 @@ function handleOnboardingSkipWrapper() {
 
     <SettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @model-changed="checkModelAvailability" />
 
-    <Toast v-if="toastMessage" :key="toastKey" :message="toastMessage" @dismiss="toastMessage = ''" />
+    <NotificationHost />
   </div>
 </template>

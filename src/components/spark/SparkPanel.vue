@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, inject } from 'vue'
 import { useSparkStore } from '../../stores/sparkStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
@@ -21,6 +21,7 @@ const sparkStore = useSparkStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const settingsStore = useSettingsStore()
+const injectedInsert = inject('insertAtCursor', null)
 const { dryRun } = useContextRetrieval()
 
 const sparkModelLabel = computed(() => {
@@ -123,7 +124,12 @@ async function generateContent() {
 }
 
 function insertIntoFlow(text) {
-  projectStore.updateContent(projectStore.documentContent + '\n\n' + text)
+  if (injectedInsert) {
+    injectedInsert(text)
+  } else {
+    // Fallback: append to document content if inject is unavailable
+    projectStore.updateContent(projectStore.documentContent + '\n\n' + text)
+  }
 }
 
 function saveOpenAIKeyLocal() {
