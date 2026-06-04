@@ -40,9 +40,9 @@ export async function searchSessionArchive(projectId, query) {
   const entries = await db.sessionArchive.where('projectId').equals(projectId).toArray()
   const lower = query.toLowerCase()
   return entries.filter(e => {
-    if (e.type && e.type.toLowerCase().includes(lower)) return true
-    if (e.signal && e.signal.toLowerCase().includes(lower)) return true
-    if (e.tags && e.tags.some(t => t.toLowerCase().includes(lower))) return true
+    if (e.type?.toLowerCase().includes(lower)) return true
+    if (e.signal?.toLowerCase().includes(lower)) return true
+    if (e.tags?.some(t => t.toLowerCase().includes(lower))) return true
     if (e.data) {
       const str = typeof e.data === 'string' ? e.data : JSON.stringify(e.data)
       if (str.toLowerCase().includes(lower)) return true

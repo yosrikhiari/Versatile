@@ -1,10 +1,10 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { getDailyGoal, setDailyGoal } from '../../services/dbService'
 import { getAvailableModels, getStoredOpenAIKey, setStoredOpenAIKey } from '../../services/ollamaService'
-import { PROVIDERS, PROVIDER_LABELS, PROVIDER_LIST, PROVIDER_MODELS, FEATURES, FEATURE_LIST, FEATURE_LABELS, FEATURE_DEFAULTS, EMBEDDING_PROVIDERS, EMBEDDING_PROVIDER_LABELS, EMBEDDING_MODELS, EMBEDDING_THRESHOLD_MIN, EMBEDDING_THRESHOLD_MAX, EMBEDDING_THRESHOLD_STEP } from '../../config/ai'
+import { PROVIDERS, PROVIDER_LABELS, PROVIDER_LIST, PROVIDER_MODELS, FEATURE_LIST, FEATURE_LABELS, EMBEDDING_PROVIDER_LABELS, EMBEDDING_MODELS, EMBEDDING_THRESHOLD_MIN, EMBEDDING_THRESHOLD_MAX, EMBEDDING_THRESHOLD_STEP } from '../../config/ai'
 import BaseIcon from '../shared/BaseIcon.vue'
 import DatabaseRecovery from '../shared/DatabaseRecovery.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
@@ -230,10 +230,11 @@ watch(() => props.show, (newVal) => {
 
         <div v-if="activeTab === 'goals'">
           <div class="mb-4">
-            <label class="block text-sm font-medium text-text-secondary mb-2">
+            <label for="goal-input" class="block text-sm font-medium text-text-secondary mb-2">
               Words per day
             </label>
             <input
+              id="goal-input"
               v-model.number="goalInput"
               type="number"
               min="1"
@@ -247,8 +248,9 @@ watch(() => props.show, (newVal) => {
           <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
             <h3 class="text-sm font-medium text-text-primary">Global Defaults</h3>
             <div>
-              <label class="block text-xs text-text-secondary mb-1">Default Provider</label>
+              <label for="default-provider" class="block text-xs text-text-secondary mb-1">Default Provider</label>
               <select
+                id="default-provider"
                 :value="settingsStore.aiProvider"
                 class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
                 @change="settingsStore.setAIProvider($event.target.value)"
@@ -259,8 +261,9 @@ watch(() => props.show, (newVal) => {
               </select>
             </div>
             <div>
-              <label class="block text-xs text-text-secondary mb-1">Fallback Provider</label>
+              <label for="fallback-provider" class="block text-xs text-text-secondary mb-1">Fallback Provider</label>
               <select
+                id="fallback-provider"
                 :value="settingsStore.aiProviderFallback"
                 class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
                 @change="settingsStore.setAIProviderFallback($event.target.value)"
@@ -277,9 +280,10 @@ watch(() => props.show, (newVal) => {
           <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
             <h3 class="text-sm font-medium text-text-primary">Ollama (Local)</h3>
             <div>
-              <label class="block text-xs text-text-secondary mb-1">Endpoint</label>
+              <label for="ollama-endpoint" class="block text-xs text-text-secondary mb-1">Endpoint</label>
               <div class="flex gap-2">
                 <input
+                  id="ollama-endpoint"
                   v-model="ollamaEndpoint"
                   type="text"
                   placeholder="http://localhost:11434"
@@ -303,8 +307,9 @@ watch(() => props.show, (newVal) => {
               </div>
             </div>
             <div>
-              <label class="block text-xs text-text-secondary mb-1">Model</label>
+              <label for="ollama-model" class="block text-xs text-text-secondary mb-1">Model</label>
               <select
+                id="ollama-model"
                 v-model="selectedModel"
                 class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               >
@@ -322,9 +327,10 @@ watch(() => props.show, (newVal) => {
               ⚠ Stored locally in your browser. Do not use a high-spend key.
             </p>
             <div v-for="p in NON_OLLAMA_PROVIDERS" :key="p" class="space-y-1">
-              <label class="block text-xs text-text-secondary">{{ PROVIDER_LABELS[p] }}</label>
+              <label :for="'api-key-' + p" class="block text-xs text-text-secondary">{{ PROVIDER_LABELS[p] }}</label>
               <div class="flex gap-2">
                 <input
+                  :id="'api-key-' + p"
                   v-model="apiKeys[p]"
                   type="password"
                   :placeholder="`${p} API key`"
@@ -354,9 +360,10 @@ watch(() => props.show, (newVal) => {
             <p class="text-[10px] text-text-hint">Override the default provider/model for specific tasks. Set to "Default" to inherit from the global default above.</p>
             <div v-for="f in FEATURE_LIST" :key="f" class="flex gap-2 items-start">
               <div class="flex-1 min-w-0">
-                <label class="block text-[10px] text-text-secondary mb-0.5">{{ FEATURE_LABELS[f] }}</label>
+                <label :for="'feature-provider-' + f" class="block text-[10px] text-text-secondary mb-0.5">{{ FEATURE_LABELS[f] }}</label>
                 <div class="flex gap-1.5">
                   <select
+                    :id="'feature-provider-' + f"
                     v-model="featureProviderSelections[f]"
                     class="flex-[2] px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
                     @change="onFeatureProviderChange(f)"
@@ -367,6 +374,7 @@ watch(() => props.show, (newVal) => {
                     </option>
                   </select>
                   <select
+                    :id="'feature-model-' + f"
                     v-model="featureModelSelections[f]"
                     class="flex-[3] px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
                     :disabled="!featureProviderSelections[f] || featureProviderSelections[f] === 'default'"
@@ -384,8 +392,9 @@ watch(() => props.show, (newVal) => {
           <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
             <h3 class="text-sm font-medium text-text-primary">Embeddings</h3>
             <div>
-              <label class="block text-xs text-text-secondary mb-1">Provider</label>
+              <label for="embedding-provider" class="block text-xs text-text-secondary mb-1">Provider</label>
               <select
+                id="embedding-provider"
                 :value="settingsStore.embeddingProvider"
                 class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
                 @change="settingsStore.setEmbeddingProvider($event.target.value)"
@@ -396,8 +405,9 @@ watch(() => props.show, (newVal) => {
               </select>
             </div>
             <div>
-              <label class="block text-xs text-text-secondary mb-1">Model</label>
+              <label for="embedding-model" class="block text-xs text-text-secondary mb-1">Model</label>
               <select
+                id="embedding-model"
                 :value="settingsStore.embeddingModel"
                 class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
                 @change="settingsStore.setEmbeddingModel($event.target.value)"
@@ -409,10 +419,11 @@ watch(() => props.show, (newVal) => {
               </select>
             </div>
             <div>
-              <label class="block text-xs text-text-secondary mb-1">
+              <label for="embedding-threshold" class="block text-xs text-text-secondary mb-1">
                 Topic-shift threshold: {{ settingsStore.embeddingThreshold?.toFixed(2) }}
               </label>
               <input
+                id="embedding-threshold"
                 :value="settingsStore.embeddingThreshold"
                 type="range"
                 @input="settingsStore.setEmbeddingThreshold(parseFloat($event.target.value))"

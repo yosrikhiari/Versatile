@@ -122,7 +122,7 @@ function handleClick(event) {
 }
 
 watch(() => projectStore.documentContent, (newContent) => {
-  if (editor.value && editor.value.getHTML() !== newContent) {
+  if (editor.value?.getHTML() !== newContent) {
     editor.value.commands.setContent(newContent || '')
   }
 })

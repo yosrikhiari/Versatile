@@ -16,6 +16,18 @@ import SuggestionsModal from './SuggestionsModal.vue'
 import ApplySuggestionsModal from './ApplySuggestionsModal.vue'
 import AutoGenerateModal from './AutoGenerateModal.vue'
 
+const ENTITY_TYPE_TO_PREFIX = { character: 'char', location: 'loc', plotThread: 'thread' }
+const PREFIX_TO_ENTITY_TYPE = { char: 'character', loc: 'location', thread: 'plotThread' }
+
+function prefixFromType(type) {
+  return ENTITY_TYPE_TO_PREFIX[type] || 'thread'
+}
+
+function entityTypeFromPrefix(key) {
+  const prefix = key.split('-')[0]
+  return PREFIX_TO_ENTITY_TYPE[prefix] || 'plotThread'
+}
+
 const storyGraphStore = useStoryGraphStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
@@ -288,7 +300,7 @@ const nodes = computed(() => {
   let index = 0
 
   for (const [baseId, instanceIds] of Object.entries(storyGraphStore.nodeInstances)) {
-    const type = baseId.startsWith('char') ? 'character' : baseId.startsWith('loc') ? 'location' : 'plotThread'
+    const type = entityTypeFromPrefix(baseId)
     const entityId = baseId.replace(/^(char|loc|thread)-/, '')
     
     let entity
@@ -303,7 +315,7 @@ const nodes = computed(() => {
 
     for (const instanceId of instanceIds) {
       const parentId = nodeParents.value[instanceId]
-      const pos = (nodePositions.value[instanceId]) || (storyGraphStore.nodePositions && storyGraphStore.nodePositions[instanceId]) || { x: 100 + (index % 5) * 250, y: 100 + Math.floor(index / 5) * 150 }
+      const pos = (nodePositions.value[instanceId]) || (storyGraphStore.nodePositions?.[instanceId]) || { x: 100 + (index % 5) * 250, y: 100 + Math.floor(index / 5) * 150 }
       
       result.push({
         id: instanceId,
@@ -362,7 +374,7 @@ function isLongRangeEdge(sourceId, targetId) {
 }
 
 function getEntityBaseId(type, entityId) {
-  return `${type === 'character' ? 'char' : type === 'location' ? 'loc' : 'thread'}-${entityId}`
+  return `${prefixFromType(type)}-${entityId}`
 }
 
 function getEntityInstances(baseId) {
@@ -671,12 +683,12 @@ async function handleSidebarDeleteConnection(edge) {
 }
 
 function isConnectionExists(sourceType, sourceId, targetType, targetId) {
-  const node1Id = `${sourceType === 'character' ? 'char' : sourceType === 'location' ? 'loc' : 'thread'}-${sourceId}`
-  const node2Id = `${targetType === 'character' ? 'char' : targetType === 'location' ? 'loc' : 'thread'}-${targetId}`
+  const node1Id = `${prefixFromType(sourceType)}-${sourceId}`
+  const node2Id = `${prefixFromType(targetType)}-${targetId}`
   
   return storyGraphStore.edges.some(edge => {
-    const edgeSourceId = `${edge.sourceType === 'character' ? 'char' : edge.sourceType === 'location' ? 'loc' : 'thread'}-${edge.sourceId}`
-    const edgeTargetId = `${edge.targetType === 'character' ? 'char' : edge.targetType === 'location' ? 'loc' : 'thread'}-${edge.targetId}`
+    const edgeSourceId = `${prefixFromType(edge.sourceType)}-${edge.sourceId}`
+    const edgeTargetId = `${prefixFromType(edge.targetType)}-${edge.targetId}`
     return (edgeSourceId === node1Id && edgeTargetId === node2Id) ||
            (edgeSourceId === node2Id && edgeTargetId === node1Id)
   })
@@ -785,7 +797,7 @@ function handleDrop(event) {
     }
     
     const entity = JSON.parse(data)
-    const baseId = `${entity.type === 'character' ? 'char' : entity.type === 'location' ? 'loc' : 'thread'}-${entity.id}`
+    const baseId = `${prefixFromType(entity.type)}-${entity.id}`
     const entityLabel = entity.name || entity.label || entity.title || 'Entity'
     
     const clientRect = event.currentTarget.getBoundingClientRect()
@@ -832,7 +844,7 @@ function handleDrop(event) {
     
     let instanceId = baseId
     const existingInstances = nodeInstances.value[baseId]
-    if (existingInstances && existingInstances.length > 0) {
+    if (existingInstances?.length > 0) {
       instanceId = generateInstanceId(baseId, existingInstances)
     }
     
@@ -865,7 +877,7 @@ function handleDrop(event) {
 }
 
 function handleQuickAdd(entity) {
-  const baseId = `${entity.type === 'character' ? 'char' : entity.type === 'location' ? 'loc' : 'thread'}-${entity.id}`
+  const baseId = `${prefixFromType(entity.type)}-${entity.id}`
   
   if (isDuplicateInScope(baseId, null)) {
     addToast('Already in network')
@@ -874,7 +886,7 @@ function handleQuickAdd(entity) {
   
   let instanceId = baseId
   const existingInstances = nodeInstances.value[baseId]
-  if (existingInstances && existingInstances.length > 0) {
+  if (existingInstances?.length > 0) {
     instanceId = generateInstanceId(baseId, existingInstances)
   }
   
@@ -888,7 +900,7 @@ function handleQuickAdd(entity) {
   let nextPosition = { x: 100, y: 100 }
   
   if (nodes.value.length > 0) {
-    const lastNode = nodes.value[nodes.value.length - 1]
+    const lastNode = nodes.value.at(-1)
     nextPosition = {
       x: lastNode.position.x + 50,
       y: lastNode.position.y + 50

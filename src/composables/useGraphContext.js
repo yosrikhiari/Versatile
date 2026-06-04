@@ -113,8 +113,7 @@ export function useGraphContext() {
       parts.push(getEntityName(parsed.type, parsed.id))
       
       if (i < pathNodes.length - 1) {
-        parts.push('→')
-        parts.push(getRelationshipLabel(node.relationship))
+        parts.push('→', getRelationshipLabel(node.relationship))
       }
     }
     
@@ -185,6 +184,8 @@ export function useGraphContext() {
     getEntityRelationshipContext,
     getEntityName,
     buildNodeId,
-    parseNodeId
+    parseNodeId,
+    getEntityTypePrefix,
+    getRelationshipLabel
   }
 }

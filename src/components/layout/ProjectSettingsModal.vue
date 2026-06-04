@@ -279,7 +279,7 @@ function handleOverlayClick(event) {
                     {{ isEnhancingSynopsis ? 'Enhancing...' : 'Enhance' }}
                   </button>
                   <button
-                    v-if="projectStore.documentContent && projectStore.documentContent.length > 100"
+                    v-if="projectStore.documentContent?.length > 100"
                     :disabled="isGeneratingSynopsis || isEnhancingSynopsis"
                     class="flex items-center gap-1.5 px-2 py-1 text-xs bg-bg-secondary text-text-secondary rounded hover:bg-surface-hover transition-colors disabled:opacity-50"
                     @click="handleGenerateSynopsis"

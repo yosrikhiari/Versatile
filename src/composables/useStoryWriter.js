@@ -150,6 +150,8 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     isWriting.value = true
     writeError.value = null
 
+    let accumulated = ''
+
     try {
       const styleGuide = extractDoc(storyBible || '', 'Style Guide')
       const rejectedPatterns = extractDoc(storyBible || '', 'Avoid These Patterns')
@@ -260,8 +262,6 @@ Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No e
 
 IMPORTANT: The prose field must be at least 800 words. Do not truncate the story to save tokens.`
 
-      let accumulated = ''
-
       if (onChunk) {
         await aiStream(userPrompt, systemPrompt, (chunk) => {
           accumulated += chunk
@@ -281,7 +281,7 @@ IMPORTANT: The prose field must be at least 800 words. Do not truncate the story
       }
     } catch (err) {
       // Graceful degradation: return raw text if JSON parsing failed
-      if (err.message && err.message.includes('JSON')) {
+      if (err.message?.includes('JSON')) {
         return { prose: accumulated || '', structured: null }
       }
       writeError.value = err.message || 'Scene writing failed'
@@ -293,3 +293,5 @@ IMPORTANT: The prose field must be at least 800 words. Do not truncate the story
 
   return { writeScene, writeSceneStructured, isWriting, writeError }
 }
+
+export { extractDoc, summarizeLog }

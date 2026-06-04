@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { 
   getVolumes, addVolume, updateVolume, deleteVolume,
   assignChapterToVolume, removeChapterFromVolume,
@@ -19,11 +19,11 @@ const VOLUME_COLORS = [
   '#3b82f6', // Blue
 ]
 
+const volumeColors = () => VOLUME_COLORS
+
 export const useVolumeStore = defineStore('volume', () => {
   const volumes = ref([])
   const isLoading = ref(false)
-
-  const volumeColors = () => VOLUME_COLORS
 
   async function loadVolumes(projectId) {
     isLoading.value = true

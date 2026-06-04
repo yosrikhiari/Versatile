@@ -15,7 +15,7 @@ export function extractJson(raw) {
   // Attempt parse
   try {
     return JSON.parse(cleaned)
-  } catch (e) {
+  } catch {
     // Repair: remove trailing commas before } or ]
     cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1')
 

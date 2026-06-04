@@ -63,7 +63,7 @@ export function useStateSummarizer() {
     if (snapshot.sectionCount !== undefined) parts.push(`Total sections: ${snapshot.sectionCount}`)
     if (snapshot.characterCount !== undefined) parts.push(`Characters: ${snapshot.characterCount}`)
     if (snapshot.locationCount !== undefined) parts.push(`Locations: ${snapshot.locationCount}`)
-    if (snapshot.unresolvedThreads && snapshot.unresolvedThreads.length > 0) {
+    if (snapshot.unresolvedThreads?.length > 0) {
       parts.push(`Unresolved plot threads: ${snapshot.unresolvedThreads.slice(0, 5).join(', ')}`)
     }
     if (snapshot.toneNotes) parts.push(`Tone/genre: ${snapshot.toneNotes}`)
@@ -74,7 +74,7 @@ export function useStateSummarizer() {
     if (!snapshot) return ''
     const parts = []
     if (snapshot.wordCountDelta > 0) parts.push(`+${snapshot.wordCountDelta} words`)
-    if (snapshot.newCharacters && snapshot.newCharacters.length > 0) {
+    if (snapshot.newCharacters?.length > 0) {
       parts.push(`${snapshot.newCharacters.length} new character(s)`)
     }
     const resolved = snapshot.updatedThreads?.filter(t => t.includes('resolved')).length || 0

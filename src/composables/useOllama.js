@@ -50,11 +50,12 @@ export { analyzePolish } from '../services/generation/polishAnalysis'
 export { detectEntities } from '../services/generation/entityDetection'
 
 // --- Legacy re-exports (still used by some components) ---
-export { getStoredOpenAIKey, setStoredOpenAIKey, setPromptedForOpenAI, hasOpenAIKey, hasPromptedForOpenAI } from '../services/ollamaService'
+export { getStoredOpenAIKey, setStoredOpenAIKey, setPromptedForOpenAI } from '../services/ollamaService'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { hasOpenAIKey, hasPromptedForOpenAI } from '../services/ollamaService'
 import { retryWithBackoff } from '../services/ai/aiHelpers'
+export { hasOpenAIKey, hasPromptedForOpenAI }
 
 const TEST_PROMPT = `Respond with 'OK' only. No other text.`
 
@@ -69,7 +70,7 @@ export async function testOllamaConnection() {
     )
     const trimmed = response.trim().toUpperCase()
     return { success: trimmed === 'OK', message: trimmed }
-  } catch (error) {
+  } catch {
     if (hasPromptedForOpenAI()) {
       return { success: false, message: 'Ollama unavailable. OpenAI not configured.' }
     }

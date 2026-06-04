@@ -42,10 +42,11 @@ function sanitizeJson(raw) {
   cleaned = cleaned.replace(/```$/i, '')
   cleaned = cleaned.replace(/```json$/i, '')
   cleaned = cleaned.trim()
-  const match = cleaned.match(/\{[\s\S]*\}/)
-  if (!match) return null
+  const regex = /\{[\s\S]*\}/
+  const execResult = regex.exec(cleaned)
+  if (!execResult) return null
   try {
-    return JSON.parse(match[0])
+    return JSON.parse(execResult[0])
   } catch {
     return null
   }
@@ -75,6 +76,7 @@ Respond ONLY with valid JSON:
 If no contradictions found, return { "contradictions": [] }`
 
 function formatCharacterCheck(character, storyBibleFacts, sceneExcerpts) {
+  const excerpts = sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, 800)}`).join('\n\n')
   return `Character: ${character.name}
 Role: ${character.role || 'unknown'}
 Goal: ${character.goal || 'unknown'}
@@ -82,16 +84,17 @@ Voice: ${character.voice || 'unknown'}
 Notes: ${character.notes || 'none'}
 
 Scenes this character appears in with excerpts:
-${sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, 800)}`).join('\n\n')}`
+${excerpts}`
 }
 
 function formatLocationCheck(location, storyBibleFacts, sceneExcerpts) {
+  const excerpts = sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, 800)}`).join('\n\n')
   return `Location: ${location.name}
 Description: ${location.description || 'unknown'}
-Notes: ${location.notes || 'none'}
+Notes: ${location.notes || 'unknown'}
 
 Scenes set at this location:
-${sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, 800)}`).join('\n\n')}`
+${excerpts}`
 }
 
 export function useStoryCritic() {
@@ -167,7 +170,7 @@ Return JSON evaluation.`
         issues,
         strengths
       }
-    } catch (err) {
+    } catch {
       return {
         pass: true,
         score: 7,
@@ -233,3 +236,5 @@ Return JSON evaluation.`
 
   return { evaluateScene, isEvaluating, checkContradictions, isCheckingConsistency, consistencyReport }
 }
+
+export { sanitizeJson, countCharacters, formatCharacterCheck, formatLocationCheck }

@@ -66,7 +66,7 @@ Revise the draft to address ONLY the issues listed above. Output the full revise
       })
 
       return response || draft
-    } catch (err) {
+    } catch {
       return draft
     } finally {
       isRevising.value = false

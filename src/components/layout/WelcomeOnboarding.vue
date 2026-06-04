@@ -162,10 +162,11 @@ function handleSkipSetup() {
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">
+                <label for="input-project-name" class="block text-sm font-medium text-text-secondary mb-2">
                   What's your project called?
                 </label>
                 <input
+                  id="input-project-name"
                   v-model="projectName"
                   type="text"
                   class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
@@ -219,10 +220,11 @@ function handleSkipSetup() {
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">
+                <label for="input-synopsis" class="block text-sm font-medium text-text-secondary mb-2">
                   Synopsis / Core Goals (optional)
                 </label>
                 <textarea
+                  id="input-synopsis"
                   v-model="projectSynopsis"
                   rows="3"
                   class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint resize-none"
@@ -254,10 +256,11 @@ function handleSkipSetup() {
             <h2 class="text-lg font-medium text-text-primary mb-4">Add your first character</h2>
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">
+                <label for="input-character-name" class="block text-sm font-medium text-text-secondary mb-2">
                   Character name
                 </label>
                 <input
+                  id="input-character-name"
                   v-model="characterName"
                   type="text"
                   class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
@@ -267,10 +270,11 @@ function handleSkipSetup() {
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">
+                <label for="input-character-role" class="block text-sm font-medium text-text-secondary mb-2">
                   Role (optional)
                 </label>
                 <input
+                  id="input-character-role"
                   v-model="characterRole"
                   type="text"
                   class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"

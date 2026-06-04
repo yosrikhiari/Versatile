@@ -1,7 +1,6 @@
 import { ref } from 'vue'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
-import { useStoryDocuments } from './useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
 
 const DIRECTOR_SYSTEM_PROMPT = `You are a story architect, not a writer. Your role is to plan story structure based on the provided EVIDENCE.
@@ -85,10 +84,12 @@ function sanitizeJson(raw) {
   cleaned = cleaned.replace(/```$/i, '')
   cleaned = cleaned.replace(/```json$/i, '')
   cleaned = cleaned.trim()
-  const match = cleaned.match(/\{[\s\S]*\}/)
-  if (!match) return null
+  const start = cleaned.indexOf('{')
+  const end = cleaned.lastIndexOf('}')
+  if (start === -1 || end === -1 || end <= start) return null
+  const jsonStr = cleaned.slice(start, end + 1)
   try {
-    return JSON.parse(match[0])
+    return JSON.parse(jsonStr)
   } catch {
     return null
   }
@@ -128,9 +129,9 @@ The JSON must have an "actions" array.
 Each action object must have a "type" (e.g., "develop_character", "brainstorm_twist") and a "payload" object containing the specific details relevant to the action.`
       } else {
         baseDirectorPrompt = baseDirectorPrompt
-          .replace(/"scenes"/g, '"actions"')
-          .replace(/scene object/g, 'action object')
-          .replace(/totalScenes/g, 'totalActions')
+          .replaceAll('"scenes"', '"actions"')
+          .replaceAll('scene object', 'action object')
+          .replaceAll('totalScenes', 'totalActions')
       }
 
       const finalSystemPrompt = `${baseDirectorPrompt}\n\n${evidence}`
@@ -212,3 +213,5 @@ Each action object must have a "type" (e.g., "develop_character", "brainstorm_tw
 
   return { generateStoryPlan, isPlanning, planError }
 }
+
+export { sanitizeJson }

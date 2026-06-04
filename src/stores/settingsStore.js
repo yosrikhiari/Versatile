@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { simpleEncrypt, simpleDecrypt } from '../services/ollamaService'
-import { PROVIDERS, FEATURES, FEATURE_LIST, PROVIDER_LIST, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS, EMBEDDING_PROVIDERS } from '../config/ai'
+import { PROVIDERS, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS } from '../config/ai'
 import { aiTestConnection } from '../services/aiService'
 import { setOllamaEndpoint as setOllamaConfigEndpoint } from '../config/ollama'
-import { STORAGE_KEYS, getApiKeyStorageKey } from '../config/storageKeys'
+import { STORAGE_KEYS } from '../config/storageKeys'
 
 const DEFAULT_SETTINGS = {
   ollamaEndpoint: '/ollama',

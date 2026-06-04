@@ -1,7 +1,7 @@
 import { cosineSimilarity } from '../services/ollamaService'
 import { getEmbeddings } from '../services/embeddingService'
 import { useSettingsStore } from '../stores/settingsStore'
-import { EMBEDDING_DEFAULTS, EMBEDDING_THRESHOLD_MIN, EMBEDDING_THRESHOLD_MAX } from '../config/ai'
+import { EMBEDDING_DEFAULTS } from '../config/ai'
 
 const ABBREVIATIONS = new Set([
   'dr', 'mr', 'ms', 'mrs', 'jr', 'sr', 'st', 'ave', 'blvd', 'rd',
@@ -14,7 +14,7 @@ const ABBREVIATIONS = new Set([
 export function splitSentences(text) {
   if (!text) return []
 
-  const normalized = text.replace(/\r\n/g, '\n')
+  const normalized = text.replaceAll('\r\n', '\n')
 
   const raw = normalized.split(/(?<=[.!?])\s+|(?<=\n)\s*/)
 
@@ -102,13 +102,13 @@ function mergeSmallChunks(chunks, minSentences) {
   }
   merged.push(current)
 
-  if (merged.length > 1 && merged[merged.length - 1].sentences.length < minSentences) {
+  if (merged.length > 1 && merged.at(-1).sentences.length < minSentences) {
     const last = merged.pop()
-    merged[merged.length - 1].sentences = [
-      ...merged[merged.length - 1].sentences,
+    merged.at(-1).sentences = [
+      ...merged.at(-1).sentences,
       ...last.sentences
     ]
-    merged[merged.length - 1].endIdx = last.endIdx
+    merged.at(-1).endIdx = last.endIdx
   }
 
   return merged
@@ -117,7 +117,6 @@ function mergeSmallChunks(chunks, minSentences) {
 export async function computeSemanticChunks(text, options = {}) {
   const store = useSettingsStore()
   const threshold = options.threshold ?? store.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
-  const minChunkSize = options.minChunkSize ?? 200
   const maxChunkSize = options.maxChunkSize ?? 3500
   const embeddingProvider = options.embeddingProvider || store.embeddingProvider
   const embeddingModel = options.embeddingModel || store.embeddingModel || EMBEDDING_DEFAULTS.model
@@ -192,3 +191,5 @@ async function recursiveSplit(chunk, maxChars, provider, model, threshold) {
   }
   return result
 }
+
+export { computeChunksForSentences, mergeSmallChunks }

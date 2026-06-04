@@ -1,6 +1,6 @@
 import { getOllamaEndpoint } from '../config/ollama'
 import { aiGenerate, aiStream } from './aiService'
-import { PROVIDERS, FEATURES } from '../config/ai'
+import { FEATURES } from '../config/ai'
 import { STORAGE_KEYS } from '../config/storageKeys'
 import Dexie from 'dexie'
 
@@ -168,7 +168,7 @@ export async function getEmbedding(entityType, entityId, fullText) {
   const cacheKey = `${entityType}_${entityId}`
   const cached = cache[cacheKey]
 
-  if (cached && cached.text === fullText) {
+  if (cached?.text === fullText) {
     log('Using cached embedding for:', cacheKey)
     return cached.embedding
   }
