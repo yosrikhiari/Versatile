@@ -21,6 +21,8 @@ function classifyGoal(premise) {
   return { type: 'generate_story', horizon: 'long_term' }
 }
 
+export { countWords, classifyGoal }
+
 export function useStoryOrchestrator() {
   const director = useStoryDirector()
   const writer = useStoryWriter()

@@ -67,3 +67,5 @@ async function copyToClipboard(story) {
 export function useStoryExport() {
   return { exportAsText, exportAsMarkdown, copyToClipboard }
 }
+
+export { getFullText, getTitle, sanitizeFilename }

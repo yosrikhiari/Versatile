@@ -191,3 +191,5 @@ async function recursiveSplit(chunk, maxChars, provider, model, threshold) {
   }
   return result
 }
+
+export { computeChunksForSentences, mergeSmallChunks }
