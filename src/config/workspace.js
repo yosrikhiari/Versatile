@@ -1,17 +1,77 @@
 export const WORKSPACE_TYPES = {
   CREATIVE: 'creative',
+  NOVEL: 'novel',
+  SCREENPLAY: 'screenplay',
   LEGAL: 'legal',
   TECHNICAL: 'technical',
   BUSINESS: 'business',
-  RESEARCH: 'research'
+  RESEARCH: 'research',
+  INVOICE: 'invoice',
+  PRESENTATION: 'presentation',
+  EMAIL: 'email',
+  DOCUMENTATION: 'documentation',
+  PRESS_RELEASE: 'pressRelease',
+  GRANT: 'grant',
+  MEETING: 'meeting',
+  CASE_STUDY: 'caseStudy',
+  GENERAL: 'general'
 }
 
 export const WORKSPACE_LABELS = {
   [WORKSPACE_TYPES.CREATIVE]: 'Creative Writing',
+  [WORKSPACE_TYPES.NOVEL]: 'Novel',
+  [WORKSPACE_TYPES.SCREENPLAY]: 'Screenplay / Script',
   [WORKSPACE_TYPES.LEGAL]: 'Legal Contracts & Agreements',
   [WORKSPACE_TYPES.TECHNICAL]: 'Technical Specifications',
   [WORKSPACE_TYPES.BUSINESS]: 'Business Reports & Documentation',
-  [WORKSPACE_TYPES.RESEARCH]: 'Research & Academic Papers'
+  [WORKSPACE_TYPES.RESEARCH]: 'Research & Academic Papers',
+  [WORKSPACE_TYPES.INVOICE]: 'Invoice',
+  [WORKSPACE_TYPES.PRESENTATION]: 'Presentation / Slide Deck',
+  [WORKSPACE_TYPES.EMAIL]: 'Email Campaign',
+  [WORKSPACE_TYPES.DOCUMENTATION]: 'User Guide / Documentation',
+  [WORKSPACE_TYPES.PRESS_RELEASE]: 'Press Release',
+  [WORKSPACE_TYPES.GRANT]: 'Grant Proposal',
+  [WORKSPACE_TYPES.MEETING]: 'Meeting Notes / Minutes',
+  [WORKSPACE_TYPES.CASE_STUDY]: 'Case Study',
+  [WORKSPACE_TYPES.GENERAL]: 'General Document'
+}
+
+export const WORKSPACE_ICONS = {
+  [WORKSPACE_TYPES.CREATIVE]: 'feather',
+  [WORKSPACE_TYPES.NOVEL]: 'book-open',
+  [WORKSPACE_TYPES.SCREENPLAY]: 'clapperboard',
+  [WORKSPACE_TYPES.LEGAL]: 'scale',
+  [WORKSPACE_TYPES.TECHNICAL]: 'cpu',
+  [WORKSPACE_TYPES.BUSINESS]: 'bar-chart-3',
+  [WORKSPACE_TYPES.RESEARCH]: 'flask-conical',
+  [WORKSPACE_TYPES.INVOICE]: 'file-text',
+  [WORKSPACE_TYPES.PRESENTATION]: 'presentation',
+  [WORKSPACE_TYPES.EMAIL]: 'mail',
+  [WORKSPACE_TYPES.DOCUMENTATION]: 'book-copy',
+  [WORKSPACE_TYPES.PRESS_RELEASE]: 'megaphone',
+  [WORKSPACE_TYPES.GRANT]: 'hand',
+  [WORKSPACE_TYPES.MEETING]: 'clipboard-pen',
+  [WORKSPACE_TYPES.CASE_STUDY]: 'search',
+  [WORKSPACE_TYPES.GENERAL]: 'file'
+}
+
+export const WORKSPACE_DESCRIPTIONS = {
+  [WORKSPACE_TYPES.CREATIVE]: 'Stories, poems, and any imaginative writing with characters and plot.',
+  [WORKSPACE_TYPES.NOVEL]: 'Full-length fiction with chapters, character arcs, and narrative structure.',
+  [WORKSPACE_TYPES.SCREENPLAY]: 'Scripts for film, television, or stage with scene and dialogue formatting.',
+  [WORKSPACE_TYPES.LEGAL]: 'Contracts, agreements, NDAs, and legal documents with formal clause structure.',
+  [WORKSPACE_TYPES.TECHNICAL]: 'System specs, API docs, architecture designs, and engineering documents.',
+  [WORKSPACE_TYPES.BUSINESS]: 'Reports, proposals, strategic plans, and business correspondence.',
+  [WORKSPACE_TYPES.RESEARCH]: 'Academic papers, studies, journal articles, and scientific documentation.',
+  [WORKSPACE_TYPES.INVOICE]: 'Billing invoices, quotes, estimates, and financial statements.',
+  [WORKSPACE_TYPES.PRESENTATION]: 'Slide decks, pitch decks, and visual presentation content.',
+  [WORKSPACE_TYPES.EMAIL]: 'Email campaigns, newsletters, and outreach sequences.',
+  [WORKSPACE_TYPES.DOCUMENTATION]: 'User manuals, how-to guides, FAQs, and product documentation.',
+  [WORKSPACE_TYPES.PRESS_RELEASE]: 'Media announcements, news releases, and public statements.',
+  [WORKSPACE_TYPES.GRANT]: 'Research grants, funding proposals, and sponsorship requests.',
+  [WORKSPACE_TYPES.MEETING]: 'Meeting minutes, agendas, notes, and action item trackers.',
+  [WORKSPACE_TYPES.CASE_STUDY]: 'In-depth analysis of projects, customers, or scenarios.',
+  [WORKSPACE_TYPES.GENERAL]: 'Any other type of document not covered above.'
 }
 
 export const WORKSPACE_TERMINOLOGY = {
@@ -26,6 +86,30 @@ export const WORKSPACE_TERMINOLOGY = {
     locations: 'Locations',
     plotThreads: 'Plot Threads',
     synopsisLabel: 'Story Synopsis'
+  },
+  [WORKSPACE_TYPES.NOVEL]: {
+    bible: 'Story Bible',
+    sections: 'Chapters',
+    generator: 'Chapter Generator',
+    generatorLabel: 'Novel Tools',
+    entityLabel: 'Story Elements',
+    characters: 'Characters',
+    characterRole: 'Role',
+    locations: 'Settings',
+    plotThreads: 'Plot Threads',
+    synopsisLabel: 'Novel Synopsis'
+  },
+  [WORKSPACE_TYPES.SCREENPLAY]: {
+    bible: 'Script Bible',
+    sections: 'Scenes',
+    generator: 'Script Generator',
+    generatorLabel: 'Script Tools',
+    entityLabel: 'Script Elements',
+    characters: 'Characters',
+    characterRole: 'Role',
+    locations: 'Settings',
+    plotThreads: 'Storylines',
+    synopsisLabel: 'Logline'
   },
   [WORKSPACE_TYPES.LEGAL]: {
     bible: 'Contract Knowledge Base',
@@ -74,5 +158,113 @@ export const WORKSPACE_TERMINOLOGY = {
     locations: 'Sources / Facilities',
     plotThreads: 'Hypotheses',
     synopsisLabel: 'Abstract'
+  },
+  [WORKSPACE_TYPES.INVOICE]: {
+    bible: 'Invoice Templates',
+    sections: 'Line Items',
+    generator: 'Invoice Generator',
+    generatorLabel: 'Invoice Tools',
+    entityLabel: 'Line Items',
+    characters: 'Parties',
+    characterRole: 'Role',
+    locations: 'Billing Addresses',
+    plotThreads: 'Payment Milestones',
+    synopsisLabel: 'Invoice Summary'
+  },
+  [WORKSPACE_TYPES.PRESENTATION]: {
+    bible: 'Slide Library',
+    sections: 'Slides',
+    generator: 'Slide Generator',
+    generatorLabel: 'Presentation Tools',
+    entityLabel: 'Visual Elements',
+    characters: 'Presenters / Stakeholders',
+    characterRole: 'Role',
+    locations: 'Venues / Channels',
+    plotThreads: 'Key Messages',
+    synopsisLabel: 'Presentation Abstract'
+  },
+  [WORKSPACE_TYPES.EMAIL]: {
+    bible: 'Campaign Assets',
+    sections: 'Email Sections',
+    generator: 'Campaign Generator',
+    generatorLabel: 'Email Tools',
+    entityLabel: 'Campaign Elements',
+    characters: 'Target Audiences',
+    characterRole: 'Segment Type',
+    locations: 'Distribution Channels',
+    plotThreads: 'Campaign Objectives',
+    synopsisLabel: 'Campaign Brief'
+  },
+  [WORKSPACE_TYPES.DOCUMENTATION]: {
+    bible: 'Knowledge Base',
+    sections: 'Topics',
+    generator: 'Doc Generator',
+    generatorLabel: 'Doc Tools',
+    entityLabel: 'Reference Elements',
+    characters: 'User Personas',
+    characterRole: 'User Type',
+    locations: 'Environments',
+    plotThreads: 'Learning Objectives',
+    synopsisLabel: 'Document Abstract'
+  },
+  [WORKSPACE_TYPES.PRESS_RELEASE]: {
+    bible: 'Media Kit',
+    sections: 'Sections',
+    generator: 'Release Generator',
+    generatorLabel: 'PR Tools',
+    entityLabel: 'Key Elements',
+    characters: 'Spokespersons',
+    characterRole: 'Title',
+    locations: 'Markets / Regions',
+    plotThreads: 'Key Announcements',
+    synopsisLabel: 'Press Summary'
+  },
+  [WORKSPACE_TYPES.GRANT]: {
+    bible: 'Research Base',
+    sections: 'Proposal Sections',
+    generator: 'Proposal Generator',
+    generatorLabel: 'Grant Tools',
+    entityLabel: 'Proposal Elements',
+    characters: 'Investigators',
+    characterRole: 'Role',
+    locations: 'Institutions',
+    plotThreads: 'Research Objectives',
+    synopsisLabel: 'Proposal Abstract'
+  },
+  [WORKSPACE_TYPES.MEETING]: {
+    bible: 'Reference Materials',
+    sections: 'Agenda Items',
+    generator: 'Notes Generator',
+    generatorLabel: 'Meeting Tools',
+    entityLabel: 'Agenda Elements',
+    characters: 'Attendees',
+    characterRole: 'Role',
+    locations: 'Meeting Rooms',
+    plotThreads: 'Action Items',
+    synopsisLabel: 'Meeting Summary'
+  },
+  [WORKSPACE_TYPES.CASE_STUDY]: {
+    bible: 'Reference Cases',
+    sections: 'Sections',
+    generator: 'Case Generator',
+    generatorLabel: 'Case Tools',
+    entityLabel: 'Case Elements',
+    characters: 'Subjects',
+    characterRole: 'Stakeholder Role',
+    locations: 'Contexts',
+    plotThreads: 'Key Findings',
+    synopsisLabel: 'Case Abstract'
+  },
+  [WORKSPACE_TYPES.GENERAL]: {
+    bible: 'Reference Materials',
+    sections: 'Sections',
+    generator: 'Document Generator',
+    generatorLabel: 'Document Tools',
+    entityLabel: 'Elements',
+    characters: 'People',
+    characterRole: 'Role',
+    locations: 'Places',
+    plotThreads: 'Objectives',
+    synopsisLabel: 'Summary'
   }
 }

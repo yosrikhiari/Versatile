@@ -1,5 +1,5 @@
 import { useManuscriptStore } from '../stores/manuscriptStore'
-import { ollamaEmbeddings, getEmbeddingCache, cosineSimilarity } from '../services/ollamaService'
+import { ollamaEmbeddings, getEmbeddingCache, getEmbedding, cosineSimilarity } from '../services/ollamaService'
 import { getEmbeddings } from '../services/embeddingService'
 import { computeSemanticChunks } from './useSemanticChunking'
 import { getScenes } from '../services/dbService'

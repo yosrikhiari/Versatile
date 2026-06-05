@@ -3,7 +3,8 @@ import { ref, computed, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import BaseIcon from '../shared/BaseIcon.vue'
-import { WORKSPACE_LABELS, WORKSPACE_TYPES } from '../../config/workspace'
+import AppTooltip from '../shared/AppTooltip.vue'
+import { WORKSPACE_LABELS, WORKSPACE_TYPES, WORKSPACE_ICONS, WORKSPACE_DESCRIPTIONS } from '../../config/workspace'
 import { BLUEPRINTS } from '../../config/blueprints'
 
 const projectStore = useProjectStore()
@@ -18,12 +19,13 @@ const emit = defineEmits(['complete', 'skip'])
 const currentStep = ref(1)
 const projectCategory = ref(WORKSPACE_TYPES.CREATIVE)
 const selectedBlueprintId = ref('')
-const projectName = ref('My Novel')
-const projectGenre = ref('')
+const projectName = ref('')
 const projectSynopsis = ref('')
 const characterName = ref('')
 const characterRole = ref('')
 const isCreating = ref(false)
+
+const NARRATIVE_TYPES = new Set([WORKSPACE_TYPES.CREATIVE, WORKSPACE_TYPES.NOVEL, WORKSPACE_TYPES.SCREENPLAY])
 
 const availableBlueprints = computed(() => {
   return BLUEPRINTS[projectCategory.value] || []
@@ -32,24 +34,49 @@ const availableBlueprints = computed(() => {
 const canProceedStep1 = computed(() => projectName.value.trim().length > 0)
 const canProceedStep2 = computed(() => characterName.value.trim().length > 0)
 
+const workspaceCategories = computed(() => {
+  return {
+    'Narrative & Creative': Object.entries(WORKSPACE_LABELS).filter(([key]) =>
+      NARRATIVE_TYPES.has(key)
+    ),
+    'Professional & Business': Object.entries(WORKSPACE_LABELS).filter(([key]) =>
+      [WORKSPACE_TYPES.LEGAL, WORKSPACE_TYPES.BUSINESS, WORKSPACE_TYPES.INVOICE, WORKSPACE_TYPES.PRESENTATION, WORKSPACE_TYPES.EMAIL, WORKSPACE_TYPES.PRESS_RELEASE, WORKSPACE_TYPES.MEETING].includes(key)
+    ),
+    'Technical & Academic': Object.entries(WORKSPACE_LABELS).filter(([key]) =>
+      [WORKSPACE_TYPES.TECHNICAL, WORKSPACE_TYPES.RESEARCH, WORKSPACE_TYPES.DOCUMENTATION, WORKSPACE_TYPES.GRANT, WORKSPACE_TYPES.CASE_STUDY].includes(key)
+    ),
+    'General': Object.entries(WORKSPACE_LABELS).filter(([key]) =>
+      key === WORKSPACE_TYPES.GENERAL
+    )
+  }
+})
+
 watch(projectCategory, (newCat) => {
   selectedBlueprintId.value = ''
-  if (newCat === WORKSPACE_TYPES.CREATIVE) {
-    projectName.value = 'My Novel'
-  } else if (newCat === WORKSPACE_TYPES.LEGAL) {
-    projectName.value = 'Service Agreement NDA'
-  } else if (newCat === WORKSPACE_TYPES.TECHNICAL) {
-    projectName.value = 'System Architecture Specification'
-  } else if (newCat === WORKSPACE_TYPES.BUSINESS) {
-    projectName.value = 'Q3 Market Expansion Plan'
-  } else if (newCat === WORKSPACE_TYPES.RESEARCH) {
-    projectName.value = 'Theoretical Physics Analysis'
+  const defaults = {
+    [WORKSPACE_TYPES.CREATIVE]: 'My Novel',
+    [WORKSPACE_TYPES.NOVEL]: 'The Last Kingdom',
+    [WORKSPACE_TYPES.SCREENPLAY]: 'Untitled Script',
+    [WORKSPACE_TYPES.LEGAL]: 'Service Agreement NDA',
+    [WORKSPACE_TYPES.TECHNICAL]: 'System Architecture Specification',
+    [WORKSPACE_TYPES.BUSINESS]: 'Q3 Market Expansion Plan',
+    [WORKSPACE_TYPES.RESEARCH]: 'Theoretical Physics Analysis',
+    [WORKSPACE_TYPES.INVOICE]: 'Invoice #001',
+    [WORKSPACE_TYPES.PRESENTATION]: 'Pitch Deck — [Company Name]',
+    [WORKSPACE_TYPES.EMAIL]: 'Welcome Campaign',
+    [WORKSPACE_TYPES.DOCUMENTATION]: 'Product User Guide',
+    [WORKSPACE_TYPES.PRESS_RELEASE]: 'Press Release — [Announcement]',
+    [WORKSPACE_TYPES.GRANT]: 'Grant Proposal — [Project]',
+    [WORKSPACE_TYPES.MEETING]: 'Meeting Notes — [Date]',
+    [WORKSPACE_TYPES.CASE_STUDY]: 'Case Study — [Customer]',
+    [WORKSPACE_TYPES.GENERAL]: 'My Document'
   }
+  projectName.value = defaults[newCat] || 'My Document'
 })
 
 async function handleNextStep1() {
   if (!canProceedStep1.value) return
-  if (projectCategory.value === WORKSPACE_TYPES.CREATIVE) {
+  if (NARRATIVE_TYPES.has(projectCategory.value)) {
     currentStep.value = 2
   } else {
     await createProjectDirectly()
@@ -106,10 +133,6 @@ function handleComplete() {
   emit('complete')
 }
 
-function handleSkip() {
-  emit('skip')
-}
-
 function handleSkipSetup() {
   if (currentStep.value < 3) {
     emit('skip')
@@ -118,216 +141,248 @@ function handleSkipSetup() {
 </script>
 
 <template>
-  <div v-if="show" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-    <div class="bg-bg-secondary border border-border-subtle rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
-      <div class="p-8 overflow-y-auto scrollbar-thin">
-        <div class="flex items-center justify-between mb-6">
-          <div>
-            <h1 class="text-2xl font-bold text-accent">Welcome to Versatile</h1>
-            <p class="text-text-secondary text-sm mt-1">Let's get you set up</p>
-          </div>
-          <div class="flex items-center gap-2 text-xs text-text-hint">
-            <span :class="{ 'text-accent font-medium': currentStep === 1 }">1</span>
-            <span>-</span>
-            <span v-if="projectCategory === WORKSPACE_TYPES.CREATIVE" :class="{ 'text-accent font-medium': currentStep === 2 }">2</span>
-            <span v-if="projectCategory === WORKSPACE_TYPES.CREATIVE">-</span>
-            <span :class="{ 'text-accent font-medium': currentStep === 3 }">3</span>
-          </div>
-        </div>
-
+  <div v-if="show" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-bg-secondary border border-border-subtle rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
+      <div class="p-6 sm:p-8 overflow-y-auto scrollbar-thin">
+        
+        <!-- ============ STEP 1: Purpose Selection ============ -->
         <div v-if="currentStep === 1" class="space-y-6">
-          <div>
-            <h2 class="text-lg font-medium text-text-primary mb-4">Tell us about your project</h2>
-            <div class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">
-                  What kind of document are you generating?
-                </label>
-                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div class="text-center mb-2">
+            <BaseIcon name="wand-2" :size="32" class="mx-auto mb-3 text-accent" />
+            <h1 class="text-2xl font-bold text-text-primary">Welcome to Versatile</h1>
+            <p class="text-text-secondary text-sm mt-1.5 max-w-md mx-auto">
+              What would you like to create today? Choose a document type to get started.
+            </p>
+          </div>
+
+          <div class="space-y-5">
+            <div v-for="(types, categoryName) in workspaceCategories" :key="categoryName">
+              <h3 v-if="types.length > 0" class="text-[10px] uppercase tracking-[0.12em] text-text-hint font-ui mb-2.5 px-1">
+                {{ categoryName }}
+              </h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <AppTooltip
+                  v-for="[key, label] in types"
+                  :key="key"
+                  :text="WORKSPACE_DESCRIPTIONS[key]"
+                  position="bottom"
+                >
                   <button
-                    v-for="(label, key) in WORKSPACE_LABELS"
-                    :key="key"
                     type="button"
                     :class="[
-                      'px-3 py-2.5 rounded-lg border text-left text-xs transition-all duration-150',
+                      'w-full flex flex-col items-start gap-1.5 px-3 py-3 rounded-xl border text-left transition-all duration-150 group',
                       projectCategory === key
-                        ? 'border-accent bg-accent/10 text-accent font-semibold shadow-warm-sm'
-                        : 'border-border-subtle bg-bg-tertiary text-text-secondary hover:bg-surface-hover'
+                        ? 'border-accent bg-accent/10 text-accent ring-1 ring-accent/30 shadow-warm-sm'
+                        : 'border-border-subtle bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:border-border-subtle/80'
                     ]"
                     @click="projectCategory = key"
                   >
-                    {{ label }}
+                    <BaseIcon
+                      :name="WORKSPACE_ICONS[key] || 'file'"
+                      :size="20"
+                      :class="projectCategory === key ? 'text-accent' : 'text-text-hint group-hover:text-text-secondary'"
+                    />
+                    <div class="text-xs font-medium leading-tight">{{ label }}</div>
+                    <div v-if="projectCategory === key" class="absolute top-2 right-2">
+                      <BaseIcon name="check-circle" :size="14" class="text-accent" />
+                    </div>
                   </button>
-                </div>
+                </AppTooltip>
               </div>
+            </div>
+          </div>
 
-              <div>
-                <label for="input-project-name" class="block text-sm font-medium text-text-secondary mb-2">
-                  What's your project called?
+          <div v-if="projectCategory" class="bg-bg-tertiary/80 border border-border-subtle rounded-xl p-4 space-y-3">
+            <p class="text-xs text-text-hint leading-relaxed">
+              {{ WORKSPACE_DESCRIPTIONS[projectCategory] }}
+            </p>
+            
+            <div>
+              <AppTooltip text="Give your project a descriptive title. This will appear in the header and help you identify it later." position="top">
+                <label for="input-project-name" class="block text-xs font-medium text-text-secondary mb-1.5">
+                  Project name
                 </label>
+              </AppTooltip>
+              <div class="flex gap-2">
                 <input
                   id="input-project-name"
                   v-model="projectName"
                   type="text"
-                  class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
-                  placeholder="My project"
-                  autofocus
+                  class="flex-1 px-3.5 py-2.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
+                  placeholder="Name your project"
                   @keyup.enter="handleNextStep1"
                 />
-              </div>
-
-              <div v-if="availableBlueprints.length > 0">
-                <label class="block text-sm font-medium text-text-secondary mb-2">
-                  Start with a structural scaffold?
-                </label>
-                <div class="grid grid-cols-1 gap-2">
-                  <button
-                    type="button"
-                    :class="[
-                      'px-4 py-3 rounded-lg border text-left text-xs transition-all duration-150 flex items-center justify-between',
-                      selectedBlueprintId === ''
-                        ? 'border-accent bg-accent/10 text-accent font-semibold'
-                        : 'border-border-subtle bg-bg-tertiary text-text-secondary hover:bg-surface-hover'
-                    ]"
-                    @click="selectedBlueprintId = ''"
-                  >
-                    <div>
-                      <div class="font-medium text-sm text-text-primary">Blank Slate</div>
-                      <div class="text-text-hint text-[10px] mt-0.5 font-normal">Start with a completely empty document.</div>
-                    </div>
-                    <BaseIcon v-if="selectedBlueprintId === ''" name="check" :size="16" />
-                  </button>
-
-                  <button
-                    v-for="blueprint in availableBlueprints"
-                    :key="blueprint.id"
-                    type="button"
-                    :class="[
-                      'px-4 py-3 rounded-lg border text-left text-xs transition-all duration-150 flex items-center justify-between',
-                      selectedBlueprintId === blueprint.id
-                        ? 'border-accent bg-accent/10 text-accent font-semibold'
-                        : 'border-border-subtle bg-bg-tertiary text-text-secondary hover:bg-surface-hover'
-                    ]"
-                    @click="selectedBlueprintId = blueprint.id"
-                  >
-                    <div>
-                      <div class="font-medium text-sm text-text-primary">{{ blueprint.name }}</div>
-                      <div class="text-text-hint text-[10px] mt-0.5 font-normal">{{ blueprint.description }}</div>
-                    </div>
-                    <BaseIcon v-if="selectedBlueprintId === blueprint.id" name="check" :size="16" />
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label for="input-synopsis" class="block text-sm font-medium text-text-secondary mb-2">
-                  Synopsis / Core Goals (optional)
-                </label>
-                <textarea
-                  id="input-synopsis"
-                  v-model="projectSynopsis"
-                  rows="3"
-                  class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint resize-none"
-                  placeholder="Define the primary objectives or premises for the document..."
-                ></textarea>
-                <p class="mt-1.5 text-xs text-text-hint">This helps the AI model align content generation perfectly.</p>
+                <button
+                  :disabled="!canProceedStep1 || isCreating"
+                  class="px-5 py-2.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  @click="handleNextStep1"
+                >
+                  {{ NARRATIVE_TYPES.has(projectCategory) ? 'Next' : (isCreating ? 'Creating...' : 'Create') }}
+                </button>
               </div>
             </div>
+
+            <details class="group">
+              <summary class="text-[11px] text-text-hint cursor-pointer hover:text-text-secondary transition-colors select-none">
+                Advanced options
+              </summary>
+              <div class="mt-3 space-y-3">
+                <div v-if="availableBlueprints.length > 0">
+                  <AppTooltip text="Choose a pre-built structure to scaffold your document. 'Blank Slate' starts from scratch." position="top">
+                    <label class="block text-xs font-medium text-text-secondary mb-1.5">
+                      Template / Scaffold
+                    </label>
+                  </AppTooltip>
+                  <div class="flex flex-wrap gap-1.5">
+                    <AppTooltip text="Start with a completely empty document and build your own structure from scratch." position="top">
+                      <button
+                        type="button"
+                        :class="[
+                          'px-2.5 py-1.5 rounded-lg border text-[11px] transition-all duration-150',
+                          selectedBlueprintId === ''
+                            ? 'border-accent bg-accent/10 text-accent font-medium'
+                            : 'border-border-subtle bg-bg-secondary text-text-secondary hover:bg-surface-hover'
+                        ]"
+                        @click="selectedBlueprintId = ''"
+                      >
+                        Blank Slate
+                      </button>
+                    </AppTooltip>
+                    <AppTooltip
+                      v-for="blueprint in availableBlueprints"
+                      :key="blueprint.id"
+                      :text="blueprint.description"
+                      position="top"
+                    >
+                      <button
+                        type="button"
+                        :class="[
+                          'px-2.5 py-1.5 rounded-lg border text-[11px] transition-all duration-150',
+                          selectedBlueprintId === blueprint.id
+                            ? 'border-accent bg-accent/10 text-accent font-medium'
+                            : 'border-border-subtle bg-bg-secondary text-text-secondary hover:bg-surface-hover'
+                        ]"
+                        @click="selectedBlueprintId = blueprint.id"
+                      >
+                        {{ blueprint.name }}
+                      </button>
+                    </AppTooltip>
+                  </div>
+                </div>
+
+                <div>
+                  <AppTooltip text="Describe the purpose, premise, or objectives of this document. This helps the AI tailor content generation to your goals." position="top">
+                    <label for="input-synopsis" class="block text-xs font-medium text-text-secondary mb-1.5">
+                      Synopsis / Goals <span class="text-text-hint">(optional)</span>
+                    </label>
+                  </AppTooltip>
+                  <textarea
+                    id="input-synopsis"
+                    v-model="projectSynopsis"
+                    rows="2"
+                    class="w-full px-3.5 py-2 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint resize-none"
+                    placeholder="Describe the purpose, premise, or objectives of this document..."
+                  ></textarea>
+                  <p class="mt-1 text-[10px] text-text-hint">Helps the AI align content generation with your goals.</p>
+                </div>
+              </div>
+            </details>
           </div>
-          <div class="flex gap-3 pt-2">
-            <button
-              class="flex-1 py-3 text-text-secondary hover:text-text-primary transition-colors text-sm"
-              @click="handleSkipSetup"
-            >
-              Skip setup
-            </button>
-            <button
-              :disabled="!canProceedStep1 || isCreating"
-              class="flex-1 py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              @click="handleNextStep1"
-            >
-              {{ isCreating ? 'Creating...' : 'Next' }}
-            </button>
+
+          <div class="flex justify-center pt-1">
+            <AppTooltip text="Dismiss the onboarding and explore the interface on your own. You can create a project later from the header menu." position="top">
+              <button
+                class="text-xs text-text-hint hover:text-text-secondary transition-colors"
+                @click="handleSkipSetup"
+              >
+                Skip — I'll figure it out later
+              </button>
+            </AppTooltip>
           </div>
         </div>
 
+        <!-- ============ STEP 2: Character Setup (Narrative only) ============ -->
         <div v-if="currentStep === 2" class="space-y-6">
-          <div>
-            <h2 class="text-lg font-medium text-text-primary mb-4">Add your first character</h2>
-            <div class="space-y-4">
-              <div>
+          <div class="text-center">
+            <BaseIcon name="users" :size="28" class="mx-auto mb-3 text-accent" />
+            <h2 class="text-xl font-semibold text-text-primary">Add your first character</h2>
+            <p class="text-sm text-text-secondary mt-1">Kick off your story bible with a key figure.</p>
+          </div>
+          <div class="space-y-4 max-w-sm mx-auto">
+            <div>
+              <AppTooltip text="The name of your main character or protagonist. This adds them to your project's story bible." position="top">
                 <label for="input-character-name" class="block text-sm font-medium text-text-secondary mb-2">
                   Character name
                 </label>
-                <input
-                  id="input-character-name"
-                  v-model="characterName"
-                  type="text"
-                  class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
-                  placeholder="Elena"
-                  autofocus
-                  @keyup.enter="handleNextStep2"
-                />
-              </div>
-              <div>
+              </AppTooltip>
+              <input
+                id="input-character-name"
+                v-model="characterName"
+                type="text"
+                class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
+                placeholder="Elena"
+                autofocus
+                @keyup.enter="handleNextStep2"
+              />
+            </div>
+            <div>
+              <AppTooltip text="The character's archetype or function in the story — Protagonist, Antagonist, Mentor, etc." position="top">
                 <label for="input-character-role" class="block text-sm font-medium text-text-secondary mb-2">
-                  Role (optional)
+                  Role <span class="text-text-hint font-normal">(optional)</span>
                 </label>
-                <input
-                  id="input-character-role"
-                  v-model="characterRole"
-                  type="text"
-                  class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
-                  placeholder="Protagonist"
-                />
-              </div>
+              </AppTooltip>
+              <input
+                id="input-character-role"
+                v-model="characterRole"
+                type="text"
+                class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
+                placeholder="Protagonist"
+              />
             </div>
           </div>
-          <div class="flex gap-3">
+          <div class="flex gap-3 max-w-sm mx-auto">
             <button
               class="flex-1 py-3 text-text-secondary hover:text-text-primary transition-colors text-sm"
-              @click="handleSkipSetup"
+              @click="currentStep = 1"
             >
-              Skip setup
+              Back
             </button>
             <button
               :disabled="!canProceedStep2 || isCreating"
               class="flex-1 py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               @click="handleNextStep2"
             >
-              {{ isCreating ? 'Creating...' : 'Next' }}
+              {{ isCreating ? 'Creating...' : 'Create & Continue' }}
             </button>
           </div>
         </div>
 
-        <div v-if="currentStep === 3" class="space-y-6">
+        <!-- ============ STEP 3: Done ============ -->
+        <div v-if="currentStep === 3" class="space-y-6 text-center py-4">
+          <BaseIcon name="sparkles" :size="40" class="mx-auto text-accent" />
           <div>
-            <h2 class="text-lg font-medium text-text-primary mb-4">You're all set!</h2>
-            <div class="grid grid-cols-3 gap-3">
-              <div class="p-4 bg-bg-tertiary rounded-lg text-center">
-                <BaseIcon name="pen-tool" :size="24" class="mx-auto mb-2 text-accent" />
-                <div class="text-sm font-medium text-text-primary">Write</div>
-                <div class="text-xs text-text-hint mt-1">Flow mode</div>
-              </div>
-              <div class="p-4 bg-bg-tertiary rounded-lg text-center">
-                <BaseIcon name="search" :size="24" class="mx-auto mb-2 text-accent" />
-                <div class="text-sm font-medium text-text-primary">Analyze</div>
-                <div class="text-xs text-text-hint mt-1">Polish mode</div>
-              </div>
-              <div class="p-4 bg-bg-tertiary rounded-lg text-center">
-                <BaseIcon name="book-open" :size="24" class="mx-auto mb-2 text-accent" />
-                <div class="text-sm font-medium text-text-primary">Build</div>
-                <div class="text-xs text-text-hint mt-1">
-                  {{ projectStore.terminology?.bible || 'Story Bible' }}
-                </div>
-              </div>
+            <h2 class="text-xl font-bold text-text-primary">You're all set!</h2>
+            <p class="text-sm text-text-secondary mt-1.5">Your workspace is ready to go.</p>
+          </div>
+          <div class="grid grid-cols-3 gap-3 max-w-xs mx-auto">
+            <div class="p-4 bg-bg-tertiary rounded-xl text-center">
+              <BaseIcon name="pen-tool" :size="24" class="mx-auto mb-2 text-accent" />
+              <div class="text-sm font-medium text-text-primary">Write</div>
+              <div class="text-[10px] text-text-hint mt-0.5">Flow editor</div>
             </div>
-            <p class="text-sm text-text-hint mt-4 text-center">
-              This is your core writing loop: Write, Analyze, Build.
-            </p>
+            <div class="p-4 bg-bg-tertiary rounded-xl text-center">
+              <BaseIcon name="search" :size="24" class="mx-auto mb-2 text-accent" />
+              <div class="text-sm font-medium text-text-primary">Polish</div>
+              <div class="text-[10px] text-text-hint mt-0.5">Refine & edit</div>
+            </div>
+            <div class="p-4 bg-bg-tertiary rounded-xl text-center">
+              <BaseIcon name="book-open" :size="24" class="mx-auto mb-2 text-accent" />
+              <div class="text-sm font-medium text-text-primary">Build</div>
+              <div class="text-[10px] text-text-hint mt-0.5">{{ projectStore.terminology?.bible || 'Reference' }}</div>
+            </div>
           </div>
           <button
-            class="w-full py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors"
+            class="w-full max-w-xs mx-auto py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent/90 transition-colors"
             @click="handleComplete"
           >
             Start Writing

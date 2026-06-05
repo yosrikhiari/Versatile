@@ -1913,6 +1913,7 @@ async function arrangeExtendedStarLayout() {
 }
 
 .node-sublabel {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

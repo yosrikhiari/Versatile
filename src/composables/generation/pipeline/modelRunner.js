@@ -13,7 +13,8 @@ export async function executeGeneration({ userPrompt, systemPrompt, schema }) {
     }
     return buildEntity(parsed, schema)
   } catch (error) {
-    wrapApiError(error)
+    if (error) throw error
+    throw new Error('Generation failed. Ensure Ollama is running and your model is loaded.')
   }
 }
 

@@ -52,6 +52,7 @@ export function useAppInitialization() {
     
     const hasProject = await projectStore.loadLastProject()
     if (!hasProject && !isOnboardingDismissed()) {
+      hasLoaded.value = true
       return { showOnboarding: true }
     } else if (projectStore.currentProjectId) {
       await loadProjectData()

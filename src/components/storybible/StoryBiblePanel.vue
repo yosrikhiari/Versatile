@@ -15,7 +15,7 @@ import GenerateCharacterModal from './GenerateCharacterModal.vue'
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const volumeStore = useVolumeStore()
-const { showConfirm } = useNotifications()
+const { showConfirm, addToast } = useNotifications()
 const { getSectionContext } = useManuscriptContext()
 
 const characterPortraitRef = ref(null)
@@ -32,6 +32,26 @@ const isGeneratingLocation = ref(false)
 const showGenerateModal = ref(false)
 const generateMode = ref('generate')
 const characterToEnhance = ref(null)
+
+const roleEditingId = ref(null)
+const roleEditValue = ref('')
+
+function startRoleEdit(character) {
+  roleEditingId.value = character.id
+  roleEditValue.value = character.role || ''
+}
+
+async function saveRoleEdit(id) {
+  if (roleEditValue.value.trim()) {
+    await updateCharacter(id, { role: roleEditValue.value.trim() })
+  }
+  cancelRoleEdit()
+}
+
+function cancelRoleEdit() {
+  roleEditingId.value = null
+  roleEditValue.value = ''
+}
 
 const generateModalRef = ref(null)
 
@@ -108,51 +128,66 @@ async function regenerateDocumentWithConfirm() {
 watch(selectedDocType, loadDocument, { immediate: true })
 
 async function handleGenerateCharacter() {
-  if (!projectStore.currentProjectId || isGenerating.value) return
+  if (!projectStore.currentProjectId) {
+    addToast('No project selected. Open a project first.', 'warning')
+    return
+  }
+  if (isGenerating.value) return
   isGenerating.value = true
   try {
     const context = await getSectionContext('current', 'character')
     const result = await generateRandomCharacter(context, null)
     if (result) {
       await storyBibleStore.addCharacterData(projectStore.currentProjectId, result)
+      addToast('Character generated successfully.', 'success')
     }
   } catch (e) {
     console.error('Generate failed:', e)
-    alert(e.message || 'Failed to generate character')
+    addToast(e.message || 'Failed to generate character', 'error')
   } finally {
     isGenerating.value = false
   }
 }
 
 async function handleGeneratePlotThread() {
-  if (!projectStore.currentProjectId || isGeneratingPlotThread.value) return
+  if (!projectStore.currentProjectId) {
+    addToast('No project selected. Open a project first.', 'warning')
+    return
+  }
+  if (isGeneratingPlotThread.value) return
   isGeneratingPlotThread.value = true
   try {
     const context = await getSectionContext('current', 'plotThread')
     const result = await generateRandomPlotThread(context)
     if (result) {
       await storyBibleStore.addPlotThreadData(projectStore.currentProjectId, result)
+      addToast('Plot thread generated successfully.', 'success')
     }
   } catch (e) {
     console.error('Generate failed:', e)
-    alert(e.message || 'Failed to generate plot thread')
+    addToast(e.message || 'Failed to generate plot thread', 'error')
   } finally {
     isGeneratingPlotThread.value = false
   }
 }
 
 async function handleGenerateLocation() {
-  if (!projectStore.currentProjectId || isGeneratingLocation.value) return
+  if (!projectStore.currentProjectId) {
+    addToast('No project selected. Open a project first.', 'warning')
+    return
+  }
+  if (isGeneratingLocation.value) return
   isGeneratingLocation.value = true
   try {
     const context = await getSectionContext('current', 'location')
     const result = await generateRandomLocation(context)
     if (result) {
       await storyBibleStore.addLocationData(projectStore.currentProjectId, result)
+      addToast('Location generated successfully.', 'success')
     }
   } catch (e) {
     console.error('Generate failed:', e)
-    alert(e.message || 'Failed to generate location')
+    addToast(e.message || 'Failed to generate location', 'error')
   } finally {
     isGeneratingLocation.value = false
   }
@@ -206,14 +241,23 @@ async function onRejectGeneration(rejectedData) {
   await logRejectedPattern(projectStore.currentProjectId, rejectedData)
 }
 
-onMounted(async () => {
-  if (projectStore.currentProjectId) {
-    await storyBibleStore.loadAll(projectStore.currentProjectId)
-    await volumeStore.loadVolumes(projectStore.currentProjectId)
+async function loadProjectData(projectId) {
+  if (!projectId) return
+  try {
+    await storyBibleStore.loadAll(projectId)
+    await volumeStore.loadVolumes(projectId)
     const { regenerateAllDocuments } = useStoryDocuments()
-    await regenerateAllDocuments(projectStore.currentProjectId)
+    await regenerateAllDocuments(projectId)
+  } catch (e) {
+    console.error('Failed to load project data:', e)
   }
-})
+}
+
+watch(() => projectStore.currentProjectId, async (newId) => {
+  if (newId) {
+    await loadProjectData(newId)
+  }
+}, { immediate: true })
 
 const filteredCharacters = computed(() => {
   if (!searchQuery.value) return storyBibleStore.characters
@@ -240,15 +284,23 @@ const filteredPlotThreads = computed(() => {
 })
 
 async function addCharacter() {
-  if (!projectStore.currentProjectId) return
-  await storyBibleStore.addCharacterData(projectStore.currentProjectId, {
-    name: 'New Character',
-    role: '',
-    goal: '',
-    voice: '',
-    notes: '',
-    sampleDialogue: ''
-  })
+  if (!projectStore.currentProjectId) {
+    addToast('No project selected. Open a project first.', 'warning')
+    return
+  }
+  try {
+    await storyBibleStore.addCharacterData(projectStore.currentProjectId, {
+      name: 'New Character',
+      role: '',
+      goal: '',
+      voice: '',
+      notes: '',
+      sampleDialogue: ''
+    })
+  } catch (e) {
+    console.error('Failed to add character:', e)
+    addToast('Failed to add character', 'error')
+  }
 }
 
 async function updateCharacter(id, data) {
@@ -443,7 +495,27 @@ defineExpose({
             <span v-else class="font-medium text-text-primary">{{ character.name }}</span>
           </div>
           <div class="flex items-center gap-1">
-            <span v-if="character.role" class="text-xs px-2 py-0.5 bg-bg-secondary text-text-secondary rounded">
+            <span
+              v-if="roleEditingId === character.id"
+              class="inline-flex items-center"
+            >
+              <input
+                v-model="roleEditValue"
+                class="w-28 text-xs px-2 py-0.5 bg-bg-primary text-text-primary border border-border-subtle rounded outline-none focus:ring-1 focus:ring-accent/50"
+                placeholder="Role"
+                @keydown.enter="saveRoleEdit(character.id)"
+                @keydown.escape="cancelRoleEdit"
+                @blur="saveRoleEdit(character.id)"
+                @click.stop
+                autofocus
+              />
+            </span>
+            <span
+              v-else-if="character.role"
+              class="text-xs px-2 py-0.5 bg-bg-secondary text-text-secondary rounded cursor-pointer hover:bg-accent/10 hover:text-accent transition-colors"
+              :title="'Click to edit role'"
+              @click="startRoleEdit(character)"
+            >
               {{ character.role }}
             </span>
             <button

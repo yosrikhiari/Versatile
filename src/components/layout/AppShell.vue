@@ -13,6 +13,8 @@ import ContextStatusIndicator from './ContextStatusIndicator.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
 
+import { WORKSPACE_TYPES } from '../../config/workspace'
+
 const projectStore = useProjectStore()
 const polishStore = usePolishStore()
 const storyBibleStore = useStoryBibleStore()
@@ -29,6 +31,10 @@ const showCoreLoop = ref(true)
 const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, { write: false, analyze: false, build: false })
 
 const emit = defineEmits(['start-flow', 'end-flow', 'export', 'import', 'export-pdf', 'open-settings', 'complete-onboarding', 'create-project'])
+
+const isNarrativeWorkspace = computed(() =>
+  [WORKSPACE_TYPES.CREATIVE, WORKSPACE_TYPES.NOVEL, WORKSPACE_TYPES.SCREENPLAY].includes(projectStore.activeWorkspaceType)
+)
 
 const wordCount = computed(() => projectStore.wordCount)
 const projectName = computed(() => projectStore.currentProjectName)
@@ -208,7 +214,7 @@ onMounted(async () => {
           @click="toggleChapters" 
         />
         <button
-          v-if="projectStore.activeWorkspaceType === 'creative'"
+          v-if="isNarrativeWorkspace"
           :class="[
             'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
             activePanelName === 'network'
@@ -221,7 +227,7 @@ onMounted(async () => {
           <BaseIcon name="network" :size="18" />
         </button>
         <button 
-          v-if="projectStore.activeWorkspaceType === 'creative'"
+          v-if="isNarrativeWorkspace"
           :class="[
             'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
             activePanelName === 'timeline'
@@ -261,12 +267,11 @@ onMounted(async () => {
         <div class="flex items-center gap-2">
           <div class="relative">
             <button 
-              v-if="projectName" 
               class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2 py-1 text-sm flex items-center gap-1.5 transition-all duration-150 btn-ghost"
               title="Switch project"
               @click="showProjectDropdown = !showProjectDropdown"
             >
-              {{ projectName }}
+              {{ projectName || 'Untitled Project' }}
               <BaseIcon name="chevron-down" :size="14" class="opacity-60" />
             </button>
             <div 

@@ -1,6 +1,665 @@
 import { WORKSPACE_TYPES } from './workspace'
 
+const NOVEL_HERO_JOURNEY = {
+  id: 'novel_hero_journey',
+  name: 'Hero\'s Journey',
+  description: 'The classic monomyth structure: call to adventure, trials, transformation, and return.',
+  sections: [
+    {
+      title: 'Part I: Departure',
+      summary: 'The hero is introduced in their ordinary world and receives a call to adventure.',
+      subsections: [
+        {
+          title: 'Chapter 1: The Ordinary World',
+          summary: 'Establish the hero\'s everyday life, desires, and flaws.',
+          content: '## Chapter 1: The Ordinary World\n\nDescribe the protagonist in their natural habitat — their routines, relationships, and the subtle discontent that simmers beneath the surface...'
+        },
+        {
+          title: 'Chapter 2: The Call to Adventure',
+          summary: 'An event or message disrupts the status quo.',
+          content: '## Chapter 2: The Call\n\nSomething changes. A letter arrives, a stranger appears, or an accident forces the first crack in their ordinary world...'
+        },
+        {
+          title: 'Chapter 3: Crossing the Threshold',
+          summary: 'The hero commits to leaving the familiar behind.',
+          content: '## Chapter 3: Crossing the Threshold\n\nThe point of no return. The hero steps into the unknown, leaving safety behind forever...'
+        }
+      ]
+    },
+    {
+      title: 'Part II: Initiation',
+      summary: 'Trials, allies, enemies, and the central ordeal.',
+      subsections: [
+        {
+          title: 'Chapter 4: Tests and Allies',
+          summary: 'The hero faces challenges and meets friends and foes.',
+          content: '## Chapter 4: The Road of Trials\n\nEach obstacle teaches the hero something. New allies are forged and enemies revealed...'
+        },
+        {
+          title: 'Chapter 5: The Ordeal',
+          summary: 'The central crisis — a death and rebirth moment.',
+          content: '## Chapter 5: The Central Ordeal\n\nThe hero faces their greatest fear. Something must die — a belief, a relationship, or the hero themselves — for transformation to occur...'
+        }
+      ]
+    },
+    {
+      title: 'Part III: Return',
+      summary: 'The hero returns transformed, bringing a boon to their world.',
+      subsections: [
+        {
+          title: 'Chapter 6: The Resurrection',
+          summary: 'A final test that proves the hero\'s transformation.',
+          content: '## Chapter 6: Resurrection\n\nOne last cleansing trial. The hero must apply everything they have learned in a definitive climactic confrontation...'
+        },
+        {
+          title: 'Chapter 7: Return with the Elixir',
+          summary: 'The hero comes home, changed, with something to share.',
+          content: '## Chapter 7: The Return\n\nHome is familiar yet different. The hero has grown and brings back wisdom, freedom, or peace to share with their community...'
+        }
+      ]
+    }
+  ]
+}
+
+const NOVEL_THREE_ACT = {
+  id: 'novel_three_act',
+  name: 'Three-Act Structure',
+  description: 'Setup, Confrontation, Resolution — a reliable dramatic arc for commercial fiction.',
+  sections: [
+    {
+      title: 'Act I: Setup',
+      summary: 'Introduce characters, setting, and the inciting incident.',
+      subsections: [
+        {
+          title: 'Chapter 1',
+          summary: 'Hook the reader with character and conflict.',
+          content: '## Chapter 1\n\nOpen with a moment that reveals character and hints at the central conflict. Show what\'s at stake...'
+        },
+        {
+          title: 'Chapter 2',
+          summary: 'The inciting incident disrupts everything.',
+          content: '## Chapter 2\n\nAn event beyond the protagonist\'s control forces them to make a choice they can\'t take back...'
+        }
+      ]
+    },
+    {
+      title: 'Act II: Confrontation',
+      summary: 'Rising stakes, obstacles, and the midpoint reversal.',
+      subsections: [
+        {
+          title: 'Chapter 3',
+          summary: 'Rising action and new challenges.',
+          content: '## Chapter 3\n\nThe protagonist pursues their goal but faces escalating opposition. Alliances shift...'
+        },
+        {
+          title: 'Chapter 4',
+          summary: 'The midpoint crisis changes everything.',
+          content: '## Chapter 4\n\nA major revelation or reversal raises the stakes to a new level. The goal is redefined...'
+        }
+      ]
+    },
+    {
+      title: 'Act III: Resolution',
+      summary: 'The climax and aftermath.',
+      subsections: [
+        {
+          title: 'Chapter 5',
+          summary: 'The final confrontation.',
+          content: '## Chapter 5\n\nEverything comes to a head. The protagonist must use every lesson learned to prevail...'
+        },
+        {
+          title: 'Chapter 6',
+          summary: 'The denouement — tying loose ends.',
+          content: '## Chapter 6\n\nThe dust settles. Show how the world and characters have changed, and hint at what comes next...'
+        }
+      ]
+    }
+  ]
+}
+
+const SCREENPLAY_FEATURE = {
+  id: 'screenplay_feature',
+  name: 'Feature Film Structure',
+  description: 'A three-act screenplay outline with standard beat sheet.',
+  sections: [
+    {
+      title: 'Act I — The Setup',
+      summary: 'Establish the world, protagonist, and inciting incident within the first ~25 pages.',
+      subsections: [
+        {
+          title: 'Opening Image',
+          summary: 'A visual snapshot of the protagonist before the journey.',
+          content: '**OPENING IMAGE**\n\nA single image that captures who the protagonist is right now — before everything changes.\n\n[Scene description, character introduction, tone-setting moment]'
+        },
+        {
+          title: 'Inciting Incident',
+          summary: 'Around page 10-12, something happens that sets the story in motion.',
+          content: '**INCITING INCIDENT**\n\nAn event outside the protagonist\'s control that creates a compelling question.\n\n[Scene description, disruption of status quo]'
+        }
+      ]
+    },
+    {
+      title: 'Act II — The Confrontation',
+      summary: 'Rising action from page 25 to 85. The protagonist pursues their goal through escalating obstacles.',
+      subsections: [
+        {
+          title: 'Midpoint',
+          summary: 'Around page 55, a major twist raises the stakes.',
+          content: '**MIDPOINT**\n\nA revelation or reversal that changes the nature of the conflict. The stakes get personal.\n\n[Scene description, major twist]'
+        },
+        {
+          title: 'All Is Lost',
+          summary: 'The lowest point around page 75.',
+          content: '**ALL IS LOST**\n\nThe protagonist hits rock bottom. The goal seems impossible. A mentor figure may die or be lost.\n\n[Scene description, dark night of the soul]'
+        }
+      ]
+    },
+    {
+      title: 'Act III — The Resolution',
+      summary: 'From page 85 to 110. The climax and aftermath.',
+      subsections: [
+        {
+          title: 'Climax',
+          summary: 'The final confrontation.',
+          content: '**CLIMAX**\n\nThe protagonist faces the central conflict one last time. Everything they have learned is put to the test.\n\n[Scene description, final confrontation]'
+        },
+        {
+          title: 'Final Image',
+          summary: 'A visual bookend showing how the protagonist has changed.',
+          content: '**FINAL IMAGE**\n\nThe closing image of the film — a mirror of the opening image that shows the transformation.\n\n[Scene description, resolution, thematic closure]'
+        }
+      ]
+    }
+  ]
+}
+
+const INVOICE_STANDARD = {
+  id: 'invoice_standard',
+  name: 'Standard Invoice',
+  description: 'A professional invoice template with itemized line items, tax, and payment terms.',
+  sections: [
+    {
+      title: 'Header & Sender Info',
+      summary: 'Company details, invoice number, and dates.',
+      subsections: [
+        {
+          title: 'Invoice Header',
+          summary: 'Sender logo, business name, and contact details.',
+          content: '# INVOICE\n\n**[Your Company Name]**\n[Street Address]\n[City, State ZIP]\n[Email] | [Phone]\n\n---'
+        },
+        {
+          title: 'Invoice Meta',
+          summary: 'Invoice number, date, due date, and customer reference.',
+          content: '**Invoice #**: [INV-001]\n**Date**: [Date]\n**Due Date**: [Date + 30 days]\n**Customer ID**: [CUST-001]'
+        }
+      ]
+    },
+    {
+      title: 'Bill To & Line Items',
+      summary: 'Customer details and itemized charges.',
+      subsections: [
+        {
+          title: 'Bill To',
+          summary: 'Customer name, company, and billing address.',
+          content: '## Bill To\n\n**[Customer Name]**\n[Company Name]\n[Billing Address]\n[City, State ZIP]'
+        },
+        {
+          title: 'Itemized Services',
+          summary: 'List of products or services with quantities and rates.',
+          content: '## Description of Services\n\n| # | Description | Qty | Unit Price | Amount |\n|---|-------------|-----|------------|--------|\n| 1 | [Service description] | 1 | $0.00 | $0.00 |\n| 2 | [Service description] | 1 | $0.00 | $0.00 |'
+        }
+      ]
+    },
+    {
+      title: 'Totals & Payment Terms',
+      summary: 'Subtotal, tax, total due, and payment instructions.',
+      subsections: [
+        {
+          title: 'Summary',
+          summary: 'Financial totals.',
+          content: '| | |\n|---|----:|\n| **Subtotal** | $0.00 |\n| **Tax (0%)** | $0.00 |\n| **Total Due** | **$0.00** |'
+        },
+        {
+          title: 'Payment Terms',
+          summary: 'Payment method, terms, and late fee policy.',
+          content: '## Payment Terms\n\n- **Payment Method**: Bank Transfer / Check / Credit Card\n- **Payment Terms**: Net 30\n- **Late Fee**: 1.5% per month on overdue balances\n\nThank you for your business!'
+        }
+      ]
+    }
+  ]
+}
+
+const PRESENTATION_DECK = {
+  id: 'presentation_deck',
+  name: 'Standard Pitch Deck',
+  description: 'A persuasive presentation structure with problem, solution, market, and ask.',
+  sections: [
+    {
+      title: 'Opening & Problem',
+      summary: 'Hook the audience and define the problem you solve.',
+      subsections: [
+        {
+          title: 'Title Slide',
+          summary: 'Project name, tagline, and presenter name.',
+          content: '# [Presentation Title]\n\n*[Tagline / One-liner]*\n\n[Presenter Name] — [Date]'
+        },
+        {
+          title: 'The Problem',
+          summary: 'What pain point or gap exists in the market?',
+          content: '## The Problem\n\nDescribe the specific problem your audience faces. Use data, anecdotes, or visuals to make it tangible and urgent.\n\n> "[Quote from a real customer or stakeholder]"'
+        }
+      ]
+    },
+    {
+      title: 'Solution & Market',
+      summary: 'Present your solution, market size, and business model.',
+      subsections: [
+        {
+          title: 'The Solution',
+          summary: 'How your product or idea solves the problem.',
+          content: '## Our Solution\n\nExplain what you offer and why it\'s uniquely positioned to solve the problem. Highlight the key differentiator.\n\n- **Feature A**: Benefit description\n- **Feature B**: Benefit description\n- **Feature C**: Benefit description'
+        },
+        {
+          title: 'Market Opportunity',
+          summary: 'TAM, SAM, SOM and competitive landscape.',
+          content: '## Market Opportunity\n\n- **TAM (Total Addressable Market)**: $X B\n- **SAM (Serviceable Available Market)**: $X M\n- **SOM (Serviceable Obtainable Market)**: $X M\n\n**Competitive Advantage**: [Your unique edge over alternatives]'
+        }
+      ]
+    },
+    {
+      title: 'Execution & Ask',
+      summary: 'Team, roadmap, and the specific ask.',
+      subsections: [
+        {
+          title: 'Roadmap',
+          summary: 'Timeline of milestones.',
+          content: '## Roadmap\n\n| Phase | Timeline | Milestone |\n|-------|----------|-----------|\n| Phase 1 | Q1 2026 | MVP Launch |\n| Phase 2 | Q2 2026 | Scale & Optimize |\n| Phase 3 | Q3 2026 | Market Expansion |'
+        },
+        {
+          title: 'The Ask',
+          summary: 'What you need from the audience.',
+          content: '## The Ask\n\nWe are seeking **[amount]** to **[purpose]**.\n\n- **Use of Funds**: [Breakdown]\n- **Current Stage**: [Stage]\n- **Previous Funding**: [Amount]'
+        }
+      ]
+    }
+  ]
+}
+
+const EMAIL_WELCOME = {
+  id: 'email_welcome',
+  name: 'Welcome Email Sequence',
+  description: 'A 3-email nurture sequence for onboarding new subscribers or customers.',
+  sections: [
+    {
+      title: 'Email 1 — Welcome & Value',
+      summary: 'First impression and immediate value delivery.',
+      subsections: [
+        {
+          title: 'Subject Line Options',
+          summary: 'Catchy subject lines for the welcome email.',
+          content: '**Subject Line Options:**\n- Welcome to [Brand]! Here\'s your first treat 🎁\n- You\'re in! Let\'s get started\n- [Name], welcome to the community\n\n---'
+        },
+        {
+          title: 'Email Body',
+          summary: 'Warm welcome, set expectations, deliver initial value.',
+          content: '## Hi [First Name],\n\nWelcome to **[Brand]**! We\'re thrilled to have you.\n\nHere\'s what you can expect from us:\n- **[Benefit 1]**: Brief explanation\n- **[Benefit 2]**: Brief explanation\n- **[Benefit 3]**: Brief explanation\n\n**Your first resource**: [Link to valuable content]\n\nTalk soon,\n[Your Name]'
+        }
+      ]
+    },
+    {
+      title: 'Email 2 — Story & Connection',
+      summary: 'Share the brand story and build a deeper connection.',
+      subsections: [
+        {
+          title: 'Subject Line Options',
+          summary: 'Story-driven subject lines.',
+          content: '**Subject Line Options:**\n- The story behind [Brand]\n- Why we started [Brand]\n- [Name], a quick story for you\n\n---'
+        },
+        {
+          title: 'Email Body',
+          summary: 'Founder story, mission, and values.',
+          content: '## Hi [First Name],\n\nWe believe **[core belief]**.\n\nThat\'s why we started **[Brand]**. [2-3 sentences about the founder story / mission].\n\nWe\'re here to **[big picture goal]**.\n\nReply to this email — I\'d love to hear your story too.\n\n[Your Name]'
+        }
+      ]
+    },
+    {
+      title: 'Email 3 — Offer & CTA',
+      summary: 'Present the primary offer with a clear call to action.',
+      subsections: [
+        {
+          title: 'Subject Line Options',
+          summary: 'Offer-focused subject lines.',
+          content: '**Subject Line Options:**\n- A special offer just for you, [Name]\n- Your exclusive [Brand] discount inside\n- [Name], ready to take the next step?\n\n---'
+        },
+        {
+          title: 'Email Body',
+          summary: 'Offer presentation with social proof and clear CTA.',
+          content: '## Hi [First Name],\n\nBy now you\'ve seen what **[Brand]** is all about. Ready to take the next step?\n\n**[Offer Name]** — **[Brief description of what they get]**\n\n> "[Testimonial from a happy customer]"\n\n**Claim your offer now**: [CTA Button Link]\n\nThis exclusive offer expires **[date]**.\n\n[Your Name]'
+        }
+      ]
+    }
+  ]
+}
+
+const DOCUMENTATION_GUIDE = {
+  id: 'documentation_guide',
+  name: 'Product User Guide',
+  description: 'A comprehensive user guide structure with getting started, features, and troubleshooting.',
+  sections: [
+    {
+      title: 'Getting Started',
+      summary: 'Installation, setup, and first steps.',
+      subsections: [
+        {
+          title: 'Introduction',
+          summary: 'What this product does and who it\'s for.',
+          content: '# [Product Name] User Guide\n\n## Introduction\n\nWelcome to **[Product Name]**! This guide will help you get the most out of [brief product description].\n\n**Who this guide is for**: [Target audience description]\n**Prerequisites**: [Any required knowledge or tools]'
+        },
+        {
+          title: 'Installation & Setup',
+          summary: 'Step-by-step setup instructions.',
+          content: '## Installation\n\n### System Requirements\n- **OS**: [Supported operating systems]\n- **RAM**: [Minimum RAM]\n- **Storage**: [Required disk space]\n\n### Step 1: [First Step]\n[Detailed instructions with screenshots]\n\n### Step 2: [Second Step]\n[Detailed instructions]'
+        }
+      ]
+    },
+    {
+      title: 'Core Features',
+      summary: 'Detailed walkthroughs of each major feature.',
+      subsections: [
+        {
+          title: 'Feature A',
+          summary: 'How to use Feature A.',
+          content: '## [Feature A]\n\n### Overview\n[What this feature does and when to use it]\n\n### How To\n1. **[Step 1]**: [Description]\n2. **[Step 2]**: [Description]\n3. **[Step 3]**: [Description]\n\n### Tips\n- [Pro tip 1]\n- [Pro tip 2]'
+        },
+        {
+          title: 'Feature B',
+          summary: 'How to use Feature B.',
+          content: '## [Feature B]\n\n### Overview\n[What this feature does and when to use it]\n\n### How To\n1. **[Step 1]**: [Description]\n2. **[Step 2]**: [Description]\n\n### Configuration Options\n| Option | Description | Default |\n|--------|-------------|---------|\n| [Option A] | [Desc] | [Default] |\n| [Option B] | [Desc] | [Default] |'
+        }
+      ]
+    },
+    {
+      title: 'Troubleshooting & FAQ',
+      summary: 'Common issues and frequently asked questions.',
+      subsections: [
+        {
+          title: 'Common Issues',
+          summary: 'Solutions to frequently encountered problems.',
+          content: '## Troubleshooting\n\n### Issue: [Problem description]\n**Cause**: [Root cause]\n**Solution**: [Step-by-step fix]\n\n### Issue: [Problem description]\n**Cause**: [Root cause]\n**Solution**: [Step-by-step fix]'
+        },
+        {
+          title: 'FAQ',
+          summary: 'Frequently asked questions.',
+          content: '## Frequently Asked Questions\n\n**Q: [Question]?**\nA: [Answer]\n\n**Q: [Question]?**\nA: [Answer]\n\n**Q: [Question]?**\nA: [Answer]\n\n---\n\n*Need more help? Contact support at [email] or visit [help center URL]*'
+        }
+      ]
+    }
+  ]
+}
+
+const PRESS_RELEASE_LAUNCH = {
+  id: 'press_release_launch',
+  name: 'Product Launch Announcement',
+  description: 'A journalist-friendly press release format for announcing a new product or milestone.',
+  sections: [
+    {
+      title: 'Headline & Boilerplate',
+      summary: 'The hook, dateline, and company boilerplate.',
+      subsections: [
+        {
+          title: 'Headline & Subhead',
+          summary: 'Catchy headline with a supporting subhead.',
+          content: '# [Catchy Headline: Company Name Announces Product Name]\n\n*[Subhead: A one-sentence value proposition that expands on the headline]*\n\n---\n\n[CITY, State] — [Date] — [Company Name], a leader in [industry], today announced [announcement summary in 1-2 sentences].'
+        },
+        {
+          title: 'Boilerplate',
+          summary: 'Standard company description for the press release footer.',
+          content: '### About [Company Name]\n\n[Company Name] ([website URL]) is the leading provider of [brief company description]. Founded in [year], the company serves [customer base] across [locations/markets]. For more information, visit [website URL].\n\n### Media Contact\n\n[Name]\n[Title]\n[Email]\n[Phone]'
+        }
+      ]
+    },
+    {
+      title: 'Body & Quotes',
+      summary: 'The announcement details and executive quotes.',
+      subsections: [
+        {
+          title: 'Announcement Body',
+          summary: 'Details of what is being announced and why it matters.',
+          content: '## [Detail Heading]\n\n[2-3 paragraphs describing the announcement in detail. Cover the problem being solved, key features, and the impact on customers or the industry.]\n\n**[Feature/benefit 1]**: [Description]\n**[Feature/benefit 2]**: [Description]\n**[Feature/benefit 3]**: [Description]'
+        },
+        {
+          title: 'Executive Quote',
+          summary: 'Quote from company leadership.',
+          content: '> "[Compelling quote from CEO or executive about the announcement and its significance.]"\n> — **[Name]**, [Title], [Company Name]\n\n[Optional: Additional quote from a customer, partner, or industry analyst]'
+        }
+      ]
+    },
+    {
+      title: 'Availability & CTA',
+      summary: 'Pricing, availability, and the call to action.',
+      subsections: [
+        {
+          title: 'Availability',
+          summary: 'When and how to access the announced product.',
+          content: '## Availability\n\n**[Product Name]** is available [starting date / immediately] at [pricing details].\n\n- **[Plan/Tier 1]**: $X — [Description]\n- **[Plan/Tier 2]**: $X — [Description]\n\n[Link to product page or press kit]'
+        }
+      ]
+    }
+  ]
+}
+
+const GRANT_PROPOSAL = {
+  id: 'grant_proposal',
+  name: 'Research Grant Proposal',
+  description: 'Standard NIH/NSF-style grant proposal structure with abstract, methodology, and budget.',
+  sections: [
+    {
+      title: 'Abstract & Introduction',
+      summary: 'Project summary, specific aims, and background.',
+      subsections: [
+        {
+          title: 'Project Abstract',
+          summary: 'A concise summary of the proposed research (300 words).',
+          content: '# [Project Title]\n\n## Abstract\n\n**Background**: [1-2 sentences on the research context]\n**Objective**: [Specific aim or hypothesis]\n**Methods**: [Brief description of approach]\n**Expected Outcomes**: [Anticipated results and impact]\n**Budget Request**: [$Amount over X years]'
+        },
+        {
+          title: 'Specific Aims',
+          summary: 'The core objectives of the proposed research.',
+          content: '## Specific Aims\n\n**Aim 1**: [Primary objective with measurable outcome]\n**Aim 2**: [Secondary objective]\n**Aim 3**: [Tertiary objective]\n\n*Collectively, these aims will [broader impact statement].*'
+        }
+      ]
+    },
+    {
+      title: 'Research Strategy',
+      summary: 'Methodology, timeline, and expected outcomes.',
+      subsections: [
+        {
+          title: 'Methodology',
+          summary: 'Detailed approach for each specific aim.',
+          content: '## Research Strategy\n\n### Aim 1: [Restate Aim 1]\n**Approach**: [Detailed methodology]\n**Data Analysis**: [Statistical methods]\n**Expected Outcomes**: [What success looks like]\n**Potential Pitfalls**: [Contingency plans]\n\n### Aim 2: [Restate Aim 2]\n**Approach**: [Detailed methodology]\n**Data Analysis**: [Statistical methods]'
+        },
+        {
+          title: 'Timeline',
+          summary: 'Project timeline and milestones.',
+          content: '## Timeline\n\n| Year | Milestones |\n|------|------------|\n| Year 1 | [Milestone 1], [Milestone 2] |\n| Year 2 | [Milestone 3], [Milestone 4] |\n| Year 3 | [Milestone 5], [Final outcomes] |'
+        }
+      ]
+    },
+    {
+      title: 'Budget & Biosketch',
+      summary: 'Budget justification and investigator qualifications.',
+      subsections: [
+        {
+          title: 'Budget Justification',
+          summary: 'Detailed breakdown of requested funds.',
+          content: '## Budget\n\n| Category | Year 1 | Year 2 | Year 3 | Total |\n|----------|--------|--------|--------|-------|\n| Personnel | $X | $X | $X | $X |\n| Equipment | $X | $X | $X | $X |\n| Supplies | $X | $X | $X | $X |\n| **Total** | **$X** | **$X** | **$X** | **$X** |\n\n### Justification\n[Explanation of major budget items]'
+        },
+        {
+          title: 'Investigator Biosketch',
+          summary: 'PI and co-investigator qualifications.',
+          content: '## Principal Investigator: [Name]\n\n**Title**: [Current position]\n**Education**: [Degrees and institutions]\n**Relevant Publications**: [3-5 key publications]\n**Grant History**: [Previous funding experience]'
+        }
+      ]
+    }
+  ]
+}
+
+const MEETING_NOTES = {
+  id: 'meeting_notes',
+  name: 'Meeting Minutes Template',
+  description: 'A structured template for capturing meeting notes, decisions, and action items.',
+  sections: [
+    {
+      title: 'Meeting Header',
+      summary: 'Basic meeting information.',
+      subsections: [
+        {
+          title: 'Meeting Info',
+          summary: 'Date, time, location, and attendees.',
+          content: '# Meeting Minutes\n\n**Project**: [Project/Initiative Name]\n**Date**: [Date]\n**Time**: [Start] — [End]\n**Location**: [Room / Video Link]\n\n**Facilitator**: [Name]\n**Note Taker**: [Name]\n\n### Attendees\n- [Name] — [Role]\n- [Name] — [Role]\n\n### Absent\n- [Name]'
+        }
+      ]
+    },
+    {
+      title: 'Agenda & Discussion',
+      summary: 'Agenda items with discussion summaries.',
+      subsections: [
+        {
+          title: 'Agenda',
+          summary: 'List of discussion topics.',
+          content: '## Agenda\n\n1. **Topic 1** ([time] min) — [Owner]\n2. **Topic 2** ([time] min) — [Owner]\n3. **Topic 3** ([time] min) — [Owner]'
+        },
+        {
+          title: 'Discussion Notes',
+          summary: 'Key discussion points, decisions, and outcomes.',
+          content: '## Discussion\n\n### Topic 1: [Title]\n- [Key point discussed]\n- [Decision made]\n- [Questions raised]\n\n### Topic 2: [Title]\n- [Key point discussed]\n- [Decision made]\n\n### Topic 3: [Title]\n- [Key point discussed]'
+        }
+      ]
+    },
+    {
+      title: 'Action Items',
+      summary: 'Assigned tasks with deadlines and owners.',
+      subsections: [
+        {
+          title: 'Action Items',
+          summary: 'Table of tasks.',
+          content: '## Action Items\n\n| # | Task | Owner | Due Date |\n|---|------|-------|----------|\n| 1 | [Task description] | [Name] | [Date] |\n| 2 | [Task description] | [Name] | [Date] |\n| 3 | [Task description] | [Name] | [Date] |\n\n### Next Meeting\n- **Date**: [Date]\n- **Time**: [Time]\n- **Location**: [Location]'
+        }
+      ]
+    }
+  ]
+}
+
+const CASE_STUDY = {
+  id: 'case_study',
+  name: 'Customer Case Study',
+  description: 'A story-driven case study template with challenge, solution, and measurable results.',
+  sections: [
+    {
+      title: 'Executive Summary',
+      summary: 'The customer, the challenge, and the outcome at a glance.',
+      subsections: [
+        {
+          title: 'At a Glance',
+          summary: 'Quick reference table.',
+          content: '# [Customer Name] — [Project Title]\n\n## At a Glance\n\n| | |\n|---|----|\n| **Customer** | [Name, Industry] |\n| **Challenge** | [Core problem in one sentence] |\n| **Solution** | [Brief solution description] |\n| **Results** | [Key metric: X% improvement] |\n| **Timeline** | [Duration] |'
+        },
+        {
+          title: 'Executive Summary',
+          summary: 'Brief overview of the case study.',
+          content: '## Executive Summary\n\n[Customer Name], a leader in [industry], faced [specific challenge]. By partnering with [Our Company], they implemented [solution], achieving [key result] within [timeframe].\n\nThis case study explores the challenge, the approach taken, and the measurable outcomes delivered.'
+        }
+      ]
+    },
+    {
+      title: 'Challenge & Solution',
+      summary: 'The problem and how it was solved.',
+      subsections: [
+        {
+          title: 'The Challenge',
+          summary: 'The customer\'s pain points and goals.',
+          content: '## The Challenge\n\n[Customer Name] was struggling with [specific problem(s)]. [Explain the context, impact on operations, and why it mattered].\n\n**Key Pain Points**:\n- [Pain point 1]\n- [Pain point 2]\n- [Pain point 3]'
+        },
+        {
+          title: 'Our Solution',
+          summary: 'The approach and implementation.',
+          content: '## The Solution\n\n[Our Company] deployed **[product/service]** to address [customer needs].\n\n**Implementation**:\n1. **[Phase 1]**: [Description]\n2. **[Phase 2]**: [Description]\n3. **[Phase 3]**: [Description]'
+        }
+      ]
+    },
+    {
+      title: 'Results & Testimonial',
+      summary: 'Quantified results and customer feedback.',
+      subsections: [
+        {
+          title: 'Results',
+          summary: 'Measurable outcomes.',
+          content: '## Results\n\n| Metric | Before | After | Improvement |\n|--------|--------|-------|-------------|\n| [Metric 1] | X | Y | Z% |\n| [Metric 2] | X | Y | Z% |\n| [Metric 3] | X | Y | Z% |'
+        },
+        {
+          title: 'Customer Testimonial',
+          summary: 'Quote from the customer.',
+          content: '## What the Customer Says\n\n> "[Powerful quote from the customer about their experience and the value delivered.]"\n> — **[Name]**, [Title], [Customer Company]'
+        }
+      ]
+    }
+  ]
+}
+
+const GENERAL_BLANK = {
+  id: 'general_blank',
+  name: 'Blank Document',
+  description: 'Start with a completely empty document — full freedom.',
+  sections: [
+    {
+      title: 'Untitled Section',
+      summary: 'Begin writing.',
+      subsections: [
+        {
+          title: 'Page 1',
+          summary: 'Start here.',
+          content: '# [Document Title]\n\nStart writing your document here...'
+        }
+      ]
+    }
+  ]
+}
+
 export const BLUEPRINTS = {
+  [WORKSPACE_TYPES.NOVEL]: [
+    NOVEL_HERO_JOURNEY,
+    NOVEL_THREE_ACT
+  ],
+  [WORKSPACE_TYPES.SCREENPLAY]: [
+    SCREENPLAY_FEATURE
+  ],
+  [WORKSPACE_TYPES.INVOICE]: [
+    INVOICE_STANDARD
+  ],
+  [WORKSPACE_TYPES.PRESENTATION]: [
+    PRESENTATION_DECK
+  ],
+  [WORKSPACE_TYPES.EMAIL]: [
+    EMAIL_WELCOME
+  ],
+  [WORKSPACE_TYPES.DOCUMENTATION]: [
+    DOCUMENTATION_GUIDE
+  ],
+  [WORKSPACE_TYPES.PRESS_RELEASE]: [
+    PRESS_RELEASE_LAUNCH
+  ],
+  [WORKSPACE_TYPES.GRANT]: [
+    GRANT_PROPOSAL
+  ],
+  [WORKSPACE_TYPES.MEETING]: [
+    MEETING_NOTES
+  ],
+  [WORKSPACE_TYPES.CASE_STUDY]: [
+    CASE_STUDY
+  ],
+  [WORKSPACE_TYPES.GENERAL]: [
+    GENERAL_BLANK
+  ],
   [WORKSPACE_TYPES.CREATIVE]: [
     {
       id: 'creative_three_act',
