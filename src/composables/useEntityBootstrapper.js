@@ -12,9 +12,9 @@ const GENERATE_ENTITIES_PROMPT = `You are a fiction worldbuilder. Given a story 
 
 For each entity, return fields that are internally consistent and would plausibly exist in this story world.
 
-CHARACTER format: { "name": "...", "role": "...", "goal": "...", "voice": "...", "notes": "...", "sampleDialogue": "..." }
-LOCATION format: { "name": "...", "description": "...", "notes": "..." }
-PLOT THREAD format: { "title": "...", "notes": "..." }
+CHARACTER format: { "name": "...", "role": "...", "goal": "...", "voice": "...", "notes": "...", "sampleDialogue": "...", "traits": ["niche detail 1", "niche detail 2"] }
+LOCATION format: { "name": "...", "description": "...", "notes": "...", "traits": ["niche detail 1", "niche detail 2"] }
+PLOT THREAD format: { "title": "...", "notes": "...", "traits": ["niche detail 1", "niche detail 2"] }
 
 Return valid JSON with no markdown, no explanation. The JSON must have exactly three keys: "characters" (array), "locations" (array), "plotThreads" (array).`
 
@@ -107,7 +107,8 @@ Create entities that are distinct from any existing ones but consistent with the
             goal: char.goal || '',
             voice: char.voice || '',
             notes: char.notes || '',
-            sampleDialogue: char.sampleDialogue || ''
+            sampleDialogue: char.sampleDialogue || '',
+            traits: char.traits || []
           })
           generatedIds.characters.push(id)
           if (volumeId) {
@@ -121,7 +122,8 @@ Create entities that are distinct from any existing ones but consistent with the
           const id = await storyBibleStore.addLocationData(projectId, {
             name: loc.name,
             description: loc.description || '',
-            notes: loc.notes || ''
+            notes: loc.notes || '',
+            traits: loc.traits || []
           })
           generatedIds.locations.push(id)
           if (volumeId) {
@@ -134,7 +136,8 @@ Create entities that are distinct from any existing ones but consistent with the
         if (thread.title) {
           const id = await storyBibleStore.addPlotThreadData(projectId, {
             title: thread.title,
-            notes: thread.notes || ''
+            notes: thread.notes || '',
+            traits: thread.traits || []
           })
           generatedIds.plotThreads.push(id)
           if (volumeId) {

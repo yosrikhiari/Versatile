@@ -186,7 +186,8 @@ const filteredCharacters = computed(() => {
   if (!searchQuery.value) return props.characters
   const query = searchQuery.value.toLowerCase()
   return props.characters.filter(c => 
-    c.name?.toLowerCase().includes(query) || c.role?.toLowerCase().includes(query)
+    c.name?.toLowerCase().includes(query) || c.role?.toLowerCase().includes(query) ||
+    c.traits?.some(t => t.toLowerCase().includes(query))
   )
 })
 
@@ -194,7 +195,8 @@ const filteredLocations = computed(() => {
   if (!searchQuery.value) return props.locations
   const query = searchQuery.value.toLowerCase()
   return props.locations.filter(l => 
-    l.name?.toLowerCase().includes(query) || l.description?.toLowerCase().includes(query)
+    l.name?.toLowerCase().includes(query) || l.description?.toLowerCase().includes(query) ||
+    l.traits?.some(t => t.toLowerCase().includes(query))
   )
 })
 
@@ -202,7 +204,8 @@ const filteredPlotThreads = computed(() => {
   if (!searchQuery.value) return props.plotThreads
   const query = searchQuery.value.toLowerCase()
   return props.plotThreads.filter(t => 
-    t.title?.toLowerCase().includes(query) || t.status?.toLowerCase().includes(query)
+    t.title?.toLowerCase().includes(query) || t.status?.toLowerCase().includes(query) ||
+    t.traits?.some(t => t.toLowerCase().includes(query))
   )
 })
 

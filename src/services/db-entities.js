@@ -1,4 +1,4 @@
-import { db } from './db-core'
+import { db, deepPlain } from './db-core'
 
 // ========== CHARACTERS ==========
 
@@ -22,7 +22,7 @@ export async function addCharacter(projectId, data) {
 
 export async function updateCharacter(id, data) {
   try {
-    return await db.characters.update(id, { ...data, lastEditedAt: Date.now() })
+    return await db.characters.update(id, deepPlain({ ...data, lastEditedAt: Date.now() }))
   } catch (error) {
     console.error('Failed to update character:', error)
     throw error
@@ -53,7 +53,7 @@ export async function addLocation(projectId, data) {
 }
 
 export async function updateLocation(id, data) {
-  return db.locations.update(id, data)
+  return db.locations.update(id, deepPlain(data))
 }
 
 export async function deleteLocation(id) {
@@ -71,7 +71,7 @@ export async function addPlotThread(projectId, data) {
 }
 
 export async function updatePlotThread(id, data) {
-  return db.plotThreads.update(id, data)
+  return db.plotThreads.update(id, deepPlain(data))
 }
 
 export async function deletePlotThread(id) {

@@ -132,6 +132,7 @@ function generateCharactersDoc() {
     if (c.goal) entry.push(`**Goal / Objective:** ${c.goal}`)
     if (c.voice) entry.push(`**Voice:** ${c.voice}`)
     if (c.notes) entry.push(`**Notes:** ${c.notes}`)
+    if (c.traits?.length) entry.push(`**Traits:** ${c.traits.join(', ')}`)
 
     const relationships = storyGraphStore.edges.filter(
       e => (e.sourceId === c.id && e.sourceType === 'character') ||
@@ -171,6 +172,7 @@ function generateWorldDoc() {
     const entry = [`## ${l.name}`]
     if (l.description) entry.push(`**Description:** ${l.description}`)
     if (l.notes) entry.push(`**Notes:** ${l.notes}`)
+    if (l.traits?.length) entry.push(`**Traits:** ${l.traits.join(', ')}`)
     parts.push(entry.join('\n'))
   }
 
@@ -195,6 +197,7 @@ function generateTimelineDoc() {
     const statusLabel = t.status ? t.status.replace('_', ' ') : 'unknown'
     const entry = [`## ${t.title} (${statusLabel})`]
     if (t.notes) entry.push(t.notes)
+    if (t.traits?.length) entry.push(`Traits: ${t.traits.join(', ')}`)
     parts.push(entry.join('\n'))
   }
 

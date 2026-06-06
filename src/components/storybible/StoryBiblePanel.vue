@@ -3,12 +3,14 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
-import { generateRandomCharacter, generateRandomPlotThread, generateRandomLocation, enhanceExistingCharacter } from '../../composables/useOllama'
+import { generateRandomCharacter, generateRandomPlotThread, generateRandomLocation, enhanceExistingCharacter, generateTraitSuggestions } from '../../composables/useOllama'
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
+import { useClickOutside } from '../../composables/useClickOutside'
 import { upsertStoryDocument } from '../../services/db-story-documents'
 import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import { useNotifications } from '../../composables/useNotifications'
 import BaseIcon from '../shared/BaseIcon.vue'
+import TagInput from '../shared/TagInput.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
 import GenerateCharacterModal from './GenerateCharacterModal.vue'
 
@@ -23,7 +25,7 @@ const characterPortraitRef = ref(null)
 const activeTab = ref('characters')
 const searchQuery = ref('')
 const editingId = ref(null)
-const editData = ref({ name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' })
+const editData = ref({ name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '', traits: [] })
 const isEnhancing = ref(false)
 const isGenerating = ref(false)
 const isGeneratingPlotThread = ref(false)
@@ -35,6 +37,44 @@ const characterToEnhance = ref(null)
 
 const roleEditingId = ref(null)
 const roleEditValue = ref('')
+
+const suggestingId = ref(null)
+const traitSuggestions = ref([])
+const isSuggestingTraits = ref(false)
+const suggestPopoverRef = ref(null)
+
+useClickOutside(suggestPopoverRef, () => {
+  suggestingId.value = null
+  traitSuggestions.value = []
+})
+
+async function handleSuggestTraits(type) {
+  if (isSuggestingTraits.value) return
+  isSuggestingTraits.value = true
+  suggestingId.value = editingId.value
+  traitSuggestions.value = []
+  try {
+    const context = await getSectionContext('current', type)
+    const entityData = { ...editData.value }
+    const existing = entityData.traits || []
+    const suggestions = await generateTraitSuggestions(type, entityData, existing, context)
+    traitSuggestions.value = suggestions
+    if (!suggestions.length) {
+      addToast('No trait suggestions available. Ensure Ollama is running.', 'warning')
+    }
+  } catch {
+    addToast('Failed to generate trait suggestions.', 'error')
+  } finally {
+    isSuggestingTraits.value = false
+  }
+}
+
+function addSuggestionTrait(trait) {
+  if (!editData.value.traits) editData.value.traits = []
+  if (!editData.value.traits.includes(trait)) {
+    editData.value.traits.push(trait)
+  }
+}
 
 function startRoleEdit(character) {
   roleEditingId.value = character.id
@@ -263,7 +303,7 @@ const filteredCharacters = computed(() => {
   if (!searchQuery.value) return storyBibleStore.characters
   const query = searchQuery.value.toLowerCase()
   return storyBibleStore.characters.filter(c => 
-    c.name?.toLowerCase().includes(query) || c.role?.toLowerCase().includes(query)
+    c.name?.toLowerCase().includes(query) || c.role?.toLowerCase().includes(query) || c.traits?.some(t => t.toLowerCase().includes(query))
   )
 })
 
@@ -271,7 +311,7 @@ const filteredLocations = computed(() => {
   if (!searchQuery.value) return storyBibleStore.locations
   const query = searchQuery.value.toLowerCase()
   return storyBibleStore.locations.filter(l => 
-    l.name?.toLowerCase().includes(query) || l.description?.toLowerCase().includes(query)
+    l.name?.toLowerCase().includes(query) || l.description?.toLowerCase().includes(query) || l.traits?.some(t => t.toLowerCase().includes(query))
   )
 })
 
@@ -279,7 +319,7 @@ const filteredPlotThreads = computed(() => {
   if (!searchQuery.value) return storyBibleStore.plotThreads
   const query = searchQuery.value.toLowerCase()
   return storyBibleStore.plotThreads.filter(t => 
-    t.title?.toLowerCase().includes(query) || t.status?.toLowerCase().includes(query)
+    t.title?.toLowerCase().includes(query) || t.status?.toLowerCase().includes(query) || t.traits?.some(tr => tr.toLowerCase().includes(query))
   )
 })
 
@@ -295,7 +335,8 @@ async function addCharacter() {
       goal: '',
       voice: '',
       notes: '',
-      sampleDialogue: ''
+      sampleDialogue: '',
+      traits: []
     })
   } catch (e) {
     console.error('Failed to add character:', e)
@@ -318,7 +359,8 @@ async function addLocation() {
   await storyBibleStore.addLocationData(projectStore.currentProjectId, {
     name: 'New Location',
     description: '',
-    notes: ''
+    notes: '',
+    traits: []
   })
 }
 
@@ -337,7 +379,8 @@ async function addPlotThread() {
   await storyBibleStore.addPlotThreadData(projectStore.currentProjectId, {
     title: 'New Plot Thread',
     status: 'open',
-    notes: ''
+    notes: '',
+    traits: []
   })
 }
 
@@ -358,7 +401,9 @@ function startEdit(entity, type) {
 
 function cancelEdit() {
   editingId.value = null
-  editData.value = { name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' }
+  suggestingId.value = null
+  traitSuggestions.value = []
+  editData.value = { name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '', traits: [] }
 }
 
 async function saveEdit(id, type) {
@@ -566,6 +611,9 @@ defineExpose({
           <div v-if="character.sampleDialogue && editingId !== character.id" class="mt-2 text-sm italic text-text-hint border-l-2 border-accent/30 pl-3">
             &ldquo;{{ character.sampleDialogue }}&rdquo;
           </div>
+          <div v-if="character.traits?.length && editingId !== character.id" class="mt-2 flex flex-wrap gap-1">
+            <span v-for="trait in character.traits" :key="trait" class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full">{{ trait }}</span>
+          </div>
           <CharacterPortrait
             v-if="editingId !== character.id && character.portrait"
             :character="character"
@@ -601,6 +649,35 @@ defineExpose({
             rows="1"
             class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
           />
+          <div class="flex items-center gap-1">
+            <TagInput v-model="editData.traits" placeholder="Add trait..." />
+            <button
+              class="p-1.5 rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="isSuggestingTraits"
+              title="Suggest traits"
+              @click="handleSuggestTraits('character')"
+            >
+              <svg v-if="isSuggestingTraits" class="animate-spin h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-20" />
+                <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+              </svg>
+              <BaseIcon v-else name="sparkles" :size="16" class="text-accent" />
+            </button>
+          </div>
+          <div
+            v-if="suggestingId === editingId && traitSuggestions.length"
+            ref="suggestPopoverRef"
+            class="flex flex-wrap gap-1.5 p-2 bg-bg-secondary border border-border-subtle rounded-lg mt-1"
+          >
+            <button
+              v-for="t in traitSuggestions"
+              :key="t"
+              class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
+              @click="addSuggestionTrait(t)"
+            >
+              + {{ t }}
+            </button>
+          </div>
         </div>
       </div>
       <button
@@ -688,6 +765,9 @@ defineExpose({
         <div v-if="thread.notes && editingId !== thread.id" class="mt-2 text-sm text-text-secondary">
           {{ thread.notes }}
         </div>
+        <div v-if="thread.traits?.length && editingId !== thread.id" class="mt-2 flex flex-wrap gap-1">
+          <span v-for="trait in thread.traits" :key="trait" class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full">{{ trait }}</span>
+        </div>
         <div v-if="editingId === thread.id" class="mt-2 space-y-2">
           <select
             v-model="editData.status"
@@ -704,6 +784,35 @@ defineExpose({
             rows="2"
             class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
           />
+          <div class="flex items-center gap-1">
+            <TagInput v-model="editData.traits" placeholder="Add trait..." />
+            <button
+              class="p-1.5 rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="isSuggestingTraits"
+              title="Suggest traits"
+              @click="handleSuggestTraits('plotThread')"
+            >
+              <svg v-if="isSuggestingTraits" class="animate-spin h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-20" />
+                <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+              </svg>
+              <BaseIcon v-else name="sparkles" :size="16" class="text-accent" />
+            </button>
+          </div>
+          <div
+            v-if="suggestingId === editingId && traitSuggestions.length"
+            ref="suggestPopoverRef"
+            class="flex flex-wrap gap-1.5 p-2 bg-bg-secondary border border-border-subtle rounded-lg mt-1"
+          >
+            <button
+              v-for="t in traitSuggestions"
+              :key="t"
+              class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
+              @click="addSuggestionTrait(t)"
+            >
+              + {{ t }}
+            </button>
+          </div>
         </div>
       </div>
       <button
@@ -784,6 +893,9 @@ defineExpose({
         <div v-if="location.description && editingId !== location.id" class="mt-2 text-sm text-text-secondary">
           {{ location.description }}
         </div>
+        <div v-if="location.traits?.length && editingId !== location.id" class="mt-2 flex flex-wrap gap-1">
+          <span v-for="trait in location.traits" :key="trait" class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full">{{ trait }}</span>
+        </div>
         <div v-if="editingId === location.id" class="mt-2 space-y-2">
           <textarea
             v-model="editData.notes"
@@ -803,6 +915,35 @@ defineExpose({
             rows="1"
             class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
           />
+          <div class="flex items-center gap-1">
+            <TagInput v-model="editData.traits" placeholder="Add trait..." />
+            <button
+              class="p-1.5 rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="isSuggestingTraits"
+              title="Suggest traits"
+              @click="handleSuggestTraits('location')"
+            >
+              <svg v-if="isSuggestingTraits" class="animate-spin h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-20" />
+                <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+              </svg>
+              <BaseIcon v-else name="sparkles" :size="16" class="text-accent" />
+            </button>
+          </div>
+          <div
+            v-if="suggestingId === editingId && traitSuggestions.length"
+            ref="suggestPopoverRef"
+            class="flex flex-wrap gap-1.5 p-2 bg-bg-secondary border border-border-subtle rounded-lg mt-1"
+          >
+            <button
+              v-for="t in traitSuggestions"
+              :key="t"
+              class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
+              @click="addSuggestionTrait(t)"
+            >
+              + {{ t }}
+            </button>
+          </div>
         </div>
       </div>
       <button
