@@ -16,6 +16,18 @@ const EMBEDDING_CONTEXT_MAX_CHARS = 1400
 const MAX_REJECTED_PATTERNS = 5
 const SYNC_BATCH_SIZE = 3
 
+const DEBUG_ENDPOINT = '/__debug/snapshot'
+
+function debugSnapshot(stage, data) {
+  try {
+    fetch(DEBUG_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stage, data })
+    }).catch(() => {})
+  } catch {}
+}
+
 // Context strategy for buildEmbeddingContext.
 // 'prose' — last 2 scenes' prose excerpts (correct for 6–15 scenes).
 // 'embedding' — future: embedding-similarity retrieval (for 25+ scenes).
@@ -256,6 +268,21 @@ export function useVolumeStoryGenerator() {
       onPhaseChange?.('plan-preview')
       // Return control; user edits plan and calls confirmPlan() to proceed
 
+      debugSnapshot('step-1-plan', {
+        synopsis: enhancedSynopsis,
+        genre,
+        tone,
+        wordTarget,
+        scenePlan: scenePlan.value,
+        storyArc,
+        totalScenes: scenePlan.value.length,
+        entityCounts: {
+          characters: storyBibleStore.characters.length,
+          locations: storyBibleStore.locations.length,
+          plotThreads: storyBibleStore.plotThreads.length
+        }
+      })
+
       // Store arc for later use
       return { scenes: scenePlan.value, storyArc, volumeId: vId, storyContract }
     } catch (err) {
@@ -272,6 +299,13 @@ export function useVolumeStoryGenerator() {
     const storyDocuments = useStoryDocuments()
     const storyBibleDocs = await storyDocuments.getStoryDocumentContext(projectId)
     const endIndex = Math.min(startIndex + SYNC_BATCH_SIZE, scenePlan.value.length)
+
+    debugSnapshot('step-2-writing-start', {
+      startIndex,
+      endIndex,
+      totalScenes: scenePlan.value.length,
+      storyContract
+    })
 
     for (let i = startIndex; i < endIndex; i++) {
       const scene = scenePlan.value[i]
@@ -333,6 +367,17 @@ export function useVolumeStoryGenerator() {
       }
 
       await commitAndStoreScene(scene, fullProse, Math.floor(i / 3), sections, projectId)
+
+      debugSnapshot(`step-3-scene-${i}`, {
+        scene: {
+          index: i,
+          title: scene.title || `Scene ${scene.sceneNumber}`,
+          wordCount: fullProse.split(/\s+/).length,
+          characters: scene.characters || scene.charactersPresent || [],
+          location: scene.location || ''
+        },
+        structured: result.structured
+      })
     }
 
     // Discover entities from this batch only
@@ -352,6 +397,10 @@ export function useVolumeStoryGenerator() {
         hasPendingBatches.value = true
         pendingBatchStart.value = endIndex
         syncPreview.value = batchChanges
+        debugSnapshot('step-4-sync', {
+          pendingBatchStart: endIndex,
+          batchChanges
+        })
         phase.value = 'sync-preview'
         return
       }
@@ -457,6 +506,12 @@ export function useVolumeStoryGenerator() {
     } catch {
       // Non-critical: generatedStories save
     }
+
+    debugSnapshot('step-5-consistency', {
+      totalScenes: writtenScenes.value.length,
+      totalWords: writtenScenes.value.reduce((sum, s) => sum + s.prose.split(/\s+/).length, 0),
+      consistencyReport: consistencyReport.value
+    })
   }
 
   async function confirmSync({ acceptedEntities, projectId, volumeId, chapterId }) {

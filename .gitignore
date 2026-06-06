@@ -6,6 +6,7 @@ test-results/
 docker-compose.yml
 vite_err.txt
 vite_out.txt
+/debug/
 # Backend (disconnected dead code - removed)
 /server/
 /backend/
