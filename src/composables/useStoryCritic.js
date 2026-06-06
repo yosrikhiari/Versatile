@@ -58,6 +58,8 @@ function countCharacters(storyBible) {
   return charMatches ? charMatches.length : 0
 }
 
+const CONSISTENCY_EXCERPT_MAX_CHARS = 2000
+
 const CONSISTENCY_CRITIC_PROMPT = `You are a continuity editor. Given a character's facts and every scene they appear in, list any contradictions.
 
 Check for contradictions in: name spelling, physical appearance, personality traits, niche traits/characteristics, goals/motivations, timeline/logical sequence.
@@ -76,7 +78,7 @@ Respond ONLY with valid JSON:
 If no contradictions found, return { "contradictions": [] }`
 
 function formatCharacterCheck(character, storyBibleFacts, sceneExcerpts) {
-  const excerpts = sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, 800)}`).join('\n\n')
+  const excerpts = sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`).join('\n\n')
   return `Character: ${character.name}
 Role: ${character.role || 'unknown'}
 Goal: ${character.goal || 'unknown'}
@@ -89,7 +91,7 @@ ${excerpts}`
 }
 
 function formatLocationCheck(location, storyBibleFacts, sceneExcerpts) {
-  const excerpts = sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, 800)}`).join('\n\n')
+  const excerpts = sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`).join('\n\n')
   return `Location: ${location.name}
 Description: ${location.description || 'unknown'}
 Notes: ${location.notes || 'unknown'}

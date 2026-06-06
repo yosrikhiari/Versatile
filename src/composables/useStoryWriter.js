@@ -28,6 +28,38 @@ function summarizeLog(chapterLog) {
   return [...recent, `(... plus ${chapterLog.length - 3} earlier scenes summarized)`].join('\n')
 }
 
+function tryExtractProse(raw) {
+  // Attempt full parse first
+  try {
+    const parsed = finalizeStream(raw)
+    if (parsed && typeof parsed.prose === 'string') return parsed.prose
+  } catch {}
+
+  // Progressive extraction from partial JSON
+  const proseKey = '"prose": "'
+  const keyIndex = raw.indexOf(proseKey)
+  if (keyIndex === -1) return ''
+
+  let start = keyIndex + proseKey.length
+  let result = ''
+  let i = start
+
+  while (i < raw.length) {
+    const ch = raw[i]
+    if (ch === '\\') {
+      result += ch + (raw[i + 1] || '')
+      i += 2
+    } else if (ch === '"') {
+      break
+    } else {
+      result += ch
+      i++
+    }
+  }
+
+  return result
+}
+
 export function useStoryWriter() {
   const isWriting = ref(false)
   const writeError = ref(null)
@@ -265,7 +297,7 @@ IMPORTANT: The prose field must be at least 800 words. Do not truncate the story
       if (onChunk) {
         await aiStream(userPrompt, systemPrompt, (chunk) => {
           accumulated += chunk
-          onChunk(chunk, accumulated)
+          onChunk(chunk, tryExtractProse(accumulated))
         }, { feature: FEATURES.STORY_GENERATION, maxTokens: 6000 })
       } else {
         accumulated = await aiGenerate(userPrompt, systemPrompt, {
@@ -280,9 +312,10 @@ IMPORTANT: The prose field must be at least 800 words. Do not truncate the story
         structured: parsed
       }
     } catch (err) {
-      // Graceful degradation: return raw text if JSON parsing failed
+      // Graceful degradation: return extracted prose if JSON parsing failed
       if (err.message?.includes('JSON')) {
-        return { prose: accumulated || '', structured: null }
+        const fallback = tryExtractProse(accumulated) || accumulated
+        return { prose: fallback, structured: null }
       }
       writeError.value = err.message || 'Scene writing failed'
       throw err

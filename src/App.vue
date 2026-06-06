@@ -89,6 +89,10 @@ function handleEndFlow() {
   timer.endSession()
 }
 
+function handleOpenChapters() {
+  appShell.value?.toggleChapters()
+}
+
 async function handleOnboardingCompleteWrapper() {
   showOnboarding.value = false
   await onOnboardingComplete()
@@ -135,7 +139,7 @@ function handleOnboardingSkipWrapper() {
       </template>
 
       <template #story-generator>
-        <StoryGeneratorPanel v-if="ollamaAvailable" @open-chapters="appShell?.toggleChapters()" />
+        <StoryGeneratorPanel v-if="ollamaAvailable" @open-chapters="handleOpenChapters" />
         <div v-else class="p-4 text-center text-text-secondary">
           AI features disabled — Ollama unavailable
         </div>
