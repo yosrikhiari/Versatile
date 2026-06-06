@@ -1,6 +1,7 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
+import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useSnapshotStore } from '../../stores/snapshotStore'
 import { useFlowSession } from '../../composables/useFlowSession'
 import { useDebounceFn } from '@vueuse/core'
@@ -20,17 +21,37 @@ function handleExitFlow() {
 }
 
 const projectStore = useProjectStore()
+const manuscriptStore = useManuscriptStore()
 const snapshotStore = useSnapshotStore()
 const isSaving = ref(false)
+
+const activeContent = computed(() => {
+  if (manuscriptStore.activeSubsectionId) {
+    return manuscriptStore.activeSubsection?.content || ''
+  }
+  if (manuscriptStore.activeSectionId) {
+    return manuscriptStore.activeSection?.content || ''
+  }
+  return projectStore.documentContent
+})
 
 const debouncedSave = useDebounceFn(async () => {
   if (projectStore.currentProjectId) {
     isSaving.value = true
-    projectStore.saveDocumentDebounced()
+    const content = editor.value?.getHTML() || ''
+
+    if (manuscriptStore.activeSubsectionId) {
+      await manuscriptStore.updateSubsectionData(manuscriptStore.activeSubsectionId, { content }, projectStore.currentProjectId)
+    } else if (manuscriptStore.activeSectionId) {
+      await manuscriptStore.updateSectionData(manuscriptStore.activeSectionId, { content }, projectStore.currentProjectId)
+    } else {
+      projectStore.saveDocumentDebounced()
+    }
+
     await snapshotStore.saveNewSnapshot(
       projectStore.currentProjectId,
-      null,
-      projectStore.documentContent,
+      manuscriptStore.activeSubsectionId || manuscriptStore.activeSectionId || null,
+      content,
       'manuscript auto-save'
     )
     setTimeout(() => { isSaving.value = false }, 1500)
@@ -38,7 +59,7 @@ const debouncedSave = useDebounceFn(async () => {
 }, 10000)
 
 const editor = useEditor({
-  content: projectStore.documentContent || '',
+  content: activeContent.value || '',
   extensions: [
     StarterKit.configure({
       heading: false,
@@ -59,7 +80,15 @@ const editor = useEditor({
   },
   onUpdate: ({ editor }) => {
     const content = editor.getHTML()
-    projectStore.updateContent(content)
+    if (manuscriptStore.activeSubsectionId) {
+      const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+      if (sub) sub.content = content
+    } else if (manuscriptStore.activeSectionId) {
+      const sec = manuscriptStore.sections.find(s => s.id === manuscriptStore.activeSectionId)
+      if (sec) sec.content = content
+    } else {
+      projectStore.updateContent(content)
+    }
     debouncedSave()
     flow.handleKeystroke()
   },
@@ -121,7 +150,7 @@ function handleClick(event) {
   }
 }
 
-watch(() => projectStore.documentContent, (newContent) => {
+watch(activeContent, (newContent) => {
   if (editor.value?.getHTML() !== newContent) {
     editor.value.commands.setContent(newContent || '')
   }

@@ -956,7 +956,7 @@ async function handleAutoGenerate() {
   if (autoGenerateCreateGroups.value) {
     const result = await networkSuggestions.autoGenerateNetworkWithGroups({
       existingEntities: canvasEntityIds,
-      confidenceThreshold: 0.8,
+      confidenceThreshold: 0.4,
       groupConfidenceThreshold: 0.5,
       prompt: autoGeneratePrompt.value
     })
@@ -966,7 +966,7 @@ async function handleAutoGenerate() {
   } else {
     suggestions = await networkSuggestions.autoGenerateWithAI({
       existingEntities: canvasEntityIds,
-      confidenceThreshold: 0.8,
+      confidenceThreshold: 0.4,
       prompt: autoGeneratePrompt.value
     })
   }

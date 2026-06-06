@@ -59,7 +59,7 @@ export function useStoryWriter() {
       const categoryType = projectStore.activeWorkspaceType || 'creative'
       const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
-      const activeCraftRules = categoryType === 'creative' ? `\n\n${CRAFT_RULES}` : ''
+      const activeCraftRules = categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
       const systemPrompt = `${activePrompts.writer}
 
@@ -175,7 +175,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       const categoryType = projectStore.activeWorkspaceType || 'creative'
       const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
-      const activeCraftRules = categoryType === 'creative' ? `\n\n${CRAFT_RULES}` : ''
+      const activeCraftRules = categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
       const systemPrompt = `${activePrompts.writer}
 
