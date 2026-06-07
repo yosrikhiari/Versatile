@@ -10,6 +10,8 @@ import { useCompactConversation } from '../../composables/useOllama'
 import SparkPanel from '../spark/SparkPanel.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import GenerationSyncPreview from './GenerationSyncPreview.vue'
+import GenerationLoadingScreen from './GenerationLoadingScreen.vue'
+import { MODE_ARC, MODE_CHAPTER, MODE_SCENE, MODE_BRAINSTORM } from '../../constants/generationModes'
 
 const emit = defineEmits(['openChapters'])
 
@@ -21,9 +23,9 @@ const { exportAsText, exportAsMarkdown } = useStoryExport()
 const sparkStore = useSparkStore()
 const { getTurns } = useCompactConversation()
 
-const tab = ref('brainstorm')
+const tab = ref(MODE_BRAINSTORM)
 
-const mode = computed(() => tab.value === 'volume' ? 'volume' : 'chapter')
+const mode = computed(() => tab.value === MODE_ARC ? MODE_ARC : (tab.value === MODE_CHAPTER ? MODE_CHAPTER : MODE_SCENE))
 const genre = ref('')
 const tone = ref('')
 const wordTarget = ref(3500)
@@ -68,14 +70,14 @@ function handleSendSparkToGenerator() {
   // not from the conversation turn (turns only store a compact summary string)
   if (sparkStore.currentOutline) {
     sparkContext.value = formatBlueprintAsContext(sparkStore.currentOutline)
-    tab.value = 'chapter'
+    tab.value = MODE_CHAPTER
     return
   }
 
   // Priority 2: generated chapter content
   if (sparkStore.currentContent) {
     sparkContext.value = sparkStore.currentContent
-    tab.value = 'chapter'
+    tab.value = MODE_SCENE
     return
   }
 
@@ -98,6 +100,7 @@ const volumeTotalScenes = ref(0)
 const volumeStoryArc = ref(null)
 const volumeStoryContract = ref('')
 const volumePlanEdits = ref([])
+const liveEntities = ref([])
 
 const consistencyModalOpen = ref(false)
 const selectedSceneIndex = ref(0)
@@ -166,21 +169,34 @@ async function handleVolumeGenerate() {
   volumeStoryArc.value = null
   volumeStoryContract.value = ''
   volumePlanEdits.value = []
+  liveEntities.value = []
 
-  const result = await volumeGenerator.startGeneration({
-    projectId: projectStore.currentProjectId,
-    synopsis: synopsis.value,
-    genre: genre.value,
-    tone: tone.value,
-    wordTarget: wordTarget.value,
-    singleChapter: mode.value === 'chapter',
-    sparkContext: sparkContext.value,
-    onPhaseChange: (p) => {}
-  })
+  try {
+    const result = await volumeGenerator.startGeneration({
+      projectId: projectStore.currentProjectId,
+      synopsis: synopsis.value,
+      genre: genre.value,
+      tone: tone.value,
+      wordTarget: wordTarget.value,
+      singleChapter: mode.value === MODE_SCENE || mode.value === MODE_CHAPTER, // Keep compatible for now until follow-up task
+      sparkContext: sparkContext.value,
+      onPhaseChange: (p) => {},
+      onPartialData: (type, name) => {
+        liveEntities.value.push({
+          id: Math.random().toString(36).substring(2, 9),
+          type,
+          name
+        })
+      }
+    })
 
-  if (result) {
-    volumeStoryArc.value = result.storyArc
-    volumeStoryContract.value = result.storyContract
+    if (result) {
+      volumeStoryArc.value = result.storyArc
+      volumeStoryContract.value = result.storyContract
+    }
+  } catch (err) {
+    // The composable already sets phase.value = 'error' and logs the error.
+    // Swallowing it here to prevent Uncaught Promise Rejection in Vue.
   }
 }
 
@@ -341,62 +357,42 @@ function getPhaseLabel(phase) {
       <div>
         <h2 class="text-lg font-semibold text-text-primary font-ui">Story Tools</h2>
       </div>
-      <div class="flex items-center gap-1">
-        <button
-          :class="[
-            'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent font-ui',
-            tab === 'brainstorm'
-              ? 'bg-gradient-to-b from-accent to-[#c09a5e] text-bg-primary shadow-warm-sm btn-elevated'
-              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
-          ]"
-          @click="tab = 'brainstorm'"
-        >Brainstorm</button>
-        <button
-          :class="[
-            'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent font-ui',
-            tab === 'chapter'
-              ? 'bg-gradient-to-b from-accent to-[#c09a5e] text-bg-primary shadow-warm-sm btn-elevated'
-              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
-          ]"
-          @click="tab = 'chapter'"
-        >Scene</button>
-        <button
-          :class="[
-            'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent font-ui',
-            tab === 'volume'
-              ? 'bg-gradient-to-b from-accent to-[#c09a5e] text-bg-primary shadow-warm-sm btn-elevated'
-              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
-          ]"
-          @click="tab = 'volume'"
-        >Chapter Arc</button>
+      <div class="flex items-center justify-center w-full mt-2 border-b border-border-subtle/30 pb-3">
+        <div class="flex items-center gap-6">
+          <label
+            v-for="m in [
+              { id: MODE_BRAINSTORM, label: 'Ideate' },
+              { id: MODE_SCENE, label: 'Scene' },
+              { id: MODE_CHAPTER, label: 'Chapter' },
+              { id: MODE_ARC, label: 'Arc' }
+            ]"
+            :key="m.id"
+            class="flex items-center gap-2 cursor-pointer group"
+            @click="tab = m.id"
+          >
+            <div class="w-3 h-3 rounded-full border flex items-center justify-center transition-all duration-300"
+                 :class="tab === m.id ? 'border-accent' : 'border-text-hint/50 group-hover:border-text-secondary'">
+              <div v-if="tab === m.id" class="w-1.5 h-1.5 bg-accent rounded-full"></div>
+            </div>
+            <span class="text-[11px] font-spark tracking-widest transition-colors duration-300"
+                  :class="tab === m.id ? 'text-accent' : 'text-text-hint group-hover:text-text-primary'">
+              ~ {{ m.label }} ~
+            </span>
+          </label>
+        </div>
       </div>
     </div>
 
     <div class="flex-1 overflow-y-auto scrollbar-thin">
       <!-- ==================== BRAINSTORM TAB ==================== -->
-      <div v-if="tab === 'brainstorm'" class="h-full flex flex-col">
+      <div v-if="tab === MODE_BRAINSTORM" class="h-full flex flex-col">
         <div class="flex-1 overflow-y-auto">
-          <SparkPanel embedded />
-        </div>
-        <div v-if="hasSparkResponse" class="px-4 py-3 border-t border-border-subtle bg-bg-secondary space-y-2">
-          <p class="text-[10px] uppercase tracking-widest text-text-hint font-ui text-center">Ready to generate</p>
-          <button
-            class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="handleSendSparkToGenerator"
-          >
-            <span class="flex items-center justify-center gap-2">
-              <BaseIcon name="arrow-right" :size="16" />
-              Use as Generator Context
-            </span>
-          </button>
-          <p class="text-[10px] text-text-hint font-ui text-center truncate px-1" :title="sparkContextLabel">
-            {{ sparkContextLabel }}
-          </p>
+          <SparkPanel embedded @use-as-context="handleSendSparkToGenerator" />
         </div>
       </div>
 
       <!-- ==================== CHAPTER / VOLUME TABS ==================== -->
-      <template v-if="tab !== 'brainstorm'">
+      <template v-if="tab !== MODE_BRAINSTORM">
       <!-- ==================== IDLE / CONTROLS ==================== -->
       <template v-if="volumeGenerator.phase.value === 'idle'">
         <div class="p-4 space-y-5">
@@ -441,7 +437,7 @@ function getPhaseLabel(phase) {
           </div>
 
           <div>
-            <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Words per Chapter</label>
+            <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">{{ mode === MODE_SCENE ? 'Words per Scene' : 'Total Word Target' }}</label>
             <input
               v-model.number="wordTarget"
               type="number"
@@ -486,7 +482,7 @@ function getPhaseLabel(phase) {
           >
             <span class="flex items-center justify-center gap-2">
               <BaseIcon name="wand-2" :size="16" />
-              {{ mode === 'chapter' ? 'Generate Chapter' : 'Generate Volume' }}{{ sparkContext ? ' with Spark context' : '' }}
+              {{ mode === MODE_SCENE ? 'Generate Scene' : (mode === MODE_CHAPTER ? 'Generate Chapter' : 'Generate Arc') }}{{ sparkContext ? ' with Spark context' : '' }}
             </span>
           </button>
 
@@ -500,27 +496,35 @@ function getPhaseLabel(phase) {
       </template>
 
       <!-- ==================== CHAPTER GENERATOR ==================== -->
+        <!-- ERROR STATE -->
+        <div v-if="volumeGenerator.phase.value === 'error'" class="p-8 text-center space-y-4">
+          <div class="flex items-center justify-center gap-3 text-red-400 py-4">
+            <BaseIcon name="alert-triangle" :size="32" />
+          </div>
+          <div class="text-lg font-ui text-text-primary">Conjuration Failed</div>
+          <p class="text-sm text-red-300 bg-red-950/20 p-4 rounded-lg font-body border border-red-900/30 max-w-lg mx-auto whitespace-pre-wrap">{{ volumeGenerator.error || 'An unknown error occurred.' }}</p>
+          <div class="pt-4">
+            <button
+              class="px-6 py-2 bg-bg-tertiary text-text-secondary hover:text-text-primary rounded-lg transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+              @click="handleVolumeReset"
+            >Try Again</button>
+          </div>
+        </div>
+
         <!-- BOOTSTRAPPING / PLANNING -->
         <div v-if="volumeGenerator.phase.value === 'bootstrapping' || volumeGenerator.phase.value === 'planning'" class="p-8 text-center space-y-4">
-          <div class="flex items-center justify-center gap-3 py-8">
-            <BaseIcon name="loader-2" :size="24" class="animate-spin text-accent" />
-            <span class="text-lg text-text-primary font-ui animate-pulse">Initializing story blueprint...</span>
-          </div>
-          <div v-if="volumeGenerator.progress.total > 0" class="flex items-center justify-center gap-2 text-xs text-text-hint font-ui">
-            <div class="flex gap-1">
-              <span v-for="s in volumeGenerator.progress.total" :key="s" :class="['w-2 h-2 rounded-full transition-colors', s <= volumeGenerator.progress.current ? 'bg-accent' : 'bg-bg-tertiary']" />
-            </div>
-            <span>Step {{ volumeGenerator.progress.current }} / {{ volumeGenerator.progress.total }}</span>
-          </div>
-          <p class="text-sm text-text-hint font-body">
-            {{ volumeGenerator.progress.statusText || (volumeGenerator.phase.value === 'bootstrapping' ? 'Checking story bible, generating missing entities' : 'Designing scene structure with tension arc') }}
-          </p>
+          <GenerationLoadingScreen 
+            :phase="volumeGenerator.phase.value"
+            :progress="volumeGenerator.progress"
+            :streamed-entities="liveEntities"
+            @cancel="handleVolumeReset"
+          />
         </div>
 
         <!-- PLAN PREVIEW -->
         <div v-if="volumeGenerator.phase.value === 'plan-preview'" class="p-4 space-y-4">
           <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 space-y-3">
-            <h3 class="text-sm font-semibold text-text-primary font-ui">{{ mode === 'chapter' ? 'Chapter' : 'Story' }} Plan — {{ volumeGenerator.scenePlan.value.length }} scene{{ volumeGenerator.scenePlan.value.length === 1 ? '' : 's' }}</h3>
+            <h3 class="text-sm font-semibold text-text-primary font-ui">{{ mode === MODE_SCENE ? 'Scene' : (mode === MODE_CHAPTER ? 'Chapter' : 'Arc') }} Plan — {{ volumeGenerator.scenePlan.value.length }} scene{{ volumeGenerator.scenePlan.value.length === 1 ? '' : 's' }}</h3>
             <p class="text-xs text-text-hint font-body">Edit scene fields before writing begins. Narrative pitches are auto-generated previews — edit the underlying fields to update them.</p>
           </div>
 

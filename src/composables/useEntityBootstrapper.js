@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { aiGenerate } from '../services/aiService'
+import { aiGenerate, aiStream } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
@@ -60,7 +60,7 @@ export function useEntityBootstrapper() {
   const isBootstrapping = ref(false)
   const bootstrapError = ref(null)
 
-  async function bootstrapEntities({ synopsis, projectId, volumeId }) {
+  async function bootstrapEntities({ synopsis, projectId, volumeId, onPartialData }) {
     isBootstrapping.value = true
     bootstrapError.value = null
 
@@ -107,12 +107,38 @@ TASK:
 2. Generate ${needChars} new character(s), ${needLocs} new location(s), and ${needThreads} new plot thread(s) as needed.
 3. Return ALL entities in the output — enhanced existing ones plus any new ones — under the same three keys.`
 
-      const response = await aiGenerate(userPrompt, ENRICH_ENTITIES_PROMPT, {
+      let accumulated = ''
+      const emittedNames = new Set()
+      let scanOffset = 0
+
+      await aiStream(userPrompt, ENRICH_ENTITIES_PROMPT, (chunk) => {
+        accumulated += chunk
+        
+        const regex = /"name"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
+        regex.lastIndex = Math.max(0, scanOffset - 200)
+        let match
+        
+        while ((match = regex.exec(accumulated)) !== null) {
+          const name = match[1]
+          if (!emittedNames.has(name)) {
+            emittedNames.add(name)
+            
+            const charIdx = accumulated.lastIndexOf('"characters"', match.index)
+            const locIdx = accumulated.lastIndexOf('"locations"', match.index)
+            const type = locIdx > charIdx ? 'location' : 'character'
+            
+            try { 
+              if (onPartialData) onPartialData(type, name) 
+            } catch {}
+          }
+        }
+        scanOffset = Math.max(0, accumulated.length - 200)
+      }, {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.7
       })
 
-      let parsed = sanitizeJson(response)
+      let parsed = sanitizeJson(accumulated)
       if (!parsed) {
         throw new Error('Failed to parse generated entities')
       }

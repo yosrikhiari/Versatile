@@ -212,13 +212,13 @@ export async function deleteVolume(id) {
 }
 
 export async function assignChapterToVolume(chapterId, volumeId) {
-  const chapters = await db.chapters.where('id').equals(chapterId).toArray()
-  if (chapters.length === 0) return
-  await db.chapters.update(chapterId, { volumeId })
+  const sections = await db.sections.where('id').equals(chapterId).toArray()
+  if (sections.length === 0) return
+  await db.sections.update(chapterId, { volumeId })
 }
 
 export async function removeChapterFromVolume(chapterId) {
-  const chapters = await db.chapters.where('id').equals(chapterId).toArray()
-  if (chapters.length === 0) return
-  await db.chapters.update(chapterId, { volumeId: null })
+  const sections = await db.sections.where('id').equals(chapterId).toArray()
+  if (sections.length === 0) return
+  await db.sections.update(chapterId, { volumeId: null })
 }

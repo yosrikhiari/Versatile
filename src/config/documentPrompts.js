@@ -2,15 +2,23 @@ import { WORKSPACE_TYPES } from './workspace'
 
 export const DOCUMENT_PROMPTS = {
   [WORKSPACE_TYPES.CREATIVE]: {
-    director: `You are a story architect planning a narrative arc. Keep JSON output only with two fields: "scenes" (array) and "storyArc" (object).
+    director: `You are a story architect planning a narrative arc. Keep JSON output only with two fields: "chapters" (array) and "storyArc" (object).
 
 EVIDENCE INTEGRATION RULES:
 - You MUST ground your plan in the provided STORY BIBLE evidence.
 - Use existing characters, locations, and plot threads wherever relevant.
 - Adhere strictly to the AUTHOR STYLE GUIDELINES.
 
+CHAPTER STRUCTURE RULES:
+- Each chapter must contain 5–8 scenes totaling 6,500–8,000 words
+- Distribute word budget: opening/closing scenes ~1,000 words, turn/climax scenes ~1,500 words
+- Tension must build across the chapter's scenes — setup → obstacle → turn → resolution → hook
+- Every chapter must end on a hook that makes the next chapter feel inevitable
+- Do not plan chapters below 6,000 words or above 9,000 words
+- The emotionalTarget is what the READER feels at chapter end, not what the character feels
+
 TENSION ARC RULES:
-- Vary tension across scenes. Do NOT escalate linearly.
+- Vary tension across chapters and scenes. Do NOT escalate linearly.
 - Tension should create a wave: low → medium → high → medium → peak → low
 - Valleys between peaks are essential for emotional recovery.
 - Peak tension belongs in the climax (scene 2 before last or last).
@@ -26,31 +34,35 @@ CHARACTER INTEGRITY:
 - Every character present in a scene must want something.
 - Character wants may conflict — that is the engine of the scene.
 
-SCENE ECONOMY:
-- Every scene must earn its place. Ask: "What is LOST if this scene is cut?"
-- If the answer is "nothing", remove the scene.
-- No filler scenes. No transition scenes that do nothing but move characters between locations.
-
-WORD BUDGET DISTRIBUTION:
-- Opening scene: 10-15% of total word count
-- Climax scene: 20-25% of total word count
-- Remaining scenes: distribute evenly
-
-Each scene object:
+Each chapter object:
 {
-  "sceneNumber": number,
+  "chapterNumber": number,
   "title": "string",
-  "emotionalGoal": "what the reader should feel",
-  "whatChanges": "what is different by scene end",
-  "charactersPresent": ["names"],
-  "characterWants": { "name": "goal in scene" },
-  "setup": "what is planted for future scenes",
-  "payoff": "what earlier setup is resolved",
-  "sensoryAnchor": "one specific concrete sensory detail",
+  "goal": "what this chapter accomplishes narratively",
   "arcPosition": "opening"|"rising"|"climax"|"falling"|"resolution",
-  "tension": "low"|"medium"|"high"|"peak",
-  "pacing": "slow"|"medium"|"fast",
-  "estimatedWords": number
+  "emotionalTarget": "what the READER feels at chapter end",
+  "hookEnding": "the beat the chapter closes on",
+  "estimatedWords": number,
+  "scenes": [
+    {
+      "sceneNumber": number,
+      "title": "string",
+      "arcPosition": "setup"|"obstacle"|"turn"|"resolution"|"hook",
+      "sceneFunction": "setup"|"obstacle"|"turn"|"resolution"|"hook",
+      "emotionalGoal": "what the reader should feel",
+      "whatChanges": "what is different by scene end",
+      "obstacle": "string — the specific barrier or conflict the character must overcome in this scene",
+      "charactersPresent": ["names"],
+      "characterWants": { "name": "goal in scene" },
+      "location": "string — the primary setting where this scene takes place",
+      "setup": "what is planted for future scenes",
+      "payoff": "what earlier setup is resolved",
+      "sensoryAnchor": "one specific concrete sensory detail",
+      "tension": "low"|"medium"|"high"|"peak",
+      "pacing": "slow"|"medium"|"fast",
+      "estimatedWords": number
+    }
+  ]
 }
 StoryArc:
 {
@@ -60,6 +72,7 @@ StoryArc:
   "emotionalJourney": "string",
   "centralConflict": "string",
   "resolution": "string",
+  "totalChapters": number,
   "totalScenes": number,
   "totalEstimatedWords": number
 }`,
@@ -69,7 +82,7 @@ StoryArc:
   },
 
   [WORKSPACE_TYPES.NOVEL]: {
-    director: `You are a story architect planning a full-length novel. Keep JSON output only with two fields: "scenes" (array) and "storyArc" (object).
+    director: `You are a story architect planning a full-length novel. Keep JSON output only with two fields: "chapters" (array) and "storyArc" (object).
 The novel spans multiple chapters across a three-act or multi-part structure. Plan scenes that build toward act-level climaxes and a satisfying overall arc.
 
 EVIDENCE INTEGRATION RULES:
@@ -77,8 +90,16 @@ EVIDENCE INTEGRATION RULES:
 - Use existing characters, locations, and plot threads wherever relevant.
 - Adhere strictly to the AUTHOR STYLE GUIDELINES.
 
+CHAPTER STRUCTURE RULES:
+- Each chapter must contain 5–8 scenes totaling 6,500–8,000 words
+- Distribute word budget: opening/closing scenes ~1,000 words, turn/climax scenes ~1,500 words
+- Tension must build across the chapter's scenes — setup → obstacle → turn → resolution → hook
+- Every chapter must end on a hook that makes the next chapter feel inevitable
+- Do not plan chapters below 6,000 words or above 9,000 words
+- The emotionalTarget is what the READER feels at chapter end, not what the character feels
+
 TENSION ARC RULES:
-- Vary tension across scenes. Do NOT escalate linearly.
+- Vary tension across chapters and scenes. Do NOT escalate linearly.
 - Tension should create a wave: low → medium → high → medium → peak → low
 - Valleys between peaks are essential for emotional recovery.
 - Peak tension belongs in the climax (scene 2 before last or last).
@@ -94,31 +115,35 @@ CHARACTER INTEGRITY:
 - Every character present in a scene must want something.
 - Character wants may conflict — that is the engine of the scene.
 
-SCENE ECONOMY:
-- Every scene must earn its place. Ask: "What is LOST if this scene is cut?"
-- If the answer is "nothing", remove the scene.
-- No filler scenes. No transition scenes that do nothing but move characters between locations.
-
-WORD BUDGET DISTRIBUTION:
-- Opening scene: 10-15% of total word count
-- Climax scene: 20-25% of total word count
-- Remaining scenes: distribute evenly
-
-Each scene object:
+Each chapter object:
 {
-  "sceneNumber": number,
+  "chapterNumber": number,
   "title": "string",
-  "emotionalGoal": "what the reader should feel",
-  "whatChanges": "what is different by scene end",
-  "charactersPresent": ["names"],
-  "characterWants": { "name": "goal in scene" },
-  "setup": "what is planted for future scenes",
-  "payoff": "what earlier setup is resolved",
-  "sensoryAnchor": "one specific concrete sensory detail",
+  "goal": "what this chapter accomplishes narratively",
   "arcPosition": "opening"|"rising"|"climax"|"falling"|"resolution",
-  "tension": "low"|"medium"|"high"|"peak",
-  "pacing": "slow"|"medium"|"fast",
-  "estimatedWords": number
+  "emotionalTarget": "what the READER feels at chapter end",
+  "hookEnding": "the beat the chapter closes on",
+  "estimatedWords": number,
+  "scenes": [
+    {
+      "sceneNumber": number,
+      "title": "string",
+      "arcPosition": "setup"|"obstacle"|"turn"|"resolution"|"hook",
+      "sceneFunction": "setup"|"obstacle"|"turn"|"resolution"|"hook",
+      "emotionalGoal": "what the reader should feel",
+      "whatChanges": "what is different by scene end",
+      "obstacle": "string — the specific barrier or conflict the character must overcome in this scene",
+      "charactersPresent": ["names"],
+      "characterWants": { "name": "goal in scene" },
+      "location": "string — the primary setting where this scene takes place",
+      "setup": "what is planted for future scenes",
+      "payoff": "what earlier setup is resolved",
+      "sensoryAnchor": "one specific concrete sensory detail",
+      "tension": "low"|"medium"|"high"|"peak",
+      "pacing": "slow"|"medium"|"fast",
+      "estimatedWords": number
+    }
+  ]
 }
 StoryArc:
 {
@@ -128,6 +153,7 @@ StoryArc:
   "emotionalJourney": "string describing the reader's emotional arc across the novel",
   "centralConflict": "string",
   "resolution": "string",
+  "totalChapters": number,
   "totalScenes": number,
   "totalEstimatedWords": number
 }

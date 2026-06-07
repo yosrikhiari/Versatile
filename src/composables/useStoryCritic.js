@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
+import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 
 const CRITIC_SYSTEM_PROMPT = `You evaluate scene drafts for craft quality. Respond ONLY with valid JSON. No markdown, no explanation.
 
@@ -137,7 +138,6 @@ Return JSON evaluation.`
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
-      const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
 
       const response = await aiGenerate(userPrompt, activePrompts.critic, {
@@ -193,40 +193,70 @@ Return JSON evaluation.`
     try {
       const systemNote = synopsis ? `Story synopsis: "${synopsis}"\n\n` : ''
 
+      // Pre-index scenes by character name (avoids O(C×S) repeated .filter() inside loop)
+      const scenesByChar = new Map()
       for (const char of characters) {
-        const charScenes = sceneProse.filter(s =>
+        scenesByChar.set(char.name, sceneProse.filter(s =>
           (s.characters || []).includes(char.name)
-        )
-        if (charScenes.length < 2) continue
-
-        const prompt = formatCharacterCheck(char, {}, charScenes)
-        const response = await aiGenerate(
-          systemNote + prompt,
-          CONSISTENCY_CRITIC_PROMPT,
-          { feature: FEATURES.STORY_GENERATION, temperature: 0.3, maxTokens: 1000 }
-        )
-        const parsed = sanitizeJson(response)
-        if (parsed && Array.isArray(parsed.contradictions) && parsed.contradictions.length > 0) {
-          report.characterIssues.push({ character: char.name, contradictions: parsed.contradictions })
-        }
+        ))
       }
 
+      // Pre-index scenes by location name
+      const scenesByLoc = new Map()
       for (const loc of locations) {
-        const locScenes = sceneProse.filter(s =>
+        scenesByLoc.set(loc.name, sceneProse.filter(s =>
           s.location === loc.name
-        )
-        if (locScenes.length < 2) continue
+        ))
+      }
 
-        const prompt = formatLocationCheck(loc, {}, locScenes)
-        const response = await aiGenerate(
-          systemNote + prompt,
-          CONSISTENCY_CRITIC_PROMPT,
-          { feature: FEATURES.STORY_GENERATION, temperature: 0.3, maxTokens: 1000 }
-        )
-        const parsed = sanitizeJson(response)
-        if (parsed && Array.isArray(parsed.contradictions) && parsed.contradictions.length > 0) {
-          report.locationIssues.push({ location: loc.name, contradictions: parsed.contradictions })
-        }
+      // Build task factories for characters and locations
+      const charTasks = characters
+        .filter(char => (scenesByChar.get(char.name)?.length || 0) >= 2)
+        .map(char => async () => {
+          const charScenes = scenesByChar.get(char.name)
+          const prompt = formatCharacterCheck(char, {}, charScenes)
+          const response = await aiGenerate(
+            systemNote + prompt,
+            CONSISTENCY_CRITIC_PROMPT,
+            { feature: FEATURES.STORY_GENERATION, temperature: 0.3, maxTokens: 1000 }
+          )
+          const parsed = sanitizeJson(response)
+          if (parsed?.contradictions?.length > 0) {
+            return { character: char.name, contradictions: parsed.contradictions }
+          }
+          return null
+        })
+
+      const locTasks = locations
+        .filter(loc => (scenesByLoc.get(loc.name)?.length || 0) >= 2)
+        .map(loc => async () => {
+          const locScenes = scenesByLoc.get(loc.name)
+          const prompt = formatLocationCheck(loc, {}, locScenes)
+          const response = await aiGenerate(
+            systemNote + prompt,
+            CONSISTENCY_CRITIC_PROMPT,
+            { feature: FEATURES.STORY_GENERATION, temperature: 0.3, maxTokens: 1000 }
+          )
+          const parsed = sanitizeJson(response)
+          if (parsed?.contradictions?.length > 0) {
+            return { location: loc.name, contradictions: parsed.contradictions }
+          }
+          return null
+        })
+
+      // Execute with concurrency cap of 3 to avoid overwhelming the LLM backend
+      const allTasks = [...charTasks, ...locTasks]
+      const CONCURRENCY = 3
+      const results = []
+      for (let i = 0; i < allTasks.length; i += CONCURRENCY) {
+        const batch = allTasks.slice(i, i + CONCURRENCY).map(fn => fn())
+        results.push(...await Promise.all(batch))
+      }
+
+      for (const r of results) {
+        if (!r) continue
+        if (r.character) report.characterIssues.push(r)
+        if (r.location) report.locationIssues.push(r)
       }
     } catch (err) {
       report.error = err.message

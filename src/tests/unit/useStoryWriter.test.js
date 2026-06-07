@@ -76,7 +76,7 @@ describe('writeScene', () => {
   })
 
   it('uses streaming when onChunk provided', async () => {
-    mockAiStream.mockImplementation(async (user, system, onChunk, opts) => {
+    mockAiStream.mockImplementationOnce(async (user, system, onChunk, opts) => {
       onChunk('Hello ', 'Hello ')
       onChunk('world', 'Hello world')
     })
@@ -217,9 +217,9 @@ describe('writeSceneStructured', () => {
 
   it('uses streaming when onChunk provided', async () => {
     mockFinalizeStream.mockReturnValue(structuredOutput)
-    mockAiStream.mockImplementation(async (user, system, onChunk, opts) => {
-      onChunk('chunk1', 'chunk1')
-      onChunk('chunk2', 'chunk1chunk2')
+    mockAiStream.mockImplementationOnce(async (user, system, onChunk, opts) => {
+      onChunk('{"prose": "chunk1', '{"prose": "chunk1')
+      onChunk('chunk2', '{"prose": "chunk1chunk2')
     })
     const { writeSceneStructured } = useStoryWriter()
     const onChunk = vi.fn()
