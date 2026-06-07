@@ -15,6 +15,60 @@ const CRAFT_RULES = `CRAFT RULES — follow all of these:
 5. The first sentence of a scene must create forward motion or tension
 6. The last sentence must leave something unresolved or changed`
 
+const PROSE_STYLE_GUIDE = `PROSE STYLE GUIDE — apply these rules to every scene:
+
+VOICE:
+- Write in close third person — stay inside the protagonist's skull at all times. Never pull back to omniscient.
+- Narrative irony: the protagonist's internal commentary should be drier and more self-aware than their circumstances warrant. Deadpan understatement in response to catastrophe.
+- The reader knows what the protagonist knows, when they know it. No dramatic irony.
+- Internal voice register is colloquial. External narration is a half-step more formal — the gap between them creates the sense of a thinking mind.
+
+PROSE RULES:
+- Open every scene mid-physical-detail, mid-action, or mid-emotional-state. No establishing shots. No scene-setting preamble before the first sentence.
+- Paragraph rhythm: 2–3 sentence paragraphs alternating with single-sentence emphasis beats. Single-sentence paragraphs are emotional punctuation only — never description.
+- Sensory priority: physical sensation first (pain, cold, hunger), then temperature, then sight. Sound and taste sparingly. Smell last, used once per scene at most.
+- Worldbuilding only through immediate experience. No standalone lore paragraphs.
+- All exposition must be delivered through a character's direct perception.
+
+DIALOGUE:
+- Every line must do at least two things simultaneously: reveal character + advance situation, or establish subtext + reveal relationship.
+- Characters express care, threat, status, and alliance obliquely — never directly.
+- Tags: "said" and "added" only. No adverb tags. Prefer action beats over tags.
+- When a character's voice identifies them uniquely, omit the tag.
+
+CONTEXT-ADAPTIVE RULES (weight these based on this scene's TENSION, PACING, and ARC POSITION from the SCENE BRIEF above):
+- Tension HIGH or PEAK: compress paragraphs, foreground subtext over direct speech, minimize interiority, hard stop.
+- Tension LOW or MEDIUM: expand interiority, relax into sensory detail, allow reflective passages.
+- Pacing SLOW: deeper sensory depth, longer paragraphs, extended interiority.
+- Pacing FAST: compressed action, minimal interiority, short declarative sentences.
+- Arc position OPENING: establish immediate physical reality and the protagonist's emotional state at entry.
+- Arc position RISING: complicate what was established, introduce new pressure.
+- Arc position CLIMAX: escalation beats, payoff delivery, hard stop on unresolved threat.
+- Arc position FALLING or RESOLUTION: emotional landing, consequences revealed, softer close that implies continuation.
+
+CHAPTER STRUCTURE (for volume/novel mode):
+- Open with immediate physical or emotional reality. Complicate. Escalate. Close on unresolved threat or stated-but-unfulfilled intention.
+- Never close a chapter on resolution. The reader must need the next page.
+- Middle scenes (not opening/closing) are complication-and-escalation beats. The chapter's closing scene owns the hook.
+
+PROTAGONIST VOICE:
+- Internal monologue: deadpan understatement, immediate pragmatic calculation over emotion, brief compassion suppressed by survival logic, specific grudges stated as calm intentions.
+- Never express vulnerability directly. Never be heroic or inspirational in internal monologue.
+- React to catastrophe with pragmatic acceptance before emotion. Never be surprised by own competence.
+- Internal vocabulary is colloquial — save elevated language for the narration frame.
+
+FORBIDDEN (do not use these under any circumstances):
+- Purple prose or flowery description
+- "He felt X" — show through action or thought
+- Heroic internal monologue
+- Protagonist surprised by own competence
+- Exposition dumps — worldbuilding only through immediate experience
+- Omniscient narration or dramatic irony
+- Characters saying what they mean directly
+- Adverb dialogue tags
+- Resolution at chapter close
+- Standalone lore paragraphs`
+
 function extractDoc(docString, heading) {
   if (!docString) return ''
   const regex = new RegExp(`#+\\s*${heading}[\\s\\S]*?(?=\n#|$)`, 'i')
@@ -255,6 +309,8 @@ ${voiceInstruction}
 
 ${antiPatterns ? antiPatterns + '\n' : ''}${activeCraftRules}
 
+${PROSE_STYLE_GUIDE}
+
 Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside the JSON.`
 
       const logSummary = summarizeLog(chapterLog)
@@ -271,7 +327,8 @@ Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside t
             `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
             `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
             `- Tension: ${sceneBrief.tension || 'medium'}`,
-            `- Pacing: ${sceneBrief.pacing || 'medium'}`
+            `- Pacing: ${sceneBrief.pacing || 'medium'}`,
+            `- Arc position: ${sceneBrief.arcPosition || ''}`
           ]
         : [
             `- Goal: ${sceneBrief.goal || ''}`,

@@ -46,11 +46,15 @@ async function parallelWithLimit(tasks, limit = 3) {
   for (const task of tasks) {
     const p = Promise.resolve().then(() => task())
     results.push(p)
-    if (limit <= tasks.length) {
-      const e = p.then(() => executing.splice(executing.indexOf(e), 1))
-      executing.push(e)
-      if (executing.length >= limit) await Promise.race(executing)
-    }
+    const e = p.then(() => {
+      const idx = executing.indexOf(e)
+      if (idx !== -1) executing.splice(idx, 1)
+    }, () => {
+      const idx = executing.indexOf(e)
+      if (idx !== -1) executing.splice(idx, 1)
+    })
+    executing.push(e)
+    if (executing.length >= limit) await Promise.race(executing)
   }
   return Promise.all(results)
 }
@@ -498,6 +502,80 @@ export function useVolumeStoryGenerator() {
     
     debugSnapshot('step-1-anchors', { outcomes: anchorOutcomes })
 
+    // Phase 2: Generate middle scenes per chapter
+    progress.statusText = 'Phase 2: Generating chapter middle scenes...'
+
+    async function generateMiddleScene(scene, sceneIndex, chapterMeta) {
+      try {
+        // Chapter-scoped log: only scenes from this chapter (Fix #2 — never cross-chapter)
+        const logEntries = writtenScenes.value
+          .filter(s => s && s.chapterId === chapterMeta.chapterNumber && s.summary)
+          .map(s => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}`)
+        const chapterLog = logEntries.join('\n')
+
+        let fullProse = ''
+        const result = await writer.writeSceneStructured({
+          sceneBrief: scene, storyArc, chapterLog,
+          storyBible: storyBibleDocs,
+          spineContext: spineContext.value,
+          storyContract, existingEntitiesJson,
+          onChunk: (_chunk, proseChunk) => {
+            fullProse += proseChunk || ''
+            onChunk?.({ sceneIndex: sceneIndex + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
+          }
+        })
+        fullProse = result.prose
+
+        progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
+        const summary = await computeSummary(fullProse)
+        const wordCount = fullProse.split(/\s+/).length
+
+        if (scene.subsectionId) {
+          await manuscriptStore.updateSubsectionData(scene.subsectionId, { content: fullProse, wordCount }, projectId)
+        }
+
+        writtenScenes.value[sceneIndex] = {
+          title: scene.title || `Scene ${scene.sceneNumber}`,
+          prose: fullProse, summary,
+          characters: scene.characters || scene.charactersPresent || [],
+          location: scene.location || '',
+          sceneNumber: scene.sceneNumber,
+          subsectionId: scene.subsectionId,
+          chapterId: chapterMeta.chapterNumber
+        }
+
+        return { success: true, sceneIndex, structured: result.structured }
+      } catch (err) {
+        return { success: false, sceneIndex, error: err.message }
+      }
+    }
+
+    const middleTasks = []
+    for (let chapterIndex = 0; chapterIndex < chaptersWithScenes.length; chapterIndex++) {
+      const { chapterMeta, scenes, startIndex } = chaptersWithScenes[chapterIndex]
+      for (let j = 0; j < scenes.length; j++) {
+        const sceneIndex = startIndex + j
+        // Skip already-written scenes (anchors completed successfully)
+        if (writtenScenes.value[sceneIndex] !== null) continue
+        const scene = scenes[j]
+        middleTasks.push(() => generateMiddleScene(scene, sceneIndex, chapterMeta))
+      }
+    }
+
+    let middleOutcomes = []
+    if (middleTasks.length > 0) {
+      middleOutcomes = await parallelWithLimit(middleTasks, limit)
+    }
+
+    debugSnapshot('step-2-middle-scenes', {
+      totalScenes: scenePlan.value.length,
+      writtenCount: writtenScenes.value.filter(s => s !== null).length,
+      middleTasks: middleTasks.length,
+      successful: middleOutcomes.filter(o => o.success).length,
+      failed: middleOutcomes.filter(o => !o.success).length,
+      outcomes: middleOutcomes
+    })
+
     await completeGeneration(projectId)
   }
 
@@ -591,7 +669,8 @@ export function useVolumeStoryGenerator() {
           characters: scene.characters || scene.charactersPresent || [],
           location: scene.location || ''
         },
-        structured: result.structured
+        structured: result.structured,
+        styleGuideInjected: true
       })
     }
 
@@ -640,38 +719,69 @@ export function useVolumeStoryGenerator() {
     progress.total = editedPlan.length
     progress.statusText = 'Building manuscript structure, initializing sections, and assigning chapters...'
 
-    // Create sections for scene groups (3 scenes per section)
+    // Create sections using Director-provided chapter boundaries
     const sections = []
-    // DEBT: mechanical chapter split — no narrative logic, no arc awareness.
-    // Replace with Director-provided chapter boundaries that carry: chapterGoal,
-    // arcPosition, hookEnding, scenesInChapter. See architecture follow-up task.
-    for (let i = 0; i < editedPlan.length; i += 3) {
-      const group = editedPlan.slice(i, i + 3)
-      const sectionData = {
-        title: group[0].title ? `Part ${sections.length + 1}: ${group[0].title}` : `Part ${sections.length + 1}`,
-        summary: group.map(s => s.title || `Scene ${s.sceneNumber}`).join(', '),
-        wordCount: 0
-      }
-      const sectionId = await manuscriptStore.addSectionData(projectId, sectionData)
-      sections.push({ id: sectionId, scenes: group, subsectionIds: [] })
-
-      for (const scene of group) {
-        const subData = {
-          title: scene.title || `Scene ${scene.sceneNumber}`,
-          description: `Scene ${scene.sceneNumber}`,
-          content: '',
-          wordCount: 0,
-          type: 'scene',
-          sceneNumber: scene.sceneNumber
+    if (chapterPlan.value && chapterPlan.value.length > 0) {
+      let offset = 0
+      for (const chapter of chapterPlan.value) {
+        const group = editedPlan.slice(offset, offset + chapter.scenes.length)
+        if (group.length === 0) { offset += chapter.scenes.length; continue }
+        const sectionData = {
+          title: chapter.title || `Chapter ${chapter.chapterNumber || sections.length + 1}`,
+          summary: group.map(s => s.title || `Scene ${s.sceneNumber}`).join(', '),
+          wordCount: 0
         }
-        const subId = await manuscriptStore.addSubsectionData(projectId, sectionId, subData)
-        sections.at(-1).subsectionIds.push(subId)
-        scene.subsectionId = subId
-      }
+        const sectionId = await manuscriptStore.addSectionData(projectId, sectionData)
+        sections.push({ id: sectionId, scenes: group, subsectionIds: [], chapterMeta: chapter })
 
-      // Assign section to volume
-      if (volumeId.value) {
-        await volumeStore.assignChapter(sectionId, volumeId.value, projectId)
+        for (const scene of group) {
+          const subData = {
+            title: scene.title || `Scene ${scene.sceneNumber}`,
+            description: `Scene ${scene.sceneNumber}`,
+            content: '',
+            wordCount: 0,
+            type: 'scene',
+            sceneNumber: scene.sceneNumber
+          }
+          const subId = await manuscriptStore.addSubsectionData(projectId, sectionId, subData)
+          sections.at(-1).subsectionIds.push(subId)
+          scene.subsectionId = subId
+        }
+
+        if (volumeId.value) {
+          await volumeStore.assignChapter(sectionId, volumeId.value, projectId)
+        }
+        offset += chapter.scenes.length
+      }
+    } else {
+      // Fallback: mechanical 3-scene split if no chapter plan
+      for (let i = 0; i < editedPlan.length; i += 3) {
+        const group = editedPlan.slice(i, i + 3)
+        const sectionData = {
+          title: group[0].title ? `Part ${sections.length + 1}: ${group[0].title}` : `Part ${sections.length + 1}`,
+          summary: group.map(s => s.title || `Scene ${s.sceneNumber}`).join(', '),
+          wordCount: 0
+        }
+        const sectionId = await manuscriptStore.addSectionData(projectId, sectionData)
+        sections.push({ id: sectionId, scenes: group, subsectionIds: [] })
+
+        for (const scene of group) {
+          const subData = {
+            title: scene.title || `Scene ${scene.sceneNumber}`,
+            description: `Scene ${scene.sceneNumber}`,
+            content: '',
+            wordCount: 0,
+            type: 'scene',
+            sceneNumber: scene.sceneNumber
+          }
+          const subId = await manuscriptStore.addSubsectionData(projectId, sectionId, subData)
+          sections.at(-1).subsectionIds.push(subId)
+          scene.subsectionId = subId
+        }
+
+        if (volumeId.value) {
+          await volumeStore.assignChapter(sectionId, volumeId.value, projectId)
+        }
       }
     }
 
