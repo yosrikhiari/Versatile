@@ -63,3 +63,36 @@ describe('FIELD_LENGTH_CONSTRAINTS', () => {
     expect(FIELD_LENGTH_CONSTRAINTS.location.description.maxSentences).toBe(3)
   })
 })
+
+describe('retryWithBackoff', () => {
+  it('returns result on successful call', async () => {
+    const { retryWithBackoff } = await import('@/composables/generation/utils')
+    const result = await retryWithBackoff(() => Promise.resolve('ok'))
+    expect(result).toBe('ok')
+  })
+
+  it('throws permanent error without retry', async () => {
+    const { retryWithBackoff } = await import('@/composables/generation/utils')
+    const fn = vi.fn().mockRejectedValue(new Error('API key invalid'))
+    await expect(retryWithBackoff(fn)).rejects.toThrow('API key invalid')
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries on transient errors then succeeds', async () => {
+    const { retryWithBackoff } = await import('@/composables/generation/utils')
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValueOnce('recovered')
+    const result = await retryWithBackoff(fn)
+    expect(result).toBe('recovered')
+    expect(fn).toHaveBeenCalledTimes(3)
+  })
+
+  it('exhausts retries and throws on persistent failure', async () => {
+    const { retryWithBackoff } = await import('@/composables/generation/utils')
+    const fn = vi.fn().mockRejectedValue(new Error('transient error'))
+    await expect(retryWithBackoff(fn, 3)).rejects.toThrow('transient error')
+    expect(fn).toHaveBeenCalledTimes(3)
+  })
+})

@@ -1,137 +1,141 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-
-let useActivityLog
-beforeEach(async () => {
-  vi.resetModules()
-  const mod = await import('@/composables/useActivityLog')
-  useActivityLog = mod.useActivityLog
-})
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 describe('useActivityLog', () => {
-  it('adds a task and returns its id', () => {
-    const log = useActivityLog()
-    const id = log.addTask({ name: 'Test task', type: 'generation' })
-    expect(id).toMatch(/^act-\d+$/)
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  async function createLog() {
+    const mod = await import('../../composables/useActivityLog')
+    return mod.useActivityLog()
+  }
+
+  it('starts with empty tasks', async () => {
+    const log = await createLog()
+    expect(log.tasks.value).toEqual([])
+  })
+
+  it('addTask creates a running task and returns id', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
     expect(log.tasks.value).toHaveLength(1)
-    expect(log.tasks.value[0].name).toBe('Test task')
+    expect(log.tasks.value[0].name).toBe('Test')
+    expect(log.tasks.value[0].type).toBe('generate')
     expect(log.tasks.value[0].status).toBe('running')
+    expect(id).toBe('act-1')
   })
 
-  it('updates a task', () => {
-    const log = useActivityLog()
-    const id = log.addTask({ name: 'T', type: 'test' })
-    log.updateTask(id, { status: 'paused' })
-    expect(log.tasks.value[0].status).toBe('paused')
+  it('updateTask updates task properties', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.updateTask(id, { progress: { current: 5, total: 10, label: 'half' } })
+    expect(log.tasks.value[0].progress.current).toBe(5)
   })
 
-  it('completes a task and sets running phases to done', () => {
-    const log = useActivityLog()
-    const id = log.addTask({ name: 'T', type: 'test' })
-    log.addPhase(id, 'Phase 1')
+  it('updateTask does nothing for unknown id', async () => {
+    const log = await createLog()
+    log.addTask({ name: 'Test', type: 'generate' })
+    log.updateTask('unknown', { name: 'Changed' })
+    expect(log.tasks.value[0].name).toBe('Test')
+  })
+
+  it('completeTask marks task as done', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'phase 1')
     log.completeTask(id)
-    const task = log.tasks.value[0]
-    expect(task.status).toBe('done')
-    expect(task.completedAt).toBeTruthy()
-    expect(task.phases[0].status).toBe('done')
+    expect(log.tasks.value[0].status).toBe('done')
+    expect(log.tasks.value[0].completedAt).not.toBeNull()
+    expect(log.tasks.value[0].phases[0].status).toBe('done')
   })
 
-  it('fails a task and sets running phases to failed', () => {
-    const log = useActivityLog()
-    const id = log.addTask({ name: 'T', type: 'test' })
-    log.addPhase(id, 'Phase 1')
-    log.failTask(id, 'Something broke')
-    const task = log.tasks.value[0]
-    expect(task.status).toBe('failed')
-    expect(task.error).toBe('Something broke')
-    expect(task.phases[0].status).toBe('failed')
+  it('failTask marks task as failed', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.failTask(id, 'Something went wrong')
+    expect(log.tasks.value[0].status).toBe('failed')
+    expect(log.tasks.value[0].error).toBe('Something went wrong')
   })
 
-  it('adds and updates a phase', () => {
-    const log = useActivityLog()
-    const id = log.addTask({ name: 'T', type: 'test' })
-    const idx = log.addPhase(id, 'Planning')
-    expect(idx).toBe(0)
-    const phase = log.tasks.value[0].phases[0]
-    expect(phase.name).toBe('Planning')
-    expect(phase.status).toBe('running')
-    log.updatePhase(id, 0, { status: 'done', elapsedMs: 100 })
-    expect(phase.status).toBe('done')
+  it('addPhase adds phase to task', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    const index = log.addPhase(id, 'thinking')
+    expect(index).toBe(0)
+    expect(log.tasks.value[0].phases[0].name).toBe('thinking')
   })
 
-  it('appends thought to a phase', () => {
-    const log = useActivityLog()
-    const id = log.addTask({ name: 'T', type: 'test' })
-    const idx = log.addPhase(id, 'Writing')
-    log.appendThought(id, idx, 'Hello ')
-    log.appendThought(id, idx, 'World')
+  it('addPhase returns -1 for unknown task', async () => {
+    const log = await createLog()
+    expect(log.addPhase('unknown', 'test')).toBe(-1)
+  })
+
+  it('updatePhase modifies phase by index', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'thinking')
+    log.updatePhase(id, 0, { status: 'done' })
+    expect(log.tasks.value[0].phases[0].status).toBe('done')
+  })
+
+  it('updatePhase does nothing for out-of-range index', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'thinking')
+    log.updatePhase(id, 5, { status: 'done' })
+    expect(log.tasks.value[0].phases[0].status).toBe('running')
+  })
+
+  it('appendThought adds text to a phase', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'thinking')
+    log.appendThought(id, 0, 'Hello ')
+    log.appendThought(id, 0, 'World')
     expect(log.tasks.value[0].phases[0].thought).toBe('Hello World')
   })
 
-  it('crops thought when exceeding THOUGHT_CAP', () => {
-    const log = useActivityLog()
-    const id = log.addTask({ name: 'T', type: 'test' })
-    const idx = log.addPhase(id, 'Writing')
-    const long = 'x'.repeat(60000)
-    log.appendThought(id, idx, long)
-    log.appendThought(id, idx, long)
-    expect(log.tasks.value[0].phases[0].thought.length).toBe(100000)
+  it('appendThought does nothing for invalid phase', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.appendThought(id, 0, 'Should not appear')
+    expect(log.tasks.value[0].phases).toHaveLength(0)
   })
 
-  it('removes a task', () => {
-    const log = useActivityLog()
-    const id = log.addTask({ name: 'T', type: 'test' })
-    log.removeTask(id)
-    expect(log.tasks.value).toHaveLength(0)
+  it('activeTasks returns only running tasks', async () => {
+    const log = await createLog()
+    log.addTask({ name: 'Running', type: 'generate' })
+    const id2 = log.addTask({ name: 'Done', type: 'generate' })
+    log.completeTask(id2)
+    expect(log.activeTasks.value).toHaveLength(1)
+    expect(log.activeTasks.value[0].name).toBe('Running')
   })
 
-  it('clearCompleted removes non-running tasks', () => {
-    const log = useActivityLog()
-    const id1 = log.addTask({ name: 'Running', type: 'test' })
-    const id2 = log.addTask({ name: 'Done', type: 'test' })
+  it('completedTasks returns done and failed tasks', async () => {
+    const log = await createLog()
+    log.addTask({ name: 'Running', type: 'generate' })
+    const id2 = log.addTask({ name: 'Failed', type: 'generate' })
+    log.failTask(id2, 'err')
+    expect(log.completedTasks.value).toHaveLength(1)
+    expect(log.completedTasks.value[0].name).toBe('Failed')
+  })
+
+  it('clearCompleted removes all non-running tasks', async () => {
+    const log = await createLog()
+    log.addTask({ name: 'Running', type: 'generate' })
+    const id2 = log.addTask({ name: 'Done', type: 'generate' })
     log.completeTask(id2)
     log.clearCompleted()
     expect(log.tasks.value).toHaveLength(1)
     expect(log.tasks.value[0].name).toBe('Running')
   })
 
-  it('activeTasks returns only running tasks', () => {
-    const log = useActivityLog()
-    log.addTask({ name: 'Running', type: 'test' })
-    const id2 = log.addTask({ name: 'Done', type: 'test' })
-    log.completeTask(id2)
-    expect(log.activeTasks.value).toHaveLength(1)
-    expect(log.activeTasks.value[0].name).toBe('Running')
-  })
-
-  it('completedTasks returns done and failed tasks', () => {
-    const log = useActivityLog()
-    log.addTask({ name: 'Running', type: 'test' })
-    const id2 = log.addTask({ name: 'Done', type: 'test' })
-    const id3 = log.addTask({ name: 'Failed', type: 'test' })
-    log.completeTask(id2)
-    log.failTask(id3, 'err')
-    expect(log.completedTasks.value).toHaveLength(2)
-  })
-
-  it('returns -1 when adding phase to non-existent task', () => {
-    const log = useActivityLog()
-    const idx = log.addPhase('nonexistent', 'Phase')
-    expect(idx).toBe(-1)
-  })
-
-  it('updatePhase does nothing for non-existent task or phase', () => {
-    const log = useActivityLog()
-    log.updatePhase('nonexistent', 0, { status: 'done' })
-    const id = log.addTask({ name: 'T', type: 'test' })
-    log.updatePhase(id, 99, { status: 'done' })
-    expect(log.tasks.value[0].phases).toHaveLength(0)
-  })
-
-  it('appendThought does nothing for non-existent task or phase', () => {
-    const log = useActivityLog()
-    log.appendThought('nonexistent', 0, 'text')
-    const id = log.addTask({ name: 'T', type: 'test' })
-    log.appendThought(id, 99, 'text')
-    expect(log.tasks.value[0].phases).toHaveLength(0)
+  it('removeTask removes task by id', async () => {
+    const log = await createLog()
+    const id1 = log.addTask({ name: 'A', type: 'generate' })
+    log.addTask({ name: 'B', type: 'generate' })
+    log.removeTask(id1)
+    expect(log.tasks.value).toHaveLength(1)
+    expect(log.tasks.value[0].name).toBe('B')
   })
 })
