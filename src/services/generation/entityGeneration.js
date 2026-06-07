@@ -875,7 +875,9 @@ Return as JSON: { "traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "
     cleaned = cleaned.replace(/```$/i, '')
     cleaned = cleaned.replace(/```json$/i, '')
     cleaned = cleaned.trim()
-    const jsonMatch = cleaned.match(/\{[\s\S]*?\}/)
+    const start = cleaned.indexOf('{')
+    const end = cleaned.lastIndexOf('}')
+    const jsonMatch = start !== -1 && end > start ? [cleaned.slice(start, end + 1)] : null
     if (!jsonMatch) return []
     const parsed = JSON.parse(jsonMatch[0])
     if (!parsed || !Array.isArray(parsed.traits)) {

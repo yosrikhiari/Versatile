@@ -183,7 +183,7 @@ async function handleVolumeGenerate() {
       onPhaseChange: (p) => {},
       onPartialData: (type, name) => {
         liveEntities.value.push({
-          id: Math.random().toString(36).substring(2, 9),
+          id: Date.now().toString(36) + performance.now().toString(36).replace('.', ''),
           type,
           name
         })
