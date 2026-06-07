@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">5.36% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>26/485</span>
+                <span class='fraction'>0/485</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>11/11</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">66.66% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/3</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">5.36% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>26/485</span>
+                <span class='fraction'>0/485</span>
             </div>
         
             
@@ -548,32 +548,7 @@
 <a name='L483'></a><a href='#L483'>483</a>
 <a name='L484'></a><a href='#L484'>484</a>
 <a name='L485'></a><a href='#L485'>485</a>
-<a name='L486'></a><a href='#L486'>486</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<a name='L486'></a><a href='#L486'>486</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1033,32 +1008,57 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { ref } from 'vue'
-import { useStoryDirector } from './useStoryDirector'
-import { useStoryWriter } from './useStoryWriter'
-import { useStoryCritic } from './useStoryCritic'
-import { useStoryRevisor } from './useStoryRevisor'
-import { useStoryResearcher } from './useStoryResearcher'
-import { useStoryBibleStore } from '../stores/storyBibleStore'
-import { useManuscriptStore } from '../stores/manuscriptStore'
-import { db, deepPlain } from '../services/db-core'
-&nbsp;
-function countWords(text) {
-  if (!text) return 0
-  return text.trim().split(/\s+/).filter(Boolean).length
-}
-&nbsp;
-function classifyGoal(premise) {
-  const p = (premise || '').toLowerCase()
-  if (p.includes('write') || p.includes('scene') || p.includes('brainstorm') || p.includes('twist') || p.includes('develop') || p.includes('character')) {
-    return { type: 'short_term_intent', horizon: 'short_term' }
-  }
-  return { type: 'generate_story', horizon: 'long_term' }
-}
-&nbsp;
-export { countWords, classifyGoal }
-&nbsp;
-export <span class="fstat-no" title="function not covered" >function useStoryOrchestrator() {</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { ref } from 'vue'</span></span></span>
+<span class="cstat-no" title="statement not covered" >import { useStoryDirector } from './useStoryDirector'</span>
+<span class="cstat-no" title="statement not covered" >import { useStoryWriter } from './useStoryWriter'</span>
+<span class="cstat-no" title="statement not covered" >import { useStoryCritic } from './useStoryCritic'</span>
+<span class="cstat-no" title="statement not covered" >import { useStoryRevisor } from './useStoryRevisor'</span>
+<span class="cstat-no" title="statement not covered" >import { useStoryResearcher } from './useStoryResearcher'</span>
+<span class="cstat-no" title="statement not covered" >import { useStoryBibleStore } from '../stores/storyBibleStore'</span>
+<span class="cstat-no" title="statement not covered" >import { useManuscriptStore } from '../stores/manuscriptStore'</span>
+<span class="cstat-no" title="statement not covered" >import { db, deepPlain } from '../services/db-core'</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >function countWords(text) {</span>
+<span class="cstat-no" title="statement not covered" >  if (!text) return 0</span>
+<span class="cstat-no" title="statement not covered" >  return text.trim().split(/\s+/).filter(Boolean).length</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >function classifyGoal(premise) {</span>
+<span class="cstat-no" title="statement not covered" >  const p = (premise || '').toLowerCase()</span>
+<span class="cstat-no" title="statement not covered" >  if (p.includes('write') || p.includes('scene') || p.includes('brainstorm') || p.includes('twist') || p.includes('develop') || p.includes('character')) {</span>
+<span class="cstat-no" title="statement not covered" >    return { type: 'short_term_intent', horizon: 'short_term' }</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  return { type: 'generate_story', horizon: 'long_term' }</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >export { countWords, classifyGoal }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >export function useStoryOrchestrator() {</span>
 <span class="cstat-no" title="statement not covered" >  const director = useStoryDirector()</span>
 <span class="cstat-no" title="statement not covered" >  const writer = useStoryWriter()</span>
 <span class="cstat-no" title="statement not covered" >  const critic = useStoryCritic()</span>
@@ -1525,7 +1525,7 @@ export <span class="fstat-no" title="function not covered" >function useStoryOrc
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-07T11:06:39.607Z
+                at 2026-06-07T16:16:30.171Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

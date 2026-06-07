@@ -9,10 +9,13 @@ vi.mock('./useEntityBootstrapper', () => ({ useEntityBootstrapper: vi.fn() }))
 vi.mock('./useStoryWriter', () => ({ useStoryWriter: vi.fn() }))
 vi.mock('./useStoryCritic', () => ({ useStoryCritic: vi.fn() }))
 vi.mock('./useChapterGenerationSync', () => ({ useChapterGenerationSync: vi.fn() }))
-vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn() }))
-vi.mock('../config/ai', () => ({ FEATURES: {} }))
+vi.mock('./useStoryDocuments', () => ({ useStoryDocuments: vi.fn() }))
+vi.mock('./useActivityLog', () => ({ useActivityLog: vi.fn() }))
+vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn(), getConfiguredModel: vi.fn() }))
+vi.mock('../config/ai', () => ({ FEATURES: {}, PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai' } }))
 
 let buildEmbeddingContext, formatFullSpineEntry, compressSpine, buildExistingEntitiesBlob, parallelWithLimit
+let useVolumeStoryGenerator
 beforeEach(async () => {
   vi.resetModules()
   const mod = await import('@/composables/useVolumeStoryGenerator')
@@ -21,6 +24,7 @@ beforeEach(async () => {
   compressSpine = mod.compressSpine
   buildExistingEntitiesBlob = mod.buildExistingEntitiesBlob
   parallelWithLimit = mod.parallelWithLimit
+  useVolumeStoryGenerator = mod.useVolumeStoryGenerator
 })
 
 function makeScene(sceneNumber, title, prose, summary) {
@@ -198,5 +202,62 @@ describe('parallelWithLimit', () => {
       () => Promise.reject(new Error('fail'))
     ]
     await expect(parallelWithLimit(tasks, 2)).rejects.toThrow('fail')
+  })
+})
+
+describe('useVolumeStoryGenerator', () => {
+  it('returns reactive state and methods', () => {
+    const gen = useVolumeStoryGenerator()
+    expect(gen.phase.value).toBe('idle')
+    expect(gen.progress.current).toBe(0)
+    expect(gen.progress.total).toBe(0)
+    expect(gen.error.value).toBeNull()
+    expect(gen.volumeId.value).toBeNull()
+    expect(gen.scenePlan.value).toEqual([])
+    expect(gen.writtenScenes.value).toEqual([])
+    expect(gen.consistencyReport.value).toBeNull()
+    expect(gen.rejectedPatterns.value).toEqual([])
+    expect(gen.hasPendingBatches.value).toBe(false)
+    expect(gen.sceneReviewMode.value).toBe(false)
+  })
+
+  it('has all expected methods', () => {
+    const gen = useVolumeStoryGenerator()
+    expect(typeof gen.startGeneration).toBe('function')
+    expect(typeof gen.confirmPlan).toBe('function')
+    expect(typeof gen.confirmSync).toBe('function')
+    expect(typeof gen.reset).toBe('function')
+    expect(typeof gen.logRejectedPattern).toBe('function')
+    expect(typeof gen.approveScene).toBe('function')
+    expect(typeof gen.rejectScene).toBe('function')
+    expect(typeof gen.rerequestScene).toBe('function')
+    expect(typeof gen.regenerateScene).toBe('function')
+  })
+
+  it('reset restores initial state', () => {
+    const gen = useVolumeStoryGenerator()
+    gen.phase.value = 'writing'
+    gen.error.value = 'Something went wrong'
+    gen.volumeId.value = 'vol-1'
+    gen.scenePlan.value = [{ id: 1 }]
+    gen.progress.current = 5
+    gen.progress.total = 10
+    gen.reset()
+    expect(gen.phase.value).toBe('idle')
+    expect(gen.error.value).toBeNull()
+    expect(gen.volumeId.value).toBeNull()
+    expect(gen.scenePlan.value).toEqual([])
+    expect(gen.progress.current).toBe(0)
+    expect(gen.progress.total).toBe(0)
+  })
+
+  it('logRejectedPattern adds to rejectedPatterns and caps at 5', () => {
+    const gen = useVolumeStoryGenerator()
+    for (let i = 1; i <= 6; i++) {
+      gen.logRejectedPattern(`context-${i}`, `prose-${i}`)
+    }
+    expect(gen.rejectedPatterns.value).toHaveLength(5)
+    expect(gen.rejectedPatterns.value[0].context).toBe('context-2')
+    expect(gen.rejectedPatterns.value[4].context).toBe('context-6')
   })
 })

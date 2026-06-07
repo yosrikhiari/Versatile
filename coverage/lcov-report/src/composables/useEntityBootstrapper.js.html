@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">22.01% </span>
+                <span class="strong">10.82% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>59/268</span>
+                <span class='fraction'>29/268</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">86.95% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>20/23</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>4/5</span>
+                <span class='fraction'>0/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">22.01% </span>
+                <span class="strong">10.82% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>59/268</span>
+                <span class='fraction'>29/268</span>
             </div>
         
             
@@ -353,41 +353,41 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -621,41 +621,41 @@ PLOT THREAD format: { "title": "...", "notes": "...", "traits": ["niche detail 1
 &nbsp;
 Return valid JSON with no markdown, no explanation. The JSON must have exactly three keys: "characters" (array), "locations" (array), "plotThreads" (array). Include ALL entities — both enhanced existing ones and any new ones — in the response arrays.`
 &nbsp;
-function sanitizeJson(raw) {
-  if (!raw || typeof raw !== 'string') return null
-  let cleaned = raw.trim()
-  cleaned = cleaned.replace(/^```json\s*/i, '')
-  cleaned = cleaned.replace(/^```\s*/i, '')
-  cleaned = cleaned.replace(/```$/i, '')
-  cleaned = cleaned.replace(/```json$/i, '')
-  cleaned = cleaned.trim()
-  const match = cleaned.match(/\{[\s\S]*\}/)
-  if (!match) return null
-  try {
-    return JSON.parse(match[0])
-  } <span class="branch-0 cbranch-no" title="branch not covered" >catch {</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function sanitizeJson(raw) {</span></span>
+<span class="cstat-no" title="statement not covered" >  if (!raw || typeof raw !== 'string') return null</span>
+<span class="cstat-no" title="statement not covered" >  let cleaned = raw.trim()</span>
+<span class="cstat-no" title="statement not covered" >  cleaned = cleaned.replace(/^```json\s*/i, '')</span>
+<span class="cstat-no" title="statement not covered" >  cleaned = cleaned.replace(/^```\s*/i, '')</span>
+<span class="cstat-no" title="statement not covered" >  cleaned = cleaned.replace(/```$/i, '')</span>
+<span class="cstat-no" title="statement not covered" >  cleaned = cleaned.replace(/```json$/i, '')</span>
+<span class="cstat-no" title="statement not covered" >  cleaned = cleaned.trim()</span>
+<span class="cstat-no" title="statement not covered" >  const match = cleaned.match(/\{[\s\S]*\}/)</span>
+<span class="cstat-no" title="statement not covered" >  if (!match) return null</span>
+<span class="cstat-no" title="statement not covered" >  try {</span>
+<span class="cstat-no" title="statement not covered" >    return JSON.parse(match[0])</span>
+<span class="cstat-no" title="statement not covered" >  } catch {</span>
 <span class="cstat-no" title="statement not covered" >    return null</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-}
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-function normalizeName(name) {
-  return name?.trim().toLowerCase() || ''
-}
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function normalizeName(name) {</span></span>
+<span class="cstat-no" title="statement not covered" >  return name?.trim().toLowerCase() || ''</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-function mergeTraits(existingTraits, newTraits) {
-  const set = new Set([...(existingTraits || []), ...(newTraits || [])])
-  return [...set]
-}
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function mergeTraits(existingTraits, newTraits) {</span></span>
+<span class="cstat-no" title="statement not covered" >  const set = new Set([...(existingTraits || []), ...(newTraits || [])])</span>
+<span class="cstat-no" title="statement not covered" >  return [...set]</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-function mergeNotes(existingNotes, newNotes) {
-  if (!newNotes) return existingNotes || ''
-  if (!existingNotes) return newNotes
-  const cleanExisting = existingNotes.trim()
-  const cleanNew = newNotes.trim()
-  if (!cleanNew) <span class="branch-0 cbranch-no" title="branch not covered" >return cleanExisting</span>
-  if (cleanExisting.includes(cleanNew.slice(0, 60))) return cleanExisting
-  return cleanExisting + (cleanExisting.endsWith('.') ? ' ' <span class="branch-0 cbranch-no" title="branch not covered" >: '. ')</span> + cleanNew
-}
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function mergeNotes(existingNotes, newNotes) {</span></span>
+<span class="cstat-no" title="statement not covered" >  if (!newNotes) return existingNotes || ''</span>
+<span class="cstat-no" title="statement not covered" >  if (!existingNotes) return newNotes</span>
+<span class="cstat-no" title="statement not covered" >  const cleanExisting = existingNotes.trim()</span>
+<span class="cstat-no" title="statement not covered" >  const cleanNew = newNotes.trim()</span>
+<span class="cstat-no" title="statement not covered" >  if (!cleanNew) return cleanExisting</span>
+<span class="cstat-no" title="statement not covered" >  if (cleanExisting.includes(cleanNew.slice(0, 60))) return cleanExisting</span>
+<span class="cstat-no" title="statement not covered" >  return cleanExisting + (cleanExisting.endsWith('.') ? ' ' : '. ') + cleanNew</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 export <span class="fstat-no" title="function not covered" >function useEntityBootstrapper() {</span>
 <span class="cstat-no" title="statement not covered" >  const isBootstrapping = ref(false)</span>
@@ -874,7 +874,7 @@ export { sanitizeJson, normalizeName, mergeTraits, mergeNotes }
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-07T11:06:40.012Z
+                at 2026-06-07T16:16:30.524Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

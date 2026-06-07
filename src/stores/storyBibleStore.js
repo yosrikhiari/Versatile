@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import {
   getCharacters, addCharacter, updateCharacter, deleteCharacter,
   getLocations, addLocation, updateLocation, deleteLocation,
@@ -14,6 +14,7 @@ import {
 } from '../services/db-graph'
 import { useStoryDocuments } from '../composables/useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
+import { saveVoiceProfile, loadVoiceProfile } from '../services/db-entities'
 
 const DOC_REGEN_DEBOUNCE = 1500
 
@@ -24,6 +25,16 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   const isLoading = ref(false)
   const loadError = ref(null)
   const storyBibleReady = ref(false)
+
+  // Voice profile state
+  const voiceProfile = reactive({
+    isExtracted: false,
+    profile: null,
+    manuscriptSizeAtExtraction: null,
+    lastUpdated: null,
+    locked: false,
+    supplementaryMergeCount: 0
+  })
 
   let docsDebounceTimer = null
 
@@ -156,6 +167,41 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     return characters.value.map(c => c.name)
   }
 
+  // Voice profile methods
+  async function setVoiceProfile(profile) {
+    voiceProfile.profile = profile
+    voiceProfile.isExtracted = true
+    voiceProfile.lastUpdated = new Date()
+    voiceProfile.manuscriptSizeAtExtraction = profile.manuscriptSizeAtExtraction
+    voiceProfile.supplementaryMergeCount = profile.supplementaryMergeCount || 0
+    
+    // Save to IndexedDB
+    const projectStore = useProjectStore()
+    const projectId = projectStore.currentProjectId
+    if (projectId) {
+      try {
+        await saveVoiceProfile(projectId, { ...voiceProfile })
+      } catch (error) {
+        console.error('[storyBibleStore] Failed to save voice profile:', error)
+      }
+    }
+  }
+
+  function lockVoiceProfile() {
+    voiceProfile.locked = !voiceProfile.locked
+  }
+
+  async function loadVoiceProfileForProject(projectId) {
+    try {
+      const saved = await loadVoiceProfile(projectId)
+      if (saved) {
+        Object.assign(voiceProfile, saved)
+      }
+    } catch (error) {
+      console.error('[storyBibleStore] Failed to load voice profile:', error)
+    }
+  }
+
   return {
     characters,
     locations,
@@ -163,6 +209,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     isLoading,
     loadError,
     storyBibleReady,
+    voiceProfile,
     loadAll,
     addCharacterData,
     updateCharacterData,
@@ -175,6 +222,9 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     deletePlotThreadData,
     updateThreadStatus,
     reorderPlotThreads,
-    getCharacterNames
+    getCharacterNames,
+    setVoiceProfile,
+    lockVoiceProfile,
+    loadVoiceProfileForProject
   }
 })

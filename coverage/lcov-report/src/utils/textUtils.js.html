@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">84.21% </span>
+                <span class="strong">47.36% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>16/19</span>
+                <span class='fraction'>9/19</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">42.85% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>3/7</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">66.66% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/3</span>
+                <span class='fraction'>0/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">84.21% </span>
+                <span class="strong">47.36% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>16/19</span>
+                <span class='fraction'>9/19</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -82,15 +82,8 @@
 <a name='L17'></a><a href='#L17'>17</a>
 <a name='L18'></a><a href='#L18'>18</a>
 <a name='L19'></a><a href='#L19'>19</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -99,20 +92,27 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export function countWords(text) {
-  return text?.trim() ? text.trim().split(/\s+/).filter(w =&gt; w).length <span class="branch-0 cbranch-no" title="branch not covered" >: 0</span>
-}
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export <span class="fstat-no" title="function not covered" >function countWords(text) {</span>
+<span class="cstat-no" title="statement not covered" >  return text?.trim() ? text.trim().split(/\s+/).filter(w =&gt; w).length : 0</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 /**
  * Strip HTML tags and decode entities to produce plain text.
  * Used to derive word counts and raw text from Tiptap HTML output.
  */
-export function stripHtmlTags(html) {
-  if (!html) <span class="branch-0 cbranch-no" title="branch not covered" >return ''</span>
-  const tmp = document.createElement('div')
-  tmp.innerHTML = html
-  return tmp.textContent <span class="branch-0 cbranch-no" title="branch not covered" >|| tmp.innerText <span class="branch-0 cbranch-no" title="branch not covered" ></span>|| ''</span>
-}
+export <span class="fstat-no" title="function not covered" >function stripHtmlTags(html) {</span>
+<span class="cstat-no" title="statement not covered" >  if (!html) return ''</span>
+<span class="cstat-no" title="statement not covered" >  const tmp = document.createElement('div')</span>
+<span class="cstat-no" title="statement not covered" >  tmp.innerHTML = html</span>
+<span class="cstat-no" title="statement not covered" >  return tmp.textContent || tmp.innerText || ''</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 export <span class="fstat-no" title="function not covered" >function truncate(text, maxLength) {</span>
 <span class="cstat-no" title="statement not covered" >  if (!text || text.length &lt;= maxLength) return text</span>
@@ -124,7 +124,7 @@ export <span class="fstat-no" title="function not covered" >function truncate(te
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-07T11:06:40.012Z
+                at 2026-06-07T16:16:30.524Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">24.77% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>27/109</span>
+                <span class='fraction'>0/109</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">77.77% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>14/18</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">50% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/2</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">24.77% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>27/109</span>
+                <span class='fraction'>0/109</span>
             </div>
         
             
@@ -172,31 +172,7 @@
 <a name='L107'></a><a href='#L107'>107</a>
 <a name='L108'></a><a href='#L108'>108</a>
 <a name='L109'></a><a href='#L109'>109</a>
-<a name='L110'></a><a href='#L110'>110</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<a name='L110'></a><a href='#L110'>110</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -279,33 +255,57 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { ref } from 'vue'
-import {
-  getCharacters,
-  getLocations,
-  getPlotThreads,
-  getAuthorProfile
-} from '../services/dbService'
-&nbsp;
-const MAX_EVIDENCE_ITEMS = 10
-&nbsp;
-function filterRelevant(entities, premise, isShortTerm) {
-  if (!entities || entities.length === 0) return []
-  if (isShortTerm &amp;&amp; premise) {
-    const keywords = premise.toLowerCase().split(/\s+/).filter(k =&gt; k.length &gt; 2)
-    const scored = entities.map(e =&gt; {
-      const text = `${e.name <span class="branch-0 cbranch-no" title="branch not covered" >|| e.title <span class="branch-0 cbranch-no" title="branch not covered" ></span>|| ''}</span> ${e.description <span class="branch-0 cbranch-no" title="branch not covered" >|| ''}</span> ${e.goal <span class="branch-0 cbranch-no" title="branch not covered" >|| ''}</span>`.toLowerCase()
-      const score = keywords.reduce((acc, kw) =&gt; acc + (text.includes(kw) ? 1 : 0), 0)
-      return { entity: e, score }
-    }).filter(item =&gt; item.score &gt; 0).sort((a, b) =&gt; b.score - a.score)
-    return scored.map(s =&gt; s.entity).slice(0, MAX_EVIDENCE_ITEMS)
-  }
-  return entities.slice(0, MAX_EVIDENCE_ITEMS)
-}
-&nbsp;
-export <span class="fstat-no" title="function not covered" >function useStoryResearcher() {</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { ref } from 'vue'</span></span></span>
+<span class="cstat-no" title="statement not covered" >import {</span>
+<span class="cstat-no" title="statement not covered" >  getCharacters,</span>
+<span class="cstat-no" title="statement not covered" >  getLocations,</span>
+<span class="cstat-no" title="statement not covered" >  getPlotThreads,</span>
+<span class="cstat-no" title="statement not covered" >  getAuthorProfile</span>
+<span class="cstat-no" title="statement not covered" >} from '../services/dbService'</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >const MAX_EVIDENCE_ITEMS = 10</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >function filterRelevant(entities, premise, isShortTerm) {</span>
+<span class="cstat-no" title="statement not covered" >  if (!entities || entities.length === 0) return []</span>
+<span class="cstat-no" title="statement not covered" >  if (isShortTerm &amp;&amp; premise) {</span>
+<span class="cstat-no" title="statement not covered" >    const keywords = premise.toLowerCase().split(/\s+/).filter(k =&gt; k.length &gt; 2)</span>
+<span class="cstat-no" title="statement not covered" >    const scored = entities.map(e =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >      const text = `${e.name || e.title || ''} ${e.description || ''} ${e.goal || ''}`.toLowerCase()</span>
+<span class="cstat-no" title="statement not covered" >      const score = keywords.reduce((acc, kw) =&gt; acc + (text.includes(kw) ? 1 : 0), 0)</span>
+<span class="cstat-no" title="statement not covered" >      return { entity: e, score }</span>
+<span class="cstat-no" title="statement not covered" >    }).filter(item =&gt; item.score &gt; 0).sort((a, b) =&gt; b.score - a.score)</span>
+<span class="cstat-no" title="statement not covered" >    return scored.map(s =&gt; s.entity).slice(0, MAX_EVIDENCE_ITEMS)</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  return entities.slice(0, MAX_EVIDENCE_ITEMS)</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >export function useStoryResearcher() {</span>
 <span class="cstat-no" title="statement not covered" >  const isResearching = ref(false)</span>
 <span class="cstat-no" title="statement not covered" >  const researchError = ref(null)</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -388,8 +388,8 @@ export <span class="fstat-no" title="function not covered" >function useStoryRes
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >  return { gatherEvidence, isResearching, researchError }</span>
 <span class="cstat-no" title="statement not covered" >}</span>
-&nbsp;
-export { filterRelevant }
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >export { filterRelevant }</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -397,7 +397,7 @@ export { filterRelevant }
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-07T11:06:39.607Z
+                at 2026-06-07T16:16:30.171Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
