@@ -38,6 +38,11 @@ function debugSnapshotPlugin() {
 
 export default defineConfig({
   plugins: [vue(), debugSnapshotPlugin()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
+  },
   build: {
     chunkSizeWarningLimit: 2500
   },

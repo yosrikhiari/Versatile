@@ -159,11 +159,11 @@ const extractPunctuationMetrics = (text) => {
   const sentenceCount = text.split(/[.!?]+/).length;
 
   return {
-    ellipsisFrequency: (ellipsisCount / sentenceCount).toFixed(3),
-    dashFrequency: (dashCount / sentenceCount).toFixed(3),
-    exclamationFrequency: (exclamationCount / sentenceCount).toFixed(3),
-    semicolonFrequency: (semicolonCount / sentenceCount).toFixed(3),
-    commaFrequency: (commaCount / sentenceCount).toFixed(3)
+    ellipsisFrequency: Math.round((ellipsisCount / sentenceCount) * 1000) / 1000,
+    dashFrequency: Math.round((dashCount / sentenceCount) * 1000) / 1000,
+    exclamationFrequency: Math.round((exclamationCount / sentenceCount) * 1000) / 1000,
+    semicolonFrequency: Math.round((semicolonCount / sentenceCount) * 1000) / 1000,
+    commaFrequency: Math.round((commaCount / sentenceCount) * 1000) / 1000
   };
 };
 

@@ -112,7 +112,7 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       toggleProfileLock()
       expect(storyBibleStore.voiceProfile.locked).toBe(false)
 
-      const newText = 'Short. Sentences. Everywhere. ' + 'Boom. Bang. '.repeat(200)
+      const newText = 'Short. Sentences. Everywhere. ' + 'Boom. Bang. Pow. Crack. Snap. '.repeat(100)
       manuscriptStore.setManuscriptContent(newText)
 
       // Refresh should update
@@ -171,7 +171,7 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       const { extractVoiceProfile, toggleProfileLock } = useVoiceFromManuscript()
 
       // Setup: Extract at small size
-      const smallText = 'This is a test manuscript. ' + 'It has multiple sentences. '.repeat(100)
+      const smallText = 'This is a test manuscript. ' + 'It has multiple sentences. '.repeat(127)
       manuscriptStore.setManuscriptContent(smallText)
       const profile = await extractVoiceProfile()
       const initialSize = smallText.length
@@ -234,7 +234,7 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       const manuscriptStore = useManuscriptStore()
       const { extractVoiceProfile } = useVoiceFromManuscript()
 
-      const textWithPunctuation = 'Exclamation! Question? Ellipsis... Dash — here. ' + 'Semicolon; here. '.repeat(200)
+      const textWithPunctuation = 'Exclamation! Question? Ellipsis... Dash — here. ' + 'Semicolon; here. More words. '.repeat(150)
       manuscriptStore.setManuscriptContent(textWithPunctuation)
 
       const profile = await extractVoiceProfile()
