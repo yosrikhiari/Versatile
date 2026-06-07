@@ -264,3 +264,5 @@ TASK:
 
   return { bootstrapEntities, isBootstrapping, bootstrapError }
 }
+
+export { sanitizeJson, normalizeName, mergeTraits, mergeNotes }

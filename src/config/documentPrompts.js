@@ -1,40 +1,36 @@
 import { WORKSPACE_TYPES } from './workspace'
 
-export const DOCUMENT_PROMPTS = {
-  [WORKSPACE_TYPES.CREATIVE]: {
-    director: `You are a story architect planning a narrative arc. Keep JSON output only with two fields: "chapters" (array) and "storyArc" (object).
-
-EVIDENCE INTEGRATION RULES:
+const EVIDENCE_RULES = `EVIDENCE INTEGRATION RULES:
 - You MUST ground your plan in the provided STORY BIBLE evidence.
 - Use existing characters, locations, and plot threads wherever relevant.
-- Adhere strictly to the AUTHOR STYLE GUIDELINES.
+- Adhere strictly to the AUTHOR STYLE GUIDELINES.`
 
-CHAPTER STRUCTURE RULES:
+const CHAPTER_RULES = `CHAPTER STRUCTURE RULES:
 - Each chapter must contain 5–8 scenes totaling 6,500–8,000 words
 - Distribute word budget: opening/closing scenes ~1,000 words, turn/climax scenes ~1,500 words
 - Tension must build across the chapter's scenes — setup → obstacle → turn → resolution → hook
 - Every chapter must end on a hook that makes the next chapter feel inevitable
 - Do not plan chapters below 6,000 words or above 9,000 words
-- The emotionalTarget is what the READER feels at chapter end, not what the character feels
+- The emotionalTarget is what the READER feels at chapter end, not what the character feels`
 
-TENSION ARC RULES:
+const TENSION_RULES = `TENSION ARC RULES:
 - Vary tension across chapters and scenes. Do NOT escalate linearly.
 - Tension should create a wave: low → medium → high → medium → peak → low
 - Valleys between peaks are essential for emotional recovery.
 - Peak tension belongs in the climax (scene 2 before last or last).
-- Opening scene should hook (medium tension), not peak.
+- Opening scene should hook (medium tension), not peak.`
 
-SETUP & PAYOFF:
+const SETUP_PAYOFF_RULES = `SETUP & PAYOFF:
 - Every scene must plant at least one setup for a future scene or pay off an earlier setup.
 - No unearned reversals — every twist must be set up at least one scene prior.
-- If a scene has no setup or payoff, it does not earn its place.
+- If a scene has no setup or payoff, it does not earn its place.`
 
-CHARACTER INTEGRITY:
+const CHAR_INTEGRITY_RULES = `CHARACTER INTEGRITY:
 - Characters must act from stated wants and goals, not convenience.
 - Every character present in a scene must want something.
-- Character wants may conflict — that is the engine of the scene.
+- Character wants may conflict — that is the engine of the scene.`
 
-Each chapter object:
+const CHAPTER_SCENE_SCHEMA = `Each chapter object:
 {
   "chapterNumber": number,
   "title": "string",
@@ -69,7 +65,23 @@ StoryArc:
   "premise": "string",
   "genre": "string",
   "tone": "string",
-  "emotionalJourney": "string",
+  "emotionalJourney": "string`
+
+export const DOCUMENT_PROMPTS = {
+  [WORKSPACE_TYPES.CREATIVE]: {
+    director: `You are a story architect planning a narrative arc. Keep JSON output only with two fields: "chapters" (array) and "storyArc" (object).
+
+${EVIDENCE_RULES}
+
+${CHAPTER_RULES}
+
+${TENSION_RULES}
+
+${SETUP_PAYOFF_RULES}
+
+${CHAR_INTEGRITY_RULES}
+
+${CHAPTER_SCENE_SCHEMA}",
   "centralConflict": "string",
   "resolution": "string",
   "totalChapters": number,
@@ -85,72 +97,17 @@ StoryArc:
     director: `You are a story architect planning a full-length novel. Keep JSON output only with two fields: "chapters" (array) and "storyArc" (object).
 The novel spans multiple chapters across a three-act or multi-part structure. Plan scenes that build toward act-level climaxes and a satisfying overall arc.
 
-EVIDENCE INTEGRATION RULES:
-- You MUST ground your plan in the provided STORY BIBLE evidence.
-- Use existing characters, locations, and plot threads wherever relevant.
-- Adhere strictly to the AUTHOR STYLE GUIDELINES.
+${EVIDENCE_RULES}
 
-CHAPTER STRUCTURE RULES:
-- Each chapter must contain 5–8 scenes totaling 6,500–8,000 words
-- Distribute word budget: opening/closing scenes ~1,000 words, turn/climax scenes ~1,500 words
-- Tension must build across the chapter's scenes — setup → obstacle → turn → resolution → hook
-- Every chapter must end on a hook that makes the next chapter feel inevitable
-- Do not plan chapters below 6,000 words or above 9,000 words
-- The emotionalTarget is what the READER feels at chapter end, not what the character feels
+${CHAPTER_RULES}
 
-TENSION ARC RULES:
-- Vary tension across chapters and scenes. Do NOT escalate linearly.
-- Tension should create a wave: low → medium → high → medium → peak → low
-- Valleys between peaks are essential for emotional recovery.
-- Peak tension belongs in the climax (scene 2 before last or last).
-- Opening scene should hook (medium tension), not peak.
+${TENSION_RULES}
 
-SETUP & PAYOFF:
-- Every scene must plant at least one setup for a future scene or pay off an earlier setup.
-- No unearned reversals — every twist must be set up at least one scene prior.
-- If a scene has no setup or payoff, it does not earn its place.
+${SETUP_PAYOFF_RULES}
 
-CHARACTER INTEGRITY:
-- Characters must act from stated wants and goals, not convenience.
-- Every character present in a scene must want something.
-- Character wants may conflict — that is the engine of the scene.
+${CHAR_INTEGRITY_RULES}
 
-Each chapter object:
-{
-  "chapterNumber": number,
-  "title": "string",
-  "goal": "what this chapter accomplishes narratively",
-  "arcPosition": "opening"|"rising"|"climax"|"falling"|"resolution",
-  "emotionalTarget": "what the READER feels at chapter end",
-  "hookEnding": "the beat the chapter closes on",
-  "estimatedWords": number,
-  "scenes": [
-    {
-      "sceneNumber": number,
-      "title": "string",
-      "arcPosition": "setup"|"obstacle"|"turn"|"resolution"|"hook",
-      "sceneFunction": "setup"|"obstacle"|"turn"|"resolution"|"hook",
-      "emotionalGoal": "what the reader should feel",
-      "whatChanges": "what is different by scene end",
-      "obstacle": "string — the specific barrier or conflict the character must overcome in this scene",
-      "charactersPresent": ["names"],
-      "characterWants": { "name": "goal in scene" },
-      "location": "string — the primary setting where this scene takes place",
-      "setup": "what is planted for future scenes",
-      "payoff": "what earlier setup is resolved",
-      "sensoryAnchor": "one specific concrete sensory detail",
-      "tension": "low"|"medium"|"high"|"peak",
-      "pacing": "slow"|"medium"|"fast",
-      "estimatedWords": number
-    }
-  ]
-}
-StoryArc:
-{
-  "premise": "string",
-  "genre": "string",
-  "tone": "string",
-  "emotionalJourney": "string describing the reader's emotional arc across the novel",
+${CHAPTER_SCENE_SCHEMA} describing the reader's emotional arc across the novel",
   "centralConflict": "string",
   "resolution": "string",
   "totalChapters": number,

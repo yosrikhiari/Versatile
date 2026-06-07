@@ -109,6 +109,14 @@ HOOK ENDING: ${chapter.hookEnding}
   return spine
 }
 
+function buildExistingEntitiesBlob(characterList, locationList, plotThreadList) {
+  return JSON.stringify({
+    characters: characterList.map(c => ({ name: c.name, role: c.role, description: c.description, traits: c.traits || [] })),
+    locations: locationList.map(l => ({ name: l.name, description: l.description, notes: l.notes, traits: l.traits || [] })),
+    plotThreads: plotThreadList.map(t => ({ title: t.title, status: t.status, notes: t.notes, traits: t.traits || [] }))
+  }, null, 2)
+}
+
 const EMBEDDING_CONTEXT_MAX_CHARS = 1400
 const MAX_REJECTED_PATTERNS = 5
 const SYNC_BATCH_SIZE = 3
@@ -432,11 +440,7 @@ export function useVolumeStoryGenerator() {
     if (!writeParamsVal) return
     const { storyArc, storyBibleDocs, storyContract, projectId, sections, onChunk } = writeParamsVal
     
-    const existingEntitiesJson = JSON.stringify({
-      characters: storyBibleStore.characters.map(c => ({ name: c.name, role: c.role, description: c.description, traits: c.traits || [] })),
-      locations: storyBibleStore.locations.map(l => ({ name: l.name, description: l.description, notes: l.notes, traits: l.traits || [] })),
-      plotThreads: storyBibleStore.plotThreads.map(t => ({ title: t.title, status: t.status, notes: t.notes, traits: t.traits || [] }))
-    }, null, 2)
+    const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
 
     writtenScenes.value = new Array(scenePlan.value.length).fill(null)
     const chaptersWithScenes = []
@@ -619,11 +623,7 @@ export function useVolumeStoryGenerator() {
     )
 
     // Build entities JSON once per batch (Fix #3 — entities don't change within a batch)
-    const existingEntitiesJson = JSON.stringify({
-      characters: storyBibleStore.characters.map(c => ({ name: c.name, role: c.role, description: c.description, traits: c.traits || [] })),
-      locations: storyBibleStore.locations.map(l => ({ name: l.name, description: l.description, notes: l.notes, traits: l.traits || [] })),
-      plotThreads: storyBibleStore.plotThreads.map(t => ({ title: t.title, status: t.status, notes: t.notes, traits: t.traits || [] }))
-    }, null, 2)
+    const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
 
     for (let i = startIndex; i < endIndex; i++) {
       const scene = scenePlan.value[i]
@@ -943,11 +943,7 @@ export function useVolumeStoryGenerator() {
     const chapterLog = rawLog.slice(-20).join('\n')
     const extraRejected = rejectedPatterns.value.length > 0 ? rejectedPatterns.value : undefined
 
-    const existingEntitiesJson = JSON.stringify({
-      characters: storyBibleStore.characters.map(c => ({ name: c.name, role: c.role, description: c.description, traits: c.traits || [] })),
-      locations: storyBibleStore.locations.map(l => ({ name: l.name, description: l.description, notes: l.notes, traits: l.traits || [] })),
-      plotThreads: storyBibleStore.plotThreads.map(t => ({ title: t.title, status: t.status, notes: t.notes, traits: t.traits || [] }))
-    }, null, 2)
+    const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
 
     scene.totalScenes = scenePlan.value.length
 
@@ -1133,5 +1129,7 @@ export function useVolumeStoryGenerator() {
 export {
   buildEmbeddingContext,
   formatFullSpineEntry,
-  compressSpine
+  compressSpine,
+  buildExistingEntitiesBlob,
+  parallelWithLimit
 }

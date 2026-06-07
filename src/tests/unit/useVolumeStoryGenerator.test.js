@@ -12,13 +12,15 @@ vi.mock('./useChapterGenerationSync', () => ({ useChapterGenerationSync: vi.fn()
 vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn() }))
 vi.mock('../config/ai', () => ({ FEATURES: {} }))
 
-let buildEmbeddingContext, formatFullSpineEntry, compressSpine
+let buildEmbeddingContext, formatFullSpineEntry, compressSpine, buildExistingEntitiesBlob, parallelWithLimit
 beforeEach(async () => {
   vi.resetModules()
   const mod = await import('@/composables/useVolumeStoryGenerator')
   buildEmbeddingContext = mod.buildEmbeddingContext
   formatFullSpineEntry = mod.formatFullSpineEntry
   compressSpine = mod.compressSpine
+  buildExistingEntitiesBlob = mod.buildExistingEntitiesBlob
+  parallelWithLimit = mod.parallelWithLimit
 })
 
 function makeScene(sceneNumber, title, prose, summary) {
@@ -128,5 +130,73 @@ describe('buildEmbeddingContext', () => {
     const prior = [makeScene(1, 'Scene 1', 'text', veryLongSummary), makeScene(2, 'Scene 2', 'Latest')]
     const result = buildEmbeddingContext(makeScene(3, 'Scene 3', 'text'), prior)
     expect(result).toBeTruthy()
+  })
+})
+
+describe('buildExistingEntitiesBlob', () => {
+  it('serializes characters, locations, and plotThreads', () => {
+    const chars = [{ name: 'Alice', role: 'hero', description: 'Brave', traits: ['brave'] }]
+    const locs = [{ name: 'Forest', description: 'Dark woods', notes: 'Eerie', traits: ['mysterious'] }]
+    const threads = [{ title: 'Main Plot', status: 'active', notes: 'Central conflict', traits: [] }]
+    const result = JSON.parse(buildExistingEntitiesBlob(chars, locs, threads))
+    expect(result.characters).toHaveLength(1)
+    expect(result.characters[0].name).toBe('Alice')
+    expect(result.locations).toHaveLength(1)
+    expect(result.locations[0].name).toBe('Forest')
+    expect(result.plotThreads).toHaveLength(1)
+    expect(result.plotThreads[0].title).toBe('Main Plot')
+  })
+
+  it('handles empty arrays', () => {
+    const result = JSON.parse(buildExistingEntitiesBlob([], [], []))
+    expect(result.characters).toEqual([])
+    expect(result.locations).toEqual([])
+    expect(result.plotThreads).toEqual([])
+  })
+
+  it('defaults traits to empty array', () => {
+    const chars = [{ name: 'Bob', role: '', description: '', traits: undefined }]
+    const result = JSON.parse(buildExistingEntitiesBlob(chars, [], []))
+    expect(result.characters[0].traits).toEqual([])
+  })
+})
+
+describe('parallelWithLimit', () => {
+  it('executes all tasks and returns results in order', async () => {
+    const tasks = [
+      () => Promise.resolve(1),
+      () => Promise.resolve(2),
+      () => Promise.resolve(3)
+    ]
+    const results = await parallelWithLimit(tasks, 2)
+    expect(results).toEqual([1, 2, 3])
+  })
+
+  it('respects concurrency limit', async () => {
+    let concurrent = 0
+    let maxConcurrent = 0
+    const tasks = Array.from({ length: 5 }, (_, i) => async () => {
+      concurrent++
+      maxConcurrent = Math.max(maxConcurrent, concurrent)
+      await new Promise(r => setTimeout(r, 10))
+      concurrent--
+      return i
+    })
+    const results = await parallelWithLimit(tasks, 2)
+    expect(results).toHaveLength(5)
+    expect(maxConcurrent).toBeLessThanOrEqual(2)
+  })
+
+  it('handles empty task list', async () => {
+    const results = await parallelWithLimit([], 3)
+    expect(results).toEqual([])
+  })
+
+  it('rejects when any task rejects', async () => {
+    const tasks = [
+      () => Promise.resolve('ok'),
+      () => Promise.reject(new Error('fail'))
+    ]
+    await expect(parallelWithLimit(tasks, 2)).rejects.toThrow('fail')
   })
 })
