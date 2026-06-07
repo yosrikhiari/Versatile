@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">4.1% </span>
+                <span class="strong">11.41% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>9/219</span>
+                <span class='fraction'>25/219</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">20% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>1/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">4.1% </span>
+                <span class="strong">11.41% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>9/219</span>
+                <span class='fraction'>25/219</span>
             </div>
         
             
@@ -307,6 +307,11 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -369,6 +374,8 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -485,22 +492,15 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { ref } from 'vue'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
@@ -525,12 +525,12 @@ import { useProjectStore } from '../stores/projectStore'
 <span class="cstat-no" title="statement not covered" >  return new Set((arr || []).map(s =&gt; s.toLowerCase().trim()))</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-export <span class="fstat-no" title="function not covered" >function useChapterGenerationSync() {</span>
-<span class="cstat-no" title="statement not covered" >  const pendingChanges = ref([])</span>
-<span class="cstat-no" title="statement not covered" >  const isDiscovering = ref(false)</span>
-<span class="cstat-no" title="statement not covered" >  const isCommitting = ref(false)</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  function discoverSync(structured) {</span>
+export function useChapterGenerationSync() {
+  const pendingChanges = ref([])
+  const isDiscovering = ref(false)
+  const isCommitting = ref(false)
+&nbsp;
+<span class="fstat-no" title="function not covered" >  function discoverSync(structured) {</span>
 <span class="cstat-no" title="statement not covered" >    isDiscovering.value = true</span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
 <span class="cstat-no" title="statement not covered" >      const bibleStore = useStoryBibleStore()</span>
@@ -593,8 +593,8 @@ export <span class="fstat-no" title="function not covered" >function useChapterG
 <span class="cstat-no" title="statement not covered" >      isDiscovering.value = false</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  async function commitSync({ structuredOutputs, acceptedEntities, projectId, volumeId, chapterId }) {</span>
+&nbsp;
+<span class="fstat-no" title="function not covered" >  async function commitSync({ structuredOutputs, acceptedEntities, projectId, volumeId, chapterId }) {</span>
 <span class="cstat-no" title="statement not covered" >    isCommitting.value = true</span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
 <span class="cstat-no" title="statement not covered" >      const bibleStore = useStoryBibleStore()</span>
@@ -711,15 +711,15 @@ export <span class="fstat-no" title="function not covered" >function useChapterG
 <span class="cstat-no" title="statement not covered" >      isCommitting.value = false</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  return {</span>
-<span class="cstat-no" title="statement not covered" >    pendingChanges,</span>
-<span class="cstat-no" title="statement not covered" >    isDiscovering,</span>
-<span class="cstat-no" title="statement not covered" >    isCommitting,</span>
-<span class="cstat-no" title="statement not covered" >    discoverSync,</span>
-<span class="cstat-no" title="statement not covered" >    commitSync</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+  return {
+    pendingChanges,
+    isDiscovering,
+    isCommitting,
+    discoverSync,
+    commitSync
+  }
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -727,7 +727,7 @@ export <span class="fstat-no" title="function not covered" >function useChapterG
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-07T16:16:30.171Z
+                at 2026-06-07T18:19:24.744Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

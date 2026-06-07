@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/474</span>
+                <span class='fraction'>0/499</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/474</span>
+                <span class='fraction'>0/499</span>
             </div>
         
             
@@ -537,7 +537,57 @@
 <a name='L472'></a><a href='#L472'>472</a>
 <a name='L473'></a><a href='#L473'>473</a>
 <a name='L474'></a><a href='#L474'>474</a>
-<a name='L475'></a><a href='#L475'>475</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L475'></a><a href='#L475'>475</a>
+<a name='L476'></a><a href='#L476'>476</a>
+<a name='L477'></a><a href='#L477'>477</a>
+<a name='L478'></a><a href='#L478'>478</a>
+<a name='L479'></a><a href='#L479'>479</a>
+<a name='L480'></a><a href='#L480'>480</a>
+<a name='L481'></a><a href='#L481'>481</a>
+<a name='L482'></a><a href='#L482'>482</a>
+<a name='L483'></a><a href='#L483'>483</a>
+<a name='L484'></a><a href='#L484'>484</a>
+<a name='L485'></a><a href='#L485'>485</a>
+<a name='L486'></a><a href='#L486'>486</a>
+<a name='L487'></a><a href='#L487'>487</a>
+<a name='L488'></a><a href='#L488'>488</a>
+<a name='L489'></a><a href='#L489'>489</a>
+<a name='L490'></a><a href='#L490'>490</a>
+<a name='L491'></a><a href='#L491'>491</a>
+<a name='L492'></a><a href='#L492'>492</a>
+<a name='L493'></a><a href='#L493'>493</a>
+<a name='L494'></a><a href='#L494'>494</a>
+<a name='L495'></a><a href='#L495'>495</a>
+<a name='L496'></a><a href='#L496'>496</a>
+<a name='L497'></a><a href='#L497'>497</a>
+<a name='L498'></a><a href='#L498'>498</a>
+<a name='L499'></a><a href='#L499'>499</a>
+<a name='L500'></a><a href='#L500'>500</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1022,6 +1072,8 @@
 <span class="cstat-no" title="statement not covered" >import DatabaseRecovery from '../shared/DatabaseRecovery.vue'</span>
 <span class="cstat-no" title="statement not covered" >import { STORAGE_KEYS } from '../../config/storageKeys'</span>
 <span class="cstat-no" title="statement not covered" >import { useLocalStorage } from '../../composables/useLocalStorage'</span>
+<span class="cstat-no" title="statement not covered" >import VoiceProfileDisplay from '../shared/VoiceProfileDisplay.vue'</span>
+<span class="cstat-no" title="statement not covered" >import VoiceUploadModal from './VoiceUploadModal.vue'</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >const props = defineProps({</span>
 <span class="cstat-no" title="statement not covered" >  show: Boolean</span>
@@ -1040,6 +1092,7 @@
 <span class="cstat-no" title="statement not covered" >const testingConnection = ref(false)</span>
 <span class="cstat-no" title="statement not covered" >const connectionStatus = ref(null)</span>
 <span class="cstat-no" title="statement not covered" >const showRecovery = ref(false)</span>
+<span class="cstat-no" title="statement not covered" >const showVoiceUpload = ref(false)</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >const apiKeys = ref({})</span>
 <span class="cstat-no" title="statement not covered" >const testingProvider = ref(null)</span>
@@ -1238,6 +1291,15 @@
 <span class="cstat-no" title="statement not covered" >            @click="activeTab = 'features'"</span>
 <span class="cstat-no" title="statement not covered" >          &gt;</span>
 <span class="cstat-no" title="statement not covered" >            Features</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;button</span>
+<span class="cstat-no" title="statement not covered" >            :class="[</span>
+<span class="cstat-no" title="statement not covered" >              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',</span>
+<span class="cstat-no" title="statement not covered" >              activeTab === 'voice' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'</span>
+<span class="cstat-no" title="statement not covered" >            ]"</span>
+<span class="cstat-no" title="statement not covered" >            @click="activeTab = 'voice'"</span>
+<span class="cstat-no" title="statement not covered" >          &gt;</span>
+<span class="cstat-no" title="statement not covered" >            Voice</span>
 <span class="cstat-no" title="statement not covered" >          &lt;/button&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -1459,6 +1521,19 @@
 <span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        &lt;div v-if="activeTab === 'voice'" class="space-y-5"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;VoiceProfileDisplay /&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div class="flex gap-2"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;button</span>
+<span class="cstat-no" title="statement not covered" >              class="flex-1 py-2 bg-surface-hover text-text-secondary rounded-lg font-medium hover:bg-bg-tertiary text-sm"</span>
+<span class="cstat-no" title="statement not covered" >              @click="showVoiceUpload = true"</span>
+<span class="cstat-no" title="statement not covered" >            &gt;</span>
+<span class="cstat-no" title="statement not covered" >              Upload Sample Text</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;VoiceUploadModal :isOpen="showVoiceUpload" @close="showVoiceUpload = false" /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >        &lt;div class="flex gap-3 mt-6"&gt;</span>
 <span class="cstat-no" title="statement not covered" >          &lt;button</span>
 <span class="cstat-no" title="statement not covered" >            class="flex-1 py-2 bg-surface-hover text-text-secondary rounded-lg font-medium hover:bg-bg-tertiary focus:outline-none focus:ring-2 focus:ring-accent"</span>
@@ -1492,7 +1567,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-07T16:16:30.171Z
+                at 2026-06-07T18:19:24.744Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
