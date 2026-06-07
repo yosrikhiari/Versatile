@@ -376,7 +376,7 @@ function getPhaseLabel(phase) {
             </div>
             <span class="text-[11px] font-spark tracking-widest transition-colors duration-300"
                   :class="tab === m.id ? 'text-accent' : 'text-text-hint group-hover:text-text-primary'">
-              ~ {{ m.label }} ~
+              {{ m.label }}
             </span>
           </label>
         </div>

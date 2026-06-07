@@ -23,6 +23,8 @@ import TimelineView from './components/manuscript/TimelineView.vue'
 import SearchOverlay from './components/manuscript/SearchOverlay.vue'
 import ArchiveDrawer from './components/layout/ArchiveDrawer.vue'
 import StoryGeneratorPanel from './components/story/StoryGeneratorPanel.vue'
+import ActivityToast from './components/shared/ActivityToast.vue'
+import ActivityDrawer from './components/shared/ActivityDrawer.vue'
 
 const projectStore = useProjectStore()
 const timer = useFlowSession()
@@ -282,5 +284,8 @@ function handleOnboardingSkipWrapper() {
     <SettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @model-changed="checkModelAvailability" />
 
     <NotificationHost />
+
+    <ActivityToast />
+    <ActivityDrawer />
   </div>
 </template>

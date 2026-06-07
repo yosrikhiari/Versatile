@@ -12,16 +12,72 @@ vi.mock('./useChapterGenerationSync', () => ({ useChapterGenerationSync: vi.fn()
 vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn() }))
 vi.mock('../config/ai', () => ({ FEATURES: {} }))
 
-let buildEmbeddingContext
+let buildEmbeddingContext, formatFullSpineEntry, compressSpine
 beforeEach(async () => {
   vi.resetModules()
   const mod = await import('@/composables/useVolumeStoryGenerator')
   buildEmbeddingContext = mod.buildEmbeddingContext
+  formatFullSpineEntry = mod.formatFullSpineEntry
+  compressSpine = mod.compressSpine
 })
 
 function makeScene(sceneNumber, title, prose, summary) {
   return { sceneNumber, title, prose: prose || '', summary: summary || '' }
 }
+
+function makeSpineEntry(chapterNumber, chapterTitle, emotionalStateAtEnd, readerKnowledgeAtEnd, transitionToNext) {
+  return { chapterNumber, chapterTitle, emotionalStateAtEnd, readerKnowledgeAtEnd, transitionToNext }
+}
+
+describe('formatFullSpineEntry', () => {
+  it('formats a spine entry with all fields', () => {
+    const entry = makeSpineEntry(1, 'Chapter 1', 'Hopeful', 'Hero begins journey', 'Time passes')
+    const result = formatFullSpineEntry(entry)
+    expect(result).toContain('Chapter 1 (Chapter 1)')
+    expect(result).toContain('Hopeful')
+    expect(result).toContain('Hero begins journey')
+    expect(result).toContain('Time passes')
+  })
+})
+
+describe('compressSpine', () => {
+  it('returns full entries when spine has 3 or fewer entries', () => {
+    const spine = [
+      makeSpineEntry(1, 'Ch1', 'Happy', 'A', 'B'),
+      makeSpineEntry(2, 'Ch2', 'Sad', 'C', 'D')
+    ]
+    const result = compressSpine(spine)
+    expect(result).toContain('Chapter 1 (Ch1)')
+    expect(result).toContain('Chapter 2 (Ch2)')
+  })
+
+  it('compresses older entries when spine has more than 3 entries', () => {
+    const spine = [
+      makeSpineEntry(1, 'Ch1', 'Happy', 'A', 'B'),
+      makeSpineEntry(2, 'Ch2', 'Sad', 'C', 'D'),
+      makeSpineEntry(3, 'Ch3', 'Angry', 'E', 'F'),
+      makeSpineEntry(4, 'Ch4', 'Calm', 'G', 'H')
+    ]
+    const result = compressSpine(spine)
+    const lines = result.split('\n')
+    expect(lines[0]).toBe('Chapter 1 (Ch1): Happy')
+    expect(lines[1]).toBe('Chapter 2 (Ch2):')
+    expect(result).toContain('Chapter 4 (Ch4)')
+    expect(result).toContain('Reader knows: G')
+  })
+
+  it('truncates when text exceeds token cap', () => {
+    const longEmotion = 'x'.repeat(500)
+    const spine = [
+      makeSpineEntry(1, 'Ch1', longEmotion, 'A', 'B'),
+      makeSpineEntry(2, 'Ch2', 'Sad', 'C', 'D'),
+      makeSpineEntry(3, 'Ch3', 'Angry', 'E', 'F'),
+      makeSpineEntry(4, 'Ch4', 'Calm', 'G', 'H')
+    ]
+    const result = compressSpine(spine, 50)
+    expect(result).toContain('[spine truncated]')
+  })
+})
 
 describe('buildEmbeddingContext', () => {
   it('returns empty string when priorScenes is empty', () => {

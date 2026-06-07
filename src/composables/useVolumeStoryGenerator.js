@@ -9,6 +9,7 @@ import { useStoryWriter } from './useStoryWriter'
 import { useStoryCritic } from './useStoryCritic'
 import { useChapterGenerationSync } from './useChapterGenerationSync'
 import { useStoryDocuments } from './useStoryDocuments'
+import { useActivityLog } from './useActivityLog'
 import { aiGenerate, getConfiguredModel } from '../services/aiService'
 import { FEATURES, PROVIDERS } from '../config/ai'
 
@@ -184,6 +185,8 @@ export function useVolumeStoryGenerator() {
   const sceneReviewMode = ref(false)
   const currentSceneResult = ref(null)
   const currentWriteIndex = ref(0)
+  const actLog = useActivityLog()
+  let currentTaskId = null
 
   const director = useStoryDirector()
   const bootstrapper = useEntityBootstrapper()
@@ -259,6 +262,9 @@ export function useVolumeStoryGenerator() {
     scenePlan.value = []
     rejectedPatterns.value = []
 
+    currentTaskId = actLog.addTask({ name: 'Story Generator', type: 'generation' })
+    let bpPhase = actLog.addPhase(currentTaskId, 'Bootstrapping')
+
     const enhancedSynopsis = sparkContext
       ? `${synopsis}\n\nAdditional context from brainstorming:\n${sparkContext}`
       : synopsis
@@ -310,6 +316,8 @@ export function useVolumeStoryGenerator() {
       progress.current = 2
       progress.statusText = 'Conjuring Characters & World...'
       await bootstrapper.bootstrapEntities({ synopsis: enhancedSynopsis, projectId, volumeId: vId, onPartialData })
+      actLog.updatePhase(currentTaskId, bpPhase, { status: 'done' })
+      bpPhase = -1
 
       // Reload story context so the newly generated entities are included in evidence
       const updatedBibleContext = await storyDocs.getStoryDocumentContext(projectId)
@@ -325,6 +333,7 @@ export function useVolumeStoryGenerator() {
       progress.statusText = 'Forging the Story Graph (Planning scenes)...'
       phase.value = 'planning'
       onPhaseChange?.('planning')
+      const planPhase = actLog.addPhase(currentTaskId, 'Planning')
 
       const directorResult = await director.generateStoryPlan({ 
         goal: { premise: enhancedSynopsis, genre, tone, wordTarget, horizon: 'long_term' }, 
@@ -387,6 +396,8 @@ export function useVolumeStoryGenerator() {
         ])].join(', ')}`
       ].join('\n')
 
+      actLog.updatePhase(currentTaskId, planPhase, { status: 'done' })
+
       // Phase 2.5: Pause at plan-preview for user editing
       phase.value = 'plan-preview'
       onPhaseChange?.('plan-preview')
@@ -440,6 +451,8 @@ export function useVolumeStoryGenerator() {
     phase.value = 'writing'
     
     async function generateAnchor(scene, role, constraints, sceneIndex, chapterIndex) {
+      const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
+      const scenePhase = actLog.addPhase(currentTaskId, phaseName)
       try {
         let fullProse = ''
         const result = await writer.writeSceneStructured({
@@ -449,7 +462,8 @@ export function useVolumeStoryGenerator() {
           onChunk: (_chunk, proseChunk) => {
             fullProse += proseChunk || ''
             onChunk?.({ sceneIndex: sceneIndex + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
-          }
+          },
+          onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk)
         })
         fullProse = result.prose
         
@@ -468,8 +482,10 @@ export function useVolumeStoryGenerator() {
           location: scene.location || '', sceneNumber: scene.sceneNumber, subsectionId: scene.subsectionId,
           chapterId: chapterNumber
         }
+        actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
         return { success: true, sceneIndex, structured: result.structured }
       } catch (err) {
+        actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
         return { success: false, sceneIndex, error: err.message }
       }
     }
@@ -506,6 +522,8 @@ export function useVolumeStoryGenerator() {
     progress.statusText = 'Phase 2: Generating chapter middle scenes...'
 
     async function generateMiddleScene(scene, sceneIndex, chapterMeta) {
+      const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
+      const scenePhase = actLog.addPhase(currentTaskId, phaseName)
       try {
         // Chapter-scoped log: only scenes from this chapter (Fix #2 — never cross-chapter)
         const logEntries = writtenScenes.value
@@ -522,7 +540,8 @@ export function useVolumeStoryGenerator() {
           onChunk: (_chunk, proseChunk) => {
             fullProse += proseChunk || ''
             onChunk?.({ sceneIndex: sceneIndex + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
-          }
+          },
+          onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk)
         })
         fullProse = result.prose
 
@@ -544,8 +563,10 @@ export function useVolumeStoryGenerator() {
           chapterId: chapterMeta.chapterNumber
         }
 
+        actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
         return { success: true, sceneIndex, structured: result.structured }
       } catch (err) {
+        actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
         return { success: false, sceneIndex, error: err.message }
       }
     }
@@ -606,6 +627,8 @@ export function useVolumeStoryGenerator() {
 
     for (let i = startIndex; i < endIndex; i++) {
       const scene = scenePlan.value[i]
+      const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
+      const scenePhase = actLog.addPhase(currentTaskId, phaseName)
       progress.current = i + 1
       progress.sceneLabel = scene.title || `Scene ${scene.sceneNumber}`
       progress.statusText = `Drafting scene details, building continuity context, and streaming prose...`
@@ -637,11 +660,13 @@ export function useVolumeStoryGenerator() {
           fullProse += proseChunk || ''
           onChunk?.({ sceneIndex: i + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
         },
+        onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk),
         embeddingContext,
         storyContract: effectiveStoryContract,
         rejectedPatterns: extraRejected,
         existingEntitiesJson
       })
+      actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
 
       fullProse = result.prose
       structuredResults.push({ sceneIndex: i, structured: result.structured })
@@ -789,6 +814,7 @@ export function useVolumeStoryGenerator() {
     progress.statusText = 'Generating hierarchical narrative spine...'
     phase.value = 'spine-generation'
     onPhaseChange?.('spine-generation')
+    const spinePhase = actLog.addPhase(currentTaskId, 'Spine Generation')
     
     try {
       spineArray.value = await generateSpine(chapterPlan.value, storyArc)
@@ -797,6 +823,7 @@ export function useVolumeStoryGenerator() {
         estimatedTokens: Math.round(JSON.stringify(spineArray.value).length / 4)
       })
       spineContext.value = compressSpine(spineArray.value)
+      actLog.updatePhase(currentTaskId, spinePhase, { status: 'done' })
     } catch (err) {
       error.value = err.message || 'Fatal: Spine generation failed'
       phase.value = 'error'
@@ -823,6 +850,7 @@ export function useVolumeStoryGenerator() {
   }
 
   async function completeGeneration(projectId) {
+    const consistencyPhase = actLog.addPhase(currentTaskId, 'Consistency Check')
     phase.value = 'consistency-check'
     progress.statusText = 'Auditing written prose against character bio sheets to find narrative contradictions...'
     const characters = storyBibleStore.characters
@@ -837,6 +865,9 @@ export function useVolumeStoryGenerator() {
       })
       consistencyReport.value = report
     }
+
+    actLog.updatePhase(currentTaskId, consistencyPhase, { status: 'done' })
+    actLog.completeTask(currentTaskId)
 
     phase.value = 'complete'
     progress.statusText = 'Volume generation complete!'
@@ -1099,4 +1130,8 @@ export function useVolumeStoryGenerator() {
   }
 }
 
-export { buildEmbeddingContext }
+export {
+  buildEmbeddingContext,
+  formatFullSpineEntry,
+  compressSpine
+}

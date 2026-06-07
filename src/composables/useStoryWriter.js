@@ -273,7 +273,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     }
   }
 
-  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, spineContext, anchorRole, anchorConstraints }) {
+  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, onRawChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, spineContext, anchorRole, anchorConstraints }) {
     isWriting.value = true
     writeError.value = null
 
@@ -410,6 +410,7 @@ CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes in
 
         await aiStream(userPrompt, systemPrompt, (chunk) => {
           accumulated += chunk
+          if (onRawChunk) onRawChunk(chunk)
           if (proseEnded) return
 
           if (!proseStarted) {
