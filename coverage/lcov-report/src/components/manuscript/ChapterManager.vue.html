@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/706</span>
+                <span class='fraction'>0/717</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/706</span>
+                <span class='fraction'>0/717</span>
             </div>
         
             
@@ -768,7 +768,29 @@
 <a name='L703'></a><a href='#L703'>703</a>
 <a name='L704'></a><a href='#L704'>704</a>
 <a name='L705'></a><a href='#L705'>705</a>
-<a name='L706'></a><a href='#L706'>706</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L706'></a><a href='#L706'>706</a>
+<a name='L707'></a><a href='#L707'>707</a>
+<a name='L708'></a><a href='#L708'>708</a>
+<a name='L709'></a><a href='#L709'>709</a>
+<a name='L710'></a><a href='#L710'>710</a>
+<a name='L711'></a><a href='#L711'>711</a>
+<a name='L712'></a><a href='#L712'>712</a>
+<a name='L713'></a><a href='#L713'>713</a>
+<a name='L714'></a><a href='#L714'>714</a>
+<a name='L715'></a><a href='#L715'>715</a>
+<a name='L716'></a><a href='#L716'>716</a>
+<a name='L717'></a><a href='#L717'>717</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1622,6 +1644,12 @@
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >function selectSection(sectionId) {</span>
 <span class="cstat-no" title="statement not covered" >  activeSectionExpanded.value = activeSectionExpanded.value === sectionId ? null : sectionId</span>
+<span class="cstat-no" title="statement not covered" >  if (manuscriptStore.activeSectionId === sectionId) {</span>
+<span class="cstat-no" title="statement not covered" >    manuscriptStore.setActiveSection(null)</span>
+<span class="cstat-no" title="statement not covered" >  } else {</span>
+<span class="cstat-no" title="statement not covered" >    manuscriptStore.setActiveSection(sectionId)</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >  manuscriptStore.setActiveSubsection(null)</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >function updateSubsectionOrder(sectionId) {</span>
@@ -1891,7 +1919,8 @@
 <span class="cstat-no" title="statement not covered" >            &lt;div</span>
 <span class="cstat-no" title="statement not covered" >              :class="[</span>
 <span class="cstat-no" title="statement not covered" >                'flex items-center gap-2.5 p-3 bg-bg-primary transition-colors',</span>
-<span class="cstat-no" title="statement not covered" >                assignMode ? 'hover:bg-accent/10' : 'hover:bg-surface-hover cursor-pointer'</span>
+<span class="cstat-no" title="statement not covered" >                assignMode ? 'hover:bg-accent/10' : 'hover:bg-surface-hover cursor-pointer',</span>
+<span class="cstat-no" title="statement not covered" >                manuscriptStore.activeSectionId === section.id ? 'border-l-2 border-accent' : ''</span>
 <span class="cstat-no" title="statement not covered" >              ]"</span>
 <span class="cstat-no" title="statement not covered" >              @click="assignMode ? assignChapterToVolume(section.id) : selectSection(section.id)"</span>
 <span class="cstat-no" title="statement not covered" >            &gt;</span>
@@ -1972,7 +2001,11 @@
 <span class="cstat-no" title="statement not covered" >                &lt;template #item="{ element: subsection }"&gt;</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;div class="flex items-center gap-2 px-2.5 py-2 bg-bg-primary border border-border-subtle rounded-md"&gt;</span>
 <span class="cstat-no" title="statement not covered" >                    &lt;BaseIcon name="grip-vertical" :size="13" class="text-text-tertiary flex-shrink-0 cursor-grab" /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    &lt;span class="text-xs font-medium text-text-primary flex-1 min-w-0"&gt;{{ subsection.title || 'Untitled Subsection' }}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span</span>
+<span class="cstat-no" title="statement not covered" >                      class="text-xs font-medium flex-1 min-w-0 cursor-pointer hover:text-accent"</span>
+<span class="cstat-no" title="statement not covered" >                      :class="manuscriptStore.activeSubsectionId === subsection.id ? 'text-accent' : 'text-text-primary'"</span>
+<span class="cstat-no" title="statement not covered" >                      @click="manuscriptStore.setActiveSubsection(subsection.id); manuscriptStore.setActiveSection(subsection.sectionId)"</span>
+<span class="cstat-no" title="statement not covered" >                    &gt;{{ subsection.title || 'Untitled Subsection' }}&lt;/span&gt;</span>
 <span class="cstat-no" title="statement not covered" >                    &lt;button</span>
 <span class="cstat-no" title="statement not covered" >                      class="bg-transparent border-none text-xs text-text-secondary cursor-pointer px-1.5 py-0.5 hover:text-text-primary"</span>
 <span class="cstat-no" title="statement not covered" >                      @click="openEditSubsection(subsection)"</span>
@@ -2185,7 +2218,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-04T19:34:14.921Z
+                at 2026-06-07T18:19:25.122Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

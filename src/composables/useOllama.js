@@ -36,6 +36,7 @@ export {
   enhanceCharacter,
   enhanceExistingCharacter,
   enhanceSingleField,
+  generateTraitSuggestions,
   generateCharactersForPlotThread,
   generateLocationsForPlotThread,
   enhanceLocation,

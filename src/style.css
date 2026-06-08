@@ -114,22 +114,27 @@
   }
 
   /* ── Scrollbar ── */
-  .scrollbar-thin::-webkit-scrollbar {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(74, 69, 64, 0.5) transparent;
+  }
+
+  ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
   }
 
-  .scrollbar-thin::-webkit-scrollbar-track {
+  ::-webkit-scrollbar-track {
     background: transparent;
   }
 
-  .scrollbar-thin::-webkit-scrollbar-thumb {
+  ::-webkit-scrollbar-thumb {
     background: rgba(74, 69, 64, 0.5);
-    border-radius: 2px;
+    border-radius: 3px;
     transition: background 0.2s ease;
   }
 
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  ::-webkit-scrollbar-thumb:hover {
     background: rgba(90, 85, 80, 0.7);
   }
 

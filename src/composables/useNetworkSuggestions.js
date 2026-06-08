@@ -220,6 +220,98 @@ function getEntityTypePrefix(type) {
   }
 }
 
+/**
+ * Generate basic connections from entity metadata alone (no embeddings required).
+ * Used as a last-resort fallback when AI and embeddings are unavailable.
+ */
+function generateMetadataConnections(characters, locations, plotThreads, existingKeys) {
+  const results = []
+  const connected = new Set()
+
+  function add(sourceType, sourceId, sourceLabel, targetType, targetId, targetLabel, relationshipType, rationale, confidence) {
+    const key = canonicalKey(sourceType, String(sourceId), targetType, String(targetId))
+    if (connected.has(key) || existingKeys.has(key)) return
+    connected.add(key)
+    results.push({ sourceType, sourceId, sourceLabel, targetType, targetId, targetLabel, relationshipType, rationale, confidence, similarity: 0 })
+  }
+
+  // Character ↔ plotThread: each character involved in every plot thread
+  for (const char of characters) {
+    for (const thread of plotThreads) {
+      add('character', char.id, char.name, 'plotThread', thread.id, thread.title,
+        'involved_in',
+        `${char.name} is involved in "${thread.title}".`,
+        0.45)
+    }
+  }
+
+  // Character ↔ location: connect character to first few locations
+  for (const char of characters) {
+    for (let i = 0; i < Math.min(locations.length, 2); i++) {
+      const loc = locations[i]
+      add('character', char.id, char.name, 'location', loc.id, loc.name,
+        'appears_in',
+        `${char.name} appears at ${loc.name}.`,
+        0.4)
+    }
+  }
+
+  // Location ↔ plotThread
+  for (const loc of locations) {
+    for (const thread of plotThreads) {
+      add('location', loc.id, loc.name, 'plotThread', thread.id, thread.title,
+        'features',
+        `${loc.name} features in "${thread.title}".`,
+        0.4)
+    }
+  }
+
+  // Character ↔ character: role-based connections
+  const opposingPairs = [
+    [['hero', 'protagonist', 'guardian', 'detective', 'protector'], ['villain', 'antagonist', 'threat', 'criminal', 'destroyer'], 'enemy'],
+    [['mentor', 'guide', 'teacher'], ['student', 'apprentice', 'follower'], 'mentor'],
+    [['leader', 'ruler', 'commander'], ['follower', 'ally', 'guard'], 'ally'],
+  ]
+
+  for (let i = 0; i < characters.length; i++) {
+    for (let j = i + 1; j < characters.length; j++) {
+      const a = characters[i], b = characters[j]
+      const roleA = ((a.role || '') + ' ' + (a.goal || '')).toLowerCase()
+      const roleB = ((b.role || '') + ' ' + (b.goal || '')).toLowerCase()
+
+      for (const [patternA, patternB, relType] of opposingPairs) {
+        const matchA = patternA.some(p => roleA.includes(p))
+        const matchB = patternB.some(p => roleB.includes(p))
+        const matchReverse = patternA.some(p => roleB.includes(p)) && patternB.some(p => roleA.includes(p))
+        if ((matchA && matchB) || matchReverse) {
+          add('character', a.id, a.name, 'character', b.id, b.name,
+            relType,
+            `${a.name} (${a.role || 'character'}) — ${b.name} (${b.role || 'character'})`,
+            0.55)
+          break
+        }
+      }
+    }
+  }
+
+  // If we still have very few, connect each character to at least one thread
+  if (results.length < 3 && plotThreads.length > 0 && characters.length > 0) {
+    for (const char of characters.slice(0, 3)) {
+      for (const thread of plotThreads.slice(0, 1)) {
+        const key = canonicalKey('character', String(char.id), 'plotThread', String(thread.id))
+        if (!connected.has(key)) {
+          add('character', char.id, char.name, 'plotThread', thread.id, thread.title,
+            'involved_in',
+            `${char.name} is part of "${thread.title}".`,
+            0.35)
+        }
+      }
+    }
+  }
+
+  return results.sort((a, b) => b.confidence - a.confidence)
+}
+
 export function useNetworkSuggestions() {
   const storyBibleStore = useStoryBibleStore()
   const storyGraphStore = useStoryGraphStore()
@@ -777,11 +869,21 @@ Rules:
 
       deduped.sort((a, b) => b.confidence - a.confidence)
 
-      const filteredSuggestions = limitConnectionsPerEntity(
+      let filteredSuggestions = limitConnectionsPerEntity(
         deduped.filter(s => s.confidence >= confidenceThreshold),
         maxPerEntity,
         maxConnections
       )
+
+      // LAST RESORT: when AI and embeddings both failed, generate basic connections from entity metadata
+      if (filteredSuggestions.length === 0) {
+        console.log('[AutoGenerate] Last-resort fallback: metadata-based connections')
+        const fallback = generateMetadataConnections(characters, locations, plotThreads, existingKeys)
+        filteredSuggestions = limitConnectionsPerEntity(fallback, maxPerEntity, maxConnections)
+        if (filteredSuggestions.length > 0) {
+          analysisError.value = 'Using metadata-based connections (AI and embeddings unavailable).'
+        }
+      }
 
       return filteredSuggestions
 
@@ -1095,8 +1197,18 @@ Suggest max 10 connections. Each:
         console.log('[AutoGenerateNetworkWithGroups] Embedding fallback suggestions:', finalSuggestions.length)
       }
 
-      const limitedSuggestions = limitConnectionsPerEntity(finalSuggestions, maxPerEntity, maxConnections)
+      let limitedSuggestions = limitConnectionsPerEntity(finalSuggestions, maxPerEntity, maxConnections)
       console.log('[AutoGenerateNetworkWithGroups] Final connections:', limitedSuggestions.length)
+
+      // LAST RESORT: metadata-based connections when AI and embeddings both failed
+      if (limitedSuggestions.length === 0) {
+        console.log('[AutoGenerateNetworkWithGroups] Last-resort fallback: metadata connections')
+        const existingKeys = new Set(
+          storyGraphStore.edges.map(e => canonicalKey(e.sourceType, String(e.sourceId), e.targetType, String(e.targetId)))
+        )
+        const fallback = generateMetadataConnections(characters, locations, plotThreads, existingKeys)
+        limitedSuggestions = limitConnectionsPerEntity(fallback, maxPerEntity, maxConnections)
+      }
 
       // Generate groups from connections
       const groupSuggestionList = generateGroupSuggestions({ confidenceThreshold: groupConfidenceThreshold })

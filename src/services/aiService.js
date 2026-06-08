@@ -1,4 +1,4 @@
-import { PROVIDERS, FEATURES } from '../config/ai'
+import { PROVIDERS, FEATURES, PROVIDER_MODELS } from '../config/ai'
 import { getApiKeyStorageKey } from '../config/storageKeys'
 import { useSettingsStore } from '../stores/settingsStore'
 import { simpleDecrypt } from './ollamaService'
@@ -32,15 +32,18 @@ function getApiKey(provider) {
 function resolveFeatureConfig(feature) {
   const store = useSettingsStore()
   const override = store.featureModels?.[feature]
+  const defaultModelFor = (provider) =>
+    provider === PROVIDERS.OLLAMA ? store.ollamaModel : (PROVIDER_MODELS[provider]?.[0] || null)
+
   if (override?.provider && override.provider !== 'default') {
     return {
       provider: override.provider,
-      model: override.model || (override.provider === PROVIDERS.OLLAMA ? store.ollamaModel : null)
+      model: override.model || defaultModelFor(override.provider)
     }
   }
   return {
     provider: store.aiProvider,
-    model: store.aiProvider === PROVIDERS.OLLAMA ? store.ollamaModel : null
+    model: defaultModelFor(store.aiProvider)
   }
 }
 

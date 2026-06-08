@@ -50,17 +50,20 @@ function buildEntityBlock(entities, label, formatter) {
 function formatCharacter(c) {
   const roleSuffix = c.role ? ` (${c.role})` : ''
   const goalSuffix = c.goal ? ` — ${c.goal.slice(0, 80)}` : ''
-  return `- "${c.name}"${roleSuffix}${goalSuffix}`
+  const traitsSuffix = c.traits?.length ? ` [${c.traits.join('; ')}]` : ''
+  return `- "${c.name}"${roleSuffix}${goalSuffix}${traitsSuffix}`
 }
 
 function formatLocation(l) {
   const descSuffix = l.description ? `: ${l.description.slice(0, 80)}` : ''
-  return `- "${l.name}"${descSuffix}`
+  const traitsSuffix = l.traits?.length ? ` [${l.traits.join('; ')}]` : ''
+  return `- "${l.name}"${descSuffix}${traitsSuffix}`
 }
 
 function formatPlotThread(t) {
   const notesSuffix = t.notes ? `: ${t.notes.slice(0, 80)}` : ''
-  return `- "${t.title}"${notesSuffix}`
+  const traitsSuffix = t.traits?.length ? ` [${t.traits.join('; ')}]` : ''
+  return `- "${t.title}"${notesSuffix}${traitsSuffix}`
 }
 
 export { buildEntityBlock, formatCharacter, formatLocation, formatPlotThread }

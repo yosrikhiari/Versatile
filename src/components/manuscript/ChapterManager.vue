@@ -147,6 +147,12 @@ function updateSectionOrder() {
 
 function selectSection(sectionId) {
   activeSectionExpanded.value = activeSectionExpanded.value === sectionId ? null : sectionId
+  if (manuscriptStore.activeSectionId === sectionId) {
+    manuscriptStore.setActiveSection(null)
+  } else {
+    manuscriptStore.setActiveSection(sectionId)
+  }
+  manuscriptStore.setActiveSubsection(null)
 }
 
 function updateSubsectionOrder(sectionId) {
@@ -416,7 +422,8 @@ function getVolumeForSection(section) {
             <div
               :class="[
                 'flex items-center gap-2.5 p-3 bg-bg-primary transition-colors',
-                assignMode ? 'hover:bg-accent/10' : 'hover:bg-surface-hover cursor-pointer'
+                assignMode ? 'hover:bg-accent/10' : 'hover:bg-surface-hover cursor-pointer',
+                manuscriptStore.activeSectionId === section.id ? 'border-l-2 border-accent' : ''
               ]"
               @click="assignMode ? assignChapterToVolume(section.id) : selectSection(section.id)"
             >
@@ -497,7 +504,11 @@ function getVolumeForSection(section) {
                 <template #item="{ element: subsection }">
                   <div class="flex items-center gap-2 px-2.5 py-2 bg-bg-primary border border-border-subtle rounded-md">
                     <BaseIcon name="grip-vertical" :size="13" class="text-text-tertiary flex-shrink-0 cursor-grab" />
-                    <span class="text-xs font-medium text-text-primary flex-1 min-w-0">{{ subsection.title || 'Untitled Subsection' }}</span>
+                    <span
+                      class="text-xs font-medium flex-1 min-w-0 cursor-pointer hover:text-accent"
+                      :class="manuscriptStore.activeSubsectionId === subsection.id ? 'text-accent' : 'text-text-primary'"
+                      @click="manuscriptStore.setActiveSubsection(subsection.id); manuscriptStore.setActiveSection(subsection.sectionId)"
+                    >{{ subsection.title || 'Untitled Subsection' }}</span>
                     <button
                       class="bg-transparent border-none text-xs text-text-secondary cursor-pointer px-1.5 py-0.5 hover:text-text-primary"
                       @click="openEditSubsection(subsection)"

@@ -23,6 +23,8 @@ import TimelineView from './components/manuscript/TimelineView.vue'
 import SearchOverlay from './components/manuscript/SearchOverlay.vue'
 import ArchiveDrawer from './components/layout/ArchiveDrawer.vue'
 import StoryGeneratorPanel from './components/story/StoryGeneratorPanel.vue'
+import ActivityToast from './components/shared/ActivityToast.vue'
+import ActivityDrawer from './components/shared/ActivityDrawer.vue'
 
 const projectStore = useProjectStore()
 const timer = useFlowSession()
@@ -89,6 +91,10 @@ function handleEndFlow() {
   timer.endSession()
 }
 
+function handleOpenChapters() {
+  appShell.value?.toggleChapters()
+}
+
 async function handleOnboardingCompleteWrapper() {
   showOnboarding.value = false
   await onOnboardingComplete()
@@ -135,7 +141,7 @@ function handleOnboardingSkipWrapper() {
       </template>
 
       <template #story-generator>
-        <StoryGeneratorPanel v-if="ollamaAvailable" @open-chapters="appShell?.toggleChapters()" />
+        <StoryGeneratorPanel v-if="ollamaAvailable" @open-chapters="handleOpenChapters" />
         <div v-else class="p-4 text-center text-text-secondary">
           AI features disabled — Ollama unavailable
         </div>
@@ -278,5 +284,8 @@ function handleOnboardingSkipWrapper() {
     <SettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @model-changed="checkModelAvailability" />
 
     <NotificationHost />
+
+    <ActivityToast />
+    <ActivityDrawer />
   </div>
 </template>

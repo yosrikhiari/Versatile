@@ -6,6 +6,7 @@ test-results/
 docker-compose.yml
 vite_err.txt
 vite_out.txt
+/debug/
 # Backend (disconnected dead code - removed)
 /server/
 /backend/
@@ -14,3 +15,5 @@ elevation_test.txt
 perm_check.txt
 .gitignore
 perm_result.txt
+Report.md
+AGENT.md

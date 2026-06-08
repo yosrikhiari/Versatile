@@ -5,9 +5,18 @@ const mockAiGenerate = vi.fn()
 const mockProjectStore = {
   activeWorkspaceType: 'creative'
 }
+const mockAiStream = vi.fn(async (user, system, onChunk, opts) => {
+  try {
+    const res = await mockAiGenerate(user, system, opts)
+    onChunk(res)
+  } catch (err) {
+    throw err
+  }
+})
 
 vi.mock('@/services/aiService', () => ({
-  aiGenerate: (...args) => mockAiGenerate(...args)
+  aiGenerate: (...args) => mockAiGenerate(...args),
+  aiStream: (...args) => mockAiStream(...args)
 }))
 
 vi.mock('@/config/ai', () => ({
@@ -41,61 +50,64 @@ beforeEach(async () => {
 
 function makeValidResponse() {
   return JSON.stringify({
-    actions: [
+    chapters: [
       {
-        type: 'write_scene',
-        payload: {
-          sceneNumber: 1,
-          title: 'Opening',
-          emotionalGoal: 'Hope',
-          whatChanges: 'Hero begins journey',
-          charactersPresent: ['John'],
-          characterWants: { John: 'Find purpose' },
-          setup: 'Establishes conflict',
-          payoff: 'none',
-          sensoryAnchor: 'Morning light',
-          tension: 'medium',
-          pacing: 'slow',
-          estimatedWords: 500
-        }
-      },
-      {
-        type: 'write_scene',
-        payload: {
-          sceneNumber: 2,
-          title: 'Confrontation',
-          emotionalGoal: 'Fear',
-          whatChanges: 'Hero faces villain',
-          charactersPresent: ['John', 'Jane'],
-          characterWants: { John: 'Survive', Jane: 'Win' },
-          setup: 'Villain revealed',
-          payoff: 'Establishes conflict',
-          sensoryAnchor: 'Dark room',
-          tension: 'peak',
-          pacing: 'fast',
-          estimatedWords: 800
-        }
-      },
-      {
-        type: 'write_scene',
-        payload: {
-          sceneNumber: 3,
-          title: 'Resolution',
-          emotionalGoal: 'Relief',
-          whatChanges: 'Conflict resolved',
-          charactersPresent: ['John'],
-          characterWants: { John: 'Find peace' },
-          setup: 'Hero overcomes',
-          payoff: 'Villain revealed',
-          sensoryAnchor: 'Sunset',
-          tension: 'low',
-          pacing: 'slow',
-          estimatedWords: 400
-        }
-      },
-      { type: 'develop_character', payload: { name: 'Mentor', description: 'Guide' } },
-      { type: 'brainstorm_twist', payload: { idea: 'Betrayal' } },
-      { type: 'write_scene', payload: {} }
+        chapterNumber: 1,
+        title: 'Chapter 1',
+        goal: 'Goal',
+        arcPosition: 'opening',
+        emotionalTarget: 'Hope',
+        hookEnding: 'Hook',
+        estimatedWords: 5000,
+        scenes: [
+          {
+            sceneNumber: 1,
+            title: 'Opening',
+            emotionalGoal: 'Hope',
+            whatChanges: 'Hero begins journey',
+            charactersPresent: ['John'],
+            characterWants: { John: 'Find purpose' },
+            setup: 'Establishes conflict',
+            payoff: 'none',
+            sensoryAnchor: 'Morning light',
+            tension: 'medium',
+            pacing: 'slow',
+            arcPosition: 'setup',
+            obstacle: 'obstacle',
+            estimatedWords: 500
+          },
+          {
+            sceneNumber: 2,
+            title: 'Middle 1',
+            arcPosition: 'obstacle',
+            obstacle: 'obstacle',
+            estimatedWords: 500
+          },
+          {
+            sceneNumber: 3,
+            title: 'Middle 2',
+            arcPosition: 'turn',
+            obstacle: 'obstacle',
+            estimatedWords: 500
+          },
+          {
+            sceneNumber: 4,
+            title: 'Resolution',
+            emotionalGoal: 'Relief',
+            whatChanges: 'Conflict resolved',
+            charactersPresent: ['John'],
+            characterWants: { John: 'Find peace' },
+            setup: 'Hero overcomes',
+            payoff: 'Villain revealed',
+            sensoryAnchor: 'Sunset',
+            tension: 'low',
+            pacing: 'slow',
+            arcPosition: 'resolution',
+            obstacle: 'obstacle',
+            estimatedWords: 400
+          }
+        ]
+      }
     ],
     storyArc: {
       premise: 'Test premise',
@@ -104,7 +116,7 @@ function makeValidResponse() {
       emotionalJourney: 'hope to despair',
       centralConflict: 'Good vs Evil',
       resolution: 'Hero triumphs',
-      totalScenes: 6
+      totalScenes: 4
     }
   })
 }
@@ -142,7 +154,8 @@ describe('useStoryDirector', () => {
       mockAiGenerate.mockResolvedValue(makeValidResponse())
       const { generateStoryPlan } = useStoryDirector()
       const result = await generateStoryPlan({ goal, evidence: 'Story bible' })
-      expect(result.actions).toHaveLength(6)
+      expect(result.chapters).toHaveLength(1)
+      expect(result.scenes).toHaveLength(4)
       expect(result.storyArc.premise).toBe('Test premise')
       expect(result.storyArc.genre).toBe('Fantasy')
     })
@@ -162,7 +175,7 @@ describe('useStoryDirector', () => {
         .mockResolvedValueOnce(makeValidResponse())
       const { generateStoryPlan } = useStoryDirector()
       const result = await generateStoryPlan({ goal, evidence: '' })
-      expect(result.actions).toHaveLength(6)
+      expect(result.chapters).toHaveLength(1)
       expect(mockAiGenerate).toHaveBeenCalledTimes(2)
     })
 
@@ -173,47 +186,36 @@ describe('useStoryDirector', () => {
       expect(planError.value).toContain('Failed to parse')
     })
 
-    it('throws when long_term has less than 6 actions', async () => {
+    it('throws when long_term has no chapters', async () => {
       const fewActions = JSON.stringify({
-        actions: [
-          { type: 'write_scene', payload: { title: 'A' } },
-          { type: 'write_scene', payload: { title: 'B' } },
-          { type: 'write_scene', payload: { title: 'C' } },
-          { type: 'write_scene', payload: { title: 'D' } },
-          { type: 'write_scene', payload: { title: 'E' } }
-        ],
+        chapters: [],
         storyArc: {}
       })
       mockAiGenerate.mockResolvedValue(fewActions)
       const { generateStoryPlan } = useStoryDirector()
-      await expect(generateStoryPlan({ goal, evidence: '' })).rejects.toThrow('Minimum is 6')
+      await expect(generateStoryPlan({ goal, evidence: '' })).rejects.toThrow('no chapters')
     })
 
-    it('throws when long_term has more than 15 actions', async () => {
-      const manyActions = Array.from({ length: 16 }, (_, i) => ({
-        type: 'write_scene',
-        payload: { title: `Scene ${i + 1}` }
-      }))
-      mockAiGenerate.mockResolvedValue(JSON.stringify({ actions: manyActions, storyArc: {} }))
-      const { generateStoryPlan } = useStoryDirector()
-      await expect(generateStoryPlan({ goal, evidence: '' })).rejects.toThrow('Maximum is 15')
-    })
-
-    it('validates action payloads with defaults', async () => {
+    it('validates scene payloads with defaults', async () => {
       const minimalResponse = JSON.stringify({
-        actions: Array.from({ length: 6 }, (_, i) => ({
-          type: 'write_scene',
-          payload: { sceneNumber: i + 1, title: `Scene ${i + 1}` }
-        })),
+        chapters: [{
+          chapterNumber: 1,
+          title: 'Chapter 1',
+          emotionalTarget: 'Hope',
+          estimatedWords: 6000,
+          scenes: Array.from({ length: 4 }, (_, i) => ({
+            sceneNumber: i + 1, title: `Scene ${i + 1}`, arcPosition: 'setup', obstacle: 'ob'
+          }))
+        }],
         storyArc: {}
       })
       mockAiGenerate.mockResolvedValue(minimalResponse)
       const { generateStoryPlan } = useStoryDirector()
       const result = await generateStoryPlan({ goal, evidence: '' })
-      result.actions.forEach((a, i) => {
-        expect(a.payload.tension).toBe('medium')
-        expect(a.payload.pacing).toBe('medium')
-        expect(a.payload.estimatedWords).toBeGreaterThan(0)
+      result.scenes.forEach((s, i) => {
+        expect(s.tension).toBe('medium')
+        expect(s.pacing).toBe('medium')
+        expect(s.estimatedWords).toBeGreaterThan(0)
       })
     })
 
@@ -226,23 +228,22 @@ describe('useStoryDirector', () => {
       expect(systemPrompt).toContain('short-term')
     })
 
-    it('handles non-write_scene action types', async () => {
+    it('handles custom actions missing but parses successfully anyway', async () => {
       const response = JSON.stringify({
-        actions: [
-          { type: 'write_scene', payload: { title: 'Open' } },
-          { type: 'write_scene', payload: { title: 'Mid' } },
-          { type: 'write_scene', payload: { title: 'End' } },
-          { type: 'write_scene', payload: { title: 'A' } },
-          { type: 'write_scene', payload: { title: 'B' } },
-          { type: 'custom_action', payload: { customData: true } }
-        ],
+        chapters: [{
+          chapterNumber: 1,
+          emotionalTarget: 'Hope',
+          estimatedWords: 6000,
+          scenes: Array.from({ length: 4 }, (_, i) => ({
+            sceneNumber: i + 1, title: `Scene ${i + 1}`, arcPosition: 'setup', obstacle: 'ob'
+          }))
+        }],
         storyArc: {}
       })
       mockAiGenerate.mockResolvedValue(response)
       const { generateStoryPlan } = useStoryDirector()
       const result = await generateStoryPlan({ goal: { ...goal, horizon: 'short_term' }, evidence: '' })
-      const custom = result.actions.find(a => a.type === 'custom_action')
-      expect(custom.payload.customData).toBe(true)
+      expect(result.chapters).toHaveLength(1)
     })
 
     it('handles missing AI model error gracefully', async () => {

@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/76</span>
+                <span class='fraction'>0/90</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/76</span>
+                <span class='fraction'>0/90</span>
             </div>
         
             
@@ -139,7 +139,35 @@
 <a name='L74'></a><a href='#L74'>74</a>
 <a name='L75'></a><a href='#L75'>75</a>
 <a name='L76'></a><a href='#L76'>76</a>
-<a name='L77'></a><a href='#L77'>77</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -236,57 +264,71 @@
 <span class="cstat-no" title="statement not covered" >  { value: 'short', label: 'Short (~500w)' },</span>
 <span class="cstat-no" title="statement not covered" >  { value: 'full', label: 'Full (~2000w)' }</span>
 <span class="cstat-no" title="statement not covered" >]</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >function isActive(t) {</span>
+<span class="cstat-no" title="statement not covered" >  return props.tone ? props.tone.split(',').includes(t) : false</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >function toggleTone(t) {</span>
+<span class="cstat-no" title="statement not covered" >  const current = props.tone ? props.tone.split(',') : []</span>
+<span class="cstat-no" title="statement not covered" >  if (current.includes(t)) {</span>
+<span class="cstat-no" title="statement not covered" >    emit('update:tone', current.filter(x =&gt; x !== t).join(','))</span>
+<span class="cstat-no" title="statement not covered" >  } else if (current.length &lt; 2) {</span>
+<span class="cstat-no" title="statement not covered" >    emit('update:tone', [...current, t].join(','))</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" >&lt;/script&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >&lt;template&gt;</span>
-<span class="cstat-no" title="statement not covered" >  &lt;div class="space-y-4"&gt;</span>
-<span class="cstat-no" title="statement not covered" >    &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;label class="block text-[11px] uppercase tracking-widest text-text-hint font-ui mb-2"&gt;Your chapter idea&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >  &lt;div class="space-y-6"&gt;</span>
+<span class="cstat-no" title="statement not covered" >    &lt;!-- Textarea (Visually Dominant) --&gt;</span>
+<span class="cstat-no" title="statement not covered" >    &lt;div class="relative"&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;div class="absolute -left-3 top-2 bottom-2 w-[3px] bg-accent/20 rounded-full"&gt;&lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;label class="block text-[11px] font-spark tracking-wide text-text-hint mb-3 ml-1"&gt;~ The Idea ~&lt;/label&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;textarea</span>
 <span class="cstat-no" title="statement not covered" >        :value="idea"</span>
-<span class="cstat-no" title="statement not covered" >        maxlength="200"</span>
-<span class="cstat-no" title="statement not covered" >        rows="3"</span>
-<span class="cstat-no" title="statement not covered" >        class="w-full px-3 py-2 border border-border-subtle rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/50 bg-bg-tertiary text-text-primary font-ui placeholder:text-text-hint"</span>
-<span class="cstat-no" title="statement not covered" >        placeholder="What happens in this chapter?"</span>
+<span class="cstat-no" title="statement not covered" >        maxlength="400"</span>
+<span class="cstat-no" title="statement not covered" >        rows="5"</span>
+<span class="cstat-no" title="statement not covered" >        class="w-full px-3 py-2 bg-transparent border border-border-subtle/30 rounded-sm text-base resize-none focus:outline-none focus:border-accent/50 focus:bg-surface-hover/30 text-text-primary font-body placeholder:text-text-hint/40 placeholder:italic transition-all duration-300"</span>
+<span class="cstat-no" title="statement not covered" >        placeholder="A shadow crosses the moon..."</span>
 <span class="cstat-no" title="statement not covered" >        @input="emit('update:idea', $event.target.value)"</span>
 <span class="cstat-no" title="statement not covered" >      &gt;&lt;/textarea&gt;</span>
 <span class="cstat-no" title="statement not covered" >    &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;label class="block text-[11px] uppercase tracking-widest text-text-hint font-ui mb-2"&gt;Tone&lt;/label&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;div class="flex flex-wrap gap-2"&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;button</span>
-<span class="cstat-no" title="statement not covered" >          v-for="t in tones"</span>
-<span class="cstat-no" title="statement not covered" >          :key="t.value"</span>
-<span class="cstat-no" title="statement not covered" >          :class="[</span>
-<span class="cstat-no" title="statement not covered" >            'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent',</span>
-<span class="cstat-no" title="statement not covered" >            tone === t.value</span>
-<span class="cstat-no" title="statement not covered" >              ? 'bg-accent text-white'</span>
-<span class="cstat-no" title="statement not covered" >              : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'</span>
-<span class="cstat-no" title="statement not covered" >          ]"</span>
-<span class="cstat-no" title="statement not covered" >          @click="emit('update:tone', t.value)"</span>
-<span class="cstat-no" title="statement not covered" >        &gt;</span>
-<span class="cstat-no" title="statement not covered" >          {{ t.label }}</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >    &lt;div class="flex flex-col gap-6 pt-2 border-t border-border-subtle/20"&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;!-- Tone (Emotional Registers) --&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;label class="block text-[9px] uppercase tracking-widest text-text-hint font-ui mb-3"&gt;Emotional Registers (Max 2)&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div class="flex flex-wrap gap-2"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;button</span>
+<span class="cstat-no" title="statement not covered" >            v-for="t in tones"</span>
+<span class="cstat-no" title="statement not covered" >            :key="t.value"</span>
+<span class="cstat-no" title="statement not covered" >            class="relative px-3 py-1.5 text-[11px] font-ui transition-all duration-300 group overflow-hidden rounded"</span>
+<span class="cstat-no" title="statement not covered" >            :class="isActive(t.value) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'"</span>
+<span class="cstat-no" title="statement not covered" >            @click="toggleTone(t.value)"</span>
+<span class="cstat-no" title="statement not covered" >          &gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div class="absolute inset-0 border border-current opacity-20 rounded transition-opacity" :class="isActive(t.value) ? 'opacity-40' : ''"&gt;&lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div class="absolute inset-0 bg-current opacity-0 transition-opacity duration-300" :class="isActive(t.value) ? 'opacity-10' : 'group-hover:opacity-5'"&gt;&lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;span class="relative z-10"&gt;{{ t.label }}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >    &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;label class="block text-[11px] uppercase tracking-widest text-text-hint font-ui mb-2"&gt;Length&lt;/label&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;div class="flex gap-2"&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;button</span>
-<span class="cstat-no" title="statement not covered" >          v-for="len in lengths"</span>
-<span class="cstat-no" title="statement not covered" >          :key="len.value"</span>
-<span class="cstat-no" title="statement not covered" >          :class="[</span>
-<span class="cstat-no" title="statement not covered" >            'flex-1 px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent',</span>
-<span class="cstat-no" title="statement not covered" >            targetLength === len.value</span>
-<span class="cstat-no" title="statement not covered" >              ? 'bg-accent text-white'</span>
-<span class="cstat-no" title="statement not covered" >              : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'</span>
-<span class="cstat-no" title="statement not covered" >          ]"</span>
-<span class="cstat-no" title="statement not covered" >          @click="emit('update:targetLength', len.value)"</span>
-<span class="cstat-no" title="statement not covered" >        &gt;</span>
-<span class="cstat-no" title="statement not covered" >          {{ len.label }}</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;!-- Length --&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;label class="block text-[9px] uppercase tracking-widest text-text-hint font-ui mb-3"&gt;Target Length&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div class="flex gap-5"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;label v-for="len in lengths" :key="len.value" class="flex items-center gap-2 cursor-pointer group"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div class="w-3 h-3 rounded-full border border-text-hint/50 flex items-center justify-center transition-all duration-300"</span>
+<span class="cstat-no" title="statement not covered" >                 :class="targetLength === len.value ? 'border-accent' : 'group-hover:border-text-secondary'"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div v-if="targetLength === len.value" class="w-1.5 h-1.5 bg-accent rounded-full transition-all"&gt;&lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;span class="text-[11px] font-ui transition-colors duration-300 tracking-wide"</span>
+<span class="cstat-no" title="statement not covered" >                  :class="targetLength === len.value ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {{ len.label }}</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >    &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >  &lt;/div&gt;</span>
@@ -298,7 +340,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-04T19:34:14.921Z
+                at 2026-06-07T18:19:25.122Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

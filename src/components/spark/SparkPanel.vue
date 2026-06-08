@@ -16,6 +16,7 @@ import BaseIcon from '../shared/BaseIcon.vue'
 const props = defineProps({
   embedded: Boolean
 })
+const emit = defineEmits(['useAsContext'])
 
 const sparkStore = useSparkStore()
 const storyBibleStore = useStoryBibleStore()
@@ -160,91 +161,41 @@ function switchTab(tab) {
 
 <template>
   <div :class="embedded ? 'flex flex-col min-h-0' : 'h-full flex flex-col'">
-    <div class="px-4 pt-4 pb-3 border-b border-border-subtle flex-shrink-0">
-      <template v-if="!embedded">
-        <div class="flex items-center justify-between">
-          <span class="font-spark text-accent tracking-wide">Spark</span>
-          <span class="text-[10px] text-text-hint font-ui truncate max-w-[180px]" :title="sparkModelLabel">{{ sparkModelLabel }}</span>
+    <div class="px-5 pt-5 pb-4 border-b border-border-subtle/30 flex-shrink-0 bg-bg-secondary/10">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex gap-6">
+          <button @click="switchTab('blueprint')" 
+                  class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none"
+                  :class="['blueprint', 'freewrite'].includes(activeTab) ? 'text-accent' : 'text-text-hint hover:text-text-secondary'">
+            ~ Develop Idea ~
+          </button>
+          <button @click="switchTab('prompt')" 
+                  class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none"
+                  :class="activeTab === 'prompt' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'">
+            ~ Get Prompts ~
+          </button>
         </div>
-      </template>
-
-      <!-- Pipeline hint shown in embedded (brainstorm) mode -->
-      <template v-if="embedded">
-        <div class="flex items-center gap-2 py-1 mb-1">
-          <span class="text-[10px] text-text-hint font-ui">Brainstorm here</span>
-          <BaseIcon name="arrow-right" :size="10" class="text-text-hint" />
-          <span class="text-[10px] text-accent font-ui font-semibold">Use as Generator Context</span>
-          <BaseIcon name="arrow-right" :size="10" class="text-text-hint" />
-          <span class="text-[10px] text-text-hint font-ui">Chapter / Volume</span>
+        <div class="flex gap-3 items-center">
+          <button
+            v-if="!compactIsCompacting && !embedded"
+            class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui"
+            title="Compact conversation"
+            @click="handleCompact"
+          >
+            Compact
+          </button>
+          <button @click="switchTab('history')" 
+                  class="transition-colors duration-300 focus:outline-none"
+                  :class="activeTab === 'history' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'" 
+                  title="History">
+            <BaseIcon name="clock" :size="16" />
+          </button>
         </div>
-      </template>
-
-      <div class="flex mt-2 gap-1">
-        <button
-          :class="[
-            'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
-            activeTab === 'prompt'
-              ? 'bg-accent/10 text-accent'
-              : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-          ]"
-          @click="switchTab('prompt')"
-          title="Generate a writing prompt to spark ideas"
-        >
-          Prompt
-        </button>
-        <button
-          :class="[
-            'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
-            activeTab === 'blueprint'
-              ? 'bg-accent/10 text-accent'
-              : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-          ]"
-          @click="switchTab('blueprint')"
-          title="Turn your idea into a structured scene blueprint (beats, hooks, notes)"
-        >
-          Blueprint
-        </button>
-        <button
-          :class="[
-            'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
-            activeTab === 'freewrite'
-              ? 'bg-accent/10 text-accent'
-              : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-          ]"
-          @click="switchTab('freewrite')"
-          title="Generate full prose from your idea — a quick draft to react to"
-        >
-          Freewrite
-        </button>
-        <button
-          :class="[
-            'flex-1 py-2 text-xs font-medium transition-colors rounded-md focus:outline-none focus:ring-2 focus:ring-accent',
-            activeTab === 'history'
-              ? 'bg-accent/10 text-accent'
-              : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-          ]"
-          @click="switchTab('history')"
-          title="Your past Spark generations"
-        >
-          History
-        </button>
       </div>
-      <div v-if="!embedded" class="flex items-center justify-end mt-2 gap-1">
-        <button
-          v-if="compactIsCompacting"
-          class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint rounded font-ui"
-          disabled
-        >
-          Compacting...
-        </button>
-        <button
-          v-else
-          class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui"
-          title="Compact conversation — summarizes earlier exchanges to keep context fresh"
-          @click="handleCompact"
-        >
-          Compact
-        </button>
+
+      <!-- Context Selector always near top -->
+      <div v-if="['blueprint', 'freewrite', 'prompt'].includes(activeTab)">
+        <ChapterContextSelector ref="contextSelectorRef" panel-id="spark-global" />
       </div>
     </div>
 
@@ -276,12 +227,10 @@ function switchTab(tab) {
             type="checkbox"
             class="w-4 h-4 rounded accent-accent"
           />
-          <label for="relateToProject" class="text-sm text-text-secondary font-ui">
+          <label for="relateToProject" class="text-sm text-text-secondary font-ui cursor-pointer select-none">
             Relate to my project
           </label>
         </div>
-
-        <ChapterContextSelector ref="contextSelectorRef" panel-id="spark" />
 
         <button
           :disabled="sparkStore.isGenerating"
@@ -323,120 +272,81 @@ function switchTab(tab) {
         </div>
       </div>
 
-      <div v-if="activeTab === 'blueprint'" class="space-y-4">
-        <div class="rounded-lg bg-accent/5 border border-accent/15 px-3 py-2">
-          <p class="text-[11px] text-text-hint font-ui leading-relaxed">
-            Describe your scene idea and get a structured blueprint with beats, a sensory anchor, and a dialogue hook.
-            Then use <span class="text-accent font-semibold">Use as Generator Context</span> to write the full chapter.
-          </p>
-        </div>
+      <div v-if="['blueprint', 'freewrite'].includes(activeTab)" class="space-y-8">
+        <!-- Step 1: Idea Input -->
         <IdeaInput
           v-model:idea="idea"
           v-model:tone="tone"
           v-model:target-length="targetLength"
         />
 
-        <ChapterContextSelector ref="contextSelectorRef" panel-id="spark-blueprint" />
+        <div v-if="sparkStore.error" class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui">
+          {{ sparkStore.error }}
+        </div>
 
         <button
-          :disabled="sparkStore.isGenerating || !idea"
-          class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          v-if="!sparkStore.currentBlueprint && !sparkStore.isGenerating"
+          :disabled="!idea"
+          class="w-full py-2.5 border border-accent text-accent rounded-lg font-spark tracking-widest text-sm hover:bg-accent hover:text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           @click="generateOutline"
-               @keydown.enter="generateOutline"
         >
-          <span v-if="sparkStore.isGenerating" class="flex items-center justify-center gap-2">
-            <BaseIcon name="loader-2" :size="16" class="animate-spin" />
-            Generating...
-          </span>
-           <span v-else>Generate Outline</span>
+          Draft Blueprint
         </button>
 
-        <div v-if="sparkStore.isGenerating" class="rounded-lg p-4 space-y-4 animate-pulse bg-surface-hover">
-          <div class="h-5 bg-bg-tertiary rounded w-1/2"></div>
-          <div class="space-y-2">
-            <div class="h-4 bg-bg-tertiary rounded w-full"></div>
-            <div class="h-4 bg-bg-tertiary rounded w-3/4"></div>
-          </div>
-          <div class="h-20 bg-bg-tertiary rounded"></div>
+        <div v-if="sparkStore.isGenerating && !sparkStore.currentBlueprint && !sparkStore.currentStreamingChapter" class="flex items-center justify-center py-6 text-accent">
+          <BaseIcon name="loader-2" :size="24" class="animate-spin" />
         </div>
 
-        <div v-if="sparkStore.error" class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui">
-          {{ sparkStore.error }}
-        </div>
+        <!-- Step 2: The Blueprint -->
+        <div v-if="sparkStore.currentBlueprint" class="space-y-6 pt-6 border-t border-border-subtle/20 relative">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-bg-primary px-3 text-text-hint/30"><BaseIcon name="feather" :size="16" /></div>
+          <BlueprintResult
+            :blueprint="sparkStore.currentBlueprint"
+            @insert="insertIntoFlow"
+          />
 
-        <BlueprintResult
-          v-if="sparkStore.currentBlueprint"
-          :blueprint="sparkStore.currentBlueprint"
-          @insert="insertIntoFlow"
-        />
-
-        <div v-if="!sparkStore.currentBlueprint && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8 space-y-2">
-          <BaseIcon name="map" :size="24" class="mx-auto text-text-hint" />
-          <p class="text-sm text-text-hint font-body">Describe your scene and generate a blueprint.</p>
-          <p class="text-xs text-text-hint font-ui opacity-70">Beats, hooks, and notes — everything the generator needs.</p>
-        </div>
-      </div>
-
-      <div v-if="activeTab === 'freewrite'" class="space-y-4">
-        <div class="rounded-lg bg-accent/5 border border-accent/15 px-3 py-2">
-          <p class="text-[11px] text-text-hint font-ui leading-relaxed">
-            Write a quick draft to react to. Once generated, use
-            <span class="text-accent font-semibold">Use as Generator Context</span>
-            below to feed it into the Chapter or Volume generator.
-          </p>
-        </div>
-        <IdeaInput
-          v-model:idea="idea"
-          v-model:tone="tone"
-          v-model:target-length="targetLength"
-        />
-
-        <button
-          :disabled="sparkStore.isGenerating || !idea"
-          class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-          @click="generateContent"
-               @keydown.enter="generateContent"
-        >
-          <span v-if="sparkStore.isGenerating" class="flex items-center justify-center gap-2">
-            <BaseIcon name="loader-2" :size="16" class="animate-spin" />
-            Generating...
-          </span>
-           <span v-else>Write Content</span>
-        </button>
-
-        <div v-if="sparkStore.isGenerating" class="rounded-lg p-4 space-y-3 bg-bg-tertiary border border-border-subtle">
-          <div class="flex items-center gap-2 text-sm text-text-secondary font-ui">
-            <BaseIcon name="loader-2" :size="16" class="animate-spin text-accent" />
-            Writing...
-          </div>
-          <div class="text-sm text-text-primary whitespace-pre-wrap max-h-96 overflow-y-auto font-body">
-            {{ sparkStore.currentStreamingChapter }}<BaseIcon name="loader-2" :size="12" class="animate-spin inline ml-1" />
-          </div>
-        </div>
-
-        <div v-if="sparkStore.error" class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui">
-          {{ sparkStore.error }}
-        </div>
-
-        <div v-if="sparkStore.currentChapter && !sparkStore.isGenerating" class="rounded-lg p-4 space-y-3 bg-bg-tertiary border border-border-subtle">
-          <div class="flex justify-between items-start">
-            <h3 class="font-semibold text-text-primary font-body">Generated Chapter</h3>
+          <!-- Actions if Draft hasn't started -->
+          <div v-if="!sparkStore.currentChapter && !sparkStore.currentStreamingChapter && !sparkStore.isGenerating" class="flex gap-4">
             <button
-              class="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="insertIntoFlow(sparkStore.currentChapter)"
+              class="flex-1 py-2 border border-accent text-accent rounded-lg font-spark tracking-widest text-sm hover:bg-accent/10 transition-colors"
+              @click="generateContent"
             >
-              Insert
+              Expand to Draft
+            </button>
+            <button
+              class="flex-1 py-2 bg-accent text-white rounded-lg font-spark tracking-widest text-sm hover:bg-accent/90 transition-colors shadow-warm-sm"
+              @click="emit('useAsContext')"
+            >
+              Use Blueprint as Context
             </button>
           </div>
-          <div class="text-sm text-text-primary whitespace-pre-wrap max-h-64 overflow-y-auto font-body">
-            {{ sparkStore.currentChapter }}
-          </div>
         </div>
 
-        <div v-if="!sparkStore.currentChapter && !sparkStore.currentStreamingChapter && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8 space-y-2">
-          <BaseIcon name="pencil-line" :size="24" class="mx-auto text-text-hint" />
-          <p class="text-sm text-text-hint font-body">Describe your scene and generate quick prose.</p>
-          <p class="text-xs text-text-hint font-ui opacity-70">React to it, then send it to the generator as context.</p>
+        <!-- Step 3: The Draft -->
+        <div v-if="sparkStore.currentChapter || sparkStore.currentStreamingChapter" class="space-y-6 pt-6 border-t border-border-subtle/20 relative">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-bg-primary px-3 text-text-hint/30"><BaseIcon name="feather" :size="16" /></div>
+          
+          <div class="rounded-sm p-4 bg-bg-tertiary/50 border border-border-subtle/30 font-body text-sm text-text-primary whitespace-pre-wrap leading-relaxed relative">
+            <div v-if="sparkStore.isGenerating" class="flex items-center gap-2 text-xs text-accent font-ui mb-2">
+              <BaseIcon name="loader-2" :size="12" class="animate-spin" /> Drafting...
+            </div>
+            {{ sparkStore.currentStreamingChapter || sparkStore.currentChapter }}
+          </div>
+
+          <div v-if="sparkStore.currentChapter && !sparkStore.isGenerating" class="flex gap-4">
+            <button
+              class="flex-1 py-2 border border-accent text-accent rounded-lg font-spark tracking-widest text-sm hover:bg-accent/10 transition-colors"
+              @click="insertIntoFlow(sparkStore.currentChapter)"
+            >
+              Insert to Editor
+            </button>
+            <button
+              class="flex-1 py-2 bg-accent text-white rounded-lg font-spark tracking-widest text-sm hover:bg-accent/90 transition-colors shadow-warm-sm"
+              @click="emit('useAsContext')"
+            >
+              Use Draft as Context
+            </button>
+          </div>
         </div>
       </div>
 

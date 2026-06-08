@@ -21,6 +21,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   const activeSubsectionId = ref(null)
   const isLoading = ref(false)
   const loadError = ref(null)
+  const manuscriptContent = ref('')
 
   let styleGuideTimer = null
 
@@ -198,6 +199,18 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     activeSubsectionId.value = id
   }
 
+  function setManuscriptContent(text) {
+    manuscriptContent.value = text
+  }
+
+  function getFullText() {
+    return manuscriptContent.value
+  }
+
+  function clearManuscript() {
+    manuscriptContent.value = ''
+  }
+
   return {
     sections,
     subsections,
@@ -227,6 +240,9 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     updateRelationshipData,
     deleteRelationshipData,
     setActiveSection,
-    setActiveSubsection
+    setActiveSubsection,
+    setManuscriptContent,
+    getFullText,
+    clearManuscript
   }
 })

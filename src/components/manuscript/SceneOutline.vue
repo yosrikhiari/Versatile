@@ -66,6 +66,11 @@ const dragOptions = {
 
 function selectSection(sectionId) {
   selectedSectionId.value = selectedSectionId.value === sectionId ? null : sectionId
+  if (manuscriptStore.activeSectionId === sectionId) {
+    manuscriptStore.setActiveSection(null)
+  } else {
+    manuscriptStore.setActiveSection(sectionId)
+  }
 }
 
 function onSubsectionDragEnd(sectionId) {
@@ -154,7 +159,10 @@ onMounted(() => {
           class="bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden"
         >
           <div
-            class="p-3 cursor-pointer flex items-center justify-between hover:bg-surface-hover transition-colors"
+            :class="[
+              'p-3 cursor-pointer flex items-center justify-between hover:bg-surface-hover transition-colors',
+              manuscriptStore.activeSectionId === chapter.id ? 'border-l-2 border-accent' : ''
+            ]"
             @click="selectChapter(chapter.id)"
           >
             <div class="flex items-center gap-3">
@@ -199,9 +207,13 @@ onMounted(() => {
                     <div class="flex-1">
                       <div class="flex items-center gap-2">
                         <BaseIcon name="grip-vertical" :size="14" class="text-text-hint cursor-grab" />
-                        <span class="text-sm font-medium text-text-primary font-ui">{{ scene.title || 'Untitled' }}</span>
-                      </div>
-                      <div v-if="scene.summary" class="mt-1 text-xs text-text-hint font-ui pl-5">
+          <span
+            class="text-sm font-medium font-ui cursor-pointer hover:text-accent"
+            :class="manuscriptStore.activeSubsectionId === scene.id ? 'text-accent' : 'text-text-primary'"
+            @click.stop="manuscriptStore.setActiveSubsection(scene.id); manuscriptStore.setActiveSection(scene.sectionId)"
+          >{{ scene.title || 'Untitled' }}</span>
+        </div>
+        <div v-if="scene.summary" class="mt-1 text-xs text-text-hint font-ui pl-5">
                         {{ scene.summary.length > 80 ? scene.summary.slice(0, 80) + '...' : scene.summary }}
                       </div>
                     </div>

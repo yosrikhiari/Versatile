@@ -87,6 +87,9 @@ function isValidEntityName(name) {
 }
 
 function extractNameFromPattern(text, pattern) {
+  if (typeof pattern !== 'string' || !pattern) {
+    return []
+  }
   const regex = new RegExp(pattern, 'gi')
   const matches = []
   let match

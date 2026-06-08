@@ -9,6 +9,8 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import DatabaseRecovery from '../shared/DatabaseRecovery.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
+import VoiceProfileDisplay from '../shared/VoiceProfileDisplay.vue'
+import VoiceUploadModal from './VoiceUploadModal.vue'
 
 const props = defineProps({
   show: Boolean
@@ -27,6 +29,7 @@ const ollamaEndpoint = ref('')
 const testingConnection = ref(false)
 const connectionStatus = ref(null)
 const showRecovery = ref(false)
+const showVoiceUpload = ref(false)
 
 const apiKeys = ref({})
 const testingProvider = ref(null)
@@ -225,6 +228,15 @@ watch(() => props.show, (newVal) => {
             @click="activeTab = 'features'"
           >
             Features
+          </button>
+          <button
+            :class="[
+              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
+              activeTab === 'voice' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
+            ]"
+            @click="activeTab = 'voice'"
+          >
+            Voice
           </button>
         </div>
 
@@ -444,6 +456,19 @@ watch(() => props.show, (newVal) => {
               Uses Ollama locally. No API key needed.
             </div>
           </div>
+        </div>
+
+        <div v-if="activeTab === 'voice'" class="space-y-5">
+          <VoiceProfileDisplay />
+          <div class="flex gap-2">
+            <button
+              class="flex-1 py-2 bg-surface-hover text-text-secondary rounded-lg font-medium hover:bg-bg-tertiary text-sm"
+              @click="showVoiceUpload = true"
+            >
+              Upload Sample Text
+            </button>
+          </div>
+          <VoiceUploadModal :isOpen="showVoiceUpload" @close="showVoiceUpload = false" />
         </div>
 
         <div class="flex gap-3 mt-6">

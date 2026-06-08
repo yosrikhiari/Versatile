@@ -807,6 +807,88 @@ All values must be strings or arrays. No markdown.`
   }
 }
 
+/**
+ * Generates trait suggestions for an entity, avoiding already-added traits.
+ * @param {'character'|'location'|'plotThread'} entityType
+ * @param {Object} entityData - Current entity fields (name, role, goal, etc.)
+ * @param {string[]} existingTraits - Traits already on the entity (to avoid duplicates)
+ * @param {Object} [manuscriptContext=null] - Optional manuscript context
+ * @returns {Promise<string[]>} Array of up to 8 suggested trait strings
+ */
+export async function generateTraitSuggestions(entityType, entityData, existingTraits = [], manuscriptContext = null) {
+  const typeLabels = { character: 'character', location: 'location', plotThread: 'plot thread' }
+  const label = typeLabels[entityType] || 'entity'
+  const entityName = entityData?.name || entityData?.title || 'this entity'
+
+  const contextFields = Object.entries(entityData)
+    .filter(([k, v]) => k !== 'traits' && v)
+    .map(([k, v]) => `${k}: "${v}"`)
+    .join('\n')
+
+  const existingBlock = existingTraits.length
+    ? `\nALREADY-ADDED TRAITS (do NOT suggest these): ${existingTraits.join(', ')}`
+    : ''
+
+  let contextInstruction = ''
+  if (manuscriptContext?.contextText) {
+    contextInstruction = `\n\nManuscript context:\n${manuscriptContext.contextText}`
+  }
+
+  const quirkGuidance = entityType === 'character'
+    ? `a sensory/behavioral quirk: something the ${label} hates, fears, obsesses over, physically does, or avoids`
+    : entityType === 'location'
+    ? `a sensory/atmospheric detail: a specific smell, sound, light quality, temperature, texture, or physical oddity of this ${label}`
+    : `a specific narrative hook or complication: a hidden agenda, an obstacle, a turning point, a betrayal, or a discovery in this ${label}`
+
+  const traitGuidance = entityType === 'plotThread'
+    ? `a defining thematic quality grounded in this ${label}'s premise, stakes, and context`
+    : `a defining personality/identity trait grounded in this ${label}'s role, goal, backstory, or context from the details above`
+
+  const userPrompt = `Suggest 8 specific, scene-usable traits for the ${label} "${entityName}".
+
+${label} details:
+${contextFields || 'No other details yet.'}
+${existingBlock}
+
+CATEGORY A — 4 traits: Each must be ${quirkGuidance}.
+Examples: "hates the smell of rain", "obsessed with their hair", "can't sleep without humming", "refuses to sit with back to a door", "counts steps compulsively", "starts every sentence with 'well'".
+
+CATEGORY B — 4 traits: Each must be ${traitGuidance}.
+Examples: "trusts no one after the betrayal", "desperate to prove worth to their father", "sees violence as the only answer", "ashamed of their humble origins".
+
+RULES:
+- Return exactly 8 traits (4 category A, 4 category B), alternating A/B
+- Each trait is a short phrase (2-8 words) — specific enough that a writer could use it directly in a scene
+- NEVER use generic single-word adjectives like "brave", "wise", "resilient", "kind", "cruel", "curious", "loyal", "mysterious", "determined", "intelligent"
+- Every trait must be distinctive and concrete
+${contextInstruction}
+
+Return as JSON: { "traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "trait6", "trait7", "trait8"] }`
+
+  try {
+    const response = await retryWithBackoff(() =>
+      aiGenerate(userPrompt, `You suggest fitting traits for a ${label}.`, { feature: FEATURES.WORLDBUILDING })
+    )
+    let cleaned = response.trim()
+    cleaned = cleaned.replace(/^```json\s*/i, '')
+    cleaned = cleaned.replace(/^```\s*/i, '')
+    cleaned = cleaned.replace(/```$/i, '')
+    cleaned = cleaned.replace(/```json$/i, '')
+    cleaned = cleaned.trim()
+    const start = cleaned.indexOf('{')
+    const end = cleaned.lastIndexOf('}')
+    const jsonMatch = start !== -1 && end > start ? [cleaned.slice(start, end + 1)] : null
+    if (!jsonMatch) return []
+    const parsed = JSON.parse(jsonMatch[0])
+    if (!parsed || !Array.isArray(parsed.traits)) {
+      return []
+    }
+    return parsed.traits.slice(0, 8).filter(t => !existingTraits.includes(t))
+  } catch {
+    return []
+  }
+}
+
 export { extractBracketContent }
 
 // --- Context compaction re-export ---

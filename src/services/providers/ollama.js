@@ -36,13 +36,14 @@ async function ensureModelAvailable(model) {
 }
 
 export async function generate(prompt, systemPrompt, model, options = {}) {
-  const timeoutMs = options.timeout || 180000
+  const timeoutMs = options.timeout || 1200000
+  let timeout
 
   try {
     await ensureModelAvailable(model)
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
+    timeout = setTimeout(() => controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
 
     const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
       method: 'POST',
@@ -81,13 +82,14 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
 }
 
 export async function stream(prompt, systemPrompt, model, onChunk, options = {}) {
-  const timeoutMs = options.timeout || 120000
+  const timeoutMs = options.timeout || 1200000
+  let timeout
 
   try {
     await ensureModelAvailable(model)
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
+    timeout = setTimeout(() => controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
 
     const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
       method: 'POST',

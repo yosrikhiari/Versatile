@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate, aiStream } from '../services/aiService'
 import { FEATURES } from '../config/ai'
+import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { finalizeStream } from '../services/jsonExtractor'
 
 const DEFAULT_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
@@ -13,6 +14,60 @@ const CRAFT_RULES = `CRAFT RULES — follow all of these:
 4. Specific beats generic: '94 Civic with cracked dash > 'old car'
 5. The first sentence of a scene must create forward motion or tension
 6. The last sentence must leave something unresolved or changed`
+
+const PROSE_STYLE_GUIDE = `PROSE STYLE GUIDE — apply these rules to every scene:
+
+VOICE:
+- Write in close third person — stay inside the protagonist's skull at all times. Never pull back to omniscient.
+- Narrative irony: the protagonist's internal commentary should be drier and more self-aware than their circumstances warrant. Deadpan understatement in response to catastrophe.
+- The reader knows what the protagonist knows, when they know it. No dramatic irony.
+- Internal voice register is colloquial. External narration is a half-step more formal — the gap between them creates the sense of a thinking mind.
+
+PROSE RULES:
+- Open every scene mid-physical-detail, mid-action, or mid-emotional-state. No establishing shots. No scene-setting preamble before the first sentence.
+- Paragraph rhythm: 2–3 sentence paragraphs alternating with single-sentence emphasis beats. Single-sentence paragraphs are emotional punctuation only — never description.
+- Sensory priority: physical sensation first (pain, cold, hunger), then temperature, then sight. Sound and taste sparingly. Smell last, used once per scene at most.
+- Worldbuilding only through immediate experience. No standalone lore paragraphs.
+- All exposition must be delivered through a character's direct perception.
+
+DIALOGUE:
+- Every line must do at least two things simultaneously: reveal character + advance situation, or establish subtext + reveal relationship.
+- Characters express care, threat, status, and alliance obliquely — never directly.
+- Tags: "said" and "added" only. No adverb tags. Prefer action beats over tags.
+- When a character's voice identifies them uniquely, omit the tag.
+
+CONTEXT-ADAPTIVE RULES (weight these based on this scene's TENSION, PACING, and ARC POSITION from the SCENE BRIEF above):
+- Tension HIGH or PEAK: compress paragraphs, foreground subtext over direct speech, minimize interiority, hard stop.
+- Tension LOW or MEDIUM: expand interiority, relax into sensory detail, allow reflective passages.
+- Pacing SLOW: deeper sensory depth, longer paragraphs, extended interiority.
+- Pacing FAST: compressed action, minimal interiority, short declarative sentences.
+- Arc position OPENING: establish immediate physical reality and the protagonist's emotional state at entry.
+- Arc position RISING: complicate what was established, introduce new pressure.
+- Arc position CLIMAX: escalation beats, payoff delivery, hard stop on unresolved threat.
+- Arc position FALLING or RESOLUTION: emotional landing, consequences revealed, softer close that implies continuation.
+
+CHAPTER STRUCTURE (for volume/novel mode):
+- Open with immediate physical or emotional reality. Complicate. Escalate. Close on unresolved threat or stated-but-unfulfilled intention.
+- Never close a chapter on resolution. The reader must need the next page.
+- Middle scenes (not opening/closing) are complication-and-escalation beats. The chapter's closing scene owns the hook.
+
+PROTAGONIST VOICE:
+- Internal monologue: deadpan understatement, immediate pragmatic calculation over emotion, brief compassion suppressed by survival logic, specific grudges stated as calm intentions.
+- Never express vulnerability directly. Never be heroic or inspirational in internal monologue.
+- React to catastrophe with pragmatic acceptance before emotion. Never be surprised by own competence.
+- Internal vocabulary is colloquial — save elevated language for the narration frame.
+
+FORBIDDEN (do not use these under any circumstances):
+- Purple prose or flowery description
+- "He felt X" — show through action or thought
+- Heroic internal monologue
+- Protagonist surprised by own competence
+- Exposition dumps — worldbuilding only through immediate experience
+- Omniscient narration or dramatic irony
+- Characters saying what they mean directly
+- Adverb dialogue tags
+- Resolution at chapter close
+- Standalone lore paragraphs`
 
 function extractDoc(docString, heading) {
   if (!docString) return ''
@@ -26,6 +81,79 @@ function summarizeLog(chapterLog) {
   if (chapterLog.length <= 5) return chapterLog.join('\n')
   const recent = chapterLog.slice(-3)
   return [...recent, `(... plus ${chapterLog.length - 3} earlier scenes summarized)`].join('\n')
+}
+
+function tryExtractProse(raw) {
+  // Attempt full parse first
+  try {
+    const parsed = finalizeStream(raw)
+    if (parsed && typeof parsed.prose === 'string') return parsed.prose
+  } catch {}
+
+  // Fallback: locate prose between "prose": " and the next known key
+  const proseKey = '"prose": "'
+  const proseIdx = raw.indexOf(proseKey)
+  if (proseIdx === -1) return ''
+
+  const afterKey = proseIdx + proseKey.length
+
+  // Find whichever structural key comes first after the prose value
+  let endIdx = -1
+  for (const key of ['"usedEntities"', '"newEntities"']) {
+    const idx = raw.indexOf(key, afterKey)
+    if (idx !== -1 && (endIdx === -1 || idx < endIdx)) endIdx = idx
+  }
+  if (endIdx === -1) return ''
+
+  // Work backward from the end marker to find the last unescaped " before it
+  let proseEnd = -1
+  let i = endIdx - 1
+  while (i >= afterKey) {
+    if (raw[i] === '"') {
+      let bs = 0
+      while (i - bs - 1 >= 0 && raw[i - bs - 1] === '\\') bs++
+      if (bs % 2 === 0) { proseEnd = i; break }
+    }
+    i--
+  }
+  if (proseEnd === -1) return ''
+
+  return raw.slice(afterKey, proseEnd)
+    .replace(/\\"/g, '"').replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t').replace(/\\\\/g, '\\')
+}
+
+function tryExtractStructured(raw) {
+  const result = {}
+  for (const key of ['"usedEntities"', '"newEntities"', '"networkEvents"']) {
+    try {
+      const keyIdx = raw.indexOf(key)
+      if (keyIdx === -1) continue
+      const colonIdx = raw.indexOf(':', keyIdx + key.length)
+      if (colonIdx === -1) continue
+      const openChars = ['{', '[']
+      let valueStart = -1
+      for (const ch of openChars) {
+        const idx = raw.indexOf(ch, colonIdx)
+        if (idx !== -1 && (valueStart === -1 || idx < valueStart)) valueStart = idx
+      }
+      if (valueStart === -1) continue
+      const openChar = raw[valueStart]
+      const closeChar = openChar === '{' ? '}' : ']'
+      let depth = 0, endIdx = -1
+      for (let i = valueStart; i < raw.length; i++) {
+        if (raw[i] === openChar) depth++
+        else if (raw[i] === closeChar) {
+          depth--
+          if (depth === 0) { endIdx = i; break }
+        }
+      }
+      if (endIdx === -1) continue
+      const keyName = key.slice(1, -1)
+      result[keyName] = JSON.parse(raw.slice(valueStart, endIdx + 1))
+    } catch {}
+  }
+  return Object.keys(result).length ? result : null
 }
 
 export function useStoryWriter() {
@@ -57,9 +185,8 @@ export function useStoryWriter() {
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
-      const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
-      const activeCraftRules = categoryType === 'creative' ? `\n\n${CRAFT_RULES}` : ''
+      const activeCraftRules = categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
       const systemPrompt = `${activePrompts.writer}
 
@@ -146,7 +273,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     }
   }
 
-  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson }) {
+  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, onRawChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, spineContext, anchorRole, anchorConstraints }) {
     isWriting.value = true
     writeError.value = null
 
@@ -173,15 +300,16 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
-      const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
-      const activeCraftRules = categoryType === 'creative' ? `\n\n${CRAFT_RULES}` : ''
+      const activeCraftRules = categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
       const systemPrompt = `${activePrompts.writer}
 
 ${voiceInstruction}
 
 ${antiPatterns ? antiPatterns + '\n' : ''}${activeCraftRules}
+
+${PROSE_STYLE_GUIDE}
 
 Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside the JSON.`
 
@@ -199,7 +327,8 @@ Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside t
             `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
             `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
             `- Tension: ${sceneBrief.tension || 'medium'}`,
-            `- Pacing: ${sceneBrief.pacing || 'medium'}`
+            `- Pacing: ${sceneBrief.pacing || 'medium'}`,
+            `- Arc position: ${sceneBrief.arcPosition || ''}`
           ]
         : [
             `- Goal: ${sceneBrief.goal || ''}`,
@@ -219,7 +348,10 @@ Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside t
         ? `\nEXISTING WORLD CONTEXT:\n${existingEntitiesJson}\n`
         : ''
 
-      const userPrompt = `${contractSection}
+      const anchorSection = anchorRole ? `\nANCHOR ROLE: ${anchorRole}\n${anchorConstraints || ''}\n` : ''
+      const spineSection = spineContext ? `\nNOVEL SPINE (read this to maintain cross-chapter coherence):\n${spineContext}\n` : ''
+
+      const userPrompt = `${contractSection}${spineSection}${anchorSection}
 Write scene ${sceneId}: "${sceneTitle}"
 
 CHAPTER LOG (what has happened before this scene):
@@ -239,7 +371,7 @@ ${charactersSection || '(No character sheets available)'}
 
 WORLD CONTEXT:
 ${worldSection || '(No world context available)'}${existingContext}
-Target word count: approximately ${sceneBrief.estimatedWords || 800} words.
+The scene MUST be at least ${sceneBrief.estimatedWords || 800} words. Do not end the scene early. If you are below the word count, continue writing until you reach it.
 
 Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No explanation outside the JSON.
 
@@ -260,16 +392,58 @@ Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No e
   ]
 }
 
-IMPORTANT: The prose field must be at least 800 words. Do not truncate the story to save tokens.`
+IMPORTANT: The prose field must reach the word count target above. Do not end the scene early — keep writing until the word target is met.
+CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes inside it MUST be escaped as \" — especially dialogue quotes. For dialogue, use single quotes or curly quotes (\u201C/\u201D) to avoid breaking the JSON.`
+
+      // Compute a tight token cap based on the scene's word target
+      const estimatedWords = sceneBrief.estimatedWords || 800
+      const maxTokens = Math.max(2000, Math.min(4500, Math.ceil(estimatedWords * 1.8) + 800))
 
       if (onChunk) {
+        // Lightweight prose detection state machine — avoids O(n²) full-buffer
+        // re-scanning that tryExtractProse() would cause on every chunk.
+        let proseStarted = false
+        let pendingPrefix = ''
+        let proseEnded = false
+        const END_MARKERS = ['"usedEntities"', '"newEntities"', '"networkEvents"']
+        let recentTail = '' // rolling window for end-of-prose detection
+
         await aiStream(userPrompt, systemPrompt, (chunk) => {
           accumulated += chunk
-          onChunk(chunk, accumulated)
-        }, { feature: FEATURES.STORY_GENERATION, maxTokens: 6000 })
+          if (onRawChunk) onRawChunk(chunk)
+          if (proseEnded) return
+
+          if (!proseStarted) {
+            pendingPrefix += chunk
+            const proseKey = '"prose"'
+            const keyIdx = pendingPrefix.indexOf(proseKey)
+            if (keyIdx !== -1) {
+              proseStarted = true
+              const colonIdx = pendingPrefix.indexOf(':', keyIdx + proseKey.length)
+              if (colonIdx !== -1) {
+                const quoteIdx = pendingPrefix.indexOf('"', colonIdx + 1)
+                if (quoteIdx !== -1) {
+                  const remainder = pendingPrefix.slice(quoteIdx + 1)
+                  if (remainder.length > 0) onChunk(remainder, remainder)
+                }
+              }
+              pendingPrefix = '' // free memory
+            }
+          } else {
+            // Check rolling tail for structural key (end of prose value)
+            recentTail = (recentTail + chunk).slice(-40)
+            for (const marker of END_MARKERS) {
+              if (recentTail.includes(marker)) {
+                proseEnded = true
+                return
+              }
+            }
+            onChunk(chunk, chunk)
+          }
+        }, { feature: FEATURES.STORY_GENERATION, maxTokens })
       } else {
         accumulated = await aiGenerate(userPrompt, systemPrompt, {
-          feature: FEATURES.STORY_GENERATION, maxTokens: 6000
+          feature: FEATURES.STORY_GENERATION, maxTokens
         })
       }
 
@@ -280,9 +454,11 @@ IMPORTANT: The prose field must be at least 800 words. Do not truncate the story
         structured: parsed
       }
     } catch (err) {
-      // Graceful degradation: return raw text if JSON parsing failed
+      // Graceful degradation: return extracted prose if JSON parsing failed
       if (err.message?.includes('JSON')) {
-        return { prose: accumulated || '', structured: null }
+        const fallback = tryExtractProse(accumulated) || accumulated
+        const structured = tryExtractStructured(accumulated)
+        return { prose: fallback, structured }
       }
       writeError.value = err.message || 'Scene writing failed'
       throw err

@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { aiGenerate } from '../services/aiService'
+import { aiGenerate, aiStream } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
@@ -8,19 +8,17 @@ const MIN_CHARACTERS = 3
 const MIN_LOCATIONS = 2
 const MIN_THREADS = 1
 
-const GENERATE_ENTITIES_PROMPT = `You are a fiction worldbuilder. Given a story synopsis, generate characters, locations, and plot threads that fit the premise.
+const ENRICH_ENTITIES_PROMPT = `You are a fiction worldbuilder enriching existing story entities and filling gaps.
 
-For each entity, return fields that are internally consistent and would plausibly exist in this story world.
+For each existing entity, enhance its description, traits, and notes to better fit the story. Add concrete details, sensory cues, and world-consistent flavor. Keep the name and core identity intact — never rename or replace.
 
-CHARACTER format: { "name": "...", "role": "...", "goal": "...", "voice": "...", "notes": "...", "sampleDialogue": "..." }
-LOCATION format: { "name": "...", "description": "...", "notes": "..." }
-PLOT THREAD format: { "title": "...", "notes": "..." }
+For new entities needed to reach minimum counts, generate them from scratch.
 
-Return valid JSON with no markdown, no explanation. The JSON must have exactly three keys: "characters" (array), "locations" (array), "plotThreads" (array).`
+CHARACTER format: { "name": "...", "role": "...", "goal": "...", "voice": "...", "notes": "...", "sampleDialogue": "...", "description": "...", "traits": ["niche detail 1", "niche detail 2"] }
+LOCATION format: { "name": "...", "description": "...", "notes": "...", "traits": ["niche detail 1", "niche detail 2"] }
+PLOT THREAD format: { "title": "...", "notes": "...", "traits": ["niche detail 1", "niche detail 2"] }
 
-const CONSISTENCY_PROMPT = `You are a fiction editor. Review these generated entities and adjust their descriptions so they share a coherent world, genre, and tone. Keep each entity's core identity but rewrite descriptions/notes/goals to eliminate contradictions (e.g., a medieval fantasy character should not reference modern technology unless the synopsis warrants it).
-
-Output the SAME JSON structure with adjusted fields. Do not change entity names or counts. Valid JSON only, no markdown.`
+Return valid JSON with no markdown, no explanation. The JSON must have exactly three keys: "characters" (array), "locations" (array), "plotThreads" (array). Include ALL entities — both enhanced existing ones and any new ones — in the response arrays.`
 
 function sanitizeJson(raw) {
   if (!raw || typeof raw !== 'string') return null
@@ -39,11 +37,30 @@ function sanitizeJson(raw) {
   }
 }
 
+function normalizeName(name) {
+  return name?.trim().toLowerCase() || ''
+}
+
+function mergeTraits(existingTraits, newTraits) {
+  const set = new Set([...(existingTraits || []), ...(newTraits || [])])
+  return [...set]
+}
+
+function mergeNotes(existingNotes, newNotes) {
+  if (!newNotes) return existingNotes || ''
+  if (!existingNotes) return newNotes
+  const cleanExisting = existingNotes.trim()
+  const cleanNew = newNotes.trim()
+  if (!cleanNew) return cleanExisting
+  if (cleanExisting.includes(cleanNew.slice(0, 60))) return cleanExisting
+  return cleanExisting + (cleanExisting.endsWith('.') ? ' ' : '. ') + cleanNew
+}
+
 export function useEntityBootstrapper() {
   const isBootstrapping = ref(false)
   const bootstrapError = ref(null)
 
-  async function bootstrapEntities({ synopsis, projectId, volumeId }) {
+  async function bootstrapEntities({ synopsis, projectId, volumeId, onPartialData }) {
     isBootstrapping.value = true
     bootstrapError.value = null
 
@@ -51,63 +68,125 @@ export function useEntityBootstrapper() {
     const networkStore = useVolumeStoryNetworkStore()
 
     try {
-      const existingCharacters = storyBibleStore.characters.length
-      const existingLocations = storyBibleStore.locations.length
-      const existingThreads = storyBibleStore.plotThreads.length
+      const existingChars = storyBibleStore.characters
+      const existingLocs = storyBibleStore.locations
+      const existingThreads = storyBibleStore.plotThreads
 
-      const needCharacters = Math.max(0, MIN_CHARACTERS - existingCharacters)
-      const needLocations = Math.max(0, MIN_LOCATIONS - existingLocations)
-      const needThreads = Math.max(0, MIN_THREADS - existingThreads)
+      const needChars = Math.max(0, MIN_CHARACTERS - existingChars.length)
+      const needLocs = Math.max(0, MIN_LOCATIONS - existingLocs.length)
+      const needThreads = Math.max(0, MIN_THREADS - existingThreads.length)
 
-      if (needCharacters === 0 && needLocations === 0 && needThreads === 0) {
+      const charsSparse = existingChars.some(c => !c.traits?.length || !c.goal)
+      const locsSparse = existingLocs.some(l => !l.description)
+      const threadsSparse = existingThreads.some(t => !t.notes)
+
+      if (needChars === 0 && needLocs === 0 && needThreads === 0 && !charsSparse && !locsSparse && !threadsSparse) {
         return { generatedIds: { characters: [], locations: [], plotThreads: [] } }
       }
 
+      const existingJson = JSON.stringify({
+        characters: existingChars.map(c => ({
+          name: c.name, role: c.role, description: c.description, goal: c.goal,
+          voice: c.voice, notes: c.notes, sampleDialogue: c.sampleDialogue, traits: c.traits || []
+        })),
+        locations: existingLocs.map(l => ({
+          name: l.name, description: l.description, notes: l.notes, traits: l.traits || []
+        })),
+        plotThreads: existingThreads.map(t => ({
+          title: t.title, notes: t.notes, traits: t.traits || []
+        }))
+      }, null, 2)
+
       const userPrompt = `Story synopsis: "${synopsis}"
 
-Generate ${needCharacters} character(s), ${needLocations} location(s), and ${needThreads} plot thread(s) that fit this premise.
-Create entities that are distinct from any existing ones but consistent with the story world.`
+EXISTING ENTITIES (enhance or leave as-is):
+${existingJson}
 
-      const response = await aiGenerate(userPrompt, GENERATE_ENTITIES_PROMPT, {
+TASK:
+1. For each existing entity, enhance its description, traits, and notes to better fit the story world. Keep the name and core identity unchanged.
+2. Generate ${needChars} new character(s), ${needLocs} new location(s), and ${needThreads} new plot thread(s) as needed.
+3. Return ALL entities in the output — enhanced existing ones plus any new ones — under the same three keys.`
+
+      let accumulated = ''
+      const emittedNames = new Set()
+      let scanOffset = 0
+
+      await aiStream(userPrompt, ENRICH_ENTITIES_PROMPT, (chunk) => {
+        accumulated += chunk
+        
+        const regex = /"name"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
+        regex.lastIndex = Math.max(0, scanOffset - 200)
+        let match
+        
+        while ((match = regex.exec(accumulated)) !== null) {
+          const name = match[1]
+          if (!emittedNames.has(name)) {
+            emittedNames.add(name)
+            
+            const charIdx = accumulated.lastIndexOf('"characters"', match.index)
+            const locIdx = accumulated.lastIndexOf('"locations"', match.index)
+            const type = locIdx > charIdx ? 'location' : 'character'
+            
+            try { 
+              if (onPartialData) onPartialData(type, name) 
+            } catch {}
+          }
+        }
+        scanOffset = Math.max(0, accumulated.length - 200)
+      }, {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.7
       })
 
-      let parsed = sanitizeJson(response)
+      let parsed = sanitizeJson(accumulated)
       if (!parsed) {
         throw new Error('Failed to parse generated entities')
       }
 
-      const newCharacters = (parsed.characters || []).slice(0, needCharacters)
-      const newLocations = (parsed.locations || []).slice(0, needLocations)
-      const newThreads = (parsed.plotThreads || []).slice(0, needThreads)
+      const charByKey = new Map()
+      for (const c of existingChars) charByKey.set(normalizeName(c.name), c)
 
-      const consistencyInput = {
-        characters: newCharacters,
-        locations: newLocations,
-        plotThreads: newThreads
-      }
+      const locByKey = new Map()
+      for (const l of existingLocs) locByKey.set(normalizeName(l.name), l)
 
-      const consistencyResponse = await aiGenerate(
-        `Story synopsis: "${synopsis}"\n\nGenerated entities:\n${JSON.stringify(consistencyInput, null, 2)}`,
-        CONSISTENCY_PROMPT,
-        { feature: FEATURES.STORY_GENERATION, temperature: 0.4 }
-      )
-
-      let adjusted = sanitizeJson(consistencyResponse)
-      if (!adjusted) adjusted = consistencyInput
+      const threadByKey = new Map()
+      for (const t of existingThreads) threadByKey.set(normalizeName(t.title), t)
 
       const generatedIds = { characters: [], locations: [], plotThreads: [] }
 
-      for (const char of (adjusted.characters || [])) {
-        if (char.name) {
+      for (const char of (parsed.characters || [])) {
+        if (!char.name) continue
+        const key = normalizeName(char.name)
+        const existing = charByKey.get(key)
+
+        if (existing) {
+          const update = {}
+          if (char.role && char.role !== existing.role) update.role = char.role
+          if (char.goal && char.goal !== existing.goal) update.goal = char.goal
+          if (char.voice && char.voice !== existing.voice) update.voice = char.voice
+          if (char.description && char.description !== existing.description) update.description = char.description
+          if (char.sampleDialogue && char.sampleDialogue !== existing.sampleDialogue) update.sampleDialogue = char.sampleDialogue
+
+          const mergedTraits = mergeTraits(existing.traits, char.traits)
+          if (mergedTraits.length !== (existing.traits || []).length) update.traits = mergedTraits
+
+          const mergedNotes = mergeNotes(existing.notes, char.notes)
+          if (mergedNotes !== (existing.notes || '')) update.notes = mergedNotes
+
+          if (Object.keys(update).length > 0) {
+            await storyBibleStore.updateCharacterData(existing.id, update, projectId)
+          }
+          charByKey.delete(key)
+        } else {
           const id = await storyBibleStore.addCharacterData(projectId, {
             name: char.name,
             role: char.role || '',
             goal: char.goal || '',
             voice: char.voice || '',
+            description: char.description || '',
             notes: char.notes || '',
-            sampleDialogue: char.sampleDialogue || ''
+            sampleDialogue: char.sampleDialogue || '',
+            traits: char.traits || []
           })
           generatedIds.characters.push(id)
           if (volumeId) {
@@ -116,12 +195,28 @@ Create entities that are distinct from any existing ones but consistent with the
         }
       }
 
-      for (const loc of (adjusted.locations || [])) {
-        if (loc.name) {
+      for (const loc of (parsed.locations || [])) {
+        if (!loc.name) continue
+        const key = normalizeName(loc.name)
+        const existing = locByKey.get(key)
+
+        if (existing) {
+          const update = {}
+          if (loc.description && loc.description !== existing.description) update.description = loc.description
+          const mergedTraits = mergeTraits(existing.traits, loc.traits)
+          if (mergedTraits.length !== (existing.traits || []).length) update.traits = mergedTraits
+          const mergedNotes = mergeNotes(existing.notes, loc.notes)
+          if (mergedNotes !== (existing.notes || '')) update.notes = mergedNotes
+          if (Object.keys(update).length > 0) {
+            await storyBibleStore.updateLocationData(existing.id, update, projectId)
+          }
+          locByKey.delete(key)
+        } else {
           const id = await storyBibleStore.addLocationData(projectId, {
             name: loc.name,
             description: loc.description || '',
-            notes: loc.notes || ''
+            notes: loc.notes || '',
+            traits: loc.traits || []
           })
           generatedIds.locations.push(id)
           if (volumeId) {
@@ -130,11 +225,26 @@ Create entities that are distinct from any existing ones but consistent with the
         }
       }
 
-      for (const thread of (adjusted.plotThreads || [])) {
-        if (thread.title) {
+      for (const thread of (parsed.plotThreads || [])) {
+        if (!thread.title) continue
+        const key = normalizeName(thread.title)
+        const existing = threadByKey.get(key)
+
+        if (existing) {
+          const update = {}
+          const mergedTraits = mergeTraits(existing.traits, thread.traits)
+          if (mergedTraits.length !== (existing.traits || []).length) update.traits = mergedTraits
+          const mergedNotes = mergeNotes(existing.notes, thread.notes)
+          if (mergedNotes !== (existing.notes || '')) update.notes = mergedNotes
+          if (Object.keys(update).length > 0) {
+            await storyBibleStore.updatePlotThreadData(existing.id, update, projectId)
+          }
+          threadByKey.delete(key)
+        } else {
           const id = await storyBibleStore.addPlotThreadData(projectId, {
             title: thread.title,
-            notes: thread.notes || ''
+            notes: thread.notes || '',
+            traits: thread.traits || []
           })
           generatedIds.plotThreads.push(id)
           if (volumeId) {
@@ -154,3 +264,5 @@ Create entities that are distinct from any existing ones but consistent with the
 
   return { bootstrapEntities, isBootstrapping, bootstrapError }
 }
+
+export { sanitizeJson, normalizeName, mergeTraits, mergeNotes }

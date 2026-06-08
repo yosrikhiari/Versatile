@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.76% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>4/34</span>
+                <span class='fraction'>34/34</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">64.7% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>11/17</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
-                <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
-            </div>
-        
-            
-            <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.76% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>4/34</span>
+                <span class='fraction'>34/34</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -100,71 +100,71 @@
 <a name='L35'></a><a href='#L35'>35</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const DEFAULT_BUDGET_CHARS = 6000
 &nbsp;
-export <span class="fstat-no" title="function not covered" >function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS) {</span>
-<span class="cstat-no" title="statement not covered" >  let totalChars = Object.entries(bundle)</span>
-<span class="cstat-no" title="statement not covered" >    .filter(([key]) =&gt; key !== 'totalChars' &amp;&amp; key !== 'truncated')</span>
-<span class="cstat-no" title="statement not covered" >    .reduce((sum, [, val]) =&gt; sum + (typeof val === 'string' ? val.length : 0), 0)</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  if (totalChars &lt;= budget) {</span>
-<span class="cstat-no" title="statement not covered" >    return { ...bundle, totalChars, truncated: false }</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  const truncated = { ...bundle }</span>
-<span class="cstat-no" title="statement not covered" >  const keys = ['entitiesBlock', 'relationshipBlock', 'manuscriptBlock'].filter(k =&gt; typeof truncated[k] === 'string')</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  while (totalChars &gt; budget &amp;&amp; keys.length &gt; 0) {</span>
-<span class="cstat-no" title="statement not covered" >    keys.sort((a, b) =&gt; (truncated[a] || '').length - (truncated[b] || '').length)</span>
-<span class="cstat-no" title="statement not covered" >    const target = keys.pop()</span>
-<span class="cstat-no" title="statement not covered" >    const current = truncated[target] || ''</span>
-<span class="cstat-no" title="statement not covered" >    const reduced = truncateToLastSentence(current, Math.floor(current.length * 0.6))</span>
-<span class="cstat-no" title="statement not covered" >    totalChars -= current.length - reduced.length</span>
-<span class="cstat-no" title="statement not covered" >    truncated[target] = reduced</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  return { ...truncated, totalChars, truncated: totalChars &gt; budget }</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS) {
+  let totalChars = Object.entries(bundle)
+    .filter(([key]) =&gt; key !== 'totalChars' &amp;&amp; key !== 'truncated')
+    .reduce((sum, [, val]) =&gt; sum + (typeof val === 'string' ? val.length <span class="branch-0 cbranch-no" title="branch not covered" >: 0)</span>, 0)
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function truncateToLastSentence(text, maxLength) {</span></span>
-<span class="cstat-no" title="statement not covered" >  if (text.length &lt;= maxLength) return text</span>
-<span class="cstat-no" title="statement not covered" >  const truncated = text.slice(0, maxLength)</span>
-<span class="cstat-no" title="statement not covered" >  const lastPeriod = truncated.lastIndexOf('.')</span>
-<span class="cstat-no" title="statement not covered" >  const lastNewline = truncated.lastIndexOf('\n')</span>
-<span class="cstat-no" title="statement not covered" >  const splitAt = Math.max(lastPeriod, lastNewline)</span>
-<span class="cstat-no" title="statement not covered" >  return splitAt &gt; maxLength * 0.5 ? truncated.slice(0, splitAt + 1) : truncated</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+  if (totalChars &lt;= budget) {
+    return { ...bundle, totalChars, truncated: false }
+  }
+&nbsp;
+  const truncated = { ...bundle }
+  const keys = ['entitiesBlock', 'relationshipBlock', 'manuscriptBlock'].filter(k =&gt; typeof truncated[k] === 'string')
+&nbsp;
+  while (totalChars &gt; budget &amp;&amp; keys.length &gt; 0) {
+    keys.sort((a, b) =&gt; (truncated[a] <span class="branch-0 cbranch-no" title="branch not covered" >|| '')</span>.length - (truncated[b] <span class="branch-0 cbranch-no" title="branch not covered" >|| '')</span>.length)
+    const target = keys.pop()
+    const current = truncated[target] <span class="branch-0 cbranch-no" title="branch not covered" >|| ''</span>
+    const reduced = truncateToLastSentence(current, Math.floor(current.length * 0.6))
+    totalChars -= current.length - reduced.length
+    truncated[target] = reduced
+  }
+&nbsp;
+  return { ...truncated, totalChars, truncated: totalChars &gt; budget }
+}
+&nbsp;
+function truncateToLastSentence(text, maxLength) {
+  if (text.length &lt;= maxLength) <span class="branch-0 cbranch-no" title="branch not covered" >return text</span>
+  const truncated = text.slice(0, maxLength)
+  const lastPeriod = truncated.lastIndexOf('.')
+  const lastNewline = truncated.lastIndexOf('\n')
+  const splitAt = Math.max(lastPeriod, lastNewline)
+  return splitAt &gt; maxLength * 0.5 <span class="branch-0 cbranch-no" title="branch not covered" >? truncated.slice(0, splitAt + 1) </span>: truncated
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -172,7 +172,7 @@ export <span class="fstat-no" title="function not covered" >function applyTokenB
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-04T19:34:14.921Z
+                at 2026-06-07T18:19:25.122Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

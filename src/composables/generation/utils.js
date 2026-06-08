@@ -13,7 +13,9 @@ function sleep(ms) {
 }
 
 function randomJitter(baseMs) {
-  return baseMs + Math.random() * baseMs * 0.5
+  const array = new Uint32Array(1)
+  crypto.getRandomValues(array)
+  return baseMs + (array[0] / 4294967296) * baseMs * 0.5
 }
 
 export async function retryWithBackoff(fn, maxRetries = 5) {

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import TagInput from '../shared/TagInput.vue'
 
 const props = defineProps({
   show: Boolean,
@@ -18,15 +19,15 @@ const emit = defineEmits(['close', 'create', 'update', 'generate', 'reject'])
 
 const isGenerating = ref(false)
 const error = ref('')
-const character = ref({ name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' })
+const character = ref({ name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '', traits: [] })
 
 watch(() => props.show, (val) => {
   if (val) {
     error.value = ''
     if (props.mode === 'enhance' && props.existingCharacter) {
-      character.value = { ...props.existingCharacter, sampleDialogue: props.existingCharacter.sampleDialogue || '' }
+      character.value = { ...props.existingCharacter, traits: props.existingCharacter.traits || [], sampleDialogue: props.existingCharacter.sampleDialogue || '' }
     } else {
-      character.value = { name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '' }
+      character.value = { name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '', traits: [] }
     }
   }
 })
@@ -38,7 +39,8 @@ function setGenerated(data) {
     goal: data.goal || '',
     voice: data.voice || '',
     notes: data.notes || '',
-    sampleDialogue: data.sampleDialogue || ''
+    sampleDialogue: data.sampleDialogue || '',
+    traits: data.traits || []
   }
   isGenerating.value = false
   error.value = ''
@@ -51,6 +53,7 @@ function getCharacterData() {
     const val = character.value[key]
     if (typeof val === 'string' && val.trim()) data[key] = val
   }
+  if (character.value.traits?.length) data.traits = character.value.traits
   return data
 }
 
@@ -193,6 +196,10 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
                 rows="2"
                 class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent resize-none"
               />
+            </div>
+            <div>
+              <label class="text-[10px] uppercase tracking-wider text-text-hint font-ui mb-1 block">Traits</label>
+              <TagInput v-model="character.traits" placeholder="Add a trait, press Enter..." />
             </div>
           </div>
 
