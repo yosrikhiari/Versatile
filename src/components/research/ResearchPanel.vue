@@ -17,7 +17,8 @@ const {
   getDocumentChunks
 } = useResearchDocuments(projectId)
 
-const { indexProgress } = useEmbeddingIndexer()
+const { indexProgress, hasFailed, isDocumentIndexed, retryFailedChunks } = useEmbeddingIndexer()
+const isRetrying = ref(false)
 
 const fileInput = ref(null)
 const selectedDoc = ref(null)
@@ -64,6 +65,24 @@ async function handleRemoveDocument(id) {
   }
   await removeDocument(id)
 }
+
+async function handleRetry(docId) {
+  isRetrying.value = true
+  try {
+    await retryFailedChunks(docId)
+  } finally {
+    isRetrying.value = false
+  }
+}
+
+const aggregateStats = computed(() => {
+  const values = Object.values(indexProgress.value)
+  if (!values.length) return null
+  const total = values.reduce((s, v) => s + v.total, 0)
+  const indexed = values.reduce((s, v) => s + v.indexed, 0)
+  const failed = values.reduce((s, v) => s + v.failed, 0)
+  return { total, indexed, failed }
+})
 </script>
 
 <template>
@@ -114,11 +133,27 @@ async function handleRemoveDocument(id) {
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-text-hint shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           <div class="flex-1 min-w-0">
             <p class="text-xs text-text-primary truncate">{{ doc.fileName }}</p>
-            <p class="text-[10px] text-text-hint/50">
+            <p class="text-[10px] text-text-hint/50 flex items-center gap-1.5">
               {{ doc.charCount?.toLocaleString() || 0 }} chars
-              <template v-if="indexProgress[doc.id]">
-                <span v-if="indexProgress[doc.id].indexed < indexProgress[doc.id].total" class="text-accent"> · Indexing {{ indexProgress[doc.id].indexed }}/{{ indexProgress[doc.id].total }}</span>
-                <span v-else class="text-green-400/60"> · Indexed</span>
+              <template v-if="isDocumentIndexed(doc.id)">
+                <span v-if="hasFailed(doc.id)" class="inline-flex items-center gap-1 text-red-400/80">
+                  <span>· {{ indexProgress[doc.id].failed }} failed</span>
+                  <button
+                    class="p-0.5 rounded hover:bg-red-500/20 transition-colors"
+                    title="Retry failed chunks"
+                    :disabled="isRetrying"
+                    @click.stop="handleRetry(doc.id)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  </button>
+                </span>
+                <span v-else class="text-green-400/60">· Indexed</span>
+              </template>
+              <template v-else-if="indexProgress[doc.id]">
+                <span class="text-accent">· Indexing {{ indexProgress[doc.id].indexed }}/{{ indexProgress[doc.id].total }}</span>
+              </template>
+              <template v-else-if="doc.chunkCount > 0">
+                <span class="text-text-hint/30">· {{ doc.chunkCount }} chunks</span>
               </template>
             </p>
           </div>
@@ -144,8 +179,12 @@ async function handleRemoveDocument(id) {
     </div>
 
     <div class="px-4 py-2 border-t border-border-subtle text-[10px] text-text-hint/40 shrink-0">
-      {{ documents.length }} document{{ documents.length !== 1 ? 's' : '' }}
-      <span v-if="documents.length"> · {{ documents.reduce((s, d) => s + (d.charCount || 0), 0).toLocaleString() }} total chars</span>
+      {{ documents.length }} doc{{ documents.length !== 1 ? 's' : '' }}
+      <template v-if="aggregateStats">
+        · {{ aggregateStats.indexed }}/{{ aggregateStats.total }} indexed
+        <span v-if="aggregateStats.failed" class="text-red-400/60">· {{ aggregateStats.failed }} failed</span>
+      </template>
+      <span v-if="documents.length && !aggregateStats"> · {{ documents.reduce((s, d) => s + (d.charCount || 0), 0).toLocaleString() }} chars</span>
     </div>
   </div>
 </template>

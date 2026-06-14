@@ -107,16 +107,30 @@ export const EMBEDDING_MODELS = {
 
 export const EMBEDDING_VERSION = 1
 
-export const EMBEDDING_BATCH_SIZES = {
-  [EMBEDDING_PROVIDERS.OLLAMA]: 32,
-  [EMBEDDING_PROVIDERS.MISTRAL]: 16
+export const EMBEDDING_PROVIDER_CAPABILITIES = {
+  [EMBEDDING_PROVIDERS.OLLAMA]: {
+    maxBatchSize: 32,
+    supportsBatching: true,
+    maxInputTokens: 8192,
+    maxConcurrentRequests: 2
+  },
+  [EMBEDDING_PROVIDERS.MISTRAL]: {
+    maxBatchSize: 16,
+    supportsBatching: true,
+    maxInputTokens: 8192,
+    maxConcurrentRequests: 3
+  }
+}
+
+export function getEmbeddingCapabilities(provider) {
+  return EMBEDDING_PROVIDER_CAPABILITIES[provider] || null
 }
 
 export const EMBEDDING_DEFAULTS = {
   provider: EMBEDDING_PROVIDERS.OLLAMA,
   model: 'nomic-embed-text',
   threshold: 0.75,
-  batchSize: EMBEDDING_BATCH_SIZES[EMBEDDING_PROVIDERS.OLLAMA]
+  batchSize: EMBEDDING_PROVIDER_CAPABILITIES[EMBEDDING_PROVIDERS.OLLAMA].maxBatchSize
 }
 
 export const RESEARCH_CHUNKS_DEFAULT = 3

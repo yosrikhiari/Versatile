@@ -297,4 +297,10 @@ db.on('ready', async () => {
   const volumeCount = await db.volumes.count()
   if (volumeCount === 0) {
     await db.volumes.add({
-      title: '
+      title: 'Default',
+      description: 'Default volume for all content',
+      color: '#6366f1',
+      chapterIds: []
+    })
+  }
+})
