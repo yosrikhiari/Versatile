@@ -6,7 +6,6 @@ import { getDailyGoal, setDailyGoal } from '../../services/dbService'
 import { getAvailableModels, getStoredOpenAIKey, setStoredOpenAIKey } from '../../services/ollamaService'
 import { PROVIDERS, PROVIDER_LABELS, PROVIDER_LIST, PROVIDER_MODELS, FEATURE_LIST, FEATURE_LABELS, EMBEDDING_PROVIDER_LABELS, EMBEDDING_MODELS, EMBEDDING_THRESHOLD_MIN, EMBEDDING_THRESHOLD_MAX, EMBEDDING_THRESHOLD_STEP } from '../../config/ai'
 import BaseIcon from '../shared/BaseIcon.vue'
-import DatabaseRecovery from '../shared/DatabaseRecovery.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
 import VoiceProfileDisplay from '../shared/VoiceProfileDisplay.vue'
@@ -28,7 +27,6 @@ const activeTab = ref('goals')
 const ollamaEndpoint = ref('')
 const testingConnection = ref(false)
 const connectionStatus = ref(null)
-const showRecovery = ref(false)
 const showVoiceUpload = ref(false)
 
 const apiKeys = ref({})
@@ -438,11 +436,11 @@ watch(() => props.show, (newVal) => {
                 id="embedding-threshold"
                 :value="settingsStore.embeddingThreshold"
                 type="range"
-                @input="settingsStore.setEmbeddingThreshold(parseFloat($event.target.value))"
                 :min="EMBEDDING_THRESHOLD_MIN"
                 :max="EMBEDDING_THRESHOLD_MAX"
                 :step="EMBEDDING_THRESHOLD_STEP"
                 class="w-full accent-accent"
+                @input="settingsStore.setEmbeddingThreshold(parseFloat($event.target.value))"
               />
               <div class="flex justify-between text-[10px] text-text-hint mt-0.5">
                 <span>More splits ({{ EMBEDDING_THRESHOLD_MIN }})</span>
@@ -468,7 +466,7 @@ watch(() => props.show, (newVal) => {
               Upload Sample Text
             </button>
           </div>
-          <VoiceUploadModal :isOpen="showVoiceUpload" @close="showVoiceUpload = false" />
+          <VoiceUploadModal :is-open="showVoiceUpload" @close="showVoiceUpload = false" />
         </div>
 
         <div class="flex gap-3 mt-6">

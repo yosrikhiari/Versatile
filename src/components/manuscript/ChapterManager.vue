@@ -195,7 +195,7 @@ function openEditVolume(volume) {
   newVolume.value = {
     title: volume.title || '',
     description: volume.description || '',
-    color: volume.color || '#6366f1'
+    color: volume.color || 'var(--vers-default-fallback)'
   }
   showVolumeModal.value = true
 }
@@ -328,7 +328,7 @@ function getVolumeForSection(section) {
             />
             <span
               class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              :style="{ background: volume.color || '#6366f1' }"
+              :style="{ background: volume.color || 'var(--vers-default-fallback)' }"
             ></span>
             <span class="text-sm font-medium text-text-primary">{{ volume.title }}</span>
             <span class="text-xs text-text-tertiary bg-bg-primary border border-border-subtle rounded-full px-2 py-0.5 whitespace-nowrap">
@@ -430,7 +430,7 @@ function getVolumeForSection(section) {
               <BaseIcon name="grip-vertical" :size="14" class="text-text-tertiary flex-shrink-0 cursor-grab" />
               <span
                 class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                :style="{ background: (getVolumeForSection(section)?.color) || '#9ca3af' }"
+                :style="{ background: (getVolumeForSection(section)?.color) || 'var(--vers-default-other)' }"
               ></span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">

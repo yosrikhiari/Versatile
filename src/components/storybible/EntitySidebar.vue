@@ -36,9 +36,9 @@ const expandedSections = ref({
 const expandedEntities = ref({})
 
 const entityColors = {
-  character: '#8B5CF6',
-  location: '#10B981',
-  plotThread: '#F59E0B'
+  character: 'var(--vers-entity-character)',
+  location: 'var(--vers-entity-location)',
+  plotThread: 'var(--vers-entity-plotThread)'
 }
 
 const entityIcons = {
@@ -48,21 +48,21 @@ const entityIcons = {
 }
 
 const edgeColors = {
-  ally: '#f48fb1',
-  enemy: '#ef5350',
-  family: '#ce93d8',
-  romantic: '#f06292',
-  mentor: '#ba68c8',
-  rival: '#ff7043',
-  neutral: '#90a4ae',
-  appears_in: '#4fc3f7',
-  involved_in: '#ce93d8',
-  located_at: '#80cbc4',
-  connects_to: '#888888'
+  ally: 'var(--vers-edge-ally)',
+  enemy: 'var(--vers-edge-enemy)',
+  family: 'var(--vers-edge-family)',
+  romantic: 'var(--vers-edge-romantic)',
+  mentor: 'var(--vers-edge-mentor)',
+  rival: 'var(--vers-edge-rival)',
+  neutral: 'var(--vers-edge-neutral)',
+  appears_in: 'var(--vers-edge-appears_in)',
+  involved_in: 'var(--vers-edge-involved_in)',
+  located_at: 'var(--vers-edge-located_at)',
+  connects_to: 'var(--vers-edge-connects_to)'
 }
 
 function getEntityColor(type) {
-  return entityColors[type] || '#6366f1'
+  return entityColors[type] || 'var(--vers-default-fallback)'
 }
 
 function getEntityIcon(type) {
@@ -70,7 +70,7 @@ function getEntityIcon(type) {
 }
 
 function getEdgeColor(type) {
-  return edgeColors[type] || '#888888'
+  return edgeColors[type] || 'var(--vers-default-edge)'
 }
 
 function getEntityLabel(entity, type) {
@@ -149,8 +149,8 @@ function handleDragStart(event, entityType, entity) {
   dragImage.style.position = 'absolute'
   dragImage.style.top = '-9999px'
   dragImage.style.opacity = '0.8'
-  dragImage.style.background = '#2a2a3e'
-  dragImage.style.border = `2px solid ${entityColors[entityType]}`
+  dragImage.style.background = 'var(--vers-bg-elevated)'
+  dragImage.style.border = `2px solid ${entityColors[entityType] || 'var(--vers-default-fallback)'}`
   dragImage.style.borderRadius = '8px'
   dragImage.style.padding = '8px 12px'
   document.body.appendChild(dragImage)

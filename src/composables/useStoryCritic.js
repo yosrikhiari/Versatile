@@ -4,37 +4,6 @@ import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 
-const CRITIC_SYSTEM_PROMPT = `You evaluate scene drafts for craft quality. Respond ONLY with valid JSON. No markdown, no explanation.
-
-Evaluate these specific aspects:
-1. Character voice consistency: does each named character sound like their described voice?
-2. Continuity: does anything contradict established facts?
-3. Emotional goal achieved: does the scene achieve its stated emotional goal?
-4. Show-don't-tell: count instances of direct emotional statement ("she felt sad", "he was angry", etc.)
-5. Setup/payoff honoring: if payoff is not "none", is the payoff actually present in the draft?
-
-Return this exact JSON structure:
-{
-  "pass": true/false,
-  "score": 0-10,
-  "issues": [
-    {
-      "type": "continuity" | "voice" | "emotional_goal" | "show_tell" | "pacing",
-      "description": "specific description",
-      "severity": "minor" | "major"
-    }
-  ],
-  "strengths": ["what worked well"]
-}
-
-PASS CONDITIONS (scene passes if EITHER):
-- Has 0 major severity issues AND 2 or fewer minor issues
-- Story bible has fewer than 2 characters (auto-pass continuity/voice checks)
-
-FAIL CONDITIONS:
-- Any major severity issue, OR
-- More than 2 minor issues`
-
 function sanitizeJson(raw) {
   if (!raw || typeof raw !== 'string') return null
   let cleaned = raw.trim()

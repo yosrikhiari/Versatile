@@ -1,6 +1,9 @@
 <script setup>
 const props = defineProps({
-  blueprint: Object
+  blueprint: {
+    type: Object,
+    default: () => ({})
+  }
 })
 
 const emit = defineEmits(['insert'])

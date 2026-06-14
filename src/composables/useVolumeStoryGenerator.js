@@ -261,7 +261,7 @@ export function useVolumeStoryGenerator() {
     })
   }
 
-  async function startGeneration({ projectId, synopsis, genre, tone, wordTarget, singleChapter, sparkContext, onPhaseChange, onChunk, onPartialData }) {
+  async function startGeneration({ projectId, synopsis, genre, tone, wordTarget, singleChapter, sparkContext, onPhaseChange, onPartialData }) {
     if (phase.value !== 'idle') return
 
     error.value = null
@@ -318,8 +318,6 @@ export function useVolumeStoryGenerator() {
       if (sceneSummaries.length > 0) {
         evidenceParts.push('# Existing Manuscript Scenes\n' + sceneSummaries.slice(-20).join('\n'))
       }
-      const evidence = evidenceParts.join('\n\n')
-
       // Phase 1: Bootstrap entities
       progress.current = 2
       progress.statusText = 'Conjuring Characters & World...'
@@ -384,7 +382,6 @@ export function useVolumeStoryGenerator() {
         arcPosition: s.arcPosition || ''
       }))
 
-      const totalScenes = scenePlan.value.length
       progress.current = 4
       progress.statusText = 'Sealing the Arc Contract...'
       await buildPreliminaryEdges(projectId, vId, scenePlan.value)
@@ -438,7 +435,7 @@ export function useVolumeStoryGenerator() {
 
   async function runParallelGeneration(writeParamsVal) {
     if (!writeParamsVal) return
-    const { storyArc, storyBibleDocs, storyContract, projectId, sections, onChunk } = writeParamsVal
+    const { storyArc, storyBibleDocs, storyContract, projectId, onChunk } = writeParamsVal
     
     const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
 
@@ -607,7 +604,7 @@ export function useVolumeStoryGenerator() {
   async function writeNextBatch(startIndex) {
     if (!writeParams.value) return
 
-    const { projectId, storyArc, storyContract, synopsis, onChunk, sections, storyBibleDocs } = writeParams.value
+    const { projectId, storyArc, storyContract, onChunk, storyBibleDocs } = writeParams.value
     const endIndex = Math.min(startIndex + SYNC_BATCH_SIZE, scenePlan.value.length)
 
     debugSnapshot('step-2-writing-start', {

@@ -1,6 +1,9 @@
 <script setup>
 defineProps({
-  prompt: String
+  prompt: {
+    type: String,
+    default: ''
+  }
 })
 
 const emit = defineEmits(['insert', 'regenerate'])

@@ -212,7 +212,7 @@ describe('useStoryDirector', () => {
       mockAiGenerate.mockResolvedValue(minimalResponse)
       const { generateStoryPlan } = useStoryDirector()
       const result = await generateStoryPlan({ goal, evidence: '' })
-      result.scenes.forEach((s, i) => {
+      result.scenes.forEach((s, _i) => {
         expect(s.tension).toBe('medium')
         expect(s.pacing).toBe('medium')
         expect(s.estimatedWords).toBeGreaterThan(0)

@@ -69,7 +69,10 @@ export async function appendRejectedPattern(projectId, pattern) {
       .first()
     const entry = { ...pattern, rejectedAt: Date.now() }
     if (doc) {
-      const patterns = JSON.parse(doc.content || '[]')
+      let patterns = []
+      try {
+        patterns = JSON.parse(doc.content || '[]')
+      } catch {}
       patterns.push(entry)
       await db.storyDocuments.update(doc.id, { content: JSON.stringify(patterns), updatedAt: Date.now() })
       return doc.id

@@ -70,7 +70,7 @@ function onPortraitUpdated() {
             v-for="volId in assignedVolumes.slice(0, 3)"
             :key="volId"
             class="w-4 h-4 rounded text-[10px] flex items-center justify-center text-white font-bold"
-            :style="{ backgroundColor: volumeStore.volumes.find(v => v.id === volId)?.color || '#6366f1' }"
+            :style="{ backgroundColor: volumeStore.volumes.find(v => v.id === volId)?.color || 'var(--vers-default-fallback)' }"
             :title="volumeStore.volumes.find(v => v.id === volId)?.title"
           >
             {{ volumeStore.volumes.find(v => v.id === volId)?.title?.charAt(0) || '?' }}

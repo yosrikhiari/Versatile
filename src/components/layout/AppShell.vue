@@ -1,8 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
-import { usePolishStore } from '../../stores/polishStore'
-import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { getAllProjects } from '../../services/dbService'
 import ModeButton from './ModeButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
@@ -13,19 +11,16 @@ import ContextStatusIndicator from './ContextStatusIndicator.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
 
-import { WORKSPACE_TYPES } from '../../config/workspace'
+import { CREATIVE_WORKSPACE_TYPES } from '../../config/workspace'
 
 const projectStore = useProjectStore()
-const polishStore = usePolishStore()
-const storyBibleStore = useStoryBibleStore()
+
 const activePanelName = ref(null)
-const focusMode = ref(false)
 const flowMode = ref(false)
 const showProjectSettings = ref(false)
 const showProjectDropdown = ref(false)
 const projects = ref([])
-const isCreatingProject = ref(false)
-const newProjectName = ref('')
+
 
 const showCoreLoop = ref(true)
 const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, { write: false, analyze: false, build: false })
@@ -33,7 +28,7 @@ const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, { write: false
 const emit = defineEmits(['start-flow', 'end-flow', 'export', 'import', 'export-pdf', 'open-settings', 'complete-onboarding', 'create-project'])
 
 const isNarrativeWorkspace = computed(() =>
-  [WORKSPACE_TYPES.CREATIVE, WORKSPACE_TYPES.NOVEL, WORKSPACE_TYPES.SCREENPLAY].includes(projectStore.activeWorkspaceType)
+  CREATIVE_WORKSPACE_TYPES.includes(projectStore.activeWorkspaceType)
 )
 
 const wordCount = computed(() => projectStore.wordCount)
@@ -100,10 +95,6 @@ function toggleStoryBible() {
   }
 }
 
-function toggleRevise() {
-  activePanelName.value = activePanelName.value === 'revise' ? null : 'revise'
-}
-
 function toggleCanvas() {
   activePanelName.value = activePanelName.value === 'canvas' ? null : 'canvas'
 }
@@ -128,6 +119,10 @@ function toggleArchive() {
   activePanelName.value = activePanelName.value === 'archive' ? null : 'archive'
 }
 
+function toggleResearch() {
+  activePanelName.value = activePanelName.value === 'research' ? null : 'research'
+}
+
 function toggleFlow() {
   markCoreLoop('write')
   if (flowMode.value) {
@@ -136,13 +131,6 @@ function toggleFlow() {
     emit('start-flow')
   }
   flowMode.value = !flowMode.value
-}
-
-function exitFlow() {
-  if (flowMode.value) {
-    emit('end-flow')
-    flowMode.value = false
-  }
 }
 
 function activateFlow() {
@@ -250,6 +238,18 @@ onMounted(async () => {
           @click="toggleArchive"
         >
           <BaseIcon name="archive" :size="18" />
+        </button>
+        <button
+          :class="[
+            'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
+            activePanelName === 'research'
+              ? 'bg-accent text-bg-primary shadow-warm-sm'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+          ]"
+          title="Research (R)"
+          @click="toggleResearch"
+        >
+          <BaseIcon name="search" :size="18" />
         </button>
       </div>
 
@@ -404,6 +404,13 @@ onMounted(async () => {
         class="w-[320px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
       >
         <slot name="archive"></slot>
+      </aside>
+
+      <aside 
+        v-if="activePanelName === 'research' && !flowMode" 
+        class="w-[360px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
+      >
+        <slot name="research"></slot>
       </aside>
     </div>
 

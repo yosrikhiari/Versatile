@@ -10,7 +10,7 @@ import draggable from 'vuedraggable'
 
 const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
-const { startDrag, endDrag } = useDraggableList()
+useDraggableList()
 const { showConfirm } = useNotifications()
 
 const selectedElement = ref(null)
@@ -19,11 +19,11 @@ const newElementTitle = ref('')
 const newElementType = ref('chapter')
 
 const elementTypes = [
-  { value: 'section', label: 'Section', color: '#6366f1', iconName: 'book-open' },
-  { value: 'character', label: 'Character', color: '#ec4899', iconName: 'user' },
-  { value: 'location', label: 'Location', color: '#10b981', iconName: 'map-pin' },
-  { value: 'plotpoint', label: 'Plot Point', color: '#f59e0b', iconName: 'zap' },
-  { value: 'note', label: 'Note', color: '#8b5cf6', iconName: 'file-text' }
+  { value: 'section', label: 'Section', color: 'var(--vers-element-section)', iconName: 'book-open' },
+  { value: 'character', label: 'Character', color: 'var(--vers-element-character)', iconName: 'user' },
+  { value: 'location', label: 'Location', color: 'var(--vers-element-location)', iconName: 'map-pin' },
+  { value: 'plotpoint', label: 'Plot Point', color: 'var(--vers-element-plotpoint)', iconName: 'zap' },
+  { value: 'note', label: 'Note', color: 'var(--vers-element-note)', iconName: 'file-text' }
 ]
 
 const storyDragOptions = {
@@ -48,7 +48,7 @@ function getElementIconName(type) {
 }
 
 function getElementColor(type) {
-  return elementTypes.find(t => t.value === type)?.color || '#6366f1'
+  return elementTypes.find(t => t.value === type)?.color || 'var(--vers-default-fallback)'
 }
 
 function selectElement(element) {
@@ -58,9 +58,7 @@ function selectElement(element) {
 function addNewElement() {
   if (!newElementTitle.value.trim()) return
   
-  const types = ['chapter', 'character', 'location', 'plotpoint', 'note']
   const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6']
-  const randomType = types[Math.floor(Math.random() * types.length)]
   const randomColor = colors[Math.floor(Math.random() * colors.length)]
   
   manuscriptStore.addStoryElementData(projectStore.currentProjectId, {
@@ -77,13 +75,6 @@ function addNewElement() {
   showAddModal.value = false
 }
 
-function updateElementPosition(element, index) {
-  manuscriptStore.updateStoryElementData(element.id, {
-    ...element,
-    order: index
-  })
-}
-
 async function deleteElement(element) {
   if (await showConfirm('Delete Element', 'Delete this element?', 'Delete', 'danger')) {
     manuscriptStore.deleteStoryElementData(element.id, projectStore.currentProjectId)
@@ -91,15 +82,6 @@ async function deleteElement(element) {
       selectedElement.value = null
     }
   }
-}
-
-function getSectionsAsElements() {
-  return manuscriptStore.sortedSections.map(s => ({
-    id: `section-${s.id}`,
-    type: 'section',
-    title: s.title || `Section ${s.order + 1}`,
-    data: { sectionId: s.id, status: s.status }
-  }))
 }
 
 onMounted(() => {
@@ -253,7 +235,7 @@ onMounted(() => {
 <style scoped>
 .ghost {
   opacity: 0.5;
-  background: #6366f1;
+  background: var(--vers-accent-primary);
   border-radius: 8px;
 }
 .drag {

@@ -4,7 +4,9 @@ import {
   WORKSPACE_LABELS,
   WORKSPACE_ICONS,
   WORKSPACE_DESCRIPTIONS,
-  WORKSPACE_TERMINOLOGY
+  WORKSPACE_TERMINOLOGY,
+  CREATIVE_WORKSPACE_TYPES,
+  VISIBLE_WORKSPACE_CONFIGS
 } from '@/config/workspace'
 
 describe('workspace config exports', () => {
@@ -117,5 +119,47 @@ describe('WORKSPACE_TERMINOLOGY', () => {
 
   it('has the same number of entries as WORKSPACE_TYPES', () => {
     expect(Object.keys(WORKSPACE_TERMINOLOGY).length).toBe(Object.keys(WORKSPACE_TYPES).length)
+  })
+})
+
+describe('CREATIVE_WORKSPACE_TYPES', () => {
+  it('has exactly 3 entries', () => {
+    expect(CREATIVE_WORKSPACE_TYPES.length).toBe(3)
+  })
+
+  it('contains creative, novel, and screenplay', () => {
+    expect(CREATIVE_WORKSPACE_TYPES).toContain('creative')
+    expect(CREATIVE_WORKSPACE_TYPES).toContain('novel')
+    expect(CREATIVE_WORKSPACE_TYPES).toContain('screenplay')
+  })
+
+  it('does not contain non-creative types', () => {
+    expect(CREATIVE_WORKSPACE_TYPES).not.toContain('legal')
+    expect(CREATIVE_WORKSPACE_TYPES).not.toContain('general')
+  })
+})
+
+describe('VISIBLE_WORKSPACE_CONFIGS', () => {
+  it('has exactly 3 entries', () => {
+    expect(VISIBLE_WORKSPACE_CONFIGS.length).toBe(3)
+  })
+
+  it('each entry has type, icon, label, and description', () => {
+    for (const ws of VISIBLE_WORKSPACE_CONFIGS) {
+      expect(ws).toHaveProperty('type')
+      expect(ws).toHaveProperty('icon')
+      expect(ws).toHaveProperty('label')
+      expect(ws).toHaveProperty('description')
+      expect(ws.type).toBeTypeOf('string')
+      expect(ws.icon).toBeTypeOf('string')
+      expect(ws.label).toBeTypeOf('string')
+      expect(ws.description).toBeTypeOf('string')
+    }
+  })
+
+  it('each type is in CREATIVE_WORKSPACE_TYPES', () => {
+    for (const ws of VISIBLE_WORKSPACE_CONFIGS) {
+      expect(CREATIVE_WORKSPACE_TYPES).toContain(ws.type)
+    }
   })
 })

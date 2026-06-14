@@ -3,8 +3,14 @@ import { computed } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
-  phase: String,
-  progress: Object,
+  phase: {
+    type: String,
+    default: ''
+  },
+  progress: {
+    type: Object,
+    default: () => ({})
+  },
   streamedEntities: {
     type: Array,
     default: () => []
@@ -54,7 +60,7 @@ const stages = [
           <!-- Icon State -->
           <div class="w-6 h-6 flex items-center justify-center shrink-0">
             <BaseIcon v-if="getState(stage.id) === 'complete'" name="check" :size="20" class="text-accent fade-in" />
-            <BaseIcon v-else-if="getState(stage.id) === 'active'" name="loader-2" :size="20" class="text-accent animate-spin-slow pulse-amber" />
+            <BaseIcon v-else-if="getState(stage.id) === 'active'" name="loader-2" :size="20" class="text-accent animate-spin-slow pulse-glow" />
             <BaseIcon v-else name="circle" :size="16" class="text-text-hint opacity-50" />
           </div>
           
@@ -62,7 +68,7 @@ const stages = [
           <span 
             :class="[
               'text-lg font-serif transition-all duration-500',
-              getState(stage.id) === 'active' ? 'text-text-primary drop-shadow-[0_0_8px_rgba(234,179,8,0.3)]' : 
+              getState(stage.id) === 'active' ? 'text-text-primary drop-shadow-glow' : 
               getState(stage.id) === 'complete' ? 'text-text-secondary opacity-80' : 
               'text-text-hint opacity-50'
             ]"
@@ -108,8 +114,8 @@ const stages = [
     <!-- Abandon Button -->
     <div class="mt-12">
       <button 
-        @click="emit('cancel')"
         class="text-xs text-text-hint hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded px-3 py-2 bg-transparent"
+        @click="emit('cancel')"
       >
         [ Abandon Conjuration ]
       </button>
@@ -123,9 +129,13 @@ const stages = [
   animation: spin 3s linear infinite;
 }
 
-.pulse-amber {
-  filter: drop-shadow(0 0 4px rgba(234, 179, 8, 0.6));
+.pulse-glow {
+  filter: drop-shadow(0 0 4px rgba(var(--vers-glow-loading-rgb), 0.6));
   animation: spin 3s linear infinite, pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.drop-shadow-glow {
+  filter: drop-shadow(0 0 8px rgba(var(--vers-glow-loading-rgb), 0.3));
 }
 
 @keyframes pulse {

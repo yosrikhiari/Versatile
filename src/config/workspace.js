@@ -1,3 +1,5 @@
+// NOTE: Do NOT import from ./blueprints — blueprints.js already imports from this file.
+// Doing so would create a circular dependency.
 const WORKSPACE_CONFIGS = [
   { key: 'CREATIVE', type: 'creative', label: 'Creative Writing', icon: 'feather', description: 'Stories, poems, and any imaginative writing with characters and plot.', terminology: { bible: 'Story Bible', sections: 'Chapters', generator: 'Story Generator', generatorLabel: 'Story Tools', entityLabel: 'Story Elements', characters: 'Characters', characterRole: 'Role', locations: 'Locations', plotThreads: 'Plot Threads', synopsisLabel: 'Story Synopsis' } },
   { key: 'NOVEL', type: 'novel', label: 'Novel', icon: 'book-open', description: 'Full-length fiction with chapters, character arcs, and narrative structure.', terminology: { bible: 'Story Bible', sections: 'Chapters', generator: 'Chapter Generator', generatorLabel: 'Novel Tools', entityLabel: 'Story Elements', characters: 'Characters', characterRole: 'Role', locations: 'Settings', plotThreads: 'Plot Threads', synopsisLabel: 'Novel Synopsis' } },
@@ -43,3 +45,16 @@ export const WORKSPACE_TERMINOLOGY = WORKSPACE_CONFIGS.reduce((acc, cfg) => {
   acc[cfg.type] = cfg.terminology
   return acc
 }, {})
+
+// The only workspace types visible in the UI.
+// Other types remain in WORKSPACE_CONFIGS for backwards compatibility.
+export const CREATIVE_WORKSPACE_TYPES = [
+  WORKSPACE_TYPES.CREATIVE,
+  WORKSPACE_TYPES.NOVEL,
+  WORKSPACE_TYPES.SCREENPLAY,
+]
+
+// The filtered list for UI iteration — use this everywhere the UI renders workspace choices.
+export const VISIBLE_WORKSPACE_CONFIGS = WORKSPACE_CONFIGS.filter(
+  w => CREATIVE_WORKSPACE_TYPES.includes(w.type)
+)

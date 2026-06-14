@@ -7,8 +7,6 @@ import {
   addEntityToVolume,
   removeEntityFromVolume,
   removeEntityFromAllVolumes,
-  getEntityVolumes,
-  getVolumeEdgeCount,
   addVolumeEdge
 } from '../services/dbService'
 

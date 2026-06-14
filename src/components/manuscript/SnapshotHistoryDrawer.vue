@@ -9,7 +9,10 @@ import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
   show: Boolean,
-  chapterId: Number
+  chapterId: {
+    type: Number,
+    default: null
+  }
 })
 
 const emit = defineEmits(['close', 'restored'])
@@ -20,7 +23,6 @@ const manuscriptStore = useManuscriptStore()
 const { showConfirm } = useNotifications()
 
 const selectedSnapshot = ref(null)
-const labelInput = ref('')
 const showLabelInput = ref(false)
 const newLabel = ref('')
 

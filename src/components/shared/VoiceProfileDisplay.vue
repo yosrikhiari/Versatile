@@ -6,15 +6,15 @@
       <div class="header-actions">
         <button
           v-if="profile && !isLocked"
-          @click="handleRefresh"
           class="btn-secondary text-sm"
           :disabled="isRefreshing"
+          @click="handleRefresh"
         >
           {{ isRefreshing ? 'Refreshing...' : 'Refresh from Manuscript' }}
         </button>
         <button
-          @click="toggleLock"
           class="btn-secondary text-sm"
+          @click="toggleLock"
         >
           {{ isLocked ? '🔒 Locked' : '🔓 Unlocked' }}
         </button>
@@ -27,7 +27,7 @@
       <p class="text-sm text-gray-600 dark:text-gray-400">
         Voice profile not extracted yet. Write at least 500 words in your manuscript to generate a profile.
       </p>
-      <button @click="handleExtract" class="btn-primary text-sm mt-4">
+      <button class="btn-primary text-sm mt-4" @click="handleExtract">
         Extract Profile
       </button>
     </div>

@@ -3,16 +3,46 @@ import { ref, computed, watch } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
-  show: Boolean,
-  existingEdge: Object,
-  sourceNode: Object,
-  targetNode: Object,
-  removableNode: Object,
-  characters: Array,
-  locations: Array,
-  plotThreads: Array,
-  groups: Array,
-  existingEdges: Array
+  show: {
+    type: Boolean,
+    default: false
+  },
+  existingEdge: {
+    type: Object,
+    default: null
+  },
+  sourceNode: {
+    type: Object,
+    default: null
+  },
+  targetNode: {
+    type: Object,
+    default: null
+  },
+  removableNode: {
+    type: Object,
+    default: null
+  },
+  characters: {
+    type: Array,
+    default: () => []
+  },
+  locations: {
+    type: Array,
+    default: () => []
+  },
+  plotThreads: {
+    type: Array,
+    default: () => []
+  },
+  groups: {
+    type: Array,
+    default: () => []
+  },
+  existingEdges: {
+    type: Array,
+    default: () => []
+  }
 })
 
 const emit = defineEmits(['close', 'save', 'remove-node', 'save-group-edge'])
@@ -138,7 +168,6 @@ watch(() => props.show, (newVal) => {
       }
       
       if (props.targetNode) {
-        const [targetPrefix, targetIdVal] = props.targetNode.id.split('-')
         targetType.value = 'group'
         targetId.value = props.targetNode.id
       } else {

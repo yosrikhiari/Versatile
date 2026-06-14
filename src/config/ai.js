@@ -105,11 +105,21 @@ export const EMBEDDING_MODELS = {
   [EMBEDDING_PROVIDERS.MISTRAL]: ['mistral-embed']
 }
 
+export const EMBEDDING_VERSION = 1
+
+export const EMBEDDING_BATCH_SIZES = {
+  [EMBEDDING_PROVIDERS.OLLAMA]: 32,
+  [EMBEDDING_PROVIDERS.MISTRAL]: 16
+}
+
 export const EMBEDDING_DEFAULTS = {
   provider: EMBEDDING_PROVIDERS.OLLAMA,
   model: 'nomic-embed-text',
-  threshold: 0.75
+  threshold: 0.75,
+  batchSize: EMBEDDING_BATCH_SIZES[EMBEDDING_PROVIDERS.OLLAMA]
 }
+
+export const RESEARCH_CHUNKS_DEFAULT = 3
 
 export const EMBEDDING_THRESHOLD_MIN = 0.4
 export const EMBEDDING_THRESHOLD_MAX = 0.98

@@ -199,7 +199,7 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
   doc.save(`${projectName.replace(/[^a-z0-9]/gi, '_')}.pdf`)
 }
 
-export function exportToEpub(projectId, projectName = 'Manuscript') {
+export function exportToEpub() {
   console.log('ePub export not yet implemented')
   alert('ePub export coming soon! For now, please use PDF export.')
 }

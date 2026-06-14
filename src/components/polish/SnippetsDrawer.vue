@@ -2,7 +2,10 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  snippets: Array
+  snippets: {
+    type: Array,
+    default: () => []
+  }
 })
 
 const emit = defineEmits(['remove'])

@@ -1,8 +1,17 @@
 <script setup>
 const props = defineProps({
-  idea: String,
-  tone: String,
-  targetLength: String
+  idea: {
+    type: String,
+    default: ''
+  },
+  tone: {
+    type: String,
+    default: ''
+  },
+  targetLength: {
+    type: String,
+    default: ''
+  }
 })
 
 const emit = defineEmits(['update:idea', 'update:tone', 'update:targetLength'])
@@ -74,11 +83,13 @@ function toggleTone(t) {
         <label class="block text-[9px] uppercase tracking-widest text-text-hint font-ui mb-3">Target Length</label>
         <div class="flex gap-5">
           <label v-for="len in lengths" :key="len.value" class="flex items-center gap-2 cursor-pointer group">
-            <div class="w-3 h-3 rounded-full border border-text-hint/50 flex items-center justify-center transition-all duration-300"
+            <div
+class="w-3 h-3 rounded-full border border-text-hint/50 flex items-center justify-center transition-all duration-300"
                  :class="targetLength === len.value ? 'border-accent' : 'group-hover:border-text-secondary'">
               <div v-if="targetLength === len.value" class="w-1.5 h-1.5 bg-accent rounded-full transition-all"></div>
             </div>
-            <span class="text-[11px] font-ui transition-colors duration-300 tracking-wide"
+            <span
+class="text-[11px] font-ui transition-colors duration-300 tracking-wide"
                   :class="targetLength === len.value ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'">
               {{ len.label }}
             </span>

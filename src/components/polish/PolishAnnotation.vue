@@ -3,7 +3,10 @@ import { computed, ref } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
-  annotation: Object
+  annotation: {
+    type: Object,
+    default: () => ({})
+  }
 })
 
 const emit = defineEmits(['accept', 'reject', 'flag'])

@@ -74,7 +74,7 @@ export function sanitizeJsonResponse(response) {
           if (typeof v === 'string') return v
           if (typeof v === 'object' && v !== null) return Object.values(v).join(': ')
           return String(v)
-        }).join('; ')
+        })
       } else if (typeof value === 'object') {
         flattened[key] = Object.values(value).join('; ')
       } else {

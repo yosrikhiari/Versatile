@@ -5,7 +5,6 @@ import BaseIcon from '../shared/BaseIcon.vue'
 
 const projectStore = useProjectStore()
 
-const emit = defineEmits(['dismiss'])
 const showRecap = ref(false)
 
 const visible = ref(true)

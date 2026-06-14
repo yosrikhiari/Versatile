@@ -4,8 +4,6 @@ import { useStoryBibleStore } from '@/stores/storyBibleStore'
 import { useManuscriptStore } from '@/stores/manuscriptStore'
 import { useVoiceFromManuscript } from '@/composables/useVoiceFromManuscript'
 import { useProjectStore } from '@/stores/projectStore'
-import { analyzeVoiceProfile } from '@/services/generation/voiceAnalyzer'
-
 describe('Voice Extraction Integration (Phase 1)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -132,7 +130,7 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       // Setup: Extract initial profile
       const initialText = 'This is a test manuscript. ' + 'It has multiple sentences. '.repeat(200)
       manuscriptStore.setManuscriptContent(initialText)
-      const initialProfile = await extractVoiceProfile()
+      await extractVoiceProfile()
 
       // Action: Add supplementary sample
       const supplementaryText = 'Different prose. ' + 'Short sentences here. '.repeat(100)
@@ -173,7 +171,7 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       // Setup: Extract at small size
       const smallText = 'This is a test manuscript. ' + 'It has multiple sentences. '.repeat(127)
       manuscriptStore.setManuscriptContent(smallText)
-      const profile = await extractVoiceProfile()
+      await extractVoiceProfile()
       const initialSize = smallText.length
 
       // Lock and grow manuscript 5x

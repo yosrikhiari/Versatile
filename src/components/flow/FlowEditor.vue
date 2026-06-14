@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useSnapshotStore } from '../../stores/snapshotStore'
@@ -92,7 +92,7 @@ const editor = useEditor({
     debouncedSave()
     flow.handleKeystroke()
   },
-  onSelectionUpdate: ({ editor }) => {
+  onSelectionUpdate: ({ editor: _editor }) => {
     flow.handleKeystroke()
   }
 })
@@ -120,17 +120,16 @@ function handleDismissNudge() {
   flow.dismissNudge()
 }
 
-function handleClick(event) {
+function handleClick(_event) {
   if (!editor.value) return
   
-  const { from, to } = editor.value.state.selection
+  const from = editor.value.state.selection.from
   const $pos = editor.value.state.doc.resolve(from)
   
   let nodePos = from
   let node = $pos.parent
   
   if (node) {
-    const childIndex = $pos.index()
     const paragraphs = []
     
     editor.value.state.doc.descendants((p, pos) => {

@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { analyzePolish } from '../composables/useOllama'
 import { LENS_MAP } from '../config/statuses'
 import {
-  getAnnotations, addAnnotation, updateAnnotation, deleteAnnotation, clearAnnotations,
-  getSnippets, addSnippet, updateSnippet, deleteSnippet, incrementSnippetWord
+  getAnnotations, addAnnotation, updateAnnotation, clearAnnotations,
+  getSnippets, deleteSnippet, incrementSnippetWord
 } from '../services/dbService'
 import { STORAGE_KEYS } from '../config/storageKeys'
 

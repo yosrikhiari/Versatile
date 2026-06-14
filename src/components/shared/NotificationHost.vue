@@ -22,7 +22,7 @@ const { toasts, activeConfirm, removeToast } = useNotifications()
           }"
         >
           <span>{{ toast.message }}</span>
-          <button @click="removeToast(toast.id)" class="opacity-50 hover:opacity-100 transition-opacity">
+          <button class="opacity-50 hover:opacity-100 transition-opacity" @click="removeToast(toast.id)">
             <BaseIcon name="x" :size="14" />
           </button>
         </div>

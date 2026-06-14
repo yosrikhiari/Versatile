@@ -34,7 +34,7 @@ Maximum 3 sentences. No preamble. No explanation.`
 
 const BLUEPRINT_SYSTEM_PROMPT = `You are a JSON generator. Output ONLY valid JSON. No markdown, no explanation.`
 
-function getDefaultBlueprint(idea, tone) {
+function getDefaultBlueprint(idea) {
   return {
     title: idea.length > 30 ? idea.substring(0, 30) + '...' : idea,
     openingBeat: 'A character faces a pivotal moment.',
@@ -93,7 +93,7 @@ Make it vivid and specific. Do not write the scene.`
  * @returns {Promise<SparkBlueprint>} The generated scene blueprint object.
  * @throws {Error} If generation fails.
  */
-export async function generateOutline(idea, tone, characterNames = [], targetLength = 'full', manuscriptContext = null) {
+export async function generateOutline(idea, tone, _characterNames = [], _targetLength = 'full', manuscriptContext = null) {
   const projectContext = getProjectContext()
 
   let contextInstruction = ''

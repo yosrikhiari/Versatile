@@ -3,15 +3,6 @@ import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 
-const REVISOR_SYSTEM_PROMPT = `You are a revision editor. You revise existing prose to fix specific issues without changing events, structure, or length significantly.
-
-Rules:
-- Revise ONLY the sections that address the listed issues
-- Keep all prose that is not implicated in an issue completely unchanged
-- Do not change the scene's events, only how they are written
-- Stay within 15% of the original word count
-- Output the full revised text — do not omit any part of the scene`
-
 export function useStoryRevisor() {
   const isRevising = ref(false)
 

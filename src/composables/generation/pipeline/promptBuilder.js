@@ -1,4 +1,5 @@
 import { FIELD_LENGTH_CONSTRAINTS } from '../utils'
+import { debugSnapshot } from '../../../services/debugSnapshot'
 
 export function buildPrompt({ shapedBundle, schema, extraInstructions }) {
   const { projectBlock, charactersBlock, locationsBlock, plotThreadsBlock, relationshipsBlock, manuscriptBlock } = shapedBundle
@@ -19,10 +20,30 @@ export function buildPrompt({ shapedBundle, schema, extraInstructions }) {
     entitiesBlock +
     relationshipsBlock +
     manuscriptBlock +
-    `\n\nReturn ONLY valid JSON. Keys: ${schema.promptKeys.join(', ')}. All string values. No markdown.` +
+    `\n\nReturn ONLY valid JSON. Keys: ${schema.promptKeys.join(', ')}. String values: ${schema.promptKeys.filter(k => k !== 'traits').join(', ')}. traits is an array of strings. No markdown.` +
     dedupLine +
     (extraInstructions ? `\n\n${extraInstructions}` : '') +
     fieldGuidance
+
+  debugSnapshot(`prompt-${schema.type}-blocks`, {
+    entityType: schema.type,
+    blockSizes: {
+      projectBlock: projectBlock?.length || 0,
+      charactersBlock: charactersBlock?.length || 0,
+      plotThreadsBlock: plotThreadsBlock?.length || 0,
+      locationsBlock: locationsBlock?.length || 0,
+      relationshipsBlock: relationshipsBlock?.length || 0,
+      manuscriptBlock: manuscriptBlock?.length || 0,
+      entitiesBlock: entitiesBlock?.length || 0,
+      dedupLine: dedupLine?.length || 0,
+      fieldGuidance: fieldGuidance?.length || 0,
+      extraInstructions: extraInstructions?.length || 0,
+      totalUserPrompt: userPrompt.length
+    },
+    hasDedup: !!dedupLine,
+    hasExtraInstructions: !!extraInstructions,
+    hasFieldGuidance: !!fieldGuidance
+  })
 
   return {
     userPrompt,

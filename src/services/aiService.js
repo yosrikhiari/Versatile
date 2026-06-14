@@ -7,6 +7,7 @@ import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
 import * as geminiProvider from './providers/gemini'
 import * as groqProvider from './providers/groq'
+import { debugSnapshot } from './debugSnapshot'
 
 const PROVIDER_MAP = {
   [PROVIDERS.OLLAMA]: ollamaProvider,
@@ -78,15 +79,50 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
     timeout: options.timeout
   }
 
+  debugSnapshot('ai-service-call', {
+    feature,
+    provider,
+    model,
+    hasApiKey: !!apiKey,
+    promptLength: prompt.length,
+    systemPromptLength: systemPrompt.length,
+    temperature: providerOptions.temperature,
+    maxTokens: providerOptions.maxTokens,
+    timeout: providerOptions.timeout
+  })
+
   try {
-    return await providerModule.generate(prompt, systemPrompt, model, providerOptions)
+    const result = await providerModule.generate(prompt, systemPrompt, model, providerOptions)
+
+    debugSnapshot('ai-service-response', {
+      feature,
+      provider,
+      model,
+      resultLength: result?.length || 0,
+      resultPreview: result?.slice(0, 500) || '(empty)'
+    })
+
+    return result
   } catch (error) {
+    debugSnapshot('ai-service-error', {
+      feature,
+      provider,
+      model,
+      errorMessage: error?.message || 'Unknown error',
+      errorName: error?.name || ''
+    })
+
     const store = useSettingsStore()
     if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
       const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
       if (fallbackModule) {
         const fallbackKey = getApiKey(store.aiProviderFallback)
         if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
+          debugSnapshot('ai-service-fallback', {
+            fromProvider: provider,
+            toProvider: store.aiProviderFallback,
+            feature
+          })
           return await fallbackModule.generate(prompt, systemPrompt, null, {
             apiKey: fallbackKey || undefined,
             temperature: options.temperature,

@@ -122,9 +122,29 @@ export const useProjectStore = defineStore('project', () => {
       await updateDailyWordCount(currentProjectId.value, wordCount.value)
       dailyWordCount.value = wordCount.value
       await updateStreakAfterSave()
+      autoSnapshot()
     } catch (error) {
       console.error('Auto-save failed:', error)
     }
+  }
+
+  let snapshotTimer = null
+  function autoSnapshot() {
+    if (snapshotTimer) clearTimeout(snapshotTimer)
+    snapshotTimer = setTimeout(async () => {
+      try {
+        const { useStateSummarizer } = await import('../composables/useStateSummarizer')
+        const { useArchiveStore } = await import('./archiveStore')
+        const { summarize, snapshotToContextString } = useStateSummarizer()
+        const snapshot = summarize()
+        if (snapshot) {
+          const archiveStore = useArchiveStore()
+          await archiveStore.saveEndOfSessionState(currentProjectId.value, 'auto_snapshot', snapshot)
+        }
+      } catch (e) {
+        console.error('[projectStore] autoSnapshot failed:', e)
+      }
+    }, 2000)
   }
 
   function updateContent(newContent) {
@@ -166,6 +186,12 @@ export const useProjectStore = defineStore('project', () => {
   async function createNewProject(name, category = '', description = '', blueprintId = null) {
     const id = await createProject(name, category, description)
     await loadProject(id)
+
+    try {
+      await updateAuthorVoiceProfile({ data: { genreFocus: category, sessionCount: 0, totalWordsWritten: 0, favoriteLenses: [], rejectedLenses: [], sparkTypesUsed: [], commonStrengths: [], commonWeaknesses: [] } })
+    } catch (e) {
+      console.error('[projectStore] Failed to init author profile:', e)
+    }
 
     if (blueprintId) {
       try {

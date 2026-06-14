@@ -34,7 +34,6 @@ const projectStore = useProjectStore()
 const networkSuggestions = useNetworkSuggestions()
 
 const {   
-  onConnect, 
   onNodeDragStop, 
   onNodeDrag,
   onViewportChange,
@@ -223,29 +222,29 @@ function handleGroupResizeEnd() {
 }
 
 const entityColors = {
-  character: '#8B5CF6',
-  location: '#10B981',
-  plotThread: '#F59E0B'
+  character: 'var(--vers-entity-character)',
+  location: 'var(--vers-entity-location)',
+  plotThread: 'var(--vers-entity-plotThread)'
 }
 
 const edgeColors = {
-  appears_in: '#4fc3f7',
-  involved_in: '#ce93d8',
-  located_at: '#80cbc4',
-  intersects_with: '#80cbc4',
-  features: '#ce93d8',
-  connects_to: '#888888',
-  ally: '#f48fb1',
-  enemy: '#ef5350',
-  family: '#ce93d8',
-  romantic: '#f06292',
-  mentor: '#ba68c8',
-  rival: '#ff7043',
-  neutral: '#90a4ae'
+  appears_in: 'var(--vers-edge-appears_in)',
+  involved_in: 'var(--vers-edge-involved_in)',
+  located_at: 'var(--vers-edge-located_at)',
+  intersects_with: 'var(--vers-edge-intersects_with)',
+  features: 'var(--vers-edge-features)',
+  connects_to: 'var(--vers-edge-connects_to)',
+  ally: 'var(--vers-edge-ally)',
+  enemy: 'var(--vers-edge-enemy)',
+  family: 'var(--vers-edge-family)',
+  romantic: 'var(--vers-edge-romantic)',
+  mentor: 'var(--vers-edge-mentor)',
+  rival: 'var(--vers-edge-rival)',
+  neutral: 'var(--vers-edge-neutral)'
 }
 
 function getEdgeColor(relationshipType) {
-  return edgeColors[relationshipType] || '#888888'
+  return edgeColors[relationshipType] || 'var(--vers-default-edge)'
 }
 
 const entityIcons = {
@@ -406,7 +405,6 @@ const edges = computed(() => {
     const label = isCharChar ? edge.relationshipType : edge.relationshipType.replace(/_/g, ' ')
     const category = getEdgeCategory(edge)
     
-    let sourceIndex = 0
     for (const sourceId of validSourceInstances) {
       let targetIndex = 0
       for (const targetId of validTargetInstances) {
@@ -431,7 +429,6 @@ const edges = computed(() => {
         })
         targetIndex++
       }
-      sourceIndex++
     }
   }
 
@@ -453,11 +450,11 @@ const groupEdges = computed(() => {
       style: {
         strokeDasharray: '6 3',
         strokeWidth: 2.5,
-        stroke: '#6366f1'
+        stroke: 'var(--vers-default-fallback)'
       },
       data: {
         edgeData: edge,
-        color: '#6366f1',
+        color: 'var(--vers-default-fallback)',
         relationshipType: edge.relationshipType,
         label: edge.relationshipType.replace(/_/g, ' '),
         category: 'group',
@@ -1248,8 +1245,6 @@ async function arrangeExtendedStarLayout() {
   const centerX = 800
   const centerY = 600
   const groupRadius = 500
-  const outerOrphanRadius = groupRadius + 400
-
   // Remove existing orphan groups to prevent duplicates
   const orphanGroupIds = new Set(
     manualGroups.value.filter(g => g.name?.startsWith('Unconnected')).map(g => g.id)
@@ -1499,7 +1494,7 @@ async function arrangeExtendedStarLayout() {
             title="Toggle character relationships"
             @click="showCharEdges = !showCharEdges"
           >
-            <span class="w-2 h-2 rounded-full bg-[#f48fb1]"></span>
+            <span class="w-2 h-2 rounded-full bg-entity-character"></span>
             Characters
           </button>
           <button
@@ -1508,7 +1503,7 @@ async function arrangeExtendedStarLayout() {
             title="Toggle location connections"
             @click="showLocEdges = !showLocEdges"
           >
-            <span class="w-2 h-2 rounded-full bg-[#4fc3f7]"></span>
+            <span class="w-2 h-2 rounded-full bg-entity-location"></span>
             Locations
           </button>
           <button
@@ -1517,7 +1512,7 @@ async function arrangeExtendedStarLayout() {
             title="Toggle plot thread connections"
             @click="showThreadEdges = !showThreadEdges"
           >
-            <span class="w-2 h-2 rounded-full bg-[#ce93d8]"></span>
+            <span class="w-2 h-2 rounded-full bg-entity-thread"></span>
             Plot Threads
           </button>
         </div>
@@ -1609,7 +1604,7 @@ async function arrangeExtendedStarLayout() {
             <path
               v-if="data?.category === 'group' || (data?.category === 'char' && showCharEdges) || (data?.category === 'loc' && showLocEdges) || (data?.category === 'thread' && showThreadEdges)"
               :d="getBezierPath(sourceX, sourceY + (data?.staggerOffset || 0), targetX, targetY + (data?.staggerOffset || 0), data?.isLongRange)"
-              :stroke="data?.color || '#888'"
+              :stroke="data?.color || 'var(--vers-default-edge)'"
               :stroke-width="data?.category === 'group' ? (hoveredEdgeId === id ? 3.5 : 2.5) : (hoveredEdgeId === id ? 3 : 1.5)"
               :stroke-dasharray="data?.category === 'group' ? '6 3' : undefined"
               :opacity="getEdgeOpacity(id)"
@@ -1730,7 +1725,7 @@ async function arrangeExtendedStarLayout() {
             </div>
           </template>
 
-          <Background pattern-color="#e5e7eb" :gap="20" />
+          <Background pattern-color="var(--vers-text-faint)" :gap="20" />
         </VueFlow>
 
         <div v-if="nodes.length === 0 && manualGroups.length === 0" class="absolute inset-0 flex items-center justify-center bg-bg-secondary">
@@ -1883,15 +1878,15 @@ async function arrangeExtendedStarLayout() {
 
 <style scoped>
 .story-network {
-  background: #1e1e2e;
+  background: var(--vers-bg-canvas);
 }
 
 .story-network.drag-over {
-  background: #252538;
+  background: var(--vers-bg-hover);
 }
 
 .node-card {
-  background: #2a2a3e;
+  background: var(--vers-bg-panel);
   border: 2px solid;
   border-radius: 8px;
   padding: 10px 14px;
@@ -1930,11 +1925,11 @@ async function arrangeExtendedStarLayout() {
 }
 
 .edge-label {
-  background: #1a1a2e;
+  background: var(--vers-bg-base);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--vers-text-muted);
   font-family: inherit;
   white-space: nowrap;
   text-align: center;
@@ -1948,7 +1943,7 @@ async function arrangeExtendedStarLayout() {
 :deep(.vue-flow__handle) {
   width: 8px;
   height: 8px;
-  background: #6366f1;
+  background: var(--vers-accent-primary);
   border: none;
 }
 

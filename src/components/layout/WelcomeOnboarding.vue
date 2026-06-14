@@ -4,13 +4,13 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import BaseIcon from '../shared/BaseIcon.vue'
 import AppTooltip from '../shared/AppTooltip.vue'
-import { WORKSPACE_LABELS, WORKSPACE_TYPES, WORKSPACE_ICONS, WORKSPACE_DESCRIPTIONS } from '../../config/workspace'
-import { BLUEPRINTS } from '../../config/blueprints'
+import { WORKSPACE_TYPES, VISIBLE_WORKSPACE_CONFIGS } from '../../config/workspace'
+import { CREATIVE_BLUEPRINTS } from '../../config/blueprints'
 
 const projectStore = useProjectStore()
 const storyBibleStore = useStoryBibleStore()
 
-const props = defineProps({
+defineProps({
   show: Boolean
 })
 
@@ -25,30 +25,15 @@ const characterName = ref('')
 const characterRole = ref('')
 const isCreating = ref(false)
 
-const NARRATIVE_TYPES = new Set([WORKSPACE_TYPES.CREATIVE, WORKSPACE_TYPES.NOVEL, WORKSPACE_TYPES.SCREENPLAY])
-
 const availableBlueprints = computed(() => {
-  return BLUEPRINTS[projectCategory.value] || []
+  return CREATIVE_BLUEPRINTS[projectCategory.value] || []
 })
 
 const canProceedStep1 = computed(() => projectName.value.trim().length > 0)
 const canProceedStep2 = computed(() => characterName.value.trim().length > 0)
 
-const workspaceCategories = computed(() => {
-  return {
-    'Narrative & Creative': Object.entries(WORKSPACE_LABELS).filter(([key]) =>
-      NARRATIVE_TYPES.has(key)
-    ),
-    'Professional & Business': Object.entries(WORKSPACE_LABELS).filter(([key]) =>
-      [WORKSPACE_TYPES.LEGAL, WORKSPACE_TYPES.BUSINESS, WORKSPACE_TYPES.INVOICE, WORKSPACE_TYPES.PRESENTATION, WORKSPACE_TYPES.EMAIL, WORKSPACE_TYPES.PRESS_RELEASE, WORKSPACE_TYPES.MEETING].includes(key)
-    ),
-    'Technical & Academic': Object.entries(WORKSPACE_LABELS).filter(([key]) =>
-      [WORKSPACE_TYPES.TECHNICAL, WORKSPACE_TYPES.RESEARCH, WORKSPACE_TYPES.DOCUMENTATION, WORKSPACE_TYPES.GRANT, WORKSPACE_TYPES.CASE_STUDY].includes(key)
-    ),
-    'General': Object.entries(WORKSPACE_LABELS).filter(([key]) =>
-      key === WORKSPACE_TYPES.GENERAL
-    )
-  }
+const currentWorkspaceConfig = computed(() => {
+  return VISIBLE_WORKSPACE_CONFIGS.find(w => w.type === projectCategory.value)
 })
 
 watch(projectCategory, (newCat) => {
@@ -57,47 +42,13 @@ watch(projectCategory, (newCat) => {
     [WORKSPACE_TYPES.CREATIVE]: 'My Novel',
     [WORKSPACE_TYPES.NOVEL]: 'The Last Kingdom',
     [WORKSPACE_TYPES.SCREENPLAY]: 'Untitled Script',
-    [WORKSPACE_TYPES.LEGAL]: 'Service Agreement NDA',
-    [WORKSPACE_TYPES.TECHNICAL]: 'System Architecture Specification',
-    [WORKSPACE_TYPES.BUSINESS]: 'Q3 Market Expansion Plan',
-    [WORKSPACE_TYPES.RESEARCH]: 'Theoretical Physics Analysis',
-    [WORKSPACE_TYPES.INVOICE]: 'Invoice #001',
-    [WORKSPACE_TYPES.PRESENTATION]: 'Pitch Deck — [Company Name]',
-    [WORKSPACE_TYPES.EMAIL]: 'Welcome Campaign',
-    [WORKSPACE_TYPES.DOCUMENTATION]: 'Product User Guide',
-    [WORKSPACE_TYPES.PRESS_RELEASE]: 'Press Release — [Announcement]',
-    [WORKSPACE_TYPES.GRANT]: 'Grant Proposal — [Project]',
-    [WORKSPACE_TYPES.MEETING]: 'Meeting Notes — [Date]',
-    [WORKSPACE_TYPES.CASE_STUDY]: 'Case Study — [Customer]',
-    [WORKSPACE_TYPES.GENERAL]: 'My Document'
   }
   projectName.value = defaults[newCat] || 'My Document'
 })
 
 async function handleNextStep1() {
   if (!canProceedStep1.value) return
-  if (NARRATIVE_TYPES.has(projectCategory.value)) {
-    currentStep.value = 2
-  } else {
-    await createProjectDirectly()
-  }
-}
-
-async function createProjectDirectly() {
-  isCreating.value = true
-  try {
-    await projectStore.createNewProject(
-      projectName.value.trim(),
-      projectCategory.value,
-      projectSynopsis.value.trim(),
-      selectedBlueprintId.value
-    )
-    currentStep.value = 3
-  } catch (e) {
-    console.error('Failed to create project:', e)
-  } finally {
-    isCreating.value = false
-  }
+  currentStep.value = 2
 }
 
 async function handleNextStep2() {
@@ -155,46 +106,39 @@ function handleSkipSetup() {
             </p>
           </div>
 
-          <div class="space-y-5">
-            <div v-for="(types, categoryName) in workspaceCategories" :key="categoryName">
-              <h3 v-if="types.length > 0" class="text-[10px] uppercase tracking-[0.12em] text-text-hint font-ui mb-2.5 px-1">
-                {{ categoryName }}
-              </h3>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <AppTooltip
-                  v-for="[key, label] in types"
-                  :key="key"
-                  :text="WORKSPACE_DESCRIPTIONS[key]"
-                  position="bottom"
-                >
-                  <button
-                    type="button"
-                    :class="[
-                      'w-full flex flex-col items-start gap-1.5 px-3 py-3 rounded-xl border text-left transition-all duration-150 group',
-                      projectCategory === key
-                        ? 'border-accent bg-accent/10 text-accent ring-1 ring-accent/30 shadow-warm-sm'
-                        : 'border-border-subtle bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:border-border-subtle/80'
-                    ]"
-                    @click="projectCategory = key"
-                  >
-                    <BaseIcon
-                      :name="WORKSPACE_ICONS[key] || 'file'"
-                      :size="20"
-                      :class="projectCategory === key ? 'text-accent' : 'text-text-hint group-hover:text-text-secondary'"
-                    />
-                    <div class="text-xs font-medium leading-tight">{{ label }}</div>
-                    <div v-if="projectCategory === key" class="absolute top-2 right-2">
-                      <BaseIcon name="check-circle" :size="14" class="text-accent" />
-                    </div>
-                  </button>
-                </AppTooltip>
-              </div>
-            </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <AppTooltip
+              v-for="ws in VISIBLE_WORKSPACE_CONFIGS"
+              :key="ws.type"
+              :text="ws.description"
+              position="bottom"
+            >
+              <button
+                type="button"
+                :class="[
+                  'w-full flex flex-col items-start gap-1.5 px-3 py-3 rounded-xl border text-left transition-all duration-150 group',
+                  projectCategory === ws.type
+                    ? 'border-accent bg-accent/10 text-accent ring-1 ring-accent/30 shadow-warm-sm'
+                    : 'border-border-subtle bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:border-border-subtle/80'
+                ]"
+                @click="projectCategory = ws.type"
+              >
+                <BaseIcon
+                  :name="ws.icon"
+                  :size="20"
+                  :class="projectCategory === ws.type ? 'text-accent' : 'text-text-hint group-hover:text-text-secondary'"
+                />
+                <div class="text-xs font-medium leading-tight">{{ ws.label }}</div>
+                <div v-if="projectCategory === ws.type" class="absolute top-2 right-2">
+                  <BaseIcon name="check-circle" :size="14" class="text-accent" />
+                </div>
+              </button>
+            </AppTooltip>
           </div>
 
           <div v-if="projectCategory" class="bg-bg-tertiary/80 border border-border-subtle rounded-xl p-4 space-y-3">
             <p class="text-xs text-text-hint leading-relaxed">
-              {{ WORKSPACE_DESCRIPTIONS[projectCategory] }}
+              {{ currentWorkspaceConfig?.description }}
             </p>
             
             <div>
@@ -217,7 +161,7 @@ function handleSkipSetup() {
                   class="px-5 py-2.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   @click="handleNextStep1"
                 >
-                  {{ NARRATIVE_TYPES.has(projectCategory) ? 'Next' : (isCreating ? 'Creating...' : 'Create') }}
+                  {{ isCreating ? 'Creating...' : 'Next' }}
                 </button>
               </div>
             </div>

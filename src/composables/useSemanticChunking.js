@@ -126,7 +126,7 @@ export async function computeSemanticChunks(text, options = {}) {
     return [{ text: text, sentences: [...sentences], startIdx: 0, endIdx: 0 }]
   }
 
-  const embeddings = await getEmbeddings(sentences, {
+  const { vectors: embeddings } = await getEmbeddings(sentences, {
     provider: embeddingProvider,
     model: embeddingModel
   })
@@ -171,7 +171,7 @@ async function recursiveSplit(chunk, maxChars, provider, model, threshold) {
     }]
   }
 
-  const embeddings = await getEmbeddings(sentences, { provider, model })
+  const { vectors: embeddings } = await getEmbeddings(sentences, { provider, model })
   const subChunks = computeChunksForSentences(sentences, embeddings, threshold)
 
   const result = []

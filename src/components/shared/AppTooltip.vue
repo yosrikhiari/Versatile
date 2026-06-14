@@ -9,7 +9,10 @@ import { useTooltipManager } from '../../composables/useTooltipManager'
 const GAP = 8
 
 const props = defineProps({
-  text: String,
+  text: {
+    type: String,
+    default: ''
+  },
   position: {
     type: String,
     default: 'top',

@@ -1,5 +1,5 @@
 <template>
-  <div class="voice-upload-modal" v-if="isOpen">
+  <div v-if="isOpen" class="voice-upload-modal">
     <!-- Backdrop -->
     <div class="modal-backdrop" @click="close"></div>
 
@@ -7,7 +7,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white">Upload Sample Text</h2>
-        <button @click="close" class="close-btn">✕</button>
+        <button class="close-btn" @click="close">✕</button>
       </div>
 
       <div class="modal-body">
@@ -21,10 +21,10 @@
           <textarea
             id="sample-text"
             v-model="sampleText"
-            @input="updatePreview"
             placeholder="Paste your sample text here (min 100 words recommended)..."
             class="textarea"
             rows="8"
+            @input="updatePreview"
           ></textarea>
           <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {{ sampleText.split(/\s+/).length }} words
@@ -69,11 +69,11 @@
 
       <!-- Modal Footer -->
       <div class="modal-footer">
-        <button @click="close" class="btn-secondary">Cancel</button>
+        <button class="btn-secondary" @click="close">Cancel</button>
         <button
-          @click="handleMerge"
           :disabled="!sampleText.trim() || isProcessing || sampleText.split(/\s+/).length < 50"
           class="btn-primary"
+          @click="handleMerge"
         >
           {{ isProcessing ? 'Merging...' : 'Merge with Profile' }}
         </button>
@@ -83,14 +83,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { analyzeVoiceProfile } from '@/services/generation/voiceAnalyzer'
 import { useVoiceFromManuscript } from '@/composables/useVoiceFromManuscript'
 import { useStoryBibleStore } from '@/stores/storyBibleStore'
 import { useManuscriptStore } from '@/stores/manuscriptStore'
 import { useNotifications } from '@/composables/useNotifications'
 
-const props = defineProps({
+defineProps({
   isOpen: {
     type: Boolean,
     default: false

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { countWords, stripHtmlTags, truncate } from '../../utils/textUtils'
 
 describe('textUtils', () => {

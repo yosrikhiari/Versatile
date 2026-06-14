@@ -5,6 +5,63 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* === Versatile Design Tokens v2 (PRD) === */
+    --vers-bg-base: #12100E;
+    --vers-bg-panel: #1A1714;
+    --vers-bg-canvas: #1F1C18;
+    --vers-bg-hover: #2A2520;
+    --vers-bg-elevated: #2A2A3E;
+    --vers-border-subtle: #2E2A25;
+    --vers-border-focus: #C8922A;
+    --vers-accent-primary: #C8922A;
+    --vers-accent-primary-rgb: 200, 146, 42;
+    --vers-accent-secondary: #8B6914;
+    --vers-text-primary: #E8DCC8;
+    --vers-text-secondary: #C4B8A0;
+    --vers-text-muted: #7A6E62;
+    --vers-text-faint: #3D3730;
+    --vers-glow-loading-rgb: 200, 146, 42;
+
+    /* JS entity type accent colors (graph node fills) */
+    --vers-entity-character: #8B5CF6;
+    --vers-entity-location: #10B981;
+    --vers-entity-plotThread: #F59E0B;
+
+    /* JS edge relationship type colors (graph edge strokes) */
+    --vers-edge-appears_in: #4fc3f7;
+    --vers-edge-involved_in: #ce93d8;
+    --vers-edge-located_at: #80cbc4;
+    --vers-edge-intersects_with: #80cbc4;
+    --vers-edge-features: #ce93d8;
+    --vers-edge-connects_to: #888888;
+    --vers-edge-ally: #f48fb1;
+    --vers-edge-enemy: #ef5350;
+    --vers-edge-family: #ce93d8;
+    --vers-edge-romantic: #f06292;
+    --vers-edge-mentor: #ba68c8;
+    --vers-edge-rival: #ff7043;
+    --vers-edge-neutral: #90a4ae;
+
+    /* JS timeline status colors (thread indicators) */
+    --vers-status-open: #22c55e;
+    --vers-status-in_progress: #3b82f6;
+    --vers-status-resolved: #6b7280;
+    --vers-status-closed: #4b5563;
+
+    /* JS canvas element type accent colors (element cards) */
+    --vers-element-section: #6366f1;
+    --vers-element-character: #ec4899;
+    --vers-element-location: #10b981;
+    --vers-element-plotpoint: #f59e0b;
+    --vers-element-note: #8b5cf6;
+
+    /* Default fallback colors (JS inline styles) */
+    --vers-default-fallback: #6366f1;
+    --vers-default-edge: #888888;
+    --vers-default-other: #9ca3af;
+  }
+
   html, body, #app {
     height: 100%;
     margin: 0;
@@ -12,29 +69,29 @@
   }
 
   body {
-    background-color: #0f0e0d;
-    color: #e8e0d5;
+    background-color: var(--vers-bg-base);
+    color: var(--vers-text-primary);
     font-family: 'Inter', system-ui, sans-serif;
   }
 
   .bg-manuscript-editor {
-    background-color: #1a1816;
+    background-color: var(--vers-bg-panel);
   }
 
   .editor-wrapper {
-    background: #242220;
-    border: 1px solid rgba(201, 169, 110, 0.08);
+    background: var(--vers-bg-canvas);
+    border: 1px solid rgba(var(--vers-accent-primary-rgb), 0.08);
     border-radius: 8px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
   }
 
   ::selection {
-    background: rgba(201, 169, 110, 0.3);
-    color: #e8e0d5;
+    background: rgba(var(--vers-accent-primary-rgb), 0.3);
+    color: var(--vers-text-primary);
   }
 
   *:focus-visible {
-    outline: 2px solid #c9a96e;
+    outline: 2px solid var(--vers-accent-primary);
     outline-offset: 2px;
   }
 }
@@ -45,21 +102,21 @@
     background: rgba(26, 24, 22, 0.88);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border-bottom: 1px solid rgba(201, 169, 110, 0.1);
+    border-bottom: 1px solid rgba(var(--vers-accent-primary-rgb), 0.1);
   }
 
   .glass-panel {
     background: rgba(36, 34, 32, 0.92);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(201, 169, 110, 0.14);
+    border: 1px solid rgba(var(--vers-accent-primary-rgb), 0.14);
   }
 
   .glass-modal {
     background: rgba(26, 24, 22, 0.95);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(201, 169, 110, 0.18);
+    border: 1px solid rgba(var(--vers-accent-primary-rgb), 0.18);
   }
 
   /* ── Ambient Glow ── */
@@ -74,8 +131,8 @@
     pointer-events: none;
     z-index: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201, 169, 110, 0.06) 0%, transparent 70%),
-      radial-gradient(ellipse 60% 40% at 30% 100%, rgba(201, 169, 110, 0.03) 0%, transparent 60%);
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(var(--vers-accent-primary-rgb), 0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 30% 100%, rgba(var(--vers-accent-primary-rgb), 0.03) 0%, transparent 60%);
   }
 
   /* ── Editor Ambient Glow ── */
@@ -93,7 +150,7 @@
     height: 600px;
     pointer-events: none;
     z-index: 0;
-    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201, 169, 110, 0.07) 0%, transparent 70%);
+    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(var(--vers-accent-primary-rgb), 0.07) 0%, transparent 70%);
   }
 
   /* ── Paper Grain Texture ── */
@@ -116,7 +173,7 @@
   /* ── Scrollbar ── */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(74, 69, 64, 0.5) transparent;
+    scrollbar-color: rgba(46, 42, 37, 0.5) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -129,13 +186,13 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(74, 69, 64, 0.5);
+    background: rgba(46, 42, 37, 0.5);
     border-radius: 3px;
     transition: background 0.2s ease;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(90, 85, 80, 0.7);
+    background: rgba(58, 54, 48, 0.7);
   }
 
   /* ── Interactive Elements ── */
@@ -157,7 +214,7 @@
 
   .btn-elevated:hover {
     @apply -translate-y-[1px];
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 1px rgba(201,169,110,0.08);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 1px rgba(var(--vers-accent-primary-rgb), 0.08);
   }
 
   .btn-elevated:active {
@@ -197,7 +254,7 @@
   font-family: 'Crimson Pro', Georgia, serif;
   font-size: 19px;
   line-height: 2;
-  color: #ede5d8;
+  color: var(--vers-text-primary);
   background-color: transparent;
   outline: none;
   min-height: 60vh;
@@ -206,22 +263,22 @@
 }
 
 .tiptap-editor .ProseMirror p {
-  color: #ede5d8;
+  color: var(--vers-text-primary);
   margin-bottom: 1em;
 }
 
 .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: #9e9080;
+  color: var(--vers-text-muted);
   pointer-events: none;
   height: 0;
   font-style: italic;
 }
 
 .tiptap-editor .ProseMirror::selection {
-  background: rgba(201, 169, 110, 0.25);
-  color: #ede5d8;
+  background: rgba(var(--vers-accent-primary-rgb), 0.25);
+  color: var(--vers-text-primary);
 }
 
 /* ── Flow Mode Desaturation ── */

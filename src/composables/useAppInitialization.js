@@ -12,6 +12,7 @@ import { useStateSummarizer } from './useStateSummarizer'
 import { useStoryDocuments } from './useStoryDocuments'
 import { STORAGE_KEYS } from '../config/storageKeys'
 import { useLocalStorage } from './useLocalStorage'
+import { resume as resumeEmbeddingQueue } from '../services/embeddingQueue'
 
 export function useAppInitialization() {
   const projectStore = useProjectStore()
@@ -83,6 +84,10 @@ export function useAppInitialization() {
 
     const { regenerateAllDocuments } = useStoryDocuments()
     await regenerateAllDocuments(projectStore.currentProjectId)
+    const recovered = await resumeEmbeddingQueue(projectStore.currentProjectId)
+    if (recovered > 0) {
+      console.log(`[resume] Re-indexing ${recovered} unembedded chunks`)
+    }
   }
 
   function isOnboardingDismissed() {

@@ -209,31 +209,6 @@ export function useManuscriptContext() {
     return { contextText: parts.join('\n'), totalChars, truncated }
   }
 
-  function getAllSubsectionEmbeddings() {
-    const cache = getEmbeddingCache()
-    const subsectionEmbeddings = []
-    for (const [key, value] of Object.entries(cache)) {
-      if (key.startsWith('subsection_') && value.embedding && value.text) {
-        const subsectionId = parseInt(key.replace('subsection_', ''), 10)
-        subsectionEmbeddings.push({
-          subsectionId,
-          embedding: value.embedding,
-          text: value.text
-        })
-      }
-    }
-    return subsectionEmbeddings
-  }
-
-  function getSubsectionById(subsectionId) {
-    return manuscriptStore.subsections.find(s => s.id === subsectionId)
-  }
-
-  function getSectionOrder(sectionId) {
-    const section = manuscriptStore.sortedSections.find(s => s.id === sectionId)
-    return section?.order ?? 0
-  }
-
   async function retrieveRelevantChunks(generatorType, maxChars) {
     try {
       const queryText = GENERATOR_TYPE_QUERIES[generatorType] || GENERATOR_TYPE_QUERIES.spark
@@ -258,7 +233,7 @@ export function useManuscriptContext() {
       const chunkTexts = chunks.map(c => c.text).filter(Boolean)
       if (chunkTexts.length === 0) return null
 
-      const chunkEmbeddings = await getEmbeddings(chunkTexts, {
+      const { vectors: chunkEmbeddings } = await getEmbeddings(chunkTexts, {
         provider: embeddingProvider,
         model: embeddingModel
       })
@@ -278,7 +253,6 @@ export function useManuscriptContext() {
 
       const selected = []
       let totalChars = 0
-      const sectionTitles = new Set()
 
       for (const item of scored) {
         const chars = item.text.length + 2

@@ -47,8 +47,8 @@ describe('sanitizeJsonResponse', () => {
     expect(sanitizeJsonResponse('{"x": "hello"}')).toEqual({ x: 'hello' })
   })
 
-  it('handles arrays', () => {
-    expect(sanitizeJsonResponse('{"tags": ["a", "b"]}')).toEqual({ tags: 'a; b' })
+  it('preserves arrays', () => {
+    expect(sanitizeJsonResponse('{"tags": ["a", "b"]}')).toEqual({ tags: ['a', 'b'] })
   })
 
   it('handles null/undefined as empty string', () => {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { enhancePlotThread, enhanceSingleField } from '../../composables/useOllama'
@@ -7,10 +7,11 @@ import { useManuscriptContext } from '../../composables/useManuscriptContext'
 import { useNotifications } from '../../composables/useNotifications'
 import draggable from 'vuedraggable'
 import BaseIcon from '../shared/BaseIcon.vue'
-import EntityExtractionDialog from './EntityExtractionDialog.vue'
-
 const props = defineProps({
-  threads: Array
+  threads: {
+    type: Array,
+    default: () => []
+  }
 })
 
 const storyBibleStore = useStoryBibleStore()
@@ -273,33 +274,7 @@ function scanForEntities() {
   showExtractionDialog.value = true
 }
 
-async function handleCreateEntities(data) {
-  if (!projectStore.currentProjectId) return
-  
-  for (const char of data.characters) {
-    await storyBibleStore.addCharacterData(projectStore.currentProjectId, {
-      name: char.name,
-      role: '',
-      goal: '',
-      voice: '',
-      notes: `Auto-created from plot thread: "${editingThread.value?.title || 'Unknown'}"`
-    })
-  }
-  
-  for (const loc of data.locations) {
-    await storyBibleStore.addLocationData(projectStore.currentProjectId, {
-      name: loc.name,
-      description: '',
-      notes: `Auto-created from plot thread: "${editingThread.value?.title || 'Unknown'}"`
-    })
-  }
-  
-  showExtractionDialog.value = false
-  
-  const created = data.characters.length + data.locations.length
-  const msg = created === 1 ? '1 new entity created' : `${created} new entities created`
-  console.log(msg)
-}
+
 </script>
 
 <template>
@@ -476,7 +451,7 @@ async function handleCreateEntities(data) {
 <style scoped>
 .ghost {
   opacity: 0.5;
-  background: #6366f1;
+  background: var(--vers-accent-primary);
   border-radius: 8px;
 }
 .drag {

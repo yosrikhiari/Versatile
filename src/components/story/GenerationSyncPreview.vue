@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
-const props = defineProps({
+defineProps({
   changes: {
     type: Array,
     default: () => []
@@ -16,10 +16,6 @@ const props = defineProps({
 const emit = defineEmits(['confirm'])
 
 const localChanges = ref([])
-
-function syncChanges() {
-  localChanges.value = props.changes.map(c => ({ ...c }))
-}
 
 const characterChanges = computed(() => localChanges.value.filter(c => c.type === 'character'))
 const locationChanges = computed(() => localChanges.value.filter(c => c.type === 'location'))
@@ -93,8 +89,8 @@ function handleConfirm() {
         <input
           type="checkbox"
           :checked="change._selected"
-          @change="toggleChange(localChanges.indexOf(change))"
           class="mt-0.5 accent-accent"
+          @change="toggleChange(localChanges.indexOf(change))"
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
@@ -121,8 +117,8 @@ function handleConfirm() {
         <input
           type="checkbox"
           :checked="change._selected"
-          @change="toggleChange(localChanges.indexOf(change))"
           class="mt-0.5 accent-accent"
+          @change="toggleChange(localChanges.indexOf(change))"
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
@@ -149,8 +145,8 @@ function handleConfirm() {
         <input
           type="checkbox"
           :checked="change._selected"
-          @change="toggleChange(localChanges.indexOf(change))"
           class="mt-0.5 accent-accent"
+          @change="toggleChange(localChanges.indexOf(change))"
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">

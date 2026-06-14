@@ -1,19 +1,18 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, inject } from 'vue'
 import { useSparkStore } from '../../stores/sparkStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
-import { useSettingsStore } from '../../stores/settingsStore'
 import { saveOpenAIKey as saveKeyFromOllama, useCompactConversation } from '../../composables/useOllama'
 import { useContextRetrieval } from '../../composables/useContextRetrieval'
-import { PROVIDER_LABELS, FEATURES } from '../../config/ai'
+
 import SparkPromptCard from './SparkPromptCard.vue'
 import BlueprintResult from './BlueprintResult.vue'
 import IdeaInput from './IdeaInput.vue'
 import ChapterContextSelector from '../shared/ChapterContextSelector.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
-const props = defineProps({
+defineProps({
   embedded: Boolean
 })
 const emit = defineEmits(['useAsContext'])
@@ -21,16 +20,8 @@ const emit = defineEmits(['useAsContext'])
 const sparkStore = useSparkStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
-const settingsStore = useSettingsStore()
 const injectedInsert = inject('insertAtCursor', null)
 const { dryRun } = useContextRetrieval()
-
-const sparkModelLabel = computed(() => {
-  const provider = settingsStore.resolveFeatureProvider(FEATURES.SPARK)
-  const model = settingsStore.resolveFeatureModel(FEATURES.SPARK)
-  const label = PROVIDER_LABELS[provider] || provider
-  return model ? `${label} · ${model}` : label
-})
 
 const contextSelectorRef = ref(null)
 
@@ -48,11 +39,8 @@ const compactConversationId = ref('spark_default')
 
 const {
   compactConversation,
-  shouldSuggestCompact,
   isCompacting: compactIsCompacting,
-  startConversation,
-  addTurn,
-  clearConversation
+  addTurn
 } = useCompactConversation()
 
 async function handleCompact() {
@@ -164,14 +152,16 @@ function switchTab(tab) {
     <div class="px-5 pt-5 pb-4 border-b border-border-subtle/30 flex-shrink-0 bg-bg-secondary/10">
       <div class="flex items-center justify-between mb-4">
         <div class="flex gap-6">
-          <button @click="switchTab('blueprint')" 
-                  class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none"
-                  :class="['blueprint', 'freewrite'].includes(activeTab) ? 'text-accent' : 'text-text-hint hover:text-text-secondary'">
+          <button
+class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none" 
+                  :class="['blueprint', 'freewrite'].includes(activeTab) ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
+                  @click="switchTab('blueprint')">
             ~ Develop Idea ~
           </button>
-          <button @click="switchTab('prompt')" 
-                  class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none"
-                  :class="activeTab === 'prompt' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'">
+          <button
+class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none" 
+                  :class="activeTab === 'prompt' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
+                  @click="switchTab('prompt')">
             ~ Get Prompts ~
           </button>
         </div>
@@ -184,10 +174,11 @@ function switchTab(tab) {
           >
             Compact
           </button>
-          <button @click="switchTab('history')" 
-                  class="transition-colors duration-300 focus:outline-none"
-                  :class="activeTab === 'history' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'" 
-                  title="History">
+          <button
+class="transition-colors duration-300 focus:outline-none" 
+                  :class="activeTab === 'history' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
+                  title="History" 
+                  @click="switchTab('history')">
             <BaseIcon name="clock" :size="16" />
           </button>
         </div>

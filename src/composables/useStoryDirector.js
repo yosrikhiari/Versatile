@@ -1,62 +1,19 @@
 import { ref } from 'vue'
 import { aiGenerate, aiStream } from '../services/aiService'
-import { FEATURES } from '../config/ai'
+import { FEATURES, RESEARCH_CHUNKS_DEFAULT } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { useProjectStore } from '../stores/projectStore'
+import { getAllChunksForProject } from '../services/researchDb'
+import { getEmbedding } from '../services/embeddingService'
+import { cosineSimilarity } from '../services/ollamaService'
+import { useLocalStorage } from './useLocalStorage'
+import { RESEARCH_KEYS } from '../config/researchKeys'
 
-const DIRECTOR_SYSTEM_PROMPT = `You are a story architect, not a writer. Your role is to plan story structure based on the provided EVIDENCE.
-
-OUTPUT FORMAT:
-Return ONLY valid JSON with no markdown, no explanation, no code fences.
-The JSON must have exactly two keys: "chapters" (array of chapter objects) and "storyArc" (object).
-
-Each chapter object in the "chapters" array must have this structure:
-{
-  "chapterNumber": number,
-  "title": "string",
-  "goal": "string — what this chapter accomplishes narratively",
-  "arcPosition": "opening" | "rising" | "climax" | "falling" | "resolution",
-  "emotionalTarget": "string — what the READER feels at chapter end",
-  "hookEnding": "string — the beat the chapter closes on",
-  "estimatedWords": number,
-  "scenes": [
-    {
-      "sceneNumber": number,
-      "title": "string",
-      "arcPosition": "setup" | "obstacle" | "turn" | "resolution" | "hook",
-      "sceneFunction": "setup" | "obstacle" | "turn" | "resolution" | "hook",
-      "emotionalGoal": "string — what the reader should feel",
-      "whatChanges": "string — what is different by scene end",
-      "obstacle": "string — the specific barrier or conflict the character must overcome in this scene",
-      "charactersPresent": ["string names"],
-      "characterWants": {
-        "characterName": "what they are trying to achieve in this scene"
-      },
-      "location": "string — the primary setting where this scene takes place",
-      "setup": "what this scene plants for future payoff",
-      "payoff": "what earlier setup this pays off, or 'none'",
-      "sensoryAnchor": "one specific concrete sensory detail",
-      "tension": "low" | "medium" | "high" | "peak",
-      "pacing": "slow" | "medium" | "fast",
-      "estimatedWords": number
-    }
-  ]
+function lexicalScore(query, text) {
+  const tokens = query.toLowerCase().split(/\W+/).filter(Boolean)
+  const lower = text.toLowerCase()
+  return tokens.reduce((sum, t) => sum + (lower.includes(t) ? 1 : 0), 0)
 }
-
-StoryArc object:
-{
-  "premise": "string",
-  "genre": "string",
-  "tone": "string",
-  "emotionalJourney": "hope → dread → earned relief",
-  "centralConflict": "string",
-  "resolution": "string",
-  "totalChapters": number,
-  "totalScenes": number,
-  "totalEstimatedWords": number
-}
-
-Minimum 2 scenes per chapter, maximum 6 scenes per chapter.`
 
 function sanitizeJson(raw) {
   if (!raw || typeof raw !== 'string') return null
@@ -109,7 +66,44 @@ Return ONLY valid JSON with no markdown, no explanation, no code fences.
 The JSON must have a "chapters" array. Each chapter object must contain a "scenes" array with the scene details.`
       }
 
-      const finalSystemPrompt = `${baseDirectorPrompt}\n\n${evidence}`
+      const researchEnabled = useLocalStorage(RESEARCH_KEYS.RESEARCH_ENABLED, true)
+      let researchContext = ''
+      if (researchEnabled.value) {
+        try {
+          const allChunks = await getAllChunksForProject(projectStore.currentProjectId)
+          if (allChunks.length > 0) {
+            const count = Math.min(allChunks.length, RESEARCH_CHUNKS_DEFAULT)
+            let selected = allChunks.slice(0, count)
+            try {
+              const queryText = `Premise: ${goal.premise}. Genre: ${goal.genre || 'Standard'}. Tone: ${goal.tone || 'Professional'}`
+              const queryEmbedding = await getEmbedding(queryText)
+              if (queryEmbedding && allChunks.some(c => c.embedding)) {
+                const withEmb = allChunks.filter(c => c.embedding)
+                const withoutEmb = allChunks.filter(c => !c.embedding)
+                const scored = withEmb
+                  .map(c => ({ chunk: c, score: cosineSimilarity(queryEmbedding, c.embedding) }))
+                  .sort((a, b) => b.score - a.score)
+                selected = scored.slice(0, count).map(s => s.chunk)
+                if (selected.length < count && withoutEmb.length > 0) {
+                  const remaining = count - selected.length
+                  const lexical = withoutEmb
+                    .filter(c => !selected.some(s => s.id === c.id))
+                    .map(c => ({ chunk: c, score: lexicalScore(queryText, c.text) }))
+                    .sort((a, b) => b.score - a.score)
+                  selected = [...selected, ...lexical.slice(0, remaining).map(s => s.chunk)]
+                }
+              }
+            } catch {
+              // embed fallback: use first N chunks
+            }
+            researchContext = selected.map(c => c.text).join('\n\n---\n\n')
+          }
+        } catch {
+          researchContext = ''
+        }
+      }
+
+      const finalSystemPrompt = `${baseDirectorPrompt}\n\n${evidence}${researchContext ? `\n\n## Research Context\n${researchContext}` : ''}`
 
       let accumulated = ''
       const emittedTitles = new Set()

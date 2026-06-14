@@ -6,22 +6,27 @@ export function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS) {
     .reduce((sum, [, val]) => sum + (typeof val === 'string' ? val.length : 0), 0)
 
   if (totalChars <= budget) {
-    return { ...bundle, totalChars, truncated: false }
+    const result = { ...bundle, totalChars, truncated: false }
+    return result
   }
 
   const truncated = { ...bundle }
   const keys = ['entitiesBlock', 'relationshipBlock', 'manuscriptBlock'].filter(k => typeof truncated[k] === 'string')
 
+  const reductionLog = []
   while (totalChars > budget && keys.length > 0) {
     keys.sort((a, b) => (truncated[a] || '').length - (truncated[b] || '').length)
     const target = keys.pop()
     const current = truncated[target] || ''
     const reduced = truncateToLastSentence(current, Math.floor(current.length * 0.6))
-    totalChars -= current.length - reduced.length
+    const reduction = current.length - reduced.length
+    reductionLog.push({ key: target, before: current.length, after: reduced.length, reduction })
+    totalChars -= reduction
     truncated[target] = reduced
   }
 
-  return { ...truncated, totalChars, truncated: totalChars > budget }
+  const result = { ...truncated, totalChars, truncated: totalChars > budget }
+  return result
 }
 
 function truncateToLastSentence(text, maxLength) {

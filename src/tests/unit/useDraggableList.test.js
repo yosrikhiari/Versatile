@@ -66,7 +66,7 @@ describe('useDraggableList', () => {
   })
 
   it('getCloneDragOptions returns clone group options', async () => {
-    const { getCloneDragOptions, DRAG_OPTIONS } = await create()
+    const { getCloneDragOptions } = await create()
     const opts = getCloneDragOptions()
     expect(opts.group.name).toBe('clone')
     expect(opts.group.pull).toBe('clone')

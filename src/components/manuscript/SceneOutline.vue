@@ -10,7 +10,7 @@ import draggable from 'vuedraggable'
 
 const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
-const { startDrag, endDrag } = useDraggableList()
+const { endDrag } = useDraggableList()
 
 const {
   editingScene,
@@ -333,7 +333,7 @@ onMounted(() => {
 <style scoped>
 .ghost {
   opacity: 0.5;
-  background: #6366f1;
+  background: var(--vers-accent-primary);
 }
 .drag {
   opacity: 0.9;

@@ -162,7 +162,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     return id
   }
 
-  async function updateEdgeData(id, edgeData, projectId) {
+  async function updateEdgeData(id, edgeData, _projectId) {
     await updateGraphEdge(id, toRaw(edgeData))
     const index = edges.value.findIndex(e => e.id === id)
     if (index !== -1) {
@@ -170,7 +170,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     }
   }
 
-  async function deleteEdgeData(id, projectId) {
+  async function deleteEdgeData(id, _projectId) {
     await deleteGraphEdge(id)
     edges.value = edges.value.filter(e => e.id !== id)
   }
@@ -213,7 +213,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     return id
   }
 
-  async function updateGroupEdgeData(id, data, projectId) {
+  async function updateGroupEdgeData(id, data, _projectId) {
     await updateGroupEdge(id, toRaw(data))
     const index = groupEdges.value.findIndex(e => e.id === id)
     if (index !== -1) {
@@ -221,7 +221,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     }
   }
 
-  async function deleteGroupEdgeData(id, projectId) {
+  async function deleteGroupEdgeData(id, _projectId) {
     await deleteGroupEdge(id)
     groupEdges.value = groupEdges.value.filter(e => e.id !== id)
   }

@@ -32,12 +32,6 @@ const wordTarget = ref(3500)
 
 const sparkContext = ref('')
 
-const hasSparkResponse = computed(() => {
-  if (sparkStore.currentOutline || sparkStore.currentContent || sparkStore.currentStreamingContent) return true
-  const turns = getTurns('spark_default')
-  return turns.some(t => t.role === 'assistant')
-})
-
 // Human-readable label for what's about to be sent to the generator
 const sparkContextLabel = computed(() => {
   if (sparkStore.currentOutline) {
@@ -180,7 +174,7 @@ async function handleVolumeGenerate() {
       wordTarget: wordTarget.value,
       singleChapter: mode.value === MODE_SCENE || mode.value === MODE_CHAPTER, // Keep compatible for now until follow-up task
       sparkContext: sparkContext.value,
-      onPhaseChange: (p) => {},
+      onPhaseChange: (_p) => {},
       onPartialData: (type, name) => {
         liveEntities.value.push({
           id: Date.now().toString(36) + performance.now().toString(36).replace('.', ''),
@@ -214,7 +208,7 @@ async function handleVolumeConfirmPlan() {
       synopsis: synopsis.value,
       sparkContext: sparkContext.value,
       onPhaseChange: () => {},
-      onChunk: ({ sceneIndex, total, chunk, fullProse, scene }) => {
+      onChunk: ({ sceneIndex, total, _chunk, fullProse, _scene }) => {
         volumeCurrentScene.value = sceneIndex
         volumeTotalScenes.value = total
         volumeStreamingText.value = fullProse
@@ -271,9 +265,6 @@ function handleVolumeReset() {
 async function handleVolumeExportTxt() {
   const scenes = volumeGenerator.writtenScenes.value
   if (scenes.length === 0) return
-  const text = scenes.map((s, i) =>
-    `--- Scene ${i + 1}: ${s.title} ---\n\n${s.prose}`
-  ).join('\n\n')
   await exportAsText({
     title: `Generated Story`,
     scenes: scenes.map(s => ({ title: s.title, prose: s.prose }))
@@ -330,12 +321,6 @@ function getTensionColor(tension) {
   }
 }
 
-function getScoreColor(score) {
-  if (score >= 8) return 'text-green-400 bg-green-950/30 border-green-800/30'
-  if (score >= 5) return 'text-yellow-400 bg-yellow-950/30 border-yellow-800/30'
-  return 'text-red-400 bg-red-950/30 border-red-800/30'
-}
-
 function getPhaseLabel(phase) {
   const labels = {
     bootstrapping: 'Preparing Story Elements',
@@ -370,11 +355,13 @@ function getPhaseLabel(phase) {
             class="flex items-center gap-2 cursor-pointer group"
             @click="tab = m.id"
           >
-            <div class="w-3 h-3 rounded-full border flex items-center justify-center transition-all duration-300"
+            <div
+class="w-3 h-3 rounded-full border flex items-center justify-center transition-all duration-300"
                  :class="tab === m.id ? 'border-accent' : 'border-text-hint/50 group-hover:border-text-secondary'">
               <div v-if="tab === m.id" class="w-1.5 h-1.5 bg-accent rounded-full"></div>
             </div>
-            <span class="text-[11px] font-spark tracking-widest transition-colors duration-300"
+            <span
+class="text-[11px] font-spark tracking-widest transition-colors duration-300"
                   :class="tab === m.id ? 'text-accent' : 'text-text-hint group-hover:text-text-primary'">
               {{ m.label }}
             </span>
@@ -467,8 +454,8 @@ function getPhaseLabel(phase) {
           <div class="flex items-center gap-2 px-1">
             <label class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none">
               <input
-                type="checkbox"
                 v-model="sceneReviewEnabled"
+                type="checkbox"
                 class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
               />
               Pause per scene for review

@@ -342,7 +342,7 @@ export function useStoryOrchestrator() {
   }
 
   function assembleStory(plan, projectId) {
-    const scenes = completedScenes.value.map((s, i) => ({
+    const scenes = completedScenes.value.map((s, _i) => ({
       number: s.number,
       brief: s.brief,
       prose: s.prose,

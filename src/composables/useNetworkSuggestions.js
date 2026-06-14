@@ -893,7 +893,7 @@ Rules:
   }
 
   function generateGroupSuggestions(options = {}) {
-    const { minGroupSize = 2, confidenceThreshold = 0.3 } = options
+    const { minGroupSize = 2 } = options
 
     const suggestions = []
     const characterClusters = findCharacterClusters(minGroupSize)
@@ -997,7 +997,7 @@ Rules:
     return clusters
   }
 
-  function findLocationClusters(minGroupSize = 2) {
+  function findLocationClusters(_minGroupSize = 2) {
     const locations = storyBibleStore.locations
     const plotThreads = storyBibleStore.plotThreads || []
     const edges = storyGraphStore.edges

@@ -1,6 +1,5 @@
 <script setup>
 import { ref, provide } from 'vue'
-import { useProjectStore } from './stores/projectStore'
 import { useFlowSession } from './composables/useFlowSession'
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts'
 import { useAppInitialization } from './composables/useAppInitialization'
@@ -22,11 +21,12 @@ import StoryNetwork from './components/storybible/StoryNetwork.vue'
 import TimelineView from './components/manuscript/TimelineView.vue'
 import SearchOverlay from './components/manuscript/SearchOverlay.vue'
 import ArchiveDrawer from './components/layout/ArchiveDrawer.vue'
+import ResearchPanel from './components/research/ResearchPanel.vue'
 import StoryGeneratorPanel from './components/story/StoryGeneratorPanel.vue'
 import ActivityToast from './components/shared/ActivityToast.vue'
 import ActivityDrawer from './components/shared/ActivityDrawer.vue'
 
-const projectStore = useProjectStore()
+
 const timer = useFlowSession()
 
 const showSettingsModal = ref(false)
@@ -184,6 +184,9 @@ function handleOnboardingSkipWrapper() {
 
       <template #archive>
         <ArchiveDrawer />
+      </template>
+      <template #research>
+        <ResearchPanel />
       </template>
     </AppShell>
 
