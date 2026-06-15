@@ -20,7 +20,12 @@ vi.mock('@/services/aiService', () => ({
 }))
 
 vi.mock('@/config/ai', () => ({
-  FEATURES: { STORY_GENERATION: 'story_generation' }
+  FEATURES: { STORY_GENERATION: 'story_generation' },
+  PROVIDER_DEFAULT: 'ollama',
+  PROVIDERS: { OLLAMA: 'ollama' },
+  FEATURE_DEFAULTS: { story_generation: { provider: 'ollama', model: null } },
+  EMBEDDING_DEFAULTS: { provider: 'ollama', model: 'nomic-embed-text', threshold: 0.75, batchSize: 32 },
+  EMBEDDING_PROVIDERS: { OLLAMA: 'ollama' }
 }))
 
 vi.mock('@/stores/projectStore', () => ({
