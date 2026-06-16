@@ -30,7 +30,8 @@
     "shaders": "^2.5.128",
     "vue": "^3.4.0",
     "vue-router": "^4.2.0",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "pdfjs-dist": "^6.0.227"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
