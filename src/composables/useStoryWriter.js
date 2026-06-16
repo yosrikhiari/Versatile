@@ -160,7 +160,7 @@ export function useStoryWriter() {
   const isWriting = ref(false)
   const writeError = ref(null)
 
-  async function writeScene({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected }) {
+  async function writeScene({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson }) {
     isWriting.value = true
     writeError.value = null
 
@@ -236,6 +236,7 @@ ${embeddingContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${e
 SCENE BRIEF:
 ${briefSection}
 
+${existingEntitiesJson ? `EXISTING ENTITIES (already established in the story — maintain these):\n${existingEntitiesJson}\n` : ''}
 STORY ARC (for tonal reference):
 - Genre: ${storyArc?.genre || ''}
 - Tone: ${storyArc?.tone || ''}

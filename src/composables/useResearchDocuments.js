@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { db } from '../services/db-core'
 import {
   getAllResearchDocuments,
   addResearchDocument,
@@ -10,6 +11,23 @@ import {
 import { extractFileText } from '../services/pdfExtractorService'
 import { chunkDocument } from '../services/documentChunker'
 import { useEmbeddingIndexer } from './useEmbeddingIndexer'
+function splitText(text, maxSegmentSize = 500000) {
+  if (text.length <= maxSegmentSize) return [text]
+  const segments = []
+  const parts = text.split(/(?<=\n\n)/)
+  let current = ''
+  for (const part of parts) {
+    if (current.length + part.length > maxSegmentSize && current.length > 0) {
+      segments.push(current)
+      current = part
+    } else {
+      current += part
+    }
+  }
+  if (current.length > 0) segments.push(current)
+  return segments
+}
+
 export function useResearchDocuments(projectId) {
   const documents = ref([])
   const isImporting = ref(false)
@@ -51,24 +69,36 @@ export function useResearchDocuments(projectId) {
           importedAt: Date.now()
         })
 
-        importProgress.value = `Chunking ${file.name}...`
-        const chunks = await chunkDocument(result.text)
+        const segments = splitText(result.text)
+        let allChunks = []
+        const allDocTags = new Set()
 
-        const chunkRows = chunks.map(c => ({
+        for (let s = 0; s < segments.length; s++) {
+          importProgress.value = `Chunking ${file.name} (segment ${s + 1}/${segments.length})...`
+          const chunks = await chunkDocument(segments[s])
+          const docTags = chunks.documentTags || []
+          for (const t of docTags) allDocTags.add(t)
+          allChunks.push(...chunks)
+        }
+
+        await db.researchDocuments.update(docId, { tags: [...allDocTags].slice(0, 20) })
+
+        const chunkRows = allChunks.map((c, i) => ({
           documentId: docId,
           projectId: projectId.value,
           text: c.text,
-          chunkIndex: c.chunkIndex,
+          chunkIndex: i,
           heading: c.heading,
           sentenceCount: c.sentenceCount,
           charCount: c.charCount,
-          tokenEstimate: c.tokenEstimate
+          tokenEstimate: c.tokenEstimate,
+          tags: c.tags || []
         }))
 
         const ids = await addResearchChunks(chunkRows)
 
         importProgress.value = `Indexing ${file.name}...`
-        const idTextPairs = ids.map((id, i) => ({ id, text: chunks[i].text }))
+        const idTextPairs = ids.map((id, i) => ({ id, text: allChunks[i].text }))
         enqueueChunks(docId, idTextPairs)
       }
 
@@ -95,6 +125,14 @@ export function useResearchDocuments(projectId) {
     return getAllChunksForProject(projectId.value)
   }
 
+  async function reindexDocument(documentId) {
+    const doc = await db.researchDocuments.get(documentId)
+    if (!doc?.text) throw new Error('Document text unavailable for re-index')
+    await deleteResearchDocument(documentId)
+    const file = new File([doc.text], doc.fileName, { type: doc.fileType === 'pdf' ? 'application/pdf' : 'text/plain' })
+    await importFiles([file])
+  }
+
   return {
     documents,
     isImporting,
@@ -104,6 +142,7 @@ export function useResearchDocuments(projectId) {
     importFiles,
     removeDocument,
     getDocumentChunks,
-    getAllChunks
+    getAllChunks,
+    reindexDocument
   }
 }

@@ -1,5 +1,5 @@
 import { getOllamaEndpoint } from '../config/ollama'
-import { EMBEDDING_PROVIDERS, EMBEDDING_DEFAULTS } from '../config/ai'
+import { EMBEDDING_PROVIDERS, EMBEDDING_DEFAULTS, EMBEDDING_PROVIDER_CAPABILITIES } from '../config/ai'
 
 const MISTRAL_API_URL = 'https://api.mistral.ai/v1/embeddings'
 
@@ -18,11 +18,30 @@ export function hasMistralKey() {
 async function embedBatch(inputs, model, provider) {
   if (inputs.length === 0) return []
 
+  const caps = EMBEDDING_PROVIDER_CAPABILITIES[provider] || EMBEDDING_PROVIDER_CAPABILITIES[EMBEDDING_PROVIDERS.OLLAMA]
+  const batchSize = caps.maxBatchSize || 32
+
+  if (inputs.length <= batchSize) {
+    return embedBatchInternal(inputs, model, provider)
+  }
+
+  const allEmbeddings = []
+  for (let i = 0; i < inputs.length; i += batchSize) {
+    const batch = inputs.slice(i, i + batchSize)
+    const results = await embedBatchInternal(batch, model, provider)
+    allEmbeddings.push(...results)
+  }
+  return allEmbeddings
+}
+
+async function embedBatchInternal(inputs, model, provider) {
+  if (inputs.length === 0) return []
+
   switch (provider) {
     case EMBEDDING_PROVIDERS.MISTRAL: {
       if (!mistralApiKey) throw new Error('Mistral API key not configured in .env')
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 60000)
+      const timeout = setTimeout(() => controller.abort(new DOMException('Embedding request timed out after 60000ms', 'AbortError')), 60000)
       try {
         const response = await fetch(MISTRAL_API_URL, {
           method: 'POST',
@@ -42,13 +61,16 @@ async function embedBatch(inputs, model, provider) {
         return data.data.map(d => d.embedding)
       } catch (error) {
         clearTimeout(timeout)
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          throw new Error('Embedding request timed out after 60000ms')
+        }
         throw error
       }
     }
     case EMBEDDING_PROVIDERS.OLLAMA:
     default: {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 60000)
+      const timeout = setTimeout(() => controller.abort(new DOMException('Embedding request timed out after 60000ms', 'AbortError')), 60000)
       try {
         const response = await fetch(`${getOllamaEndpoint()}/api/embed`, {
           method: 'POST',
@@ -69,6 +91,9 @@ async function embedBatch(inputs, model, provider) {
         return data.embeddings
       } catch (error) {
         clearTimeout(timeout)
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          throw new Error('Embedding request timed out after 60000ms')
+        }
         throw error
       }
     }

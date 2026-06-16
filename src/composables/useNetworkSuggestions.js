@@ -677,8 +677,6 @@ Analyze these elements using semantic understanding and suggest meaningful new c
       await storyGraphStore.addEdgeData(projectStore.currentProjectId, edgeData)
       await storyGraphStore.loadEdges(projectStore.currentProjectId)
       
-      console.log('[applySuggestion] edge added for:', suggestion.sourceType, suggestion.sourceId, '→', suggestion.targetType, suggestion.targetId)
-      
       return { success: true, reason: null, message: null }
     } catch (error) {
       return { success: false, reason: 'error', message: error.message || 'Failed to add connection' }
@@ -753,8 +751,6 @@ Analyze these elements using semantic understanding and suggest meaningful new c
         ? `\n\nRelationship context:\n${relationshipContext}\n`
         : ''
 
-      console.log('[AutoGenerate] Focus prompt:', prompt)
-
       const systemPrompt = `You are a story structure analyst. Given story entities and context, suggest meaningful narrative connections. Return ONLY a valid JSON array. No markdown, no explanation.`
 
       const userPrompt = `${synopsisContext}${genreContext}${contextLine}${relationshipContextSection}
@@ -784,13 +780,11 @@ Rules:
       let rawSuggestions = []
 
       try {
-        console.log('[AutoGenerate] Attempting AI generation...')
         const response = await aiGenerate(userPrompt, systemPrompt, { feature: FEATURES.NETWORK })
         const cleaned = response.replace(/```json\s*/gi, '').replace(/```/g, '').trim()
         const match = cleaned.match(/\[[\s\S]*\]/)
         if (match) {
           rawSuggestions = JSON.parse(match[0])
-          console.log('[AutoGenerate] AI returned suggestions:', rawSuggestions.length)
         }
       } catch (aiError) {
         console.warn('[AutoGenerate] AI generation failed, falling back to embeddings:', aiError)
@@ -827,10 +821,7 @@ Rules:
             .filter(Boolean)
         : []
 
-      // DEBUG: log fallback case
       if (enriched.length === 0) {
-        console.log('[AutoGenerate] Falling back to getAllSuggestions() - AI returned nothing or failed')
-        
         let allSuggestions = getAllSuggestions()
         
         // Filter to only canvas entities if specified
@@ -844,18 +835,14 @@ Rules:
         
         // When falling back, STILL apply prompt filtering if provided
         if (prompt?.trim()) {
-          console.log('[AutoGenerate] Fallback with focus:', prompt)
-          // Simple keyword-based filtering - keep suggestions where prompt keywords appear in names/roles/descriptions
           const keywords = prompt.toLowerCase().split(/\s+/).filter(k => k.length > 2)
           const filtered = allSuggestions.filter(s => {
             const text = `${s.sourceLabel} ${s.targetLabel} ${s.rationale}`.toLowerCase()
             return keywords.some(k => text.includes(k))
           })
           enriched = filtered.length > 0 ? filtered : allSuggestions.slice(0, 10)
-          console.log('[AutoGenerate] Fallback filtered suggestions:', enriched.length)
         } else {
           enriched = allSuggestions
-          console.log('[AutoGenerate] Fallback raw suggestions:', enriched.length)
         }
       }
 
@@ -875,9 +862,7 @@ Rules:
         maxConnections
       )
 
-      // LAST RESORT: when AI and embeddings both failed, generate basic connections from entity metadata
       if (filteredSuggestions.length === 0) {
-        console.log('[AutoGenerate] Last-resort fallback: metadata-based connections')
         const fallback = generateMetadataConnections(characters, locations, plotThreads, existingKeys)
         filteredSuggestions = limitConnectionsPerEntity(fallback, maxPerEntity, maxConnections)
         if (filteredSuggestions.length > 0) {
@@ -1093,16 +1078,12 @@ Rules:
     isAnalyzing.value = true
     analysisError.value = ''
 
-    console.log('[AutoGenerateNetworkWithGroups] Focus prompt:', prompt ? prompt.slice(0, 50) + '...' : '(none)')
-
     try {
       await loadEmbeddings(!!existingEntities)
 
       let finalSuggestions = []
       
-      // FIRST: Always try AI generation
       try {
-        console.log('[AutoGenerateNetworkWithGroups] Attempting AI generation...')
         const charactersForPrompt = characters.map(c => ({
           id: c.id, name: c.name,
           role: c.role || '', goal: c.goal || '',
@@ -1149,8 +1130,6 @@ Suggest max 10 connections. Each:
         const match = cleaned.match(/\[[\s\S]*\]/)
         if (match) {
           const aiSuggestions = JSON.parse(match[0])
-          console.log('[AutoGenerateNetworkWithGroups] AI returned:', aiSuggestions.length, 'suggestions')
-          
           finalSuggestions = aiSuggestions.map(s => {
             const sourceEntity = getEntityById(s.sourceType, s.sourceId)
             const targetEntity = getEntityById(s.targetType, s.targetId)
@@ -1168,16 +1147,12 @@ Suggest max 10 connections. Each:
               confidence: s.confidence || 0.7
             }
           }).filter(Boolean)
-        } else {
-          console.log('[AutoGenerateNetworkWithGroups] AI returned no parseable suggestions')
         }
       } catch (aiError) {
         console.warn('[AutoGenerateNetworkWithGroups] AI failed:', aiError.message)
       }
 
-      // SECOND: Fallback to embeddings if no AI results
       if (finalSuggestions.length === 0) {
-        console.log('[AutoGenerateNetworkWithGroups] Falling back to embeddings')
         let allSuggestions = getAllSuggestions()
 
         // Filter to only canvas entities if specified
@@ -1194,15 +1169,11 @@ Suggest max 10 connections. Each:
         const filteredSuggestions = allSuggestions.filter(s => s.confidence >= adjustedThreshold)
         finalSuggestions = limitConnectionsPerEntity(filteredSuggestions, maxPerEntity, maxConnections)
         
-        console.log('[AutoGenerateNetworkWithGroups] Embedding fallback suggestions:', finalSuggestions.length)
       }
 
       let limitedSuggestions = limitConnectionsPerEntity(finalSuggestions, maxPerEntity, maxConnections)
-      console.log('[AutoGenerateNetworkWithGroups] Final connections:', limitedSuggestions.length)
 
-      // LAST RESORT: metadata-based connections when AI and embeddings both failed
       if (limitedSuggestions.length === 0) {
-        console.log('[AutoGenerateNetworkWithGroups] Last-resort fallback: metadata connections')
         const existingKeys = new Set(
           storyGraphStore.edges.map(e => canonicalKey(e.sourceType, String(e.sourceId), e.targetType, String(e.targetId)))
         )
@@ -1210,9 +1181,7 @@ Suggest max 10 connections. Each:
         limitedSuggestions = limitConnectionsPerEntity(fallback, maxPerEntity, maxConnections)
       }
 
-      // Generate groups from connections
       const groupSuggestionList = generateGroupSuggestions({ confidenceThreshold: groupConfidenceThreshold })
-      console.log('[AutoGenerateNetworkWithGroups] Generated groups:', groupSuggestionList.length)
 
       return {
         connections: limitedSuggestions,
@@ -1224,7 +1193,7 @@ Suggest max 10 connections. Each:
       analysisError.value = 'Failed to generate connections. Please try again.'
       return { connections: [], groups: [] }
     } finally {
-isAnalyzing.value = false
+      isAnalyzing.value = false
     }
   }
 

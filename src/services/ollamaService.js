@@ -7,7 +7,7 @@ import Dexie from 'dexie'
 const LOG_PREFIX = '[OllamaService]'
 
 function log(...args) {
-  console.log(LOG_PREFIX, ...args)
+  console.debug(LOG_PREFIX, ...args)
 }
 
 const DEFAULT_EMBEDDING_MODEL = 'nomic-embed-text'
@@ -216,26 +216,6 @@ export async function checkEmbeddingModelAvailable(model = null) {
   }
 }
 
-function sanitizeJSON(text) {
-  let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-  return cleaned
-}
-
-function parseJSONWithRetry(text, retries = 3) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const cleaned = sanitizeJSON(text)
-      return JSON.parse(cleaned)
-    } catch (e) {
-      if (i === retries - 1) throw e
-      if (text.includes('```')) {
-        text = text.replace(/```[\s\S]*?```/g, '')
-      }
-    }
-  }
-  throw new Error('Failed to parse JSON after retries')
-}
-
 export async function ollamaGenerate(prompt, systemPrompt) {
   return await aiGenerate(prompt, systemPrompt, { feature: FEATURES.CONTENT })
 }
@@ -303,4 +283,4 @@ export async function getAvailableModels() {
   }
 }
 
-export { sanitizeJSON, parseJSONWithRetry }
+

@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { getManuscript, saveManuscript, getProject, createProject, updateProject, getAllProjects, updateDailyWordCount, getDailyGoal, getStreakData, getLastSessionData, saveAuthorProfile, getAuthorProfile } from '../services/dbService'
 import { countWords, stripHtmlTags } from '../utils/textUtils'
 import { WORKSPACE_TYPES, WORKSPACE_TERMINOLOGY } from '../config/workspace'
 import { STORAGE_KEYS } from '../config/storageKeys'
+import { useLocalStorage } from '../composables/useLocalStorage'
 
 export const useProjectStore = defineStore('project', () => {
   const currentProjectId = ref(null)
@@ -14,17 +15,9 @@ export const useProjectStore = defineStore('project', () => {
   const documentContentRaw = computed(() => stripHtmlTags(documentContent.value))
   const wordCount = ref(0)
   const sessionWordCount = ref(0)
-  const sessionGoal = ref(500)
+  const sessionGoal = useLocalStorage(STORAGE_KEYS.SESSION_GOAL, 500)
   const dailyGoal = ref(500)
   const dailyWordCount = ref(0)
-
-  // STORAGE_KEYS ref
-  const savedGoal = localStorage.getItem(STORAGE_KEYS.SESSION_GOAL)
-  if (savedGoal) sessionGoal.value = parseInt(savedGoal, 10)
-  watch(sessionGoal, val => {
-    // STORAGE_KEYS ref
-    localStorage.setItem(STORAGE_KEYS.SESSION_GOAL, String(val))
-  })
   const lastSavedAt = ref(null)
   const lastWrittenAt = ref(null)
   const initialWordCount = ref(0)

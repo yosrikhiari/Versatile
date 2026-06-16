@@ -3,6 +3,10 @@ import { getEmbeddings } from '../services/embeddingService'
 import { useSettingsStore } from '../stores/settingsStore'
 import { EMBEDDING_DEFAULTS } from '../config/ai'
 
+function yieldToMain() {
+  return new Promise(r => setTimeout(r, 0))
+}
+
 const ABBREVIATIONS = new Set([
   'dr', 'mr', 'ms', 'mrs', 'jr', 'sr', 'st', 'ave', 'blvd', 'rd',
   'etc', 'vs', 'inc', 'ltd', 'co', 'dept', 'est', 'govt',
@@ -11,7 +15,7 @@ const ABBREVIATIONS = new Set([
   'univ', 'assn', 'bros', 'corp'
 ])
 
-export function splitSentences(text) {
+export async function splitSentences(text) {
   if (!text) return []
 
   const normalized = text.replaceAll('\r\n', '\n')
@@ -20,8 +24,11 @@ export function splitSentences(text) {
 
   const sentences = []
   let buffer = ''
+  let iter = 0
 
   for (const part of raw) {
+    if (++iter % 500 === 0) await yieldToMain()
+
     const trimmed = part.trim()
     if (!trimmed) continue
 
@@ -114,6 +121,38 @@ function mergeSmallChunks(chunks, minSentences) {
   return merged
 }
 
+async function sizeBasedChunk(text, maxChunkSize) {
+  const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim())
+  const chunks = []
+  let current = []
+  let iter = 0
+
+  for (const p of paragraphs) {
+    if (++iter % 50 === 0) await yieldToMain()
+    const pLen = p.length + (current.length > 0 ? 1 : 0)
+    if (current.join(' ').length + pLen > maxChunkSize && current.length > 0) {
+      chunks.push(current.join(' '))
+      current = [p]
+    } else {
+      current.push(p)
+    }
+  }
+  if (current.length > 0) chunks.push(current.join(' '))
+
+  if (chunks.length === 0) chunks.push(text)
+
+  const result = []
+  for (let i = 0; i < chunks.length; i++) {
+    result.push({
+      text: chunks[i],
+      sentences: await splitSentences(chunks[i]),
+      startIdx: i,
+      endIdx: i
+    })
+  }
+  return result
+}
+
 export async function computeSemanticChunks(text, options = {}) {
   const store = useSettingsStore()
   const threshold = options.threshold ?? store.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
@@ -121,15 +160,27 @@ export async function computeSemanticChunks(text, options = {}) {
   const embeddingProvider = options.embeddingProvider || store.embeddingProvider
   const embeddingModel = options.embeddingModel || store.embeddingModel || EMBEDDING_DEFAULTS.model
 
-  const sentences = splitSentences(text)
+  const sentences = await splitSentences(text)
   if (sentences.length <= 1) {
     return [{ text: text, sentences: [...sentences], startIdx: 0, endIdx: 0 }]
   }
 
-  const { vectors: embeddings } = await getEmbeddings(sentences, {
-    provider: embeddingProvider,
-    model: embeddingModel
-  })
+  if (sentences.length > 2000) {
+    console.warn(`Large document (${sentences.length} sentences), using size-based chunking`)
+    return await sizeBasedChunk(text, maxChunkSize)
+  }
+
+  let embeddings
+  try {
+    const result = await getEmbeddings(sentences, {
+      provider: embeddingProvider,
+      model: embeddingModel
+    })
+    embeddings = result.vectors
+  } catch (e) {
+    console.warn('Embedding failed during chunking, falling back to size-based split:', e.message)
+    embeddings = sentences.map(() => null)
+  }
 
   let chunks = computeChunksForSentences(sentences, embeddings, threshold)
 
@@ -171,7 +222,14 @@ async function recursiveSplit(chunk, maxChars, provider, model, threshold) {
     }]
   }
 
-  const { vectors: embeddings } = await getEmbeddings(sentences, { provider, model })
+  let embeddings
+  try {
+    const result = await getEmbeddings(sentences, { provider, model })
+    embeddings = result.vectors
+  } catch (e) {
+    console.warn('Embedding failed during recursive split, falling back:', e.message)
+    embeddings = sentences.map(() => null)
+  }
   const subChunks = computeChunksForSentences(sentences, embeddings, threshold)
 
   const result = []

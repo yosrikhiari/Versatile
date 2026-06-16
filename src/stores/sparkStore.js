@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { generateSparkPrompt, generateOutline, generateContent, generateContentStreaming, testOllamaConnection } from '../composables/useOllama'
 import { addSparkHistory, getSparkHistory, clearSparkHistory } from '../services/dbService'
 import { STORAGE_KEYS } from '../config/storageKeys'
+import { useLocalStorage } from '../composables/useLocalStorage'
 
 export const useSparkStore = defineStore('spark', () => {
   const history = ref([])
@@ -10,26 +11,10 @@ export const useSparkStore = defineStore('spark', () => {
   const currentContent = ref(null)
   const currentStreamingContent = ref('')
   const isGenerating = ref(false)
-  const selectedPromptType = ref('seed')
-  const relateToProject = ref(false)
+  const selectedPromptType = useLocalStorage(STORAGE_KEYS.SPARK_PROMPT_TYPE, 'seed')
+  const relateToProject = useLocalStorage(STORAGE_KEYS.SPARK_RELATE_PROJECT, false)
   const error = ref(null)
   const ollamaStatus = ref('unknown')
-
-  // STORAGE_KEYS ref
-  const savedType = localStorage.getItem(STORAGE_KEYS.SPARK_PROMPT_TYPE)
-  if (savedType) selectedPromptType.value = savedType
-  watch(selectedPromptType, val => {
-    // STORAGE_KEYS ref
-    localStorage.setItem(STORAGE_KEYS.SPARK_PROMPT_TYPE, val)
-  })
-
-  // STORAGE_KEYS ref
-  const savedRelate = localStorage.getItem(STORAGE_KEYS.SPARK_RELATE_PROJECT)
-  if (savedRelate) relateToProject.value = savedRelate === 'true'
-  watch(relateToProject, val => {
-    // STORAGE_KEYS ref
-    localStorage.setItem(STORAGE_KEYS.SPARK_RELATE_PROJECT, String(val))
-  })
 
   async function loadHistory(projectId) {
     history.value = await getSparkHistory(projectId)

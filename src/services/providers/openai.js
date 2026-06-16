@@ -10,6 +10,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
+    signal: options.signal,
     body: JSON.stringify({
       model: model,
       messages: [
@@ -39,6 +40,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
+    signal: options.signal,
     body: JSON.stringify({
       model: model,
       messages: [

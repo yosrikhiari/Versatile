@@ -4,7 +4,8 @@ import { simpleEncrypt, simpleDecrypt } from '../services/ollamaService'
 import { PROVIDERS, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS } from '../config/ai'
 import { aiTestConnection } from '../services/aiService'
 import { setOllamaEndpoint as setOllamaConfigEndpoint } from '../config/ollama'
-import { STORAGE_KEYS } from '../config/storageKeys'
+import { STORAGE_KEYS, getApiKeyStorageKey } from '../config/storageKeys'
+import { useLocalStorage } from '../composables/useLocalStorage'
 
 const DEFAULT_SETTINGS = {
   ollamaEndpoint: '/ollama',
@@ -29,7 +30,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const embeddingModel = ref(DEFAULT_SETTINGS.embeddingModel)
   const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
 
-  const featureModels = ref({})
+  const featureModels = useLocalStorage(STORAGE_KEYS.FEATURE_MODELS, {})
 
   function getFeatureDefault(feature) {
     return FEATURE_DEFAULTS[feature] || { provider: null, model: null }
@@ -78,13 +79,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
       }
 
-      // STORAGE_KEYS ref
-      const fmStored = localStorage.getItem(STORAGE_KEYS.FEATURE_MODELS)
-      if (fmStored) {
-        try {
-          featureModels.value = JSON.parse(fmStored)
-        } catch {}
-      }
+      // featureModels loaded reactively via useLocalStorage
     } catch (e) {
       console.warn('Failed to load settings:', e)
     }
@@ -104,8 +99,6 @@ export const useSettingsStore = defineStore('settings', () => {
         embeddingModel: embeddingModel.value,
         embeddingThreshold: embeddingThreshold.value
       }))
-      // STORAGE_KEYS ref
-      localStorage.setItem(STORAGE_KEYS.FEATURE_MODELS, JSON.stringify(featureModels.value))
     } catch (e) {
       console.warn('Failed to save settings:', e)
     }
@@ -162,10 +155,6 @@ export const useSettingsStore = defineStore('settings', () => {
       [feature]: { provider: provider || 'default', model: model || null }
     }
     saveSettings()
-  }
-
-  function getApiKeyStorageKey(provider) {
-    return `${API_KEY_STORAGE_PREFIX}${provider}`
   }
 
   function getStoredApiKey(provider) {
@@ -275,7 +264,6 @@ export const useSettingsStore = defineStore('settings', () => {
     setFeatureModel,
     getStoredApiKey,
     setStoredApiKey,
-    getApiKeyStorageKey,
     setEmbeddingProvider,
     setEmbeddingModel,
     setEmbeddingThreshold,

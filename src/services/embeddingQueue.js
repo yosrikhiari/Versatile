@@ -1,5 +1,13 @@
 import { getEmbeddings } from './embeddingService'
-import { updateChunkEmbeddings, getUnindexedChunks, markProcessing, markFailed, resetChunksStatus } from './researchDb'
+import {
+  updateChunkEmbeddings,
+  getUnindexedChunks,
+  markProcessing,
+  markFailed,
+  resetChunksStatus,
+  getDocumentChunkEmbeddings,
+  setDocumentEmbedding
+} from './researchDb'
 import { EMBEDDING_DEFAULTS, EMBEDDING_VERSION, EMBEDDING_PROVIDER_CAPABILITIES } from '../config/ai'
 
 const queue = []
@@ -24,54 +32,68 @@ function notify(documentId) {
 }
 
 async function processQueue() {
-  isProcessing = true
-  const size = resolveBatchSize()
-  while (queue.length > 0) {
-    const batch = queue.splice(0, size)
-    const ids = batch.map(e => e.chunkId)
-    await markProcessing(ids)
+  try {
+    isProcessing = true
+    const size = resolveBatchSize()
+    while (queue.length > 0) {
+      const batch = queue.splice(0, size)
+      const ids = batch.map(e => e.chunkId)
+      await markProcessing(ids)
 
-    const texts = batch.map(e => e.text)
-    let embeddings, provider, model
-    try {
-      const result = await getEmbeddings(texts)
-      embeddings = result.vectors
-      provider = result.provider
-      model = result.model
-    } catch (err) {
-      await markFailed(ids)
+      const texts = batch.map(e => e.text)
+      let embeddings, provider, model
+      try {
+        const result = await getEmbeddings(texts)
+        embeddings = result.vectors
+        provider = result.provider
+        model = result.model
+      } catch (err) {
+        await markFailed(ids)
+        for (let i = 0; i < batch.length; i++) {
+          const p = progress[batch[i].documentId]
+          if (p) p.failed++
+          notify(batch[i].documentId)
+        }
+        continue
+      }
+
+      const updates = []
+      const failed = []
       for (let i = 0; i < batch.length; i++) {
         const p = progress[batch[i].documentId]
-        if (p) p.failed++
-        notify(batch[i].documentId)
+        if (embeddings[i]) {
+          updates.push({ id: batch[i].chunkId, embedding: embeddings[i] })
+          if (p) p.indexed++
+        } else {
+          failed.push(batch[i].chunkId)
+          if (p) p.failed++
+        }
       }
-      continue
-    }
-
-    const updates = []
-    const failed = []
-    for (let i = 0; i < batch.length; i++) {
-      const p = progress[batch[i].documentId]
-      if (embeddings[i]) {
-        updates.push({ id: batch[i].chunkId, embedding: embeddings[i] })
-        if (p) p.indexed++
-      } else {
-        failed.push(batch[i].chunkId)
-        if (p) p.failed++
+      if (updates.length > 0) {
+        await updateChunkEmbeddings(updates, { provider, model, version: EMBEDDING_VERSION })
+      }
+      if (failed.length > 0) {
+        await markFailed(failed)
+      }
+      const docIdsToCheck = new Set(batch.map(e => e.documentId))
+      for (const docId of docIdsToCheck) {
+        notify(docId)
+        const p = progress[docId]
+        if (p && p.indexed === p.total) {
+          const embeddings = await getDocumentChunkEmbeddings(docId)
+          if (embeddings.length > 0) {
+            const avg = averageEmbeddings(embeddings)
+            await setDocumentEmbedding(docId, avg)
+          }
+        }
       }
     }
-    if (updates.length > 0) {
-      await updateChunkEmbeddings(updates, { provider, model, version: EMBEDDING_VERSION })
-    }
-    if (failed.length > 0) {
-      await markFailed(failed)
-    }
-    for (let i = 0; i < batch.length; i++) {
-      notify(batch[i].documentId)
-    }
+  } catch (err) {
+    console.error('[embeddingQueue] Fatal error in processQueue:', err)
+  } finally {
+    isProcessing = false
+    isRunning = false
   }
-  isProcessing = false
-  isRunning = false
 }
 
 export function setBatchSize(n) {
@@ -99,7 +121,9 @@ export function enqueue(documentId, entries) {
   }
   if (!isRunning) {
     isRunning = true
-    processQueue()
+    processQueue().catch(err => {
+      console.error('[embeddingQueue] processQueue rejected:', err)
+    })
   }
 }
 
@@ -126,4 +150,20 @@ export async function retryDocument(documentId) {
   const entries = await resetChunksStatus(documentId, 'FAILED')
   if (entries.length === 0) return
   enqueue(documentId, entries)
+}
+
+function averageEmbeddings(embeddings) {
+  if (!embeddings || embeddings.length === 0) return null
+  const dim = embeddings[0].length
+  const sum = new Float32Array(dim)
+  for (const emb of embeddings) {
+    for (let i = 0; i < dim; i++) {
+      sum[i] += emb[i]
+    }
+  }
+  const avg = new Float32Array(dim)
+  for (let i = 0; i < dim; i++) {
+    avg[i] = sum[i] / embeddings.length
+  }
+  return avg
 }

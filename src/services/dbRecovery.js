@@ -105,7 +105,7 @@ export async function importData(backupData) {
     if (backupData[store] && backupData[store].length > 0) {
       try {
         await db[store].bulkAdd(backupData[store])
-        console.log(`Restored ${backupData[store].length} ${store}`)
+        console.info(`Restored ${backupData[store].length} ${store}`)
       } catch (err) {
         console.warn(`Failed to restore ${store}:`, err)
       }
@@ -125,7 +125,7 @@ export async function resetDatabaseVersion() {
     
     return new Promise((resolve, reject) => {
       request.onsuccess = () => {
-        console.log('Database deleted successfully')
+        console.info('Database deleted successfully')
         resolve()
       }
       request.onerror = () => reject(request.error)

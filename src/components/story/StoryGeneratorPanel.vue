@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { db } from '../../services/db-core'
 import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
@@ -153,6 +154,20 @@ const totalWordsWritten = computed(() =>
   volumeGenerator.writtenScenes.value.reduce((sum, s) => sum + (s.prose?.split(/\s+/).length || 0), 0)
 )
 
+const previousGenerations = ref([])
+async function loadPreviousGenerations() {
+  const pid = projectStore.currentProjectId
+  if (!pid) return
+  try {
+    previousGenerations.value = await db.generatedStories
+      .where('projectId').equals(pid)
+      .reverse()
+      .sortBy('generatedAt')
+  } catch { /* ignore */ }
+}
+
+onMounted(() => { loadPreviousGenerations() })
+
 // ----- Volume pipeline -----
 async function handleVolumeGenerate() {
   if (!hasSynopsis.value || !projectStore.currentProjectId) return
@@ -287,6 +302,21 @@ function handleVolumeSceneEdit(sceneIndex, field, value) {
   if (volumePlanEdits.value[sceneIndex]) {
     volumePlanEdits.value[sceneIndex][field] = value
   }
+}
+function handleWantsEdit(sceneIndex, text) {
+  const wants = {}
+  if (text) {
+    text.split(',').forEach(part => {
+      const trimmed = part.trim()
+      const sep = trimmed.indexOf('→')
+      if (sep > 0) {
+        const name = trimmed.slice(0, sep).trim()
+        const goal = trimmed.slice(sep + 1).trim()
+        if (name && goal) wants[name] = goal
+      }
+    })
+  }
+  handleVolumeSceneEdit(sceneIndex, 'characterWants', wants)
 }
 
 async function handleRegenerateScene(sceneIndex) {
@@ -550,16 +580,22 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
                   <BaseIcon :name="pitchOpen === i ? 'chevron-down' : 'chevron-right'" :size="12" />
                   <span class="font-medium">Narrative Pitch</span>
                 </button>
-                <div v-if="pitchOpen === i" class="px-3 pb-2.5 text-xs text-text-secondary font-body leading-relaxed space-y-1 border-t border-border-subtle pt-2">
-                  <p v-if="scene.goal">This scene aims to make the reader feel <span class="text-text-primary font-medium">{{ scene.goal }}</span>.</p>
-                  <p v-if="scene.setup || scene.payoff">
-                    <template v-if="scene.setup">It sets up: <span class="text-text-primary">{{ scene.setup }}</span></template>
-                    <template v-if="scene.setup && scene.payoff"> — </template>
-                    <template v-if="scene.payoff">pays off: <span class="text-text-primary">{{ scene.payoff }}</span></template>
-                    <template v-if="!scene.setup && !scene.payoff">No setup or payoff defined.</template>
+                <div v-if="pitchOpen === i" class="px-3 pb-2.5 text-xs text-text-secondary font-body leading-relaxed space-y-1.5 border-t border-border-subtle pt-2">
+                  <p v-if="scene.goal">Emotional goal: <span class="text-text-primary font-medium">{{ scene.goal }}</span>.</p>
+                  <p v-if="scene.obstacle">What changes / obstacle: <span class="text-text-primary">{{ scene.obstacle }}</span>.</p>
+                  <p v-if="scene.setup">Sets up: <span class="text-text-primary">{{ scene.setup }}</span>.</p>
+                  <p v-if="scene.payoff">Pays off: <span class="text-text-primary">{{ scene.payoff }}</span>.</p>
+                  <p v-if="scene.sensoryAnchor">Sensory anchor: <span class="text-text-primary italic">{{ scene.sensoryAnchor }}</span>.</p>
+                  <p v-if="scene.location">Location: <span class="text-text-primary">{{ scene.location }}</span>.</p>
+                  <p v-if="scene.tension">Tension: <span class="text-text-primary font-medium">{{ scene.tension }}</span>.</p>
+                  <p v-if="scene.pacing">Pacing: <span class="text-text-primary font-medium">{{ scene.pacing }}</span>.</p>
+                  <p v-if="scene.arcPosition">Arc position: <span class="text-text-primary font-medium">{{ scene.arcPosition }}</span>.</p>
+                  <p v-if="scene.emotionalGoal">Reader's emotional response: <span class="text-text-primary">{{ scene.emotionalGoal }}</span>.</p>
+                  <p v-if="scene.characterWants && Object.keys(scene.characterWants).length > 0">
+                    Character wants: <span class="text-text-primary">{{ formatWants(scene.characterWants) }}</span>.
                   </p>
-                  <p v-if="scene.sensoryAnchor">Anchored by the sensory detail: <span class="text-text-primary italic">{{ scene.sensoryAnchor }}</span>.</p>
-                  <p v-if="!scene.goal && !scene.setup && !scene.payoff && !scene.sensoryAnchor" class="text-text-hint italic">No narrative details yet.</p>
+                  <p v-if="scene.estimatedWords">Target words: <span class="text-text-primary">{{ scene.estimatedWords }}</span>.</p>
+                  <p v-if="!scene.goal && !scene.setup && !scene.payoff && !scene.sensoryAnchor && !scene.obstacle && !scene.tension && !scene.pacing" class="text-text-hint italic">No narrative details yet.</p>
                 </div>
               </div>
 
@@ -682,10 +718,15 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
                 </div>
               </div>
 
-              <!-- Read-only characterWants full-width display -->
-              <div v-if="scene.characterWants && Object.keys(scene.characterWants).length > 0" class="text-xs text-text-hint font-body border-t border-border-subtle pt-1.5">
+              <!-- Editable characterWants full-width display -->
+              <div class="text-xs text-text-hint font-body border-t border-border-subtle pt-1.5">
                 <span class="font-ui text-text-hover">Character Wants:</span>
-                <span class="ml-1">{{ formatWants(scene.characterWants) }}</span>
+                <input
+                  class="ml-1 flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-0.5 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent w-full mt-1"
+                  :value="scene.characterWants && Object.keys(scene.characterWants).length > 0 ? formatWants(scene.characterWants) : ''"
+                  placeholder="CharacterName → goal description, AnotherChar → their goal"
+                  @input="handleWantsEdit(i, $event.target.value)"
+                />
               </div>
             </div>
           </div>
@@ -920,6 +961,28 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
           >Try Again</button>
         </div>
       </template>
+    </div>
+
+    <!-- ==================== PREVIOUS GENERATIONS ==================== -->
+    <div v-if="previousGenerations.length > 0" class="border-t border-border-subtle pt-4 mt-4">
+      <h3 class="text-[11px] uppercase tracking-wider text-text-hint font-ui mb-2">Previous Generations</h3>
+      <div class="space-y-1.5">
+        <div
+          v-for="(gen, i) in previousGenerations"
+          :key="gen.id || i"
+          class="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-tertiary/30 border border-border-subtle text-xs"
+        >
+          <BaseIcon name="file-text" :size="14" class="text-text-hint shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-text-primary font-body truncate">{{ gen.title }}</p>
+            <p class="text-text-hint text-[10px] font-ui">
+              {{ new Date(gen.generatedAt).toLocaleDateString() }}
+              <span v-if="gen.totalWords"> · {{ gen.totalWords }} words</span>
+              <span v-if="gen.qualityScore !== undefined"> · score {{ gen.qualityScore }}</span>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ==================== VOLUME READ MODAL ==================== -->

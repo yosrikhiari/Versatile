@@ -18,6 +18,6 @@ export function debugSnapshot(stage, data = {}, options = {}) {
           ...data
         }
       })
-    }).catch(() => {})
+    }).catch(() => console.warn('[debugSnapshot] POST failed'))
   } catch {}
 }

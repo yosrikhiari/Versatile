@@ -74,6 +74,7 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
 
   const providerOptions = {
     apiKey: apiKey || undefined,
+    signal: options.signal,
     temperature: options.temperature,
     maxTokens: options.maxTokens,
     timeout: options.timeout
@@ -88,7 +89,8 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
     systemPromptLength: systemPrompt.length,
     temperature: providerOptions.temperature,
     maxTokens: providerOptions.maxTokens,
-    timeout: providerOptions.timeout
+    timeout: providerOptions.timeout,
+    hasSignal: !!options.signal
   })
 
   try {
@@ -125,6 +127,7 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
           })
           return await fallbackModule.generate(prompt, systemPrompt, null, {
             apiKey: fallbackKey || undefined,
+            signal: options.signal,
             temperature: options.temperature,
             maxTokens: options.maxTokens,
             timeout: options.timeout
@@ -152,6 +155,7 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
 
   const providerOptions = {
     apiKey: apiKey || undefined,
+    signal: options.signal,
     temperature: options.temperature,
     maxTokens: options.maxTokens,
     timeout: options.timeout

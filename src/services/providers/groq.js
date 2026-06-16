@@ -7,9 +7,14 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
   const timeoutMs = options.timeout || 120000
   let timeout
   const controller = new AbortController()
+  const externalSignal = options.signal
 
   try {
     timeout = setTimeout(() => controller.abort(new DOMException(`Groq request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
+    function onAbort() { controller.abort(externalSignal.reason) }
+    if (externalSignal) {
+      if (externalSignal.aborted) { controller.abort(externalSignal.reason) } else { externalSignal.addEventListener('abort', onAbort, { once: true }) }
+    }
 
     const response = await fetch(`${PROVIDER_BASE_URLS[PROVIDERS.GROQ]}/chat/completions`, {
       method: 'POST',
@@ -30,6 +35,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     })
 
     clearTimeout(timeout)
+    if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
@@ -40,6 +46,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     return data.choices[0]?.message?.content || ''
   } catch (error) {
     clearTimeout(timeout)
+    if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error(`Groq request timed out after ${timeoutMs}ms`)
     }
@@ -54,9 +61,14 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
   const timeoutMs = options.timeout || 120000
   let timeout
   const controller = new AbortController()
+  const externalSignal = options.signal
 
   try {
     timeout = setTimeout(() => controller.abort(new DOMException(`Groq stream timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
+    function onAbort() { controller.abort(externalSignal.reason) }
+    if (externalSignal) {
+      if (externalSignal.aborted) { controller.abort(externalSignal.reason) } else { externalSignal.addEventListener('abort', onAbort, { once: true }) }
+    }
 
     const response = await fetch(`${PROVIDER_BASE_URLS[PROVIDERS.GROQ]}/chat/completions`, {
       method: 'POST',
@@ -78,6 +90,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     })
 
     clearTimeout(timeout)
+    if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
@@ -117,6 +130,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     return fullResponse
   } catch (error) {
     clearTimeout(timeout)
+    if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error(`Groq stream timed out after ${timeoutMs}ms`)
     }

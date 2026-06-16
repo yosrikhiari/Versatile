@@ -2,32 +2,32 @@ import { describe, it, expect } from 'vitest'
 import { splitSentences, computeChunksForSentences, mergeSmallChunks } from '@/composables/useSemanticChunking'
 
 describe('splitSentences', () => {
-  it('returns empty array for empty input', () => {
-    expect(splitSentences('')).toEqual([])
-    expect(splitSentences(null)).toEqual([])
-    expect(splitSentences(undefined)).toEqual([])
+  it('returns empty array for empty input', async () => {
+    expect(await splitSentences('')).toEqual([])
+    expect(await splitSentences(null)).toEqual([])
+    expect(await splitSentences(undefined)).toEqual([])
   })
 
-  it('splits simple sentences', () => {
-    const result = splitSentences('Hello world. How are you?')
+  it('splits simple sentences', async () => {
+    const result = await splitSentences('Hello world. How are you?')
     expect(result).toHaveLength(2)
     expect(result[0]).toBe('Hello world.')
     expect(result[1]).toBe('How are you?')
   })
 
-  it('handles abbreviations without splitting', () => {
-    const result = splitSentences('Dr. Smith went home. He was tired.')
+  it('handles abbreviations without splitting', async () => {
+    const result = await splitSentences('Dr. Smith went home. He was tired.')
     expect(result).toHaveLength(2)
     expect(result[0]).toBe('Dr. Smith went home.')
   })
 
-  it('handles newlines as separators', () => {
-    const result = splitSentences('Line one.\nLine two.\n\nLine three.')
+  it('handles newlines as separators', async () => {
+    const result = await splitSentences('Line one.\nLine two.\n\nLine three.')
     expect(result).toHaveLength(3)
   })
 
-  it('handles exclamation and question marks', () => {
-    const result = splitSentences('Stop! Are you ok? Yes.')
+  it('handles exclamation and question marks', async () => {
+    const result = await splitSentences('Stop! Are you ok? Yes.')
     expect(result).toHaveLength(3)
   })
 })

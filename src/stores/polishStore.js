@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { analyzePolish } from '../composables/useOllama'
 import { LENS_MAP } from '../config/statuses'
 import {
   getAnnotations, addAnnotation, updateAnnotation, clearAnnotations,
   getSnippets, deleteSnippet, incrementSnippetWord
 } from '../services/dbService'
+import { useLocalStorage } from '../composables/useLocalStorage'
 import { STORAGE_KEYS } from '../config/storageKeys'
 
 export const usePolishStore = defineStore('polish', () => {
@@ -16,25 +17,13 @@ export const usePolishStore = defineStore('polish', () => {
   const selectedParagraphText = ref('')
   const pendingParagraphText = ref('')
   const pendingParagraphIndex = ref(null)
-  const activeLenses = ref({
+  const activeLenses = useLocalStorage(STORAGE_KEYS.ACTIVE_LENSES, {
     weakVerbs: true,
     repetition: true,
     pacing: true,
     clarity: true
   })
   const error = ref(null)
-
-  // STORAGE_KEYS ref
-  const savedLenses = localStorage.getItem(STORAGE_KEYS.ACTIVE_LENSES)
-  if (savedLenses) {
-    try {
-      activeLenses.value = { ...activeLenses.value, ...JSON.parse(savedLenses) }
-    } catch {}
-  }
-  watch(activeLenses, val => {
-    // STORAGE_KEYS ref
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_LENSES, JSON.stringify(val))
-  }, { deep: true })
   
   let debounceTimer = null
 

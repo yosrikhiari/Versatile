@@ -23,6 +23,15 @@ function classifyGoal(premise) {
 
 export { countWords, classifyGoal }
 
+function toActions(plan) {
+  if (plan.actions) return plan.actions
+  if (plan.scenes) return plan.scenes.map(scene => ({
+    type: 'write_scene',
+    payload: scene
+  }))
+  return []
+}
+
 export function useStoryOrchestrator() {
   const director = useStoryDirector()
   const writer = useStoryWriter()
@@ -105,7 +114,7 @@ export function useStoryOrchestrator() {
     cancelled = false
     phase.value = 'writing'
     const plan = storyPlan.value
-    const actions = plan.actions || []
+    const actions = toActions(plan)
     totalScenes.value = actions.length
     let chapterLog = []
 
@@ -152,12 +161,19 @@ export function useStoryOrchestrator() {
 
         const sceneBrief = action.payload
 
+        const existingEntitiesJson = JSON.stringify({
+          characters: storyBibleStore.characters.map(c => ({ name: c.name, role: c.role, traits: c.traits, goal: c.goal })),
+          locations: storyBibleStore.locations.map(l => ({ name: l.name, description: l.description })),
+          plotThreads: storyBibleStore.plotThreads.map(t => ({ name: t.name, description: t.description }))
+        }, null, 2)
+
         try {
           const prose = await writer.writeScene({
             sceneBrief,
             storyArc: plan.storyArc,
             chapterLog,
             storyBible: synopsis.value,
+            existingEntitiesJson,
             onChunk: (chunk, fullText) => {
               streamingText.value = fullText
             }
@@ -267,7 +283,8 @@ export function useStoryOrchestrator() {
     if (!storyPlan.value || !finalStory.value) return
     if (sceneIndex < 0 || sceneIndex >= finalStory.value.scenes.length) return
 
-    const action = storyPlan.value.actions[sceneIndex]
+    const planActions = toActions(storyPlan.value)
+    const action = planActions[sceneIndex]
     if (!action || action.type !== 'write_scene') return
     const sceneBrief = action.payload
 
@@ -279,12 +296,19 @@ export function useStoryOrchestrator() {
       }
     }
 
+    const existingEntitiesJson = JSON.stringify({
+      characters: storyBibleStore.characters.map(c => ({ name: c.name, role: c.role, traits: c.traits, goal: c.goal })),
+      locations: storyBibleStore.locations.map(l => ({ name: l.name, description: l.description })),
+      plotThreads: storyBibleStore.plotThreads.map(t => ({ name: t.name, description: t.description }))
+    }, null, 2)
+
     try {
       const prose = await writer.writeScene({
         sceneBrief,
         storyArc: storyPlan.value.storyArc,
         chapterLog,
         storyBible: synopsis.value,
+        existingEntitiesJson,
         onChunk: null
       })
 

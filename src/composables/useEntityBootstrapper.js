@@ -3,6 +3,7 @@ import { aiStream } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
+import { sanitizeJson } from '../services/ai/aiHelpers'
 
 const MIN_CHARACTERS = 3
 const MIN_LOCATIONS = 2
@@ -20,22 +21,6 @@ PLOT THREAD format: { "title": "...", "notes": "...", "traits": ["niche detail 1
 
 Return valid JSON with no markdown, no explanation. The JSON must have exactly three keys: "characters" (array), "locations" (array), "plotThreads" (array). Include ALL entities — both enhanced existing ones and any new ones — in the response arrays.`
 
-function sanitizeJson(raw) {
-  if (!raw || typeof raw !== 'string') return null
-  let cleaned = raw.trim()
-  cleaned = cleaned.replace(/^```json\s*/i, '')
-  cleaned = cleaned.replace(/^```\s*/i, '')
-  cleaned = cleaned.replace(/```$/i, '')
-  cleaned = cleaned.replace(/```json$/i, '')
-  cleaned = cleaned.trim()
-  const match = cleaned.match(/\{[\s\S]*\}/)
-  if (!match) return null
-  try {
-    return JSON.parse(match[0])
-  } catch {
-    return null
-  }
-}
 
 function normalizeName(name) {
   return name?.trim().toLowerCase() || ''

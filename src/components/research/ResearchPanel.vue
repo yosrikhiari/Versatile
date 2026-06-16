@@ -3,6 +3,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useResearchDocuments } from '../../composables/useResearchDocuments'
 import { useEmbeddingIndexer } from '../../composables/useEmbeddingIndexer'
+import { getDocumentStatusCounts } from '../../services/researchDb'
+import { resume as resumeEmbeddingQueue } from '../../services/embeddingQueue'
 const projectStore = useProjectStore()
 const projectId = computed(() => projectStore.currentProjectId)
 
@@ -14,25 +16,68 @@ const {
   loadDocuments,
   importFiles,
   removeDocument,
-  getDocumentChunks
+  getDocumentChunks,
+  reindexDocument
 } = useResearchDocuments(projectId)
 
-const { indexProgress, hasFailed, isDocumentIndexed, retryFailedChunks } = useEmbeddingIndexer()
+const { indexProgress, retryFailedChunks } = useEmbeddingIndexer()
 const isRetrying = ref(false)
+const isReindexing = ref(false)
 
 const fileInput = ref(null)
 const selectedDoc = ref(null)
 const selectedChunks = ref([])
 const loadingChunks = ref(false)
+const dbStatusCounts = ref({})
+const searchQuery = ref('')
 
-watch(projectId, () => {
-  selectedDoc.value = null
-  selectedChunks.value = []
-  if (projectId.value) loadDocuments()
+const filteredDocuments = computed(() => {
+  if (!searchQuery.value) return documents.value
+  const q = searchQuery.value.toLowerCase()
+  return documents.value.filter(d => d.fileName.toLowerCase().includes(q))
 })
 
-onMounted(() => {
-  if (projectId.value) loadDocuments()
+async function refreshDbStatusCounts() {
+  const counts = {}
+  if (!projectId.value) { dbStatusCounts.value = counts; return }
+  const docIds = documents.value.map(d => d.id)
+  await Promise.all(docIds.map(async (id) => {
+    try {
+      const st = await getDocumentStatusCounts(id)
+      if (st.total > 0) counts[id] = { total: st.total, indexed: st.READY, failed: st.FAILED }
+    } catch { /* silent */ }
+  }))
+  dbStatusCounts.value = counts
+}
+
+const mergedProgress = computed(() => ({ ...dbStatusCounts.value, ...indexProgress.value }))
+
+function mergedIsIndexed(docId) {
+  const p = mergedProgress.value[docId]
+  return p ? p.indexed + p.failed >= p.total : false
+}
+function mergedHasFailed(docId) {
+  const p = mergedProgress.value[docId]
+  return p ? p.failed > 0 : false
+}
+
+watch(projectId, async () => {
+  selectedDoc.value = null
+  selectedChunks.value = []
+  if (projectId.value) {
+    await loadDocuments()
+    await refreshDbStatusCounts()
+  }
+})
+
+onMounted(async () => {
+  if (projectId.value) {
+    await loadDocuments()
+    await refreshDbStatusCounts()
+    resumeEmbeddingQueue(projectId.value).then(count => {
+      if (count > 0) console.info(`[ResearchPanel] Resumed indexing ${count} chunks`)
+    })
+  }
 })
 
 function triggerFileInput() {
@@ -43,6 +88,7 @@ async function handleFileChange(event) {
   const files = event.target.files
   if (!files?.length) return
   await importFiles(files)
+  await refreshDbStatusCounts()
   event.target.value = ''
 }
 
@@ -64,6 +110,7 @@ async function handleRemoveDocument(id) {
     selectedChunks.value = []
   }
   await removeDocument(id)
+  await refreshDbStatusCounts()
 }
 
 async function handleRetry(docId) {
@@ -75,8 +122,20 @@ async function handleRetry(docId) {
   }
 }
 
+async function handleReindex(docId) {
+  isReindexing.value = true
+  try {
+    await reindexDocument(docId)
+    await refreshDbStatusCounts()
+  } catch (err) {
+    console.error('[ResearchPanel] Re-index failed:', err)
+  } finally {
+    isReindexing.value = false
+  }
+}
+
 const aggregateStats = computed(() => {
-  const values = Object.values(indexProgress.value)
+  const values = Object.values(mergedProgress.value)
   if (!values.length) return null
   const total = values.reduce((s, v) => s + v.total, 0)
   const indexed = values.reduce((s, v) => s + v.indexed, 0)
@@ -107,6 +166,15 @@ const aggregateStats = computed(() => {
       />
     </div>
 
+    <div class="px-3 py-2">
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Search documents..."
+        class="w-full px-2.5 py-1.5 text-xs bg-surface border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/40 outline-none focus:border-accent/50 transition-colors"
+      />
+    </div>
+
     <div v-if="isImporting" class="px-4 py-3 text-xs text-accent animate-pulse">
       {{ importProgress || 'Importing...' }}
     </div>
@@ -121,8 +189,12 @@ const aggregateStats = computed(() => {
       <p class="text-[10px] text-text-hint/40">Import PDF, TXT, MD, or HTML files</p>
     </div>
 
+    <div v-else-if="!filteredDocuments.length && searchQuery" class="flex-1 flex items-center justify-center px-6">
+      <p class="text-xs text-text-hint/40">No documents match "{{ searchQuery }}"</p>
+    </div>
+
     <div v-else class="flex-1 overflow-y-auto scrollbar-thin">
-      <div v-for="doc in documents" :key="doc.id">
+      <div v-for="doc in filteredDocuments" :key="doc.id">
         <div
           :class="[
             'flex items-center gap-2 px-4 py-2 cursor-pointer transition-colors duration-150 hover:bg-accent-glass',
@@ -135,9 +207,9 @@ const aggregateStats = computed(() => {
             <p class="text-xs text-text-primary truncate">{{ doc.fileName }}</p>
             <p class="text-[10px] text-text-hint/50 flex items-center gap-1.5">
               {{ doc.charCount?.toLocaleString() || 0 }} chars
-              <template v-if="isDocumentIndexed(doc.id)">
-                <span v-if="hasFailed(doc.id)" class="inline-flex items-center gap-1 text-red-400/80">
-                  <span>· {{ indexProgress[doc.id].failed }} failed</span>
+              <template v-if="mergedIsIndexed(doc.id)">
+                <span v-if="mergedHasFailed(doc.id)" class="inline-flex items-center gap-1 text-red-400/80">
+                  <span>· {{ mergedProgress[doc.id].failed }} failed</span>
                   <button
                     class="p-0.5 rounded hover:bg-red-500/20 transition-colors"
                     title="Retry failed chunks"
@@ -149,14 +221,23 @@ const aggregateStats = computed(() => {
                 </span>
                 <span v-else class="text-green-400/60">· Indexed</span>
               </template>
-              <template v-else-if="indexProgress[doc.id]">
-                <span class="text-accent">· Indexing {{ indexProgress[doc.id].indexed }}/{{ indexProgress[doc.id].total }}</span>
+              <template v-else-if="mergedProgress[doc.id]">
+                <span class="text-accent">· Indexing {{ mergedProgress[doc.id].indexed }}/{{ mergedProgress[doc.id].total }}</span>
               </template>
               <template v-else-if="doc.chunkCount > 0">
                 <span class="text-text-hint/30">· {{ doc.chunkCount }} chunks</span>
               </template>
+              <span v-if="doc.tags?.length" class="text-text-hint/30 ml-1 truncate max-w-[120px]">· {{ doc.tags.slice(0, 4).join(', ') }}</span>
             </p>
           </div>
+          <button
+            class="p-1 rounded hover:bg-red-500/20 text-text-hint hover:text-red-400 transition-colors shrink-0"
+            title="Re-index (re-chunk and re-embed)"
+            :disabled="isReindexing"
+            @click.stop="handleReindex(doc.id)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
           <button
             class="p-1 rounded hover:bg-red-500/20 text-text-hint hover:text-red-400 transition-colors shrink-0"
             title="Remove"
@@ -172,7 +253,10 @@ const aggregateStats = computed(() => {
           <div v-for="chunk in selectedChunks" :key="chunk.id || chunk.chunkIndex" class="px-6 py-2 border-b border-border-subtle/20 last:border-b-0">
             <p v-if="chunk.heading" class="text-[10px] uppercase tracking-wider text-accent/70 mb-1">{{ chunk.heading }}</p>
             <p class="text-[11px] text-text-secondary leading-relaxed line-clamp-3">{{ chunk.text }}</p>
-            <p class="text-[9px] text-text-hint/40 mt-1">{{ chunk.tokenEstimate }} tokens · {{ chunk.sentenceCount }} sentences</p>
+            <p class="text-[9px] text-text-hint/40 mt-1 flex items-center gap-2">
+              <span>{{ chunk.tokenEstimate }} tokens · {{ chunk.sentenceCount }} sentences</span>
+              <span v-if="chunk.tags?.length" class="truncate max-w-[180px]">· {{ chunk.tags.slice(0, 3).join(', ') }}</span>
+            </p>
           </div>
         </div>
       </div>
@@ -180,6 +264,7 @@ const aggregateStats = computed(() => {
 
     <div class="px-4 py-2 border-t border-border-subtle text-[10px] text-text-hint/40 shrink-0">
       {{ documents.length }} doc{{ documents.length !== 1 ? 's' : '' }}
+      <template v-if="searchQuery">· filtered to {{ filteredDocuments.length }}</template>
       <template v-if="aggregateStats">
         · {{ aggregateStats.indexed }}/{{ aggregateStats.total }} indexed
         <span v-if="aggregateStats.failed" class="text-red-400/60">· {{ aggregateStats.failed }} failed</span>

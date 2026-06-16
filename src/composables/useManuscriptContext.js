@@ -18,13 +18,13 @@ export async function warmEmbeddingCache(projectId) {
       if (!scene.content) continue
       const key = `scene_${scene.id}`
       if (!cache[key] || cache[key].text !== scene.content) {
-        getEmbedding('scene', scene.id, scene.content).catch(() => {})
+        getEmbedding('scene', scene.id, scene.content).catch(() => console.warn(`[useManuscriptContext] Failed to warm embedding for scene ${scene.id}`))
         warmed++
       }
     }
 
     if (warmed > 0) {
-      console.log(`[useManuscriptContext] Warmed ${warmed} scene embeddings`)
+      console.info(`[useManuscriptContext] Warmed ${warmed} scene embeddings`)
     }
   } catch (error) {
     console.warn('[useManuscriptContext] Cache warm-up failed:', error.message)

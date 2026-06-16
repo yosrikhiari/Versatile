@@ -8,31 +8,26 @@ import { getEmbedding } from '../services/embeddingService'
 import { cosineSimilarity } from '../services/ollamaService'
 import { useLocalStorage } from './useLocalStorage'
 import { RESEARCH_KEYS } from '../config/researchKeys'
+import { sanitizeJson } from '../services/ai/aiHelpers'
 
-function lexicalScore(query, text) {
-  const tokens = query.toLowerCase().split(/\W+/).filter(Boolean)
-  const lower = text.toLowerCase()
-  return tokens.reduce((sum, t) => sum + (lower.includes(t) ? 1 : 0), 0)
-}
+function lexicalScore(query, text, allChunkTexts) {
+  const qTokens = query.toLowerCase().split(/\W+/).filter(Boolean)
+  if (qTokens.length === 0) return 0
+  const lowerText = text.toLowerCase()
+  const N = allChunkTexts.length || 1
 
-function sanitizeJson(raw) {
-  if (!raw || typeof raw !== 'string') return null
-  let cleaned = raw.trim()
-  cleaned = cleaned.replace(/^```json\s*/i, '')
-  cleaned = cleaned.replace(/^```\s*/i, '')
-  cleaned = cleaned.replace(/```$/i, '')
-  cleaned = cleaned.replace(/```json$/i, '')
-  cleaned = cleaned.trim()
-  const start = cleaned.indexOf('{')
-  const end = cleaned.lastIndexOf('}')
-  if (start === -1 || end === -1 || end <= start) return null
-  const jsonStr = cleaned.slice(start, end + 1)
-  try {
-    return JSON.parse(jsonStr)
-  } catch {
-    return null
+  let score = 0
+  for (const token of qTokens) {
+    const tf = (lowerText.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+    if (tf === 0) continue
+    const df = allChunkTexts.filter(t => t.toLowerCase().includes(token)).length
+    const idf = Math.log((N - df + 0.5) / (df + 0.5) + 1)
+    score += (1 + Math.log(tf)) * idf
   }
+  return score
 }
+
+// sanitizeJson imported from aiHelpers.js
 
 export function useStoryDirector() {
   const isPlanning = ref(false)
@@ -73,29 +68,43 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
           const allChunks = await getAllChunksForProject(projectStore.currentProjectId)
           if (allChunks.length > 0) {
             const count = Math.min(allChunks.length, RESEARCH_CHUNKS_DEFAULT)
-            let selected = allChunks.slice(0, count)
+            const queryText = `Premise: ${goal.premise}. Genre: ${goal.genre || 'Standard'}. Tone: ${goal.tone || 'Professional'}`
+            const K = Math.max(10, count * 10)
+            const allChunkTexts = allChunks.map(c => c.text)
+
+            // Lexical ranking (TF-IDF based)
+            const lexicalRanks = allChunks
+              .map(c => ({ chunk: c, score: lexicalScore(queryText, c.text, allChunkTexts) }))
+              .sort((a, b) => b.score - a.score)
+            const lexicalRankMap = new Map()
+            lexicalRanks.forEach((item, rank) => lexicalRankMap.set(item.chunk.id, rank + 1))
+
+            // Semantic ranking (best-effort)
+            let semanticRankMap = new Map()
             try {
-              const queryText = `Premise: ${goal.premise}. Genre: ${goal.genre || 'Standard'}. Tone: ${goal.tone || 'Professional'}`
               const queryEmbedding = await getEmbedding(queryText)
               if (queryEmbedding && allChunks.some(c => c.embedding)) {
                 const withEmb = allChunks.filter(c => c.embedding)
-                const withoutEmb = allChunks.filter(c => !c.embedding)
                 const scored = withEmb
                   .map(c => ({ chunk: c, score: cosineSimilarity(queryEmbedding, c.embedding) }))
                   .sort((a, b) => b.score - a.score)
-                selected = scored.slice(0, count).map(s => s.chunk)
-                if (selected.length < count && withoutEmb.length > 0) {
-                  const remaining = count - selected.length
-                  const lexical = withoutEmb
-                    .filter(c => !selected.some(s => s.id === c.id))
-                    .map(c => ({ chunk: c, score: lexicalScore(queryText, c.text) }))
-                    .sort((a, b) => b.score - a.score)
-                  selected = [...selected, ...lexical.slice(0, remaining).map(s => s.chunk)]
-                }
+                scored.forEach((item, rank) => semanticRankMap.set(item.chunk.id, rank + 1))
               }
             } catch {
-              // embed fallback: use first N chunks
+              // semantic unavailable, lexical-only RRF
             }
+
+            // RRF fusion with dynamic K
+            const rrfScores = allChunks.map(chunk => {
+              const lr = lexicalRankMap.get(chunk.id) ?? Infinity
+              const sr = semanticRankMap.get(chunk.id) ?? Infinity
+              const rrf = (1 / (K + lr)) + (1 / (K + sr))
+              return { chunk, rrf }
+            })
+            const selected = rrfScores
+              .sort((a, b) => b.rrf - a.rrf)
+              .slice(0, count)
+              .map(s => s.chunk)
             researchContext = selected.map(c => c.text).join('\n\n---\n\n')
           }
         } catch {

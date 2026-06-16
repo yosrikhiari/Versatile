@@ -93,11 +93,11 @@ export function useAppInitialization() {
       EMBEDDING_VERSION
     )
     if (stale > 0) {
-      console.log(`[resume] Marked ${stale} chunks stale (model/version change)`)
+      console.info(`[resume] Marked ${stale} chunks stale (model/version change)`)
     }
     const recovered = await resumeEmbeddingQueue(projectStore.currentProjectId)
     if (recovered > 0) {
-      console.log(`[resume] Re-indexing ${recovered} unembedded chunks`)
+      console.info(`[resume] Re-indexing ${recovered} unembedded chunks`)
     }
   }
 

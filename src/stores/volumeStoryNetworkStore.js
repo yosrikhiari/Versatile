@@ -127,8 +127,8 @@ export const useVolumeStoryNetworkStore = defineStore('volumeStoryNetwork', () =
     }
 
     // Assign both entities to volume if not already (idempotent at db level)
-    await assignEntityToVolume(from.type, from.id, volumeId, false).catch(() => {})
-    await assignEntityToVolume(to.type, to.id, volumeId, false).catch(() => {})
+    await assignEntityToVolume(from.type, from.id, volumeId, false).catch(() => console.warn(`[volumeStoryNetwork] Could not assign ${from.type}:${from.id} to volume ${volumeId}`))
+    await assignEntityToVolume(to.type, to.id, volumeId, false).catch(() => console.warn(`[volumeStoryNetwork] Could not assign ${to.type}:${to.id} to volume ${volumeId}`))
 
     // Create the edge
     try {

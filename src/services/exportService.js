@@ -200,6 +200,6 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
 }
 
 export function exportToEpub() {
-  console.log('ePub export not yet implemented')
+  console.warn('ePub export not yet implemented')
   alert('ePub export coming soon! For now, please use PDF export.')
 }

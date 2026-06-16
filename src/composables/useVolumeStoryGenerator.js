@@ -3,7 +3,8 @@ import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
-import { useStoryDirector, sanitizeJson } from './useStoryDirector'
+import { sanitizeJson } from '../services/ai/aiHelpers'
+import { useStoryDirector } from './useStoryDirector'
 import { useEntityBootstrapper } from './useEntityBootstrapper'
 import { useStoryWriter } from './useStoryWriter'
 import { useStoryCritic } from './useStoryCritic'
@@ -129,7 +130,7 @@ function debugSnapshot(stage, data) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stage, data })
-    }).catch(() => {})
+    }).catch(() => console.warn('[VolumeStoryGenerator] Debug fetch failed'))
   } catch {}
 }
 

@@ -37,15 +37,44 @@ export async function getAllChunksForProject(projectId) {
 
 export async function addResearchChunks(chunks) {
   const withStatus = chunks.map(c => ({ ...c, embeddingStatus: PENDING }))
-  return db.researchChunks.bulkAdd(withStatus, null, { allKeys: true })
+  const BATCH = 500
+  const allIds = []
+  const committedIds = []
+  try {
+    for (let i = 0; i < withStatus.length; i += BATCH) {
+      const batch = withStatus.slice(i, i + BATCH)
+      const ids = await db.researchChunks.bulkAdd(batch, null, { allKeys: true })
+      allIds.push(...ids)
+      committedIds.push(...ids)
+      if (i + BATCH < withStatus.length) {
+        await new Promise(r => setTimeout(r, 0))
+      }
+    }
+    return allIds
+  } catch (err) {
+    if (committedIds.length > 0) {
+      try {
+        await db.researchChunks.bulkDelete(committedIds)
+      } catch (rollbackErr) {
+        throw new Error(
+          `addResearchChunks failed after committing ${committedIds.length} chunks. ` +
+          `Rollback also failed: ${rollbackErr.message}. ` +
+          `Original error: ${err.message}`
+        )
+      }
+    }
+    throw new Error(
+      `addResearchChunks failed after ${committedIds.length} of ${withStatus.length} chunks committed (rolled back): ${err.message}`
+    )
+  }
 }
 
 export async function updateChunkEmbeddings(updates, meta = {}) {
   const now = Date.now()
   const { provider, model, version } = meta
-  await db.transaction('rw', db.researchChunks, () => {
+  await db.transaction('rw', db.researchChunks, async () => {
     for (const { id, embedding } of updates) {
-      db.researchChunks.update(id, {
+      await db.researchChunks.update(id, {
         embedding,
         embeddingProvider: provider || null,
         embeddingModel: model || null,
@@ -58,17 +87,17 @@ export async function updateChunkEmbeddings(updates, meta = {}) {
 }
 
 export async function markProcessing(ids) {
-  await db.transaction('rw', db.researchChunks, () => {
+  await db.transaction('rw', db.researchChunks, async () => {
     for (const id of ids) {
-      db.researchChunks.update(id, { embeddingStatus: PROCESSING })
+      await db.researchChunks.update(id, { embeddingStatus: PROCESSING })
     }
   })
 }
 
 export async function markFailed(ids) {
-  await db.transaction('rw', db.researchChunks, () => {
+  await db.transaction('rw', db.researchChunks, async () => {
     for (const id of ids) {
-      db.researchChunks.update(id, { embeddingStatus: FAILED })
+      await db.researchChunks.update(id, { embeddingStatus: FAILED })
     }
   })
 }
@@ -86,9 +115,9 @@ export async function markStale(projectId, currentProvider, currentModel, curren
     .toArray()
   if (chunks.length === 0) return 0
   const ids = chunks.map(c => c.id)
-  await db.transaction('rw', db.researchChunks, () => {
+  await db.transaction('rw', db.researchChunks, async () => {
     for (const id of ids) {
-      db.researchChunks.update(id, { embeddingStatus: STALE })
+      await db.researchChunks.update(id, { embeddingStatus: STALE })
     }
   })
   return ids.length
@@ -113,6 +142,21 @@ export async function deleteChunksForDocument(documentId) {
 
 export async function updateChunkEmbedding(chunkId, embedding) {
   return db.researchChunks.update(chunkId, { embedding })
+}
+
+export async function getDocumentChunkEmbeddings(documentId) {
+  const chunks = await db.researchChunks
+    .where({ documentId })
+    .filter(c => c.embedding && c.embeddingStatus === READY)
+    .toArray()
+  return chunks.map(c => c.embedding)
+}
+
+export async function setDocumentEmbedding(documentId, embedding) {
+  return db.researchDocuments.update(documentId, {
+    embedding,
+    embeddingComputedAt: Date.now()
+  })
 }
 
 export async function getUnindexedChunks(projectId) {
@@ -145,9 +189,9 @@ export async function resetChunksStatus(documentId, fromStatus) {
     .toArray()
   if (chunks.length === 0) return []
   const ids = chunks.map(c => c.id)
-  await db.transaction('rw', db.researchChunks, () => {
+  await db.transaction('rw', db.researchChunks, async () => {
     for (const id of ids) {
-      db.researchChunks.update(id, { embeddingStatus: PENDING })
+      await db.researchChunks.update(id, { embeddingStatus: PENDING })
     }
   })
   return chunks.map(c => ({ id: c.id, text: c.text }))

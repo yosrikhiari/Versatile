@@ -484,8 +484,7 @@ watch(() => nodes.value.length, () => {
   setTimeout(() => fitView({ padding: 0.2 }), 100)
 })
 
-watch(() => storyGraphStore.edges.length, (newLen, oldLen) => {
-  console.log('[watch] edges length changed:', oldLen, '→', newLen)
+watch(() => storyGraphStore.edges.length, () => {
   forceRefreshKey.value++
 })
 
@@ -725,24 +724,17 @@ async function handleSaveGroupEdge(groupEdgeData) {
 }
 
 function handleConnect(params) {
-  console.log('[handleConnect] Connection params:', params)
-  
   const sourceId = params.source
   const targetId = params.target
   
   const isSourceGroup = manualGroups.value.some(g => g.id === sourceId)
   const isTargetGroup = manualGroups.value.some(g => g.id === targetId)
   
-  console.log('[handleConnect] isSourceGroup:', isSourceGroup, 'isTargetGroup:', isTargetGroup)
-  
   if (isSourceGroup && isTargetGroup) {
-    console.log('[handleConnect] Opening modal for group-to-group connection')
     nodeToConnect.value = { id: sourceId }
     targetNodeToConnect.value = { id: targetId }
     editingEdge.value = null
     showConnectionModal.value = true
-  } else {
-    console.log('[handleConnect] Non-group connection - ignoring (handled elsewhere)')
   }
 }
 
@@ -939,7 +931,6 @@ async function handleAutoGenerate() {
     : null
   
   if (autoGenerateFromScratch.value) {
-    console.log('[AutoGenerate] From scratch - clearing connections and groups, keeping nodes')
     manualGroups.value = []
     nodeParents.value = {}
     storyGraphStore.edges = []
@@ -1079,12 +1070,10 @@ async function handleApplyPendingSuggestions(checkedIndices) {
   nodePositions.value = { ...nodePositions.value }
   
   if (projectStore.currentProjectId) {
-    console.log('[handleApply] BEFORE loadEdges, store edges count:', storyGraphStore.edges.length)
     await storyGraphStore.saveGroups(projectStore.currentProjectId, manualGroups.value)
     await storyGraphStore.saveNodeParents(projectStore.currentProjectId, nodeParents.value)
     await storyGraphStore.saveAllNodePositions(projectStore.currentProjectId, nodePositions.value)
     await storyGraphStore.loadEdges(projectStore.currentProjectId)
-    console.log('[handleApply] AFTER loadEdges, store edges count:', storyGraphStore.edges.length)
   }
   
   showApplySuggestionsModal.value = false

@@ -3,24 +3,7 @@ import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
-
-function sanitizeJson(raw) {
-  if (!raw || typeof raw !== 'string') return null
-  let cleaned = raw.trim()
-  cleaned = cleaned.replace(/^```json\s*/i, '')
-  cleaned = cleaned.replace(/^```\s*/i, '')
-  cleaned = cleaned.replace(/```$/i, '')
-  cleaned = cleaned.replace(/```json$/i, '')
-  cleaned = cleaned.trim()
-  const regex = /\{[\s\S]*\}/
-  const execResult = regex.exec(cleaned)
-  if (!execResult) return null
-  try {
-    return JSON.parse(execResult[0])
-  } catch {
-    return null
-  }
-}
+import { sanitizeJson } from '../services/ai/aiHelpers'
 
 function countCharacters(storyBible) {
   if (!storyBible) return 0
