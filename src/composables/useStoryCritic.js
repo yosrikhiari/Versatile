@@ -3,6 +3,7 @@ import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
+import { getDimensionNames } from '../config/evalDimensions'
 import { sanitizeJson } from '../services/ai/aiHelpers'
 
 function countCharacters(storyBible) {
@@ -115,6 +116,14 @@ Return JSON evaluation.`
       const strengths = Array.isArray(parsed.strengths) ? parsed.strengths : []
       const score = typeof parsed.score === 'number' ? parsed.score : 7
 
+      const expectedDims = getDimensionNames(categoryType)
+      const rawScores = parsed.dimensionScores || {}
+      const dimensionScores = {}
+      for (const dim of expectedDims) {
+        const val = rawScores[dim]
+        dimensionScores[dim] = typeof val === 'number' && val >= 1 && val <= 10 ? val : null
+      }
+
       const majorIssues = issues.filter(i => i.severity === 'major')
       const minorIssues = issues.filter(i => i.severity === 'minor')
 
@@ -123,6 +132,7 @@ Return JSON evaluation.`
       return {
         pass,
         score,
+        dimensionScores,
         issues,
         strengths
       }

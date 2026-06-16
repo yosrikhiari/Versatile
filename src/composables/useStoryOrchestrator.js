@@ -4,9 +4,11 @@ import { useStoryWriter } from './useStoryWriter'
 import { useStoryCritic } from './useStoryCritic'
 import { useStoryRevisor } from './useStoryRevisor'
 import { useStoryResearcher } from './useStoryResearcher'
+import { useProjectStore } from '../stores/projectStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { db, deepPlain } from '../services/db-core'
+import { gateDimensionCoverage, gateScoreDistribution, gateRevisionEffectiveness } from '../services/evalGates'
 
 function countWords(text) {
   if (!text) return 0
@@ -201,6 +203,7 @@ export function useStoryOrchestrator() {
           }
 
           let finalProse = prose
+          let revisionCritiqueResult = null
           if (!critiqueResult.pass) {
             try {
               const revised = await revisor.reviseScene({
@@ -217,6 +220,27 @@ export function useStoryOrchestrator() {
             }
           }
 
+          if (finalProse !== prose) {
+            try {
+              revisionCritiqueResult = await critic.evaluateScene({
+                draft: finalProse,
+                sceneBrief,
+                storyBible: synopsis.value,
+                chapterLog: chapterLog.join('\n')
+              })
+            } catch {
+              revisionCritiqueResult = null
+            }
+          }
+
+          const projectStore = useProjectStore()
+          const workspaceType = projectStore.activeWorkspaceType || 'creative'
+          const dimCov = gateDimensionCoverage(critiqueResult, workspaceType)
+          const scoreDist = gateScoreDistribution(critiqueResult)
+          const revEff = revisionCritiqueResult
+            ? await gateRevisionEffectiveness(critiqueResult, finalProse, prose, revisionCritiqueResult)
+            : null
+
           const sceneSummary = `[Scene ${sceneBrief.sceneNumber}: ${sceneBrief.title}] — ${sceneBrief.whatChanges}`
           chapterLog.push(sceneSummary)
           if (chapterLog.length > 10) {
@@ -228,7 +252,13 @@ export function useStoryOrchestrator() {
             brief: sceneBrief,
             prose: finalProse,
             wordCount: countWords(finalProse),
-            critiqueResult
+            critiqueResult,
+            revisionCritiqueResult,
+            gateResults: {
+              dimensionCoverage: dimCov,
+              scoreDistribution: scoreDist,
+              revisionEffectiveness: revEff
+            }
           }]
 
           progress.value = ((i + 1) / actions.length) * 100
@@ -260,7 +290,8 @@ export function useStoryOrchestrator() {
           totalWords: countWords(chapterLog.join('\n\n')),
           generatedAt: new Date().toISOString(),
           projectId,
-          qualityScore: 10
+          qualityScore: 10,
+          evalGates: null
         }
         phase.value = 'complete'
         return
@@ -320,6 +351,7 @@ export function useStoryOrchestrator() {
       })
 
       let finalProse = prose
+      let revisionCritiqueResult = null
       if (!critiqueResult.pass) {
         try {
           const revised = await revisor.reviseScene({
@@ -334,13 +366,40 @@ export function useStoryOrchestrator() {
         } catch {}
       }
 
+      if (finalProse !== prose) {
+        try {
+          revisionCritiqueResult = await critic.evaluateScene({
+            draft: finalProse,
+            sceneBrief,
+            storyBible: synopsis.value,
+            chapterLog: chapterLog.join('\n')
+          })
+        } catch {
+          revisionCritiqueResult = null
+        }
+      }
+
+      const projectStore = useProjectStore()
+      const workspaceType = projectStore.activeWorkspaceType || 'creative'
+      const dimCov = gateDimensionCoverage(critiqueResult, workspaceType)
+      const scoreDist = gateScoreDistribution(critiqueResult)
+      const revEff = revisionCritiqueResult
+        ? await gateRevisionEffectiveness(critiqueResult, finalProse, prose, revisionCritiqueResult)
+        : null
+
       const newScenes = [...finalStory.value.scenes]
       newScenes[sceneIndex] = {
         number: sceneBrief.sceneNumber,
         brief: sceneBrief,
         prose: finalProse,
         wordCount: countWords(finalProse),
-        critiqueResult
+        critiqueResult,
+        revisionCritiqueResult,
+        gateResults: {
+          dimensionCoverage: dimCov,
+          scoreDistribution: scoreDist,
+          revisionEffectiveness: revEff
+        }
       }
 
       const fullText = newScenes.map(s => s.prose).join('\n\n')
@@ -350,12 +409,26 @@ export function useStoryOrchestrator() {
         ? Math.round(qualityScores.reduce((sum, s) => sum + s.critiqueResult.score, 0) / qualityScores.length)
         : 0
 
+      let passCount = 0
+      let failCount = 0
+      const allGateResults = newScenes.map(s => s.gateResults).filter(Boolean)
+      for (const g of allGateResults) {
+        if (g.dimensionCoverage != null) { g.dimensionCoverage.pass ? passCount++ : failCount++ }
+        if (g.scoreDistribution != null) { g.scoreDistribution.pass ? passCount++ : failCount++ }
+        if (g.revisionEffectiveness != null) { g.revisionEffectiveness.pass ? passCount++ : failCount++ }
+      }
+      const evalGates = allGateResults.length > 0 ? {
+        summary: { total: passCount + failCount, passed: passCount, failed: failCount },
+        sceneResults: allGateResults
+      } : null
+
       finalStory.value = {
         ...finalStory.value,
         scenes: newScenes,
         fullText,
         totalWords,
-        qualityScore
+        qualityScore,
+        evalGates
       }
 
       completedScenes.value = newScenes
@@ -371,7 +444,9 @@ export function useStoryOrchestrator() {
       brief: s.brief,
       prose: s.prose,
       wordCount: s.wordCount,
-      critiqueResult: s.critiqueResult
+      critiqueResult: s.critiqueResult,
+      revisionCritiqueResult: s.revisionCritiqueResult,
+      gateResults: s.gateResults
     }))
 
     const fullText = scenes.map(s => s.prose).join('\n\n')
@@ -380,6 +455,30 @@ export function useStoryOrchestrator() {
     const qualityScore = qualityScores.length > 0
       ? Math.round(qualityScores.reduce((sum, s) => sum + s.critiqueResult.score, 0) / qualityScores.length)
       : 0
+
+    let passCount = 0
+    let failCount = 0
+    const allGateResults = scenes.map(s => s.gateResults).filter(Boolean)
+    for (const g of allGateResults) {
+      if (g.dimensionCoverage != null) {
+        g.dimensionCoverage.pass ? passCount++ : failCount++
+      }
+      if (g.scoreDistribution != null) {
+        g.scoreDistribution.pass ? passCount++ : failCount++
+      }
+      if (g.revisionEffectiveness != null) {
+        g.revisionEffectiveness.pass ? passCount++ : failCount++
+      }
+    }
+
+    const evalGates = allGateResults.length > 0 ? {
+      summary: {
+        total: passCount + failCount,
+        passed: passCount,
+        failed: failCount
+      },
+      sceneResults: allGateResults
+    } : null
 
     const title = plan.storyArc.premise.length > 60
       ? plan.storyArc.premise.slice(0, 60) + '...'
@@ -393,7 +492,8 @@ export function useStoryOrchestrator() {
       totalWords,
       generatedAt: new Date().toISOString(),
       projectId,
-      qualityScore
+      qualityScore,
+      evalGates
     }
   }
 

@@ -89,7 +89,7 @@ ${CHAPTER_SCENE_SCHEMA}",
   "totalEstimatedWords": number
 }`,
     writer: `You are a creative fiction writer. Write rich, sensory, character-driven prose. Keep emotional pacing and tension aligned with the brief. Avoid high-level summaries; show, don't tell. Write the scene in full details.`,
-    critic: `You are an expert story editor and literary critic. Evaluate if the scene matches its emotional goals, character wants, and tension. Ensure smooth pacing and no filler. Pass score threshold is 7/10. Return JSON: { "pass": boolean, "score": number, "issues": [{ "type": "continuity"|"voice"|"emotional_goal"|"show_tell"|"pacing", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
+    critic: `You are an expert story editor and literary critic. Evaluate if the scene matches its emotional goals, character wants, and tension. Ensure smooth pacing and no filler. Pass score threshold is 7/10. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "continuity": number, "voice": number, "emotional_goal": number, "show_tell": number, "pacing": number }, "issues": [{ "type": "continuity"|"voice"|"emotional_goal"|"show_tell"|"pacing", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
     revisor: `You are a meticulous revision editor. Take the draft prose and the critic issues, and rewrite/polish the prose to resolve the issues while maintaining the narrative voice.`
   },
 
@@ -116,7 +116,7 @@ ${CHAPTER_SCENE_SCHEMA} describing the reader's emotional arc across the novel",
 }
 Ensure tension ramps across the novel: low in opening chapters, rising through the middle, peaking at the climax, then resolving. Each chapter should end with a hook or unresolved question. Maintain consistent POV voice throughout.`,
     writer: `You are a novelist writing a full-length work of fiction. Write immersive, character-driven prose with chapter-level pacing. Each chapter should advance the plot while deepening character and setting. Maintain consistent narrative voice and POV across the whole work. Use chapter breaks to create natural pauses and hooks. Balance dialogue, interiority, action, and description. Avoid summary where scenes can dramatize. Keep the reader turning pages — every scene should earn its place.`,
-    critic: `You are a developmental editor evaluating a novel chapter. Assess narrative voice consistency, POV adherence, chapter-level pacing, emotional stakes, dialogue authenticity, and whether the chapter ends with a compelling hook or unresolved tension. Check for continuity across the wider story. Pass score threshold is 7/10. Return JSON: { "pass": boolean, "score": number, "issues": [{ "type": "continuity"|"voice"|"emotional_goal"|"show_tell"|"pacing", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
+    critic: `You are a developmental editor evaluating a novel chapter. Assess narrative voice consistency, POV adherence, chapter-level pacing, emotional stakes, dialogue authenticity, and whether the chapter ends with a compelling hook or unresolved tension. Check for continuity across the wider story. Pass score threshold is 7/10. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "continuity": number, "voice": number, "emotional_goal": number, "show_tell": number, "pacing": number }, "issues": [{ "type": "continuity"|"voice"|"emotional_goal"|"show_tell"|"pacing", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
     revisor: `You are a line editor and revision specialist for novels. Revise the chapter prose to address the developmental editor's issues while preserving the author's voice. Strengthen chapter openings and endings. Tighten pacing. Deepen character interiority. Ensure consistent POV and tense throughout.`
   },
 
@@ -149,7 +149,7 @@ StoryArc:
   "totalEstimatedWords": number
 }`,
     writer: `You are an expert corporate legal counsel drafting rigorous legal text. Keep language formal, precise, active, and absolutely unambiguous. Avoid soft or conversational words. Use precise legal terms (Indemnification, Liability, Covenant, Effective Date) and format using clear paragraph hierarchy.`,
-    critic: `You are an independent legal validator. Evaluate the clause for clarity, ambiguity, balance, and liability vulnerabilities. Look out for missing penalty thresholds, loopholes, or unbalanced covenants. Pass score threshold is 8/10. Return JSON: { "pass": boolean, "score": number, "issues": [{ "type": "clarity"|"ambiguity"|"liability"|"missing_provision", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
+    critic: `You are an independent legal validator. Evaluate the clause for clarity, ambiguity, balance, and liability vulnerabilities. Look out for missing penalty thresholds, loopholes, or unbalanced covenants. Pass score threshold is 8/10. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "clarity": number, "ambiguity": number, "liability": number, "missing_provision": number }, "issues": [{ "type": "clarity"|"ambiguity"|"liability"|"missing_provision", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
     revisor: `You are a legal editor. Revise the clause draft based on the legal critic validation issues to eliminate ambiguity, strengthen covenants, or balance mutual protections.`
   },
 
@@ -182,7 +182,7 @@ StoryArc:
   "totalEstimatedWords": number
 }`,
     writer: `You are a technical staff writer and architect. Draft technical sections containing clear requirements, architecture components, JSON API payload schemas, UML description flows, and Markdown tables. Be concise, direct, and developer-oriented. Use correct network and computing terminology.`,
-    critic: `You are a Senior Technical Architect reviewing the design specification. Check for architectural flaws, missing interfaces, validation requirements, security loopholes (e.g. rate limits, injection rules), and compliance. Pass score threshold is 8/10. Return JSON: { "pass": boolean, "score": number, "issues": [{ "type": "architecture"|"interface"|"security"|"validation", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
+    critic: `You are a Senior Technical Architect reviewing the design specification. Check for architectural flaws, missing interfaces, validation requirements, security loopholes (e.g. rate limits, injection rules), and compliance. Pass score threshold is 8/10. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "architecture": number, "interface": number, "security": number, "validation": number }, "issues": [{ "type": "architecture"|"interface"|"security"|"validation", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
     revisor: `You are a technical editor. Refine the specification section based on the design critic issues. Correct any architectural gaps, clarify payload schemas, and expand API constraints.`
   },
 
@@ -215,7 +215,7 @@ StoryArc:
   "totalEstimatedWords": number
 }`,
     writer: `You are a management consultant and business writer. Draft persuasive, analytical, and professional business briefs. Integrate KPI models, SWOT matrices, competitor analysis tables, and operational roadmaps. Keep language professional, authoritative, and data-backed.`,
-    critic: `You are an independent venture partner. Evaluate the business section for commercial viability, financial soundness, SWOT analytical depth, realistic assumptions, and KPI clarity. Pass score threshold is 7/10. Return JSON: { "pass": boolean, "score": number, "issues": [{ "type": "viability"|"financial"|"assumptions"|"kpi_clarity", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
+    critic: `You are an independent venture partner. Evaluate the business section for commercial viability, financial soundness, SWOT analytical depth, realistic assumptions, and KPI clarity. Pass score threshold is 7/10. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "viability": number, "financial": number, "assumptions": number, "kpi_clarity": number }, "issues": [{ "type": "viability"|"financial"|"assumptions"|"kpi_clarity", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
     revisor: `You are a business editor. Refine the strategic section based on venture partner feedback. Clarify financial projections, solidify competitor differentiations, and make operational goals more metric-driven.`
   },
 
@@ -248,7 +248,7 @@ StoryArc:
   "totalEstimatedWords": number
 }`,
     writer: `You are an academic researcher. Draft scholarly, rigorous, and deeply researched text. Include academic descriptions, variable formulas, cohort analysis models, and formal literature citations. Keep language third-person, objective, and intellectually precise.`,
-    critic: `You are a peer reviewer. Evaluate the academic section for scientific rigor, clarity of variables, coherence of literature review, and experimental reproducibility. Flag assertions that lack citations or empirical backing. Pass score threshold is 8/10. Return JSON: { "pass": boolean, "score": number, "issues": [{ "type": "rigor"|"methodology"|"citations"|"reproducibility", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
+    critic: `You are a peer reviewer. Evaluate the academic section for scientific rigor, clarity of variables, coherence of literature review, and experimental reproducibility. Flag assertions that lack citations or empirical backing. Pass score threshold is 8/10. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "rigor": number, "methodology": number, "citations": number, "reproducibility": number }, "issues": [{ "type": "rigor"|"methodology"|"citations"|"reproducibility", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }`,
     revisor: `You are a scholarly editor. Refine the academic section based on peer review comments. Strengthen citations, detail control variables, and align empirical discussions with target hypotheses.`
   }
 }

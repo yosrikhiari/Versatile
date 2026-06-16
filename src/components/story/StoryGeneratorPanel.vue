@@ -13,6 +13,9 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import GenerationSyncPreview from './GenerationSyncPreview.vue'
 import GenerationLoadingScreen from './GenerationLoadingScreen.vue'
 import { MODE_ARC, MODE_CHAPTER, MODE_SCENE, MODE_BRAINSTORM } from '../../constants/generationModes'
+import { useSceneEval } from '../../composables/useSceneEval'
+import EvalPanel from '../eval/EvalPanel.vue'
+import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
 
 const emit = defineEmits(['openChapters'])
 
@@ -129,6 +132,24 @@ function getTensionBarClass(tension) {
   }
 }
 
+const sceneEval = useSceneEval()
+
+function handleEvaluateScene(idx) {
+  const scene = volumeGenerator.writtenScenes.value?.[idx]
+  const planItem = volumeGenerator.scenePlan.value?.[idx]
+  if (!scene) return
+  const ws = projectStore.activeWorkspaceType || 'creative'
+  sceneEval.evaluate(scene, ws, planItem)
+}
+
+function handleReviseScene(idx) {
+  const scene = volumeGenerator.writtenScenes.value?.[idx]
+  const planItem = volumeGenerator.scenePlan.value?.[idx]
+  if (!scene || !sceneEval.critiqueResult.value) return
+  const ws = projectStore.activeWorkspaceType || 'creative'
+  sceneEval.revise(scene, ws, planItem)
+}
+
 const genres = ['Fantasy', 'Sci-Fi', 'Thriller', 'Romance', 'Horror', 'Literary', 'Mystery', 'Historical']
 const tones = ['Tense', 'Melancholic', 'Hopeful', 'Dark', 'Playful', 'Atmospheric']
 const synopsis = computed(() => {
@@ -149,6 +170,16 @@ const volumeTotalConsistencyIssues = computed(() => {
   if (!report) return 0
   return (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
 })
+
+const qualityGrade = computed(() => {
+  const n = volumeTotalConsistencyIssues.value
+  if (n === 0) return 'good'
+  if (n <= 3) return 'fair'
+  return 'poor'
+})
+
+const totalCharacterIssues = computed(() => volumeGenerator.consistencyReport.value?.characterIssues?.length || 0)
+const totalLocationIssues = computed(() => volumeGenerator.consistencyReport.value?.locationIssues?.length || 0)
 
 const totalWordsWritten = computed(() =>
   volumeGenerator.writtenScenes.value.reduce((sum, s) => sum + (s.prose?.split(/\s+/).length || 0), 0)
@@ -889,6 +920,24 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
             </div>
           </div>
 
+          <!-- Quality summary card -->
+          <div v-if="volumeGenerator.consistencyReport.value" class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border-subtle bg-bg-secondary/50">
+            <div class="flex items-center gap-2">
+              <BaseIcon
+                :name="qualityGrade === 'good' ? 'check-circle' : 'alert-triangle'"
+                :size="14"
+                :class="qualityGrade === 'good' ? 'text-green-400' : qualityGrade === 'fair' ? 'text-yellow-400' : 'text-red-400'"
+              />
+              <span class="text-xs font-ui text-text-secondary">
+                Quality: <span :class="qualityGrade === 'good' ? 'text-green-400' : qualityGrade === 'fair' ? 'text-yellow-400' : 'text-red-400'">{{ qualityGrade }}</span>
+              </span>
+            </div>
+            <div class="flex gap-3 text-[10px] text-text-hint font-body">
+              <span>{{ totalCharacterIssues }} character issues</span>
+              <span>{{ totalLocationIssues }} location issues</span>
+            </div>
+          </div>
+
           <!-- Scene list -->
           <div class="rounded-lg border border-border-subtle overflow-hidden">
             <div
@@ -906,13 +955,56 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
           </div>
 
           <!-- Selected scene actions -->
-          <div v-if="selectedSceneIndex >= 0" class="flex gap-1.5">
-            <button
-              class="flex-1 py-1.5 px-2 bg-yellow-600/20 text-yellow-400 rounded-md text-xs font-medium hover:bg-yellow-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-              @click="handleRegenerateScene(selectedSceneIndex)"
-            >
-              <BaseIcon name="refresh-cw" :size="12" /> Re-generate Scene {{ selectedSceneIndex + 1 }}
-            </button>
+          <div v-if="selectedSceneIndex >= 0" class="space-y-2">
+            <div class="flex gap-1.5">
+              <button
+                class="flex-1 py-1.5 px-2 bg-yellow-600/20 text-yellow-400 rounded-md text-xs font-medium hover:bg-yellow-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+                @click="handleRegenerateScene(selectedSceneIndex)"
+              >
+                <BaseIcon name="refresh-cw" :size="12" /> Re-generate Scene {{ selectedSceneIndex + 1 }}
+              </button>
+              <button
+                class="flex-1 py-1.5 px-2 bg-accent/10 text-accent rounded-md text-xs font-medium hover:bg-accent/20 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+                :disabled="sceneEval.isEvaluating.value || !volumeGenerator.writtenScenes.value?.[selectedSceneIndex]?.prose"
+                @click="handleEvaluateScene(selectedSceneIndex)"
+              >
+                <BaseIcon :name="sceneEval.isEvaluating.value ? 'loader' : 'check-circle'" :size="12" />
+                {{ sceneEval.isEvaluating.value ? 'Evaluating...' : sceneEval.hasBeenEvaluated.value ? 'Re-evaluate' : 'Evaluate' }}
+              </button>
+            </div>
+
+            <div v-if="sceneEval.hasBeenEvaluated.value || sceneEval.isEvaluating.value" class="space-y-2 border border-border-subtle rounded-lg p-3 bg-bg-secondary/50">
+              <EvalPanel
+                :critique-result="sceneEval.critiqueResult.value"
+                :gate-results="sceneEval.gateResults.value"
+                :eval-gates="{ dimensionCoverage: sceneEval.gateResults.value?.dimensionCoverage, scoreDistribution: sceneEval.gateResults.value?.scoreDistribution, revisionEffectiveness: sceneEval.gateResults.value?.revisionEffectiveness }"
+                :workspace-type="projectStore.activeWorkspaceType || 'creative'"
+                :compact="true"
+              />
+
+              <div v-if="sceneEval.hasBeenEvaluated.value" class="flex gap-1.5">
+                <button
+                  class="flex-1 py-1 px-2 bg-indigo-600/20 text-indigo-400 rounded-md text-[11px] font-medium hover:bg-indigo-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+                  :disabled="sceneEval.isRevising.value || !sceneEval.critiqueResult.value"
+                  @click="handleReviseScene(selectedSceneIndex)"
+                >
+                  <BaseIcon :name="sceneEval.isRevising.value ? 'loader' : 'refresh-cw'" :size="11" />
+                  {{ sceneEval.isRevising.value ? 'Revising...' : 'Apply Revision' }}
+                </button>
+                <button
+                  v-if="sceneEval.revisionResult.value"
+                  class="flex-1 py-1 px-2 bg-emerald-600/20 text-emerald-400 rounded-md text-[11px] font-medium hover:bg-emerald-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+                  @click="volumeGenerator.writtenScenes.value[selectedSceneIndex].prose = sceneEval.revisionResult.value.revisedProse"
+                >
+                  <BaseIcon name="check" :size="11" /> Accept Revision
+                </button>
+              </div>
+
+              <RevisionDeltaPanel
+                :revision-result="sceneEval.revisionResult.value"
+                :compact="true"
+              />
+            </div>
           </div>
 
           <!-- Primary action -->
