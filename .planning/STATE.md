@@ -86,6 +86,7 @@ None.
 |------|------|---------|
 | Handle 1M+ character documents without browser crash | general | 2026-06-16 |
 | Connect PostgreSQL database and link frontend to backend | api | 2026-06-16 |
+| Investigate and accelerate document embedding indexing throughput | general | 2026-06-16 |
 
 ## Session Continuity
 
