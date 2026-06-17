@@ -91,11 +91,10 @@ None.
 ## Session Continuity
 
 ### Last Session
-- Milestone definition complete, ROADMAP.md approved
-- Phase 1 evaluation framework implemented (dimensions + rubrics)
-- Phase 3 quality gates implemented (3 gate functions)
-- Orchestrator integration complete (critique + gate results per scene)
-- Critic prompts updated across all workspace types
+- Phase 1 discuss-phase completed (standard mode)
+- 6 gray areas resolved: 1-10 scale stays, gaps deferred, warn-by-default gates, score-delta+word-change revision gate
+- CONTEXT.md written and committed with all decisions, file references, and downstream contracts
+- EVAL-03 still pending (dimension-key comparison between Critic prompts and evalDimensions.js)
 
 ### Current Blockers
 None
