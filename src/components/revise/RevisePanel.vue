@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { getRevisionComments, addRevisionComment, deleteRevisionComment } from '../../services/dbService'
+import EmptyState from '../shared/EmptyState.vue'
 
 const projectStore = useProjectStore()
 
@@ -111,9 +112,7 @@ watch(() => projectStore.currentProjectId, loadComments)
     
     <div class="flex-1 overflow-y-auto p-8" @mouseup="handleTextSelection">
       <div class="max-w-[680px] mx-auto">
-        <div v-if="paragraphs.length === 0" class="text-center py-16">
-          <p class="text-sm italic text-text-hint font-body">Write something in Flow mode, then come here to review</p>
-        </div>
+        <EmptyState v-if="paragraphs.length === 0" icon="edit-3" title="Nothing to review" description="Write something in Flow mode, then come here to review" />
 
         <template v-for="(para, index) in paragraphs" :key="index">
           <div

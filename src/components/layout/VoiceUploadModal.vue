@@ -4,6 +4,10 @@
     <div class="modal-backdrop" @click="close"></div>
 
     <!-- Modal -->
+    <ErrorBoundary
+      fallback-title="Voice Upload Error"
+      fallback-description="Failed to load the voice upload modal. Try closing and reopening it."
+    >
     <div class="modal-content">
       <div class="modal-header">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white">Upload Sample Text</h2>
@@ -79,11 +83,13 @@
         </button>
       </div>
     </div>
+    </ErrorBoundary>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import { analyzeVoiceProfile } from '@/services/generation/voiceAnalyzer'
 import { useVoiceFromManuscript } from '@/composables/useVoiceFromManuscript'
 import { useStoryBibleStore } from '@/stores/storyBibleStore'

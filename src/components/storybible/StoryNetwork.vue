@@ -91,6 +91,7 @@ const manualGroups = ref([])
 
 const nodeParents = ref({}) // { 'char-1': 'group-123', 'char-2': null }
 
+/* Palette kept as hex for opacity suffix support (e.g. data.color + '60') */
 const groupColors = [
   '#f48fb1', '#ef5350', '#ce93d8', '#f06292', '#ba68c8',
   '#ff7043', '#90a4ae', '#4fc3f7', '#80cbc4', '#aed581'
@@ -1629,7 +1630,7 @@ async function arrangeExtendedStarLayout() {
                 <BaseIcon :name="data.iconName" :size="16" :style="{ color: data.color }" />
                 <span class="font-medium text-sm text-text-primary node-label" :title="data.label">{{ data.label }}</span>
               </div>
-              <span v-if="data.sublabel" class="text-[10px] text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
+              <span v-if="data.sublabel" class="text-2xs text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
             </div>
           </template>
           
@@ -1644,7 +1645,7 @@ async function arrangeExtendedStarLayout() {
                 <BaseIcon :name="data.iconName" :size="16" :style="{ color: data.color }" />
                 <span class="font-medium text-sm text-text-primary node-label" :title="data.label">{{ data.label }}</span>
               </div>
-              <span v-if="data.sublabel" class="text-[10px] text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
+              <span v-if="data.sublabel" class="text-2xs text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
             </div>
           </template>
           
@@ -1659,7 +1660,7 @@ async function arrangeExtendedStarLayout() {
                 <BaseIcon :name="data.iconName" :size="16" :style="{ color: data.color }" />
                 <span class="font-medium text-sm text-text-primary node-label" :title="data.label">{{ data.label }}</span>
               </div>
-              <span v-if="data.sublabel" class="text-[10px] px-1.5 py-0.5 rounded bg-bg-tertiary node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
+              <span v-if="data.sublabel" class="text-2xs px-1.5 py-0.5 rounded bg-bg-tertiary node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
             </div>
           </template>
 
@@ -1689,7 +1690,7 @@ async function arrangeExtendedStarLayout() {
                   @click.stop
                   @mousedown.stop
                 />
-                <span v-if="data.nodeCount" class="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-mono" :style="{ backgroundColor: data.color + '30', color: data.color }">
+                <span v-if="data.nodeCount" class="text-2xs px-1.5 py-0.5 rounded-full shrink-0 font-mono" :style="{ backgroundColor: data.color + '30', color: data.color }">
                   {{ data.nodeCount }}
                 </span>
                 <button 

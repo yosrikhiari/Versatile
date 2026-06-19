@@ -9,10 +9,10 @@ function countWords(text) {
 
 export function gateDimensionCoverage(critiqueResult, workspaceType) {
   const cfg = EVAL_GATE_CONFIG.dimensionCoverage
-  if (!cfg.enabled) return { pass: true, missing: [], warnings: [] }
+  if (!cfg.enabled) return { pass: true, failOn: 'none', missing: [], warnings: [] }
 
   const expectedDims = getDimensionNames(workspaceType)
-  if (!expectedDims || expectedDims.length === 0) return { pass: true, missing: [], warnings: [] }
+  if (!expectedDims || expectedDims.length === 0) return { pass: true, failOn: 'none', missing: [], warnings: [] }
 
   const issues = critiqueResult?.issues || []
   const coveredDims = new Set(issues.map(i => i.type))
@@ -21,6 +21,7 @@ export function gateDimensionCoverage(critiqueResult, workspaceType) {
 
   return {
     pass: missing.length === 0 || cfg.strict === false,
+    failOn: cfg.failOn || 'warn',
     missing,
     warnings
   }
@@ -28,7 +29,7 @@ export function gateDimensionCoverage(critiqueResult, workspaceType) {
 
 export function gateScoreDistribution(critiqueResult) {
   const cfg = EVAL_GATE_CONFIG.scoreDistribution
-  if (!cfg.enabled) return { pass: true, flags: [] }
+  if (!cfg.enabled) return { pass: true, failOn: 'none', flags: [] }
 
   if (!critiqueResult) return { pass: true, flags: [] }
 
@@ -55,13 +56,14 @@ export function gateScoreDistribution(critiqueResult) {
 
   return {
     pass: flags.length === 0,
+    failOn: cfg.failOn || 'warn',
     flags
   }
 }
 
 export async function gateRevisionEffectiveness(originalCritique, revisionDraft, originalDraft, revisionCritiqueResult) {
   const cfg = EVAL_GATE_CONFIG.revisionEffectiveness
-  if (!cfg.enabled) return { pass: true, delta: 0, regressions: [] }
+  if (!cfg.enabled) return { pass: true, failOn: 'none', delta: 0, regressions: [] }
 
   const regressions = []
 
@@ -103,5 +105,5 @@ export async function gateRevisionEffectiveness(originalCritique, revisionDraft,
   if (delta < 0) {
     regressions.push(`Score decreased by ${Math.abs(delta)} points after revision`)
   }
-  return { pass: regressions.length === 0, delta, regressions }
+  return { pass: regressions.length === 0, failOn: cfg.failOn || 'block', delta, regressions }
 }

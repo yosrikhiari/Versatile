@@ -122,7 +122,17 @@ function mergeSmallChunks(chunks, minSentences) {
 }
 
 async function sizeBasedChunk(text, maxChunkSize) {
-  const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim())
+  let paragraphs = text.split(/\n\s*\n/).filter(p => p.trim())
+  if (paragraphs.length <= 1) {
+    paragraphs = text.split('\n').filter(p => p.trim())
+  }
+  if (paragraphs.length <= 1) {
+    paragraphs = text.split(/(?<=[.!?])\s+/).filter(p => p.trim())
+  }
+  if (paragraphs.length <= 1) {
+    paragraphs = [text]
+  }
+
   const chunks = []
   let current = []
   let iter = 0
@@ -153,6 +163,103 @@ async function sizeBasedChunk(text, maxChunkSize) {
   return result
 }
 
+function groupSentencesByParagraph(sentences, text) {
+  const paraBreaks = []
+  paraBreaks.push(0)
+  for (let i = 1; i < sentences.length; i++) {
+    const prevEnd = text.indexOf(sentences[i - 1]) + sentences[i - 1].length
+    const curStart = text.indexOf(sentences[i], prevEnd)
+    if (curStart === -1 || prevEnd === -1) continue
+    const between = text.slice(prevEnd, curStart)
+    if (/^\s*\n\s*\n/.test(between)) {
+      paraBreaks.push(i)
+    }
+  }
+  paraBreaks.push(sentences.length)
+
+  const groups = []
+  for (let i = 0; i < paraBreaks.length - 1; i++) {
+    const start = paraBreaks[i]
+    const end = paraBreaks[i + 1]
+    if (start >= end) continue
+    groups.push({
+      sentences: sentences.slice(start, end),
+      startIdx: start,
+      endIdx: end - 1
+    })
+  }
+  return groups
+}
+
+function findHeadingBreaks(sentences, text) {
+  const breaks = [0]
+  const headingPattern = /^#{1,6}\s+|^[-=]+\s*$/m
+  for (let i = 1; i < sentences.length; i++) {
+    const prevEnd = text.indexOf(sentences[i - 1]) + sentences[i - 1].length
+    const curStart = text.indexOf(sentences[i], prevEnd)
+    if (curStart === -1 || prevEnd === -1) continue
+    const between = text.slice(prevEnd, curStart)
+    if (headingPattern.test(between) || /\n[-=]+\s*$/.test(between)) {
+      breaks.push(i)
+    }
+  }
+  breaks.push(sentences.length)
+  return breaks
+}
+
+function applyBreaks(sentences, breaks) {
+  const groups = []
+  for (let i = 0; i < breaks.length - 1; i++) {
+    const start = breaks[i]
+    const end = breaks[i + 1]
+    if (start >= end) continue
+    groups.push({
+      sentences: sentences.slice(start, end),
+      startIdx: start,
+      endIdx: end - 1
+    })
+  }
+  return groups
+}
+
+function computeChunksFromParagraphGroups(groups, embeddings, threshold) {
+  if (groups.length <= 1) {
+    return [{ sentences: [...groups[0].sentences], startIdx: groups[0].startIdx, endIdx: groups[0].endIdx }]
+  }
+
+  const mergeFlags = []
+  for (let i = 0; i < groups.length - 1; i++) {
+    const embA = embeddings[i]
+    const embB = embeddings[i + 1]
+    if (!embA || !embB) {
+      mergeFlags.push(false)
+      continue
+    }
+    const sim = cosineSimilarity(embA, embB)
+    mergeFlags.push(sim >= threshold)
+  }
+
+  const chunks = []
+  let curSentences = [...groups[0].sentences]
+  let curStart = groups[0].startIdx
+  let curEnd = groups[0].endIdx
+
+  for (let i = 0; i < mergeFlags.length; i++) {
+    if (mergeFlags[i]) {
+      curSentences.push(...groups[i + 1].sentences)
+      curEnd = groups[i + 1].endIdx
+    } else {
+      chunks.push({ sentences: curSentences, startIdx: curStart, endIdx: curEnd })
+      curSentences = [...groups[i + 1].sentences]
+      curStart = groups[i + 1].startIdx
+      curEnd = groups[i + 1].endIdx
+    }
+  }
+  chunks.push({ sentences: curSentences, startIdx: curStart, endIdx: curEnd })
+
+  return mergeSmallChunks(chunks, 2)
+}
+
 export async function computeSemanticChunks(text, options = {}) {
   const store = useSettingsStore()
   const threshold = options.threshold ?? store.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
@@ -165,27 +272,52 @@ export async function computeSemanticChunks(text, options = {}) {
     return [{ text: text, sentences: [...sentences], startIdx: 0, endIdx: 0 }]
   }
 
-  if (sentences.length > 2000) {
-    console.warn(`Large document (${sentences.length} sentences), using size-based chunking`)
+  const SENTENCE_COUNT = sentences.length
+
+  if (SENTENCE_COUNT > 2000) {
+    console.warn(`Large document (${SENTENCE_COUNT} sentences), using size-based chunking`)
     return await sizeBasedChunk(text, maxChunkSize)
+  }
+
+  const groupByParagraph = SENTENCE_COUNT >= 12
+  let groups = null
+  let groupTexts = null
+
+  if (groupByParagraph) {
+    groups = groupSentencesByParagraph(sentences, text)
+    if (groups.length === 1 && SENTENCE_COUNT > 20) {
+      const headingBreaks = findHeadingBreaks(sentences, text)
+      if (headingBreaks.length > 1) {
+        groups = applyBreaks(sentences, headingBreaks)
+      }
+    }
+    groupTexts = groups.map(g => g.sentences.join(' '))
   }
 
   let embeddings
   try {
-    const result = await getEmbeddings(sentences, {
+    const embedInputs = groupByParagraph ? groupTexts : sentences
+    const result = await getEmbeddings(embedInputs, {
       provider: embeddingProvider,
       model: embeddingModel
     })
     embeddings = result.vectors
   } catch (e) {
     console.warn('Embedding failed during chunking, falling back to size-based split:', e.message)
-    embeddings = sentences.map(() => null)
+    embeddings = (groupByParagraph ? groupTexts : sentences).map(() => null)
   }
 
-  let chunks = computeChunksForSentences(sentences, embeddings, threshold)
+  await yieldToMain()
+
+  let chunkGroups
+  if (groupByParagraph && groups) {
+    chunkGroups = computeChunksFromParagraphGroups(groups, embeddings, threshold)
+  } else {
+    chunkGroups = computeChunksForSentences(sentences, embeddings, threshold)
+  }
 
   const result = []
-  for (const chunk of chunks) {
+  for (const chunk of chunkGroups) {
     const chunkText = chunk.sentences.join(' ')
 
     if (chunkText.length > maxChunkSize && chunk.sentences.length > 1) {

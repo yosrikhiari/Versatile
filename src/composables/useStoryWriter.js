@@ -4,6 +4,7 @@ import { aiGenerate, aiStream } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { finalizeStream } from '../services/jsonExtractor'
+import { formatEvalFeedback } from '../services/evalFeedback'
 
 const DEFAULT_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
 
@@ -274,7 +275,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     }
   }
 
-  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, onRawChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, spineContext, anchorRole, anchorConstraints }) {
+  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, onRawChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, spineContext, anchorRole, anchorConstraints, pastEvalResults }) {
     isWriting.value = true
     writeError.value = null
 
@@ -312,6 +313,7 @@ ${antiPatterns ? antiPatterns + '\n' : ''}${activeCraftRules}
 
 ${PROSE_STYLE_GUIDE}
 
+${pastEvalResults ? `\n## PAST EVALUATION FEEDBACK\n${pastEvalResults}\n` : ''}
 Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside the JSON.`
 
       const logSummary = summarizeLog(chapterLog)

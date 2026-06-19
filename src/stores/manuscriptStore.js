@@ -10,6 +10,7 @@ import { warmEmbeddingCache } from '../composables/useManuscriptContext'
 import { useStoryDocuments } from '../composables/useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
 
+
 const STYLE_GUIDE_DEBOUNCE = 1500
 
 export const useManuscriptStore = defineStore('manuscript', () => {

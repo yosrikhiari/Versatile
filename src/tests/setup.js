@@ -1,11 +1,8 @@
+import { createPinia, setActivePinia } from 'pinia'
 import { vi } from 'vitest'
 
-vi.mock('../services/aiService', () => ({
-  aiGenerate: vi.fn()
-}))
+vi.mock('../services/aiService', async () => {
+  return await vi.importActual('../services/aiService')
+})
 
-vi.mock('../stores/projectStore', () => ({
-  useProjectStore: vi.fn(() => ({
-    activeWorkspaceType: 'creative'
-  }))
-}))
+setActivePinia(createPinia())

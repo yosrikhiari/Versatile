@@ -16,6 +16,7 @@ import { MODE_ARC, MODE_CHAPTER, MODE_SCENE, MODE_BRAINSTORM } from '../../const
 import { useSceneEval } from '../../composables/useSceneEval'
 import EvalPanel from '../eval/EvalPanel.vue'
 import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
+import EvalDashboard from '../eval/EvalDashboard.vue'
 
 const emit = defineEmits(['openChapters'])
 
@@ -102,6 +103,7 @@ const liveEntities = ref([])
 
 const consistencyModalOpen = ref(false)
 const selectedSceneIndex = ref(0)
+const showDashboard = ref(false)
 
 const pitchOpen = ref(-1)
 const showReRequestInput = ref(false)
@@ -109,6 +111,10 @@ const reRequestEdits = ref('')
 const sceneReviewEnabled = computed({
   get: () => volumeGenerator.sceneReviewMode.value,
   set: (val) => { volumeGenerator.sceneReviewMode.value = val }
+})
+const inlineEvalEnabled = computed({
+  get: () => volumeGenerator.inlineEvalEnabled.value,
+  set: (val) => { volumeGenerator.inlineEvalEnabled.value = val }
 })
 function togglePitch(i) {
   pitchOpen.value = pitchOpen.value === i ? -1 : i
@@ -139,7 +145,7 @@ function handleEvaluateScene(idx) {
   const planItem = volumeGenerator.scenePlan.value?.[idx]
   if (!scene) return
   const ws = projectStore.activeWorkspaceType || 'creative'
-  sceneEval.evaluate(scene, ws, planItem)
+  sceneEval.evaluate(scene, ws, planItem, idx)
 }
 
 function handleReviseScene(idx) {
@@ -147,7 +153,7 @@ function handleReviseScene(idx) {
   const planItem = volumeGenerator.scenePlan.value?.[idx]
   if (!scene || !sceneEval.critiqueResult.value) return
   const ws = projectStore.activeWorkspaceType || 'creative'
-  sceneEval.revise(scene, ws, planItem)
+  sceneEval.revise(scene, ws, planItem, idx)
 }
 
 const genres = ['Fantasy', 'Sci-Fi', 'Thriller', 'Romance', 'Horror', 'Literary', 'Mystery', 'Historical']
@@ -422,7 +428,7 @@ class="w-3 h-3 rounded-full border flex items-center justify-center transition-a
               <div v-if="tab === m.id" class="w-1.5 h-1.5 bg-accent rounded-full"></div>
             </div>
             <span
-class="text-[11px] font-spark tracking-widest transition-colors duration-300"
+class="text-11px font-spark tracking-widest transition-colors duration-300"
                   :class="tab === m.id ? 'text-accent' : 'text-text-hint group-hover:text-text-primary'">
               {{ m.label }}
             </span>
@@ -509,7 +515,7 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
                 <BaseIcon name="x" :size="14" />
               </button>
             </div>
-            <p class="text-[10px] text-text-hint font-ui truncate pl-5" :title="sparkContext">{{ sparkContextLabel }}</p>
+            <p class="text-2xs text-text-hint font-ui truncate pl-5" :title="sparkContext">{{ sparkContextLabel }}</p>
           </div>
 
           <div class="flex items-center gap-2 px-1">
@@ -520,6 +526,16 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
                 class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
               />
               Pause per scene for review
+            </label>
+          </div>
+          <div class="flex items-center gap-2 px-1">
+            <label class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none">
+              <input
+                v-model="inlineEvalEnabled"
+                type="checkbox"
+                class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
+              />
+              Auto-evaluate scenes
             </label>
           </div>
 
@@ -789,7 +805,7 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
             <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
               <div class="h-full bg-accent rounded-full transition-all duration-300 ease-out" :style="{ width: volumeTotalScenes > 0 ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%' : '0%' }"></div>
             </div>
-            <div v-if="volumeGenerator.progress.statusText" class="text-[11px] text-text-hint font-ui text-center italic mt-1.5">
+            <div v-if="volumeGenerator.progress.statusText" class="text-11px text-text-hint font-ui text-center italic mt-1.5">
               {{ volumeGenerator.progress.statusText }}
             </div>
           </div>
@@ -906,14 +922,14 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
             <div class="flex items-center gap-1.5">
               <div v-if="volumeTotalConsistencyIssues > 0">
                 <button
-                  class="text-[10px] text-yellow-400 font-ui flex items-center gap-1 hover:text-yellow-300 focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                  class="text-2xs text-yellow-400 font-ui flex items-center gap-1 hover:text-yellow-300 focus:outline-none focus:ring-1 focus:ring-accent rounded"
                   @click="consistencyModalOpen = true"
                 >
                   <BaseIcon name="alert-triangle" :size="10" />
                   {{ volumeTotalConsistencyIssues }}
                 </button>
               </div>
-              <div v-else class="text-[10px] text-green-400/60 font-ui flex items-center gap-1">
+              <div v-else class="text-2xs text-green-400/60 font-ui flex items-center gap-1">
                 <BaseIcon name="check-circle" :size="10" />
                 ok
               </div>
@@ -932,10 +948,41 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
                 Quality: <span :class="qualityGrade === 'good' ? 'text-green-400' : qualityGrade === 'fair' ? 'text-yellow-400' : 'text-red-400'">{{ qualityGrade }}</span>
               </span>
             </div>
-            <div class="flex gap-3 text-[10px] text-text-hint font-body">
+            <div class="flex gap-3 text-2xs text-text-hint font-body">
               <span>{{ totalCharacterIssues }} character issues</span>
               <span>{{ totalLocationIssues }} location issues</span>
             </div>
+          </div>
+
+          <!-- Story-level eval aggregate summary -->
+          <div class="rounded-lg border border-border-subtle bg-bg-secondary/50 px-3 py-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-2xs uppercase tracking-wider text-text-hint font-ui">Evaluations</span>
+              <div class="flex items-center gap-2">
+                <div class="flex gap-3 text-2xs text-text-hint font-body">
+                  <span>{{ sceneEval.aggregateStats.value?.evaluatedCount || 0 }} / {{ sceneEval.aggregateStats.value?.totalScenes || 0 }} scenes</span>
+                  <span v-if="sceneEval.aggregateStats.value?.averageScore !== null" class="text-indigo-400">
+                    Avg: {{ sceneEval.aggregateStats.value?.averageScore }}
+                  </span>
+                  <span v-if="sceneEval.aggregateStats.value?.totalRegressions > 0" class="text-yellow-400">
+                    {{ sceneEval.aggregateStats.value?.totalRegressions }} regressions
+                  </span>
+                </div>
+                <button
+                  class="text-2xs text-accent font-ui hover:text-accent/80 transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5"
+                  @click="showDashboard = !showDashboard"
+                >
+                  {{ showDashboard ? 'Hide' : 'Dashboard' }}
+                </button>
+              </div>
+            </div>
+            <EvalDashboard
+              v-if="showDashboard"
+              :scene-results-map="sceneEval.sceneResultsMap.value"
+              :gate-results="sceneEval.gateResults.value"
+              :workspace-type="projectStore.activeWorkspaceType || 'creative'"
+              class="mt-2 border-t border-border-subtle pt-2"
+            />
           </div>
 
           <!-- Scene list -->
@@ -949,7 +996,7 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
             >
               <div class="flex items-center justify-between gap-2">
                 <span class="text-sm font-semibold text-text-primary font-ui truncate">Scene {{ i + 1 }}: {{ scene.title }}</span>
-                <span class="text-[10px] text-text-hint/60 font-ui whitespace-nowrap">{{ scene.prose.split(/\s+/).length }} words</span>
+                <span class="text-2xs text-text-hint/60 font-ui whitespace-nowrap">{{ scene.prose.split(/\s+/).length }} words</span>
               </div>
             </div>
           </div>
@@ -984,7 +1031,7 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
 
               <div v-if="sceneEval.hasBeenEvaluated.value" class="flex gap-1.5">
                 <button
-                  class="flex-1 py-1 px-2 bg-indigo-600/20 text-indigo-400 rounded-md text-[11px] font-medium hover:bg-indigo-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+                  class="flex-1 py-1 px-2 bg-indigo-600/20 text-indigo-400 rounded-md text-11px font-medium hover:bg-indigo-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
                   :disabled="sceneEval.isRevising.value || !sceneEval.critiqueResult.value"
                   @click="handleReviseScene(selectedSceneIndex)"
                 >
@@ -993,7 +1040,7 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
                 </button>
                 <button
                   v-if="sceneEval.revisionResult.value"
-                  class="flex-1 py-1 px-2 bg-emerald-600/20 text-emerald-400 rounded-md text-[11px] font-medium hover:bg-emerald-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+                  class="flex-1 py-1 px-2 bg-emerald-600/20 text-emerald-400 rounded-md text-11px font-medium hover:bg-emerald-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
                   @click="volumeGenerator.writtenScenes.value[selectedSceneIndex].prose = sceneEval.revisionResult.value.revisedProse"
                 >
                   <BaseIcon name="check" :size="11" /> Accept Revision
@@ -1030,10 +1077,10 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
 
           <!-- Tertiary / Export actions -->
           <div class="flex gap-1.5">
-            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-[10px] font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportTxt">
+            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportTxt">
               <BaseIcon name="file-text" :size="10" /> .txt
             </button>
-            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-[10px] font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportMd">
+            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportMd">
               <BaseIcon name="file-down" :size="10" /> .md
             </button>
           </div>
@@ -1057,7 +1104,7 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
 
     <!-- ==================== PREVIOUS GENERATIONS ==================== -->
     <div v-if="previousGenerations.length > 0" class="border-t border-border-subtle pt-4 mt-4">
-      <h3 class="text-[11px] uppercase tracking-wider text-text-hint font-ui mb-2">Previous Generations</h3>
+      <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">Previous Generations</h3>
       <div class="space-y-1.5">
         <div
           v-for="(gen, i) in previousGenerations"
@@ -1067,7 +1114,7 @@ class="text-[11px] font-spark tracking-widest transition-colors duration-300"
           <BaseIcon name="file-text" :size="14" class="text-text-hint shrink-0" />
           <div class="flex-1 min-w-0">
             <p class="text-text-primary font-body truncate">{{ gen.title }}</p>
-            <p class="text-text-hint text-[10px] font-ui">
+            <p class="text-text-hint text-2xs font-ui">
               {{ new Date(gen.generatedAt).toLocaleDateString() }}
               <span v-if="gen.totalWords"> · {{ gen.totalWords }} words</span>
               <span v-if="gen.qualityScore !== undefined"> · score {{ gen.qualityScore }}</span>

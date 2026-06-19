@@ -38,14 +38,14 @@ const goalReached = computed(() => {
     </div>
     <span 
       v-if="goalWords > 0"
-      class="text-[10px] tabular-nums"
+      class="text-2xs tabular-nums"
       :class="goalReached ? 'text-green-400/80' : 'text-text-hint/70'"
     >
       {{ currentWords.toLocaleString() }} / {{ goalWords.toLocaleString() }}
     </span>
     <button 
       v-else
-      class="text-[10px] text-text-hint/50 hover:text-accent transition-colors duration-150 btn-ghost"
+      class="text-2xs text-text-hint/50 hover:text-accent transition-colors duration-150 btn-ghost"
       @click="emit('open-settings')"
     >
       Set a goal

@@ -148,7 +148,7 @@ defineExpose({
         </button>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-[10px] text-text-hint font-ui truncate max-w-[140px]" :title="polishModelLabel">{{ polishModelLabel }}</span>
+        <span class="text-2xs text-text-hint font-ui truncate max-w-[140px]" :title="polishModelLabel">{{ polishModelLabel }}</span>
         <button
           v-if="polishStore.selectedParagraphIndex !== null"
           :disabled="polishStore.isAnalyzing"
@@ -168,14 +168,14 @@ defineExpose({
         </button>
         <button
           v-if="compactIsCompacting"
-          class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint rounded font-ui"
+          class="px-2 py-1 text-2xs bg-bg-tertiary text-text-hint rounded font-ui"
           disabled
         >
           Compact...
         </button>
         <button
           v-else
-          class="text-text-hint hover:text-text-secondary text-[10px] font-ui px-1"
+          class="text-text-hint hover:text-text-secondary text-2xs font-ui px-1"
           title="Compact conversation"
           @click="handleCompactPolish"
         >

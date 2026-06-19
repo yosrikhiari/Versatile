@@ -31,62 +31,85 @@ function notify(documentId) {
   }
 }
 
+async function processSingleBatch(batch) {
+  const ids = batch.map(e => e.chunkId)
+  await markProcessing(ids)
+
+  const texts = batch.map(e => e.text)
+  let embeddings, provider, model
+  try {
+    const result = await getEmbeddings(texts)
+    embeddings = result.vectors
+    provider = result.provider
+    model = result.model
+  } catch (err) {
+    await markFailed(ids)
+    for (let i = 0; i < batch.length; i++) {
+      const p = progress[batch[i].documentId]
+      if (p) p.failed++
+      notify(batch[i].documentId)
+    }
+    return
+  }
+
+  const updates = []
+  const failed = []
+  for (let i = 0; i < batch.length; i++) {
+    const p = progress[batch[i].documentId]
+    if (embeddings[i]) {
+      updates.push({ id: batch[i].chunkId, embedding: embeddings[i] })
+      if (p) p.indexed++
+    } else {
+      failed.push(batch[i].chunkId)
+      if (p) p.failed++
+    }
+  }
+  if (updates.length > 0) {
+    await updateChunkEmbeddings(updates, { provider, model, version: EMBEDDING_VERSION })
+  }
+  if (failed.length > 0) {
+    await markFailed(failed)
+  }
+  const docIdsToCheck = new Set(batch.map(e => e.documentId))
+  for (const docId of docIdsToCheck) {
+    notify(docId)
+    computeDocumentEmbedding(docId)
+  }
+}
+
+function computeDocumentEmbedding(docId) {
+  const p = progress[docId]
+  if (!p || p.indexed !== p.total) return
+  getDocumentChunkEmbeddings(docId).then(chunkEmbeddings => {
+    if (chunkEmbeddings.length > 0) {
+      const avg = averageEmbeddings(chunkEmbeddings)
+      setDocumentEmbedding(docId, avg)
+    }
+  }).catch(() => {})
+}
+
 async function processQueue() {
   try {
     isProcessing = true
     const size = resolveBatchSize()
-    while (queue.length > 0) {
-      const batch = queue.splice(0, size)
-      const ids = batch.map(e => e.chunkId)
-      await markProcessing(ids)
+    const caps = EMBEDDING_PROVIDER_CAPABILITIES[EMBEDDING_DEFAULTS.provider]
+    const maxConcurrent = caps ? caps.maxConcurrentRequests : 1
 
-      const texts = batch.map(e => e.text)
-      let embeddings, provider, model
-      try {
-        const result = await getEmbeddings(texts)
-        embeddings = result.vectors
-        provider = result.provider
-        model = result.model
-      } catch (err) {
-        await markFailed(ids)
-        for (let i = 0; i < batch.length; i++) {
-          const p = progress[batch[i].documentId]
-          if (p) p.failed++
-          notify(batch[i].documentId)
-        }
-        continue
+    async function worker() {
+      while (queue.length > 0) {
+        const items = queue.splice(0, size)
+        if (items.length === 0) break
+        await processSingleBatch(items)
       }
+    }
 
-      const updates = []
-      const failed = []
-      for (let i = 0; i < batch.length; i++) {
-        const p = progress[batch[i].documentId]
-        if (embeddings[i]) {
-          updates.push({ id: batch[i].chunkId, embedding: embeddings[i] })
-          if (p) p.indexed++
-        } else {
-          failed.push(batch[i].chunkId)
-          if (p) p.failed++
-        }
-      }
-      if (updates.length > 0) {
-        await updateChunkEmbeddings(updates, { provider, model, version: EMBEDDING_VERSION })
-      }
-      if (failed.length > 0) {
-        await markFailed(failed)
-      }
-      const docIdsToCheck = new Set(batch.map(e => e.documentId))
-      for (const docId of docIdsToCheck) {
-        notify(docId)
-        const p = progress[docId]
-        if (p && p.indexed === p.total) {
-          const embeddings = await getDocumentChunkEmbeddings(docId)
-          if (embeddings.length > 0) {
-            const avg = averageEmbeddings(embeddings)
-            await setDocumentEmbedding(docId, avg)
-          }
-        }
-      }
+    const workers = []
+    for (let i = 0; i < maxConcurrent && queue.length > 0; i++) {
+      workers.push(worker())
+    }
+
+    if (workers.length > 0) {
+      await Promise.all(workers)
     }
   } catch (err) {
     console.error('[embeddingQueue] Fatal error in processQueue:', err)

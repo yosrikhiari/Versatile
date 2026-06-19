@@ -393,7 +393,7 @@ function handleSave() {
                     @click="relationshipType = rel.value"
                   >
                     <div class="text-sm font-medium font-ui">{{ rel.label }}</div>
-                    <div class="text-[10px] text-text-hint">{{ rel.description }}</div>
+                    <div class="text-2xs text-text-hint">{{ rel.description }}</div>
                   </button>
                 </div>
               </div>

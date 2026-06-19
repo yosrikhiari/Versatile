@@ -14,7 +14,11 @@ function filterRelevant(entities, premise, isShortTerm) {
     const keywords = premise.toLowerCase().split(/\s+/).filter(k => k.length > 2)
     const scored = entities.map(e => {
       const text = `${e.name || e.title || ''} ${e.description || ''} ${e.goal || ''}`.toLowerCase()
-      const score = keywords.reduce((acc, kw) => acc + (text.includes(kw) ? 1 : 0), 0)
+      const score = keywords.reduce((acc, kw) => {
+        const re = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
+        const matches = text.match(re)
+        return acc + (matches ? matches.length : 0)
+      }, 0)
       return { entity: e, score }
     }).filter(item => item.score > 0).sort((a, b) => b.score - a.score)
     return scored.map(s => s.entity).slice(0, MAX_EVIDENCE_ITEMS)

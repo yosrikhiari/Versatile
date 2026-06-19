@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { ollamaGenerate, ollamaEmbeddings, cosineSimilarity } from '../../services/ollamaService'
+import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
@@ -223,6 +224,10 @@ function handleOverlayClick(event) {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
         @click="handleOverlayClick"
       >
+        <ErrorBoundary
+          fallback-title="Settings Error"
+          fallback-description="Failed to load project settings. Try reopening the modal."
+        >
         <div class="glass-modal rounded-xl shadow-warm-lg w-full max-w-lg mx-4 overflow-hidden animate-scale-in">
           <div class="flex items-center justify-between px-5 py-4 border-b border-border-subtle/50">
             <div class="flex items-center gap-2">
@@ -318,6 +323,7 @@ function handleOverlayClick(event) {
             </button>
           </div>
         </div>
+        </ErrorBoundary>
       </div>
     </Transition>
   </Teleport>

@@ -64,10 +64,20 @@ export function useStoryCritic() {
     isEvaluating.value = true
 
     try {
+      const projectStore = useProjectStore()
+      const categoryType = projectStore.activeWorkspaceType || 'creative'
+      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+
       const characterCount = countCharacters(storyBible)
       const hasFewCharacters = characterCount < 2
 
-      let userPrompt = `Evaluate this scene draft.
+      const promptDims = getDimensionNames(categoryType)
+      const dimsList = promptDims.map(d => `  - ${d}`).join('\n')
+
+      let userPrompt = `Evaluate this scene draft across ALL of the following dimensions:
+${dimsList}
+
+You MUST provide a score (1-10) for each dimension in the "dimensionScores" field of your JSON response.
 
 SCENE BRIEF:
 - Title: ${sceneBrief.title}
@@ -87,11 +97,7 @@ ${hasFewCharacters ? 'NOTE: Fewer than 2 characters defined. Skip continuity and
 DRAFT TEXT:
 ${draft.slice(0, 4000)}
 
-Return JSON evaluation.`
-
-      const projectStore = useProjectStore()
-      const categoryType = projectStore.activeWorkspaceType || 'creative'
-      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+Return JSON evaluation with dimensionScores covering all listed dimensions.`
 
       const response = await aiGenerate(userPrompt, activePrompts.critic, {
         feature: FEATURES.STORY_GENERATION,
@@ -127,7 +133,7 @@ Return JSON evaluation.`
       const majorIssues = issues.filter(i => i.severity === 'major')
       const minorIssues = issues.filter(i => i.severity === 'minor')
 
-      const pass = hasFewCharacters || (majorIssues.length === 0 && minorIssues.length <= 2)
+      const pass = (hasFewCharacters && majorIssues.length === 0) || (majorIssues.length === 0 && minorIssues.length <= 2)
 
       return {
         pass,

@@ -58,7 +58,13 @@ function selectElement(element) {
 function addNewElement() {
   if (!newElementTitle.value.trim()) return
   
-  const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6']
+  const colors = [
+    'var(--vers-element-section)',
+    'var(--vers-element-character)',
+    'var(--vers-element-location)',
+    'var(--vers-element-plotpoint)',
+    'var(--vers-element-note)'
+  ]
   const randomColor = colors[Math.floor(Math.random() * colors.length)]
   
   manuscriptStore.addStoryElementData(projectStore.currentProjectId, {

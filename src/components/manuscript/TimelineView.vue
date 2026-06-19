@@ -4,6 +4,7 @@ import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import draggable from 'vuedraggable'
 import BaseIcon from '../shared/BaseIcon.vue'
+import EmptyState from '../shared/EmptyState.vue'
 
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
@@ -60,13 +61,7 @@ onMounted(() => {
       <p class="text-xs text-text-hint mt-1">Drag plot threads to arrange story order</p>
     </div>
 
-    <div v-if="sortedThreads.length === 0" class="flex-1 flex items-center justify-center p-8">
-      <div class="text-center">
-        <BaseIcon name="layout" :size="48" class="text-text-hint mx-auto mb-4" />
-        <p class="text-text-hint font-ui text-sm mb-2">No plot threads yet.</p>
-        <p class="text-text-hint/70 font-ui text-xs">Add threads in the Story Bible to start building your timeline.</p>
-      </div>
-    </div>
+    <EmptyState v-if="sortedThreads.length === 0" icon="layout" title="No plot threads yet" description="Add threads in the Story Bible to start building your timeline." class="flex-1" />
 
     <div v-else class="flex-1 overflow-x-auto p-6">
       <div class="relative min-w-max">
@@ -93,8 +88,8 @@ onMounted(() => {
                 </div>
                 <div class="px-2.5 py-1.5 flex items-center gap-1.5">
                   <span class="w-1.5 h-1.5 rounded-full shrink-0" :style="{ backgroundColor: statusColors[thread.status] || 'var(--vers-status-resolved)' }"></span>
-                  <span class="text-[10px] text-text-secondary font-ui">{{ statusLabels[thread.status] || thread.status }}</span>
-                  <span v-if="thread.notes" class="text-[10px] text-text-hint truncate ml-auto max-w-[60px]">{{ thread.notes }}</span>
+                  <span class="text-2xs text-text-secondary font-ui">{{ statusLabels[thread.status] || thread.status }}</span>
+                  <span v-if="thread.notes" class="text-2xs text-text-hint truncate ml-auto max-w-[60px]">{{ thread.notes }}</span>
                 </div>
               </div>
             </div>

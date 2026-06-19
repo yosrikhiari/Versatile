@@ -1,4 +1,5 @@
 import { ref, reactive } from 'vue'
+import { formatEvalFeedback } from '../services/evalFeedback'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
@@ -194,6 +195,8 @@ export function useVolumeStoryGenerator() {
   const sceneReviewMode = ref(false)
   const currentSceneResult = ref(null)
   const currentWriteIndex = ref(0)
+  const inlineEvalEnabled = ref(false)
+  const sceneEvalResults = ref([])
   const actLog = useActivityLog()
   let currentTaskId = null
 
@@ -520,6 +523,26 @@ export function useVolumeStoryGenerator() {
     
     debugSnapshot('step-1-anchors', { outcomes: anchorOutcomes })
 
+    let anchorEvalFeedback = ''
+    if (inlineEvalEnabled.value) {
+      progress.statusText = 'Evaluating chapter anchors...'
+      const anchorResults = []
+      for (let idx = 0; idx < writtenScenes.value.length; idx++) {
+        const s = writtenScenes.value[idx]
+        if (!s) continue
+        const criticResult = await critic.evaluateScene(s.prose, s.summary, storyBibleDocs, storyArc?.genre)
+        anchorResults.push({
+          sceneIndex: idx + 1,
+          passed: criticResult.pass,
+          score: criticResult.score,
+          topIssues: (criticResult.issues || []).slice(0, 3).map(i => i.text || i)
+        })
+      }
+      sceneEvalResults.value = anchorResults
+      anchorEvalFeedback = formatEvalFeedback(anchorResults)
+      debugSnapshot('step-1-eval', { anchorResults })
+    }
+
     // Phase 2: Generate middle scenes per chapter
     progress.statusText = 'Phase 2: Generating chapter middle scenes...'
 
@@ -539,6 +562,7 @@ export function useVolumeStoryGenerator() {
           storyBible: storyBibleDocs,
           spineContext: spineContext.value,
           storyContract, existingEntitiesJson,
+          pastEvalResults: anchorEvalFeedback || undefined,
           onChunk: (_chunk, proseChunk) => {
             fullProse += proseChunk || ''
             onChunk?.({ sceneIndex: sceneIndex + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
@@ -599,6 +623,23 @@ export function useVolumeStoryGenerator() {
       outcomes: middleOutcomes
     })
 
+    if (inlineEvalEnabled.value) {
+      progress.statusText = 'Evaluating middle scenes...'
+      const middleResults = []
+      for (let idx = 0; idx < writtenScenes.value.length; idx++) {
+        const s = writtenScenes.value[idx]
+        if (!s || sceneEvalResults.value.some(r => r.sceneIndex === idx + 1)) continue
+        const criticResult = await critic.evaluateScene(s.prose, s.summary, storyBibleDocs, storyArc?.genre)
+        middleResults.push({
+          sceneIndex: idx + 1,
+          passed: criticResult.pass,
+          score: criticResult.score,
+          topIssues: (criticResult.issues || []).slice(0, 3).map(i => i.text || i)
+        })
+      }
+      sceneEvalResults.value = [...sceneEvalResults.value, ...middleResults]
+    }
+
     await completeGeneration(projectId)
   }
 
@@ -622,6 +663,8 @@ export function useVolumeStoryGenerator() {
 
     // Build entities JSON once per batch (Fix #3 — entities don't change within a batch)
     const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
+
+    let batchEvalFeedback = ''
 
     for (let i = startIndex; i < endIndex; i++) {
       const scene = scenePlan.value[i]
@@ -662,7 +705,8 @@ export function useVolumeStoryGenerator() {
         embeddingContext,
         storyContract: effectiveStoryContract,
         rejectedPatterns: extraRejected,
-        existingEntitiesJson
+        existingEntitiesJson,
+        pastEvalResults: batchEvalFeedback || undefined
       })
       actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
 
@@ -677,6 +721,18 @@ export function useVolumeStoryGenerator() {
       }
 
       await commitAndStoreScene(scene, fullProse, Math.floor(i / 3), sections, projectId)
+
+      if (inlineEvalEnabled.value) {
+        const criticResult = await critic.evaluateScene(fullProse, scene.synopsis || fullProse.slice(0, 300), storyBibleDocs, storyArc?.genre)
+        const evalEntry = {
+          sceneIndex: i + 1,
+          passed: criticResult.pass,
+          score: criticResult.score,
+          topIssues: (criticResult.issues || []).slice(0, 3).map(iss => iss.text || iss)
+        }
+        sceneEvalResults.value.push(evalEntry)
+        batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
+      }
 
       // Append to running log after scene completes (avoids full rebuild next iteration)
       const latestScene = writtenScenes.value.at(-1)

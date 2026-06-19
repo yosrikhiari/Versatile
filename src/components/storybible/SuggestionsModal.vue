@@ -173,7 +173,7 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2 flex-wrap">
                     <span
-                      class="px-2 py-0.5 rounded text-[10px] font-medium"
+                      class="px-2 py-0.5 rounded text-2xs font-medium"
                       :style="{ backgroundColor: getTypeColor(suggestion.sourceType) + '30', color: getTypeColor(suggestion.sourceType) }"
                     >
                       {{ suggestion.sourceLabel }}
@@ -182,7 +182,7 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
                     <span class="text-xs text-text-hint">{{ suggestion.relationshipType.replace('_', ' ') }}</span>
                     <BaseIcon name="arrow-right" :size="12" class="text-text-hint" />
                     <span
-                      class="px-2 py-0.5 rounded text-[10px] font-medium"
+                      class="px-2 py-0.5 rounded text-2xs font-medium"
                       :style="{ backgroundColor: getTypeColor(suggestion.targetType) + '30', color: getTypeColor(suggestion.targetType) }"
                     >
                       {{ suggestion.targetLabel }}
@@ -195,7 +195,7 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
 
                   <div class="flex items-center gap-2 mt-2">
                     <span
-                      :class="['px-2 py-0.5 rounded text-[10px]', getConfidenceClass(suggestion.confidence)]"
+                      :class="['px-2 py-0.5 rounded text-2xs', getConfidenceClass(suggestion.confidence)]"
                     >
                       {{ Math.round(suggestion.confidence * 100) }}% match
                     </span>

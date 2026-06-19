@@ -45,7 +45,7 @@ export function useAppInitialization() {
     }
   }
 
-  async function initializeApp() {
+  async function initializeApp(projectId = null) {
     const ollamaOk = await checkOllamaConnection()
     ollamaAvailable.value = ollamaOk
     
@@ -53,7 +53,14 @@ export function useAppInitialization() {
       await checkModelAvailability()
     }
     
-    const hasProject = await projectStore.loadLastProject()
+    let hasProject = false
+    if (projectId) {
+      await projectStore.loadProject(projectId)
+      hasProject = true
+    } else {
+      hasProject = await projectStore.loadLastProject()
+    }
+    
     if (!hasProject && !isOnboardingDismissed()) {
       hasLoaded.value = true
       return { showOnboarding: true }

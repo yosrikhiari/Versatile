@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
+import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import AppTooltip from '../shared/AppTooltip.vue'
 import { WORKSPACE_TYPES, VISIBLE_WORKSPACE_CONFIGS } from '../../config/workspace'
@@ -92,6 +93,10 @@ function handleSkipSetup() {
 </script>
 
 <template>
+  <ErrorBoundary
+    fallback-title="Onboarding Error"
+    fallback-description="Failed to load the onboarding flow. Try refreshing the page."
+  >
   <div v-if="show" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div class="bg-bg-secondary border border-border-subtle rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
       <div class="p-6 sm:p-8 overflow-y-auto scrollbar-thin">
@@ -167,7 +172,7 @@ function handleSkipSetup() {
             </div>
 
             <details class="group">
-              <summary class="text-[11px] text-text-hint cursor-pointer hover:text-text-secondary transition-colors select-none">
+              <summary class="text-11px text-text-hint cursor-pointer hover:text-text-secondary transition-colors select-none">
                 Advanced options
               </summary>
               <div class="mt-3 space-y-3">
@@ -182,7 +187,7 @@ function handleSkipSetup() {
                       <button
                         type="button"
                         :class="[
-                          'px-2.5 py-1.5 rounded-lg border text-[11px] transition-all duration-150',
+                          'px-2.5 py-1.5 rounded-lg border text-11px transition-all duration-150',
                           selectedBlueprintId === ''
                             ? 'border-accent bg-accent/10 text-accent font-medium'
                             : 'border-border-subtle bg-bg-secondary text-text-secondary hover:bg-surface-hover'
@@ -201,7 +206,7 @@ function handleSkipSetup() {
                       <button
                         type="button"
                         :class="[
-                          'px-2.5 py-1.5 rounded-lg border text-[11px] transition-all duration-150',
+                          'px-2.5 py-1.5 rounded-lg border text-11px transition-all duration-150',
                           selectedBlueprintId === blueprint.id
                             ? 'border-accent bg-accent/10 text-accent font-medium'
                             : 'border-border-subtle bg-bg-secondary text-text-secondary hover:bg-surface-hover'
@@ -227,7 +232,7 @@ function handleSkipSetup() {
                     class="w-full px-3.5 py-2 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint resize-none"
                     placeholder="Describe the purpose, premise, or objectives of this document..."
                   ></textarea>
-                  <p class="mt-1 text-[10px] text-text-hint">Helps the AI align content generation with your goals.</p>
+                  <p class="mt-1 text-2xs text-text-hint">Helps the AI align content generation with your goals.</p>
                 </div>
               </div>
             </details>
@@ -312,17 +317,17 @@ function handleSkipSetup() {
             <div class="p-4 bg-bg-tertiary rounded-xl text-center">
               <BaseIcon name="pen-tool" :size="24" class="mx-auto mb-2 text-accent" />
               <div class="text-sm font-medium text-text-primary">Write</div>
-              <div class="text-[10px] text-text-hint mt-0.5">Flow editor</div>
+              <div class="text-2xs text-text-hint mt-0.5">Flow editor</div>
             </div>
             <div class="p-4 bg-bg-tertiary rounded-xl text-center">
               <BaseIcon name="search" :size="24" class="mx-auto mb-2 text-accent" />
               <div class="text-sm font-medium text-text-primary">Polish</div>
-              <div class="text-[10px] text-text-hint mt-0.5">Refine & edit</div>
+              <div class="text-2xs text-text-hint mt-0.5">Refine & edit</div>
             </div>
             <div class="p-4 bg-bg-tertiary rounded-xl text-center">
               <BaseIcon name="book-open" :size="24" class="mx-auto mb-2 text-accent" />
               <div class="text-sm font-medium text-text-primary">Build</div>
-              <div class="text-[10px] text-text-hint mt-0.5">{{ projectStore.terminology?.bible || 'Reference' }}</div>
+              <div class="text-2xs text-text-hint mt-0.5">{{ projectStore.terminology?.bible || 'Reference' }}</div>
             </div>
           </div>
           <button
@@ -335,4 +340,5 @@ function handleSkipSetup() {
       </div>
     </div>
   </div>
+  </ErrorBoundary>
 </template>

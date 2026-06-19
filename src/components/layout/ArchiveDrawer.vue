@@ -161,7 +161,7 @@ function signalBadge(signal) {
           v-for="opt in signalOptions"
           :key="opt.value || 'all'"
           :class="[
-            'px-2 py-0.5 text-[10px] rounded-full font-ui transition-colors',
+            'px-2 py-0.5 text-2xs rounded-full font-ui transition-colors',
             signalFilter === opt.value
               ? 'bg-accent/20 text-accent border border-accent/30'
               : 'bg-bg-tertiary text-text-hint border border-transparent hover:border-border-subtle'
@@ -183,8 +183,8 @@ function signalBadge(signal) {
           @click="showDetails = showDetails === snap.id ? null : snap.id"
         >
           <div class="flex items-center justify-between">
-            <span class="text-[10px] text-text-hint font-ui">{{ formatTime(snap.timestamp) }}</span>
-            <span v-if="snap.state?.wordCount" class="text-[10px] text-accent font-ui">{{ snap.state.wordCount.toLocaleString() }} words</span>
+            <span class="text-2xs text-text-hint font-ui">{{ formatTime(snap.timestamp) }}</span>
+            <span v-if="snap.state?.wordCount" class="text-2xs text-accent font-ui">{{ snap.state.wordCount.toLocaleString() }} words</span>
           </div>
           <div v-if="showDetails === snap.id && snap.state" class="mt-2 space-y-1">
             <div v-if="snap.state.activeSection" class="text-xs text-text-secondary font-body">Section: {{ snap.state.activeSection }}</div>
@@ -194,7 +194,7 @@ function signalBadge(signal) {
             <div v-if="snap.state.characterCount" class="text-xs text-text-secondary font-body">{{ snap.state.characterCount }} characters</div>
             <div v-if="snap.state.wordCountDelta" class="text-xs text-accent font-body">+{{ snap.state.wordCountDelta }} words this session</div>
           </div>
-          <div v-else-if="showDetails !== snap.id" class="mt-1 text-[10px] text-text-hint font-body line-clamp-1">
+          <div v-else-if="showDetails !== snap.id" class="mt-1 text-2xs text-text-hint font-body line-clamp-1">
             {{ snap.state?.activeSection || snap.state?.projectName || 'No details' }}
           </div>
         </div>
@@ -211,22 +211,22 @@ function signalBadge(signal) {
           @click="showDetails = showDetails === entry.id ? null : entry.id"
         >
           <div class="flex items-center justify-between gap-1">
-            <span class="text-[10px] font-ui truncate" :class="typeColors[entry.type] || 'text-text-hint'">{{ entry.type.replace('_', ' ') }}</span>
-            <span class="text-[10px] font-ui shrink-0" :class="signalBadge(entry.signal)">[{{ entry.signal }}]</span>
+            <span class="text-2xs font-ui truncate" :class="typeColors[entry.type] || 'text-text-hint'">{{ entry.type.replace('_', ' ') }}</span>
+            <span class="text-2xs font-ui shrink-0" :class="signalBadge(entry.signal)">[{{ entry.signal }}]</span>
           </div>
           <div class="flex items-center justify-between mt-0.5">
-            <span class="text-[10px] text-text-hint font-ui">{{ formatTime(entry.timestamp) }}</span>
-            <span v-if="entry.tags?.length" class="text-[9px] text-text-hint font-ui truncate ml-2">{{ entry.tags.slice(0, 2).join(', ') }}</span>
+            <span class="text-2xs text-text-hint font-ui">{{ formatTime(entry.timestamp) }}</span>
+            <span v-if="entry.tags?.length" class="text-3xs text-text-hint font-ui truncate ml-2">{{ entry.tags.slice(0, 2).join(', ') }}</span>
           </div>
           <div v-if="showDetails === entry.id" class="mt-1.5">
-            <pre class="text-[10px] text-text-secondary font-body whitespace-pre-wrap max-h-24 overflow-y-auto bg-bg-secondary rounded p-1">{{ typeof entry.data === 'string' ? entry.data : JSON.stringify(entry.data, null, 1) }}</pre>
+            <pre class="text-2xs text-text-secondary font-body whitespace-pre-wrap max-h-24 overflow-y-auto bg-bg-secondary rounded p-1">{{ typeof entry.data === 'string' ? entry.data : JSON.stringify(entry.data, null, 1) }}</pre>
           </div>
         </div>
       </template>
 
       <details class="mt-3 border-t border-border-subtle pt-2">
         <summary
-          class="py-1 text-[10px] uppercase tracking-wider text-text-hint font-ui cursor-pointer hover:text-text-secondary"
+          class="py-1 text-2xs uppercase tracking-wider text-text-hint font-ui cursor-pointer hover:text-text-secondary"
           @click.prevent="toggleContextPreview"
         >
           {{ showContextPreview ? '▼' : '▶' }} Context Preview
@@ -241,8 +241,8 @@ function signalBadge(signal) {
             </span>
           </div>
           <details class="mt-1">
-            <summary class="text-[10px] text-text-hint cursor-pointer hover:text-text-secondary">Full context text</summary>
-            <pre class="mt-1 p-2 bg-bg-tertiary rounded text-[10px] text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto">{{ contextPreview.contextText || '(empty)' }}</pre>
+            <summary class="text-2xs text-text-hint cursor-pointer hover:text-text-secondary">Full context text</summary>
+            <pre class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto">{{ contextPreview.contextText || '(empty)' }}</pre>
           </details>
         </div>
         <div v-else class="mt-1 text-xs text-text-hint font-ui">Click to load context preview</div>

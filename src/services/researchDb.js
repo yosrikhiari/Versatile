@@ -36,7 +36,7 @@ export async function getAllChunksForProject(projectId) {
 }
 
 export async function addResearchChunks(chunks) {
-  const withStatus = chunks.map(c => ({ ...c, embeddingStatus: PENDING }))
+  const withStatus = chunks.map(c => ({ ...c, embeddingStatus: c.embeddingStatus || PENDING }))
   const BATCH = 500
   const allIds = []
   const committedIds = []
@@ -180,6 +180,100 @@ export async function getDocumentStatusCounts(documentId) {
     FAILED: all.filter(c => c.embeddingStatus === FAILED).length,
     STALE: all.filter(c => c.embeddingStatus === STALE).length
   }
+}
+
+export async function searchLexical(projectId, query, limit = 20) {
+  const qTokens = query.toLowerCase().split(/\W+/).filter(t => t.length > 1)
+  if (qTokens.length === 0) return []
+
+  const allChunks = await db.researchChunks.where({ projectId }).toArray()
+  const N = allChunks.length
+  if (N === 0) return []
+
+  const df = {}
+  for (const token of qTokens) {
+    df[token] = allChunks.filter(c => c.text.toLowerCase().includes(token)).length
+  }
+
+  const scored = allChunks.map(chunk => {
+    const lowerText = chunk.text.toLowerCase()
+    let score = 0
+    for (const token of qTokens) {
+      const tf = (lowerText.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+      if (tf === 0) continue
+      const idf = Math.log((N - df[token] + 0.5) / (df[token] + 0.5) + 1)
+      score += (1 + Math.log(tf)) * idf
+    }
+    return { ...chunk, _score: score }
+  })
+
+  return scored
+    .filter(c => c._score > 0)
+    .sort((a, b) => b._score - a._score)
+    .slice(0, limit)
+}
+
+export function cosineSimilarity(a, b) {
+  if (!a || !b || a.length !== b.length) return 0
+  let dot = 0, magA = 0, magB = 0
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]
+    magA += a[i] * a[i]
+    magB += b[i] * b[i]
+  }
+  const denom = Math.sqrt(magA) * Math.sqrt(magB)
+  return denom === 0 ? 0 : dot / denom
+}
+
+export async function semanticSearch(projectId, queryEmbedding, limit = 20) {
+  if (!queryEmbedding) return []
+  const chunks = await db.researchChunks
+    .where({ projectId })
+    .filter(c => c.embedding && c.embedding.length > 0)
+    .toArray()
+  const scored = chunks.map(c => ({
+    ...c,
+    _score: cosineSimilarity(c.embedding, queryEmbedding)
+  }))
+  return scored
+    .filter(c => c._score > 0.1)
+    .sort((a, b) => b._score - a._score)
+    .slice(0, limit)
+}
+
+export async function getEmbeddingCacheEntry(hash) {
+  return db.embeddingCache.get(hash)
+}
+
+export async function setEmbeddingCacheEntry(hash, embedding) {
+  await db.embeddingCache.put({
+    hash,
+    embedding: Array.from(embedding),
+    createdAt: Date.now()
+  })
+}
+
+export async function getBulkCachedEmbeddings(hashes) {
+  if (!hashes.length) return new Map()
+  const entries = await db.embeddingCache.bulkGet(hashes)
+  const map = new Map()
+  for (let i = 0; i < hashes.length; i++) {
+    if (entries[i]) {
+      map.set(hashes[i], new Float32Array(entries[i].embedding))
+    }
+  }
+  return map
+}
+
+export async function pruneEmbeddingCache(maxEntries = 20000) {
+  const count = await db.embeddingCache.count()
+  if (count <= maxEntries) return
+  const toPrune = await db.embeddingCache
+    .orderBy('createdAt')
+    .limit(count - maxEntries)
+    .toArray()
+  const keys = toPrune.map(e => e.hash)
+  if (keys.length) await db.embeddingCache.bulkDelete(keys)
 }
 
 export async function resetChunksStatus(documentId, fromStatus) {

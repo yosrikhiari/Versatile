@@ -12,6 +12,9 @@ import FlowTimer from './FlowTimer.vue'
 import FlowNudge from './FlowNudge.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
+const CONTENT_WARN_THRESHOLD = 50_000
+const CONTENT_CRITICAL_THRESHOLD = 200_000
+
 const flow = useFlowSession()
 
 const emit = defineEmits(['paragraph-click', 'open-settings', 'exit-flow'])
@@ -24,6 +27,13 @@ const projectStore = useProjectStore()
 const manuscriptStore = useManuscriptStore()
 const snapshotStore = useSnapshotStore()
 const isSaving = ref(false)
+const contentSize = ref(0)
+const contentSizeWarning = computed(() => {
+  const size = contentSize.value
+  if (size >= CONTENT_CRITICAL_THRESHOLD) return 'critical'
+  if (size >= CONTENT_WARN_THRESHOLD) return 'warn'
+  return 'ok'
+})
 
 const activeContent = computed(() => {
   if (manuscriptStore.activeSubsectionId) {
@@ -79,15 +89,31 @@ const editor = useEditor({
     }
   },
   onUpdate: ({ editor }) => {
-    const content = editor.getHTML()
-    if (manuscriptStore.activeSubsectionId) {
-      const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
-      if (sub) sub.content = content
-    } else if (manuscriptStore.activeSectionId) {
-      const sec = manuscriptStore.sections.find(s => s.id === manuscriptStore.activeSectionId)
-      if (sec) sec.content = content
+    const textContent = editor.state.doc.textContent
+    const textLen = textContent.length
+    contentSize.value = textLen
+
+    if (textLen >= CONTENT_WARN_THRESHOLD) {
+      const content = editor.getHTML()
+      if (manuscriptStore.activeSubsectionId) {
+        const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+        if (sub) sub.content = content
+      } else if (manuscriptStore.activeSectionId) {
+        const sec = manuscriptStore.sections.find(s => s.id === manuscriptStore.activeSectionId)
+        if (sec) sec.content = content
+      } else {
+        projectStore.updateContent(content, textContent)
+      }
     } else {
-      projectStore.updateContent(content)
+      if (manuscriptStore.activeSubsectionId) {
+        const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+        if (sub) sub.content = editor.getHTML()
+      } else if (manuscriptStore.activeSectionId) {
+        const sec = manuscriptStore.sections.find(s => s.id === manuscriptStore.activeSectionId)
+        if (sec) sec.content = editor.getHTML()
+      } else {
+        projectStore.updateContent(editor.getHTML(), textContent)
+      }
     }
     debouncedSave()
     flow.handleKeystroke()
@@ -122,29 +148,20 @@ function handleDismissNudge() {
 
 function handleClick(_event) {
   if (!editor.value) return
-  
-  const from = editor.value.state.selection.from
+
+  const { from } = editor.value.state.selection
   const $pos = editor.value.state.doc.resolve(from)
-  
-  let nodePos = from
-  let node = $pos.parent
-  
-  if (node) {
-    const paragraphs = []
-    
-    editor.value.state.doc.descendants((p, pos) => {
-      if (p.isBlock && p.type.name === 'paragraph') {
-        paragraphs.push({ node: p, pos })
-      }
-    })
-    
-    const paragraphIndex = paragraphs.findIndex(p => p.pos >= nodePos)
-    
-    if (paragraphIndex !== -1) {
-      const text = paragraphs[paragraphIndex].node.textContent
-      if (text && text.trim()) {
-        emit('paragraph-click', text, paragraphIndex)
-      }
+  const node = $pos.parent
+
+  if (node && node.type.name === 'paragraph') {
+    const text = node.textContent
+    if (text && text.trim()) {
+      let idx = 0
+      editor.value.state.doc.descendants((p) => {
+        if (p === node) return false
+        if (p.isBlock && p.type.name === 'paragraph') idx++
+      })
+      emit('paragraph-click', text, idx)
     }
   }
 }
@@ -181,7 +198,26 @@ defineExpose({
       @click="handleExitFlow"
     >
       Exit Flow
-    </button>
+      </button>
+
+    <div
+      v-if="contentSizeWarning !== 'ok'"
+      class="flex-shrink-0 px-6 py-2 text-xs font-ui border-b"
+      :class="contentSizeWarning === 'critical'
+        ? 'bg-red-900/20 text-red-400 border-red-900/30'
+        : 'bg-amber-900/20 text-amber-400 border-amber-900/30'"
+    >
+      <span class="flex items-center gap-2">
+        <BaseIcon :name="contentSizeWarning === 'critical' ? 'alert-triangle' : 'alert-circle'" :size="14" />
+        <span>
+          This section is <strong>{{ (contentSize.value / 1000).toFixed(0) }}K</strong> characters.
+          {{ contentSizeWarning === 'critical'
+            ? 'Editor performance may degrade. Consider splitting into subsections.'
+            : 'Consider splitting into smaller subsections for better performance.' }}
+        </span>
+      </span>
+    </div>
+
     <div 
       :class="[
         'flex-1 overflow-y-auto scrollbar-thin',
@@ -208,7 +244,7 @@ defineExpose({
 
     <div 
       v-if="isSaving"
-      class="absolute bottom-3 right-4 text-[10px] text-text-hint/50 font-ui flex items-center gap-1.5"
+      class="absolute bottom-3 right-4 text-2xs text-text-hint/50 font-ui flex items-center gap-1.5"
     >
       <BaseIcon name="loader-2" :size="10" class="animate-spin" />
       <span class="tracking-wide">Saving...</span>

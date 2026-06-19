@@ -9,6 +9,7 @@ import { useContextRetrieval } from '../../composables/useContextRetrieval'
 import SparkPromptCard from './SparkPromptCard.vue'
 import BlueprintResult from './BlueprintResult.vue'
 import IdeaInput from './IdeaInput.vue'
+import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import ChapterContextSelector from '../shared/ChapterContextSelector.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
@@ -148,6 +149,10 @@ function switchTab(tab) {
 </script>
 
 <template>
+  <ErrorBoundary
+    fallback-title="Spark Panel Error"
+    fallback-description="Failed to render the Spark panel. Try refreshing the page."
+  >
   <div :class="embedded ? 'flex flex-col min-h-0' : 'h-full flex flex-col'">
     <div class="px-5 pt-5 pb-4 border-b border-border-subtle/30 flex-shrink-0 bg-bg-secondary/10">
       <div class="flex items-center justify-between mb-4">
@@ -168,7 +173,7 @@ class="font-spark text-lg transition-colors duration-300 tracking-wide focus:out
         <div class="flex gap-3 items-center">
           <button
             v-if="!compactIsCompacting && !embedded"
-            class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui"
+            class="px-2 py-1 text-2xs bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui"
             title="Compact conversation"
             @click="handleCompact"
           >
@@ -193,7 +198,7 @@ class="transition-colors duration-300 focus:outline-none"
     <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 scrollbar-thin">
       <div v-if="activeTab === 'prompt'" class="space-y-4">
         <div>
-          <label class="block text-[11px] uppercase tracking-widest text-text-hint font-ui mb-2">Prompt Type</label>
+          <label class="block text-11px uppercase tracking-widest text-text-hint font-ui mb-2">Prompt Type</label>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="type in promptTypes"
@@ -343,7 +348,7 @@ class="transition-colors duration-300 focus:outline-none"
 
       <div v-if="activeTab === 'history'" class="space-y-3">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] uppercase tracking-widest text-text-hint font-ui">{{ sparkStore.history.length }} saved</span>
+          <span class="text-11px uppercase tracking-widest text-text-hint font-ui">{{ sparkStore.history.length }} saved</span>
           <button
             v-if="sparkStore.history.length > 0"
             class="text-xs text-text-hint hover:text-danger transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded px-1"
@@ -364,7 +369,7 @@ class="transition-colors duration-300 focus:outline-none"
           :key="index"
           class="p-3 rounded-lg bg-bg-tertiary border border-border-subtle"
         >
-          <div class="text-[10px] uppercase tracking-wider text-text-hint font-ui mb-1">{{ item.type }}</div>
+          <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">{{ item.type }}</div>
           <p class="text-sm text-text-secondary line-clamp-2 font-body">{{ item.prompt }}</p>
           <button
             v-if="item.prompt"
@@ -378,7 +383,7 @@ class="transition-colors duration-300 focus:outline-none"
 
       <details class="mt-2">
         <summary
-          class="py-1.5 text-[10px] uppercase tracking-widest text-text-hint font-ui cursor-pointer hover:text-text-secondary"
+          class="py-1.5 text-2xs uppercase tracking-widest text-text-hint font-ui cursor-pointer hover:text-text-secondary"
           @click.prevent="toggleContextPreview"
         >
           {{ showContextPreview ? '▼' : '▶' }} Context Preview
@@ -396,8 +401,8 @@ class="transition-colors duration-300 focus:outline-none"
             </span>
           </div>
           <details class="mt-1">
-            <summary class="text-[10px] text-text-hint cursor-pointer hover:text-text-secondary">Full context text</summary>
-            <pre class="mt-1 p-2 bg-bg-tertiary rounded text-[10px] text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto">{{ contextPreview.contextText || '(empty)' }}</pre>
+            <summary class="text-2xs text-text-hint cursor-pointer hover:text-text-secondary">Full context text</summary>
+            <pre class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto">{{ contextPreview.contextText || '(empty)' }}</pre>
           </details>
         </div>
         <div v-else class="mt-2 text-xs text-text-hint font-ui">No context loaded for this project</div>
@@ -438,4 +443,5 @@ class="transition-colors duration-300 focus:outline-none"
       </div>
     </div>
   </div>
+  </ErrorBoundary>
 </template>

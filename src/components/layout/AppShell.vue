@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useProjectStore } from '../../stores/projectStore'
 import { getAllProjects } from '../../services/dbService'
-import ModeButton from './ModeButton.vue'
+import SidebarNav from './SidebarNav.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import GoalProgressBar from '../shared/GoalProgressBar.vue'
 import ProjectSettingsModal from './ProjectSettingsModal.vue'
@@ -10,6 +11,7 @@ import RecapBanner from './RecapBanner.vue'
 import ContextStatusIndicator from './ContextStatusIndicator.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
+import { useAuthStore } from '../../stores/authStore'
 
 import { CREATIVE_WORKSPACE_TYPES } from '../../config/workspace'
 
@@ -25,7 +27,10 @@ const projects = ref([])
 const showCoreLoop = ref(true)
 const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, { write: false, analyze: false, build: false })
 
-const emit = defineEmits(['start-flow', 'end-flow', 'export', 'import', 'export-pdf', 'open-settings', 'complete-onboarding', 'create-project'])
+const emit = defineEmits(['start-flow', 'end-flow', 'export', 'import', 'export-pdf', 'open-settings', 'open-auth', 'complete-onboarding', 'create-project'])
+
+const authStore = useAuthStore()
+const router = useRouter()
 
 const isNarrativeWorkspace = computed(() =>
   CREATIVE_WORKSPACE_TYPES.includes(projectStore.activeWorkspaceType)
@@ -55,7 +60,18 @@ function markCoreLoop(mode) {
 }
 
 async function loadProjects() {
-  projects.value = await getAllProjects()
+  projects.value = await getAllProjects(authStore.localUser?.id || null)
+}
+
+function handleAuthClick() {
+  if (authStore.localUser) {
+    authStore.logout()
+    router.push('/login')
+  } else if (authStore.user) {
+    authStore.logout()
+  } else {
+    emit('open-auth')
+  }
 }
 
 async function switchProject(projectId) {
@@ -133,9 +149,25 @@ function toggleFlow() {
   flowMode.value = !flowMode.value
 }
 
-function activateFlow() {
-  markCoreLoop('write')
-  closeAllPanels()
+function handleSidebarNav(name) {
+  if (name === 'settings') {
+    showProjectSettings.value = true
+    return
+  }
+  flowMode.value = false
+  const map = {
+    'story-generator': toggleStoryGenerator,
+    'polish': togglePolish,
+    'story-bible': toggleStoryBible,
+    'canvas': toggleCanvas,
+    'outline': toggleOutline,
+    'chapters': toggleChapters,
+    'network': toggleNetwork,
+    'timeline': toggleTimeline,
+    'archive': toggleArchive,
+    'research': toggleResearch,
+  }
+  map[name]?.()
 }
 
 onMounted(async () => {
@@ -145,238 +177,151 @@ onMounted(async () => {
 
 <template>
   <div class="h-full flex flex-col">
-    <header class="h-14 glass flex items-center justify-between px-4 shrink-0 z-10 border-b border-border-subtle/60">
-      <div class="flex items-center">
-        <h1 class="text-xl font-semibold text-accent">Versatile</h1>
-        <nav v-if="showCoreLoop && !flowMode" class="ml-6 flex items-center gap-3 text-xs text-text-hint/50 tracking-[0.08em] uppercase">
-          <button class="hover:text-accent transition-all duration-150 btn-ghost" @click="activateFlow(); flowMode = true">Write</button>
-          <span class="text-text-hint/30">·</span>
-          <button class="hover:text-accent transition-all duration-150 btn-ghost" @click="togglePolish">Analyze</button>
-          <span class="text-text-hint/30">·</span>
-          <button class="hover:text-accent transition-all duration-150 btn-ghost" @click="toggleStoryBible">Build</button>
-        </nav>
-      </div>
-
+    <header class="h-12 glass flex items-center justify-between px-3 shrink-0 z-10 border-b border-border-subtle/60">
       <div class="flex items-center gap-2">
-        <ModeButton 
-          :label="projectStore.terminology.generatorLabel" 
-          :active="activePanelName === 'story-generator'" 
-          shortcut="1"
-          @click="toggleStoryGenerator" 
-        />
-        <ModeButton 
-          label="Flow" 
-          :active="flowMode" 
-          :is-running="flowMode"
-          shortcut="f"
-          @click="toggleFlow" 
-        />
-        <ModeButton 
-          label="Polish" 
-          :active="activePanelName === 'polish'" 
-          shortcut="2"
-          @click="togglePolish" 
-        />
-        <ModeButton 
-          :label="projectStore.terminology.bible" 
-          :active="activePanelName === 'story-bible'" 
-          shortcut="3"
-          @click="toggleStoryBible" 
-        />
-        <ModeButton 
-          label="Canvas" 
-          :active="activePanelName === 'canvas'" 
-          shortcut="5"
-          @click="toggleCanvas" 
-        />
-        <ModeButton 
-          label="Outline" 
-          :active="activePanelName === 'outline'" 
-          shortcut="6"
-          @click="toggleOutline" 
-        />
-        <ModeButton 
-          :label="projectStore.terminology.sections" 
-          :active="activePanelName === 'chapters'" 
-          shortcut="7"
-          @click="toggleChapters" 
-        />
-        <button
-          v-if="isNarrativeWorkspace"
-          :class="[
-            'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
-            activePanelName === 'network'
-              ? 'bg-accent text-bg-primary shadow-warm-sm' 
-              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
-          ]"
-          title="Network (8)"
-          @click="toggleNetwork"
+        <span
+          v-if="flowMode"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-semibold text-accent cursor-pointer transition-all duration-150"
+          style="background: rgba(200,146,42,0.12)"
+          @click="toggleFlow"
         >
-          <BaseIcon name="network" :size="18" />
-        </button>
-        <button 
-          v-if="isNarrativeWorkspace"
-          :class="[
-            'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
-            activePanelName === 'timeline'
-              ? 'bg-accent text-bg-primary shadow-warm-sm' 
-              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
-          ]"
-          title="Timeline (t)"
-          @click="toggleTimeline"
-        >
-          <BaseIcon name="clock" :size="18" />
-        </button>
-        <button
-          :class="[
-            'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
-            activePanelName === 'archive'
-              ? 'bg-accent text-bg-primary shadow-warm-sm'
-              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
-          ]"
-          title="Archive"
-          @click="toggleArchive"
-        >
-          <BaseIcon name="archive" :size="18" />
-        </button>
-        <button
-          :class="[
-            'p-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent btn-elevated',
-            activePanelName === 'research'
-              ? 'bg-accent text-bg-primary shadow-warm-sm'
-              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
-          ]"
-          title="Research (R)"
-          @click="toggleResearch"
-        >
-          <BaseIcon name="search" :size="18" />
-        </button>
-      </div>
+          <BaseIcon name="play" :size="10" />
+          Flow
+        </span>
 
-      <div class="flex items-center gap-3 text-sm text-text-secondary">
-        <ContextStatusIndicator />
-        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150" title="Export project (Ctrl+S)" @click="emit('export')" @keydown.enter="emit('export')">
-          <BaseIcon name="upload" :size="18" />
-        </button>
-        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150" title="Export to PDF" @click="emit('export-pdf')">
-          <BaseIcon name="file-text" :size="18" />
-        </button>
-        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150" title="Import project (Ctrl+I)" @click="emit('import')" @keydown.enter="emit('import')">
-          <BaseIcon name="download" :size="18" />
-        </button>
-        <div class="flex items-center gap-2">
-          <div class="relative">
-            <button 
-              class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2 py-1 text-sm flex items-center gap-1.5 transition-all duration-150 btn-ghost"
-              title="Switch project"
-              @click="showProjectDropdown = !showProjectDropdown"
+        <div class="relative">
+          <button
+            class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2 py-1 text-sm flex items-center gap-1.5 transition-all duration-150 btn-ghost"
+            title="Switch project"
+            @click="showProjectDropdown = !showProjectDropdown"
+          >
+            {{ projectName || 'Untitled Project' }}
+            <BaseIcon name="chevron-down" :size="14" class="opacity-60" />
+          </button>
+          <div
+            v-if="showProjectDropdown"
+            class="absolute left-0 top-full mt-1 glass-panel rounded-lg shadow-warm-md py-1 z-50 min-w-[220px] animate-scale-in"
+            @click.stop
+          >
+            <button
+              class="w-full text-left px-3 py-2 text-sm text-accent hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
+              @click="handleCreateProjectClick"
             >
-              {{ projectName || 'Untitled Project' }}
-              <BaseIcon name="chevron-down" :size="14" class="opacity-60" />
+              <BaseIcon name="plus" :size="14" />
+              Create new project
             </button>
-            <div 
-              v-if="showProjectDropdown"
-              class="absolute right-0 top-full mt-1 glass-panel rounded-lg shadow-warm-md py-1 z-50 min-w-[220px] animate-scale-in"
-              @click.stop
+            <button
+              v-for="project in projects"
+              :key="project.id"
+              :class="[
+                'w-full text-left px-3 py-2 text-sm hover:bg-accent-glass transition-colors duration-150',
+                project.id === projectStore.currentProjectId ? 'text-accent font-medium' : 'text-text-secondary'
+              ]"
+              @click="switchProject(project.id)"
             >
-              <button
-                class="w-full text-left px-3 py-2 text-sm text-accent hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
-                @click="handleCreateProjectClick"
-              >
-                <BaseIcon name="plus" :size="14" />
-                Create new project
-              </button>
-              <button
-                v-for="project in projects"
-                :key="project.id"
-                :class="[
-                  'w-full text-left px-3 py-2 text-sm hover:bg-accent-glass transition-colors duration-150',
-                  project.id === projectStore.currentProjectId ? 'text-accent font-medium' : 'text-text-secondary'
-                ]"
-                @click="switchProject(project.id)"
-              >
-                {{ project.name }}
-              </button>
-              <hr class="my-1 border-border-subtle/30 mx-2" />
-              <button 
-                class="w-full text-left px-3 py-2 text-sm text-text-hint hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
-                @click="showProjectDropdown = false; showProjectSettings = true"
-              >
-                <BaseIcon name="settings" :size="14" />
-                Project Settings
-              </button>
-            </div>
+              {{ project.name }}
+            </button>
+            <hr class="my-1 border-border-subtle/30 mx-2" />
+            <button
+              class="w-full text-left px-3 py-2 text-sm text-text-hint hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
+              @click="showProjectDropdown = false; showProjectSettings = true"
+            >
+              <BaseIcon name="settings" :size="14" />
+              Project Settings
+            </button>
           </div>
         </div>
-        <span v-if="projectStore.lastSaved" class="text-[10px] text-text-hint/60 flex items-center gap-1">
-          <BaseIcon name="check" :size="10" class="text-success/70" />
+
+        <div class="hidden sm:flex items-center gap-3 text-2xs text-text-hint/70">
+          <span class="tabular-nums font-ui">{{ wordCount.toLocaleString() }} words</span>
+          <span v-if="projectStore.currentStreak > 0" class="text-orange-400/80 flex items-center gap-1">
+            <BaseIcon name="flame" :size="11" class="text-orange-400" />
+            {{ projectStore.currentStreak }}
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <ContextStatusIndicator />
+        <span v-if="projectStore.lastSaved" class="text-2xs text-text-hint/60 flex items-center gap-1 mr-1">
+          <BaseIcon name="check" :size="9" class="text-success/70" />
           Saved
         </span>
-        <span 
-          v-if="projectStore.currentStreak > 0"
-          class="text-[10px] text-orange-400/80 flex items-center gap-1 cursor-help group"
-          :title="`${projectStore.currentStreak} day streak — keep it up!`"
-        >
-          <BaseIcon name="flame" :size="14" class="text-orange-400" />
-          <span>{{ projectStore.currentStreak }}</span>
-        </span>
-        <GoalProgressBar 
-          :current-words="projectStore.dailyWordCount" 
+        <GoalProgressBar
+          :current-words="projectStore.dailyWordCount"
           :goal-words="projectStore.dailyGoal"
           @open-settings="showProjectSettings = true"
         />
-        <span class="tabular-nums font-ui text-text-hint/70">{{ wordCount.toLocaleString() }} words</span>
+        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150" title="Export project (Ctrl+S)" @click="emit('export')" @keydown.enter="emit('export')">
+          <BaseIcon name="upload" :size="16" />
+        </button>
+        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150" title="Export to PDF" @click="emit('export-pdf')">
+          <BaseIcon name="file-text" :size="16" />
+        </button>
+        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150" title="Import project (Ctrl+I)" @click="emit('import')" @keydown.enter="emit('import')">
+          <BaseIcon name="download" :size="16" />
+        </button>
+        <button
+          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150"
+          :title="authStore.localUser ? `Signed in as ${authStore.localUser.displayName || authStore.localUser.username}` : authStore.isAuthenticated ? `Signed in as ${authStore.user?.username || 'user'}` : 'Sign in to sync'"
+          @click="handleAuthClick()"
+        >
+          <BaseIcon :name="authStore.isAuthenticated ? 'log-in' : 'user'" :size="16" />
+        </button>
       </div>
     </header>
 
     <RecapBanner />
 
     <div class="flex-1 flex overflow-hidden">
-      <aside 
-        v-if="activePanelName === 'story-generator' && !flowMode" 
-        class="w-[500px] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
+      <SidebarNav :active-panel="activePanelName" @navigate="handleSidebarNav" />
+
+      <div class="flex-1 flex overflow-hidden">
+        <aside 
+          v-if="activePanelName === 'story-generator' && !flowMode" 
+          class="w-[500px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
       >
         <slot name="story-generator"></slot>
       </aside>
 
       <aside 
         v-if="activePanelName === 'story-bible' && !flowMode" 
-        class="w-[600px] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
+        class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
       >
         <slot name="story-bible"></slot>
       </aside>
 
       <aside 
         v-if="activePanelName === 'canvas' && !flowMode" 
-        class="w-[400px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
+        class="w-[400px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="canvas"></slot>
       </aside>
 
       <aside 
         v-if="activePanelName === 'outline' && !flowMode" 
-        class="w-[350px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
+        class="w-[350px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="outline"></slot>
       </aside>
 
       <aside 
         v-if="activePanelName === 'chapters' && !flowMode" 
-        class="w-[320px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
+        class="w-[320px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="chapters"></slot>
       </aside>
 
       <aside 
         v-if="activePanelName === 'network' && !flowMode" 
-        class="w-[900px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
+        class="w-[900px] max-w-[95vw] xl:max-w-[900px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="network"></slot>
       </aside>
 
       <aside 
         v-if="activePanelName === 'timeline' && !flowMode" 
-        class="w-[600px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
+        class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
       >
         <slot name="timeline"></slot>
       </aside>
@@ -401,17 +346,18 @@ onMounted(async () => {
 
       <aside 
         v-if="activePanelName === 'archive' && !flowMode" 
-        class="w-[320px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
+        class="w-[320px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
       >
         <slot name="archive"></slot>
       </aside>
 
       <aside 
         v-if="activePanelName === 'research' && !flowMode" 
-        class="w-[360px] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
+        class="w-[360px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
       >
         <slot name="research"></slot>
       </aside>
+      </div>
     </div>
 
     <ProjectSettingsModal

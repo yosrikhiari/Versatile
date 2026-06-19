@@ -49,6 +49,11 @@
     --vers-status-resolved: #6b7280;
     --vers-status-closed: #4b5563;
 
+    /* Semantic status colors (eval, feedback) */
+    --vers-status-success: #6a9e7a;
+    --vers-status-danger: #d07070;
+    --vers-status-warning: #d4a74a;
+
     /* JS canvas element type accent colors (element cards) */
     --vers-element-section: #6366f1;
     --vers-element-character: #ec4899;

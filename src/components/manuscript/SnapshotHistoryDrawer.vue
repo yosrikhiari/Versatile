@@ -6,6 +6,7 @@ import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useNotifications } from '../../composables/useNotifications'
 import { useDebounceFn } from '@vueuse/core'
 import BaseIcon from '../shared/BaseIcon.vue'
+import EmptyState from '../shared/EmptyState.vue'
 
 const props = defineProps({
   show: Boolean,
@@ -141,11 +142,7 @@ onUnmounted(() => {
         </div>
 
         <div class="flex-1 overflow-y-auto p-4">
-          <div v-if="chapterSnapshots.length === 0" class="text-center py-12">
-            <BaseIcon name="clock" :size="32" class="text-text-hint mx-auto mb-3" />
-            <p class="text-sm text-text-hint font-ui">No snapshots yet</p>
-            <p class="text-xs text-text-hint font-ui mt-1">Save manually or auto-save will create them</p>
-          </div>
+          <EmptyState v-if="chapterSnapshots.length === 0" icon="clock" title="No snapshots yet" description="Save manually or auto-save will create them" />
 
           <div v-else class="space-y-2">
             <div

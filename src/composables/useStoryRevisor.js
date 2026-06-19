@@ -37,14 +37,11 @@ SCENE BRIEF (for context):
 STORY BIBLE CONTEXT:
 ${storyBible || '(No story bible)'}
 
-WORD COUNT CONSTRAINTS:
-- Original word count: ${wordCount}
-- Keep revised word count between ${minWords} and ${maxWords}
-
 ORIGINAL DRAFT:
 ${draft}
 
-Revise the draft to address ONLY the issues listed above. Output the full revised text.`
+CRITICAL - WORD COUNT CONSTRAINT:
+The original draft is ${wordCount} words. Your revision MUST be between ${minWords} and ${maxWords} words. This is a hard constraint — count your words carefully before returning. Output ONLY the revised text with no additional commentary.`
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
@@ -56,7 +53,21 @@ Revise the draft to address ONLY the issues listed above. Output the full revise
         temperature: 0.4
       })
 
-      return response || draft
+      let revisedText = response || draft
+
+      const revisedWords = revisedText.trim().split(/\s+/).length
+      if (revisedWords < minWords || revisedWords > maxWords) {
+        const retryPrompt = `Your previous revision was ${revisedWords} words but must be between ${minWords} and ${maxWords}. Rewrite it to fit this exact word count. Output ONLY the revised text.
+
+${revisedText}`
+        const retryResponse = await aiGenerate(retryPrompt, activePrompts.revisor, {
+          feature: FEATURES.STORY_GENERATION,
+          temperature: 0.3
+        })
+        if (retryResponse) revisedText = retryResponse
+      }
+
+      return revisedText
     } catch {
       return draft
     } finally {

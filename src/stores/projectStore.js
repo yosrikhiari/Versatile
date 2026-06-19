@@ -5,6 +5,7 @@ import { countWords, stripHtmlTags } from '../utils/textUtils'
 import { WORKSPACE_TYPES, WORKSPACE_TERMINOLOGY } from '../config/workspace'
 import { STORAGE_KEYS } from '../config/storageKeys'
 import { useLocalStorage } from '../composables/useLocalStorage'
+import { getSyncEngine } from '../services/sync-engine'
 
 export const useProjectStore = defineStore('project', () => {
   const currentProjectId = ref(null)
@@ -140,10 +141,10 @@ export const useProjectStore = defineStore('project', () => {
     }, 2000)
   }
 
-  function updateContent(newContent) {
+  function updateContent(newContent, plainText) {
     documentContent.value = newContent
-    const plainText = stripHtmlTags(newContent)
-    const words = countWords(plainText)
+    const text = plainText || stripHtmlTags(newContent)
+    const words = countWords(text)
     wordCount.value = words
     sessionWordCount.value = Math.max(0, words - initialWordCount.value)
   }
@@ -177,6 +178,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function createNewProject(name, category = '', description = '', blueprintId = null) {
+    getSyncEngine().clearStoryId()
     const id = await createProject(name, category, description)
     await loadProject(id)
 

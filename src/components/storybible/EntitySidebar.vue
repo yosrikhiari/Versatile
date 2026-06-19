@@ -240,7 +240,7 @@ const inNetworkCount = computed(() =>
           class="w-full pl-7 pr-3 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent font-ui"
         />
       </div>
-      <div class="text-[10px] text-text-hint mt-1.5 font-ui">
+      <div class="text-2xs text-text-hint mt-1.5 font-ui">
         {{ inNetworkCount }} / {{ totalEntities }} in network
       </div>
     </div>
@@ -258,7 +258,7 @@ const inNetworkCount = computed(() =>
               :style="{ color: getEntityColor(section.type) }"
             />
             <span class="text-xs font-medium text-text-secondary font-ui">{{ section.label }}</span>
-            <span class="text-[10px] text-text-hint">({{ section.items.length }})</span>
+            <span class="text-2xs text-text-hint">({{ section.items.length }})</span>
           </div>
           <BaseIcon 
             :name="expandedSections[section.key] ? 'chevron-up' : 'chevron-down'" 
@@ -315,7 +315,7 @@ const inNetworkCount = computed(() =>
               </div>
             </div>
             
-            <div v-if="entity.role || entity.description || entity.status" class="text-[10px] text-text-hint mt-0.5 ml-5 truncate">
+            <div v-if="entity.role || entity.description || entity.status" class="text-2xs text-text-hint mt-0.5 ml-5 truncate">
               {{ entity.role || entity.description?.slice(0, 30) || entity.status }}
             </div>
 
@@ -329,12 +329,12 @@ const inNetworkCount = computed(() =>
                   class="w-1.5 h-1.5 rounded-full shrink-0" 
                   :style="{ backgroundColor: getEdgeColor(conn.relationshipType) }"
                 ></span>
-                <span class="text-[10px] text-text-hint capitalize">
+                <span class="text-2xs text-text-hint capitalize">
                   {{ conn.isSource ? '→' : '←' }}
                 </span>
                 <BaseIcon :name="getEntityIcon(conn.otherType)" :size="10" :style="{ color: conn.otherColor }" class="shrink-0" />
-                <span class="text-[10px] text-text-secondary truncate flex-1">{{ conn.otherLabel }}</span>
-                <span class="text-[9px] text-text-hint capitalize px-1 rounded bg-bg-tertiary">{{ conn.relationshipType }}</span>
+                <span class="text-2xs text-text-secondary truncate flex-1">{{ conn.otherLabel }}</span>
+                <span class="text-3xs text-text-hint capitalize px-1 rounded bg-bg-tertiary">{{ conn.relationshipType }}</span>
                 <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     class="p-0.5 text-text-hint hover:text-accent rounded"
@@ -352,21 +352,21 @@ const inNetworkCount = computed(() =>
                   </button>
                 </div>
               </div>
-              <div v-if="getEntityConnections(section.type, entity.id).length === 0" class="text-[10px] text-text-hint italic px-2 py-1">
+              <div v-if="getEntityConnections(section.type, entity.id).length === 0" class="text-2xs text-text-hint italic px-2 py-1">
                 No connections
               </div>
             </div>
           </div>
 
           <div v-if="section.items.length === 0" class="px-3 py-2 text-center">
-            <span class="text-[10px] text-text-hint italic">No items found</span>
+            <span class="text-2xs text-text-hint italic">No items found</span>
           </div>
         </div>
       </div>
     </div>
 
     <div class="p-2 border-t border-border-subtle bg-bg-tertiary/50">
-      <p class="text-[10px] text-text-hint text-center font-ui">
+      <p class="text-2xs text-text-hint text-center font-ui">
         Drag items onto the graph to add them
       </p>
     </div>
