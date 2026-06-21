@@ -1,17 +1,22 @@
 import { aiGenerate } from '../../../services/aiService'
 import { FEATURES } from '../../../config/ai'
-import { retryWithBackoff, sanitizeJsonResponse, normalizeField, wrapApiError } from '../utils'
+import { retryWithBackoff, sanitizeJsonResponse, normalizeField } from '../utils'
 
 export async function executeGeneration({ userPrompt, systemPrompt, schema }) {
   try {
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, systemPrompt, { feature: FEATURES.WORLDBUILDING })
     )
+
     const parsed = sanitizeJsonResponse(response)
+
     if (!parsed || !isValid(parsed, schema)) {
       throw new Error('Invalid JSON')
     }
-    return buildEntity(parsed, schema)
+
+    const entity = buildEntity(parsed, schema)
+
+    return entity
   } catch (error) {
     if (error) throw error
     throw new Error('Generation failed. Ensure Ollama is running and your model is loaded.')

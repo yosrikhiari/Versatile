@@ -69,13 +69,13 @@ function onPortraitUpdated() {
           <div
             v-for="volId in assignedVolumes.slice(0, 3)"
             :key="volId"
-            class="w-4 h-4 rounded text-[10px] flex items-center justify-center text-white font-bold"
-            :style="{ backgroundColor: volumeStore.volumes.find(v => v.id === volId)?.color || '#6366f1' }"
+            class="w-4 h-4 rounded text-2xs flex items-center justify-center text-white font-bold"
+            :style="{ backgroundColor: volumeStore.volumes.find(v => v.id === volId)?.color || 'var(--vers-default-fallback)' }"
             :title="volumeStore.volumes.find(v => v.id === volId)?.title"
           >
             {{ volumeStore.volumes.find(v => v.id === volId)?.title?.charAt(0) || '?' }}
           </div>
-          <div v-if="assignedVolumes.length > 3" class="w-4 h-4 rounded text-[9px] flex items-center justify-center bg-bg-secondary text-text-hint">
+          <div v-if="assignedVolumes.length > 3" class="w-4 h-4 rounded text-3xs flex items-center justify-center bg-bg-secondary text-text-hint">
             +{{ assignedVolumes.length - 3 }}
           </div>
         </div>

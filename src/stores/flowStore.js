@@ -49,7 +49,7 @@ export const useFlowStore = defineStore('flow', () => {
       osc.start()
       osc.stop(audioContext.currentTime + 0.2)
     } catch {
-      console.log('Failed to play nudge sound')
+      console.warn('Failed to play nudge sound')
     }
   }
 

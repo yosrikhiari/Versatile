@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 
 export function useSnippets(snippets) {
   const sortedSnippets = computed(() => {

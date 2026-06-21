@@ -1,8 +1,9 @@
+import 'fake-indexeddb/auto'
+import { createPinia, setActivePinia } from 'pinia'
 import { vi } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
-import { beforeEach } from 'vitest'
 
-beforeEach(() => {
-  setActivePinia(createPinia())
-  vi.clearAllMocks()
+vi.mock('../services/aiService', async () => {
+  return await vi.importActual('../services/aiService')
 })
+
+setActivePinia(createPinia())

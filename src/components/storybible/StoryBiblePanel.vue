@@ -1,26 +1,30 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
 import { generateRandomCharacter, generateRandomPlotThread, generateRandomLocation, enhanceExistingCharacter, generateTraitSuggestions } from '../../composables/useOllama'
+import { useAsyncError } from '../../composables/useAsyncError'
+
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
 import { useClickOutside } from '../../composables/useClickOutside'
 import { upsertStoryDocument } from '../../services/db-story-documents'
 import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import { useNotifications } from '../../composables/useNotifications'
+import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import TagInput from '../shared/TagInput.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
 import GenerateCharacterModal from './GenerateCharacterModal.vue'
+import { useArchiveStore } from '../../stores/archiveStore'
+import { SIGNAL, ARCHIVE_TYPES } from '../../config/archive'
 
+const { onAsyncError } = useAsyncError()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const volumeStore = useVolumeStore()
 const { showConfirm, addToast } = useNotifications()
 const { getSectionContext } = useManuscriptContext()
-
-const characterPortraitRef = ref(null)
 
 const activeTab = ref('characters')
 const searchQuery = ref('')
@@ -95,10 +99,17 @@ function cancelRoleEdit() {
 
 const generateModalRef = ref(null)
 
+const LARGE_CONTENT_THRESHOLD = 200000
+
 const selectedDocType = ref('synopsis')
 const documentContent = ref('')
 const savedContents = ref({})
 const fileInput = ref(null)
+const contentReadonly = ref(false)
+
+const isLargeContent = computed(() =>
+  documentContent.value.length > LARGE_CONTENT_THRESHOLD
+)
 
 const hasUnsavedChanges = computed(() =>
   documentContent.value !== (savedContents.value[selectedDocType.value] ?? '')
@@ -146,6 +157,7 @@ function uploadDocument(event) {
   const reader = new FileReader()
   reader.onload = async (e) => {
     documentContent.value = e.target?.result || ''
+    contentReadonly.value = documentContent.value.length > LARGE_CONTENT_THRESHOLD
     await saveDocument()
   }
   reader.readAsText(file)
@@ -174,15 +186,22 @@ async function handleGenerateCharacter() {
   }
   if (isGenerating.value) return
   isGenerating.value = true
+
   try {
     const context = await getSectionContext('current', 'character')
+
     const result = await generateRandomCharacter(context, null)
     if (result) {
       await storyBibleStore.addCharacterData(projectStore.currentProjectId, result)
       addToast('Character generated successfully.', 'success')
+
+      const archiveStore = useArchiveStore()
+      archiveStore.saveInteraction(projectStore.currentProjectId, ARCHIVE_TYPES.ENTITY_GENERATION, result, ['character', 'ai_generated'], SIGNAL.ACCEPTED).catch(() => {})
+    } else {
     }
   } catch (e) {
     console.error('Generate failed:', e)
+    onAsyncError(e)
     addToast(e.message || 'Failed to generate character', 'error')
   } finally {
     isGenerating.value = false
@@ -196,15 +215,20 @@ async function handleGeneratePlotThread() {
   }
   if (isGeneratingPlotThread.value) return
   isGeneratingPlotThread.value = true
+
   try {
     const context = await getSectionContext('current', 'plotThread')
     const result = await generateRandomPlotThread(context)
     if (result) {
       await storyBibleStore.addPlotThreadData(projectStore.currentProjectId, result)
       addToast('Plot thread generated successfully.', 'success')
+      const archiveStore = useArchiveStore()
+      archiveStore.saveInteraction(projectStore.currentProjectId, ARCHIVE_TYPES.ENTITY_GENERATION, result, ['plotThread', 'ai_generated'], SIGNAL.ACCEPTED).catch(() => {})
+    } else {
     }
   } catch (e) {
     console.error('Generate failed:', e)
+    onAsyncError(e)
     addToast(e.message || 'Failed to generate plot thread', 'error')
   } finally {
     isGeneratingPlotThread.value = false
@@ -218,15 +242,20 @@ async function handleGenerateLocation() {
   }
   if (isGeneratingLocation.value) return
   isGeneratingLocation.value = true
+
   try {
     const context = await getSectionContext('current', 'location')
     const result = await generateRandomLocation(context)
     if (result) {
       await storyBibleStore.addLocationData(projectStore.currentProjectId, result)
       addToast('Location generated successfully.', 'success')
+      const archiveStore = useArchiveStore()
+      archiveStore.saveInteraction(projectStore.currentProjectId, ARCHIVE_TYPES.ENTITY_GENERATION, result, ['location', 'ai_generated'], SIGNAL.ACCEPTED).catch(() => {})
+    } else {
     }
   } catch (e) {
     console.error('Generate failed:', e)
+    onAsyncError(e)
     addToast(e.message || 'Failed to generate location', 'error')
   } finally {
     isGeneratingLocation.value = false
@@ -243,6 +272,7 @@ async function onModalGenerate() {
   if (!generateModalRef.value) return
   const partialData = generateModalRef.value.getCharacterData()
   generateModalRef.value.setLoading()
+
   try {
     const context = await getSectionContext('current', 'character')
     let result
@@ -253,11 +283,14 @@ async function onModalGenerate() {
     }
     if (result) {
       generateModalRef.value.setGenerated(result)
+      const archiveStore = useArchiveStore()
+      archiveStore.saveInteraction(projectStore.currentProjectId, ARCHIVE_TYPES.ENTITY_GENERATION, result, [generateMode.value === 'enhance' ? 'enhanced' : 'ai_generated'], SIGNAL.ACCEPTED).catch(() => {})
     } else {
       generateModalRef.value.setError('AI returned empty response. Please try again.')
     }
   } catch (e) {
     console.error('Generate failed:', e)
+    onAsyncError(e)
     generateModalRef.value.setError(`Failed to generate: ${e.message || e}`)
   }
 }
@@ -290,6 +323,7 @@ async function loadProjectData(projectId) {
     await regenerateAllDocuments(projectId)
   } catch (e) {
     console.error('Failed to load project data:', e)
+    onAsyncError(e)
   }
 }
 
@@ -340,6 +374,7 @@ async function addCharacter() {
     })
   } catch (e) {
     console.error('Failed to add character:', e)
+    onAsyncError(e)
     addToast('Failed to add character', 'error')
   }
 }
@@ -394,7 +429,7 @@ async function deletePlotThread(id) {
   }
 }
 
-function startEdit(entity, type) {
+function startEdit(entity, _type) {
   editingId.value = entity.id
   editData.value = { ...entity }
 }
@@ -417,16 +452,20 @@ async function saveEdit(id, type) {
   cancelEdit()
 }
 
-defineExpose({
-  refresh: async () => {
-    if (projectStore.currentProjectId) {
-      await storyBibleStore.loadAll(projectStore.currentProjectId)
-    }
+async function refresh() {
+  if (projectStore.currentProjectId) {
+    await storyBibleStore.loadAll(projectStore.currentProjectId)
   }
-})
+}
+
+defineExpose({ refresh })
 </script>
 
 <template>
+  <ErrorBoundary
+    fallback-title="Story Bible Error"
+    fallback-description="Failed to render the Story Bible panel. Try refreshing the page."
+  >
   <div class="h-full flex flex-col">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-3">
@@ -454,7 +493,7 @@ defineExpose({
         role="tab"
         @click="activeTab = 'characters'"
       >
-        {{ projectStore.terminology.characters }} <span class="text-[10px] opacity-60">{{ filteredCharacters.length }}</span>
+        {{ projectStore.terminology.characters }} <span class="text-2xs opacity-60">{{ filteredCharacters.length }}</span>
       </button>
       <button
         :class="[
@@ -466,7 +505,7 @@ defineExpose({
         role="tab"
         @click="activeTab = 'plotThreads'"
       >
-        {{ projectStore.terminology.plotThreads }} <span class="text-[10px] opacity-60">{{ filteredPlotThreads.length }}</span>
+        {{ projectStore.terminology.plotThreads }} <span class="text-2xs opacity-60">{{ filteredPlotThreads.length }}</span>
       </button>
       <button
         :class="[
@@ -478,7 +517,7 @@ defineExpose({
         role="tab"
         @click="activeTab = 'locations'"
       >
-        {{ projectStore.terminology.locations }} <span class="text-[10px] opacity-60">{{ filteredLocations.length }}</span>
+        {{ projectStore.terminology.locations }} <span class="text-2xs opacity-60">{{ filteredLocations.length }}</span>
       </button>
       <button
         :class="[
@@ -548,11 +587,11 @@ defineExpose({
                 v-model="roleEditValue"
                 class="w-28 text-xs px-2 py-0.5 bg-bg-primary text-text-primary border border-border-subtle rounded outline-none focus:ring-1 focus:ring-accent/50"
                 placeholder="Role"
+                autofocus
                 @keydown.enter="saveRoleEdit(character.id)"
                 @keydown.escape="cancelRoleEdit"
                 @blur="saveRoleEdit(character.id)"
                 @click.stop
-                autofocus
               />
             </span>
             <span
@@ -960,7 +999,7 @@ defineExpose({
           v-for="dt in documentTypes"
           :key="dt.key"
           :class="[
-            'px-2.5 py-1 text-[11px] font-medium rounded-lg font-ui transition-colors',
+            'px-2.5 py-1 text-11px font-medium rounded-lg font-ui transition-colors',
             selectedDocType === dt.key
               ? 'bg-accent text-white'
               : 'bg-bg-secondary text-text-secondary hover:bg-surface-hover'
@@ -1010,9 +1049,25 @@ defineExpose({
         >Unsaved changes</span>
       </div>
 
+      <div
+        v-if="isLargeContent"
+        class="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20"
+      >
+        <span>Large file — {{ documentContent.length.toLocaleString() }} characters.</span>
+        <span v-if="contentReadonly" class="ml-1 text-amber-400/70">Displayed as read-only to prevent slowdowns.</span>
+        <button
+          v-if="contentReadonly"
+          class="ml-auto px-2 py-0.5 rounded text-11px font-medium bg-amber-500/20 hover:bg-amber-500/30 transition-colors"
+          @click="contentReadonly = false"
+        >Enable Editing</button>
+      </div>
+
       <textarea
         v-model="documentContent"
+        :readonly="contentReadonly"
+        spellcheck="false"
         class="w-full p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary font-mono leading-relaxed min-h-[300px] resize-y focus:outline-none focus:ring-1 focus:ring-accent/50"
+        :class="{ 'opacity-70 cursor-default': contentReadonly }"
         placeholder="No content yet. Add some story elements first."
       ></textarea>
     </div>
@@ -1030,4 +1085,5 @@ defineExpose({
     />
     </template>
   </div>
+  </ErrorBoundary>
 </template>

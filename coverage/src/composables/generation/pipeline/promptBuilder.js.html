@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/40</span>
+                <span class='fraction'>40/40</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>8/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/40</span>
+                <span class='fraction'>40/40</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -103,86 +103,86 @@
 <a name='L38'></a><a href='#L38'>38</a>
 <a name='L39'></a><a href='#L39'>39</a>
 <a name='L40'></a><a href='#L40'>40</a>
-<a name='L41'></a><a href='#L41'>41</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { FIELD_LENGTH_CONSTRAINTS } from '../utils'</span></span></span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >export function buildPrompt({ shapedBundle, schema, extraInstructions }) {</span>
-<span class="cstat-no" title="statement not covered" >  const { projectBlock, charactersBlock, locationsBlock, plotThreadsBlock, relationshipsBlock, manuscriptBlock } = shapedBundle</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  const entitiesBlock = [charactersBlock, plotThreadsBlock, locationsBlock]</span>
-<span class="cstat-no" title="statement not covered" >    .filter(Boolean)</span>
-<span class="cstat-no" title="statement not covered" >    .join('\n')</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  const dedupLine = entitiesBlock</span>
-<span class="cstat-no" title="statement not covered" >    ? '\nIMPORTANT: Do NOT create duplicates of the existing entities listed above. Generate something completely new.'</span>
-<span class="cstat-no" title="statement not covered" >    : ''</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  const fieldGuidance = buildFieldGuidance(schema)</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  const userPrompt =</span>
-<span class="cstat-no" title="statement not covered" >    `Generate one ${schema.type} for this story.` +</span>
-<span class="cstat-no" title="statement not covered" >    projectBlock +</span>
-<span class="cstat-no" title="statement not covered" >    entitiesBlock +</span>
-<span class="cstat-no" title="statement not covered" >    relationshipsBlock +</span>
-<span class="cstat-no" title="statement not covered" >    manuscriptBlock +</span>
-<span class="cstat-no" title="statement not covered" >    `\n\nReturn ONLY valid JSON. Keys: ${schema.promptKeys.join(', ')}. All string values. No markdown.` +</span>
-<span class="cstat-no" title="statement not covered" >    dedupLine +</span>
-<span class="cstat-no" title="statement not covered" >    (extraInstructions ? `\n\n${extraInstructions}` : '') +</span>
-<span class="cstat-no" title="statement not covered" >    fieldGuidance</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  return {</span>
-<span class="cstat-no" title="statement not covered" >    userPrompt,</span>
-<span class="cstat-no" title="statement not covered" >    systemPrompt: schema.systemPrompt</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" >}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >function buildFieldGuidance(schema) {</span>
-<span class="cstat-no" title="statement not covered" >  const constraints = FIELD_LENGTH_CONSTRAINTS[schema.fieldConstraints]</span>
-<span class="cstat-no" title="statement not covered" >  if (!constraints) return ''</span>
-<span class="cstat-no" title="statement not covered" >  const lines = schema.promptKeys</span>
-<span class="cstat-no" title="statement not covered" >    .filter(key =&gt; constraints[key])</span>
-<span class="cstat-no" title="statement not covered" >    .map(key =&gt; `- ${key}: max ${constraints[key].maxSentences} sentence(s), ~${constraints[key].maxWords} words (${constraints[key].guidance})`)</span>
-<span class="cstat-no" title="statement not covered" >  return lines.length &gt; 0 ? `\n\nFIELD CONSTRAINTS:\n${lines.join('\n')}` : ''</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+<a name='L41'></a><a href='#L41'>41</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { FIELD_LENGTH_CONSTRAINTS } from '../utils'
+&nbsp;
+export function buildPrompt({ shapedBundle, schema, extraInstructions }) {
+  const { projectBlock, charactersBlock, locationsBlock, plotThreadsBlock, relationshipsBlock, manuscriptBlock } = shapedBundle
+&nbsp;
+  const entitiesBlock = [charactersBlock, plotThreadsBlock, locationsBlock]
+    .filter(Boolean)
+    .join('\n')
+&nbsp;
+  const dedupLine = entitiesBlock
+    ? '\nIMPORTANT: Do NOT create duplicates of the existing entities listed above. Generate something completely new.'
+    : ''
+&nbsp;
+  const fieldGuidance = buildFieldGuidance(schema)
+&nbsp;
+  const userPrompt =
+    `Generate one ${schema.type} for this story.` +
+    projectBlock +
+    entitiesBlock +
+    relationshipsBlock +
+    manuscriptBlock +
+    `\n\nReturn ONLY valid JSON. Keys: ${schema.promptKeys.join(', ')}. All string values. No markdown.` +
+    dedupLine +
+    (extraInstructions ? `\n\n${extraInstructions}` : '') +
+    fieldGuidance
+&nbsp;
+  return {
+    userPrompt,
+    systemPrompt: schema.systemPrompt
+  }
+}
+&nbsp;
+function buildFieldGuidance(schema) {
+  const constraints = FIELD_LENGTH_CONSTRAINTS[schema.fieldConstraints]
+  if (!constraints) <span class="branch-0 cbranch-no" title="branch not covered" >return ''</span>
+  const lines = schema.promptKeys
+    .filter(key =&gt; constraints[key])
+    .map(key =&gt; `- ${key}: max ${constraints[key].maxSentences} sentence(s), ~${constraints[key].maxWords} words (${constraints[key].guidance})`)
+  return lines.length &gt; 0 ? `\n\nFIELD CONSTRAINTS:\n${lines.join('\n')}` <span class="branch-0 cbranch-no" title="branch not covered" >: ''</span>
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -190,7 +190,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-07T18:19:24.744Z
+                at 2026-06-08T18:18:09.898Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

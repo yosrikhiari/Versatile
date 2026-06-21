@@ -50,7 +50,7 @@ export const useVolumeStore = defineStore('volume', () => {
     return id
   }
 
-  async function updateVolumeData(id, data, projectId) {
+  async function updateVolumeData(id, data, _projectId) {
     await updateVolume(id, data)
     const index = volumes.value.findIndex(v => v.id === id)
     if (index !== -1) {
@@ -58,7 +58,7 @@ export const useVolumeStore = defineStore('volume', () => {
     }
   }
 
-  async function deleteVolumeData(id, projectId) {
+  async function deleteVolumeData(id, _projectId) {
     const volume = volumes.value.find(v => v.id === id)
     if (volume?.chapterIds) {
       for (const chapterId of volume.chapterIds) {
@@ -69,7 +69,7 @@ export const useVolumeStore = defineStore('volume', () => {
     volumes.value = volumes.value.filter(v => v.id !== id)
   }
 
-  async function assignChapter(chapterId, volumeId, projectId) {
+  async function assignChapter(chapterId, volumeId, _projectId) {
     await assignChapterToVolume(chapterId, volumeId)
     if (volumeId) {
       const volume = volumes.value.find(v => v.id === volumeId)
@@ -84,7 +84,7 @@ export const useVolumeStore = defineStore('volume', () => {
     }
   }
 
-  async function removeChapter(chapterId, projectId) {
+  async function removeChapter(chapterId, _projectId) {
     await removeChapterFromVolume(chapterId)
     for (const vol of volumes.value) {
       if (vol.chapterIds) {

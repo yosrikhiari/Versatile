@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { db } from '../../services/db-core'
 import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
@@ -12,6 +13,10 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import GenerationSyncPreview from './GenerationSyncPreview.vue'
 import GenerationLoadingScreen from './GenerationLoadingScreen.vue'
 import { MODE_ARC, MODE_CHAPTER, MODE_SCENE, MODE_BRAINSTORM } from '../../constants/generationModes'
+import { useSceneEval } from '../../composables/useSceneEval'
+import EvalPanel from '../eval/EvalPanel.vue'
+import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
+import EvalDashboard from '../eval/EvalDashboard.vue'
 
 const emit = defineEmits(['openChapters'])
 
@@ -31,12 +36,6 @@ const tone = ref('')
 const wordTarget = ref(3500)
 
 const sparkContext = ref('')
-
-const hasSparkResponse = computed(() => {
-  if (sparkStore.currentOutline || sparkStore.currentContent || sparkStore.currentStreamingContent) return true
-  const turns = getTurns('spark_default')
-  return turns.some(t => t.role === 'assistant')
-})
 
 // Human-readable label for what's about to be sent to the generator
 const sparkContextLabel = computed(() => {
@@ -104,6 +103,7 @@ const liveEntities = ref([])
 
 const consistencyModalOpen = ref(false)
 const selectedSceneIndex = ref(0)
+const showDashboard = ref(false)
 
 const pitchOpen = ref(-1)
 const showReRequestInput = ref(false)
@@ -111,6 +111,10 @@ const reRequestEdits = ref('')
 const sceneReviewEnabled = computed({
   get: () => volumeGenerator.sceneReviewMode.value,
   set: (val) => { volumeGenerator.sceneReviewMode.value = val }
+})
+const inlineEvalEnabled = computed({
+  get: () => volumeGenerator.inlineEvalEnabled.value,
+  set: (val) => { volumeGenerator.inlineEvalEnabled.value = val }
 })
 function togglePitch(i) {
   pitchOpen.value = pitchOpen.value === i ? -1 : i
@@ -134,6 +138,24 @@ function getTensionBarClass(tension) {
   }
 }
 
+const sceneEval = useSceneEval()
+
+function handleEvaluateScene(idx) {
+  const scene = volumeGenerator.writtenScenes.value?.[idx]
+  const planItem = volumeGenerator.scenePlan.value?.[idx]
+  if (!scene) return
+  const ws = projectStore.activeWorkspaceType || 'creative'
+  sceneEval.evaluate(scene, ws, planItem, idx)
+}
+
+function handleReviseScene(idx) {
+  const scene = volumeGenerator.writtenScenes.value?.[idx]
+  const planItem = volumeGenerator.scenePlan.value?.[idx]
+  if (!scene || !sceneEval.critiqueResult.value) return
+  const ws = projectStore.activeWorkspaceType || 'creative'
+  sceneEval.revise(scene, ws, planItem, idx)
+}
+
 const genres = ['Fantasy', 'Sci-Fi', 'Thriller', 'Romance', 'Horror', 'Literary', 'Mystery', 'Historical']
 const tones = ['Tense', 'Melancholic', 'Hopeful', 'Dark', 'Playful', 'Atmospheric']
 const synopsis = computed(() => {
@@ -155,9 +177,33 @@ const volumeTotalConsistencyIssues = computed(() => {
   return (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
 })
 
+const qualityGrade = computed(() => {
+  const n = volumeTotalConsistencyIssues.value
+  if (n === 0) return 'good'
+  if (n <= 3) return 'fair'
+  return 'poor'
+})
+
+const totalCharacterIssues = computed(() => volumeGenerator.consistencyReport.value?.characterIssues?.length || 0)
+const totalLocationIssues = computed(() => volumeGenerator.consistencyReport.value?.locationIssues?.length || 0)
+
 const totalWordsWritten = computed(() =>
   volumeGenerator.writtenScenes.value.reduce((sum, s) => sum + (s.prose?.split(/\s+/).length || 0), 0)
 )
+
+const previousGenerations = ref([])
+async function loadPreviousGenerations() {
+  const pid = projectStore.currentProjectId
+  if (!pid) return
+  try {
+    previousGenerations.value = await db.generatedStories
+      .where('projectId').equals(pid)
+      .reverse()
+      .sortBy('generatedAt')
+  } catch { /* ignore */ }
+}
+
+onMounted(() => { loadPreviousGenerations() })
 
 // ----- Volume pipeline -----
 async function handleVolumeGenerate() {
@@ -180,7 +226,7 @@ async function handleVolumeGenerate() {
       wordTarget: wordTarget.value,
       singleChapter: mode.value === MODE_SCENE || mode.value === MODE_CHAPTER, // Keep compatible for now until follow-up task
       sparkContext: sparkContext.value,
-      onPhaseChange: (p) => {},
+      onPhaseChange: (_p) => {},
       onPartialData: (type, name) => {
         liveEntities.value.push({
           id: Date.now().toString(36) + performance.now().toString(36).replace('.', ''),
@@ -214,7 +260,7 @@ async function handleVolumeConfirmPlan() {
       synopsis: synopsis.value,
       sparkContext: sparkContext.value,
       onPhaseChange: () => {},
-      onChunk: ({ sceneIndex, total, chunk, fullProse, scene }) => {
+      onChunk: ({ sceneIndex, total, _chunk, fullProse, _scene }) => {
         volumeCurrentScene.value = sceneIndex
         volumeTotalScenes.value = total
         volumeStreamingText.value = fullProse
@@ -271,9 +317,6 @@ function handleVolumeReset() {
 async function handleVolumeExportTxt() {
   const scenes = volumeGenerator.writtenScenes.value
   if (scenes.length === 0) return
-  const text = scenes.map((s, i) =>
-    `--- Scene ${i + 1}: ${s.title} ---\n\n${s.prose}`
-  ).join('\n\n')
   await exportAsText({
     title: `Generated Story`,
     scenes: scenes.map(s => ({ title: s.title, prose: s.prose }))
@@ -296,6 +339,21 @@ function handleVolumeSceneEdit(sceneIndex, field, value) {
   if (volumePlanEdits.value[sceneIndex]) {
     volumePlanEdits.value[sceneIndex][field] = value
   }
+}
+function handleWantsEdit(sceneIndex, text) {
+  const wants = {}
+  if (text) {
+    text.split(',').forEach(part => {
+      const trimmed = part.trim()
+      const sep = trimmed.indexOf('→')
+      if (sep > 0) {
+        const name = trimmed.slice(0, sep).trim()
+        const goal = trimmed.slice(sep + 1).trim()
+        if (name && goal) wants[name] = goal
+      }
+    })
+  }
+  handleVolumeSceneEdit(sceneIndex, 'characterWants', wants)
 }
 
 async function handleRegenerateScene(sceneIndex) {
@@ -328,12 +386,6 @@ function getTensionColor(tension) {
     case 'low': return 'text-gray-400 bg-gray-800/30'
     default: return 'text-gray-400 bg-gray-800/30'
   }
-}
-
-function getScoreColor(score) {
-  if (score >= 8) return 'text-green-400 bg-green-950/30 border-green-800/30'
-  if (score >= 5) return 'text-yellow-400 bg-yellow-950/30 border-yellow-800/30'
-  return 'text-red-400 bg-red-950/30 border-red-800/30'
 }
 
 function getPhaseLabel(phase) {
@@ -370,11 +422,13 @@ function getPhaseLabel(phase) {
             class="flex items-center gap-2 cursor-pointer group"
             @click="tab = m.id"
           >
-            <div class="w-3 h-3 rounded-full border flex items-center justify-center transition-all duration-300"
+            <div
+class="w-3 h-3 rounded-full border flex items-center justify-center transition-all duration-300"
                  :class="tab === m.id ? 'border-accent' : 'border-text-hint/50 group-hover:border-text-secondary'">
               <div v-if="tab === m.id" class="w-1.5 h-1.5 bg-accent rounded-full"></div>
             </div>
-            <span class="text-[11px] font-spark tracking-widest transition-colors duration-300"
+            <span
+class="text-11px font-spark tracking-widest transition-colors duration-300"
                   :class="tab === m.id ? 'text-accent' : 'text-text-hint group-hover:text-text-primary'">
               {{ m.label }}
             </span>
@@ -461,17 +515,27 @@ function getPhaseLabel(phase) {
                 <BaseIcon name="x" :size="14" />
               </button>
             </div>
-            <p class="text-[10px] text-text-hint font-ui truncate pl-5" :title="sparkContext">{{ sparkContextLabel }}</p>
+            <p class="text-2xs text-text-hint font-ui truncate pl-5" :title="sparkContext">{{ sparkContextLabel }}</p>
           </div>
 
           <div class="flex items-center gap-2 px-1">
             <label class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none">
               <input
-                type="checkbox"
                 v-model="sceneReviewEnabled"
+                type="checkbox"
                 class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
               />
               Pause per scene for review
+            </label>
+          </div>
+          <div class="flex items-center gap-2 px-1">
+            <label class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none">
+              <input
+                v-model="inlineEvalEnabled"
+                type="checkbox"
+                class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
+              />
+              Auto-evaluate scenes
             </label>
           </div>
 
@@ -563,16 +627,22 @@ function getPhaseLabel(phase) {
                   <BaseIcon :name="pitchOpen === i ? 'chevron-down' : 'chevron-right'" :size="12" />
                   <span class="font-medium">Narrative Pitch</span>
                 </button>
-                <div v-if="pitchOpen === i" class="px-3 pb-2.5 text-xs text-text-secondary font-body leading-relaxed space-y-1 border-t border-border-subtle pt-2">
-                  <p v-if="scene.goal">This scene aims to make the reader feel <span class="text-text-primary font-medium">{{ scene.goal }}</span>.</p>
-                  <p v-if="scene.setup || scene.payoff">
-                    <template v-if="scene.setup">It sets up: <span class="text-text-primary">{{ scene.setup }}</span></template>
-                    <template v-if="scene.setup && scene.payoff"> — </template>
-                    <template v-if="scene.payoff">pays off: <span class="text-text-primary">{{ scene.payoff }}</span></template>
-                    <template v-if="!scene.setup && !scene.payoff">No setup or payoff defined.</template>
+                <div v-if="pitchOpen === i" class="px-3 pb-2.5 text-xs text-text-secondary font-body leading-relaxed space-y-1.5 border-t border-border-subtle pt-2">
+                  <p v-if="scene.goal">Emotional goal: <span class="text-text-primary font-medium">{{ scene.goal }}</span>.</p>
+                  <p v-if="scene.obstacle">What changes / obstacle: <span class="text-text-primary">{{ scene.obstacle }}</span>.</p>
+                  <p v-if="scene.setup">Sets up: <span class="text-text-primary">{{ scene.setup }}</span>.</p>
+                  <p v-if="scene.payoff">Pays off: <span class="text-text-primary">{{ scene.payoff }}</span>.</p>
+                  <p v-if="scene.sensoryAnchor">Sensory anchor: <span class="text-text-primary italic">{{ scene.sensoryAnchor }}</span>.</p>
+                  <p v-if="scene.location">Location: <span class="text-text-primary">{{ scene.location }}</span>.</p>
+                  <p v-if="scene.tension">Tension: <span class="text-text-primary font-medium">{{ scene.tension }}</span>.</p>
+                  <p v-if="scene.pacing">Pacing: <span class="text-text-primary font-medium">{{ scene.pacing }}</span>.</p>
+                  <p v-if="scene.arcPosition">Arc position: <span class="text-text-primary font-medium">{{ scene.arcPosition }}</span>.</p>
+                  <p v-if="scene.emotionalGoal">Reader's emotional response: <span class="text-text-primary">{{ scene.emotionalGoal }}</span>.</p>
+                  <p v-if="scene.characterWants && Object.keys(scene.characterWants).length > 0">
+                    Character wants: <span class="text-text-primary">{{ formatWants(scene.characterWants) }}</span>.
                   </p>
-                  <p v-if="scene.sensoryAnchor">Anchored by the sensory detail: <span class="text-text-primary italic">{{ scene.sensoryAnchor }}</span>.</p>
-                  <p v-if="!scene.goal && !scene.setup && !scene.payoff && !scene.sensoryAnchor" class="text-text-hint italic">No narrative details yet.</p>
+                  <p v-if="scene.estimatedWords">Target words: <span class="text-text-primary">{{ scene.estimatedWords }}</span>.</p>
+                  <p v-if="!scene.goal && !scene.setup && !scene.payoff && !scene.sensoryAnchor && !scene.obstacle && !scene.tension && !scene.pacing" class="text-text-hint italic">No narrative details yet.</p>
                 </div>
               </div>
 
@@ -695,10 +765,15 @@ function getPhaseLabel(phase) {
                 </div>
               </div>
 
-              <!-- Read-only characterWants full-width display -->
-              <div v-if="scene.characterWants && Object.keys(scene.characterWants).length > 0" class="text-xs text-text-hint font-body border-t border-border-subtle pt-1.5">
+              <!-- Editable characterWants full-width display -->
+              <div class="text-xs text-text-hint font-body border-t border-border-subtle pt-1.5">
                 <span class="font-ui text-text-hover">Character Wants:</span>
-                <span class="ml-1">{{ formatWants(scene.characterWants) }}</span>
+                <input
+                  class="ml-1 flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-0.5 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent w-full mt-1"
+                  :value="scene.characterWants && Object.keys(scene.characterWants).length > 0 ? formatWants(scene.characterWants) : ''"
+                  placeholder="CharacterName → goal description, AnotherChar → their goal"
+                  @input="handleWantsEdit(i, $event.target.value)"
+                />
               </div>
             </div>
           </div>
@@ -730,7 +805,7 @@ function getPhaseLabel(phase) {
             <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
               <div class="h-full bg-accent rounded-full transition-all duration-300 ease-out" :style="{ width: volumeTotalScenes > 0 ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%' : '0%' }"></div>
             </div>
-            <div v-if="volumeGenerator.progress.statusText" class="text-[11px] text-text-hint font-ui text-center italic mt-1.5">
+            <div v-if="volumeGenerator.progress.statusText" class="text-11px text-text-hint font-ui text-center italic mt-1.5">
               {{ volumeGenerator.progress.statusText }}
             </div>
           </div>
@@ -847,18 +922,67 @@ function getPhaseLabel(phase) {
             <div class="flex items-center gap-1.5">
               <div v-if="volumeTotalConsistencyIssues > 0">
                 <button
-                  class="text-[10px] text-yellow-400 font-ui flex items-center gap-1 hover:text-yellow-300 focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                  class="text-2xs text-yellow-400 font-ui flex items-center gap-1 hover:text-yellow-300 focus:outline-none focus:ring-1 focus:ring-accent rounded"
                   @click="consistencyModalOpen = true"
                 >
                   <BaseIcon name="alert-triangle" :size="10" />
                   {{ volumeTotalConsistencyIssues }}
                 </button>
               </div>
-              <div v-else class="text-[10px] text-green-400/60 font-ui flex items-center gap-1">
+              <div v-else class="text-2xs text-green-400/60 font-ui flex items-center gap-1">
                 <BaseIcon name="check-circle" :size="10" />
                 ok
               </div>
             </div>
+          </div>
+
+          <!-- Quality summary card -->
+          <div v-if="volumeGenerator.consistencyReport.value" class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border-subtle bg-bg-secondary/50">
+            <div class="flex items-center gap-2">
+              <BaseIcon
+                :name="qualityGrade === 'good' ? 'check-circle' : 'alert-triangle'"
+                :size="14"
+                :class="qualityGrade === 'good' ? 'text-green-400' : qualityGrade === 'fair' ? 'text-yellow-400' : 'text-red-400'"
+              />
+              <span class="text-xs font-ui text-text-secondary">
+                Quality: <span :class="qualityGrade === 'good' ? 'text-green-400' : qualityGrade === 'fair' ? 'text-yellow-400' : 'text-red-400'">{{ qualityGrade }}</span>
+              </span>
+            </div>
+            <div class="flex gap-3 text-2xs text-text-hint font-body">
+              <span>{{ totalCharacterIssues }} character issues</span>
+              <span>{{ totalLocationIssues }} location issues</span>
+            </div>
+          </div>
+
+          <!-- Story-level eval aggregate summary -->
+          <div class="rounded-lg border border-border-subtle bg-bg-secondary/50 px-3 py-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-2xs uppercase tracking-wider text-text-hint font-ui">Evaluations</span>
+              <div class="flex items-center gap-2">
+                <div class="flex gap-3 text-2xs text-text-hint font-body">
+                  <span>{{ sceneEval.aggregateStats.value?.evaluatedCount || 0 }} / {{ sceneEval.aggregateStats.value?.totalScenes || 0 }} scenes</span>
+                  <span v-if="sceneEval.aggregateStats.value?.averageScore !== null" class="text-indigo-400">
+                    Avg: {{ sceneEval.aggregateStats.value?.averageScore }}
+                  </span>
+                  <span v-if="sceneEval.aggregateStats.value?.totalRegressions > 0" class="text-yellow-400">
+                    {{ sceneEval.aggregateStats.value?.totalRegressions }} regressions
+                  </span>
+                </div>
+                <button
+                  class="text-2xs text-accent font-ui hover:text-accent/80 transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5"
+                  @click="showDashboard = !showDashboard"
+                >
+                  {{ showDashboard ? 'Hide' : 'Dashboard' }}
+                </button>
+              </div>
+            </div>
+            <EvalDashboard
+              v-if="showDashboard"
+              :scene-results-map="sceneEval.sceneResultsMap.value"
+              :gate-results="sceneEval.gateResults.value"
+              :workspace-type="projectStore.activeWorkspaceType || 'creative'"
+              class="mt-2 border-t border-border-subtle pt-2"
+            />
           </div>
 
           <!-- Scene list -->
@@ -872,19 +996,62 @@ function getPhaseLabel(phase) {
             >
               <div class="flex items-center justify-between gap-2">
                 <span class="text-sm font-semibold text-text-primary font-ui truncate">Scene {{ i + 1 }}: {{ scene.title }}</span>
-                <span class="text-[10px] text-text-hint/60 font-ui whitespace-nowrap">{{ scene.prose.split(/\s+/).length }} words</span>
+                <span class="text-2xs text-text-hint/60 font-ui whitespace-nowrap">{{ scene.prose.split(/\s+/).length }} words</span>
               </div>
             </div>
           </div>
 
           <!-- Selected scene actions -->
-          <div v-if="selectedSceneIndex >= 0" class="flex gap-1.5">
-            <button
-              class="flex-1 py-1.5 px-2 bg-yellow-600/20 text-yellow-400 rounded-md text-xs font-medium hover:bg-yellow-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-              @click="handleRegenerateScene(selectedSceneIndex)"
-            >
-              <BaseIcon name="refresh-cw" :size="12" /> Re-generate Scene {{ selectedSceneIndex + 1 }}
-            </button>
+          <div v-if="selectedSceneIndex >= 0" class="space-y-2">
+            <div class="flex gap-1.5">
+              <button
+                class="flex-1 py-1.5 px-2 bg-yellow-600/20 text-yellow-400 rounded-md text-xs font-medium hover:bg-yellow-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+                @click="handleRegenerateScene(selectedSceneIndex)"
+              >
+                <BaseIcon name="refresh-cw" :size="12" /> Re-generate Scene {{ selectedSceneIndex + 1 }}
+              </button>
+              <button
+                class="flex-1 py-1.5 px-2 bg-accent/10 text-accent rounded-md text-xs font-medium hover:bg-accent/20 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+                :disabled="sceneEval.isEvaluating.value || !volumeGenerator.writtenScenes.value?.[selectedSceneIndex]?.prose"
+                @click="handleEvaluateScene(selectedSceneIndex)"
+              >
+                <BaseIcon :name="sceneEval.isEvaluating.value ? 'loader' : 'check-circle'" :size="12" />
+                {{ sceneEval.isEvaluating.value ? 'Evaluating...' : sceneEval.hasBeenEvaluated.value ? 'Re-evaluate' : 'Evaluate' }}
+              </button>
+            </div>
+
+            <div v-if="sceneEval.hasBeenEvaluated.value || sceneEval.isEvaluating.value" class="space-y-2 border border-border-subtle rounded-lg p-3 bg-bg-secondary/50">
+              <EvalPanel
+                :critique-result="sceneEval.critiqueResult.value"
+                :gate-results="sceneEval.gateResults.value"
+                :eval-gates="{ dimensionCoverage: sceneEval.gateResults.value?.dimensionCoverage, scoreDistribution: sceneEval.gateResults.value?.scoreDistribution, revisionEffectiveness: sceneEval.gateResults.value?.revisionEffectiveness }"
+                :workspace-type="projectStore.activeWorkspaceType || 'creative'"
+                :compact="true"
+              />
+
+              <div v-if="sceneEval.hasBeenEvaluated.value" class="flex gap-1.5">
+                <button
+                  class="flex-1 py-1 px-2 bg-indigo-600/20 text-indigo-400 rounded-md text-11px font-medium hover:bg-indigo-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+                  :disabled="sceneEval.isRevising.value || !sceneEval.critiqueResult.value"
+                  @click="handleReviseScene(selectedSceneIndex)"
+                >
+                  <BaseIcon :name="sceneEval.isRevising.value ? 'loader' : 'refresh-cw'" :size="11" />
+                  {{ sceneEval.isRevising.value ? 'Revising...' : 'Apply Revision' }}
+                </button>
+                <button
+                  v-if="sceneEval.revisionResult.value"
+                  class="flex-1 py-1 px-2 bg-emerald-600/20 text-emerald-400 rounded-md text-11px font-medium hover:bg-emerald-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+                  @click="volumeGenerator.writtenScenes.value[selectedSceneIndex].prose = sceneEval.revisionResult.value.revisedProse"
+                >
+                  <BaseIcon name="check" :size="11" /> Accept Revision
+                </button>
+              </div>
+
+              <RevisionDeltaPanel
+                :revision-result="sceneEval.revisionResult.value"
+                :compact="true"
+              />
+            </div>
           </div>
 
           <!-- Primary action -->
@@ -910,10 +1077,10 @@ function getPhaseLabel(phase) {
 
           <!-- Tertiary / Export actions -->
           <div class="flex gap-1.5">
-            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-[10px] font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportTxt">
+            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportTxt">
               <BaseIcon name="file-text" :size="10" /> .txt
             </button>
-            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-[10px] font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportMd">
+            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportMd">
               <BaseIcon name="file-down" :size="10" /> .md
             </button>
           </div>
@@ -933,6 +1100,28 @@ function getPhaseLabel(phase) {
           >Try Again</button>
         </div>
       </template>
+    </div>
+
+    <!-- ==================== PREVIOUS GENERATIONS ==================== -->
+    <div v-if="previousGenerations.length > 0" class="border-t border-border-subtle pt-4 mt-4">
+      <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">Previous Generations</h3>
+      <div class="space-y-1.5">
+        <div
+          v-for="(gen, i) in previousGenerations"
+          :key="gen.id || i"
+          class="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-tertiary/30 border border-border-subtle text-xs"
+        >
+          <BaseIcon name="file-text" :size="14" class="text-text-hint shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-text-primary font-body truncate">{{ gen.title }}</p>
+            <p class="text-text-hint text-2xs font-ui">
+              {{ new Date(gen.generatedAt).toLocaleDateString() }}
+              <span v-if="gen.totalWords"> · {{ gen.totalWords }} words</span>
+              <span v-if="gen.qualityScore !== undefined"> · score {{ gen.qualityScore }}</span>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ==================== VOLUME READ MODAL ==================== -->

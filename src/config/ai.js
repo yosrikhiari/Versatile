@@ -59,7 +59,8 @@ export const FEATURES = {
   WORLDBUILDING: 'worldbuilding',
   COMPACTION: 'compaction',
   STORY_GENERATION: 'story_generation',
-  NETWORK: 'network'
+  NETWORK: 'network',
+  TAGGING: 'tagging'
 }
 
 export const FEATURE_LABELS = {
@@ -69,7 +70,8 @@ export const FEATURE_LABELS = {
   [FEATURES.WORLDBUILDING]: 'Worldbuilding (characters, locations, plots)',
   [FEATURES.COMPACTION]: 'Context compaction',
   [FEATURES.STORY_GENERATION]: 'Story Generation (Director/Writer/Critic)',
-  [FEATURES.NETWORK]: 'Network (relationship suggestions)'
+  [FEATURES.NETWORK]: 'Network (relationship suggestions)',
+  [FEATURES.TAGGING]: 'Research auto-tagging'
 }
 
 export const FEATURE_DEFAULTS = {
@@ -79,7 +81,8 @@ export const FEATURE_DEFAULTS = {
   [FEATURES.WORLDBUILDING]: { provider: PROVIDERS.OLLAMA, model: null },
   [FEATURES.COMPACTION]: { provider: PROVIDERS.OLLAMA, model: null },
   [FEATURES.STORY_GENERATION]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.NETWORK]: { provider: PROVIDERS.OLLAMA, model: null }
+  [FEATURES.NETWORK]: { provider: PROVIDERS.OLLAMA, model: null },
+  [FEATURES.TAGGING]: { provider: PROVIDERS.OLLAMA, model: null }
 }
 
 export const PROVIDER_DEFAULT = PROVIDERS.OLLAMA
@@ -105,11 +108,35 @@ export const EMBEDDING_MODELS = {
   [EMBEDDING_PROVIDERS.MISTRAL]: ['mistral-embed']
 }
 
+export const EMBEDDING_VERSION = 1
+
+export const EMBEDDING_PROVIDER_CAPABILITIES = {
+  [EMBEDDING_PROVIDERS.OLLAMA]: {
+    maxBatchSize: 32,
+    supportsBatching: true,
+    maxInputTokens: 8192,
+    maxConcurrentRequests: 2
+  },
+  [EMBEDDING_PROVIDERS.MISTRAL]: {
+    maxBatchSize: 16,
+    supportsBatching: true,
+    maxInputTokens: 8192,
+    maxConcurrentRequests: 3
+  }
+}
+
+export function getEmbeddingCapabilities(provider) {
+  return EMBEDDING_PROVIDER_CAPABILITIES[provider] || null
+}
+
 export const EMBEDDING_DEFAULTS = {
   provider: EMBEDDING_PROVIDERS.OLLAMA,
   model: 'nomic-embed-text',
-  threshold: 0.75
+  threshold: 0.75,
+  batchSize: EMBEDDING_PROVIDER_CAPABILITIES[EMBEDDING_PROVIDERS.OLLAMA].maxBatchSize
 }
+
+export const RESEARCH_CHUNKS_DEFAULT = 3
 
 export const EMBEDDING_THRESHOLD_MIN = 0.4
 export const EMBEDDING_THRESHOLD_MAX = 0.98

@@ -10,6 +10,7 @@ import { warmEmbeddingCache } from '../composables/useManuscriptContext'
 import { useStoryDocuments } from '../composables/useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
 
+
 const STYLE_GUIDE_DEBOUNCE = 1500
 
 export const useManuscriptStore = defineStore('manuscript', () => {
@@ -93,7 +94,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     return id
   }
 
-  async function updateSectionData(id, data, projectId) {
+  async function updateSectionData(id, data, _projectId) {
     await updateSection(id, data)
     const index = sections.value.findIndex(c => c.id === id)
     if (index !== -1) {
@@ -102,7 +103,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     queueStyleGuideRegen()
   }
 
-  async function deleteSectionData(id, projectId) {
+  async function deleteSectionData(id, _projectId) {
     const sectionSubsections = subsections.value.filter(s => s.sectionId === id)
     for (const subsection of sectionSubsections) {
       await deleteSubsection(subsection.id)
@@ -113,7 +114,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     queueStyleGuideRegen()
   }
 
-  async function reorderSectionsData(sectionIds, projectId) {
+  async function reorderSectionsData(sectionIds, _projectId) {
     await reorderSections(sectionIds)
     sectionIds.forEach((id, index) => {
       const section = sections.value.find(c => c.id === id)
@@ -130,7 +131,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     return id
   }
 
-  async function updateSubsectionData(id, data, projectId) {
+  async function updateSubsectionData(id, data, _projectId) {
     await updateSubsection(id, data)
     const index = subsections.value.findIndex(s => s.id === id)
     if (index !== -1) {
@@ -139,13 +140,13 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     queueStyleGuideRegen()
   }
 
-  async function deleteSubsectionData(id, projectId) {
+  async function deleteSubsectionData(id, _projectId) {
     await deleteSubsection(id)
     subsections.value = subsections.value.filter(s => s.id !== id)
     queueStyleGuideRegen()
   }
 
-  async function reorderSubsectionsData(subsectionIds, projectId) {
+  async function reorderSubsectionsData(subsectionIds, _projectId) {
     await reorderSubsections(subsectionIds)
     subsectionIds.forEach((id, index) => {
       const subsection = subsections.value.find(s => s.id === id)
@@ -159,7 +160,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     return id
   }
 
-  async function updateStoryElementData(id, data, projectId) {
+  async function updateStoryElementData(id, data, _projectId) {
     await updateStoryElement(id, data)
     const index = storyElements.value.findIndex(e => e.id === id)
     if (index !== -1) {
@@ -167,7 +168,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     }
   }
 
-  async function deleteStoryElementData(id, projectId) {
+  async function deleteStoryElementData(id, _projectId) {
     await deleteStoryElement(id)
     storyElements.value = storyElements.value.filter(e => e.id !== id)
   }
@@ -178,7 +179,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     return id
   }
 
-  async function updateRelationshipData(id, data, projectId) {
+  async function updateRelationshipData(id, data, _projectId) {
     await updateCharacterRelationship(id, data)
     const index = relationships.value.findIndex(r => r.id === id)
     if (index !== -1) {
@@ -186,7 +187,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     }
   }
 
-  async function deleteRelationshipData(id, projectId) {
+  async function deleteRelationshipData(id, _projectId) {
     await deleteCharacterRelationship(id)
     relationships.value = relationships.value.filter(r => r.id !== id)
   }

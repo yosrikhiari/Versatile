@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue'
+import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
@@ -15,7 +15,6 @@ const searchQuery = ref('')
 const currentMatchIndex = ref(0)
 const totalMatches = ref(0)
 const inputRef = ref(null)
-const isSearching = ref(false)
 
 const matches = computed(() => {
   if (!props.editor || !searchQuery.value.trim()) return []
@@ -207,7 +206,7 @@ onMounted(() => {
 
 <style scoped>
 :deep(.ProseMirror mark) {
-  background-color: rgba(59, 130, 246, 0.4);
+  background-color: rgba(var(--vers-accent-primary-rgb), 0.3);
   padding: 0 2px;
   border-radius: 2px;
 }

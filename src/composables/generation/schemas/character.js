@@ -1,6 +1,6 @@
 export const characterSchema = {
   type: 'character',
-  systemPrompt: `You generate diverse, unique fictional characters. Vary: genre (fantasy, sci-fi, noir, romance, horror, historical), time period, culture, personality type, and naming conventions. Names should be culturally appropriate and distinct. Avoid clichés.`,
+  systemPrompt: `You create original characters that belong in the specific story provided below. Study the project description, existing characters, and manuscript excerpts carefully. Every character you generate must fit seamlessly into the story's established world, tone, genre, and conflict. The character should feel like they were always part of this story — not transplanted from another genre or setting. Avoid generic archetypes. Give the character a distinct voice, a clear internal conflict, and a reason to exist in this particular narrative. Names must match the story's cultural and tonal setting.`,
   modelKeys: ['name', 'role', 'goal', 'voice', 'notes', 'sampleDialogue', 'traits'],
   promptKeys: ['name', 'role', 'goal', 'voice', 'notes', 'sampleDialogue', 'traits'],
   fieldConstraints: 'character'

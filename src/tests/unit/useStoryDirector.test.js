@@ -20,7 +20,12 @@ vi.mock('@/services/aiService', () => ({
 }))
 
 vi.mock('@/config/ai', () => ({
-  FEATURES: { STORY_GENERATION: 'story_generation' }
+  FEATURES: { STORY_GENERATION: 'story_generation' },
+  PROVIDER_DEFAULT: 'ollama',
+  PROVIDERS: { OLLAMA: 'ollama' },
+  FEATURE_DEFAULTS: { story_generation: { provider: 'ollama', model: null } },
+  EMBEDDING_DEFAULTS: { provider: 'ollama', model: 'nomic-embed-text', threshold: 0.75, batchSize: 32 },
+  EMBEDDING_PROVIDERS: { OLLAMA: 'ollama' }
 }))
 
 vi.mock('@/stores/projectStore', () => ({
@@ -212,7 +217,7 @@ describe('useStoryDirector', () => {
       mockAiGenerate.mockResolvedValue(minimalResponse)
       const { generateStoryPlan } = useStoryDirector()
       const result = await generateStoryPlan({ goal, evidence: '' })
-      result.scenes.forEach((s, i) => {
+      result.scenes.forEach((s, _i) => {
         expect(s.tension).toBe('medium')
         expect(s.pacing).toBe('medium')
         expect(s.estimatedWords).toBeGreaterThan(0)

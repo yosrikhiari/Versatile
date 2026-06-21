@@ -149,7 +149,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
                       <span
-                        class="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider"
+                        class="text-2xs px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider"
                         :class="statusBadgeClass(phase.status)"
                       >{{ phase.status }}</span>
                       <span class="text-xs text-text-secondary font-mono w-14 text-right">{{
@@ -170,7 +170,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                       class="px-4 pb-3"
                     >
                       <pre
-                        class="text-[11px] font-mono text-text-secondary bg-bg-secondary rounded-lg p-3 max-h-[200px] overflow-y-auto leading-relaxed whitespace-pre-wrap break-all"
+                        class="text-11px font-mono text-text-secondary bg-bg-secondary rounded-lg p-3 max-h-[200px] overflow-y-auto leading-relaxed whitespace-pre-wrap break-all"
                       >{{ phase.thought }}</pre>
                     </div>
                   </Transition>
@@ -194,7 +194,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
             <div class="flex items-center justify-between">
               <h3 class="text-xs font-ui font-medium text-text-secondary uppercase tracking-wider">Session Log</h3>
               <button
-                class="text-[10px] text-text-secondary hover:text-danger transition-colors"
+                class="text-2xs text-text-secondary hover:text-danger transition-colors"
                 @click="log.clearCompleted()"
               >Clear all</button>
             </div>

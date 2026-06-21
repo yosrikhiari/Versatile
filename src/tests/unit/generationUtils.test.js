@@ -13,9 +13,9 @@ describe('sanitizeJsonResponse', () => {
     expect(result).toEqual({ name: 'John' })
   })
 
-  it('flattens nested values', () => {
+  it('preserves arrays', () => {
     const result = sanitizeJsonResponse('{"a": null, "b": 42, "c": true, "d": ["x", "y"]}')
-    expect(result).toEqual({ a: '', b: '42', c: 'true', d: 'x; y' })
+    expect(result).toEqual({ a: '', b: '42', c: 'true', d: ['x', 'y'] })
   })
 
   it('returns null for invalid JSON', () => {

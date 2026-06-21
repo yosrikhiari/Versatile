@@ -4,7 +4,10 @@ import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
   show: Boolean,
-  prompt: String,
+  prompt: {
+    type: String,
+    default: ''
+  },
   createGroups: Boolean,
   fromScratch: Boolean,
   existingConnections: {

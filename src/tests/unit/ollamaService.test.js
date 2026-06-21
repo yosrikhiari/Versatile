@@ -71,35 +71,3 @@ describe('cosineSimilarity', () => {
   })
 })
 
-describe('sanitizeJSON (internal)', () => {
-  it('strips markdown code fences', () => {
-    const cleaned = ollamaService.sanitizeJSON('```json\n{"a":1}\n```')
-    expect(cleaned).toBe('{"a":1}')
-  })
-
-  it('trims whitespace', () => {
-    const cleaned = ollamaService.sanitizeJSON('  {"a":1}  ')
-    expect(cleaned).toBe('{"a":1}')
-  })
-})
-
-describe('parseJSONWithRetry (internal)', () => {
-  it('parses clean JSON', () => {
-    const result = ollamaService.parseJSONWithRetry('{"a": 1}')
-    expect(result).toEqual({ a: 1 })
-  })
-
-  it('strips fences and parses', () => {
-    const result = ollamaService.parseJSONWithRetry('```json\n{"a": 1}\n```')
-    expect(result).toEqual({ a: 1 })
-  })
-
-  it('strips nested code blocks on retry', () => {
-    const result = ollamaService.parseJSONWithRetry('```trash```\n{"a": 1}')
-    expect(result).toEqual({ a: 1 })
-  })
-
-  it('throws after exhausting retries', () => {
-    expect(() => ollamaService.parseJSONWithRetry('not json', 2)).toThrow()
-  })
-})

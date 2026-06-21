@@ -73,12 +73,12 @@ function getRelationshipIcon(type) {
 
 function getTypeColor(type) {
   switch (type) {
-    case 'character': return '#8B5CF6'
-    case 'location': return '#10B981'
-    case 'plotThread': return '#F59E0B'
-    case 'character_group': return '#8B5CF6'
-    case 'location_group': return '#10B981'
-    default: return '#6366f1'
+    case 'character': return 'var(--vers-entity-character)'
+    case 'location': return 'var(--vers-entity-location)'
+    case 'plotThread': return 'var(--vers-entity-plotThread)'
+    case 'character_group': return 'var(--vers-entity-character)'
+    case 'location_group': return 'var(--vers-entity-location)'
+    default: return 'var(--vers-default-fallback)'
   }
 }
 

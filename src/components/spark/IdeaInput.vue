@@ -1,8 +1,17 @@
 <script setup>
 const props = defineProps({
-  idea: String,
-  tone: String,
-  targetLength: String
+  idea: {
+    type: String,
+    default: ''
+  },
+  tone: {
+    type: String,
+    default: ''
+  },
+  targetLength: {
+    type: String,
+    default: ''
+  }
 })
 
 const emit = defineEmits(['update:idea', 'update:tone', 'update:targetLength'])
@@ -39,7 +48,7 @@ function toggleTone(t) {
     <!-- Textarea (Visually Dominant) -->
     <div class="relative">
       <div class="absolute -left-3 top-2 bottom-2 w-[3px] bg-accent/20 rounded-full"></div>
-      <label class="block text-[11px] font-spark tracking-wide text-text-hint mb-3 ml-1">~ The Idea ~</label>
+      <label class="block text-11px font-spark tracking-wide text-text-hint mb-3 ml-1">~ The Idea ~</label>
       <textarea
         :value="idea"
         maxlength="400"
@@ -53,12 +62,12 @@ function toggleTone(t) {
     <div class="flex flex-col gap-6 pt-2 border-t border-border-subtle/20">
       <!-- Tone (Emotional Registers) -->
       <div>
-        <label class="block text-[9px] uppercase tracking-widest text-text-hint font-ui mb-3">Emotional Registers (Max 2)</label>
+        <label class="block text-3xs uppercase tracking-widest text-text-hint font-ui mb-3">Emotional Registers (Max 2)</label>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="t in tones"
             :key="t.value"
-            class="relative px-3 py-1.5 text-[11px] font-ui transition-all duration-300 group overflow-hidden rounded"
+            class="relative px-3 py-1.5 text-11px font-ui transition-all duration-300 group overflow-hidden rounded"
             :class="isActive(t.value) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'"
             @click="toggleTone(t.value)"
           >
@@ -71,14 +80,16 @@ function toggleTone(t) {
 
       <!-- Length -->
       <div>
-        <label class="block text-[9px] uppercase tracking-widest text-text-hint font-ui mb-3">Target Length</label>
+        <label class="block text-3xs uppercase tracking-widest text-text-hint font-ui mb-3">Target Length</label>
         <div class="flex gap-5">
           <label v-for="len in lengths" :key="len.value" class="flex items-center gap-2 cursor-pointer group">
-            <div class="w-3 h-3 rounded-full border border-text-hint/50 flex items-center justify-center transition-all duration-300"
+            <div
+class="w-3 h-3 rounded-full border border-text-hint/50 flex items-center justify-center transition-all duration-300"
                  :class="targetLength === len.value ? 'border-accent' : 'group-hover:border-text-secondary'">
               <div v-if="targetLength === len.value" class="w-1.5 h-1.5 bg-accent rounded-full transition-all"></div>
             </div>
-            <span class="text-[11px] font-ui transition-colors duration-300 tracking-wide"
+            <span
+class="text-11px font-ui transition-colors duration-300 tracking-wide"
                   :class="targetLength === len.value ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'">
               {{ len.label }}
             </span>

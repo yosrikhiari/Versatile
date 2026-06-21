@@ -4,7 +4,6 @@
  */
 import { aiGenerate } from '../aiService'
 import { FEATURES } from '../../config/ai'
-import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useGraphContext } from '../../composables/useGraphContext'
 import { useNetworkSuggestions } from '../../composables/useNetworkSuggestions'
@@ -86,13 +85,9 @@ async function getIdeaEmbedding(idea) {
 
 // --- System prompts ---
 
-const CHARACTER_SYSTEM_PROMPT = `You generate diverse, unique fictional characters. Vary: genre (fantasy, sci-fi, noir, romance, horror, historical), time period, culture, personality type, and naming conventions. Names should be culturally appropriate and distinct. Avoid clichés.`
-
 const IDEA_CHARACTER_SYSTEM_PROMPT = `You are a creative character designer. Given a character idea or description, you expand it into a full character profile that stays true to the user's intent while adding depth and detail.`
 
 const LOCATION_SYSTEM_PROMPT = `You generate diverse, unique fictional locations. Vary: genre, time period, culture, environment type (urban, rural, underwater, airborne, underground, cosmic). Avoid generic fantasy tropes.`
-
-const PLOT_SYSTEM_PROMPT = `You generate diverse, compelling plot conflicts. Vary: genre, stakes (personal, societal, cosmic), type (mystery, heist, survival, romance, betrayal, discovery), and moral complexity. Avoid tired tropes.`
 
 // --- Character generation ---
 
@@ -112,7 +107,10 @@ export async function generateRandomCharacter(manuscriptContext = null, partialD
       instructions = `The user has already provided these character details. Stay consistent with them and generate the remaining missing fields naturally. Do NOT change the provided values.\n${fields.join('\n')}`
     }
   }
-  return generateEntity('character', instructions, { manuscriptContext })
+
+  const result = await generateEntity('character', instructions, { manuscriptContext })
+
+  return result
 }
 
 /**
@@ -186,7 +184,8 @@ Example outputs:
     if (!parsed || !parsed.name && !parsed.Name) {
       throw new Error('Invalid JSON')
     }
-    return {
+
+    const result = {
       name: parsed.name || parsed.Name || 'Unnamed Character',
       role: parsed.role || parsed.Role || '',
       goal: parsed.goal || parsed.Goal || '',
@@ -194,6 +193,8 @@ Example outputs:
       notes: parsed.notes || parsed.Notes || '',
       sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || ''
     }
+
+    return result
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
@@ -280,7 +281,7 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
       parsed = [parsed]
     }
 
-    return parsed.map(p => ({
+    const characters = parsed.map(p => ({
       name: p.name || p.Name || 'Unnamed Character',
       role: p.role || p.Role || '',
       goal: p.goal || p.Goal || '',
@@ -288,6 +289,8 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
       notes: p.notes || p.Notes || '',
       sampleDialogue: p.sampleDialogue || p.SampleDialogue || ''
     }))
+
+    return characters
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
@@ -343,11 +346,13 @@ Do NOT generate name identical to any existing location. Be creative and distinc
       parsed = [parsed]
     }
 
-    return parsed.map(p => ({
+    const locations = parsed.map(p => ({
       name: p.name || p.Name || 'Unnamed Location',
       description: p.description || p.Description || '',
       notes: p.notes || p.Notes || ''
     }))
+
+    return locations
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
@@ -442,7 +447,9 @@ All values must be strings. No markdown.`
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative character designer.', { feature: FEATURES.WORLDBUILDING })
     )
+
     const parsed = sanitizeJsonResponse(response)
+
     if (!parsed) {
       throw new Error('Invalid JSON')
     }
@@ -503,12 +510,14 @@ No markdown, no explanation, no preamble. JSON only.`
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative character designer.', { feature: FEATURES.WORLDBUILDING })
     )
+
     const parsed = sanitizeJsonResponse(response)
+
     if (!parsed) {
       throw new Error('Invalid JSON')
     }
 
-    return {
+    const result = {
       name: parsed.name || parsed.Name || charData.name || '',
       role: parsed.role || parsed.Role || charData.role || '',
       goal: parsed.goal || parsed.Goal || charData.goal || '',
@@ -516,6 +525,8 @@ No markdown, no explanation, no preamble. JSON only.`
       notes: parsed.notes || parsed.Notes || charData.notes || '',
       sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || charData.sampleDialogue || ''
     }
+
+    return result
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
@@ -613,7 +624,9 @@ Single string value, no markdown.`
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative writing assistant.', { feature: FEATURES.WORLDBUILDING })
     )
+
     const parsed = sanitizeJsonResponse(response)
+
     if (!parsed || (!parsed[fieldName] && !parsed[fieldName.charAt(0).toUpperCase() + fieldName.slice(1)])) {
       throw new Error('Invalid JSON')
     }
@@ -698,6 +711,7 @@ All values must be strings. No markdown.`
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative location designer.', { feature: FEATURES.WORLDBUILDING })
     )
+
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
       throw new Error('Invalid JSON')
@@ -779,6 +793,7 @@ All values must be strings or arrays. No markdown.`
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative plot designer.', { feature: FEATURES.WORLDBUILDING })
     )
+
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
       throw new Error('Invalid JSON')
@@ -869,6 +884,7 @@ Return as JSON: { "traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, `You suggest fitting traits for a ${label}.`, { feature: FEATURES.WORLDBUILDING })
     )
+
     let cleaned = response.trim()
     cleaned = cleaned.replace(/^```json\s*/i, '')
     cleaned = cleaned.replace(/^```\s*/i, '')
@@ -878,12 +894,17 @@ Return as JSON: { "traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "
     const start = cleaned.indexOf('{')
     const end = cleaned.lastIndexOf('}')
     const jsonMatch = start !== -1 && end > start ? [cleaned.slice(start, end + 1)] : null
-    if (!jsonMatch) return []
+    if (!jsonMatch) {
+      return []
+    }
     const parsed = JSON.parse(jsonMatch[0])
     if (!parsed || !Array.isArray(parsed.traits)) {
       return []
     }
-    return parsed.traits.slice(0, 8).filter(t => !existingTraits.includes(t))
+    const traits = parsed.traits.slice(0, 8).filter(t => !existingTraits.includes(t))
+
+
+    return traits
   } catch {
     return []
   }

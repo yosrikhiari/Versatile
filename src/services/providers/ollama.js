@@ -38,12 +38,17 @@ async function ensureModelAvailable(model) {
 export async function generate(prompt, systemPrompt, model, options = {}) {
   const timeoutMs = options.timeout || 1200000
   let timeout
+  const externalSignal = options.signal
 
   try {
     await ensureModelAvailable(model)
 
     const controller = new AbortController()
     timeout = setTimeout(() => controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
+    function onAbort() { controller.abort(externalSignal.reason) }
+    if (externalSignal) {
+      if (externalSignal.aborted) { controller.abort(externalSignal.reason) } else { externalSignal.addEventListener('abort', onAbort, { once: true }) }
+    }
 
     const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
       method: 'POST',
@@ -59,6 +64,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     })
 
     clearTimeout(timeout)
+    if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
 
     if (!response.ok) {
       let detail = ''
@@ -74,6 +80,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     return data.response
   } catch (error) {
     clearTimeout(timeout)
+    if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error(`Ollama request timed out after ${timeoutMs}ms`)
     }
@@ -84,12 +91,17 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
 export async function stream(prompt, systemPrompt, model, onChunk, options = {}) {
   const timeoutMs = options.timeout || 1200000
   let timeout
+  const externalSignal = options.signal
 
   try {
     await ensureModelAvailable(model)
 
     const controller = new AbortController()
     timeout = setTimeout(() => controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
+    function onAbort() { controller.abort(externalSignal.reason) }
+    if (externalSignal) {
+      if (externalSignal.aborted) { controller.abort(externalSignal.reason) } else { externalSignal.addEventListener('abort', onAbort, { once: true }) }
+    }
 
     const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
       method: 'POST',
@@ -105,6 +117,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     })
 
     clearTimeout(timeout)
+    if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
 
     if (!response.ok) {
       let detail = ''
@@ -141,6 +154,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     return fullResponse
   } catch (error) {
     clearTimeout(timeout)
+    if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error(`Ollama request timed out after ${timeoutMs}ms`)
     }

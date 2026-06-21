@@ -16,6 +16,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: options.signal,
     body: JSON.stringify({
       contents,
       generationConfig: {
@@ -50,6 +51,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: options.signal,
     body: JSON.stringify({
       contents,
       generationConfig: {

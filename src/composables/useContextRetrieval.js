@@ -50,7 +50,7 @@ export function useContextRetrieval() {
     const archiveEntries = await getSessionArchive(projectId, {
       minSignal: 'partial',
       limit: 5,
-      types: [ARCHIVE_TYPES.POLISH_ANALYSIS, ARCHIVE_TYPES.SPARK_CONTENT, ARCHIVE_TYPES.ENTITY_GENERATION]
+      types: [ARCHIVE_TYPES.POLISH_ANALYSIS, ARCHIVE_TYPES.SPARK_CONTENT, ARCHIVE_TYPES.SESSION_END, ARCHIVE_TYPES.ENTITY_GENERATION]
     })
 
     for (const entry of archiveEntries) {

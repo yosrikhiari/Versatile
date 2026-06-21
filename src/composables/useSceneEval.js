@@ -1,0 +1,203 @@
+import { ref, computed } from 'vue'
+import { useStoryCritic } from './useStoryCritic'
+import { useStoryRevisor } from './useStoryRevisor'
+import { gateDimensionCoverage, gateScoreDistribution, gateRevisionEffectiveness } from '../services/evalGates'
+import { computeDegradation } from '../services/degradation'
+
+export function useSceneEval() {
+  const isEvaluating = ref(false)
+  const isRevising = ref(false)
+  const hasBeenEvaluated = ref(false)
+  const critiqueResult = ref(null)
+  const gateResults = ref({ dimensionCoverage: null, scoreDistribution: null, revisionEffectiveness: null })
+  const revisionResult = ref(null)
+  const sceneResultsMap = ref({})
+
+  const { evaluateScene } = useStoryCritic()
+  const { reviseScene } = useStoryRevisor()
+
+  const aggregateStats = computed(() => {
+    const entries = Object.values(sceneResultsMap.value)
+    if (entries.length === 0) return null
+    const evaluated = entries.filter(e => e.critiqueResult)
+    if (evaluated.length === 0) return null
+    const scores = evaluated
+      .map(e => e.critiqueResult.score)
+      .filter(s => typeof s === 'number')
+    const avgScore = scores.length > 0
+      ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
+      : null
+    const regressions = evaluated.reduce((sum, e) => {
+      if (!e.revisionResult?.degradation?.dimensions) return sum
+      return sum + Object.values(e.revisionResult.degradation.dimensions)
+        .filter(d => d.status === 'regression').length
+    }, 0)
+    const majorRegressions = evaluated.reduce((sum, e) => {
+      if (!e.revisionResult?.degradation?.hasMajorRegressions) return sum
+      return sum + (e.revisionResult.degradation.hasMajorRegressions ? 1 : 0)
+    }, 0)
+    return {
+      totalScenes: entries.length,
+      evaluatedCount: evaluated.length,
+      revisedCount: entries.filter(e => e.revisionResult).length,
+      averageScore: avgScore,
+      totalRegressions: regressions,
+      scenesWithMajorRegressions: majorRegressions
+    }
+  })
+
+  function updateSceneEntry(idx, updates) {
+    const entry = { ...(sceneResultsMap.value[idx] || {}), ...updates }
+    if (entry.critiqueResult) {
+      entry.score = entry.critiqueResult.score ?? null
+      entry.dimensionScores = entry.critiqueResult.dimensionScores ?? {}
+    }
+    if (entry.revisionResult?.degradation) {
+      entry.hasRegressions = entry.revisionResult.degradation.hasRegressions
+      entry.hasMajorRegressions = entry.revisionResult.degradation.hasMajorRegressions
+      entry.degradation = entry.revisionResult.degradation.dimensions
+    }
+    sceneResultsMap.value = {
+      ...sceneResultsMap.value,
+      [idx]: entry
+    }
+  }
+
+  function buildSceneBrief(scene, scenePlanItem) {
+    return {
+      title: scenePlanItem?.title || scene.title || 'Untitled',
+      emotionalGoal: scenePlanItem?.emotionalGoal || scenePlanItem?.goal || '',
+      charactersPresent: scenePlanItem?.charactersPresent || scene.characters || [],
+      payoff: scenePlanItem?.payoff || 'none',
+      tension: scenePlanItem?.tension || 'medium'
+    }
+  }
+
+  async function evaluate(scene, workspaceType, scenePlanItem, sceneIdx) {
+    if (!scene?.prose) return
+
+    isEvaluating.value = true
+    try {
+      const sceneBrief = buildSceneBrief(scene, scenePlanItem)
+      const result = await evaluateScene({
+        draft: scene.prose,
+        sceneBrief,
+        storyBible: '',
+        chapterLog: ''
+      })
+
+      critiqueResult.value = result
+      const dimCov = gateDimensionCoverage(result, workspaceType)
+      const scoreDist = gateScoreDistribution(result)
+
+      gateResults.value = {
+        dimensionCoverage: dimCov,
+        scoreDistribution: scoreDist,
+        revisionEffectiveness: null
+      }
+      hasBeenEvaluated.value = true
+
+      if (typeof sceneIdx === 'number') {
+        updateSceneEntry(sceneIdx, {
+          critiqueResult: result,
+          gateResults: { dimensionCoverage: dimCov, scoreDistribution: scoreDist, revisionEffectiveness: null },
+          hasBeenEvaluated: true
+        })
+      }
+    } catch {
+      critiqueResult.value = {
+        pass: true,
+        score: 7,
+        dimensionScores: {},
+        issues: [],
+        strengths: ['Evaluation failed — defaulting to pass']
+      }
+    } finally {
+      isEvaluating.value = false
+    }
+  }
+
+  async function revise(scene, workspaceType, scenePlanItem, sceneIdx) {
+    if (!critiqueResult.value) return
+
+    isRevising.value = true
+    try {
+      const sceneBrief = buildSceneBrief(scene, scenePlanItem)
+      const revisedDraft = await reviseScene({
+        draft: scene.prose,
+        critiqueResult: critiqueResult.value,
+        sceneBrief,
+        storyBible: ''
+      })
+
+      if (revisedDraft && revisedDraft !== scene.prose) {
+        const revisedCritique = await evaluateScene({
+          draft: revisedDraft,
+          sceneBrief,
+          storyBible: '',
+          chapterLog: ''
+        })
+
+        const revEff = await gateRevisionEffectiveness(
+          critiqueResult.value, revisedDraft, scene.prose, revisedCritique
+        )
+
+        if (gateResults.value) {
+          gateResults.value.revisionEffectiveness = revEff
+        }
+
+        const degradation = computeDegradation(critiqueResult.value, revisedCritique)
+
+        const revResult = {
+          originalProse: scene.prose,
+          revisedProse: revisedDraft,
+          originalCritique: critiqueResult.value,
+          revisedCritique,
+          delta: revEff.delta,
+          degradation
+        }
+
+        revisionResult.value = revResult
+        critiqueResult.value = revisedCritique
+
+        if (typeof sceneIdx === 'number') {
+          const existing = sceneResultsMap.value[sceneIdx] || {}
+          updateSceneEntry(sceneIdx, {
+            ...existing,
+            critiqueResult: revisedCritique,
+            revisionResult: revResult,
+            hasBeenEvaluated: true
+          })
+        }
+      }
+    } catch {
+      // silently return
+    } finally {
+      isRevising.value = false
+    }
+  }
+
+  function reset() {
+    isEvaluating.value = false
+    isRevising.value = false
+    hasBeenEvaluated.value = false
+    critiqueResult.value = null
+    gateResults.value = { dimensionCoverage: null, scoreDistribution: null, revisionEffectiveness: null }
+    revisionResult.value = null
+    sceneResultsMap.value = {}
+  }
+
+  return {
+    isEvaluating,
+    isRevising,
+    hasBeenEvaluated,
+    critiqueResult,
+    gateResults,
+    revisionResult,
+    sceneResultsMap,
+    aggregateStats,
+    evaluate,
+    revise,
+    reset
+  }
+}

@@ -4,8 +4,11 @@ import { aiGenerate, aiStream } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { finalizeStream } from '../services/jsonExtractor'
+import { formatEvalFeedback } from '../services/evalFeedback'
+import { getVoiceProfile } from '../config/voiceProfiles'
+import { buildSceneContext } from '../services/sceneContextService'
 
-const DEFAULT_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
+const FALLBACK_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
 
 const CRAFT_RULES = `CRAFT RULES — follow all of these:
 1. Every scene must include at least one auditory detail and one tactile detail
@@ -160,7 +163,7 @@ export function useStoryWriter() {
   const isWriting = ref(false)
   const writeError = ref(null)
 
-  async function writeScene({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected }) {
+  async function writeScene({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, voiceProfile, completedScenes, characters }) {
     isWriting.value = true
     writeError.value = null
 
@@ -170,7 +173,14 @@ export function useStoryWriter() {
       const charactersSection = extractDoc(storyBible || '', 'Characters')
       const worldSection = extractDoc(storyBible || '', 'World')
 
-      const voiceInstruction = styleGuide || DEFAULT_VOICE
+      const profileResult = voiceProfile ? getVoiceProfile(voiceProfile, FALLBACK_VOICE) : null
+      const voiceInstruction = profileResult?.voiceInstruction || styleGuide || FALLBACK_VOICE
+
+      const sceneContext = completedScenes?.length > 0 ? buildSceneContext({
+        completedScenes,
+        characters: characters || [],
+        currentSceneIndex: sceneBrief.sceneNumber || 0
+      }) : embeddingContext || ''
 
       const allRejected = []
       if (rejectedPatterns) allRejected.push(rejectedPatterns)
@@ -232,10 +242,11 @@ Write scene ${sceneId}: "${sceneTitle}"
 CHAPTER LOG (what has happened before this scene):
 ${logSummary || '(This is the first scene — nothing has happened yet.)'}
 
-${embeddingContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${embeddingContext}\n` : ''}
+${sceneContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${sceneContext}\n` : ''}
 SCENE BRIEF:
 ${briefSection}
 
+${existingEntitiesJson ? `EXISTING ENTITIES (already established in the story — maintain these):\n${existingEntitiesJson}\n` : ''}
 STORY ARC (for tonal reference):
 - Genre: ${storyArc?.genre || ''}
 - Tone: ${storyArc?.tone || ''}
@@ -273,7 +284,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     }
   }
 
-  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, onRawChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, spineContext, anchorRole, anchorConstraints }) {
+  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, onRawChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, spineContext, anchorRole, anchorConstraints, pastEvalResults, voiceProfile, completedScenes, characters }) {
     isWriting.value = true
     writeError.value = null
 
@@ -285,7 +296,15 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       const charactersSection = extractDoc(storyBible || '', 'Characters')
       const worldSection = extractDoc(storyBible || '', 'World')
 
-      const voiceInstruction = styleGuide || DEFAULT_VOICE
+      const profileResult = voiceProfile ? getVoiceProfile(voiceProfile, FALLBACK_VOICE) : null
+      const voiceInstruction = profileResult?.voiceInstruction || styleGuide || FALLBACK_VOICE
+      const profileStyleGuide = profileResult?.styleGuide || ''
+
+      const sceneContext = completedScenes?.length > 0 ? buildSceneContext({
+        completedScenes,
+        characters: characters || [],
+        currentSceneIndex: sceneBrief.sceneNumber || 0
+      }) : embeddingContext || ''
 
       const allRejected = []
       if (rejectedPatterns) allRejected.push(rejectedPatterns)
@@ -310,7 +329,9 @@ ${voiceInstruction}
 ${antiPatterns ? antiPatterns + '\n' : ''}${activeCraftRules}
 
 ${PROSE_STYLE_GUIDE}
+${profileStyleGuide ? `\n${profileStyleGuide}\n` : ''}
 
+${pastEvalResults ? `\n## PAST EVALUATION FEEDBACK\n${pastEvalResults}\n` : ''}
 Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside the JSON.`
 
       const logSummary = summarizeLog(chapterLog)
@@ -357,7 +378,7 @@ Write scene ${sceneId}: "${sceneTitle}"
 CHAPTER LOG (what has happened before this scene):
 ${logSummary || '(This is the first scene — nothing has happened yet.)'}
 
-${embeddingContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${embeddingContext}\n` : ''}
+${sceneContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${sceneContext}\n` : ''}
 SCENE BRIEF:
 ${briefSection}
 

@@ -2,7 +2,10 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  snippets: Array
+  snippets: {
+    type: Array,
+    default: () => []
+  }
 })
 
 const emit = defineEmits(['remove'])
@@ -14,7 +17,7 @@ const sortedSnippets = computed(() => {
 
 <template>
   <div class="h-full flex flex-col">
-    <h3 class="text-[11px] uppercase tracking-widest text-text-hint font-ui mb-3">Snippets</h3>
+    <h3 class="text-11px uppercase tracking-widest text-text-hint font-ui mb-3">Snippets</h3>
     
     <div v-if="sortedSnippets.length === 0" class="text-center py-4">
       <p class="text-sm italic text-text-hint font-body">Overused words will appear here as you write</p>

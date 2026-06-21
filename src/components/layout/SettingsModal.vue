@@ -6,7 +6,6 @@ import { getDailyGoal, setDailyGoal } from '../../services/dbService'
 import { getAvailableModels, getStoredOpenAIKey, setStoredOpenAIKey } from '../../services/ollamaService'
 import { PROVIDERS, PROVIDER_LABELS, PROVIDER_LIST, PROVIDER_MODELS, FEATURE_LIST, FEATURE_LABELS, EMBEDDING_PROVIDER_LABELS, EMBEDDING_MODELS, EMBEDDING_THRESHOLD_MIN, EMBEDDING_THRESHOLD_MAX, EMBEDDING_THRESHOLD_STEP } from '../../config/ai'
 import BaseIcon from '../shared/BaseIcon.vue'
-import DatabaseRecovery from '../shared/DatabaseRecovery.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
 import VoiceProfileDisplay from '../shared/VoiceProfileDisplay.vue'
@@ -28,7 +27,6 @@ const activeTab = ref('goals')
 const ollamaEndpoint = ref('')
 const testingConnection = ref(false)
 const connectionStatus = ref(null)
-const showRecovery = ref(false)
 const showVoiceUpload = ref(false)
 
 const apiKeys = ref({})
@@ -285,7 +283,7 @@ watch(() => props.show, (newVal) => {
                   {{ PROVIDER_LABELS[p] }}
                 </option>
               </select>
-              <p class="mt-1 text-[10px] text-text-hint">Used when the primary provider fails.</p>
+              <p class="mt-1 text-2xs text-text-hint">Used when the primary provider fails.</p>
             </div>
           </div>
 
@@ -335,7 +333,7 @@ watch(() => props.show, (newVal) => {
 
           <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
             <h3 class="text-sm font-medium text-text-primary">API Keys</h3>
-            <p class="text-[11px] text-warning/90 leading-snug">
+            <p class="text-11px text-warning/90 leading-snug">
               ⚠ Stored locally in your browser. Do not use a high-spend key.
             </p>
             <div v-for="p in NON_OLLAMA_PROVIDERS" :key="p" class="space-y-1">
@@ -369,10 +367,10 @@ watch(() => props.show, (newVal) => {
 
           <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
             <h3 class="text-sm font-medium text-text-primary">Per-Feature Model Overrides</h3>
-            <p class="text-[10px] text-text-hint">Override the default provider/model for specific tasks. Set to "Default" to inherit from the global default above.</p>
+            <p class="text-2xs text-text-hint">Override the default provider/model for specific tasks. Set to "Default" to inherit from the global default above.</p>
             <div v-for="f in FEATURE_LIST" :key="f" class="flex gap-2 items-start">
               <div class="flex-1 min-w-0">
-                <label :for="'feature-provider-' + f" class="block text-[10px] text-text-secondary mb-0.5">{{ FEATURE_LABELS[f] }}</label>
+                <label :for="'feature-provider-' + f" class="block text-2xs text-text-secondary mb-0.5">{{ FEATURE_LABELS[f] }}</label>
                 <div class="flex gap-1.5">
                   <select
                     :id="'feature-provider-' + f"
@@ -438,21 +436,21 @@ watch(() => props.show, (newVal) => {
                 id="embedding-threshold"
                 :value="settingsStore.embeddingThreshold"
                 type="range"
-                @input="settingsStore.setEmbeddingThreshold(parseFloat($event.target.value))"
                 :min="EMBEDDING_THRESHOLD_MIN"
                 :max="EMBEDDING_THRESHOLD_MAX"
                 :step="EMBEDDING_THRESHOLD_STEP"
                 class="w-full accent-accent"
+                @input="settingsStore.setEmbeddingThreshold(parseFloat($event.target.value))"
               />
-              <div class="flex justify-between text-[10px] text-text-hint mt-0.5">
+              <div class="flex justify-between text-2xs text-text-hint mt-0.5">
                 <span>More splits ({{ EMBEDDING_THRESHOLD_MIN }})</span>
                 <span>Fewer splits ({{ EMBEDDING_THRESHOLD_MAX }})</span>
               </div>
             </div>
-            <div v-if="settingsStore.embeddingProvider === 'mistral'" class="text-[10px] text-text-hint">
+            <div v-if="settingsStore.embeddingProvider === 'mistral'" class="text-2xs text-text-hint">
               Mistral key loaded from <code>.env</code> file.
             </div>
-            <div v-else class="text-[10px] text-text-hint">
+            <div v-else class="text-2xs text-text-hint">
               Uses Ollama locally. No API key needed.
             </div>
           </div>
@@ -468,7 +466,7 @@ watch(() => props.show, (newVal) => {
               Upload Sample Text
             </button>
           </div>
-          <VoiceUploadModal :isOpen="showVoiceUpload" @close="showVoiceUpload = false" />
+          <VoiceUploadModal :is-open="showVoiceUpload" @close="showVoiceUpload = false" />
         </div>
 
         <div class="flex gap-3 mt-6">

@@ -7,10 +7,11 @@ import { useDraggableList, DRAG_OPTIONS } from '../../composables/useDraggableLi
 import Modal from '../shared/Modal.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import draggable from 'vuedraggable'
+import EmptyState from '../shared/EmptyState.vue'
 
 const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
-const { startDrag, endDrag } = useDraggableList()
+const { endDrag } = useDraggableList()
 
 const {
   editingScene,
@@ -147,10 +148,9 @@ onMounted(() => {
     </div>
 
     <div class="flex-1 overflow-y-auto p-4">
-      <div v-if="sortedSections.length === 0" class="text-center py-12 space-y-4">
-        <p class="text-text-hint font-ui text-sm">No sections yet. Create sections in Section Manager to organize your subsections.</p>
-        <p class="text-xs text-text-hint font-ui">Tip: Press <kbd class="px-1.5 py-0.5 bg-bg-tertiary rounded text-[10px]">8</kbd> to open Section Manager</p>
-      </div>
+      <EmptyState v-if="sortedSections.length === 0" icon="folder-plus" title="No sections yet" description="Create sections in Section Manager to organize your subsections.">
+        <p class="text-xs text-text-hint font-ui mt-1">Tip: Press <kbd class="px-1.5 py-0.5 bg-bg-tertiary rounded text-2xs">8</kbd> to open Section Manager</p>
+      </EmptyState>
 
       <div v-else-if="viewMode === 'sections'" class="space-y-4">
         <div
@@ -234,7 +234,7 @@ onMounted(() => {
                         </button>
                     </div>
                   </div>
-                  <div class="mt-1 pl-5 text-[10px] text-text-hint font-ui">
+                  <div class="mt-1 pl-5 text-2xs text-text-hint font-ui">
                     {{ getSceneWordCount(scene) }} words
                   </div>
                 </div>
@@ -333,7 +333,7 @@ onMounted(() => {
 <style scoped>
 .ghost {
   opacity: 0.5;
-  background: #6366f1;
+  background: var(--vers-accent-primary);
 }
 .drag {
   opacity: 0.9;

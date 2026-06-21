@@ -11,6 +11,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01'
     },
+    signal: options.signal,
     body: JSON.stringify({
       model: model,
       system: systemPrompt,
@@ -42,6 +43,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01'
     },
+    signal: options.signal,
     body: JSON.stringify({
       model: model,
       system: systemPrompt,

@@ -9,7 +9,7 @@ export async function buildGenerationContext({ entityType, manuscriptContext }) 
   const manuscriptBlock = getManuscriptContext(manuscriptContext)
   const project = useProjectStore()
 
-  return {
+  const result = {
     entityType,
     project: {
       category: project.currentCategory || '',
@@ -20,4 +20,6 @@ export async function buildGenerationContext({ entityType, manuscriptContext }) 
     manuscript: manuscriptBlock,
     narrativeState: null
   }
+
+  return result
 }

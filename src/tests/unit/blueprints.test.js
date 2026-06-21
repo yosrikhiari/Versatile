@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BLUEPRINTS } from '@/config/blueprints'
+import { BLUEPRINTS, CREATIVE_BLUEPRINTS } from '@/config/blueprints'
 
 describe('BLUEPRINTS', () => {
   it('is exported as an object', () => {
@@ -68,6 +68,48 @@ describe('BLUEPRINTS', () => {
             expect(subsection.content).toBeTypeOf('string')
           }
         }
+      }
+    }
+  })
+})
+
+describe('CREATIVE_BLUEPRINTS', () => {
+  it('is exported as an object', () => {
+    expect(CREATIVE_BLUEPRINTS).toBeTypeOf('object')
+  })
+
+  it('has exactly 3 keys', () => {
+    expect(Object.keys(CREATIVE_BLUEPRINTS).length).toBe(3)
+  })
+
+  it('has entries for creative, novel, and screenplay', () => {
+    expect(CREATIVE_BLUEPRINTS).toHaveProperty('creative')
+    expect(CREATIVE_BLUEPRINTS).toHaveProperty('novel')
+    expect(CREATIVE_BLUEPRINTS).toHaveProperty('screenplay')
+  })
+
+  it('does not contain non-creative types', () => {
+    expect(CREATIVE_BLUEPRINTS).not.toHaveProperty('legal')
+    expect(CREATIVE_BLUEPRINTS).not.toHaveProperty('general')
+  })
+
+  it('each type has at least one blueprint', () => {
+    for (const type of ['creative', 'novel', 'screenplay']) {
+      expect(CREATIVE_BLUEPRINTS[type].length).toBeGreaterThan(0)
+    }
+  })
+
+  it('each blueprint has the expected structure', () => {
+    for (const type of ['creative', 'novel', 'screenplay']) {
+      for (const blueprint of CREATIVE_BLUEPRINTS[type]) {
+        expect(blueprint).toHaveProperty('id')
+        expect(blueprint).toHaveProperty('name')
+        expect(blueprint).toHaveProperty('description')
+        expect(blueprint).toHaveProperty('sections')
+        expect(blueprint.id).toBeTypeOf('string')
+        expect(blueprint.name).toBeTypeOf('string')
+        expect(blueprint.description).toBeTypeOf('string')
+        expect(Array.isArray(blueprint.sections)).toBe(true)
       }
     }
   })

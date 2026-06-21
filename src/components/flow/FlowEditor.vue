@@ -1,18 +1,24 @@
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useSnapshotStore } from '../../stores/snapshotStore'
 import { useFlowSession } from '../../composables/useFlowSession'
+import { useDialogueIndexer } from '../../composables/useDialogueIndexer'
 import { useDebounceFn } from '@vueuse/core'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
+import { AutoDialogue } from '../../extensions/AutoDialogue.js'
 import FlowTimer from './FlowTimer.vue'
 import FlowNudge from './FlowNudge.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
+const CONTENT_WARN_THRESHOLD = 50_000
+const CONTENT_CRITICAL_THRESHOLD = 200_000
+
 const flow = useFlowSession()
+const dialogueIndexer = useDialogueIndexer()
 
 const emit = defineEmits(['paragraph-click', 'open-settings', 'exit-flow'])
 
@@ -24,6 +30,13 @@ const projectStore = useProjectStore()
 const manuscriptStore = useManuscriptStore()
 const snapshotStore = useSnapshotStore()
 const isSaving = ref(false)
+const contentSize = ref(0)
+const contentSizeWarning = computed(() => {
+  const size = contentSize.value
+  if (size >= CONTENT_CRITICAL_THRESHOLD) return 'critical'
+  if (size >= CONTENT_WARN_THRESHOLD) return 'warn'
+  return 'ok'
+})
 
 const activeContent = computed(() => {
   if (manuscriptStore.activeSubsectionId) {
@@ -42,6 +55,12 @@ const debouncedSave = useDebounceFn(async () => {
 
     if (manuscriptStore.activeSubsectionId) {
       await manuscriptStore.updateSubsectionData(manuscriptStore.activeSubsectionId, { content }, projectStore.currentProjectId)
+      const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+      if (sub) {
+        dialogueIndexer.reindexSubsection(sub).catch(err =>
+          console.error('[FlowEditor] dialogue reindex failed:', err)
+        )
+      }
     } else if (manuscriptStore.activeSectionId) {
       await manuscriptStore.updateSectionData(manuscriptStore.activeSectionId, { content }, projectStore.currentProjectId)
     } else {
@@ -71,7 +90,8 @@ const editor = useEditor({
     }),
     Highlight.configure({
       multicolor: false
-    })
+    }),
+    AutoDialogue
   ],
   editorProps: {
     attributes: {
@@ -79,26 +99,43 @@ const editor = useEditor({
     }
   },
   onUpdate: ({ editor }) => {
-    const content = editor.getHTML()
-    if (manuscriptStore.activeSubsectionId) {
-      const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
-      if (sub) sub.content = content
-    } else if (manuscriptStore.activeSectionId) {
-      const sec = manuscriptStore.sections.find(s => s.id === manuscriptStore.activeSectionId)
-      if (sec) sec.content = content
+    const textContent = editor.state.doc.textContent
+    const textLen = textContent.length
+    contentSize.value = textLen
+
+    if (textLen >= CONTENT_WARN_THRESHOLD) {
+      const content = editor.getHTML()
+      if (manuscriptStore.activeSubsectionId) {
+        const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+        if (sub) sub.content = content
+      } else if (manuscriptStore.activeSectionId) {
+        const sec = manuscriptStore.sections.find(s => s.id === manuscriptStore.activeSectionId)
+        if (sec) sec.content = content
+      } else {
+        projectStore.updateContent(content, textContent)
+      }
     } else {
-      projectStore.updateContent(content)
+      if (manuscriptStore.activeSubsectionId) {
+        const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+        if (sub) sub.content = editor.getHTML()
+      } else if (manuscriptStore.activeSectionId) {
+        const sec = manuscriptStore.sections.find(s => s.id === manuscriptStore.activeSectionId)
+        if (sec) sec.content = editor.getHTML()
+      } else {
+        projectStore.updateContent(editor.getHTML(), textContent)
+      }
     }
     debouncedSave()
     flow.handleKeystroke()
   },
-  onSelectionUpdate: ({ editor }) => {
+  onSelectionUpdate: ({ editor: _editor }) => {
     flow.handleKeystroke()
   }
 })
 
 const hasShownFlowHint = ref(false)
 const flowHintVisible = ref(false)
+const scrollContainer = ref(null)
 
 function handleKeydown(event) {
   if (flow.isRunning.value && event.key === 'Backspace') {
@@ -120,39 +157,35 @@ function handleDismissNudge() {
   flow.dismissNudge()
 }
 
-function handleClick(event) {
+function handleClick(_event) {
   if (!editor.value) return
-  
-  const { from, to } = editor.value.state.selection
+
+  const { from } = editor.value.state.selection
   const $pos = editor.value.state.doc.resolve(from)
-  
-  let nodePos = from
-  let node = $pos.parent
-  
-  if (node) {
-    const childIndex = $pos.index()
-    const paragraphs = []
-    
-    editor.value.state.doc.descendants((p, pos) => {
-      if (p.isBlock && p.type.name === 'paragraph') {
-        paragraphs.push({ node: p, pos })
-      }
-    })
-    
-    const paragraphIndex = paragraphs.findIndex(p => p.pos >= nodePos)
-    
-    if (paragraphIndex !== -1) {
-      const text = paragraphs[paragraphIndex].node.textContent
-      if (text && text.trim()) {
-        emit('paragraph-click', text, paragraphIndex)
-      }
+  const node = $pos.parent
+
+  if (node && node.type.name === 'paragraph') {
+    const text = node.textContent
+    if (text && text.trim()) {
+      let idx = 0
+      editor.value.state.doc.descendants((p) => {
+        if (p === node) return false
+        if (p.isBlock && p.type.name === 'paragraph') idx++
+      })
+      emit('paragraph-click', text, idx)
     }
   }
 }
 
 watch(activeContent, (newContent) => {
   if (editor.value?.getHTML() !== newContent) {
+    const savedScroll = scrollContainer.value?.scrollTop ?? 0
     editor.value.commands.setContent(newContent || '')
+    requestAnimationFrame(() => {
+      if (scrollContainer.value) {
+        scrollContainer.value.scrollTop = savedScroll
+      }
+    })
   }
 })
 
@@ -182,8 +215,28 @@ defineExpose({
       @click="handleExitFlow"
     >
       Exit Flow
-    </button>
+      </button>
+
+    <div
+      v-if="contentSizeWarning !== 'ok'"
+      class="flex-shrink-0 px-6 py-2 text-xs font-ui border-b"
+      :class="contentSizeWarning === 'critical'
+        ? 'bg-red-900/20 text-red-400 border-red-900/30'
+        : 'bg-amber-900/20 text-amber-400 border-amber-900/30'"
+    >
+      <span class="flex items-center gap-2">
+        <BaseIcon :name="contentSizeWarning === 'critical' ? 'alert-triangle' : 'alert-circle'" :size="14" />
+        <span>
+          This section is <strong>{{ (contentSize.value / 1000).toFixed(0) }}K</strong> characters.
+          {{ contentSizeWarning === 'critical'
+            ? 'Editor performance may degrade. Consider splitting into subsections.'
+            : 'Consider splitting into smaller subsections for better performance.' }}
+        </span>
+      </span>
+    </div>
+
     <div 
+      ref="scrollContainer"
       :class="[
         'flex-1 overflow-y-auto scrollbar-thin',
         flow.isDesaturated ? 'desaturated' : ''
@@ -209,7 +262,7 @@ defineExpose({
 
     <div 
       v-if="isSaving"
-      class="absolute bottom-3 right-4 text-[10px] text-text-hint/50 font-ui flex items-center gap-1.5"
+      class="absolute bottom-3 right-4 text-2xs text-text-hint/50 font-ui flex items-center gap-1.5"
     >
       <BaseIcon name="loader-2" :size="10" class="animate-spin" />
       <span class="tracking-wide">Saving...</span>
@@ -227,6 +280,15 @@ defineExpose({
     </Transition>
   </div>
 </template>
+
+<style>
+.dialogue-text {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.06);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+</style>
 
 <style scoped>
 .flow-hint-enter-active {

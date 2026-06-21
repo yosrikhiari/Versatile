@@ -5,7 +5,7 @@ import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
 import BaseIcon from '../shared/BaseIcon.vue'
 
-const props = defineProps({
+defineProps({
   panelId: {
     type: String,
     default: 'default'
@@ -125,10 +125,10 @@ defineExpose({
         placeholder="e.g. 3, 5, 8"
         class="w-full px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent/50"
       />
-      <p class="mt-1 text-[10px] text-text-hint">Enter chapter numbers, separated by commas</p>
+      <p class="mt-1 text-2xs text-text-hint">Enter chapter numbers, separated by commas</p>
     </div>
     
-    <div v-if="contextPreview" class="pl-16 flex items-center gap-1.5 text-[10px] text-text-hint">
+    <div v-if="contextPreview" class="pl-16 flex items-center gap-1.5 text-2xs text-text-hint">
       <BaseIcon name="file-text" :size="10" />
       <span>{{ contextPreview.label }}</span>
       <span class="text-text-muted">({{ contextPreview.chars }}/{{ MAX_CONTEXT_CHARS }} chars)</span>

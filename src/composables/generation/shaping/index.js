@@ -8,6 +8,11 @@ const LABEL_HEADINGS = { characters: 'EXISTING CHARACTERS:', locations: 'EXISTIN
 
 export function shapeContext(rawContext, options = {}) {
   const { entities } = rawContext
+  const entityType = rawContext.entityType || 'unknown'
+
+  const totalCharacters = entities.characters?.length || 0
+  const totalLocations = entities.locations?.length || 0
+  const totalPlotThreads = entities.plotThreads?.length || 0
 
   const sortedCharacters = sortByRelevance(entities.characters, 'character').slice(0, MAX_CHARACTERS)
   const sortedLocations = sortByRelevance(entities.locations, 'location').slice(0, MAX_LOCATIONS)
@@ -38,7 +43,9 @@ export function shapeContext(rawContext, options = {}) {
     manuscriptBlock
   }
 
-  return applyTokenBudget(bundle, options.tokenBudget)
+  const result = applyTokenBudget(bundle, options.tokenBudget)
+
+  return result
 }
 
 function buildEntityBlock(entities, label, formatter) {
@@ -47,22 +54,31 @@ function buildEntityBlock(entities, label, formatter) {
   return `\n\n${heading}\n${entities.map(formatter).join('\n')}`
 }
 
+function toTraitsArray(val) {
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string' && val) return val.split(';').map(t => t.trim()).filter(Boolean)
+  return []
+}
+
 function formatCharacter(c) {
   const roleSuffix = c.role ? ` (${c.role})` : ''
   const goalSuffix = c.goal ? ` — ${c.goal.slice(0, 80)}` : ''
-  const traitsSuffix = c.traits?.length ? ` [${c.traits.join('; ')}]` : ''
+  const traits = toTraitsArray(c.traits)
+  const traitsSuffix = traits.length ? ` [${traits.join('; ')}]` : ''
   return `- "${c.name}"${roleSuffix}${goalSuffix}${traitsSuffix}`
 }
 
 function formatLocation(l) {
   const descSuffix = l.description ? `: ${l.description.slice(0, 80)}` : ''
-  const traitsSuffix = l.traits?.length ? ` [${l.traits.join('; ')}]` : ''
+  const traits = toTraitsArray(l.traits)
+  const traitsSuffix = traits.length ? ` [${traits.join('; ')}]` : ''
   return `- "${l.name}"${descSuffix}${traitsSuffix}`
 }
 
 function formatPlotThread(t) {
   const notesSuffix = t.notes ? `: ${t.notes.slice(0, 80)}` : ''
-  const traitsSuffix = t.traits?.length ? ` [${t.traits.join('; ')}]` : ''
+  const traits = toTraitsArray(t.traits)
+  const traitsSuffix = traits.length ? ` [${traits.join('; ')}]` : ''
   return `- "${t.title}"${notesSuffix}${traitsSuffix}`
 }
 

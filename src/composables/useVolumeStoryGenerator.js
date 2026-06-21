@@ -1,9 +1,11 @@
 import { ref, reactive } from 'vue'
+import { formatEvalFeedback } from '../services/evalFeedback'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
-import { useStoryDirector, sanitizeJson } from './useStoryDirector'
+import { sanitizeJson } from '../services/ai/aiHelpers'
+import { useStoryDirector } from './useStoryDirector'
 import { useEntityBootstrapper } from './useEntityBootstrapper'
 import { useStoryWriter } from './useStoryWriter'
 import { useStoryCritic } from './useStoryCritic'
@@ -121,18 +123,6 @@ const EMBEDDING_CONTEXT_MAX_CHARS = 1400
 const MAX_REJECTED_PATTERNS = 5
 const SYNC_BATCH_SIZE = 3
 
-const DEBUG_ENDPOINT = '/__debug/snapshot'
-
-function debugSnapshot(stage, data) {
-  try {
-    fetch(DEBUG_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stage, data })
-    }).catch(() => {})
-  } catch {}
-}
-
 // Context strategy for buildEmbeddingContext.
 // 'prose' — last 2 scenes' prose excerpts (correct for 6–15 scenes).
 // 'embedding' — future: embedding-similarity retrieval (for 25+ scenes).
@@ -193,6 +183,8 @@ export function useVolumeStoryGenerator() {
   const sceneReviewMode = ref(false)
   const currentSceneResult = ref(null)
   const currentWriteIndex = ref(0)
+  const inlineEvalEnabled = ref(false)
+  const sceneEvalResults = ref([])
   const actLog = useActivityLog()
   let currentTaskId = null
 
@@ -261,7 +253,7 @@ export function useVolumeStoryGenerator() {
     })
   }
 
-  async function startGeneration({ projectId, synopsis, genre, tone, wordTarget, singleChapter, sparkContext, onPhaseChange, onChunk, onPartialData }) {
+  async function startGeneration({ projectId, synopsis, genre, tone, wordTarget, singleChapter, sparkContext, onPhaseChange, onPartialData }) {
     if (phase.value !== 'idle') return
 
     error.value = null
@@ -318,8 +310,6 @@ export function useVolumeStoryGenerator() {
       if (sceneSummaries.length > 0) {
         evidenceParts.push('# Existing Manuscript Scenes\n' + sceneSummaries.slice(-20).join('\n'))
       }
-      const evidence = evidenceParts.join('\n\n')
-
       // Phase 1: Bootstrap entities
       progress.current = 2
       progress.statusText = 'Conjuring Characters & World...'
@@ -384,7 +374,6 @@ export function useVolumeStoryGenerator() {
         arcPosition: s.arcPosition || ''
       }))
 
-      const totalScenes = scenePlan.value.length
       progress.current = 4
       progress.statusText = 'Sealing the Arc Contract...'
       await buildPreliminaryEdges(projectId, vId, scenePlan.value)
@@ -411,22 +400,6 @@ export function useVolumeStoryGenerator() {
       onPhaseChange?.('plan-preview')
       // Return control; user edits plan and calls confirmPlan() to proceed
 
-      debugSnapshot('step-1-plan', {
-        synopsis: enhancedSynopsis,
-        genre,
-        tone,
-        wordTarget,
-        scenePlan: scenePlan.value,
-        chapters: directorResult.chapters,
-        storyArc,
-        totalScenes: scenePlan.value.length,
-        entityCounts: {
-          characters: storyBibleStore.characters.length,
-          locations: storyBibleStore.locations.length,
-          plotThreads: storyBibleStore.plotThreads.length
-        }
-      })
-
       // Store arc for later use
       return { scenes: scenePlan.value, storyArc, volumeId: vId, storyContract }
     } catch (err) {
@@ -438,7 +411,7 @@ export function useVolumeStoryGenerator() {
 
   async function runParallelGeneration(writeParamsVal) {
     if (!writeParamsVal) return
-    const { storyArc, storyBibleDocs, storyContract, projectId, sections, onChunk } = writeParamsVal
+    const { storyArc, storyBibleDocs, storyContract, projectId, onChunk } = writeParamsVal
     
     const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
 
@@ -473,7 +446,7 @@ export function useVolumeStoryGenerator() {
         
         progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
         const summary = await computeSummary(fullProse)
-        const wordCount = fullProse.split(/\\s+/).length
+        const wordCount = fullProse.split(/\s+/).length
         
         if (scene.subsectionId) {
           await manuscriptStore.updateSubsectionData(scene.subsectionId, { content: fullProse, wordCount }, projectId)
@@ -520,7 +493,25 @@ export function useVolumeStoryGenerator() {
     const limit = PARALLEL_CHAPTER_LIMIT()
     const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
     
-    debugSnapshot('step-1-anchors', { outcomes: anchorOutcomes })
+    let anchorEvalFeedback = ''
+    if (inlineEvalEnabled.value) {
+      progress.statusText = 'Evaluating chapter anchors...'
+      const anchorResults = []
+      for (let idx = 0; idx < writtenScenes.value.length; idx++) {
+        const s = writtenScenes.value[idx]
+        if (!s) continue
+        const sceneBrief = scenePlan.value.find(sp => sp.sceneNumber === s.sceneNumber) || {}
+        const criticResult = await critic.evaluateScene({ draft: s.prose, sceneBrief, storyBible: storyBibleDocs, chapterLog: '' })
+        anchorResults.push({
+          sceneIndex: idx + 1,
+          passed: criticResult.pass,
+          score: criticResult.score,
+          topIssues: (criticResult.issues || []).slice(0, 3).map(i => i.text || i)
+        })
+      }
+      sceneEvalResults.value = anchorResults
+      anchorEvalFeedback = formatEvalFeedback(anchorResults)
+    }
 
     // Phase 2: Generate middle scenes per chapter
     progress.statusText = 'Phase 2: Generating chapter middle scenes...'
@@ -541,6 +532,7 @@ export function useVolumeStoryGenerator() {
           storyBible: storyBibleDocs,
           spineContext: spineContext.value,
           storyContract, existingEntitiesJson,
+          pastEvalResults: anchorEvalFeedback || undefined,
           onChunk: (_chunk, proseChunk) => {
             fullProse += proseChunk || ''
             onChunk?.({ sceneIndex: sceneIndex + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
@@ -592,14 +584,23 @@ export function useVolumeStoryGenerator() {
       middleOutcomes = await parallelWithLimit(middleTasks, limit)
     }
 
-    debugSnapshot('step-2-middle-scenes', {
-      totalScenes: scenePlan.value.length,
-      writtenCount: writtenScenes.value.filter(s => s !== null).length,
-      middleTasks: middleTasks.length,
-      successful: middleOutcomes.filter(o => o.success).length,
-      failed: middleOutcomes.filter(o => !o.success).length,
-      outcomes: middleOutcomes
-    })
+    if (inlineEvalEnabled.value) {
+      progress.statusText = 'Evaluating middle scenes...'
+      const middleResults = []
+      for (let idx = 0; idx < writtenScenes.value.length; idx++) {
+        const s = writtenScenes.value[idx]
+        if (!s || sceneEvalResults.value.some(r => r.sceneIndex === idx + 1)) continue
+        const sceneBrief = scenePlan.value.find(sp => sp.sceneNumber === s.sceneNumber) || {}
+        const criticResult = await critic.evaluateScene({ draft: s.prose, sceneBrief, storyBible: storyBibleDocs, chapterLog: '' })
+        middleResults.push({
+          sceneIndex: idx + 1,
+          passed: criticResult.pass,
+          score: criticResult.score,
+          topIssues: (criticResult.issues || []).slice(0, 3).map(i => i.text || i)
+        })
+      }
+      sceneEvalResults.value = [...sceneEvalResults.value, ...middleResults]
+    }
 
     await completeGeneration(projectId)
   }
@@ -607,15 +608,8 @@ export function useVolumeStoryGenerator() {
   async function writeNextBatch(startIndex) {
     if (!writeParams.value) return
 
-    const { projectId, storyArc, storyContract, synopsis, onChunk, sections, storyBibleDocs } = writeParams.value
+    const { projectId, storyArc, storyContract, onChunk, storyBibleDocs, sections } = writeParams.value
     const endIndex = Math.min(startIndex + SYNC_BATCH_SIZE, scenePlan.value.length)
-
-    debugSnapshot('step-2-writing-start', {
-      startIndex,
-      endIndex,
-      totalScenes: scenePlan.value.length,
-      storyContract
-    })
 
     // Build running chapter log once from existing scenes (Fix #2 — avoids O(n²) rebuild per scene)
     const runningChapterLog = writtenScenes.value.map((ws, idx) =>
@@ -624,6 +618,8 @@ export function useVolumeStoryGenerator() {
 
     // Build entities JSON once per batch (Fix #3 — entities don't change within a batch)
     const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
+
+    let batchEvalFeedback = ''
 
     for (let i = startIndex; i < endIndex; i++) {
       const scene = scenePlan.value[i]
@@ -656,6 +652,7 @@ export function useVolumeStoryGenerator() {
         storyArc,
         chapterLog,
         storyBible: storyBibleDocs,
+        spineContext: spineContext.value,
         onChunk: (_chunk, proseChunk) => {
           fullProse += proseChunk || ''
           onChunk?.({ sceneIndex: i + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
@@ -664,7 +661,8 @@ export function useVolumeStoryGenerator() {
         embeddingContext,
         storyContract: effectiveStoryContract,
         rejectedPatterns: extraRejected,
-        existingEntitiesJson
+        existingEntitiesJson,
+        pastEvalResults: batchEvalFeedback || undefined
       })
       actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
 
@@ -680,23 +678,24 @@ export function useVolumeStoryGenerator() {
 
       await commitAndStoreScene(scene, fullProse, Math.floor(i / 3), sections, projectId)
 
+      if (inlineEvalEnabled.value) {
+        const criticResult = await critic.evaluateScene({ draft: fullProse, sceneBrief: scene, storyBible: storyBibleDocs, chapterLog: '' })
+        const evalEntry = {
+          sceneIndex: i + 1,
+          passed: criticResult.pass,
+          score: criticResult.score,
+          topIssues: (criticResult.issues || []).slice(0, 3).map(iss => iss.text || iss)
+        }
+        sceneEvalResults.value.push(evalEntry)
+        batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
+      }
+
       // Append to running log after scene completes (avoids full rebuild next iteration)
       const latestScene = writtenScenes.value.at(-1)
       runningChapterLog.push(
         `Scene ${scene.sceneNumber} ("${scene.title || `Scene ${scene.sceneNumber}`}"): ${latestScene?.summary || '(written)'}`
       )
 
-      debugSnapshot(`step-3-scene-${i}`, {
-        scene: {
-          index: i,
-          title: scene.title || `Scene ${scene.sceneNumber}`,
-          wordCount: fullProse.split(/\s+/).length,
-          characters: scene.characters || scene.charactersPresent || [],
-          location: scene.location || ''
-        },
-        structured: result.structured,
-        styleGuideInjected: true
-      })
     }
 
     // Discover entities from this batch only
@@ -716,10 +715,6 @@ export function useVolumeStoryGenerator() {
         hasPendingBatches.value = true
         pendingBatchStart.value = endIndex
         syncPreview.value = batchChanges
-        debugSnapshot('step-4-sync', {
-          pendingBatchStart: endIndex,
-          batchChanges
-        })
         phase.value = 'sync-preview'
         return
       }
@@ -818,10 +813,6 @@ export function useVolumeStoryGenerator() {
     
     try {
       spineArray.value = await generateSpine(chapterPlan.value, storyArc)
-      debugSnapshot('step-0-spine', {
-        spine: spineArray.value,
-        estimatedTokens: Math.round(JSON.stringify(spineArray.value).length / 4)
-      })
       spineContext.value = compressSpine(spineArray.value)
       actLog.updatePhase(currentTaskId, spinePhase, { status: 'done' })
     } catch (err) {
@@ -890,11 +881,6 @@ export function useVolumeStoryGenerator() {
       // Non-critical: generatedStories save
     }
 
-    debugSnapshot('step-5-consistency', {
-      totalScenes: writtenScenes.value.length,
-      totalWords,
-      consistencyReport: consistencyReport.value
-    })
   }
 
   async function confirmSync({ acceptedEntities, projectId, volumeId, chapterId }) {

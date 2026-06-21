@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
-const props = defineProps({
+defineProps({
   changes: {
     type: Array,
     default: () => []
@@ -16,10 +16,6 @@ const props = defineProps({
 const emit = defineEmits(['confirm'])
 
 const localChanges = ref([])
-
-function syncChanges() {
-  localChanges.value = props.changes.map(c => ({ ...c }))
-}
 
 const characterChanges = computed(() => localChanges.value.filter(c => c.type === 'character'))
 const locationChanges = computed(() => localChanges.value.filter(c => c.type === 'location'))
@@ -93,14 +89,14 @@ function handleConfirm() {
         <input
           type="checkbox"
           :checked="change._selected"
-          @change="toggleChange(localChanges.indexOf(change))"
           class="mt-0.5 accent-accent"
+          @change="toggleChange(localChanges.indexOf(change))"
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <span class="text-sm font-semibold text-text-primary font-ui truncate">{{ change.entity.name }}</span>
-            <span v-if="change.referenced" class="text-[10px] text-accent font-ui shrink-0">Used in prose</span>
-            <span v-else class="text-[10px] text-text-hint font-ui shrink-0">Inferred</span>
+            <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0">Used in prose</span>
+            <span v-else class="text-2xs text-text-hint font-ui shrink-0">Inferred</span>
           </div>
           <p v-if="change.entity.role" class="text-xs text-text-hint font-body">Role: {{ change.entity.role }}</p>
           <p v-if="change.entity.description" class="text-xs text-text-secondary font-body truncate">{{ change.entity.description }}</p>
@@ -121,14 +117,14 @@ function handleConfirm() {
         <input
           type="checkbox"
           :checked="change._selected"
-          @change="toggleChange(localChanges.indexOf(change))"
           class="mt-0.5 accent-accent"
+          @change="toggleChange(localChanges.indexOf(change))"
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <span class="text-sm font-semibold text-text-primary font-ui truncate">{{ change.entity.name }}</span>
-            <span v-if="change.referenced" class="text-[10px] text-accent font-ui shrink-0">Used in prose</span>
-            <span v-else class="text-[10px] text-text-hint font-ui shrink-0">Inferred</span>
+            <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0">Used in prose</span>
+            <span v-else class="text-2xs text-text-hint font-ui shrink-0">Inferred</span>
           </div>
           <p v-if="change.entity.type" class="text-xs text-text-hint font-body">Type: {{ change.entity.type }}</p>
           <p v-if="change.entity.description" class="text-xs text-text-secondary font-body truncate">{{ change.entity.description }}</p>
@@ -149,14 +145,14 @@ function handleConfirm() {
         <input
           type="checkbox"
           :checked="change._selected"
-          @change="toggleChange(localChanges.indexOf(change))"
           class="mt-0.5 accent-accent"
+          @change="toggleChange(localChanges.indexOf(change))"
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <span class="text-sm font-semibold text-text-primary font-ui truncate">{{ change.entity.title }}</span>
-            <span :class="['px-1.5 py-0.5 rounded text-[10px] font-ui', change.entity.status === 'open' ? 'text-green-400 bg-green-950/30' : change.entity.status === 'resolved' ? 'text-gray-400 bg-gray-800/30' : 'text-yellow-400 bg-yellow-950/30']">{{ change.entity.status || 'open' }}</span>
-            <span v-if="change.referenced" class="text-[10px] text-accent font-ui shrink-0">Used</span>
+            <span :class="['px-1.5 py-0.5 rounded text-2xs font-ui', change.entity.status === 'open' ? 'text-green-400 bg-green-950/30' : change.entity.status === 'resolved' ? 'text-gray-400 bg-gray-800/30' : 'text-yellow-400 bg-yellow-950/30']">{{ change.entity.status || 'open' }}</span>
+            <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0">Used</span>
           </div>
           <p v-if="change.entity.summary" class="text-xs text-text-secondary font-body truncate">{{ change.entity.summary }}</p>
         </div>

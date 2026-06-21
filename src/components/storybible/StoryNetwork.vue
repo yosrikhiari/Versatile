@@ -2,8 +2,12 @@
 import { ref, computed, watch, onMounted, onUnmounted, toRaw } from 'vue'
 import { VueFlow, useVueFlow, Position, Handle } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
+import { MiniMap } from '@vue-flow/minimap'
+import { Controls } from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
+import '@vue-flow/minimap/dist/style.css'
+import '@vue-flow/controls/dist/style.css'
 import { useStoryGraphStore } from '../../stores/storyGraphStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
@@ -34,7 +38,6 @@ const projectStore = useProjectStore()
 const networkSuggestions = useNetworkSuggestions()
 
 const {   
-  onConnect, 
   onNodeDragStop, 
   onNodeDrag,
   onViewportChange,
@@ -92,6 +95,7 @@ const manualGroups = ref([])
 
 const nodeParents = ref({}) // { 'char-1': 'group-123', 'char-2': null }
 
+/* Palette kept as hex for opacity suffix support (e.g. data.color + '60') */
 const groupColors = [
   '#f48fb1', '#ef5350', '#ce93d8', '#f06292', '#ba68c8',
   '#ff7043', '#90a4ae', '#4fc3f7', '#80cbc4', '#aed581'
@@ -223,29 +227,29 @@ function handleGroupResizeEnd() {
 }
 
 const entityColors = {
-  character: '#8B5CF6',
-  location: '#10B981',
-  plotThread: '#F59E0B'
+  character: 'var(--vers-entity-character)',
+  location: 'var(--vers-entity-location)',
+  plotThread: 'var(--vers-entity-plotThread)'
 }
 
 const edgeColors = {
-  appears_in: '#4fc3f7',
-  involved_in: '#ce93d8',
-  located_at: '#80cbc4',
-  intersects_with: '#80cbc4',
-  features: '#ce93d8',
-  connects_to: '#888888',
-  ally: '#f48fb1',
-  enemy: '#ef5350',
-  family: '#ce93d8',
-  romantic: '#f06292',
-  mentor: '#ba68c8',
-  rival: '#ff7043',
-  neutral: '#90a4ae'
+  appears_in: 'var(--vers-edge-appears_in)',
+  involved_in: 'var(--vers-edge-involved_in)',
+  located_at: 'var(--vers-edge-located_at)',
+  intersects_with: 'var(--vers-edge-intersects_with)',
+  features: 'var(--vers-edge-features)',
+  connects_to: 'var(--vers-edge-connects_to)',
+  ally: 'var(--vers-edge-ally)',
+  enemy: 'var(--vers-edge-enemy)',
+  family: 'var(--vers-edge-family)',
+  romantic: 'var(--vers-edge-romantic)',
+  mentor: 'var(--vers-edge-mentor)',
+  rival: 'var(--vers-edge-rival)',
+  neutral: 'var(--vers-edge-neutral)'
 }
 
 function getEdgeColor(relationshipType) {
-  return edgeColors[relationshipType] || '#888888'
+  return edgeColors[relationshipType] || 'var(--vers-default-edge)'
 }
 
 const entityIcons = {
@@ -406,7 +410,6 @@ const edges = computed(() => {
     const label = isCharChar ? edge.relationshipType : edge.relationshipType.replace(/_/g, ' ')
     const category = getEdgeCategory(edge)
     
-    let sourceIndex = 0
     for (const sourceId of validSourceInstances) {
       let targetIndex = 0
       for (const targetId of validTargetInstances) {
@@ -431,7 +434,6 @@ const edges = computed(() => {
         })
         targetIndex++
       }
-      sourceIndex++
     }
   }
 
@@ -453,11 +455,11 @@ const groupEdges = computed(() => {
       style: {
         strokeDasharray: '6 3',
         strokeWidth: 2.5,
-        stroke: '#6366f1'
+        stroke: 'var(--vers-default-fallback)'
       },
       data: {
         edgeData: edge,
-        color: '#6366f1',
+        color: 'var(--vers-default-fallback)',
         relationshipType: edge.relationshipType,
         label: edge.relationshipType.replace(/_/g, ' '),
         category: 'group',
@@ -487,8 +489,7 @@ watch(() => nodes.value.length, () => {
   setTimeout(() => fitView({ padding: 0.2 }), 100)
 })
 
-watch(() => storyGraphStore.edges.length, (newLen, oldLen) => {
-  console.log('[watch] edges length changed:', oldLen, '→', newLen)
+watch(() => storyGraphStore.edges.length, () => {
   forceRefreshKey.value++
 })
 
@@ -728,24 +729,17 @@ async function handleSaveGroupEdge(groupEdgeData) {
 }
 
 function handleConnect(params) {
-  console.log('[handleConnect] Connection params:', params)
-  
   const sourceId = params.source
   const targetId = params.target
   
   const isSourceGroup = manualGroups.value.some(g => g.id === sourceId)
   const isTargetGroup = manualGroups.value.some(g => g.id === targetId)
   
-  console.log('[handleConnect] isSourceGroup:', isSourceGroup, 'isTargetGroup:', isTargetGroup)
-  
   if (isSourceGroup && isTargetGroup) {
-    console.log('[handleConnect] Opening modal for group-to-group connection')
     nodeToConnect.value = { id: sourceId }
     targetNodeToConnect.value = { id: targetId }
     editingEdge.value = null
     showConnectionModal.value = true
-  } else {
-    console.log('[handleConnect] Non-group connection - ignoring (handled elsewhere)')
   }
 }
 
@@ -942,7 +936,6 @@ async function handleAutoGenerate() {
     : null
   
   if (autoGenerateFromScratch.value) {
-    console.log('[AutoGenerate] From scratch - clearing connections and groups, keeping nodes')
     manualGroups.value = []
     nodeParents.value = {}
     storyGraphStore.edges = []
@@ -1082,12 +1075,10 @@ async function handleApplyPendingSuggestions(checkedIndices) {
   nodePositions.value = { ...nodePositions.value }
   
   if (projectStore.currentProjectId) {
-    console.log('[handleApply] BEFORE loadEdges, store edges count:', storyGraphStore.edges.length)
     await storyGraphStore.saveGroups(projectStore.currentProjectId, manualGroups.value)
     await storyGraphStore.saveNodeParents(projectStore.currentProjectId, nodeParents.value)
     await storyGraphStore.saveAllNodePositions(projectStore.currentProjectId, nodePositions.value)
     await storyGraphStore.loadEdges(projectStore.currentProjectId)
-    console.log('[handleApply] AFTER loadEdges, store edges count:', storyGraphStore.edges.length)
   }
   
   showApplySuggestionsModal.value = false
@@ -1248,8 +1239,6 @@ async function arrangeExtendedStarLayout() {
   const centerX = 800
   const centerY = 600
   const groupRadius = 500
-  const outerOrphanRadius = groupRadius + 400
-
   // Remove existing orphan groups to prevent duplicates
   const orphanGroupIds = new Set(
     manualGroups.value.filter(g => g.name?.startsWith('Unconnected')).map(g => g.id)
@@ -1499,7 +1488,7 @@ async function arrangeExtendedStarLayout() {
             title="Toggle character relationships"
             @click="showCharEdges = !showCharEdges"
           >
-            <span class="w-2 h-2 rounded-full bg-[#f48fb1]"></span>
+            <span class="w-2 h-2 rounded-full bg-entity-character"></span>
             Characters
           </button>
           <button
@@ -1508,7 +1497,7 @@ async function arrangeExtendedStarLayout() {
             title="Toggle location connections"
             @click="showLocEdges = !showLocEdges"
           >
-            <span class="w-2 h-2 rounded-full bg-[#4fc3f7]"></span>
+            <span class="w-2 h-2 rounded-full bg-entity-location"></span>
             Locations
           </button>
           <button
@@ -1517,7 +1506,7 @@ async function arrangeExtendedStarLayout() {
             title="Toggle plot thread connections"
             @click="showThreadEdges = !showThreadEdges"
           >
-            <span class="w-2 h-2 rounded-full bg-[#ce93d8]"></span>
+            <span class="w-2 h-2 rounded-full bg-entity-thread"></span>
             Plot Threads
           </button>
         </div>
@@ -1609,7 +1598,7 @@ async function arrangeExtendedStarLayout() {
             <path
               v-if="data?.category === 'group' || (data?.category === 'char' && showCharEdges) || (data?.category === 'loc' && showLocEdges) || (data?.category === 'thread' && showThreadEdges)"
               :d="getBezierPath(sourceX, sourceY + (data?.staggerOffset || 0), targetX, targetY + (data?.staggerOffset || 0), data?.isLongRange)"
-              :stroke="data?.color || '#888'"
+              :stroke="data?.color || 'var(--vers-default-edge)'"
               :stroke-width="data?.category === 'group' ? (hoveredEdgeId === id ? 3.5 : 2.5) : (hoveredEdgeId === id ? 3 : 1.5)"
               :stroke-dasharray="data?.category === 'group' ? '6 3' : undefined"
               :opacity="getEdgeOpacity(id)"
@@ -1645,7 +1634,7 @@ async function arrangeExtendedStarLayout() {
                 <BaseIcon :name="data.iconName" :size="16" :style="{ color: data.color }" />
                 <span class="font-medium text-sm text-text-primary node-label" :title="data.label">{{ data.label }}</span>
               </div>
-              <span v-if="data.sublabel" class="text-[10px] text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
+              <span v-if="data.sublabel" class="text-2xs text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
             </div>
           </template>
           
@@ -1660,7 +1649,7 @@ async function arrangeExtendedStarLayout() {
                 <BaseIcon :name="data.iconName" :size="16" :style="{ color: data.color }" />
                 <span class="font-medium text-sm text-text-primary node-label" :title="data.label">{{ data.label }}</span>
               </div>
-              <span v-if="data.sublabel" class="text-[10px] text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
+              <span v-if="data.sublabel" class="text-2xs text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
             </div>
           </template>
           
@@ -1675,7 +1664,7 @@ async function arrangeExtendedStarLayout() {
                 <BaseIcon :name="data.iconName" :size="16" :style="{ color: data.color }" />
                 <span class="font-medium text-sm text-text-primary node-label" :title="data.label">{{ data.label }}</span>
               </div>
-              <span v-if="data.sublabel" class="text-[10px] px-1.5 py-0.5 rounded bg-bg-tertiary node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
+              <span v-if="data.sublabel" class="text-2xs px-1.5 py-0.5 rounded bg-bg-tertiary node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
             </div>
           </template>
 
@@ -1705,7 +1694,7 @@ async function arrangeExtendedStarLayout() {
                   @click.stop
                   @mousedown.stop
                 />
-                <span v-if="data.nodeCount" class="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-mono" :style="{ backgroundColor: data.color + '30', color: data.color }">
+                <span v-if="data.nodeCount" class="text-2xs px-1.5 py-0.5 rounded-full shrink-0 font-mono" :style="{ backgroundColor: data.color + '30', color: data.color }">
                   {{ data.nodeCount }}
                 </span>
                 <button 
@@ -1730,7 +1719,17 @@ async function arrangeExtendedStarLayout() {
             </div>
           </template>
 
-          <Background pattern-color="#e5e7eb" :gap="20" />
+          <Background pattern-color="var(--vers-text-faint)" :gap="20" />
+          <MiniMap
+            node-color="var(--vers-bg-panel)"
+            mask-color="var(--vers-bg-overlay)"
+            class="!absolute !bottom-2 !right-2 !border !border-border-subtle !rounded-lg !shadow-lg"
+          />
+          <Controls
+            show-zoom
+            show-fit-view
+            class="!absolute !bottom-2 !left-2 !border !border-border-subtle !rounded-lg"
+          />
         </VueFlow>
 
         <div v-if="nodes.length === 0 && manualGroups.length === 0" class="absolute inset-0 flex items-center justify-center bg-bg-secondary">
@@ -1883,15 +1882,15 @@ async function arrangeExtendedStarLayout() {
 
 <style scoped>
 .story-network {
-  background: #1e1e2e;
+  background: var(--vers-bg-canvas);
 }
 
 .story-network.drag-over {
-  background: #252538;
+  background: var(--vers-bg-hover);
 }
 
 .node-card {
-  background: #2a2a3e;
+  background: var(--vers-bg-panel);
   border: 2px solid;
   border-radius: 8px;
   padding: 10px 14px;
@@ -1930,11 +1929,11 @@ async function arrangeExtendedStarLayout() {
 }
 
 .edge-label {
-  background: #1a1a2e;
+  background: var(--vers-bg-base);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--vers-text-muted);
   font-family: inherit;
   white-space: nowrap;
   text-align: center;
@@ -1948,7 +1947,7 @@ async function arrangeExtendedStarLayout() {
 :deep(.vue-flow__handle) {
   width: 8px;
   height: 8px;
-  background: #6366f1;
+  background: var(--vers-accent-primary);
   border: none;
 }
 

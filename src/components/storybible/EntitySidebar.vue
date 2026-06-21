@@ -36,9 +36,9 @@ const expandedSections = ref({
 const expandedEntities = ref({})
 
 const entityColors = {
-  character: '#8B5CF6',
-  location: '#10B981',
-  plotThread: '#F59E0B'
+  character: 'var(--vers-entity-character)',
+  location: 'var(--vers-entity-location)',
+  plotThread: 'var(--vers-entity-plotThread)'
 }
 
 const entityIcons = {
@@ -48,21 +48,21 @@ const entityIcons = {
 }
 
 const edgeColors = {
-  ally: '#f48fb1',
-  enemy: '#ef5350',
-  family: '#ce93d8',
-  romantic: '#f06292',
-  mentor: '#ba68c8',
-  rival: '#ff7043',
-  neutral: '#90a4ae',
-  appears_in: '#4fc3f7',
-  involved_in: '#ce93d8',
-  located_at: '#80cbc4',
-  connects_to: '#888888'
+  ally: 'var(--vers-edge-ally)',
+  enemy: 'var(--vers-edge-enemy)',
+  family: 'var(--vers-edge-family)',
+  romantic: 'var(--vers-edge-romantic)',
+  mentor: 'var(--vers-edge-mentor)',
+  rival: 'var(--vers-edge-rival)',
+  neutral: 'var(--vers-edge-neutral)',
+  appears_in: 'var(--vers-edge-appears_in)',
+  involved_in: 'var(--vers-edge-involved_in)',
+  located_at: 'var(--vers-edge-located_at)',
+  connects_to: 'var(--vers-edge-connects_to)'
 }
 
 function getEntityColor(type) {
-  return entityColors[type] || '#6366f1'
+  return entityColors[type] || 'var(--vers-default-fallback)'
 }
 
 function getEntityIcon(type) {
@@ -70,7 +70,7 @@ function getEntityIcon(type) {
 }
 
 function getEdgeColor(type) {
-  return edgeColors[type] || '#888888'
+  return edgeColors[type] || 'var(--vers-default-edge)'
 }
 
 function getEntityLabel(entity, type) {
@@ -149,8 +149,8 @@ function handleDragStart(event, entityType, entity) {
   dragImage.style.position = 'absolute'
   dragImage.style.top = '-9999px'
   dragImage.style.opacity = '0.8'
-  dragImage.style.background = '#2a2a3e'
-  dragImage.style.border = `2px solid ${entityColors[entityType]}`
+  dragImage.style.background = 'var(--vers-bg-elevated)'
+  dragImage.style.border = `2px solid ${entityColors[entityType] || 'var(--vers-default-fallback)'}`
   dragImage.style.borderRadius = '8px'
   dragImage.style.padding = '8px 12px'
   document.body.appendChild(dragImage)
@@ -240,7 +240,7 @@ const inNetworkCount = computed(() =>
           class="w-full pl-7 pr-3 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent font-ui"
         />
       </div>
-      <div class="text-[10px] text-text-hint mt-1.5 font-ui">
+      <div class="text-2xs text-text-hint mt-1.5 font-ui">
         {{ inNetworkCount }} / {{ totalEntities }} in network
       </div>
     </div>
@@ -258,7 +258,7 @@ const inNetworkCount = computed(() =>
               :style="{ color: getEntityColor(section.type) }"
             />
             <span class="text-xs font-medium text-text-secondary font-ui">{{ section.label }}</span>
-            <span class="text-[10px] text-text-hint">({{ section.items.length }})</span>
+            <span class="text-2xs text-text-hint">({{ section.items.length }})</span>
           </div>
           <BaseIcon 
             :name="expandedSections[section.key] ? 'chevron-up' : 'chevron-down'" 
@@ -315,7 +315,7 @@ const inNetworkCount = computed(() =>
               </div>
             </div>
             
-            <div v-if="entity.role || entity.description || entity.status" class="text-[10px] text-text-hint mt-0.5 ml-5 truncate">
+            <div v-if="entity.role || entity.description || entity.status" class="text-2xs text-text-hint mt-0.5 ml-5 truncate">
               {{ entity.role || entity.description?.slice(0, 30) || entity.status }}
             </div>
 
@@ -329,12 +329,12 @@ const inNetworkCount = computed(() =>
                   class="w-1.5 h-1.5 rounded-full shrink-0" 
                   :style="{ backgroundColor: getEdgeColor(conn.relationshipType) }"
                 ></span>
-                <span class="text-[10px] text-text-hint capitalize">
+                <span class="text-2xs text-text-hint capitalize">
                   {{ conn.isSource ? '→' : '←' }}
                 </span>
                 <BaseIcon :name="getEntityIcon(conn.otherType)" :size="10" :style="{ color: conn.otherColor }" class="shrink-0" />
-                <span class="text-[10px] text-text-secondary truncate flex-1">{{ conn.otherLabel }}</span>
-                <span class="text-[9px] text-text-hint capitalize px-1 rounded bg-bg-tertiary">{{ conn.relationshipType }}</span>
+                <span class="text-2xs text-text-secondary truncate flex-1">{{ conn.otherLabel }}</span>
+                <span class="text-3xs text-text-hint capitalize px-1 rounded bg-bg-tertiary">{{ conn.relationshipType }}</span>
                 <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     class="p-0.5 text-text-hint hover:text-accent rounded"
@@ -352,21 +352,21 @@ const inNetworkCount = computed(() =>
                   </button>
                 </div>
               </div>
-              <div v-if="getEntityConnections(section.type, entity.id).length === 0" class="text-[10px] text-text-hint italic px-2 py-1">
+              <div v-if="getEntityConnections(section.type, entity.id).length === 0" class="text-2xs text-text-hint italic px-2 py-1">
                 No connections
               </div>
             </div>
           </div>
 
           <div v-if="section.items.length === 0" class="px-3 py-2 text-center">
-            <span class="text-[10px] text-text-hint italic">No items found</span>
+            <span class="text-2xs text-text-hint italic">No items found</span>
           </div>
         </div>
       </div>
     </div>
 
     <div class="p-2 border-t border-border-subtle bg-bg-tertiary/50">
-      <p class="text-[10px] text-text-hint text-center font-ui">
+      <p class="text-2xs text-text-hint text-center font-ui">
         Drag items onto the graph to add them
       </p>
     </div>

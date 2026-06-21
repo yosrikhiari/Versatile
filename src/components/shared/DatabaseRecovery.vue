@@ -126,7 +126,6 @@
 <script setup>
 import { ref } from 'vue'
 import { checkDatabaseHealth, exportAllData, importData, resetDatabaseVersion, getDatabaseSize } from '../../services/dbRecovery'
-import { exportProject } from '../../services/dbService'
 import { useNotifications } from '../../composables/useNotifications'
 import BaseIcon from './BaseIcon.vue'
 

@@ -57,6 +57,29 @@ export async function retryWithBackoff(fn, maxRetries = 5) {
 // --- JSON sanitization ---
 
 /**
+ * Strips markdown code fences from a raw LLM response and parses the JSON.
+ * Returns the raw parsed object without flattening values.
+ * @param {string} raw - The raw response string from the language model.
+ * @returns {Object|null} The parsed JSON object, or null if parsing fails.
+ */
+export function sanitizeJson(raw) {
+  if (!raw || typeof raw !== 'string') return null
+  let cleaned = raw.trim()
+  cleaned = cleaned.replace(/^```json\s*/i, '')
+  cleaned = cleaned.replace(/^```\s*/i, '')
+  cleaned = cleaned.replace(/```$/i, '')
+  cleaned = cleaned.replace(/```json$/i, '')
+  cleaned = cleaned.trim()
+  const match = cleaned.match(/\{[\s\S]*\}/)
+  if (!match) return null
+  try {
+    return JSON.parse(match[0])
+  } catch {
+    return null
+  }
+}
+
+/**
  * Sanitizes a raw LLM response string and attempts to extract/flatten a JSON object.
  * @param {string} response - The raw response string from the language model.
  * @returns {Object|null} The parsed and flattened JSON object, or null if parsing fails.
@@ -99,7 +122,7 @@ export function sanitizeJsonResponse(response) {
           if (typeof v === 'string') return v
           if (typeof v === 'object' && v !== null) return Object.values(v).join(': ')
           return String(v)
-        }).join('; ')
+        })
       } else if (typeof value === 'object') {
         flattened[key] = Object.values(value).join('; ')
       } else {

@@ -1,13 +1,14 @@
 import { db } from './db-core'
 import { countWords } from '../utils/textUtils'
 
-export async function createProject(name, genre = '', synopsis = '') {
+export async function createProject(name, genre = '', synopsis = '', userId = null) {
   try {
     const now = new Date().toISOString()
     const projectId = await db.projects.add({
       name,
       genre,
       synopsis,
+      userId,
       createdAt: now,
       updatedAt: now
     })
@@ -46,7 +47,10 @@ export async function getProject(id) {
   }
 }
 
-export async function getAllProjects() {
+export async function getAllProjects(userId = null) {
+  if (userId != null) {
+    return db.projects.where('userId').equals(userId).toArray()
+  }
   return db.projects.toArray()
 }
 

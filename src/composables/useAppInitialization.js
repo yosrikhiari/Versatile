@@ -12,6 +12,9 @@ import { useStateSummarizer } from './useStateSummarizer'
 import { useStoryDocuments } from './useStoryDocuments'
 import { STORAGE_KEYS } from '../config/storageKeys'
 import { useLocalStorage } from './useLocalStorage'
+import { resume as resumeEmbeddingQueue } from '../services/embeddingQueue'
+import { markStale } from '../services/researchDb'
+import { EMBEDDING_DEFAULTS, EMBEDDING_VERSION } from '../config/ai'
 
 export function useAppInitialization() {
   const projectStore = useProjectStore()
@@ -42,7 +45,7 @@ export function useAppInitialization() {
     }
   }
 
-  async function initializeApp() {
+  async function initializeApp(projectId = null) {
     const ollamaOk = await checkOllamaConnection()
     ollamaAvailable.value = ollamaOk
     
@@ -50,7 +53,14 @@ export function useAppInitialization() {
       await checkModelAvailability()
     }
     
-    const hasProject = await projectStore.loadLastProject()
+    let hasProject = false
+    if (projectId) {
+      await projectStore.loadProject(projectId)
+      hasProject = true
+    } else {
+      hasProject = await projectStore.loadLastProject()
+    }
+    
     if (!hasProject && !isOnboardingDismissed()) {
       hasLoaded.value = true
       return { showOnboarding: true }
@@ -83,6 +93,19 @@ export function useAppInitialization() {
 
     const { regenerateAllDocuments } = useStoryDocuments()
     await regenerateAllDocuments(projectStore.currentProjectId)
+    const stale = await markStale(
+      projectStore.currentProjectId,
+      EMBEDDING_DEFAULTS.provider,
+      EMBEDDING_DEFAULTS.model,
+      EMBEDDING_VERSION
+    )
+    if (stale > 0) {
+      console.info(`[resume] Marked ${stale} chunks stale (model/version change)`)
+    }
+    const recovered = await resumeEmbeddingQueue(projectStore.currentProjectId)
+    if (recovered > 0) {
+      console.info(`[resume] Re-indexing ${recovered} unembedded chunks`)
+    }
   }
 
   function isOnboardingDismissed() {

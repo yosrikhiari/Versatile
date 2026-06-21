@@ -1,19 +1,21 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, inject } from 'vue'
 import { useSparkStore } from '../../stores/sparkStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
-import { useSettingsStore } from '../../stores/settingsStore'
 import { saveOpenAIKey as saveKeyFromOllama, useCompactConversation } from '../../composables/useOllama'
 import { useContextRetrieval } from '../../composables/useContextRetrieval'
-import { PROVIDER_LABELS, FEATURES } from '../../config/ai'
+import { useAsyncError } from '../../composables/useAsyncError'
+const { onAsyncError } = useAsyncError()
+
 import SparkPromptCard from './SparkPromptCard.vue'
 import BlueprintResult from './BlueprintResult.vue'
 import IdeaInput from './IdeaInput.vue'
+import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import ChapterContextSelector from '../shared/ChapterContextSelector.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
-const props = defineProps({
+defineProps({
   embedded: Boolean
 })
 const emit = defineEmits(['useAsContext'])
@@ -21,16 +23,8 @@ const emit = defineEmits(['useAsContext'])
 const sparkStore = useSparkStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
-const settingsStore = useSettingsStore()
 const injectedInsert = inject('insertAtCursor', null)
 const { dryRun } = useContextRetrieval()
-
-const sparkModelLabel = computed(() => {
-  const provider = settingsStore.resolveFeatureProvider(FEATURES.SPARK)
-  const model = settingsStore.resolveFeatureModel(FEATURES.SPARK)
-  const label = PROVIDER_LABELS[provider] || provider
-  return model ? `${label} · ${model}` : label
-})
 
 const contextSelectorRef = ref(null)
 
@@ -48,11 +42,8 @@ const compactConversationId = ref('spark_default')
 
 const {
   compactConversation,
-  shouldSuggestCompact,
   isCompacting: compactIsCompacting,
-  startConversation,
-  addTurn,
-  clearConversation
+  addTurn
 } = useCompactConversation()
 
 async function handleCompact() {
@@ -97,8 +88,9 @@ async function generatePrompt() {
     currentPrompt.value = await sparkStore.generatePrompt(type, characterNames, context)
     addTurn(compactConversationId.value, 'assistant', currentPrompt.value)
   } catch (error) {
-    console.error('Failed to generate prompt:', error)
-  }
+      console.error('Failed to generate prompt:', error)
+      onAsyncError(error)
+    }
 }
 
 async function generateOutline() {
@@ -109,8 +101,9 @@ async function generateOutline() {
     await sparkStore.generateOutlineAction(idea.value, tone.value, characterNames, targetLength.value, context)
     addTurn(compactConversationId.value, 'assistant', `Outline generated: ${sparkStore.currentOutline?.title || 'Untitled'}`)
   } catch (error) {
-    console.error('Failed to generate outline:', error)
-  }
+      console.error('Failed to generate outline:', error)
+      onAsyncError(error)
+    }
 }
 
 async function generateContent() {
@@ -120,8 +113,9 @@ async function generateContent() {
     await sparkStore.generateContentStreamingAction(idea.value, tone.value, characterNames, targetLength.value)
     addTurn(compactConversationId.value, 'assistant', `Content generated (${sparkStore.currentContent?.length || 0} chars)`)
   } catch (error) {
-    console.error('Failed to generate content:', error)
-  }
+      console.error('Failed to generate content:', error)
+      onAsyncError(error)
+    }
 }
 
 function insertIntoFlow(text) {
@@ -160,34 +154,41 @@ function switchTab(tab) {
 </script>
 
 <template>
+  <ErrorBoundary
+    fallback-title="Spark Panel Error"
+    fallback-description="Failed to render the Spark panel. Try refreshing the page."
+  >
   <div :class="embedded ? 'flex flex-col min-h-0' : 'h-full flex flex-col'">
     <div class="px-5 pt-5 pb-4 border-b border-border-subtle/30 flex-shrink-0 bg-bg-secondary/10">
       <div class="flex items-center justify-between mb-4">
         <div class="flex gap-6">
-          <button @click="switchTab('blueprint')" 
-                  class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none"
-                  :class="['blueprint', 'freewrite'].includes(activeTab) ? 'text-accent' : 'text-text-hint hover:text-text-secondary'">
+          <button
+class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none" 
+                  :class="['blueprint', 'freewrite'].includes(activeTab) ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
+                  @click="switchTab('blueprint')">
             ~ Develop Idea ~
           </button>
-          <button @click="switchTab('prompt')" 
-                  class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none"
-                  :class="activeTab === 'prompt' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'">
+          <button
+class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none" 
+                  :class="activeTab === 'prompt' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
+                  @click="switchTab('prompt')">
             ~ Get Prompts ~
           </button>
         </div>
         <div class="flex gap-3 items-center">
           <button
             v-if="!compactIsCompacting && !embedded"
-            class="px-2 py-1 text-[10px] bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui"
+            class="px-2 py-1 text-2xs bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui"
             title="Compact conversation"
             @click="handleCompact"
           >
             Compact
           </button>
-          <button @click="switchTab('history')" 
-                  class="transition-colors duration-300 focus:outline-none"
-                  :class="activeTab === 'history' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'" 
-                  title="History">
+          <button
+class="transition-colors duration-300 focus:outline-none" 
+                  :class="activeTab === 'history' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
+                  title="History" 
+                  @click="switchTab('history')">
             <BaseIcon name="clock" :size="16" />
           </button>
         </div>
@@ -202,7 +203,7 @@ function switchTab(tab) {
     <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 scrollbar-thin">
       <div v-if="activeTab === 'prompt'" class="space-y-4">
         <div>
-          <label class="block text-[11px] uppercase tracking-widest text-text-hint font-ui mb-2">Prompt Type</label>
+          <label class="block text-11px uppercase tracking-widest text-text-hint font-ui mb-2">Prompt Type</label>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="type in promptTypes"
@@ -352,7 +353,7 @@ function switchTab(tab) {
 
       <div v-if="activeTab === 'history'" class="space-y-3">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] uppercase tracking-widest text-text-hint font-ui">{{ sparkStore.history.length }} saved</span>
+          <span class="text-11px uppercase tracking-widest text-text-hint font-ui">{{ sparkStore.history.length }} saved</span>
           <button
             v-if="sparkStore.history.length > 0"
             class="text-xs text-text-hint hover:text-danger transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded px-1"
@@ -373,7 +374,7 @@ function switchTab(tab) {
           :key="index"
           class="p-3 rounded-lg bg-bg-tertiary border border-border-subtle"
         >
-          <div class="text-[10px] uppercase tracking-wider text-text-hint font-ui mb-1">{{ item.type }}</div>
+          <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">{{ item.type }}</div>
           <p class="text-sm text-text-secondary line-clamp-2 font-body">{{ item.prompt }}</p>
           <button
             v-if="item.prompt"
@@ -387,7 +388,7 @@ function switchTab(tab) {
 
       <details class="mt-2">
         <summary
-          class="py-1.5 text-[10px] uppercase tracking-widest text-text-hint font-ui cursor-pointer hover:text-text-secondary"
+          class="py-1.5 text-2xs uppercase tracking-widest text-text-hint font-ui cursor-pointer hover:text-text-secondary"
           @click.prevent="toggleContextPreview"
         >
           {{ showContextPreview ? '▼' : '▶' }} Context Preview
@@ -405,8 +406,8 @@ function switchTab(tab) {
             </span>
           </div>
           <details class="mt-1">
-            <summary class="text-[10px] text-text-hint cursor-pointer hover:text-text-secondary">Full context text</summary>
-            <pre class="mt-1 p-2 bg-bg-tertiary rounded text-[10px] text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto">{{ contextPreview.contextText || '(empty)' }}</pre>
+            <summary class="text-2xs text-text-hint cursor-pointer hover:text-text-secondary">Full context text</summary>
+            <pre class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto">{{ contextPreview.contextText || '(empty)' }}</pre>
           </details>
         </div>
         <div v-else class="mt-2 text-xs text-text-hint font-ui">No context loaded for this project</div>
@@ -447,4 +448,5 @@ function switchTab(tab) {
       </div>
     </div>
   </div>
+  </ErrorBoundary>
 </template>

@@ -3,19 +3,10 @@ import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
 
-const REVISOR_SYSTEM_PROMPT = `You are a revision editor. You revise existing prose to fix specific issues without changing events, structure, or length significantly.
-
-Rules:
-- Revise ONLY the sections that address the listed issues
-- Keep all prose that is not implicated in an issue completely unchanged
-- Do not change the scene's events, only how they are written
-- Stay within 15% of the original word count
-- Output the full revised text — do not omit any part of the scene`
-
 export function useStoryRevisor() {
   const isRevising = ref(false)
 
-  async function reviseScene({ draft, critiqueResult, sceneBrief, storyBible }) {
+  async function reviseScene({ draft, critiqueResult, sceneBrief, storyBible, existingEntitiesJson }) {
     isRevising.value = true
 
     try {
@@ -46,14 +37,14 @@ SCENE BRIEF (for context):
 STORY BIBLE CONTEXT:
 ${storyBible || '(No story bible)'}
 
-WORD COUNT CONSTRAINTS:
-- Original word count: ${wordCount}
-- Keep revised word count between ${minWords} and ${maxWords}
+EXISTING ENTITIES CONTEXT:
+${existingEntitiesJson || '(No existing entities)'}
 
 ORIGINAL DRAFT:
 ${draft}
 
-Revise the draft to address ONLY the issues listed above. Output the full revised text.`
+CRITICAL - WORD COUNT CONSTRAINT:
+The original draft is ${wordCount} words. Your revision MUST be between ${minWords} and ${maxWords} words. This is a hard constraint — count your words carefully before returning. Output ONLY the revised text with no additional commentary.`
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
@@ -65,7 +56,21 @@ Revise the draft to address ONLY the issues listed above. Output the full revise
         temperature: 0.4
       })
 
-      return response || draft
+      let revisedText = response || draft
+
+      const revisedWords = revisedText.trim().split(/\s+/).length
+      if (revisedWords < minWords || revisedWords > maxWords) {
+        const retryPrompt = `Your previous revision was ${revisedWords} words but must be between ${minWords} and ${maxWords}. Rewrite it to fit this exact word count. Output ONLY the revised text.
+
+${revisedText}`
+        const retryResponse = await aiGenerate(retryPrompt, activePrompts.revisor, {
+          feature: FEATURES.STORY_GENERATION,
+          temperature: 0.3
+        })
+        if (retryResponse) revisedText = retryResponse
+      }
+
+      return revisedText
     } catch {
       return draft
     } finally {

@@ -83,7 +83,8 @@ describe('document generators', () => {
     }
 
     mockGraphStore = {
-      edges: []
+      edges: [],
+      loadEdges: vi.fn()
     }
 
     mockManuscriptStore = {
@@ -140,11 +141,11 @@ describe('document generators', () => {
   })
 
   describe('generateCharactersDoc', () => {
-    it('returns empty when no characters', () => {
-      expect(generateCharactersDoc()).toBe('')
+    it('returns empty when no characters', async () => {
+      await expect(generateCharactersDoc('proj-1')).resolves.toBe('')
     })
 
-    it('renders characters with relationships', () => {
+    it('renders characters with relationships', async () => {
       mockBibleStore.characters = [
         { id: 'c1', name: 'John', role: 'Hero', goal: 'Save world', voice: 'Bold', notes: 'Brave', lastEditedAt: 100 },
         { id: 'c2', name: 'Jane', role: 'Mentor', goal: 'Guide', voice: 'Wise', lastEditedAt: 50 }
@@ -152,19 +153,19 @@ describe('document generators', () => {
       mockGraphStore.edges = [
         { sourceId: 'c1', sourceType: 'character', targetId: 'c2', targetType: 'character', relationshipType: 'mentor', description: 'Teaches' }
       ]
-      const result = generateCharactersDoc()
+      const result = await generateCharactersDoc('proj-1')
       expect(result).toContain('# Characters')
       expect(result).toContain('John')
       expect(result).toContain('Jane')
       expect(result).toContain('mentors')
     })
 
-    it('sorts by lastEditedAt descending', () => {
+    it('sorts by lastEditedAt descending', async () => {
       mockBibleStore.characters = [
         { id: 'c1', name: 'Old', lastEditedAt: 10 },
         { id: 'c2', name: 'New', lastEditedAt: 100 }
       ]
-      const result = generateCharactersDoc()
+      const result = await generateCharactersDoc('proj-1')
       const newIdx = result.indexOf('New')
       const oldIdx = result.indexOf('Old')
       expect(newIdx).toBeLessThan(oldIdx)

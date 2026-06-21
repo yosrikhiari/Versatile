@@ -21,6 +21,10 @@ export const STORAGE_KEYS = {
   API_KEY_PREFIX: 'versatile_api_key_',
   EMBEDDING_PREFIX: 'versatile_embedding_',
 
+  // Research Library
+  RESEARCH_ENABLED: 'versatile_research_enabled',
+  RESEARCH_CHUNKS: 'versatile_research_chunks',
+
   // User Preferences
   CHAPTER_CONTEXT: 'versatile_chapter_context',
   SESSION_GOAL: 'pref_sessionGoal',

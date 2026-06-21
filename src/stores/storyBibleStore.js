@@ -58,6 +58,8 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
       characters.value = await getCharacters(projectId)
       locations.value = await getLocations(projectId)
       plotThreads.value = await getPlotThreads(projectId)
+
+
       const storyDocs = useStoryDocuments()
       await storyDocs.regenerateAllDocuments(projectId)
       storyBibleReady.value = true
@@ -76,7 +78,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     return id
   }
 
-  async function updateCharacterData(id, data, projectId) {
+  async function updateCharacterData(id, data, _projectId) {
     await updateCharacter(id, { ...data, lastEditedAt: Date.now() })
     const index = characters.value.findIndex(c => c.id === id)
     if (index !== -1) {
@@ -105,7 +107,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     return id
   }
 
-  async function updateLocationData(id, data, projectId) {
+  async function updateLocationData(id, data, _projectId) {
     await updateLocation(id, data)
     const index = locations.value.findIndex(l => l.id === id)
     if (index !== -1) {
@@ -114,7 +116,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     queueDocumentRegeneration(['world', 'relationships'])
   }
 
-  async function deleteLocationData(id, projectId) {
+  async function deleteLocationData(id, _projectId) {
     await deleteLocation(id)
     locations.value = locations.value.filter(l => l.id !== id)
     queueDocumentRegeneration(['world', 'relationships'])
@@ -139,7 +141,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     queueDocumentRegeneration(['timeline'])
   }
 
-  async function updatePlotThreadData(id, data, projectId) {
+  async function updatePlotThreadData(id, data, _projectId) {
     await updatePlotThread(id, data)
     const index = plotThreads.value.findIndex(t => t.id === id)
     if (index !== -1) {
@@ -148,13 +150,13 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     queueDocumentRegeneration(['timeline', 'relationships'])
   }
 
-  async function deletePlotThreadData(id, projectId) {
+  async function deletePlotThreadData(id, _projectId) {
     await deletePlotThread(id)
     plotThreads.value = plotThreads.value.filter(t => t.id !== id)
     queueDocumentRegeneration(['timeline', 'relationships'])
   }
 
-  async function updateThreadStatus(id, status, projectId) {
+  async function updateThreadStatus(id, status, _projectId) {
     await updatePlotThread(id, { status })
     const index = plotThreads.value.findIndex(t => t.id === id)
     if (index !== -1) {

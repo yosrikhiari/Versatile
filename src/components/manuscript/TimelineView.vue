@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import draggable from 'vuedraggable'
 import BaseIcon from '../shared/BaseIcon.vue'
+import EmptyState from '../shared/EmptyState.vue'
 
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
@@ -16,10 +17,10 @@ const dragOptions = {
 }
 
 const statusColors = {
-  open: '#22c55e',
-  in_progress: '#3b82f6',
-  resolved: '#6b7280',
-  closed: '#4b5563'
+  open: 'var(--vers-status-open)',
+  in_progress: 'var(--vers-status-in_progress)',
+  resolved: 'var(--vers-status-resolved)',
+  closed: 'var(--vers-status-closed)'
 }
 
 const statusLabels = {
@@ -60,13 +61,7 @@ onMounted(() => {
       <p class="text-xs text-text-hint mt-1">Drag plot threads to arrange story order</p>
     </div>
 
-    <div v-if="sortedThreads.length === 0" class="flex-1 flex items-center justify-center p-8">
-      <div class="text-center">
-        <BaseIcon name="layout" :size="48" class="text-text-hint mx-auto mb-4" />
-        <p class="text-text-hint font-ui text-sm mb-2">No plot threads yet.</p>
-        <p class="text-text-hint/70 font-ui text-xs">Add threads in the Story Bible to start building your timeline.</p>
-      </div>
-    </div>
+    <EmptyState v-if="sortedThreads.length === 0" icon="layout" title="No plot threads yet" description="Add threads in the Story Bible to start building your timeline." class="flex-1" />
 
     <div v-else class="flex-1 overflow-x-auto p-6">
       <div class="relative min-w-max">
@@ -83,7 +78,7 @@ onMounted(() => {
         >
           <template #item="{ element: thread }">
             <div class="relative flex flex-col items-center" style="min-width: 160px; max-width: 180px;">
-              <div class="w-3 h-3 rounded-full mb-2 z-10 ring-2 ring-bg-secondary" :style="{ backgroundColor: statusColors[thread.status] || '#6b7280' }"></div>
+              <div class="w-3 h-3 rounded-full mb-2 z-10 ring-2 ring-bg-secondary" :style="{ backgroundColor: statusColors[thread.status] || 'var(--vers-status-resolved)' }"></div>
               <div class="w-full bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden cursor-grab active:cursor-grabbing hover:border-accent/30 transition-colors">
                 <div class="p-2.5 border-b border-border-subtle/50">
                   <div class="flex items-start gap-1.5">
@@ -92,9 +87,9 @@ onMounted(() => {
                   </div>
                 </div>
                 <div class="px-2.5 py-1.5 flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full shrink-0" :style="{ backgroundColor: statusColors[thread.status] || '#6b7280' }"></span>
-                  <span class="text-[10px] text-text-secondary font-ui">{{ statusLabels[thread.status] || thread.status }}</span>
-                  <span v-if="thread.notes" class="text-[10px] text-text-hint truncate ml-auto max-w-[60px]">{{ thread.notes }}</span>
+                  <span class="w-1.5 h-1.5 rounded-full shrink-0" :style="{ backgroundColor: statusColors[thread.status] || 'var(--vers-status-resolved)' }"></span>
+                  <span class="text-2xs text-text-secondary font-ui">{{ statusLabels[thread.status] || thread.status }}</span>
+                  <span v-if="thread.notes" class="text-2xs text-text-hint truncate ml-auto max-w-[60px]">{{ thread.notes }}</span>
                 </div>
               </div>
             </div>

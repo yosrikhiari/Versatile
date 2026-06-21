@@ -86,7 +86,7 @@ describe('polishStore', () => {
     it('sets pending state and triggers debounced analysis', () => {
       const store = usePolishStore()
       store.setProjectStore({ currentProjectId: 'proj1' })
-      const spy = vi.spyOn(store, 'setProjectStore' in store ? 'setProjectStore' : 'selectParagraph')
+      vi.spyOn(store, 'setProjectStore' in store ? 'setProjectStore' : 'selectParagraph')
       // selectParagraph sets internal pending state, then schedules analysis
       store.selectParagraph('Some text', 0)
       expect(mockAnalyzePolish).not.toHaveBeenCalled()

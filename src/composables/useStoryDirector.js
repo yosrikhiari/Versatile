@@ -1,81 +1,33 @@
 import { ref } from 'vue'
 import { aiGenerate, aiStream } from '../services/aiService'
-import { FEATURES } from '../config/ai'
+import { FEATURES, RESEARCH_CHUNKS_DEFAULT } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { useProjectStore } from '../stores/projectStore'
+import { getAllChunksForProject } from '../services/researchDb'
+import { getEmbedding } from '../services/embeddingService'
+import { cosineSimilarity } from '../services/ollamaService'
+import { useLocalStorage } from './useLocalStorage'
+import { RESEARCH_KEYS } from '../config/researchKeys'
+import { sanitizeJson } from '../services/ai/aiHelpers'
 
-const DIRECTOR_SYSTEM_PROMPT = `You are a story architect, not a writer. Your role is to plan story structure based on the provided EVIDENCE.
+function lexicalScore(query, text, allChunkTexts) {
+  const qTokens = query.toLowerCase().split(/\W+/).filter(Boolean)
+  if (qTokens.length === 0) return 0
+  const lowerText = text.toLowerCase()
+  const N = allChunkTexts.length || 1
 
-OUTPUT FORMAT:
-Return ONLY valid JSON with no markdown, no explanation, no code fences.
-The JSON must have exactly two keys: "chapters" (array of chapter objects) and "storyArc" (object).
-
-Each chapter object in the "chapters" array must have this structure:
-{
-  "chapterNumber": number,
-  "title": "string",
-  "goal": "string — what this chapter accomplishes narratively",
-  "arcPosition": "opening" | "rising" | "climax" | "falling" | "resolution",
-  "emotionalTarget": "string — what the READER feels at chapter end",
-  "hookEnding": "string — the beat the chapter closes on",
-  "estimatedWords": number,
-  "scenes": [
-    {
-      "sceneNumber": number,
-      "title": "string",
-      "arcPosition": "setup" | "obstacle" | "turn" | "resolution" | "hook",
-      "sceneFunction": "setup" | "obstacle" | "turn" | "resolution" | "hook",
-      "emotionalGoal": "string — what the reader should feel",
-      "whatChanges": "string — what is different by scene end",
-      "obstacle": "string — the specific barrier or conflict the character must overcome in this scene",
-      "charactersPresent": ["string names"],
-      "characterWants": {
-        "characterName": "what they are trying to achieve in this scene"
-      },
-      "location": "string — the primary setting where this scene takes place",
-      "setup": "what this scene plants for future payoff",
-      "payoff": "what earlier setup this pays off, or 'none'",
-      "sensoryAnchor": "one specific concrete sensory detail",
-      "tension": "low" | "medium" | "high" | "peak",
-      "pacing": "slow" | "medium" | "fast",
-      "estimatedWords": number
-    }
-  ]
-}
-
-StoryArc object:
-{
-  "premise": "string",
-  "genre": "string",
-  "tone": "string",
-  "emotionalJourney": "hope → dread → earned relief",
-  "centralConflict": "string",
-  "resolution": "string",
-  "totalChapters": number,
-  "totalScenes": number,
-  "totalEstimatedWords": number
-}
-
-Minimum 2 scenes per chapter, maximum 6 scenes per chapter.`
-
-function sanitizeJson(raw) {
-  if (!raw || typeof raw !== 'string') return null
-  let cleaned = raw.trim()
-  cleaned = cleaned.replace(/^```json\s*/i, '')
-  cleaned = cleaned.replace(/^```\s*/i, '')
-  cleaned = cleaned.replace(/```$/i, '')
-  cleaned = cleaned.replace(/```json$/i, '')
-  cleaned = cleaned.trim()
-  const start = cleaned.indexOf('{')
-  const end = cleaned.lastIndexOf('}')
-  if (start === -1 || end === -1 || end <= start) return null
-  const jsonStr = cleaned.slice(start, end + 1)
-  try {
-    return JSON.parse(jsonStr)
-  } catch {
-    return null
+  let score = 0
+  for (const token of qTokens) {
+    const tf = (lowerText.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+    if (tf === 0) continue
+    const df = allChunkTexts.filter(t => t.toLowerCase().includes(token)).length
+    const idf = Math.log((N - df + 0.5) / (df + 0.5) + 1)
+    score += (1 + Math.log(tf)) * idf
   }
+  return score
 }
+
+// sanitizeJson imported from aiHelpers.js
 
 export function useStoryDirector() {
   const isPlanning = ref(false)
@@ -109,7 +61,58 @@ Return ONLY valid JSON with no markdown, no explanation, no code fences.
 The JSON must have a "chapters" array. Each chapter object must contain a "scenes" array with the scene details.`
       }
 
-      const finalSystemPrompt = `${baseDirectorPrompt}\n\n${evidence}`
+      const researchEnabled = useLocalStorage(RESEARCH_KEYS.RESEARCH_ENABLED, true)
+      let researchContext = ''
+      if (researchEnabled.value) {
+        try {
+          const allChunks = await getAllChunksForProject(projectStore.currentProjectId)
+          if (allChunks.length > 0) {
+            const count = Math.min(allChunks.length, RESEARCH_CHUNKS_DEFAULT)
+            const queryText = `Premise: ${goal.premise}. Genre: ${goal.genre || 'Standard'}. Tone: ${goal.tone || 'Professional'}`
+            const K = Math.max(10, count * 10)
+            const allChunkTexts = allChunks.map(c => c.text)
+
+            // Lexical ranking (TF-IDF based)
+            const lexicalRanks = allChunks
+              .map(c => ({ chunk: c, score: lexicalScore(queryText, c.text, allChunkTexts) }))
+              .sort((a, b) => b.score - a.score)
+            const lexicalRankMap = new Map()
+            lexicalRanks.forEach((item, rank) => lexicalRankMap.set(item.chunk.id, rank + 1))
+
+            // Semantic ranking (best-effort)
+            let semanticRankMap = new Map()
+            try {
+              const queryEmbedding = await getEmbedding(queryText)
+              if (queryEmbedding && allChunks.some(c => c.embedding)) {
+                const withEmb = allChunks.filter(c => c.embedding)
+                const scored = withEmb
+                  .map(c => ({ chunk: c, score: cosineSimilarity(queryEmbedding, c.embedding) }))
+                  .sort((a, b) => b.score - a.score)
+                scored.forEach((item, rank) => semanticRankMap.set(item.chunk.id, rank + 1))
+              }
+            } catch {
+              // semantic unavailable, lexical-only RRF
+            }
+
+            // RRF fusion with dynamic K
+            const rrfScores = allChunks.map(chunk => {
+              const lr = lexicalRankMap.get(chunk.id) ?? Infinity
+              const sr = semanticRankMap.get(chunk.id) ?? Infinity
+              const rrf = (1 / (K + lr)) + (1 / (K + sr))
+              return { chunk, rrf }
+            })
+            const selected = rrfScores
+              .sort((a, b) => b.rrf - a.rrf)
+              .slice(0, count)
+              .map(s => s.chunk)
+            researchContext = selected.map(c => c.text).join('\n\n---\n\n')
+          }
+        } catch {
+          researchContext = ''
+        }
+      }
+
+      const finalSystemPrompt = `${baseDirectorPrompt}\n\n${evidence}${researchContext ? `\n\n## Research Context\n${researchContext}` : ''}`
 
       let accumulated = ''
       const emittedTitles = new Set()

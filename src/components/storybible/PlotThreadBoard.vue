@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { enhancePlotThread, enhanceSingleField } from '../../composables/useOllama'
@@ -7,10 +7,11 @@ import { useManuscriptContext } from '../../composables/useManuscriptContext'
 import { useNotifications } from '../../composables/useNotifications'
 import draggable from 'vuedraggable'
 import BaseIcon from '../shared/BaseIcon.vue'
-import EntityExtractionDialog from './EntityExtractionDialog.vue'
-
 const props = defineProps({
-  threads: Array
+  threads: {
+    type: Array,
+    default: () => []
+  }
 })
 
 const storyBibleStore = useStoryBibleStore()
@@ -273,33 +274,7 @@ function scanForEntities() {
   showExtractionDialog.value = true
 }
 
-async function handleCreateEntities(data) {
-  if (!projectStore.currentProjectId) return
-  
-  for (const char of data.characters) {
-    await storyBibleStore.addCharacterData(projectStore.currentProjectId, {
-      name: char.name,
-      role: '',
-      goal: '',
-      voice: '',
-      notes: `Auto-created from plot thread: "${editingThread.value?.title || 'Unknown'}"`
-    })
-  }
-  
-  for (const loc of data.locations) {
-    await storyBibleStore.addLocationData(projectStore.currentProjectId, {
-      name: loc.name,
-      description: '',
-      notes: `Auto-created from plot thread: "${editingThread.value?.title || 'Unknown'}"`
-    })
-  }
-  
-  showExtractionDialog.value = false
-  
-  const created = data.characters.length + data.locations.length
-  const msg = created === 1 ? '1 new entity created' : `${created} new entities created`
-  console.log(msg)
-}
+
 </script>
 
 <template>
@@ -337,7 +312,7 @@ async function handleCreateEntities(data) {
                     <BaseIcon name="grip-vertical" :size="14" class="text-text-hint cursor-grab" />
                     {{ thread.title }}
                   </div>
-                  <div v-if="thread.notes && expandedThreadId !== thread.id" class="text-[10px] text-text-hint truncate mt-0.5 ml-5">
+                  <div v-if="thread.notes && expandedThreadId !== thread.id" class="text-2xs text-text-hint truncate mt-0.5 ml-5">
                     {{ thread.notes }}
                   </div>
                 </div>
@@ -375,7 +350,7 @@ async function handleCreateEntities(data) {
               
               <div class="relative">
                 <div class="flex items-center justify-between mb-1">
-                  <label class="text-[10px] uppercase tracking-wider text-text-hint">Title</label>
+                  <label class="text-2xs uppercase tracking-wider text-text-hint">Title</label>
                   <button
                     :disabled="isGenerating === editingThread?.id"
                     :title="editingThread?.title ? 'Regenerate with AI' : 'Complete with AI'"
@@ -398,7 +373,7 @@ async function handleCreateEntities(data) {
               
               <div class="relative">
                 <div class="flex items-center justify-between mb-1">
-                  <label class="text-[10px] uppercase tracking-wider text-text-hint">Notes</label>
+                  <label class="text-2xs uppercase tracking-wider text-text-hint">Notes</label>
                   <div class="flex items-center gap-1">
                     <button
                       title="Extract entities (works with [Characters:] [Locations:] blocks)"
@@ -476,7 +451,7 @@ async function handleCreateEntities(data) {
 <style scoped>
 .ghost {
   opacity: 0.5;
-  background: #6366f1;
+  background: var(--vers-accent-primary);
   border-radius: 8px;
 }
 .drag {

@@ -1,6 +1,9 @@
 <script setup>
 const props = defineProps({
-  blueprint: Object
+  blueprint: {
+    type: Object,
+    default: () => ({})
+  }
 })
 
 const emit = defineEmits(['insert'])
@@ -63,11 +66,11 @@ NOTES: ${b.writingNotes}`
 
     <div class="bg-accent-muted/20 border-l-2 border-accent-muted rounded-r-md p-3 space-y-3">
       <div>
-        <div class="text-[10px] uppercase tracking-wider text-text-hint font-ui mb-1">Sensory Anchor</div>
+        <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">Sensory Anchor</div>
         <p class="text-sm text-text-secondary italic font-body">{{ blueprint.sensoryAnchor }}</p>
       </div>
       <div>
-        <div class="text-[10px] uppercase tracking-wider text-text-hint font-ui mb-1">Dialogue Hook</div>
+        <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">Dialogue Hook</div>
         <p class="text-sm text-text-secondary italic font-body">{{ blueprint.dialogueHook }}</p>
       </div>
     </div>

@@ -8,6 +8,56 @@ import * as anthropicProvider from './providers/anthropic'
 import * as geminiProvider from './providers/gemini'
 import * as groqProvider from './providers/groq'
 
+const RETRYABLE_ERROR_PATTERNS = [
+  /timeout/i,
+  /rate limit/i,
+  /429/i,
+  /5\d{2}/i,
+  /too many requests/i,
+  /service unavailable/i,
+  /internal server error/i,
+  /bad gateway/i,
+  /econnrefused/i,
+  /econnreset/i,
+  /etimedout/i,
+  /network/i,
+  /socket/i
+]
+
+function isRetryable(error) {
+  const message = error?.message || ''
+  return RETRYABLE_ERROR_PATTERNS.some(p => p.test(message))
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function withRetry(fn, isRetryableFn, options = {}) {
+  const maxRetries = options.maxRetries ?? 2
+  const retryDelay = options.retryDelay ?? 1000
+  let lastError
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      const jitter = Math.random() * retryDelay
+      await sleep(retryDelay * Math.pow(2, attempt - 1) + jitter)
+    }
+
+    try {
+      return await fn(attempt, attempt < maxRetries)
+    } catch (error) {
+      lastError = error
+      if (isRetryableFn(error) && attempt < maxRetries) {
+        continue
+      }
+      throw error
+    }
+  }
+
+  throw lastError
+}
+
 const PROVIDER_MAP = {
   [PROVIDERS.OLLAMA]: ollamaProvider,
   [PROVIDERS.OPENAI]: openaiProvider,
@@ -73,13 +123,18 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
 
   const providerOptions = {
     apiKey: apiKey || undefined,
+    signal: options.signal,
     temperature: options.temperature,
     maxTokens: options.maxTokens,
     timeout: options.timeout
   }
 
   try {
-    return await providerModule.generate(prompt, systemPrompt, model, providerOptions)
+    return await withRetry(
+      () => providerModule.generate(prompt, systemPrompt, model, providerOptions),
+      isRetryable,
+      { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
+    )
   } catch (error) {
     const store = useSettingsStore()
     if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
@@ -89,6 +144,7 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
         if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
           return await fallbackModule.generate(prompt, systemPrompt, null, {
             apiKey: fallbackKey || undefined,
+            signal: options.signal,
             temperature: options.temperature,
             maxTokens: options.maxTokens,
             timeout: options.timeout
@@ -116,12 +172,40 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
 
   const providerOptions = {
     apiKey: apiKey || undefined,
+    signal: options.signal,
     temperature: options.temperature,
     maxTokens: options.maxTokens,
     timeout: options.timeout
   }
 
-  return await providerModule.stream(prompt, systemPrompt, model, onChunk, providerOptions)
+  try {
+    return await withRetry(
+      (attempt, isIntermediate) => {
+        const chunkHandler = isIntermediate ? undefined : onChunk
+        return providerModule.stream(prompt, systemPrompt, model, chunkHandler, providerOptions)
+      },
+      isRetryable,
+      { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
+    )
+  } catch (error) {
+    const store = useSettingsStore()
+    if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
+      const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
+      if (fallbackModule) {
+        const fallbackKey = getApiKey(store.aiProviderFallback)
+        if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
+          return await fallbackModule.stream(prompt, systemPrompt, null, onChunk, {
+            apiKey: fallbackKey || undefined,
+            signal: options.signal,
+            temperature: options.temperature,
+            maxTokens: options.maxTokens,
+            timeout: options.timeout
+          })
+        }
+      }
+    }
+    throw error
+  }
 }
 
 export async function aiTestConnection(provider, apiKey) {

@@ -13,9 +13,6 @@ export {
   retryWithBackoff,
   sanitizeJsonResponse,
   getProjectContext,
-  getExistingEntitiesContext,
-  sleep,
-  randomJitter,
   FIELD_LENGTH_CONSTRAINTS
 } from '../services/ai/aiHelpers'
 
@@ -50,13 +47,10 @@ export { analyzePolish } from '../services/generation/polishAnalysis'
 // --- Entity detection ---
 export { detectEntities } from '../services/generation/entityDetection'
 
-// --- Legacy re-exports (still used by some components) ---
-export { getStoredOpenAIKey, setStoredOpenAIKey, setPromptedForOpenAI } from '../services/ollamaService'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
-import { hasOpenAIKey, hasPromptedForOpenAI } from '../services/ollamaService'
+import { hasOpenAIKey, hasPromptedForOpenAI, setStoredOpenAIKey, setPromptedForOpenAI } from '../services/ollamaService'
 import { retryWithBackoff } from '../services/ai/aiHelpers'
-export { hasOpenAIKey, hasPromptedForOpenAI }
 
 const TEST_PROMPT = `Respond with 'OK' only. No other text.`
 
@@ -80,7 +74,6 @@ export async function testOllamaConnection() {
 }
 
 export function saveOpenAIKey(key) {
-  const { setStoredOpenAIKey, setPromptedForOpenAI } = require('../services/ollamaService')
   setStoredOpenAIKey(key)
   setPromptedForOpenAI()
 }

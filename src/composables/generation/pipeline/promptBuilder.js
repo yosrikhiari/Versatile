@@ -19,7 +19,7 @@ export function buildPrompt({ shapedBundle, schema, extraInstructions }) {
     entitiesBlock +
     relationshipsBlock +
     manuscriptBlock +
-    `\n\nReturn ONLY valid JSON. Keys: ${schema.promptKeys.join(', ')}. All string values. No markdown.` +
+    `\n\nReturn ONLY valid JSON. Keys: ${schema.promptKeys.join(', ')}. String values: ${schema.promptKeys.filter(k => k !== 'traits').join(', ')}. traits is an array of strings. No markdown.` +
     dedupLine +
     (extraInstructions ? `\n\n${extraInstructions}` : '') +
     fieldGuidance

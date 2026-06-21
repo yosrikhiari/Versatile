@@ -88,7 +88,7 @@ onUnmounted(() => {
         <!-- Badge for multi-tasks -->
         <span
           v-if="badgeCount > 0"
-          class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] font-bold"
+          class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-2xs font-bold"
         >{{ badgeCount }}</span>
 
         <!-- Dismiss -->
