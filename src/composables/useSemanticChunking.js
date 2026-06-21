@@ -56,7 +56,7 @@ export async function splitSentences(text) {
   return sentences
 }
 
-function computeChunksForSentences(sentences, embeddings, threshold) {
+async function computeChunksForSentences(sentences, embeddings, threshold) {
   if (sentences.length <= 1) {
     return [{ sentences: [...sentences], startIdx: 0, endIdx: 0 }]
   }
@@ -64,6 +64,7 @@ function computeChunksForSentences(sentences, embeddings, threshold) {
   const breakpoints = [0]
 
   for (let i = 0; i < sentences.length - 1; i++) {
+    if (i % 100 === 0) await yieldToMain()
     const embA = embeddings[i]
     const embB = embeddings[i + 1]
     if (!embA || !embB) {
@@ -121,7 +122,7 @@ function mergeSmallChunks(chunks, minSentences) {
   return merged
 }
 
-async function sizeBasedChunk(text, maxChunkSize) {
+async function sizeBasedChunk(text, maxChunkSize, onProgress = () => {}) {
   let paragraphs = text.split(/\n\s*\n/).filter(p => p.trim())
   if (paragraphs.length <= 1) {
     paragraphs = text.split('\n').filter(p => p.trim())
@@ -153,6 +154,7 @@ async function sizeBasedChunk(text, maxChunkSize) {
 
   const result = []
   for (let i = 0; i < chunks.length; i++) {
+    onProgress(Math.round((i / chunks.length) * 100))
     result.push({
       text: chunks[i],
       sentences: await splitSentences(chunks[i]),
@@ -222,7 +224,7 @@ function applyBreaks(sentences, breaks) {
   return groups
 }
 
-function computeChunksFromParagraphGroups(groups, embeddings, threshold) {
+async function computeChunksFromParagraphGroups(groups, embeddings, threshold) {
   if (groups.length <= 1) {
     return [{ sentences: [...groups[0].sentences], startIdx: groups[0].startIdx, endIdx: groups[0].endIdx }]
   }
@@ -245,6 +247,7 @@ function computeChunksFromParagraphGroups(groups, embeddings, threshold) {
   let curEnd = groups[0].endIdx
 
   for (let i = 0; i < mergeFlags.length; i++) {
+    if (i % 50 === 0) await yieldToMain()
     if (mergeFlags[i]) {
       curSentences.push(...groups[i + 1].sentences)
       curEnd = groups[i + 1].endIdx
@@ -266,17 +269,24 @@ export async function computeSemanticChunks(text, options = {}) {
   const maxChunkSize = options.maxChunkSize ?? 3500
   const embeddingProvider = options.embeddingProvider || store.embeddingProvider
   const embeddingModel = options.embeddingModel || store.embeddingModel || EMBEDDING_DEFAULTS.model
+  const onProgress = options.onProgress || (() => {})
+  const skipEmbeddings = options.skipEmbeddings === true
 
   const sentences = await splitSentences(text)
+  onProgress(2, 'Splitting sentences...')
   if (sentences.length <= 1) {
     return [{ text: text, sentences: [...sentences], startIdx: 0, endIdx: 0 }]
   }
 
   const SENTENCE_COUNT = sentences.length
 
-  if (SENTENCE_COUNT > 2000) {
-    console.warn(`Large document (${SENTENCE_COUNT} sentences), using size-based chunking`)
-    return await sizeBasedChunk(text, maxChunkSize)
+  if (skipEmbeddings || SENTENCE_COUNT > 2000) {
+    if (skipEmbeddings) {
+      console.info(`Fast mode: size-based chunking for ${SENTENCE_COUNT} sentences`)
+    } else {
+      console.warn(`Large document (${SENTENCE_COUNT} sentences), using size-based chunking`)
+    }
+    return await sizeBasedChunk(text, maxChunkSize, onProgress)
   }
 
   const groupByParagraph = SENTENCE_COUNT >= 12
@@ -293,8 +303,10 @@ export async function computeSemanticChunks(text, options = {}) {
     }
     groupTexts = groups.map(g => g.sentences.join(' '))
   }
+  onProgress(5, 'Grouping content...')
 
   let embeddings
+  onProgress(10, 'Generating embeddings...')
   try {
     const embedInputs = groupByParagraph ? groupTexts : sentences
     const result = await getEmbeddings(embedInputs, {
@@ -308,16 +320,20 @@ export async function computeSemanticChunks(text, options = {}) {
   }
 
   await yieldToMain()
+  onProgress(45, 'Computing chunk boundaries...')
 
   let chunkGroups
   if (groupByParagraph && groups) {
-    chunkGroups = computeChunksFromParagraphGroups(groups, embeddings, threshold)
+    chunkGroups = await computeChunksFromParagraphGroups(groups, embeddings, threshold)
   } else {
-    chunkGroups = computeChunksForSentences(sentences, embeddings, threshold)
+    chunkGroups = await computeChunksForSentences(sentences, embeddings, threshold)
   }
 
   const result = []
-  for (const chunk of chunkGroups) {
+  onProgress(70, 'Assembling final chunks...')
+  for (let ci = 0; ci < chunkGroups.length; ci++) {
+    const chunk = chunkGroups[ci]
+    onProgress(70 + Math.round((ci / chunkGroups.length) * 25))
     const chunkText = chunk.sentences.join(' ')
 
     if (chunkText.length > maxChunkSize && chunk.sentences.length > 1) {
@@ -340,6 +356,7 @@ export async function computeSemanticChunks(text, options = {}) {
     }
   }
 
+  onProgress(100, 'Chunking complete')
   return result
 }
 
@@ -362,7 +379,7 @@ async function recursiveSplit(chunk, maxChars, provider, model, threshold) {
     console.warn('Embedding failed during recursive split, falling back:', e.message)
     embeddings = sentences.map(() => null)
   }
-  const subChunks = computeChunksForSentences(sentences, embeddings, threshold)
+  const subChunks = await computeChunksForSentences(sentences, embeddings, threshold)
 
   const result = []
   for (const sub of subChunks) {

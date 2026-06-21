@@ -96,7 +96,8 @@ function statusColor(status) {
         </div>
       </div>
 
-      <div v-if="hasRegressions && !compact" class="flex items-center gap-2 text-xs font-ui"
+      <div
+v-if="hasRegressions && !compact" class="flex items-center gap-2 text-xs font-ui"
         :class="hasMajorRegressions ? 'text-danger' : 'text-warning'">
         <BaseIcon :name="hasMajorRegressions ? 'alert-octagon' : 'alert-triangle'" :size="14" />
         <span>{{ hasMajorRegressions ? 'Major' : 'Minor' }} regressions detected

@@ -5,6 +5,8 @@ import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { saveOpenAIKey as saveKeyFromOllama, useCompactConversation } from '../../composables/useOllama'
 import { useContextRetrieval } from '../../composables/useContextRetrieval'
+import { useAsyncError } from '../../composables/useAsyncError'
+const { onAsyncError } = useAsyncError()
 
 import SparkPromptCard from './SparkPromptCard.vue'
 import BlueprintResult from './BlueprintResult.vue'
@@ -86,8 +88,9 @@ async function generatePrompt() {
     currentPrompt.value = await sparkStore.generatePrompt(type, characterNames, context)
     addTurn(compactConversationId.value, 'assistant', currentPrompt.value)
   } catch (error) {
-    console.error('Failed to generate prompt:', error)
-  }
+      console.error('Failed to generate prompt:', error)
+      onAsyncError(error)
+    }
 }
 
 async function generateOutline() {
@@ -98,8 +101,9 @@ async function generateOutline() {
     await sparkStore.generateOutlineAction(idea.value, tone.value, characterNames, targetLength.value, context)
     addTurn(compactConversationId.value, 'assistant', `Outline generated: ${sparkStore.currentOutline?.title || 'Untitled'}`)
   } catch (error) {
-    console.error('Failed to generate outline:', error)
-  }
+      console.error('Failed to generate outline:', error)
+      onAsyncError(error)
+    }
 }
 
 async function generateContent() {
@@ -109,8 +113,9 @@ async function generateContent() {
     await sparkStore.generateContentStreamingAction(idea.value, tone.value, characterNames, targetLength.value)
     addTurn(compactConversationId.value, 'assistant', `Content generated (${sparkStore.currentContent?.length || 0} chars)`)
   } catch (error) {
-    console.error('Failed to generate content:', error)
-  }
+      console.error('Failed to generate content:', error)
+      onAsyncError(error)
+    }
 }
 
 function insertIntoFlow(text) {

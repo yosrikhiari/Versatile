@@ -2,8 +2,12 @@
 import { ref, computed, watch, onMounted, onUnmounted, toRaw } from 'vue'
 import { VueFlow, useVueFlow, Position, Handle } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
+import { MiniMap } from '@vue-flow/minimap'
+import { Controls } from '@vue-flow/controls'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
+import '@vue-flow/minimap/dist/style.css'
+import '@vue-flow/controls/dist/style.css'
 import { useStoryGraphStore } from '../../stores/storyGraphStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
@@ -1716,6 +1720,16 @@ async function arrangeExtendedStarLayout() {
           </template>
 
           <Background pattern-color="var(--vers-text-faint)" :gap="20" />
+          <MiniMap
+            node-color="var(--vers-bg-panel)"
+            mask-color="var(--vers-bg-overlay)"
+            class="!absolute !bottom-2 !right-2 !border !border-border-subtle !rounded-lg !shadow-lg"
+          />
+          <Controls
+            show-zoom
+            show-fit-view
+            class="!absolute !bottom-2 !left-2 !border !border-border-subtle !rounded-lg"
+          />
         </VueFlow>
 
         <div v-if="nodes.length === 0 && manualGroups.length === 0" class="absolute inset-0 flex items-center justify-center bg-bg-secondary">

@@ -4,10 +4,12 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useSnapshotStore } from '../../stores/snapshotStore'
 import { useFlowSession } from '../../composables/useFlowSession'
+import { useDialogueIndexer } from '../../composables/useDialogueIndexer'
 import { useDebounceFn } from '@vueuse/core'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
+import { AutoDialogue } from '../../extensions/AutoDialogue.js'
 import FlowTimer from './FlowTimer.vue'
 import FlowNudge from './FlowNudge.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
@@ -16,6 +18,7 @@ const CONTENT_WARN_THRESHOLD = 50_000
 const CONTENT_CRITICAL_THRESHOLD = 200_000
 
 const flow = useFlowSession()
+const dialogueIndexer = useDialogueIndexer()
 
 const emit = defineEmits(['paragraph-click', 'open-settings', 'exit-flow'])
 
@@ -52,6 +55,12 @@ const debouncedSave = useDebounceFn(async () => {
 
     if (manuscriptStore.activeSubsectionId) {
       await manuscriptStore.updateSubsectionData(manuscriptStore.activeSubsectionId, { content }, projectStore.currentProjectId)
+      const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+      if (sub) {
+        dialogueIndexer.reindexSubsection(sub).catch(err =>
+          console.error('[FlowEditor] dialogue reindex failed:', err)
+        )
+      }
     } else if (manuscriptStore.activeSectionId) {
       await manuscriptStore.updateSectionData(manuscriptStore.activeSectionId, { content }, projectStore.currentProjectId)
     } else {
@@ -81,7 +90,8 @@ const editor = useEditor({
     }),
     Highlight.configure({
       multicolor: false
-    })
+    }),
+    AutoDialogue
   ],
   editorProps: {
     attributes: {
@@ -125,6 +135,7 @@ const editor = useEditor({
 
 const hasShownFlowHint = ref(false)
 const flowHintVisible = ref(false)
+const scrollContainer = ref(null)
 
 function handleKeydown(event) {
   if (flow.isRunning.value && event.key === 'Backspace') {
@@ -168,7 +179,13 @@ function handleClick(_event) {
 
 watch(activeContent, (newContent) => {
   if (editor.value?.getHTML() !== newContent) {
+    const savedScroll = scrollContainer.value?.scrollTop ?? 0
     editor.value.commands.setContent(newContent || '')
+    requestAnimationFrame(() => {
+      if (scrollContainer.value) {
+        scrollContainer.value.scrollTop = savedScroll
+      }
+    })
   }
 })
 
@@ -219,6 +236,7 @@ defineExpose({
     </div>
 
     <div 
+      ref="scrollContainer"
       :class="[
         'flex-1 overflow-y-auto scrollbar-thin',
         flow.isDesaturated ? 'desaturated' : ''
@@ -262,6 +280,15 @@ defineExpose({
     </Transition>
   </div>
 </template>
+
+<style>
+.dialogue-text {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.06);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+</style>
 
 <style scoped>
 .flow-hint-enter-active {

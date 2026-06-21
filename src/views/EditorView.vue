@@ -24,6 +24,7 @@ import SearchOverlay from '../components/manuscript/SearchOverlay.vue'
 import ArchiveDrawer from '../components/layout/ArchiveDrawer.vue'
 import ResearchPanel from '../components/research/ResearchPanel.vue'
 import StoryGeneratorPanel from '../components/story/StoryGeneratorPanel.vue'
+import VoiceLabPanel from '../components/voice-lab/VoiceLabPanel.vue'
 import ActivityToast from '../components/shared/ActivityToast.vue'
 import ActivityDrawer from '../components/shared/ActivityDrawer.vue'
 import AuthModal from '../components/auth/AuthModal.vue'
@@ -127,6 +128,7 @@ function handleOnboardingSkipWrapper() {
 
     <AppShell
       ref="appShell"
+      :focus-mode="focusMode"
       @start-flow="handleStartFlow"
       @end-flow="handleEndFlow"
       @export="handleExport"
@@ -193,6 +195,9 @@ function handleOnboardingSkipWrapper() {
       </template>
       <template #research>
         <ResearchPanel />
+      </template>
+      <template #voice-lab>
+        <VoiceLabPanel />
       </template>
     </AppShell>
 

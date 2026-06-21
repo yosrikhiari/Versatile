@@ -166,13 +166,15 @@ function gateColor(pass) {
 
     <!-- Dimension Scores Grid -->
     <div v-if="dimensionScores.length > 0 && !compact" class="grid grid-cols-2 gap-2">
-      <div v-for="dim in dimensionScores" :key="dim.key"
+      <div
+v-for="dim in dimensionScores" :key="dim.key"
         class="bg-gray-900/30 border border-gray-800/50 rounded-lg p-2.5"
         :class="degradationBadgeClass(dim)">
         <div class="flex items-center justify-between mb-0.5">
           <div class="flex items-center gap-1 min-w-0">
             <span class="text-xs font-ui text-text-secondary truncate">{{ dim.label }}</span>
-            <span v-if="dimensionDegradation(dim.key)" class="text-2xs font-ui shrink-0"
+            <span
+v-if="dimensionDegradation(dim.key)" class="text-2xs font-ui shrink-0"
               :class="dimensionDegradation(dim.key).status === 'major_regression' ? 'text-danger' : dimensionDegradation(dim.key).status === 'regressed' ? 'text-warning' : 'text-success'">
               {{ degradationDeltaText(dim) }}
             </span>

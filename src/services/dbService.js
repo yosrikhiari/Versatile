@@ -155,3 +155,12 @@ export {
   getAuthorProfile,
   pruneSessionArchive
 } from './db-archive'
+export {
+  getDialogueByProject,
+  getDialogueBySpeaker,
+  saveDialogueEntry,
+  saveDialogueBatch,
+  deleteDialogueByProject,
+  updateSpeakerMapping,
+  reindexSection
+} from './db-dialogue'

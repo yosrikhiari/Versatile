@@ -27,6 +27,7 @@ const panelsTabItems = [
   { label: 'Chapters', panel: 'chapters', icon: 'book-marked' },
   { label: 'Network', panel: 'network', icon: 'network' },
   { label: 'Timeline', panel: 'timeline', icon: 'clock' },
+  { label: 'Voice Lab', panel: 'voice-lab', icon: 'message-square' },
 ]
 
 const systemTabItems = [

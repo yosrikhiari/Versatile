@@ -7,7 +7,9 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import AppTooltip from '../shared/AppTooltip.vue'
 import { WORKSPACE_TYPES, VISIBLE_WORKSPACE_CONFIGS } from '../../config/workspace'
 import { CREATIVE_BLUEPRINTS } from '../../config/blueprints'
+import { useAsyncError } from '../../composables/useAsyncError'
 
+const { onAsyncError } = useAsyncError()
 const projectStore = useProjectStore()
 const storyBibleStore = useStoryBibleStore()
 
@@ -76,6 +78,7 @@ async function handleNextStep2() {
     currentStep.value = 3
   } catch (e) {
     console.error('Failed to create project:', e)
+    onAsyncError(e)
   } finally {
     isCreating.value = false
   }

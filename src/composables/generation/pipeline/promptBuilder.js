@@ -1,5 +1,4 @@
 import { FIELD_LENGTH_CONSTRAINTS } from '../utils'
-import { debugSnapshot } from '../../../services/debugSnapshot'
 
 export function buildPrompt({ shapedBundle, schema, extraInstructions }) {
   const { projectBlock, charactersBlock, locationsBlock, plotThreadsBlock, relationshipsBlock, manuscriptBlock } = shapedBundle
@@ -24,26 +23,6 @@ export function buildPrompt({ shapedBundle, schema, extraInstructions }) {
     dedupLine +
     (extraInstructions ? `\n\n${extraInstructions}` : '') +
     fieldGuidance
-
-  debugSnapshot(`prompt-${schema.type}-blocks`, {
-    entityType: schema.type,
-    blockSizes: {
-      projectBlock: projectBlock?.length || 0,
-      charactersBlock: charactersBlock?.length || 0,
-      plotThreadsBlock: plotThreadsBlock?.length || 0,
-      locationsBlock: locationsBlock?.length || 0,
-      relationshipsBlock: relationshipsBlock?.length || 0,
-      manuscriptBlock: manuscriptBlock?.length || 0,
-      entitiesBlock: entitiesBlock?.length || 0,
-      dedupLine: dedupLine?.length || 0,
-      fieldGuidance: fieldGuidance?.length || 0,
-      extraInstructions: extraInstructions?.length || 0,
-      totalUserPrompt: userPrompt.length
-    },
-    hasDedup: !!dedupLine,
-    hasExtraInstructions: !!extraInstructions,
-    hasFieldGuidance: !!fieldGuidance
-  })
 
   return {
     userPrompt,

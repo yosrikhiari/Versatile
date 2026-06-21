@@ -14,7 +14,8 @@ import { chunkDocument } from '../services/documentChunker'
 import { useEmbeddingIndexer } from './useEmbeddingIndexer'
 
 const WARN_SIZE = 500000
-const MAX_SIZE = 3000000
+const FAST_MODE_THRESHOLD = 500000
+const MAX_SIZE = 100000000
 
 function splitText(text, maxSegmentSize = 300000) {
   if (text.length <= maxSegmentSize) return [text]
@@ -49,6 +50,7 @@ export function useResearchDocuments(projectId) {
   const documents = ref([])
   const isImporting = ref(false)
   const importProgress = ref('')
+  const importPercent = ref(0)
   const importError = ref(null)
   const showSizeWarning = ref(false)
   const pendingImportInfo = ref({ files: [], totalChars: 0 })
@@ -88,7 +90,7 @@ export function useResearchDocuments(projectId) {
     }
 
     if (totalChars > WARN_SIZE) {
-      pendingImportInfo.value = { files, totalChars }
+      pendingImportInfo.value = { files: Array.from(files), totalChars }
       showSizeWarning.value = true
       return false
     }
@@ -108,10 +110,14 @@ export function useResearchDocuments(projectId) {
 
     try {
       for (const file of files) {
+        importPercent.value = 0
         importProgress.value = `Reading ${file.name}...`
         await yieldToMain()
 
-        const result = await extractFileText(file)
+        const result = await extractFileText(file, (pct) => {
+        importPercent.value = Math.round(pct * 0.15)
+        importProgress.value = `Reading ${file.name} (${pct}%)...`
+      })
 
         if (result.isScanned) {
           importError.value = `"${file.name}" appears to be a scanned PDF with no selectable text. OCR is not yet supported.`
@@ -140,15 +146,22 @@ export function useResearchDocuments(projectId) {
         })
 
         const segments = splitText(text)
+        const fastMode = text.length > FAST_MODE_THRESHOLD
         let allChunks = []
         const allDocTags = new Set()
 
         for (let s = 0; s < segments.length; s++) {
-          importProgress.value = `Chunking ${file.name} (${s + 1}/${segments.length})...`
+          const basePct = Math.round((s / segments.length) * 90)
+          importPercent.value = basePct
+          const modeLabel = fastMode ? ' [Fast Mode]' : ''
+          importProgress.value = `Chunking ${file.name}${modeLabel} (segment ${s + 1}/${segments.length})...`
           const segment = segments[s]
           const chunks = await chunkDocument(segment, {
-            onProgress: (msg) => {
-              importProgress.value = `${file.name}: ${msg}`
+            fastMode,
+            onProgress: (pct, msg) => {
+              const filePct = Math.round((processed / files.length) * 10)
+              importPercent.value = filePct + basePct + Math.round((pct / 100) * (90 / segments.length))
+              importProgress.value = `${file.name}${modeLabel}: ${msg}`
             }
           })
           const docTags = chunks.documentTags || []
@@ -174,6 +187,7 @@ export function useResearchDocuments(projectId) {
         totalChunks = chunkRows.length
         const ids = await addResearchChunks(chunkRows)
 
+        importPercent.value = 90 + Math.round(((processed) / files.length) * 8)
         importProgress.value = `Indexing ${file.name} (${totalChunks} chunks)...`
         const idTextPairs = ids.map((id, i) => ({ id, text: allChunks[i].text }))
         enqueueChunks(docId, idTextPairs)
@@ -186,6 +200,7 @@ export function useResearchDocuments(projectId) {
         }
       }
 
+      importPercent.value = 100
       importProgress.value = ''
       await loadDocuments()
     } catch (err) {
@@ -226,12 +241,22 @@ export function useResearchDocuments(projectId) {
     await deleteChunksForDocument(documentId)
 
     const segments = splitText(doc.text)
+    const fastMode = doc.text.length > FAST_MODE_THRESHOLD
     let allChunks = []
     const allDocTags = new Set()
 
     for (let s = 0; s < segments.length; s++) {
-      importProgress.value = `Re-chunking ${doc.fileName} (segment ${s + 1}/${segments.length})...`
-      const result = await chunkDocument(segments[s])
+      const basePct = Math.round((s / segments.length) * 90)
+      importPercent.value = basePct
+      const modeLabel = fastMode ? ' [Fast Mode]' : ''
+      importProgress.value = `Re-chunking ${doc.fileName}${modeLabel} (segment ${s + 1}/${segments.length})...`
+      const result = await chunkDocument(segments[s], {
+        fastMode,
+        onProgress: (pct, msg) => {
+          importPercent.value = basePct + Math.round((pct / 100) * (90 / segments.length))
+          importProgress.value = `${doc.fileName}${modeLabel}: ${msg}`
+        }
+      })
       const docTags = result.documentTags || []
       for (const t of docTags) allDocTags.add(t)
       allChunks.push(...result)
@@ -291,6 +316,7 @@ export function useResearchDocuments(projectId) {
       enqueueChunks(documentId, idTextPairs)
     }
 
+    importPercent.value = 100
     importProgress.value = ''
     await loadDocuments()
   }
@@ -299,6 +325,7 @@ export function useResearchDocuments(projectId) {
     documents,
     isImporting,
     importProgress,
+    importPercent,
     importError,
     showSizeWarning,
     pendingImportInfo,

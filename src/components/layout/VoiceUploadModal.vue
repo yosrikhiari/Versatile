@@ -90,6 +90,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
+import { useAsyncError } from '../../composables/useAsyncError'
+const { onAsyncError } = useAsyncError()
 import { analyzeVoiceProfile } from '@/services/generation/voiceAnalyzer'
 import { useVoiceFromManuscript } from '@/composables/useVoiceFromManuscript'
 import { useStoryBibleStore } from '@/stores/storyBibleStore'
@@ -134,6 +136,7 @@ function updatePreview() {
     mergedProfile.value = analyzeVoiceProfile(allSamples)
   } catch (error) {
     console.error('Error updating preview:', error)
+    onAsyncError(error)
     mergedProfile.value = null
   }
 }
@@ -151,6 +154,7 @@ async function handleMerge() {
     close()
   } catch (error) {
     console.error('Error merging profile:', error)
+    onAsyncError(error)
     addToast('Failed to merge voice profile', 'error')
   } finally {
     isProcessing.value = false

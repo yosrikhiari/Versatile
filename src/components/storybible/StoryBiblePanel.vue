@@ -4,7 +4,7 @@ import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
 import { generateRandomCharacter, generateRandomPlotThread, generateRandomLocation, enhanceExistingCharacter, generateTraitSuggestions } from '../../composables/useOllama'
-import { debugSnapshot } from '../../services/debugSnapshot'
+import { useAsyncError } from '../../composables/useAsyncError'
 
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
 import { useClickOutside } from '../../composables/useClickOutside'
@@ -19,6 +19,7 @@ import GenerateCharacterModal from './GenerateCharacterModal.vue'
 import { useArchiveStore } from '../../stores/archiveStore'
 import { SIGNAL, ARCHIVE_TYPES } from '../../config/archive'
 
+const { onAsyncError } = useAsyncError()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const volumeStore = useVolumeStore()
@@ -186,44 +187,22 @@ async function handleGenerateCharacter() {
   if (isGenerating.value) return
   isGenerating.value = true
 
-  debugSnapshot('ui-generate-character-start', {
-    projectId: projectStore.currentProjectId,
-    existingCharacterCount: storyBibleStore.characters.length,
-    existingCharacterNames: storyBibleStore.characters.map(c => c.name)
-  })
-
   try {
     const context = await getSectionContext('current', 'character')
-
-    debugSnapshot('ui-generate-character-context', {
-      hasContext: !!context?.contextText,
-      contextLength: context?.contextText?.length || 0,
-      contextTruncated: context?.truncated,
-      contextSourceTitles: context?.sectionTitles
-    })
 
     const result = await generateRandomCharacter(context, null)
     if (result) {
       await storyBibleStore.addCharacterData(projectStore.currentProjectId, result)
       addToast('Character generated successfully.', 'success')
 
-      debugSnapshot('ui-generate-character-success', {
-        character: result,
-        newTotal: storyBibleStore.characters.length
-      })
-
       const archiveStore = useArchiveStore()
       archiveStore.saveInteraction(projectStore.currentProjectId, ARCHIVE_TYPES.ENTITY_GENERATION, result, ['character', 'ai_generated'], SIGNAL.ACCEPTED).catch(() => {})
     } else {
-      debugSnapshot('ui-generate-character-empty-result', { context })
     }
   } catch (e) {
     console.error('Generate failed:', e)
+    onAsyncError(e)
     addToast(e.message || 'Failed to generate character', 'error')
-    debugSnapshot('ui-generate-character-error', {
-      errorMessage: e.message || 'Unknown error',
-      stack: e.stack?.slice(0, 300) || ''
-    })
   } finally {
     isGenerating.value = false
   }
@@ -237,28 +216,20 @@ async function handleGeneratePlotThread() {
   if (isGeneratingPlotThread.value) return
   isGeneratingPlotThread.value = true
 
-  debugSnapshot('ui-generate-plotthread-start', {
-    projectId: projectStore.currentProjectId,
-    existingCount: storyBibleStore.plotThreads.length,
-    existingTitles: storyBibleStore.plotThreads.map(t => t.title)
-  })
-
   try {
     const context = await getSectionContext('current', 'plotThread')
     const result = await generateRandomPlotThread(context)
     if (result) {
       await storyBibleStore.addPlotThreadData(projectStore.currentProjectId, result)
       addToast('Plot thread generated successfully.', 'success')
-      debugSnapshot('ui-generate-plotthread-success', { result })
       const archiveStore = useArchiveStore()
       archiveStore.saveInteraction(projectStore.currentProjectId, ARCHIVE_TYPES.ENTITY_GENERATION, result, ['plotThread', 'ai_generated'], SIGNAL.ACCEPTED).catch(() => {})
     } else {
-      debugSnapshot('ui-generate-plotthread-empty-result', { context })
     }
   } catch (e) {
     console.error('Generate failed:', e)
+    onAsyncError(e)
     addToast(e.message || 'Failed to generate plot thread', 'error')
-    debugSnapshot('ui-generate-plotthread-error', { errorMessage: e.message || 'Unknown error' })
   } finally {
     isGeneratingPlotThread.value = false
   }
@@ -272,28 +243,20 @@ async function handleGenerateLocation() {
   if (isGeneratingLocation.value) return
   isGeneratingLocation.value = true
 
-  debugSnapshot('ui-generate-location-start', {
-    projectId: projectStore.currentProjectId,
-    existingCount: storyBibleStore.locations.length,
-    existingNames: storyBibleStore.locations.map(l => l.name)
-  })
-
   try {
     const context = await getSectionContext('current', 'location')
     const result = await generateRandomLocation(context)
     if (result) {
       await storyBibleStore.addLocationData(projectStore.currentProjectId, result)
       addToast('Location generated successfully.', 'success')
-      debugSnapshot('ui-generate-location-success', { result })
       const archiveStore = useArchiveStore()
       archiveStore.saveInteraction(projectStore.currentProjectId, ARCHIVE_TYPES.ENTITY_GENERATION, result, ['location', 'ai_generated'], SIGNAL.ACCEPTED).catch(() => {})
     } else {
-      debugSnapshot('ui-generate-location-empty-result', { context })
     }
   } catch (e) {
     console.error('Generate failed:', e)
+    onAsyncError(e)
     addToast(e.message || 'Failed to generate location', 'error')
-    debugSnapshot('ui-generate-location-error', { errorMessage: e.message || 'Unknown error' })
   } finally {
     isGeneratingLocation.value = false
   }
@@ -310,14 +273,6 @@ async function onModalGenerate() {
   const partialData = generateModalRef.value.getCharacterData()
   generateModalRef.value.setLoading()
 
-  debugSnapshot('ui-modal-generate-start', {
-    mode: generateMode.value,
-    hasPartialData: Object.keys(partialData).length > 0,
-    partialData,
-    hasExistingCharacter: !!characterToEnhance.value,
-    enhanceCharName: characterToEnhance.value?.name
-  })
-
   try {
     const context = await getSectionContext('current', 'character')
     let result
@@ -328,20 +283,15 @@ async function onModalGenerate() {
     }
     if (result) {
       generateModalRef.value.setGenerated(result)
-      debugSnapshot('ui-modal-generate-success', { result, mode: generateMode.value })
       const archiveStore = useArchiveStore()
       archiveStore.saveInteraction(projectStore.currentProjectId, ARCHIVE_TYPES.ENTITY_GENERATION, result, [generateMode.value === 'enhance' ? 'enhanced' : 'ai_generated'], SIGNAL.ACCEPTED).catch(() => {})
     } else {
       generateModalRef.value.setError('AI returned empty response. Please try again.')
-      debugSnapshot('ui-modal-generate-empty-result', { mode: generateMode.value, partialData })
     }
   } catch (e) {
     console.error('Generate failed:', e)
+    onAsyncError(e)
     generateModalRef.value.setError(`Failed to generate: ${e.message || e}`)
-    debugSnapshot('ui-modal-generate-error', {
-      mode: generateMode.value,
-      errorMessage: e.message || 'Unknown error'
-    })
   }
 }
 
@@ -373,6 +323,7 @@ async function loadProjectData(projectId) {
     await regenerateAllDocuments(projectId)
   } catch (e) {
     console.error('Failed to load project data:', e)
+    onAsyncError(e)
   }
 }
 
@@ -423,6 +374,7 @@ async function addCharacter() {
     })
   } catch (e) {
     console.error('Failed to add character:', e)
+    onAsyncError(e)
     addToast('Failed to add character', 'error')
   }
 }

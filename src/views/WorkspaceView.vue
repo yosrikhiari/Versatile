@@ -119,14 +119,14 @@ async function handleLogout() {
     <div v-if="showCreate" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showCreate = false">
       <div class="glass-modal rounded-xl shadow-warm-lg p-6 w-full max-w-sm animate-scale-in">
         <h2 class="text-lg font-semibold text-text-primary mb-4">New Project</h2>
-        <form @submit.prevent="handleCreate" class="space-y-4">
+        <form class="space-y-4" @submit.prevent="handleCreate">
           <div>
             <label class="block text-sm text-text-secondary mb-1">Project Name</label>
             <input
+              ref="nameInput"
               v-model="newProjectName"
               type="text"
               required
-              ref="nameInput"
               class="w-full px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent"
               placeholder="My Novel"
             />

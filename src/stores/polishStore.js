@@ -159,6 +159,13 @@ export const usePolishStore = defineStore('polish', () => {
     activeLenses.value = lenses
   }
 
+  function destroy() {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
+  }
+
   return {
     annotations,
     snippets,
@@ -177,6 +184,7 @@ export const usePolishStore = defineStore('polish', () => {
     clearAnnotationsData,
     removeSnippet,
     setActiveLenses,
-    setProjectStore
+    setProjectStore,
+    destroy
   }
 })

@@ -46,7 +46,7 @@ function toggleMode() {
       <h1 class="text-xl font-semibold text-text-primary text-center mb-1">Versatile</h1>
       <p class="text-text-secondary text-sm text-center mb-6">{{ isRegistering ? 'Create your account' : 'Sign in to continue' }}</p>
 
-      <form @submit.prevent="handleSubmit" class="space-y-4">
+      <form class="space-y-4" @submit.prevent="handleSubmit">
         <div>
           <label class="block text-sm text-text-secondary mb-1">Username</label>
           <input

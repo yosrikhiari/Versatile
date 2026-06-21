@@ -4,6 +4,8 @@ import { useProjectStore } from '../../stores/projectStore'
 import { ollamaGenerate, ollamaEmbeddings, cosineSimilarity } from '../../services/ollamaService'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import { useAsyncError } from '../../composables/useAsyncError'
+const { onAsyncError } = useAsyncError()
 
 const props = defineProps({
   show: Boolean
@@ -140,6 +142,7 @@ Write a clear, engaging synopsis that could hook a reader or serve as a blurb.`
     localSynopsis.value = response.trim()
   } catch (e) {
     console.error('Failed to generate synopsis:', e.message || e)
+    onAsyncError(e)
     localSynopsis.value = 'Failed to generate synopsis. Please try again or check Ollama connection.'
   } finally {
     isGeneratingSynopsis.value = false
@@ -186,6 +189,7 @@ Return ONLY the improved synopsis text, no preamble or explanation.`
     localSynopsis.value = response.trim()
   } catch (e) {
     console.error('Failed to enhance synopsis:', e.message || e)
+    onAsyncError(e)
   } finally {
     isEnhancingSynopsis.value = false
   }
@@ -204,6 +208,7 @@ async function handleSave() {
     emit('close')
   } catch (e) {
     console.error('Failed to save project settings:', e)
+    onAsyncError(e)
   } finally {
     isSaving.value = false
   }

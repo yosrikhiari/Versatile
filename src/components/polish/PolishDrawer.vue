@@ -124,7 +124,7 @@ defineExpose({
 <template>
   <div 
     :class="[
-      'flex flex-col h-full',
+      'flex flex-col h-full transition-[height] duration-200 ease-out motion-reduce:transition-none',
       expanded ? 'h-[50vh]' : 'h-[320px]'
     ]"
   >

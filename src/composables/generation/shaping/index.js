@@ -1,6 +1,5 @@
 import { sortByRelevance } from './relevance'
 import { applyTokenBudget } from './tokenBudget'
-import { debugSnapshot } from '../../../services/debugSnapshot'
 
 const MAX_CHARACTERS = 8
 const MAX_LOCATIONS = 6
@@ -44,39 +43,7 @@ export function shapeContext(rawContext, options = {}) {
     manuscriptBlock
   }
 
-  debugSnapshot(`shaping-${entityType}`, {
-    entityType,
-    inputCounts: {
-      totalCharacters,
-      totalLocations,
-      totalPlotThreads
-    },
-    sortedCounts: {
-      characters: sortedCharacters.length,
-      locations: sortedLocations.length,
-      plotThreads: sortedPlotThreads.length
-    },
-    sortedCharacterNames: sortedCharacters.map(c => c.name),
-    sortedLocationNames: sortedLocations.map(l => l.name),
-    sortedPlotThreadTitles: sortedPlotThreads.map(t => t.title),
-    hasProjectBlock: !!projectBlock,
-    hasRelationships: !!relationshipsBlock,
-    hasManuscript: !!manuscriptBlock
-  })
-
   const result = applyTokenBudget(bundle, options.tokenBudget)
-
-  debugSnapshot(`shaping-${entityType}-after-budget`, {
-    entityType,
-    blockSizes: {
-      projectBlock: result.projectBlock?.length || 0,
-      charactersBlock: result.charactersBlock?.length || 0,
-      locationsBlock: result.locationsBlock?.length || 0,
-      plotThreadsBlock: result.plotThreadsBlock?.length || 0,
-      relationshipsBlock: result.relationshipsBlock?.length || 0,
-      manuscriptBlock: result.manuscriptBlock?.length || 0
-    }
-  })
 
   return result
 }

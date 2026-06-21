@@ -84,7 +84,7 @@ const isValid = computed(() => {
         </button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="space-y-4">
+      <form class="space-y-4" @submit.prevent="handleSubmit">
         <div>
           <label class="block text-sm font-medium text-text-secondary mb-1">Username</label>
           <input

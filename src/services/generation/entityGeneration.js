@@ -18,7 +18,6 @@ import {
   FIELD_LENGTH_CONSTRAINTS
 } from '../ai/aiHelpers'
 import { getEmbeddingStorageKey } from '../../config/storageKeys'
-import { debugSnapshot } from '../debugSnapshot'
 
 /**
  * @typedef {Object} GeneratedCharacter
@@ -109,20 +108,7 @@ export async function generateRandomCharacter(manuscriptContext = null, partialD
     }
   }
 
-  debugSnapshot('entity-gen-character-start', {
-    hasManuscriptContext: !!manuscriptContext,
-    manuscriptContextLength: manuscriptContext?.contextText?.length || 0,
-    hasPartialData: !!partialData,
-    partialDataKeys: partialData ? Object.keys(partialData).filter(k => partialData[k]) : [],
-    partialData,
-    instructionsLength: instructions.length
-  })
-
   const result = await generateEntity('character', instructions, { manuscriptContext })
-
-  debugSnapshot('entity-gen-character-complete', {
-    result
-  })
 
   return result
 }
@@ -135,12 +121,6 @@ export async function generateRandomCharacter(manuscriptContext = null, partialD
  * @throws {Error} If generation or parsing fails.
  */
 export async function generateCharacterFromIdea(characterIdea, manuscriptContext = null) {
-  debugSnapshot('entity-gen-from-idea-start', {
-    characterIdea,
-    characterIdeaLength: characterIdea?.length || 0,
-    hasManuscriptContext: !!manuscriptContext
-  })
-
   const entityContext = await getExistingEntitiesContext()
   const { getRelationshipContext } = useGraphContext()
   const { loadEmbeddings, getEntityEmbedding } = useNetworkSuggestions()
@@ -202,10 +182,6 @@ Example outputs:
     )
     const parsed = sanitizeJsonResponse(response)
     if (!parsed || !parsed.name && !parsed.Name) {
-      debugSnapshot('entity-gen-from-idea-parse-fail', {
-        characterIdea,
-        responsePreview: response?.slice(0, 300) || '(empty)'
-      })
       throw new Error('Invalid JSON')
     }
 
@@ -218,13 +194,8 @@ Example outputs:
       sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || ''
     }
 
-    debugSnapshot('entity-gen-from-idea-result', { result })
     return result
   } catch (error) {
-    debugSnapshot('entity-gen-from-idea-error', {
-      characterIdea,
-      errorMessage: error?.message || 'Unknown error'
-    })
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
@@ -239,12 +210,6 @@ Example outputs:
  * @throws {Error} If generation fails.
  */
 export async function generateCharactersForPlotThread(plotThread, count = 3, manuscriptContext = null) {
-  debugSnapshot('entity-gen-characters-for-plot-start', {
-    plotThreadTitle: plotThread?.title,
-    count,
-    hasManuscriptContext: !!manuscriptContext
-  })
-
   const projectContext = getProjectContext()
   const entityContext = await getExistingEntitiesContext()
   const { getRelationshipContext } = useGraphContext()
@@ -309,10 +274,6 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
 
     let parsed = sanitizeJsonResponse(response)
     if (!parsed) {
-      debugSnapshot('entity-gen-characters-for-plot-parse-fail', {
-        plotThreadTitle: plotThread?.title,
-        responsePreview: response?.slice(0, 300) || '(empty)'
-      })
       throw new Error('Invalid JSON')
     }
 
@@ -329,18 +290,8 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
       sampleDialogue: p.sampleDialogue || p.SampleDialogue || ''
     }))
 
-    debugSnapshot('entity-gen-characters-for-plot-result', {
-      plotThreadTitle: plotThread?.title,
-      count: characters.length,
-      characterNames: characters.map(c => c.name)
-    })
-
     return characters
   } catch (error) {
-    debugSnapshot('entity-gen-characters-for-plot-error', {
-      plotThreadTitle: plotThread?.title,
-      errorMessage: error?.message || 'Unknown error'
-    })
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
@@ -355,12 +306,6 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
  * @throws {Error} If generation fails.
  */
 export async function generateLocationsForPlotThread(plotThread, count = 3, manuscriptContext = null) {
-  debugSnapshot('entity-gen-locations-for-plot-start', {
-    plotThreadTitle: plotThread?.title,
-    count,
-    hasManuscriptContext: !!manuscriptContext
-  })
-
   const projectContext = getProjectContext()
   const entityContext = await getExistingEntitiesContext()
 
@@ -394,10 +339,6 @@ Do NOT generate name identical to any existing location. Be creative and distinc
 
     let parsed = sanitizeJsonResponse(response)
     if (!parsed) {
-      debugSnapshot('entity-gen-locations-for-plot-parse-fail', {
-        plotThreadTitle: plotThread?.title,
-        responsePreview: response?.slice(0, 300) || '(empty)'
-      })
       throw new Error('Invalid JSON')
     }
 
@@ -411,18 +352,8 @@ Do NOT generate name identical to any existing location. Be creative and distinc
       notes: p.notes || p.Notes || ''
     }))
 
-    debugSnapshot('entity-gen-locations-for-plot-result', {
-      plotThreadTitle: plotThread?.title,
-      count: locations.length,
-      locationNames: locations.map(l => l.name)
-    })
-
     return locations
   } catch (error) {
-    debugSnapshot('entity-gen-locations-for-plot-error', {
-      plotThreadTitle: plotThread?.title,
-      errorMessage: error?.message || 'Unknown error'
-    })
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
@@ -512,31 +443,12 @@ CRITICAL GOAL DIFFERENTIATION:
 
 All values must be strings. No markdown.`
 
-  debugSnapshot('entity-enhance-character-prompt', {
-    partialDataKeys: Object.keys(partialData).filter(k => partialData[k]),
-    partialData,
-    hasManuscriptContext: !!manuscriptContext,
-    userPromptLength: userPrompt.length,
-    userPrompt
-  })
-
   try {
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative character designer.', { feature: FEATURES.WORLDBUILDING })
     )
 
-    debugSnapshot('entity-enhance-character-raw-response', {
-      responseLength: response?.length || 0,
-      responsePreview: response?.slice(0, 500) || '(empty)'
-    })
-
     const parsed = sanitizeJsonResponse(response)
-
-    debugSnapshot('entity-enhance-character-parsed', {
-      parseSuccess: !!parsed,
-      parsedKeys: parsed ? Object.keys(parsed) : [],
-      parsed
-    })
 
     if (!parsed) {
       throw new Error('Invalid JSON')
@@ -551,12 +463,8 @@ All values must be strings. No markdown.`
       sampleDialogue: partialData.sampleDialogue || parsed.sampleDialogue || parsed.SampleDialogue || ''
     }
 
-    debugSnapshot('entity-enhance-character-result', { result })
     return result
   } catch (error) {
-    debugSnapshot('entity-enhance-character-error', {
-      errorMessage: error?.message || 'Unknown error'
-    })
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
@@ -598,30 +506,12 @@ Respond ONLY with a valid JSON object with these exact keys:
 
 No markdown, no explanation, no preamble. JSON only.`
 
-  debugSnapshot('entity-enhance-existing-start', {
-    charDataKeys: Object.keys(charData).filter(k => charData[k]),
-    charData,
-    hasManuscriptContext: !!manuscriptContext,
-    userPromptLength: userPrompt.length
-  })
-
   try {
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative character designer.', { feature: FEATURES.WORLDBUILDING })
     )
 
-    debugSnapshot('entity-enhance-existing-raw-response', {
-      responseLength: response?.length || 0,
-      responsePreview: response?.slice(0, 500) || '(empty)'
-    })
-
     const parsed = sanitizeJsonResponse(response)
-
-    debugSnapshot('entity-enhance-existing-parsed', {
-      parseSuccess: !!parsed,
-      parsedKeys: parsed ? Object.keys(parsed) : [],
-      parsed
-    })
 
     if (!parsed) {
       throw new Error('Invalid JSON')
@@ -636,12 +526,8 @@ No markdown, no explanation, no preamble. JSON only.`
       sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || charData.sampleDialogue || ''
     }
 
-    debugSnapshot('entity-enhance-existing-result', { result })
     return result
   } catch (error) {
-    debugSnapshot('entity-enhance-existing-error', {
-      errorMessage: error?.message || 'Unknown error'
-    })
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
@@ -734,43 +620,14 @@ IMPORTANT: The ${fieldName} must be consistent with all other fields AND the exi
 Return as JSON: { "${fieldName}": "your generated value" }
 Single string value, no markdown.`
 
-  debugSnapshot('entity-enhance-field-prompt', {
-    entityType,
-    fieldName,
-    allFieldsKeys: Object.keys(allFields).filter(k => allFields[k]),
-    currentValueLength: currentValue?.length || 0,
-    userPromptLength: userPrompt.length
-  })
-
   try {
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative writing assistant.', { feature: FEATURES.WORLDBUILDING })
     )
 
-    debugSnapshot('entity-enhance-field-raw-response', {
-      entityType,
-      fieldName,
-      responseLength: response?.length || 0,
-      responsePreview: response?.slice(0, 500) || '(empty)'
-    })
-
     const parsed = sanitizeJsonResponse(response)
 
-    debugSnapshot('entity-enhance-field-parsed', {
-      entityType,
-      fieldName,
-      parseSuccess: !!parsed,
-      parsedKeys: parsed ? Object.keys(parsed) : [],
-      parsed
-    })
-
     if (!parsed || (!parsed[fieldName] && !parsed[fieldName.charAt(0).toUpperCase() + fieldName.slice(1)])) {
-      debugSnapshot('entity-enhance-field-validation-fail', {
-        entityType,
-        fieldName,
-        hasParsed: !!parsed,
-        fieldInParsed: parsed ? !!(parsed[fieldName] || parsed[fieldName.charAt(0).toUpperCase() + fieldName.slice(1)]) : false
-      })
       throw new Error('Invalid JSON')
     }
 
@@ -790,14 +647,8 @@ Single string value, no markdown.`
       }
     }
 
-    debugSnapshot('entity-enhance-field-result', { entityType, fieldName, result })
     return result
   } catch (error) {
-    debugSnapshot('entity-enhance-field-error', {
-      entityType,
-      fieldName,
-      errorMessage: error?.message || 'Unknown error'
-    })
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
@@ -856,26 +707,13 @@ ${existingFields.length > 0 ? `
 
 All values must be strings. No markdown.`
 
-  debugSnapshot('entity-enhance-location-start', {
-    partialDataKeys: Object.keys(partialData).filter(k => partialData[k]),
-    hasManuscriptContext: !!manuscriptContext
-  })
-
   try {
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative location designer.', { feature: FEATURES.WORLDBUILDING })
     )
 
-    debugSnapshot('entity-enhance-location-raw-response', {
-      responseLength: response?.length || 0,
-      responsePreview: response?.slice(0, 500) || '(empty)'
-    })
-
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
-      debugSnapshot('entity-enhance-location-parse-fail', {
-        responsePreview: response?.slice(0, 300) || '(empty)'
-      })
       throw new Error('Invalid JSON')
     }
 
@@ -885,12 +723,8 @@ All values must be strings. No markdown.`
       notes: partialData.notes || parsed.notes || parsed.Notes || ''
     }
 
-    debugSnapshot('entity-enhance-location-result', { result })
     return result
   } catch (error) {
-    debugSnapshot('entity-enhance-location-error', {
-      errorMessage: error?.message || 'Unknown error'
-    })
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
@@ -955,27 +789,13 @@ Example format:
 
 All values must be strings or arrays. No markdown.`
 
-  debugSnapshot('entity-enhance-plotthread-start', {
-    title,
-    hasExistingNotes: !!existingNotes,
-    hasManuscriptContext: !!manuscriptContext
-  })
-
   try {
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, 'You are a creative plot designer.', { feature: FEATURES.WORLDBUILDING })
     )
 
-    debugSnapshot('entity-enhance-plotthread-raw-response', {
-      responseLength: response?.length || 0,
-      responsePreview: response?.slice(0, 500) || '(empty)'
-    })
-
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
-      debugSnapshot('entity-enhance-plotthread-parse-fail', {
-        responsePreview: response?.slice(0, 300) || '(empty)'
-      })
       throw new Error('Invalid JSON')
     }
 
@@ -995,12 +815,8 @@ All values must be strings or arrays. No markdown.`
       locations: locations
     }
 
-    debugSnapshot('entity-enhance-plotthread-result', { result })
     return result
   } catch (error) {
-    debugSnapshot('entity-enhance-plotthread-error', {
-      errorMessage: error?.message || 'Unknown error'
-    })
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
   }
@@ -1064,25 +880,10 @@ ${contextInstruction}
 
 Return as JSON: { "traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "trait6", "trait7", "trait8"] }`
 
-  debugSnapshot('entity-trait-suggestions-prompt', {
-    entityType,
-    entityName,
-    contextFields,
-    existingTraits,
-    userPromptLength: userPrompt.length
-  })
-
   try {
     const response = await retryWithBackoff(() =>
       aiGenerate(userPrompt, `You suggest fitting traits for a ${label}.`, { feature: FEATURES.WORLDBUILDING })
     )
-
-    debugSnapshot('entity-trait-suggestions-raw-response', {
-      entityType,
-      entityName,
-      responseLength: response?.length || 0,
-      responsePreview: response?.slice(0, 500) || '(empty)'
-    })
 
     let cleaned = response.trim()
     cleaned = cleaned.replace(/^```json\s*/i, '')
@@ -1094,23 +895,14 @@ Return as JSON: { "traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "
     const end = cleaned.lastIndexOf('}')
     const jsonMatch = start !== -1 && end > start ? [cleaned.slice(start, end + 1)] : null
     if (!jsonMatch) {
-      debugSnapshot('entity-trait-suggestions-parse-fail', {
-        entityType, entityName, cleaned
-      })
       return []
     }
     const parsed = JSON.parse(jsonMatch[0])
     if (!parsed || !Array.isArray(parsed.traits)) {
-      debugSnapshot('entity-trait-suggestions-no-array', {
-        entityType, entityName, parsed
-      })
       return []
     }
     const traits = parsed.traits.slice(0, 8).filter(t => !existingTraits.includes(t))
 
-    debugSnapshot('entity-trait-suggestions-result', {
-      entityType, entityName, traits
-    })
 
     return traits
   } catch {

@@ -29,10 +29,11 @@ function isLikelyVerb(word) {
   return VERB_SUFFIXES.some(s => v.endsWith(s))
 }
 
-function extractTags(text, maxTags = 10) {
+async function extractTags(text, maxTags = 10) {
   const tokens = text.toLowerCase().match(/[a-z]{3,}/g) || []
   const bigrams = []
   for (let i = 0; i < tokens.length - 1; i++) {
+    if (i % 5000 === 0) await yieldToMain()
     const w1 = tokens[i], w2 = tokens[i + 1]
     if (!STOP_WORDS.has(w1) && !STOP_WORDS.has(w2)) {
       bigrams.push(w1 + ' ' + w2)
@@ -40,14 +41,17 @@ function extractTags(text, maxTags = 10) {
   }
 
   const unigramFreq = {}
-  for (const w of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    if (i % 10000 === 0) await yieldToMain()
+    const w = tokens[i]
     if (STOP_WORDS.has(w)) continue
     unigramFreq[w] = (unigramFreq[w] || 0) + 1
   }
 
   const bigramFreq = {}
-  for (const b of bigrams) {
-    bigramFreq[b] = (bigramFreq[b] || 0) + 1
+  for (let i = 0; i < bigrams.length; i++) {
+    if (i % 10000 === 0) await yieldToMain()
+    bigramFreq[bigrams[i]] = (bigramFreq[bigrams[i]] || 0) + 1
   }
 
   const unigramScore = (word, freq) => {
@@ -66,12 +70,18 @@ function extractTags(text, maxTags = 10) {
 
   const scored = []
 
-  for (const [word, freq] of Object.entries(unigramFreq)) {
+  const unigramEntries = Object.entries(unigramFreq)
+  for (let i = 0; i < unigramEntries.length; i++) {
+    if (i % 5000 === 0) await yieldToMain()
+    const [word, freq] = unigramEntries[i]
     const score = unigramScore(word, freq)
     if (score > 0) scored.push({ label: word, score })
   }
 
-  for (const [phrase, freq] of Object.entries(bigramFreq)) {
+  const bigramEntries = Object.entries(bigramFreq)
+  for (let i = 0; i < bigramEntries.length; i++) {
+    if (i % 5000 === 0) await yieldToMain()
+    const [phrase, freq] = bigramEntries[i]
     const score = bigramScore(phrase, freq)
     if (score > 0) scored.push({ label: phrase, score })
   }
@@ -115,10 +125,14 @@ export async function chunkDocument(text, options = {}) {
     const allChunks = []
     const allDocTags = new Set()
     for (let s = 0; s < segments.length; s++) {
-      onProgress(`Part ${s + 1}/${segments.length}`)
+      const segPct = Math.round((s / segments.length) * 5)
+      onProgress(segPct, `Part ${s + 1}/${segments.length}`)
       const segChunks = await chunkDocument(segments[s], {
         ...options,
-        onProgress: (msg) => onProgress(`Part ${s + 1}/${segments.length}: ${msg}`)
+        onProgress: (pct, msg) => {
+          const mapped = segPct + Math.round((pct / 100) * (90 / segments.length))
+          onProgress(mapped, `Part ${s + 1}/${segments.length}: ${msg}`)
+        }
       })
       const docTags = segChunks.documentTags || []
       for (const t of docTags) allDocTags.add(t)
@@ -128,28 +142,37 @@ export async function chunkDocument(text, options = {}) {
       }
       await yieldToMain()
     }
+    onProgress(100, 'Done')
     allChunks.documentTags = [...allDocTags].slice(0, 20)
     return allChunks
   }
 
   const normalized = normalizeText(text)
   const headings = await detectHeadings(normalized)
+  onProgress(2, 'Detected headings')
 
   const chunks = await computeSemanticChunks(normalized, {
     threshold: options.threshold ?? EMBEDDING_DEFAULTS.threshold,
-    maxChunkSize: options.maxChunkSize ?? 1500
+    maxChunkSize: options.maxChunkSize ?? 1500,
+    skipEmbeddings: options.fastMode === true,
+    onProgress: (pct, msg) => {
+      const mapped = 2 + Math.round((pct / 100) * 88)
+      onProgress(mapped, msg)
+    }
   })
 
   const allTags = new Set()
   const result = []
   for (let index = 0; index < chunks.length; index++) {
     if (index % 10 === 0) await yieldToMain()
+    const pct = 90 + Math.round((index / chunks.length) * 10)
+    onProgress(pct, `Extracting tags for chunk ${index + 1}/${chunks.length}`)
     const chunk = chunks[index]
     const heading = headings.find(h =>
       chunk.text.startsWith(h.text) ||
       normalized.indexOf(h.text) <= normalized.indexOf(chunk.text)
     )
-    const tags = extractTags(chunk.text)
+    const tags = await extractTags(chunk.text)
     for (const t of tags) allTags.add(t)
     result.push({
       text: chunk.text,
@@ -160,9 +183,9 @@ export async function chunkDocument(text, options = {}) {
       tokenEstimate: Math.ceil(chunk.text.length / 4),
       tags
     })
-    onProgress(`Chunk ${index + 1}/${chunks.length}`)
   }
 
+  onProgress(100, 'Done')
   result.documentTags = [...allTags].slice(0, 20)
   return result
 }

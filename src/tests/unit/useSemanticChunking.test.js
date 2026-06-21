@@ -33,21 +33,21 @@ describe('splitSentences', () => {
 })
 
 describe('computeChunksForSentences', () => {
-  it('returns single chunk for 0-1 sentences', () => {
-    expect(computeChunksForSentences(['hello'], [[1]], 0.5)).toEqual([
+  it('returns single chunk for 0-1 sentences', async () => {
+    expect(await computeChunksForSentences(['hello'], [[1]], 0.5)).toEqual([
       { sentences: ['hello'], startIdx: 0, endIdx: 0 }
     ])
   })
 
-  it('splits at low similarity points', () => {
+  it('splits at low similarity points', async () => {
     const sentences = ['First.', 'Second.', 'Third.']
     const embeddings = [[1, 0], [1, 0.1], [0, 1]]
-    const result = computeChunksForSentences(sentences, embeddings, 0.5)
+    const result = await computeChunksForSentences(sentences, embeddings, 0.5)
     expect(result.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('handles missing embeddings', () => {
-    const result = computeChunksForSentences(['A.', 'B.'], [null, [1]], 0.5)
+  it('handles missing embeddings', async () => {
+    const result = await computeChunksForSentences(['A.', 'B.'], [null, [1]], 0.5)
     expect(result.length).toBeGreaterThanOrEqual(1)
   })
 })

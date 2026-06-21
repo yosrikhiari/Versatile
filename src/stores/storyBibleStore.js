@@ -15,7 +15,6 @@ import {
 import { useStoryDocuments } from '../composables/useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
 import { saveVoiceProfile, loadVoiceProfile } from '../services/db-entities'
-import { debugSnapshot } from '../services/debugSnapshot'
 
 const DOC_REGEN_DEBOUNCE = 1500
 
@@ -60,15 +59,6 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
       locations.value = await getLocations(projectId)
       plotThreads.value = await getPlotThreads(projectId)
 
-      debugSnapshot('store-load-all', {
-        projectId,
-        characterCount: characters.value.length,
-        characterNames: characters.value.map(c => c.name),
-        locationCount: locations.value.length,
-        locationNames: locations.value.map(l => l.name),
-        plotThreadCount: plotThreads.value.length,
-        plotThreadTitles: plotThreads.value.map(t => t.title)
-      })
 
       const storyDocs = useStoryDocuments()
       await storyDocs.regenerateAllDocuments(projectId)
@@ -82,12 +72,6 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   }
 
   async function addCharacterData(projectId, data, source = 'manual', chapterId = null) {
-    debugSnapshot('store-add-character', {
-      projectId,
-      source,
-      characterName: data.name,
-      characterData: data
-    })
     const id = await addCharacter(projectId, { ...data, source, chapterId })
     characters.value.push({ id, projectId, ...data, source, chapterId, lastEditedAt: Date.now() })
     queueDocumentRegeneration(['characters', 'relationships'])
@@ -95,11 +79,6 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   }
 
   async function updateCharacterData(id, data, _projectId) {
-    debugSnapshot('store-update-character', {
-      characterId: id,
-      updatedFields: Object.keys(data),
-      characterName: data.name
-    })
     await updateCharacter(id, { ...data, lastEditedAt: Date.now() })
     const index = characters.value.findIndex(c => c.id === id)
     if (index !== -1) {
@@ -109,7 +88,6 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   }
 
   async function deleteCharacterData(id, projectId) {
-    debugSnapshot('store-delete-character', { characterId: id, projectId })
     await Promise.all([
       deleteCharacterRelationshipsByCharacter(id),
       deleteGraphEdgesByEntity(projectId, 'character', id),

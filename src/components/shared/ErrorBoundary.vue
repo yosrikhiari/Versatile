@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onErrorCaptured } from 'vue'
+import { ref, onErrorCaptured, provide } from 'vue'
 import BaseIcon from './BaseIcon.vue'
 
 const props = defineProps({
@@ -21,6 +21,13 @@ onErrorCaptured((err) => {
   emit('error', err)
   return false
 })
+
+function captureAsyncError(err) {
+  hasError.value = true
+  emit('error', err)
+}
+
+provide('captureAsyncError', captureAsyncError)
 
 function reset() {
   hasError.value = false

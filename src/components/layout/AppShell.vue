@@ -27,6 +27,13 @@ const projects = ref([])
 const showCoreLoop = ref(true)
 const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, { write: false, analyze: false, build: false })
 
+const props = defineProps({
+  focusMode: {
+    type: Boolean,
+    default: false
+  }
+})
+
 const emit = defineEmits(['start-flow', 'end-flow', 'export', 'import', 'export-pdf', 'open-settings', 'open-auth', 'complete-onboarding', 'create-project'])
 
 const authStore = useAuthStore()
@@ -139,6 +146,10 @@ function toggleResearch() {
   activePanelName.value = activePanelName.value === 'research' ? null : 'research'
 }
 
+function toggleVoiceLab() {
+  activePanelName.value = activePanelName.value === 'voice-lab' ? null : 'voice-lab'
+}
+
 function toggleFlow() {
   markCoreLoop('write')
   if (flowMode.value) {
@@ -166,6 +177,7 @@ function handleSidebarNav(name) {
     'timeline': toggleTimeline,
     'archive': toggleArchive,
     'research': toggleResearch,
+    'voice-lab': toggleVoiceLab,
   }
   map[name]?.()
 }
@@ -274,68 +286,84 @@ onMounted(async () => {
     <RecapBanner />
 
     <div class="flex-1 flex overflow-hidden">
-      <SidebarNav :active-panel="activePanelName" @navigate="handleSidebarNav" />
+      <SidebarNav v-show="!focusMode" :active-panel="activePanelName" @navigate="handleSidebarNav" />
 
       <div class="flex-1 flex overflow-hidden">
+        <Transition name="panel-left">
         <aside 
           v-if="activePanelName === 'story-generator' && !flowMode" 
-          class="w-[500px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
-      >
-        <slot name="story-generator"></slot>
-      </aside>
+          class="w-[500px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="story-generator"></slot>
+        </aside>
+      </Transition>
 
-      <aside 
-        v-if="activePanelName === 'story-bible' && !flowMode" 
-        class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
-      >
-        <slot name="story-bible"></slot>
-      </aside>
+      <Transition name="panel-left">
+        <aside 
+          v-if="activePanelName === 'story-bible' && !flowMode" 
+          class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="story-bible"></slot>
+        </aside>
+      </Transition>
 
-      <aside 
-        v-if="activePanelName === 'canvas' && !flowMode" 
-        class="w-[400px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
-      >
-        <slot name="canvas"></slot>
-      </aside>
+      <Transition name="panel-left">
+        <aside 
+          v-if="activePanelName === 'canvas' && !flowMode" 
+          class="w-[400px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="canvas"></slot>
+        </aside>
+      </Transition>
 
-      <aside 
-        v-if="activePanelName === 'outline' && !flowMode" 
-        class="w-[350px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
-      >
-        <slot name="outline"></slot>
-      </aside>
+      <Transition name="panel-left">
+        <aside 
+          v-if="activePanelName === 'outline' && !flowMode" 
+          class="w-[350px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="outline"></slot>
+        </aside>
+      </Transition>
 
-      <aside 
-        v-if="activePanelName === 'chapters' && !flowMode" 
-        class="w-[320px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
-      >
-        <slot name="chapters"></slot>
-      </aside>
+      <Transition name="panel-left">
+        <aside 
+          v-if="activePanelName === 'chapters' && !flowMode" 
+          class="w-[320px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="chapters"></slot>
+        </aside>
+      </Transition>
 
-      <aside 
-        v-if="activePanelName === 'network' && !flowMode" 
-        class="w-[900px] max-w-[95vw] xl:max-w-[900px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
-      >
-        <slot name="network"></slot>
-      </aside>
+      <Transition name="panel-left">
+        <aside 
+          v-if="activePanelName === 'network' && !flowMode" 
+          class="w-[900px] max-w-[95vw] xl:max-w-[900px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="network"></slot>
+        </aside>
+      </Transition>
 
-      <aside 
-        v-if="activePanelName === 'timeline' && !flowMode" 
-        class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0 transition-all duration-200 panel-enter-active"
-      >
-        <slot name="timeline"></slot>
-      </aside>
+      <Transition name="panel-left">
+        <aside 
+          v-if="activePanelName === 'timeline' && !flowMode" 
+          class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="timeline"></slot>
+        </aside>
+      </Transition>
 
       <main class="flex-1 flex flex-col overflow-hidden">
         <div class="flex-1 overflow-hidden">
           <slot name="editor"></slot>
         </div>
-        <div 
-          v-if="activePanelName === 'polish' && !flowMode" 
-          class="h-[320px] bg-bg-secondary border-t border-border-subtle overflow-hidden transition-all duration-200"
-        >
-          <slot name="polish"></slot>
-        </div>
+            <Transition name="panel-bottom">
+              <div 
+                v-if="showRevise" 
+                class="bg-bg-secondary border-t border-border-subtle overflow-y-auto scrollbar-thin"
+              >
+                <slot name="revise"></slot>
+              </div>
+            </Transition>
         <div 
           v-if="activePanelName === 'revise' && !flowMode" 
           class="flex-1 overflow-hidden transition-all duration-200"
@@ -344,19 +372,32 @@ onMounted(async () => {
         </div>
       </main>
 
-      <aside 
-        v-if="activePanelName === 'archive' && !flowMode" 
-        class="w-[320px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
-      >
-        <slot name="archive"></slot>
-      </aside>
+      <Transition name="panel-right">
+        <aside 
+          v-if="activePanelName === 'archive' && !flowMode" 
+          class="w-[320px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="archive"></slot>
+        </aside>
+      </Transition>
 
-      <aside 
-        v-if="activePanelName === 'research' && !flowMode" 
-        class="w-[360px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 transition-all duration-200 panel-enter-active scrollbar-thin"
-      >
-        <slot name="research"></slot>
-      </aside>
+      <Transition name="panel-right">
+        <aside 
+          v-if="activePanelName === 'research' && !flowMode" 
+          class="w-[360px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="research"></slot>
+        </aside>
+      </Transition>
+
+      <Transition name="panel-left">
+        <aside 
+          v-if="activePanelName === 'voice-lab' && !flowMode" 
+          class="w-[420px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="voice-lab"></slot>
+        </aside>
+      </Transition>
       </div>
     </div>
 

@@ -92,28 +92,37 @@ None.
 
 ### Pending Todos
 
-| Todo | Area | Created |
-|------|------|---------|
-| Handle 1M+ character documents without browser crash | general | 2026-06-16 |
-| Connect PostgreSQL database and link frontend to backend | api | 2026-06-16 |
-| Investigate and accelerate document embedding indexing throughput | general | 2026-06-16 |
+All 3 prior todos now captured in **v0.5 Milestone** (Research/RAG System & Infrastructure Hardening) — see `.planning/milestones/v0.5-rag-infrastructure.md` and `.planning/ROADMAP.md`
+
+| Todo | Milestone Phase | 
+|------|-----------------|
+| Handle 1M+ character documents without browser crash | v0.5 Phase A |
+| Connect PostgreSQL database and link frontend to backend | v0.5 Phase B |
+| Investigate and accelerate document embedding indexing throughput | v0.5 Phase C |
 
 ## Session Continuity
 
-### Current Session (2026-06-18)
+### Previous Session (2026-06-18)
 - **Phase 4 (EvalPanel UI)**: Created `src/components/eval/EvalPanel.vue` — shows dimension scores, gate results, issues, strengths; accepts optional `degradation` prop for per-dimension delta badges (improvement/regression/no-change)
 - **Phase 4 (RevisionDeltaPanel UI)**: Created `src/components/eval/RevisionDeltaPanel.vue` — shows word count delta, score delta, revised prose preview, per-dimension delta breakdown with degradation status (green/amber/red icons)
 - **Phase 4 (Degradation Service)**: Created `src/services/degradation.js` — `computeDegradation(originalCritique, revisedCritique)` returns per-dimension `{ before, after, delta, status }` plus `hasRegressions`/`hasMajorRegressions` booleans; 8 unit tests
 - **Phase 4 (useSceneEval composable)**: Created `src/composables/useSceneEval.js` — evaluate/revise/reset lifecycle, scene brief building, revision bounce detection, degradation computation; maintains `sceneResultsMap` for per-scene persistence; exposes `aggregateStats` computed (evaluated count, average score, total regressions, major regressions)
 - **Phase 4 (Integration)**: All panels wired into `StoryGeneratorPanel.vue` complete state view; scene index passed through evaluate/revise handlers for aggregate tracking; story-level eval aggregate summary card added between quality card and scene list
 - **Tests**: 23 Phase 4 unit tests across 2 files all passing; pre-existing 15 failures in integration tests unchanged (IndexedDB API unavailable in test env)
-- **STATE.md updated** to reflect Phases 1-4 complete
+
+### Current Session (2026-06-19)
+- **Phase 7 (ResearchPanel UX Polish)**: Implemented focus trap on the import size-warning modal and success/error toast notifications for document operations
+- **Focus Trap**: Created `src/composables/useFocusTrap.js` — wraps `focus-trap` library (already in deps) in a Vue composable with `activate`/`deactivate`; wired into `ResearchPanel.vue` via `watch(showSizeWarning)` lifecycle
+- **Toast Notifications**: Added `addToast()` calls in `ResearchPanel.vue` for import success, re-index success, and document removal; uses existing `useNotifications` composable singleton with `'success'` type
+- **No tests added** — these are UX-only changes with no testable logic
 
 ### Current Blockers
-None — Phase 4 fully implemented and tested.
+None.
 
 ### Next Actions
-All 4 phases complete. Next milestone candidates:
-- Writer pipeline improvements (Director/Writer integration)
-- Production monitoring for eval metrics
-- Story-level trend analysis across multiple revisions
+Continue with **v0.5 — Research/RAG System & Infrastructure Hardening**:
+- Phase A: Handle 1M+ character documents without browser crash (natural next step — extends the import flow we just polished)
+- Phase B: Connect PostgreSQL database and link frontend to backend
+- Phase C: Investigate and accelerate document embedding indexing throughput
+
+After v0.5: v1.1 — Writer & Eval Quality Improvements (6 phases)

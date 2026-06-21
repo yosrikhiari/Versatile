@@ -7,7 +7,6 @@ import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
 import * as geminiProvider from './providers/gemini'
 import * as groqProvider from './providers/groq'
-import { debugSnapshot } from './debugSnapshot'
 
 const RETRYABLE_ERROR_PATTERNS = [
   /timeout/i,
@@ -32,6 +31,31 @@ function isRetryable(error) {
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function withRetry(fn, isRetryableFn, options = {}) {
+  const maxRetries = options.maxRetries ?? 2
+  const retryDelay = options.retryDelay ?? 1000
+  let lastError
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      const jitter = Math.random() * retryDelay
+      await sleep(retryDelay * Math.pow(2, attempt - 1) + jitter)
+    }
+
+    try {
+      return await fn(attempt, attempt < maxRetries)
+    } catch (error) {
+      lastError = error
+      if (isRetryableFn(error) && attempt < maxRetries) {
+        continue
+      }
+      throw error
+    }
+  }
+
+  throw lastError
 }
 
 const PROVIDER_MAP = {
@@ -105,90 +129,31 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
     timeout: options.timeout
   }
 
-  const maxRetries = options.maxRetries ?? 2
-  const retryDelay = options.retryDelay ?? 1000
-  let lastError
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const isRetry = attempt > 0
-
-    if (isRetry) {
-      const jitter = Math.random() * retryDelay
-      await sleep(retryDelay * Math.pow(2, attempt - 1) + jitter)
-    }
-
-    debugSnapshot('ai-service-call', {
-      feature,
-      provider,
-      model,
-      attempt: attempt + 1,
-      maxRetries: maxRetries + 1,
-      hasApiKey: !!apiKey,
-      promptLength: prompt.length,
-      systemPromptLength: systemPrompt.length,
-      temperature: providerOptions.temperature,
-      maxTokens: providerOptions.maxTokens,
-      timeout: providerOptions.timeout,
-      hasSignal: !!options.signal
-    })
-
-    try {
-      const result = await providerModule.generate(prompt, systemPrompt, model, providerOptions)
-
-      debugSnapshot('ai-service-response', {
-        feature,
-        provider,
-        model,
-        attempt: attempt + 1,
-        resultLength: result?.length || 0,
-        resultPreview: result?.slice(0, 500) || '(empty)'
-      })
-
-      return result
-    } catch (error) {
-      lastError = error
-      debugSnapshot('ai-service-error', {
-        feature,
-        provider,
-        model,
-        attempt: attempt + 1,
-        errorMessage: error?.message || 'Unknown error',
-        errorName: error?.name || ''
-      })
-
-      if (isRetryable(error) && attempt < maxRetries) {
-        continue
-      }
-
-      if (!isRetryable(error) || attempt >= maxRetries) {
-        const store = useSettingsStore()
-        if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
-          const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
-          if (fallbackModule) {
-            const fallbackKey = getApiKey(store.aiProviderFallback)
-            if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
-              debugSnapshot('ai-service-fallback', {
-                fromProvider: provider,
-                toProvider: store.aiProviderFallback,
-                feature,
-                afterRetries: attempt
-              })
-              return await fallbackModule.generate(prompt, systemPrompt, null, {
-                apiKey: fallbackKey || undefined,
-                signal: options.signal,
-                temperature: options.temperature,
-                maxTokens: options.maxTokens,
-                timeout: options.timeout
-              })
-            }
-          }
+  try {
+    return await withRetry(
+      () => providerModule.generate(prompt, systemPrompt, model, providerOptions),
+      isRetryable,
+      { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
+    )
+  } catch (error) {
+    const store = useSettingsStore()
+    if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
+      const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
+      if (fallbackModule) {
+        const fallbackKey = getApiKey(store.aiProviderFallback)
+        if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
+          return await fallbackModule.generate(prompt, systemPrompt, null, {
+            apiKey: fallbackKey || undefined,
+            signal: options.signal,
+            temperature: options.temperature,
+            maxTokens: options.maxTokens,
+            timeout: options.timeout
+          })
         }
-        throw error
       }
     }
+    throw error
   }
-
-  throw lastError
 }
 
 export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
@@ -213,7 +178,34 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
     timeout: options.timeout
   }
 
-  return await providerModule.stream(prompt, systemPrompt, model, onChunk, providerOptions)
+  try {
+    return await withRetry(
+      (attempt, isIntermediate) => {
+        const chunkHandler = isIntermediate ? undefined : onChunk
+        return providerModule.stream(prompt, systemPrompt, model, chunkHandler, providerOptions)
+      },
+      isRetryable,
+      { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
+    )
+  } catch (error) {
+    const store = useSettingsStore()
+    if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
+      const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
+      if (fallbackModule) {
+        const fallbackKey = getApiKey(store.aiProviderFallback)
+        if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
+          return await fallbackModule.stream(prompt, systemPrompt, null, onChunk, {
+            apiKey: fallbackKey || undefined,
+            signal: options.signal,
+            temperature: options.temperature,
+            maxTokens: options.maxTokens,
+            timeout: options.timeout
+          })
+        }
+      }
+    }
+    throw error
+  }
 }
 
 export async function aiTestConnection(provider, apiKey) {

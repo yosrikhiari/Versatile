@@ -6,7 +6,7 @@ import { FEATURES } from '../config/ai'
 export function useStoryRevisor() {
   const isRevising = ref(false)
 
-  async function reviseScene({ draft, critiqueResult, sceneBrief, storyBible }) {
+  async function reviseScene({ draft, critiqueResult, sceneBrief, storyBible, existingEntitiesJson }) {
     isRevising.value = true
 
     try {
@@ -36,6 +36,9 @@ SCENE BRIEF (for context):
 
 STORY BIBLE CONTEXT:
 ${storyBible || '(No story bible)'}
+
+EXISTING ENTITIES CONTEXT:
+${existingEntitiesJson || '(No existing entities)'}
 
 ORIGINAL DRAFT:
 ${draft}

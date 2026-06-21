@@ -111,11 +111,15 @@ function generateSynopsisDoc() {
   return lines.join('\n')
 }
 
-function generateCharactersDoc() {
+async function generateCharactersDoc(projectId) {
   const storyBibleStore = useStoryBibleStore()
   const storyGraphStore = useStoryGraphStore()
   const projectStore = useProjectStore()
   const terms = projectStore.terminology
+
+  if (projectId) {
+    await storyGraphStore.loadEdges(projectId)
+  }
 
   const sorted = [...storyBibleStore.characters].sort(
     (a, b) => (b.lastEditedAt || 0) - (a.lastEditedAt || 0)
@@ -409,7 +413,7 @@ async function regenerateDocument(projectId, docType) {
       content = generateSynopsisDoc()
       break
     case DOC_TYPES.CHARACTERS:
-      content = generateCharactersDoc()
+      content = await generateCharactersDoc(projectId)
       break
     case DOC_TYPES.WORLD:
       content = generateWorldDoc()

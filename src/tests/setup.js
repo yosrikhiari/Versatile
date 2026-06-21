@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto'
 import { createPinia, setActivePinia } from 'pinia'
 import { vi } from 'vitest'
 

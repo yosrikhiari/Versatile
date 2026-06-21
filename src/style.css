@@ -226,23 +226,54 @@
     @apply translate-y-0;
   }
 
-  /* ── Panel Transition ── */
-  .panel-enter-active {
+  /* ── Panel Transitions ── */
+  .panel-left-enter-active,
+  .panel-right-enter-active,
+  .panel-bottom-enter-active {
     transition: all 0.2s ease-out;
   }
-
-  .panel-leave-active {
+  .panel-left-leave-active,
+  .panel-right-leave-active,
+  .panel-bottom-leave-active {
     transition: all 0.15s ease-in;
   }
 
-  .panel-enter-from {
+  .panel-left-enter-from,
+  .panel-left-leave-to {
     opacity: 0;
-    transform: translateX(-6px);
+    transform: translateX(-8px);
   }
 
-  .panel-leave-to {
+  .panel-right-enter-from,
+  .panel-right-leave-to {
     opacity: 0;
-    transform: translateX(-6px);
+    transform: translateX(8px);
+  }
+
+  .panel-bottom-enter-from,
+  .panel-bottom-leave-to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel-left-enter-active,
+    .panel-left-leave-active,
+    .panel-right-enter-active,
+    .panel-right-leave-active,
+    .panel-bottom-enter-active,
+    .panel-bottom-leave-active {
+      transition: none;
+    }
+    .panel-left-enter-from,
+    .panel-left-leave-to,
+    .panel-right-enter-from,
+    .panel-right-leave-to,
+    .panel-bottom-enter-from,
+    .panel-bottom-leave-to {
+      opacity: 0;
+      transform: none;
+    }
   }
 
   /* ── Editor Content ── */

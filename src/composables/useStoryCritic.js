@@ -60,7 +60,7 @@ export function useStoryCritic() {
   const isCheckingConsistency = ref(false)
   const consistencyReport = ref(null)
 
-  async function evaluateScene({ draft, sceneBrief, storyBible, chapterLog }) {
+  async function evaluateScene({ draft, sceneBrief, storyBible, chapterLog, existingEntitiesJson }) {
     isEvaluating.value = true
 
     try {
@@ -88,6 +88,9 @@ SCENE BRIEF:
 
 CHAPTER LOG (previous events):
 ${chapterLog || '(First scene)'}
+
+EXISTING ENTITIES CONTEXT:
+${existingEntitiesJson || '(No existing entities)'}
 
 STORY BIBLE (character descriptions for voice check):
 ${storyBible || '(No story bible)'}

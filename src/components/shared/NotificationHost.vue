@@ -8,7 +8,7 @@ const { toasts, activeConfirm, removeToast } = useNotifications()
 <template>
   <div>
     <!-- Toasts -->
-    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none">
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none" aria-live="polite">
       <TransitionGroup name="toast">
         <div
           v-for="toast in toasts"
