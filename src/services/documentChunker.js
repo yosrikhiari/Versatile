@@ -1,127 +1,216 @@
-import { computeSemanticChunks } from '../composables/useSemanticChunking'
 import { EMBEDDING_DEFAULTS } from '../config/ai'
+import { getEmbeddings } from './embeddingService'
+import { useSettingsStore } from '../stores/settingsStore'
 
-function yieldToMain() {
-  return new Promise(r => setTimeout(r, 0))
+const MAX_SAFE_CHUNK_SIZE = 300000
+
+let worker = null
+let requestId = 0
+const pending = new Map()
+
+function getWorker() {
+  if (!worker) {
+    worker = new Worker(new URL('./documentChunker.worker.js', import.meta.url), { type: 'module' })
+    worker.onmessage = function (e) {
+      const { id, result, error } = e.data
+      const entry = pending.get(id)
+      if (!entry) return
+      pending.delete(id)
+      if (error) entry.reject(new Error(error))
+      else entry.resolve(result)
+    }
+    worker.onerror = function (e) {
+      console.error('[documentChunker] Worker error:', e.message)
+    }
+  }
+  return worker
 }
 
-const HYPHEN_RE = /(\w)-\s*\n\s*/g
-const HEADING_RE = /^(#{1,6}\s+|[\w\s]{2,50}\n[=\-]+\s*$)/gm
-
-const STOP_WORDS = new Set([
-  'the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','as',
-  'is','was','were','are','be','been','being','have','has','had','do','does','did','will',
-  'would','could','should','may','might','shall','can','need','dare','ought','used',
-  'this','that','these','those','it','its','they','them','their','he','she','him','her',
-  'we','us','our','you','your','i','me','my','not','no','nor','so','if','than','then',
-  'also','very','just','about','up','out','over','into','through','during','before',
-  'after','above','below','between','under','again','further','once','here','there',
-  'when','where','why','how','all','each','every','both','few','more','most','other',
-  'some','such','only','own','same','too','very','what','which','who','whom','because',
-  'until','while','within','without','though','although','like','well','back','still'
-])
-
-const VERB_SUFFIXES = ['ed', 'ing', 'tion', 's', 'es', 'ize', 'ify', 'en', 'ate']
-
-function isLikelyVerb(word) {
-  const v = word.toLowerCase()
-  if (v.length <= 4) return false
-  return VERB_SUFFIXES.some(s => v.endsWith(s))
+function terminateWorker() {
+  if (worker) {
+    worker.terminate()
+    worker = null
+    for (const [, entry] of pending) {
+      entry.reject(new Error('Worker terminated'))
+    }
+    pending.clear()
+  }
 }
 
-async function extractTags(text, maxTags = 10) {
-  const tokens = text.toLowerCase().match(/[a-z]{3,}/g) || []
-  const bigrams = []
-  for (let i = 0; i < tokens.length - 1; i++) {
-    if (i % 5000 === 0) await yieldToMain()
-    const w1 = tokens[i], w2 = tokens[i + 1]
-    if (!STOP_WORDS.has(w1) && !STOP_WORDS.has(w2)) {
-      bigrams.push(w1 + ' ' + w2)
+let directFns = null
+
+async function directCall(method, ...args) {
+  if (!directFns) {
+    directFns = (await import('./documentChunker.worker.js')).methodMap
+  }
+  const fn = directFns[method]
+  if (!fn) throw new Error('Unknown worker method: ' + method)
+  return fn(...args)
+}
+
+function workerCall(method, ...args) {
+  if (typeof Worker === 'undefined') {
+    return directCall(method, ...args)
+  }
+  return new Promise((resolve, reject) => {
+    const id = ++requestId
+    pending.set(id, { resolve, reject })
+    getWorker().postMessage({ id, method, args })
+  })
+}
+
+export async function splitSentences(text) {
+  return workerCall('splitSentences', text)
+}
+
+export async function computeChunksForSentences(sentences, embeddings, threshold) {
+  return workerCall('computeChunksForSentences', sentences, embeddings, threshold)
+}
+
+export async function mergeSmallChunks(chunks, minSentences) {
+  return workerCall('mergeSmallChunks', chunks, minSentences)
+}
+
+export async function computeSemanticChunks(text, options = {}) {
+  const store = useSettingsStore()
+  const threshold = options.threshold ?? store.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
+  const maxChunkSize = options.maxChunkSize ?? 3500
+  const embeddingProvider = options.embeddingProvider || store.embeddingProvider
+  const embeddingModel = options.embeddingModel || store.embeddingModel || EMBEDDING_DEFAULTS.model
+  const onProgress = options.onProgress || (() => {})
+  const skipEmbeddings = options.skipEmbeddings === true
+
+  const sentences = await workerCall('splitSentences', text)
+  onProgress(2, 'Splitting sentences...')
+  if (sentences.length <= 1) {
+    return [{ text, sentences: [...sentences], startIdx: 0, endIdx: 0 }]
+  }
+
+  const SENTENCE_COUNT = sentences.length
+
+  if (skipEmbeddings || SENTENCE_COUNT > 2000) {
+    if (skipEmbeddings) {
+      console.info(`Fast mode: size-based chunking for ${SENTENCE_COUNT} sentences`)
+    } else {
+      console.warn(`Large document (${SENTENCE_COUNT} sentences), using size-based chunking`)
+    }
+    return await workerCall('sizeBasedChunk', text, maxChunkSize)
+  }
+
+  const groupByParagraph = SENTENCE_COUNT >= 12
+  let groups = null
+  let groupTexts = null
+
+  if (groupByParagraph) {
+    groups = await workerCall('groupSentencesByParagraph', sentences, text)
+    if (groups.length === 1 && SENTENCE_COUNT > 20) {
+      const headingBreaks = await workerCall('findHeadingBreaks', sentences, text)
+      if (headingBreaks.length > 1) {
+        groups = await workerCall('applyBreaks', sentences, headingBreaks)
+      }
+    }
+    groupTexts = groups.map(g => g.sentences.join(' '))
+  }
+  onProgress(5, 'Grouping content...')
+
+  let embeddings
+  onProgress(10, 'Generating embeddings...')
+  try {
+    const embedInputs = groupByParagraph ? groupTexts : sentences
+    const result = await getEmbeddings(embedInputs, {
+      provider: embeddingProvider,
+      model: embeddingModel
+    })
+    embeddings = result.vectors
+  } catch (e) {
+    console.warn('Embedding failed during chunking, falling back to size-based split:', e.message)
+    embeddings = (groupByParagraph ? groupTexts : sentences).map(() => null)
+  }
+
+  onProgress(45, 'Computing chunk boundaries...')
+
+  let chunkGroups
+  if (groupByParagraph && groups) {
+    chunkGroups = await workerCall('computeChunksFromParagraphGroups', groups, embeddings, threshold)
+  } else {
+    chunkGroups = await workerCall('computeChunksForSentences', sentences, embeddings, threshold)
+  }
+
+  const result = []
+  onProgress(70, 'Assembling final chunks...')
+  for (let ci = 0; ci < chunkGroups.length; ci++) {
+    const chunk = chunkGroups[ci]
+    onProgress(70 + Math.round((ci / chunkGroups.length) * 25))
+    const chunkText = chunk.sentences.join(' ')
+
+    if (chunkText.length > maxChunkSize && chunk.sentences.length > 1) {
+      const subChunks = await recursiveSplit(chunk, maxChunkSize, embeddingProvider, embeddingModel, threshold)
+      for (const sub of subChunks) {
+        result.push({
+          text: sub.text,
+          sentences: sub.sentences,
+          startIdx: sub.startIdx,
+          endIdx: sub.endIdx
+        })
+      }
+    } else {
+      result.push({
+        text: chunkText,
+        sentences: chunk.sentences,
+        startIdx: chunk.startIdx,
+        endIdx: chunk.endIdx
+      })
     }
   }
 
-  const unigramFreq = {}
-  for (let i = 0; i < tokens.length; i++) {
-    if (i % 10000 === 0) await yieldToMain()
-    const w = tokens[i]
-    if (STOP_WORDS.has(w)) continue
-    unigramFreq[w] = (unigramFreq[w] || 0) + 1
-  }
-
-  const bigramFreq = {}
-  for (let i = 0; i < bigrams.length; i++) {
-    if (i % 10000 === 0) await yieldToMain()
-    bigramFreq[bigrams[i]] = (bigramFreq[bigrams[i]] || 0) + 1
-  }
-
-  const unigramScore = (word, freq) => {
-    if (isLikelyVerb(word)) return 0
-    const tf = freq / Math.sqrt(tokens.length)
-    const specificity = Math.log(word.length + 1)
-    return tf * specificity * 100
-  }
-
-  const bigramScore = (phrase, freq) => {
-    if (freq < 2) return 0
-    const tf = freq / Math.sqrt(bigrams.length + 1)
-    const specificity = Math.log(phrase.length + 1) * 1.5
-    return tf * specificity * 100
-  }
-
-  const scored = []
-
-  const unigramEntries = Object.entries(unigramFreq)
-  for (let i = 0; i < unigramEntries.length; i++) {
-    if (i % 5000 === 0) await yieldToMain()
-    const [word, freq] = unigramEntries[i]
-    const score = unigramScore(word, freq)
-    if (score > 0) scored.push({ label: word, score })
-  }
-
-  const bigramEntries = Object.entries(bigramFreq)
-  for (let i = 0; i < bigramEntries.length; i++) {
-    if (i % 5000 === 0) await yieldToMain()
-    const [phrase, freq] = bigramEntries[i]
-    const score = bigramScore(phrase, freq)
-    if (score > 0) scored.push({ label: phrase, score })
-  }
-
-  scored.sort((a, b) => b.score - a.score)
-
-  const seen = new Set()
-  return scored
-    .filter(t => {
-      const key = t.label.replace(/\s+/g, ' ')
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-    .slice(0, maxTags)
-    .map(t => t.label)
+  onProgress(100, 'Chunking complete')
+  return result
 }
 
-function normalizeText(text) {
-  return text.replace(HYPHEN_RE, '$1')
-}
-
-async function detectHeadings(text) {
-  const headings = []
-  let match
-  let iter = 0
-  while ((match = HEADING_RE.exec(text)) !== null) {
-    if (++iter % 1000 === 0) await yieldToMain()
-    headings.push({ index: match.index, text: match[0].trim() })
+async function recursiveSplit(chunk, maxChars, provider, model, threshold) {
+  const { sentences, startIdx } = chunk
+  if (sentences.length <= 1 || chunk.sentences.join(' ').length <= maxChars) {
+    return [{
+      text: chunk.sentences.join(' '),
+      sentences: [...sentences],
+      startIdx,
+      endIdx: chunk.endIdx
+    }]
   }
-  return headings
-}
 
-const MAX_SAFE_CHUNK_SIZE = 300000
+  let embeddings
+  try {
+    const result = await getEmbeddings(sentences, { provider, model })
+    embeddings = result.vectors
+  } catch (e) {
+    console.warn('Embedding failed during recursive split, falling back:', e.message)
+    embeddings = sentences.map(() => null)
+  }
+  const subChunks = await workerCall('computeChunksForSentences', sentences, embeddings, threshold)
+
+  const result = []
+  for (const sub of subChunks) {
+    const subText = sub.sentences.join(' ')
+    if (subText.length > maxChars && sub.sentences.length > 1) {
+      const deeper = await recursiveSplit(sub, maxChars, provider, model, threshold)
+      result.push(...deeper)
+    } else {
+      result.push({
+        text: subText,
+        sentences: sub.sentences,
+        startIdx: startIdx + sub.startIdx,
+        endIdx: startIdx + sub.endIdx
+      })
+    }
+  }
+  return result
+}
 
 export async function chunkDocument(text, options = {}) {
   const onProgress = options.onProgress || (() => {})
 
   if (text.length > MAX_SAFE_CHUNK_SIZE * 3) {
-    const segments = preSplitText(text, MAX_SAFE_CHUNK_SIZE)
+    const segments = await workerCall('preSplitText', text, MAX_SAFE_CHUNK_SIZE)
     const allChunks = []
     const allDocTags = new Set()
     for (let s = 0; s < segments.length; s++) {
@@ -140,15 +229,14 @@ export async function chunkDocument(text, options = {}) {
         c.chunkIndex = allChunks.length + segChunks.indexOf(c)
         allChunks.push(c)
       }
-      await yieldToMain()
     }
     onProgress(100, 'Done')
     allChunks.documentTags = [...allDocTags].slice(0, 20)
     return allChunks
   }
 
-  const normalized = normalizeText(text)
-  const headings = await detectHeadings(normalized)
+  const normalized = await workerCall('normalizeText', text)
+  const headings = await workerCall('detectHeadings', normalized)
   onProgress(2, 'Detected headings')
 
   const chunks = await computeSemanticChunks(normalized, {
@@ -164,7 +252,6 @@ export async function chunkDocument(text, options = {}) {
   const allTags = new Set()
   const result = []
   for (let index = 0; index < chunks.length; index++) {
-    if (index % 10 === 0) await yieldToMain()
     const pct = 90 + Math.round((index / chunks.length) * 10)
     onProgress(pct, `Extracting tags for chunk ${index + 1}/${chunks.length}`)
     const chunk = chunks[index]
@@ -172,7 +259,7 @@ export async function chunkDocument(text, options = {}) {
       chunk.text.startsWith(h.text) ||
       normalized.indexOf(h.text) <= normalized.indexOf(chunk.text)
     )
-    const tags = await extractTags(chunk.text)
+    const tags = await workerCall('extractTags', chunk.text)
     for (const t of tags) allTags.add(t)
     result.push({
       text: chunk.text,
@@ -188,23 +275,4 @@ export async function chunkDocument(text, options = {}) {
   onProgress(100, 'Done')
   result.documentTags = [...allTags].slice(0, 20)
   return result
-}
-
-function preSplitText(text, maxSize) {
-  const parts = text.split(/(?<=\n\n)/)
-  if (parts.length <= 1) {
-    return [text.slice(0, maxSize)]
-  }
-  const segments = []
-  let current = ''
-  for (const part of parts) {
-    if (current.length + part.length > maxSize && current.length > 0) {
-      segments.push(current)
-      current = part
-    } else {
-      current += part
-    }
-  }
-  if (current.length > 0) segments.push(current)
-  return segments
 }

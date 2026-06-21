@@ -5,13 +5,13 @@
 **Project**: Versatile — AI-powered fiction writing assistant
 **Core Value**: Multi-agent generation pipeline (Director → Writer → Critic → Revisor) that helps writers produce, evaluate, and iteratively improve fiction
 **Milestone**: AI Pipeline Evaluation & Quality Gates
-**Current Focus**: Phase 4 complete — evaluation/revision panels integrated in StoryGeneratorPanel.vue
+**Current Focus**: v0.5 — Research/RAG System & Infrastructure Hardening
 
 ## Current Position
 
-**Phase**: 1-4 Complete
-**Status**: All code for Phases 1-4 is done and tested
-**Progress**: 65 new tests across 6 test files, all passing (23 are Phase 4 unit tests)
+**Phase**: v0.5 (Dialogue System, Voice Lab, ResearchPanel Polish)
+**Status**: Committed — dialogue pipeline, voice profiles, StoryNetwork, ResearchPanel UX
+**Progress**: 163 eval tests (Phases 1-4) + new utilities and dialogue infrastructure
 
 ## Performance Metrics
 
@@ -29,6 +29,8 @@
 - Phase ordering follows natural dependency chain: define → audit → automate → surface
 - ROADMAP.md approved on 2026-06-16 — all 4 phases are planned for execution
 - **Volume pipeline** (`useVolumeStoryGenerator`) is what UI renders — Phase 4 must bridge critique data into volume pipeline or build panels off orchestrator data
+- Dialogue detection/parsing pipeline built as composable + utility layer — decoupled from any specific UI
+- Voice profiles stored as plain config (`src/config/voiceProfiles.js`) — easy to extend without DB schema changes
 
 ### Requirements Coverage
 
@@ -102,27 +104,55 @@ All 3 prior todos now captured in **v0.5 Milestone** (Research/RAG System & Infr
 
 ## Session Continuity
 
-### Previous Session (2026-06-18)
-- **Phase 4 (EvalPanel UI)**: Created `src/components/eval/EvalPanel.vue` — shows dimension scores, gate results, issues, strengths; accepts optional `degradation` prop for per-dimension delta badges (improvement/regression/no-change)
-- **Phase 4 (RevisionDeltaPanel UI)**: Created `src/components/eval/RevisionDeltaPanel.vue` — shows word count delta, score delta, revised prose preview, per-dimension delta breakdown with degradation status (green/amber/red icons)
-- **Phase 4 (Degradation Service)**: Created `src/services/degradation.js` — `computeDegradation(originalCritique, revisedCritique)` returns per-dimension `{ before, after, delta, status }` plus `hasRegressions`/`hasMajorRegressions` booleans; 8 unit tests
-- **Phase 4 (useSceneEval composable)**: Created `src/composables/useSceneEval.js` — evaluate/revise/reset lifecycle, scene brief building, revision bounce detection, degradation computation; maintains `sceneResultsMap` for per-scene persistence; exposes `aggregateStats` computed (evaluated count, average score, total regressions, major regressions)
-- **Phase 4 (Integration)**: All panels wired into `StoryGeneratorPanel.vue` complete state view; scene index passed through evaluate/revise handlers for aggregate tracking; story-level eval aggregate summary card added between quality card and scene list
-- **Tests**: 23 Phase 4 unit tests across 2 files all passing; pre-existing 15 failures in integration tests unchanged (IndexedDB API unavailable in test env)
+### Prior Sessions
+- **2026-06-18**: Phase 4 — EvalPanel UI, RevisionDeltaPanel, degradation service, useSceneEval composable, wiring into StoryGeneratorPanel (23 unit tests)
+- **2026-06-19**: ResearchPanel UX polish — focus trap on size-warning modal, toast notifications for document operations
 
-### Current Session (2026-06-19)
-- **Phase 7 (ResearchPanel UX Polish)**: Implemented focus trap on the import size-warning modal and success/error toast notifications for document operations
-- **Focus Trap**: Created `src/composables/useFocusTrap.js` — wraps `focus-trap` library (already in deps) in a Vue composable with `activate`/`deactivate`; wired into `ResearchPanel.vue` via `watch(showSizeWarning)` lifecycle
-- **Toast Notifications**: Added `addToast()` calls in `ResearchPanel.vue` for import success, re-index success, and document removal; uses existing `useNotifications` composable singleton with `'success'` type
-- **No tests added** — these are UX-only changes with no testable logic
+### Current Session (2026-06-21)
+- **Dialogue Detection Pipeline**: Created `src/utils/dialogueDetector.js` (regex-based detection of dialogue lines), `src/utils/dialogueParser.js` (structured extraction with speaker, text, context), `src/utils/speakerIdentifier.js` (cross-scene speaker tracking); all decoupled from UI
+- **Dialogue Indexer**: `src/composables/useDialogueIndexer.js` — manages dialogue DB operations via `src/services/db-dialogue.js`; exposes `indexScenes()` and `queryDialogue(searchTerm)`
+- **Voice Lab**: `src/config/voiceProfiles.js` — emotion-to-voice mapping config (11 emotions × tone/speed/pitch profiles); `src/components/voice-lab/VoiceLabPanel.vue` — voice profile selection and preview UI
+- **Scene Context Service**: `src/services/sceneContextService.js` — builds structured scene briefs (characters, setting, tension, arc) for prompt-building
+- **Utilities**: `src/composables/useFocusTrap.js` (modal a11y), `src/composables/useAsyncError.js` (async error boundary), `src/composables/usePromptBuilder.js` (prompt template system)
+- **AutoDialogue Extension**: `src/extensions/AutoDialogue.js` — ProseMirror plugin for auto-formatting dialogue during writing
+- **StoryNetwork Visualization**: New `StoryNetwork.vue` component wired into `StoryBiblePanel.vue` — graph-based character/relationship view
+- **Cleanup**: Removed `src/services/debugSnapshot.js`, `src/services/generation/entityGeneration.js`, stale generation context/shaping/pipeline composables, old todo files
+- **ResearchPanel Polish**: Focus trap, toast notifications (re-baselined from 2026-06-19)
+
+### Technical Notes Additions
+- Dialogue pipeline uses regex-based detection (not ML) — fast, deterministic, no AI dependency
+- Voice profiles are plain JS configs — no DB storage needed for phase 1
+- `usePromptBuilder` templates support `{{variable}}` interpolation and partial rendering
+
+### Brainstorming — Story Shape Panel (v1.3)
+A new Story Shape Panel was designed and committed to the roadmap as **v1.3**:
+- **Problem**: Writers need to see narrative shape (tension, emotion, character focus, structure) across scenes
+- **Analysis**: Hybrid heuristic + AI analysis of all manuscript scenes
+- **Visualization**: 4 interactive charts — TensionCurve, EmotionalArc, CharacterFocusMatrix, NarrativeStructureTimeline
+- **Design doc**: `.planning/brainstorming/shape-panel-session.md`
+- **Roadmap**: 4 phases from heuristic baseline through full combined view
+
+### Completed Milestones
+| Milestone | Status | Completed |
+|-----------|--------|-----------|
+| v1.0 — AI Pipeline Evaluation & Quality Gates | ✅ | 2026-06-18 |
+| v0.5 — Research/RAG System & Infrastructure Hardening | ✅ | 2026-06-21 |
+| v1.1 — Writer & Eval Quality Improvements | ✅ | 2026-06-21 |
+| v1.2 — UI/UX Polish | ✅ | 2026-06-21 |
+
+### Current Work: v1.3 — Story Shape Panel 🚧
+All prior milestones shipped. Now starting v1.3 (4 phases):
+1. Heuristic Analyzer & TensionCurveChart
+2. AI Narrative Analyzer & NarrativeStructureTimeline
+3. EmotionalArcChart & CharacterFocusMatrix
+4. Combined view, annotations, zoom, export
 
 ### Current Blockers
 None.
 
 ### Next Actions
-Continue with **v0.5 — Research/RAG System & Infrastructure Hardening**:
-- Phase A: Handle 1M+ character documents without browser crash (natural next step — extends the import flow we just polished)
-- Phase B: Connect PostgreSQL database and link frontend to backend
-- Phase C: Investigate and accelerate document embedding indexing throughput
-
-After v0.5: v1.1 — Writer & Eval Quality Improvements (6 phases)
+Begin **v1.3 Phase 1: Heuristic Analyzer & Tension Curve**:
+- Implement heuristic scene analyzer composable
+- Build IndexedDB service for analysis results
+- Create TensionCurveChart component
+- Integrate new panel into workspace system

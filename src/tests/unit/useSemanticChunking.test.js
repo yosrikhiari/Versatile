@@ -53,29 +53,29 @@ describe('computeChunksForSentences', () => {
 })
 
 describe('mergeSmallChunks', () => {
-  it('returns input for single chunk', () => {
+  it('returns input for single chunk', async () => {
     const chunks = [{ sentences: ['a'], startIdx: 0, endIdx: 0 }]
-    expect(mergeSmallChunks(chunks, 2)).toEqual(chunks)
+    expect(await mergeSmallChunks(chunks, 2)).toEqual(chunks)
   })
 
-  it('merges small chunks into adjacent ones', () => {
+  it('merges small chunks into adjacent ones', async () => {
     const chunks = [
       { sentences: ['a.', 'b.'], startIdx: 0, endIdx: 1 },
       { sentences: ['c.'], startIdx: 2, endIdx: 2 },
       { sentences: ['d.', 'e.'], startIdx: 3, endIdx: 4 }
     ]
-    const result = mergeSmallChunks(chunks, 2)
+    const result = await mergeSmallChunks(chunks, 2)
     expect(result).toHaveLength(2)
     expect(result[0].sentences).toHaveLength(2)
     expect(result[1].sentences).toHaveLength(3)
   })
 
-  it('merges last small chunk into previous', () => {
+  it('merges last small chunk into previous', async () => {
     const chunks = [
       { sentences: ['a.', 'b.'], startIdx: 0, endIdx: 1 },
       { sentences: ['c.'], startIdx: 2, endIdx: 2 }
     ]
-    const result = mergeSmallChunks(chunks, 2)
+    const result = await mergeSmallChunks(chunks, 2)
     expect(result).toHaveLength(1)
     expect(result[0].sentences).toHaveLength(3)
   })

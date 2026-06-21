@@ -11,7 +11,7 @@ const MAX_CONTEXT_CHARS = 3500
 export async function warmEmbeddingCache(projectId) {
   try {
     const allScenes = await getScenes(projectId)
-    const cache = getEmbeddingCache()
+    const cache = await getEmbeddingCache()
     let warmed = 0
 
     for (const scene of allScenes) {
