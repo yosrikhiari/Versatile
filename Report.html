@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Review — Deepening Candidates</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #e6edf3; line-height: 1.6; padding: 40px; }
+  .container { max-width: 960px; margin: 0 auto; }
+
+  h1 { font-size: 28px; font-weight: 600; margin-bottom: 4px; color: #f0f6fc; }
+  .subtitle { color: #8b949e; font-size: 14px; margin-bottom: 32px; }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+  .controls button { background: #21262d; border: 1px solid #30363d; color: #e6edf3; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all .15s; }
+  .controls button:hover { background: #30363d; }
+  .controls button.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
+  .badge-strong { background: #1a3a2a; color: #3fb950; }
+  .badge-worth { background: #1f2d3d; color: #58a6ff; }
+  .badge-speculative { background: #2d1f1f; color: #f85149; }
+
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 24px; margin-bottom: 20px; transition: border-color .15s; cursor: pointer; }
+  .card:hover { border-color: #58a6ff; }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .card-title { font-size: 18px; font-weight: 600; color: #f0f6fc; }
+  .card-meta { font-size: 12px; color: #8b949e; margin-top: 2px; }
+  .card-evidence { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 12px 16px; margin: 12px 0; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; white-space: pre-wrap; }
+  .card-evidence .hl { color: #ffa657; }
+  .card-evidence .dim { color: #484f58; }
+  .card-evidence .green { color: #3fb950; }
+  .card-body { font-size: 14px; color: #c9d1d9; }
+  .card-body ul { padding-left: 20px; margin: 8px 0; }
+  .card-body li { margin-bottom: 4px; }
+
+  .detail-panel { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-top: 12px; display: none; }
+  .detail-panel.visible { display: block; }
+  .detail-panel h3 { font-size: 15px; color: #58a6ff; margin-bottom: 8px; }
+  .detail-panel p { font-size: 13px; color: #c9d1d9; margin-bottom: 8px; }
+  .detail-panel code { background: #21262d; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .detail-panel table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+  .detail-panel th, .detail-panel td { border: 1px solid #21262d; padding: 6px 10px; text-align: left; }
+  .detail-panel th { background: #161b22; color: #8b949e; font-weight: 500; }
+
+  footer { text-align: center; color: #484f58; font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #21262d; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Architecture Review</h1>
+  <p class="subtitle">7 deepening candidates found in this codebase. Click a card to toggle details.</p>
+
+  <div class="controls">
+    <button class="active" data-filter="all">All (7)</button>
+    <button data-filter="strong">Strong (3)</button>
+    <button data-filter="worth">Worth Exploring (3)</button>
+    <button data-filter="speculative">Speculative (1)</button>
+  </div>
+
+  <!-- Card 1: Shallow CRUD store consolidation -->
+  <div class="card" data-confidence="strong">
+    <div class="card-header">
+      <div>
+        <div class="card-title"><span class="badge badge-strong">STRONG</span> 1. Shallow Pinia store consolidation</div>
+        <div class="card-meta">13 stores · ~775 lines · <a style="color:#58a6ff" href="javascript:void(0)" onclick="toggleDetail('d1')">toggle evidence</a></div>
+      </div>
+    </div>
+    <div class="card-evidence" id="d1" style="display:none"><span class="dim"># findIndex + in-place-mutate appears identically in 8+ stores</span>
+<span class="hl">storyBibleStore.js</span>
+  <span class="green">characters.value.findIndex(c => c.id === id)</span> → mutates
+<span class="hl">manuscriptStore.js</span>
+  <span class="green">sections.value.findIndex(c => c.id === id)</span> → mutates
+<span class="hl">storyGraphStore.js</span>
+  <span class="green">edges.value.findIndex(e => e.id === id)</span> → mutates
+<span class="hl">volumeStoryNetworkStore.js</span>
+  <span class="green">entities.value.findIndex(e => e.id === id)</span> → mutates
+
+<span class="dim"># isLoading + try/finally load pattern duplicated in 8+ stores</span>
+<span class="hl">volumeStore.js</span>        <span class="green"> 60 → 18</span> lines (refactored ✓)
+<span class="hl">snapshotStore.js</span>      <span class="green"> 85 → 79</span> lines (refactored ✓)
+<span class="hl">archiveStore.js</span>       <span class="green"> 93</span> lines — <span class="hl">2</span> load functions, same try/finally
+<span class="hl">storyBibleStore.js</span>    <span class="green">232</span> lines — <span class="hl">1</span> load function, 3 entity CRUD triplets
+<span class="hl">manuscriptStore.js</span>    <span class="green">249</span> lines — <span class="hl">1</span> load, 4 entity CRUD quadruplets
+<span class="hl">storyGraphStore.js</span>    <span class="green">259</span> lines — <span class="hl">2</span> load, 2 edge CRUD sets
+
+<span class="dim"># Each store independently re-implements the same CRUD wiring:</span>
+  add*:     db.add()  → items.value.push({ id, ... })
+  update*:  db.update() → findIndex → spread-mutate
+  delete*:  db.delete() → items.value.filter(...)</div>
+    <div class="card-body">
+      <p>13 Pinia stores share an identical pattern: a <code>ref([])</code> for items, <code>isLoading</code> ref with try/finally, and CRUD methods that all follow <code>add → db.add() → push</code>, <code>update → findIndex → spread-mutate</code>, <code>delete → filter</code>. This pattern is literally copied with different entity names. A generic <code>useCRUD(entityName)</code> composable could eliminate ~600 lines and 11 near-identical interfaces. <strong>Risk:</strong> some stores have unique post-save side effects (auto-regenerate docs, reorder cascades) — the composable must support hooks.</p>
+    </div>
+  </div>
+
+  <!-- Card 2: Duplicate summarizeLog -->
+  <div class="card" data-confidence="strong">
+    <div class="card-header">
+      <div>
+        <div class="card-title"><span class="badge badge-strong">STRONG</span> 2. Duplicate <code>summarizeLog</code> in prompt builders</div>
+        <div class="card-meta"><code>usePromptBuilder.js</code> ∥ <code>useStoryWriter.js</code> · <a style="color:#58a6ff" href="javascript:void(0)" onclick="toggleDetail('d2')">toggle evidence</a></div>
+      </div>
+    </div>
+    <div class="card-evidence" id="d2" style="display:none"><span class="dim"># usePromptBuilder.js:7</span>
+function <span class="hl">summarizeLog</span>(chapterLog) {
+  if (!chapterLog || !Array.isArray(chapterLog)) return ''
+  if (chapterLog.length &lt;= 5) return chapterLog.join('\n')
+  const recent = chapterLog.slice(-3)
+  return [...recent, `(... plus ${chapterLog.length - 3} earlier scenes summarized)`].join('\n')
+}
+
+<span class="dim"># useStoryWriter.js:82 — identical implementation</span>
+function <span class="hl">summarizeLog</span>(chapterLog) {
+  if (!chapterLog || !Array.isArray(chapterLog)) return ''
+  if (chapterLog.length &lt;= 5) return chapterLog.join('\n')
+  const recent = chapterLog.slice(-3)
+  return [...recent, `(... plus ${chapterLog.length - 3} earlier scenes summarized)`].join('\n')
+}
+
+<span class="dim"># Both files export it:</span>
+usePromptBuilder.js:190  → <span class="green">export { summarizeLog }</span>
+useStoryWriter.js:494    → <span class="green">export { extractDoc, summarizeLog }</span></div>
+    <div class="card-body">
+      <p>The <code>summarizeLog</code> function is defined identically in two composables (<code>usePromptBuilder.js:7</code> and <code>useStoryWriter.js:82</code>). Both export it. This is a pure extracted-function candidate — move to <code>src/utils/promptUtils.js</code> and re-import. <strong>Token cost:</strong> trivial (18 lines), but gets at a deeper pattern: the two composables have overlapping prompt-building responsibilities that could be merged.</p>
+    </div>
+  </div>
+
+  <!-- Card 3: AI Orchestrator divergence -->
+  <div class="card" data-confidence="strong">
+    <div class="card-header">
+      <div>
+        <div class="card-title"><span class="badge badge-strong">STRONG</span> 3. AI orchestrator divergence</div>
+        <div class="card-meta"><code>useStoryOrchestrator</code> (698) ∥ <code>useVolumeStoryGenerator</code> (1122) · <a style="color:#58a6ff" href="javascript:void(0)" onclick="toggleDetail('d3')">toggle evidence</a></div>
+      </div>
+    </div>
+    <div class="card-evidence" id="d3" style="display:none"><span class="dim"># Two orchestrators share the same 4-persona pipeline but diverged:</span>
+                  <span class="hl">useStoryOrchestrator</span>  │  <span class="hl">useVolumeStoryGenerator</span>
+─────────────────┼──────────────────────────┼──────────────────────────────
+Scope            │  Single story             │  Multi-chapter volume
+Persona loop     │  Dir→Writer→Critic→Rev    │  Dir plans volume; Writer per-chapter
+Phase naming     │  <span class="green">phase</span> field              │  <span class="green">stage</span> field
+Critic model     │  Parallel critics          │  Sequential per-chapter
+Eval feedback    │  useSceneEval()            │  formatEvalFeedback() inline
+Dexie persistence│  Every phase               │  Only at milestone boundaries
+Lines            │  698                       │  1122
+
+<span class="dim"># Both import the same 4 persona composables:</span>
+useStoryOrchestrator    useStoryWriter, useStoryCritic, useStoryRevisor, useStoryResearcher
+useVolumeStoryGenerator useStoryDirector, useStoryWriter, useStoryCritic, useStoryRevisor
+
+<span class="dim"># The critic→revisor→critic meta-loop appears in 3 places:</span>
+useStoryOrchestrator.js   <span class="green">the main eval loop</span>
+useSceneEval.js            <span class="green">the scene-level eval helper</span>
+useVolumeStoryGenerator.js <span class="green">inline eval per chapter</span></div>
+    <div class="card-body">
+      <p>Two orchestrators (<code>698 + 1122 = 1820 lines</code>) drive the same Director → Writer → Critic → Revisor pipeline but have diverged in phase naming (<code>phase</code> vs <code>stage</code>), critic concurrency model (parallel vs sequential), persistence strategy, and eval feedback wiring. The critic→revisor meta-loop is duplicated in 3 places. A shared <code>useGenerationPipeline</code> base could parameterize concurrency, persistence, and eval strategy.</p>
+    </div>
+  </div>
+
+  <!-- Card 4: Db-* service duplication -->
+  <div class="card" data-confidence="worth">
+    <div class="card-header">
+      <div>
+        <div class="card-title"><span class="badge badge-worth">WORTH</span> 4. Db-* service module duplication</div>
+        <div class="card-meta">14 modules · each a thin try/catch over Dexie · <a style="color:#58a6ff" href="javascript:void(0)" onclick="toggleDetail('d4')">toggle evidence</a></div>
+      </div>
+    </div>
+    <div class="card-evidence" id="d4" style="display:none"><span class="dim"># Every db-*.js file follows this pattern:</span>
+export async function <span class="hl">getX</span>(projectId) {
+  try {
+    return await db.<span class="green">x</span>.where('projectId').equals(projectId).toArray()
+  } catch (error) {
+    console.error('Failed to get x:', error)
+    throw error
+  }
+}
+
+export async function <span class="hl">addX</span>(projectId, data) {
+  try {
+    const now = new Date().toISOString()
+    return await db.<span class="green">x</span>.add({ projectId, ...data, createdAt: now, updatedAt: now })
+  } catch (error) { ... }
+}
+
+export async function <span class="hl">updateX</span>(id, data) {
+  try {
+    await db.<span class="green">x</span>.update(id, { ...data, updatedAt: new Date().toISOString() })
+  } catch (error) { ... }
+}
+
+export async function <span class="hl">deleteX</span>(id) {
+  try {
+    await db.<span class="green">x</span>.delete(id)
+  } catch (error) { ... }
+}
+
+<span class="dim"># Files checked:</span>
+db-snapshots.js  <span class="green">✓</span>  db-projects.js  <span class="green">✓</span>  db-goals.js  <span class="green">✓</span>
+db-graph.js      <span class="green">✓</span>  db-entities.js  <span class="green">✓</span>  db-archive.js  <span class="green">✓</span>
+(+ 8 more files in src/services/db-*)</div>
+    <div class="card-body">
+      <p>14 <code>db-*.js</code> files in <code>src/services/</code> each wrap Dexie operations with identical try/catch + timestamp boilerplate. Most follow the exact same CRUD shape against a single Dexie table. A generic <code>createDbService(tableName)</code> factory could generate all CRUD functions from table metadata, reducing these 14 files to 1 factory + table config. <strong>Not all db-* modules are uniform:</strong> <code>db-goals.js</code> has streak logic, <code>db-core.js</code> is the schema. But the 8+ pure CRUD modules are consolidation candidates.</p>
+    </div>
+  </div>
+
+  <!-- Card 5: Triple embedding cache -->
+  <div class="card" data-confidence="worth">
+    <div class="card-header">
+      <div>
+        <div class="card-title"><span class="badge badge-worth">WORTH</span> 5. Triple embedding cache</div>
+        <div class="card-meta">3 independent caching mechanisms · <a style="color:#58a6ff" href="javascript:void(0)" onclick="toggleDetail('d5')">toggle evidence</a></div>
+      </div>
+    </div>
+    <div class="card-evidence" id="d5" style="display:none"><span class="dim"># Cache 1: Dexie table in db-core.js</span>
+embeddingCache: '<span class="hl">\&amp;hash, createdAt</span>'  ← IndexedDB table
+
+<span class="dim"># Cache 2: In-memory Map in embeddingService.js</span>
+const <span class="hl">embeddingCache</span> = new Map()
+const MAX_CACHE_SIZE = 5000
+
+<span class="dim"># Cache 3: Dexie queries in researchDb.js</span>
+db.<span class="hl">embeddingCache</span>.get(hash)    ← same table as Cache 1?
+db.<span class="hl">embeddingCache</span>.put({ ... }) ← but via different module
+
+<span class="dim"># embeddingService.js also reads/writes to the Dexie table:</span>
+const dexieEntry = await db.embeddingCache.get(hashes[i])
+embeddingCache.set(hash, dexieEntry)  ← but only for the current session
+
+<span class="dim"># Net effect: same embedding can be computed 3x</span>
+1. <span class="hl">researchDb.js</span> checks Dexie → miss → caller must compute
+2. <span class="hl">embeddingService.js</span> checks Map → miss → checks Dexie → miss → computes → stores in both
+3. Neither knows about the other's in-memory cache</div>
+    <div class="card-body">
+      <p>Three separate embedding caching mechanisms coexist without sharing state: a Dexie table in <code>db-core.js</code>, an in-memory Map in <code>embeddingService.js</code>, and direct Dexie queries in <code>researchDb.js</code> (which also accesses the same Dexie table — but through a different import path). <code>embeddingService.js</code> maintains its own LRU Map that's never consulted by <code>researchDb.js</code>. Same embedding can be computed 3 times.</p>
+    </div>
+  </div>
+
+  <!-- Card 6: Stacked retry logic -->
+  <div class="card" data-confidence="worth">
+    <div class="card-header">
+      <div>
+        <div class="card-title"><span class="badge badge-worth">WORTH</span> 6. Stacked retry logic</div>
+        <div class="card-meta">transport retries × application retries = 15x API calls · <a style="color:#58a6ff" href="javascript:void(0)" onclick="toggleDetail('d6')">toggle evidence</a></div>
+      </div>
+    </div>
+    <div class="card-evidence" id="d6" style="display:none"><span class="dim"># Layer 1: Transport retry in aiService.js</span>
+async function <span class="hl">callWithRetry</span>(fn, retries = 2) { ... }
+  ← Retries on network errors, 429, 5xx
+
+<span class="dim"># Layer 2: Generation service retry in generation/*.js</span>
+async function <span class="hl">generateWithRetries</span>(...args) {
+  const MAX_RETRIES = 5  ← Retries on quality/parse failures
+  ...
+}
+
+<span class="dim"># Combined worst case:</span>
+<span class="hl">aiService.callWithRetry(2)</span> × <span class="hl">generateWithRetries(5)</span> = <span class="green">15 API calls</span>
+                    ↑ transport retries      ↑ application retries
+
+<span class="dim"># No backoff coordination between layers:</span>
+First call fails (network blip)    → transport retry (2) → succeeds → generation parse fails → app retry (5)
+Each app retry also has transport retries
+If both trigger simultaneously, total = <span class="hl">15 calls</span></div>
+    <div class="card-body">
+      <p>Retries are stacked at two levels: <code>aiService.js</code> retries at the transport level (network errors, HTTP 429/5xx) with 2 retries, while individual generation services (<code>generation/*.js</code>) retry at the application level (parse failures, quality gates) with 5 retries. In the worst case — a network blip during the last application retry — the system could make 15 API calls. <strong>The architecture needs a unified retry policy:</strong> total retries across all layers should be bounded.</p>
+    </div>
+  </div>
+
+  <!-- Card 7: v13 migration remnants -->
+  <div class="card" data-confidence="speculative">
+    <div class="card-header">
+      <div>
+        <div class="card-title"><span class="badge badge-speculative">SPECULATIVE</span> 7. v13 migration remnants</div>
+        <div class="card-meta">legacy tables, renamed models, stale references · <a style="color:#58a6ff" href="javascript:void(0)" onclick="toggleDetail('d7')">toggle evidence</a></div>
+      </div>
+    </div>
+    <div class="card-evidence" id="d7" style="display:none"><span class="dim"># Legacy Dexie tables still in schema (db-core.js)</span>
+chapters: <span class="hl">'&amp;id, projectId, ...'</span>   ← pre-v13 name for sections
+scenes:   <span class="hl">'&amp;id, sectionId, ...'</span>    ← pre-v13 name for subsections
+<span class="dim">Both tables still exist. Data may be split across old and new tables.</span>
+
+<span class="dim"># volumeStore.js still references the old naming:</span>
+methods named <span class="hl">assignChapter</span>         ← operates on the <span class="green">sections</span> table
+reactive state <span class="hl">chapterIds</span>            ← stores section IDs
+
+<span class="dim"># Frontend-backend semantic mismatch (from CONTEXT.md):</span>
+Volume (frontend) <span class="hl">=</span> graph grouping of entities
+Volume (backend)  <span class="hl">=</span> structural container with chapters &amp; scenes
+<span class="green">HIGH RISK</span> — drives different save behaviors
+
+<span class="dim"># No chapters/scenes stores exist (clean break):</span>
+src/stores/chaptersStore.js  <span class="hl">→ does not exist</span>
+src/stores/scenesStore.js    <span class="hl">→ does not exist</span></div>
+    <div class="card-body">
+      <p>The v13 migration renamed <code>chapters → sections</code> and <code>scenes → subsections</code>, but the legacy <code>chapters</code> and <code>scenes</code> Dexie tables still exist in <code>db-core.js</code>. <code>volumeStore.js</code> still exposes <code>chapterIds</code> and <code>assignChapter</code> which operate on the <code>sections</code> table — a footgun for anyone reading the API. The frontend and backend disagree on what a "Volume" means semantically (graph grouping vs structural container).</p>
+    </div>
+  </div>
+
+  <footer>
+    Found 7 deepening candidates · 3 Strong · 3 Worth Exploring · 1 Speculative<br>
+    Generated from architecture review of Versatile (Vue 3 + Pinia + Dexie + .NET 10)
+  </footer>
+</div>
+
+<script>
+function toggleDetail(id) {
+  var el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+document.querySelectorAll('[data-filter]').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    document.querySelectorAll('[data-filter]').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    var filter = btn.getAttribute('data-filter');
+    document.querySelectorAll('.card').forEach(function(card) {
+      card.style.display = (filter === 'all' || card.getAttribute('data-confidence') === filter) ? 'block' : 'none';
+    });
+  });
+});
+</script>
+</body>
+</html>

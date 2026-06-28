@@ -285,7 +285,7 @@ export const SYNC_ENTITIES = [
       description: local.description || null,
       color: local.color || '#6366f1',
       sortOrder: local.sortOrder ?? 0,
-      chapterIds: Array.isArray(local.chapterIds) ? JSON.stringify(local.chapterIds) : (local.chapterIds || null)
+      sectionIds: Array.isArray(local.sectionIds) ? JSON.stringify(local.sectionIds) : (local.sectionIds || null)
     }),
     fromApi: (api) => ({
       apiId: api.id,
@@ -293,7 +293,7 @@ export const SYNC_ENTITIES = [
       description: api.description || '',
       color: api.color || '#6366f1',
       sortOrder: api.sortOrder ?? 0,
-      chapterIds: api.chapterIds || null,
+      sectionIds: api.sectionIds || null,
       createdAt: api.createdAt || new Date().toISOString(),
       updatedAt: api.updatedAt || new Date().toISOString(),
       syncStatus: 'synced',

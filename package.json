@@ -15,6 +15,7 @@
     "format": "prettier --write \"src/**/*.{js,vue,css}\""
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.2.9",
     "@tiptap/extension-highlight": "^2.27.2",
     "@tiptap/pm": "^2.1.0",
     "@tiptap/starter-kit": "^2.1.0",

@@ -180,7 +180,7 @@ onUnmounted(() => {
 
                 <div v-if="selectedSnapshot?.id === snapshot.id" class="mt-3 pt-3 border-t border-border-subtle">
                   <div class="text-xs text-text-hint font-ui mb-2">Preview</div>
-                  <div class="text-sm text-text-secondary font-body max-h-40 overflow-y-auto bg-bg-tertiary rounded p-2 whitespace-pre-wrap">
+                  <div class="text-sm text-text-secondary max-h-40 overflow-y-auto bg-bg-tertiary rounded p-2 whitespace-pre-wrap">
                     {{ previewDiff(snapshot).slice(0, 500) }}{{ previewDiff(snapshot).length > 500 ? '...' : '' }}
                   </div>
                   <button

@@ -11,7 +11,7 @@ const emit = defineEmits(['insert', 'regenerate'])
 
 <template>
   <div class="rounded-lg p-4 bg-bg-tertiary border border-border-subtle">
-    <p class="text-text-secondary text-sm leading-relaxed italic font-body border-l-2 border-accent-muted pl-3">{{ prompt }}</p>
+    <p class="text-text-secondary text-sm leading-relaxed italic border-l-2 border-accent-muted pl-3">{{ prompt }}</p>
     <div class="flex gap-2 mt-4">
       <button
         class="flex-1 py-1.5 bg-accent text-accent-foreground text-sm rounded-md hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"

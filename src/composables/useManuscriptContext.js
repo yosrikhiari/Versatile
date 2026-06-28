@@ -2,7 +2,7 @@ import { useManuscriptStore } from '../stores/manuscriptStore'
 import { ollamaEmbeddings, getEmbeddingCache, getEmbedding, cosineSimilarity } from '../services/ollamaService'
 import { getEmbeddings } from '../services/embeddingService'
 import { computeSemanticChunks } from './useSemanticChunking'
-import { getScenes } from '../services/dbService'
+import { getSubsections } from '../services/dbService'
 import { useSettingsStore } from '../stores/settingsStore'
 import { EMBEDDING_DEFAULTS } from '../config/ai'
 
@@ -10,7 +10,7 @@ const MAX_CONTEXT_CHARS = 3500
 
 export async function warmEmbeddingCache(projectId) {
   try {
-    const allScenes = await getScenes(projectId)
+    const allSubsections = await getSubsections(projectId)
     const cache = await getEmbeddingCache()
     let warmed = 0
 

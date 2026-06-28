@@ -6,6 +6,8 @@ import { getDailyGoal, setDailyGoal } from '../../services/dbService'
 import { getAvailableModels, getStoredOpenAIKey, setStoredOpenAIKey } from '../../services/ollamaService'
 import { PROVIDERS, PROVIDER_LABELS, PROVIDER_LIST, PROVIDER_MODELS, FEATURE_LIST, FEATURE_LABELS, EMBEDDING_PROVIDER_LABELS, EMBEDDING_MODELS, EMBEDDING_THRESHOLD_MIN, EMBEDDING_THRESHOLD_MAX, EMBEDDING_THRESHOLD_STEP } from '../../config/ai'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseTab from '../ui/BaseTab.vue'
+import BaseButton from '../ui/BaseButton.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
 import VoiceProfileDisplay from '../shared/VoiceProfileDisplay.vue'
@@ -28,6 +30,14 @@ const ollamaEndpoint = ref('')
 const testingConnection = ref(false)
 const connectionStatus = ref(null)
 const showVoiceUpload = ref(false)
+
+const tabOptions = [
+  { key: 'goals', label: 'Goals' },
+  { key: 'ai', label: 'AI Providers' },
+  { key: 'embedding', label: 'Embeddings' },
+  { key: 'features', label: 'Features' },
+  { key: 'voice', label: 'Voice' }
+]
 
 const apiKeys = ref({})
 const testingProvider = ref(null)
@@ -181,8 +191,9 @@ watch(() => props.show, (newVal) => {
 
 <template>
   <Teleport to="body">
-    <div v-if="show" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" @click.self="emit('close')">
-      <div class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-thin animate-scale-in">
+    <Transition name="modal">
+      <div v-if="show" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" @click.self="emit('close')">
+        <div class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-thin">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-display font-semibold text-text-primary tracking-wide">Settings</h2>
           <button class="text-text-hint/50 hover:text-text-primary transition-all duration-150 btn-ghost rounded-lg p-1" @click="emit('close')">
@@ -191,51 +202,16 @@ watch(() => props.show, (newVal) => {
         </div>
 
         <div class="flex gap-1 mb-6 border-b border-border-subtle/50 pb-2">
-          <button
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
-              activeTab === 'goals' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
-            ]"
-            @click="activeTab = 'goals'"
+          <BaseTab
+            v-for="t in tabOptions"
+            :key="t.key"
+            variant="segment"
+            size="sm"
+            :active="activeTab === t.key"
+            @click="activeTab = t.key"
           >
-            Goals
-          </button>
-          <button
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
-              activeTab === 'ai' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
-            ]"
-            @click="activeTab = 'ai'"
-          >
-            AI Providers
-          </button>
-          <button
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
-              activeTab === 'embedding' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
-            ]"
-            @click="activeTab = 'embedding'"
-          >
-            Embeddings
-          </button>
-          <button
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
-              activeTab === 'features' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
-            ]"
-            @click="activeTab = 'features'"
-          >
-            Features
-          </button>
-          <button
-            :class="[
-              'px-3 py-1.5 text-sm rounded-lg transition-all duration-150',
-              activeTab === 'voice' ? 'bg-accent-glass text-accent' : 'text-text-hint/60 hover:text-text-secondary btn-ghost'
-            ]"
-            @click="activeTab = 'voice'"
-          >
-            Voice
-          </button>
+            {{ t.label }}
+          </BaseTab>
         </div>
 
         <div v-if="activeTab === 'goals'">
@@ -470,28 +446,47 @@ watch(() => props.show, (newVal) => {
         </div>
 
         <div class="flex gap-3 mt-6">
-          <button
-            class="flex-1 py-2 bg-surface-hover text-text-secondary rounded-lg font-medium hover:bg-bg-tertiary focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="emit('close')"
-          >
+          <BaseButton variant="secondary" size="md" class="flex-1" @click="emit('close')">
             Cancel
-          </button>
-          <button
+          </BaseButton>
+          <BaseButton
             v-if="activeTab === 'goals'"
-            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+            variant="primary"
+            size="md"
+            class="flex-1"
             @click="saveGoal"
           >
             Save
-          </button>
-          <button
+          </BaseButton>
+          <BaseButton
             v-if="activeTab === 'ai'"
-            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+            variant="primary"
+            size="md"
+            class="flex-1"
             @click="saveAllSettings"
           >
             Save
-          </button>
+          </BaseButton>
         </div>
       </div>
     </div>
+  </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.2s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from > div,
+.modal-leave-to > div {
+  transform: scale(0.95);
+}
+</style>

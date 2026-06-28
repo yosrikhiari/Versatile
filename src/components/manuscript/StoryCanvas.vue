@@ -16,7 +16,7 @@ const { showConfirm } = useNotifications()
 const selectedElement = ref(null)
 const showAddModal = ref(false)
 const newElementTitle = ref('')
-const newElementType = ref('chapter')
+const newElementType = ref('section')
 
 const elementTypes = [
   { value: 'section', label: 'Section', color: 'var(--vers-element-section)', iconName: 'book-open' },
@@ -189,7 +189,7 @@ onMounted(() => {
       </draggable>
 
       <div v-if="manuscriptStore.storyElements.length === 0" class="text-center py-12">
-        <p class="text-text-hint font-ui text-sm">No elements yet. Add elements or drag chapters from above.</p>
+        <p class="text-text-hint font-ui text-sm">No elements yet. Add elements or drag sections from above.</p>
       </div>
     </div>
 

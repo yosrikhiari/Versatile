@@ -22,7 +22,7 @@ const props = defineProps({
     validator: v => ['accent', 'success', 'danger', 'warning', 'info'].includes(v)
   },
   disabled: Boolean,
-  class: {
+  customClass: {
     type: String,
     default: ''
   }
@@ -82,13 +82,13 @@ const variantClasses = computed(() => {
   }
 })
 
-const baseClasses = 'inline-flex items-center gap-1 rounded-full font-medium font-ui transition-colors'
+const baseClasses = 'inline-flex items-center gap-1 rounded-full font-medium font-ui transition-all duration-150 active:scale-[0.97]'
 </script>
 
 <template>
   <span
     v-if="variant !== 'filter'"
-    :class="[baseClasses, sizeClasses, variantClasses, class]"
+    :class="[baseClasses, sizeClasses, variantClasses, customClass]"
   >
     <slot />
     <button
@@ -106,7 +106,7 @@ const baseClasses = 'inline-flex items-center gap-1 rounded-full font-medium fon
     role="tab"
     :aria-selected="active ? 'true' : 'false'"
     :disabled="disabled"
-    :class="[baseClasses, sizeClasses, variantClasses, class]"
+    :class="[baseClasses, sizeClasses, variantClasses, customClass]"
     @click="$emit('click', $event)"
   >
     <slot />

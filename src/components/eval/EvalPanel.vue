@@ -198,7 +198,7 @@ v-if="dimensionDegradation(dim.key)" class="text-2xs font-ui shrink-0"
         Issues ({{ majorIssues.length }} major, {{ minorIssues.length }} minor)
       </h4>
       <div class="space-y-1.5">
-        <div v-for="(issue, i) in issues" :key="i" class="flex items-start gap-2 text-xs font-body">
+        <div v-for="(issue, i) in issues" :key="i" class="flex items-start gap-2 text-xs">
           <BaseIcon name="alert-triangle" :size="12" :class="severityColor(issue.severity)" class="mt-0.5 shrink-0" />
           <div>
             <span class="font-semibold" :class="severityColor(issue.severity)">[{{ issue.severity }}]</span>
@@ -212,7 +212,7 @@ v-if="dimensionDegradation(dim.key)" class="text-2xs font-ui shrink-0"
     <div v-if="strengths.length > 0 && !compact">
       <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider mb-2">Strengths</h4>
       <div class="space-y-1.5">
-        <div v-for="(strength, i) in strengths" :key="i" class="flex items-start gap-2 text-xs font-body">
+        <div v-for="(strength, i) in strengths" :key="i" class="flex items-start gap-2 text-xs">
           <BaseIcon name="sparkles" :size="12" class="text-success mt-0.5 shrink-0" />
           <span class="text-text-secondary">{{ strength }}</span>
         </div>

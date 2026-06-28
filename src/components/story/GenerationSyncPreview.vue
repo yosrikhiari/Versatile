@@ -47,7 +47,7 @@ function handleConfirm() {
   <div class="space-y-4">
     <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 space-y-2">
       <h3 class="text-sm font-semibold text-text-primary font-ui">Review New Entities</h3>
-      <p class="text-xs text-text-hint font-body">
+      <p class="text-xs text-text-hint">
         The writer discovered the following entities during generation.
         <template v-if="changes.length > 0">
           Select which ones to add to your story bible.
@@ -98,8 +98,8 @@ function handleConfirm() {
             <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0">Used in prose</span>
             <span v-else class="text-2xs text-text-hint font-ui shrink-0">Inferred</span>
           </div>
-          <p v-if="change.entity.role" class="text-xs text-text-hint font-body">Role: {{ change.entity.role }}</p>
-          <p v-if="change.entity.description" class="text-xs text-text-secondary font-body truncate">{{ change.entity.description }}</p>
+          <p v-if="change.entity.role" class="text-xs text-text-hint">Role: {{ change.entity.role }}</p>
+          <p v-if="change.entity.description" class="text-xs text-text-secondary truncate">{{ change.entity.description }}</p>
         </div>
       </div>
     </div>
@@ -126,8 +126,8 @@ function handleConfirm() {
             <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0">Used in prose</span>
             <span v-else class="text-2xs text-text-hint font-ui shrink-0">Inferred</span>
           </div>
-          <p v-if="change.entity.type" class="text-xs text-text-hint font-body">Type: {{ change.entity.type }}</p>
-          <p v-if="change.entity.description" class="text-xs text-text-secondary font-body truncate">{{ change.entity.description }}</p>
+          <p v-if="change.entity.type" class="text-xs text-text-hint">Type: {{ change.entity.type }}</p>
+          <p v-if="change.entity.description" class="text-xs text-text-secondary truncate">{{ change.entity.description }}</p>
         </div>
       </div>
     </div>
@@ -154,7 +154,7 @@ function handleConfirm() {
             <span :class="['px-1.5 py-0.5 rounded text-2xs font-ui', change.entity.status === 'open' ? 'text-green-400 bg-green-950/30' : change.entity.status === 'resolved' ? 'text-gray-400 bg-gray-800/30' : 'text-yellow-400 bg-yellow-950/30']">{{ change.entity.status || 'open' }}</span>
             <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0">Used</span>
           </div>
-          <p v-if="change.entity.summary" class="text-xs text-text-secondary font-body truncate">{{ change.entity.summary }}</p>
+          <p v-if="change.entity.summary" class="text-xs text-text-secondary truncate">{{ change.entity.summary }}</p>
         </div>
       </div>
     </div>

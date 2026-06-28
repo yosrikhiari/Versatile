@@ -48,8 +48,8 @@ export default {
       },
       fontFamily: {
         body: ['Crimson Pro', 'Georgia', 'serif'],
-        ui: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        ui: ['"Geist Variable"', 'Geist', 'system-ui', 'sans-serif'],
+        mono: ['"Geist Mono Variable"', 'Geist Mono', 'JetBrains Mono', 'monospace'],
         spark: ['Playfair Display', 'Georgia', 'serif'],
         flow: ['Lora', 'Georgia', 'serif'],
         polish: ['Libre Baskerville', 'Georgia', 'serif'],
@@ -75,6 +75,8 @@ export default {
       transitionTimingFunction: {
         'out-expo': 'cubic-bezier(0.19, 1, 0.22, 1)',
         'out-quart': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'spring-out': 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
       animation: {
         spin: 'spin 1s linear infinite',
@@ -86,6 +88,8 @@ export default {
         'slide-in-left': 'slide-in-left 0.2s ease-out forwards',
         'slide-in-up': 'slide-in-up 0.2s ease-out forwards',
         'glow-pulse': 'glow-pulse 3s ease-in-out infinite',
+        'spring-in': 'spring-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+        'stagger-fade-in': 'stagger-fade-in 0.4s ease-out forwards',
       },
       keyframes: {
         spin: { to: { transform: 'rotate(360deg)' } },
@@ -116,6 +120,14 @@ export default {
         'glow-pulse': {
           '0%, 100%': { opacity: '0.6' },
           '50%': { opacity: '1' },
+        },
+        'spring-in': {
+          '0%': { opacity: '0', transform: 'translateY(8px) scale(0.97)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        'stagger-fade-in': {
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
     },

@@ -119,7 +119,7 @@ watch(() => projectStore.currentProjectId, loadComments)
             class="paragraph-block relative mb-6"
             :data-index="index"
           >
-            <div class="text-lg leading-relaxed text-text-primary font-body">
+            <div class="text-lg leading-relaxed text-text-primary">
               {{ para.text }}
             </div>
             
@@ -133,7 +133,7 @@ watch(() => projectStore.currentProjectId, loadComments)
             >
               <div class="flex justify-between items-start gap-2">
                 <div>
-                  <span class="text-accent font-medium font-body text-sm">"{{ comment.selectedText }}"</span>
+                  <span class="text-accent font-medium text-sm">"{{ comment.selectedText }}"</span>
                   <p class="text-text-secondary mt-1 font-ui text-sm">{{ comment.comment }}</p>
                 </div>
                 <button

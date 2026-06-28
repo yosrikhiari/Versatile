@@ -62,7 +62,7 @@ function signalBadge(signal) {
         </div>
         <details class="mt-1">
           <summary class="text-2xs text-text-hint cursor-pointer hover:text-text-secondary font-ui">Full context text</summary>
-          <pre class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-24 overflow-y-auto font-body">{{ preview.contextText || '(empty)' }}</pre>
+          <pre class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-24 overflow-y-auto">{{ preview.contextText || '(empty)' }}</pre>
         </details>
       </div>
       <div v-else class="text-xs text-text-hint font-ui">No context available</div>

@@ -7,15 +7,15 @@ import { useNotifications } from './useNotifications'
 
 export { SECTION_STATUSES }
 
-export function useChapterSceneManager() {
+export function useSectionSchemaManager() {
   const manuscriptStore = useManuscriptStore()
   const projectStore = useProjectStore()
   const { showConfirm } = useNotifications()
 
-  const editingScene = ref(null)
-  const showSceneModal = ref(false)
+  const editingSubsection = ref(null)
+  const showSubsectionModal = ref(false)
   const activeSectionId = ref(null)
-  const newScene = ref({ title: '', summary: '', content: '', tags: [] })
+  const newSubsection = ref({ title: '', summary: '', content: '', tags: [] })
 
   function getStatusColor(status) {
     return SECTION_STATUSES.find(s => s.value === status)?.color || '#6b7280'
@@ -35,55 +35,55 @@ export function useChapterSceneManager() {
   }
 
   function openAddSubsection(sectionId) {
-    editingScene.value = null
-    newScene.value = { title: '', summary: '', content: '' }
+    editingSubsection.value = null
+    newSubsection.value = { title: '', summary: '', content: '' }
     activeSectionId.value = sectionId
-    showSceneModal.value = true
+    showSubsectionModal.value = true
   }
 
   function openEditSubsection(subsection) {
-    editingScene.value = subsection
-    newScene.value = { 
+    editingSubsection.value = subsection
+    newSubsection.value = { 
       title: subsection.title || '',
       summary: subsection.summary || '', 
       content: subsection.content || '',
       tags: subsection.tags ? [...subsection.tags] : []
     }
-    showSceneModal.value = true
+    showSubsectionModal.value = true
   }
 
   function saveSubsection() {
-    if (!newScene.value.title?.trim()) return
+    if (!newSubsection.value.title?.trim()) return
 
-    if (editingScene.value) {
+    if (editingSubsection.value) {
       manuscriptStore.updateSubsectionData(
-        editingScene.value.id,
+        editingSubsection.value.id,
         { 
-          title: newScene.value.title, 
-          summary: newScene.value.summary, 
-          content: newScene.value.content,
-          tags: newScene.value.tags
+          title: newSubsection.value.title, 
+          summary: newSubsection.value.summary, 
+          content: newSubsection.value.content,
+          tags: newSubsection.value.tags
         },
         projectStore.currentProjectId
       )
     } else if (activeSectionId.value) {
-      manuscriptStore.addSubsectionData(projectStore.currentProjectId, activeSectionId.value, newScene.value)
+      manuscriptStore.addSubsectionData(projectStore.currentProjectId, activeSectionId.value, newSubsection.value)
     }
 
-    showSceneModal.value = false
+    showSubsectionModal.value = false
   }
 
   async function deleteSubsection(subsection) {
-    if (await showConfirm('Delete Scene', `Delete "${subsection.title || 'Untitled'}"?`, 'Delete', 'danger')) {
+    if (await showConfirm('Delete Subsection', `Delete "${subsection.title || 'Untitled'}"?`, 'Delete', 'danger')) {
       manuscriptStore.deleteSubsectionData(subsection.id, projectStore.currentProjectId)
     }
   }
 
   return {
-    editingScene,
-    showSceneModal,
+    editingSubsection,
+    showSubsectionModal,
     activeSectionId,
-    newScene,
+    newSubsection,
     SECTION_STATUSES,
     getStatusColor,
     getStatusLabel,

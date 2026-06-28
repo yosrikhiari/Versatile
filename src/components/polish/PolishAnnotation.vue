@@ -83,18 +83,18 @@ function handleDismiss() {
       </template>
       <template v-else>
         <p class="text-xs text-text-hint mb-1 font-ui">Original:</p>
-        <p class="text-sm text-text-hint line-through font-body">{{ annotation.original }}</p>
+        <p class="text-sm text-text-hint line-through">{{ annotation.original }}</p>
         <p class="text-xs text-accent mt-2 mb-1 font-ui">Replacement:</p>
-        <p class="text-sm text-accent font-body">{{ annotation.suggestion }}</p>
+        <p class="text-sm text-accent">{{ annotation.suggestion }}</p>
       </template>
     </div>
     
     <div v-else class="text-sm space-y-1">
-      <p class="text-text-hint line-through font-body">{{ annotation.original }}</p>
-      <p class="text-accent font-body">{{ annotation.suggestion }}</p>
+      <p class="text-text-hint line-through">{{ annotation.original }}</p>
+      <p class="text-accent">{{ annotation.suggestion }}</p>
     </div>
     
-    <p v-if="annotation.reason" class="text-xs text-text-hint italic mt-2 font-body">
+    <p v-if="annotation.reason" class="text-xs text-text-hint italic mt-2">
       {{ annotation.reason }}
     </p>
     

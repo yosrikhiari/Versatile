@@ -7,6 +7,7 @@ import { finalizeStream } from '../services/jsonExtractor'
 import { formatEvalFeedback } from '../services/evalFeedback'
 import { getVoiceProfile } from '../config/voiceProfiles'
 import { buildSceneContext } from '../services/sceneContextService'
+import { summarizeLog } from '../utils/promptUtils'
 
 const FALLBACK_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
 
@@ -77,13 +78,6 @@ function extractDoc(docString, heading) {
   const regex = new RegExp(`#+\\s*${heading}[\\s\\S]*?(?=\n#|$)`, 'i')
   const match = docString.match(regex)
   return match ? match[0].trim() : ''
-}
-
-function summarizeLog(chapterLog) {
-  if (!chapterLog || !Array.isArray(chapterLog)) return ''
-  if (chapterLog.length <= 5) return chapterLog.join('\n')
-  const recent = chapterLog.slice(-3)
-  return [...recent, `(... plus ${chapterLog.length - 3} earlier scenes summarized)`].join('\n')
 }
 
 function tryExtractProse(raw) {
@@ -491,4 +485,4 @@ CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes in
   return { writeScene, writeSceneStructured, isWriting, writeError }
 }
 
-export { extractDoc, summarizeLog }
+export { summarizeLog }

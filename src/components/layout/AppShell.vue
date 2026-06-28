@@ -128,8 +128,8 @@ function toggleOutline() {
   activePanelName.value = activePanelName.value === 'outline' ? null : 'outline'
 }
 
-function toggleChapters() {
-  activePanelName.value = activePanelName.value === 'chapters' ? null : 'chapters'
+function toggleSections() {
+  activePanelName.value = activePanelName.value === 'sections' ? null : 'sections'
 }
 
 function toggleNetwork() {
@@ -186,7 +186,7 @@ function handleSidebarNav(name) {
     'story-bible': toggleStoryBible,
     'canvas': toggleCanvas,
     'outline': toggleOutline,
-    'chapters': toggleChapters,
+    'sections': toggleSections,
     'network': toggleNetwork,
     'timeline': toggleTimeline,
     'archive': toggleArchive,
@@ -205,7 +205,7 @@ defineExpose({
   toggleStoryBible,
   toggleCanvas,
   toggleOutline,
-  toggleChapters,
+  toggleSections,
   toggleNetwork,
   toggleResearch,
   toggleVoiceLab,
@@ -247,9 +247,10 @@ onMounted(async () => {
             {{ projectName || 'Untitled Project' }}
             <BaseIcon name="chevron-down" :size="14" class="opacity-60" />
           </button>
+          <Transition name="spring-scale">
           <div
             v-if="showProjectDropdown"
-            class="absolute left-0 top-full mt-1 glass-panel rounded-lg shadow-warm-md py-1 z-50 min-w-[220px] animate-scale-in"
+            class="absolute left-0 top-full mt-1 liquid-glass rounded-lg shadow-warm-md py-1 z-50 min-w-[220px]"
             @click.stop
           >
             <button
@@ -279,6 +280,7 @@ onMounted(async () => {
               Project Settings
             </button>
           </div>
+          </Transition>
         </div>
 
         <div class="hidden sm:flex items-center gap-3 text-2xs text-text-hint/70">
@@ -301,17 +303,17 @@ onMounted(async () => {
           :goal-words="projectStore.dailyGoal"
           @open-settings="showProjectSettings = true"
         />
-        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150" title="Export project (Ctrl+S)" @click="emit('export')" @keydown.enter="emit('export')">
+        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]" title="Export project (Ctrl+S)" @click="emit('export')" @keydown.enter="emit('export')">
           <BaseIcon name="upload" :size="16" />
         </button>
-        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150" title="Export to PDF" @click="emit('export-pdf')">
+        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]" title="Export to PDF" @click="emit('export-pdf')">
           <BaseIcon name="file-text" :size="16" />
         </button>
-        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150" title="Import project (Ctrl+I)" @click="emit('import')" @keydown.enter="emit('import')">
+        <button class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]" title="Import project (Ctrl+I)" @click="emit('import')" @keydown.enter="emit('import')">
           <BaseIcon name="download" :size="16" />
         </button>
         <button
-          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150"
+          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           :title="authStore.localUser ? `Signed in as ${authStore.localUser.displayName || authStore.localUser.username}` : authStore.isAuthenticated ? `Signed in as ${authStore.user?.username || 'user'}` : 'Sign in to sync'"
           @click="handleAuthClick()"
         >
@@ -326,124 +328,75 @@ onMounted(async () => {
       <SidebarNav v-show="!focusMode" :active-panel="activePanelName" :mobile-open="sidebarOpen" @navigate="handleSidebarNav" @close="sidebarOpen = false" />
 
       <div class="flex-1 flex overflow-hidden">
-        <Transition name="panel-left">
-        <aside 
-          v-if="activePanelName === 'story-generator' && !flowMode" 
-          class="w-[500px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="story-generator"></slot>
-        </aside>
-      </Transition>
+        <Transition name="panel-left" mode="out-in">
+          <aside v-if="activePanelName === 'story-generator' && !flowMode" key="story-generator"
+            class="w-[500px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin">
+            <slot name="story-generator"></slot>
+          </aside>
+          <aside v-else-if="activePanelName === 'story-bible' && !flowMode" key="story-bible"
+            class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin">
+            <slot name="story-bible"></slot>
+          </aside>
+          <aside v-else-if="activePanelName === 'canvas' && !flowMode" key="canvas"
+            class="w-[400px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0">
+            <slot name="canvas"></slot>
+          </aside>
+          <aside v-else-if="activePanelName === 'outline' && !flowMode" key="outline"
+            class="w-[350px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0">
+            <slot name="outline"></slot>
+          </aside>
+          <aside v-else-if="activePanelName === 'sections' && !flowMode" key="sections"
+            class="w-[320px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0">
+            <slot name="sections"></slot>
+          </aside>
+          <aside v-else-if="activePanelName === 'network' && !flowMode" key="network"
+            class="w-[900px] max-w-[95vw] xl:max-w-[900px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0">
+            <slot name="network"></slot>
+          </aside>
+          <aside v-else-if="activePanelName === 'timeline' && !flowMode" key="timeline"
+            class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0">
+            <slot name="timeline"></slot>
+          </aside>
+          <aside v-else-if="activePanelName === 'voice-lab' && !flowMode" key="voice-lab"
+            class="w-[420px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin">
+            <slot name="voice-lab"></slot>
+          </aside>
+          <aside v-else-if="activePanelName === 'story-shape' && !flowMode" key="story-shape"
+            class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin">
+            <slot name="story-shape"></slot>
+          </aside>
+        </Transition>
 
-      <Transition name="panel-left">
-        <aside 
-          v-if="activePanelName === 'story-bible' && !flowMode" 
-          class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="story-bible"></slot>
-        </aside>
-      </Transition>
+        <main class="flex-1 flex flex-col overflow-hidden">
+          <div class="flex-1 overflow-hidden">
+            <slot name="editor"></slot>
+          </div>
+              <Transition name="panel-bottom">
+                <div
+                  v-if="showRevise"
+                  class="bg-bg-secondary border-t border-border-subtle overflow-y-auto scrollbar-thin"
+                >
+                  <slot name="revise"></slot>
+                </div>
+              </Transition>
+          <div
+            v-if="activePanelName === 'revise' && !flowMode"
+            class="flex-1 overflow-hidden transition-all duration-200"
+          >
+            <slot name="revise"></slot>
+          </div>
+        </main>
 
-      <Transition name="panel-left">
-        <aside 
-          v-if="activePanelName === 'canvas' && !flowMode" 
-          class="w-[400px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="canvas"></slot>
-        </aside>
-      </Transition>
-
-      <Transition name="panel-left">
-        <aside 
-          v-if="activePanelName === 'outline' && !flowMode" 
-          class="w-[350px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="outline"></slot>
-        </aside>
-      </Transition>
-
-      <Transition name="panel-left">
-        <aside 
-          v-if="activePanelName === 'chapters' && !flowMode" 
-          class="w-[320px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="chapters"></slot>
-        </aside>
-      </Transition>
-
-      <Transition name="panel-left">
-        <aside 
-          v-if="activePanelName === 'network' && !flowMode" 
-          class="w-[900px] max-w-[95vw] xl:max-w-[900px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="network"></slot>
-        </aside>
-      </Transition>
-
-      <Transition name="panel-left">
-        <aside 
-          v-if="activePanelName === 'timeline' && !flowMode" 
-          class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="timeline"></slot>
-        </aside>
-      </Transition>
-
-      <main class="flex-1 flex flex-col overflow-hidden">
-        <div class="flex-1 overflow-hidden">
-          <slot name="editor"></slot>
-        </div>
-            <Transition name="panel-bottom">
-              <div 
-                v-if="showRevise" 
-                class="bg-bg-secondary border-t border-border-subtle overflow-y-auto scrollbar-thin"
-              >
-                <slot name="revise"></slot>
-              </div>
-            </Transition>
-        <div 
-          v-if="activePanelName === 'revise' && !flowMode" 
-          class="flex-1 overflow-hidden transition-all duration-200"
-        >
-          <slot name="revise"></slot>
-        </div>
-      </main>
-
-      <Transition name="panel-right">
-        <aside 
-          v-if="activePanelName === 'archive' && !flowMode" 
-          class="w-[320px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="archive"></slot>
-        </aside>
-      </Transition>
-
-      <Transition name="panel-right">
-        <aside 
-          v-if="activePanelName === 'research' && !flowMode" 
-          class="w-[360px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="research"></slot>
-        </aside>
-      </Transition>
-
-      <Transition name="panel-left">
-        <aside 
-          v-if="activePanelName === 'voice-lab' && !flowMode" 
-          class="w-[420px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="voice-lab"></slot>
-        </aside>
-      </Transition>
-
-      <Transition name="panel-left">
-        <aside 
-          v-if="activePanelName === 'story-shape' && !flowMode" 
-          class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="story-shape"></slot>
-        </aside>
-      </Transition>
+        <Transition name="panel-right" mode="out-in">
+          <aside v-if="activePanelName === 'archive' && !flowMode" key="archive"
+            class="w-[320px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin">
+            <slot name="archive"></slot>
+          </aside>
+          <aside v-else-if="activePanelName === 'research' && !flowMode" key="research"
+            class="w-[360px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin">
+            <slot name="research"></slot>
+          </aside>
+        </Transition>
       </div>
     </div>
 

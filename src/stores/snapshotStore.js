@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { addSnapshot, getSnapshots, getSnapshot, deleteSnapshot, updateScene } from '../services/dbService'
+import { addSnapshot, getSnapshots, getSnapshot, deleteSnapshot, updateSubsection } from '../services/dbService'
 import { useLoading } from '../composables/useLoading'
 
 export const useSnapshotStore = defineStore('snapshot', () => {
@@ -22,7 +22,7 @@ export const useSnapshotStore = defineStore('snapshot', () => {
     const snapshot = await getSnapshot(id)
     if (!snapshot) return null
     const { chapterId, content } = snapshot
-    await updateScene(chapterId, { content })
+    await updateSubsection(chapterId, { content })
     await loadSnapshots(projectId, chapterId)
     return snapshot
   }

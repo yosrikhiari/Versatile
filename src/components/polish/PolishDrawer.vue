@@ -193,7 +193,7 @@ defineExpose({
     <div class="flex-1 flex overflow-hidden">
       <div class="flex-[3] p-4 overflow-y-auto border-r border-border-subtle">
         <div v-if="polishStore.selectedParagraphIndex === null" class="text-center py-8">
-          <p class="text-sm italic text-text-hint font-body">Click any paragraph in the editor to analyze it</p>
+          <p class="text-sm italic text-text-hint">Click any paragraph in the editor to analyze it</p>
         </div>
         
         <div v-else-if="polishStore.isAnalyzing" class="flex flex-col items-center justify-center py-8 gap-4">
@@ -209,7 +209,7 @@ defineExpose({
         </div>
         
         <div v-else-if="currentAnnotations.length === 0 && !polishStore.error" class="text-center py-8">
-          <p class="text-sm italic text-text-hint font-body">No issues found — this paragraph looks clean</p>
+          <p class="text-sm italic text-text-hint">No issues found — this paragraph looks clean</p>
         </div>
         
         <div v-else-if="polishStore.error" class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui">
@@ -217,18 +217,20 @@ defineExpose({
         </div>
         
         <div v-else class="space-y-4">
-          <div v-if="overallNote" class="bg-accent-muted/30 border-l-2 border-accent rounded-r-lg p-3 text-sm text-text-secondary italic font-body">
+          <div v-if="overallNote" class="bg-accent-muted/30 border-l-2 border-accent rounded-r-lg p-3 text-sm text-text-secondary italic">
             {{ overallNote }}
           </div>
           
-          <PolishAnnotation
-            v-for="annotation in currentAnnotations"
-            :key="annotation.id"
-            :annotation="annotation"
-            @accept="acceptAnnotation"
-            @reject="rejectAnnotation"
-            @flag="flagAnnotation"
-          />
+          <TransitionGroup name="fade-stagger" tag="div" class="space-y-4">
+            <PolishAnnotation
+              v-for="annotation in currentAnnotations"
+              :key="annotation.id"
+              :annotation="annotation"
+              @accept="acceptAnnotation"
+              @reject="rejectAnnotation"
+              @flag="flagAnnotation"
+            />
+          </TransitionGroup>
         </div>
       </div>
       
@@ -238,3 +240,24 @@ defineExpose({
     </div>
   </div>
 </template>
+
+<style scoped>
+.fade-stagger-enter-active {
+  animation: fadeIn 0.4s ease-out both;
+}
+
+.fade-stagger-leave-active {
+  transition: all 0.3s;
+}
+
+.fade-stagger-enter-from,
+.fade-stagger-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>

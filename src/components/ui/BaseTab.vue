@@ -16,7 +16,7 @@ const props = defineProps({
     default: 'md',
     validator: v => ['sm', 'md'].includes(v)
   },
-  class: {
+  customClass: {
     type: String,
     default: ''
   }
@@ -61,7 +61,7 @@ const variantClasses = computed(() => {
     role="tab"
     :aria-selected="active ? 'true' : 'false'"
     :disabled="disabled"
-    :class="[baseClasses, sizeClasses, variantClasses, class]"
+    :class="[baseClasses, sizeClasses, variantClasses, customClass]"
   >
     <slot />
   </button>

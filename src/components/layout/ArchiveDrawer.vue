@@ -171,7 +171,7 @@ function signalBadge(signal) {
 
       <template v-if="activeTab === 'snapshots'">
         <div v-if="archiveStore.stateSnapshots.length === 0" class="text-center py-8">
-          <p class="text-xs italic text-text-hint font-body">No state snapshots yet</p>
+          <p class="text-xs italic text-text-hint">No state snapshots yet</p>
         </div>
         <div
           v-for="snap in archiveStore.stateSnapshots"
@@ -191,7 +191,7 @@ function signalBadge(signal) {
             <div v-if="snap.state.characterCount" class="text-xs text-text-secondary font-ui">{{ snap.state.characterCount }} characters</div>
             <div v-if="snap.state.wordCountDelta" class="text-xs text-accent font-ui">+{{ snap.state.wordCountDelta }} words this session</div>
           </div>
-          <div v-else-if="showDetails !== snap.id" class="mt-1 text-2xs text-text-hint font-body line-clamp-1">
+          <div v-else-if="showDetails !== snap.id" class="mt-1 text-2xs text-text-hint line-clamp-1">
             {{ snap.state?.activeSection || snap.state?.projectName || 'No details' }}
           </div>
         </div>
@@ -199,7 +199,7 @@ function signalBadge(signal) {
 
       <template v-else>
         <div v-if="archiveStore.archivedSessions.length === 0" class="text-center py-8">
-          <p class="text-xs italic text-text-hint font-body">No archived sessions yet</p>
+          <p class="text-xs italic text-text-hint">No archived sessions yet</p>
         </div>
         <div
           v-for="entry in archiveStore.archivedSessions"
@@ -216,7 +216,7 @@ function signalBadge(signal) {
             <span v-if="entry.tags?.length" class="text-3xs text-text-hint font-ui truncate ml-2">{{ entry.tags.slice(0, 2).join(', ') }}</span>
           </div>
           <div v-if="showDetails === entry.id" class="mt-1.5">
-            <pre class="text-2xs text-text-secondary font-body whitespace-pre-wrap max-h-24 overflow-y-auto bg-bg-secondary rounded p-1">{{ typeof entry.data === 'string' ? entry.data : JSON.stringify(entry.data, null, 1) }}</pre>
+            <pre class="text-2xs text-text-secondary whitespace-pre-wrap max-h-24 overflow-y-auto bg-bg-secondary rounded p-1">{{ typeof entry.data === 'string' ? entry.data : JSON.stringify(entry.data, null, 1) }}</pre>
           </div>
         </div>
       </template>

@@ -15,45 +15,45 @@ defineProps({
 const { getSectionContext, getSectionCount, MAX_CONTEXT_CHARS } = useManuscriptContext()
 
 const selectedSelector = useLocalStorage(STORAGE_KEYS.CHAPTER_CONTEXT, 'current')
-const specificChapters = ref('')
+const specificSections = ref('')
 const showSpecificInput = ref(false)
 
 watch(selectedSelector, (val) => {
   showSpecificInput.value = val.startsWith('chapters:')
 })
 
-watch(specificChapters, (val) => {
+watch(specificSections, (val) => {
   if (val.trim()) {
-    const chapters = val.split(',').map(n => n.trim()).filter(n => n)
-    if (chapters.length > 0) {
-      selectedSelector.value = `chapters:${chapters.join(',')}`
+    const sections = val.split(',').map(n => n.trim()).filter(n => n)
+    if (sections.length > 0) {
+      selectedSelector.value = `chapters:${sections.join(',')}`
     }
   }
 })
 
 const options = computed(() => {
-  const chapterCount = getSectionCount()
+  const sectionCount = getSectionCount()
   const opts = [
-    { value: 'current', label: 'Current chapter' }
+    { value: 'current', label: 'Current section' }
   ]
   
-  if (chapterCount >= 3) {
-    opts.push({ value: 'last:3', label: 'Last 3 chapters' })
+  if (sectionCount >= 3) {
+    opts.push({ value: 'last:3', label: 'Last 3 sections' })
   }
   
-  if (chapterCount >= 5) {
-    opts.push({ value: 'last:5', label: 'Last 5 chapters' })
+  if (sectionCount >= 5) {
+    opts.push({ value: 'last:5', label: 'Last 5 sections' })
   }
   
-  if (chapterCount >= 10) {
-    opts.push({ value: 'last:10', label: 'Last 10 chapters' })
+  if (sectionCount >= 10) {
+    opts.push({ value: 'last:10', label: 'Last 10 sections' })
   }
   
-  if (chapterCount > 1) {
+  if (sectionCount > 1) {
     opts.push({ value: 'all', label: 'From the beginning' })
   }
   
-  opts.push({ value: 'specific', label: 'Specific chapters...' })
+  opts.push({ value: 'specific', label: 'Specific sections...' })
   opts.push({ value: 'none', label: 'None' })
   
   return opts
@@ -80,12 +80,12 @@ watch(currentSelector, async (val) => {
     return
   }
   
-  const chapterLabel = result.sectionTitles.length === 1 
+  const sectionLabel = result.sectionTitles.length === 1 
     ? result.sectionTitles[0]
-    : `${result.sectionTitles.length} chapters`
+    : `${result.sectionTitles.length} sections`
   
   contextPreview.value = {
-    label: chapterLabel,
+    label: sectionLabel,
     chars: result.totalChars,
     truncated: result.truncated
   }
@@ -120,12 +120,12 @@ defineExpose({
     
     <div v-if="selectedSelector === 'specific'" class="pl-16">
       <input
-        v-model="specificChapters"
+        v-model="specificSections"
         type="text"
         placeholder="e.g. 3, 5, 8"
         class="w-full px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent/50"
       />
-      <p class="mt-1 text-2xs text-text-hint">Enter chapter numbers, separated by commas</p>
+      <p class="mt-1 text-2xs text-text-hint">Enter section numbers, separated by commas</p>
     </div>
     
     <div v-if="contextPreview" class="pl-16 flex items-center gap-1.5 text-2xs text-text-hint">

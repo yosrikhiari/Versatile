@@ -26,7 +26,7 @@ const props = defineProps({
     type: String,
     default: 'button'
   },
-  class: {
+  customClass: {
     type: String,
     default: ''
   }
@@ -76,7 +76,7 @@ const ariaAttrs = computed(() => {
 <template>
   <button
     :type="type"
-    :class="[baseClasses, sizeClasses, variantClasses, class]"
+    :class="[baseClasses, sizeClasses, variantClasses, customClass]"
     :disabled="disabled || loading"
     v-bind="ariaAttrs"
   >

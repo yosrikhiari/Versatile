@@ -12,7 +12,7 @@ import SparkPromptCard from './SparkPromptCard.vue'
 import BlueprintResult from './BlueprintResult.vue'
 import IdeaInput from './IdeaInput.vue'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
-import ChapterContextSelector from '../shared/ChapterContextSelector.vue'
+import SectionContextSelector from '../shared/SectionContextSelector.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 defineProps({
@@ -196,7 +196,7 @@ function switchTab(tab) {
 
       <!-- Context Selector always near top -->
       <div v-if="['blueprint', 'freewrite', 'prompt'].includes(activeTab)">
-        <ChapterContextSelector ref="contextSelectorRef" panel-id="spark-global" />
+        <SectionContextSelector ref="contextSelectorRef" panel-id="spark-global" />
       </div>
     </div>
 
@@ -268,7 +268,7 @@ function switchTab(tab) {
 
         <div v-if="!currentPrompt && !sparkStore.isGenerating && !sparkStore.error" class="text-center py-8 space-y-2">
           <BaseIcon name="lightbulb" :size="24" class="mx-auto text-text-hint" />
-          <p class="text-sm text-text-hint font-body">Pick a prompt type above and hit Generate.</p>
+          <p class="text-sm text-text-hint">Pick a prompt type above and hit Generate.</p>
           <p class="text-xs text-text-hint font-ui opacity-70">Once you have a prompt you like, use<br><span class="text-accent">Use as Generator Context</span> to turn it into a full chapter.</p>
         </div>
       </div>
@@ -324,7 +324,7 @@ function switchTab(tab) {
 
         <!-- Step 3: The Draft -->
         <div v-if="sparkStore.currentChapter || sparkStore.currentStreamingChapter" class="space-y-6 pt-6 border-t border-border-subtle">
-          <div class="rounded-md p-4 bg-bg-tertiary/50 border border-border-subtle font-body text-sm text-text-primary whitespace-pre-wrap leading-relaxed relative">
+          <div class="rounded-md p-4 bg-bg-tertiary/50 border border-border-subtle text-sm text-text-primary whitespace-pre-wrap leading-relaxed relative">
             <div v-if="sparkStore.isGenerating" class="flex items-center gap-2 text-xs text-accent font-ui mb-2">
               <BaseIcon name="loader-2" :size="12" class="animate-spin" /> Drafting...
             </div>
@@ -362,7 +362,7 @@ function switchTab(tab) {
 
         <div v-if="sparkStore.history.length === 0" class="text-center py-8 space-y-2">
           <BaseIcon name="clock" :size="24" class="mx-auto text-text-hint" />
-          <p class="text-sm text-text-hint font-body">No history yet.</p>
+          <p class="text-sm text-text-hint">No history yet.</p>
           <p class="text-xs text-text-hint font-ui opacity-70">Prompts, blueprints, and freewrites you generate will appear here.</p>
         </div>
 
@@ -372,7 +372,7 @@ function switchTab(tab) {
           class="p-3 rounded-lg bg-bg-tertiary border border-border-subtle"
         >
           <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">{{ item.type }}</div>
-          <p class="text-sm text-text-secondary line-clamp-2 font-body">{{ item.prompt }}</p>
+          <p class="text-sm text-text-secondary line-clamp-2">{{ item.prompt }}</p>
           <button
             v-if="item.prompt"
             class="mt-2 text-xs text-accent hover:text-accent-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"

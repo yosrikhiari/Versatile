@@ -30,22 +30,12 @@ export {
   deleteCharacterRelationship,
   deleteCharacterRelationshipsByCharacter
 } from './db-entities'
-export { 
-  getChapters,
-  addChapter,
-  updateChapter,
-  deleteChapter,
+export {
   getSections,
   addSection,
   updateSection,
   deleteSection,
   reorderSections,
-  getScenes,
-  addScene,
-  updateScene,
-  deleteScene,
-  reorderScenes,
-  getChapterWordCounts,
   getSubsections,
   addSubsection,
   updateSubsection,
@@ -56,8 +46,8 @@ export {
   addVolume,
   updateVolume,
   deleteVolume,
-  assignChapterToVolume,
-  removeChapterFromVolume
+  assignSectionToVolume,
+  removeSectionFromVolume
 } from './db-structure'
 export {
   getVolumeEntities,

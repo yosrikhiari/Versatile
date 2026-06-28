@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useProjectStore } from '../../stores/projectStore'
-import { useChapterSceneManager } from '../../composables/useChapterSceneManager'
+import { useSectionSchemaManager } from '../../composables/useSectionSchemaManager'
 import { useDraggableList, DRAG_OPTIONS } from '../../composables/useDraggableList'
 import Modal from '../shared/Modal.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
@@ -14,10 +14,10 @@ const projectStore = useProjectStore()
 const { endDrag } = useDraggableList()
 
 const {
-  editingScene,
-  showSceneModal,
+  editingSubsection,
+  showSubsectionModal,
   activeSectionId,
-  newScene,
+  newSubsection,
   getStatusColor,
   getSubsectionWordCount,
   getSectionWordCount,
@@ -25,7 +25,7 @@ const {
   openEditSubsection,
   saveSubsection,
   deleteSubsection
-} = useChapterSceneManager()
+} = useSectionSchemaManager()
 
 const selectedSectionId = ref(null)
 const viewMode = ref('sections')
@@ -84,20 +84,6 @@ function getSectionTotalSubsections(sectionId) {
   return subsectionsBySection.value[sectionId]?.length || 0
 }
 
-const selectedChapterId = selectedSectionId
-
-function selectChapter(sectionId) {
-  selectSection(sectionId)
-}
-
-function getSceneWordCount(scene) {
-  return getSubsectionWordCount(scene)
-}
-
-function saveScene() {
-  saveSubsection()
-}
-
 onMounted(() => {
   if (projectStore.currentProjectId) {
     manuscriptStore.loadManuscript(projectStore.currentProjectId)
@@ -154,52 +140,52 @@ onMounted(() => {
 
       <div v-else-if="viewMode === 'sections'" class="space-y-4">
         <div
-          v-for="chapter in filteredSections"
-          :key="chapter.id"
+          v-for="section in filteredSections"
+          :key="section.id"
           class="bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden"
         >
           <div
             :class="[
               'p-3 cursor-pointer flex items-center justify-between hover:bg-surface-hover transition-colors',
-              manuscriptStore.activeSectionId === chapter.id ? 'border-l-2 border-accent' : ''
+              manuscriptStore.activeSectionId === section.id ? 'border-l-2 border-accent' : ''
             ]"
-            @click="selectChapter(chapter.id)"
+            @click="selectSection(section.id)"
           >
             <div class="flex items-center gap-3">
               <span
                 class="w-2 h-8 rounded-full"
-                :style="{ backgroundColor: getStatusColor(chapter.status) }"
+                :style="{ backgroundColor: getStatusColor(section.status) }"
               ></span>
               <div>
                 <div class="font-semibold text-text-primary font-ui">
-                  {{ chapter.title || `Section ${chapter.order + 1}` }}
+                  {{ section.title || `Section ${section.order + 1}` }}
                 </div>
                 <div class="text-xs text-text-hint font-ui">
-                  {{ getSectionTotalSubsections(chapter.id) }} subsections · {{ getSectionWordCount(chapter.id) }} words
+                  {{ getSectionTotalSubsections(section.id) }} subsections · {{ getSectionWordCount(section.id) }} words
                 </div>
               </div>
             </div>
-            <BaseIcon :name="selectedChapterId === chapter.id ? 'chevron-down' : 'chevron-right'" :size="16" class="text-text-hint" />
+            <BaseIcon :name="selectedSectionId === section.id ? 'chevron-down' : 'chevron-right'" :size="16" class="text-text-hint" />
           </div>
 
-              <div v-if="selectedSectionId === chapter.id" class="border-t border-border-subtle">
+              <div v-if="selectedSectionId === section.id" class="border-t border-border-subtle">
               <div class="p-2 bg-surface-hover flex justify-end">
                 <button
                   class="px-2 py-1 text-xs text-accent hover:bg-accent/10 rounded font-ui"
-                  @click="openAddSubsection(chapter.id)"
+                  @click="openAddSubsection(section.id)"
                 >
                   + Add Subsection
                 </button>
               </div>
 
               <draggable
-                :list="subsectionsBySection[chapter.id]"
+                :list="subsectionsBySection[section.id]"
                 item-key="id"
                 v-bind="dragOptions"
                 class="p-2 space-y-2 min-h-[50px]"
-                @end="() => onSubsectionDragEnd(chapter.id)"
+                @end="() => onSubsectionDragEnd(section.id)"
               >
-              <template #item="{ element: scene }">
+              <template #item="{ element: subsection }">
                 <div
                   class="bg-bg-secondary rounded p-2 border border-border-subtle cursor-grab hover:border-accent/50 transition-colors group"
                 >
@@ -209,39 +195,39 @@ onMounted(() => {
                         <BaseIcon name="grip-vertical" :size="14" class="text-text-hint cursor-grab" />
           <span
             class="text-sm font-medium font-ui cursor-pointer hover:text-accent"
-            :class="manuscriptStore.activeSubsectionId === scene.id ? 'text-accent' : 'text-text-primary'"
-            @click.stop="manuscriptStore.setActiveSubsection(scene.id); manuscriptStore.setActiveSection(scene.sectionId)"
-          >{{ scene.title || 'Untitled' }}</span>
+            :class="manuscriptStore.activeSubsectionId === subsection.id ? 'text-accent' : 'text-text-primary'"
+            @click.stop="manuscriptStore.setActiveSubsection(subsection.id); manuscriptStore.setActiveSection(subsection.sectionId)"
+          >{{ subsection.title || 'Untitled' }}</span>
         </div>
-        <div v-if="scene.summary" class="mt-1 text-xs text-text-hint font-ui pl-5">
-                        {{ scene.summary.length > 80 ? scene.summary.slice(0, 80) + '...' : scene.summary }}
+        <div v-if="subsection.summary" class="mt-1 text-xs text-text-hint font-ui pl-5">
+                        {{ subsection.summary.length > 80 ? subsection.summary.slice(0, 80) + '...' : subsection.summary }}
                       </div>
                     </div>
                     <div class="flex items-center gap-1">
                         <button
                           class="px-2 py-1 text-xs text-text-hint hover:text-text-secondary font-ui"
                           title="Edit subsection"
-                          @click="openEditSubsection(scene)"
+                          @click="openEditSubsection(subsection)"
                         >
                           Edit
                         </button>
                         <button
                           class="px-2 py-1 text-xs text-danger hover:bg-danger/10 font-ui"
                           title="Delete subsection"
-                          @click="deleteSubsection(scene)"
+                          @click="deleteSubsection(subsection)"
                         >
                           <BaseIcon name="x" :size="12" />
                         </button>
                     </div>
                   </div>
                   <div class="mt-1 pl-5 text-2xs text-text-hint font-ui">
-                    {{ getSceneWordCount(scene) }} words
+                    {{ getSubsectionWordCount(subsection) }} words
                   </div>
                 </div>
               </template>
             </draggable>
 
-              <div v-if="!subsectionsBySection[chapter.id]?.length" class="p-4 text-center">
+              <div v-if="!subsectionsBySection[section.id]?.length" class="p-4 text-center">
                 <p class="text-xs text-text-hint font-ui">Drag subsections here or click "Add Subsection"</p>
               </div>
           </div>
@@ -271,20 +257,20 @@ onMounted(() => {
       </div>
     </div>
 
-    <Modal :show="showSceneModal" max-width="max-w-lg" @close="showSceneModal = false">
+    <Modal :show="showSubsectionModal" max-width="max-w-lg" @close="showSubsectionModal = false">
       <div class="p-6">
         <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
-          {{ editingScene ? 'Edit Subsection' : 'New Subsection' }}
+          {{ editingSubsection ? 'Edit Subsection' : 'New Subsection' }}
         </h3>
         
-        <div v-if="!editingScene" class="mb-3 text-xs text-text-hint font-ui">
-          Adding to: {{ sortedSections.find(c => c.id === activeSectionId)?.title || 'Unknown Section' }}
+        <div v-if="!editingSubsection" class="mb-3 text-xs text-text-hint font-ui">
+          Adding to: {{ sortedSections.find(s => s.id === activeSectionId)?.title || 'Unknown Section' }}
         </div>
 
         <div class="mb-3">
               <label class="block text-xs text-text-hint font-ui mb-1">Subsection Title</label>
           <input
-            v-model="newScene.title"
+            v-model="newSubsection.title"
             type="text"
               placeholder="What happens in this subsection?"
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
@@ -294,7 +280,7 @@ onMounted(() => {
         <div class="mb-3">
           <label class="block text-xs text-text-hint font-ui mb-1">Summary / Beats</label>
           <textarea
-            v-model="newScene.summary"
+            v-model="newSubsection.summary"
             rows="4"
               placeholder="Key beats and moments in this subsection..."
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
@@ -304,9 +290,9 @@ onMounted(() => {
         <div class="mb-4">
           <label class="block text-xs text-text-hint font-ui mb-1">Draft Content (optional)</label>
           <textarea
-            v-model="newScene.content"
+            v-model="newSubsection.content"
             rows="8"
-            placeholder="Write the scene here..."
+            placeholder="Write the subsection here..."
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
           ></textarea>
         </div>
@@ -314,13 +300,13 @@ onMounted(() => {
         <div class="flex gap-2">
           <button
             class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
-            @click="saveScene"
+            @click="saveSubsection"
           >
-            {{ editingScene ? 'Save' : 'Add' }}
+            {{ editingSubsection ? 'Save' : 'Add' }}
           </button>
           <button
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
-            @click="showSceneModal = false"
+            @click="showSubsectionModal = false"
           >
             Cancel
           </button>

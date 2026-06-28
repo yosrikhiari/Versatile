@@ -61,7 +61,7 @@ export function useKeyboardShortcuts(shortcuts) {
       '4': shortcuts.onToggleRevise,
       '5': shortcuts.onToggleCanvas,
       '6': shortcuts.onToggleOutline,
-      '7': shortcuts.onToggleChapters,
+      '7': shortcuts.onToggleSections,
       '8': shortcuts.onToggleNetwork,
       '9': shortcuts.onToggleArchive
     }

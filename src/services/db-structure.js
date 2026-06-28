@@ -2,25 +2,7 @@ import { db } from './db-core'
 import { countWords } from '../utils/textUtils'
 import { getEmbedding } from './ollamaService'
 
-// ========== CHAPTERS (OLD - kept for backward compatibility) ==========
-
-export async function getChapters(projectId) {
-  return db.chapters.where('projectId').equals(projectId).toArray()
-}
-
-export async function addChapter(projectId, data) {
-  return db.chapters.add({ projectId, ...data })
-}
-
-export async function updateChapter(id, data) {
-  return db.chapters.update(id, data)
-}
-
-export async function deleteChapter(id) {
-  return db.chapters.delete(id)
-}
-
-// ========== SECTIONS (NEW - replaces Chapters) ==========
+// ========== SECTIONS ==========
 
 export async function getSections(projectId) {
   return db.sections.where('projectId').equals(projectId).toArray()
@@ -46,77 +28,7 @@ export async function reorderSections(sectionIds) {
   })
 }
 
-// ========== SCENES (OLD - kept for backward compatibility) ==========
-
-export async function getScenes(projectId, chapterId = null) {
-  if (chapterId) {
-    return db.scenes.where({ projectId, chapterId }).sortBy('order')
-  }
-  return db.scenes.where('projectId').equals(projectId).toArray()
-}
-
-export async function addScene(projectId, data) {
-  const result = await db.scenes.add({ projectId, ...data })
-  if (data.content) {
-    getEmbedding('scene', result, data.content).catch((err) => {
-      console.error('Failed to generate embedding for new scene:', result, err)
-    })
-  }
-  return result
-}
-
-export async function updateScene(id, data) {
-  await db.scenes.update(id, data)
-  if (data.content) {
-    getEmbedding('scene', id, data.content).catch((err) => {
-      console.error('Failed to generate embedding for scene update:', id, err)
-    })
-  }
-}
-
-export async function deleteScene(id) {
-  return db.scenes.delete(id)
-}
-
-export async function reorderScenes(sceneIds) {
-  await db.transaction('rw', db.scenes, async () => {
-    for (let i = 0; i < sceneIds.length; i++) {
-      await db.scenes.update(sceneIds[i], { order: i })
-    }
-  })
-}
-
-export async function getChapterWordCounts(projectId) {
-  const chapters = await getChapters(projectId)
-  const scenes = await getScenes(projectId)
-  
-  const chapterCounts = {}
-  let totalWords = 0
-    
-  for (const chapter of chapters) {
-    const chapterScenes = scenes.filter(s => s.chapterId === chapter.id)
-    let wordCount = 0
-      
-    for (const scene of chapterScenes) {
-      if (scene.content) {
-        wordCount += countWords(scene.content)
-      }
-    }
-      
-    chapterCounts[chapter.id] = {
-      chapterId: chapter.id,
-      title: chapter.title,
-      status: chapter.status,
-      summary: chapter.summary,
-      wordCount
-    }
-    totalWords += wordCount
-  }
-    
-  return { chapterCounts, totalWords }
-}
-
-// ========== SUBSECTIONS (NEW - replaces Scenes) ==========
+// ========== SUBSECTIONS ==========
 
 export async function getSubsections(projectId, sectionId = null) {
   if (sectionId) {
@@ -198,7 +110,7 @@ export async function addVolume(projectId, data) {
     title: data.title || 'Untitled Volume',
     description: data.description || '',
     color: data.color || '#6366f1',
-    chapterIds: [],
+    sectionIds: [],
     ...data 
   })
 }
@@ -211,14 +123,14 @@ export async function deleteVolume(id) {
   return db.volumes.delete(id)
 }
 
-export async function assignChapterToVolume(chapterId, volumeId) {
-  const sections = await db.sections.where('id').equals(chapterId).toArray()
+export async function assignSectionToVolume(sectionId, volumeId) {
+  const sections = await db.sections.where('id').equals(sectionId).toArray()
   if (sections.length === 0) return
-  await db.sections.update(chapterId, { volumeId })
+  await db.sections.update(sectionId, { volumeId })
 }
 
-export async function removeChapterFromVolume(chapterId) {
-  const sections = await db.sections.where('id').equals(chapterId).toArray()
+export async function removeSectionFromVolume(sectionId) {
+  const sections = await db.sections.where('id').equals(sectionId).toArray()
   if (sections.length === 0) return
-  await db.sections.update(chapterId, { volumeId: null })
+  await db.sections.update(sectionId, { volumeId: null })
 }

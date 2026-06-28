@@ -87,7 +87,7 @@
     <div v-if="totalScenes === 0" class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-6 text-center">
       <BaseIcon name="bar-chart" :size="24" class="mx-auto text-text-hint mb-2" />
       <p class="text-sm text-text-secondary font-ui">No evaluation data yet</p>
-      <p class="text-xs text-text-hint font-body mt-1">Scores and metrics will appear as scenes are evaluated.</p>
+      <p class="text-xs text-text-hint mt-1">Scores and metrics will appear as scenes are evaluated.</p>
     </div>
   </div>
 </template>

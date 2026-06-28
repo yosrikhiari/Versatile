@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=JetBrains+Mono:wght@400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -78,7 +78,7 @@
   body {
     background-color: var(--vers-bg-base);
     color: var(--vers-text-primary);
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Geist Variable', Geist, system-ui, sans-serif;
   }
 
   .bg-manuscript-editor {
@@ -119,6 +119,83 @@
   .glass-modal {
     background: var(--vers-bg-elevated);
     border: 1px solid var(--vers-border-subtle);
+  }
+
+  /* ── Liquid Glass (elevated interactive surfaces) ── */
+  .liquid-glass {
+    background: var(--vers-bg-elevated);
+    border: 1px solid var(--vers-border-subtle);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  .liquid-glass:hover {
+    border-color: rgba(var(--vers-accent-primary-rgb), 0.3);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 0 1px rgba(var(--vers-accent-primary-rgb), 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ── Spring Transition Easing ── */
+  .spring-enter-active {
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .spring-leave-active {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .spring-enter-from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  .spring-leave-to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  .spring-left-enter-active {
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .spring-left-leave-active {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .spring-left-enter-from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  .spring-left-leave-to {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+
+  .spring-right-enter-active {
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .spring-right-leave-active {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .spring-right-enter-from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  .spring-right-leave-to {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+
+  .spring-scale-enter-active {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .spring-scale-leave-active {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .spring-scale-enter-from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  .spring-scale-leave-to {
+    opacity: 0;
+    transform: scale(0.96);
   }
 
   /* ── Ambient Glow ── */
@@ -213,21 +290,23 @@
   }
   .btn-primary:hover {
     opacity: 0.9;
+    box-shadow: 0 1px 4px rgba(var(--vers-accent-primary-rgb), 0.3);
   }
   .btn-primary:active {
     opacity: 0.8;
+    transform: scale(0.98);
   }
 
   /* ── Panel Transitions ── */
   .panel-left-enter-active,
   .panel-right-enter-active,
   .panel-bottom-enter-active {
-    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+    transition: opacity 0.25s cubic-bezier(0.2, 0, 0, 1), transform 0.25s cubic-bezier(0.2, 0, 0, 1);
   }
   .panel-left-leave-active,
   .panel-right-leave-active,
   .panel-bottom-leave-active {
-    transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+    transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .panel-left-enter-from {

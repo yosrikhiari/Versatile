@@ -439,10 +439,10 @@ function getPhaseLabel(phase) {
         <div class="p-4 space-y-5">
           <div>
             <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Story Synopsis</label>
-            <div v-if="hasSynopsis" class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-body whitespace-pre-wrap">
+            <div v-if="hasSynopsis" class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary whitespace-pre-wrap">
               {{ synopsis }}
             </div>
-            <div v-else class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-hint italic font-body flex items-center justify-center">
+            <div v-else class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-hint italic flex items-center justify-center">
               <span>No synopsis set — open Project Settings to add a category and description</span>
             </div>
           </div>
@@ -553,7 +553,7 @@ function getPhaseLabel(phase) {
             <BaseIcon name="alert-triangle" :size="32" />
           </div>
           <div class="text-lg font-ui text-text-primary">Conjuration Failed</div>
-          <p class="text-sm text-red-300 bg-red-950/20 p-4 rounded-lg font-body border border-red-900/30 max-w-lg mx-auto whitespace-pre-wrap">{{ volumeGenerator.error || 'An unknown error occurred.' }}</p>
+          <p class="text-sm text-red-300 bg-red-950/20 p-4 rounded-lg border border-red-900/30 max-w-lg mx-auto whitespace-pre-wrap">{{ volumeGenerator.error || 'An unknown error occurred.' }}</p>
           <div class="pt-4">
             <button
               class="px-6 py-2 bg-bg-tertiary text-text-secondary hover:text-text-primary rounded-lg transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
@@ -576,7 +576,7 @@ function getPhaseLabel(phase) {
         <div v-if="volumeGenerator.phase.value === 'plan-preview'" class="p-4 space-y-4">
           <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 space-y-3">
             <h3 class="text-sm font-semibold text-text-primary font-ui">{{ mode === MODE_SCENE ? 'Scene' : (mode === MODE_CHAPTER ? 'Chapter' : 'Arc') }} Plan — {{ volumeGenerator.scenePlan.value.length }} scene{{ volumeGenerator.scenePlan.value.length === 1 ? '' : 's' }}</h3>
-            <p class="text-xs text-text-hint font-body">Edit scene fields before writing begins. Narrative pitches are auto-generated previews — edit the underlying fields to update them.</p>
+            <p class="text-xs text-text-hint">Edit scene fields before writing begins. Narrative pitches are auto-generated previews — edit the underlying fields to update them.</p>
           </div>
 
           <div class="space-y-2">
@@ -614,7 +614,7 @@ function getPhaseLabel(phase) {
                   <BaseIcon :name="pitchOpen === i ? 'chevron-down' : 'chevron-right'" :size="12" />
                   <span class="font-medium">Narrative Pitch</span>
                 </button>
-                <div v-if="pitchOpen === i" class="px-3 pb-2.5 text-xs text-text-secondary font-body leading-relaxed space-y-1.5 border-t border-border-subtle pt-2">
+                <div v-if="pitchOpen === i" class="px-3 pb-2.5 text-xs text-text-secondary leading-relaxed space-y-1.5 border-t border-border-subtle pt-2">
                   <p v-if="scene.goal">Emotional goal: <span class="text-text-primary font-medium">{{ scene.goal }}</span>.</p>
                   <p v-if="scene.obstacle">What changes / obstacle: <span class="text-text-primary">{{ scene.obstacle }}</span>.</p>
                   <p v-if="scene.setup">Sets up: <span class="text-text-primary">{{ scene.setup }}</span>.</p>
@@ -753,7 +753,7 @@ function getPhaseLabel(phase) {
               </div>
 
               <!-- Editable characterWants full-width display -->
-              <div class="text-xs text-text-hint font-body border-t border-border-subtle pt-1.5">
+              <div class="text-xs text-text-hint border-t border-border-subtle pt-1.5">
                 <span class="font-ui text-text-hover">Character Wants:</span>
                 <input
                   class="ml-1 flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-0.5 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent w-full mt-1"
@@ -798,7 +798,7 @@ function getPhaseLabel(phase) {
           </div>
 
           <div class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin">
-            <div class="p-3 text-sm text-text-primary whitespace-pre-wrap font-body leading-relaxed">
+            <div class="p-3 text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
               {{ volumeStreamingText || 'Writing...' }}
               <BaseIcon v-if="volumeStreamingText" name="loader-2" :size="12" class="animate-spin inline ml-1 text-accent" />
             </div>
@@ -830,7 +830,7 @@ function getPhaseLabel(phase) {
               <span>Scene Review — Scene {{ volumeGenerator.currentSceneResult.value?.scene?.sceneNumber || '...' }}: {{ volumeGenerator.currentSceneResult.value?.scene?.title || '...' }}</span>
             </div>
             <div class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin">
-              <div class="p-3 text-sm text-text-primary whitespace-pre-wrap font-body leading-relaxed">
+              <div class="p-3 text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
                 {{ volumeGenerator.currentSceneResult.value?.fullProse || '...' }}
                 <BaseIcon v-if="volumeGenerator.currentSceneResult.value?.fullProse" name="loader-2" :size="12" class="animate-spin inline ml-1 text-accent" />
               </div>
@@ -892,7 +892,7 @@ function getPhaseLabel(phase) {
             <BaseIcon name="loader-2" :size="24" class="animate-spin text-accent" />
             <span class="text-lg text-text-primary font-ui animate-pulse">Checking continuity...</span>
           </div>
-          <p class="text-sm text-text-hint font-body">
+          <p class="text-sm text-text-hint">
             {{ volumeGenerator.progress.statusText || 'Comparing character and location depictions across all scenes' }}
           </p>
         </div>
@@ -935,7 +935,7 @@ function getPhaseLabel(phase) {
                 Quality: <span :class="qualityGrade === 'good' ? 'text-green-400' : qualityGrade === 'fair' ? 'text-yellow-400' : 'text-red-400'">{{ qualityGrade }}</span>
               </span>
             </div>
-            <div class="flex gap-3 text-2xs text-text-hint font-body">
+            <div class="flex gap-3 text-2xs text-text-hint">
               <span>{{ totalCharacterIssues }} character issues</span>
               <span>{{ totalLocationIssues }} location issues</span>
             </div>
@@ -946,7 +946,7 @@ function getPhaseLabel(phase) {
             <div class="flex items-center justify-between gap-2">
               <span class="text-2xs uppercase tracking-wider text-text-hint font-ui">Evaluations</span>
               <div class="flex items-center gap-2">
-                <div class="flex gap-3 text-2xs text-text-hint font-body">
+                <div class="flex gap-3 text-2xs text-text-hint">
                   <span>{{ sceneEval.aggregateStats.value?.evaluatedCount || 0 }} / {{ sceneEval.aggregateStats.value?.totalScenes || 0 }} scenes</span>
                   <span v-if="sceneEval.aggregateStats.value?.averageScore !== null" class="text-indigo-400">
                     Avg: {{ sceneEval.aggregateStats.value?.averageScore }}
@@ -1079,7 +1079,7 @@ function getPhaseLabel(phase) {
           <div class="rounded-lg bg-red-950/20 border border-red-800/30 p-4 text-center space-y-2">
             <BaseIcon name="alert-triangle" :size="24" class="mx-auto text-red-400" />
             <p class="text-sm font-medium text-red-400 font-ui">Generation Failed</p>
-            <p class="text-xs text-red-300/70 font-body">{{ volumeGenerator.error.value || 'An unexpected error occurred.' }}</p>
+            <p class="text-xs text-red-300/70">{{ volumeGenerator.error.value || 'An unexpected error occurred.' }}</p>
           </div>
           <button
             class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
@@ -1100,7 +1100,7 @@ function getPhaseLabel(phase) {
         >
           <BaseIcon name="file-text" :size="14" class="text-text-hint shrink-0" />
           <div class="flex-1 min-w-0">
-            <p class="text-text-primary font-body truncate">{{ gen.title }}</p>
+            <p class="text-text-primary truncate">{{ gen.title }}</p>
             <p class="text-text-hint text-2xs font-ui">
               {{ new Date(gen.generatedAt).toLocaleDateString() }}
               <span v-if="gen.totalWords"> · {{ gen.totalWords }} words</span>
@@ -1127,7 +1127,7 @@ function getPhaseLabel(phase) {
         <div class="space-y-6">
           <div v-for="(scene, i) in volumeGenerator.writtenScenes.value" :key="i" class="space-y-2">
             <h3 class="text-sm font-semibold text-accent font-ui">Scene {{ i + 1 }}: {{ scene.title }}</h3>
-            <div class="text-sm text-text-primary whitespace-pre-wrap font-body leading-relaxed">{{ scene.prose }}</div>
+            <div class="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">{{ scene.prose }}</div>
           </div>
         </div>
       </div>
@@ -1151,7 +1151,7 @@ function getPhaseLabel(phase) {
           <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">Character Contradictions</h3>
           <div v-for="(item, i) in volumeGenerator.consistencyReport.value.characterIssues" :key="'char-' + i" class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg">
             <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.character }}</p>
-            <div v-for="(c, j) in item.contradictions" :key="j" class="text-xs text-text-secondary font-body space-y-0.5 mb-1">
+            <div v-for="(c, j) in item.contradictions" :key="j" class="text-xs text-text-secondary space-y-0.5 mb-1">
               <p><span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}</p>
             </div>
           </div>
@@ -1161,7 +1161,7 @@ function getPhaseLabel(phase) {
           <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">Location Contradictions</h3>
           <div v-for="(item, i) in volumeGenerator.consistencyReport.value.locationIssues" :key="'loc-' + i" class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg">
             <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.location }}</p>
-            <div v-for="(c, j) in item.contradictions" :key="j" class="text-xs text-text-secondary font-body space-y-0.5 mb-1">
+            <div v-for="(c, j) in item.contradictions" :key="j" class="text-xs text-text-secondary space-y-0.5 mb-1">
               <p><span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}</p>
             </div>
           </div>

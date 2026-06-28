@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
-import { useChapterSceneManager, SECTION_STATUSES } from '../../composables/useChapterSceneManager'
+import { useSectionSchemaManager, SECTION_STATUSES } from '../../composables/useSectionSchemaManager'
 import { useDraggableList, DRAG_OPTIONS } from '../../composables/useDraggableList'
 import { useNotifications } from '../../composables/useNotifications'
 
@@ -20,23 +20,23 @@ const { showConfirm } = useNotifications()
 const { endDrag } = useDraggableList()
 
 const {
-  showSceneModal,
-  newScene,
-  editingScene,
+  showSubsectionModal,
+  newSubsection,
+  editingSubsection,
   getStatusLabel,
   getSectionWordCount,
   openAddSubsection,
   openEditSubsection,
   saveSubsection,
   deleteSubsection
-} = useChapterSceneManager()
+} = useSectionSchemaManager()
 
-const showChapterModal = ref(false)
-const editingChapter = ref(null)
-const newChapter = ref({ title: '', summary: '', status: 'planning', tags: [] })
+const showSectionModal = ref(false)
+const editingSection = ref(null)
+const newSection = ref({ title: '', summary: '', status: 'planning', tags: [] })
 
 const showSnapshotDrawer = ref(false)
-const snapshotChapterId = ref(null)
+const snapshotSectionId = ref(null)
 const tagFilter = ref([])
 const allTags = computed(() => {
   const tags = new Set()
@@ -100,41 +100,41 @@ const subsectionDragOptions = {
 // The active section for expand/collapse
 const activeSectionExpanded = ref(null)
 
-function openAddChapter() {
-  editingChapter.value = null
-  newChapter.value = { title: '', summary: '', status: 'planning', tags: [] }
-  showChapterModal.value = true
+function openAddSection() {
+  editingSection.value = null
+  newSection.value = { title: '', summary: '', status: 'planning', tags: [] }
+  showSectionModal.value = true
 }
 
-function openEditChapter(chapter) {
-  editingChapter.value = chapter
-  newChapter.value = {
-    title: chapter.title || '',
-    summary: chapter.summary || '',
-    status: chapter.status || 'planning',
-    tags: chapter.tags ? [...chapter.tags] : []
+function openEditSection(section) {
+  editingSection.value = section
+  newSection.value = {
+    title: section.title || '',
+    summary: section.summary || '',
+    status: section.status || 'planning',
+    tags: section.tags ? [...section.tags] : []
   }
-  showChapterModal.value = true
+  showSectionModal.value = true
 }
 
-function saveChapter() {
-  if (!newChapter.value.title.trim()) return
+function saveSection() {
+  if (!newSection.value.title.trim()) return
 
-  if (editingChapter.value) {
+  if (editingSection.value) {
     manuscriptStore.updateSectionData(
-      editingChapter.value.id,
-      newChapter.value,
+      editingSection.value.id,
+      newSection.value,
       projectStore.currentProjectId
     )
   } else {
-    manuscriptStore.addSectionData(projectStore.currentProjectId, newChapter.value)
+    manuscriptStore.addSectionData(projectStore.currentProjectId, newSection.value)
   }
 
-  showChapterModal.value = false
+  showSectionModal.value = false
 }
 
-async function deleteChapter(section) {
-  if (await showConfirm('Delete Chapter', `Delete "${section.title || 'Section ' + (section.order + 1)}"? This will also delete all subsections in this section.`, 'Delete', 'danger')) {
+async function deleteSection(section) {
+  if (await showConfirm('Delete Section', `Delete "${section.title || 'Section ' + (section.order + 1)}"? This will also delete all subsections in this section.`, 'Delete', 'danger')) {
     manuscriptStore.deleteSectionData(section.id, projectStore.currentProjectId)
   }
 }
@@ -175,8 +175,8 @@ watch(() => projectStore.currentProjectId, (newId) => {
   }
 })
 
-function openChapterSnapshot(chapter) {
-  snapshotChapterId.value = chapter.id
+function openSectionSnapshot(section) {
+  snapshotSectionId.value = section.id
   showSnapshotDrawer.value = true
 }
 
@@ -239,16 +239,16 @@ function toggleAssignMode(volumeId) {
   }
 }
 
-async function assignChapterToVolume(chapterId) {
+async function assignSectionToVolume(sectionId) {
   if (!assignVolumeId.value || !projectStore.currentProjectId) return
-  await volumeStore.assignChapter(chapterId, assignVolumeId.value, projectStore.currentProjectId)
-  manuscriptStore.updateSectionData(chapterId, { volumeId: assignVolumeId.value }, projectStore.currentProjectId)
+  await volumeStore.assignSection(sectionId, assignVolumeId.value, projectStore.currentProjectId)
+  manuscriptStore.updateSectionData(sectionId, { volumeId: assignVolumeId.value }, projectStore.currentProjectId)
   assignMode.value = false
   assignVolumeId.value = null
 }
 
 function removeFromVolume(section) {
-  volumeStore.removeChapter(section.id, projectStore.currentProjectId)
+  volumeStore.removeSection(section.id, projectStore.currentProjectId)
   manuscriptStore.updateSectionData(section.id, { volumeId: null }, projectStore.currentProjectId)
 }
 
@@ -270,7 +270,7 @@ function getVolumeForSection(section) {
       <span class="text-sm font-medium text-text-primary tracking-wide">Section Manager</span>
       <button
         class="bg-bg-info text-text-info rounded-md text-xs px-3 py-1 font-medium hover:opacity-90"
-        @click="openAddChapter"
+        @click="openAddSection"
       >
         + Add Section
       </button>
@@ -399,7 +399,7 @@ function getVolumeForSection(section) {
         <p class="text-text-hint font-ui text-sm mb-4">No sections yet. Start planning your document!</p>
         <button
           class="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui"
-          @click="openAddChapter"
+          @click="openAddSection"
         >
           Add First Section
         </button>
@@ -425,7 +425,7 @@ function getVolumeForSection(section) {
                 assignMode ? 'hover:bg-accent/10' : 'hover:bg-surface-hover cursor-pointer',
                 manuscriptStore.activeSectionId === section.id ? 'border-l-2 border-accent' : ''
               ]"
-              @click="assignMode ? assignChapterToVolume(section.id) : selectSection(section.id)"
+              @click="assignMode ? assignSectionToVolume(section.id) : selectSection(section.id)"
             >
               <BaseIcon name="grip-vertical" :size="14" class="text-text-tertiary flex-shrink-0 cursor-grab" />
               <span
@@ -467,13 +467,13 @@ function getVolumeForSection(section) {
     </button>
     <button
       class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-      @click="openEditChapter(section)"
+      @click="openEditSection(section)"
     >
       Edit
     </button>
     <button
       class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-      @click="openChapterSnapshot(section)"
+      @click="openSectionSnapshot(section)"
     >
       History
     </button>
@@ -488,7 +488,7 @@ function getVolumeForSection(section) {
   <!-- Row 2: destructive action, full width -->
   <button
     class="w-full text-xs px-2.5 py-1 bg-bg-primary text-danger border border-border-subtle rounded-md hover:bg-danger/10 text-center"
-    @click="deleteChapter(section)"
+    @click="deleteSection(section)"
   >
     Delete
   </button>
@@ -539,15 +539,15 @@ function getVolumeForSection(section) {
       </div>
     </div>
 
-    <Modal :show="showChapterModal" @close="showChapterModal = false">
+    <Modal :show="showSectionModal" @close="showSectionModal = false">
       <div class="p-6">
         <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
-          {{ editingChapter ? 'Edit Section' : 'Add Section' }}
+          {{ editingSection ? 'Edit Section' : 'Add Section' }}
         </h3>
         <div class="mb-3">
           <label class="block text-xs text-text-hint font-ui mb-1">Title</label>
           <input
-            v-model="newChapter.title"
+            v-model="newSection.title"
             type="text"
             placeholder="Section title..."
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
@@ -556,7 +556,7 @@ function getVolumeForSection(section) {
         <div class="mb-3">
           <label class="block text-xs text-text-hint font-ui mb-1">Summary</label>
           <textarea
-            v-model="newChapter.summary"
+            v-model="newSection.summary"
             rows="3"
             placeholder="Brief summary of what happens in this section..."
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
@@ -570,12 +570,12 @@ function getVolumeForSection(section) {
               :key="status.value"
               :class="[
                 'px-3 py-1 text-xs rounded-full border font-ui',
-                newChapter.status === status.value
+                newSection.status === status.value
                   ? 'text-white'
                   : 'border-border-subtle text-text-hint'
               ]"
-              :style="newChapter.status === status.value ? { backgroundColor: status.color } : {}"
-              @click="newChapter.status = status.value"
+              :style="newSection.status === status.value ? { backgroundColor: status.color } : {}"
+              @click="newSection.status = status.value"
             >
               {{ status.label }}
             </button>
@@ -583,18 +583,18 @@ function getVolumeForSection(section) {
         </div>
         <div class="mb-4">
           <label class="block text-xs text-text-hint font-ui mb-1">Tags</label>
-          <TagInput v-model="newChapter.tags" placeholder="Add tags, press Enter" />
+          <TagInput v-model="newSection.tags" placeholder="Add tags, press Enter" />
         </div>
         <div class="flex gap-2">
           <button
             class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
-            @click="saveChapter"
+            @click="saveSection"
           >
-            {{ editingChapter ? 'Save' : 'Add' }}
+            {{ editingSection ? 'Save' : 'Add' }}
           </button>
           <button
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
-            @click="showChapterModal = false"
+            @click="showSectionModal = false"
           >
             Cancel
           </button>
@@ -602,15 +602,15 @@ function getVolumeForSection(section) {
       </div>
     </Modal>
 
-    <Modal :show="showSceneModal" @close="showSceneModal = false">
+    <Modal :show="showSubsectionModal" @close="showSubsectionModal = false">
       <div class="p-6">
         <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
-          {{ editingScene ? 'Edit Subsection' : 'New Subsection' }}
+          {{ editingSubsection ? 'Edit Subsection' : 'New Subsection' }}
         </h3>
         <div class="mb-3">
           <label class="block text-xs text-text-hint font-ui mb-1">Subsection Title</label>
           <input
-            v-model="newScene.title"
+            v-model="newSubsection.title"
             type="text"
             placeholder="Scene title..."
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
@@ -619,7 +619,7 @@ function getVolumeForSection(section) {
         <div class="mb-4">
           <label class="block text-xs text-text-hint font-ui mb-1">Summary / Beats</label>
           <textarea
-            v-model="newScene.summary"
+            v-model="newSubsection.summary"
             rows="4"
             placeholder="Key moments, beats, or summary of this scene..."
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
@@ -627,18 +627,18 @@ function getVolumeForSection(section) {
         </div>
         <div class="mb-4">
           <label class="block text-xs text-text-hint font-ui mb-1">Tags</label>
-          <TagInput v-model="newScene.tags" placeholder="Add tags, press Enter" />
+          <TagInput v-model="newSubsection.tags" placeholder="Add tags, press Enter" />
         </div>
         <div class="flex gap-2">
           <button
             class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
             @click="saveSubsection"
           >
-            {{ editingScene ? 'Save' : 'Add' }}
+            {{ editingSubsection ? 'Save' : 'Add' }}
           </button>
           <button
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
-            @click="showSceneModal = false"
+            @click="showSubsectionModal = false"
           >
             Cancel
           </button>
@@ -648,14 +648,14 @@ function getVolumeForSection(section) {
 
     <SnapshotHistoryDrawer
       :show="showSnapshotDrawer"
-      :chapter-id="snapshotChapterId"
-      @close="showSnapshotDrawer = false; snapshotChapterId = null"
+      :chapter-id="snapshotSectionId"
+      @close="showSnapshotDrawer = false; snapshotSectionId = null"
       @restored="(content) => {
-        if (snapshotChapterId !== null) {
-          manuscriptStore.updateSectionData(snapshotChapterId, { content }, projectStore.currentProjectId)
+        if (snapshotSectionId !== null) {
+          manuscriptStore.updateSectionData(snapshotSectionId, { content }, projectStore.currentProjectId)
         }
         showSnapshotDrawer = false
-        snapshotChapterId = null
+        snapshotSectionId = null
       }"
     />
 

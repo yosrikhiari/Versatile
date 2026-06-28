@@ -281,7 +281,7 @@ export function useVolumeStoryGenerator() {
         title: `${enhancedSynopsis.slice(0, 60)}...`,
         description: `Generated story — ${genre}, ${tone}`,
         color: '#6366f1',
-        chapterIds: []
+        sectionIds: []
       })
       volumeId.value = vId
 
@@ -769,7 +769,7 @@ export function useVolumeStoryGenerator() {
         }
 
         if (volumeId.value) {
-          await volumeStore.assignChapter(sectionId, volumeId.value, projectId)
+          await volumeStore.assignSection(sectionId, volumeId.value, projectId)
         }
         offset += chapter.scenes.length
       }
@@ -800,7 +800,7 @@ export function useVolumeStoryGenerator() {
         }
 
         if (volumeId.value) {
-          await volumeStore.assignChapter(sectionId, volumeId.value, projectId)
+          await volumeStore.assignSection(sectionId, volumeId.value, projectId)
         }
       }
     }

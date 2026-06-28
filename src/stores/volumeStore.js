@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { 
   getVolumes, addVolume, updateVolume, deleteVolume,
-  assignChapterToVolume, removeChapterFromVolume,
+  assignSectionToVolume, removeSectionFromVolume,
   getVolumeEntityCount
 } from '../services/dbService'
 import { useLoading } from '../composables/useLoading'
@@ -24,6 +24,7 @@ const volumeColors = () => VOLUME_COLORS
 export const useVolumeStore = defineStore('volume', () => {
   const { items: volumes, isLoading, load: loadVolumes } = useLoading(async (projectId) => {
     const vols = await getVolumes(projectId)
+    vols.forEach(v => { if (v.chapterIds && !v.sectionIds) v.sectionIds = v.chapterIds; delete v.chapterIds })
     await Promise.all(vols.map(async (vol) => {
       const counts = await getVolumeEntityCount(vol.id)
       vol.entityCounts = {
@@ -38,7 +39,7 @@ export const useVolumeStore = defineStore('volume', () => {
 
   async function createVolume(projectId, data) {
     const id = await addVolume(projectId, data)
-    volumes.value.push({ id, projectId, chapterIds: [], ...data })
+    volumes.value.push({ id, projectId, sectionIds: [], ...data })
     return id
   }
 
@@ -52,41 +53,41 @@ export const useVolumeStore = defineStore('volume', () => {
 
   async function deleteVolumeData(id, _projectId) {
     const volume = volumes.value.find(v => v.id === id)
-    if (volume?.chapterIds) {
-      for (const chapterId of volume.chapterIds) {
-        await removeChapterFromVolume(chapterId)
+    if (volume?.sectionIds) {
+      for (const sectionId of volume.sectionIds) {
+        await removeSectionFromVolume(sectionId)
       }
     }
     await deleteVolume(id)
     volumes.value = volumes.value.filter(v => v.id !== id)
   }
 
-  async function assignChapter(chapterId, volumeId, _projectId) {
-    await assignChapterToVolume(chapterId, volumeId)
+  async function assignSection(sectionId, volumeId, _projectId) {
+    await assignSectionToVolume(sectionId, volumeId)
     if (volumeId) {
       const volume = volumes.value.find(v => v.id === volumeId)
-      if (volume && !volume.chapterIds.includes(chapterId)) {
-        volume.chapterIds.push(chapterId)
+      if (volume && !volume.sectionIds.includes(sectionId)) {
+        volume.sectionIds.push(sectionId)
       }
     }
     for (const vol of volumes.value) {
-      if (vol.chapterIds && vol.id !== volumeId) {
-        vol.chapterIds = vol.chapterIds.filter(id => id !== chapterId)
+      if (vol.sectionIds && vol.id !== volumeId) {
+        vol.sectionIds = vol.sectionIds.filter(id => id !== sectionId)
       }
     }
   }
 
-  async function removeChapter(chapterId, _projectId) {
-    await removeChapterFromVolume(chapterId)
+  async function removeSection(sectionId, _projectId) {
+    await removeSectionFromVolume(sectionId)
     for (const vol of volumes.value) {
-      if (vol.chapterIds) {
-        vol.chapterIds = vol.chapterIds.filter(id => id !== chapterId)
+      if (vol.sectionIds) {
+        vol.sectionIds = vol.sectionIds.filter(id => id !== sectionId)
       }
     }
   }
 
-  function getVolumeForChapter(chapterId) {
-    return volumes.value.find(v => v.chapterIds?.includes(chapterId))
+  function getVolumeForSection(sectionId) {
+    return volumes.value.find(v => v.sectionIds?.includes(sectionId))
   }
 
   function getNextColor() {
@@ -103,9 +104,9 @@ export const useVolumeStore = defineStore('volume', () => {
     createVolume,
     updateVolumeData,
     deleteVolumeData,
-    assignChapter,
-    removeChapter,
-    getVolumeForChapter,
+    assignSection,
+    removeSection,
+    getVolumeForSection,
     getNextColor,
     VOLUME_COLORS
   }

@@ -650,7 +650,7 @@ db.on('ready', async () => {
       title: 'Default',
       description: 'Default volume for all content',
       color: '#6366f1',
-      chapterIds: []
+      sectionIds: []
     })
   }
 
