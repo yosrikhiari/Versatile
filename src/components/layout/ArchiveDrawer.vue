@@ -3,6 +3,8 @@ import { ref, onMounted } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useArchiveStore } from '../../stores/archiveStore'
 import { useContextRetrieval } from '../../composables/useContextRetrieval'
+import BaseTab from '../ui/BaseTab.vue'
+import BaseChip from '../ui/BaseChip.vue'
 const projectStore = useProjectStore()
 const archiveStore = useArchiveStore()
 const { dryRun } = useContextRetrieval()
@@ -122,19 +124,17 @@ function signalBadge(signal) {
         </button>
       </div>
       <div class="flex mt-3 gap-1">
-        <button
+        <BaseTab
           v-for="tab in [{ key: 'sessions', label: 'Sessions' }, { key: 'snapshots', label: 'Snapshots' }, { key: 'search', label: 'Search' }]"
           :key="tab.key"
-          :class="[
-            'flex-1 py-1.5 text-xs font-medium rounded-md transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent',
-            activeTab === tab.key
-              ? 'bg-accent/10 text-accent'
-              : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-          ]"
+          variant="pill"
+          size="sm"
+          class="flex-1"
+          :active="activeTab === tab.key"
           @click="activeTab = tab.key"
         >
           {{ tab.label }}
-        </button>
+        </BaseTab>
       </div>
     </div>
 
@@ -157,19 +157,16 @@ function signalBadge(signal) {
       </template>
 
       <div v-if="activeTab !== 'snapshots'" class="flex flex-wrap gap-1">
-        <button
+        <BaseChip
           v-for="opt in signalOptions"
           :key="opt.value || 'all'"
-          :class="[
-            'px-2 py-0.5 text-2xs rounded-full font-ui transition-colors',
-            signalFilter === opt.value
-              ? 'bg-accent/20 text-accent border border-accent/30'
-              : 'bg-bg-tertiary text-text-hint border border-transparent hover:border-border-subtle'
-          ]"
+          variant="filter"
+          size="sm"
+          :active="signalFilter === opt.value"
           @click="signalFilter = opt.value; loadSessions()"
         >
           {{ opt.label }}
-        </button>
+        </BaseChip>
       </div>
 
       <template v-if="activeTab === 'snapshots'">
@@ -187,8 +184,8 @@ function signalBadge(signal) {
             <span v-if="snap.state?.wordCount" class="text-2xs text-accent font-ui">{{ snap.state.wordCount.toLocaleString() }} words</span>
           </div>
           <div v-if="showDetails === snap.id && snap.state" class="mt-2 space-y-1">
-            <div v-if="snap.state.activeSection" class="text-xs text-text-secondary font-body">Section: {{ snap.state.activeSection }}</div>
-            <div v-if="snap.state.unresolvedThreads?.length" class="text-xs text-text-secondary font-body">
+            <div v-if="snap.state.activeSection" class="text-xs text-text-secondary font-ui">Section: {{ snap.state.activeSection }}</div>
+            <div v-if="snap.state.unresolvedThreads?.length" class="text-xs text-text-secondary font-ui">
               Unresolved: {{ snap.state.unresolvedThreads.slice(0, 5).join(', ') }}
             </div>
             <div v-if="snap.state.characterCount" class="text-xs text-text-secondary font-body">{{ snap.state.characterCount }} characters</div>
