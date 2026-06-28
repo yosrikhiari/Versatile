@@ -6,7 +6,6 @@ import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 import { useAppInitialization } from '../composables/useAppInitialization'
 import { useExportImport } from '../composables/useExportImport'
 import AppShell from '../components/layout/AppShell.vue'
-import AmbientShader from '../components/shared/AmbientShader.vue'
 import SettingsModal from '../components/layout/SettingsModal.vue'
 import WelcomeOnboarding from '../components/layout/WelcomeOnboarding.vue'
 import NotificationHost from '../components/shared/NotificationHost.vue'
@@ -25,6 +24,7 @@ import ArchiveDrawer from '../components/layout/ArchiveDrawer.vue'
 import ResearchPanel from '../components/research/ResearchPanel.vue'
 import StoryGeneratorPanel from '../components/story/StoryGeneratorPanel.vue'
 import VoiceLabPanel from '../components/voice-lab/VoiceLabPanel.vue'
+import StoryShapePanel from '../components/storyshape/StoryShapePanel.vue'
 import ActivityToast from '../components/shared/ActivityToast.vue'
 import ActivityDrawer from '../components/shared/ActivityDrawer.vue'
 import AuthModal from '../components/auth/AuthModal.vue'
@@ -113,8 +113,7 @@ function handleOnboardingSkipWrapper() {
 </script>
 
 <template>
-  <div class="h-screen bg-manuscript ambient-glow grain relative">
-    <AmbientShader />
+  <div class="h-screen bg-manuscript relative">
     <div v-if="!ollamaAvailable" class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200">
       Ollama is not reachable at localhost:11434. AI features are disabled. Start your Ollama container to enable them.
     </div>
@@ -199,6 +198,9 @@ function handleOnboardingSkipWrapper() {
       <template #voice-lab>
         <VoiceLabPanel />
       </template>
+      <template #story-shape>
+        <StoryShapePanel />
+      </template>
     </AppShell>
 
     <WelcomeOnboarding 
@@ -209,7 +211,7 @@ function handleOnboardingSkipWrapper() {
     />
 
     <div v-if="timer.showSessionEndModal.value" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="glass-modal rounded-xl shadow-warm-lg p-8 max-w-md text-center animate-scale-in">
+      <div class="glass-modal rounded-lg shadow-warm-lg p-8 max-w-md text-center animate-scale-in">
         <BaseIcon name="waves" :size="48" class="mb-4 mx-auto text-accent" />
         <h2 class="text-xl font-semibold text-text-primary mb-2">Session complete</h2>
         <p class="text-text-secondary mb-6">
@@ -217,7 +219,7 @@ function handleOnboardingSkipWrapper() {
         </p>
         <div class="flex gap-3">
           <button
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
             @click="timer.startNewSession(20)"
           >
             Start new session
@@ -232,14 +234,17 @@ function handleOnboardingSkipWrapper() {
       </div>
     </div>
 
-    <div v-if="showImportModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="glass-modal rounded-xl shadow-warm-lg p-8 max-w-md text-center">
+    <div v-if="showImportModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showImportModal = false">
+      <div class="glass-modal rounded-lg shadow-warm-lg p-8 max-w-md text-center relative">
+        <button class="absolute top-3 right-3 text-text-secondary hover:text-text-primary transition-colors" @click="showImportModal = false">
+          <BaseIcon name="x" :size="16" />
+        </button>
         <p class="text-text-primary">{{ importStatus }}</p>
       </div>
     </div>
 
     <div v-if="showShortcutsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" @click.self="showShortcutsModal = false">
-      <div class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full animate-scale-in">
+      <div class="glass-modal rounded-lg shadow-warm-lg p-6 max-w-lg w-full animate-scale-in">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-text-primary">Keyboard Shortcuts</h2>
           <button class="text-text-secondary hover:text-text-primary text-xl focus:outline-none focus:ring-2 focus:ring-accent rounded" @click="showShortcutsModal = false">&times;</button>

@@ -71,7 +71,7 @@ async function handleLogout() {
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-semibold text-text-primary">Your Projects</h1>
         <button
-          class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+          class="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
           @click="showCreate = true"
         >
           <BaseIcon name="plus" :size="16" />
@@ -88,7 +88,7 @@ async function handleLogout() {
         <p class="text-text-secondary mb-2">No projects yet</p>
         <p class="text-text-tertiary text-sm mb-4">Create your first project to get started</p>
         <button
-          class="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+          class="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
           @click="showCreate = true"
         >
           Create Project
@@ -144,7 +144,7 @@ async function handleLogout() {
             <button type="button" class="flex-1 py-2 border border-border-subtle text-text-secondary rounded-lg text-sm hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent transition-colors" @click="showCreate = false">
               Cancel
             </button>
-            <button type="submit" class="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent transition-colors">
+            <button type="submit" class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent transition-colors">
               Create
             </button>
           </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+
 
 const props = defineProps({
   active: Boolean,
@@ -23,16 +23,7 @@ const displayLabel = computed(() => {
   return props.label
 })
 
-const sectionFont = computed(() => {
-  const fonts = {
-    'Spark': 'font-spark',
-    'Flow': 'font-flow italic',
-    'Polish': 'font-polish',
-    'Revise': 'font-revise',
-    'Story Bible': 'font-storybible',
-  }
-  return fonts[props.label] || 'font-ui'
-})
+const sectionFont = 'font-ui'
 </script>
 
 <template>

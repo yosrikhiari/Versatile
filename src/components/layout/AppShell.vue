@@ -19,11 +19,13 @@ const projectStore = useProjectStore()
 
 const activePanelName = ref(null)
 const flowMode = ref(false)
+const sidebarOpen = ref(false)
 const showProjectSettings = ref(false)
 const showProjectDropdown = ref(false)
 const projects = ref([])
 
 
+const showRevise = ref(false)
 const showCoreLoop = ref(true)
 const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, { write: false, analyze: false, build: false })
 
@@ -150,6 +152,18 @@ function toggleVoiceLab() {
   activePanelName.value = activePanelName.value === 'voice-lab' ? null : 'voice-lab'
 }
 
+function toggleStoryShape() {
+  activePanelName.value = activePanelName.value === 'story-shape' ? null : 'story-shape'
+}
+
+function toggleSpark() {
+  toggleStoryGenerator()
+}
+
+function toggleRevise() {
+  activePanelName.value = activePanelName.value === 'revise' ? null : 'revise'
+}
+
 function toggleFlow() {
   markCoreLoop('write')
   if (flowMode.value) {
@@ -178,9 +192,25 @@ function handleSidebarNav(name) {
     'archive': toggleArchive,
     'research': toggleResearch,
     'voice-lab': toggleVoiceLab,
+    'story-shape': toggleStoryShape,
   }
   map[name]?.()
 }
+
+defineExpose({
+  toggleSpark,
+  toggleRevise,
+  toggleStoryGenerator,
+  togglePolish,
+  toggleStoryBible,
+  toggleCanvas,
+  toggleOutline,
+  toggleChapters,
+  toggleNetwork,
+  toggleResearch,
+  toggleVoiceLab,
+  toggleStoryShape,
+})
 
 onMounted(async () => {
   await loadProjects()
@@ -191,10 +221,17 @@ onMounted(async () => {
   <div class="h-full flex flex-col">
     <header class="h-12 glass flex items-center justify-between px-3 shrink-0 z-10 border-b border-border-subtle/60">
       <div class="flex items-center gap-2">
+        <button
+          class="md:hidden grid place-items-center w-9 h-9 -ml-1 rounded-lg text-text-hint hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-colors duration-150"
+          title="Open menu"
+          @click="sidebarOpen = true"
+        >
+          <BaseIcon name="menu" :size="18" />
+        </button>
         <span
           v-if="flowMode"
           class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-semibold text-accent cursor-pointer transition-all duration-150"
-          style="background: rgba(200,146,42,0.12)"
+          style="background: rgba(var(--vers-accent-primary-rgb),0.12)"
           @click="toggleFlow"
         >
           <BaseIcon name="play" :size="10" />
@@ -286,7 +323,7 @@ onMounted(async () => {
     <RecapBanner />
 
     <div class="flex-1 flex overflow-hidden">
-      <SidebarNav v-show="!focusMode" :active-panel="activePanelName" @navigate="handleSidebarNav" />
+      <SidebarNav v-show="!focusMode" :active-panel="activePanelName" :mobile-open="sidebarOpen" @navigate="handleSidebarNav" @close="sidebarOpen = false" />
 
       <div class="flex-1 flex overflow-hidden">
         <Transition name="panel-left">
@@ -396,6 +433,15 @@ onMounted(async () => {
           class="w-[420px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="voice-lab"></slot>
+        </aside>
+      </Transition>
+
+      <Transition name="panel-left">
+        <aside 
+          v-if="activePanelName === 'story-shape' && !flowMode" 
+          class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="story-shape"></slot>
         </aside>
       </Transition>
       </div>
