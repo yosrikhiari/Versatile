@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=JetBrains+Mono:wght@400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,22 +6,24 @@
 
 @layer base {
   :root {
-    /* === Versatile Design Tokens v2 (PRD) === */
-    --vers-bg-base: #12100E;
-    --vers-bg-panel: #1A1714;
-    --vers-bg-canvas: #1F1C18;
-    --vers-bg-hover: #2A2520;
-    --vers-bg-elevated: #2A2A3E;
-    --vers-border-subtle: #2E2A25;
-    --vers-border-focus: #C8922A;
-    --vers-accent-primary: #C8922A;
-    --vers-accent-primary-rgb: 200, 146, 42;
-    --vers-accent-secondary: #8B6914;
-    --vers-text-primary: #E8DCC8;
-    --vers-text-secondary: #C4B8A0;
-    --vers-text-muted: #7A6E62;
-    --vers-text-faint: #3D3730;
-    --vers-glow-loading-rgb: 200, 146, 42;
+    /* === Versatile Design Tokens v3 — Manuscript Mono === */
+    /* Near-monochrome neutral foundation, single cool slate-blue accent. */
+    --vers-bg-base: #121214;      /* canvas / manuscript surface (darkest) */
+    --vers-bg-panel: #1A1A1D;     /* sidebar, header, side panels (used sparingly) */
+    --vers-bg-canvas: #121214;    /* writing column — same as base, sits on canvas */
+    --vers-bg-hover: #222226;     /* hover wells */
+    --vers-bg-elevated: #26262B;  /* dropdowns, modals */
+    --vers-border-subtle: rgba(255, 255, 255, 0.07);  /* hairline, not solid */
+    --vers-border-focus: #6E8BB5;
+    --vers-accent-primary: #6E8BB5;       /* cool slate-blue, used rarely */
+    --vers-accent-primary-rgb: 110, 139, 181;
+    --vers-accent-secondary: #4F6E96;
+    --vers-text-primary: #E6E6E2;
+    --vers-text-secondary: #A2A29B;
+    --vers-text-muted: #6E6E67;
+    --vers-text-faint: #44443E;
+    --vers-text-on-accent: #FFFFFF;
+    --vers-glow-loading-rgb: 110, 139, 181;
 
     /* JS entity type accent colors (graph node fills) */
     --vers-entity-character: #8B5CF6;
@@ -84,10 +86,11 @@
   }
 
   .editor-wrapper {
-    background: var(--vers-bg-canvas);
-    border: 1px solid rgba(var(--vers-accent-primary-rgb), 0.08);
-    border-radius: 8px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    /* The manuscript sits directly on the canvas — no card, no chrome. */
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   ::selection {
@@ -102,26 +105,20 @@
 }
 
 @layer components {
-  /* ── Glass Surface ── */
+  /* ── Surfaces (solid, separated by hairline borders — no glass) ── */
   .glass {
-    background: rgba(26, 24, 22, 0.88);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-bottom: 1px solid rgba(var(--vers-accent-primary-rgb), 0.1);
+    background: var(--vers-bg-panel);
+    border-bottom: 1px solid var(--vers-border-subtle);
   }
 
   .glass-panel {
-    background: rgba(36, 34, 32, 0.92);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(var(--vers-accent-primary-rgb), 0.14);
+    background: var(--vers-bg-elevated);
+    border: 1px solid var(--vers-border-subtle);
   }
 
   .glass-modal {
-    background: rgba(26, 24, 22, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(var(--vers-accent-primary-rgb), 0.18);
+    background: var(--vers-bg-elevated);
+    border: 1px solid var(--vers-border-subtle);
   }
 
   /* ── Ambient Glow ── */
@@ -138,24 +135,6 @@
     background:
       radial-gradient(ellipse 80% 50% at 50% -10%, rgba(var(--vers-accent-primary-rgb), 0.06) 0%, transparent 70%),
       radial-gradient(ellipse 60% 40% at 30% 100%, rgba(var(--vers-accent-primary-rgb), 0.03) 0%, transparent 60%);
-  }
-
-  /* ── Editor Ambient Glow ── */
-  .editor-glow {
-    position: relative;
-  }
-
-  .editor-glow::after {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(800px, 100vw);
-    height: 600px;
-    pointer-events: none;
-    z-index: 0;
-    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(var(--vers-accent-primary-rgb), 0.07) 0%, transparent 70%);
   }
 
   /* ── Paper Grain Texture ── */
@@ -226,34 +205,56 @@
     @apply translate-y-0;
   }
 
+  .btn-primary {
+    @apply transition-all duration-150 ease-out;
+    background: var(--vers-accent-primary);
+    color: var(--vers-bg-base);
+    font-weight: 500;
+  }
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+  .btn-primary:active {
+    opacity: 0.8;
+  }
+
   /* ── Panel Transitions ── */
   .panel-left-enter-active,
   .panel-right-enter-active,
   .panel-bottom-enter-active {
-    transition: all 0.2s ease-out;
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
   }
   .panel-left-leave-active,
   .panel-right-leave-active,
   .panel-bottom-leave-active {
-    transition: all 0.15s ease-in;
+    transition: opacity 0.18s ease-out, transform 0.18s ease-out;
   }
 
-  .panel-left-enter-from,
+  .panel-left-enter-from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
   .panel-left-leave-to {
     opacity: 0;
-    transform: translateX(-8px);
+    transform: translateX(-6px);
   }
 
-  .panel-right-enter-from,
+  .panel-right-enter-from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
   .panel-right-leave-to {
     opacity: 0;
-    transform: translateX(8px);
+    transform: translateX(6px);
   }
 
-  .panel-bottom-enter-from,
+  .panel-bottom-enter-from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
   .panel-bottom-leave-to {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(6px);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -271,31 +272,34 @@
     .panel-right-leave-to,
     .panel-bottom-enter-from,
     .panel-bottom-leave-to {
-      opacity: 0;
       transform: none;
+      opacity: 1;
     }
   }
 
   /* ── Editor Content ── */
   .editor-content {
-    font-family: 'Crimson Pro', Georgia, serif;
-    font-size: 19px;
-    line-height: 2;
-    letter-spacing: 0.01em;
+    font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+    font-size: 18px;
+    line-height: 1.75;
+    letter-spacing: 0;
   }
 }
 
 /* ── TipTap Editor ── */
 .tiptap-editor .ProseMirror {
-  font-family: 'Crimson Pro', Georgia, serif;
-  font-size: 19px;
-  line-height: 2;
+  font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+  font-size: 18px;
+  line-height: 1.75;
   color: var(--vers-text-primary);
   background-color: transparent;
   outline: none;
   min-height: 60vh;
   position: relative;
   z-index: 1;
+  max-width: 66ch;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .tiptap-editor .ProseMirror p {

@@ -10,6 +10,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/**/*.{js,vue}",
+    "lint:tokens": "node scripts/lint-tokens.mjs",
     "lint:fix": "eslint src/**/*.{js,vue} --fix",
     "format": "prettier --write \"src/**/*.{js,vue,css}\""
   },
