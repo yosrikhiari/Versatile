@@ -100,7 +100,7 @@ function handleDismiss() {
     
     <div class="flex gap-2 mt-3">
       <button
-        class="flex-1 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        class="flex-1 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
         @click="handleAccept"
       >
         {{ showDiff ? 'Confirm' : 'Accept' }}

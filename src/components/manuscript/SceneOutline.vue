@@ -109,7 +109,7 @@ onMounted(() => {
   <div class="h-full flex flex-col bg-bg-secondary">
     <div class="px-4 py-3 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-3">
-        <span class="font-spark text-accent tracking-wide">Subsection Outline</span>
+        <span class="font-ui text-accent tracking-wide">Subsection Outline</span>
         <div class="flex gap-2">
           <button
             v-for="mode in [{ value: 'sections', label: 'By Section' }, { value: 'list', label: 'List' }]"
@@ -313,7 +313,7 @@ onMounted(() => {
 
         <div class="flex gap-2">
           <button
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
             @click="saveScene"
           >
             {{ editingScene ? 'Save' : 'Add' }}

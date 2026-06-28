@@ -489,9 +489,7 @@ watch(() => nodes.value.length, () => {
   setTimeout(() => fitView({ padding: 0.2 }), 100)
 })
 
-watch(() => storyGraphStore.edges.length, () => {
-  forceRefreshKey.value++
-})
+// forceRefreshKey removed — destroying/recreating VueFlow on every edge change killed perf
 
 let groupSaveTimer = null
 watch(() => manualGroups.value, (groups) => {
@@ -1478,7 +1476,7 @@ async function arrangeExtendedStarLayout() {
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="shrink-0 px-4 py-2 h-14 border-b border-border-subtle flex items-center justify-between bg-bg-secondary z-10">
       <div class="flex items-center gap-2">
-        <span class="font-spark text-accent tracking-wide">Story Network</span>
+        <span class="font-ui text-accent tracking-wide">Story Network</span>
       </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-1 border-l border-border-subtle pl-3">
@@ -1549,7 +1547,7 @@ async function arrangeExtendedStarLayout() {
           Ideas
         </button>
         <button
-          class="px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+          class="px-3 py-1.5 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui"
           @click="openAddConnectionModal"
         >
           + Connection
@@ -1577,7 +1575,7 @@ async function arrangeExtendedStarLayout() {
       <div class="flex-1 relative" style="height: 100%;">
         <VueFlow
           v-if="nodes.length > 0 || manualGroups.length > 0"
-          :key="forceRefreshKey"
+          :only-render-visible-elements="true"
           :nodes="nodes"
           :edges="[...edges, ...groupEdges]"
           :default-viewport="{ x: 0, y: 0, zoom: 1 }"
@@ -1739,7 +1737,7 @@ async function arrangeExtendedStarLayout() {
             <p class="text-xs text-text-hint mb-4">Drag items from the sidebar to add them</p>
             <button
               v-if="!showSidebar"
-              class="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent/90 font-ui"
+              class="px-4 py-2 text-sm bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui"
               @click="toggleSidebar"
             >
               Show Entities Panel
@@ -1777,7 +1775,7 @@ async function arrangeExtendedStarLayout() {
           </p>
           <div class="flex gap-2">
             <button
-              class="flex-1 py-1.5 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+              class="flex-1 py-1.5 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui"
               @click="editConnection(selectedConnection)"
             >
               Edit
@@ -1871,7 +1869,7 @@ async function arrangeExtendedStarLayout() {
             </div>
             <div class="flex gap-2">
               <button class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg text-sm hover:bg-surface-hover font-ui" @click="showCreateGroupModal = false">Cancel</button>
-              <button class="flex-1 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent/90 font-ui" @click="confirmCreateGroup">Create</button>
+              <button class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent/90 font-ui" @click="confirmCreateGroup">Create</button>
             </div>
           </div>
         </div>

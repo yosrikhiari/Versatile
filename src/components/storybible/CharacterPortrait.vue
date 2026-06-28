@@ -59,7 +59,7 @@ async function generate() {
     </div>
     <button
       :disabled="isGenerating"
-      class="text-xs px-3 py-1 rounded bg-accent text-white hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      class="text-xs px-3 py-1 rounded bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       @click="generate"
     >
       <span v-if="isGenerating" class="flex items-center gap-1">

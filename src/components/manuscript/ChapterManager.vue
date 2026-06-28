@@ -284,7 +284,7 @@ function getVolumeForSection(section) {
         :class="[
           'px-2 py-0.5 text-xs rounded-full font-ui shrink-0',
           tagFilter.includes(tag)
-            ? 'bg-accent text-white'
+            ? 'bg-accent text-accent-foreground'
             : 'bg-bg-tertiary text-text-hint hover:text-text-secondary'
         ]"
         @click="toggleTagFilter(tag)"
@@ -389,7 +389,7 @@ function getVolumeForSection(section) {
       <div v-if="filteredSections.length === 0 && sortedSections.length > 0" class="text-center py-8">
         <p class="text-text-hint font-ui text-sm mb-4">No sections match the selected tags.</p>
         <button
-          class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-ui"
+          class="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui"
           @click="tagFilter = []"
         >
           Clear Filters
@@ -398,7 +398,7 @@ function getVolumeForSection(section) {
       <div v-else-if="filteredSections.length === 0" class="text-center py-8">
         <p class="text-text-hint font-ui text-sm mb-4">No sections yet. Start planning your document!</p>
         <button
-          class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-ui"
+          class="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui"
           @click="openAddChapter"
         >
           Add First Section
@@ -587,7 +587,7 @@ function getVolumeForSection(section) {
         </div>
         <div class="flex gap-2">
           <button
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
             @click="saveChapter"
           >
             {{ editingChapter ? 'Save' : 'Add' }}
@@ -631,7 +631,7 @@ function getVolumeForSection(section) {
         </div>
         <div class="flex gap-2">
           <button
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
             @click="saveSubsection"
           >
             {{ editingScene ? 'Save' : 'Add' }}
@@ -699,7 +699,7 @@ function getVolumeForSection(section) {
         </div>
         <div class="flex gap-2">
           <button
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
             @click="saveVolume"
           >
             {{ editingVolume ? 'Save' : 'Add' }}

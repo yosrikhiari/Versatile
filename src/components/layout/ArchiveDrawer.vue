@@ -148,7 +148,7 @@ function signalBadge(signal) {
             @keydown.enter="handleSearch"
           />
           <button
-            class="px-2 py-1.5 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+            class="px-2 py-1.5 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui"
             @click="handleSearch"
           >
             Go

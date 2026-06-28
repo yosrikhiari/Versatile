@@ -426,7 +426,7 @@ function handleSave() {
               </button>
               <button
                 :disabled="!isValid"
-                class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui"
+                class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui"
                 @click="handleSave"
               >
                 {{ existingEdge ? 'Save Changes' : 'Add Connection' }}

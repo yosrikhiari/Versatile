@@ -53,7 +53,7 @@
         <div class="space-y-3">
           <button 
             :disabled="working"
-            class="w-full py-2 px-4 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+            class="w-full py-2 px-4 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
             @click="checkHealth"
           >
             <BaseIcon v-if="working" name="loader-2" :size="16" class="animate-spin mr-2" />

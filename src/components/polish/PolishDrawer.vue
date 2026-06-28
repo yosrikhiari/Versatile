@@ -136,7 +136,7 @@ defineExpose({
           :class="[
               'px-2 py-1 text-xs rounded-full transition-colors font-ui relative focus:outline-none focus:ring-2 focus:ring-accent',
               polishStore.activeLenses[lens.key]
-                ? 'bg-accent text-white'
+                ? 'bg-accent text-accent-foreground'
                 : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
             ]"
             @click="toggleLens(lens.key)"
@@ -152,7 +152,7 @@ defineExpose({
         <button
           v-if="polishStore.selectedParagraphIndex !== null"
           :disabled="polishStore.isAnalyzing"
-          class="px-2 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="px-2 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           title="Analyze selected paragraph"
           @click="analyzeNow"
         >

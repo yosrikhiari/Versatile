@@ -321,7 +321,7 @@ function handleOverlayClick(event) {
             </button>
             <button
               :disabled="!localName.trim() || isSaving"
-              class="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent/90 font-ui flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="px-4 py-2 text-sm bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               @click="handleSave"
             >
               {{ isSaving ? 'Saving...' : 'Save Changes' }}

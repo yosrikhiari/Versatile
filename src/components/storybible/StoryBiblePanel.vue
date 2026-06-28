@@ -469,7 +469,7 @@ defineExpose({ refresh })
   <div class="h-full flex flex-col">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-3">
-        <span class="font-storybible text-accent tracking-wide">{{ projectStore.terminology.bible }}</span>
+        <span class="font-ui text-accent tracking-wide">{{ projectStore.terminology.bible }}</span>
       </div>
     </div>
 
@@ -1001,7 +1001,7 @@ defineExpose({ refresh })
           :class="[
             'px-2.5 py-1 text-11px font-medium rounded-lg font-ui transition-colors',
             selectedDocType === dt.key
-              ? 'bg-accent text-white'
+              ? 'bg-accent text-accent-foreground'
               : 'bg-bg-secondary text-text-secondary hover:bg-surface-hover'
           ]"
           @click="selectedDocType = dt.key"
@@ -1012,7 +1012,7 @@ defineExpose({ refresh })
 
       <div class="flex items-center gap-2 mb-3 flex-wrap">
         <button
-          class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-accent text-white disabled:opacity-40"
+          class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-accent text-accent-foreground disabled:opacity-40"
           :disabled="!hasUnsavedChanges"
           @click="saveDocument"
         >

@@ -230,7 +230,7 @@ v-else
                 :disabled="totalNew === 0"
                 class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
                 :class="totalNew > 0 
-                  ? 'bg-accent text-white hover:bg-accent/90' 
+                  ? 'bg-accent text-accent-foreground hover:bg-accent/90' 
                   : 'bg-bg-tertiary text-text-hint cursor-not-allowed'"
                 @click="handleCreate"
               >

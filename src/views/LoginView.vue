@@ -87,7 +87,7 @@ function toggleMode() {
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+          class="w-full py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
         >
           {{ isSubmitting ? 'Please wait...' : (isRegistering ? 'Create Account' : 'Sign In') }}
         </button>

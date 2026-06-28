@@ -166,7 +166,7 @@ function handleSkipSetup() {
                 />
                 <button
                   :disabled="!canProceedStep1 || isCreating"
-                  class="px-5 py-2.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  class="px-5 py-2.5 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   @click="handleNextStep1"
                 >
                   {{ isCreating ? 'Creating...' : 'Next' }}
@@ -301,7 +301,7 @@ function handleSkipSetup() {
             </button>
             <button
               :disabled="!canProceedStep2 || isCreating"
-              class="flex-1 py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="flex-1 py-3 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               @click="handleNextStep2"
             >
               {{ isCreating ? 'Creating...' : 'Create & Continue' }}
@@ -334,7 +334,7 @@ function handleSkipSetup() {
             </div>
           </div>
           <button
-            class="w-full max-w-xs mx-auto py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent/90 transition-colors"
+            class="w-full max-w-xs mx-auto py-3 bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent/90 transition-colors"
             @click="handleComplete"
           >
             Start Writing

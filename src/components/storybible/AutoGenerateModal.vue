@@ -166,7 +166,7 @@ class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border
               Cancel
             </button>
             <button
-              class="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors"
+              class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors"
               @click="handleGenerate"
             >
               Generate

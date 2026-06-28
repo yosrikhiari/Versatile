@@ -116,7 +116,7 @@ watch(projectId, (id) => {
         class="w-full py-2 px-3 rounded-lg text-xs font-medium transition-all duration-150 flex items-center justify-center gap-2"
         :class="indexing
           ? 'bg-accent/20 text-accent cursor-wait'
-          : 'bg-accent text-white hover:bg-accent/90 active:scale-[0.98]'"
+          : 'bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98]'"
         @click="handleIndex"
       >
         <BaseIcon :name="indexing ? 'loader-2' : 'message-square'" :size="14" />

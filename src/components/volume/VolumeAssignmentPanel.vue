@@ -145,7 +145,7 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
           Remove from all
         </button>
         <button
-          class="text-xs px-2 py-1 bg-accent text-white rounded"
+          class="text-xs px-2 py-1 bg-accent text-accent-foreground rounded"
           @click="$emit('close')"
         >
           Done

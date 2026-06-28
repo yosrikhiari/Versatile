@@ -478,14 +478,14 @@ watch(() => props.show, (newVal) => {
           </button>
           <button
             v-if="activeTab === 'goals'"
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
             @click="saveGoal"
           >
             Save
           </button>
           <button
             v-if="activeTab === 'ai'"
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
             @click="saveAllSettings"
           >
             Save

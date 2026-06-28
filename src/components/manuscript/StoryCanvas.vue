@@ -100,10 +100,10 @@ onMounted(() => {
 <template>
   <div class="h-full flex flex-col bg-bg-secondary">
     <div class="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
-      <span class="font-spark text-accent tracking-wide">Story Canvas</span>
+      <span class="font-ui text-accent tracking-wide">Story Canvas</span>
       <div class="flex gap-2">
         <button
-          class="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui"
+          class="px-3 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui"
           @click="showAddModal = true"
         >
           + Add Element
@@ -221,7 +221,7 @@ onMounted(() => {
         <div class="flex gap-2">
           <button
             :disabled="!newElementTitle.trim()"
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 font-ui"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 font-ui"
             @click="addNewElement"
           >
             Add

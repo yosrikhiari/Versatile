@@ -105,7 +105,7 @@ watch(() => projectStore.currentProjectId, loadComments)
   <div class="h-full flex flex-col bg-manuscript">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between">
-        <span class="font-revise text-accent tracking-wide">Revise</span>
+        <span class="font-ui text-accent tracking-wide">Revise</span>
         <span class="text-xs text-text-hint font-ui">{{ comments.length }} comment{{ comments.length !== 1 ? 's' : '' }}</span>
       </div>
     </div>
@@ -174,7 +174,7 @@ watch(() => projectStore.currentProjectId, loadComments)
           Cancel
         </button>
         <button
-          class="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="px-3 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           @click="saveComment"
         >
           Save

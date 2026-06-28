@@ -140,7 +140,7 @@ const isValid = computed(() => {
         <button
           type="submit"
           :disabled="!isValid || submitting"
-          class="w-full py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 flex items-center justify-center gap-2"
+          class="w-full py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 flex items-center justify-center gap-2"
         >
           <BaseIcon v-if="submitting" name="loader" :size="16" class="animate-spin" />
           {{ mode === 'login' ? 'Sign In' : 'Create Account' }}

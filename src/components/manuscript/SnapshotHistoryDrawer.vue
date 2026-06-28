@@ -123,7 +123,7 @@ onUnmounted(() => {
     >
       <div class="w-[420px] h-full bg-bg-secondary border-l border-border-subtle flex flex-col overflow-hidden shadow-xl">
         <div class="px-4 py-3 border-b border-border-subtle flex items-center justify-between shrink-0">
-          <span class="font-spark text-accent tracking-wide">History</span>
+          <span class="font-ui text-accent tracking-wide">History</span>
           <div class="flex items-center gap-2">
             <button
               class="px-2 py-1 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui"
@@ -184,7 +184,7 @@ onUnmounted(() => {
                     {{ previewDiff(snapshot).slice(0, 500) }}{{ previewDiff(snapshot).length > 500 ? '...' : '' }}
                   </div>
                   <button
-                    class="mt-2 w-full py-1.5 bg-accent text-white text-xs rounded font-ui hover:bg-accent/90"
+                    class="mt-2 w-full py-1.5 bg-accent text-accent-foreground text-xs rounded font-ui hover:bg-accent/90"
                     @click.stop="confirmRestore"
                   >
                     Restore this version
@@ -230,7 +230,7 @@ onUnmounted(() => {
           </button>
           <button
             :disabled="!newLabel.trim()"
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 font-ui disabled:opacity-50"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui disabled:opacity-50"
             @click="saveWithLabel"
           >
             Save
