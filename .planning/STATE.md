@@ -147,6 +147,12 @@ All prior milestones shipped. Now starting v1.3 (4 phases):
 3. EmotionalArcChart & CharacterFocusMatrix
 4. Combined view, annotations, zoom, export
 
+### Web Worker Refactoring (v0.5 tangent)
+- Refactored semantic chunking to use a dedicated Web Worker (`documentChunker.worker.js`) for non-blocking embedding computation
+- `useSemanticChunking.js` now delegates to the worker; falls back to sync path in test environments
+- Bug fix: null-safe `getEmbeddingCache()` access in `useManuscriptContext.js`
+- All 1024 tests pass across 100 test files — zero regressions
+
 ### Current Blockers
 None.
 

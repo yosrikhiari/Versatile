@@ -41,3 +41,6 @@ src/tests/
 src/tests/unit/ollamaService.test.js
 .agents/
 .claude/
+CONTEXT.md
+.planning/STATE.md
+.planning/STATE.md
