@@ -405,35 +405,22 @@ function getPhaseLabel(phase) {
 
 <template>
   <div class="h-full flex flex-col bg-bg-primary">
-    <div class="px-4 pt-4 pb-3 border-b border-border-subtle flex items-center justify-between">
-      <div>
-        <h2 class="text-lg font-semibold text-text-primary font-ui">Story Tools</h2>
-      </div>
-      <div class="flex items-center justify-center w-full mt-2 border-b border-border-subtle/30 pb-3">
-        <div class="flex items-center gap-6">
-          <label
-            v-for="m in [
-              { id: MODE_BRAINSTORM, label: 'Ideate' },
-              { id: MODE_SCENE, label: 'Scene' },
-              { id: MODE_CHAPTER, label: 'Chapter' },
-              { id: MODE_ARC, label: 'Arc' }
-            ]"
-            :key="m.id"
-            class="flex items-center gap-2 cursor-pointer group"
-            @click="tab = m.id"
-          >
-            <div
-class="w-3 h-3 rounded-full border flex items-center justify-center transition-all duration-300"
-                 :class="tab === m.id ? 'border-accent' : 'border-text-hint/50 group-hover:border-text-secondary'">
-              <div v-if="tab === m.id" class="w-1.5 h-1.5 bg-accent rounded-full"></div>
-            </div>
-            <span
-class="text-11px font-spark tracking-widest transition-colors duration-300"
-                  :class="tab === m.id ? 'text-accent' : 'text-text-hint group-hover:text-text-primary'">
-              {{ m.label }}
-            </span>
-          </label>
-        </div>
+    <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
+      <h2 class="text-base font-semibold text-text-primary font-ui mb-3">Story Tools</h2>
+      <div class="flex w-full gap-0.5 p-0.5 bg-bg-secondary border border-border-subtle rounded-lg">
+        <button
+          v-for="m in [
+            { id: MODE_BRAINSTORM, label: 'Ideate' },
+            { id: MODE_SCENE, label: 'Scene' },
+            { id: MODE_CHAPTER, label: 'Chapter' },
+            { id: MODE_ARC, label: 'Arc' }
+          ]"
+          :key="m.id"
+          class="flex-1 py-1.5 text-xs rounded-md font-ui transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-accent"
+          :class="tab === m.id ? 'text-accent' : 'text-text-secondary hover:text-text-primary'"
+          :style="tab === m.id ? { background: 'rgba(var(--vers-accent-primary-rgb),0.14)' } : {}"
+          @click="tab = m.id"
+        >{{ m.label }}</button>
       </div>
     </div>
 
@@ -468,7 +455,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                 :key="g"
                 :class="[
                   'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
-                  genre === g ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
+                  genre === g ? 'bg-accent text-accent-foreground' : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
                 ]"
                 @click="genre = genre === g ? '' : g"
               >{{ g }}</button>
@@ -483,7 +470,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                 :key="t"
                 :class="[
                   'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
-                  tone === t ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
+                  tone === t ? 'bg-accent text-accent-foreground' : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
                 ]"
                 @click="tone = tone === t ? '' : t"
               >{{ t }}</button>
@@ -498,7 +485,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
               min="500"
               max="10000"
               step="100"
-              class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+              class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
 
@@ -541,7 +528,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
 
           <button
             :disabled="!hasSynopsis || volumeGenerator.phase.value !== 'idle'"
-            class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleVolumeGenerate"
           >
             <span class="flex items-center justify-center gap-2">
@@ -653,7 +640,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Goal:</span>
                     <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.goal || ''"
                       @input="handleVolumeSceneEdit(i, 'goal', $event.target.value)"
                     />
@@ -661,7 +648,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Characters:</span>
                     <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.characters ? scene.characters.join(', ') : (scene.charactersPresent || []).join(', ')"
                       @input="handleVolumeSceneEdit(i, 'characters', $event.target.value.split(',').map(s => s.trim()))"
                     />
@@ -669,7 +656,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Setup:</span>
                     <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.setup || ''"
                       @input="handleVolumeSceneEdit(i, 'setup', $event.target.value)"
                     />
@@ -677,7 +664,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Sensory:</span>
                     <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.sensoryAnchor || ''"
                       @input="handleVolumeSceneEdit(i, 'sensoryAnchor', $event.target.value)"
                     />
@@ -685,7 +672,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Tension:</span>
                     <select
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.tension || 'medium'"
                       @change="handleVolumeSceneEdit(i, 'tension', $event.target.value)"
                     >
@@ -698,7 +685,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Arc Pos:</span>
                     <select
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.arcPosition || ''"
                       @change="handleVolumeSceneEdit(i, 'arcPosition', $event.target.value)"
                     >
@@ -717,7 +704,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Changes:</span>
                     <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.obstacle || ''"
                       @input="handleVolumeSceneEdit(i, 'obstacle', $event.target.value)"
                     />
@@ -725,7 +712,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Location:</span>
                     <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.location || ''"
                       @input="handleVolumeSceneEdit(i, 'location', $event.target.value)"
                     />
@@ -733,7 +720,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Payoff:</span>
                     <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.payoff || ''"
                       @input="handleVolumeSceneEdit(i, 'payoff', $event.target.value)"
                     />
@@ -745,7 +732,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                       min="100"
                       max="5000"
                       step="50"
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.estimatedWords || 800"
                       @input="handleVolumeSceneEdit(i, 'estimatedWords', parseInt($event.target.value) || 800)"
                     />
@@ -753,7 +740,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
                   <div class="flex items-center gap-2 text-xs">
                     <span class="text-text-hint font-ui w-16 shrink-0">Pacing:</span>
                     <select
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.pacing || 'medium'"
                       @change="handleVolumeSceneEdit(i, 'pacing', $event.target.value)"
                     >
@@ -769,7 +756,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
               <div class="text-xs text-text-hint font-body border-t border-border-subtle pt-1.5">
                 <span class="font-ui text-text-hover">Character Wants:</span>
                 <input
-                  class="ml-1 flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-0.5 text-xs text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent w-full mt-1"
+                  class="ml-1 flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-0.5 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent w-full mt-1"
                   :value="scene.characterWants && Object.keys(scene.characterWants).length > 0 ? formatWants(scene.characterWants) : ''"
                   placeholder="CharacterName → goal description, AnotherChar → their goal"
                   @input="handleWantsEdit(i, $event.target.value)"
@@ -780,7 +767,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
 
           <div class="flex gap-2">
             <button
-              class="flex-1 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+              class="flex-1 py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
               @click="handleVolumeConfirmPlan"
             >
               <span class="flex items-center justify-center gap-2">
@@ -875,12 +862,12 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
             <textarea
               v-model="reRequestEdits"
               placeholder="Describe what to change in this scene..."
-              class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-body focus:outline-none focus:ring-1 focus:ring-accent"
+              class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
               rows="3"
             />
             <div class="flex gap-2">
               <button
-                class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+                class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
                 :disabled="!reRequestEdits.trim()"
                 @click="handleRerequestScene"
               >
@@ -1056,7 +1043,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
 
           <!-- Primary action -->
           <button
-            class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleVolumeReset"
           >
             <span class="flex items-center justify-center gap-2"><BaseIcon name="plus" :size="16" /> Generate Another</span>
@@ -1095,7 +1082,7 @@ class="text-11px font-spark tracking-widest transition-colors duration-300"
             <p class="text-xs text-red-300/70 font-body">{{ volumeGenerator.error.value || 'An unexpected error occurred.' }}</p>
           </div>
           <button
-            class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleVolumeReset"
           >Try Again</button>
         </div>

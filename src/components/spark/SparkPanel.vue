@@ -160,35 +160,35 @@ function switchTab(tab) {
   >
   <div :class="embedded ? 'flex flex-col min-h-0' : 'h-full flex flex-col'">
     <div class="px-5 pt-5 pb-4 border-b border-border-subtle/30 flex-shrink-0 bg-bg-secondary/10">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex gap-6">
+      <div class="flex items-end justify-between mb-4 border-b border-border-subtle/60">
+        <div class="flex gap-5">
           <button
-class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none" 
-                  :class="['blueprint', 'freewrite'].includes(activeTab) ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
-                  @click="switchTab('blueprint')">
-            ~ Develop Idea ~
+            class="pb-2 -mb-px text-sm font-ui border-b-2 transition-colors duration-150 focus:outline-none"
+            :class="['blueprint', 'freewrite'].includes(activeTab) ? 'text-text-primary border-accent' : 'text-text-secondary border-transparent hover:text-text-primary'"
+            @click="switchTab('blueprint')">
+            Develop idea
           </button>
           <button
-class="font-spark text-lg transition-colors duration-300 tracking-wide focus:outline-none" 
-                  :class="activeTab === 'prompt' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
-                  @click="switchTab('prompt')">
-            ~ Get Prompts ~
+            class="pb-2 -mb-px text-sm font-ui border-b-2 transition-colors duration-150 focus:outline-none"
+            :class="activeTab === 'prompt' ? 'text-text-primary border-accent' : 'text-text-secondary border-transparent hover:text-text-primary'"
+            @click="switchTab('prompt')">
+            Get prompts
           </button>
         </div>
-        <div class="flex gap-3 items-center">
+        <div class="flex gap-2 items-center pb-1.5">
           <button
             v-if="!compactIsCompacting && !embedded"
-            class="px-2 py-1 text-2xs bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui"
+            class="px-2 py-1 text-2xs bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui transition-colors duration-150"
             title="Compact conversation"
             @click="handleCompact"
           >
             Compact
           </button>
           <button
-class="transition-colors duration-300 focus:outline-none" 
-                  :class="activeTab === 'history' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
-                  title="History" 
-                  @click="switchTab('history')">
+            class="grid place-items-center w-7 h-7 rounded-md transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            :class="activeTab === 'history' ? 'text-accent' : 'text-text-hint hover:text-text-secondary'"
+            title="History"
+            @click="switchTab('history')">
             <BaseIcon name="clock" :size="16" />
           </button>
         </div>
@@ -211,7 +211,7 @@ class="transition-colors duration-300 focus:outline-none"
               :class="[
                 'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent',
                 sparkStore.selectedPromptType === type.value
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-foreground'
                   : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
               ]"
               @click="sparkStore.selectedPromptType = type.value"
@@ -235,7 +235,7 @@ class="transition-colors duration-300 focus:outline-none"
 
         <button
           :disabled="sparkStore.isGenerating"
-          class="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           @click="generatePrompt"
               @keydown.enter="generatePrompt"
         >
@@ -288,10 +288,10 @@ class="transition-colors duration-300 focus:outline-none"
         <button
           v-if="!sparkStore.currentBlueprint && !sparkStore.isGenerating"
           :disabled="!idea"
-          class="w-full py-2.5 border border-accent text-accent rounded-lg font-spark tracking-widest text-sm hover:bg-accent hover:text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full flex items-center justify-center gap-2 py-2.5 bg-accent text-accent-foreground rounded-lg font-medium text-sm font-ui hover:bg-accent-hover active:scale-[0.99] transition-[background-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent"
           @click="generateOutline"
         >
-          Draft Blueprint
+          <BaseIcon name="wand-2" :size="16" /> Draft blueprint
         </button>
 
         <div v-if="sparkStore.isGenerating && !sparkStore.currentBlueprint && !sparkStore.currentStreamingChapter" class="flex items-center justify-center py-6 text-accent">
@@ -299,53 +299,50 @@ class="transition-colors duration-300 focus:outline-none"
         </div>
 
         <!-- Step 2: The Blueprint -->
-        <div v-if="sparkStore.currentBlueprint" class="space-y-6 pt-6 border-t border-border-subtle/20 relative">
-          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-bg-primary px-3 text-text-hint/30"><BaseIcon name="feather" :size="16" /></div>
+        <div v-if="sparkStore.currentBlueprint" class="space-y-6 pt-6 border-t border-border-subtle">
           <BlueprintResult
             :blueprint="sparkStore.currentBlueprint"
             @insert="insertIntoFlow"
           />
 
           <!-- Actions if Draft hasn't started -->
-          <div v-if="!sparkStore.currentChapter && !sparkStore.currentStreamingChapter && !sparkStore.isGenerating" class="flex gap-4">
+          <div v-if="!sparkStore.currentChapter && !sparkStore.currentStreamingChapter && !sparkStore.isGenerating" class="flex gap-2">
             <button
-              class="flex-1 py-2 border border-accent text-accent rounded-lg font-spark tracking-widest text-sm hover:bg-accent/10 transition-colors"
+              class="flex-1 py-2 bg-bg-tertiary text-text-secondary rounded-lg text-sm font-medium font-ui hover:bg-surface-hover hover:text-text-primary transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
               @click="generateContent"
             >
-              Expand to Draft
+              Expand to draft
             </button>
             <button
-              class="flex-1 py-2 bg-accent text-white rounded-lg font-spark tracking-widest text-sm hover:bg-accent/90 transition-colors shadow-warm-sm"
+              class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium font-ui hover:bg-accent-hover transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
               @click="emit('useAsContext')"
             >
-              Use Blueprint as Context
+              Use as context
             </button>
           </div>
         </div>
 
         <!-- Step 3: The Draft -->
-        <div v-if="sparkStore.currentChapter || sparkStore.currentStreamingChapter" class="space-y-6 pt-6 border-t border-border-subtle/20 relative">
-          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-bg-primary px-3 text-text-hint/30"><BaseIcon name="feather" :size="16" /></div>
-          
-          <div class="rounded-sm p-4 bg-bg-tertiary/50 border border-border-subtle/30 font-body text-sm text-text-primary whitespace-pre-wrap leading-relaxed relative">
+        <div v-if="sparkStore.currentChapter || sparkStore.currentStreamingChapter" class="space-y-6 pt-6 border-t border-border-subtle">
+          <div class="rounded-md p-4 bg-bg-tertiary/50 border border-border-subtle font-body text-sm text-text-primary whitespace-pre-wrap leading-relaxed relative">
             <div v-if="sparkStore.isGenerating" class="flex items-center gap-2 text-xs text-accent font-ui mb-2">
               <BaseIcon name="loader-2" :size="12" class="animate-spin" /> Drafting...
             </div>
             {{ sparkStore.currentStreamingChapter || sparkStore.currentChapter }}
           </div>
 
-          <div v-if="sparkStore.currentChapter && !sparkStore.isGenerating" class="flex gap-4">
+          <div v-if="sparkStore.currentChapter && !sparkStore.isGenerating" class="flex gap-2">
             <button
-              class="flex-1 py-2 border border-accent text-accent rounded-lg font-spark tracking-widest text-sm hover:bg-accent/10 transition-colors"
+              class="flex-1 py-2 bg-bg-tertiary text-text-secondary rounded-lg text-sm font-medium font-ui hover:bg-surface-hover hover:text-text-primary transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
               @click="insertIntoFlow(sparkStore.currentChapter)"
             >
-              Insert to Editor
+              Insert to editor
             </button>
             <button
-              class="flex-1 py-2 bg-accent text-white rounded-lg font-spark tracking-widest text-sm hover:bg-accent/90 transition-colors shadow-warm-sm"
+              class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium font-ui hover:bg-accent-hover transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
               @click="emit('useAsContext')"
             >
-              Use Draft as Context
+              Use as context
             </button>
           </div>
         </div>
@@ -430,7 +427,7 @@ class="transition-colors duration-300 focus:outline-none"
         <div class="flex gap-2">
           <button
             :disabled="!openaiKeyInput.trim()"
-            class="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 font-ui"
+            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 font-ui"
             @click="saveOpenAIKeyLocal"
           >
             Save Key

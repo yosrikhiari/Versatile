@@ -49,7 +49,7 @@ const revisionDelta = computed(() => {
 })
 
 function scoreColor(val) {
-  if (val == null) return 'text-gray-500'
+  if (val == null) return 'text-text-hint'
   if (val >= 8) return 'text-success'
   if (val >= 6) return 'text-warning'
   return 'text-danger'
@@ -67,9 +67,9 @@ function dimensionDegradation(dimKey) {
 function degradationBadgeClass(dim) {
   const d = dimensionDegradation(dim.key)
   if (!d) return ''
-  if (d.status === 'major_regression') return 'border-red-500/40 bg-red-500/10'
-  if (d.status === 'regressed') return 'border-yellow-500/40 bg-yellow-500/10'
-  if (d.status === 'improved') return 'border-green-500/40 bg-green-500/10'
+  if (d.status === 'major_regression') return 'border-danger/40 bg-danger/10'
+  if (d.status === 'regressed') return 'border-warning/40 bg-warning/10'
+  if (d.status === 'improved') return 'border-success/40 bg-success/10'
   return ''
 }
 
@@ -105,7 +105,7 @@ function gateColor(pass) {
     </div>
 
     <!-- Gate Summary (aggregated across scenes) -->
-    <div v-if="gateSummary" class="bg-gray-900/50 border border-gray-800 rounded-lg p-3">
+    <div v-if="gateSummary" class="bg-bg-secondary border border-border-subtle rounded-lg p-3">
       <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider mb-2">Eval Gates</h4>
       <div class="flex items-center gap-3 text-xs font-ui">
         <span class="text-success">{{ gateSummary.passed }} passed</span>
@@ -117,48 +117,48 @@ function gateColor(pass) {
     <!-- Per-Gate Details -->
     <div v-if="hasGateResults && !compact" class="space-y-2">
       <!-- Dimension Coverage -->
-      <div v-if="props.gateResults.dimensionCoverage" class="bg-gray-900/30 border border-gray-800/50 rounded-lg p-3">
+      <div v-if="props.gateResults.dimensionCoverage" class="bg-bg-secondary border border-border-subtle rounded-lg p-3">
         <div class="flex items-center justify-between mb-1">
           <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">Dimension Coverage</h4>
           <BaseIcon :name="gateIcon(props.gateResults.dimensionCoverage.pass)" :size="14" :class="gateColor(props.gateResults.dimensionCoverage.pass)" />
         </div>
         <div v-if="props.gateResults.dimensionCoverage.warnings?.length" class="space-y-0.5">
-          <p v-for="(w, i) in props.gateResults.dimensionCoverage.warnings" :key="i" class="text-xs text-warning font-body">
+          <p v-for="(w, i) in props.gateResults.dimensionCoverage.warnings" :key="i" class="text-xs text-warning font-ui">
             {{ w }}
           </p>
         </div>
-        <p v-else class="text-xs text-text-hint font-body">All dimensions covered</p>
+        <p v-else class="text-xs text-text-hint font-ui">All dimensions covered</p>
       </div>
 
       <!-- Score Distribution -->
-      <div v-if="props.gateResults.scoreDistribution" class="bg-gray-900/30 border border-gray-800/50 rounded-lg p-3">
+      <div v-if="props.gateResults.scoreDistribution" class="bg-bg-secondary border border-border-subtle rounded-lg p-3">
         <div class="flex items-center justify-between mb-1">
           <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">Score Distribution</h4>
           <BaseIcon :name="gateIcon(props.gateResults.scoreDistribution.pass)" :size="14" :class="gateColor(props.gateResults.scoreDistribution.pass)" />
         </div>
         <div v-if="props.gateResults.scoreDistribution.flags?.length" class="space-y-0.5">
-          <p v-for="(f, i) in props.gateResults.scoreDistribution.flags" :key="i" class="text-xs text-warning font-body">
+          <p v-for="(f, i) in props.gateResults.scoreDistribution.flags" :key="i" class="text-xs text-warning font-ui">
             {{ f }}
           </p>
         </div>
-        <p v-else class="text-xs text-text-hint font-body">Score distribution nominal</p>
+        <p v-else class="text-xs text-text-hint font-ui">Score distribution nominal</p>
       </div>
 
       <!-- Revision Effectiveness -->
-      <div v-if="props.gateResults.revisionEffectiveness" class="bg-gray-900/30 border border-gray-800/50 rounded-lg p-3">
+      <div v-if="props.gateResults.revisionEffectiveness" class="bg-bg-secondary border border-border-subtle rounded-lg p-3">
         <div class="flex items-center justify-between mb-1">
           <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">Revision Effectiveness</h4>
           <BaseIcon :name="gateIcon(props.gateResults.revisionEffectiveness.pass)" :size="14" :class="gateColor(props.gateResults.revisionEffectiveness.pass)" />
         </div>
         <div class="space-y-0.5">
-          <p v-if="revisionDelta != null" class="text-xs font-body" :class="revisionDelta >= 0 ? 'text-success' : 'text-danger'">
+          <p v-if="revisionDelta != null" class="text-xs font-ui" :class="revisionDelta >= 0 ? 'text-success' : 'text-danger'">
             Score delta: {{ revisionDelta >= 0 ? '+' : '' }}{{ revisionDelta }}
           </p>
-          <p v-for="(r, i) in props.gateResults.revisionEffectiveness.regressions" :key="i" class="text-xs text-danger font-body">
+          <p v-for="(r, i) in props.gateResults.revisionEffectiveness.regressions" :key="i" class="text-xs text-danger font-ui">
             {{ r }}
           </p>
         </div>
-        <p v-if="!props.gateResults.revisionEffectiveness.regressions?.length && revisionDelta == null" class="text-xs text-text-hint font-body">
+        <p v-if="!props.gateResults.revisionEffectiveness.regressions?.length && revisionDelta == null" class="text-xs text-text-hint font-ui">
           No revision needed
         </p>
       </div>
@@ -181,7 +181,7 @@ v-if="dimensionDegradation(dim.key)" class="text-2xs font-ui shrink-0"
           </div>
           <span class="text-sm font-bold font-ui" :class="scoreColor(dim.score)">{{ dim.displayScore }}</span>
         </div>
-        <div class="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+          <div class="w-full h-1 bg-bg-secondary rounded-full overflow-hidden">
           <div
             v-if="dim.score != null"
             class="h-full rounded-full transition-all duration-300"
