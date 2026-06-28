@@ -164,3 +164,11 @@ export {
   updateSpeakerMapping,
   reindexSection
 } from './db-dialogue'
+export {
+  saveShapeAnalysis,
+  getShapeAnalysisByScene,
+  getShapeAnalysisByVersion,
+  getLatestShapeVersion,
+  getAllShapeAnalyses,
+  deleteShapeAnalysesByProject
+} from './db-story-shape'

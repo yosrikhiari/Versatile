@@ -1102,6 +1102,7 @@ export function useVolumeStoryGenerator() {
     pendingBatchStart,
     logRejectedPattern,
     sceneReviewMode,
+    inlineEvalEnabled,
     currentSceneResult,
     currentWriteIndex,
     approveScene,

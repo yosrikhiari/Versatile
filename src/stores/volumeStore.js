@@ -1,48 +1,40 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
 import { 
   getVolumes, addVolume, updateVolume, deleteVolume,
   assignChapterToVolume, removeChapterFromVolume,
   getVolumeEntityCount
 } from '../services/dbService'
+import { useLoading } from '../composables/useLoading'
 
 const VOLUME_COLORS = [
-  '#6366f1', // Indigo
-  '#8b5cf6', // Violet
-  '#ec4899', // Pink
-  '#f43f5e', // Rose
-  '#f97316', // Orange
-  '#eab308', // Yellow
-  '#22c55e', // Green
-  '#14b8a6', // Teal
-  '#06b6d4', // Cyan
-  '#3b82f6', // Blue
+  '#6366f1',
+  '#8b5cf6',
+  '#ec4899',
+  '#f43f5e',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#14b8a6',
+  '#06b6d4',
+  '#3b82f6',
 ]
 
 const volumeColors = () => VOLUME_COLORS
 
 export const useVolumeStore = defineStore('volume', () => {
-  const volumes = ref([])
-  const isLoading = ref(false)
-
-  async function loadVolumes(projectId) {
-    isLoading.value = true
-    try {
-      volumes.value = await getVolumes(projectId)
-      // Load entity counts for each volume
-      await Promise.all(volumes.value.map(async (vol) => {
-        const counts = await getVolumeEntityCount(vol.id)
-        vol.entityCounts = {
-          total: counts,
-          character: await getVolumeEntityCount(vol.id, 'character'),
-          location: await getVolumeEntityCount(vol.id, 'location'),
-          plotThread: await getVolumeEntityCount(vol.id, 'plotThread')
-        }
-      }))
-    } finally {
-      isLoading.value = false
-    }
-  }
+  const { items: volumes, isLoading, load: loadVolumes } = useLoading(async (projectId) => {
+    const vols = await getVolumes(projectId)
+    await Promise.all(vols.map(async (vol) => {
+      const counts = await getVolumeEntityCount(vol.id)
+      vol.entityCounts = {
+        total: counts,
+        character: await getVolumeEntityCount(vol.id, 'character'),
+        location: await getVolumeEntityCount(vol.id, 'location'),
+        plotThread: await getVolumeEntityCount(vol.id, 'plotThread')
+      }
+    }))
+    return vols
+  })
 
   async function createVolume(projectId, data) {
     const id = await addVolume(projectId, data)

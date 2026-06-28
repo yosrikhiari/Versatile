@@ -1,22 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { addSnapshot, getSnapshots, getSnapshot, deleteSnapshot, updateScene } from '../services/dbService'
+import { useLoading } from '../composables/useLoading'
 
 export const useSnapshotStore = defineStore('snapshot', () => {
-  const snapshots = ref([])
-  const isLoading = ref(false)
+  const { items: snapshots, isLoading, load: loadSnapshots } = useLoading(
+    (projectId, chapterId = null) => getSnapshots(projectId, chapterId)
+  )
   const autoSaveEnabled = ref(true)
   const autoSaveInterval = ref(5)
   let intervalTimer = null
-
-  async function loadSnapshots(projectId, chapterId = null) {
-    isLoading.value = true
-    try {
-      snapshots.value = await getSnapshots(projectId, chapterId)
-    } finally {
-      isLoading.value = false
-    }
-  }
 
   async function saveNewSnapshot(projectId, chapterId, content, label = '') {
     if (!projectId || chapterId === null) return null

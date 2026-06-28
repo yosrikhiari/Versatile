@@ -64,9 +64,10 @@ export function useExportImport() {
         const newProjectId = await importProject(data)
         await projectStore.loadProject(newProjectId)
         
-        const sparkStore = useSparkStore ? (await import('../stores/sparkStore')).useSparkStore() : null
-        const polishStore = usePolishStore ? (await import('../stores/polishStore')).usePolishStore() : null
-        const storyBibleStore = useStoryBibleStore ? (await import('../stores/storyBibleStore')).useStoryBibleStore() : null
+        let sparkStore = null, polishStore = null, storyBibleStore = null
+        try { const m = await import('../stores/sparkStore'); sparkStore = m.useSparkStore() } catch {}
+        try { const m = await import('../stores/polishStore'); polishStore = m.usePolishStore() } catch {}
+        try { const m = await import('../stores/storyBibleStore'); storyBibleStore = m.useStoryBibleStore() } catch {}
         
         if (sparkStore) await sparkStore.loadHistory(newProjectId)
         if (polishStore) {

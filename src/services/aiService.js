@@ -1,7 +1,7 @@
 import { PROVIDERS, FEATURES, PROVIDER_MODELS } from '../config/ai'
 import { getApiKeyStorageKey } from '../config/storageKeys'
 import { useSettingsStore } from '../stores/settingsStore'
-import { simpleDecrypt } from './ollamaService'
+import { deobfuscate } from './ollamaService'
 import * as ollamaProvider from './providers/ollama'
 import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
@@ -73,7 +73,7 @@ function getApiKey(provider) {
   const encrypted = localStorage.getItem(storageKey)
   if (!encrypted) return ''
   try {
-    return simpleDecrypt(encrypted)
+    return deobfuscate(encrypted)
   } catch {
     return ''
   }

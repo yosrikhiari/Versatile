@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { simpleEncrypt, simpleDecrypt } from '../services/ollamaService'
+import { obfuscate, deobfuscate } from '../services/ollamaService'
 import { PROVIDERS, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS } from '../config/ai'
 import { aiTestConnection } from '../services/aiService'
 import { setOllamaEndpoint as setOllamaConfigEndpoint } from '../config/ollama'
@@ -73,7 +73,7 @@ export const useSettingsStore = defineStore('settings', () => {
       const encryptedKey = localStorage.getItem(STORAGE_KEYS.OPENAI_KEY)
       if (encryptedKey) {
         try {
-          openaiApiKey.value = simpleDecrypt(encryptedKey)
+          openaiApiKey.value = deobfuscate(encryptedKey)
         } catch {
           openaiApiKey.value = ''
         }
@@ -117,7 +117,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   /**
    * SECURITY NOTE: API keys are stored in localStorage with basic obfuscation
-   * (simpleEncrypt). This is NOT real encryption — any script running on the
+   * (obfuscate). This is NOT real encryption — any script running on the
    * page can read and decode the key. This is a known limitation of a local-first
    * browser app. Users should treat stored keys as low-privilege and avoid using
    * high-spend keys.
@@ -126,7 +126,7 @@ export const useSettingsStore = defineStore('settings', () => {
     openaiApiKey.value = key
     if (key) {
       // STORAGE_KEYS ref
-      localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, simpleEncrypt(key))
+      localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, obfuscate(key))
     } else {
       // STORAGE_KEYS ref
       localStorage.removeItem(STORAGE_KEYS.OPENAI_KEY)
@@ -161,7 +161,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const encrypted = localStorage.getItem(getApiKeyStorageKey(provider))
     if (!encrypted) return ''
     try {
-      return simpleDecrypt(encrypted)
+      return deobfuscate(encrypted)
     } catch {
       return ''
     }
@@ -169,7 +169,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setStoredApiKey(provider, key) {
     if (key) {
-      localStorage.setItem(getApiKeyStorageKey(provider), simpleEncrypt(key))
+      localStorage.setItem(getApiKeyStorageKey(provider), obfuscate(key))
     } else {
       localStorage.removeItem(getApiKeyStorageKey(provider))
     }

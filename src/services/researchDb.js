@@ -72,34 +72,28 @@ export async function addResearchChunks(chunks) {
 export async function updateChunkEmbeddings(updates, meta = {}) {
   const now = Date.now()
   const { provider, model, version } = meta
-  await db.transaction('rw', db.researchChunks, async () => {
-    for (const { id, embedding } of updates) {
-      await db.researchChunks.update(id, {
-        embedding,
-        embeddingProvider: provider || null,
-        embeddingModel: model || null,
-        embeddingVersion: version || null,
-        embeddedAt: now,
-        embeddingStatus: READY
-      })
-    }
-  })
+  await Promise.all(updates.map(({ id, embedding }) =>
+    db.researchChunks.update(id, {
+      embedding,
+      embeddingProvider: provider || null,
+      embeddingModel: model || null,
+      embeddingVersion: version || null,
+      embeddedAt: now,
+      embeddingStatus: READY
+    })
+  ))
 }
 
 export async function markProcessing(ids) {
-  await db.transaction('rw', db.researchChunks, async () => {
-    for (const id of ids) {
-      await db.researchChunks.update(id, { embeddingStatus: PROCESSING })
-    }
-  })
+  await Promise.all(ids.map(id =>
+    db.researchChunks.update(id, { embeddingStatus: PROCESSING })
+  ))
 }
 
 export async function markFailed(ids) {
-  await db.transaction('rw', db.researchChunks, async () => {
-    for (const id of ids) {
-      await db.researchChunks.update(id, { embeddingStatus: FAILED })
-    }
-  })
+  await Promise.all(ids.map(id =>
+    db.researchChunks.update(id, { embeddingStatus: FAILED })
+  ))
 }
 
 export async function markStale(projectId, currentProvider, currentModel, currentVersion) {

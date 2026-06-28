@@ -17,7 +17,7 @@ embeddingDB.version(1).stores({
   embeddings: 'key, embedding, text, timestamp'
 })
 
-export function simpleEncrypt(text) {
+export function obfuscate(text) {
   try {
     const encoder = new TextEncoder()
     const data = encoder.encode(text)
@@ -27,7 +27,7 @@ export function simpleEncrypt(text) {
   }
 }
 
-export function simpleDecrypt(encoded) {
+export function deobfuscate(encoded) {
   try {
     const binaryString = atob(encoded)
     const bytes = new Uint8Array(binaryString.length)
@@ -44,11 +44,11 @@ export function getStoredOpenAIKey() {
   // STORAGE_KEYS ref
   const encrypted = localStorage.getItem(STORAGE_KEYS.OPENAI_KEY)
   if (!encrypted) return null
-  return simpleDecrypt(encrypted)
+  return deobfuscate(encrypted)
 }
 
 export function setStoredOpenAIKey(key) {
-  const encrypted = simpleEncrypt(key)
+  const encrypted = obfuscate(key)
   // STORAGE_KEYS ref
   localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, encrypted)
 }
