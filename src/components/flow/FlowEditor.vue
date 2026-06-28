@@ -208,7 +208,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-manuscript-editor relative editor-glow">
+  <div class="h-full flex flex-col bg-manuscript relative">
     <button
       v-if="flow.isRunning.value"
       class="absolute top-4 right-4 z-10 text-xs text-text-hint/60 hover:text-text-secondary font-ui transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2.5 py-1.5 btn-ghost"
@@ -243,7 +243,7 @@ defineExpose({
       ]"
     >
       <div 
-        class="editor-wrapper max-w-[680px] mx-auto px-8 py-16 relative z-1"
+        class="editor-wrapper max-w-[760px] mx-auto px-8 py-16 relative z-1"
         @keydown="handleKeydown"
         @click="handleClick"
       >
@@ -283,8 +283,8 @@ defineExpose({
 
 <style>
 .dialogue-text {
-  color: #7c3aed;
-  background: rgba(124, 58, 237, 0.06);
+  color: var(--vers-accent-primary);
+  background: rgba(var(--vers-accent-primary-rgb), 0.08);
   border-radius: 2px;
   padding: 0 1px;
 }
