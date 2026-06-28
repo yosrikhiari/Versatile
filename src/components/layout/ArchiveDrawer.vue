@@ -188,8 +188,8 @@ function signalBadge(signal) {
             <div v-if="snap.state.unresolvedThreads?.length" class="text-xs text-text-secondary font-ui">
               Unresolved: {{ snap.state.unresolvedThreads.slice(0, 5).join(', ') }}
             </div>
-            <div v-if="snap.state.characterCount" class="text-xs text-text-secondary font-body">{{ snap.state.characterCount }} characters</div>
-            <div v-if="snap.state.wordCountDelta" class="text-xs text-accent font-body">+{{ snap.state.wordCountDelta }} words this session</div>
+            <div v-if="snap.state.characterCount" class="text-xs text-text-secondary font-ui">{{ snap.state.characterCount }} characters</div>
+            <div v-if="snap.state.wordCountDelta" class="text-xs text-accent font-ui">+{{ snap.state.wordCountDelta }} words this session</div>
           </div>
           <div v-else-if="showDetails !== snap.id" class="mt-1 text-2xs text-text-hint font-body line-clamp-1">
             {{ snap.state?.activeSection || snap.state?.projectName || 'No details' }}
