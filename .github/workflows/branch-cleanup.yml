@@ -1,0 +1,35 @@
+name: Branch Cleanup
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete stale branches
+        run: |
+          git for-each-ref --format='%(refname:short) %(committerdate:iso8601)' refs/heads/ |
+          while read branch date; do
+            if [[ "$branch" == "master" || "$branch" == "develop" ]]; then continue; fi
+            age=$(( ( $(date +%s) - $(date -d "$date" +%s) ) / 86400 ))
+            if [ $age -gt 30 ]; then
+              merged=$(git branch --merged origin/develop | grep -c "$branch" || true)
+              if [ "$merged" -gt 0 ]; then
+                echo "Deleting stale merged branch: $branch (last commit: $date)"
+                git push origin --delete "$branch" 2>/dev/null || echo "  -> could not delete $branch"
+              fi
+            fi
+          done
+        shell: bash

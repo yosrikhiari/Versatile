@@ -1,0 +1,27 @@
+# Each line is a file pattern followed by one or more owners.
+# Order matters: last matching pattern takes precedence.
+
+# Default owner
+* @yosri
+
+# Core application
+src/ @yosri
+src/components/ @yosri
+src/views/ @yosri
+src/stores/ @yosri
+src/router/ @yosri
+
+# Backend
+backend/ @yosri
+
+# Configuration
+.github/ @yosri
+*.config.js @yosri
+*.config.cjs @yosri
+
+# Documentation
+*.md @yosri
+
+# Tests
+src/tests/ @yosri
+*.test.js @yosri

@@ -1,0 +1,72 @@
+name: Dependency Audit
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        id: audit
+        run: |
+          npm audit --json > audit-report.json 2>/dev/null || true
+          critical=$(jq '.metadata.vulnerabilities.critical // 0' audit-report.json)
+          high=$(jq '.metadata.vulnerabilities.high // 0' audit-report.json)
+          echo "critical=$critical" >> $GITHUB_OUTPUT
+          echo "high=$high" >> $GITHUB_OUTPUT
+
+      - name: Check for outdated packages
+        id: outdated
+        run: |
+          npm outdated --json > outdated-report.json 2>/dev/null || true
+          count=$(jq 'length // 0' outdated-report.json 2>/dev/null || echo 0)
+          echo "count=$count" >> $GITHUB_OUTPUT
+
+      - name: Create issue if vulnerabilities found
+        if: steps.audit.outputs.critical != '0' || steps.audit.outputs.high != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const audit = JSON.parse(fs.readFileSync('audit-report.json', 'utf-8'));
+            const vuls = audit.vulnerabilities || {};
+            let body = '## Dependency Security Report\n\n';
+            body += '| Severity | Count |\n|---------|------|\n';
+            body += '| Critical | ' + audit.metadata.vulnerabilities.critical + ' |\n';
+            body += '| High | ' + audit.metadata.vulnerabilities.high + ' |\n';
+            body += '| Moderate | ' + audit.metadata.vulnerabilities.moderate + ' |\n';
+            body += '| Low | ' + audit.metadata.vulnerabilities.low + ' |\n\n';
+            body += '### Critical & High Vulnerabilities\n\n';
+            for (const [name, info] of Object.entries(vuls)) {
+              if (info.severity === 'critical' || info.severity === 'high') {
+                body += '- **' + name + '** (' + info.severity + '): ' + (info.overview || '').slice(0, 200) + '\n';
+                body += '  - Fix: `npm audit fix` or update to ' + (info.fixAvailable?.version || 'latest') + '\n\n';
+              }
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Dependency Security Report - ' + new Date().toISOString().split('T')[0],
+              body: body,
+              labels: ['security', 'dependencies']
+            });

@@ -4,9 +4,13 @@ dist/
 test-results/
 .env
 docker-compose.yml
+/debug/
+*_stdout.txt
+*_stderr.txt
+skills-lock.json
+transform-novel.cjs
 vite_err.txt
 vite_out.txt
-/debug/
 # Backend (disconnected dead code - removed)
 /server/
 /backend/
@@ -35,3 +39,5 @@ README.md
 .planning/REQUIREMENTS.md
 src/tests/
 src/tests/unit/ollamaService.test.js
+.agents/
+.claude/

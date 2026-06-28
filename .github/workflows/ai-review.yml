@@ -1,0 +1,81 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        run: git diff origin/${{ github.base_ref }}...HEAD -- '*.js' '*.vue' '*.css' > pr-diff.txt
+
+      - name: AI Code Review
+        uses: actions/github-script@v7
+        if: hashFiles('pr-diff.txt') != '' && secrets.OPENAI_API_KEY != ''
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          script: |
+            const fs = require('fs');
+            const diff = fs.readFileSync('pr-diff.txt', 'utf-8').slice(0, 30000);
+            const prompt = `Review this Vue 3 PR diff for:
+1. Vue 3 Composition API best practices
+2. Pinia store patterns
+3. Component design and reusability
+4. Vue Router usage
+5. Missing error/loading/empty states
+6. Accessibility concerns
+7. Performance issues
+Respond with raw JSON:
+{
+  "summary": "overview",
+  "findings": [
+    { "severity": "critical|major|minor", "file": "path", "line": 1, "message": "desc", "suggestion": "fix" }
+  ],
+  "positive": ["wins"]
+}`;
+            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                  { role: 'system', content: 'You are a senior Vue 3 code reviewer.' },
+                  { role: 'user', content: prompt + '\n\n```diff\n' + diff + '\n```' }
+                ],
+                temperature: 0.3
+              })
+            });
+            const result = await resp.json();
+            const review = JSON.parse(result.choices[0].message.content);
+            let body = '## AI Code Review\n\n### Summary\n' + review.summary + '\n\n';
+            if (review.positive?.length) {
+              body += '### \u2705 What was done well\n';
+              body += review.positive.map(p => '- ' + p).join('\n') + '\n\n';
+            }
+            if (review.findings?.length) {
+              body += '### Findings\n\n';
+              body += review.findings.map(f =>
+                '**[' + f.severity.toUpperCase() + ']** ' + f.file + ':' + f.line + ' \u2014 ' + f.message + '\n> ' + f.suggestion
+              ).join('\n\n') + '\n\n';
+            }
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              body: body,
+              event: 'COMMENT'
+            });

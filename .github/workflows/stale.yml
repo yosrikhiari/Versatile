@@ -1,0 +1,31 @@
+name: Stale Management
+
+on:
+  schedule:
+    - cron: '30 1 * * *'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: 'This issue has been inactive for 60 days. Will close in 14 days if no activity.'
+          stale-pr-message: 'This PR has been inactive for 60 days. Will close in 14 days if no activity.'
+          close-issue-message: 'Closed due to inactivity.'
+          close-pr-message: 'Closed due to inactivity.'
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-label: 'stale'
+          stale-pr-label: 'stale'
+          exempt-issue-labels: 'pinned,security,priority:high'
+          exempt-pr-labels: 'pinned,security,priority:high'
+          operations-per-run: 100
