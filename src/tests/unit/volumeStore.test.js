@@ -7,8 +7,8 @@ vi.mock('@/services/dbService', () => ({
   addVolume: vi.fn(),
   updateVolume: vi.fn(),
   deleteVolume: vi.fn(),
-  assignChapterToVolume: vi.fn(),
-  removeChapterFromVolume: vi.fn(),
+  assignSectionToVolume: vi.fn(),
+  removeSectionFromVolume: vi.fn(),
   getVolumeEntityCount: vi.fn().mockResolvedValue(0)
 }))
 
@@ -27,7 +27,7 @@ describe('volumeStore', () => {
   })
 
   it('loads volumes and entity counts', async () => {
-    const mockVolumes = [{ id: 'v1', name: 'Vol 1', color: '#6366f1', chapterIds: [] }]
+    const mockVolumes = [{ id: 'v1', name: 'Vol 1', color: '#6366f1', sectionIds: [] }]
     mockDb.getVolumes.mockResolvedValue(mockVolumes)
 
     const store = useVolumeStore()
@@ -50,7 +50,7 @@ describe('volumeStore', () => {
 
   it('updates volume data', async () => {
     const store = useVolumeStore()
-    store.volumes = [{ id: 'v1', name: 'Old', color: '#000', chapterIds: [] }]
+    store.volumes = [{ id: 'v1', name: 'Old', color: '#000', sectionIds: [] }]
     await store.updateVolumeData('v1', { name: 'Updated' }, 'p1')
     expect(store.volumes[0].name).toBe('Updated')
     expect(mockDb.updateVolume).toHaveBeenCalledWith('v1', { name: 'Updated' })
@@ -58,44 +58,44 @@ describe('volumeStore', () => {
 
   it('deletes a volume and removes chapters', async () => {
     const store = useVolumeStore()
-    store.volumes = [{ id: 'v1', name: 'Vol', chapterIds: ['ch1', 'ch2'] }]
+    store.volumes = [{ id: 'v1', name: 'Vol', sectionIds: ['ch1', 'ch2'] }]
     await store.deleteVolumeData('v1', 'p1')
     expect(store.volumes).toHaveLength(0)
-    expect(mockDb.removeChapterFromVolume).toHaveBeenCalledTimes(2)
+    expect(mockDb.removeSectionFromVolume).toHaveBeenCalledTimes(2)
     expect(mockDb.deleteVolume).toHaveBeenCalledWith('v1')
   })
 
   it('assigns chapter to volume', async () => {
     const store = useVolumeStore()
     store.volumes = [
-      { id: 'v1', chapterIds: [] },
-      { id: 'v2', chapterIds: ['ch1'] }
+      { id: 'v1', sectionIds: [] },
+      { id: 'v2', sectionIds: ['ch1'] }
     ]
-    await store.assignChapter('ch1', 'v1', 'p1')
-    expect(mockDb.assignChapterToVolume).toHaveBeenCalledWith('ch1', 'v1')
-    expect(store.volumes[0].chapterIds).toContain('ch1')
-    expect(store.volumes[1].chapterIds).not.toContain('ch1')
+    await store.assignSection('ch1', 'v1', 'p1')
+    expect(mockDb.assignSectionToVolume).toHaveBeenCalledWith('ch1', 'v1')
+    expect(store.volumes[0].sectionIds).toContain('ch1')
+    expect(store.volumes[1].sectionIds).not.toContain('ch1')
   })
 
   it('removes chapter from all volumes', async () => {
     const store = useVolumeStore()
     store.volumes = [
-      { id: 'v1', chapterIds: ['ch1', 'ch2'] },
-      { id: 'v2', chapterIds: ['ch1'] }
+      { id: 'v1', sectionIds: ['ch1', 'ch2'] },
+      { id: 'v2', sectionIds: ['ch1'] }
     ]
-    await store.removeChapter('ch1', 'p1')
-    expect(store.volumes[0].chapterIds).toEqual(['ch2'])
-    expect(store.volumes[1].chapterIds).toEqual([])
+    await store.removeSection('ch1', 'p1')
+    expect(store.volumes[0].sectionIds).toEqual(['ch2'])
+    expect(store.volumes[1].sectionIds).toEqual([])
   })
 
   it('finds volume containing a chapter', () => {
     const store = useVolumeStore()
     store.volumes = [
-      { id: 'v1', chapterIds: ['ch1'] },
-      { id: 'v2', chapterIds: ['ch2'] }
+      { id: 'v1', sectionIds: ['ch1'] },
+      { id: 'v2', sectionIds: ['ch2'] }
     ]
-    expect(store.getVolumeForChapter('ch2').id).toBe('v2')
-    expect(store.getVolumeForChapter('ch3')).toBeUndefined()
+    expect(store.getVolumeForSection('ch2').id).toBe('v2')
+    expect(store.getVolumeForSection('ch3')).toBeUndefined()
   })
 
   it('gets next available color', () => {

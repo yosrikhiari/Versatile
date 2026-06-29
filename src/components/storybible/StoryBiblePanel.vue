@@ -16,6 +16,8 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import TagInput from '../shared/TagInput.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
 import GenerateCharacterModal from './GenerateCharacterModal.vue'
+import CharacterChatSession from '../characterchat/CharacterChatSession.vue'
+import Modal from '../shared/Modal.vue'
 import { useArchiveStore } from '../../stores/archiveStore'
 import { SIGNAL, ARCHIVE_TYPES } from '../../config/archive'
 
@@ -38,6 +40,14 @@ const isGeneratingLocation = ref(false)
 const showGenerateModal = ref(false)
 const generateMode = ref('generate')
 const characterToEnhance = ref(null)
+
+const showChatModal = ref(false)
+const chattingCharacterIds = ref([])
+
+function openChat(character) {
+  chattingCharacterIds.value = [character.id]
+  showChatModal.value = true
+}
 
 const roleEditingId = ref(null)
 const roleEditValue = ref('')
@@ -612,6 +622,14 @@ defineExpose({ refresh })
             </button>
             <button
               v-if="editingId !== character.id"
+              class="p-1 hover:bg-accent/10 rounded"
+              title="Chat with character"
+              @click="openChat(character)"
+            >
+              <BaseIcon name="message-square" :size="14" class="text-text-hint hover:text-accent" />
+            </button>
+            <button
+              v-if="editingId !== character.id"
               class="p-1 hover:bg-surface-hover rounded"
               title="Edit"
               @click="startEdit(character, 'character')"
@@ -1085,5 +1103,18 @@ defineExpose({ refresh })
     />
     </template>
   </div>
+
+  <Modal
+    :show="showChatModal"
+    max-width="max-w-2xl"
+    panel-class="p-0 overflow-hidden w-full"
+    @close="showChatModal = false"
+  >
+    <CharacterChatSession
+      :character-ids="chattingCharacterIds"
+      :project-id="projectStore.currentProjectId"
+      @close="showChatModal = false"
+    />
+  </Modal>
   </ErrorBoundary>
 </template>

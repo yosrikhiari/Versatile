@@ -79,6 +79,8 @@ const variantClasses = computed(() => {
         : `${c.bg} ${c.text} hover:${c.bg.replace('/15', '/25')}`
     case 'removable':
       return `${c.bg} ${c.text} pr-1`
+    default:
+      return ''
   }
 })
 

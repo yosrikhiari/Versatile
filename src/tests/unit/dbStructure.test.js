@@ -29,13 +29,13 @@ beforeEach(async () => {
   dbStructure = await import('@/services/db-structure')
 })
 
-describe('assignChapterToVolume', () => {
+describe('assignSectionToVolume', () => {
   it('updates section with volumeId when section exists', async () => {
     const chain = makeWhereChain([{ id: 'sec1', title: 'Chapter 1' }])
     mockDb.sections.where.mockReturnValue({ equals: vi.fn(() => chain) })
     mockDb.sections.update.mockResolvedValue(1)
 
-    await dbStructure.assignChapterToVolume('sec1', 'vol1')
+    await dbStructure.assignSectionToVolume('sec1', 'vol1')
     expect(mockDb.sections.update).toHaveBeenCalledWith('sec1', { volumeId: 'vol1' })
   })
 
@@ -43,18 +43,18 @@ describe('assignChapterToVolume', () => {
     const chain = makeWhereChain([])
     mockDb.sections.where.mockReturnValue({ equals: vi.fn(() => chain) })
 
-    await dbStructure.assignChapterToVolume('nonexistent', 'vol1')
+    await dbStructure.assignSectionToVolume('nonexistent', 'vol1')
     expect(mockDb.sections.update).not.toHaveBeenCalled()
   })
 })
 
-describe('removeChapterFromVolume', () => {
+describe('removeSectionFromVolume', () => {
   it('removes volumeId from section when section exists', async () => {
     const chain = makeWhereChain([{ id: 'sec1' }])
     mockDb.sections.where.mockReturnValue({ equals: vi.fn(() => chain) })
     mockDb.sections.update.mockResolvedValue(1)
 
-    await dbStructure.removeChapterFromVolume('sec1')
+    await dbStructure.removeSectionFromVolume('sec1')
     expect(mockDb.sections.update).toHaveBeenCalledWith('sec1', { volumeId: null })
   })
 })

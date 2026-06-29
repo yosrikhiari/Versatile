@@ -56,6 +56,8 @@ const variantClasses = computed(() => {
       return 'bg-accent text-accent-foreground btn-elevated'
     case 'outline':
       return 'border border-border-subtle text-text-secondary hover:border-accent hover:text-accent active:bg-accent/5'
+    default:
+      return ''
   }
 })
 

@@ -52,6 +52,8 @@ const variantClasses = computed(() => {
           ? 'bg-accent text-accent-foreground shadow-sm'
           : 'text-text-hint hover:text-text-secondary'
       ].join(' ')
+    default:
+      return ''
   }
 })
 </script>
