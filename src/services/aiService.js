@@ -126,6 +126,7 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
     signal: options.signal,
     temperature: options.temperature,
     maxTokens: options.maxTokens,
+    stop: options.stop,
     timeout: options.timeout
   }
 
@@ -175,13 +176,14 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
     signal: options.signal,
     temperature: options.temperature,
     maxTokens: options.maxTokens,
+    stop: options.stop,
     timeout: options.timeout
   }
 
   try {
     return await withRetry(
       (attempt, isIntermediate) => {
-        const chunkHandler = isIntermediate ? undefined : onChunk
+        const chunkHandler = (attempt > 0 && isIntermediate) ? undefined : onChunk
         return providerModule.stream(prompt, systemPrompt, model, chunkHandler, providerOptions)
       },
       isRetryable,

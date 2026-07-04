@@ -46,13 +46,22 @@ const lastStreamingMessage = computed(() => {
   return null
 })
 
+function matchesCharacterSet(session) {
+  return session &&
+    session.characterIds.length === props.characterIds.length &&
+    props.characterIds.every(id => session.characterIds.includes(id))
+}
+
 function startOrResumeSession() {
-  if (chatStore.activeSession) {
-    const sameChars = props.characterIds.length === chatStore.activeSession.characterIds.length &&
-      props.characterIds.every(id => chatStore.activeSession.characterIds.includes(id))
-    if (!sameChars) {
-      chatStore.startSession(props.characterIds, props.projectId)
-    }
+  // Already on the right session — keep its history
+  if (matchesCharacterSet(chatStore.activeSession)) return
+
+  // Resume a persisted session for this character set instead of duplicating it
+  const existing = chatStore.sessionList.find(
+    s => s.projectId === props.projectId && matchesCharacterSet(s)
+  )
+  if (existing) {
+    chatStore.setActiveSession(existing.id)
   } else {
     chatStore.startSession(props.characterIds, props.projectId)
   }

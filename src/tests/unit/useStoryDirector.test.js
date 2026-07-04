@@ -165,6 +165,29 @@ describe('useStoryDirector', () => {
       expect(result.storyArc.genre).toBe('Fantasy')
     })
 
+    it('plans in chunks (skeleton + per-chapter scenes) when a structure is given', async () => {
+      const skeleton = JSON.stringify({
+        storyArc: { premise: 'P', genre: 'Fantasy', tone: 'Dark', centralConflict: 'c' },
+        chapters: [
+          { chapterNumber: 1, title: 'Ch1', goal: 'g1', hookEnding: 'h1' },
+          { chapterNumber: 2, title: 'Ch2', goal: 'g2', hookEnding: 'h2' }
+        ]
+      })
+      const sceneJson = JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }, { sceneNumber: 2, title: 'S2' }] })
+      mockAiGenerate.mockResolvedValueOnce(skeleton).mockResolvedValue(sceneJson)
+
+      const { generateStoryPlan } = useStoryDirector()
+      const structuredGoal = { ...goal, structure: { chapters: 2, scenesPerChapter: 2, wordsPerChapter: 1000, chaptersPerVolume: 2, volumes: 1 } }
+      const result = await generateStoryPlan({ goal: structuredGoal, evidence: '' })
+
+      expect(result.chapters).toHaveLength(2)
+      expect(result.chapters.every(c => c.scenes.length === 2)).toBe(true)
+      expect(result.scenes).toHaveLength(4)
+      // 1 skeleton call + 1 per chapter = 3 non-streaming calls (no giant single plan)
+      expect(mockAiGenerate).toHaveBeenCalledTimes(3)
+      expect(result.chapters.map(c => c.volumeIndex)).toEqual([1, 1])
+    })
+
     it('sets isPlanning ref correctly', async () => {
       mockAiGenerate.mockResolvedValue(makeValidResponse())
       const { generateStoryPlan, isPlanning } = useStoryDirector()
@@ -187,8 +210,8 @@ describe('useStoryDirector', () => {
     it('throws when both attempts fail', async () => {
       mockAiGenerate.mockResolvedValue('invalid')
       const { generateStoryPlan, planError } = useStoryDirector()
-      await expect(generateStoryPlan({ goal, evidence: '' })).rejects.toThrow('Failed to parse')
-      expect(planError.value).toContain('Failed to parse')
+      await expect(generateStoryPlan({ goal, evidence: '' })).rejects.toThrow('invalid JSON')
+      expect(planError.value).toContain('invalid JSON')
     })
 
     it('throws when long_term has no chapters', async () => {
@@ -256,5 +279,39 @@ describe('useStoryDirector', () => {
       const { generateStoryPlan } = useStoryDirector()
       await expect(generateStoryPlan({ goal, evidence: '' })).rejects.toThrow('Model not found')
     })
+  })
+})
+
+describe('enforceStructure', () => {
+  it('trims to the exact chapter count and pads scenes/words', async () => {
+    const { enforceStructure } = await import('@/composables/useStoryDirector')
+    const raw = [
+      { title: 'A', scenes: [{ title: 's1' }, { title: 's2' }, { title: 's3' }, { title: 's4' }] },
+      { title: 'B', scenes: [{ title: 's1' }] },
+      { title: 'C', scenes: [] }
+    ]
+    const out = enforceStructure(raw, { chapters: 2, scenesPerChapter: 3, wordsPerChapter: 3000, chaptersPerVolume: 2, volumes: 1 })
+    expect(out.length).toBe(2)
+    for (const ch of out) {
+      expect(ch.scenes.length).toBe(3)
+      expect(ch.estimatedWords).toBe(3000)
+      expect(ch.scenes.every(s => s.estimatedWords === 1000)).toBe(true)
+    }
+    expect(out[0].chapterNumber).toBe(1)
+    expect(out[1].chapterNumber).toBe(2)
+  })
+
+  it('pads chapters up to the requested count', async () => {
+    const { enforceStructure } = await import('@/composables/useStoryDirector')
+    const out = enforceStructure([{ title: 'Only', scenes: [{ title: 'x' }] }], { chapters: 4, scenesPerChapter: 2, wordsPerChapter: 1000 })
+    expect(out.length).toBe(4)
+    expect(out.every(c => c.scenes.length === 2)).toBe(true)
+  })
+
+  it('tags chapters with volumeIndex by chaptersPerVolume', async () => {
+    const { enforceStructure } = await import('@/composables/useStoryDirector')
+    const raw = Array.from({ length: 6 }, (_, i) => ({ title: `C${i}`, scenes: [] }))
+    const out = enforceStructure(raw, { chapters: 6, scenesPerChapter: 1, wordsPerChapter: 800, chaptersPerVolume: 3, volumes: 2 })
+    expect(out.map(c => c.volumeIndex)).toEqual([1, 1, 1, 2, 2, 2])
   })
 })

@@ -15,11 +15,14 @@ vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn(), getConfiguredMode
 vi.mock('../config/ai', () => ({ FEATURES: {}, PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai' } }))
 
 let buildEmbeddingContext, formatFullSpineEntry, compressSpine, buildExistingEntitiesBlob, parallelWithLimit
+let selectRelevantPriorScenes, planConsistencyFixes
 let useVolumeStoryGenerator
 beforeEach(async () => {
   vi.resetModules()
   const mod = await import('@/composables/useVolumeStoryGenerator')
   buildEmbeddingContext = mod.buildEmbeddingContext
+  selectRelevantPriorScenes = mod.selectRelevantPriorScenes
+  planConsistencyFixes = mod.planConsistencyFixes
   formatFullSpineEntry = mod.formatFullSpineEntry
   compressSpine = mod.compressSpine
   buildExistingEntitiesBlob = mod.buildExistingEntitiesBlob
@@ -34,6 +37,96 @@ function makeScene(sceneNumber, title, prose, summary) {
 function makeSpineEntry(chapterNumber, chapterTitle, emotionalStateAtEnd, readerKnowledgeAtEnd, transitionToNext) {
   return { chapterNumber, chapterTitle, emotionalStateAtEnd, readerKnowledgeAtEnd, transitionToNext }
 }
+
+describe('selectRelevantPriorScenes', () => {
+  const candidates = [
+    { sceneNumber: 1, title: 'Meet Alice', characters: ['Alice'], location: 'Village', summary: 's1' },
+    { sceneNumber: 2, title: 'Bob alone', characters: ['Bob'], location: 'Forest', summary: 's2' },
+    { sceneNumber: 3, title: 'Alice + Bob', characters: ['Alice', 'Bob'], location: 'Village', summary: 's3' }
+  ]
+
+  it('picks scenes sharing a character with the current scene', () => {
+    const cur = { charactersPresent: ['Alice'], location: 'Castle' }
+    const out = selectRelevantPriorScenes(cur, candidates, 3)
+    const nums = out.map(s => s.sceneNumber)
+    expect(nums).toContain(1)
+    expect(nums).toContain(3)
+    expect(nums).not.toContain(2)
+  })
+
+  it('ranks higher overlap first (shared char + location beats char only)', () => {
+    const cur = { charactersPresent: ['Alice'], location: 'Village' }
+    const out = selectRelevantPriorScenes(cur, candidates, 3)
+    // Scene 3 shares Alice + Village (score 2) — should rank above scene 1 (score 2 too: Alice + Village)
+    expect(out[0].sceneNumber).toBe(3)
+  })
+
+  it('respects the limit and returns [] when nothing matches', () => {
+    const cur = { charactersPresent: ['Zed'], location: 'Nowhere' }
+    expect(selectRelevantPriorScenes(cur, candidates, 3)).toEqual([])
+    const limited = selectRelevantPriorScenes({ charactersPresent: ['Alice', 'Bob'] }, candidates, 1)
+    expect(limited.length).toBe(1)
+  })
+
+  it('handles empty candidates safely', () => {
+    expect(selectRelevantPriorScenes({ charactersPresent: ['Alice'] }, [], 3)).toEqual([])
+  })
+})
+
+describe('planConsistencyFixes', () => {
+  const scenes = [
+    { sceneNumber: 1, title: 'A', prose: 'Alice had bright green eyes and lived in the Village.', characters: ['Alice'], location: 'Village' },
+    { sceneNumber: 2, title: 'B', prose: 'Bob wandered the forest alone.', characters: ['Bob'], location: 'Forest' },
+    { sceneNumber: 3, title: 'C', prose: 'Alice had brown eyes now, back in the Village again.', characters: ['Alice'], location: 'Village' }
+  ]
+
+  it('targets the later scene matched by excerpt', () => {
+    const report = {
+      characterIssues: [{
+        character: 'Alice',
+        contradictions: [{ type: 'appearance', description: 'eye colour changes', between: ['Alice had bright green eyes', 'Alice had brown eyes now'] }]
+      }],
+      locationIssues: []
+    }
+    const fixes = planConsistencyFixes(report, scenes)
+    // Excerpt "Alice had brown eyes now" is in scene index 2 (later) → fix there
+    expect(fixes.has(2)).toBe(true)
+    expect([...fixes.get(2)][0]).toContain('Alice')
+  })
+
+  it('falls back to the latest scene the entity appears in when excerpts do not match', () => {
+    const report = {
+      characterIssues: [{ character: 'Alice', contradictions: [{ type: 'trait', description: 'x', between: ['nonexistent excerpt text zzz'] }] }],
+      locationIssues: []
+    }
+    const fixes = planConsistencyFixes(report, scenes)
+    expect(fixes.has(2)).toBe(true) // latest Alice scene
+  })
+
+  it('returns an empty map for a clean report', () => {
+    const fixes = planConsistencyFixes({ characterIssues: [], locationIssues: [] }, scenes)
+    expect(fixes.size).toBe(0)
+  })
+
+  it('handles missing report / empty scenes safely', () => {
+    expect(planConsistencyFixes(null, scenes).size).toBe(0)
+    expect(planConsistencyFixes({ characterIssues: [] }, []).size).toBe(0)
+  })
+})
+
+describe('buildEmbeddingContext relevance recall', () => {
+  it('includes an earlier related scene beyond the last two', () => {
+    const prior = [
+      { sceneNumber: 1, title: 'Alice in Village', prose: 'x'.repeat(50), summary: 'Alice does a thing', characters: ['Alice'], location: 'Village' },
+      { sceneNumber: 2, title: 'Filler', prose: 'y'.repeat(50), summary: 'filler', characters: ['Carol'], location: 'Sea' },
+      { sceneNumber: 3, title: 'More filler', prose: 'z'.repeat(50), summary: 'more', characters: ['Dan'], location: 'Sky' }
+    ]
+    const current = { sceneNumber: 4, charactersPresent: ['Alice'], location: 'Village' }
+    const ctx = buildEmbeddingContext(current, prior)
+    expect(ctx).toContain('Earlier related scenes')
+    expect(ctx).toContain('Scene 1')
+  })
+})
 
 describe('formatFullSpineEntry', () => {
   it('formats a spine entry with all fields', () => {

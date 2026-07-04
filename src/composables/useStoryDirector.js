@@ -10,6 +10,10 @@ import { useLocalStorage } from './useLocalStorage'
 import { RESEARCH_KEYS } from '../config/researchKeys'
 import { sanitizeJson } from '../services/ai/aiHelpers'
 
+// Bound the planning call (stream + retry) so a stalled model surfaces a clear
+// error in a few minutes instead of hanging on Ollama's 20-minute default.
+const PLAN_TIMEOUT_MS = 240000
+
 function lexicalScore(query, text, allChunkTexts) {
   const qTokens = query.toLowerCase().split(/\W+/).filter(Boolean)
   if (qTokens.length === 0) return 0
@@ -29,6 +33,104 @@ function lexicalScore(query, text, allChunkTexts) {
 
 // sanitizeJson imported from aiHelpers.js
 
+// Force a validated plan to match the user's exact structural request:
+// exactly N chapters, S scenes each, W words per chapter. Trims extras and
+// pads shortfalls (a safety net — the prompt asks the model to hit these).
+function enforceStructure(chapters, spec) {
+  const N = Math.max(1, spec.chapters || chapters.length)
+  const S = Math.max(1, spec.scenesPerChapter || 3)
+  const W = Math.max(1, spec.wordsPerChapter || 2000)
+  const wordsPerScene = Math.max(200, Math.round(W / S))
+  const chaptersPerVol = Math.max(1, spec.chaptersPerVolume || N)
+
+  const out = (Array.isArray(chapters) ? chapters : []).slice(0, N)
+  while (out.length < N) {
+    out.push({ title: `Chapter ${out.length + 1}`, goal: '', arcPosition: '', emotionalTarget: '', hookEnding: '', scenes: [] })
+  }
+
+  return out.map((c, i) => {
+    let scenes = (Array.isArray(c.scenes) ? c.scenes : []).slice(0, S)
+    while (scenes.length < S) {
+      scenes.push({
+        title: `Scene ${scenes.length + 1}`, emotionalGoal: '', whatChanges: '', obstacle: '',
+        sceneFunction: 'setup', charactersPresent: [], characterWants: {}, location: '',
+        setup: '', payoff: 'none', sensoryAnchor: '', arcPosition: 'setup', tension: 'medium', pacing: 'medium'
+      })
+    }
+    scenes = scenes.map((s, j) => ({ ...s, sceneNumber: j + 1, estimatedWords: wordsPerScene }))
+    return {
+      ...c,
+      chapterNumber: i + 1,
+      volumeIndex: Math.floor(i / chaptersPerVol) + 1,
+      estimatedWords: W,
+      scenes
+    }
+  })
+}
+
+// Plan a large structured story in small, reliable chunks instead of one giant
+// JSON: first a chapter skeleton, then the scenes for each chapter (each planned
+// against the previous chapter's hook, which also tightens chapter-to-chapter
+// linkage). Far faster and far less likely to produce unparseable output on a
+// local model — which is what makes "Forging the Story Graph" hang.
+async function planChunked({ goal, systemPrompt, onPartialData }) {
+  const s = goal.structure
+  const N = Math.max(1, s.chapters)
+  const S = Math.max(1, s.scenesPerChapter || 3)
+
+  // 1) Chapter skeleton (small JSON, no scenes)
+  const skeletonPrompt = `Plan the chapter skeleton for this story.
+PREMISE: "${goal.premise}"
+GENRE: ${goal.genre || 'Standard'}
+TONE: ${goal.tone || 'Standard'}
+
+Produce EXACTLY ${N} chapters forming ONE continuous arc. Each chapter's "hookEnding" must set up the next chapter.
+Return ONLY JSON, no markdown:
+{
+  "storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },
+  "chapters": [ { "chapterNumber": 1, "title": "", "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
+}`
+  const skel = sanitizeJson(await aiGenerate(skeletonPrompt, systemPrompt, {
+    feature: FEATURES.STORY_GENERATION, temperature: 0.7, timeout: PLAN_TIMEOUT_MS
+  }))
+  if (!skel || !Array.isArray(skel.chapters) || skel.chapters.length === 0) {
+    throw new Error('The planning model timed out or returned invalid JSON. Try fewer chapters, a smaller word target, or a larger/faster model.')
+  }
+
+  const chapters = skel.chapters.slice(0, N)
+  while (chapters.length < N) {
+    const n = chapters.length + 1
+    chapters.push({ chapterNumber: n, title: `Chapter ${n}`, goal: '', arcPosition: '', emotionalTarget: '', hookEnding: '' })
+  }
+  const storyArc = skel.storyArc || {}
+
+  // 2) Scenes per chapter (small JSON each, linked to the previous chapter)
+  for (let i = 0; i < chapters.length; i++) {
+    const ch = chapters[i]
+    const prev = chapters[i - 1]
+    try { onPartialData?.('scene', ch.title || `Chapter ${i + 1}`) } catch {}
+    const scenePrompt = `Plan EXACTLY ${S} scenes for this chapter of the story.
+STORY: "${goal.premise}" (${goal.genre || 'Standard'}, ${goal.tone || 'Standard'})
+CHAPTER ${i + 1}: "${ch.title}"
+- Chapter goal: ${ch.goal || ''}
+- Emotional target: ${ch.emotionalTarget || ''}
+- This chapter must end on: ${ch.hookEnding || 'a hook into the next chapter'}
+${prev ? `- The PREVIOUS chapter ended on: "${prev.hookEnding || ''}". Scene 1 must pick up directly from that.` : '- This is the opening chapter.'}
+
+Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
+{ "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium" } ] }`
+    const parsedScenes = sanitizeJson(await aiGenerate(scenePrompt, systemPrompt, {
+      feature: FEATURES.STORY_GENERATION, temperature: 0.7, timeout: PLAN_TIMEOUT_MS
+    }))
+    ch.scenes = Array.isArray(parsedScenes?.scenes) ? parsedScenes.scenes : []
+    for (const sc of ch.scenes) {
+      try { onPartialData?.('scene', sc.title) } catch {}
+    }
+  }
+
+  return { chapters, storyArc }
+}
+
 export function useStoryDirector() {
   const isPlanning = ref(false)
   const planError = ref(null)
@@ -42,13 +144,22 @@ export function useStoryDirector() {
       const categoryType = projectStore.activeWorkspaceType || 'creative'
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
 
+      const s = goal.structure
+      const structureBlock = s ? `
+
+### STRUCTURE REQUIREMENTS (MANDATORY — follow these numbers exactly)
+- Produce EXACTLY ${s.chapters} chapters.${s.volumes > 1 ? ` These span ${s.volumes} volumes of ${s.chaptersPerVolume} chapters each, in order.` : ''}
+- Each chapter must contain EXACTLY ${s.scenesPerChapter || 3} scenes.
+- Target ${s.wordsPerChapter} words per chapter (~${Math.round(s.wordsPerChapter / (s.scenesPerChapter || 3))} words per scene).
+- LINKAGE: every chapter MUST end with a "hookEnding" that sets up the next chapter, and each chapter's first scene must pick up directly from the previous chapter's hook so the chapters read as one continuous story.` : ''
+
       const userPrompt = `Plan a complete document structure based on this GOAL.
 
 ### GOAL
 OBJECTIVE/PREMISE: "${goal.premise}"
 DOCUMENT TYPE/GENRE: "${goal.genre || 'Standard'}"
 TONE: "${goal.tone || 'Professional'}"
-TARGET WORD COUNT: ${goal.wordTarget || 4000}
+TARGET WORD COUNT: ${goal.wordTarget || 4000}${structureBlock}
 
 Generate a complete plan as JSON with "chapters" array and "storyArc" object.`
 
@@ -114,43 +225,54 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
 
       const finalSystemPrompt = `${baseDirectorPrompt}\n\n${evidence}${researchContext ? `\n\n## Research Context\n${researchContext}` : ''}`
 
-      let accumulated = ''
-      const emittedTitles = new Set()
-      let scanOffset = 0
+      let parsed
+      if (goal.structure) {
+        // Large structured plan: build it in small, reliable chunks
+        parsed = await planChunked({ goal, systemPrompt: finalSystemPrompt, onPartialData })
+      } else {
+        // Small/default plan: one streaming call with a non-streaming retry
+        let accumulated = ''
+        const emittedTitles = new Set()
+        let scanOffset = 0
 
-      await aiStream(userPrompt, finalSystemPrompt, (chunk) => {
-        accumulated += chunk
-        
-        const regex = /"title"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
-        regex.lastIndex = Math.max(0, scanOffset - 200)
-        let match
-        
-        while ((match = regex.exec(accumulated)) !== null) {
-          const title = match[1]
-          if (!emittedTitles.has(title)) {
-            emittedTitles.add(title)
-            try { 
-              if (onPartialData) onPartialData('scene', title) 
-            } catch {}
+        await aiStream(userPrompt, finalSystemPrompt, (chunk) => {
+          accumulated += chunk
+
+          const regex = /"title"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
+          regex.lastIndex = Math.max(0, scanOffset - 200)
+          let match
+
+          while ((match = regex.exec(accumulated)) !== null) {
+            const title = match[1]
+            if (!emittedTitles.has(title)) {
+              emittedTitles.add(title)
+              try {
+                if (onPartialData) onPartialData('scene', title)
+              } catch {}
+            }
           }
-        }
-        scanOffset = Math.max(0, accumulated.length - 200)
-      }, {
-        feature: FEATURES.STORY_GENERATION,
-        temperature: 0.7
-      })
-
-      let parsed = sanitizeJson(accumulated)
-      if (!parsed) {
-        const retryResponse = await aiGenerate(userPrompt, finalSystemPrompt, {
+          scanOffset = Math.max(0, accumulated.length - 200)
+        }, {
           feature: FEATURES.STORY_GENERATION,
-          temperature: 0.5
+          temperature: 0.7,
+          // Bound planning so a stalled model fails fast instead of hanging for
+          // Ollama's default 20 minutes with no visible progress.
+          timeout: PLAN_TIMEOUT_MS
         })
-        parsed = sanitizeJson(retryResponse)
+
+        parsed = sanitizeJson(accumulated)
+        if (!parsed) {
+          const retryResponse = await aiGenerate(userPrompt, finalSystemPrompt, {
+            feature: FEATURES.STORY_GENERATION,
+            temperature: 0.5,
+            timeout: PLAN_TIMEOUT_MS
+          })
+          parsed = sanitizeJson(retryResponse)
+        }
       }
 
       if (!parsed) {
-        throw new Error('Failed to parse story plan JSON after retry. The model returned invalid output.')
+        throw new Error('The planning model timed out or returned invalid JSON. Try fewer chapters, a smaller word target, or a larger/faster model.')
       }
 
       const chapters = parsed.chapters || []
@@ -216,10 +338,12 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
         }
       })
 
-      const flatScenes = validatedChapters.flatMap(c => c.scenes)
+      // Honor the user's exact volumes/chapters/words request if one was given
+      const finalChapters = goal.structure ? enforceStructure(validatedChapters, goal.structure) : validatedChapters
+      const flatScenes = finalChapters.flatMap(c => c.scenes)
 
       return {
-        chapters: validatedChapters,
+        chapters: finalChapters,
         scenes: flatScenes,
         storyArc: {
           premise: storyArc.premise || goal.premise,
@@ -228,9 +352,9 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
           emotionalJourney: storyArc.emotionalJourney || '',
           centralConflict: storyArc.centralConflict || '',
           resolution: storyArc.resolution || '',
-          totalChapters: validatedChapters.length,
+          totalChapters: finalChapters.length,
           totalScenes: flatScenes.length,
-          totalEstimatedWords: validatedChapters.reduce((sum, c) => sum + (c.estimatedWords || 0), 0)
+          totalEstimatedWords: finalChapters.reduce((sum, c) => sum + (c.estimatedWords || 0), 0)
         }
       }
     } catch (err) {
@@ -244,4 +368,4 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
   return { generateStoryPlan, isPlanning, planError }
 }
 
-export { sanitizeJson }
+export { sanitizeJson, enforceStructure }

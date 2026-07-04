@@ -44,6 +44,26 @@ const characterToEnhance = ref(null)
 const showChatModal = ref(false)
 const chattingCharacterIds = ref([])
 
+function handleDragStart(event, character) {
+  const dragData = {
+    type: 'character',
+    id: character.id,
+    name: character.name,
+    portrait: character.portrait
+  }
+  event.dataTransfer.setData('application/json', JSON.stringify(dragData))
+  event.dataTransfer.effectAllowed = 'copy'
+
+  const dragImage = event.currentTarget.cloneNode(true)
+  dragImage.style.position = 'absolute'
+  dragImage.style.top = '-9999px'
+  dragImage.style.opacity = '0.8'
+  dragImage.style.borderRadius = '8px'
+  document.body.appendChild(dragImage)
+  event.dataTransfer.setDragImage(dragImage, 50, 20)
+  setTimeout(() => document.body.removeChild(dragImage), 0)
+}
+
 function openChat(character) {
   chattingCharacterIds.value = [character.id]
   showChatModal.value = true
@@ -562,6 +582,8 @@ defineExpose({ refresh })
           v-for="character in filteredCharacters"
           :key="character.id"
           class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
+          draggable="true"
+          @dragstart="handleDragStart($event, character)"
         >
           <CharacterPortrait
             v-if="editingId === character.id"

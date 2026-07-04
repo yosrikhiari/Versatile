@@ -34,6 +34,12 @@ const mode = computed(() => tab.value === MODE_ARC ? MODE_ARC : (tab.value === M
 const genre = ref('')
 const tone = ref('')
 const wordTarget = ref(3500)
+const usePreciseStructure = ref(false)
+const volumes = ref(1)
+const chaptersPerVolume = ref(10)
+const wordsPerChapter = ref(2000)
+const scenesPerChapter = ref(3)
+const estimatedTotalWords = computed(() => volumes.value * chaptersPerVolume.value * wordsPerChapter.value)
 
 const sparkContext = ref('')
 
@@ -115,6 +121,10 @@ const sceneReviewEnabled = computed({
 const inlineEvalEnabled = computed({
   get: () => volumeGenerator.inlineEvalEnabled.value,
   set: (val) => { volumeGenerator.inlineEvalEnabled.value = val }
+})
+const autoRun = computed({
+  get: () => volumeGenerator.autoMode.value,
+  set: (val) => { volumeGenerator.autoMode.value = val }
 })
 function togglePitch(i) {
   pitchOpen.value = pitchOpen.value === i ? -1 : i
@@ -203,7 +213,41 @@ async function loadPreviousGenerations() {
   } catch { /* ignore */ }
 }
 
-onMounted(() => { loadPreviousGenerations() })
+const resumableRun = ref(null)
+async function checkResumable() {
+  if (!projectStore.currentProjectId) { resumableRun.value = null; return }
+  try {
+    resumableRun.value = await volumeGenerator.getResumableRun(projectStore.currentProjectId)
+  } catch { resumableRun.value = null }
+}
+
+onMounted(() => { loadPreviousGenerations(); checkResumable() })
+
+async function handleVolumeResume() {
+  if (!projectStore.currentProjectId) return
+  resumableRun.value = null
+  volumeStreamingText.value = ''
+  try {
+    await volumeGenerator.resumeGeneration({
+      projectId: projectStore.currentProjectId,
+      onPhaseChange: () => {},
+      onChunk: ({ sceneIndex, total, fullProse }) => {
+        volumeCurrentScene.value = sceneIndex
+        volumeTotalScenes.value = total
+        volumeStreamingText.value = fullProse
+      }
+    })
+  } catch { /* phase/error set internally */ }
+}
+
+async function handleDiscardResumable() {
+  if (!projectStore.currentProjectId) return
+  try {
+    const { clearGenRun } = await import('../../services/db-generation')
+    await clearGenRun(projectStore.currentProjectId)
+  } catch { /* ignore */ }
+  resumableRun.value = null
+}
 
 // ----- Volume pipeline -----
 async function handleVolumeGenerate() {
@@ -226,6 +270,15 @@ async function handleVolumeGenerate() {
       wordTarget: wordTarget.value,
       singleChapter: mode.value === MODE_SCENE || mode.value === MODE_CHAPTER, // Keep compatible for now until follow-up task
       sparkContext: sparkContext.value,
+      auto: autoRun.value,
+      structure: usePreciseStructure.value
+        ? {
+            volumes: volumes.value,
+            chaptersPerVolume: chaptersPerVolume.value,
+            wordsPerChapter: wordsPerChapter.value,
+            scenesPerChapter: scenesPerChapter.value
+          }
+        : null,
       onPhaseChange: (_p) => {},
       onPartialData: (type, name) => {
         liveEntities.value.push({
@@ -233,6 +286,12 @@ async function handleVolumeGenerate() {
           type,
           name
         })
+      },
+      // In one-click mode writing runs inside startGeneration, so stream here too
+      onChunk: ({ sceneIndex, total, fullProse }) => {
+        volumeCurrentScene.value = sceneIndex
+        volumeTotalScenes.value = total
+        volumeStreamingText.value = fullProse
       }
     })
 
@@ -437,6 +496,23 @@ function getPhaseLabel(phase) {
       <!-- ==================== IDLE / CONTROLS ==================== -->
       <template v-if="volumeGenerator.phase.value === 'idle'">
         <div class="p-4 space-y-5">
+          <!-- Resume an interrupted one-click run -->
+          <div v-if="resumableRun" class="rounded-lg border border-accent/40 bg-accent/10 p-3 space-y-2">
+            <p class="text-xs text-text-primary font-ui">
+              Unfinished draft — {{ resumableRun.written }} of {{ resumableRun.total }} scenes written.
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                class="flex-1 py-1.5 text-xs bg-accent text-accent-foreground rounded-md font-medium hover:bg-accent/90 font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                @click="handleVolumeResume"
+              >Resume</button>
+              <button
+                class="py-1.5 px-3 text-xs text-text-hint hover:text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent rounded-md"
+                @click="handleDiscardResumable"
+              >Discard</button>
+            </div>
+          </div>
+
           <div>
             <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Story Synopsis</label>
             <div v-if="hasSynopsis" class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary whitespace-pre-wrap">
@@ -477,7 +553,7 @@ function getPhaseLabel(phase) {
             </div>
           </div>
 
-          <div>
+          <div v-if="!usePreciseStructure">
             <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">{{ mode === MODE_SCENE ? 'Words per Scene' : 'Total Word Target' }}</label>
             <input
               v-model.number="wordTarget"
@@ -487,6 +563,41 @@ function getPhaseLabel(phase) {
               step="100"
               class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
             />
+          </div>
+
+          <!-- Precise structure: exact volumes / chapters / words -->
+          <div class="rounded-lg border border-border-subtle p-3 space-y-3">
+            <label class="flex items-center gap-2 text-xs text-text-primary font-ui cursor-pointer select-none">
+              <input
+                v-model="usePreciseStructure"
+                type="checkbox"
+                class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
+              />
+              Precise structure (exact volumes, chapters & length)
+            </label>
+
+            <div v-if="usePreciseStructure" class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1">Volumes</label>
+                <input v-model.number="volumes" type="number" min="1" max="20" class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent" />
+              </div>
+              <div>
+                <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1">Chapters / volume</label>
+                <input v-model.number="chaptersPerVolume" type="number" min="1" max="60" class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent" />
+              </div>
+              <div>
+                <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1">Words / chapter</label>
+                <input v-model.number="wordsPerChapter" type="number" min="300" max="20000" step="100" class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent" />
+              </div>
+              <div>
+                <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1">Scenes / chapter</label>
+                <input v-model.number="scenesPerChapter" type="number" min="1" max="12" class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent" />
+              </div>
+            </div>
+
+            <p v-if="usePreciseStructure" class="text-2xs text-text-hint font-ui">
+              {{ volumes * chaptersPerVolume }} chapters · ~{{ estimatedTotalWords.toLocaleString() }} words total. Chapters are linked via hook endings + a shared spine for continuity.
+            </p>
           </div>
 
           <!-- Spark context badge -->
@@ -508,9 +619,23 @@ function getPhaseLabel(phase) {
           <div class="flex items-center gap-2 px-1">
             <label class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none">
               <input
-                v-model="sceneReviewEnabled"
+                v-model="autoRun"
                 type="checkbox"
                 class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
+              />
+              One-click: write the whole thing (no stops)
+            </label>
+          </div>
+          <div class="flex items-center gap-2 px-1">
+            <label
+              class="flex items-center gap-2 text-xs font-ui select-none"
+              :class="autoRun ? 'text-text-hint/40 cursor-not-allowed' : 'text-text-hint cursor-pointer'"
+            >
+              <input
+                v-model="sceneReviewEnabled"
+                type="checkbox"
+                :disabled="autoRun"
+                class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent disabled:opacity-40"
               />
               Pause per scene for review
             </label>

@@ -618,6 +618,51 @@ db.version(28).stores({
   storyShapeAnalysis: '++id, projectId, sceneId, version, analyzedAt, [projectId+sceneId], [projectId+version]'
 })
 
+db.version(29).stores({
+  projects: '++id, userId, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
+  manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
+  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
+  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
+  locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
+  plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
+  sections: '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
+  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
+  volumes: '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
+  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
+  sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
+  annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
+  snippets: '++id, projectId, word, count, lastSeen',
+  dailyGoals: '++id, projectId, date, [projectId+date]',
+  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  storyElements: '++id, projectId, type, title, x, y, width, height, data',
+  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
+  nodePositions: '++id, projectId',
+  graphGroups: '++id, projectId',
+  snapshots: '++id, projectId, chapterId, timestamp, label',
+  sessionArchive: '++id, projectId, timestamp, type, signal',
+  authorProfile: '++id, projectId',
+  storyStateSnapshots: '++id, projectId, timestamp',
+  storyDocuments: '++id, projectId, docType, content, updatedAt, [projectId+docType]',
+  generatedStories: '++id, projectId, title, generatedAt, totalWords, qualityScore',
+  voiceProfiles: '++id, projectId, createdAt, updatedAt',
+  researchDocuments: '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
+  researchChunks: '++id, documentId, projectId, chunkIndex, embeddingStatus',
+  researchTags: '++id, name, projectId, [projectId+name]',
+  pendingDeletions: '++id, table, apiId, deletedAt',
+  embeddingCache: '&hash, createdAt',
+  users: '++id, passwordHash, displayName, createdAt, &username',
+  dialogueIndex: '++id, projectId, paragraphIndex, speakerId, sectionId, [projectId+speakerId]',
+  storyShapeAnalysis: '++id, projectId, sceneId, version, analyzedAt, [projectId+sceneId], [projectId+version]',
+  chatSessions: '++id, projectId, updatedAt'
+})
+
+// v30: checkpoint for one-click generation runs so a long unattended draft can
+// survive a reload/crash. One row per project (the in-progress run).
+db.version(30).stores({
+  genRuns: '++id, &projectId, updatedAt'
+})
+
 const recoveryFlag = 'versatile_db_recovery'
 
 let _ready

@@ -19,7 +19,10 @@ async function ensureModelAvailable(model) {
 
   if (!modelCacheLoaded) {
     try {
-      const response = await fetch(`${getOllamaEndpoint()}/api/tags`)
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
+      const response = await fetch(`${getOllamaEndpoint()}/api/tags`, { signal: controller.signal })
+      clearTimeout(timeout)
       if (response.ok) {
         const data = await response.json()
         for (const m of (data.models || [])) {
@@ -33,6 +36,31 @@ async function ensureModelAvailable(model) {
   if (modelCacheLoaded && !modelCache.has(model)) {
     throw new Error(`Model "${model}" not found in Ollama. Pull it first with: ollama pull ${model}`)
   }
+}
+
+// Ollama reads generation params from a nested `options` object; top-level
+// keys like num_predict are ignored. Build it only with the keys we have.
+function buildOllamaOptions(options = {}) {
+  const opts = {}
+  if (options.maxTokens) opts.num_predict = options.maxTokens
+  if (options.temperature != null) opts.temperature = options.temperature
+  if (Array.isArray(options.stop) && options.stop.length) opts.stop = options.stop
+  return Object.keys(opts).length ? { options: opts } : {}
+}
+
+async function readWithTimeout(reader, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new DOMException(`Stream read timed out after ${timeoutMs}ms`, 'AbortError'))
+    }, timeoutMs)
+    reader.read().then(result => {
+      clearTimeout(timer)
+      resolve(result)
+    }, err => {
+      clearTimeout(timer)
+      reject(err)
+    })
+  })
 }
 
 export async function generate(prompt, systemPrompt, model, options = {}) {
@@ -58,7 +86,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
         system: systemPrompt,
         prompt: prompt,
         stream: false,
-        ...(options?.maxTokens ? { num_predict: options.maxTokens } : {})
+        ...buildOllamaOptions(options)
       }),
       signal: controller.signal
     })
@@ -111,7 +139,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
         system: systemPrompt,
         prompt: prompt,
         stream: true,
-        ...(options?.maxTokens ? { num_predict: options.maxTokens } : {})
+        ...buildOllamaOptions(options)
       }),
       signal: controller.signal
     })
@@ -132,23 +160,36 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let fullResponse = ''
+    const CHUNK_TIMEOUT = options.chunkTimeout || 60000
 
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
+    function onStreamAbort() {
+      try { reader.cancel() } catch {}
+    }
+    if (externalSignal) {
+      if (externalSignal.aborted) { throw new DOMException('Aborted', 'AbortError') }
+      externalSignal.addEventListener('abort', onStreamAbort, { once: true })
+    }
 
-      const chunk = decoder.decode(value)
-      const lines = chunk.split('\n').filter(line => line.trim())
+    try {
+      while (true) {
+        const { done, value } = await readWithTimeout(reader, CHUNK_TIMEOUT)
+        if (done) break
 
-      for (const line of lines) {
-        try {
-          const parsed = JSON.parse(line)
-          if (parsed.response) {
-            fullResponse += parsed.response
-            if (onChunk) onChunk(parsed.response, fullResponse)
-          }
-        } catch {}
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n').filter(line => line.trim())
+
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.response) {
+              fullResponse += parsed.response
+              if (onChunk) onChunk(parsed.response, fullResponse)
+            }
+          } catch {}
+        }
       }
+    } finally {
+      if (externalSignal) externalSignal.removeEventListener('abort', onStreamAbort)
     }
 
     return fullResponse

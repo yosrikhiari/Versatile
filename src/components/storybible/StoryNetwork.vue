@@ -1719,9 +1719,13 @@ async function arrangeExtendedStarLayout() {
 
           <Background pattern-color="var(--vers-text-faint)" :gap="20" />
           <MiniMap
-            node-color="var(--vers-bg-panel)"
-            mask-color="var(--vers-bg-overlay)"
-            class="!absolute !bottom-2 !right-2 !border !border-border-subtle !rounded-lg !shadow-lg"
+            node-color="var(--vers-accent-primary)"
+            mask-color="rgba(10, 10, 12, 0.6)"
+            :width="180"
+            :height="120"
+            pannable
+            zoomable
+            class="story-minimap !absolute !bottom-2 !right-2 !border !border-border-subtle !rounded-lg !shadow-lg"
           />
           <Controls
             show-zoom
@@ -1951,6 +1955,21 @@ async function arrangeExtendedStarLayout() {
 
 :deep(.vue-flow__pane) {
   cursor: default;
+}
+
+/* Vendor minimap ships a hard white background — theme it to the dark panel */
+:deep(.story-minimap.vue-flow__minimap) {
+  background-color: var(--vers-bg-panel);
+}
+
+:deep(.story-minimap .vue-flow__minimap-node) {
+  stroke: var(--vers-bg-panel);
+  stroke-width: 2;
+  rx: 3;
+}
+
+:deep(.story-minimap .vue-flow__minimap-mask) {
+  stroke: none;
 }
 
 .slide-enter-active,

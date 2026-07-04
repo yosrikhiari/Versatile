@@ -1,5 +1,5 @@
 <script setup>
-import { ref, provide, onMounted } from 'vue'
+import { ref, provide, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useFlowSession } from '../composables/useFlowSession'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
@@ -28,6 +28,14 @@ import StoryShapePanel from '../components/storyshape/StoryShapePanel.vue'
 import ActivityToast from '../components/shared/ActivityToast.vue'
 import ActivityDrawer from '../components/shared/ActivityDrawer.vue'
 import AuthModal from '../components/auth/AuthModal.vue'
+import CharacterBubble from '../components/editor/CharacterBubble.vue'
+import CharacterChatSession from '../components/characterchat/CharacterChatSession.vue'
+import Modal from '../components/shared/Modal.vue'
+import { useBubbleStore } from '../stores/bubbleStore'
+import { useProjectStore } from '../stores/projectStore'
+import { useManuscriptStore } from '../stores/manuscriptStore'
+import { useStoryBibleStore } from '../stores/storyBibleStore'
+import { useCharacterChatStore } from '../stores/characterChatStore'
 
 const route = useRoute()
 const timer = useFlowSession()
@@ -45,6 +53,44 @@ const focusMode = ref(false)
 provide('insertAtCursor', (text) => {
   flowEditorRef.value?.insertAtCursor(text)
 })
+
+const bubbleStore = useBubbleStore()
+const projectStore = useProjectStore()
+const manuscriptStore = useManuscriptStore()
+const storyBibleStore = useStoryBibleStore()
+const characterChatStore = useCharacterChatStore()
+const showCharacterChatModal = ref(false)
+const chattingCharacterIds = ref([])
+const editorWrapperRef = ref(null)
+
+// Restore persisted chat sessions once the project is known, otherwise the
+// in-memory store stays empty and every chat opens as a fresh duplicate
+watch(() => projectStore.currentProjectId, (pid) => {
+  if (pid) characterChatStore.loadSessions(pid)
+}, { immediate: true })
+
+watch(() => characterChatStore.activeSessionId, (newId) => {
+  if (newId && characterChatStore.activeSession) {
+    chattingCharacterIds.value = [...characterChatStore.activeSession.characterIds]
+    showCharacterChatModal.value = true
+  }
+})
+const containerWidth = ref(0)
+const containerHeight = ref(0)
+let resizeObserver = null
+
+async function onDrop(event) {
+  const raw = event.dataTransfer.getData('application/json')
+  if (!raw) return
+  try {
+    const entity = JSON.parse(raw)
+    if (entity.type !== 'character') return
+    const rect = editorWrapperRef.value.getBoundingClientRect()
+    const character = storyBibleStore.characters.find(c => c.id === entity.id)
+    if (!character) return
+    await bubbleStore.addBubbleFromCharacter(character, event.clientX - rect.left, event.clientY - rect.top, projectStore.currentProjectId)
+  } catch {}
+}
 
 const { ollamaAvailable, modelNotFound, showModelBanner, hasLoaded, initializeApp, checkModelAvailability, onOnboardingComplete, onOnboardingSkip } = useAppInitialization()
 const { importStatus, showImportModal, handleExport, handleExportPDF, handleExportEpub, handleImport } = useExportImport()
@@ -81,6 +127,28 @@ onMounted(async () => {
       showOnboarding.value = true
     }
   }
+  const wrapper = editorWrapperRef.value
+  if (wrapper) {
+    containerWidth.value = wrapper.clientWidth
+    containerHeight.value = wrapper.clientHeight
+    resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        containerWidth.value = entry.contentRect.width
+        containerHeight.value = entry.contentRect.height
+      }
+    })
+    resizeObserver.observe(wrapper)
+  }
+  watch(() => manuscriptStore.storyElements.length, () => {
+    bubbleStore.loadBubblesFromManuscript(manuscriptStore.storyElements)
+  }, { immediate: true })
+})
+
+onBeforeUnmount(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
 })
 
 function handleParagraphClick(text, index) {
@@ -104,6 +172,11 @@ function handleOpenChapters() {
 async function handleOnboardingCompleteWrapper() {
   showOnboarding.value = false
   await onOnboardingComplete()
+}
+
+function onCharacterChatClose() {
+  showCharacterChatModal.value = false
+  characterChatStore.clearSession()
 }
 
 function handleOnboardingSkipWrapper() {
@@ -139,12 +212,15 @@ function handleOnboardingSkipWrapper() {
       @create-project="showOnboarding = true"
     >
       <template #editor>
-        <FlowEditor
-          ref="flowEditorRef"
-          @paragraph-click="handleParagraphClick"
-          @open-settings="showSettingsModal = true"
-          @exit-flow="handleEndFlow"
-        />
+        <div ref="editorWrapperRef" class="relative isolate w-full h-full" @dragover.prevent @drop.prevent="onDrop">
+          <FlowEditor
+            ref="flowEditorRef"
+            @paragraph-click="handleParagraphClick"
+            @open-settings="showSettingsModal = true"
+            @exit-flow="handleEndFlow"
+          />
+          <CharacterBubble v-for="bubble in bubbleStore.bubbles" :key="bubble.id" :bubble="bubble" :container-width="containerWidth" :container-height="containerHeight" />
+        </div>
       </template>
 
       <template #story-generator>
@@ -309,6 +385,14 @@ function handleOnboardingSkipWrapper() {
     <AuthModal :show="showAuthModal" @close="showAuthModal = false" />
 
     <SettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @model-changed="checkModelAvailability" />
+
+    <Modal :show="showCharacterChatModal" @close="onCharacterChatClose">
+      <CharacterChatSession
+        :character-ids="chattingCharacterIds"
+        :project-id="projectStore.currentProjectId"
+        @close="onCharacterChatClose"
+      />
+    </Modal>
 
     <NotificationHost />
 

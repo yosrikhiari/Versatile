@@ -169,6 +169,7 @@ export function useStoryWriter() {
 
       const profileResult = voiceProfile ? getVoiceProfile(voiceProfile, FALLBACK_VOICE) : null
       const voiceInstruction = profileResult?.voiceInstruction || styleGuide || FALLBACK_VOICE
+      const profileStyleGuide = profileResult?.styleGuide || ''
 
       const sceneContext = completedScenes?.length > 0 ? buildSceneContext({
         completedScenes,
@@ -192,12 +193,18 @@ export function useStoryWriter() {
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
       const activeCraftRules = categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
-      const systemPrompt = `${activePrompts.writer}
+      const voiceConstraint = activeCraftRules
+        ? `IMPORTANT: Apply the following voice guidance within the craft constraints above. The craft constraints are hard rules and take priority.\n\n`
+        : ''
 
-${voiceInstruction}
+      const systemPrompt = `${activePrompts.writer}${activeCraftRules}
 
-${antiPatterns ? antiPatterns + '\n' : ''}${activeCraftRules}
+${PROSE_STYLE_GUIDE}
+${profileStyleGuide ? `\n${profileStyleGuide}\n` : ''}
 
+${voiceConstraint}${voiceInstruction}
+
+${antiPatterns ? antiPatterns + '\n' : ''}
 Write ONLY the detailed content for this section. Do not summarize. Start writing immediately.`
 
       const logSummary = summarizeLog(chapterLog)
@@ -208,6 +215,7 @@ Write ONLY the detailed content for this section. Do not summarize. Start writin
         ? [
             `- Emotional goal: ${sceneBrief.emotionalGoal}`,
             `- What changes: ${sceneBrief.whatChanges}`,
+            ...(sceneBrief.pov ? [`- POV: write this scene strictly from ${sceneBrief.pov}'s point of view — do not head-hop into other characters' thoughts`] : []),
             `- Characters present: ${(sceneBrief.charactersPresent || []).join(', ')}`,
             `- Character wants: ${JSON.stringify(sceneBrief.characterWants || {}, null, 2)}`,
             `- Setup to plant: ${sceneBrief.setup || ''}`,
@@ -316,15 +324,18 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
       const activeCraftRules = categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
-      const systemPrompt = `${activePrompts.writer}
+      const voiceConstraint = activeCraftRules
+        ? `IMPORTANT: Apply the following voice guidance within the craft constraints above. The craft constraints are hard rules and take priority.\n\n`
+        : ''
 
-${voiceInstruction}
-
-${antiPatterns ? antiPatterns + '\n' : ''}${activeCraftRules}
+      const systemPrompt = `${activePrompts.writer}${activeCraftRules}
 
 ${PROSE_STYLE_GUIDE}
 ${profileStyleGuide ? `\n${profileStyleGuide}\n` : ''}
 
+${voiceConstraint}${voiceInstruction}
+
+${antiPatterns ? antiPatterns + '\n' : ''}
 ${pastEvalResults ? `\n## PAST EVALUATION FEEDBACK\n${pastEvalResults}\n` : ''}
 Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside the JSON.`
 
@@ -336,6 +347,7 @@ Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside t
         ? [
             `- Emotional goal: ${sceneBrief.emotionalGoal}`,
             `- What changes: ${sceneBrief.whatChanges}`,
+            ...(sceneBrief.pov ? [`- POV: write this scene strictly from ${sceneBrief.pov}'s point of view — do not head-hop into other characters' thoughts`] : []),
             `- Characters present: ${(sceneBrief.charactersPresent || []).join(', ')}`,
             `- Character wants: ${JSON.stringify(sceneBrief.characterWants || {}, null, 2)}`,
             `- Setup to plant: ${sceneBrief.setup || ''}`,

@@ -108,16 +108,16 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         maxTokens: 1000
       })
 
-      let parsed = sanitizeJson(response)
+      const parsed = sanitizeJson(response)
       if (!parsed) {
-        parsed = sanitizeJson(response)
-      }
-      if (!parsed) {
+        // Don't fabricate a passing 7 — that poisons quality averages and makes
+        // unattended runs look fine when the critic actually never ran.
         return {
           pass: true,
-          score: 7,
+          score: null,
+          evalUnavailable: true,
           issues: [],
-          strengths: ['Evaluation parse failed — defaulting to pass']
+          strengths: ['Evaluation unavailable — critic output could not be parsed']
         }
       }
 
@@ -148,9 +148,10 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
     } catch {
       return {
         pass: true,
-        score: 7,
+        score: null,
+        evalUnavailable: true,
         issues: [],
-        strengths: ['Critic error — defaulting to pass']
+        strengths: ['Evaluation unavailable — critic call failed']
       }
     } finally {
       isEvaluating.value = false
