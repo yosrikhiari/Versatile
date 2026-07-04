@@ -1351,10 +1351,7 @@ defineExpose({ refresh })
           :show="showGenerateModal"
           :mode="generateMode"
           :existing-character="characterToEnhance"
-          @close="
-            showGenerateModal = false
-            characterToEnhance = null
-          "
+          @close="showGenerateModal = false; characterToEnhance = null"
           @generate="onModalGenerate"
           @reject="onRejectGeneration"
           @create="onCreateCharacter"
