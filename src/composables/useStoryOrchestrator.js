@@ -9,7 +9,11 @@ import { useProjectStore } from '../stores/projectStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { db, deepPlain } from '../services/db-core'
-import { gateDimensionCoverage, gateScoreDistribution, gateRevisionEffectiveness } from '../services/evalGates'
+import {
+  gateDimensionCoverage,
+  gateScoreDistribution,
+  gateRevisionEffectiveness
+} from '../services/evalGates'
 
 function countWords(text) {
   if (!text) return 0
@@ -18,7 +22,14 @@ function countWords(text) {
 
 function classifyGoal(premise) {
   const p = (premise || '').toLowerCase()
-  if (p.includes('write') || p.includes('scene') || p.includes('brainstorm') || p.includes('twist') || p.includes('develop') || p.includes('character')) {
+  if (
+    p.includes('write') ||
+    p.includes('scene') ||
+    p.includes('brainstorm') ||
+    p.includes('twist') ||
+    p.includes('develop') ||
+    p.includes('character')
+  ) {
     return { type: 'short_term_intent', horizon: 'short_term' }
   }
   return { type: 'generate_story', horizon: 'long_term' }
@@ -28,10 +39,11 @@ export { countWords, classifyGoal }
 
 function toActions(plan) {
   if (plan.actions) return plan.actions
-  if (plan.scenes) return plan.scenes.map(scene => ({
-    type: 'write_scene',
-    payload: scene
-  }))
+  if (plan.scenes)
+    return plan.scenes.map((scene) => ({
+      type: 'write_scene',
+      payload: scene
+    }))
   return []
 }
 
@@ -40,12 +52,13 @@ function toActions(plan) {
  * Returns null if no scene has user feedback.
  */
 function createUserFeedbackBlock(completedScenes, sceneBrief) {
-  if (!completedScenes || !Array.isArray(completedScenes) || completedScenes.length === 0) return null
+  if (!completedScenes || !Array.isArray(completedScenes) || completedScenes.length === 0)
+    return null
   if (!sceneBrief) return null
 
-  const sceneWithFeedback = [...completedScenes].reverse().find(
-    s => s.brief?.userFeedback?.length > 0
-  )
+  const sceneWithFeedback = [...completedScenes]
+    .reverse()
+    .find((s) => s.brief?.userFeedback?.length > 0)
   if (!sceneWithFeedback) return null
 
   const feedback = sceneWithFeedback.brief.userFeedback
@@ -171,7 +184,6 @@ export function useStoryOrchestrator() {
       storyPlan.value = { ...plan, goal }
       phase.value = 'planning'
       return
-
     } catch (err) {
       orchestratorError.value = err.message || 'Story planning failed'
       phase.value = 'error'
@@ -200,7 +212,7 @@ export function useStoryOrchestrator() {
         if (cancelled) break
 
         const action = actions[i]
-        
+
         if (action.type === 'develop_character') {
           const payload = action.payload || {}
           await storyBibleStore.addCharacterData(projectId, {
@@ -238,11 +250,30 @@ export function useStoryOrchestrator() {
 
         const sceneBrief = action.payload
 
-        const existingEntitiesJson = JSON.stringify({
-          characters: storyBibleStore.characters.map(c => ({ name: c.name, role: c.role, description: c.description, traits: c.traits || [] })),
-          locations: storyBibleStore.locations.map(l => ({ name: l.name, description: l.description, notes: l.notes, traits: l.traits || [] })),
-          plotThreads: storyBibleStore.plotThreads.map(t => ({ title: t.title, status: t.status, notes: t.notes, traits: t.traits || [] }))
-        }, null, 2)
+        const existingEntitiesJson = JSON.stringify(
+          {
+            characters: storyBibleStore.characters.map((c) => ({
+              name: c.name,
+              role: c.role,
+              description: c.description,
+              traits: c.traits || []
+            })),
+            locations: storyBibleStore.locations.map((l) => ({
+              name: l.name,
+              description: l.description,
+              notes: l.notes,
+              traits: l.traits || []
+            })),
+            plotThreads: storyBibleStore.plotThreads.map((t) => ({
+              title: t.title,
+              status: t.status,
+              notes: t.notes,
+              traits: t.traits || []
+            }))
+          },
+          null,
+          2
+        )
 
         try {
           const prose = await writer.writeScene({
@@ -313,7 +344,12 @@ export function useStoryOrchestrator() {
           const dimCov = gateDimensionCoverage(critiqueResult, workspaceType)
           const scoreDist = gateScoreDistribution(critiqueResult)
           const revEff = revisionCritiqueResult
-            ? await gateRevisionEffectiveness(critiqueResult, finalProse, prose, revisionCritiqueResult)
+            ? await gateRevisionEffectiveness(
+                critiqueResult,
+                finalProse,
+                prose,
+                revisionCritiqueResult
+              )
             : null
 
           const sceneSummary = `[Scene ${sceneBrief.sceneNumber}: ${sceneBrief.title}] — ${sceneBrief.whatChanges}`
@@ -322,37 +358,51 @@ export function useStoryOrchestrator() {
             chapterLog = chapterLog.slice(-10)
           }
 
-          completedScenes.value = [...completedScenes.value, {
-            number: sceneBrief.sceneNumber,
-            brief: sceneBrief,
-            prose: finalProse,
-            wordCount: countWords(finalProse),
-            critiqueResult,
-            revisionCritiqueResult,
-            gateResults: {
-              dimensionCoverage: dimCov,
-              scoreDistribution: scoreDist,
-              revisionEffectiveness: revEff
+          completedScenes.value = [
+            ...completedScenes.value,
+            {
+              number: sceneBrief.sceneNumber,
+              brief: sceneBrief,
+              prose: finalProse,
+              wordCount: countWords(finalProse),
+              critiqueResult,
+              revisionCritiqueResult,
+              gateResults: {
+                dimensionCoverage: dimCov,
+                scoreDistribution: scoreDist,
+                revisionEffectiveness: revEff
+              }
             }
-          }]
+          ]
 
           progress.value = ((i + 1) / actions.length) * 100
 
           if (pauseAfterSceneEnabled.value) {
             paused.value = true
-            await new Promise(resolve => { _resumeResolver = resolve })
+            await new Promise((resolve) => {
+              _resumeResolver = resolve
+            })
             paused.value = false
           }
-
         } catch (sceneErr) {
-          completedScenes.value = [...completedScenes.value, {
-            number: sceneBrief.sceneNumber,
-            brief: sceneBrief,
-            prose: `[Scene could not be generated: ${sceneErr.message}]`,
-            wordCount: 0,
-            critiqueResult: { pass: false, score: 0, issues: [{ type: 'generation', description: sceneErr.message, severity: 'major' }], strengths: [] }
-          }]
-          chapterLog.push(`[Scene ${sceneBrief.sceneNumber}: ${sceneBrief.title}] — Generation failed`)
+          completedScenes.value = [
+            ...completedScenes.value,
+            {
+              number: sceneBrief.sceneNumber,
+              brief: sceneBrief,
+              prose: `[Scene could not be generated: ${sceneErr.message}]`,
+              wordCount: 0,
+              critiqueResult: {
+                pass: false,
+                score: 0,
+                issues: [{ type: 'generation', description: sceneErr.message, severity: 'major' }],
+                strengths: []
+              }
+            }
+          ]
+          chapterLog.push(
+            `[Scene ${sceneBrief.sceneNumber}: ${sceneBrief.title}] — Generation failed`
+          )
           progress.value = ((i + 1) / actions.length) * 100
         }
       }
@@ -384,7 +434,6 @@ export function useStoryOrchestrator() {
 
       finalStory.value = assembled
       phase.value = 'complete'
-
     } catch (err) {
       orchestratorError.value = err.message || 'Story generation failed'
       phase.value = 'error'
@@ -407,15 +456,36 @@ export function useStoryOrchestrator() {
     for (let j = 0; j < sceneIndex; j++) {
       const existing = finalStory.value.scenes[j]
       if (existing) {
-        chapterLog.push(`[Scene ${existing.number}: ${existing.brief.title}] — ${existing.brief.whatChanges}`)
+        chapterLog.push(
+          `[Scene ${existing.number}: ${existing.brief.title}] — ${existing.brief.whatChanges}`
+        )
       }
     }
 
-    const existingEntitiesJson = JSON.stringify({
-      characters: storyBibleStore.characters.map(c => ({ name: c.name, role: c.role, description: c.description, traits: c.traits || [] })),
-      locations: storyBibleStore.locations.map(l => ({ name: l.name, description: l.description, notes: l.notes, traits: l.traits || [] })),
-      plotThreads: storyBibleStore.plotThreads.map(t => ({ title: t.title, status: t.status, notes: t.notes, traits: t.traits || [] }))
-    }, null, 2)
+    const existingEntitiesJson = JSON.stringify(
+      {
+        characters: storyBibleStore.characters.map((c) => ({
+          name: c.name,
+          role: c.role,
+          description: c.description,
+          traits: c.traits || []
+        })),
+        locations: storyBibleStore.locations.map((l) => ({
+          name: l.name,
+          description: l.description,
+          notes: l.notes,
+          traits: l.traits || []
+        })),
+        plotThreads: storyBibleStore.plotThreads.map((t) => ({
+          title: t.title,
+          status: t.status,
+          notes: t.notes,
+          traits: t.traits || []
+        }))
+      },
+      null,
+      2
+    )
 
     try {
       const prose = await writer.writeScene({
@@ -486,25 +556,38 @@ export function useStoryOrchestrator() {
         }
       }
 
-      const fullText = newScenes.map(s => s.prose).join('\n\n')
+      const fullText = newScenes.map((s) => s.prose).join('\n\n')
       const totalWords = newScenes.reduce((sum, s) => sum + s.wordCount, 0)
-      const qualityScores = newScenes.filter(s => s.critiqueResult)
-      const qualityScore = qualityScores.length > 0
-        ? Math.round(qualityScores.reduce((sum, s) => sum + s.critiqueResult.score, 0) / qualityScores.length)
-        : 0
+      const qualityScores = newScenes.filter((s) => s.critiqueResult)
+      const qualityScore =
+        qualityScores.length > 0
+          ? Math.round(
+              qualityScores.reduce((sum, s) => sum + s.critiqueResult.score, 0) /
+                qualityScores.length
+            )
+          : 0
 
       let passCount = 0
       let failCount = 0
-      const allGateResults = newScenes.map(s => s.gateResults).filter(Boolean)
+      const allGateResults = newScenes.map((s) => s.gateResults).filter(Boolean)
       for (const g of allGateResults) {
-        if (g.dimensionCoverage != null) { g.dimensionCoverage.pass ? passCount++ : failCount++ }
-        if (g.scoreDistribution != null) { g.scoreDistribution.pass ? passCount++ : failCount++ }
-        if (g.revisionEffectiveness != null) { g.revisionEffectiveness.pass ? passCount++ : failCount++ }
+        if (g.dimensionCoverage != null) {
+          g.dimensionCoverage.pass ? passCount++ : failCount++
+        }
+        if (g.scoreDistribution != null) {
+          g.scoreDistribution.pass ? passCount++ : failCount++
+        }
+        if (g.revisionEffectiveness != null) {
+          g.revisionEffectiveness.pass ? passCount++ : failCount++
+        }
       }
-      const evalGates = allGateResults.length > 0 ? {
-        summary: { total: passCount + failCount, passed: passCount, failed: failCount },
-        sceneResults: allGateResults
-      } : null
+      const evalGates =
+        allGateResults.length > 0
+          ? {
+              summary: { total: passCount + failCount, passed: passCount, failed: failCount },
+              sceneResults: allGateResults
+            }
+          : null
 
       finalStory.value = {
         ...finalStory.value,
@@ -516,7 +599,6 @@ export function useStoryOrchestrator() {
       }
 
       completedScenes.value = newScenes
-
     } catch (err) {
       orchestratorError.value = err.message || 'Regeneration failed'
     }
@@ -533,16 +615,19 @@ export function useStoryOrchestrator() {
       gateResults: s.gateResults
     }))
 
-    const fullText = scenes.map(s => s.prose).join('\n\n')
+    const fullText = scenes.map((s) => s.prose).join('\n\n')
     const totalWords = scenes.reduce((sum, s) => sum + s.wordCount, 0)
-    const qualityScores = scenes.filter(s => s.critiqueResult)
-    const qualityScore = qualityScores.length > 0
-      ? Math.round(qualityScores.reduce((sum, s) => sum + s.critiqueResult.score, 0) / qualityScores.length)
-      : 0
+    const qualityScores = scenes.filter((s) => s.critiqueResult)
+    const qualityScore =
+      qualityScores.length > 0
+        ? Math.round(
+            qualityScores.reduce((sum, s) => sum + s.critiqueResult.score, 0) / qualityScores.length
+          )
+        : 0
 
     let passCount = 0
     let failCount = 0
-    const allGateResults = scenes.map(s => s.gateResults).filter(Boolean)
+    const allGateResults = scenes.map((s) => s.gateResults).filter(Boolean)
     for (const g of allGateResults) {
       if (g.dimensionCoverage != null) {
         g.dimensionCoverage.pass ? passCount++ : failCount++
@@ -555,18 +640,22 @@ export function useStoryOrchestrator() {
       }
     }
 
-    const evalGates = allGateResults.length > 0 ? {
-      summary: {
-        total: passCount + failCount,
-        passed: passCount,
-        failed: failCount
-      },
-      sceneResults: allGateResults
-    } : null
+    const evalGates =
+      allGateResults.length > 0
+        ? {
+            summary: {
+              total: passCount + failCount,
+              passed: passCount,
+              failed: failCount
+            },
+            sceneResults: allGateResults
+          }
+        : null
 
-    const title = plan.storyArc.premise.length > 60
-      ? plan.storyArc.premise.slice(0, 60) + '...'
-      : plan.storyArc.premise
+    const title =
+      plan.storyArc.premise.length > 60
+        ? plan.storyArc.premise.slice(0, 60) + '...'
+        : plan.storyArc.premise
 
     return {
       title,
@@ -591,7 +680,7 @@ export function useStoryOrchestrator() {
         qualityScore: story.qualityScore,
         data: {
           arc: story.arc,
-          scenes: story.scenes.map(s => ({
+          scenes: story.scenes.map((s) => ({
             number: s.number,
             brief: s.brief,
             prose: s.prose,
@@ -612,14 +701,14 @@ export function useStoryOrchestrator() {
     const partialStory = {
       title: premise.length > 60 ? premise.slice(0, 60) + '...' : premise,
       arc: storyPlan.value?.storyArc || { premise, totalScenes: 0, totalEstimatedWords: 0 },
-      scenes: completedScenes.value.map(s => ({
+      scenes: completedScenes.value.map((s) => ({
         number: s.number,
         brief: s.brief,
         prose: s.prose,
         wordCount: s.wordCount,
         critiqueResult: s.critiqueResult
       })),
-      fullText: completedScenes.value.map(s => s.prose).join('\n\n'),
+      fullText: completedScenes.value.map((s) => s.prose).join('\n\n'),
       totalWords: completedScenes.value.reduce((sum, s) => sum + (s.wordCount || 0), 0),
       generatedAt: new Date().toISOString(),
       projectId,
@@ -652,7 +741,7 @@ export function useStoryOrchestrator() {
         const sectionTitle = `Chapter ${sectionIndex + 1}: ${groupScenes[0].brief.title}`
         const sectionId = await manuscriptStore.addSectionData(projectId, {
           title: sectionTitle,
-          summary: groupScenes.map(s => s.brief.whatChanges).join('; '),
+          summary: groupScenes.map((s) => s.brief.whatChanges).join('; '),
           status: 'writing'
         })
 

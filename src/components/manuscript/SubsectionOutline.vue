@@ -35,12 +35,16 @@ const searchQuery = ref('')
 const sortedSections = computed(() => manuscriptStore.sortedSections)
 const subsectionsBySection = computed(() => manuscriptStore.subsectionsBySection)
 const filteredSections = computed(() => {
-  return sortedSections.value.filter(section => {
+  return sortedSections.value.filter((section) => {
     const subsections = subsectionsBySection.value[section.id] || []
-    const matchesSearch = searchQuery.value === '' || 
+    const matchesSearch =
+      searchQuery.value === '' ||
       section.title?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      subsections.some(s => s.title?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                      s.summary?.toLowerCase().includes(searchQuery.value.toLowerCase()))
+      subsections.some(
+        (s) =>
+          s.title?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+          s.summary?.toLowerCase().includes(searchQuery.value.toLowerCase())
+      )
     const matchesStatus = filterStatus.value === 'all' || section.status === filterStatus.value
     return matchesSearch && matchesStatus
   })
@@ -76,7 +80,7 @@ function selectSection(sectionId) {
 
 function onSubsectionDragEnd(sectionId) {
   endDrag()
-  const subsectionIds = subsectionsBySection.value[sectionId]?.map(s => s.id) || []
+  const subsectionIds = subsectionsBySection.value[sectionId]?.map((s) => s.id) || []
   manuscriptStore.reorderSubsectionsData(subsectionIds, projectStore.currentProjectId)
 }
 
@@ -98,7 +102,10 @@ onMounted(() => {
         <span class="font-ui text-accent tracking-wide">Subsection Outline</span>
         <div class="flex gap-2">
           <button
-            v-for="mode in [{ value: 'sections', label: 'By Section' }, { value: 'list', label: 'List' }]"
+            v-for="mode in [
+              { value: 'sections', label: 'By Section' },
+              { value: 'list', label: 'List' }
+            ]"
             :key="mode.value"
             :class="[
               'px-2 py-1 text-xs rounded font-ui',
@@ -112,7 +119,7 @@ onMounted(() => {
           </button>
         </div>
       </div>
-      
+
       <div class="flex gap-2">
         <input
           v-model="searchQuery"
@@ -134,8 +141,16 @@ onMounted(() => {
     </div>
 
     <div class="flex-1 overflow-y-auto p-4">
-      <EmptyState v-if="sortedSections.length === 0" icon="folder-plus" title="No sections yet" description="Create sections in Section Manager to organize your subsections.">
-        <p class="text-xs text-text-hint font-ui mt-1">Tip: Press <kbd class="px-1.5 py-0.5 bg-bg-tertiary rounded text-2xs">8</kbd> to open Section Manager</p>
+      <EmptyState
+        v-if="sortedSections.length === 0"
+        icon="folder-plus"
+        title="No sections yet"
+        description="Create sections in Section Manager to organize your subsections."
+      >
+        <p class="text-xs text-text-hint font-ui mt-1">
+          Tip: Press <kbd class="px-1.5 py-0.5 bg-bg-tertiary rounded text-2xs">8</kbd> to open
+          Section Manager
+        </p>
       </EmptyState>
 
       <div v-else-if="viewMode === 'sections'" class="space-y-4">
@@ -161,30 +176,35 @@ onMounted(() => {
                   {{ section.title || `Section ${section.order + 1}` }}
                 </div>
                 <div class="text-xs text-text-hint font-ui">
-                  {{ getSectionTotalSubsections(section.id) }} subsections · {{ getSectionWordCount(section.id) }} words
+                  {{ getSectionTotalSubsections(section.id) }} subsections ·
+                  {{ getSectionWordCount(section.id) }} words
                 </div>
               </div>
             </div>
-            <BaseIcon :name="selectedSectionId === section.id ? 'chevron-down' : 'chevron-right'" :size="16" class="text-text-hint" />
+            <BaseIcon
+              :name="selectedSectionId === section.id ? 'chevron-down' : 'chevron-right'"
+              :size="16"
+              class="text-text-hint"
+            />
           </div>
 
-              <div v-if="selectedSectionId === section.id" class="border-t border-border-subtle">
-              <div class="p-2 bg-surface-hover flex justify-end">
-                <button
-                  class="px-2 py-1 text-xs text-accent hover:bg-accent/10 rounded font-ui"
-                  @click="openAddSubsection(section.id)"
-                >
-                  + Add Subsection
-                </button>
-              </div>
-
-              <draggable
-                :list="subsectionsBySection[section.id]"
-                item-key="id"
-                v-bind="dragOptions"
-                class="p-2 space-y-2 min-h-[50px]"
-                @end="() => onSubsectionDragEnd(section.id)"
+          <div v-if="selectedSectionId === section.id" class="border-t border-border-subtle">
+            <div class="p-2 bg-surface-hover flex justify-end">
+              <button
+                class="px-2 py-1 text-xs text-accent hover:bg-accent/10 rounded font-ui"
+                @click="openAddSubsection(section.id)"
               >
+                + Add Subsection
+              </button>
+            </div>
+
+            <draggable
+              :list="subsectionsBySection[section.id]"
+              item-key="id"
+              v-bind="dragOptions"
+              class="p-2 space-y-2 min-h-[50px]"
+              @end="() => onSubsectionDragEnd(section.id)"
+            >
               <template #item="{ element: subsection }">
                 <div
                   class="bg-bg-secondary rounded p-2 border border-border-subtle cursor-grab hover:border-accent/50 transition-colors group"
@@ -192,32 +212,51 @@ onMounted(() => {
                   <div class="flex items-start justify-between">
                     <div class="flex-1">
                       <div class="flex items-center gap-2">
-                        <BaseIcon name="grip-vertical" :size="14" class="text-text-hint cursor-grab" />
-          <span
-            class="text-sm font-medium font-ui cursor-pointer hover:text-accent"
-            :class="manuscriptStore.activeSubsectionId === subsection.id ? 'text-accent' : 'text-text-primary'"
-            @click.stop="manuscriptStore.setActiveSubsection(subsection.id); manuscriptStore.setActiveSection(subsection.sectionId)"
-          >{{ subsection.title || 'Untitled' }}</span>
-        </div>
-        <div v-if="subsection.summary" class="mt-1 text-xs text-text-hint font-ui pl-5">
-                        {{ subsection.summary.length > 80 ? subsection.summary.slice(0, 80) + '...' : subsection.summary }}
+                        <BaseIcon
+                          name="grip-vertical"
+                          :size="14"
+                          class="text-text-hint cursor-grab"
+                        />
+                        <span
+                          class="text-sm font-medium font-ui cursor-pointer hover:text-accent"
+                          :class="
+                            manuscriptStore.activeSubsectionId === subsection.id
+                              ? 'text-accent'
+                              : 'text-text-primary'
+                          "
+                          @click.stop="
+                            manuscriptStore.setActiveSubsection(subsection.id)
+                            manuscriptStore.setActiveSection(subsection.sectionId)
+                          "
+                          >{{ subsection.title || 'Untitled' }}</span
+                        >
+                      </div>
+                      <div
+                        v-if="subsection.summary"
+                        class="mt-1 text-xs text-text-hint font-ui pl-5"
+                      >
+                        {{
+                          subsection.summary.length > 80
+                            ? subsection.summary.slice(0, 80) + '...'
+                            : subsection.summary
+                        }}
                       </div>
                     </div>
                     <div class="flex items-center gap-1">
-                        <button
-                          class="px-2 py-1 text-xs text-text-hint hover:text-text-secondary font-ui"
-                          title="Edit subsection"
-                          @click="openEditSubsection(subsection)"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          class="px-2 py-1 text-xs text-danger hover:bg-danger/10 font-ui"
-                          title="Delete subsection"
-                          @click="deleteSubsection(subsection)"
-                        >
-                          <BaseIcon name="x" :size="12" />
-                        </button>
+                      <button
+                        class="px-2 py-1 text-xs text-text-hint hover:text-text-secondary font-ui"
+                        title="Edit subsection"
+                        @click="openEditSubsection(subsection)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        class="px-2 py-1 text-xs text-danger hover:bg-danger/10 font-ui"
+                        title="Delete subsection"
+                        @click="deleteSubsection(subsection)"
+                      >
+                        <BaseIcon name="x" :size="12" />
+                      </button>
                     </div>
                   </div>
                   <div class="mt-1 pl-5 text-2xs text-text-hint font-ui">
@@ -227,9 +266,11 @@ onMounted(() => {
               </template>
             </draggable>
 
-              <div v-if="!subsectionsBySection[section.id]?.length" class="p-4 text-center">
-                <p class="text-xs text-text-hint font-ui">Drag subsections here or click "Add Subsection"</p>
-              </div>
+            <div v-if="!subsectionsBySection[section.id]?.length" class="p-4 text-center">
+              <p class="text-xs text-text-hint font-ui">
+                Drag subsections here or click "Add Subsection"
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -249,9 +290,15 @@ onMounted(() => {
               {{ getSubsectionWordCount(subsection) }} words
             </span>
           </div>
-          <div class="font-medium text-text-primary font-ui">{{ subsection.title || 'Untitled' }}</div>
+          <div class="font-medium text-text-primary font-ui">
+            {{ subsection.title || 'Untitled' }}
+          </div>
           <div v-if="subsection.summary" class="mt-1 text-xs text-text-hint font-ui">
-            {{ subsection.summary.length > 100 ? subsection.summary.slice(0, 100) + '...' : subsection.summary }}
+            {{
+              subsection.summary.length > 100
+                ? subsection.summary.slice(0, 100) + '...'
+                : subsection.summary
+            }}
           </div>
         </div>
       </div>
@@ -262,17 +309,18 @@ onMounted(() => {
         <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
           {{ editingSubsection ? 'Edit Subsection' : 'New Subsection' }}
         </h3>
-        
+
         <div v-if="!editingSubsection" class="mb-3 text-xs text-text-hint font-ui">
-          Adding to: {{ sortedSections.find(s => s.id === activeSectionId)?.title || 'Unknown Section' }}
+          Adding to:
+          {{ sortedSections.find((s) => s.id === activeSectionId)?.title || 'Unknown Section' }}
         </div>
 
         <div class="mb-3">
-              <label class="block text-xs text-text-hint font-ui mb-1">Subsection Title</label>
+          <label class="block text-xs text-text-hint font-ui mb-1">Subsection Title</label>
           <input
             v-model="newSubsection.title"
             type="text"
-              placeholder="What happens in this subsection?"
+            placeholder="What happens in this subsection?"
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
           />
         </div>
@@ -282,7 +330,7 @@ onMounted(() => {
           <textarea
             v-model="newSubsection.summary"
             rows="4"
-              placeholder="Key beats and moments in this subsection..."
+            placeholder="Key beats and moments in this subsection..."
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
           ></textarea>
         </div>

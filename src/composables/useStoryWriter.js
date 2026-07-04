@@ -109,15 +109,21 @@ function tryExtractProse(raw) {
     if (raw[i] === '"') {
       let bs = 0
       while (i - bs - 1 >= 0 && raw[i - bs - 1] === '\\') bs++
-      if (bs % 2 === 0) { proseEnd = i; break }
+      if (bs % 2 === 0) {
+        proseEnd = i
+        break
+      }
     }
     i--
   }
   if (proseEnd === -1) return ''
 
-  return raw.slice(afterKey, proseEnd)
-    .replace(/\\"/g, '"').replace(/\\n/g, '\n')
-    .replace(/\\t/g, '\t').replace(/\\\\/g, '\\')
+  return raw
+    .slice(afterKey, proseEnd)
+    .replace(/\\"/g, '"')
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t')
+    .replace(/\\\\/g, '\\')
 }
 
 function tryExtractStructured(raw) {
@@ -137,12 +143,16 @@ function tryExtractStructured(raw) {
       if (valueStart === -1) continue
       const openChar = raw[valueStart]
       const closeChar = openChar === '{' ? '}' : ']'
-      let depth = 0, endIdx = -1
+      let depth = 0,
+        endIdx = -1
       for (let i = valueStart; i < raw.length; i++) {
         if (raw[i] === openChar) depth++
         else if (raw[i] === closeChar) {
           depth--
-          if (depth === 0) { endIdx = i; break }
+          if (depth === 0) {
+            endIdx = i
+            break
+          }
         }
       }
       if (endIdx === -1) continue
@@ -157,7 +167,20 @@ export function useStoryWriter() {
   const isWriting = ref(false)
   const writeError = ref(null)
 
-  async function writeScene({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, voiceProfile, completedScenes, characters }) {
+  async function writeScene({
+    sceneBrief,
+    storyArc,
+    chapterLog,
+    storyBible,
+    onChunk,
+    embeddingContext,
+    storyContract,
+    rejectedPatterns: extraRejected,
+    existingEntitiesJson,
+    voiceProfile,
+    completedScenes,
+    characters
+  }) {
     isWriting.value = true
     writeError.value = null
 
@@ -171,27 +194,34 @@ export function useStoryWriter() {
       const voiceInstruction = profileResult?.voiceInstruction || styleGuide || FALLBACK_VOICE
       const profileStyleGuide = profileResult?.styleGuide || ''
 
-      const sceneContext = completedScenes?.length > 0 ? buildSceneContext({
-        completedScenes,
-        characters: characters || [],
-        currentSceneIndex: sceneBrief.sceneNumber || 0
-      }) : embeddingContext || ''
+      const sceneContext =
+        completedScenes?.length > 0
+          ? buildSceneContext({
+              completedScenes,
+              characters: characters || [],
+              currentSceneIndex: sceneBrief.sceneNumber || 0
+            })
+          : embeddingContext || ''
 
       const allRejected = []
       if (rejectedPatterns) allRejected.push(rejectedPatterns)
       if (extraRejected && extraRejected.length > 0) {
-        allRejected.push(extraRejected.map((p, i) =>
-          `${i + 1}. Context: "${p.context}" — AVOID generating similar content`
-        ).join('\n'))
+        allRejected.push(
+          extraRejected
+            .map((p, i) => `${i + 1}. Context: "${p.context}" — AVOID generating similar content`)
+            .join('\n')
+        )
       }
-      const antiPatterns = allRejected.length > 0
-        ? `AVOID producing output resembling these rejected examples:\n${allRejected.join('\n')}`
-        : ''
+      const antiPatterns =
+        allRejected.length > 0
+          ? `AVOID producing output resembling these rejected examples:\n${allRejected.join('\n')}`
+          : ''
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
-      const activeCraftRules = categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
+      const activeCraftRules =
+        categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
       const voiceConstraint = activeCraftRules
         ? `IMPORTANT: Apply the following voice guidance within the craft constraints above. The craft constraints are hard rules and take priority.\n\n`
@@ -209,29 +239,36 @@ Write ONLY the detailed content for this section. Do not summarize. Start writin
 
       const logSummary = summarizeLog(chapterLog)
 
-      const contractSection = storyContract ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n` : ''
+      const contractSection = storyContract
+        ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n`
+        : ''
 
-      const briefLines = sceneBrief.emotionalGoal !== undefined
-        ? [
-            `- Emotional goal: ${sceneBrief.emotionalGoal}`,
-            `- What changes: ${sceneBrief.whatChanges}`,
-            ...(sceneBrief.pov ? [`- POV: write this scene strictly from ${sceneBrief.pov}'s point of view — do not head-hop into other characters' thoughts`] : []),
-            `- Characters present: ${(sceneBrief.charactersPresent || []).join(', ')}`,
-            `- Character wants: ${JSON.stringify(sceneBrief.characterWants || {}, null, 2)}`,
-            `- Setup to plant: ${sceneBrief.setup || ''}`,
-            `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
-            `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
-            `- Tension: ${sceneBrief.tension || 'medium'}`,
-            `- Pacing: ${sceneBrief.pacing || 'medium'}`
-          ]
-        : [
-            `- Goal: ${sceneBrief.goal || ''}`,
-            `- Obstacle: ${sceneBrief.obstacle || ''}`,
-            `- Characters: ${(sceneBrief.characters || []).join(', ')}`,
-            `- Location: ${sceneBrief.location || ''}`,
-            `- What changes: ${sceneBrief.change || ''}`,
-            `- Tone note: ${sceneBrief.toneNote || ''}`
-          ]
+      const briefLines =
+        sceneBrief.emotionalGoal !== undefined
+          ? [
+              `- Emotional goal: ${sceneBrief.emotionalGoal}`,
+              `- What changes: ${sceneBrief.whatChanges}`,
+              ...(sceneBrief.pov
+                ? [
+                    `- POV: write this scene strictly from ${sceneBrief.pov}'s point of view — do not head-hop into other characters' thoughts`
+                  ]
+                : []),
+              `- Characters present: ${(sceneBrief.charactersPresent || []).join(', ')}`,
+              `- Character wants: ${JSON.stringify(sceneBrief.characterWants || {}, null, 2)}`,
+              `- Setup to plant: ${sceneBrief.setup || ''}`,
+              `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
+              `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
+              `- Tension: ${sceneBrief.tension || 'medium'}`,
+              `- Pacing: ${sceneBrief.pacing || 'medium'}`
+            ]
+          : [
+              `- Goal: ${sceneBrief.goal || ''}`,
+              `- Obstacle: ${sceneBrief.obstacle || ''}`,
+              `- Characters: ${(sceneBrief.characters || []).join(', ')}`,
+              `- Location: ${sceneBrief.location || ''}`,
+              `- What changes: ${sceneBrief.change || ''}`,
+              `- Tone note: ${sceneBrief.toneNote || ''}`
+            ]
 
       const briefSection = briefLines.join('\n')
 
@@ -267,10 +304,15 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       let fullText = ''
 
       if (onChunk) {
-        await aiStream(userPrompt, systemPrompt, (chunk) => {
-          fullText += chunk
-          onChunk(chunk, fullText)
-        }, { feature: FEATURES.STORY_GENERATION })
+        await aiStream(
+          userPrompt,
+          systemPrompt,
+          (chunk) => {
+            fullText += chunk
+            onChunk(chunk, fullText)
+          },
+          { feature: FEATURES.STORY_GENERATION }
+        )
       } else {
         fullText = await aiGenerate(userPrompt, systemPrompt, {
           feature: FEATURES.STORY_GENERATION
@@ -286,7 +328,25 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     }
   }
 
-  async function writeSceneStructured({ sceneBrief, storyArc, chapterLog, storyBible, onChunk, onRawChunk, embeddingContext, storyContract, rejectedPatterns: extraRejected, existingEntitiesJson, spineContext, anchorRole, anchorConstraints, pastEvalResults, voiceProfile, completedScenes, characters }) {
+  async function writeSceneStructured({
+    sceneBrief,
+    storyArc,
+    chapterLog,
+    storyBible,
+    onChunk,
+    onRawChunk,
+    embeddingContext,
+    storyContract,
+    rejectedPatterns: extraRejected,
+    existingEntitiesJson,
+    spineContext,
+    anchorRole,
+    anchorConstraints,
+    pastEvalResults,
+    voiceProfile,
+    completedScenes,
+    characters
+  }) {
     isWriting.value = true
     writeError.value = null
 
@@ -302,27 +362,34 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       const voiceInstruction = profileResult?.voiceInstruction || styleGuide || FALLBACK_VOICE
       const profileStyleGuide = profileResult?.styleGuide || ''
 
-      const sceneContext = completedScenes?.length > 0 ? buildSceneContext({
-        completedScenes,
-        characters: characters || [],
-        currentSceneIndex: sceneBrief.sceneNumber || 0
-      }) : embeddingContext || ''
+      const sceneContext =
+        completedScenes?.length > 0
+          ? buildSceneContext({
+              completedScenes,
+              characters: characters || [],
+              currentSceneIndex: sceneBrief.sceneNumber || 0
+            })
+          : embeddingContext || ''
 
       const allRejected = []
       if (rejectedPatterns) allRejected.push(rejectedPatterns)
       if (extraRejected && extraRejected.length > 0) {
-        allRejected.push(extraRejected.map((p, i) =>
-          `${i + 1}. Context: "${p.context}" — AVOID generating similar content`
-        ).join('\n'))
+        allRejected.push(
+          extraRejected
+            .map((p, i) => `${i + 1}. Context: "${p.context}" — AVOID generating similar content`)
+            .join('\n')
+        )
       }
-      const antiPatterns = allRejected.length > 0
-        ? `AVOID producing output resembling these rejected examples:\n${allRejected.join('\n')}`
-        : ''
+      const antiPatterns =
+        allRejected.length > 0
+          ? `AVOID producing output resembling these rejected examples:\n${allRejected.join('\n')}`
+          : ''
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
-      const activeCraftRules = categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
+      const activeCraftRules =
+        categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
       const voiceConstraint = activeCraftRules
         ? `IMPORTANT: Apply the following voice guidance within the craft constraints above. The craft constraints are hard rules and take priority.\n\n`
@@ -341,30 +408,37 @@ Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside t
 
       const logSummary = summarizeLog(chapterLog)
 
-      const contractSection = storyContract ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n` : ''
+      const contractSection = storyContract
+        ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n`
+        : ''
 
-      const briefLines = sceneBrief.emotionalGoal !== undefined
-        ? [
-            `- Emotional goal: ${sceneBrief.emotionalGoal}`,
-            `- What changes: ${sceneBrief.whatChanges}`,
-            ...(sceneBrief.pov ? [`- POV: write this scene strictly from ${sceneBrief.pov}'s point of view — do not head-hop into other characters' thoughts`] : []),
-            `- Characters present: ${(sceneBrief.charactersPresent || []).join(', ')}`,
-            `- Character wants: ${JSON.stringify(sceneBrief.characterWants || {}, null, 2)}`,
-            `- Setup to plant: ${sceneBrief.setup || ''}`,
-            `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
-            `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
-            `- Tension: ${sceneBrief.tension || 'medium'}`,
-            `- Pacing: ${sceneBrief.pacing || 'medium'}`,
-            `- Arc position: ${sceneBrief.arcPosition || ''}`
-          ]
-        : [
-            `- Goal: ${sceneBrief.goal || ''}`,
-            `- Obstacle: ${sceneBrief.obstacle || ''}`,
-            `- Characters: ${(sceneBrief.characters || []).join(', ')}`,
-            `- Location: ${sceneBrief.location || ''}`,
-            `- What changes: ${sceneBrief.change || ''}`,
-            `- Tone note: ${sceneBrief.toneNote || ''}`
-          ]
+      const briefLines =
+        sceneBrief.emotionalGoal !== undefined
+          ? [
+              `- Emotional goal: ${sceneBrief.emotionalGoal}`,
+              `- What changes: ${sceneBrief.whatChanges}`,
+              ...(sceneBrief.pov
+                ? [
+                    `- POV: write this scene strictly from ${sceneBrief.pov}'s point of view — do not head-hop into other characters' thoughts`
+                  ]
+                : []),
+              `- Characters present: ${(sceneBrief.charactersPresent || []).join(', ')}`,
+              `- Character wants: ${JSON.stringify(sceneBrief.characterWants || {}, null, 2)}`,
+              `- Setup to plant: ${sceneBrief.setup || ''}`,
+              `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
+              `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
+              `- Tension: ${sceneBrief.tension || 'medium'}`,
+              `- Pacing: ${sceneBrief.pacing || 'medium'}`,
+              `- Arc position: ${sceneBrief.arcPosition || ''}`
+            ]
+          : [
+              `- Goal: ${sceneBrief.goal || ''}`,
+              `- Obstacle: ${sceneBrief.obstacle || ''}`,
+              `- Characters: ${(sceneBrief.characters || []).join(', ')}`,
+              `- Location: ${sceneBrief.location || ''}`,
+              `- What changes: ${sceneBrief.change || ''}`,
+              `- Tone note: ${sceneBrief.toneNote || ''}`
+            ]
 
       const briefSection = briefLines.join('\n')
 
@@ -375,8 +449,12 @@ Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside t
         ? `\nEXISTING WORLD CONTEXT:\n${existingEntitiesJson}\n`
         : ''
 
-      const anchorSection = anchorRole ? `\nANCHOR ROLE: ${anchorRole}\n${anchorConstraints || ''}\n` : ''
-      const spineSection = spineContext ? `\nNOVEL SPINE (read this to maintain cross-chapter coherence):\n${spineContext}\n` : ''
+      const anchorSection = anchorRole
+        ? `\nANCHOR ROLE: ${anchorRole}\n${anchorConstraints || ''}\n`
+        : ''
+      const spineSection = spineContext
+        ? `\nNOVEL SPINE (read this to maintain cross-chapter coherence):\n${spineContext}\n`
+        : ''
 
       const userPrompt = `${contractSection}${spineSection}${anchorSection}
 Write scene ${sceneId}: "${sceneTitle}"
@@ -435,42 +513,48 @@ CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes in
         const END_MARKERS = ['"usedEntities"', '"newEntities"', '"networkEvents"']
         let recentTail = '' // rolling window for end-of-prose detection
 
-        await aiStream(userPrompt, systemPrompt, (chunk) => {
-          accumulated += chunk
-          if (onRawChunk) onRawChunk(chunk)
-          if (proseEnded) return
+        await aiStream(
+          userPrompt,
+          systemPrompt,
+          (chunk) => {
+            accumulated += chunk
+            if (onRawChunk) onRawChunk(chunk)
+            if (proseEnded) return
 
-          if (!proseStarted) {
-            pendingPrefix += chunk
-            const proseKey = '"prose"'
-            const keyIdx = pendingPrefix.indexOf(proseKey)
-            if (keyIdx !== -1) {
-              proseStarted = true
-              const colonIdx = pendingPrefix.indexOf(':', keyIdx + proseKey.length)
-              if (colonIdx !== -1) {
-                const quoteIdx = pendingPrefix.indexOf('"', colonIdx + 1)
-                if (quoteIdx !== -1) {
-                  const remainder = pendingPrefix.slice(quoteIdx + 1)
-                  if (remainder.length > 0) onChunk(remainder, remainder)
+            if (!proseStarted) {
+              pendingPrefix += chunk
+              const proseKey = '"prose"'
+              const keyIdx = pendingPrefix.indexOf(proseKey)
+              if (keyIdx !== -1) {
+                proseStarted = true
+                const colonIdx = pendingPrefix.indexOf(':', keyIdx + proseKey.length)
+                if (colonIdx !== -1) {
+                  const quoteIdx = pendingPrefix.indexOf('"', colonIdx + 1)
+                  if (quoteIdx !== -1) {
+                    const remainder = pendingPrefix.slice(quoteIdx + 1)
+                    if (remainder.length > 0) onChunk(remainder, remainder)
+                  }
+                }
+                pendingPrefix = '' // free memory
+              }
+            } else {
+              // Check rolling tail for structural key (end of prose value)
+              recentTail = (recentTail + chunk).slice(-40)
+              for (const marker of END_MARKERS) {
+                if (recentTail.includes(marker)) {
+                  proseEnded = true
+                  return
                 }
               }
-              pendingPrefix = '' // free memory
+              onChunk(chunk, chunk)
             }
-          } else {
-            // Check rolling tail for structural key (end of prose value)
-            recentTail = (recentTail + chunk).slice(-40)
-            for (const marker of END_MARKERS) {
-              if (recentTail.includes(marker)) {
-                proseEnded = true
-                return
-              }
-            }
-            onChunk(chunk, chunk)
-          }
-        }, { feature: FEATURES.STORY_GENERATION, maxTokens })
+          },
+          { feature: FEATURES.STORY_GENERATION, maxTokens }
+        )
       } else {
         accumulated = await aiGenerate(userPrompt, systemPrompt, {
-          feature: FEATURES.STORY_GENERATION, maxTokens
+          feature: FEATURES.STORY_GENERATION,
+          maxTokens
         })
       }
 

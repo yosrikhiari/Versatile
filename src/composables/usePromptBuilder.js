@@ -6,26 +6,27 @@ import { summarizeLog } from '../utils/promptUtils'
  * @returns {string}
  */
 function buildBriefSection(sceneBrief) {
-  const lines = sceneBrief.emotionalGoal !== undefined
-    ? [
-        `- Emotional goal: ${sceneBrief.emotionalGoal}`,
-        `- What changes: ${sceneBrief.whatChanges}`,
-        `- Characters present: ${(sceneBrief.charactersPresent || []).join(', ')}`,
-        `- Character wants: ${JSON.stringify(sceneBrief.characterWants || {}, null, 2)}`,
-        `- Setup to plant: ${sceneBrief.setup || ''}`,
-        `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
-        `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
-        `- Tension: ${sceneBrief.tension || 'medium'}`,
-        `- Pacing: ${sceneBrief.pacing || 'medium'}`
-      ]
-    : [
-        `- Goal: ${sceneBrief.goal || ''}`,
-        `- Obstacle: ${sceneBrief.obstacle || ''}`,
-        `- Characters: ${(sceneBrief.characters || []).join(', ')}`,
-        `- Location: ${sceneBrief.location || ''}`,
-        `- What changes: ${sceneBrief.change || ''}`,
-        `- Tone note: ${sceneBrief.toneNote || ''}`
-      ]
+  const lines =
+    sceneBrief.emotionalGoal !== undefined
+      ? [
+          `- Emotional goal: ${sceneBrief.emotionalGoal}`,
+          `- What changes: ${sceneBrief.whatChanges}`,
+          `- Characters present: ${(sceneBrief.charactersPresent || []).join(', ')}`,
+          `- Character wants: ${JSON.stringify(sceneBrief.characterWants || {}, null, 2)}`,
+          `- Setup to plant: ${sceneBrief.setup || ''}`,
+          `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
+          `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
+          `- Tension: ${sceneBrief.tension || 'medium'}`,
+          `- Pacing: ${sceneBrief.pacing || 'medium'}`
+        ]
+      : [
+          `- Goal: ${sceneBrief.goal || ''}`,
+          `- Obstacle: ${sceneBrief.obstacle || ''}`,
+          `- Characters: ${(sceneBrief.characters || []).join(', ')}`,
+          `- Location: ${sceneBrief.location || ''}`,
+          `- What changes: ${sceneBrief.change || ''}`,
+          `- Tone note: ${sceneBrief.toneNote || ''}`
+        ]
 
   if (sceneBrief.emotionalGoal !== undefined && sceneBrief.arcPosition) {
     lines.push(`- Arc position: ${sceneBrief.arcPosition}`)
@@ -72,7 +73,14 @@ CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes in
  * @param {string} params.proseStyleGuide
  * @returns {string}
  */
-function buildSystemPrompt({ categoryType = 'creative', voiceInstruction, antiPatterns, activeCraftRules, pastEvalResults, proseStyleGuide }) {
+function buildSystemPrompt({
+  categoryType = 'creative',
+  voiceInstruction,
+  antiPatterns,
+  activeCraftRules,
+  pastEvalResults,
+  proseStyleGuide
+}) {
   const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
 
   const base = `${activePrompts.writer}
@@ -114,7 +122,23 @@ Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside t
  * @param {string} [params.logSummary]
  * @returns {string}
  */
-function buildUserPrompt({ sceneBrief, storyArc, chapterLog, sceneId, sceneTitle, contractSection, embeddingContext, existingEntitiesJson, charactersSection, worldSection, spineSection, anchorSection, estimatedWords = 800, isStructuredMode = false, logSummary }) {
+function buildUserPrompt({
+  sceneBrief,
+  storyArc,
+  chapterLog,
+  sceneId,
+  sceneTitle,
+  contractSection,
+  embeddingContext,
+  existingEntitiesJson,
+  charactersSection,
+  worldSection,
+  spineSection,
+  anchorSection,
+  estimatedWords = 800,
+  isStructuredMode = false,
+  logSummary
+}) {
   const log = logSummary !== undefined ? logSummary : summarizeLog(chapterLog)
   const logText = log || '(This is the first scene — nothing has happened yet.)'
   const briefSection = buildBriefSection(sceneBrief)
@@ -174,5 +198,11 @@ ${buildJsonOutputInstructions(sceneId)}`
 }
 
 export function usePromptBuilder() {
-  return { buildSystemPrompt, buildUserPrompt, summarizeLog, buildBriefSection, buildJsonOutputInstructions }
+  return {
+    buildSystemPrompt,
+    buildUserPrompt,
+    summarizeLog,
+    buildBriefSection,
+    buildJsonOutputInstructions
+  }
 }

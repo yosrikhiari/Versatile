@@ -1,19 +1,19 @@
 // Re-export everything from modular db service files
 export { db, deepPlain } from './db-core'
-export { 
-  createProject, 
-  updateProject, 
-  getProject, 
-  getAllProjects, 
-  getManuscript, 
+export {
+  createProject,
+  updateProject,
+  getProject,
+  getAllProjects,
+  getManuscript,
   saveManuscript,
   updateProjectMeta
 } from './db-projects'
-export { 
-  getCharacters, 
-  addCharacter, 
-  updateCharacter, 
-  updateCharacterPortrait, 
+export {
+  getCharacters,
+  addCharacter,
+  updateCharacter,
+  updateCharacterPortrait,
   getCharacterPortrait,
   deleteCharacter,
   getLocations,
@@ -115,11 +115,7 @@ export {
   getStreakData,
   getLastSessionData
 } from './db-goals'
-export {
-  exportProject,
-  importProject,
-  exportToPDF
-} from './db-export'
+export { exportProject, importProject, exportToPDF } from './db-export'
 export {
   getSnapshots,
   addSnapshot,

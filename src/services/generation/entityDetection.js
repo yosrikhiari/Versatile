@@ -46,6 +46,10 @@ Be concise and only extract what is clearly present in the text.`
     }
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }

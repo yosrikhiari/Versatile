@@ -39,25 +39,37 @@ function toggleMode() {
 
 <template>
   <div class="min-h-[100dvh] bg-manuscript ambient-glow grain flex">
-    <div class="hidden lg:flex w-1/2 flex-col justify-center items-center p-12 relative overflow-hidden">
+    <div
+      class="hidden lg:flex w-1/2 flex-col justify-center items-center p-12 relative overflow-hidden"
+    >
       <div class="relative z-10 text-center max-w-md">
-        <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl liquid-glass mb-8">
+        <div
+          class="inline-flex items-center justify-center w-20 h-20 rounded-2xl liquid-glass mb-8"
+        >
           <BaseIcon name="feather" :size="40" class="text-accent" />
         </div>
         <h1 class="text-4xl font-bold text-text-primary mb-3 font-display">Versatile</h1>
-        <p class="text-text-secondary text-lg leading-relaxed">A fiction writing assistant designed for focus, flow, and craft.</p>
+        <p class="text-text-secondary text-lg leading-relaxed">
+          A fiction writing assistant designed for focus, flow, and craft.
+        </p>
         <div class="mt-12 space-y-4 text-left">
           <div class="flex items-start gap-3">
             <BaseIcon name="check-circle" :size="18" class="text-accent mt-0.5 shrink-0" />
-            <span class="text-text-secondary text-sm">Distraction-free manuscript editing with a monospaced canvas</span>
+            <span class="text-text-secondary text-sm"
+              >Distraction-free manuscript editing with a monospaced canvas</span
+            >
           </div>
           <div class="flex items-start gap-3">
             <BaseIcon name="check-circle" :size="18" class="text-accent mt-0.5 shrink-0" />
-            <span class="text-text-secondary text-sm">AI-powered revision, polish, and story analysis tools</span>
+            <span class="text-text-secondary text-sm"
+              >AI-powered revision, polish, and story analysis tools</span
+            >
           </div>
           <div class="flex items-start gap-3">
             <BaseIcon name="check-circle" :size="18" class="text-accent mt-0.5 shrink-0" />
-            <span class="text-text-secondary text-sm">Character webs, timeline maps, and storybible management</span>
+            <span class="text-text-secondary text-sm"
+              >Character webs, timeline maps, and storybible management</span
+            >
           </div>
         </div>
       </div>
@@ -73,8 +85,12 @@ function toggleMode() {
           </div>
 
           <div class="liquid-glass rounded-xl p-8">
-            <h2 class="text-xl font-semibold text-text-primary mb-1">{{ isRegistering ? 'Create your account' : 'Sign in' }}</h2>
-            <p class="text-sm text-text-secondary mb-6">{{ isRegistering ? 'Start your writing journey' : 'Welcome back' }}</p>
+            <h2 class="text-xl font-semibold text-text-primary mb-1">
+              {{ isRegistering ? 'Create your account' : 'Sign in' }}
+            </h2>
+            <p class="text-sm text-text-secondary mb-6">
+              {{ isRegistering ? 'Start your writing journey' : 'Welcome back' }}
+            </p>
 
             <form class="space-y-4" @submit.prevent="handleSubmit">
               <div>
@@ -124,8 +140,19 @@ function toggleMode() {
               >
                 <template v-if="isSubmitting">
                   <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    />
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
                   </svg>
                   Please wait...
                 </template>
@@ -137,7 +164,10 @@ function toggleMode() {
 
             <p class="text-sm text-text-secondary text-center mt-6">
               {{ isRegistering ? 'Already have an account?' : "Don't have an account?" }}
-              <button class="text-accent hover:underline focus:outline-none ml-1" @click="toggleMode">
+              <button
+                class="text-accent hover:underline focus:outline-none ml-1"
+                @click="toggleMode"
+              >
                 {{ isRegistering ? 'Sign in' : 'Create one' }}
               </button>
             </p>

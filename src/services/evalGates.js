@@ -12,12 +12,15 @@ export function gateDimensionCoverage(critiqueResult, workspaceType) {
   if (!cfg.enabled) return { pass: true, failOn: 'none', missing: [], warnings: [] }
 
   const expectedDims = getDimensionNames(workspaceType)
-  if (!expectedDims || expectedDims.length === 0) return { pass: true, failOn: 'none', missing: [], warnings: [] }
+  if (!expectedDims || expectedDims.length === 0)
+    return { pass: true, failOn: 'none', missing: [], warnings: [] }
 
   const issues = critiqueResult?.issues || []
-  const coveredDims = new Set(issues.map(i => i.type))
-  const missing = expectedDims.filter(d => !coveredDims.has(d))
-  const warnings = missing.map(d => `Dimension "${d}" has no issues — evaluation may lack coverage`)
+  const coveredDims = new Set(issues.map((i) => i.type))
+  const missing = expectedDims.filter((d) => !coveredDims.has(d))
+  const warnings = missing.map(
+    (d) => `Dimension "${d}" has no issues — evaluation may lack coverage`
+  )
 
   return {
     pass: missing.length === 0 || cfg.strict === false,
@@ -46,7 +49,7 @@ export function gateScoreDistribution(critiqueResult) {
   }
 
   const issues = critiqueResult?.issues || []
-  const majorIssues = issues.filter(i => i.severity === 'major')
+  const majorIssues = issues.filter((i) => i.severity === 'major')
   if (score >= 9 && majorIssues.length > 2) {
     flags.push(`High score (${score}) with ${majorIssues.length} major issues — possible mismatch`)
   }
@@ -61,7 +64,12 @@ export function gateScoreDistribution(critiqueResult) {
   }
 }
 
-export async function gateRevisionEffectiveness(originalCritique, revisionDraft, originalDraft, revisionCritiqueResult) {
+export async function gateRevisionEffectiveness(
+  originalCritique,
+  revisionDraft,
+  originalDraft,
+  revisionCritiqueResult
+) {
   const cfg = EVAL_GATE_CONFIG.revisionEffectiveness
   if (!cfg.enabled) return { pass: true, failOn: 'none', delta: 0, regressions: [] }
 

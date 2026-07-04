@@ -7,14 +7,14 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'underline',
-    validator: v => ['underline', 'pill', 'segment'].includes(v)
+    validator: (v) => ['underline', 'pill', 'segment'].includes(v)
   },
   active: Boolean,
   disabled: Boolean,
   size: {
     type: String,
     default: 'md',
-    validator: v => ['sm', 'md'].includes(v)
+    validator: (v) => ['sm', 'md'].includes(v)
   },
   customClass: {
     type: String,
@@ -22,12 +22,16 @@ const props = defineProps({
   }
 })
 
-const baseClasses = 'font-ui font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-inset'
+const baseClasses =
+  'font-ui font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-inset'
 
-const sizeClasses = computed(() => ({
-  sm: 'text-11px px-2 py-1.5',
-  md: 'text-xs px-3 py-2'
-}[props.size]))
+const sizeClasses = computed(
+  () =>
+    ({
+      sm: 'text-11px px-2 py-1.5',
+      md: 'text-xs px-3 py-2'
+    })[props.size]
+)
 
 const variantClasses = computed(() => {
   switch (props.variant) {

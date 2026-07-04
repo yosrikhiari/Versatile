@@ -57,11 +57,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    ref="scrollContainer"
-    class="virtual-scroll-container"
-    @scroll="onScroll"
-  >
+  <div ref="scrollContainer" class="virtual-scroll-container" @scroll="onScroll">
     <div class="virtual-scroll-spacer" :style="{ height: totalHeight + 'px' }">
       <div class="virtual-scroll-content" :style="{ transform: 'translateY(' + offsetY + 'px)' }">
         <div v-for="{ item, index } in visibleItems" :key="item[keyProp] ?? index">

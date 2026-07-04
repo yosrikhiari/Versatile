@@ -9,31 +9,36 @@ export function deepPlain(obj) {
 
 export const db = new Dexie('VersatileDB')
 
-db.version(11).stores({
-  projects: '++id, name, createdAt, updatedAt, genre, synopsis',
-  manuscripts: '++id, projectId, content, wordCount, updatedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes',
-  locations: '++id, projectId, name, description, notes',
-  plotThreads: '++id, projectId, title, status, notes',
-  chapters: '++id, projectId, title, summary, order, status, *tags, volumeId',
-  scenes: '++id, projectId, chapterId, title, summary, order, content, *tags',
-  sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
-  annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
-  snippets: '++id, projectId, word, count, lastSeen',
-  dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
-  storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
-  groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
-  nodePositions: '++id, projectId',
-  graphGroups: '++id, projectId',
-  snapshots: '++id, projectId, chapterId, timestamp, label',
-  volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
-}).upgrade(async (trans) => {
-  await trans.graphEdges.toCollection().modify({ volumeId: null })
-})
+db.version(11)
+  .stores({
+    projects: '++id, name, createdAt, updatedAt, genre, synopsis',
+    manuscripts: '++id, projectId, content, wordCount, updatedAt',
+    characters: '++id, projectId, name, role, goal, voice, notes, color',
+    characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes',
+    locations: '++id, projectId, name, description, notes',
+    plotThreads: '++id, projectId, title, status, notes',
+    chapters: '++id, projectId, title, summary, order, status, *tags, volumeId',
+    scenes: '++id, projectId, chapterId, title, summary, order, content, *tags',
+    sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
+    annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
+    snippets: '++id, projectId, word, count, lastSeen',
+    dailyGoals: '++id, projectId, date, [projectId+date]',
+    revisionComments:
+      '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+    storyElements: '++id, projectId, type, title, x, y, width, height, data',
+    graphEdges:
+      '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+    groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
+    nodePositions: '++id, projectId',
+    graphGroups: '++id, projectId',
+    snapshots: '++id, projectId, chapterId, timestamp, label',
+    volumes: '++id, projectId, title, description, color, chapterIds',
+    volumeEntities:
+      '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
+  })
+  .upgrade(async (trans) => {
+    await trans.graphEdges.toCollection().modify({ volumeId: null })
+  })
 
 db.version(12).stores({
   projects: '++id, name, createdAt, updatedAt, genre, synopsis',
@@ -48,70 +53,78 @@ db.version(12).stores({
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
 })
 
-db.version(13).stores({
-  projects: '++id, name, createdAt, updatedAt, genre, synopsis',
-  manuscripts: '++id, projectId, content, wordCount, updatedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes',
-  locations: '++id, projectId, name, description, notes',
-  plotThreads: '++id, projectId, title, status, notes',
-  chapters: '++id, projectId, title, summary, order, status, *tags, volumeId',
-  scenes: '++id, projectId, chapterId, title, summary, order, content, *tags',
-  sections: '++id, projectId, title, summary, order, status, *tags, volumeId',
-  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags',
-  sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
-  annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
-  snippets: '++id, projectId, word, count, lastSeen',
-  dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
-  storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
-  groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
-  nodePositions: '++id, projectId',
-  graphGroups: '++id, projectId',
-  snapshots: '++id, projectId, chapterId, timestamp, label',
-  volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
-}).upgrade(async (trans) => {
-  const chapters = await trans.chapters.toArray()
-  for (const ch of chapters) {
-    await trans.sections.add({
-      ...ch,
-      projectId: ch.projectId,
-      title: ch.title,
-      summary: ch.summary,
-      order: ch.order,
-      status: ch.status,
-      tags: ch.tags,
-      volumeId: ch.volumeId
-    })
-  }
-  
-  const scenes = await trans.scenes.toArray()
-  for (const sc of scenes) {
-    await trans.subsections.add({
-      ...sc,
-      projectId: sc.projectId,
-      sectionId: sc.chapterId,
-      title: sc.title,
-      summary: sc.summary,
-      order: sc.order,
-      content: sc.content,
-      tags: sc.tags
-    })
-  }
-})
+db.version(13)
+  .stores({
+    projects: '++id, name, createdAt, updatedAt, genre, synopsis',
+    manuscripts: '++id, projectId, content, wordCount, updatedAt',
+    characters: '++id, projectId, name, role, goal, voice, notes, color, portrait',
+    characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes',
+    locations: '++id, projectId, name, description, notes',
+    plotThreads: '++id, projectId, title, status, notes',
+    chapters: '++id, projectId, title, summary, order, status, *tags, volumeId',
+    scenes: '++id, projectId, chapterId, title, summary, order, content, *tags',
+    sections: '++id, projectId, title, summary, order, status, *tags, volumeId',
+    subsections: '++id, projectId, sectionId, title, summary, order, content, *tags',
+    sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
+    annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
+    snippets: '++id, projectId, word, count, lastSeen',
+    dailyGoals: '++id, projectId, date, [projectId+date]',
+    revisionComments:
+      '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+    storyElements: '++id, projectId, type, title, x, y, width, height, data',
+    graphEdges:
+      '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+    groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
+    nodePositions: '++id, projectId',
+    graphGroups: '++id, projectId',
+    snapshots: '++id, projectId, chapterId, timestamp, label',
+    volumes: '++id, projectId, title, description, color, chapterIds',
+    volumeEntities:
+      '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]'
+  })
+  .upgrade(async (trans) => {
+    const chapters = await trans.chapters.toArray()
+    for (const ch of chapters) {
+      await trans.sections.add({
+        ...ch,
+        projectId: ch.projectId,
+        title: ch.title,
+        summary: ch.summary,
+        order: ch.order,
+        status: ch.status,
+        tags: ch.tags,
+        volumeId: ch.volumeId
+      })
+    }
+
+    const scenes = await trans.scenes.toArray()
+    for (const sc of scenes) {
+      await trans.subsections.add({
+        ...sc,
+        projectId: sc.projectId,
+        sectionId: sc.chapterId,
+        title: sc.title,
+        summary: sc.summary,
+        order: sc.order,
+        content: sc.content,
+        tags: sc.tags
+      })
+    }
+  })
 
 db.version(14).stores({
   projects: '++id, name, createdAt, updatedAt, genre, synopsis',
@@ -128,15 +141,18 @@ db.version(14).stores({
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
   sessionArchive: '++id, projectId, timestamp, type, signal',
   authorProfile: '++id, projectId',
   storyStateSnapshots: '++id, projectId, timestamp'
@@ -155,15 +171,18 @@ db.version(15).stores({
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
   sessionArchive: '++id, projectId, timestamp, type, signal',
   authorProfile: '++id, projectId',
   storyStateSnapshots: '++id, projectId, timestamp',
@@ -183,15 +202,18 @@ db.version(16).stores({
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
   sessionArchive: '++id, projectId, timestamp, type, signal',
   authorProfile: '++id, projectId',
   storyStateSnapshots: '++id, projectId, timestamp',
@@ -212,15 +234,18 @@ db.version(17).stores({
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
   sessionArchive: '++id, projectId, timestamp, type, signal',
   authorProfile: '++id, projectId',
   storyStateSnapshots: '++id, projectId, timestamp',
@@ -242,15 +267,18 @@ db.version(18).stores({
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
   sessionArchive: '++id, projectId, timestamp, type, signal',
   authorProfile: '++id, projectId',
   storyStateSnapshots: '++id, projectId, timestamp',
@@ -272,15 +300,18 @@ db.version(19).stores({
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
   sessionArchive: '++id, projectId, timestamp, type, signal',
   authorProfile: '++id, projectId',
   storyStateSnapshots: '++id, projectId, timestamp',
@@ -304,15 +335,18 @@ db.version(20).stores({
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
   sessionArchive: '++id, projectId, timestamp, type, signal',
   authorProfile: '++id, projectId',
   storyStateSnapshots: '++id, projectId, timestamp',
@@ -336,15 +370,18 @@ db.version(21).stores({
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
   snapshots: '++id, projectId, chapterId, timestamp, label',
   volumes: '++id, projectId, title, description, color, chapterIds',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId]',
   sessionArchive: '++id, projectId, timestamp, type, signal',
   authorProfile: '++id, projectId',
   storyStateSnapshots: '++id, projectId, timestamp',
@@ -359,21 +396,29 @@ db.version(21).stores({
 db.version(22).stores({
   projects: '++id, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
   manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
+  characters:
+    '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
+  characterRelationships:
+    '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
   locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
   plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
-  sections: '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
-  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
-  volumes: '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
+  sections:
+    '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
+  subsections:
+    '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
+  volumes:
+    '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
   sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
@@ -393,21 +438,29 @@ db.version(22).stores({
 db.version(23).stores({
   projects: '++id, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
   manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
+  characters:
+    '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
+  characterRelationships:
+    '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
   locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
   plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
-  sections: '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
-  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
-  volumes: '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
+  sections:
+    '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
+  subsections:
+    '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
+  volumes:
+    '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
   sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
@@ -428,21 +481,29 @@ db.version(23).stores({
 db.version(24).stores({
   projects: '++id, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
   manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
+  characters:
+    '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
+  characterRelationships:
+    '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
   locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
   plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
-  sections: '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
-  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
-  volumes: '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
+  sections:
+    '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
+  subsections:
+    '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
+  volumes:
+    '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
   sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
@@ -453,7 +514,8 @@ db.version(24).stores({
   storyDocuments: '++id, projectId, docType, content, updatedAt, [projectId+docType]',
   generatedStories: '++id, projectId, title, generatedAt, totalWords, qualityScore',
   voiceProfiles: '++id, projectId, createdAt, updatedAt',
-  researchDocuments: '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
+  researchDocuments:
+    '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
   researchChunks: '++id, documentId, projectId, chunkIndex, embeddingStatus',
   researchTags: '++id, name, projectId, [projectId+name]',
   pendingDeletions: '++id, table, apiId, deletedAt',
@@ -463,21 +525,29 @@ db.version(24).stores({
 db.version(25).stores({
   projects: '++id, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
   manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
+  characters:
+    '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
+  characterRelationships:
+    '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
   locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
   plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
-  sections: '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
-  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
-  volumes: '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
+  sections:
+    '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
+  subsections:
+    '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
+  volumes:
+    '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
   sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
@@ -488,79 +558,104 @@ db.version(25).stores({
   storyDocuments: '++id, projectId, docType, content, updatedAt, [projectId+docType]',
   generatedStories: '++id, projectId, title, generatedAt, totalWords, qualityScore',
   voiceProfiles: '++id, projectId, createdAt, updatedAt',
-  researchDocuments: '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
+  researchDocuments:
+    '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
   researchChunks: '++id, documentId, projectId, chunkIndex, embeddingStatus',
   researchTags: '++id, name, projectId, [projectId+name]',
   pendingDeletions: '++id, table, apiId, deletedAt',
   embeddingCache: '&hash, createdAt'
 })
 
-db.version(26).stores({
-  projects: '++id, userId, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
-  manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
-  locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
-  plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
-  sections: '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
-  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
-  volumes: '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
-  sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
-  annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
-  snippets: '++id, projectId, word, count, lastSeen',
-  dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
-  storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
-  groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
-  nodePositions: '++id, projectId',
-  graphGroups: '++id, projectId',
-  snapshots: '++id, projectId, chapterId, timestamp, label',
-  sessionArchive: '++id, projectId, timestamp, type, signal',
-  authorProfile: '++id, projectId',
-  storyStateSnapshots: '++id, projectId, timestamp',
-  storyDocuments: '++id, projectId, docType, content, updatedAt, [projectId+docType]',
-  generatedStories: '++id, projectId, title, generatedAt, totalWords, qualityScore',
-  voiceProfiles: '++id, projectId, createdAt, updatedAt',
-  researchDocuments: '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
-  researchChunks: '++id, documentId, projectId, chunkIndex, embeddingStatus',
-  researchTags: '++id, name, projectId, [projectId+name]',
-  pendingDeletions: '++id, table, apiId, deletedAt',
-  embeddingCache: '&hash, createdAt',
-  users: '++id, passwordHash, displayName, createdAt, &username'
-}).upgrade(async (trans) => {
-  if (!DEV_MODE) return
-  const userCount = await trans.users.count()
-  if (userCount === 0) {
-    const testUser = await trans.users.add({
-      username: 'test',
-      passwordHash: 'ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae',
-      displayName: 'Test User',
-      createdAt: new Date().toISOString()
-    })
-    await trans.projects.toCollection().filter(p => !p.userId).modify({ userId: testUser })
-  }
-})
+db.version(26)
+  .stores({
+    projects:
+      '++id, userId, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
+    manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
+    characters:
+      '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
+    characterRelationships:
+      '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
+    locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
+    plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
+    sections:
+      '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
+    subsections:
+      '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
+    volumes:
+      '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
+    volumeEntities:
+      '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
+    sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
+    annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
+    snippets: '++id, projectId, word, count, lastSeen',
+    dailyGoals: '++id, projectId, date, [projectId+date]',
+    revisionComments:
+      '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+    storyElements: '++id, projectId, type, title, x, y, width, height, data',
+    graphEdges:
+      '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+    groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
+    nodePositions: '++id, projectId',
+    graphGroups: '++id, projectId',
+    snapshots: '++id, projectId, chapterId, timestamp, label',
+    sessionArchive: '++id, projectId, timestamp, type, signal',
+    authorProfile: '++id, projectId',
+    storyStateSnapshots: '++id, projectId, timestamp',
+    storyDocuments: '++id, projectId, docType, content, updatedAt, [projectId+docType]',
+    generatedStories: '++id, projectId, title, generatedAt, totalWords, qualityScore',
+    voiceProfiles: '++id, projectId, createdAt, updatedAt',
+    researchDocuments:
+      '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
+    researchChunks: '++id, documentId, projectId, chunkIndex, embeddingStatus',
+    researchTags: '++id, name, projectId, [projectId+name]',
+    pendingDeletions: '++id, table, apiId, deletedAt',
+    embeddingCache: '&hash, createdAt',
+    users: '++id, passwordHash, displayName, createdAt, &username'
+  })
+  .upgrade(async (trans) => {
+    if (!DEV_MODE) return
+    const userCount = await trans.users.count()
+    if (userCount === 0) {
+      const testUser = await trans.users.add({
+        username: 'test',
+        passwordHash: 'ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae',
+        displayName: 'Test User',
+        createdAt: new Date().toISOString()
+      })
+      await trans.projects
+        .toCollection()
+        .filter((p) => !p.userId)
+        .modify({ userId: testUser })
+    }
+  })
 
 db.version(27).stores({
-  projects: '++id, userId, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
+  projects:
+    '++id, userId, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
   manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
+  characters:
+    '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
+  characterRelationships:
+    '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
   locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
   plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
-  sections: '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
-  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
-  volumes: '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
+  sections:
+    '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
+  subsections:
+    '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
+  volumes:
+    '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
   sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
@@ -571,7 +666,8 @@ db.version(27).stores({
   storyDocuments: '++id, projectId, docType, content, updatedAt, [projectId+docType]',
   generatedStories: '++id, projectId, title, generatedAt, totalWords, qualityScore',
   voiceProfiles: '++id, projectId, createdAt, updatedAt',
-  researchDocuments: '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
+  researchDocuments:
+    '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
   researchChunks: '++id, documentId, projectId, chunkIndex, embeddingStatus',
   researchTags: '++id, name, projectId, [projectId+name]',
   pendingDeletions: '++id, table, apiId, deletedAt',
@@ -581,23 +677,32 @@ db.version(27).stores({
 })
 
 db.version(28).stores({
-  projects: '++id, userId, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
+  projects:
+    '++id, userId, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
   manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
+  characters:
+    '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
+  characterRelationships:
+    '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
   locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
   plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
-  sections: '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
-  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
-  volumes: '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
+  sections:
+    '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
+  subsections:
+    '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
+  volumes:
+    '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
   sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
@@ -608,34 +713,45 @@ db.version(28).stores({
   storyDocuments: '++id, projectId, docType, content, updatedAt, [projectId+docType]',
   generatedStories: '++id, projectId, title, generatedAt, totalWords, qualityScore',
   voiceProfiles: '++id, projectId, createdAt, updatedAt',
-  researchDocuments: '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
+  researchDocuments:
+    '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
   researchChunks: '++id, documentId, projectId, chunkIndex, embeddingStatus',
   researchTags: '++id, name, projectId, [projectId+name]',
   pendingDeletions: '++id, table, apiId, deletedAt',
   embeddingCache: '&hash, createdAt',
   users: '++id, passwordHash, displayName, createdAt, &username',
   dialogueIndex: '++id, projectId, paragraphIndex, speakerId, sectionId, [projectId+speakerId]',
-  storyShapeAnalysis: '++id, projectId, sceneId, version, analyzedAt, [projectId+sceneId], [projectId+version]'
+  storyShapeAnalysis:
+    '++id, projectId, sceneId, version, analyzedAt, [projectId+sceneId], [projectId+version]'
 })
 
 db.version(29).stores({
-  projects: '++id, userId, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
+  projects:
+    '++id, userId, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
   manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
-  characters: '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
-  characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
+  characters:
+    '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
+  characterRelationships:
+    '++id, projectId, fromCharacterId, toCharacterId, type, notes, apiId, syncStatus, lastSyncedAt',
   locations: '++id, projectId, name, description, notes, apiId, syncStatus, lastSyncedAt',
   plotThreads: '++id, projectId, title, status, notes, apiId, syncStatus, lastSyncedAt',
-  sections: '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
-  subsections: '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
-  volumes: '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
-  volumeEntities: '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
+  sections:
+    '++id, projectId, title, summary, order, status, *tags, volumeId, apiId, syncStatus, lastSyncedAt',
+  subsections:
+    '++id, projectId, sectionId, title, summary, order, content, *tags, apiId, syncStatus, lastSyncedAt',
+  volumes:
+    '++id, projectId, title, description, color, chapterIds, apiId, syncStatus, lastSyncedAt',
+  volumeEntities:
+    '++id, volumeId, entityType, entityId, isPrimary, assignedAt, &[volumeId+entityType+entityId], apiId, syncStatus, lastSyncedAt',
   sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
   annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
   snippets: '++id, projectId, word, count, lastSeen',
   dailyGoals: '++id, projectId, date, [projectId+date]',
-  revisionComments: '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
+  revisionComments:
+    '++id, projectId, paragraphIndex, startOffset, endOffset, selectedText, comment, createdAt',
   storyElements: '++id, projectId, type, title, x, y, width, height, data',
-  graphEdges: '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
+  graphEdges:
+    '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
   groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
   nodePositions: '++id, projectId',
   graphGroups: '++id, projectId',
@@ -646,14 +762,16 @@ db.version(29).stores({
   storyDocuments: '++id, projectId, docType, content, updatedAt, [projectId+docType]',
   generatedStories: '++id, projectId, title, generatedAt, totalWords, qualityScore',
   voiceProfiles: '++id, projectId, createdAt, updatedAt',
-  researchDocuments: '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
+  researchDocuments:
+    '++id, projectId, fileName, fileType, importedAt, apiId, syncStatus, lastSyncedAt',
   researchChunks: '++id, documentId, projectId, chunkIndex, embeddingStatus',
   researchTags: '++id, name, projectId, [projectId+name]',
   pendingDeletions: '++id, table, apiId, deletedAt',
   embeddingCache: '&hash, createdAt',
   users: '++id, passwordHash, displayName, createdAt, &username',
   dialogueIndex: '++id, projectId, paragraphIndex, speakerId, sectionId, [projectId+speakerId]',
-  storyShapeAnalysis: '++id, projectId, sceneId, version, analyzedAt, [projectId+sceneId], [projectId+version]',
+  storyShapeAnalysis:
+    '++id, projectId, sceneId, version, analyzedAt, [projectId+sceneId], [projectId+version]',
   chatSessions: '++id, projectId, updatedAt'
 })
 
@@ -668,22 +786,25 @@ const recoveryFlag = 'versatile_db_recovery'
 let _ready
 export async function ready() {
   if (!_ready) {
-    _ready = db.open().then(() => {
-      localStorage.removeItem(recoveryFlag)
-    }).catch(err => {
-      if (localStorage.getItem(recoveryFlag)) {
-        console.error('[DB] Automatic recovery failed. Please clear IndexedDB manually.')
-        return
-      }
-      console.warn('[DB] Database error:', err.name, '- recovering...')
-      localStorage.setItem(recoveryFlag, '1')
-      db.close()
+    _ready = db
+      .open()
+      .then(() => {
+        localStorage.removeItem(recoveryFlag)
+      })
+      .catch((err) => {
+        if (localStorage.getItem(recoveryFlag)) {
+          console.error('[DB] Automatic recovery failed. Please clear IndexedDB manually.')
+          return
+        }
+        console.warn('[DB] Database error:', err.name, '- recovering...')
+        localStorage.setItem(recoveryFlag, '1')
+        db.close()
 
-      const delReq = indexedDB.deleteDatabase('VersatileDB')
-      delReq.onsuccess = () => window.location.reload()
-      delReq.onerror = () => window.location.reload()
-      delReq.onblocked = () => window.location.reload()
-    })
+        const delReq = indexedDB.deleteDatabase('VersatileDB')
+        delReq.onsuccess = () => window.location.reload()
+        delReq.onerror = () => window.location.reload()
+        delReq.onblocked = () => window.location.reload()
+      })
   }
   return _ready
 }
@@ -707,7 +828,7 @@ db.on('ready', async () => {
       displayName: 'Test User',
       createdAt: new Date().toISOString()
     })
-    const projectsWithoutUser = await db.projects.filter(p => !p.userId).toArray()
+    const projectsWithoutUser = await db.projects.filter((p) => !p.userId).toArray()
     for (const p of projectsWithoutUser) {
       await db.projects.update(p.id, { userId: testUser })
     }

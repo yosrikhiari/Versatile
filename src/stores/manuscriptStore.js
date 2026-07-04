@@ -1,15 +1,28 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
-  getSections, addSection, updateSection, deleteSection,
-  getSubsections, addSubsection, updateSubsection, deleteSubsection, reorderSubsections, reorderSections,
-  getStoryElements, addStoryElement, updateStoryElement, deleteStoryElement,
-  getCharacterRelationships, addCharacterRelationship, updateCharacterRelationship, deleteCharacterRelationship
+  getSections,
+  addSection,
+  updateSection,
+  deleteSection,
+  getSubsections,
+  addSubsection,
+  updateSubsection,
+  deleteSubsection,
+  reorderSubsections,
+  reorderSections,
+  getStoryElements,
+  addStoryElement,
+  updateStoryElement,
+  deleteStoryElement,
+  getCharacterRelationships,
+  addCharacterRelationship,
+  updateCharacterRelationship,
+  deleteCharacterRelationship
 } from '../services/dbService'
 import { warmEmbeddingCache } from '../composables/useManuscriptContext'
 import { useStoryDocuments } from '../composables/useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
-
 
 const STYLE_GUIDE_DEBOUNCE = 1500
 
@@ -46,11 +59,11 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   })
 
   const activeSection = computed(() => {
-    return sections.value.find(c => c.id === activeSectionId.value)
+    return sections.value.find((c) => c.id === activeSectionId.value)
   })
 
   const activeSubsection = computed(() => {
-    return subsections.value.find(s => s.id === activeSubsectionId.value)
+    return subsections.value.find((s) => s.id === activeSubsectionId.value)
   })
 
   const subsectionsBySection = computed(() => {
@@ -96,7 +109,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
 
   async function updateSectionData(id, data, _projectId) {
     await updateSection(id, data)
-    const index = sections.value.findIndex(c => c.id === id)
+    const index = sections.value.findIndex((c) => c.id === id)
     if (index !== -1) {
       sections.value[index] = { ...sections.value[index], ...data }
     }
@@ -104,26 +117,26 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   }
 
   async function deleteSectionData(id, _projectId) {
-    const sectionSubsections = subsections.value.filter(s => s.sectionId === id)
+    const sectionSubsections = subsections.value.filter((s) => s.sectionId === id)
     for (const subsection of sectionSubsections) {
       await deleteSubsection(subsection.id)
     }
     await deleteSection(id)
-    sections.value = sections.value.filter(c => c.id !== id)
-    subsections.value = subsections.value.filter(s => s.sectionId !== id)
+    sections.value = sections.value.filter((c) => c.id !== id)
+    subsections.value = subsections.value.filter((s) => s.sectionId !== id)
     queueStyleGuideRegen()
   }
 
   async function reorderSectionsData(sectionIds, _projectId) {
     await reorderSections(sectionIds)
     sectionIds.forEach((id, index) => {
-      const section = sections.value.find(c => c.id === id)
+      const section = sections.value.find((c) => c.id === id)
       if (section) section.order = index
     })
   }
 
   async function addSubsectionData(projectId, sectionId, data) {
-    const sectionSubsections = subsections.value.filter(s => s.sectionId === sectionId)
+    const sectionSubsections = subsections.value.filter((s) => s.sectionId === sectionId)
     const order = sectionSubsections.length
     const id = await addSubsection(projectId, { ...data, sectionId, order })
     subsections.value.push({ id, projectId, sectionId, order, ...data })
@@ -133,7 +146,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
 
   async function updateSubsectionData(id, data, _projectId) {
     await updateSubsection(id, data)
-    const index = subsections.value.findIndex(s => s.id === id)
+    const index = subsections.value.findIndex((s) => s.id === id)
     if (index !== -1) {
       subsections.value[index] = { ...subsections.value[index], ...data }
     }
@@ -142,14 +155,14 @@ export const useManuscriptStore = defineStore('manuscript', () => {
 
   async function deleteSubsectionData(id, _projectId) {
     await deleteSubsection(id)
-    subsections.value = subsections.value.filter(s => s.id !== id)
+    subsections.value = subsections.value.filter((s) => s.id !== id)
     queueStyleGuideRegen()
   }
 
   async function reorderSubsectionsData(subsectionIds, _projectId) {
     await reorderSubsections(subsectionIds)
     subsectionIds.forEach((id, index) => {
-      const subsection = subsections.value.find(s => s.id === id)
+      const subsection = subsections.value.find((s) => s.id === id)
       if (subsection) subsection.order = index
     })
   }
@@ -162,7 +175,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
 
   async function updateStoryElementData(id, data, _projectId) {
     await updateStoryElement(id, data)
-    const index = storyElements.value.findIndex(e => e.id === id)
+    const index = storyElements.value.findIndex((e) => e.id === id)
     if (index !== -1) {
       storyElements.value[index] = { ...storyElements.value[index], ...data }
     }
@@ -170,7 +183,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
 
   async function deleteStoryElementData(id, _projectId) {
     await deleteStoryElement(id)
-    storyElements.value = storyElements.value.filter(e => e.id !== id)
+    storyElements.value = storyElements.value.filter((e) => e.id !== id)
   }
 
   async function addRelationshipData(projectId, data) {
@@ -181,7 +194,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
 
   async function updateRelationshipData(id, data, _projectId) {
     await updateCharacterRelationship(id, data)
-    const index = relationships.value.findIndex(r => r.id === id)
+    const index = relationships.value.findIndex((r) => r.id === id)
     if (index !== -1) {
       relationships.value[index] = { ...relationships.value[index], ...data }
     }
@@ -189,7 +202,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
 
   async function deleteRelationshipData(id, _projectId) {
     await deleteCharacterRelationship(id)
-    relationships.value = relationships.value.filter(r => r.id !== id)
+    relationships.value = relationships.value.filter((r) => r.id !== id)
   }
 
   function setActiveSection(id) {

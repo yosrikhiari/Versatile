@@ -10,17 +10,29 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
   const externalSignal = options.signal
 
   try {
-    timeout = setTimeout(() => controller.abort(new DOMException(`Groq request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
-    function onAbort() { controller.abort(externalSignal.reason) }
+    timeout = setTimeout(
+      () =>
+        controller.abort(
+          new DOMException(`Groq request timed out after ${timeoutMs}ms`, 'AbortError')
+        ),
+      timeoutMs
+    )
+    function onAbort() {
+      controller.abort(externalSignal.reason)
+    }
     if (externalSignal) {
-      if (externalSignal.aborted) { controller.abort(externalSignal.reason) } else { externalSignal.addEventListener('abort', onAbort, { once: true }) }
+      if (externalSignal.aborted) {
+        controller.abort(externalSignal.reason)
+      } else {
+        externalSignal.addEventListener('abort', onAbort, { once: true })
+      }
     }
 
     const response = await fetch(`${PROVIDER_BASE_URLS[PROVIDERS.GROQ]}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`
       },
       signal: controller.signal,
       body: JSON.stringify({
@@ -64,17 +76,29 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
   const externalSignal = options.signal
 
   try {
-    timeout = setTimeout(() => controller.abort(new DOMException(`Groq stream timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
-    function onAbort() { controller.abort(externalSignal.reason) }
+    timeout = setTimeout(
+      () =>
+        controller.abort(
+          new DOMException(`Groq stream timed out after ${timeoutMs}ms`, 'AbortError')
+        ),
+      timeoutMs
+    )
+    function onAbort() {
+      controller.abort(externalSignal.reason)
+    }
     if (externalSignal) {
-      if (externalSignal.aborted) { controller.abort(externalSignal.reason) } else { externalSignal.addEventListener('abort', onAbort, { once: true }) }
+      if (externalSignal.aborted) {
+        controller.abort(externalSignal.reason)
+      } else {
+        externalSignal.addEventListener('abort', onAbort, { once: true })
+      }
     }
 
     const response = await fetch(`${PROVIDER_BASE_URLS[PROVIDERS.GROQ]}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`
       },
       signal: controller.signal,
       body: JSON.stringify({
@@ -141,7 +165,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
 export async function testConnection(apiKey) {
   try {
     const response = await fetch(`${PROVIDER_BASE_URLS[PROVIDERS.GROQ]}/models`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
+      headers: { Authorization: `Bearer ${apiKey}` }
     })
     return response.ok
   } catch {

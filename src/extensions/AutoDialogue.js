@@ -14,9 +14,7 @@ function getDecorations(doc) {
       while ((match = re.exec(node.text)) !== null) {
         const from = pos + match.index
         const to = from + match[0].length
-        decorations.push(
-          Decoration.inline(from, to, { class: 'dialogue-text' })
-        )
+        decorations.push(Decoration.inline(from, to, { class: 'dialogue-text' }))
       }
     }
   })
@@ -41,14 +39,14 @@ export const AutoDialogue = Extension.create({
             if (!tr.docChanged) return oldSet.map(tr.mapping, tr.doc)
             const result = getDecorations(tr.doc)
             return result
-          },
+          }
         },
         props: {
           decorations(state) {
             return this.getState(state)
-          },
-        },
-      }),
+          }
+        }
+      })
     ]
-  },
+  }
 })

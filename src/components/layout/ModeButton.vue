@@ -1,6 +1,4 @@
 <script setup>
-
-
 const props = defineProps({
   active: Boolean,
   label: {
@@ -30,9 +28,9 @@ const sectionFont = 'font-ui'
   <button
     :class="[
       'px-4 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent',
-       active 
-         ? 'bg-gradient-to-b from-accent to-accent-hover text-bg-primary shadow-warm-sm btn-elevated' 
-         : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
+      active
+        ? 'bg-gradient-to-b from-accent to-accent-hover text-bg-primary shadow-warm-sm btn-elevated'
+        : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary btn-ghost'
     ]"
     :title="shortcut ? `${label} (${shortcut})` : label"
     @click="emit('click')"

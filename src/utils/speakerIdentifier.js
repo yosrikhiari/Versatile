@@ -145,5 +145,5 @@ export function buildSpeakerIndex(dialogueLines) {
 
 export function getUnidentifiedLines(dialogueLines) {
   if (!Array.isArray(dialogueLines)) return []
-  return dialogueLines.filter(l => !l.speakerId || l.needsReview)
+  return dialogueLines.filter((l) => !l.speakerId || l.needsReview)
 }

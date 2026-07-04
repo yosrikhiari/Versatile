@@ -4,12 +4,13 @@ export function aggregateMetrics(results) {
   const keys = ['hitRate', 'mrr', 'map', 'ndcg', 'recall', 'precision']
   const agg = {}
   for (const key of keys) {
-    const values = results.map(r => r.metrics[key]).filter(v => v !== undefined)
-    agg[`avg${key.charAt(0).toUpperCase() + key.slice(1)}`] =
-      values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0
+    const values = results.map((r) => r.metrics[key]).filter((v) => v !== undefined)
+    agg[`avg${key.charAt(0).toUpperCase() + key.slice(1)}`] = values.length
+      ? values.reduce((a, b) => a + b, 0) / values.length
+      : 0
   }
   agg.totalQueries = results.length
-  agg.passedQueries = results.filter(r => r.metrics.hitRate === 1).length
+  agg.passedQueries = results.filter((r) => r.metrics.hitRate === 1).length
   agg.passRate = results.length ? agg.passedQueries / results.length : 0
   return agg
 }
@@ -25,7 +26,7 @@ export async function runEvaluation({ searchFn, testCases, projectId, k }) {
       query,
       expected: relevantChunkIds.length,
       retrieved: retrieved.length,
-      retrievedIds: retrieved.map(r => r.id),
+      retrievedIds: retrieved.map((r) => r.id),
       metrics
     })
   }

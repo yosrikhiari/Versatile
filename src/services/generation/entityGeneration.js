@@ -60,7 +60,7 @@ async function getIdeaEmbedding(idea) {
   const text = idea
   const cacheKey = `idea_${btoa(unescape(encodeURIComponent(text))).slice(0, 32)}`
   const storageKey = getEmbeddingStorageKey(cacheKey)
-  
+
   // STORAGE_KEYS ref
   const cached = localStorage.getItem(storageKey)
   if (cached) {
@@ -132,15 +132,16 @@ export async function generateCharacterFromIdea(characterIdea, manuscriptContext
 
     const ideaEmbedding = await getIdeaEmbedding(characterIdea)
     if (ideaEmbedding) {
-      const similarities = allCharacters.map(char => {
+      const similarities = allCharacters.map((char) => {
         const charEmb = getEntityEmbedding('character', char.id)
         if (!charEmb) return { id: char.id, score: 0 }
         return { id: char.id, score: cosineSimilarity(ideaEmbedding, charEmb) }
       })
       similarities.sort((a, b) => b.score - a.score)
-      const topIds = similarities.slice(0, 3)
-        .filter(s => s.score > 0)
-        .map(s => ({ type: 'character', id: s.id }))
+      const topIds = similarities
+        .slice(0, 3)
+        .filter((s) => s.score > 0)
+        .map((s) => ({ type: 'character', id: s.id }))
 
       if (topIds.length > 0) {
         const relationshipContext = await getRelationshipContext(topIds, 2)
@@ -181,7 +182,7 @@ Example outputs:
       aiGenerate(userPrompt, IDEA_CHARACTER_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
     )
     const parsed = sanitizeJsonResponse(response)
-    if (!parsed || !parsed.name && !parsed.Name) {
+    if (!parsed || (!parsed.name && !parsed.Name)) {
       throw new Error('Invalid JSON')
     }
 
@@ -197,7 +198,11 @@ Example outputs:
     return result
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -209,7 +214,11 @@ Example outputs:
  * @returns {Promise<GeneratedCharacter[]>} The generated characters.
  * @throws {Error} If generation fails.
  */
-export async function generateCharactersForPlotThread(plotThread, count = 3, manuscriptContext = null) {
+export async function generateCharactersForPlotThread(
+  plotThread,
+  count = 3,
+  manuscriptContext = null
+) {
   const projectContext = getProjectContext()
   const entityContext = await getExistingEntitiesContext()
   const { getRelationshipContext } = useGraphContext()
@@ -224,15 +233,16 @@ export async function generateCharactersForPlotThread(plotThread, count = 3, man
     const plotThreadEmbedding = await getIdeaEmbedding(plotThreadText)
 
     if (plotThreadEmbedding) {
-      const similarities = allCharacters.map(char => {
+      const similarities = allCharacters.map((char) => {
         const charEmb = getEntityEmbedding('character', char.id)
         if (!charEmb) return { id: char.id, score: 0 }
         return { id: char.id, score: cosineSimilarity(plotThreadEmbedding, charEmb) }
       })
       similarities.sort((a, b) => b.score - a.score)
-      const topIds = similarities.slice(0, 3)
-        .filter(s => s.score > 0)
-        .map(s => ({ type: 'character', id: s.id }))
+      const topIds = similarities
+        .slice(0, 3)
+        .filter((s) => s.score > 0)
+        .map((s) => ({ type: 'character', id: s.id }))
 
       if (topIds.length > 0) {
         const relationshipContext = await getRelationshipContext(topIds, 2)
@@ -281,7 +291,7 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
       parsed = [parsed]
     }
 
-    const characters = parsed.map(p => ({
+    const characters = parsed.map((p) => ({
       name: p.name || p.Name || 'Unnamed Character',
       role: p.role || p.Role || '',
       goal: p.goal || p.Goal || '',
@@ -293,7 +303,11 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
     return characters
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -305,7 +319,11 @@ Do NOT generate name, role, goal identical to any existing character. Be creativ
  * @returns {Promise<GeneratedLocation[]>} The generated locations.
  * @throws {Error} If generation fails.
  */
-export async function generateLocationsForPlotThread(plotThread, count = 3, manuscriptContext = null) {
+export async function generateLocationsForPlotThread(
+  plotThread,
+  count = 3,
+  manuscriptContext = null
+) {
   const projectContext = getProjectContext()
   const entityContext = await getExistingEntitiesContext()
 
@@ -346,7 +364,7 @@ Do NOT generate name identical to any existing location. Be creative and distinc
       parsed = [parsed]
     }
 
-    const locations = parsed.map(p => ({
+    const locations = parsed.map((p) => ({
       name: p.name || p.Name || 'Unnamed Location',
       description: p.description || p.Description || '',
       notes: p.notes || p.Notes || ''
@@ -355,7 +373,11 @@ Do NOT generate name identical to any existing location. Be creative and distinc
     return locations
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -403,14 +425,19 @@ export async function enhanceCharacter(partialData, manuscriptContext = null) {
   if (partialData.goal) existingFields.push(`Goal: "${partialData.goal}"`)
   if (partialData.voice) existingFields.push(`Voice: "${partialData.voice}"`)
   if (partialData.notes) existingFields.push(`Notes: "${partialData.notes}"`)
-  if (partialData.sampleDialogue) existingFields.push(`SampleDialogue: "${partialData.sampleDialogue}"`)
+  if (partialData.sampleDialogue)
+    existingFields.push(`SampleDialogue: "${partialData.sampleDialogue}"`)
 
-  const existingPart = existingFields.length > 0
-    ? `\n\nExisting information to respect and build upon:\n${existingFields.join('\n')}`
-    : ''
+  const existingPart =
+    existingFields.length > 0
+      ? `\n\nExisting information to respect and build upon:\n${existingFields.join('\n')}`
+      : ''
 
   const lengthGuidance = Object.entries(FIELD_LENGTH_CONSTRAINTS.character)
-    .map(([field, constraint]) => `- ${field}: max ${constraint.maxSentences} sentence(s), ~${constraint.maxWords} words (${constraint.guidance})`)
+    .map(
+      ([field, constraint]) =>
+        `- ${field}: max ${constraint.maxSentences} sentence(s), ~${constraint.maxWords} words (${constraint.guidance})`
+    )
     .join('\n')
 
   const userPrompt = `You are a character creation assistant. Given partial character information and existing story elements, complete the character profile.
@@ -423,13 +450,16 @@ ${lengthGuidance}
 ${projectContext}${existingPart}${entityContext}${contextInstruction}
 
 Generate a complete character profile as JSON. Keys: name, role, goal, voice, notes, sampleDialogue.
-${existingFields.length > 0 ? `
+${
+  existingFields.length > 0
+    ? `
 - The provided fields are your anchor points - build everything else to support them
 - Each new field must be consistent with and complement the existing fields
 - This character should feel like they belong in the story alongside existing characters
 - Consider how this character relates to or differs from existing characters
 - If name is "Marcus", role is "war veteran", then goal might be "survive without being recognized" and voice might be "clipped, military-style"
-- Make all fields feel like they belong to the same person` : `
+- Make all fields feel like they belong to the same person`
+    : `
 - Create a distinctive, non-generic character
 - Generate fields that are internally consistent (name fits voice, role fits goal, etc.)
 - This character should complement or contrast with existing characters in interesting ways
@@ -439,13 +469,16 @@ CRITICAL GOAL DIFFERENTIATION:
 - Study what goals already exist: "Why does this character want something different?"
 - The best goals create story dynamics: opposing, complementary, or parallel motivations
 - Example variety: If existing character wants "to find the truth", this character might want "to hide it" (opposing), "to help them" (complementary), or "to profit from it" (parallel)
-- Do NOT generate a goal similar to any existing character goal - be specific and different`}
+- Do NOT generate a goal similar to any existing character goal - be specific and different`
+}
 
 All values must be strings. No markdown.`
 
   try {
     const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative character designer.', { feature: FEATURES.WORLDBUILDING })
+      aiGenerate(userPrompt, 'You are a creative character designer.', {
+        feature: FEATURES.WORLDBUILDING
+      })
     )
 
     const parsed = sanitizeJsonResponse(response)
@@ -460,13 +493,18 @@ All values must be strings. No markdown.`
       goal: partialData.goal || parsed.goal || parsed.Goal || '',
       voice: partialData.voice || parsed.voice || parsed.Voice || '',
       notes: partialData.notes || parsed.notes || parsed.Notes || '',
-      sampleDialogue: partialData.sampleDialogue || parsed.sampleDialogue || parsed.SampleDialogue || ''
+      sampleDialogue:
+        partialData.sampleDialogue || parsed.sampleDialogue || parsed.SampleDialogue || ''
     }
 
     return result
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -508,7 +546,9 @@ No markdown, no explanation, no preamble. JSON only.`
 
   try {
     const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative character designer.', { feature: FEATURES.WORLDBUILDING })
+      aiGenerate(userPrompt, 'You are a creative character designer.', {
+        feature: FEATURES.WORLDBUILDING
+      })
     )
 
     const parsed = sanitizeJsonResponse(response)
@@ -523,13 +563,18 @@ No markdown, no explanation, no preamble. JSON only.`
       goal: parsed.goal || parsed.Goal || charData.goal || '',
       voice: parsed.voice || parsed.Voice || charData.voice || '',
       notes: parsed.notes || parsed.Notes || charData.notes || '',
-      sampleDialogue: parsed.sampleDialogue || parsed.SampleDialogue || charData.sampleDialogue || ''
+      sampleDialogue:
+        parsed.sampleDialogue || parsed.SampleDialogue || charData.sampleDialogue || ''
     }
 
     return result
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -543,7 +588,13 @@ No markdown, no explanation, no preamble. JSON only.`
  * @returns {Promise<string>} The new value for the field.
  * @throws {Error} If generation fails.
  */
-export async function enhanceSingleField(entityType, fieldName, currentValue, allFields, manuscriptContext = null) {
+export async function enhanceSingleField(
+  entityType,
+  fieldName,
+  currentValue,
+  allFields,
+  manuscriptContext = null
+) {
   const projectContext = getProjectContext()
   const entityContext = await getExistingEntitiesContext()
 
@@ -561,7 +612,11 @@ export async function enhanceSingleField(entityType, fieldName, currentValue, al
   const fieldType = typeLabels[entityType] || 'plot thread'
   const entityName = allFields?.name || allFields?.title || 'the entity'
 
-  const fieldConstraints = FIELD_LENGTH_CONSTRAINTS[entityType]?.[fieldName] || { maxSentences: 3, maxWords: 40, guidance: 'be concise' }
+  const fieldConstraints = FIELD_LENGTH_CONSTRAINTS[entityType]?.[fieldName] || {
+    maxSentences: 3,
+    maxWords: 40,
+    guidance: 'be concise'
+  }
 
   let titleContext = ''
   if (entityType === 'plotThread' && allFields.title) {
@@ -582,14 +637,17 @@ export async function enhanceSingleField(entityType, fieldName, currentValue, al
     }
   }
 
-  const goalDifferentiation = entityType === 'character' && fieldName === 'goal' ? `
+  const goalDifferentiation =
+    entityType === 'character' && fieldName === 'goal'
+      ? `
 
 GOAL DIFFERENTIATION (CRITICAL for goals):
 - Look at EXISTING CHARACTERS' goals in the context above
 - This character's goal must be DISTINCT and DIFFERENT from existing goals
 - Create variety: opposing goals block each other, complementary goals help each other, parallel goals share theme but differ in approach
 - Example: If existing character wants "to find the truth", this character might want "to hide it" (opposing), "to help them" (complementary), or "to profit from it" (parallel)
-- Do NOT generate a goal similar to any existing character goal` : ''
+- Do NOT generate a goal similar to any existing character goal`
+      : ''
 
   const userPrompt = `TARGET: You are generating the "${fieldName}" field for ${fieldType} "${entityName}".
 
@@ -607,11 +665,18 @@ ${projectContext}${goalDifferentiation}
 TASK: Generate the "${fieldName}" field value.
 LENGTH CONSTRAINT: Maximum ${fieldConstraints.maxSentences} sentence(s), approximately ${fieldConstraints.maxWords} words. ${fieldConstraints.guidance}.${structuredBlock}
 
-${currentValue ? `CURRENT VALUE: "${currentValue.replace(/\[Characters:.*?\]/g, '').replace(/\[Locations:.*?\]/g, '').trim()}"
+${
+  currentValue
+    ? `CURRENT VALUE: "${currentValue
+        .replace(/\[Characters:.*?\]/g, '')
+        .replace(/\[Locations:.*?\]/g, '')
+        .trim()}"
 GUIDANCE: This value exists for a reason. Either:
 1. IMPROVE it: If it has merit, make it better while keeping its core essence
 2. REPLACE it: Only if it contradicts the other fields or doesn't fit the context
-3. COMPLEMENT it: Add details that make it work better with the other fields` : `GUIDANCE: Create a value that logically connects to and supports the other fields above.`}
+3. COMPLEMENT it: Add details that make it work better with the other fields`
+    : `GUIDANCE: Create a value that logically connects to and supports the other fields above.`
+}
 
 IMPORTANT: The ${fieldName} must be consistent with all other fields AND the existing story elements.${entityType === 'plotThread' && allFields.title ? `\n- The title "${allFields.title}" defines the context - stay focused on this theme` : ''}
 - Everything should be coherent and interconnected
@@ -622,16 +687,24 @@ Single string value, no markdown.`
 
   try {
     const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative writing assistant.', { feature: FEATURES.WORLDBUILDING })
+      aiGenerate(userPrompt, 'You are a creative writing assistant.', {
+        feature: FEATURES.WORLDBUILDING
+      })
     )
 
     const parsed = sanitizeJsonResponse(response)
 
-    if (!parsed || (!parsed[fieldName] && !parsed[fieldName.charAt(0).toUpperCase() + fieldName.slice(1)])) {
+    if (
+      !parsed ||
+      (!parsed[fieldName] && !parsed[fieldName.charAt(0).toUpperCase() + fieldName.slice(1)])
+    ) {
       throw new Error('Invalid JSON')
     }
 
-    let result = parsed[fieldName] || parsed[fieldName.charAt(0).toUpperCase() + fieldName.slice(1)] || currentValue
+    let result =
+      parsed[fieldName] ||
+      parsed[fieldName.charAt(0).toUpperCase() + fieldName.slice(1)] ||
+      currentValue
 
     if (entityType === 'plotThread' && fieldName === 'notes' && currentValue) {
       const charsExec = CHARS_RE.exec(currentValue)
@@ -650,7 +723,11 @@ Single string value, no markdown.`
     return result
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -675,12 +752,16 @@ export async function enhanceLocation(partialData, manuscriptContext = null) {
   if (partialData.description) existingFields.push(`Description: "${partialData.description}"`)
   if (partialData.notes) existingFields.push(`Notes: "${partialData.notes}"`)
 
-  const existingPart = existingFields.length > 0
-    ? `\n\nExisting information to respect and build upon:\n${existingFields.join('\n')}`
-    : ''
+  const existingPart =
+    existingFields.length > 0
+      ? `\n\nExisting information to respect and build upon:\n${existingFields.join('\n')}`
+      : ''
 
   const locationLengthGuidance = Object.entries(FIELD_LENGTH_CONSTRAINTS.location)
-    .map(([field, constraint]) => `- ${field}: max ${constraint.maxSentences} sentence(s), ~${constraint.maxWords} words (${constraint.guidance})`)
+    .map(
+      ([field, constraint]) =>
+        `- ${field}: max ${constraint.maxSentences} sentence(s), ~${constraint.maxWords} words (${constraint.guidance})`
+    )
     .join('\n')
 
   const userPrompt = `You are a location design assistant. Given partial location information, manuscript context, and existing story elements, complete the location profile.
@@ -693,23 +774,29 @@ ${locationLengthGuidance}
 ${projectContext}${existingPart}${entityContext}${contextInstruction}
 
 Generate a complete location profile as JSON. Keys: name, description, notes.
-${existingFields.length > 0 ? `
+${
+  existingFields.length > 0
+    ? `
 - The provided fields are your anchor points - build everything else to support them
 - Each new field must be consistent with and complement the existing fields
 - This location should feel like it belongs in this story alongside existing locations
 - Consider how this location relates to existing characters and plot threads
 - If name is "The Hollow", description should hint at something dark or mysterious
 - Notes should add depth that matches the established description
-- Make the location feel atmospheric and story-appropriate` : `
+- Make the location feel atmospheric and story-appropriate`
+    : `
 - Create a distinctive, memorable setting
 - Generate fields that are internally consistent
-- This location should complement existing locations in interesting ways`}
+- This location should complement existing locations in interesting ways`
+}
 
 All values must be strings. No markdown.`
 
   try {
     const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative location designer.', { feature: FEATURES.WORLDBUILDING })
+      aiGenerate(userPrompt, 'You are a creative location designer.', {
+        feature: FEATURES.WORLDBUILDING
+      })
     )
 
     const parsed = sanitizeJsonResponse(response)
@@ -726,7 +813,11 @@ All values must be strings. No markdown.`
     return result
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -748,12 +839,16 @@ export async function enhancePlotThread(partialData, manuscriptContext = null) {
   const title = partialData.title || ''
   const existingNotes = partialData.notes || ''
 
-  const existingPart = title || existingNotes
-    ? `\n\nExisting information to respect and build upon:\n${title ? `Title: "${title}"` : ''}\n${existingNotes ? `Notes: "${existingNotes}"` : ''}`
-    : ''
+  const existingPart =
+    title || existingNotes
+      ? `\n\nExisting information to respect and build upon:\n${title ? `Title: "${title}"` : ''}\n${existingNotes ? `Notes: "${existingNotes}"` : ''}`
+      : ''
 
   const plotLengthGuidance = Object.entries(FIELD_LENGTH_CONSTRAINTS.plotThread)
-    .map(([field, constraint]) => `- ${field}: max ${constraint.maxSentences} sentence(s), ~${constraint.maxWords} words (${constraint.guidance})`)
+    .map(
+      ([field, constraint]) =>
+        `- ${field}: max ${constraint.maxSentences} sentence(s), ~${constraint.maxWords} words (${constraint.guidance})`
+    )
     .join('\n')
 
   const entityContext = await getExistingEntitiesContext()
@@ -770,12 +865,16 @@ ${projectContext}${existingPart}${entityContext}${contextInstruction}
 
 Generate a complete plot thread as JSON with keys: title, notes, characters, locations.
 
-${title ? `
+${
+  title
+    ? `
 - The title "${title}" defines the story context - generate content that fits this theme
 - If only title is provided (e.g., "Elysia Fall"), generate content that plausibly belongs to a story with that title (related characters, events, locations)
 - If title + notes are provided, weave the notes content around the title theme
-- Do NOT generate random characters or events unrelated to the title` : `
-- Create an engaging, story-worthy plot thread`}
+- Do NOT generate random characters or events unrelated to the title`
+    : `
+- Create an engaging, story-worthy plot thread`
+}
 
 IMPORTANT: The "characters" and "locations" arrays are REQUIRED. List 1-3 character names and 0-2 location names that are directly related to the plot thread content. If no specific entities are involved, use empty arrays.
 
@@ -791,7 +890,9 @@ All values must be strings or arrays. No markdown.`
 
   try {
     const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative plot designer.', { feature: FEATURES.WORLDBUILDING })
+      aiGenerate(userPrompt, 'You are a creative plot designer.', {
+        feature: FEATURES.WORLDBUILDING
+      })
     )
 
     const parsed = sanitizeJsonResponse(response)
@@ -804,8 +905,10 @@ All values must be strings or arrays. No markdown.`
 
     let notes = parsed.notes || parsed.Notes || ''
 
-    const charsStr = characters.length > 0 ? `[Characters: ${characters.join(', ')}]` : '[Characters: None]'
-    const locsStr = locations.length > 0 ? `[Locations: ${locations.join(', ')}]` : '[Locations: None]'
+    const charsStr =
+      characters.length > 0 ? `[Characters: ${characters.join(', ')}]` : '[Characters: None]'
+    const locsStr =
+      locations.length > 0 ? `[Locations: ${locations.join(', ')}]` : '[Locations: None]'
     notes = notes.trim() + '\n\n' + charsStr + '\n' + locsStr
 
     const result = {
@@ -818,7 +921,11 @@ All values must be strings or arrays. No markdown.`
     return result
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -830,7 +937,12 @@ All values must be strings or arrays. No markdown.`
  * @param {Object} [manuscriptContext=null] - Optional manuscript context
  * @returns {Promise<string[]>} Array of up to 8 suggested trait strings
  */
-export async function generateTraitSuggestions(entityType, entityData, existingTraits = [], manuscriptContext = null) {
+export async function generateTraitSuggestions(
+  entityType,
+  entityData,
+  existingTraits = [],
+  manuscriptContext = null
+) {
   const typeLabels = { character: 'character', location: 'location', plotThread: 'plot thread' }
   const label = typeLabels[entityType] || 'entity'
   const entityName = entityData?.name || entityData?.title || 'this entity'
@@ -849,15 +961,17 @@ export async function generateTraitSuggestions(entityType, entityData, existingT
     contextInstruction = `\n\nManuscript context:\n${manuscriptContext.contextText}`
   }
 
-  const quirkGuidance = entityType === 'character'
-    ? `a sensory/behavioral quirk: something the ${label} hates, fears, obsesses over, physically does, or avoids`
-    : entityType === 'location'
-    ? `a sensory/atmospheric detail: a specific smell, sound, light quality, temperature, texture, or physical oddity of this ${label}`
-    : `a specific narrative hook or complication: a hidden agenda, an obstacle, a turning point, a betrayal, or a discovery in this ${label}`
+  const quirkGuidance =
+    entityType === 'character'
+      ? `a sensory/behavioral quirk: something the ${label} hates, fears, obsesses over, physically does, or avoids`
+      : entityType === 'location'
+        ? `a sensory/atmospheric detail: a specific smell, sound, light quality, temperature, texture, or physical oddity of this ${label}`
+        : `a specific narrative hook or complication: a hidden agenda, an obstacle, a turning point, a betrayal, or a discovery in this ${label}`
 
-  const traitGuidance = entityType === 'plotThread'
-    ? `a defining thematic quality grounded in this ${label}'s premise, stakes, and context`
-    : `a defining personality/identity trait grounded in this ${label}'s role, goal, backstory, or context from the details above`
+  const traitGuidance =
+    entityType === 'plotThread'
+      ? `a defining thematic quality grounded in this ${label}'s premise, stakes, and context`
+      : `a defining personality/identity trait grounded in this ${label}'s role, goal, backstory, or context from the details above`
 
   const userPrompt = `Suggest 8 specific, scene-usable traits for the ${label} "${entityName}".
 
@@ -882,7 +996,9 @@ Return as JSON: { "traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "
 
   try {
     const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, `You suggest fitting traits for a ${label}.`, { feature: FEATURES.WORLDBUILDING })
+      aiGenerate(userPrompt, `You suggest fitting traits for a ${label}.`, {
+        feature: FEATURES.WORLDBUILDING
+      })
     )
 
     let cleaned = response.trim()
@@ -901,8 +1017,7 @@ Return as JSON: { "traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "
     if (!parsed || !Array.isArray(parsed.traits)) {
       return []
     }
-    const traits = parsed.traits.slice(0, 8).filter(t => !existingTraits.includes(t))
-
+    const traits = parsed.traits.slice(0, 8).filter((t) => !existingTraits.includes(t))
 
     return traits
   } catch {

@@ -37,16 +37,16 @@ const sortedThreads = computed(() => {
 })
 
 function onEnd() {
-  const orderedIds = sortedThreads.value.map(t => t.id)
+  const orderedIds = sortedThreads.value.map((t) => t.id)
   storyBibleStore.reorderPlotThreads(orderedIds)
 }
 
 onMounted(() => {
   if (projectStore.currentProjectId) {
     storyBibleStore.loadAll(projectStore.currentProjectId).then(() => {
-      const hasTimelineOrder = storyBibleStore.plotThreads.some(t => t.timelineOrder != null)
+      const hasTimelineOrder = storyBibleStore.plotThreads.some((t) => t.timelineOrder != null)
       if (!hasTimelineOrder && storyBibleStore.plotThreads.length > 0) {
-        const ids = storyBibleStore.plotThreads.map(t => t.id)
+        const ids = storyBibleStore.plotThreads.map((t) => t.id)
         storyBibleStore.reorderPlotThreads(ids)
       }
     })
@@ -61,7 +61,13 @@ onMounted(() => {
       <p class="text-xs text-text-hint mt-1">Drag plot threads to arrange story order</p>
     </div>
 
-    <EmptyState v-if="sortedThreads.length === 0" icon="layout" title="No plot threads yet" description="Add threads in the Story Bible to start building your timeline." class="flex-1" />
+    <EmptyState
+      v-if="sortedThreads.length === 0"
+      icon="layout"
+      title="No plot threads yet"
+      description="Add threads in the Story Bible to start building your timeline."
+      class="flex-1"
+    />
 
     <div v-else class="flex-1 overflow-x-auto p-6">
       <div class="relative min-w-max">
@@ -77,19 +83,48 @@ onMounted(() => {
           @end="onEnd"
         >
           <template #item="{ element: thread }">
-            <div class="relative flex flex-col items-center" style="min-width: 160px; max-width: 180px;">
-              <div class="w-3 h-3 rounded-full mb-2 z-10 ring-2 ring-bg-secondary" :style="{ backgroundColor: statusColors[thread.status] || 'var(--vers-status-resolved)' }"></div>
-              <div class="w-full bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden cursor-grab active:cursor-grabbing hover:border-accent/30 transition-colors">
+            <div
+              class="relative flex flex-col items-center"
+              style="min-width: 160px; max-width: 180px"
+            >
+              <div
+                class="w-3 h-3 rounded-full mb-2 z-10 ring-2 ring-bg-secondary"
+                :style="{
+                  backgroundColor: statusColors[thread.status] || 'var(--vers-status-resolved)'
+                }"
+              ></div>
+              <div
+                class="w-full bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden cursor-grab active:cursor-grabbing hover:border-accent/30 transition-colors"
+              >
                 <div class="p-2.5 border-b border-border-subtle/50">
                   <div class="flex items-start gap-1.5">
-                    <BaseIcon name="grip-vertical" :size="14" class="text-text-hint mt-0.5 shrink-0" />
-                    <h3 class="text-xs font-medium text-text-primary leading-snug line-clamp-2 min-h-[2em]">{{ thread.title }}</h3>
+                    <BaseIcon
+                      name="grip-vertical"
+                      :size="14"
+                      class="text-text-hint mt-0.5 shrink-0"
+                    />
+                    <h3
+                      class="text-xs font-medium text-text-primary leading-snug line-clamp-2 min-h-[2em]"
+                    >
+                      {{ thread.title }}
+                    </h3>
                   </div>
                 </div>
                 <div class="px-2.5 py-1.5 flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full shrink-0" :style="{ backgroundColor: statusColors[thread.status] || 'var(--vers-status-resolved)' }"></span>
-                  <span class="text-2xs text-text-secondary font-ui">{{ statusLabels[thread.status] || thread.status }}</span>
-                  <span v-if="thread.notes" class="text-2xs text-text-hint truncate ml-auto max-w-[60px]">{{ thread.notes }}</span>
+                  <span
+                    class="w-1.5 h-1.5 rounded-full shrink-0"
+                    :style="{
+                      backgroundColor: statusColors[thread.status] || 'var(--vers-status-resolved)'
+                    }"
+                  ></span>
+                  <span class="text-2xs text-text-secondary font-ui">{{
+                    statusLabels[thread.status] || thread.status
+                  }}</span>
+                  <span
+                    v-if="thread.notes"
+                    class="text-2xs text-text-hint truncate ml-auto max-w-[60px]"
+                    >{{ thread.notes }}</span
+                  >
                 </div>
               </div>
             </div>
@@ -99,7 +134,9 @@ onMounted(() => {
     </div>
 
     <div v-if="sortedThreads.length > 0" class="p-3 border-t border-border-subtle text-center">
-      <span class="text-xs text-text-hint">{{ sortedThreads.length }} thread{{ sortedThreads.length !== 1 ? 's' : '' }}</span>
+      <span class="text-xs text-text-hint"
+        >{{ sortedThreads.length }} thread{{ sortedThreads.length !== 1 ? 's' : '' }}</span
+      >
     </div>
   </div>
 </template>

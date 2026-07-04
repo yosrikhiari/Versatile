@@ -1,6 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getManuscript, saveManuscript, getProject, createProject, updateProject, getAllProjects, updateDailyWordCount, getDailyGoal, getStreakData, getLastSessionData, saveAuthorProfile, getAuthorProfile } from '../services/dbService'
+import {
+  getManuscript,
+  saveManuscript,
+  getProject,
+  createProject,
+  updateProject,
+  getAllProjects,
+  updateDailyWordCount,
+  getDailyGoal,
+  getStreakData,
+  getLastSessionData,
+  saveAuthorProfile,
+  getAuthorProfile
+} from '../services/dbService'
 import { countWords, stripHtmlTags } from '../utils/textUtils'
 import { WORKSPACE_TYPES, WORKSPACE_TERMINOLOGY } from '../config/workspace'
 import { STORAGE_KEYS } from '../config/storageKeys'
@@ -133,7 +146,11 @@ export const useProjectStore = defineStore('project', () => {
         const snapshot = summarize()
         if (snapshot) {
           const archiveStore = useArchiveStore()
-          await archiveStore.saveEndOfSessionState(currentProjectId.value, 'auto_snapshot', snapshot)
+          await archiveStore.saveEndOfSessionState(
+            currentProjectId.value,
+            'auto_snapshot',
+            snapshot
+          )
         }
       } catch (e) {
         console.error('[projectStore] autoSnapshot failed:', e)
@@ -183,7 +200,18 @@ export const useProjectStore = defineStore('project', () => {
     await loadProject(id)
 
     try {
-      await updateAuthorVoiceProfile({ data: { genreFocus: category, sessionCount: 0, totalWordsWritten: 0, favoriteLenses: [], rejectedLenses: [], sparkTypesUsed: [], commonStrengths: [], commonWeaknesses: [] } })
+      await updateAuthorVoiceProfile({
+        data: {
+          genreFocus: category,
+          sessionCount: 0,
+          totalWordsWritten: 0,
+          favoriteLenses: [],
+          rejectedLenses: [],
+          sparkTypesUsed: [],
+          commonStrengths: [],
+          commonWeaknesses: []
+        }
+      })
     } catch (e) {
       console.error('[projectStore] Failed to init author profile:', e)
     }
@@ -193,7 +221,7 @@ export const useProjectStore = defineStore('project', () => {
         const { BLUEPRINTS } = await import('../config/blueprints')
         const { useManuscriptStore } = await import('./manuscriptStore')
         const categoryBlueprints = BLUEPRINTS[category] || []
-        const blueprint = categoryBlueprints.find(b => b.id === blueprintId)
+        const blueprint = categoryBlueprints.find((b) => b.id === blueprintId)
         if (blueprint) {
           const manuscriptStore = useManuscriptStore()
           for (const section of blueprint.sections) {
@@ -231,7 +259,7 @@ export const useProjectStore = defineStore('project', () => {
   async function loadLastProject() {
     const projects = await getAllProjects()
     if (projects.length > 0) {
-      const lastProject = projects.reduce((latest, p) => 
+      const lastProject = projects.reduce((latest, p) =>
         new Date(p.updatedAt) > new Date(latest.updatedAt) ? p : latest
       )
       await loadProject(lastProject.id)

@@ -38,13 +38,16 @@ function handleKeydown(e) {
   }
 }
 
-watch(() => props.show, (show) => {
-  if (show) {
-    document.addEventListener('keydown', handleKeydown)
-  } else {
-    document.removeEventListener('keydown', handleKeydown)
+watch(
+  () => props.show,
+  (show) => {
+    if (show) {
+      document.addEventListener('keydown', handleKeydown)
+    } else {
+      document.removeEventListener('keydown', handleKeydown)
+    }
   }
-})
+)
 </script>
 
 <template>
@@ -59,7 +62,10 @@ watch(() => props.show, (show) => {
     >
       <div
         v-if="show"
-        :class="['fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm', backdropClass]"
+        :class="[
+          'fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm',
+          backdropClass
+        ]"
         @click.self="handleBackdropClick"
       >
         <Transition

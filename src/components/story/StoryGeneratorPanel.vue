@@ -12,7 +12,12 @@ import SparkPanel from '../spark/SparkPanel.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import GenerationSyncPreview from './GenerationSyncPreview.vue'
 import GenerationLoadingScreen from './GenerationLoadingScreen.vue'
-import { MODE_ARC, MODE_CHAPTER, MODE_SCENE, MODE_BRAINSTORM } from '../../constants/generationModes'
+import {
+  MODE_ARC,
+  MODE_CHAPTER,
+  MODE_SCENE,
+  MODE_BRAINSTORM
+} from '../../constants/generationModes'
 import { useSceneEval } from '../../composables/useSceneEval'
 import EvalPanel from '../eval/EvalPanel.vue'
 import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
@@ -30,7 +35,9 @@ const { getTurns } = useCompactConversation()
 
 const tab = ref(MODE_BRAINSTORM)
 
-const mode = computed(() => tab.value === MODE_ARC ? MODE_ARC : (tab.value === MODE_CHAPTER ? MODE_CHAPTER : MODE_SCENE))
+const mode = computed(() =>
+  tab.value === MODE_ARC ? MODE_ARC : tab.value === MODE_CHAPTER ? MODE_CHAPTER : MODE_SCENE
+)
 const genre = ref('')
 const tone = ref('')
 const wordTarget = ref(3500)
@@ -39,7 +46,9 @@ const volumes = ref(1)
 const chaptersPerVolume = ref(10)
 const wordsPerChapter = ref(2000)
 const scenesPerChapter = ref(3)
-const estimatedTotalWords = computed(() => volumes.value * chaptersPerVolume.value * wordsPerChapter.value)
+const estimatedTotalWords = computed(
+  () => volumes.value * chaptersPerVolume.value * wordsPerChapter.value
+)
 
 const sparkContext = ref('')
 
@@ -58,14 +67,14 @@ const sparkContextLabel = computed(() => {
 
 function formatBlueprintAsContext(blueprint) {
   const lines = [
-    blueprint.title       ? `Chapter: ${blueprint.title}`             : null,
-    blueprint.openingBeat     ? `Opening beat: ${blueprint.openingBeat}`     : null,
-    blueprint.turningPoint    ? `Turning point: ${blueprint.turningPoint}`   : null,
+    blueprint.title ? `Chapter: ${blueprint.title}` : null,
+    blueprint.openingBeat ? `Opening beat: ${blueprint.openingBeat}` : null,
+    blueprint.turningPoint ? `Turning point: ${blueprint.turningPoint}` : null,
     blueprint.confrontationBeat ? `Confrontation: ${blueprint.confrontationBeat}` : null,
-    blueprint.closingBeat     ? `Closing beat: ${blueprint.closingBeat}`     : null,
-    blueprint.sensoryAnchor   ? `Sensory anchor: ${blueprint.sensoryAnchor}` : null,
-    blueprint.dialogueHook    ? `Dialogue hook: ${blueprint.dialogueHook}`   : null,
-    blueprint.writingNotes    ? `Notes: ${blueprint.writingNotes}`           : null,
+    blueprint.closingBeat ? `Closing beat: ${blueprint.closingBeat}` : null,
+    blueprint.sensoryAnchor ? `Sensory anchor: ${blueprint.sensoryAnchor}` : null,
+    blueprint.dialogueHook ? `Dialogue hook: ${blueprint.dialogueHook}` : null,
+    blueprint.writingNotes ? `Notes: ${blueprint.writingNotes}` : null
   ].filter(Boolean)
   return lines.join('\n')
 }
@@ -88,7 +97,7 @@ function handleSendSparkToGenerator() {
 
   // Priority 3: last assistant turn in the conversation (prompt / partial streaming)
   const turns = getTurns('spark_default')
-  const lastAssistant = [...turns].reverse().find(t => t.role === 'assistant')
+  const lastAssistant = [...turns].reverse().find((t) => t.role === 'assistant')
   sparkContext.value = lastAssistant?.content || sparkStore.currentStreamingContent || ''
   tab.value = 'chapter'
 }
@@ -116,22 +125,30 @@ const showReRequestInput = ref(false)
 const reRequestEdits = ref('')
 const sceneReviewEnabled = computed({
   get: () => volumeGenerator.sceneReviewMode.value,
-  set: (val) => { volumeGenerator.sceneReviewMode.value = val }
+  set: (val) => {
+    volumeGenerator.sceneReviewMode.value = val
+  }
 })
 const inlineEvalEnabled = computed({
   get: () => volumeGenerator.inlineEvalEnabled.value,
-  set: (val) => { volumeGenerator.inlineEvalEnabled.value = val }
+  set: (val) => {
+    volumeGenerator.inlineEvalEnabled.value = val
+  }
 })
 const autoRun = computed({
   get: () => volumeGenerator.autoMode.value,
-  set: (val) => { volumeGenerator.autoMode.value = val }
+  set: (val) => {
+    volumeGenerator.autoMode.value = val
+  }
 })
 function togglePitch(i) {
   pitchOpen.value = pitchOpen.value === i ? -1 : i
 }
 function formatWants(wants) {
   if (!wants || typeof wants !== 'object') return ''
-  return Object.entries(wants).map(([name, goal]) => `${name} → ${goal}`).join(', ')
+  return Object.entries(wants)
+    .map(([name, goal]) => `${name} → ${goal}`)
+    .join(', ')
 }
 
 const previewScenes = computed(() =>
@@ -140,11 +157,16 @@ const previewScenes = computed(() =>
 
 function getTensionBarClass(tension) {
   switch (tension) {
-    case 'peak': return 'bg-red-400'
-    case 'high': return 'bg-orange-400'
-    case 'medium': return 'bg-yellow-400'
-    case 'low': return 'bg-gray-400'
-    default: return 'bg-gray-400'
+    case 'peak':
+      return 'bg-red-400'
+    case 'high':
+      return 'bg-orange-400'
+    case 'medium':
+      return 'bg-yellow-400'
+    case 'low':
+      return 'bg-gray-400'
+    default:
+      return 'bg-gray-400'
   }
 }
 
@@ -166,7 +188,16 @@ function handleReviseScene(idx) {
   sceneEval.revise(scene, ws, planItem, idx)
 }
 
-const genres = ['Fantasy', 'Sci-Fi', 'Thriller', 'Romance', 'Horror', 'Literary', 'Mystery', 'Historical']
+const genres = [
+  'Fantasy',
+  'Sci-Fi',
+  'Thriller',
+  'Romance',
+  'Horror',
+  'Literary',
+  'Mystery',
+  'Historical'
+]
 const tones = ['Tense', 'Melancholic', 'Hopeful', 'Dark', 'Playful', 'Atmospheric']
 const synopsis = computed(() => {
   const parts = []
@@ -194,11 +225,18 @@ const qualityGrade = computed(() => {
   return 'poor'
 })
 
-const totalCharacterIssues = computed(() => volumeGenerator.consistencyReport.value?.characterIssues?.length || 0)
-const totalLocationIssues = computed(() => volumeGenerator.consistencyReport.value?.locationIssues?.length || 0)
+const totalCharacterIssues = computed(
+  () => volumeGenerator.consistencyReport.value?.characterIssues?.length || 0
+)
+const totalLocationIssues = computed(
+  () => volumeGenerator.consistencyReport.value?.locationIssues?.length || 0
+)
 
 const totalWordsWritten = computed(() =>
-  volumeGenerator.writtenScenes.value.reduce((sum, s) => sum + (s.prose?.split(/\s+/).length || 0), 0)
+  volumeGenerator.writtenScenes.value.reduce(
+    (sum, s) => sum + (s.prose?.split(/\s+/).length || 0),
+    0
+  )
 )
 
 const previousGenerations = ref([])
@@ -207,21 +245,32 @@ async function loadPreviousGenerations() {
   if (!pid) return
   try {
     previousGenerations.value = await db.generatedStories
-      .where('projectId').equals(pid)
+      .where('projectId')
+      .equals(pid)
       .reverse()
       .sortBy('generatedAt')
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 const resumableRun = ref(null)
 async function checkResumable() {
-  if (!projectStore.currentProjectId) { resumableRun.value = null; return }
+  if (!projectStore.currentProjectId) {
+    resumableRun.value = null
+    return
+  }
   try {
     resumableRun.value = await volumeGenerator.getResumableRun(projectStore.currentProjectId)
-  } catch { resumableRun.value = null }
+  } catch {
+    resumableRun.value = null
+  }
 }
 
-onMounted(() => { loadPreviousGenerations(); checkResumable() })
+onMounted(() => {
+  loadPreviousGenerations()
+  checkResumable()
+})
 
 async function handleVolumeResume() {
   if (!projectStore.currentProjectId) return
@@ -237,7 +286,9 @@ async function handleVolumeResume() {
         volumeStreamingText.value = fullProse
       }
     })
-  } catch { /* phase/error set internally */ }
+  } catch {
+    /* phase/error set internally */
+  }
 }
 
 async function handleDiscardResumable() {
@@ -245,7 +296,9 @@ async function handleDiscardResumable() {
   try {
     const { clearGenRun } = await import('../../services/db-generation')
     await clearGenRun(projectStore.currentProjectId)
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   resumableRun.value = null
 }
 
@@ -308,7 +361,8 @@ async function handleVolumeGenerate() {
 async function handleVolumeConfirmPlan() {
   if (!projectStore.currentProjectId) return
 
-  const editedPlan = volumePlanEdits.value.length > 0 ? volumePlanEdits.value : volumeGenerator.scenePlan.value
+  const editedPlan =
+    volumePlanEdits.value.length > 0 ? volumePlanEdits.value : volumeGenerator.scenePlan.value
 
   try {
     await volumeGenerator.confirmPlan({
@@ -378,7 +432,7 @@ async function handleVolumeExportTxt() {
   if (scenes.length === 0) return
   await exportAsText({
     title: `Generated Story`,
-    scenes: scenes.map(s => ({ title: s.title, prose: s.prose }))
+    scenes: scenes.map((s) => ({ title: s.title, prose: s.prose }))
   })
 }
 
@@ -387,7 +441,7 @@ async function handleVolumeExportMd() {
   if (scenes.length === 0) return
   await exportAsMarkdown({
     title: `Generated Story`,
-    scenes: scenes.map(s => ({ title: s.title, prose: s.prose }))
+    scenes: scenes.map((s) => ({ title: s.title, prose: s.prose }))
   })
 }
 
@@ -402,7 +456,7 @@ function handleVolumeSceneEdit(sceneIndex, field, value) {
 function handleWantsEdit(sceneIndex, text) {
   const wants = {}
   if (text) {
-    text.split(',').forEach(part => {
+    text.split(',').forEach((part) => {
       const trimmed = part.trim()
       const sep = trimmed.indexOf('→')
       if (sep > 0) {
@@ -429,21 +483,30 @@ async function handleVolumeSaveToManuscript() {
     const subsectionId = scene.subsectionId || volumeGenerator.scenePlan.value[i]?.subsectionId
     if (!subsectionId) continue
 
-    await manuscriptStore.updateSubsectionData(subsectionId, {
-      content: scene.prose,
-      wordCount: scene.prose.split(/\s+/).length
-    }, projectStore.currentProjectId)
+    await manuscriptStore.updateSubsectionData(
+      subsectionId,
+      {
+        content: scene.prose,
+        wordCount: scene.prose.split(/\s+/).length
+      },
+      projectStore.currentProjectId
+    )
   }
 }
 
 // ----- Shared -----
 function getTensionColor(tension) {
   switch (tension) {
-    case 'peak': return 'text-red-400 bg-red-950/30'
-    case 'high': return 'text-orange-400 bg-orange-950/30'
-    case 'medium': return 'text-yellow-400 bg-yellow-950/30'
-    case 'low': return 'text-gray-400 bg-gray-800/30'
-    default: return 'text-gray-400 bg-gray-800/30'
+    case 'peak':
+      return 'text-red-400 bg-red-950/30'
+    case 'high':
+      return 'text-orange-400 bg-orange-950/30'
+    case 'medium':
+      return 'text-yellow-400 bg-yellow-950/30'
+    case 'low':
+      return 'text-gray-400 bg-gray-800/30'
+    default:
+      return 'text-gray-400 bg-gray-800/30'
   }
 }
 
@@ -479,7 +542,9 @@ function getPhaseLabel(phase) {
           :class="tab === m.id ? 'text-accent' : 'text-text-secondary hover:text-text-primary'"
           :style="tab === m.id ? { background: 'rgba(var(--vers-accent-primary-rgb),0.14)' } : {}"
           @click="tab = m.id"
-        >{{ m.label }}</button>
+        >
+          {{ m.label }}
+        </button>
       </div>
     </div>
 
@@ -493,203 +558,309 @@ function getPhaseLabel(phase) {
 
       <!-- ==================== CHAPTER / VOLUME TABS ==================== -->
       <template v-if="tab !== MODE_BRAINSTORM">
-      <!-- ==================== IDLE / CONTROLS ==================== -->
-      <template v-if="volumeGenerator.phase.value === 'idle'">
-        <div class="p-4 space-y-5">
-          <!-- Resume an interrupted one-click run -->
-          <div v-if="resumableRun" class="rounded-lg border border-accent/40 bg-accent/10 p-3 space-y-2">
-            <p class="text-xs text-text-primary font-ui">
-              Unfinished draft — {{ resumableRun.written }} of {{ resumableRun.total }} scenes written.
-            </p>
-            <div class="flex items-center gap-2">
-              <button
-                class="flex-1 py-1.5 text-xs bg-accent text-accent-foreground rounded-md font-medium hover:bg-accent/90 font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                @click="handleVolumeResume"
-              >Resume</button>
-              <button
-                class="py-1.5 px-3 text-xs text-text-hint hover:text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent rounded-md"
-                @click="handleDiscardResumable"
-              >Discard</button>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Story Synopsis</label>
-            <div v-if="hasSynopsis" class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary whitespace-pre-wrap">
-              {{ synopsis }}
-            </div>
-            <div v-else class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-hint italic flex items-center justify-center">
-              <span>No synopsis set — open Project Settings to add a category and description</span>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Genre</label>
-            <div class="flex flex-wrap gap-1.5">
-              <button
-                v-for="g in genres"
-                :key="g"
-                :class="[
-                  'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
-                  genre === g ? 'bg-accent text-accent-foreground' : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-                ]"
-                @click="genre = genre === g ? '' : g"
-              >{{ g }}</button>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Tone</label>
-            <div class="flex flex-wrap gap-1.5">
-              <button
-                v-for="t in tones"
-                :key="t"
-                :class="[
-                  'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
-                  tone === t ? 'bg-accent text-accent-foreground' : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-                ]"
-                @click="tone = tone === t ? '' : t"
-              >{{ t }}</button>
-            </div>
-          </div>
-
-          <div v-if="!usePreciseStructure">
-            <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">{{ mode === MODE_SCENE ? 'Words per Scene' : 'Total Word Target' }}</label>
-            <input
-              v-model.number="wordTarget"
-              type="number"
-              min="500"
-              max="10000"
-              step="100"
-              class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
-
-          <!-- Precise structure: exact volumes / chapters / words -->
-          <div class="rounded-lg border border-border-subtle p-3 space-y-3">
-            <label class="flex items-center gap-2 text-xs text-text-primary font-ui cursor-pointer select-none">
-              <input
-                v-model="usePreciseStructure"
-                type="checkbox"
-                class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-              />
-              Precise structure (exact volumes, chapters & length)
-            </label>
-
-            <div v-if="usePreciseStructure" class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1">Volumes</label>
-                <input v-model.number="volumes" type="number" min="1" max="20" class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent" />
-              </div>
-              <div>
-                <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1">Chapters / volume</label>
-                <input v-model.number="chaptersPerVolume" type="number" min="1" max="60" class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent" />
-              </div>
-              <div>
-                <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1">Words / chapter</label>
-                <input v-model.number="wordsPerChapter" type="number" min="300" max="20000" step="100" class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent" />
-              </div>
-              <div>
-                <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1">Scenes / chapter</label>
-                <input v-model.number="scenesPerChapter" type="number" min="1" max="12" class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent" />
-              </div>
-            </div>
-
-            <p v-if="usePreciseStructure" class="text-2xs text-text-hint font-ui">
-              {{ volumes * chaptersPerVolume }} chapters · ~{{ estimatedTotalWords.toLocaleString() }} words total. Chapters are linked via hook endings + a shared spine for continuity.
-            </p>
-          </div>
-
-          <!-- Spark context badge -->
-          <div v-if="sparkContext" class="rounded-lg bg-accent/10 border border-accent/20 px-3 py-2.5 space-y-1">
-            <div class="flex items-center gap-2">
-              <BaseIcon name="sparkles" :size="14" class="text-accent shrink-0" />
-              <span class="text-xs text-accent font-semibold font-ui flex-1 truncate">Spark context active</span>
-              <button
-                class="text-text-hint hover:text-text-primary focus:outline-none focus:ring-1 focus:ring-accent rounded"
-                title="Remove Spark context"
-                @click="clearSparkContext"
-              >
-                <BaseIcon name="x" :size="14" />
-              </button>
-            </div>
-            <p class="text-2xs text-text-hint font-ui truncate pl-5" :title="sparkContext">{{ sparkContextLabel }}</p>
-          </div>
-
-          <div class="flex items-center gap-2 px-1">
-            <label class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none">
-              <input
-                v-model="autoRun"
-                type="checkbox"
-                class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-              />
-              One-click: write the whole thing (no stops)
-            </label>
-          </div>
-          <div class="flex items-center gap-2 px-1">
-            <label
-              class="flex items-center gap-2 text-xs font-ui select-none"
-              :class="autoRun ? 'text-text-hint/40 cursor-not-allowed' : 'text-text-hint cursor-pointer'"
+        <!-- ==================== IDLE / CONTROLS ==================== -->
+        <template v-if="volumeGenerator.phase.value === 'idle'">
+          <div class="p-4 space-y-5">
+            <!-- Resume an interrupted one-click run -->
+            <div
+              v-if="resumableRun"
+              class="rounded-lg border border-accent/40 bg-accent/10 p-3 space-y-2"
             >
+              <p class="text-xs text-text-primary font-ui">
+                Unfinished draft — {{ resumableRun.written }} of {{ resumableRun.total }} scenes
+                written.
+              </p>
+              <div class="flex items-center gap-2">
+                <button
+                  class="flex-1 py-1.5 text-xs bg-accent text-accent-foreground rounded-md font-medium hover:bg-accent/90 font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                  @click="handleVolumeResume"
+                >
+                  Resume
+                </button>
+                <button
+                  class="py-1.5 px-3 text-xs text-text-hint hover:text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent rounded-md"
+                  @click="handleDiscardResumable"
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2"
+                >Story Synopsis</label
+              >
+              <div
+                v-if="hasSynopsis"
+                class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary whitespace-pre-wrap"
+              >
+                {{ synopsis }}
+              </div>
+              <div
+                v-else
+                class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-hint italic flex items-center justify-center"
+              >
+                <span
+                  >No synopsis set — open Project Settings to add a category and description</span
+                >
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2"
+                >Genre</label
+              >
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="g in genres"
+                  :key="g"
+                  :class="[
+                    'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
+                    genre === g
+                      ? 'bg-accent text-accent-foreground'
+                      : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
+                  ]"
+                  @click="genre = genre === g ? '' : g"
+                >
+                  {{ g }}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2"
+                >Tone</label
+              >
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="t in tones"
+                  :key="t"
+                  :class="[
+                    'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
+                    tone === t
+                      ? 'bg-accent text-accent-foreground'
+                      : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
+                  ]"
+                  @click="tone = tone === t ? '' : t"
+                >
+                  {{ t }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="!usePreciseStructure">
+              <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">{{
+                mode === MODE_SCENE ? 'Words per Scene' : 'Total Word Target'
+              }}</label>
               <input
-                v-model="sceneReviewEnabled"
-                type="checkbox"
-                :disabled="autoRun"
-                class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent disabled:opacity-40"
+                v-model.number="wordTarget"
+                type="number"
+                min="500"
+                max="10000"
+                step="100"
+                class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
               />
-              Pause per scene for review
-            </label>
+            </div>
+
+            <!-- Precise structure: exact volumes / chapters / words -->
+            <div class="rounded-lg border border-border-subtle p-3 space-y-3">
+              <label
+                class="flex items-center gap-2 text-xs text-text-primary font-ui cursor-pointer select-none"
+              >
+                <input
+                  v-model="usePreciseStructure"
+                  type="checkbox"
+                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
+                />
+                Precise structure (exact volumes, chapters & length)
+              </label>
+
+              <div v-if="usePreciseStructure" class="grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
+                    >Volumes</label
+                  >
+                  <input
+                    v-model.number="volumes"
+                    type="number"
+                    min="1"
+                    max="20"
+                    class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
+                    >Chapters / volume</label
+                  >
+                  <input
+                    v-model.number="chaptersPerVolume"
+                    type="number"
+                    min="1"
+                    max="60"
+                    class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
+                    >Words / chapter</label
+                  >
+                  <input
+                    v-model.number="wordsPerChapter"
+                    type="number"
+                    min="300"
+                    max="20000"
+                    step="100"
+                    class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
+                    >Scenes / chapter</label
+                  >
+                  <input
+                    v-model.number="scenesPerChapter"
+                    type="number"
+                    min="1"
+                    max="12"
+                    class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+              </div>
+
+              <p v-if="usePreciseStructure" class="text-2xs text-text-hint font-ui">
+                {{ volumes * chaptersPerVolume }} chapters · ~{{
+                  estimatedTotalWords.toLocaleString()
+                }}
+                words total. Chapters are linked via hook endings + a shared spine for continuity.
+              </p>
+            </div>
+
+            <!-- Spark context badge -->
+            <div
+              v-if="sparkContext"
+              class="rounded-lg bg-accent/10 border border-accent/20 px-3 py-2.5 space-y-1"
+            >
+              <div class="flex items-center gap-2">
+                <BaseIcon name="sparkles" :size="14" class="text-accent shrink-0" />
+                <span class="text-xs text-accent font-semibold font-ui flex-1 truncate"
+                  >Spark context active</span
+                >
+                <button
+                  class="text-text-hint hover:text-text-primary focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                  title="Remove Spark context"
+                  @click="clearSparkContext"
+                >
+                  <BaseIcon name="x" :size="14" />
+                </button>
+              </div>
+              <p class="text-2xs text-text-hint font-ui truncate pl-5" :title="sparkContext">
+                {{ sparkContextLabel }}
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2 px-1">
+              <label
+                class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none"
+              >
+                <input
+                  v-model="autoRun"
+                  type="checkbox"
+                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
+                />
+                One-click: write the whole thing (no stops)
+              </label>
+            </div>
+            <div class="flex items-center gap-2 px-1">
+              <label
+                class="flex items-center gap-2 text-xs font-ui select-none"
+                :class="
+                  autoRun ? 'text-text-hint/40 cursor-not-allowed' : 'text-text-hint cursor-pointer'
+                "
+              >
+                <input
+                  v-model="sceneReviewEnabled"
+                  type="checkbox"
+                  :disabled="autoRun"
+                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent disabled:opacity-40"
+                />
+                Pause per scene for review
+              </label>
+            </div>
+            <div class="flex items-center gap-2 px-1">
+              <label
+                class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none"
+              >
+                <input
+                  v-model="inlineEvalEnabled"
+                  type="checkbox"
+                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
+                />
+                Auto-evaluate scenes
+              </label>
+            </div>
+
+            <button
+              :disabled="!hasSynopsis || volumeGenerator.phase.value !== 'idle'"
+              class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+              @click="handleVolumeGenerate"
+            >
+              <span class="flex items-center justify-center gap-2">
+                <BaseIcon name="wand-2" :size="16" />
+                {{
+                  mode === MODE_SCENE
+                    ? 'Generate Scene'
+                    : mode === MODE_CHAPTER
+                      ? 'Generate Chapter'
+                      : 'Generate Arc'
+                }}{{ sparkContext ? ' with Spark context' : '' }}
+              </span>
+            </button>
+
+            <p class="text-xs text-text-hint text-center font-ui">
+              Powered by your story bible
+              <span v-if="characterCount > 0 || locationCount > 0 || threadCount > 0">
+                ({{ characterCount }} characters, {{ locationCount }} locations,
+                {{ threadCount }} plot threads)
+              </span>
+            </p>
           </div>
-          <div class="flex items-center gap-2 px-1">
-            <label class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none">
-              <input
-                v-model="inlineEvalEnabled"
-                type="checkbox"
-                class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-              />
-              Auto-evaluate scenes
-            </label>
-          </div>
+        </template>
 
-          <button
-            :disabled="!hasSynopsis || volumeGenerator.phase.value !== 'idle'"
-            class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="handleVolumeGenerate"
-          >
-            <span class="flex items-center justify-center gap-2">
-              <BaseIcon name="wand-2" :size="16" />
-              {{ mode === MODE_SCENE ? 'Generate Scene' : (mode === MODE_CHAPTER ? 'Generate Chapter' : 'Generate Arc') }}{{ sparkContext ? ' with Spark context' : '' }}
-            </span>
-          </button>
-
-          <p class="text-xs text-text-hint text-center font-ui">
-            Powered by your story bible
-            <span v-if="characterCount > 0 || locationCount > 0 || threadCount > 0">
-              ({{ characterCount }} characters, {{ locationCount }} locations, {{ threadCount }} plot threads)
-            </span>
-          </p>
-        </div>
-      </template>
-
-      <!-- ==================== CHAPTER GENERATOR ==================== -->
+        <!-- ==================== CHAPTER GENERATOR ==================== -->
         <!-- ERROR STATE -->
         <div v-if="volumeGenerator.phase.value === 'error'" class="p-8 text-center space-y-4">
           <div class="flex items-center justify-center gap-3 text-red-400 py-4">
             <BaseIcon name="alert-triangle" :size="32" />
           </div>
           <div class="text-lg font-ui text-text-primary">Conjuration Failed</div>
-          <p class="text-sm text-red-300 bg-red-950/20 p-4 rounded-lg border border-red-900/30 max-w-lg mx-auto whitespace-pre-wrap">{{ volumeGenerator.error || 'An unknown error occurred.' }}</p>
+          <p
+            class="text-sm text-red-300 bg-red-950/20 p-4 rounded-lg border border-red-900/30 max-w-lg mx-auto whitespace-pre-wrap"
+          >
+            {{ volumeGenerator.error || 'An unknown error occurred.' }}
+          </p>
           <div class="pt-4">
             <button
               class="px-6 py-2 bg-bg-tertiary text-text-secondary hover:text-text-primary rounded-lg transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
               @click="handleVolumeReset"
-            >Try Again</button>
+            >
+              Try Again
+            </button>
           </div>
         </div>
 
         <!-- BOOTSTRAPPING / PLANNING -->
-        <div v-if="volumeGenerator.phase.value === 'bootstrapping' || volumeGenerator.phase.value === 'planning'" class="p-8 text-center space-y-4">
-          <GenerationLoadingScreen 
+        <div
+          v-if="
+            volumeGenerator.phase.value === 'bootstrapping' ||
+            volumeGenerator.phase.value === 'planning'
+          "
+          class="p-8 text-center space-y-4"
+        >
+          <GenerationLoadingScreen
             :phase="volumeGenerator.phase.value"
             :progress="volumeGenerator.progress"
             :streamed-entities="liveEntities"
@@ -700,21 +871,32 @@ function getPhaseLabel(phase) {
         <!-- PLAN PREVIEW -->
         <div v-if="volumeGenerator.phase.value === 'plan-preview'" class="p-4 space-y-4">
           <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 space-y-3">
-            <h3 class="text-sm font-semibold text-text-primary font-ui">{{ mode === MODE_SCENE ? 'Scene' : (mode === MODE_CHAPTER ? 'Chapter' : 'Arc') }} Plan — {{ volumeGenerator.scenePlan.value.length }} scene{{ volumeGenerator.scenePlan.value.length === 1 ? '' : 's' }}</h3>
-            <p class="text-xs text-text-hint">Edit scene fields before writing begins. Narrative pitches are auto-generated previews — edit the underlying fields to update them.</p>
+            <h3 class="text-sm font-semibold text-text-primary font-ui">
+              {{ mode === MODE_SCENE ? 'Scene' : mode === MODE_CHAPTER ? 'Chapter' : 'Arc' }} Plan —
+              {{ volumeGenerator.scenePlan.value.length }} scene{{
+                volumeGenerator.scenePlan.value.length === 1 ? '' : 's'
+              }}
+            </h3>
+            <p class="text-xs text-text-hint">
+              Edit scene fields before writing begins. Narrative pitches are auto-generated previews
+              — edit the underlying fields to update them.
+            </p>
           </div>
 
           <div class="space-y-2">
             <h3 class="text-xs uppercase tracking-widest text-text-hint font-ui">Scenes</h3>
 
             <!-- Tension arc visualization -->
-            <div class="flex gap-0.5 h-3 rounded overflow-hidden bg-bg-tertiary" title="Tension arc across scenes">
+            <div
+              class="flex gap-0.5 h-3 rounded overflow-hidden bg-bg-tertiary"
+              title="Tension arc across scenes"
+            >
               <div
                 v-for="(scene, j) in previewScenes"
                 :key="j"
                 :class="getTensionBarClass(scene.tension)"
                 class="h-full transition-colors"
-                :style="{ width: (100 / previewScenes.length) + '%' }"
+                :style="{ width: 100 / previewScenes.length + '%' }"
                 :title="'Scene ' + (j + 1) + ': ' + scene.tension"
               />
             </div>
@@ -726,8 +908,13 @@ function getPhaseLabel(phase) {
             >
               <!-- Header -->
               <div class="flex items-center justify-between">
-                <span class="text-sm font-semibold text-text-primary font-ui">Scene {{ scene.sceneNumber || i + 1 }}: {{ scene.title }}</span>
-                <span :class="['px-2 py-0.5 rounded text-xs font-ui', getTensionColor(scene.tension)]">{{ scene.tension }}</span>
+                <span class="text-sm font-semibold text-text-primary font-ui"
+                  >Scene {{ scene.sceneNumber || i + 1 }}: {{ scene.title }}</span
+                >
+                <span
+                  :class="['px-2 py-0.5 rounded text-xs font-ui', getTensionColor(scene.tension)]"
+                  >{{ scene.tension }}</span
+                >
               </div>
 
               <!-- Collapsible narrative pitch -->
@@ -739,22 +926,78 @@ function getPhaseLabel(phase) {
                   <BaseIcon :name="pitchOpen === i ? 'chevron-down' : 'chevron-right'" :size="12" />
                   <span class="font-medium">Narrative Pitch</span>
                 </button>
-                <div v-if="pitchOpen === i" class="px-3 pb-2.5 text-xs text-text-secondary leading-relaxed space-y-1.5 border-t border-border-subtle pt-2">
-                  <p v-if="scene.goal">Emotional goal: <span class="text-text-primary font-medium">{{ scene.goal }}</span>.</p>
-                  <p v-if="scene.obstacle">What changes / obstacle: <span class="text-text-primary">{{ scene.obstacle }}</span>.</p>
-                  <p v-if="scene.setup">Sets up: <span class="text-text-primary">{{ scene.setup }}</span>.</p>
-                  <p v-if="scene.payoff">Pays off: <span class="text-text-primary">{{ scene.payoff }}</span>.</p>
-                  <p v-if="scene.sensoryAnchor">Sensory anchor: <span class="text-text-primary italic">{{ scene.sensoryAnchor }}</span>.</p>
-                  <p v-if="scene.location">Location: <span class="text-text-primary">{{ scene.location }}</span>.</p>
-                  <p v-if="scene.tension">Tension: <span class="text-text-primary font-medium">{{ scene.tension }}</span>.</p>
-                  <p v-if="scene.pacing">Pacing: <span class="text-text-primary font-medium">{{ scene.pacing }}</span>.</p>
-                  <p v-if="scene.arcPosition">Arc position: <span class="text-text-primary font-medium">{{ scene.arcPosition }}</span>.</p>
-                  <p v-if="scene.emotionalGoal">Reader's emotional response: <span class="text-text-primary">{{ scene.emotionalGoal }}</span>.</p>
-                  <p v-if="scene.characterWants && Object.keys(scene.characterWants).length > 0">
-                    Character wants: <span class="text-text-primary">{{ formatWants(scene.characterWants) }}</span>.
+                <div
+                  v-if="pitchOpen === i"
+                  class="px-3 pb-2.5 text-xs text-text-secondary leading-relaxed space-y-1.5 border-t border-border-subtle pt-2"
+                >
+                  <p v-if="scene.goal">
+                    Emotional goal:
+                    <span class="text-text-primary font-medium">{{ scene.goal }}</span
+                    >.
                   </p>
-                  <p v-if="scene.estimatedWords">Target words: <span class="text-text-primary">{{ scene.estimatedWords }}</span>.</p>
-                  <p v-if="!scene.goal && !scene.setup && !scene.payoff && !scene.sensoryAnchor && !scene.obstacle && !scene.tension && !scene.pacing" class="text-text-hint italic">No narrative details yet.</p>
+                  <p v-if="scene.obstacle">
+                    What changes / obstacle:
+                    <span class="text-text-primary">{{ scene.obstacle }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.setup">
+                    Sets up: <span class="text-text-primary">{{ scene.setup }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.payoff">
+                    Pays off: <span class="text-text-primary">{{ scene.payoff }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.sensoryAnchor">
+                    Sensory anchor:
+                    <span class="text-text-primary italic">{{ scene.sensoryAnchor }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.location">
+                    Location: <span class="text-text-primary">{{ scene.location }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.tension">
+                    Tension: <span class="text-text-primary font-medium">{{ scene.tension }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.pacing">
+                    Pacing: <span class="text-text-primary font-medium">{{ scene.pacing }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.arcPosition">
+                    Arc position:
+                    <span class="text-text-primary font-medium">{{ scene.arcPosition }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.emotionalGoal">
+                    Reader's emotional response:
+                    <span class="text-text-primary">{{ scene.emotionalGoal }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.characterWants && Object.keys(scene.characterWants).length > 0">
+                    Character wants:
+                    <span class="text-text-primary">{{ formatWants(scene.characterWants) }}</span
+                    >.
+                  </p>
+                  <p v-if="scene.estimatedWords">
+                    Target words: <span class="text-text-primary">{{ scene.estimatedWords }}</span
+                    >.
+                  </p>
+                  <p
+                    v-if="
+                      !scene.goal &&
+                      !scene.setup &&
+                      !scene.payoff &&
+                      !scene.sensoryAnchor &&
+                      !scene.obstacle &&
+                      !scene.tension &&
+                      !scene.pacing
+                    "
+                    class="text-text-hint italic"
+                  >
+                    No narrative details yet.
+                  </p>
                 </div>
               </div>
 
@@ -774,8 +1017,18 @@ function getPhaseLabel(phase) {
                     <span class="text-text-hint font-ui w-16 shrink-0">Characters:</span>
                     <input
                       class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.characters ? scene.characters.join(', ') : (scene.charactersPresent || []).join(', ')"
-                      @input="handleVolumeSceneEdit(i, 'characters', $event.target.value.split(',').map(s => s.trim()))"
+                      :value="
+                        scene.characters
+                          ? scene.characters.join(', ')
+                          : (scene.charactersPresent || []).join(', ')
+                      "
+                      @input="
+                        handleVolumeSceneEdit(
+                          i,
+                          'characters',
+                          $event.target.value.split(',').map((s) => s.trim())
+                        )
+                      "
                     />
                   </div>
                   <div class="flex items-center gap-2 text-xs">
@@ -859,7 +1112,13 @@ function getPhaseLabel(phase) {
                       step="50"
                       class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.estimatedWords || 800"
-                      @input="handleVolumeSceneEdit(i, 'estimatedWords', parseInt($event.target.value) || 800)"
+                      @input="
+                        handleVolumeSceneEdit(
+                          i,
+                          'estimatedWords',
+                          parseInt($event.target.value) || 800
+                        )
+                      "
                     />
                   </div>
                   <div class="flex items-center gap-2 text-xs">
@@ -882,7 +1141,11 @@ function getPhaseLabel(phase) {
                 <span class="font-ui text-text-hover">Character Wants:</span>
                 <input
                   class="ml-1 flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-0.5 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent w-full mt-1"
-                  :value="scene.characterWants && Object.keys(scene.characterWants).length > 0 ? formatWants(scene.characterWants) : ''"
+                  :value="
+                    scene.characterWants && Object.keys(scene.characterWants).length > 0
+                      ? formatWants(scene.characterWants)
+                      : ''
+                  "
                   placeholder="CharacterName → goal description, AnotherChar → their goal"
                   @input="handleWantsEdit(i, $event.target.value)"
                 />
@@ -903,7 +1166,9 @@ function getPhaseLabel(phase) {
             <button
               class="px-4 py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
               @click="handleVolumeReset"
-            >Cancel</button>
+            >
+              Cancel
+            </button>
           </div>
         </div>
 
@@ -911,28 +1176,57 @@ function getPhaseLabel(phase) {
         <div v-if="volumeGenerator.phase.value === 'writing'" class="p-4 space-y-4">
           <div class="space-y-2">
             <div class="flex items-center justify-between text-xs text-text-hint font-ui">
-              <span>{{ getPhaseLabel(volumeGenerator.phase.value) }} — Scene {{ volumeCurrentScene }} of {{ volumeTotalScenes }}</span>
-              <span>{{ volumeTotalScenes > 0 ? Math.round((volumeCurrentScene / volumeTotalScenes) * 100) : 0 }}%</span>
+              <span
+                >{{ getPhaseLabel(volumeGenerator.phase.value) }} — Scene
+                {{ volumeCurrentScene }} of {{ volumeTotalScenes }}</span
+              >
+              <span
+                >{{
+                  volumeTotalScenes > 0
+                    ? Math.round((volumeCurrentScene / volumeTotalScenes) * 100)
+                    : 0
+                }}%</span
+              >
             </div>
             <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-              <div class="h-full bg-accent rounded-full transition-all duration-300 ease-out" :style="{ width: volumeTotalScenes > 0 ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%' : '0%' }"></div>
+              <div
+                class="h-full bg-accent rounded-full transition-all duration-300 ease-out"
+                :style="{
+                  width:
+                    volumeTotalScenes > 0
+                      ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%'
+                      : '0%'
+                }"
+              ></div>
             </div>
-            <div v-if="volumeGenerator.progress.statusText" class="text-11px text-text-hint font-ui text-center italic mt-1.5">
+            <div
+              v-if="volumeGenerator.progress.statusText"
+              class="text-11px text-text-hint font-ui text-center italic mt-1.5"
+            >
               {{ volumeGenerator.progress.statusText }}
             </div>
           </div>
 
-          <div class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin">
+          <div
+            class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin"
+          >
             <div class="p-3 text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
               {{ volumeStreamingText || 'Writing...' }}
-              <BaseIcon v-if="volumeStreamingText" name="loader-2" :size="12" class="animate-spin inline ml-1 text-accent" />
+              <BaseIcon
+                v-if="volumeStreamingText"
+                name="loader-2"
+                :size="12"
+                class="animate-spin inline ml-1 text-accent"
+              />
             </div>
           </div>
 
           <button
             class="w-full py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleVolumeReset"
-          >Cancel</button>
+          >
+            Cancel
+          </button>
         </div>
 
         <!-- SYNC PREVIEW STATE -->
@@ -945,19 +1239,32 @@ function getPhaseLabel(phase) {
           <button
             class="w-full py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleVolumeReset"
-          >Cancel</button>
+          >
+            Cancel
+          </button>
         </div>
 
         <!-- SCENE REVIEW STATE -->
         <div v-if="volumeGenerator.phase.value === 'scene-review'" class="p-4 space-y-4">
           <div class="space-y-2">
             <div class="flex items-center justify-between text-xs text-text-hint font-ui">
-              <span>Scene Review — Scene {{ volumeGenerator.currentSceneResult.value?.scene?.sceneNumber || '...' }}: {{ volumeGenerator.currentSceneResult.value?.scene?.title || '...' }}</span>
+              <span
+                >Scene Review — Scene
+                {{ volumeGenerator.currentSceneResult.value?.scene?.sceneNumber || '...' }}:
+                {{ volumeGenerator.currentSceneResult.value?.scene?.title || '...' }}</span
+              >
             </div>
-            <div class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin">
+            <div
+              class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin"
+            >
               <div class="p-3 text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
                 {{ volumeGenerator.currentSceneResult.value?.fullProse || '...' }}
-                <BaseIcon v-if="volumeGenerator.currentSceneResult.value?.fullProse" name="loader-2" :size="12" class="animate-spin inline ml-1 text-accent" />
+                <BaseIcon
+                  v-if="volumeGenerator.currentSceneResult.value?.fullProse"
+                  name="loader-2"
+                  :size="12"
+                  class="animate-spin inline ml-1 text-accent"
+                />
               </div>
             </div>
           </div>
@@ -967,19 +1274,25 @@ function getPhaseLabel(phase) {
               class="flex-1 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
               @click="handleApproveScene"
             >
-              <span class="flex items-center justify-center gap-2"><BaseIcon name="check" :size="16" /> Approve</span>
+              <span class="flex items-center justify-center gap-2"
+                ><BaseIcon name="check" :size="16" /> Approve</span
+              >
             </button>
             <button
               class="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-500 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
               @click="handleRejectScene"
             >
-              <span class="flex items-center justify-center gap-2"><BaseIcon name="x" :size="16" /> Reject</span>
+              <span class="flex items-center justify-center gap-2"
+                ><BaseIcon name="x" :size="16" /> Reject</span
+              >
             </button>
             <button
               class="flex-1 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-500 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
               @click="showReRequestInput = true"
             >
-              <span class="flex items-center justify-center gap-2"><BaseIcon name="pencil" :size="16" /> Re-request</span>
+              <span class="flex items-center justify-center gap-2"
+                ><BaseIcon name="pencil" :size="16" /> Re-request</span
+              >
             </button>
           </div>
 
@@ -996,40 +1309,55 @@ function getPhaseLabel(phase) {
                 :disabled="!reRequestEdits.trim()"
                 @click="handleRerequestScene"
               >
-                <span class="flex items-center justify-center gap-2"><BaseIcon name="refresh" :size="16" /> Submit Revisions</span>
+                <span class="flex items-center justify-center gap-2"
+                  ><BaseIcon name="refresh" :size="16" /> Submit Revisions</span
+                >
               </button>
               <button
                 class="px-4 py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
                 @click="showReRequestInput = false"
-              >Cancel</button>
+              >
+                Cancel
+              </button>
             </div>
           </div>
 
           <button
             class="w-full py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleVolumeReset"
-          >Cancel</button>
+          >
+            Cancel
+          </button>
         </div>
 
         <!-- CONSISTENCY CHECK STATE -->
-        <div v-if="volumeGenerator.phase.value === 'consistency-check'" class="p-8 text-center space-y-4">
+        <div
+          v-if="volumeGenerator.phase.value === 'consistency-check'"
+          class="p-8 text-center space-y-4"
+        >
           <div class="flex items-center justify-center gap-3 py-8">
             <BaseIcon name="loader-2" :size="24" class="animate-spin text-accent" />
-            <span class="text-lg text-text-primary font-ui animate-pulse">Checking continuity...</span>
+            <span class="text-lg text-text-primary font-ui animate-pulse"
+              >Checking continuity...</span
+            >
           </div>
           <p class="text-sm text-text-hint">
-            {{ volumeGenerator.progress.statusText || 'Comparing character and location depictions across all scenes' }}
+            {{
+              volumeGenerator.progress.statusText ||
+              'Comparing character and location depictions across all scenes'
+            }}
           </p>
         </div>
 
         <!-- COMPLETE STATE -->
         <div v-if="volumeGenerator.phase.value === 'complete'" class="p-4 space-y-4">
-
           <!-- Scene list header with inline stats -->
           <div class="flex items-center justify-between gap-2">
             <h3 class="text-xs uppercase tracking-widest text-text-hint font-ui">
               Scenes ({{ volumeGenerator.writtenScenes.value.length }})
-              <span class="font-normal tracking-normal text-text-hint/60">· {{ totalWordsWritten.toLocaleString() }} words</span>
+              <span class="font-normal tracking-normal text-text-hint/60"
+                >· {{ totalWordsWritten.toLocaleString() }} words</span
+              >
             </h3>
             <div class="flex items-center gap-1.5">
               <div v-if="volumeTotalConsistencyIssues > 0">
@@ -1049,15 +1377,34 @@ function getPhaseLabel(phase) {
           </div>
 
           <!-- Quality summary card -->
-          <div v-if="volumeGenerator.consistencyReport.value" class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border-subtle bg-bg-secondary/50">
+          <div
+            v-if="volumeGenerator.consistencyReport.value"
+            class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border-subtle bg-bg-secondary/50"
+          >
             <div class="flex items-center gap-2">
               <BaseIcon
                 :name="qualityGrade === 'good' ? 'check-circle' : 'alert-triangle'"
                 :size="14"
-                :class="qualityGrade === 'good' ? 'text-green-400' : qualityGrade === 'fair' ? 'text-yellow-400' : 'text-red-400'"
+                :class="
+                  qualityGrade === 'good'
+                    ? 'text-green-400'
+                    : qualityGrade === 'fair'
+                      ? 'text-yellow-400'
+                      : 'text-red-400'
+                "
               />
               <span class="text-xs font-ui text-text-secondary">
-                Quality: <span :class="qualityGrade === 'good' ? 'text-green-400' : qualityGrade === 'fair' ? 'text-yellow-400' : 'text-red-400'">{{ qualityGrade }}</span>
+                Quality:
+                <span
+                  :class="
+                    qualityGrade === 'good'
+                      ? 'text-green-400'
+                      : qualityGrade === 'fair'
+                        ? 'text-yellow-400'
+                        : 'text-red-400'
+                  "
+                  >{{ qualityGrade }}</span
+                >
               </span>
             </div>
             <div class="flex gap-3 text-2xs text-text-hint">
@@ -1069,14 +1416,25 @@ function getPhaseLabel(phase) {
           <!-- Story-level eval aggregate summary -->
           <div class="rounded-lg border border-border-subtle bg-bg-secondary/50 px-3 py-2">
             <div class="flex items-center justify-between gap-2">
-              <span class="text-2xs uppercase tracking-wider text-text-hint font-ui">Evaluations</span>
+              <span class="text-2xs uppercase tracking-wider text-text-hint font-ui"
+                >Evaluations</span
+              >
               <div class="flex items-center gap-2">
                 <div class="flex gap-3 text-2xs text-text-hint">
-                  <span>{{ sceneEval.aggregateStats.value?.evaluatedCount || 0 }} / {{ sceneEval.aggregateStats.value?.totalScenes || 0 }} scenes</span>
-                  <span v-if="sceneEval.aggregateStats.value?.averageScore !== null" class="text-indigo-400">
+                  <span
+                    >{{ sceneEval.aggregateStats.value?.evaluatedCount || 0 }} /
+                    {{ sceneEval.aggregateStats.value?.totalScenes || 0 }} scenes</span
+                  >
+                  <span
+                    v-if="sceneEval.aggregateStats.value?.averageScore !== null"
+                    class="text-indigo-400"
+                  >
                     Avg: {{ sceneEval.aggregateStats.value?.averageScore }}
                   </span>
-                  <span v-if="sceneEval.aggregateStats.value?.totalRegressions > 0" class="text-yellow-400">
+                  <span
+                    v-if="sceneEval.aggregateStats.value?.totalRegressions > 0"
+                    class="text-yellow-400"
+                  >
                     {{ sceneEval.aggregateStats.value?.totalRegressions }} regressions
                   </span>
                 </div>
@@ -1103,12 +1461,20 @@ function getPhaseLabel(phase) {
               v-for="(scene, i) in volumeGenerator.writtenScenes.value"
               :key="i"
               class="px-3 py-2.5 border-b border-border-subtle last:border-b-0 cursor-pointer transition-colors hover:bg-surface-hover"
-              :class="i === selectedSceneIndex ? 'border-l-2 border-accent bg-bg-secondary' : 'border-l-2 border-transparent'"
+              :class="
+                i === selectedSceneIndex
+                  ? 'border-l-2 border-accent bg-bg-secondary'
+                  : 'border-l-2 border-transparent'
+              "
               @click="selectedSceneIndex = i"
             >
               <div class="flex items-center justify-between gap-2">
-                <span class="text-sm font-semibold text-text-primary font-ui truncate">Scene {{ i + 1 }}: {{ scene.title }}</span>
-                <span class="text-2xs text-text-hint/60 font-ui whitespace-nowrap">{{ scene.prose.split(/\s+/).length }} words</span>
+                <span class="text-sm font-semibold text-text-primary font-ui truncate"
+                  >Scene {{ i + 1 }}: {{ scene.title }}</span
+                >
+                <span class="text-2xs text-text-hint/60 font-ui whitespace-nowrap"
+                  >{{ scene.prose.split(/\s+/).length }} words</span
+                >
               </div>
             </div>
           </div>
@@ -1120,23 +1486,43 @@ function getPhaseLabel(phase) {
                 class="flex-1 py-1.5 px-2 bg-yellow-600/20 text-yellow-400 rounded-md text-xs font-medium hover:bg-yellow-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
                 @click="handleRegenerateScene(selectedSceneIndex)"
               >
-                <BaseIcon name="refresh-cw" :size="12" /> Re-generate Scene {{ selectedSceneIndex + 1 }}
+                <BaseIcon name="refresh-cw" :size="12" /> Re-generate Scene
+                {{ selectedSceneIndex + 1 }}
               </button>
               <button
                 class="flex-1 py-1.5 px-2 bg-accent/10 text-accent rounded-md text-xs font-medium hover:bg-accent/20 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
-                :disabled="sceneEval.isEvaluating.value || !volumeGenerator.writtenScenes.value?.[selectedSceneIndex]?.prose"
+                :disabled="
+                  sceneEval.isEvaluating.value ||
+                  !volumeGenerator.writtenScenes.value?.[selectedSceneIndex]?.prose
+                "
                 @click="handleEvaluateScene(selectedSceneIndex)"
               >
-                <BaseIcon :name="sceneEval.isEvaluating.value ? 'loader' : 'check-circle'" :size="12" />
-                {{ sceneEval.isEvaluating.value ? 'Evaluating...' : sceneEval.hasBeenEvaluated.value ? 'Re-evaluate' : 'Evaluate' }}
+                <BaseIcon
+                  :name="sceneEval.isEvaluating.value ? 'loader' : 'check-circle'"
+                  :size="12"
+                />
+                {{
+                  sceneEval.isEvaluating.value
+                    ? 'Evaluating...'
+                    : sceneEval.hasBeenEvaluated.value
+                      ? 'Re-evaluate'
+                      : 'Evaluate'
+                }}
               </button>
             </div>
 
-            <div v-if="sceneEval.hasBeenEvaluated.value || sceneEval.isEvaluating.value" class="space-y-2 border border-border-subtle rounded-lg p-3 bg-bg-secondary/50">
+            <div
+              v-if="sceneEval.hasBeenEvaluated.value || sceneEval.isEvaluating.value"
+              class="space-y-2 border border-border-subtle rounded-lg p-3 bg-bg-secondary/50"
+            >
               <EvalPanel
                 :critique-result="sceneEval.critiqueResult.value"
                 :gate-results="sceneEval.gateResults.value"
-                :eval-gates="{ dimensionCoverage: sceneEval.gateResults.value?.dimensionCoverage, scoreDistribution: sceneEval.gateResults.value?.scoreDistribution, revisionEffectiveness: sceneEval.gateResults.value?.revisionEffectiveness }"
+                :eval-gates="{
+                  dimensionCoverage: sceneEval.gateResults.value?.dimensionCoverage,
+                  scoreDistribution: sceneEval.gateResults.value?.scoreDistribution,
+                  revisionEffectiveness: sceneEval.gateResults.value?.revisionEffectiveness
+                }"
                 :workspace-type="projectStore.activeWorkspaceType || 'creative'"
                 :compact="true"
               />
@@ -1147,13 +1533,19 @@ function getPhaseLabel(phase) {
                   :disabled="sceneEval.isRevising.value || !sceneEval.critiqueResult.value"
                   @click="handleReviseScene(selectedSceneIndex)"
                 >
-                  <BaseIcon :name="sceneEval.isRevising.value ? 'loader' : 'refresh-cw'" :size="11" />
+                  <BaseIcon
+                    :name="sceneEval.isRevising.value ? 'loader' : 'refresh-cw'"
+                    :size="11"
+                  />
                   {{ sceneEval.isRevising.value ? 'Revising...' : 'Apply Revision' }}
                 </button>
                 <button
                   v-if="sceneEval.revisionResult.value"
                   class="flex-1 py-1 px-2 bg-emerald-600/20 text-emerald-400 rounded-md text-11px font-medium hover:bg-emerald-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-                  @click="volumeGenerator.writtenScenes.value[selectedSceneIndex].prose = sceneEval.revisionResult.value.revisedProse"
+                  @click="
+                    volumeGenerator.writtenScenes.value[selectedSceneIndex].prose =
+                      sceneEval.revisionResult.value.revisedProse
+                  "
                 >
                   <BaseIcon name="check" :size="11" /> Accept Revision
                 </button>
@@ -1171,32 +1563,48 @@ function getPhaseLabel(phase) {
             class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleVolumeReset"
           >
-            <span class="flex items-center justify-center gap-2"><BaseIcon name="plus" :size="16" /> Generate Another</span>
+            <span class="flex items-center justify-center gap-2"
+              ><BaseIcon name="plus" :size="16" /> Generate Another</span
+            >
           </button>
 
           <!-- Secondary actions -->
           <div class="flex gap-1.5">
-            <button class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5" @click="showVolumeReadModal = true">
+            <button
+              class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+              @click="showVolumeReadModal = true"
+            >
               <BaseIcon name="book-open" :size="12" /> Read
             </button>
-            <button class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5" @click="handleVolumeSaveToManuscript">
+            <button
+              class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+              @click="handleVolumeSaveToManuscript"
+            >
               <BaseIcon name="save" :size="12" /> Save
             </button>
-            <button class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5" @click="emit('openChapters')">
+            <button
+              class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+              @click="emit('openChapters')"
+            >
               <BaseIcon name="list" :size="12" /> Chapters
             </button>
           </div>
 
           <!-- Tertiary / Export actions -->
           <div class="flex gap-1.5">
-            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportTxt">
+            <button
+              class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1"
+              @click="handleVolumeExportTxt"
+            >
               <BaseIcon name="file-text" :size="10" /> .txt
             </button>
-            <button class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1" @click="handleVolumeExportMd">
+            <button
+              class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1"
+              @click="handleVolumeExportMd"
+            >
               <BaseIcon name="file-down" :size="10" /> .md
             </button>
           </div>
-
         </div>
 
         <!-- ERROR STATE -->
@@ -1204,19 +1612,25 @@ function getPhaseLabel(phase) {
           <div class="rounded-lg bg-red-950/20 border border-red-800/30 p-4 text-center space-y-2">
             <BaseIcon name="alert-triangle" :size="24" class="mx-auto text-red-400" />
             <p class="text-sm font-medium text-red-400 font-ui">Generation Failed</p>
-            <p class="text-xs text-red-300/70">{{ volumeGenerator.error.value || 'An unexpected error occurred.' }}</p>
+            <p class="text-xs text-red-300/70">
+              {{ volumeGenerator.error.value || 'An unexpected error occurred.' }}
+            </p>
           </div>
           <button
             class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleVolumeReset"
-          >Try Again</button>
+          >
+            Try Again
+          </button>
         </div>
       </template>
     </div>
 
     <!-- ==================== PREVIOUS GENERATIONS ==================== -->
     <div v-if="previousGenerations.length > 0" class="border-t border-border-subtle pt-4 mt-4">
-      <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">Previous Generations</h3>
+      <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
+        Previous Generations
+      </h3>
       <div class="space-y-1.5">
         <div
           v-for="(gen, i) in previousGenerations"
@@ -1242,17 +1656,26 @@ function getPhaseLabel(phase) {
       class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
       @click.self="showVolumeReadModal = false"
     >
-      <div class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin">
+      <div
+        class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin"
+      >
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-text-primary font-ui">Generated Story</h2>
-          <button class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded" @click="showVolumeReadModal = false">
+          <button
+            class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
+            @click="showVolumeReadModal = false"
+          >
             <BaseIcon name="x" :size="20" />
           </button>
         </div>
         <div class="space-y-6">
           <div v-for="(scene, i) in volumeGenerator.writtenScenes.value" :key="i" class="space-y-2">
-            <h3 class="text-sm font-semibold text-accent font-ui">Scene {{ i + 1 }}: {{ scene.title }}</h3>
-            <div class="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">{{ scene.prose }}</div>
+            <h3 class="text-sm font-semibold text-accent font-ui">
+              Scene {{ i + 1 }}: {{ scene.title }}
+            </h3>
+            <div class="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
+              {{ scene.prose }}
+            </div>
           </div>
         </div>
       </div>
@@ -1264,30 +1687,62 @@ function getPhaseLabel(phase) {
       class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
       @click.self="consistencyModalOpen = false"
     >
-      <div class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin">
+      <div
+        class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin"
+      >
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-text-primary font-ui">Consistency Report</h2>
-          <button class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded" @click="consistencyModalOpen = false">
+          <button
+            class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
+            @click="consistencyModalOpen = false"
+          >
             <BaseIcon name="x" :size="20" />
           </button>
         </div>
 
-        <div v-if="volumeGenerator.consistencyReport.value.characterIssues?.length > 0" class="mb-4">
-          <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">Character Contradictions</h3>
-          <div v-for="(item, i) in volumeGenerator.consistencyReport.value.characterIssues" :key="'char-' + i" class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg">
+        <div
+          v-if="volumeGenerator.consistencyReport.value.characterIssues?.length > 0"
+          class="mb-4"
+        >
+          <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">
+            Character Contradictions
+          </h3>
+          <div
+            v-for="(item, i) in volumeGenerator.consistencyReport.value.characterIssues"
+            :key="'char-' + i"
+            class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg"
+          >
             <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.character }}</p>
-            <div v-for="(c, j) in item.contradictions" :key="j" class="text-xs text-text-secondary space-y-0.5 mb-1">
-              <p><span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}</p>
+            <div
+              v-for="(c, j) in item.contradictions"
+              :key="j"
+              class="text-xs text-text-secondary space-y-0.5 mb-1"
+            >
+              <p>
+                <span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}
+              </p>
             </div>
           </div>
         </div>
 
         <div v-if="volumeGenerator.consistencyReport.value.locationIssues?.length > 0">
-          <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">Location Contradictions</h3>
-          <div v-for="(item, i) in volumeGenerator.consistencyReport.value.locationIssues" :key="'loc-' + i" class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg">
+          <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">
+            Location Contradictions
+          </h3>
+          <div
+            v-for="(item, i) in volumeGenerator.consistencyReport.value.locationIssues"
+            :key="'loc-' + i"
+            class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg"
+          >
             <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.location }}</p>
-            <div v-for="(c, j) in item.contradictions" :key="j" class="text-xs text-text-secondary space-y-0.5 mb-1">
-              <p><span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}</p>
+            <div
+              v-for="(c, j) in item.contradictions"
+              :key="j"
+              class="text-xs text-text-secondary space-y-0.5 mb-1"
+            >
+              <p>
+                <span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}
+              </p>
             </div>
           </div>
         </div>

@@ -21,15 +21,17 @@ const progressPercent = computed(() => {
 <template>
   <div class="glass border-t border-border-subtle/50 px-6 py-3">
     <div class="max-w-3xl mx-auto flex items-center gap-4">
-      <span class="text-lg font-mono text-accent font-semibold tabular-nums">{{ formattedTime }}</span>
-      
+      <span class="text-lg font-mono text-accent font-semibold tabular-nums">{{
+        formattedTime
+      }}</span>
+
       <div class="flex-1 h-2 bg-bg-tertiary/50 rounded-full overflow-hidden">
-        <div 
+        <div
           class="h-full bg-gradient-to-r from-accent/70 to-accent transition-all duration-500 rounded-full"
           :style="{ width: `${progressPercent}%` }"
         ></div>
       </div>
-      
+
       <span class="text-xs text-text-hint/70 font-ui whitespace-nowrap tabular-nums">
         {{ flow.sessionWordCount.value }} / {{ flow.sessionGoal.value }} words
       </span>
@@ -45,14 +47,14 @@ const progressPercent = computed(() => {
 
     <div class="max-w-[680px] mx-auto flex items-center gap-4 mt-3">
       <span class="text-xs text-text-hint/50 font-ui w-12 tracking-wide">Daily</span>
-      
+
       <div class="flex-1 h-1 bg-bg-tertiary/50 rounded-full overflow-hidden">
-        <div 
+        <div
           class="h-full bg-gradient-to-r from-success/70 to-success transition-all duration-500 rounded-full"
           :style="{ width: `${flow.dailyProgress.value}%` }"
         ></div>
       </div>
-      
+
       <span class="text-xs text-text-hint/70 font-ui whitespace-nowrap tabular-nums">
         {{ flow.dailyWordCount.value }} / {{ flow.dailyGoal.value }} words
       </span>

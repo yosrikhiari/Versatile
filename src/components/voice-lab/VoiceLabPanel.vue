@@ -5,13 +5,8 @@ import { useDialogueIndexer } from '../../composables/useDialogueIndexer'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const projectStore = useProjectStore()
-const {
-  indexing,
-  progress,
-  dialogueStats,
-  indexProjectContent,
-  loadDialogueForProject
-} = useDialogueIndexer()
+const { indexing, progress, dialogueStats, indexProjectContent, loadDialogueForProject } =
+  useDialogueIndexer()
 
 const dialogueEntries = ref([])
 const selectedSpeakerId = ref(null)
@@ -43,17 +38,15 @@ const speakers = computed(() => {
 const filteredEntries = computed(() => {
   let entries = dialogueEntries.value
   if (selectedSpeakerId.value) {
-    entries = entries.filter(e => e.speakerId === selectedSpeakerId.value)
+    entries = entries.filter((e) => e.speakerId === selectedSpeakerId.value)
   }
   if (filterType.value === 'unreviewed') {
-    entries = entries.filter(e => e.needsReview)
+    entries = entries.filter((e) => e.needsReview)
   }
   return entries
 })
 
-const unreviewedCount = computed(() =>
-  dialogueEntries.value.filter(e => e.needsReview).length
-)
+const unreviewedCount = computed(() => dialogueEntries.value.filter((e) => e.needsReview).length)
 
 async function handleIndex() {
   if (!projectId.value) return
@@ -114,26 +107,29 @@ watch(projectId, (id) => {
       <button
         :disabled="indexing || !projectId"
         class="w-full py-2 px-3 rounded-lg text-xs font-medium transition-all duration-150 flex items-center justify-center gap-2"
-        :class="indexing
-          ? 'bg-accent/20 text-accent cursor-wait'
-          : 'bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98]'"
+        :class="
+          indexing
+            ? 'bg-accent/20 text-accent cursor-wait'
+            : 'bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98]'
+        "
         @click="handleIndex"
       >
         <BaseIcon :name="indexing ? 'loader-2' : 'message-square'" :size="14" />
-        {{ indexing ? `Indexing ${progress.current}/${progress.total}...` : 'Index Current Content' }}
+        {{
+          indexing ? `Indexing ${progress.current}/${progress.total}...` : 'Index Current Content'
+        }}
       </button>
 
       <div v-if="indexing" class="mt-2 h-1 bg-bg-tertiary rounded-full overflow-hidden">
         <div
           class="h-full bg-accent rounded-full transition-all duration-300"
-          :style="{ width: progress.total > 0 ? `${(progress.current / progress.total) * 100}%` : '0%' }"
+          :style="{
+            width: progress.total > 0 ? `${(progress.current / progress.total) * 100}%` : '0%'
+          }"
         />
       </div>
 
-      <div
-        v-if="dialogueStats"
-        class="mt-2 flex gap-3 text-2xs text-text-tertiary"
-      >
+      <div v-if="dialogueStats" class="mt-2 flex gap-3 text-2xs text-text-tertiary">
         <span>{{ dialogueStats.sectionsIndexed }} sections</span>
         <span>{{ dialogueStats.totalLines }} dialogue lines</span>
       </div>
@@ -141,7 +137,9 @@ watch(projectId, (id) => {
 
     <div v-if="speakers.length > 0" class="px-4 py-2 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-2xs font-medium text-text-tertiary uppercase tracking-wider">Speakers</span>
+        <span class="text-2xs font-medium text-text-tertiary uppercase tracking-wider"
+          >Speakers</span
+        >
         <div class="flex gap-1">
           <button
             v-if="selectedSpeakerId || filterType === 'unreviewed'"
@@ -166,10 +164,7 @@ watch(projectId, (id) => {
         >
           {{ speaker.name }}
           <span class="ml-1 opacity-60">{{ speaker.count }}</span>
-          <span
-            v-if="speaker.needsReview > 0"
-            class="ml-1 text-warning opacity-80"
-          >
+          <span v-if="speaker.needsReview > 0" class="ml-1 text-warning opacity-80">
             ({{ speaker.needsReview }})
           </span>
         </button>
@@ -194,15 +189,14 @@ watch(projectId, (id) => {
         <BaseIcon name="loader-2" :size="20" class="mx-auto text-accent animate-spin" />
       </div>
 
-      <div
-        v-else-if="filteredEntries.length === 0"
-        class="p-6 text-center text-text-tertiary"
-      >
+      <div v-else-if="filteredEntries.length === 0" class="p-6 text-center text-text-tertiary">
         <BaseIcon name="message-square" :size="32" class="mx-auto mb-2 opacity-40" />
         <p class="text-xs">
-          {{ dialogueEntries.length === 0
-            ? 'No dialogue indexed yet. Click "Index Current Content" above.'
-            : 'No entries match the current filter.' }}
+          {{
+            dialogueEntries.length === 0
+              ? 'No dialogue indexed yet. Click "Index Current Content" above.'
+              : 'No entries match the current filter.'
+          }}
         </p>
       </div>
 
@@ -244,12 +238,11 @@ watch(projectId, (id) => {
             </div>
             <div class="flex items-center gap-2 mt-1.5">
               <span class="text-2xs text-text-tertiary/50 font-mono">
-                §{{ entry.sectionId ? entry.sectionId.slice(0, 6) : '?' }}:{{ entry.paragraphIndex }}
+                §{{ entry.sectionId ? entry.sectionId.slice(0, 6) : '?' }}:{{
+                  entry.paragraphIndex
+                }}
               </span>
-              <span
-                v-if="entry.confidence < 1"
-                class="text-2xs text-warning/60"
-              >
+              <span v-if="entry.confidence < 1" class="text-2xs text-warning/60">
                 {{ Math.round(entry.confidence * 100) }}%
               </span>
               <span
@@ -264,8 +257,13 @@ watch(projectId, (id) => {
               >
                 Needs review
               </span>
-              <span class="ml-auto text-2xs text-text-tertiary/30 group-hover:text-text-tertiary/60 transition-colors duration-100">
-                <BaseIcon :name="selectedEntry?.id === entry.id ? 'chevron-down' : 'chevron-right'" :size="12" />
+              <span
+                class="ml-auto text-2xs text-text-tertiary/30 group-hover:text-text-tertiary/60 transition-colors duration-100"
+              >
+                <BaseIcon
+                  :name="selectedEntry?.id === entry.id ? 'chevron-down' : 'chevron-right'"
+                  :size="12"
+                />
               </span>
             </div>
           </div>
@@ -277,11 +275,10 @@ watch(projectId, (id) => {
             <p class="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
               {{ entry.textContent }}
             </p>
-            <div
-              v-if="entry.contextBefore"
-              class="pt-1 border-t border-border-subtle/20"
-            >
-              <span class="text-2xs text-text-tertiary/50 uppercase tracking-wider font-medium">Context</span>
+            <div v-if="entry.contextBefore" class="pt-1 border-t border-border-subtle/20">
+              <span class="text-2xs text-text-tertiary/50 uppercase tracking-wider font-medium"
+                >Context</span
+              >
               <p class="text-2xs text-text-tertiary/70 mt-0.5 italic leading-relaxed">
                 {{ truncate(entry.contextBefore, 200) }}
               </p>
@@ -290,7 +287,10 @@ watch(projectId, (id) => {
               <span>ID: {{ entry.id?.slice(0, 8) || '?' }}</span>
               <span>Type: {{ entry.dialogueType || 'quoted' }}</span>
               <span v-if="entry.tagType">Tag: {{ entry.tagType }}</span>
-              <span>Indexed: {{ entry.indexedAt ? new Date(entry.indexedAt).toLocaleDateString() : '?' }}</span>
+              <span
+                >Indexed:
+                {{ entry.indexedAt ? new Date(entry.indexedAt).toLocaleDateString() : '?' }}</span
+              >
             </div>
           </div>
         </div>

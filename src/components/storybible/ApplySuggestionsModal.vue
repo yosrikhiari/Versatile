@@ -19,12 +19,15 @@ const emit = defineEmits(['close', 'apply'])
 const checkedSuggestions = ref(new Set())
 const checkedGroups = ref(new Set())
 
-watch(() => props.show, (newVal) => {
-  if (newVal) {
-    checkedSuggestions.value = new Set(props.suggestions.map((_, i) => i))
-    checkedGroups.value = new Set(props.groups.map((_, i) => i))
+watch(
+  () => props.show,
+  (newVal) => {
+    if (newVal) {
+      checkedSuggestions.value = new Set(props.suggestions.map((_, i) => i))
+      checkedGroups.value = new Set(props.groups.map((_, i) => i))
+    }
   }
-})
+)
 
 function toggleSuggestion(index) {
   const newSet = new Set(checkedSuggestions.value)
@@ -58,27 +61,43 @@ function selectNone() {
 
 function getRelationshipIcon(type) {
   switch (type) {
-    case 'appears_in': return 'map-pin'
-    case 'involved_in': return 'zap'
-    case 'located_at': return 'map-pin'
-    case 'ally': return 'heart'
-    case 'enemy': return 'sword'
-    case 'family': return 'users'
-    case 'romantic': return 'heart'
-    case 'mentor': return 'graduation-cap'
-    case 'rival': return 'crosshair'
-    default: return 'link'
+    case 'appears_in':
+      return 'map-pin'
+    case 'involved_in':
+      return 'zap'
+    case 'located_at':
+      return 'map-pin'
+    case 'ally':
+      return 'heart'
+    case 'enemy':
+      return 'sword'
+    case 'family':
+      return 'users'
+    case 'romantic':
+      return 'heart'
+    case 'mentor':
+      return 'graduation-cap'
+    case 'rival':
+      return 'crosshair'
+    default:
+      return 'link'
   }
 }
 
 function getTypeColor(type) {
   switch (type) {
-    case 'character': return 'var(--vers-entity-character)'
-    case 'location': return 'var(--vers-entity-location)'
-    case 'plotThread': return 'var(--vers-entity-plotThread)'
-    case 'character_group': return 'var(--vers-entity-character)'
-    case 'location_group': return 'var(--vers-entity-location)'
-    default: return 'var(--vers-default-fallback)'
+    case 'character':
+      return 'var(--vers-entity-character)'
+    case 'location':
+      return 'var(--vers-entity-location)'
+    case 'plotThread':
+      return 'var(--vers-entity-plotThread)'
+    case 'character_group':
+      return 'var(--vers-entity-character)'
+    case 'location_group':
+      return 'var(--vers-entity-location)'
+    default:
+      return 'var(--vers-default-fallback)'
   }
 }
 
@@ -96,7 +115,7 @@ function handleApply() {
   const suggestionsLen = props.suggestions.length
   const allChecked = [
     ...checkedSuggestions.value,
-    ...[...checkedGroups.value].map(i => i + suggestionsLen)
+    ...[...checkedGroups.value].map((i) => i + suggestionsLen)
   ]
   emit('apply', allChecked)
 }
@@ -110,8 +129,12 @@ function handleApply() {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         @click.self="emit('close')"
       >
-        <div class="bg-bg-secondary border border-border-subtle rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-border-subtle shrink-0">
+        <div
+          class="bg-bg-secondary border border-border-subtle rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col"
+        >
+          <div
+            class="flex items-center justify-between px-5 py-4 border-b border-border-subtle shrink-0"
+          >
             <div class="flex items-center gap-2">
               <BaseIcon name="sparkles" :size="18" class="text-accent" />
               <h2 class="font-medium text-text-primary">Apply Suggestions</h2>
@@ -126,23 +149,25 @@ function handleApply() {
 
           <div class="flex-1 overflow-y-auto">
             <div v-if="groups.length > 0" class="p-4 border-b border-border-subtle">
-              <h3 class="text-sm font-medium text-text-primary mb-3">Groups ({{ groups.length }})</h3>
+              <h3 class="text-sm font-medium text-text-primary mb-3">
+                Groups ({{ groups.length }})
+              </h3>
               <div class="space-y-2">
-                <div 
-                  v-for="(group, index) in groups" 
+                <div
+                  v-for="(group, index) in groups"
                   :key="'g-' + index"
                   class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg hover:bg-surface-hover transition-colors cursor-pointer"
                   @click="toggleGroup(index)"
                 >
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     :checked="checkedGroups.has(index)"
                     class="mt-1 w-4 h-4 rounded border-border-subtle text-accent focus:ring-accent bg-bg-secondary"
                     @click.stop="toggleGroup(index)"
                   />
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
-                      <span 
+                      <span
                         class="px-2 py-0.5 text-xs rounded-full text-white"
                         :style="{ backgroundColor: getTypeColor(group.type) }"
                       >
@@ -154,8 +179,8 @@ function handleApply() {
                       {{ group.rationale }}
                     </p>
                     <div v-if="group.members" class="flex items-center gap-1 mt-2 flex-wrap">
-                      <span 
-                        v-for="member in group.members" 
+                      <span
+                        v-for="member in group.members"
                         :key="member.id"
                         class="px-2 py-0.5 text-xs rounded-full bg-bg-secondary text-text-secondary"
                       >
@@ -163,7 +188,7 @@ function handleApply() {
                       </span>
                     </div>
                   </div>
-                  <span 
+                  <span
                     class="px-2 py-1 text-xs rounded-full whitespace-nowrap"
                     :class="getConfidenceClass(group.confidence)"
                   >
@@ -174,43 +199,53 @@ function handleApply() {
             </div>
 
             <div v-if="suggestions.length > 0" class="p-4">
-              <h3 class="text-sm font-medium text-text-primary mb-3">Connections ({{ suggestions.length }})</h3>
+              <h3 class="text-sm font-medium text-text-primary mb-3">
+                Connections ({{ suggestions.length }})
+              </h3>
               <div class="space-y-2">
-                <div 
-                  v-for="(suggestion, index) in suggestions" 
+                <div
+                  v-for="(suggestion, index) in suggestions"
                   :key="'s-' + index"
                   class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg hover:bg-surface-hover transition-colors cursor-pointer"
                   @click="toggleSuggestion(index)"
                 >
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     :checked="checkedSuggestions.has(index)"
                     class="mt-1 w-4 h-4 rounded border-border-subtle text-accent focus:ring-accent bg-bg-secondary"
                     @click.stop="toggleSuggestion(index)"
                   />
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
-                      <span 
+                      <span
                         class="px-2 py-0.5 text-xs rounded-full text-white"
                         :style="{ backgroundColor: getTypeColor(suggestion.sourceType) }"
                       >
                         {{ suggestion.sourceType }}
                       </span>
-                      <span class="text-text-primary font-medium">{{ suggestion.sourceLabel }}</span>
-                      <BaseIcon :name="getRelationshipIcon(suggestion.relationshipType)" :size="14" class="text-text-hint" />
-                      <span 
+                      <span class="text-text-primary font-medium">{{
+                        suggestion.sourceLabel
+                      }}</span>
+                      <BaseIcon
+                        :name="getRelationshipIcon(suggestion.relationshipType)"
+                        :size="14"
+                        class="text-text-hint"
+                      />
+                      <span
                         class="px-2 py-0.5 text-xs rounded-full text-white"
                         :style="{ backgroundColor: getTypeColor(suggestion.targetType) }"
                       >
                         {{ suggestion.targetType }}
                       </span>
-                      <span class="text-text-primary font-medium">{{ suggestion.targetLabel }}</span>
+                      <span class="text-text-primary font-medium">{{
+                        suggestion.targetLabel
+                      }}</span>
                     </div>
                     <p v-if="suggestion.rationale" class="text-xs text-text-muted mt-1">
                       {{ suggestion.rationale }}
                     </p>
                   </div>
-                  <span 
+                  <span
                     class="px-2 py-1 text-xs rounded-full whitespace-nowrap"
                     :class="getConfidenceClass(suggestion.confidence)"
                   >
@@ -220,20 +255,23 @@ function handleApply() {
               </div>
             </div>
 
-            <div v-if="suggestions.length === 0 && groups.length === 0" class="p-8 text-center text-text-hint">
+            <div
+              v-if="suggestions.length === 0 && groups.length === 0"
+              class="p-8 text-center text-text-hint"
+            >
               No suggestions found with current settings
             </div>
           </div>
 
           <div class="p-4 border-t border-border-subtle flex justify-between items-center shrink-0">
             <div class="flex gap-2">
-              <button 
+              <button
                 class="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary rounded font-medium transition-colors"
                 @click="selectAll"
               >
                 Select All
               </button>
-              <button 
+              <button
                 class="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary rounded font-medium transition-colors"
                 @click="selectNone"
               >
@@ -241,13 +279,13 @@ function handleApply() {
               </button>
             </div>
             <div class="flex gap-3">
-              <button 
+              <button
                 class="px-4 py-2 text-text-secondary hover:text-text-primary rounded-lg font-medium transition-colors"
                 @click="emit('close')"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 :disabled="!canApply"
                 class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handleApply"

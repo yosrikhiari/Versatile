@@ -36,7 +36,7 @@ export async function getAllChunksForProject(projectId) {
 }
 
 export async function addResearchChunks(chunks) {
-  const withStatus = chunks.map(c => ({ ...c, embeddingStatus: c.embeddingStatus || PENDING }))
+  const withStatus = chunks.map((c) => ({ ...c, embeddingStatus: c.embeddingStatus || PENDING }))
   const BATCH = 500
   const allIds = []
   const committedIds = []
@@ -47,7 +47,7 @@ export async function addResearchChunks(chunks) {
       allIds.push(...ids)
       committedIds.push(...ids)
       if (i + BATCH < withStatus.length) {
-        await new Promise(r => setTimeout(r, 0))
+        await new Promise((r) => setTimeout(r, 0))
       }
     }
     return allIds
@@ -58,8 +58,8 @@ export async function addResearchChunks(chunks) {
       } catch (rollbackErr) {
         throw new Error(
           `addResearchChunks failed after committing ${committedIds.length} chunks. ` +
-          `Rollback also failed: ${rollbackErr.message}. ` +
-          `Original error: ${err.message}`
+            `Rollback also failed: ${rollbackErr.message}. ` +
+            `Original error: ${err.message}`
         )
       }
     }
@@ -72,43 +72,41 @@ export async function addResearchChunks(chunks) {
 export async function updateChunkEmbeddings(updates, meta = {}) {
   const now = Date.now()
   const { provider, model, version } = meta
-  await Promise.all(updates.map(({ id, embedding }) =>
-    db.researchChunks.update(id, {
-      embedding,
-      embeddingProvider: provider || null,
-      embeddingModel: model || null,
-      embeddingVersion: version || null,
-      embeddedAt: now,
-      embeddingStatus: READY
-    })
-  ))
+  await Promise.all(
+    updates.map(({ id, embedding }) =>
+      db.researchChunks.update(id, {
+        embedding,
+        embeddingProvider: provider || null,
+        embeddingModel: model || null,
+        embeddingVersion: version || null,
+        embeddedAt: now,
+        embeddingStatus: READY
+      })
+    )
+  )
 }
 
 export async function markProcessing(ids) {
-  await Promise.all(ids.map(id =>
-    db.researchChunks.update(id, { embeddingStatus: PROCESSING })
-  ))
+  await Promise.all(ids.map((id) => db.researchChunks.update(id, { embeddingStatus: PROCESSING })))
 }
 
 export async function markFailed(ids) {
-  await Promise.all(ids.map(id =>
-    db.researchChunks.update(id, { embeddingStatus: FAILED })
-  ))
+  await Promise.all(ids.map((id) => db.researchChunks.update(id, { embeddingStatus: FAILED })))
 }
 
 export async function markStale(projectId, currentProvider, currentModel, currentVersion) {
   const chunks = await db.researchChunks
     .where({ projectId })
-    .filter(c =>
-      c.embeddingStatus === READY && (
-        c.embeddingProvider !== currentProvider ||
-        c.embeddingModel !== currentModel ||
-        c.embeddingVersion !== currentVersion
-      )
+    .filter(
+      (c) =>
+        c.embeddingStatus === READY &&
+        (c.embeddingProvider !== currentProvider ||
+          c.embeddingModel !== currentModel ||
+          c.embeddingVersion !== currentVersion)
     )
     .toArray()
   if (chunks.length === 0) return 0
-  const ids = chunks.map(c => c.id)
+  const ids = chunks.map((c) => c.id)
   await db.transaction('rw', db.researchChunks, async () => {
     for (const id of ids) {
       await db.researchChunks.update(id, { embeddingStatus: STALE })
@@ -121,12 +119,12 @@ export async function countByStatus(projectId) {
   const all = await db.researchChunks.where({ projectId }).toArray()
   return {
     total: all.length,
-    PENDING: all.filter(c => c.embeddingStatus === PENDING).length,
-    PROCESSING: all.filter(c => c.embeddingStatus === PROCESSING).length,
-    READY: all.filter(c => c.embeddingStatus === READY).length,
-    FAILED: all.filter(c => c.embeddingStatus === FAILED).length,
-    STALE: all.filter(c => c.embeddingStatus === STALE).length,
-    unset: all.filter(c => !c.embeddingStatus).length
+    PENDING: all.filter((c) => c.embeddingStatus === PENDING).length,
+    PROCESSING: all.filter((c) => c.embeddingStatus === PROCESSING).length,
+    READY: all.filter((c) => c.embeddingStatus === READY).length,
+    FAILED: all.filter((c) => c.embeddingStatus === FAILED).length,
+    STALE: all.filter((c) => c.embeddingStatus === STALE).length,
+    unset: all.filter((c) => !c.embeddingStatus).length
   }
 }
 
@@ -141,9 +139,9 @@ export async function updateChunkEmbedding(chunkId, embedding) {
 export async function getDocumentChunkEmbeddings(documentId) {
   const chunks = await db.researchChunks
     .where({ documentId })
-    .filter(c => c.embedding && c.embeddingStatus === READY)
+    .filter((c) => c.embedding && c.embeddingStatus === READY)
     .toArray()
-  return chunks.map(c => c.embedding)
+  return chunks.map((c) => c.embedding)
 }
 
 export async function setDocumentEmbedding(documentId, embedding) {
@@ -156,7 +154,7 @@ export async function setDocumentEmbedding(documentId, embedding) {
 export async function getUnindexedChunks(projectId) {
   return db.researchChunks
     .where({ projectId })
-    .filter(c => {
+    .filter((c) => {
       if (c.embeddingStatus === READY) return false
       if (!c.embeddingStatus && c.embedding) return false
       return true
@@ -168,16 +166,19 @@ export async function getDocumentStatusCounts(documentId) {
   const all = await db.researchChunks.where({ documentId }).toArray()
   return {
     total: all.length,
-    PENDING: all.filter(c => c.embeddingStatus === PENDING).length,
-    PROCESSING: all.filter(c => c.embeddingStatus === PROCESSING).length,
-    READY: all.filter(c => c.embeddingStatus === READY).length,
-    FAILED: all.filter(c => c.embeddingStatus === FAILED).length,
-    STALE: all.filter(c => c.embeddingStatus === STALE).length
+    PENDING: all.filter((c) => c.embeddingStatus === PENDING).length,
+    PROCESSING: all.filter((c) => c.embeddingStatus === PROCESSING).length,
+    READY: all.filter((c) => c.embeddingStatus === READY).length,
+    FAILED: all.filter((c) => c.embeddingStatus === FAILED).length,
+    STALE: all.filter((c) => c.embeddingStatus === STALE).length
   }
 }
 
 export async function searchLexical(projectId, query, limit = 20) {
-  const qTokens = query.toLowerCase().split(/\W+/).filter(t => t.length > 1)
+  const qTokens = query
+    .toLowerCase()
+    .split(/\W+/)
+    .filter((t) => t.length > 1)
   if (qTokens.length === 0) return []
 
   const allChunks = await db.researchChunks.where({ projectId }).toArray()
@@ -186,14 +187,16 @@ export async function searchLexical(projectId, query, limit = 20) {
 
   const df = {}
   for (const token of qTokens) {
-    df[token] = allChunks.filter(c => c.text.toLowerCase().includes(token)).length
+    df[token] = allChunks.filter((c) => c.text.toLowerCase().includes(token)).length
   }
 
-  const scored = allChunks.map(chunk => {
+  const scored = allChunks.map((chunk) => {
     const lowerText = chunk.text.toLowerCase()
     let score = 0
     for (const token of qTokens) {
-      const tf = (lowerText.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+      const tf = (
+        lowerText.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []
+      ).length
       if (tf === 0) continue
       const idf = Math.log((N - df[token] + 0.5) / (df[token] + 0.5) + 1)
       score += (1 + Math.log(tf)) * idf
@@ -202,14 +205,16 @@ export async function searchLexical(projectId, query, limit = 20) {
   })
 
   return scored
-    .filter(c => c._score > 0)
+    .filter((c) => c._score > 0)
     .sort((a, b) => b._score - a._score)
     .slice(0, limit)
 }
 
 export function cosineSimilarity(a, b) {
   if (!a || !b || a.length !== b.length) return 0
-  let dot = 0, magA = 0, magB = 0
+  let dot = 0,
+    magA = 0,
+    magB = 0
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i]
     magA += a[i] * a[i]
@@ -223,14 +228,14 @@ export async function semanticSearch(projectId, queryEmbedding, limit = 20) {
   if (!queryEmbedding) return []
   const chunks = await db.researchChunks
     .where({ projectId })
-    .filter(c => c.embedding && c.embedding.length > 0)
+    .filter((c) => c.embedding && c.embedding.length > 0)
     .toArray()
-  const scored = chunks.map(c => ({
+  const scored = chunks.map((c) => ({
     ...c,
     _score: cosineSimilarity(c.embedding, queryEmbedding)
   }))
   return scored
-    .filter(c => c._score > 0.1)
+    .filter((c) => c._score > 0.1)
     .sort((a, b) => b._score - a._score)
     .slice(0, limit)
 }
@@ -266,21 +271,21 @@ export async function pruneEmbeddingCache(maxEntries = 20000) {
     .orderBy('createdAt')
     .limit(count - maxEntries)
     .toArray()
-  const keys = toPrune.map(e => e.hash)
+  const keys = toPrune.map((e) => e.hash)
   if (keys.length) await db.embeddingCache.bulkDelete(keys)
 }
 
 export async function resetChunksStatus(documentId, fromStatus) {
   const chunks = await db.researchChunks
     .where({ documentId })
-    .filter(c => c.embeddingStatus === fromStatus)
+    .filter((c) => c.embeddingStatus === fromStatus)
     .toArray()
   if (chunks.length === 0) return []
-  const ids = chunks.map(c => c.id)
+  const ids = chunks.map((c) => c.id)
   await db.transaction('rw', db.researchChunks, async () => {
     for (const id of ids) {
       await db.researchChunks.update(id, { embeddingStatus: PENDING })
     }
   })
-  return chunks.map(c => ({ id: c.id, text: c.text }))
+  return chunks.map((c) => ({ id: c.id, text: c.text }))
 }

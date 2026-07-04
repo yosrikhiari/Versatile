@@ -3,7 +3,10 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
-import { useSectionSchemaManager, SECTION_STATUSES } from '../../composables/useSectionSchemaManager'
+import {
+  useSectionSchemaManager,
+  SECTION_STATUSES
+} from '../../composables/useSectionSchemaManager'
 import { useDraggableList, DRAG_OPTIONS } from '../../composables/useDraggableList'
 import { useNotifications } from '../../composables/useNotifications'
 
@@ -52,14 +55,14 @@ const allTags = computed(() => {
 
 const filteredSections = computed(() => {
   if (tagFilter.value.length === 0) return sortedSections.value
-  return sortedSections.value.filter(c =>
-    c.tags && c.tags.some(t => tagFilter.value.includes(t))
+  return sortedSections.value.filter(
+    (c) => c.tags && c.tags.some((t) => tagFilter.value.includes(t))
   )
 })
 
 function toggleTagFilter(tag) {
   if (tagFilter.value.includes(tag)) {
-    tagFilter.value = tagFilter.value.filter(t => t !== tag)
+    tagFilter.value = tagFilter.value.filter((t) => t !== tag)
   } else {
     tagFilter.value = [...tagFilter.value, tag]
   }
@@ -134,14 +137,21 @@ function saveSection() {
 }
 
 async function deleteSection(section) {
-  if (await showConfirm('Delete Section', `Delete "${section.title || 'Section ' + (section.order + 1)}"? This will also delete all subsections in this section.`, 'Delete', 'danger')) {
+  if (
+    await showConfirm(
+      'Delete Section',
+      `Delete "${section.title || 'Section ' + (section.order + 1)}"? This will also delete all subsections in this section.`,
+      'Delete',
+      'danger'
+    )
+  ) {
     manuscriptStore.deleteSectionData(section.id, projectStore.currentProjectId)
   }
 }
 
 function updateSectionOrder() {
   endDrag()
-  const ids = sortedSections.value.map(s => s.id)
+  const ids = sortedSections.value.map((s) => s.id)
   manuscriptStore.reorderSectionsData(ids, projectStore.currentProjectId)
 }
 
@@ -157,7 +167,7 @@ function selectSection(sectionId) {
 
 function updateSubsectionOrder(sectionId) {
   endDrag()
-  const subsectionIds = subsectionsBySection.value[sectionId]?.map(s => s.id) || []
+  const subsectionIds = subsectionsBySection.value[sectionId]?.map((s) => s.id) || []
   manuscriptStore.reorderSubsectionsData(subsectionIds, projectStore.currentProjectId)
 }
 
@@ -168,12 +178,15 @@ onMounted(() => {
   }
 })
 
-watch(() => projectStore.currentProjectId, (newId) => {
-  if (newId) {
-    manuscriptStore.loadManuscript(newId)
-    volumeStore.loadVolumes(newId)
+watch(
+  () => projectStore.currentProjectId,
+  (newId) => {
+    if (newId) {
+      manuscriptStore.loadManuscript(newId)
+      volumeStore.loadVolumes(newId)
+    }
   }
-})
+)
 
 function openSectionSnapshot(section) {
   snapshotSectionId.value = section.id
@@ -204,7 +217,11 @@ function saveVolume() {
   if (!newVolume.value.title.trim()) return
 
   if (editingVolume.value) {
-    volumeStore.updateVolumeData(editingVolume.value.id, newVolume.value, projectStore.currentProjectId)
+    volumeStore.updateVolumeData(
+      editingVolume.value.id,
+      newVolume.value,
+      projectStore.currentProjectId
+    )
   } else {
     volumeStore.createVolume(projectStore.currentProjectId, newVolume.value)
   }
@@ -213,7 +230,14 @@ function saveVolume() {
 }
 
 async function deleteVolume(volume) {
-  if (await showConfirm('Delete Volume', `Delete "${volume.title}"? Sections will be unassigned from this volume.`, 'Delete', 'danger')) {
+  if (
+    await showConfirm(
+      'Delete Volume',
+      `Delete "${volume.title}"? Sections will be unassigned from this volume.`,
+      'Delete',
+      'danger'
+    )
+  ) {
     volumeStore.deleteVolumeData(volume.id, projectStore.currentProjectId)
     manuscriptStore.loadManuscript(projectStore.currentProjectId)
   }
@@ -242,7 +266,11 @@ function toggleAssignMode(volumeId) {
 async function assignSectionToVolume(sectionId) {
   if (!assignVolumeId.value || !projectStore.currentProjectId) return
   await volumeStore.assignSection(sectionId, assignVolumeId.value, projectStore.currentProjectId)
-  manuscriptStore.updateSectionData(sectionId, { volumeId: assignVolumeId.value }, projectStore.currentProjectId)
+  manuscriptStore.updateSectionData(
+    sectionId,
+    { volumeId: assignVolumeId.value },
+    projectStore.currentProjectId
+  )
   assignMode.value = false
   assignVolumeId.value = null
 }
@@ -253,19 +281,17 @@ function removeFromVolume(section) {
 }
 
 function getSectionsInVolume(volumeId) {
-  return sortedSections.value.filter(s => s.volumeId === volumeId)
+  return sortedSections.value.filter((s) => s.volumeId === volumeId)
 }
 
 function getVolumeForSection(section) {
   if (!section.volumeId) return null
-  return volumeStore.volumes.find(v => v.id === section.volumeId) || null
+  return volumeStore.volumes.find((v) => v.id === section.volumeId) || null
 }
-
 </script>
 
 <template>
   <div class="h-full flex flex-col bg-bg-primary">
-
     <div class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
       <span class="text-sm font-medium text-text-primary tracking-wide">Section Manager</span>
       <button
@@ -276,7 +302,10 @@ function getVolumeForSection(section) {
       </button>
     </div>
 
-    <div v-if="allTags.length > 0" class="flex items-center gap-1.5 px-4 py-1.5 border-b border-border-subtle overflow-x-auto shrink-0">
+    <div
+      v-if="allTags.length > 0"
+      class="flex items-center gap-1.5 px-4 py-1.5 border-b border-border-subtle overflow-x-auto shrink-0"
+    >
       <span class="text-xs text-text-tertiary font-ui shrink-0">Filter:</span>
       <button
         v-for="tag in allTags"
@@ -300,7 +329,9 @@ function getVolumeForSection(section) {
       </button>
     </div>
 
-    <div class="flex items-center justify-between px-4 pt-2.5 pb-2 border-b border-border-subtle shrink-0">
+    <div
+      class="flex items-center justify-between px-4 pt-2.5 pb-2 border-b border-border-subtle shrink-0"
+    >
       <span class="text-xs font-medium text-text-secondary uppercase tracking-wider">Volumes</span>
       <button
         class="text-xs px-2.5 py-0.5 bg-transparent text-text-secondary border border-border-secondary rounded-md hover:bg-surface-hover"
@@ -310,7 +341,10 @@ function getVolumeForSection(section) {
       </button>
     </div>
 
-    <div v-if="volumeStore.volumes.length > 0" class="px-3 pt-2 pb-1.5 border-b border-border-subtle space-y-1.5 shrink-0">
+    <div
+      v-if="volumeStore.volumes.length > 0"
+      class="px-3 pt-2 pb-1.5 border-b border-border-subtle space-y-1.5 shrink-0"
+    >
       <div
         v-for="volume in volumeStore.volumes"
         :key="volume.id"
@@ -331,7 +365,9 @@ function getVolumeForSection(section) {
               :style="{ background: volume.color || 'var(--vers-default-fallback)' }"
             ></span>
             <span class="text-sm font-medium text-text-primary">{{ volume.title }}</span>
-            <span class="text-xs text-text-tertiary bg-bg-primary border border-border-subtle rounded-full px-2 py-0.5 whitespace-nowrap">
+            <span
+              class="text-xs text-text-tertiary bg-bg-primary border border-border-subtle rounded-full px-2 py-0.5 whitespace-nowrap"
+            >
               {{ getSectionsInVolume(volume.id).length }} sections
             </span>
           </div>
@@ -359,15 +395,23 @@ function getVolumeForSection(section) {
           </div>
         </div>
 
-        <div v-if="expandedVolumes.has(volume.id)" class="border-t border-border-subtle px-3 py-2 space-y-1.5">
+        <div
+          v-if="expandedVolumes.has(volume.id)"
+          class="border-t border-border-subtle px-3 py-2 space-y-1.5"
+        >
           <div
             v-for="section in getSectionsInVolume(volume.id)"
             :key="section.id"
             class="flex items-center justify-between bg-bg-primary rounded px-2.5 py-1.5"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <span class="text-sm text-text-primary font-medium">{{ section.title || `Section ${section.order + 1}` }}</span>
-              <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-bg-secondary text-text-secondary">{{ getStatusLabel(section.status) }}</span>
+              <span class="text-sm text-text-primary font-medium">{{
+                section.title || `Section ${section.order + 1}`
+              }}</span>
+              <span
+                class="text-xs font-medium px-2 py-0.5 rounded-full bg-bg-secondary text-text-secondary"
+                >{{ getStatusLabel(section.status) }}</span
+              >
             </div>
             <button
               class="p-1 text-text-tertiary hover:text-danger rounded"
@@ -384,9 +428,14 @@ function getVolumeForSection(section) {
     </div>
 
     <div class="flex-1 overflow-y-auto px-3 pt-3 pb-2">
-      <p class="text-xs font-medium text-text-tertiary uppercase tracking-wider mx-1 mb-2">Sections</p>
+      <p class="text-xs font-medium text-text-tertiary uppercase tracking-wider mx-1 mb-2">
+        Sections
+      </p>
 
-      <div v-if="filteredSections.length === 0 && sortedSections.length > 0" class="text-center py-8">
+      <div
+        v-if="filteredSections.length === 0 && sortedSections.length > 0"
+        class="text-center py-8"
+      >
         <p class="text-text-hint font-ui text-sm mb-4">No sections match the selected tags.</p>
         <button
           class="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui"
@@ -396,7 +445,9 @@ function getVolumeForSection(section) {
         </button>
       </div>
       <div v-else-if="filteredSections.length === 0" class="text-center py-8">
-        <p class="text-text-hint font-ui text-sm mb-4">No sections yet. Start planning your document!</p>
+        <p class="text-text-hint font-ui text-sm mb-4">
+          No sections yet. Start planning your document!
+        </p>
         <button
           class="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui"
           @click="openAddSection"
@@ -427,15 +478,26 @@ function getVolumeForSection(section) {
               ]"
               @click="assignMode ? assignSectionToVolume(section.id) : selectSection(section.id)"
             >
-              <BaseIcon name="grip-vertical" :size="14" class="text-text-tertiary flex-shrink-0 cursor-grab" />
+              <BaseIcon
+                name="grip-vertical"
+                :size="14"
+                class="text-text-tertiary flex-shrink-0 cursor-grab"
+              />
               <span
                 class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                :style="{ background: (getVolumeForSection(section)?.color) || 'var(--vers-default-other)' }"
+                :style="{
+                  background: getVolumeForSection(section)?.color || 'var(--vers-default-other)'
+                }"
               ></span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-medium text-text-primary">{{ section.title || `Section ${section.order + 1}` }}</span>
-                  <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-bg-secondary text-text-secondary">{{ getStatusLabel(section.status) }}</span>
+                  <span class="text-sm font-medium text-text-primary">{{
+                    section.title || `Section ${section.order + 1}`
+                  }}</span>
+                  <span
+                    class="text-xs font-medium px-2 py-0.5 rounded-full bg-bg-secondary text-text-secondary"
+                    >{{ getStatusLabel(section.status) }}</span
+                  >
                 </div>
                 <div class="flex items-center gap-3 mt-0.5">
                   <span class="text-xs text-text-tertiary flex items-center gap-1">
@@ -455,44 +517,47 @@ function getVolumeForSection(section) {
               />
             </div>
 
-            <div v-if="activeSectionExpanded === section.id" class="border-t border-border-subtle bg-bg-secondary p-3">
+            <div
+              v-if="activeSectionExpanded === section.id"
+              class="border-t border-border-subtle bg-bg-secondary p-3"
+            >
               <div class="flex flex-col gap-1.5 mb-2.5">
-  <!-- Row 1: action buttons -->
-  <div class="flex items-center gap-1">
-    <button
-      class="text-xs px-2.5 py-1 bg-bg-info text-text-info rounded-md font-medium hover:opacity-90"
-      @click="openAddSubsection(section.id)"
-    >
-      + Subsection
-    </button>
-    <button
-      class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-      @click="openEditSection(section)"
-    >
-      Edit
-    </button>
-    <button
-      class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-      @click="openSectionSnapshot(section)"
-    >
-      History
-    </button>
-    <button
-      v-if="section.volumeId"
-      class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-      @click="removeFromVolume(section)"
-    >
-      Unassign
-    </button>
-  </div>
-  <!-- Row 2: destructive action, full width -->
-  <button
-    class="w-full text-xs px-2.5 py-1 bg-bg-primary text-danger border border-border-subtle rounded-md hover:bg-danger/10 text-center"
-    @click="deleteSection(section)"
-  >
-    Delete
-  </button>
-</div>
+                <!-- Row 1: action buttons -->
+                <div class="flex items-center gap-1">
+                  <button
+                    class="text-xs px-2.5 py-1 bg-bg-info text-text-info rounded-md font-medium hover:opacity-90"
+                    @click="openAddSubsection(section.id)"
+                  >
+                    + Subsection
+                  </button>
+                  <button
+                    class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
+                    @click="openEditSection(section)"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
+                    @click="openSectionSnapshot(section)"
+                  >
+                    History
+                  </button>
+                  <button
+                    v-if="section.volumeId"
+                    class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
+                    @click="removeFromVolume(section)"
+                  >
+                    Unassign
+                  </button>
+                </div>
+                <!-- Row 2: destructive action, full width -->
+                <button
+                  class="w-full text-xs px-2.5 py-1 bg-bg-primary text-danger border border-border-subtle rounded-md hover:bg-danger/10 text-center"
+                  @click="deleteSection(section)"
+                >
+                  Delete
+                </button>
+              </div>
 
               <draggable
                 :list="subsectionsBySection[section.id]"
@@ -502,13 +567,27 @@ function getVolumeForSection(section) {
                 @end="() => updateSubsectionOrder(section.id)"
               >
                 <template #item="{ element: subsection }">
-                  <div class="flex items-center gap-2 px-2.5 py-2 bg-bg-primary border border-border-subtle rounded-md">
-                    <BaseIcon name="grip-vertical" :size="13" class="text-text-tertiary flex-shrink-0 cursor-grab" />
+                  <div
+                    class="flex items-center gap-2 px-2.5 py-2 bg-bg-primary border border-border-subtle rounded-md"
+                  >
+                    <BaseIcon
+                      name="grip-vertical"
+                      :size="13"
+                      class="text-text-tertiary flex-shrink-0 cursor-grab"
+                    />
                     <span
                       class="text-xs font-medium flex-1 min-w-0 cursor-pointer hover:text-accent"
-                      :class="manuscriptStore.activeSubsectionId === subsection.id ? 'text-accent' : 'text-text-primary'"
-                      @click="manuscriptStore.setActiveSubsection(subsection.id); manuscriptStore.setActiveSection(subsection.sectionId)"
-                    >{{ subsection.title || 'Untitled Subsection' }}</span>
+                      :class="
+                        manuscriptStore.activeSubsectionId === subsection.id
+                          ? 'text-accent'
+                          : 'text-text-primary'
+                      "
+                      @click="
+                        manuscriptStore.setActiveSubsection(subsection.id)
+                        manuscriptStore.setActiveSection(subsection.sectionId)
+                      "
+                      >{{ subsection.title || 'Untitled Subsection' }}</span
+                    >
                     <button
                       class="bg-transparent border-none text-xs text-text-secondary cursor-pointer px-1.5 py-0.5 hover:text-text-primary"
                       @click="openEditSubsection(subsection)"
@@ -526,16 +605,26 @@ function getVolumeForSection(section) {
               </draggable>
 
               <div v-if="!subsectionsBySection[section.id]?.length" class="text-center py-3">
-                <p class="text-xs text-text-tertiary">No subsections yet. Break down this section into subsections.</p>
+                <p class="text-xs text-text-tertiary">
+                  No subsections yet. Break down this section into subsections.
+                </p>
               </div>
             </div>
           </div>
         </template>
       </draggable>
 
-      <div v-if="sortedSections.length > 0" class="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between">
-        <span class="text-xs text-text-tertiary">Total: {{ totalWordCount.toLocaleString() }} words</span>
-        <span class="text-xs text-text-tertiary">{{ sortedSections.length }} sections &middot; {{ totalSubsectionCount }} subsections</span>
+      <div
+        v-if="sortedSections.length > 0"
+        class="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between"
+      >
+        <span class="text-xs text-text-tertiary"
+          >Total: {{ totalWordCount.toLocaleString() }} words</span
+        >
+        <span class="text-xs text-text-tertiary"
+          >{{ sortedSections.length }} sections &middot;
+          {{ totalSubsectionCount }} subsections</span
+        >
       </div>
     </div>
 
@@ -649,14 +738,23 @@ function getVolumeForSection(section) {
     <SnapshotHistoryDrawer
       :show="showSnapshotDrawer"
       :chapter-id="snapshotSectionId"
-      @close="showSnapshotDrawer = false; snapshotSectionId = null"
-      @restored="(content) => {
-        if (snapshotSectionId !== null) {
-          manuscriptStore.updateSectionData(snapshotSectionId, { content }, projectStore.currentProjectId)
-        }
+      @close="
         showSnapshotDrawer = false
         snapshotSectionId = null
-      }"
+      "
+      @restored="
+        (content) => {
+          if (snapshotSectionId !== null) {
+            manuscriptStore.updateSectionData(
+              snapshotSectionId,
+              { content },
+              projectStore.currentProjectId
+            )
+          }
+          showSnapshotDrawer = false
+          snapshotSectionId = null
+        }
+      "
     />
 
     <Modal :show="showVolumeModal" @close="showVolumeModal = false">

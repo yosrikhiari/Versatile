@@ -18,9 +18,12 @@ const displayName = ref('')
 const submitting = ref(false)
 const formError = ref('')
 
-watch(() => props.show, (val) => {
-  if (val) resetForm()
-})
+watch(
+  () => props.show,
+  (val) => {
+    if (val) resetForm()
+  }
+)
 
 function resetForm() {
   username.value = ''

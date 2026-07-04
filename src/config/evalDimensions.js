@@ -276,21 +276,23 @@ const REPRODUCIBILITY_RUBRIC = {
 const CREATIVE_DIMENSIONS = {
   continuity: {
     label: 'Continuity',
-    description: 'Evaluates story consistency, logical coherence, and absence of contradictions across scenes',
+    description:
+      'Evaluates story consistency, logical coherence, and absence of contradictions across scenes',
     rubric: CONTINUITY_RUBRIC,
     weight: 1.0,
     defaultThreshold: 7
   },
   voice: {
     label: 'Voice',
-    description: 'Evaluates character voice authenticity and whether dialogue fits each character\'s established personality',
+    description:
+      "Evaluates character voice authenticity and whether dialogue fits each character's established personality",
     rubric: VOICE_RUBRIC,
     weight: 1.0,
     defaultThreshold: 7
   },
   emotional_goal: {
     label: 'Emotional Goal',
-    description: 'Evaluates whether the prose achieves the scene\'s intended emotional target',
+    description: "Evaluates whether the prose achieves the scene's intended emotional target",
     rubric: EMOTIONAL_GOAL_RUBRIC,
     weight: 1.0,
     defaultThreshold: 7
@@ -361,7 +363,8 @@ const TECHNICAL_DIMENSIONS = {
   },
   security: {
     label: 'Security',
-    description: 'Evaluates authentication, authorization, data protection, and vulnerability posture',
+    description:
+      'Evaluates authentication, authorization, data protection, and vulnerability posture',
     rubric: SECURITY_RUBRIC,
     weight: 1.0,
     defaultThreshold: 8
@@ -378,7 +381,8 @@ const TECHNICAL_DIMENSIONS = {
 const BUSINESS_DIMENSIONS = {
   viability: {
     label: 'Viability',
-    description: 'Evaluates commercial viability, market positioning, and business model sustainability',
+    description:
+      'Evaluates commercial viability, market positioning, and business model sustainability',
     rubric: VIABILITY_RUBRIC,
     weight: 1.0,
     defaultThreshold: 7

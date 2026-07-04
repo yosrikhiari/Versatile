@@ -66,7 +66,8 @@ export const useSettingsStore = defineStore('settings', () => {
         if (data.aiProviderFallback) aiProviderFallback.value = data.aiProviderFallback
         if (data.embeddingProvider) embeddingProvider.value = data.embeddingProvider
         if (data.embeddingModel) embeddingModel.value = data.embeddingModel
-        if (data.embeddingThreshold !== undefined) embeddingThreshold.value = data.embeddingThreshold
+        if (data.embeddingThreshold !== undefined)
+          embeddingThreshold.value = data.embeddingThreshold
       }
 
       // STORAGE_KEYS ref
@@ -88,17 +89,20 @@ export const useSettingsStore = defineStore('settings', () => {
   function saveSettings() {
     try {
       // STORAGE_KEYS ref
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify({
-        ollamaEndpoint: ollamaEndpoint.value,
-        ollamaModel: ollamaModel.value,
-        openaiApiKey: openaiApiKey.value,
-        autoSaveInterval: autoSaveInterval.value,
-        aiProvider: aiProvider.value,
-        aiProviderFallback: aiProviderFallback.value,
-        embeddingProvider: embeddingProvider.value,
-        embeddingModel: embeddingModel.value,
-        embeddingThreshold: embeddingThreshold.value
-      }))
+      localStorage.setItem(
+        STORAGE_KEYS.SETTINGS,
+        JSON.stringify({
+          ollamaEndpoint: ollamaEndpoint.value,
+          ollamaModel: ollamaModel.value,
+          openaiApiKey: openaiApiKey.value,
+          autoSaveInterval: autoSaveInterval.value,
+          aiProvider: aiProvider.value,
+          aiProviderFallback: aiProviderFallback.value,
+          embeddingProvider: embeddingProvider.value,
+          embeddingModel: embeddingModel.value,
+          embeddingThreshold: embeddingThreshold.value
+        })
+      )
     } catch (e) {
       console.warn('Failed to save settings:', e)
     }
@@ -209,7 +213,7 @@ export const useSettingsStore = defineStore('settings', () => {
     try {
       const response = await fetch(`${ollamaEndpoint.value}/api/tags`, {
         method: 'GET',
-        headers: { 'Accept': 'application/json' }
+        headers: { Accept: 'application/json' }
       })
       if (response.ok) {
         return { success: true, message: 'Connection successful' }

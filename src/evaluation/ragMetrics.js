@@ -1,7 +1,7 @@
 export function hitRate(results, relevantIds, k = results.length) {
   if (!results.length || !relevantIds.length) return 0
   const topK = results.slice(0, k)
-  return topK.some(r => relevantIds.includes(r.id)) ? 1 : 0
+  return topK.some((r) => relevantIds.includes(r.id)) ? 1 : 0
 }
 
 export function meanReciprocalRank(results, relevantIds) {
@@ -49,14 +49,14 @@ export function ndcgAtK(results, relevantIds, k = results.length) {
 export function recallAtK(results, relevantIds, k = results.length) {
   if (!relevantIds.length) return 0
   const topK = results.slice(0, k)
-  const retrieved = topK.filter(r => relevantIds.includes(r.id)).length
+  const retrieved = topK.filter((r) => relevantIds.includes(r.id)).length
   return retrieved / relevantIds.length
 }
 
 export function precisionAtK(results, relevantIds, k = results.length) {
   if (!k) return 0
   const topK = results.slice(0, k)
-  const relevant = topK.filter(r => relevantIds.includes(r.id)).length
+  const relevant = topK.filter((r) => relevantIds.includes(r.id)).length
   return relevant / k
 }
 

@@ -1,5 +1,10 @@
 export function countWords(text) {
-  return text?.trim() ? text.trim().split(/\s+/).filter(w => w).length : 0
+  return text?.trim()
+    ? text
+        .trim()
+        .split(/\s+/)
+        .filter((w) => w).length
+    : 0
 }
 
 /**

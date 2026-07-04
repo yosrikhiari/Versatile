@@ -77,7 +77,7 @@ export function useStateSummarizer() {
     if (snapshot.newCharacters?.length > 0) {
       parts.push(`${snapshot.newCharacters.length} new character(s)`)
     }
-    const resolved = snapshot.updatedThreads?.filter(t => t.includes('resolved')).length || 0
+    const resolved = snapshot.updatedThreads?.filter((t) => t.includes('resolved')).length || 0
     if (resolved > 0) parts.push(`${resolved} thread(s) resolved`)
     const open = snapshot.unresolvedThreads?.length || 0
     if (open > 0) parts.push(`${open} unresolved thread(s)`)

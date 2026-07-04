@@ -1,12 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { addSnapshot, getSnapshots, getSnapshot, deleteSnapshot, updateSubsection } from '../services/dbService'
+import {
+  addSnapshot,
+  getSnapshots,
+  getSnapshot,
+  deleteSnapshot,
+  updateSubsection
+} from '../services/dbService'
 import { useLoading } from '../composables/useLoading'
 
 export const useSnapshotStore = defineStore('snapshot', () => {
-  const { items: snapshots, isLoading, load: loadSnapshots } = useLoading(
-    (projectId, chapterId = null) => getSnapshots(projectId, chapterId)
-  )
+  const {
+    items: snapshots,
+    isLoading,
+    load: loadSnapshots
+  } = useLoading((projectId, chapterId = null) => getSnapshots(projectId, chapterId))
   const autoSaveEnabled = ref(true)
   const autoSaveInterval = ref(5)
   let intervalTimer = null
@@ -38,12 +46,15 @@ export const useSnapshotStore = defineStore('snapshot', () => {
   function startAutoSave(projectId, chapterId, getContentFn) {
     stopAutoSave()
     if (!autoSaveEnabled.value) return
-    intervalTimer = setInterval(async () => {
-      const content = getContentFn()
-      if (content) {
-        await saveNewSnapshot(projectId, chapterId, content, 'auto')
-      }
-    }, autoSaveInterval.value * 60 * 1000)
+    intervalTimer = setInterval(
+      async () => {
+        const content = getContentFn()
+        if (content) {
+          await saveNewSnapshot(projectId, chapterId, content, 'auto')
+        }
+      },
+      autoSaveInterval.value * 60 * 1000
+    )
   }
 
   function stopAutoSave() {

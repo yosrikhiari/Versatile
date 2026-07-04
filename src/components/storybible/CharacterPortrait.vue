@@ -48,7 +48,9 @@ async function generate() {
 
 <template>
   <div class="portrait-container flex flex-col items-center gap-2">
-    <div class="portrait-image w-24 h-24 rounded-lg overflow-hidden bg-bg-secondary flex items-center justify-center">
+    <div
+      class="portrait-image w-24 h-24 rounded-lg overflow-hidden bg-bg-secondary flex items-center justify-center"
+    >
       <img
         v-if="portrait"
         :src="portrait"
@@ -64,8 +66,20 @@ async function generate() {
     >
       <span v-if="isGenerating" class="flex items-center gap-1">
         <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+            fill="none"
+          />
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
         </svg>
         Generating...
       </span>

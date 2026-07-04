@@ -44,10 +44,13 @@ export const VOICE_PROFILES = {
       'Generic or category nouns where specific ones are available',
       'Overused literary crutch words: "somehow", "perhaps", "almost", "seemed"'
     ],
-    sentenceRhythm: 'Dramatic variation — clipped fragments under 5 words during tension, flowing sentences of 30+ words during reflection. Caesura and interruption for distress. Parallel structure for building intensity.',
+    sentenceRhythm:
+      'Dramatic variation — clipped fragments under 5 words during tension, flowing sentences of 30+ words during reflection. Caesura and interruption for distress. Parallel structure for building intensity.',
     sensoryPriority: ['physical sensation', 'temperature', 'sight', 'sound', 'smell'],
-    dialogueStyle: 'Subtext-driven. Characters under emotional pressure never state their real meaning. Dialogue is an oblique dance — what is not said matters more than what is. Action beats preferred over tags, but simple "said" is invisible and acceptable.',
-    pacing: 'Variable, scene-determined. Reflection scenes move at contemplative pace with extended description. Tension scenes are clipped, breathless, with shorter paragraphs and more white space.',
+    dialogueStyle:
+      'Subtext-driven. Characters under emotional pressure never state their real meaning. Dialogue is an oblique dance — what is not said matters more than what is. Action beats preferred over tags, but simple "said" is invisible and acceptable.',
+    pacing:
+      'Variable, scene-determined. Reflection scenes move at contemplative pace with extended description. Tension scenes are clipped, breathless, with shorter paragraphs and more white space.',
     register: 'literary'
   },
 
@@ -72,10 +75,13 @@ export const VOICE_PROFILES = {
       'Dialogue tags beyond "said" — no "whispered", "hissed", "murmured"',
       'Passive construction that kills immediacy'
     ],
-    sentenceRhythm: 'Staccato and driving. Most sentences under 15 words. Hard stops. Fragments for impact. Short paragraphs create a fast, breathless rhythm that pulls the reader forward.',
+    sentenceRhythm:
+      'Staccato and driving. Most sentences under 15 words. Hard stops. Fragments for impact. Short paragraphs create a fast, breathless rhythm that pulls the reader forward.',
     sensoryPriority: ['sight', 'physical sensation', 'sound'],
-    dialogueStyle: 'Lean and functional. "Said" only. Action beats to break up exchanges and reveal character through gesture. No lengthy speeches — information is parceled out across the scene. Conflict in every exchange.',
-    pacing: 'Fast by default. Action sequences use very short paragraphs (1-2 sentences). Even reflective beats move at a clip — no passage lingers longer than it earns.',
+    dialogueStyle:
+      'Lean and functional. "Said" only. Action beats to break up exchanges and reveal character through gesture. No lengthy speeches — information is parceled out across the scene. Conflict in every exchange.',
+    pacing:
+      'Fast by default. Action sequences use very short paragraphs (1-2 sentences). Even reflective beats move at a clip — no passage lingers longer than it earns.',
     register: 'genre'
   },
 
@@ -99,10 +105,13 @@ export const VOICE_PROFILES = {
       'Emotional named directly — show only through what can be observed',
       'Summary or conclusion — trust the reader to infer'
     ],
-    sentenceRhythm: 'Steady, declarative, repetitive. Most sentences are subject-verb-object, 5-12 words. Repetition of sentence openings for hypnotic effect. Sudden shorter sentences for impact. Variation is rare and therefore powerful.',
+    sentenceRhythm:
+      'Steady, declarative, repetitive. Most sentences are subject-verb-object, 5-12 words. Repetition of sentence openings for hypnotic effect. Sudden shorter sentences for impact. Variation is rare and therefore powerful.',
     sensoryPriority: ['sight', 'physical sensation', 'sound'],
-    dialogueStyle: 'Terse to the point of bluntness. Characters speak in short bursts. Non-responses and silences are meaningful. No exposition through dialogue. What characters do between lines often matters more than the lines themselves.',
-    pacing: 'Deliberate and measured. The stripped-down prose paradoxically creates a slower reading experience because every word carries weight. White space is used generously.',
+    dialogueStyle:
+      'Terse to the point of bluntness. Characters speak in short bursts. Non-responses and silences are meaningful. No exposition through dialogue. What characters do between lines often matters more than the lines themselves.',
+    pacing:
+      'Deliberate and measured. The stripped-down prose paradoxically creates a slower reading experience because every word carries weight. White space is used generously.',
     register: 'literary'
   },
 
@@ -126,10 +135,13 @@ export const VOICE_PROFILES = {
       'Academic vocabulary or literary pretension',
       'Distance between narrator and reader — no cold observation'
     ],
-    sentenceRhythm: 'Natural speech cadence. Mixture of short and medium sentences. Occasional fragments for emphasis. Runs-on for breathless or excited passages. The rhythm follows the breath of a person talking.',
+    sentenceRhythm:
+      'Natural speech cadence. Mixture of short and medium sentences. Occasional fragments for emphasis. Runs-on for breathless or excited passages. The rhythm follows the breath of a person talking.',
     sensoryPriority: ['physical sensation', 'sight', 'sound', 'smell', 'taste'],
-    dialogueStyle: 'Natural and unvarnished. People interrupt each other, trail off, talk over one another. Realistic filler and hesitation where appropriate. Dialogue reveals personality through word choice and rhythm, not just content.',
-    pacing: 'Easy and engaging. The pace moves at a natural storytelling clip — faster for dramatic beats, slower for reflective or intimate moments. Never rushed, never dragging.',
+    dialogueStyle:
+      'Natural and unvarnished. People interrupt each other, trail off, talk over one another. Realistic filler and hesitation where appropriate. Dialogue reveals personality through word choice and rhythm, not just content.',
+    pacing:
+      'Easy and engaging. The pace moves at a natural storytelling clip — faster for dramatic beats, slower for reflective or intimate moments. Never rushed, never dragging.',
     register: 'accessible'
   },
 
@@ -153,10 +165,13 @@ export const VOICE_PROFILES = {
       'Short, utilitarian paragraphs that break the immersive texture',
       'Modern or clinical language that breaks the gothic register'
     ],
-    sentenceRhythm: 'Languid and cumulative. Sentences are generally long (20-40+ words), building through clauses and sensory layering. Short sentences are rare and land with heavy impact. Paragraphs are extended — sometimes half a page or more.',
+    sentenceRhythm:
+      'Languid and cumulative. Sentences are generally long (20-40+ words), building through clauses and sensory layering. Short sentences are rare and land with heavy impact. Paragraphs are extended — sometimes half a page or more.',
     sensoryPriority: ['temperature', 'smell', 'sound', 'sight', 'physical sensation'],
-    dialogueStyle: 'Sparse and weighted. Dialogue is infrequent — the environment speaks first. When characters speak, their words carry atmospheric weight. Silence is as meaningful as speech. Dialogue is often oblique, colored by mood and setting.',
-    pacing: 'Slow by design. Atmosphere takes precedence over plot advancement. Scenes unfold at the pace of lived experience — time passes as it would in the world described. Fast pacing only in moments of crisis, and even then, the atmosphere remains.',
+    dialogueStyle:
+      'Sparse and weighted. Dialogue is infrequent — the environment speaks first. When characters speak, their words carry atmospheric weight. Silence is as meaningful as speech. Dialogue is often oblique, colored by mood and setting.',
+    pacing:
+      'Slow by design. Atmosphere takes precedence over plot advancement. Scenes unfold at the pace of lived experience — time passes as it would in the world described. Fast pacing only in moments of crisis, and even then, the atmosphere remains.',
     register: 'literary'
   }
 }

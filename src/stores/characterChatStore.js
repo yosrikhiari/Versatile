@@ -33,8 +33,7 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
   })
 
   const sessionList = computed(() => {
-    return Object.values(sessions.value)
-      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    return Object.values(sessions.value).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
   })
 
   let saveTimeout = null
@@ -118,7 +117,9 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
 
   function removeCharacterFromSession(characterId) {
     if (!activeSession.value) return
-    activeSession.value.characterIds = activeSession.value.characterIds.filter(id => id !== characterId)
+    activeSession.value.characterIds = activeSession.value.characterIds.filter(
+      (id) => id !== characterId
+    )
     activeSession.value.updatedAt = Date.now()
     scheduleSave()
   }
@@ -170,13 +171,13 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
 
   function markSavedToNotes(messageId) {
     if (!activeSession.value) return
-    const msg = activeSession.value.messages.find(m => m.id === messageId)
+    const msg = activeSession.value.messages.find((m) => m.id === messageId)
     if (msg) msg.savedToNotes = true
   }
 
   function markSavedToManuscript(messageId) {
     if (!activeSession.value) return
-    const msg = activeSession.value.messages.find(m => m.id === messageId)
+    const msg = activeSession.value.messages.find((m) => m.id === messageId)
     if (msg) msg.savedToManuscript = true
   }
 

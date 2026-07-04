@@ -25,7 +25,10 @@ export async function executeGeneration({ userPrompt, systemPrompt, schema }) {
 
 function isValid(parsed, schema) {
   const requiredFirstField = schema.promptKeys[0]
-  return !!(parsed[requiredFirstField] || parsed[requiredFirstField.charAt(0).toUpperCase() + requiredFirstField.slice(1)])
+  return !!(
+    parsed[requiredFirstField] ||
+    parsed[requiredFirstField.charAt(0).toUpperCase() + requiredFirstField.slice(1)]
+  )
 }
 
 function buildEntity(parsed, schema) {

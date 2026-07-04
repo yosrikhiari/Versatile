@@ -8,7 +8,11 @@ import {
   getDocumentChunkEmbeddings,
   setDocumentEmbedding
 } from './researchDb'
-import { EMBEDDING_DEFAULTS, EMBEDDING_VERSION, EMBEDDING_PROVIDER_CAPABILITIES } from '../config/ai'
+import {
+  EMBEDDING_DEFAULTS,
+  EMBEDDING_VERSION,
+  EMBEDDING_PROVIDER_CAPABILITIES
+} from '../config/ai'
 
 const queue = []
 let isProcessing = false
@@ -32,10 +36,10 @@ function notify(documentId) {
 }
 
 async function processSingleBatch(batch) {
-  const ids = batch.map(e => e.chunkId)
+  const ids = batch.map((e) => e.chunkId)
   await markProcessing(ids)
 
-  const texts = batch.map(e => e.text)
+  const texts = batch.map((e) => e.text)
   let embeddings, provider, model
   try {
     const result = await getEmbeddings(texts)
@@ -70,7 +74,7 @@ async function processSingleBatch(batch) {
   if (failed.length > 0) {
     await markFailed(failed)
   }
-  const docIdsToCheck = new Set(batch.map(e => e.documentId))
+  const docIdsToCheck = new Set(batch.map((e) => e.documentId))
   for (const docId of docIdsToCheck) {
     notify(docId)
     computeDocumentEmbedding(docId)
@@ -80,12 +84,14 @@ async function processSingleBatch(batch) {
 function computeDocumentEmbedding(docId) {
   const p = progress[docId]
   if (!p || p.indexed !== p.total) return
-  getDocumentChunkEmbeddings(docId).then(chunkEmbeddings => {
-    if (chunkEmbeddings.length > 0) {
-      const avg = averageEmbeddings(chunkEmbeddings)
-      setDocumentEmbedding(docId, avg)
-    }
-  }).catch(() => {})
+  getDocumentChunkEmbeddings(docId)
+    .then((chunkEmbeddings) => {
+      if (chunkEmbeddings.length > 0) {
+        const avg = averageEmbeddings(chunkEmbeddings)
+        setDocumentEmbedding(docId, avg)
+      }
+    })
+    .catch(() => {})
 }
 
 async function processQueue() {
@@ -144,7 +150,7 @@ export function enqueue(documentId, entries) {
   }
   if (!isRunning) {
     isRunning = true
-    processQueue().catch(err => {
+    processQueue().catch((err) => {
       console.error('[embeddingQueue] processQueue rejected:', err)
     })
   }

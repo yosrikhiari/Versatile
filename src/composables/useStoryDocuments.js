@@ -60,9 +60,9 @@ const relationshipLabels = {
 function getLookupMaps() {
   const store = useStoryBibleStore()
   return {
-    characters: new Map(store.characters.map(c => [c.id, c])),
-    locations: new Map(store.locations.map(l => [l.id, l])),
-    plotThreads: new Map(store.plotThreads.map(t => [t.id, t]))
+    characters: new Map(store.characters.map((c) => [c.id, c])),
+    locations: new Map(store.locations.map((l) => [l.id, l])),
+    plotThreads: new Map(store.plotThreads.map((t) => [t.id, t]))
   }
 }
 
@@ -83,16 +83,15 @@ function getEntityName(type, id, maps = null) {
   const store = useStoryBibleStore()
   switch (type) {
     case 'character':
-      return store.characters.find(c => c.id === id)?.name || `Character ${id}`
+      return store.characters.find((c) => c.id === id)?.name || `Character ${id}`
     case 'location':
-      return store.locations.find(l => l.id === id)?.name || `Location ${id}`
+      return store.locations.find((l) => l.id === id)?.name || `Location ${id}`
     case 'plotThread':
-      return store.plotThreads.find(t => t.id === id)?.title || `Plot ${id}`
+      return store.plotThreads.find((t) => t.id === id)?.title || `Plot ${id}`
     default:
       return `Entity ${id}`
   }
 }
-
 
 function getRelationshipLabel(type) {
   return relationshipLabels[type] || type
@@ -139,8 +138,9 @@ async function generateCharactersDoc(projectId) {
     if (c.traits?.length) entry.push(`**Traits:** ${c.traits.join(', ')}`)
 
     const relationships = storyGraphStore.edges.filter(
-      e => (e.sourceId === c.id && e.sourceType === 'character') ||
-           (e.targetId === c.id && e.targetType === 'character')
+      (e) =>
+        (e.sourceId === c.id && e.sourceType === 'character') ||
+        (e.targetId === c.id && e.targetType === 'character')
     )
     if (relationships.length > 0) {
       entry.push('')
@@ -152,7 +152,7 @@ async function generateCharactersDoc(projectId) {
           : getEntityName(r.sourceType, r.sourceId, maps)
         const label = getRelationshipLabel(r.relationshipType)
         const desc = r.description ? `: ${r.description}` : ''
-      entry.push(`- ${label} ${otherName}${desc}`)
+        entry.push(`- ${label} ${otherName}${desc}`)
       }
     }
 
@@ -215,11 +215,12 @@ function generateRelationshipsDoc() {
   if (edges.length === 0) return ''
 
   const relevantEdges = edges.filter(
-    e => (e.sourceType === 'character' && e.targetType === 'character') ||
-         (e.sourceType === 'character' && e.targetType === 'location') ||
-         (e.sourceType === 'character' && e.targetType === 'plotThread') ||
-         (e.sourceType === 'location' && e.targetType === 'character') ||
-         (e.sourceType === 'plotThread' && e.targetType === 'character')
+    (e) =>
+      (e.sourceType === 'character' && e.targetType === 'character') ||
+      (e.sourceType === 'character' && e.targetType === 'location') ||
+      (e.sourceType === 'character' && e.targetType === 'plotThread') ||
+      (e.sourceType === 'location' && e.targetType === 'character') ||
+      (e.sourceType === 'plotThread' && e.targetType === 'character')
   )
 
   if (relevantEdges.length === 0) return ''
@@ -251,27 +252,239 @@ function generateRelationshipsDoc() {
 }
 
 const STOP_WORDS = new Set([
-  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-  'of', 'with', 'by', 'from', 'as', 'is', 'was', 'were', 'be', 'been',
-  'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
-  'could', 'should', 'may', 'might', 'shall', 'can', 'it', 'its', 'that',
-  'this', 'these', 'those', 'i', 'you', 'he', 'she', 'they', 'we', 'not',
-  'no', 'nor', 'so', 'if', 'then', 'than', 'too', 'very', 'just', 'about',
-  'also', 'up', 'out', 'down', 'off', 'over', 'under', 'again', 'further',
-  'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each',
-  'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'only',
-  'own', 'same', 'what', 'which', 'who', 'whom', 'my', 'your', 'his', 'her',
-  'our', 'their', 'me', 'him', 'us', 'them', 'into', 'than', 'then', 'now'
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'in',
+  'on',
+  'at',
+  'to',
+  'for',
+  'of',
+  'with',
+  'by',
+  'from',
+  'as',
+  'is',
+  'was',
+  'were',
+  'be',
+  'been',
+  'being',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'shall',
+  'can',
+  'it',
+  'its',
+  'that',
+  'this',
+  'these',
+  'those',
+  'i',
+  'you',
+  'he',
+  'she',
+  'they',
+  'we',
+  'not',
+  'no',
+  'nor',
+  'so',
+  'if',
+  'then',
+  'than',
+  'too',
+  'very',
+  'just',
+  'about',
+  'also',
+  'up',
+  'out',
+  'down',
+  'off',
+  'over',
+  'under',
+  'again',
+  'further',
+  'once',
+  'here',
+  'there',
+  'when',
+  'where',
+  'why',
+  'how',
+  'all',
+  'each',
+  'every',
+  'both',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'such',
+  'only',
+  'own',
+  'same',
+  'what',
+  'which',
+  'who',
+  'whom',
+  'my',
+  'your',
+  'his',
+  'her',
+  'our',
+  'their',
+  'me',
+  'him',
+  'us',
+  'them',
+  'into',
+  'than',
+  'then',
+  'now'
 ])
 
 const SEMANTIC_DOMAINS = {
-  body: ['hand', 'eye', 'face', 'heart', 'head', 'arm', 'hand', 'feet', 'mouth', 'lip', 'finger', 'skin', 'bone', 'blood', 'breath', 'chest', 'shoulder', 'neck', 'leg'],
-  nature: ['sun', 'moon', 'star', 'sky', 'water', 'wind', 'rain', 'tree', 'earth', 'stone', 'river', 'ocean', 'forest', 'flower', 'leaf', 'snow', 'fire', 'air', 'ground', 'cloud'],
-  darkness_light: ['dark', 'shadow', 'light', 'bright', 'black', 'white', 'glow', 'dim', 'shine', 'pale', 'gloom', 'fade', 'flash', 'spark', 'luminous'],
-  enclosure: ['door', 'room', 'wall', 'window', 'house', 'building', 'cage', 'prison', 'box', 'gate', 'hall', 'corner', 'floor', 'ceiling'],
-  movement: ['run', 'walk', 'move', 'rush', 'chase', 'follow', 'turn', 'reach', 'fall', 'rise', 'crawl', 'slip', 'grip', 'pull', 'push'],
-  emotion: ['fear', 'love', 'hate', 'anger', 'joy', 'grief', 'hope', 'despair', 'pain', 'dread', 'rage', 'guilt', 'shame', 'wonder', 'awe'],
-  sound: ['voice', 'sound', 'whisper', 'scream', 'shout', 'silence', 'noise', 'cry', 'murmur', 'echo', 'rustle', 'footstep']
+  body: [
+    'hand',
+    'eye',
+    'face',
+    'heart',
+    'head',
+    'arm',
+    'hand',
+    'feet',
+    'mouth',
+    'lip',
+    'finger',
+    'skin',
+    'bone',
+    'blood',
+    'breath',
+    'chest',
+    'shoulder',
+    'neck',
+    'leg'
+  ],
+  nature: [
+    'sun',
+    'moon',
+    'star',
+    'sky',
+    'water',
+    'wind',
+    'rain',
+    'tree',
+    'earth',
+    'stone',
+    'river',
+    'ocean',
+    'forest',
+    'flower',
+    'leaf',
+    'snow',
+    'fire',
+    'air',
+    'ground',
+    'cloud'
+  ],
+  darkness_light: [
+    'dark',
+    'shadow',
+    'light',
+    'bright',
+    'black',
+    'white',
+    'glow',
+    'dim',
+    'shine',
+    'pale',
+    'gloom',
+    'fade',
+    'flash',
+    'spark',
+    'luminous'
+  ],
+  enclosure: [
+    'door',
+    'room',
+    'wall',
+    'window',
+    'house',
+    'building',
+    'cage',
+    'prison',
+    'box',
+    'gate',
+    'hall',
+    'corner',
+    'floor',
+    'ceiling'
+  ],
+  movement: [
+    'run',
+    'walk',
+    'move',
+    'rush',
+    'chase',
+    'follow',
+    'turn',
+    'reach',
+    'fall',
+    'rise',
+    'crawl',
+    'slip',
+    'grip',
+    'pull',
+    'push'
+  ],
+  emotion: [
+    'fear',
+    'love',
+    'hate',
+    'anger',
+    'joy',
+    'grief',
+    'hope',
+    'despair',
+    'pain',
+    'dread',
+    'rage',
+    'guilt',
+    'shame',
+    'wonder',
+    'awe'
+  ],
+  sound: [
+    'voice',
+    'sound',
+    'whisper',
+    'scream',
+    'shout',
+    'silence',
+    'noise',
+    'cry',
+    'murmur',
+    'echo',
+    'rustle',
+    'footstep'
+  ]
 }
 
 const DOMAIN_LABELS = {
@@ -295,7 +508,7 @@ function generateStyleGuideDoc() {
   const contentParts = []
   for (const section of recentSections) {
     const sectionSubs = subsections
-      .filter(s => s.sectionId === section.id)
+      .filter((s) => s.sectionId === section.id)
       .sort((a, b) => (a.order || 0) - (b.order || 0))
     for (const sub of sectionSubs) {
       if (sub.content) contentParts.push(sub.content)
@@ -308,9 +521,7 @@ function generateStyleGuideDoc() {
   const sentences = fullText.match(/[^.!?\n]+[.!?]/g) || []
   const words = fullText.match(/\b\w+\b/g) || []
 
-  const avgSentenceWords = sentences.length > 0
-    ? Math.round(words.length / sentences.length)
-    : 0
+  const avgSentenceWords = sentences.length > 0 ? Math.round(words.length / sentences.length) : 0
   const sentenceRhythm = avgSentenceWords < 12 ? 'short' : avgSentenceWords < 22 ? 'medium' : 'long'
 
   const firstPerson = (fullText.match(/\b(I|me|my|mine|we|us|our)\b/g) || []).length
@@ -349,7 +560,7 @@ function generateStyleGuideDoc() {
 
   let domainFound = null
   for (const [domain, domainWords] of Object.entries(SEMANTIC_DOMAINS)) {
-    const matchCount = sortedWords.filter(motif => {
+    const matchCount = sortedWords.filter((motif) => {
       const stem = motif.endsWith('s') ? motif.slice(0, -1) : motif
       return domainWords.includes(stem)
     }).length
@@ -367,7 +578,7 @@ function generateStyleGuideDoc() {
 
 async function generateRejectedPatternsDoc(projectId) {
   const doc = await getAllStoryDocuments(projectId)
-  const rejectedDoc = doc.find(d => d.docType === DOC_TYPES.REJECTED_PATTERNS)
+  const rejectedDoc = doc.find((d) => d.docType === DOC_TYPES.REJECTED_PATTERNS)
   if (!rejectedDoc) return ''
 
   let patterns
@@ -379,7 +590,10 @@ async function generateRejectedPatternsDoc(projectId) {
 
   if (!Array.isArray(patterns) || patterns.length === 0) return ''
 
-  const parts = ['# Avoid These Patterns', 'The following character concepts were rejected. Generate nothing similar to them.']
+  const parts = [
+    '# Avoid These Patterns',
+    'The following character concepts were rejected. Generate nothing similar to them.'
+  ]
 
   for (let i = 0; i < patterns.length; i++) {
     const p = patterns[i]
@@ -402,7 +616,7 @@ async function loadDocuments(projectId) {
 
 async function getDocument(projectId, docType) {
   const docs = await getAllStoryDocuments(projectId)
-  return docs.find(d => d.docType === docType) || null
+  return docs.find((d) => d.docType === docType) || null
 }
 
 async function regenerateDocument(projectId, docType) {
@@ -437,7 +651,7 @@ async function regenerateDocument(projectId, docType) {
 async function regenerateAllDocuments(projectId) {
   if (!projectId) return
   const existing = await getAllStoryDocuments(projectId)
-  const existingTypes = new Set(existing.filter(d => d.content).map(d => d.docType))
+  const existingTypes = new Set(existing.filter((d) => d.content).map((d) => d.docType))
   const allTypes = [
     DOC_TYPES.SYNOPSIS,
     DOC_TYPES.CHARACTERS,
@@ -448,9 +662,7 @@ async function regenerateAllDocuments(projectId) {
     DOC_TYPES.STYLE_GUIDE
   ]
   await Promise.all(
-    allTypes
-      .filter(dt => !existingTypes.has(dt))
-      .map(dt => regenerateDocument(projectId, dt))
+    allTypes.filter((dt) => !existingTypes.has(dt)).map((dt) => regenerateDocument(projectId, dt))
   )
 }
 
@@ -515,4 +727,14 @@ export function useStoryDocuments() {
   }
 }
 
-export { tokenCount, truncateToBudget, getRelationshipLabel, generateSynopsisDoc, generateCharactersDoc, generateWorldDoc, generateTimelineDoc, generateRelationshipsDoc, generateStyleGuideDoc }
+export {
+  tokenCount,
+  truncateToBudget,
+  getRelationshipLabel,
+  generateSynopsisDoc,
+  generateCharactersDoc,
+  generateWorldDoc,
+  generateTimelineDoc,
+  generateRelationshipsDoc,
+  generateStyleGuideDoc
+}

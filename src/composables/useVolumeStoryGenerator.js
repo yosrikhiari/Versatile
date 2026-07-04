@@ -25,7 +25,7 @@ function isOllamaProvider() {
   }
 }
 
-const PARALLEL_CHAPTER_LIMIT = () => isOllamaProvider() ? 1 : 3
+const PARALLEL_CHAPTER_LIMIT = () => (isOllamaProvider() ? 1 : 3)
 
 function formatFullSpineEntry(s) {
   return `Chapter ${s.chapterNumber} (${s.chapterTitle}):\n- Emotion at end: ${s.emotionalStateAtEnd}\n- Reader knows: ${s.readerKnowledgeAtEnd}\n- Transition: ${s.transitionToNext}`
@@ -34,14 +34,12 @@ function formatFullSpineEntry(s) {
 function compressSpine(spine, tokenCap = 800) {
   if (spine.length <= 3) return spine.map(formatFullSpineEntry).join('\n')
   const full = spine.slice(-3)
-  const compressed = spine.slice(0, -3).map(s =>
-    `Chapter ${s.chapterNumber} (${s.chapterTitle}): ${s.emotionalStateAtEnd}`
-  )
+  const compressed = spine
+    .slice(0, -3)
+    .map((s) => `Chapter ${s.chapterNumber} (${s.chapterTitle}): ${s.emotionalStateAtEnd}`)
   const combined = [...compressed, ...full.map(formatFullSpineEntry)]
   const text = combined.join('\n')
-  return text.length > tokenCap * 4
-    ? text.slice(0, tokenCap * 4) + '\n[spine truncated]'
-    : text
+  return text.length > tokenCap * 4 ? text.slice(0, tokenCap * 4) + '\n[spine truncated]' : text
 }
 
 async function parallelWithLimit(tasks, limit = 3) {
@@ -50,13 +48,16 @@ async function parallelWithLimit(tasks, limit = 3) {
   for (const task of tasks) {
     const p = Promise.resolve().then(() => task())
     results.push(p)
-    const e = p.then(() => {
-      const idx = executing.indexOf(e)
-      if (idx !== -1) executing.splice(idx, 1)
-    }, () => {
-      const idx = executing.indexOf(e)
-      if (idx !== -1) executing.splice(idx, 1)
-    })
+    const e = p.then(
+      () => {
+        const idx = executing.indexOf(e)
+        if (idx !== -1) executing.splice(idx, 1)
+      },
+      () => {
+        const idx = executing.indexOf(e)
+        if (idx !== -1) executing.splice(idx, 1)
+      }
+    )
     executing.push(e)
     if (executing.length >= limit) await Promise.race(executing)
   }
@@ -68,7 +69,7 @@ async function generateSpine(chapters, storyArc) {
   for (let i = 0; i < chapters.length; i++) {
     const chapter = chapters[i]
     const prevEntry = i > 0 ? spine[i - 1] : null
-    
+
     let prompt = `You are designing a narrative spine for a novel.
 Generate a 150-word spine entry for Chapter ${chapter.chapterNumber}: "${chapter.title}"
 
@@ -84,7 +85,7 @@ HOOK ENDING: ${chapter.hookEnding}
 
 `
     }
-    
+
     prompt += `Provide a JSON object with EXACTLY these keys:
 {
   "emotionalStateAtEnd": "string (emotional state of characters at chapter END)",
@@ -93,13 +94,17 @@ HOOK ENDING: ${chapter.hookEnding}
   "wordCount": number
 }`
 
-    const raw = await aiGenerate(prompt, `You are a structural story architect. Genre: ${storyArc?.genre || 'fiction'}. Tone: ${storyArc?.tone || 'standard'}. Return ONLY valid JSON.`, { feature: FEATURES.STORY_GENERATION, temperature: 0.7 })
-    
+    const raw = await aiGenerate(
+      prompt,
+      `You are a structural story architect. Genre: ${storyArc?.genre || 'fiction'}. Tone: ${storyArc?.tone || 'standard'}. Return ONLY valid JSON.`,
+      { feature: FEATURES.STORY_GENERATION, temperature: 0.7 }
+    )
+
     const parsed = sanitizeJson(raw)
     if (!parsed || !parsed.emotionalStateAtEnd) {
       throw new Error(`Failed to generate spine for chapter ${chapter.chapterNumber}`)
     }
-    
+
     spine.push({
       chapterNumber: chapter.chapterNumber,
       chapterTitle: chapter.title,
@@ -113,11 +118,30 @@ HOOK ENDING: ${chapter.hookEnding}
 }
 
 function buildExistingEntitiesBlob(characterList, locationList, plotThreadList) {
-  return JSON.stringify({
-    characters: characterList.map(c => ({ name: c.name, role: c.role, description: c.description, traits: c.traits || [] })),
-    locations: locationList.map(l => ({ name: l.name, description: l.description, notes: l.notes, traits: l.traits || [] })),
-    plotThreads: plotThreadList.map(t => ({ title: t.title, status: t.status, notes: t.notes, traits: t.traits || [] }))
-  }, null, 2)
+  return JSON.stringify(
+    {
+      characters: characterList.map((c) => ({
+        name: c.name,
+        role: c.role,
+        description: c.description,
+        traits: c.traits || []
+      })),
+      locations: locationList.map((l) => ({
+        name: l.name,
+        description: l.description,
+        notes: l.notes,
+        traits: l.traits || []
+      })),
+      plotThreads: plotThreadList.map((t) => ({
+        title: t.title,
+        status: t.status,
+        notes: t.notes,
+        traits: t.traits || []
+      }))
+    },
+    null,
+    2
+  )
 }
 
 const EMBEDDING_CONTEXT_MAX_CHARS = 1400
@@ -140,8 +164,8 @@ function planConsistencyFixes(report, writtenScenes) {
   const fixes = new Map() // sceneIndex -> Set<reason>
   if (!report || !Array.isArray(writtenScenes) || writtenScenes.length === 0) return fixes
 
-  const norm = t => (t || '').toLowerCase().replace(/\s+/g, ' ').trim()
-  const normedProse = writtenScenes.map(s => norm(s.prose))
+  const norm = (t) => (t || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  const normedProse = writtenScenes.map((s) => norm(s.prose))
 
   const findByExcerpt = (excerpt) => {
     const e = norm(excerpt)
@@ -159,9 +183,8 @@ function planConsistencyFixes(report, writtenScenes) {
   const latestWithEntity = (name, kind) => {
     for (let i = writtenScenes.length - 1; i >= 0; i--) {
       const ws = writtenScenes[i]
-      const match = kind === 'Character'
-        ? (ws.characters || []).includes(name)
-        : ws.location === name
+      const match =
+        kind === 'Character' ? (ws.characters || []).includes(name) : ws.location === name
       if (match) return i
     }
     return -1
@@ -175,14 +198,16 @@ function planConsistencyFixes(report, writtenScenes) {
 
   const handle = (name, kind, contradictions) => {
     for (const c of contradictions || []) {
-      const reason = `${kind} "${name}" — ${c.type || 'inconsistency'}: ${c.description || ''}`.trim()
-      const idxs = (c.between || []).map(findByExcerpt).filter(i => i >= 0)
+      const reason =
+        `${kind} "${name}" — ${c.type || 'inconsistency'}: ${c.description || ''}`.trim()
+      const idxs = (c.between || []).map(findByExcerpt).filter((i) => i >= 0)
       const target = idxs.length ? Math.max(...idxs) : latestWithEntity(name, kind)
       addReason(target, reason)
     }
   }
 
-  for (const ci of report.characterIssues || []) handle(ci.character, 'Character', ci.contradictions)
+  for (const ci of report.characterIssues || [])
+    handle(ci.character, 'Character', ci.contradictions)
   for (const li of report.locationIssues || []) handle(li.location, 'Location', li.contradictions)
   return fixes
 }
@@ -206,8 +231,8 @@ function buildEmbeddingContext(currentScene, priorScenes) {
   if (priorScenes.length > PROSE_EXCERPT_MAX_SCENES) {
     console.warn(
       `[VolumeStoryGenerator] Story has ${priorScenes.length} scenes — ` +
-      `prose excerpt context strategy may be insufficient. ` +
-      `Consider switching CONTEXT_STRATEGY to 'embedding'.`
+        `prose excerpt context strategy may be insufficient. ` +
+        `Consider switching CONTEXT_STRATEGY to 'embedding'.`
     )
   }
 
@@ -219,9 +244,10 @@ function buildEmbeddingContext(currentScene, priorScenes) {
 
   const precedingScene = priorScenes.at(-1)
   if (precedingScene) {
-    const endingExcerpt = precedingScene.prose.length > 1200
-      ? '...' + precedingScene.prose.slice(-1200)
-      : precedingScene.prose
+    const endingExcerpt =
+      precedingScene.prose.length > 1200
+        ? '...' + precedingScene.prose.slice(-1200)
+        : precedingScene.prose
     context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}"]\n${endingExcerpt}\n\n`
   }
 
@@ -251,21 +277,21 @@ function selectRelevantPriorScenes(currentScene, candidates, limit) {
   const names = new Set(
     [...(currentScene.charactersPresent || []), ...(currentScene.characters || [])]
       .filter(Boolean)
-      .map(n => String(n).toLowerCase())
+      .map((n) => String(n).toLowerCase())
   )
   const loc = currentScene.location ? String(currentScene.location).toLowerCase() : ''
 
   const scored = []
   for (const s of candidates) {
     let score = 0
-    const sceneNames = (s.characters || []).map(n => String(n).toLowerCase())
+    const sceneNames = (s.characters || []).map((n) => String(n).toLowerCase())
     for (const n of sceneNames) if (names.has(n)) score++
     if (loc && s.location && String(s.location).toLowerCase() === loc) score += 1
     if (score > 0) scored.push({ s, score, sceneNumber: s.sceneNumber })
   }
   // Highest overlap first, then most recent
   scored.sort((a, b) => b.score - a.score || (b.sceneNumber || 0) - (a.sceneNumber || 0))
-  return scored.slice(0, limit).map(x => x.s)
+  return scored.slice(0, limit).map((x) => x.s)
 }
 
 export function useVolumeStoryGenerator() {
@@ -316,12 +342,19 @@ export function useVolumeStoryGenerator() {
   async function computeSummary(fullProse) {
     try {
       const summaryPrompt = `You are a copyeditor. Summarize the following narrative scene in exactly one concise sentence:\n\n"${fullProse.slice(0, 3000)}"`
-      const summaryResponse = await aiGenerate(summaryPrompt, "Summarize the scene in one sentence.", {
-        feature: FEATURES.STORY_GENERATION,
-        temperature: 0.3,
-        maxTokens: 200
-      })
-      return summaryResponse.replace(/^Summary:\s*/i, '').replace(/(^")|("$)/g, '').trim()
+      const summaryResponse = await aiGenerate(
+        summaryPrompt,
+        'Summarize the scene in one sentence.',
+        {
+          feature: FEATURES.STORY_GENERATION,
+          temperature: 0.3,
+          maxTokens: 200
+        }
+      )
+      return summaryResponse
+        .replace(/^Summary:\s*/i, '')
+        .replace(/(^")|("$)/g, '')
+        .trim()
     } catch (err) {
       console.warn('[useVolumeStoryGenerator] Fallback slice summary used:', err)
       return fullProse.slice(0, 150).replace(/\s+\S*$/, '') + '...'
@@ -348,7 +381,7 @@ export function useVolumeStoryGenerator() {
       writtenCount: writtenScenes.value.length,
       // Prose-less summaries so resume can rebuild continuity context without
       // re-summarizing (prose itself is reloaded from the subsections in the DB)
-      writtenMeta: writtenScenes.value.map(s => ({
+      writtenMeta: writtenScenes.value.map((s) => ({
         sceneNumber: s.sceneNumber,
         title: s.title,
         summary: s.summary,
@@ -393,8 +426,8 @@ export function useVolumeStoryGenerator() {
 
     // The manuscript must still be loaded so we can read existing prose
     const subs = manuscriptStore.subsections
-    const subById = new Map(subs.map(s => [s.id, s]))
-    const summaryBySub = new Map((state.writtenMeta || []).map(m => [m.subsectionId, m.summary]))
+    const subById = new Map(subs.map((s) => [s.id, s]))
+    const summaryBySub = new Map((state.writtenMeta || []).map((m) => [m.subsectionId, m.summary]))
 
     // Rebuild the section grouping exactly as confirmPlan created it, reusing the
     // existing section rows (found via each scene's subsectionId → parent section)
@@ -408,7 +441,12 @@ export function useVolumeStoryGenerator() {
       const firstSub = subById.get(group[0].subsectionId)
       const sectionId = firstSub?.sectionId
       if (!sectionId) return { resumed: false, reason: 'manuscript-mismatch' }
-      sections.push({ id: sectionId, scenes: group, subsectionIds: group.map(g => g.subsectionId), chapterMeta: chapter })
+      sections.push({
+        id: sectionId,
+        scenes: group,
+        subsectionIds: group.map((g) => g.subsectionId),
+        chapterMeta: chapter
+      })
     }
 
     // Reconstruct already-written scenes from DB prose, stopping at the first
@@ -423,7 +461,9 @@ export function useVolumeStoryGenerator() {
         rebuilt.push({
           title: scene.title || `Scene ${scene.sceneNumber}`,
           prose,
-          summary: summaryBySub.get(scene.subsectionId) || (prose.slice(0, 150).replace(/\s+\S*$/, '') + '...'),
+          summary:
+            summaryBySub.get(scene.subsectionId) ||
+            prose.slice(0, 150).replace(/\s+\S*$/, '') + '...',
           characters: scene.charactersPresent || scene.characters || [],
           location: scene.location || '',
           sceneNumber: scene.sceneNumber,
@@ -492,21 +532,28 @@ export function useVolumeStoryGenerator() {
     const wordCount = fullProse.split(/\s+/).length
 
     if (scene.subsectionId) {
-      await manuscriptStore.updateSubsectionData(scene.subsectionId, {
-        content: fullProse,
-        wordCount
-      }, projectId)
+      await manuscriptStore.updateSubsectionData(
+        scene.subsectionId,
+        {
+          content: fullProse,
+          wordCount
+        },
+        projectId
+      )
     }
 
     if (sections[sectionIdx]) {
       const sectionId = sections[sectionIdx].id
-      const writtenInSection = writtenScenes.value
-        .slice(sectionIdx * 3, (sectionIdx + 1) * 3)
-      const totalWords = writtenInSection.reduce((sum, s) => sum + s.prose.split(/\s+/).length, 0)
-        + wordCount
-      await manuscriptStore.updateSectionData(sectionId, {
-        wordCount: totalWords
-      }, projectId)
+      const writtenInSection = writtenScenes.value.slice(sectionIdx * 3, (sectionIdx + 1) * 3)
+      const totalWords =
+        writtenInSection.reduce((sum, s) => sum + s.prose.split(/\s+/).length, 0) + wordCount
+      await manuscriptStore.updateSectionData(
+        sectionId,
+        {
+          wordCount: totalWords
+        },
+        projectId
+      )
     }
 
     writtenScenes.value.push({
@@ -520,7 +567,20 @@ export function useVolumeStoryGenerator() {
     })
   }
 
-  async function startGeneration({ projectId, synopsis, genre, tone, wordTarget, singleChapter, sparkContext, auto, structure, onPhaseChange, onPartialData, onChunk }) {
+  async function startGeneration({
+    projectId,
+    synopsis,
+    genre,
+    tone,
+    wordTarget,
+    singleChapter,
+    sparkContext,
+    auto,
+    structure,
+    onPhaseChange,
+    onPartialData,
+    onChunk
+  }) {
     if (phase.value !== 'idle') return
 
     // Normalize an explicit volumes/chapters/words request into a structure spec
@@ -583,7 +643,7 @@ export function useVolumeStoryGenerator() {
       const sceneSummaries = []
       for (const section of manuscriptStore.sortedSections) {
         const sectionSubs = manuscriptStore.subsections
-          .filter(s => s.sectionId === section.id)
+          .filter((s) => s.sectionId === section.id)
           .sort((a, b) => (a.order || 0) - (b.order || 0))
         for (const sub of sectionSubs) {
           if (sub.content || sub.description) {
@@ -603,7 +663,12 @@ export function useVolumeStoryGenerator() {
       // Phase 1: Bootstrap entities
       progress.current = 2
       progress.statusText = 'Conjuring Characters & World...'
-      await bootstrapper.bootstrapEntities({ synopsis: enhancedSynopsis, projectId, volumeId: vId, onPartialData })
+      await bootstrapper.bootstrapEntities({
+        synopsis: enhancedSynopsis,
+        projectId,
+        volumeId: vId,
+        onPartialData
+      })
       actLog.updatePhase(currentTaskId, bpPhase, { status: 'done' })
       bpPhase = -1
 
@@ -612,7 +677,9 @@ export function useVolumeStoryGenerator() {
       const updatedEvidenceParts = []
       if (updatedBibleContext) updatedEvidenceParts.push(updatedBibleContext)
       if (sceneSummaries.length > 0) {
-        updatedEvidenceParts.push('# Existing Manuscript Scenes\n' + sceneSummaries.slice(-20).join('\n'))
+        updatedEvidenceParts.push(
+          '# Existing Manuscript Scenes\n' + sceneSummaries.slice(-20).join('\n')
+        )
       }
       const updatedEvidence = updatedEvidenceParts.join('\n\n')
 
@@ -624,7 +691,14 @@ export function useVolumeStoryGenerator() {
       const planPhase = actLog.addPhase(currentTaskId, 'Planning')
 
       const directorResult = await director.generateStoryPlan({
-        goal: { premise: enhancedSynopsis, genre, tone, wordTarget: effectiveWordTarget, horizon: 'long_term', structure: structureSpec },
+        goal: {
+          premise: enhancedSynopsis,
+          genre,
+          tone,
+          wordTarget: effectiveWordTarget,
+          horizon: 'long_term',
+          structure: structureSpec
+        },
         evidence: updatedEvidence,
         onPartialData
       })
@@ -637,8 +711,8 @@ export function useVolumeStoryGenerator() {
       }
 
       // Cap to 1 scene for single-chapter mode (ignored when an explicit structure is requested)
-      const planScenes = (!structureSpec && singleChapter) ? [scenes[0]] : scenes
-      
+      const planScenes = !structureSpec && singleChapter ? [scenes[0]] : scenes
+
       chapterPlan.value = directorResult.chapters
 
       scenePlan.value = planScenes.map((s, i) => ({
@@ -653,7 +727,10 @@ export function useVolumeStoryGenerator() {
         toneNote: s.tension || 'medium',
         tension: s.tension || 'medium',
         pacing: s.pacing || 'medium',
-        estimatedWords: (!structureSpec && singleChapter) ? effectiveWordTarget : (s.estimatedWords || Math.round(effectiveWordTarget / scenes.length)),
+        estimatedWords:
+          !structureSpec && singleChapter
+            ? effectiveWordTarget
+            : s.estimatedWords || Math.round(effectiveWordTarget / scenes.length),
         emotionalGoal: s.emotionalGoal || '',
         whatChanges: s.whatChanges || '',
         charactersPresent: s.charactersPresent || [],
@@ -664,7 +741,11 @@ export function useVolumeStoryGenerator() {
         arcPosition: s.arcPosition || '',
         // POV anchor: use the director's choice, else the first character present.
         // Keeps narration from drifting between viewpoints across a long draft.
-        pov: s.pov || s.povCharacter || (Array.isArray(s.charactersPresent) ? s.charactersPresent[0] : '') || ''
+        pov:
+          s.pov ||
+          s.povCharacter ||
+          (Array.isArray(s.charactersPresent) ? s.charactersPresent[0] : '') ||
+          ''
       }))
 
       progress.current = 4
@@ -676,14 +757,18 @@ export function useVolumeStoryGenerator() {
         `Genre: ${genre}`,
         `Tone: ${tone}`,
         `Central conflict: ${storyArc?.centralConflict || 'unknown'}`,
-        `Characters in story: ${[...new Set([
-          ...scenes.flatMap(s => s.characters || s.charactersPresent || []),
-          ...storyBibleStore.characters.map(c => c.name)
-        ])].join(', ')}`,
-        `Locations in story: ${[...new Set([
-          ...scenes.flatMap(s => s.location ? [s.location] : []),
-          ...storyBibleStore.locations.map(l => l.name)
-        ])].join(', ')}`
+        `Characters in story: ${[
+          ...new Set([
+            ...scenes.flatMap((s) => s.characters || s.charactersPresent || []),
+            ...storyBibleStore.characters.map((c) => c.name)
+          ])
+        ].join(', ')}`,
+        `Locations in story: ${[
+          ...new Set([
+            ...scenes.flatMap((s) => (s.location ? [s.location] : [])),
+            ...storyBibleStore.locations.map((l) => l.name)
+          ])
+        ].join(', ')}`
       ].join('\n')
 
       actLog.updatePhase(currentTaskId, planPhase, { status: 'done' })
@@ -697,8 +782,14 @@ export function useVolumeStoryGenerator() {
       // completion — this await only resolves once the whole volume is written.
       if (autoMode.value) {
         await confirmPlan({
-          projectId, editedPlan: scenePlan.value, storyArc, storyContract,
-          synopsis, sparkContext, onPhaseChange, onChunk
+          projectId,
+          editedPlan: scenePlan.value,
+          storyArc,
+          storyContract,
+          synopsis,
+          sparkContext,
+          onPhaseChange,
+          onChunk
         })
       }
 
@@ -714,8 +805,12 @@ export function useVolumeStoryGenerator() {
   async function runParallelGeneration(writeParamsVal) {
     if (!writeParamsVal) return
     const { storyArc, storyBibleDocs, storyContract, projectId, onChunk } = writeParamsVal
-    
-    const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
+
+    const existingEntitiesJson = buildExistingEntitiesBlob(
+      storyBibleStore.characters,
+      storyBibleStore.locations,
+      storyBibleStore.plotThreads
+    )
 
     writtenScenes.value = new Array(scenePlan.value.length).fill(null)
     const chaptersWithScenes = []
@@ -728,37 +823,57 @@ export function useVolumeStoryGenerator() {
 
     progress.statusText = 'Phase 1: Generating chapter anchors in parallel...'
     phase.value = 'writing'
-    
+
     async function generateAnchor(scene, role, constraints, sceneIndex, chapterIndex) {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
       const scenePhase = actLog.addPhase(currentTaskId, phaseName)
       try {
         let fullProse = ''
         const result = await writer.writeSceneStructured({
-          sceneBrief: scene, storyArc, chapterLog: '', storyBible: storyBibleDocs,
-          spineContext: spineContext.value, anchorRole: role, anchorConstraints: constraints,
-          storyContract, existingEntitiesJson,
+          sceneBrief: scene,
+          storyArc,
+          chapterLog: '',
+          storyBible: storyBibleDocs,
+          spineContext: spineContext.value,
+          anchorRole: role,
+          anchorConstraints: constraints,
+          storyContract,
+          existingEntitiesJson,
           onChunk: (_chunk, proseChunk) => {
             fullProse += proseChunk || ''
-            onChunk?.({ sceneIndex: sceneIndex + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
+            onChunk?.({
+              sceneIndex: sceneIndex + 1,
+              total: scenePlan.value.length,
+              chunk: proseChunk,
+              fullProse,
+              scene
+            })
           },
           onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk)
         })
         fullProse = result.prose
-        
+
         progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
         const summary = await computeSummary(fullProse)
         const wordCount = fullProse.split(/\s+/).length
-        
+
         if (scene.subsectionId) {
-          await manuscriptStore.updateSubsectionData(scene.subsectionId, { content: fullProse, wordCount }, projectId)
+          await manuscriptStore.updateSubsectionData(
+            scene.subsectionId,
+            { content: fullProse, wordCount },
+            projectId
+          )
         }
 
         const chapterNumber = chaptersWithScenes[chapterIndex].chapterMeta.chapterNumber
         writtenScenes.value[sceneIndex] = {
           title: scene.title || `Scene ${scene.sceneNumber}`,
-          prose: fullProse, summary, characters: scene.characters || scene.charactersPresent || [],
-          location: scene.location || '', sceneNumber: scene.sceneNumber, subsectionId: scene.subsectionId,
+          prose: fullProse,
+          summary,
+          characters: scene.characters || scene.charactersPresent || [],
+          location: scene.location || '',
+          sceneNumber: scene.sceneNumber,
+          subsectionId: scene.subsectionId,
           chapterId: chapterNumber
         }
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
@@ -774,27 +889,43 @@ export function useVolumeStoryGenerator() {
         const { chapterMeta, scenes, startIndex } = chGroup
         const prevSpine = chapterIndex > 0 ? spineArray.value[chapterIndex - 1] : null
         const prevEmotion = prevSpine?.emotionalStateAtEnd || 'story beginning'
-        
+
         const openingConstraints = `Previous chapter ended with: ${prevEmotion}\\nThis scene must begin where the previous chapter left off emotionally.`
         const closingConstraints = `This scene MUST end on this exact hook:\\n"${chapterMeta.hookEnding}"\\nDo not soften it. Do not add resolution. End there.`
-        
+
         const openingScene = scenes[0]
         const closingScene = scenes.length > 1 ? scenes[scenes.length - 1] : null
-        
-        const promises = [generateAnchor(openingScene, "Opening scene — this is the chapter's entry point.", openingConstraints, startIndex, chapterIndex)]
+
+        const promises = [
+          generateAnchor(
+            openingScene,
+            "Opening scene — this is the chapter's entry point.",
+            openingConstraints,
+            startIndex,
+            chapterIndex
+          )
+        ]
         if (closingScene) {
-          promises.push(generateAnchor(closingScene, "Closing scene — this scene MUST end on this exact hook.", closingConstraints, startIndex + scenes.length - 1, chapterIndex))
+          promises.push(
+            generateAnchor(
+              closingScene,
+              'Closing scene — this scene MUST end on this exact hook.',
+              closingConstraints,
+              startIndex + scenes.length - 1,
+              chapterIndex
+            )
+          )
         }
-        
+
         const results = await Promise.all(promises)
-        const failed = results.filter(r => !r.success)
+        const failed = results.filter((r) => !r.success)
         return { chapterNumber: chapterMeta.chapterNumber, results, failed: failed.length > 0 }
       }
     })
 
     const limit = PARALLEL_CHAPTER_LIMIT()
     const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
-    
+
     let anchorEvalFeedback = ''
     if (inlineEvalEnabled.value) {
       progress.statusText = 'Evaluating chapter anchors...'
@@ -802,13 +933,18 @@ export function useVolumeStoryGenerator() {
       for (let idx = 0; idx < writtenScenes.value.length; idx++) {
         const s = writtenScenes.value[idx]
         if (!s) continue
-        const sceneBrief = scenePlan.value.find(sp => sp.sceneNumber === s.sceneNumber) || {}
-        const criticResult = await critic.evaluateScene({ draft: s.prose, sceneBrief, storyBible: storyBibleDocs, chapterLog: '' })
+        const sceneBrief = scenePlan.value.find((sp) => sp.sceneNumber === s.sceneNumber) || {}
+        const criticResult = await critic.evaluateScene({
+          draft: s.prose,
+          sceneBrief,
+          storyBible: storyBibleDocs,
+          chapterLog: ''
+        })
         anchorResults.push({
           sceneIndex: idx + 1,
           passed: criticResult.pass,
           score: criticResult.score,
-          topIssues: (criticResult.issues || []).slice(0, 3).map(i => i.text || i)
+          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
         })
       }
       sceneEvalResults.value = anchorResults
@@ -824,20 +960,29 @@ export function useVolumeStoryGenerator() {
       try {
         // Chapter-scoped log: only scenes from this chapter (Fix #2 — never cross-chapter)
         const logEntries = writtenScenes.value
-          .filter(s => s && s.chapterId === chapterMeta.chapterNumber && s.summary)
-          .map(s => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}`)
+          .filter((s) => s && s.chapterId === chapterMeta.chapterNumber && s.summary)
+          .map((s) => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}`)
         const chapterLog = logEntries.join('\n')
 
         let fullProse = ''
         const result = await writer.writeSceneStructured({
-          sceneBrief: scene, storyArc, chapterLog,
+          sceneBrief: scene,
+          storyArc,
+          chapterLog,
           storyBible: storyBibleDocs,
           spineContext: spineContext.value,
-          storyContract, existingEntitiesJson,
+          storyContract,
+          existingEntitiesJson,
           pastEvalResults: anchorEvalFeedback || undefined,
           onChunk: (_chunk, proseChunk) => {
             fullProse += proseChunk || ''
-            onChunk?.({ sceneIndex: sceneIndex + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
+            onChunk?.({
+              sceneIndex: sceneIndex + 1,
+              total: scenePlan.value.length,
+              chunk: proseChunk,
+              fullProse,
+              scene
+            })
           },
           onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk)
         })
@@ -848,12 +993,17 @@ export function useVolumeStoryGenerator() {
         const wordCount = fullProse.split(/\s+/).length
 
         if (scene.subsectionId) {
-          await manuscriptStore.updateSubsectionData(scene.subsectionId, { content: fullProse, wordCount }, projectId)
+          await manuscriptStore.updateSubsectionData(
+            scene.subsectionId,
+            { content: fullProse, wordCount },
+            projectId
+          )
         }
 
         writtenScenes.value[sceneIndex] = {
           title: scene.title || `Scene ${scene.sceneNumber}`,
-          prose: fullProse, summary,
+          prose: fullProse,
+          summary,
           characters: scene.characters || scene.charactersPresent || [],
           location: scene.location || '',
           sceneNumber: scene.sceneNumber,
@@ -891,14 +1041,19 @@ export function useVolumeStoryGenerator() {
       const middleResults = []
       for (let idx = 0; idx < writtenScenes.value.length; idx++) {
         const s = writtenScenes.value[idx]
-        if (!s || sceneEvalResults.value.some(r => r.sceneIndex === idx + 1)) continue
-        const sceneBrief = scenePlan.value.find(sp => sp.sceneNumber === s.sceneNumber) || {}
-        const criticResult = await critic.evaluateScene({ draft: s.prose, sceneBrief, storyBible: storyBibleDocs, chapterLog: '' })
+        if (!s || sceneEvalResults.value.some((r) => r.sceneIndex === idx + 1)) continue
+        const sceneBrief = scenePlan.value.find((sp) => sp.sceneNumber === s.sceneNumber) || {}
+        const criticResult = await critic.evaluateScene({
+          draft: s.prose,
+          sceneBrief,
+          storyBible: storyBibleDocs,
+          chapterLog: ''
+        })
         middleResults.push({
           sceneIndex: idx + 1,
           passed: criticResult.pass,
           score: criticResult.score,
-          topIssues: (criticResult.issues || []).slice(0, 3).map(i => i.text || i)
+          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
         })
       }
       sceneEvalResults.value = [...sceneEvalResults.value, ...middleResults]
@@ -910,16 +1065,21 @@ export function useVolumeStoryGenerator() {
   async function writeNextBatch(startIndex) {
     if (!writeParams.value) return
 
-    const { projectId, storyArc, storyContract, onChunk, storyBibleDocs, sections } = writeParams.value
+    const { projectId, storyArc, storyContract, onChunk, storyBibleDocs, sections } =
+      writeParams.value
     const endIndex = Math.min(startIndex + SYNC_BATCH_SIZE, scenePlan.value.length)
 
     // Build running chapter log once from existing scenes (Fix #2 — avoids O(n²) rebuild per scene)
-    const runningChapterLog = writtenScenes.value.map((ws, idx) =>
-      `Scene ${idx + 1} ("${ws.title}"): ${ws.summary || '(written)'}`
+    const runningChapterLog = writtenScenes.value.map(
+      (ws, idx) => `Scene ${idx + 1} ("${ws.title}"): ${ws.summary || '(written)'}`
     )
 
     // Build entities JSON once per batch (Fix #3 — entities don't change within a batch)
-    const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
+    const existingEntitiesJson = buildExistingEntitiesBlob(
+      storyBibleStore.characters,
+      storyBibleStore.locations,
+      storyBibleStore.plotThreads
+    )
 
     let batchEvalFeedback = ''
 
@@ -945,7 +1105,8 @@ export function useVolumeStoryGenerator() {
 
       // Write the scene with structured output
       const effectiveStoryContract = scene.reRequestInstruction
-        ? storyContract + `\n\nUser revision request for scene ${scene.sceneNumber}: ${scene.reRequestInstruction}`
+        ? storyContract +
+          `\n\nUser revision request for scene ${scene.sceneNumber}: ${scene.reRequestInstruction}`
         : storyContract
       if (scene.reRequestInstruction) delete scene.reRequestInstruction
 
@@ -968,7 +1129,13 @@ export function useVolumeStoryGenerator() {
           spineContext: spineContext.value,
           onChunk: (_chunk, proseChunk) => {
             fullProse += proseChunk || ''
-            onChunk?.({ sceneIndex: i + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
+            onChunk?.({
+              sceneIndex: i + 1,
+              total: scenePlan.value.length,
+              chunk: proseChunk,
+              fullProse,
+              scene
+            })
           },
           onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk),
           embeddingContext,
@@ -985,7 +1152,12 @@ export function useVolumeStoryGenerator() {
           break
         }
 
-        const criticResult = await critic.evaluateScene({ draft: proseText, sceneBrief: scene, storyBible: storyBibleDocs, chapterLog: '' })
+        const criticResult = await critic.evaluateScene({
+          draft: proseText,
+          sceneBrief: scene,
+          storyBible: storyBibleDocs,
+          chapterLog: ''
+        })
         if (!chosenEval || attemptScore(criticResult) > attemptScore(chosenEval)) {
           chosenProse = proseText
           chosenStructured = result.structured
@@ -993,12 +1165,14 @@ export function useVolumeStoryGenerator() {
         }
         // Stop retrying on a clean pass, or when the critic can't judge (no point burning attempts)
         if (!criticResult || criticResult.evalUnavailable || criticResult.pass) break
-        attemptFeedback = formatEvalFeedback([{
-          sceneIndex: i + 1,
-          passed: criticResult.pass,
-          score: criticResult.score,
-          topIssues: (criticResult.issues || []).slice(0, 3).map(iss => iss.text || iss)
-        }])
+        attemptFeedback = formatEvalFeedback([
+          {
+            sceneIndex: i + 1,
+            passed: criticResult.pass,
+            score: criticResult.score,
+            topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
+          }
+        ])
       }
       actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
 
@@ -1006,7 +1180,12 @@ export function useVolumeStoryGenerator() {
       structuredResults.push({ sceneIndex: i, structured: chosenStructured })
 
       if (sceneReviewMode.value && i < scenePlan.value.length - 1) {
-        currentSceneResult.value = { scene, fullProse, structured: chosenStructured, sectionIdx: Math.floor(i / 3) }
+        currentSceneResult.value = {
+          scene,
+          fullProse,
+          structured: chosenStructured,
+          sectionIdx: Math.floor(i / 3)
+        }
         currentWriteIndex.value = i + 1
         phase.value = 'scene-review'
         return
@@ -1020,7 +1199,7 @@ export function useVolumeStoryGenerator() {
           sceneIndex: i + 1,
           passed: chosenEval.pass,
           score: chosenEval.score,
-          topIssues: (chosenEval.issues || []).slice(0, 3).map(iss => iss.text || iss)
+          topIssues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         })
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
 
@@ -1030,7 +1209,10 @@ export function useVolumeStoryGenerator() {
         if (judged && !isCleanPass(chosenEval)) {
           runFailedScenes.value++
           runConsecutiveFailures.value++
-          logRejectedPattern(`Scene ${scene.sceneNumber} failed critique after ${maxAttempts} attempt(s)`, fullProse.slice(0, 200))
+          logRejectedPattern(
+            `Scene ${scene.sceneNumber} failed critique after ${maxAttempts} attempt(s)`,
+            fullProse.slice(0, 200)
+          )
           if (runConsecutiveFailures.value >= QUALITY_FLOOR_CONSECUTIVE) {
             phase.value = 'error'
             error.value = `Quality floor breached: ${runConsecutiveFailures.value} scenes in a row failed critique after retries. The writer or critic model is likely misconfigured. ${writtenScenes.value.length} scene(s) written and saved.`
@@ -1041,12 +1223,17 @@ export function useVolumeStoryGenerator() {
           runConsecutiveFailures.value = 0
         }
       } else if (inlineEvalEnabled.value) {
-        const criticResult = await critic.evaluateScene({ draft: fullProse, sceneBrief: scene, storyBible: storyBibleDocs, chapterLog: '' })
+        const criticResult = await critic.evaluateScene({
+          draft: fullProse,
+          sceneBrief: scene,
+          storyBible: storyBibleDocs,
+          chapterLog: ''
+        })
         const evalEntry = {
           sceneIndex: i + 1,
           passed: criticResult.pass,
           score: criticResult.score,
-          topIssues: (criticResult.issues || []).slice(0, 3).map(iss => iss.text || iss)
+          topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         }
         sceneEvalResults.value.push(evalEntry)
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
@@ -1057,7 +1244,6 @@ export function useVolumeStoryGenerator() {
       runningChapterLog.push(
         `Scene ${scene.sceneNumber} ("${scene.title || `Scene ${scene.sceneNumber}`}"): ${latestScene?.summary || '(written)'}`
       )
-
     }
 
     // Discover entities from this batch only
@@ -1101,12 +1287,22 @@ export function useVolumeStoryGenerator() {
     await completeGeneration(projectId)
   }
 
-  async function confirmPlan({ projectId, editedPlan, storyArc, storyContract, synopsis, sparkContext, onPhaseChange, onChunk }) {
+  async function confirmPlan({
+    projectId,
+    editedPlan,
+    storyArc,
+    storyContract,
+    synopsis,
+    sparkContext,
+    onPhaseChange,
+    onChunk
+  }) {
     if (phase.value !== 'plan-preview') return
 
     scenePlan.value = editedPlan
     progress.total = editedPlan.length
-    progress.statusText = 'Building manuscript structure, initializing sections, and assigning chapters...'
+    progress.statusText =
+      'Building manuscript structure, initializing sections, and assigning chapters...'
 
     // Create sections using Director-provided chapter boundaries
     const sections = []
@@ -1114,7 +1310,7 @@ export function useVolumeStoryGenerator() {
     // Multi-volume: ensure a volume record exists for each requested volume,
     // so chapters land in the right volume. Volume 1 reuses the primary record.
     const volumeIdByIndex = { 1: volumeId.value }
-    const maxVolumeIndex = Math.max(1, ...(chapterPlan.value || []).map(c => c.volumeIndex || 1))
+    const maxVolumeIndex = Math.max(1, ...(chapterPlan.value || []).map((c) => c.volumeIndex || 1))
     for (let v = 2; v <= maxVolumeIndex; v++) {
       const vid = await volumeStore.createVolume(projectId, {
         title: `Volume ${v}`,
@@ -1129,10 +1325,13 @@ export function useVolumeStoryGenerator() {
       let offset = 0
       for (const chapter of chapterPlan.value) {
         const group = editedPlan.slice(offset, offset + chapter.scenes.length)
-        if (group.length === 0) { offset += chapter.scenes.length; continue }
+        if (group.length === 0) {
+          offset += chapter.scenes.length
+          continue
+        }
         const sectionData = {
           title: chapter.title || `Chapter ${chapter.chapterNumber || sections.length + 1}`,
-          summary: group.map(s => s.title || `Scene ${s.sceneNumber}`).join(', '),
+          summary: group.map((s) => s.title || `Scene ${s.sceneNumber}`).join(', '),
           wordCount: 0
         }
         const sectionId = await manuscriptStore.addSectionData(projectId, sectionData)
@@ -1163,8 +1362,10 @@ export function useVolumeStoryGenerator() {
       for (let i = 0; i < editedPlan.length; i += 3) {
         const group = editedPlan.slice(i, i + 3)
         const sectionData = {
-          title: group[0].title ? `Part ${sections.length + 1}: ${group[0].title}` : `Part ${sections.length + 1}`,
-          summary: group.map(s => s.title || `Scene ${s.sceneNumber}`).join(', '),
+          title: group[0].title
+            ? `Part ${sections.length + 1}: ${group[0].title}`
+            : `Part ${sections.length + 1}`,
+          summary: group.map((s) => s.title || `Scene ${s.sceneNumber}`).join(', '),
           wordCount: 0
         }
         const sectionId = await manuscriptStore.addSectionData(projectId, sectionData)
@@ -1195,7 +1396,7 @@ export function useVolumeStoryGenerator() {
     phase.value = 'spine-generation'
     onPhaseChange?.('spine-generation')
     const spinePhase = actLog.addPhase(currentTaskId, 'Spine Generation')
-    
+
     try {
       spineArray.value = await generateSpine(chapterPlan.value, storyArc)
       spineContext.value = compressSpine(spineArray.value)
@@ -1220,7 +1421,15 @@ export function useVolumeStoryGenerator() {
     const storyDocuments = useStoryDocuments()
     const storyBibleDocs = await storyDocuments.getStoryDocumentContext(projectId)
 
-    writeParams.value = { projectId, storyArc, storyContract, synopsis: enhancedSynopsis, onChunk, sections, storyBibleDocs }
+    writeParams.value = {
+      projectId,
+      storyArc,
+      storyContract,
+      synopsis: enhancedSynopsis,
+      onChunk,
+      sections,
+      storyBibleDocs
+    }
 
     await runParallelGeneration(writeParams.value)
   }
@@ -1234,8 +1443,13 @@ export function useVolumeStoryGenerator() {
     const embeddingContext = buildEmbeddingContext(scene, priorScenes)
     const chapterLog = priorScenes
       .map((ws, idx) => `Scene ${idx + 1} ("${ws.title}"): ${ws.summary || '(written)'}`)
-      .slice(-20).join('\n')
-    const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
+      .slice(-20)
+      .join('\n')
+    const existingEntitiesJson = buildExistingEntitiesBlob(
+      storyBibleStore.characters,
+      storyBibleStore.locations,
+      storyBibleStore.plotThreads
+    )
     scene.totalScenes = scenePlan.value.length
 
     const fixContract = `${storyContract}\n\nCONTINUITY FIX (mandatory): rewrite this scene to resolve the following contradictions while keeping the scene's events, outcome and length the same:\n${instruction}`
@@ -1260,17 +1474,22 @@ export function useVolumeStoryGenerator() {
       subsectionId: scene.subsectionId
     }
     if (scene.subsectionId) {
-      await manuscriptStore.updateSubsectionData(scene.subsectionId, {
-        content: fullProse,
-        wordCount: fullProse.split(/\s+/).length
-      }, projectId)
+      await manuscriptStore.updateSubsectionData(
+        scene.subsectionId,
+        {
+          content: fullProse,
+          wordCount: fullProse.split(/\s+/).length
+        },
+        projectId
+      )
     }
   }
 
   async function completeGeneration(projectId) {
     const consistencyPhase = actLog.addPhase(currentTaskId, 'Consistency Check')
     phase.value = 'consistency-check'
-    progress.statusText = 'Auditing written prose against character bio sheets to find narrative contradictions...'
+    progress.statusText =
+      'Auditing written prose against character bio sheets to find narrative contradictions...'
     const characters = storyBibleStore.characters
     const locations = storyBibleStore.locations
     const canCheck = characters.length > 1 || locations.length > 1
@@ -1289,7 +1508,9 @@ export function useVolumeStoryGenerator() {
     // CONSISTENCY_FIX_ROUNDS so continuity issues don't require manual cleanup.
     if (autoMode.value && canCheck && consistencyReport.value) {
       const storyDocuments = useStoryDocuments()
-      const storyBibleDocs = writeParams.value?.storyBibleDocs || await storyDocuments.getStoryDocumentContext(projectId)
+      const storyBibleDocs =
+        writeParams.value?.storyBibleDocs ||
+        (await storyDocuments.getStoryDocumentContext(projectId))
       for (let round = 0; round < CONSISTENCY_FIX_ROUNDS; round++) {
         const fixMap = planConsistencyFixes(consistencyReport.value, writtenScenes.value)
         if (fixMap.size === 0) break
@@ -1299,14 +1520,29 @@ export function useVolumeStoryGenerator() {
         progress.statusText = `Resolving ${targets.length} continuity issue(s) (pass ${round + 1})...`
         for (const [sceneIndex, reasons] of targets) {
           try {
-            await rewriteSceneForConsistency(projectId, sceneIndex, [...reasons].map(r => `- ${r}`).join('\n'), storyBibleDocs)
+            await rewriteSceneForConsistency(
+              projectId,
+              sceneIndex,
+              [...reasons].map((r) => `- ${r}`).join('\n'),
+              storyBibleDocs
+            )
           } catch (err) {
-            console.warn('[useVolumeStoryGenerator] Consistency fix failed for scene', sceneIndex, err)
+            console.warn(
+              '[useVolumeStoryGenerator] Consistency fix failed for scene',
+              sceneIndex,
+              err
+            )
           }
         }
-        const recheck = await critic.checkContradictions({ characters, locations, sceneProse: writtenScenes.value, synopsis: '' })
+        const recheck = await critic.checkContradictions({
+          characters,
+          locations,
+          sceneProse: writtenScenes.value,
+          synopsis: ''
+        })
         consistencyReport.value = recheck
-        if (((recheck.characterIssues?.length || 0) + (recheck.locationIssues?.length || 0)) === 0) break
+        if ((recheck.characterIssues?.length || 0) + (recheck.locationIssues?.length || 0) === 0)
+          break
       }
     }
 
@@ -1330,20 +1566,23 @@ export function useVolumeStoryGenerator() {
         generatedAt: new Date().toISOString(),
         totalWords,
         qualityScore: consistencyReport.value
-          ? (consistencyReport.value.characterIssues.length + consistencyReport.value.locationIssues.length) * -1
+          ? (consistencyReport.value.characterIssues.length +
+              consistencyReport.value.locationIssues.length) *
+            -1
           : 0
       })
     } catch {
       // Non-critical: generatedStories save
     }
-
   }
 
   async function confirmSync({ acceptedEntities, projectId, volumeId, chapterId }) {
     if (phase.value !== 'sync-preview') return
     progress.statusText = 'Integrating accepted entities and syncing story graph network...'
 
-    const validStructured = structuredResults.filter(sr => sr.structured).map(sr => sr.structured)
+    const validStructured = structuredResults
+      .filter((sr) => sr.structured)
+      .map((sr) => sr.structured)
     await sync.commitSync({
       structuredOutputs: validStructured,
       acceptedEntities,
@@ -1379,13 +1618,17 @@ export function useVolumeStoryGenerator() {
     const scene = scenePlan.value[sceneIndex]
     const embeddingContext = buildEmbeddingContext(scene, priorScenes)
 
-    const rawLog = priorScenes.map((ws, idx) =>
-      `Scene ${idx + 1} ("${ws.title}"): ${ws.summary || '(written)'}`
+    const rawLog = priorScenes.map(
+      (ws, idx) => `Scene ${idx + 1} ("${ws.title}"): ${ws.summary || '(written)'}`
     )
     const chapterLog = rawLog.slice(-20).join('\n')
     const extraRejected = rejectedPatterns.value.length > 0 ? rejectedPatterns.value : undefined
 
-    const existingEntitiesJson = buildExistingEntitiesBlob(storyBibleStore.characters, storyBibleStore.locations, storyBibleStore.plotThreads)
+    const existingEntitiesJson = buildExistingEntitiesBlob(
+      storyBibleStore.characters,
+      storyBibleStore.locations,
+      storyBibleStore.plotThreads
+    )
 
     scene.totalScenes = scenePlan.value.length
 
@@ -1399,7 +1642,13 @@ export function useVolumeStoryGenerator() {
       storyBible: storyBibleDocs,
       onChunk: (_chunk, proseChunk) => {
         fullProse += proseChunk || ''
-        onChunk?.({ sceneIndex: sceneIndex + 1, total: scenePlan.value.length, chunk: proseChunk, fullProse, scene })
+        onChunk?.({
+          sceneIndex: sceneIndex + 1,
+          total: scenePlan.value.length,
+          chunk: proseChunk,
+          fullProse,
+          scene
+        })
       },
       embeddingContext,
       storyContract,
@@ -1419,10 +1668,14 @@ export function useVolumeStoryGenerator() {
     }
 
     if (scene.subsectionId) {
-      await manuscriptStore.updateSubsectionData(scene.subsectionId, {
-        content: fullProse,
-        wordCount: fullProse.split(/\s+/).length
-      }, projectId)
+      await manuscriptStore.updateSubsectionData(
+        scene.subsectionId,
+        {
+          content: fullProse,
+          wordCount: fullProse.split(/\s+/).length
+        },
+        projectId
+      )
     }
 
     await completeGeneration(projectId)

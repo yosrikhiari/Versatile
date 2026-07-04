@@ -98,10 +98,10 @@ export async function deleteCharacterRelationship(id) {
 
 export async function deleteCharacterRelationshipsByCharacter(characterId) {
   const rels = await db.characterRelationships
-    .filter(r => r.fromCharacterId === characterId || r.toCharacterId === characterId)
+    .filter((r) => r.fromCharacterId === characterId || r.toCharacterId === characterId)
     .toArray()
   if (rels.length > 0) {
-    await db.characterRelationships.bulkDelete(rels.map(r => r.id))
+    await db.characterRelationships.bulkDelete(rels.map((r) => r.id))
   }
   return rels.length
 }

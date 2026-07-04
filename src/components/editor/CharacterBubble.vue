@@ -10,7 +10,8 @@ const bubbleEl = ref(null)
 
 let dragging = false
 let startX, startY, origX, origY
-let bubbleWidth = 0, bubbleHeight = 0
+let bubbleWidth = 0,
+  bubbleHeight = 0
 
 const showMenu = ref(false)
 const menuX = ref(0)
@@ -40,11 +41,18 @@ async function dismiss() {
 
 async function chat() {
   closeMenu()
-  await store.findOrCreateChatSession(props.bubble.characterId, props.bubble.characterName, projectStore.currentProjectId)
+  await store.findOrCreateChatSession(
+    props.bubble.characterId,
+    props.bubble.characterName,
+    projectStore.currentProjectId
+  )
 }
 
 function startDrag(e) {
-  if (showMenu.value) { closeMenu(); return }
+  if (showMenu.value) {
+    closeMenu()
+    return
+  }
   dragging = true
   store.bringToFront(props.bubble.id)
   startX = e.clientX
@@ -115,19 +123,18 @@ onBeforeUnmount(() => {
     @dblclick.stop="handleDoubleClick"
     @contextmenu.stop="onContextMenu"
   >
-    <img
-      v-if="bubble.portrait"
-      :src="bubble.portrait"
-      alt=""
-      class="bubble-avatar"
-    />
+    <img v-if="bubble.portrait" :src="bubble.portrait" alt="" class="bubble-avatar" />
     <div v-else class="bubble-avatar-placeholder">
       {{ bubble.characterName?.[0] || '?' }}
     </div>
     <span class="bubble-name">{{ bubble.characterName }}</span>
 
     <Teleport to="body">
-      <div v-if="showMenu" class="bubble-context-menu" :style="{ left: menuX + 'px', top: menuY + 'px' }">
+      <div
+        v-if="showMenu"
+        class="bubble-context-menu"
+        :style="{ left: menuX + 'px', top: menuY + 'px' }"
+      >
         <button class="context-item" @click="bringToFront">Bring to Front</button>
         <button class="context-item" @click="dismiss">Dismiss</button>
         <button class="context-item" @click="chat">Chat with Character</button>
@@ -149,7 +156,7 @@ onBeforeUnmount(() => {
   cursor: grab;
   user-select: none;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   font-size: 13px;
   line-height: 1;
 }
@@ -191,7 +198,7 @@ onBeforeUnmount(() => {
   background: var(--vers-bg-elevated, #fff);
   border: 1px solid var(--vers-border, #e0e0e0);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   padding: 4px;
   min-width: 160px;
 }

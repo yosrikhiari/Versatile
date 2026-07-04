@@ -8,7 +8,7 @@ let toastIdCounter = 0
 function addToast(message, type = 'info', duration = 3000) {
   const id = toastIdCounter++
   toasts.value.push({ id, message, type })
-  
+
   if (duration > 0) {
     setTimeout(() => {
       removeToast(id)
@@ -17,7 +17,7 @@ function addToast(message, type = 'info', duration = 3000) {
 }
 
 function removeToast(id) {
-  const index = toasts.value.findIndex(t => t.id === id)
+  const index = toasts.value.findIndex((t) => t.id === id)
   if (index !== -1) {
     toasts.value.splice(index, 1)
   }

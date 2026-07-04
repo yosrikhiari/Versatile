@@ -8,12 +8,13 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'primary',
-    validator: v => ['primary', 'secondary', 'ghost', 'danger', 'accent-ghost', 'elevated', 'outline'].includes(v)
+    validator: (v) =>
+      ['primary', 'secondary', 'ghost', 'danger', 'accent-ghost', 'elevated', 'outline'].includes(v)
   },
   size: {
     type: String,
     default: 'md',
-    validator: v => ['sm', 'md', 'lg'].includes(v)
+    validator: (v) => ['sm', 'md', 'lg'].includes(v)
   },
   disabled: Boolean,
   loading: Boolean,
@@ -32,13 +33,17 @@ const props = defineProps({
   }
 })
 
-const baseClasses = 'inline-flex items-center justify-center gap-1.5 font-ui font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-bg-base disabled:opacity-40 disabled:pointer-events-none'
+const baseClasses =
+  'inline-flex items-center justify-center gap-1.5 font-ui font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-bg-base disabled:opacity-40 disabled:pointer-events-none'
 
-const sizeClasses = computed(() => ({
-  sm: 'px-2 py-1 text-11px',
-  md: 'px-3 py-1.5 text-xs',
-  lg: 'px-4 py-2 text-sm'
-}[props.size]))
+const sizeClasses = computed(
+  () =>
+    ({
+      sm: 'px-2 py-1 text-11px',
+      md: 'px-3 py-1.5 text-xs',
+      lg: 'px-4 py-2 text-sm'
+    })[props.size]
+)
 
 const variantClasses = computed(() => {
   switch (props.variant) {
@@ -61,11 +66,14 @@ const variantClasses = computed(() => {
   }
 })
 
-const iconSize = computed(() => ({
-  sm: 14,
-  md: 15,
-  lg: 16
-}[props.size]))
+const iconSize = computed(
+  () =>
+    ({
+      sm: 14,
+      md: 15,
+      lg: 16
+    })[props.size]
+)
 
 const ariaAttrs = computed(() => {
   const attrs = {}
@@ -82,12 +90,7 @@ const ariaAttrs = computed(() => {
     :disabled="disabled || loading"
     v-bind="ariaAttrs"
   >
-    <BaseIcon
-      v-if="loading"
-      name="loader-2"
-      :size="iconSize"
-      class="animate-spin shrink-0"
-    />
+    <BaseIcon v-if="loading" name="loader-2" :size="iconSize" class="animate-spin shrink-0" />
     <BaseIcon
       v-else-if="icon && iconPosition === 'left'"
       :name="icon"

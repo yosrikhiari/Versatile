@@ -24,7 +24,9 @@ const typeColors = {
   antecedent: 'bg-purple-500/20 text-purple-400'
 }
 
-const typeBadge = computed(() => typeColors[props.annotation.type] || 'bg-bg-tertiary text-text-hint')
+const typeBadge = computed(
+  () => typeColors[props.annotation.type] || 'bg-bg-tertiary text-text-hint'
+)
 const typeLabel = computed(() => {
   const labels = {
     weak_verb: 'Weak Verb',
@@ -68,8 +70,11 @@ function handleDismiss() {
         {{ typeLabel }}
       </span>
     </div>
-    
-    <div v-if="showDiff && hasSuggestion" class="mb-3 p-2 bg-bg-secondary rounded border border-border-subtle">
+
+    <div
+      v-if="showDiff && hasSuggestion"
+      class="mb-3 p-2 bg-bg-secondary rounded border border-border-subtle"
+    >
       <template v-if="isIdentical">
         <p class="text-xs text-amber-400 font-ui">Suggestion matches original text</p>
         <div class="mt-2">
@@ -88,16 +93,16 @@ function handleDismiss() {
         <p class="text-sm text-accent">{{ annotation.suggestion }}</p>
       </template>
     </div>
-    
+
     <div v-else class="text-sm space-y-1">
       <p class="text-text-hint line-through">{{ annotation.original }}</p>
       <p class="text-accent">{{ annotation.suggestion }}</p>
     </div>
-    
+
     <p v-if="annotation.reason" class="text-xs text-text-hint italic mt-2">
       {{ annotation.reason }}
     </p>
-    
+
     <div class="flex gap-2 mt-3">
       <button
         class="flex-1 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"

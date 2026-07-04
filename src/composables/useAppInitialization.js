@@ -34,7 +34,7 @@ export function useAppInitialization() {
       const response = await fetch(`${getOllamaEndpoint()}/api/tags`)
       if (response.ok) {
         const data = await response.json()
-        const modelNames = data.models?.map(m => m.name) || []
+        const modelNames = data.models?.map((m) => m.name) || []
         if (!modelNames.includes(getOllamaModel())) {
           modelNotFound.value = true
           showModelBanner.value = true
@@ -48,11 +48,11 @@ export function useAppInitialization() {
   async function initializeApp(projectId = null) {
     const ollamaOk = await checkOllamaConnection()
     ollamaAvailable.value = ollamaOk
-    
+
     if (ollamaOk) {
       await checkModelAvailability()
     }
-    
+
     let hasProject = false
     if (projectId) {
       await projectStore.loadProject(projectId)
@@ -60,21 +60,21 @@ export function useAppInitialization() {
     } else {
       hasProject = await projectStore.loadLastProject()
     }
-    
+
     if (!hasProject && !isOnboardingDismissed()) {
       hasLoaded.value = true
       return { showOnboarding: true }
     } else if (projectStore.currentProjectId) {
       await loadProjectData()
     }
-    
+
     hasLoaded.value = true
     return { showOnboarding: false }
   }
 
   async function loadProjectData() {
     if (!projectStore.currentProjectId) return
-    
+
     await sparkStore.loadHistory(projectStore.currentProjectId)
     await polishStore.loadAnnotations(projectStore.currentProjectId)
     await polishStore.loadSnippets(projectStore.currentProjectId)
@@ -114,11 +114,11 @@ export function useAppInitialization() {
 
   async function onOnboardingComplete() {
     onboardingStatus.value = 'done'
-    
+
     if (projectStore.currentProjectId) {
       await loadProjectData()
     }
-    
+
     return { showOnboarding: false }
   }
 

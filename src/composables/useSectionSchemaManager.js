@@ -18,11 +18,11 @@ export function useSectionSchemaManager() {
   const newSubsection = ref({ title: '', summary: '', content: '', tags: [] })
 
   function getStatusColor(status) {
-    return SECTION_STATUSES.find(s => s.value === status)?.color || '#6b7280'
+    return SECTION_STATUSES.find((s) => s.value === status)?.color || '#6b7280'
   }
 
   function getStatusLabel(status) {
-    return SECTION_STATUSES.find(s => s.value === status)?.label || status
+    return SECTION_STATUSES.find((s) => s.value === status)?.label || status
   }
 
   function getSubsectionWordCount(subsection) {
@@ -43,9 +43,9 @@ export function useSectionSchemaManager() {
 
   function openEditSubsection(subsection) {
     editingSubsection.value = subsection
-    newSubsection.value = { 
+    newSubsection.value = {
       title: subsection.title || '',
-      summary: subsection.summary || '', 
+      summary: subsection.summary || '',
       content: subsection.content || '',
       tags: subsection.tags ? [...subsection.tags] : []
     }
@@ -58,23 +58,34 @@ export function useSectionSchemaManager() {
     if (editingSubsection.value) {
       manuscriptStore.updateSubsectionData(
         editingSubsection.value.id,
-        { 
-          title: newSubsection.value.title, 
-          summary: newSubsection.value.summary, 
+        {
+          title: newSubsection.value.title,
+          summary: newSubsection.value.summary,
           content: newSubsection.value.content,
           tags: newSubsection.value.tags
         },
         projectStore.currentProjectId
       )
     } else if (activeSectionId.value) {
-      manuscriptStore.addSubsectionData(projectStore.currentProjectId, activeSectionId.value, newSubsection.value)
+      manuscriptStore.addSubsectionData(
+        projectStore.currentProjectId,
+        activeSectionId.value,
+        newSubsection.value
+      )
     }
 
     showSubsectionModal.value = false
   }
 
   async function deleteSubsection(subsection) {
-    if (await showConfirm('Delete Subsection', `Delete "${subsection.title || 'Untitled'}"?`, 'Delete', 'danger')) {
+    if (
+      await showConfirm(
+        'Delete Subsection',
+        `Delete "${subsection.title || 'Untitled'}"?`,
+        'Delete',
+        'danger'
+      )
+    ) {
       manuscriptStore.deleteSubsectionData(subsection.id, projectStore.currentProjectId)
     }
   }

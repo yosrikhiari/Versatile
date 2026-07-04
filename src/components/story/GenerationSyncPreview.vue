@@ -17,12 +17,12 @@ const emit = defineEmits(['confirm'])
 
 const localChanges = ref([])
 
-const characterChanges = computed(() => localChanges.value.filter(c => c.type === 'character'))
-const locationChanges = computed(() => localChanges.value.filter(c => c.type === 'location'))
-const plotThreadChanges = computed(() => localChanges.value.filter(c => c.type === 'plotThread'))
+const characterChanges = computed(() => localChanges.value.filter((c) => c.type === 'character'))
+const locationChanges = computed(() => localChanges.value.filter((c) => c.type === 'location'))
+const plotThreadChanges = computed(() => localChanges.value.filter((c) => c.type === 'plotThread'))
 
 const hasReferencedUnselected = computed(() => {
-  return localChanges.value.some(c => c.referenced && !c._selected)
+  return localChanges.value.some((c) => c.referenced && !c._selected)
 })
 
 function toggleChange(index) {
@@ -38,7 +38,7 @@ function discardAll() {
 }
 
 function handleConfirm() {
-  const accepted = localChanges.value.filter(c => c._selected)
+  const accepted = localChanges.value.filter((c) => c._selected)
   emit('confirm', accepted)
 }
 </script>
@@ -52,9 +52,7 @@ function handleConfirm() {
         <template v-if="changes.length > 0">
           Select which ones to add to your story bible.
         </template>
-        <template v-else>
-          No new entities were discovered.
-        </template>
+        <template v-else> No new entities were discovered. </template>
       </p>
     </div>
 
@@ -62,17 +60,25 @@ function handleConfirm() {
       <button
         class="flex-1 py-1.5 text-xs bg-accent text-accent-foreground rounded-md font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent"
         @click="keepAll"
-      >Keep All</button>
+      >
+        Keep All
+      </button>
       <button
         class="flex-1 py-1.5 text-xs bg-bg-tertiary text-text-secondary rounded-md font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent"
         @click="discardAll"
-      >Discard All</button>
+      >
+        Discard All
+      </button>
     </div>
 
-    <div v-if="hasReferencedUnselected" class="rounded-lg bg-yellow-950/10 border border-yellow-800/20 px-3 py-2">
+    <div
+      v-if="hasReferencedUnselected"
+      class="rounded-lg bg-yellow-950/10 border border-yellow-800/20 px-3 py-2"
+    >
       <p class="text-xs text-yellow-400 font-ui flex items-center gap-1">
         <BaseIcon name="alert-triangle" :size="12" />
-        Some referenced entities are deselected — the story may reference entities not in your bible.
+        Some referenced entities are deselected — the story may reference entities not in your
+        bible.
       </p>
     </div>
 
@@ -94,12 +100,20 @@ function handleConfirm() {
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-text-primary font-ui truncate">{{ change.entity.name }}</span>
-            <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0">Used in prose</span>
+            <span class="text-sm font-semibold text-text-primary font-ui truncate">{{
+              change.entity.name
+            }}</span>
+            <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0"
+              >Used in prose</span
+            >
             <span v-else class="text-2xs text-text-hint font-ui shrink-0">Inferred</span>
           </div>
-          <p v-if="change.entity.role" class="text-xs text-text-hint">Role: {{ change.entity.role }}</p>
-          <p v-if="change.entity.description" class="text-xs text-text-secondary truncate">{{ change.entity.description }}</p>
+          <p v-if="change.entity.role" class="text-xs text-text-hint">
+            Role: {{ change.entity.role }}
+          </p>
+          <p v-if="change.entity.description" class="text-xs text-text-secondary truncate">
+            {{ change.entity.description }}
+          </p>
         </div>
       </div>
     </div>
@@ -122,12 +136,20 @@ function handleConfirm() {
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-text-primary font-ui truncate">{{ change.entity.name }}</span>
-            <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0">Used in prose</span>
+            <span class="text-sm font-semibold text-text-primary font-ui truncate">{{
+              change.entity.name
+            }}</span>
+            <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0"
+              >Used in prose</span
+            >
             <span v-else class="text-2xs text-text-hint font-ui shrink-0">Inferred</span>
           </div>
-          <p v-if="change.entity.type" class="text-xs text-text-hint">Type: {{ change.entity.type }}</p>
-          <p v-if="change.entity.description" class="text-xs text-text-secondary truncate">{{ change.entity.description }}</p>
+          <p v-if="change.entity.type" class="text-xs text-text-hint">
+            Type: {{ change.entity.type }}
+          </p>
+          <p v-if="change.entity.description" class="text-xs text-text-secondary truncate">
+            {{ change.entity.description }}
+          </p>
         </div>
       </div>
     </div>
@@ -150,11 +172,25 @@ function handleConfirm() {
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-text-primary font-ui truncate">{{ change.entity.title }}</span>
-            <span :class="['px-1.5 py-0.5 rounded text-2xs font-ui', change.entity.status === 'open' ? 'text-green-400 bg-green-950/30' : change.entity.status === 'resolved' ? 'text-gray-400 bg-gray-800/30' : 'text-yellow-400 bg-yellow-950/30']">{{ change.entity.status || 'open' }}</span>
+            <span class="text-sm font-semibold text-text-primary font-ui truncate">{{
+              change.entity.title
+            }}</span>
+            <span
+              :class="[
+                'px-1.5 py-0.5 rounded text-2xs font-ui',
+                change.entity.status === 'open'
+                  ? 'text-green-400 bg-green-950/30'
+                  : change.entity.status === 'resolved'
+                    ? 'text-gray-400 bg-gray-800/30'
+                    : 'text-yellow-400 bg-yellow-950/30'
+              ]"
+              >{{ change.entity.status || 'open' }}</span
+            >
             <span v-if="change.referenced" class="text-2xs text-accent font-ui shrink-0">Used</span>
           </div>
-          <p v-if="change.entity.summary" class="text-xs text-text-secondary truncate">{{ change.entity.summary }}</p>
+          <p v-if="change.entity.summary" class="text-xs text-text-secondary truncate">
+            {{ change.entity.summary }}
+          </p>
         </div>
       </div>
     </div>

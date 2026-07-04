@@ -7,7 +7,7 @@ import { useStateSummarizer } from '../composables/useStateSummarizer'
 
 export const useFlowStore = defineStore('flow', () => {
   const projectStore = useProjectStore()
-  
+
   const duration = ref(1200)
   const remaining = ref(1200)
   const isRunning = ref(false)
@@ -165,7 +165,7 @@ export const useFlowStore = defineStore('flow', () => {
 
   function showBackspaceNudge() {
     if (showBackspaceToast.value) return
-    
+
     showBackspaceToast.value = true
     if (backspaceToastTimeout) {
       clearTimeout(backspaceToastTimeout)
@@ -178,7 +178,7 @@ export const useFlowStore = defineStore('flow', () => {
 
   function handleBackspace(event) {
     if (!isRunning.value) return
-    
+
     if (event.key === 'Backspace') {
       if (!backspaceStartTime) {
         backspaceStartTime = Date.now()

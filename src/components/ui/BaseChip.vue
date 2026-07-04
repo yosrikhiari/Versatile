@@ -8,18 +8,18 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'default',
-    validator: v => ['default', 'filter', 'removable'].includes(v)
+    validator: (v) => ['default', 'filter', 'removable'].includes(v)
   },
   active: Boolean,
   size: {
     type: String,
     default: 'sm',
-    validator: v => ['sm', 'md'].includes(v)
+    validator: (v) => ['sm', 'md'].includes(v)
   },
   color: {
     type: String,
     default: 'accent',
-    validator: v => ['accent', 'success', 'danger', 'warning', 'info'].includes(v)
+    validator: (v) => ['accent', 'success', 'danger', 'warning', 'info'].includes(v)
   },
   disabled: Boolean,
   customClass: {
@@ -30,10 +30,13 @@ const props = defineProps({
 
 const emit = defineEmits(['remove'])
 
-const sizeClasses = computed(() => ({
-  sm: 'text-2xs px-1.5 py-0.5',
-  md: 'text-xs px-2 py-1'
-}[props.size]))
+const sizeClasses = computed(
+  () =>
+    ({
+      sm: 'text-2xs px-1.5 py-0.5',
+      md: 'text-xs px-2 py-1'
+    })[props.size]
+)
 
 const colorMap = {
   accent: {
@@ -84,7 +87,8 @@ const variantClasses = computed(() => {
   }
 })
 
-const baseClasses = 'inline-flex items-center gap-1 rounded-full font-medium font-ui transition-all duration-150 active:scale-[0.97]'
+const baseClasses =
+  'inline-flex items-center gap-1 rounded-full font-medium font-ui transition-all duration-150 active:scale-[0.97]'
 </script>
 
 <template>

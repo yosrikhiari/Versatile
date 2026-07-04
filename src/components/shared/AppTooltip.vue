@@ -16,7 +16,7 @@ const props = defineProps({
   position: {
     type: String,
     default: 'top',
-    validator: v => ['top', 'bottom', 'left', 'right'].includes(v)
+    validator: (v) => ['top', 'bottom', 'left', 'right'].includes(v)
   }
 })
 
@@ -70,7 +70,12 @@ const tooltipStyle = computed(() => ({
 </script>
 
 <template>
-  <span ref="triggerRef" class="inline-flex" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+  <span
+    ref="triggerRef"
+    class="inline-flex"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
+  >
     <slot />
   </span>
   <Teleport to="body">

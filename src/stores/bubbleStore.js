@@ -16,7 +16,7 @@ export const useBubbleStore = defineStore('bubble', () => {
 
   async function addBubbleFromCharacter(character, x, y, projectId) {
     // One bubble per character — re-dropping an existing character just moves it
-    const existing = bubbles.value.find(b => b.characterId === character.id)
+    const existing = bubbles.value.find((b) => b.characterId === character.id)
     if (existing) {
       existing.x = Math.round(x)
       existing.y = Math.round(y)
@@ -54,28 +54,31 @@ export const useBubbleStore = defineStore('bubble', () => {
   }
 
   async function removeBubbleAndPersist(id) {
-    const b = bubbles.value.find(b => b.id === id)
+    const b = bubbles.value.find((b) => b.id === id)
     if (!b) return
     const ms = useManuscriptStore()
     if (b.elementId) {
       await ms.deleteStoryElementData(b.elementId)
     }
-    const idx = bubbles.value.findIndex(b => b.id === id)
+    const idx = bubbles.value.findIndex((b) => b.id === id)
     if (idx !== -1) bubbles.value.splice(idx, 1)
   }
 
   function removeBubble(id) {
-    const idx = bubbles.value.findIndex(b => b.id === id)
+    const idx = bubbles.value.findIndex((b) => b.id === id)
     if (idx !== -1) bubbles.value.splice(idx, 1)
   }
 
   function updatePosition(id, x, y) {
-    const b = bubbles.value.find(b => b.id === id)
-    if (b) { b.x = x; b.y = y }
+    const b = bubbles.value.find((b) => b.id === id)
+    if (b) {
+      b.x = x
+      b.y = y
+    }
   }
 
   async function persistBubblePosition(id, _projectId) {
-    const b = bubbles.value.find(b => b.id === id)
+    const b = bubbles.value.find((b) => b.id === id)
     if (!b || !b.elementId) return
     const ms = useManuscriptStore()
     await ms.updateStoryElementData(b.elementId, {
@@ -91,7 +94,7 @@ export const useBubbleStore = defineStore('bubble', () => {
   }
 
   function bringToFront(id) {
-    const b = bubbles.value.find(b => b.id === id)
+    const b = bubbles.value.find((b) => b.id === id)
     if (b) b.zIndex = nextZIndex++
   }
 
@@ -104,16 +107,16 @@ export const useBubbleStore = defineStore('bubble', () => {
   }
 
   function loadBubblesFromManuscript(storyElements) {
-    const bubbleElements = storyElements.filter(e => e.element_type === 'character-bubble')
-    const validElementIds = new Set(bubbleElements.map(e => e.id))
-    const existingElementIds = new Set(bubbles.value.map(b => b.elementId))
+    const bubbleElements = storyElements.filter((e) => e.element_type === 'character-bubble')
+    const validElementIds = new Set(bubbleElements.map((e) => e.id))
+    const existingElementIds = new Set(bubbles.value.map((b) => b.elementId))
 
     // Drop bubbles whose backing element is gone (e.g. project switch)
-    bubbles.value = bubbles.value.filter(b => validElementIds.has(b.elementId))
+    bubbles.value = bubbles.value.filter((b) => validElementIds.has(b.elementId))
 
     // One bubble per character. Collapse any duplicate elements left behind by
     // earlier drops and delete the orphaned story elements from the DB.
-    const seenCharacterIds = new Set(bubbles.value.map(b => b.characterId))
+    const seenCharacterIds = new Set(bubbles.value.map((b) => b.characterId))
     const orphanElementIds = []
 
     for (const el of bubbleElements) {
@@ -149,7 +152,7 @@ export const useBubbleStore = defineStore('bubble', () => {
   async function findOrCreateChatSession(characterId, characterName, projectId) {
     const chatStore = useCharacterChatStore()
     const existing = Object.values(chatStore.sessions).find(
-      s => s.characterIds.includes(characterId) && s.projectId === projectId
+      (s) => s.characterIds.includes(characterId) && s.projectId === projectId
     )
     if (existing) {
       chatStore.setActiveSession(existing.id)

@@ -18,9 +18,13 @@ const emit = defineEmits(['update:modelValue'])
 const inputValue = ref('')
 const tags = ref([...props.modelValue])
 
-watch(() => props.modelValue, (newVal) => {
-  tags.value = [...newVal]
-}, { deep: true })
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    tags.value = [...newVal]
+  },
+  { deep: true }
+)
 
 function addTag() {
   const tag = inputValue.value.trim().toLowerCase()
@@ -47,7 +51,9 @@ function handleKeydown(e) {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-1.5 p-2 border border-border-subtle rounded-lg bg-bg-secondary min-h-[40px]">
+  <div
+    class="flex flex-wrap items-center gap-1.5 p-2 border border-border-subtle rounded-lg bg-bg-secondary min-h-[40px]"
+  >
     <div
       v-for="(tag, index) in tags"
       :key="index"

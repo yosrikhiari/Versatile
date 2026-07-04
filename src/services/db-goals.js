@@ -31,23 +31,23 @@ export async function getStreakData(projectId) {
   const entries = await db.dailyGoals
     .where('projectId')
     .equals(projectId)
-    .filter(e => e.wordCount > 0)
+    .filter((e) => e.wordCount > 0)
     .toArray()
-    
+
   if (entries.length === 0) {
     return { currentStreak: 0, longestStreak: 0, lastWrittenDate: null }
   }
-    
+
   entries.sort((a, b) => b.date.localeCompare(a.date))
-    
+
   const today = getTodayDateString()
   const yesterday = getYesterdayDateString()
-    
+
   let currentStreak = 0
   let longestStreak = 0
   let tempStreak = 0
   let prevDate = null
-    
+
   for (const entry of entries) {
     if (prevDate === null) {
       if (entry.date === today || entry.date === yesterday) {
@@ -69,10 +69,10 @@ export async function getStreakData(projectId) {
     }
     prevDate = entry.date
   }
-    
+
   longestStreak = Math.max(longestStreak, tempStreak)
   if (currentStreak > 0) currentStreak = longestStreak
-    
+
   return {
     currentStreak,
     longestStreak,
@@ -97,16 +97,16 @@ export async function getLastSessionData(projectId) {
   const entries = await db.dailyGoals
     .where('projectId')
     .equals(projectId)
-    .filter(e => e.wordCount > 0)
+    .filter((e) => e.wordCount > 0)
     .toArray()
-    
+
   if (entries.length === 0) return null
-    
+
   entries.sort((a, b) => b.date.localeCompare(a.date))
-    
+
   const today = getTodayDateString()
   if (entries[0].date === today) return null
-    
+
   return {
     date: entries[0].date,
     wordCount: entries[0].wordCount

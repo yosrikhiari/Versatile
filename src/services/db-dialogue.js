@@ -2,10 +2,7 @@ import { db, deepPlain } from './db-core'
 
 export async function getDialogueByProject(projectId) {
   try {
-    const results = await db.dialogueIndex
-      .where('projectId')
-      .equals(projectId)
-      .toArray()
+    const results = await db.dialogueIndex.where('projectId').equals(projectId).toArray()
     return results
   } catch (err) {
     console.error('[db-dialogue] getDialogueByProject error:', err)
@@ -40,7 +37,7 @@ export async function saveDialogueEntry(entry) {
 export async function saveDialogueBatch(entries) {
   if (!Array.isArray(entries) || entries.length === 0) return []
   try {
-    const plain = entries.map(e => deepPlain(e))
+    const plain = entries.map((e) => deepPlain(e))
     const ids = await db.dialogueIndex.bulkAdd(plain, { allKeys: true })
     return ids
   } catch (err) {
@@ -51,10 +48,7 @@ export async function saveDialogueBatch(entries) {
 
 export async function deleteDialogueByProject(projectId) {
   try {
-    await db.dialogueIndex
-      .where('projectId')
-      .equals(projectId)
-      .delete()
+    await db.dialogueIndex.where('projectId').equals(projectId).delete()
   } catch (err) {
     console.error('[db-dialogue] deleteDialogueByProject error:', err)
   }
@@ -74,12 +68,10 @@ export async function updateSpeakerMapping(id, speakerId, confidence) {
 
 export async function reindexSection(sectionId, projectId, dialogueEntries) {
   try {
-    await db.dialogueIndex
-      .where({ sectionId })
-      .delete()
+    await db.dialogueIndex.where({ sectionId }).delete()
 
     if (dialogueEntries.length > 0) {
-      const plain = dialogueEntries.map(e => deepPlain(e))
+      const plain = dialogueEntries.map((e) => deepPlain(e))
       await db.dialogueIndex.bulkAdd(plain)
     }
   } catch (err) {

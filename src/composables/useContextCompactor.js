@@ -50,7 +50,11 @@ export function useContextCompactor() {
   async function compactConversation(callId) {
     const turns = getTurns(callId)
     if (turns.length <= MIN_TURNS_TO_COMPACT) {
-      return { compacted: false, reason: `Only ${turns.length} turns, minimum is ${MIN_TURNS_TO_COMPACT}`, turns }
+      return {
+        compacted: false,
+        reason: `Only ${turns.length} turns, minimum is ${MIN_TURNS_TO_COMPACT}`,
+        turns
+      }
     }
 
     isCompacting.value = true
@@ -58,9 +62,9 @@ export function useContextCompactor() {
       const keepTurns = turns.slice(-KEEP_LAST_N)
       const middleTurns = turns.slice(0, -KEEP_LAST_N)
 
-      const middleText = middleTurns.map(t =>
-        `[${t.role.toUpperCase()}]: ${t.content}`
-      ).join('\n\n')
+      const middleText = middleTurns
+        .map((t) => `[${t.role.toUpperCase()}]: ${t.content}`)
+        .join('\n\n')
 
       const summary = await aiGenerate(
         `Summarize these exchanges between a writer and an AI assistant:\n\n${middleText}`,
@@ -69,7 +73,11 @@ export function useContextCompactor() {
       )
 
       const compressed = [
-        { role: 'system', content: `[Compacted summary of previous ${middleTurns.length} exchanges]: ${summary.trim()}`, timestamp: Date.now() },
+        {
+          role: 'system',
+          content: `[Compacted summary of previous ${middleTurns.length} exchanges]: ${summary.trim()}`,
+          timestamp: Date.now()
+        },
         ...keepTurns
       ]
 

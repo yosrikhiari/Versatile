@@ -26,7 +26,7 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
     doc.setFontSize(fontSize)
     doc.setFont('helvetica', fontStyle)
     const lines = doc.splitTextToSize(text, maxLineWidth)
-    
+
     for (const line of lines) {
       checkPageBreak(lineHeight + 2)
       doc.text(line, margin, y)
@@ -67,7 +67,7 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
     doc.text('Characters', margin, y)
     y += 10
 
-    const charData = data.characters.map(c => [c.name, c.role || '-', c.goal || '-'])
+    const charData = data.characters.map((c) => [c.name, c.role || '-', c.goal || '-'])
     doc.autoTable({
       startY: y,
       head: [['Name', 'Role', 'Goal']],
@@ -91,7 +91,7 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
     doc.text('Locations', margin, y)
     y += 10
 
-    const locData = data.locations.map(l => [l.name, l.description || '-'])
+    const locData = data.locations.map((l) => [l.name, l.description || '-'])
     doc.autoTable({
       startY: y,
       head: [['Location', 'Description']],
@@ -110,7 +110,7 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
     doc.text('Plot Threads', margin, y)
     y += 10
 
-    const threadData = data.plotThreads.map(t => [t.title, t.status || 'open', t.notes || '-'])
+    const threadData = data.plotThreads.map((t) => [t.title, t.status || 'open', t.notes || '-'])
     doc.autoTable({
       startY: y,
       head: [['Plot Thread', 'Status', 'Notes']],
@@ -126,35 +126,35 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
     for (const chapter of data.chapters) {
       addNewPage()
       checkPageBreak(20)
-      
+
       doc.setFontSize(18)
       doc.setFont('helvetica', 'bold')
       doc.text(`Chapter ${chapter.order + 1}: ${chapter.title || 'Untitled'}`, margin, y)
       y += 10
-      
+
       if (chapter.summary) {
         doc.setFontSize(11)
         doc.setFont('helvetica', 'italic')
         doc.text(chapter.summary, margin, y)
         y += 8
       }
-      
+
       y += 5
-      
-      const chapterScenes = data.scenes?.filter(s => s.chapterId === chapter.id) || []
+
+      const chapterScenes = data.scenes?.filter((s) => s.chapterId === chapter.id) || []
       if (chapterScenes.length > 0) {
         doc.setFontSize(12)
         doc.setFont('helvetica', 'bold')
         doc.text('Scenes:', margin, y)
         y += 7
-        
+
         for (const scene of chapterScenes) {
           checkPageBreak(15)
           doc.setFontSize(11)
           doc.setFont('helvetica', 'normal')
           doc.text(`• ${scene.title || 'Untitled Scene'}`, margin + 5, y)
           y += 5
-          
+
           if (scene.summary) {
             doc.setFontSize(10)
             doc.setFont('helvetica', 'italic')
@@ -165,14 +165,14 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
         }
         y += 5
       }
-      
+
       if (chapter.status === 'writing' && data.manuscript?.content) {
         checkPageBreak(10)
         doc.setFontSize(12)
         doc.setFont('helvetica', 'bold')
         doc.text('Content:', margin, y)
         y += 8
-        
+
         doc.setFontSize(11)
         doc.setFont('helvetica', 'normal')
         addWrappedText(data.manuscript.content, 11)
@@ -184,7 +184,7 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
     doc.setFont('helvetica', 'bold')
     doc.text('Manuscript', margin, y)
     y += 12
-    
+
     addWrappedText(data.manuscript.content, 11)
   }
 

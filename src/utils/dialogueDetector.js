@@ -1,4 +1,5 @@
-const DIALOGUE_TAG_PATTERN = /\b(said|asked|replied|whispered|shouted|yelled|cried|called|murmured|muttered|grumbled|snapped|growled|hissed|breathed|sighed|laughed|chuckled|giggled|groaned|moaned|sobbed|wept|screamed|roared|bellowed|thundered|hollered|screeched|shrieked|hissed|spat|snorted|scoffed|retorted|answered|responded|offered|suggested|agreed|conceded|admitted|confessed|lied|joked|teased|began|continued|added|interrupted|cut in|broke in|piped up|chimed in|corrected|warned|threatened|promised|vowed|pleaded|begged|prayed|insisted|declared|announced|proclaimed|stated|observed|noted|remarked|commented|mused|pondered|reflected|wondered|thought|reasoned|calculated|concluded|decided|determined|resolved|commanded|ordered|demanded|instructed|directed|requested|proposed|offered|volunteered|relented|capitulated|surrendered|yielded|acquiesced|assented|nodded|smiled|frowned|grimaced|shrugged|gestured|waved)(\s+(he|she|they|I|we|you|the\s+\w+|\w+))?/i
+const DIALOGUE_TAG_PATTERN =
+  /\b(said|asked|replied|whispered|shouted|yelled|cried|called|murmured|muttered|grumbled|snapped|growled|hissed|breathed|sighed|laughed|chuckled|giggled|groaned|moaned|sobbed|wept|screamed|roared|bellowed|thundered|hollered|screeched|shrieked|hissed|spat|snorted|scoffed|retorted|answered|responded|offered|suggested|agreed|conceded|admitted|confessed|lied|joked|teased|began|continued|added|interrupted|cut in|broke in|piped up|chimed in|corrected|warned|threatened|promised|vowed|pleaded|begged|prayed|insisted|declared|announced|proclaimed|stated|observed|noted|remarked|commented|mused|pondered|reflected|wondered|thought|reasoned|calculated|concluded|decided|determined|resolved|commanded|ordered|demanded|instructed|directed|requested|proposed|offered|volunteered|relented|capitulated|surrendered|yielded|acquiesced|assented|nodded|smiled|frowned|grimaced|shrugged|gestured|waved)(\s+(he|she|they|I|we|you|the\s+\w+|\w+))?/i
 
 const QUOTE_PAIRS = [
   { open: '"', close: '"', name: 'double' },
@@ -7,7 +8,7 @@ const QUOTE_PAIRS = [
   { open: '\u00ab', close: '\u00bb', name: 'angle' },
   { open: '\u2018', close: '\u2019', name: 'single-curly' },
   { open: "'", close: "'", name: 'single-straight' },
-  { open: '\u2039', close: '\u203a', name: 'single-angle' },
+  { open: '\u2039', close: '\u203a', name: 'single-angle' }
 ]
 
 const TAG_BEFORE = new RegExp(
@@ -41,10 +42,12 @@ function findDialogueTag(text, quoteStart, quoteEnd) {
     }
   }
 
-  const tagInAfter = after.match(new RegExp(
-    '^[,;:\\s]*(' + DIALOGUE_TAG_PATTERN.source.replace(/^\^/, '').replace(/\$$/, '') + ')',
-    'i'
-  ))
+  const tagInAfter = after.match(
+    new RegExp(
+      '^[,;:\\s]*(' + DIALOGUE_TAG_PATTERN.source.replace(/^\^/, '').replace(/\$$/, '') + ')',
+      'i'
+    )
+  )
   if (tagInAfter) {
     return {
       tag: tagInAfter[1].trim(),
@@ -133,10 +136,12 @@ function extractEmDashDialogue(text) {
 }
 
 function findDialogueTagFallback(text) {
-  const match = text.match(new RegExp(
-    '[,;\\s]+(' + DIALOGUE_TAG_PATTERN.source.replace(/^\^/, '').replace(/\$$/, '') + ')$',
-    'i'
-  ))
+  const match = text.match(
+    new RegExp(
+      '[,;\\s]+(' + DIALOGUE_TAG_PATTERN.source.replace(/^\^/, '').replace(/\$$/, '') + ')$',
+      'i'
+    )
+  )
   if (match) {
     return { tag: match[1].trim(), position: 'after' }
   }
@@ -149,7 +154,7 @@ export function detectDialogue(text, paragraphIndex) {
   const quotedResults = extractQuotedDialogue(text)
   const emDashResults = extractEmDashDialogue(text)
 
-  const dialogueLines = [...quotedResults, ...emDashResults].map(d => ({
+  const dialogueLines = [...quotedResults, ...emDashResults].map((d) => ({
     paragraphIndex,
     dialogueText: d.dialogueText,
     fullParagraphText: text,

@@ -10,14 +10,29 @@ export async function checkDatabaseHealth() {
   try {
     // Try to access each store
     const stores = [
-      'projects', 'manuscripts', 'characters', 'locations',
-      'plotThreads', 'chapters', 'scenes', 'sparkHistory',
-      'annotations', 'snippets', 'dailyGoals', 'revisionComments',
-      'characterRelationships', 'storyElements', 'graphEdges',
-      'groupEdges', 'nodePositions', 'graphGroups', 'snapshots',
-      'volumes', 'volumeEntities'
+      'projects',
+      'manuscripts',
+      'characters',
+      'locations',
+      'plotThreads',
+      'chapters',
+      'scenes',
+      'sparkHistory',
+      'annotations',
+      'snippets',
+      'dailyGoals',
+      'revisionComments',
+      'characterRelationships',
+      'storyElements',
+      'graphEdges',
+      'groupEdges',
+      'nodePositions',
+      'graphGroups',
+      'snapshots',
+      'volumes',
+      'volumeEntities'
     ]
-    
+
     const results = {}
     for (const store of stores) {
       try {
@@ -27,7 +42,7 @@ export async function checkDatabaseHealth() {
         results[store] = { status: 'error', error: err.message }
       }
     }
-    
+
     return { healthy: true, stores: results }
   } catch (err) {
     return { healthy: false, error: err.message }
@@ -39,13 +54,29 @@ export async function checkDatabaseHealth() {
  */
 export async function clearAllData() {
   const stores = [
-    'volumeEntities', 'graphEdges', 'groupEdges', 'nodePositions',
-    'graphGroups', 'snapshots', 'revisions', 'annotations',
-    'snippets', 'dailyGoals', 'characterRelationships', 'storyElements',
-    'scenes', 'chapters', 'plotThreads', 'locations', 'characters',
-    'manuscripts', 'projects', 'sparkHistory', 'volumes'
+    'volumeEntities',
+    'graphEdges',
+    'groupEdges',
+    'nodePositions',
+    'graphGroups',
+    'snapshots',
+    'revisions',
+    'annotations',
+    'snippets',
+    'dailyGoals',
+    'characterRelationships',
+    'storyElements',
+    'scenes',
+    'chapters',
+    'plotThreads',
+    'locations',
+    'characters',
+    'manuscripts',
+    'projects',
+    'sparkHistory',
+    'volumes'
   ]
-  
+
   for (const store of stores) {
     try {
       await db[store].clear()
@@ -61,14 +92,29 @@ export async function clearAllData() {
 export async function exportAllData() {
   const data = {}
   const stores = [
-    'projects', 'manuscripts', 'characters', 'locations',
-    'plotThreads', 'chapters', 'scenes', 'sparkHistory',
-    'annotations', 'snippets', 'dailyGoals', 'revisionComments',
-    'characterRelationships', 'storyElements', 'graphEdges',
-    'groupEdges', 'nodePositions', 'graphGroups', 'snapshots',
-    'volumes', 'volumeEntities'
+    'projects',
+    'manuscripts',
+    'characters',
+    'locations',
+    'plotThreads',
+    'chapters',
+    'scenes',
+    'sparkHistory',
+    'annotations',
+    'snippets',
+    'dailyGoals',
+    'revisionComments',
+    'characterRelationships',
+    'storyElements',
+    'graphEdges',
+    'groupEdges',
+    'nodePositions',
+    'graphGroups',
+    'snapshots',
+    'volumes',
+    'volumeEntities'
   ]
-  
+
   for (const store of stores) {
     try {
       data[store] = await db[store].toArray()
@@ -77,7 +123,7 @@ export async function exportAllData() {
       data[store] = []
     }
   }
-  
+
   return {
     exportedAt: new Date().toISOString(),
     version: 'recovery-backup',
@@ -91,16 +137,31 @@ export async function exportAllData() {
 export async function importData(backupData) {
   // Clear existing data first
   await clearAllData()
-  
+
   const stores = [
-    'projects', 'manuscripts', 'characters', 'locations',
-    'plotThreads', 'chapters', 'scenes', 'sparkHistory',
-    'annotations', 'snippets', 'dailyGoals', 'revisionComments',
-    'characterRelationships', 'storyElements', 'graphEdges',
-    'groupEdges', 'nodePositions', 'graphGroups', 'snapshots',
-    'volumes', 'volumeEntities'
+    'projects',
+    'manuscripts',
+    'characters',
+    'locations',
+    'plotThreads',
+    'chapters',
+    'scenes',
+    'sparkHistory',
+    'annotations',
+    'snippets',
+    'dailyGoals',
+    'revisionComments',
+    'characterRelationships',
+    'storyElements',
+    'graphEdges',
+    'groupEdges',
+    'nodePositions',
+    'graphGroups',
+    'snapshots',
+    'volumes',
+    'volumeEntities'
   ]
-  
+
   for (const store of stores) {
     if (backupData[store] && backupData[store].length > 0) {
       try {
@@ -119,10 +180,10 @@ export async function importData(backupData) {
 export async function resetDatabaseVersion() {
   try {
     await db.close()
-    
+
     // This will delete all data - warn user first!
     const request = indexedDB.deleteDatabase('VersatileDB')
-    
+
     return new Promise((resolve, reject) => {
       request.onsuccess = () => {
         console.info('Database deleted successfully')
@@ -146,28 +207,43 @@ export async function resetDatabaseVersion() {
 export async function getDatabaseSize() {
   try {
     const stores = [
-      'projects', 'manuscripts', 'characters', 'locations',
-      'plotThreads', 'chapters', 'scenes', 'sparkHistory',
-      'annotations', 'snippets', 'dailyGoals', 'revisionComments',
-      'characterRelationships', 'storyElements', 'graphEdges',
-      'groupEdges', 'nodePositions', 'graphGroups', 'snapshots',
-      'volumes', 'volumeEntities'
+      'projects',
+      'manuscripts',
+      'characters',
+      'locations',
+      'plotThreads',
+      'chapters',
+      'scenes',
+      'sparkHistory',
+      'annotations',
+      'snippets',
+      'dailyGoals',
+      'revisionComments',
+      'characterRelationships',
+      'storyElements',
+      'graphEdges',
+      'groupEdges',
+      'nodePositions',
+      'graphGroups',
+      'snapshots',
+      'volumes',
+      'volumeEntities'
     ]
-    
+
     let totalSize = 0
     const counts = {}
-    
+
     for (const store of stores) {
       const count = await db[store].count()
       counts[store] = count
       // Rough estimate: average 500 bytes per record
       totalSize += count * 500
     }
-    
+
     return {
       sizeBytes: totalSize,
       sizeKB: Math.round(totalSize / 1024),
-      sizeMB: Math.round(totalSize / 1024 / 1024 * 100) / 100,
+      sizeMB: Math.round((totalSize / 1024 / 1024) * 100) / 100,
       counts
     }
   } catch (err) {

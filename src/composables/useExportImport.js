@@ -6,11 +6,11 @@ import { useNotifications } from './useNotifications'
 
 export function useExportImport() {
   const projectStore = useProjectStore()
-  
+
   const importStatus = ref('')
   const showImportModal = ref(false)
   const exportProgress = ref(0)
-  
+
   const { addToast } = useNotifications()
 
   function resetExportProgress() {
@@ -21,7 +21,7 @@ export function useExportImport() {
     if (!projectStore.currentProjectId) return
     resetExportProgress()
     exportProgress.value = 10
-     
+
     const data = await exportProject(projectStore.currentProjectId)
     exportProgress.value = 60
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -54,21 +54,32 @@ export function useExportImport() {
     input.onchange = async (e) => {
       const file = e.target.files[0]
       if (!file) return
-      
+
       try {
         const text = await file.text()
         const data = JSON.parse(text)
         importStatus.value = 'Importing...'
         showImportModal.value = true
-        
+
         const newProjectId = await importProject(data)
         await projectStore.loadProject(newProjectId)
-        
-        let sparkStore = null, polishStore = null, storyBibleStore = null
-        try { const m = await import('../stores/sparkStore'); sparkStore = m.useSparkStore() } catch {}
-        try { const m = await import('../stores/polishStore'); polishStore = m.usePolishStore() } catch {}
-        try { const m = await import('../stores/storyBibleStore'); storyBibleStore = m.useStoryBibleStore() } catch {}
-        
+
+        let sparkStore = null,
+          polishStore = null,
+          storyBibleStore = null
+        try {
+          const m = await import('../stores/sparkStore')
+          sparkStore = m.useSparkStore()
+        } catch {}
+        try {
+          const m = await import('../stores/polishStore')
+          polishStore = m.usePolishStore()
+        } catch {}
+        try {
+          const m = await import('../stores/storyBibleStore')
+          storyBibleStore = m.useStoryBibleStore()
+        } catch {}
+
         if (sparkStore) await sparkStore.loadHistory(newProjectId)
         if (polishStore) {
           await polishStore.loadAnnotations(newProjectId)
@@ -76,7 +87,7 @@ export function useExportImport() {
         }
         if (storyBibleStore) await storyBibleStore.loadAll(newProjectId)
         if (sparkStore) sparkStore.setProjectId(newProjectId)
-        
+
         importStatus.value = 'Import complete!'
         addToast('Project imported', 'success')
         setTimeout(() => {

@@ -12,9 +12,7 @@ export const DOC_TYPES = {
 
 export async function getStoryDocument(projectId, docType) {
   try {
-    return await db.storyDocuments
-      .where({ projectId, docType })
-      .first()
+    return await db.storyDocuments.where({ projectId, docType }).first()
   } catch (error) {
     console.error('Failed to get story document:', error)
     return null
@@ -23,10 +21,7 @@ export async function getStoryDocument(projectId, docType) {
 
 export async function getAllStoryDocuments(projectId) {
   try {
-    return await db.storyDocuments
-      .where('projectId')
-      .equals(projectId)
-      .toArray()
+    return await db.storyDocuments.where('projectId').equals(projectId).toArray()
   } catch (error) {
     console.error('Failed to get all story documents:', error)
     return []
@@ -35,9 +30,7 @@ export async function getAllStoryDocuments(projectId) {
 
 export async function upsertStoryDocument(projectId, docType, content) {
   try {
-    const existing = await db.storyDocuments
-      .where({ projectId, docType })
-      .first()
+    const existing = await db.storyDocuments.where({ projectId, docType }).first()
     if (existing) {
       await db.storyDocuments.update(existing.id, { content, updatedAt: Date.now() })
       return existing.id
@@ -51,9 +44,7 @@ export async function upsertStoryDocument(projectId, docType, content) {
 
 export async function deleteStoryDocument(projectId, docType) {
   try {
-    const existing = await db.storyDocuments
-      .where({ projectId, docType })
-      .first()
+    const existing = await db.storyDocuments.where({ projectId, docType }).first()
     if (existing) {
       await db.storyDocuments.delete(existing.id)
     }
@@ -74,7 +65,10 @@ export async function appendRejectedPattern(projectId, pattern) {
         patterns = JSON.parse(doc.content || '[]')
       } catch {}
       patterns.push(entry)
-      await db.storyDocuments.update(doc.id, { content: JSON.stringify(patterns), updatedAt: Date.now() })
+      await db.storyDocuments.update(doc.id, {
+        content: JSON.stringify(patterns),
+        updatedAt: Date.now()
+      })
       return doc.id
     }
     return await db.storyDocuments.add({

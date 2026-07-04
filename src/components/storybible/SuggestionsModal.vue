@@ -45,19 +45,27 @@ function selectNone() {
 
 function getRelationshipIcon(type) {
   switch (type) {
-    case 'appears_in': return 'map-pin'
-    case 'involved_in': return 'zap'
-    case 'located_at': return 'map-pin'
-    default: return 'link'
+    case 'appears_in':
+      return 'map-pin'
+    case 'involved_in':
+      return 'zap'
+    case 'located_at':
+      return 'map-pin'
+    default:
+      return 'link'
   }
 }
 
 function getTypeColor(type) {
   switch (type) {
-    case 'character': return 'var(--vers-entity-character)'
-    case 'location': return 'var(--vers-entity-location)'
-    case 'plotThread': return 'var(--vers-entity-plotThread)'
-    default: return 'var(--vers-default-fallback)'
+    case 'character':
+      return 'var(--vers-entity-character)'
+    case 'location':
+      return 'var(--vers-entity-location)'
+    case 'plotThread':
+      return 'var(--vers-entity-plotThread)'
+    default:
+      return 'var(--vers-default-fallback)'
   }
 }
 
@@ -85,7 +93,9 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
         class="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50"
         @click.self="emit('close')"
       >
-        <div class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div
+          class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+        >
           <div class="p-6 border-b border-border-subtle">
             <div class="flex items-center justify-between">
               <div>
@@ -114,7 +124,10 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
             </div>
           </div>
 
-          <div v-else-if="suggestions.length === 0" class="flex-1 flex items-center justify-center p-8">
+          <div
+            v-else-if="suggestions.length === 0"
+            class="flex-1 flex items-center justify-center p-8"
+          >
             <div class="text-center">
               <BaseIcon name="check-circle" :size="32" class="mx-auto text-success mb-4" />
               <p class="text-text-secondary">No new suggestions. Your network looks complete!</p>
@@ -124,10 +137,7 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
           <div v-else class="flex-1 overflow-y-auto p-4 space-y-3">
             <div class="flex items-center justify-between mb-2">
               <div class="flex gap-2">
-                <button
-                  class="text-xs text-accent hover:underline"
-                  @click="selectAll"
-                >
+                <button class="text-xs text-accent hover:underline" @click="selectAll">
                   Select all
                 </button>
                 <button
@@ -137,9 +147,7 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
                   Clear
                 </button>
               </div>
-              <span class="text-xs text-text-hint">
-                {{ selectedSuggestions.size }} selected
-              </span>
+              <span class="text-xs text-text-hint"> {{ selectedSuggestions.size }} selected </span>
             </div>
 
             <div
@@ -157,9 +165,7 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
                 <div
                   :class="[
                     'w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors',
-                    selectedSuggestions.has(index)
-                      ? 'border-accent bg-accent'
-                      : 'border-text-hint'
+                    selectedSuggestions.has(index) ? 'border-accent bg-accent' : 'border-text-hint'
                   ]"
                 >
                   <BaseIcon
@@ -174,16 +180,28 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
                   <div class="flex items-center gap-2 flex-wrap">
                     <span
                       class="px-2 py-0.5 rounded text-2xs font-medium"
-                      :style="{ backgroundColor: getTypeColor(suggestion.sourceType) + '30', color: getTypeColor(suggestion.sourceType) }"
+                      :style="{
+                        backgroundColor: getTypeColor(suggestion.sourceType) + '30',
+                        color: getTypeColor(suggestion.sourceType)
+                      }"
                     >
                       {{ suggestion.sourceLabel }}
                     </span>
-                    <BaseIcon :name="getRelationshipIcon(suggestion.relationshipType)" :size="12" class="text-text-hint" />
-                    <span class="text-xs text-text-hint">{{ suggestion.relationshipType.replace('_', ' ') }}</span>
+                    <BaseIcon
+                      :name="getRelationshipIcon(suggestion.relationshipType)"
+                      :size="12"
+                      class="text-text-hint"
+                    />
+                    <span class="text-xs text-text-hint">{{
+                      suggestion.relationshipType.replace('_', ' ')
+                    }}</span>
                     <BaseIcon name="arrow-right" :size="12" class="text-text-hint" />
                     <span
                       class="px-2 py-0.5 rounded text-2xs font-medium"
-                      :style="{ backgroundColor: getTypeColor(suggestion.targetType) + '30', color: getTypeColor(suggestion.targetType) }"
+                      :style="{
+                        backgroundColor: getTypeColor(suggestion.targetType) + '30',
+                        color: getTypeColor(suggestion.targetType)
+                      }"
                     >
                       {{ suggestion.targetLabel }}
                     </span>
@@ -195,7 +213,10 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
 
                   <div class="flex items-center gap-2 mt-2">
                     <span
-                      :class="['px-2 py-0.5 rounded text-2xs', getConfidenceClass(suggestion.confidence)]"
+                      :class="[
+                        'px-2 py-0.5 rounded text-2xs',
+                        getConfidenceClass(suggestion.confidence)
+                      ]"
                     >
                       {{ Math.round(suggestion.confidence * 100) }}% match
                     </span>

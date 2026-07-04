@@ -49,7 +49,7 @@ function onPortraitUpdated() {
 
 <template>
   <div class="bg-bg-tertiary border border-border-subtle rounded-lg overflow-hidden">
-    <div 
+    <div
       class="flex items-center justify-between p-3 cursor-pointer hover:bg-surface-hover"
       @click="expanded = !expanded"
     >
@@ -70,18 +70,28 @@ function onPortraitUpdated() {
             v-for="volId in assignedVolumes.slice(0, 3)"
             :key="volId"
             class="w-4 h-4 rounded text-2xs flex items-center justify-center text-white font-bold"
-            :style="{ backgroundColor: volumeStore.volumes.find(v => v.id === volId)?.color || 'var(--vers-default-fallback)' }"
-            :title="volumeStore.volumes.find(v => v.id === volId)?.title"
+            :style="{
+              backgroundColor:
+                volumeStore.volumes.find((v) => v.id === volId)?.color ||
+                'var(--vers-default-fallback)'
+            }"
+            :title="volumeStore.volumes.find((v) => v.id === volId)?.title"
           >
-            {{ volumeStore.volumes.find(v => v.id === volId)?.title?.charAt(0) || '?' }}
+            {{ volumeStore.volumes.find((v) => v.id === volId)?.title?.charAt(0) || '?' }}
           </div>
-          <div v-if="assignedVolumes.length > 3" class="w-4 h-4 rounded text-3xs flex items-center justify-center bg-bg-secondary text-text-hint">
+          <div
+            v-if="assignedVolumes.length > 3"
+            class="w-4 h-4 rounded text-3xs flex items-center justify-center bg-bg-secondary text-text-hint"
+          >
             +{{ assignedVolumes.length - 3 }}
           </div>
         </div>
       </div>
       <div class="flex items-center gap-1">
-        <span v-if="entityType === 'character' && entity.role" class="text-xs px-2 py-0.5 bg-bg-secondary text-text-secondary rounded">
+        <span
+          v-if="entityType === 'character' && entity.role"
+          class="text-xs px-2 py-0.5 bg-bg-secondary text-text-secondary rounded"
+        >
           {{ entity.role }}
         </span>
         <button
@@ -93,8 +103,8 @@ function onPortraitUpdated() {
         </button>
       </div>
     </div>
-    
-    <div v-if="showVolumeAssignment" class="absolute z-50" style="min-width: 280px;">
+
+    <div v-if="showVolumeAssignment" class="absolute z-50" style="min-width: 280px">
       <VolumeAssignmentPanel
         :entity-type="entityType"
         :entity-id="entity.id"
@@ -103,7 +113,7 @@ function onPortraitUpdated() {
         @close="showVolumeAssignment = false"
       />
     </div>
-    
+
     <div v-if="expanded" class="p-3 border-t border-border-subtle space-y-3">
       <div v-if="entity.notes" class="text-sm text-text-secondary">
         {{ entity.notes }}
@@ -124,10 +134,7 @@ function onPortraitUpdated() {
         @updated="onPortraitUpdated"
       />
       <div class="flex gap-2">
-        <button
-          class="text-xs text-red-400 hover:text-red-300"
-          @click="$emit('delete', entity.id)"
-        >
+        <button class="text-xs text-red-400 hover:text-red-300" @click="$emit('delete', entity.id)">
           Delete
         </button>
       </div>

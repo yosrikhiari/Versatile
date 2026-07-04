@@ -19,18 +19,41 @@ const emit = defineEmits(['close', 'create', 'update', 'generate', 'reject'])
 
 const isGenerating = ref(false)
 const error = ref('')
-const character = ref({ name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '', traits: [] })
+const character = ref({
+  name: '',
+  role: '',
+  goal: '',
+  voice: '',
+  notes: '',
+  sampleDialogue: '',
+  traits: []
+})
 
-watch(() => props.show, (val) => {
-  if (val) {
-    error.value = ''
-    if (props.mode === 'enhance' && props.existingCharacter) {
-      character.value = { ...props.existingCharacter, traits: props.existingCharacter.traits || [], sampleDialogue: props.existingCharacter.sampleDialogue || '' }
-    } else {
-      character.value = { name: '', role: '', goal: '', voice: '', notes: '', sampleDialogue: '', traits: [] }
+watch(
+  () => props.show,
+  (val) => {
+    if (val) {
+      error.value = ''
+      if (props.mode === 'enhance' && props.existingCharacter) {
+        character.value = {
+          ...props.existingCharacter,
+          traits: props.existingCharacter.traits || [],
+          sampleDialogue: props.existingCharacter.sampleDialogue || ''
+        }
+      } else {
+        character.value = {
+          name: '',
+          role: '',
+          goal: '',
+          voice: '',
+          notes: '',
+          sampleDialogue: '',
+          traits: []
+        }
+      }
     }
   }
-})
+)
 
 function setGenerated(data) {
   character.value = {
@@ -106,14 +129,20 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
         class="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50"
         @click.self="handleClose"
       >
-        <div class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+        <div
+          class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col"
+        >
           <div class="p-5 border-b border-border-subtle flex items-center justify-between">
             <div>
               <h2 class="text-lg font-semibold text-text-primary">
                 {{ mode === 'enhance' ? 'Enhance Character' : 'Generate Character' }}
               </h2>
               <p class="text-xs text-text-hint mt-1">
-                {{ mode === 'enhance' ? 'AI will fill in missing details' : 'AI creates a character from your story context' }}
+                {{
+                  mode === 'enhance'
+                    ? 'AI will fill in missing details'
+                    : 'AI creates a character from your story context'
+                }}
               </p>
             </div>
             <button
@@ -129,7 +158,9 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
             <div class="text-center">
               <BaseIcon name="loader-2" :size="32" class="mx-auto text-accent animate-spin mb-4" />
               <p class="text-text-secondary">Generating character...</p>
-              <p class="text-xs text-text-hint mt-2">Using your manuscript and story elements as context</p>
+              <p class="text-xs text-text-hint mt-2">
+                Using your manuscript and story elements as context
+              </p>
             </div>
           </div>
 
@@ -148,7 +179,9 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
 
           <div v-else class="flex-1 overflow-y-auto p-5 space-y-4">
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block">Name</label>
+              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+                >Name</label
+              >
               <input
                 v-model="character.name"
                 placeholder="Character name"
@@ -156,7 +189,9 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block">Role</label>
+              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+                >Role</label
+              >
               <input
                 v-model="character.role"
                 placeholder="e.g. Protagonist, Antagonist, Mentor"
@@ -164,7 +199,9 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block">Goal</label>
+              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+                >Goal</label
+              >
               <input
                 v-model="character.goal"
                 placeholder="What does this character want?"
@@ -172,7 +209,9 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block">Voice</label>
+              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+                >Voice</label
+              >
               <input
                 v-model="character.voice"
                 placeholder="How do they speak?"
@@ -180,7 +219,9 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block">Notes</label>
+              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+                >Notes</label
+              >
               <textarea
                 v-model="character.notes"
                 placeholder="Backstory, personality, quirks..."
@@ -189,16 +230,20 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block">Sample Dialogue</label>
+              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+                >Sample Dialogue</label
+              >
               <textarea
                 v-model="character.sampleDialogue"
-                placeholder="A single line this character would say — e.g. &quot;Get out of my sight.&quot;"
+                placeholder='A single line this character would say — e.g. "Get out of my sight."'
                 rows="2"
                 class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent resize-none"
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block">Traits</label>
+              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+                >Traits</label
+              >
               <TagInput v-model="character.traits" placeholder="Add a trait, press Enter..." />
             </div>
           </div>

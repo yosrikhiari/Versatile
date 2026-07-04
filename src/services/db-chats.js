@@ -61,10 +61,10 @@ export async function deleteChatSession(id) {
 export async function deleteChatSessionsByCharacter(characterId) {
   try {
     const sessions = await db.chatSessions
-      .filter(s => (s.characterIds || []).includes(characterId))
+      .filter((s) => (s.characterIds || []).includes(characterId))
       .toArray()
     if (sessions.length > 0) {
-      await db.chatSessions.bulkDelete(sessions.map(s => s.id))
+      await db.chatSessions.bulkDelete(sessions.map((s) => s.id))
     }
     return sessions.length
   } catch (error) {
@@ -77,7 +77,7 @@ export async function deleteChatSessionsByProject(projectId) {
   try {
     const sessions = await db.chatSessions.where('projectId').equals(projectId).toArray()
     if (sessions.length > 0) {
-      await db.chatSessions.bulkDelete(sessions.map(s => s.id))
+      await db.chatSessions.bulkDelete(sessions.map((s) => s.id))
     }
     return sessions.length
   } catch (error) {

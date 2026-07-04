@@ -36,7 +36,7 @@ export async function clearGenRun(projectId) {
   if (!projectId) return
   try {
     const rows = await db.genRuns.where('projectId').equals(projectId).toArray()
-    if (rows.length) await db.genRuns.bulkDelete(rows.map(r => r.id))
+    if (rows.length) await db.genRuns.bulkDelete(rows.map((r) => r.id))
   } catch (error) {
     console.warn('Failed to clear generation checkpoint:', error)
   }

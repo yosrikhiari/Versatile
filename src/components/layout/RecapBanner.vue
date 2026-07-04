@@ -16,11 +16,11 @@ function formatDate(dateStr) {
   const now = new Date()
   const diff = now - date
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
+
   if (days === 0) return 'today'
   if (days === 1) return 'yesterday'
   if (days < 7) return `${days} days ago`
-  
+
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
@@ -42,11 +42,11 @@ onMounted(() => {
   }
 
   showRecap.value = !!hasNewRecap
-  
+
   dismissTimeout = setTimeout(() => {
     handleDismiss()
   }, 5000)
-  
+
   keypressHandler = () => {
     handleDismiss()
   }
@@ -62,7 +62,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div 
+  <div
     v-if="visible"
     class="glass border-b border-border-subtle/30 px-4 py-2 flex items-center justify-between animate-fade-in"
   >
@@ -72,11 +72,15 @@ onUnmounted(() => {
         {{ projectStore.lastSessionRecap }}
       </span>
       <span v-else-if="projectStore.lastSessionDate && projectStore.lastSessionWords > 0">
-        Last session: <span class="text-text-muted">{{ formatDate(projectStore.lastSessionDate) }}</span> — 
-        you wrote <span class="text-accent font-medium">{{ projectStore.lastSessionWords.toLocaleString() }} words</span>
+        Last session:
+        <span class="text-text-muted">{{ formatDate(projectStore.lastSessionDate) }}</span> — you
+        wrote
+        <span class="text-accent font-medium"
+          >{{ projectStore.lastSessionWords.toLocaleString() }} words</span
+        >
       </span>
     </div>
-    <button 
+    <button
       class="text-text-hint hover:text-text-secondary transition-colors"
       @click="handleDismiss"
     >
@@ -87,8 +91,14 @@ onUnmounted(() => {
 
 <style scoped>
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;

@@ -4,7 +4,7 @@ export async function getSnapshots(projectId, chapterId = null) {
   let query = db.snapshots.where('projectId').equals(projectId)
   let results = await query.toArray()
   if (chapterId !== null) {
-    results = results.filter(s => s.chapterId === chapterId)
+    results = results.filter((s) => s.chapterId === chapterId)
   }
   return results.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
 }
@@ -31,7 +31,7 @@ export async function getSceneSnapshots(projectId, chapterId) {
   return db.snapshots
     .where('projectId')
     .equals(projectId)
-    .filter(s => s.chapterId === chapterId)
+    .filter((s) => s.chapterId === chapterId)
     .toArray()
-    .then(arr => arr.sort((a, b) => b.timestamp.localeCompare(a.timestamp)))
+    .then((arr) => arr.sort((a, b) => b.timestamp.localeCompare(a.timestamp)))
 }

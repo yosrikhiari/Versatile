@@ -90,80 +90,93 @@
  * @returns {{valid: boolean, errors: string[]}}
  */
 export const validateVoiceProfile = (profile) => {
-  const errors = [];
+  const errors = []
 
   if (!profile) {
-    return { valid: false, errors: ['Profile is null or undefined'] };
+    return { valid: false, errors: ['Profile is null or undefined'] }
   }
 
   // Check top-level structure
-  if (!profile.vocabulary) errors.push('Missing vocabulary metrics');
-  if (!profile.sentenceStructure) errors.push('Missing sentenceStructure metrics');
-  if (!profile.punctuation) errors.push('Missing punctuation metrics');
-  if (!profile.pacing) errors.push('Missing pacing metrics');
-  if (!profile.metadata) errors.push('Missing metadata metrics');
+  if (!profile.vocabulary) errors.push('Missing vocabulary metrics')
+  if (!profile.sentenceStructure) errors.push('Missing sentenceStructure metrics')
+  if (!profile.punctuation) errors.push('Missing punctuation metrics')
+  if (!profile.pacing) errors.push('Missing pacing metrics')
+  if (!profile.metadata) errors.push('Missing metadata metrics')
 
   // Validate vocabulary
   if (profile.vocabulary) {
     if (typeof profile.vocabulary.totalWords !== 'number')
-      errors.push('vocabulary.totalWords must be number');
+      errors.push('vocabulary.totalWords must be number')
     if (typeof profile.vocabulary.uniqueWords !== 'number')
-      errors.push('vocabulary.uniqueWords must be number');
+      errors.push('vocabulary.uniqueWords must be number')
     if (!Array.isArray(profile.vocabulary.mostCommonWords))
-      errors.push('vocabulary.mostCommonWords must be array');
+      errors.push('vocabulary.mostCommonWords must be array')
     if (typeof profile.vocabulary.wordFrequency !== 'object')
-      errors.push('vocabulary.wordFrequency must be object');
+      errors.push('vocabulary.wordFrequency must be object')
   }
 
   // Validate sentence structure
   if (profile.sentenceStructure) {
     if (!Array.isArray(profile.sentenceStructure.sentences))
-      errors.push('sentenceStructure.sentences must be array');
+      errors.push('sentenceStructure.sentences must be array')
     if (!Array.isArray(profile.sentenceStructure.lengths))
-      errors.push('sentenceStructure.lengths must be array');
+      errors.push('sentenceStructure.lengths must be array')
     if (typeof profile.sentenceStructure.averageSentenceLength !== 'number')
-      errors.push('sentenceStructure.averageSentenceLength must be number');
+      errors.push('sentenceStructure.averageSentenceLength must be number')
     if (profile.sentenceStructure.sentenceLengthDistribution.length !== 4)
-      errors.push('sentenceStructure.sentenceLengthDistribution must have 4 buckets');
+      errors.push('sentenceStructure.sentenceLengthDistribution must have 4 buckets')
     if (typeof profile.sentenceStructure.hasDialogue !== 'boolean')
-      errors.push('sentenceStructure.hasDialogue must be boolean');
+      errors.push('sentenceStructure.hasDialogue must be boolean')
   }
 
   // Validate punctuation
   if (profile.punctuation) {
-    const punctKeys = ['ellipsisFrequency', 'dashFrequency', 'exclamationFrequency', 'semicolonFrequency', 'commaFrequency'];
-    punctKeys.forEach(key => {
-      if (typeof profile.punctuation[key] !== 'string' || isNaN(parseFloat(profile.punctuation[key]))) {
-        errors.push(`punctuation.${key} must be numeric string`);
+    const punctKeys = [
+      'ellipsisFrequency',
+      'dashFrequency',
+      'exclamationFrequency',
+      'semicolonFrequency',
+      'commaFrequency'
+    ]
+    punctKeys.forEach((key) => {
+      if (
+        typeof profile.punctuation[key] !== 'string' ||
+        isNaN(parseFloat(profile.punctuation[key]))
+      ) {
+        errors.push(`punctuation.${key} must be numeric string`)
       }
-    });
+    })
   }
 
   // Validate pacing
   if (profile.pacing) {
     if (typeof profile.pacing.averageParagraphLength !== 'number')
-      errors.push('pacing.averageParagraphLength must be number');
+      errors.push('pacing.averageParagraphLength must be number')
     if (profile.pacing.paragraphLengthDistribution.length !== 4)
-      errors.push('pacing.paragraphLengthDistribution must have 4 buckets');
+      errors.push('pacing.paragraphLengthDistribution must have 4 buckets')
   }
 
   // Validate metadata
   if (profile.metadata) {
     if (typeof profile.metadata.totalCharacters !== 'number')
-      errors.push('metadata.totalCharacters must be number');
+      errors.push('metadata.totalCharacters must be number')
     if (typeof profile.metadata.totalWords !== 'number')
-      errors.push('metadata.totalWords must be number');
+      errors.push('metadata.totalWords must be number')
     if (typeof profile.metadata.totalSentences !== 'number')
-      errors.push('metadata.totalSentences must be number');
-    if (typeof profile.metadata.confidence !== 'number' || profile.metadata.confidence < 0 || profile.metadata.confidence > 1)
-      errors.push('metadata.confidence must be number between 0-1');
+      errors.push('metadata.totalSentences must be number')
+    if (
+      typeof profile.metadata.confidence !== 'number' ||
+      profile.metadata.confidence < 0 ||
+      profile.metadata.confidence > 1
+    )
+      errors.push('metadata.confidence must be number between 0-1')
   }
 
   return {
     valid: errors.length === 0,
     errors
-  };
-};
+  }
+}
 
 /**
  * Creates an empty/template voice profile
@@ -205,7 +218,7 @@ export const createEmptyVoiceProfile = () => ({
     consistency: '0',
     confidence: 0
   }
-});
+})
 
 /**
  * Creates an empty voice profile state for Pinia store
@@ -217,10 +230,10 @@ export const createEmptyVoiceProfileState = () => ({
   lastUpdated: null,
   locked: false,
   supplementaryMergeCount: 0
-});
+})
 
 export default {
   validateVoiceProfile,
   createEmptyVoiceProfile,
   createEmptyVoiceProfileState
-};
+}

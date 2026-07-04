@@ -25,7 +25,7 @@ async function ensureModelAvailable(model) {
       clearTimeout(timeout)
       if (response.ok) {
         const data = await response.json()
-        for (const m of (data.models || [])) {
+        for (const m of data.models || []) {
           modelCache.add(m.name)
         }
         modelCacheLoaded = true
@@ -34,7 +34,9 @@ async function ensureModelAvailable(model) {
   }
 
   if (modelCacheLoaded && !modelCache.has(model)) {
-    throw new Error(`Model "${model}" not found in Ollama. Pull it first with: ollama pull ${model}`)
+    throw new Error(
+      `Model "${model}" not found in Ollama. Pull it first with: ollama pull ${model}`
+    )
   }
 }
 
@@ -53,13 +55,16 @@ async function readWithTimeout(reader, timeoutMs) {
     const timer = setTimeout(() => {
       reject(new DOMException(`Stream read timed out after ${timeoutMs}ms`, 'AbortError'))
     }, timeoutMs)
-    reader.read().then(result => {
-      clearTimeout(timer)
-      resolve(result)
-    }, err => {
-      clearTimeout(timer)
-      reject(err)
-    })
+    reader.read().then(
+      (result) => {
+        clearTimeout(timer)
+        resolve(result)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
   })
 }
 
@@ -72,10 +77,20 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     await ensureModelAvailable(model)
 
     const controller = new AbortController()
-    timeout = setTimeout(() => controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
-    function onAbort() { controller.abort(externalSignal.reason) }
+    timeout = setTimeout(
+      () =>
+        controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')),
+      timeoutMs
+    )
+    function onAbort() {
+      controller.abort(externalSignal.reason)
+    }
     if (externalSignal) {
-      if (externalSignal.aborted) { controller.abort(externalSignal.reason) } else { externalSignal.addEventListener('abort', onAbort, { once: true }) }
+      if (externalSignal.aborted) {
+        controller.abort(externalSignal.reason)
+      } else {
+        externalSignal.addEventListener('abort', onAbort, { once: true })
+      }
     }
 
     const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
@@ -125,10 +140,20 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     await ensureModelAvailable(model)
 
     const controller = new AbortController()
-    timeout = setTimeout(() => controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')), timeoutMs)
-    function onAbort() { controller.abort(externalSignal.reason) }
+    timeout = setTimeout(
+      () =>
+        controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')),
+      timeoutMs
+    )
+    function onAbort() {
+      controller.abort(externalSignal.reason)
+    }
     if (externalSignal) {
-      if (externalSignal.aborted) { controller.abort(externalSignal.reason) } else { externalSignal.addEventListener('abort', onAbort, { once: true }) }
+      if (externalSignal.aborted) {
+        controller.abort(externalSignal.reason)
+      } else {
+        externalSignal.addEventListener('abort', onAbort, { once: true })
+      }
     }
 
     const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
@@ -163,10 +188,14 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     const CHUNK_TIMEOUT = options.chunkTimeout || 60000
 
     function onStreamAbort() {
-      try { reader.cancel() } catch {}
+      try {
+        reader.cancel()
+      } catch {}
     }
     if (externalSignal) {
-      if (externalSignal.aborted) { throw new DOMException('Aborted', 'AbortError') }
+      if (externalSignal.aborted) {
+        throw new DOMException('Aborted', 'AbortError')
+      }
       externalSignal.addEventListener('abort', onStreamAbort, { once: true })
     }
 
@@ -176,7 +205,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
         if (done) break
 
         const chunk = decoder.decode(value)
-        const lines = chunk.split('\n').filter(line => line.trim())
+        const lines = chunk.split('\n').filter((line) => line.trim())
 
         for (const line of lines) {
           try {
@@ -208,7 +237,7 @@ export async function listModels() {
     const response = await fetch(`${getOllamaEndpoint()}/api/tags`)
     if (response.ok) {
       const data = await response.json()
-      return data.models?.map(m => m.name) || []
+      return data.models?.map((m) => m.name) || []
     }
     return []
   } catch {

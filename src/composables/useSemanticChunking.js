@@ -1,1 +1,6 @@
-export { computeSemanticChunks, splitSentences, computeChunksForSentences, mergeSmallChunks } from '../services/documentChunker'
+export {
+  computeSemanticChunks,
+  splitSentences,
+  computeChunksForSentences,
+  mergeSmallChunks
+} from '../services/documentChunker'

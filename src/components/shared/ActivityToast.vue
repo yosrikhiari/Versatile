@@ -23,7 +23,7 @@ const badgeCount = computed(() => {
 
 function getStepText(task) {
   if (!task) return ''
-  const running = task.phases.find(p => p.status === 'running')
+  const running = task.phases.find((p) => p.status === 'running')
   if (running) return running.name
   const last = task.phases[task.phases.length - 1]
   if (last && last.status === 'done') return `${last.name} done`
@@ -33,12 +33,18 @@ function getStepText(task) {
 function getTaskIcon(task) {
   if (!task) return 'circle'
   switch (task.type) {
-    case 'generation': return 'bot'
-    case 'bootstrap': return 'database'
-    case 'critic': return 'scroll-text'
-    case 'revisor': return 'pen-tool'
-    case 'spark': return 'sparkles'
-    default: return 'activity'
+    case 'generation':
+      return 'bot'
+    case 'bootstrap':
+      return 'database'
+    case 'critic':
+      return 'scroll-text'
+    case 'revisor':
+      return 'pen-tool'
+    case 'spark':
+      return 'sparkles'
+    default:
+      return 'activity'
   }
 }
 
@@ -66,30 +72,34 @@ onUnmounted(() => {
 
 <template>
   <Transition name="toast-slide">
-    <div
-      v-if="log.toastsVisible.value && currentToastTask"
-      class="fixed bottom-24 right-6 z-[100]"
-    >
+    <div v-if="log.toastsVisible.value && currentToastTask" class="fixed bottom-24 right-6 z-[100]">
       <button
         class="flex items-center gap-3 px-4 py-2.5 rounded-xl shadow-lg border border-border-subtle bg-bg-tertiary/95 backdrop-blur-sm text-sm font-ui text-text-primary hover:bg-bg-tertiary transition-all cursor-pointer group relative"
         @click="openDrawer"
       >
         <!-- Spinner for running tasks -->
         <span class="relative flex-shrink-0">
-          <BaseIcon :name="getTaskIcon(currentToastTask)" :size="16" class="text-accent animate-pulse" />
+          <BaseIcon
+            :name="getTaskIcon(currentToastTask)"
+            :size="16"
+            class="text-accent animate-pulse"
+          />
         </span>
 
         <!-- Task info -->
         <div class="flex flex-col items-start text-left min-w-0">
           <span class="text-xs text-text-secondary leading-tight">{{ currentToastTask.name }}</span>
-          <span class="text-sm text-text-primary truncate max-w-[200px] leading-tight">{{ getStepText(currentToastTask) }}</span>
+          <span class="text-sm text-text-primary truncate max-w-[200px] leading-tight">{{
+            getStepText(currentToastTask)
+          }}</span>
         </div>
 
         <!-- Badge for multi-tasks -->
         <span
           v-if="badgeCount > 0"
           class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-2xs font-bold"
-        >{{ badgeCount }}</span>
+          >{{ badgeCount }}</span
+        >
 
         <!-- Dismiss -->
         <button

@@ -37,11 +37,11 @@ const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const networkSuggestions = useNetworkSuggestions()
 
-const {   
-  onNodeDragStop, 
+const {
+  onNodeDragStop,
   onNodeDrag,
   onViewportChange,
-  fitView, 
+  fitView,
   screenToFlowCoordinate,
   onPaneClick,
   getViewport
@@ -97,8 +97,16 @@ const nodeParents = ref({}) // { 'char-1': 'group-123', 'char-2': null }
 
 /* Palette kept as hex for opacity suffix support (e.g. data.color + '60') */
 const groupColors = [
-  '#f48fb1', '#ef5350', '#ce93d8', '#f06292', '#ba68c8',
-  '#ff7043', '#90a4ae', '#4fc3f7', '#80cbc4', '#aed581'
+  '#f48fb1',
+  '#ef5350',
+  '#ce93d8',
+  '#f06292',
+  '#ba68c8',
+  '#ff7043',
+  '#90a4ae',
+  '#4fc3f7',
+  '#80cbc4',
+  '#aed581'
 ]
 
 function createGroup(groupData) {
@@ -117,7 +125,7 @@ function createGroup(groupData) {
 
 function deleteGroup(groupId) {
   const nodesToRemove = []
-  
+
   for (const nodeId in nodeParents.value) {
     if (nodeParents.value[nodeId] === groupId) {
       const realBaseId = getRealEntityId(nodeId)
@@ -129,27 +137,27 @@ function deleteGroup(groupId) {
       delete nodePositions.value[nodeId]
     }
   }
-  
+
   for (const baseId of nodesToRemove) {
     delete nodeInstances.value[baseId]
   }
-  
-  manualGroups.value = manualGroups.value.filter(g => g.id !== groupId)
-  
+
+  manualGroups.value = manualGroups.value.filter((g) => g.id !== groupId)
+
   if (projectStore.currentProjectId) {
     storyGraphStore.saveNodeInstances(projectStore.currentProjectId)
   }
 }
 
 function renameGroup(groupId, newName) {
-  const group = manualGroups.value.find(g => g.id === groupId)
+  const group = manualGroups.value.find((g) => g.id === groupId)
   if (group) {
     group.name = newName
   }
 }
 
 function updateGroupSize(groupId, width, height) {
-  const group = manualGroups.value.find(g => g.id === groupId)
+  const group = manualGroups.value.find((g) => g.id === groupId)
   if (group) {
     group.width = Math.max(100, width)
     group.height = Math.max(80, height)
@@ -157,7 +165,7 @@ function updateGroupSize(groupId, width, height) {
 }
 
 function cycleGroupColor(groupId) {
-  const group = manualGroups.value.find(g => g.id === groupId)
+  const group = manualGroups.value.find((g) => g.id === groupId)
   if (!group) return
   const currentIndex = groupColors.indexOf(group.color)
   group.color = groupColors[(currentIndex + 1) % groupColors.length]
@@ -200,15 +208,15 @@ let resizeStartHeight = 0
 function startGroupResize(event, groupId) {
   event.preventDefault()
   event.stopPropagation()
-  const group = manualGroups.value.find(g => g.id === groupId)
+  const group = manualGroups.value.find((g) => g.id === groupId)
   if (!group) return
-  
+
   resizingGroupId = groupId
   resizeStartX = event.clientX
   resizeStartY = event.clientY
   resizeStartWidth = group.width
   resizeStartHeight = group.height
-  
+
   document.addEventListener('mousemove', handleGroupResizeMove)
   document.addEventListener('mouseup', handleGroupResizeEnd)
 }
@@ -266,7 +274,7 @@ function getRealEntityId(nodeId) {
 
 function isDuplicateInScope(realBaseId, targetGroupId) {
   const instances = nodeInstances.value[realBaseId] || []
-  return instances.some(instanceId => {
+  return instances.some((instanceId) => {
     const scope = nodeParents.value[instanceId] ?? null
     return scope === (targetGroupId ?? null)
   })
@@ -288,7 +296,7 @@ const nodes = computed(() => {
 
   for (const group of manualGroups.value) {
     if (!group.id) continue
-    const nodeCount = Object.values(nodeParents.value).filter(p => p === group.id).length
+    const nodeCount = Object.values(nodeParents.value).filter((p) => p === group.id).length
     result.push({
       id: group.id,
       type: 'group',
@@ -306,31 +314,35 @@ const nodes = computed(() => {
   for (const [baseId, instanceIds] of Object.entries(storyGraphStore.nodeInstances)) {
     const type = entityTypeFromPrefix(baseId)
     const entityId = baseId.replace(/^(char|loc|thread)-/, '')
-    
+
     let entity
     if (type === 'character') {
-      entity = storyBibleStore.characters.find(c => String(c.id) === entityId)
+      entity = storyBibleStore.characters.find((c) => String(c.id) === entityId)
     } else if (type === 'location') {
-      entity = storyBibleStore.locations.find(l => String(l.id) === entityId)
+      entity = storyBibleStore.locations.find((l) => String(l.id) === entityId)
     } else {
-      entity = storyBibleStore.plotThreads.find(t => String(t.id) === entityId)
+      entity = storyBibleStore.plotThreads.find((t) => String(t.id) === entityId)
     }
     if (!entity) continue
 
     for (const instanceId of instanceIds) {
       const parentId = nodeParents.value[instanceId]
-      const pos = (nodePositions.value[instanceId]) || (storyGraphStore.nodePositions?.[instanceId]) || { x: 100 + (index % 5) * 250, y: 100 + Math.floor(index / 5) * 150 }
-      
+      const pos = nodePositions.value[instanceId] ||
+        storyGraphStore.nodePositions?.[instanceId] || {
+          x: 100 + (index % 5) * 250,
+          y: 100 + Math.floor(index / 5) * 150
+        }
+
       result.push({
         id: instanceId,
         type,
         position: pos,
         parentNode: parentId || undefined,
-        data: { 
-          label: entity.name || entity.title || 'Unnamed', 
-          sublabel: entity.role || entity.description?.slice(0, 30) || '', 
-          color: entityColors[type], 
-          iconName: entityIcons[type] 
+        data: {
+          label: entity.name || entity.title || 'Unnamed',
+          sublabel: entity.role || entity.description?.slice(0, 30) || '',
+          color: entityColors[type],
+          iconName: entityIcons[type]
         },
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
@@ -343,19 +355,22 @@ const nodes = computed(() => {
   return result
 })
 
-const existingNodeIds = computed(() => nodes.value.map(n => n.id))
+const existingNodeIds = computed(() => nodes.value.map((n) => n.id))
 
 function getEdgeCategory(edge) {
   const isCharChar = edge.sourceType === 'character' && edge.targetType === 'character'
   const isLocLoc = edge.sourceType === 'location' && edge.targetType === 'location'
   const isThreadThread = edge.sourceType === 'plotThread' && edge.targetType === 'plotThread'
-  const isCharLoc = (edge.sourceType === 'character' && edge.targetType === 'location') || 
-                    (edge.sourceType === 'location' && edge.targetType === 'character')
-  const isCharThread = (edge.sourceType === 'character' && edge.targetType === 'plotThread') || 
-                       (edge.sourceType === 'plotThread' && edge.targetType === 'character')
-  const isLocThread = (edge.sourceType === 'location' && edge.targetType === 'plotThread') ||
-                      (edge.sourceType === 'plotThread' && edge.targetType === 'location')
-  
+  const isCharLoc =
+    (edge.sourceType === 'character' && edge.targetType === 'location') ||
+    (edge.sourceType === 'location' && edge.targetType === 'character')
+  const isCharThread =
+    (edge.sourceType === 'character' && edge.targetType === 'plotThread') ||
+    (edge.sourceType === 'plotThread' && edge.targetType === 'character')
+  const isLocThread =
+    (edge.sourceType === 'location' && edge.targetType === 'plotThread') ||
+    (edge.sourceType === 'plotThread' && edge.targetType === 'location')
+
   if (isCharChar) return 'char'
   if (isLocLoc) return 'loc'
   if (isThreadThread) return 'thread'
@@ -388,34 +403,34 @@ function getEntityInstances(baseId) {
 const edges = computed(() => {
   const storeEdges = storyGraphStore.edges || []
 
-  const validNodeIds = new Set(nodes.value.map(n => n.id))
+  const validNodeIds = new Set(nodes.value.map((n) => n.id))
 
   const result = []
 
   for (const edge of storeEdges) {
     const sourceBaseId = getEntityBaseId(edge.sourceType, edge.sourceId)
     const targetBaseId = getEntityBaseId(edge.targetType, edge.targetId)
-    
+
     const sourceInstances = getEntityInstances(sourceBaseId)
     const targetInstances = getEntityInstances(targetBaseId)
-    
-    const validSourceInstances = sourceInstances.filter(id => validNodeIds.has(id))
-    const validTargetInstances = targetInstances.filter(id => validNodeIds.has(id))
-    
+
+    const validSourceInstances = sourceInstances.filter((id) => validNodeIds.has(id))
+    const validTargetInstances = targetInstances.filter((id) => validNodeIds.has(id))
+
     if (validSourceInstances.length === 0 || validTargetInstances.length === 0) {
       continue
     }
-    
+
     const isCharChar = edge.sourceType === 'character' && edge.targetType === 'character'
     const label = isCharChar ? edge.relationshipType : edge.relationshipType.replace(/_/g, ' ')
     const category = getEdgeCategory(edge)
-    
+
     for (const sourceId of validSourceInstances) {
       let targetIndex = 0
       for (const targetId of validTargetInstances) {
         const isLongRange = isLongRangeEdge(sourceId, targetId)
         const staggerOffset = (targetIndex - (validTargetInstances.length - 1) / 2) * 12
-        
+
         result.push({
           id: `edge-${edge.id}__${sourceId}-${targetId}`,
           source: sourceId,
@@ -442,11 +457,13 @@ const edges = computed(() => {
 
 const groupEdges = computed(() => {
   const storeGroupEdges = storyGraphStore.groupEdges || []
-  const validGroupIds = new Set(manualGroups.value.map(g => g.id))
+  const validGroupIds = new Set(manualGroups.value.map((g) => g.id))
 
   return storeGroupEdges
-    .filter(edge => validGroupIds.has(edge.sourceGroupId) && validGroupIds.has(edge.targetGroupId))
-    .map(edge => ({
+    .filter(
+      (edge) => validGroupIds.has(edge.sourceGroupId) && validGroupIds.has(edge.targetGroupId)
+    )
+    .map((edge) => ({
       id: `group-edge-${edge.id}`,
       source: edge.sourceGroupId,
       target: edge.targetGroupId,
@@ -470,46 +487,57 @@ const groupEdges = computed(() => {
 })
 
 function getEdgeOpacity(edgeId) {
-  const edge = edges.value.find(e => e.id === edgeId)
+  const edge = edges.value.find((e) => e.id === edgeId)
   if (!edge) return 0.35
-  
+
   if (hoveredEdgeId.value === edgeId) return 1.0
-  
+
   if (hoveredNodeId.value) {
     const isConnected = edge.source === hoveredNodeId.value || edge.target === hoveredNodeId.value
     return isConnected ? 1.0 : 0.05
   }
-  
+
   if (edge.data?.isGroupEdge) return 0.7
-  
+
   return 0.35
 }
 
-watch(() => nodes.value.length, () => {
-  setTimeout(() => fitView({ padding: 0.2 }), 100)
-})
+watch(
+  () => nodes.value.length,
+  () => {
+    setTimeout(() => fitView({ padding: 0.2 }), 100)
+  }
+)
 
 // forceRefreshKey removed — destroying/recreating VueFlow on every edge change killed perf
 
 let groupSaveTimer = null
-watch(() => manualGroups.value, (groups) => {
-  if (!projectStore.currentProjectId) return
-  clearTimeout(groupSaveTimer)
-  groupSaveTimer = setTimeout(() => {
-    storyGraphStore.saveGroups(projectStore.currentProjectId, toRaw(groups))
-  }, 500)
-}, { deep: true })
+watch(
+  () => manualGroups.value,
+  (groups) => {
+    if (!projectStore.currentProjectId) return
+    clearTimeout(groupSaveTimer)
+    groupSaveTimer = setTimeout(() => {
+      storyGraphStore.saveGroups(projectStore.currentProjectId, toRaw(groups))
+    }, 500)
+  },
+  { deep: true }
+)
 
-watch(() => nodeParents.value, (parents) => {
-  if (projectStore.currentProjectId) {
-    storyGraphStore.saveNodeParents(projectStore.currentProjectId, toRaw(parents))
-  }
-}, { deep: true })
+watch(
+  () => nodeParents.value,
+  (parents) => {
+    if (projectStore.currentProjectId) {
+      storyGraphStore.saveNodeParents(projectStore.currentProjectId, toRaw(parents))
+    }
+  },
+  { deep: true }
+)
 
 function getAbsoluteNodePosition(node) {
   const currentParentId = nodeParents.value[node.id]
   if (currentParentId) {
-    const parentGroup = manualGroups.value.find(g => g.id === currentParentId)
+    const parentGroup = manualGroups.value.find((g) => g.id === currentParentId)
     if (parentGroup) {
       return {
         x: parentGroup.x + node.position.x,
@@ -523,8 +551,8 @@ function getAbsoluteNodePosition(node) {
 onNodeDragStop(({ node }) => {
   dragOverGroupId.value = null
 
-  if (manualGroups.value.some(g => g.id === node.id)) {
-    const group = manualGroups.value.find(g => g.id === node.id)
+  if (manualGroups.value.some((g) => g.id === node.id)) {
+    const group = manualGroups.value.find((g) => g.id === node.id)
     if (group) {
       group.x = node.position.x
       group.y = node.position.y
@@ -554,11 +582,11 @@ onNodeDragStop(({ node }) => {
         storyGraphStore.saveNodePosition(projectStore.currentProjectId, node.id, relativePos)
         return
       }
-      
+
       if (isDuplicateInScope(realBaseId, group.id)) {
         const prevParent = nodeParents.value[node.id]
         if (prevParent) {
-          const prevGroup = manualGroups.value.find(g => g.id === prevParent)
+          const prevGroup = manualGroups.value.find((g) => g.id === prevParent)
           if (prevGroup) {
             const prevPos = nodePositions.value[node.id] || { x: 0, y: 0 }
             nodeParents.value[node.id] = prevParent
@@ -574,7 +602,7 @@ onNodeDragStop(({ node }) => {
         addToast('Already in this group')
         return
       }
-      
+
       const relativePos = {
         x: absPos.x - group.x,
         y: absPos.y - group.y
@@ -594,20 +622,20 @@ onNodeDragStop(({ node }) => {
 })
 
 onNodeDrag(({ node }) => {
-  if (manualGroups.value.some(g => g.id === node.id)) {
+  if (manualGroups.value.some((g) => g.id === node.id)) {
     dragOverGroupId.value = null
     return
   }
-  
+
   const absPos = getAbsoluteNodePosition(node)
-  
+
   for (const group of manualGroups.value) {
     const inside =
       absPos.x >= group.x &&
       absPos.x <= group.x + group.width &&
       absPos.y >= group.y &&
       absPos.y <= group.y + group.height
-    
+
     if (inside) {
       dragOverGroupId.value = group.id
       return
@@ -684,12 +712,14 @@ async function handleSidebarDeleteConnection(edge) {
 function isConnectionExists(sourceType, sourceId, targetType, targetId) {
   const node1Id = `${prefixFromType(sourceType)}-${sourceId}`
   const node2Id = `${prefixFromType(targetType)}-${targetId}`
-  
-  return storyGraphStore.edges.some(edge => {
+
+  return storyGraphStore.edges.some((edge) => {
     const edgeSourceId = `${prefixFromType(edge.sourceType)}-${edge.sourceId}`
     const edgeTargetId = `${prefixFromType(edge.targetType)}-${edge.targetId}`
-    return (edgeSourceId === node1Id && edgeTargetId === node2Id) ||
-           (edgeSourceId === node2Id && edgeTargetId === node1Id)
+    return (
+      (edgeSourceId === node1Id && edgeTargetId === node2Id) ||
+      (edgeSourceId === node2Id && edgeTargetId === node1Id)
+    )
   })
 }
 
@@ -698,17 +728,29 @@ async function handleSaveConnection(connectionData) {
     return
   }
 
-  if (!editingEdge.value && isConnectionExists(connectionData.sourceType, connectionData.sourceId, connectionData.targetType, connectionData.targetId)) {
+  if (
+    !editingEdge.value &&
+    isConnectionExists(
+      connectionData.sourceType,
+      connectionData.sourceId,
+      connectionData.targetType,
+      connectionData.targetId
+    )
+  ) {
     showConnectionModal.value = false
     return
   }
 
   if (editingEdge.value) {
-    await storyGraphStore.updateEdgeData(editingEdge.value.id, connectionData, projectStore.currentProjectId)
+    await storyGraphStore.updateEdgeData(
+      editingEdge.value.id,
+      connectionData,
+      projectStore.currentProjectId
+    )
   } else {
     await storyGraphStore.addEdgeData(projectStore.currentProjectId, connectionData)
   }
-  
+
   showConnectionModal.value = false
   nodeToConnect.value = null
   editingEdge.value = null
@@ -720,7 +762,7 @@ async function handleSaveGroupEdge(groupEdgeData) {
   }
 
   await storyGraphStore.addGroupEdgeData(projectStore.currentProjectId, groupEdgeData)
-  
+
   showConnectionModal.value = false
   nodeToConnect.value = null
   editingEdge.value = null
@@ -729,10 +771,10 @@ async function handleSaveGroupEdge(groupEdgeData) {
 function handleConnect(params) {
   const sourceId = params.source
   const targetId = params.target
-  
-  const isSourceGroup = manualGroups.value.some(g => g.id === sourceId)
-  const isTargetGroup = manualGroups.value.some(g => g.id === targetId)
-  
+
+  const isSourceGroup = manualGroups.value.some((g) => g.id === sourceId)
+  const isTargetGroup = manualGroups.value.some((g) => g.id === targetId)
+
   if (isSourceGroup && isTargetGroup) {
     nodeToConnect.value = { id: sourceId }
     targetNodeToConnect.value = { id: targetId }
@@ -744,23 +786,23 @@ function handleConnect(params) {
 function handleRemoveNode(node) {
   const instanceId = node.id
   const baseId = getRealEntityId(instanceId)
-  
+
   const instances = nodeInstances.value[baseId] || []
-  const newInstances = instances.filter(id => id !== instanceId)
-  
+  const newInstances = instances.filter((id) => id !== instanceId)
+
   if (newInstances.length > 0) {
     nodeInstances.value[baseId] = newInstances
   } else {
     delete nodeInstances.value[baseId]
   }
-  
+
   delete nodeParents.value[instanceId]
   delete nodePositions.value[instanceId]
-  
+
   showConnectionModal.value = false
   nodeToConnect.value = null
   editingEdge.value = null
-  
+
   if (projectStore.currentProjectId) {
     storyGraphStore.saveNodeInstances(projectStore.currentProjectId)
     storyGraphStore.saveAllNodePositions(projectStore.currentProjectId, nodePositions.value)
@@ -781,23 +823,23 @@ function handleDragLeave() {
 function handleDrop(event) {
   event.preventDefault()
   isDraggingOver.value = false
-  
+
   try {
     const data = event.dataTransfer.getData('application/json')
     if (!data) {
       return
     }
-    
+
     const entity = JSON.parse(data)
     const baseId = `${prefixFromType(entity.type)}-${entity.id}`
     const entityLabel = entity.name || entity.label || entity.title || 'Entity'
-    
+
     const clientRect = event.currentTarget.getBoundingClientRect()
     const x = event.clientX - clientRect.left
     const y = event.clientY - clientRect.top
-    
+
     const flowPosition = screenToFlowCoordinate({ x, y })
-    
+
     let parentId = null
     let relativePos = flowPosition
     for (const group of manualGroups.value) {
@@ -812,9 +854,9 @@ function handleDrop(event) {
         break
       }
     }
-    
+
     if (entity.type === 'group') {
-      const groupNode = manualGroups.value.find(g => g.id === baseId)
+      const groupNode = manualGroups.value.find((g) => g.id === baseId)
       if (groupNode) {
         if (parentId) {
           groupNode.x = relativePos.x
@@ -828,28 +870,28 @@ function handleDrop(event) {
       }
       return
     }
-    
+
     if (isDuplicateInScope(baseId, parentId)) {
       addToast('Already in this group')
       return
     }
-    
+
     let instanceId = baseId
     const existingInstances = nodeInstances.value[baseId]
     if (existingInstances?.length > 0) {
       instanceId = generateInstanceId(baseId, existingInstances)
     }
-    
+
     if (!nodeInstances.value[baseId]) {
       nodeInstances.value[baseId] = []
     }
     if (!nodeInstances.value[baseId].includes(instanceId)) {
       nodeInstances.value[baseId].push(instanceId)
     }
-    
+
     if (projectStore.currentProjectId) {
       if (parentId) {
-        const group = manualGroups.value.find(g => g.id === parentId)
+        const group = manualGroups.value.find((g) => g.id === parentId)
         if (group) expandGroupIfNeeded(group, relativePos.x, relativePos.y)
         nodeParents.value[instanceId] = parentId
         nodePositions.value[instanceId] = relativePos
@@ -862,7 +904,6 @@ function handleDrop(event) {
       }
       addToast(`Added "${entityLabel}" to network`)
     }
-    
   } catch (e) {
     console.error('Drop error:', e)
   }
@@ -870,27 +911,27 @@ function handleDrop(event) {
 
 function handleQuickAdd(entity) {
   const baseId = `${prefixFromType(entity.type)}-${entity.id}`
-  
+
   if (isDuplicateInScope(baseId, null)) {
     addToast('Already in network')
     return
   }
-  
+
   let instanceId = baseId
   const existingInstances = nodeInstances.value[baseId]
   if (existingInstances?.length > 0) {
     instanceId = generateInstanceId(baseId, existingInstances)
   }
-  
+
   if (!nodeInstances.value[baseId]) {
     nodeInstances.value[baseId] = []
   }
   if (!nodeInstances.value[baseId].includes(instanceId)) {
     nodeInstances.value[baseId].push(instanceId)
   }
-  
+
   let nextPosition = { x: 100, y: 100 }
-  
+
   if (nodes.value.length > 0) {
     const lastNode = nodes.value.at(-1)
     nextPosition = {
@@ -898,16 +939,15 @@ function handleQuickAdd(entity) {
       y: lastNode.position.y + 50
     }
   }
-  
+
   nodePositions.value[instanceId] = nextPosition
-  
+
   if (projectStore.currentProjectId) {
     storyGraphStore.saveNodePosition(projectStore.currentProjectId, instanceId, nextPosition)
     storyGraphStore.saveNodeInstances(projectStore.currentProjectId)
     addToast(`Added "${entity.label}" to network`)
   }
 }
-
 
 function toggleSidebar() {
   showSidebar.value = !showSidebar.value
@@ -924,15 +964,13 @@ async function handleAutoGenerate() {
   if (!projectStore.currentProjectId) {
     return
   }
-  
+
   showAutoGenerateModal.value = false
-  
+
   let suggestions = []
   let groups = []
-  const canvasEntityIds = autoGenerateFromScratch.value 
-    ? Object.keys(nodeInstances.value)
-    : null
-  
+  const canvasEntityIds = autoGenerateFromScratch.value ? Object.keys(nodeInstances.value) : null
+
   if (autoGenerateFromScratch.value) {
     manualGroups.value = []
     nodeParents.value = {}
@@ -943,7 +981,7 @@ async function handleAutoGenerate() {
       await storyGraphStore.saveNodeParents(projectStore.currentProjectId, {})
     }
   }
-  
+
   if (autoGenerateCreateGroups.value) {
     const result = await networkSuggestions.autoGenerateNetworkWithGroups({
       existingEntities: canvasEntityIds,
@@ -951,7 +989,7 @@ async function handleAutoGenerate() {
       groupConfidenceThreshold: 0.5,
       prompt: autoGeneratePrompt.value
     })
-    
+
     suggestions = result.connections || []
     groups = result.groups || []
   } else {
@@ -961,7 +999,7 @@ async function handleAutoGenerate() {
       prompt: autoGeneratePrompt.value
     })
   }
-  
+
   if (suggestions.length > 0 || groups.length > 0) {
     showApplySuggestionsModal.value = true
     pendingSuggestions.value = suggestions
@@ -979,7 +1017,7 @@ async function handleApplySuggestions(selectedIndices) {
   const suggestions = networkSuggestions.suggestions.value
   let applied = 0
   let skipped = 0
-  
+
   for (const index of selectedIndices) {
     if (suggestions[index]) {
       const result = await networkSuggestions.applySuggestion(suggestions[index])
@@ -990,11 +1028,11 @@ async function handleApplySuggestions(selectedIndices) {
       }
     }
   }
-  
+
   if (projectStore.currentProjectId) {
     await storyGraphStore.loadEdges(projectStore.currentProjectId)
   }
-  
+
   showSuggestionsModal.value = false
   if (skipped > 0) {
     addToast(`Applied ${applied} connections, ${skipped} skipped`)
@@ -1006,19 +1044,27 @@ async function handleApplySuggestions(selectedIndices) {
 async function handleApplyPendingSuggestions(checkedIndices) {
   let connected = 0
   let groupsApplied = 0
-  const failures = { already_connected: 0, source_not_found: 0, target_not_found: 0, self_reference: 0, error: 0 }
-  
+  const failures = {
+    already_connected: 0,
+    source_not_found: 0,
+    target_not_found: 0,
+    self_reference: 0,
+    error: 0
+  }
+
   const NODE_W = 160
   const NODE_H = 70
   const GROUP_PADDING = 16
   const GROUP_HEADER_H = 30
   const NODES_PER_ROW = 2
   const NODE_GAP = 12
-  
+
   const suggestionsLen = pendingSuggestions.value.length
-  const suggestionIndices = checkedIndices.filter(i => i < suggestionsLen)
-  const groupIndices = checkedIndices.filter(i => i >= suggestionsLen).map(i => i - suggestionsLen)
-  
+  const suggestionIndices = checkedIndices.filter((i) => i < suggestionsLen)
+  const groupIndices = checkedIndices
+    .filter((i) => i >= suggestionsLen)
+    .map((i) => i - suggestionsLen)
+
   for (const index of suggestionIndices) {
     if (pendingSuggestions.value[index]) {
       const result = await networkSuggestions.applySuggestion(pendingSuggestions.value[index])
@@ -1031,7 +1077,7 @@ async function handleApplyPendingSuggestions(checkedIndices) {
       }
     }
   }
-  
+
   for (const index of groupIndices) {
     const group = pendingGroups.value[index]
     if (group) {
@@ -1041,11 +1087,12 @@ async function handleApplyPendingSuggestions(checkedIndices) {
       group.width = 320
       group.height = 220
       manualGroups.value.push(group)
-      
+
       const nodePositionCounts = {}
-      
+
       for (const member of group.members) {
-        const prefix = member.type === 'character' ? 'char' : member.type === 'location' ? 'loc' : 'thread'
+        const prefix =
+          member.type === 'character' ? 'char' : member.type === 'location' ? 'loc' : 'thread'
         const nodeId = `${prefix}-${member.id}`
         nodeParents.value[nodeId] = group.id
 
@@ -1064,26 +1111,31 @@ async function handleApplyPendingSuggestions(checkedIndices) {
 
         nodePositionCounts[group.id]++
       }
-      
+
       groupsApplied++
     }
   }
-  
+
   nodeParents.value = { ...nodeParents.value }
   nodePositions.value = { ...nodePositions.value }
-  
+
   if (projectStore.currentProjectId) {
     await storyGraphStore.saveGroups(projectStore.currentProjectId, manualGroups.value)
     await storyGraphStore.saveNodeParents(projectStore.currentProjectId, nodeParents.value)
     await storyGraphStore.saveAllNodePositions(projectStore.currentProjectId, nodePositions.value)
     await storyGraphStore.loadEdges(projectStore.currentProjectId)
   }
-  
+
   showApplySuggestionsModal.value = false
   pendingSuggestions.value = []
   pendingGroups.value = []
-  
-  const totalFailures = failures.already_connected + failures.source_not_found + failures.target_not_found + failures.self_reference + failures.error
+
+  const totalFailures =
+    failures.already_connected +
+    failures.source_not_found +
+    failures.target_not_found +
+    failures.self_reference +
+    failures.error
   let toastMsg = `Applied ${connected} connections`
   if (groupsApplied > 0) {
     toastMsg += `, ${groupsApplied} groups`
@@ -1095,17 +1147,20 @@ async function handleApplyPendingSuggestions(checkedIndices) {
   addToast(toastMsg)
 }
 
-watch(() => showSuggestionsModal.value, async (show) => {
-  if (show) {
-    try {
-      const result = await networkSuggestions.generateNetworkWithAI()
-      networkSuggestions.suggestions.value = result || []
-    } catch (err) {
-      console.error('Failed to generate suggestions:', err)
-      networkSuggestions.suggestions.value = []
+watch(
+  () => showSuggestionsModal.value,
+  async (show) => {
+    if (show) {
+      try {
+        const result = await networkSuggestions.generateNetworkWithAI()
+        networkSuggestions.suggestions.value = result || []
+      } catch (err) {
+        console.error('Failed to generate suggestions:', err)
+        networkSuggestions.suggestions.value = []
+      }
     }
   }
-})
+)
 
 onUnmounted(() => {
   document.removeEventListener('mousemove', handleGroupResizeMove)
@@ -1127,7 +1182,7 @@ async function initGraph(projectId) {
   await storyGraphStore.loadNodeInstances(projectId)
   await storyGraphStore.loadEdges(projectId)
   await storyGraphStore.loadGroupEdges(projectId)
-  
+
   const [groups, parents] = await Promise.all([
     storyGraphStore.loadGroups(projectId),
     storyGraphStore.loadNodeParents(projectId)
@@ -1135,9 +1190,9 @@ async function initGraph(projectId) {
   manualGroups.value = groups || []
   nodeParents.value = parents || {}
   nodeInstances.value = storyGraphStore.nodeInstances || {}
-  
+
   // Repair: remove parent references to deleted groups
-  const validGroupIds = new Set(manualGroups.value.map(g => g.id))
+  const validGroupIds = new Set(manualGroups.value.map((g) => g.id))
   for (const nodeId in nodeParents.value) {
     const parentId = nodeParents.value[nodeId]
     if (parentId && !validGroupIds.has(parentId)) {
@@ -1145,9 +1200,12 @@ async function initGraph(projectId) {
     }
   }
   await storyGraphStore.saveNodeParents(projectId, nodeParents.value)
-  
+
   // Backfill: rebuild node instances from existing positions
-  if (Object.keys(nodeInstances.value).length === 0 && Object.keys(storyGraphStore.nodePositions).length > 0) {
+  if (
+    Object.keys(nodeInstances.value).length === 0 &&
+    Object.keys(storyGraphStore.nodePositions).length > 0
+  ) {
     for (const key of Object.keys(storyGraphStore.nodePositions)) {
       const baseId = getRealEntityId(key)
       if (!nodeInstances.value[baseId]) nodeInstances.value[baseId] = []
@@ -1155,20 +1213,20 @@ async function initGraph(projectId) {
     }
     await storyGraphStore.saveNodeInstances(projectId)
   }
-  
+
   // Backfill: assign positions to characters that lack them
   const missingCharIds = storyGraphStore.missingCharacterPositions
   if (missingCharIds.length > 0) {
     const positions = { ...storyGraphStore.nodePositions }
-    const existingCharIds = new Set(storyBibleStore.characters.map(c => String(c.id)))
+    const existingCharIds = new Set(storyBibleStore.characters.map((c) => String(c.id)))
     let charCount = storyBibleStore.characters.length
     for (const charId of missingCharIds) {
       if (!existingCharIds.has(charId)) continue
       const nodeId = `char-${charId}`
       if (!positions[nodeId]) {
-        positions[nodeId] = { 
-          x: 100 + (charCount % 5) * 250, 
-          y: 100 + Math.floor(charCount / 5) * 150 
+        positions[nodeId] = {
+          x: 100 + (charCount % 5) * 250,
+          y: 100 + Math.floor(charCount / 5) * 150
         }
         charCount++
       }
@@ -1211,9 +1269,12 @@ onMounted(() => {
   initGraph(projectStore.currentProjectId)
 })
 
-watch(() => projectStore.currentProjectId, (newId) => {
-  initGraph(newId)
-})
+watch(
+  () => projectStore.currentProjectId,
+  (newId) => {
+    initGraph(newId)
+  }
+)
 
 async function arrangeExtendedStarLayout() {
   if (!projectStore.currentProjectId) return
@@ -1239,14 +1300,14 @@ async function arrangeExtendedStarLayout() {
   const groupRadius = 500
   // Remove existing orphan groups to prevent duplicates
   const orphanGroupIds = new Set(
-    manualGroups.value.filter(g => g.name?.startsWith('Unconnected')).map(g => g.id)
+    manualGroups.value.filter((g) => g.name?.startsWith('Unconnected')).map((g) => g.id)
   )
   for (const key of Object.keys(nodeParents.value)) {
     if (orphanGroupIds.has(nodeParents.value[key])) {
       delete nodeParents.value[key]
     }
   }
-  manualGroups.value = manualGroups.value.filter(g => !orphanGroupIds.has(g.id))
+  manualGroups.value = manualGroups.value.filter((g) => !orphanGroupIds.has(g.id))
 
   // Step 1: Count connections per node using CORRECT key format
   const connectionCounts = {}
@@ -1261,7 +1322,10 @@ async function arrangeExtendedStarLayout() {
   let mostConnectedKey = null
   let maxCount = 0
   for (const [key, count] of Object.entries(connectionCounts)) {
-    if (count > maxCount) { maxCount = count; mostConnectedKey = key }
+    if (count > maxCount) {
+      maxCount = count
+      mostConnectedKey = key
+    }
   }
 
   // Step 3: Build group membership map from nodeParents
@@ -1281,10 +1345,14 @@ async function arrangeExtendedStarLayout() {
   // Step 4: Find most connected node per group
   const groupCenters = {}
   for (const [groupId, memberKeys] of Object.entries(groupMemberMap)) {
-    let bestKey = null, bestCount = 0
+    let bestKey = null,
+      bestCount = 0
     for (const key of memberKeys) {
       const c = connectionCounts[key] || 0
-      if (c > bestCount) { bestCount = c; bestKey = key }
+      if (c > bestCount) {
+        bestCount = c
+        bestKey = key
+      }
     }
     if (bestKey) groupCenters[groupId] = bestKey
   }
@@ -1311,12 +1379,12 @@ async function arrangeExtendedStarLayout() {
     positions[mostConnectedKey] = { x: centerX, y: centerY }
   }
 
-  const allGroupIds = manualGroups.value.map(g => g.id)
+  const allGroupIds = manualGroups.value.map((g) => g.id)
   allGroupIds.forEach((gid, i) => {
     const angle = (i / allGroupIds.length) * 2 * Math.PI
     const interCount = interGroupConnections[gid] || 0
     const maxInter = Math.max(1, ...Object.values(interGroupConnections))
-    const distanceRatio = 1 - (interCount / maxInter)
+    const distanceRatio = 1 - interCount / maxInter
     const distance = groupRadius * (0.4 + distanceRatio * 0.6)
     groupPositions[gid] = {
       x: Math.round(centerX + Math.cos(angle) * distance),
@@ -1345,14 +1413,20 @@ async function arrangeExtendedStarLayout() {
     const gpos = groupPositions[group.id]
     if (!gpos) continue
     const members = groupMemberMap[group.id] || []
-    
+
     // Filter out the most connected node (already placed at global center)
-    const placeable = members.filter(k => k !== mostConnectedKey)
-    
+    const placeable = members.filter((k) => k !== mostConnectedKey)
+
     // Resize group to fit all nodes
     const rows = Math.ceil(placeable.length / NODES_PER_ROW)
-    group.width = Math.max(220, GROUP_PADDING * 2 + NODES_PER_ROW * NODE_W + (NODES_PER_ROW - 1) * NODE_PAD)
-    group.height = Math.max(120, GROUP_HEADER_H + GROUP_PADDING * 2 + rows * NODE_H + (rows - 1) * NODE_PAD)
+    group.width = Math.max(
+      220,
+      GROUP_PADDING * 2 + NODES_PER_ROW * NODE_W + (NODES_PER_ROW - 1) * NODE_PAD
+    )
+    group.height = Math.max(
+      120,
+      GROUP_HEADER_H + GROUP_PADDING * 2 + rows * NODE_H + (rows - 1) * NODE_PAD
+    )
 
     placeable.forEach((key, idx) => {
       const col = idx % NODES_PER_ROW
@@ -1371,22 +1445,43 @@ async function arrangeExtendedStarLayout() {
     connectedKeys.add(toNodeKey(edge.targetType, edge.targetId))
   }
 
-  const orphanChars = characters.filter(c => !connectedKeys.has(`char-${c.id}`))
-  const orphanLocs = locations.filter(l => !connectedKeys.has(`loc-${l.id}`))
-  const orphanThreads = plotThreads.filter(t => !connectedKeys.has(`thread-${t.id}`))
+  const orphanChars = characters.filter((c) => !connectedKeys.has(`char-${c.id}`))
+  const orphanLocs = locations.filter((l) => !connectedKeys.has(`loc-${l.id}`))
+  const orphanThreads = plotThreads.filter((t) => !connectedKeys.has(`thread-${t.id}`))
 
   const orphanDefs = [
-    { entities: orphanChars, name: 'Unconnected Characters', type: 'character', prefix: 'char', color: '#8B5CF6' },
-    { entities: orphanLocs, name: 'Unconnected Locations', type: 'location', prefix: 'loc', color: '#10B981' },
-    { entities: orphanThreads, name: 'Unconnected Plot Threads', type: 'plotThread', prefix: 'thread', color: '#F59E0B' }
-  ].filter(d => d.entities.length > 0)
+    {
+      entities: orphanChars,
+      name: 'Unconnected Characters',
+      type: 'character',
+      prefix: 'char',
+      color: '#8B5CF6'
+    },
+    {
+      entities: orphanLocs,
+      name: 'Unconnected Locations',
+      type: 'location',
+      prefix: 'loc',
+      color: '#10B981'
+    },
+    {
+      entities: orphanThreads,
+      name: 'Unconnected Plot Threads',
+      type: 'plotThread',
+      prefix: 'thread',
+      color: '#F59E0B'
+    }
+  ].filter((d) => d.entities.length > 0)
 
   const newOrphanGroups = []
   orphanDefs.forEach(({ entities, name, type, prefix, color }, idx) => {
     // Calculate group dimensions first
     const rows = Math.ceil(entities.length / NODES_PER_ROW)
     const groupWidth = Math.max(220, GROUP_PADDING * 2 + NODES_PER_ROW * NODE_W + NODE_PAD)
-    const groupHeight = Math.max(120, GROUP_HEADER_H + GROUP_PADDING * 2 + rows * NODE_H + (rows - 1) * NODE_PAD)
+    const groupHeight = Math.max(
+      120,
+      GROUP_HEADER_H + GROUP_PADDING * 2 + rows * NODE_H + (rows - 1) * NODE_PAD
+    )
 
     // Place all orphan groups in a horizontal row below the main architecture
     const totalOrphanWidth = orphanDefs.length * groupWidth + (orphanDefs.length - 1) * 60
@@ -1403,7 +1498,7 @@ async function arrangeExtendedStarLayout() {
       y: gy,
       width: groupWidth,
       height: groupHeight,
-      members: entities.map(e => ({ type, id: e.id }))
+      members: entities.map((e) => ({ type, id: e.id }))
     }
     manualGroups.value.push(group)
     newOrphanGroups.push(group)
@@ -1422,22 +1517,27 @@ async function arrangeExtendedStarLayout() {
   })
 
   // Step 9: Collision detection — ONLY on ungrouped nodes (preserve relative positions of grouped)
-  const groupedKeys = new Set(Object.keys(nodeParents.value).filter(k => nodeParents.value[k]))
-  const ungroupedKeys = Object.keys(positions).filter(k => !groupedKeys.has(k))
+  const groupedKeys = new Set(Object.keys(nodeParents.value).filter((k) => nodeParents.value[k]))
+  const ungroupedKeys = Object.keys(positions).filter((k) => !groupedKeys.has(k))
 
   const MIN_DIST = 200
   for (let pass = 0; pass < 5; pass++) {
     let moved = false
     for (let i = 0; i < ungroupedKeys.length; i++) {
       for (let j = i + 1; j < ungroupedKeys.length; j++) {
-        const a = positions[ungroupedKeys[i]], b = positions[ungroupedKeys[j]]
-        const dx = b.x - a.x, dy = b.y - a.y
+        const a = positions[ungroupedKeys[i]],
+          b = positions[ungroupedKeys[j]]
+        const dx = b.x - a.x,
+          dy = b.y - a.y
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (dist < MIN_DIST && dist > 0) {
           const overlap = MIN_DIST - dist
-          const nx = dx / dist, ny = dy / dist
-          a.x -= nx * overlap * 0.5; a.y -= ny * overlap * 0.5
-          b.x += nx * overlap * 0.5; b.y += ny * overlap * 0.5
+          const nx = dx / dist,
+            ny = dy / dist
+          a.x -= nx * overlap * 0.5
+          a.y -= ny * overlap * 0.5
+          b.x += nx * overlap * 0.5
+          b.y += ny * overlap * 0.5
           moved = true
         }
       }
@@ -1474,7 +1574,9 @@ async function arrangeExtendedStarLayout() {
 
 <template>
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
-    <div class="shrink-0 px-4 py-2 h-14 border-b border-border-subtle flex items-center justify-between bg-bg-secondary z-10">
+    <div
+      class="shrink-0 px-4 py-2 h-14 border-b border-border-subtle flex items-center justify-between bg-bg-secondary z-10"
+    >
       <div class="flex items-center gap-2">
         <span class="font-ui text-accent tracking-wide">Story Network</span>
       </div>
@@ -1482,7 +1584,11 @@ async function arrangeExtendedStarLayout() {
         <div class="flex items-center gap-1 border-l border-border-subtle pl-3">
           <button
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-all"
-            :class="showCharEdges ? 'bg-bg-tertiary text-text-primary' : 'bg-bg-secondary text-text-hint opacity-50'"
+            :class="
+              showCharEdges
+                ? 'bg-bg-tertiary text-text-primary'
+                : 'bg-bg-secondary text-text-hint opacity-50'
+            "
             title="Toggle character relationships"
             @click="showCharEdges = !showCharEdges"
           >
@@ -1491,7 +1597,11 @@ async function arrangeExtendedStarLayout() {
           </button>
           <button
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-all"
-            :class="showLocEdges ? 'bg-bg-tertiary text-text-primary' : 'bg-bg-secondary text-text-hint opacity-50'"
+            :class="
+              showLocEdges
+                ? 'bg-bg-tertiary text-text-primary'
+                : 'bg-bg-secondary text-text-hint opacity-50'
+            "
             title="Toggle location connections"
             @click="showLocEdges = !showLocEdges"
           >
@@ -1500,7 +1610,11 @@ async function arrangeExtendedStarLayout() {
           </button>
           <button
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-all"
-            :class="showThreadEdges ? 'bg-bg-tertiary text-text-primary' : 'bg-bg-secondary text-text-hint opacity-50'"
+            :class="
+              showThreadEdges
+                ? 'bg-bg-tertiary text-text-primary'
+                : 'bg-bg-secondary text-text-hint opacity-50'
+            "
             title="Toggle plot thread connections"
             @click="showThreadEdges = !showThreadEdges"
           >
@@ -1572,7 +1686,7 @@ async function arrangeExtendedStarLayout() {
         />
       </Transition>
 
-      <div class="flex-1 relative" style="height: 100%;">
+      <div class="flex-1 relative" style="height: 100%">
         <VueFlow
           v-if="nodes.length > 0 || manualGroups.length > 0"
           :only-render-visible-elements="true"
@@ -1584,7 +1698,7 @@ async function arrangeExtendedStarLayout() {
           fit-view-on-init
           class="story-network"
           :class="{ 'drag-over': isDraggingOver }"
-          style="height: 100%; width: 100%; position: relative;"
+          style="height: 100%; width: 100%; position: relative"
           @node-double-click="handleNodeDoubleClick"
           @edge-click="handleEdgeClick"
           @dragover="handleDragOver"
@@ -1594,10 +1708,31 @@ async function arrangeExtendedStarLayout() {
         >
           <template #edge-custom="{ id, sourceX, sourceY, targetX, targetY, data }">
             <path
-              v-if="data?.category === 'group' || (data?.category === 'char' && showCharEdges) || (data?.category === 'loc' && showLocEdges) || (data?.category === 'thread' && showThreadEdges)"
-              :d="getBezierPath(sourceX, sourceY + (data?.staggerOffset || 0), targetX, targetY + (data?.staggerOffset || 0), data?.isLongRange)"
+              v-if="
+                data?.category === 'group' ||
+                (data?.category === 'char' && showCharEdges) ||
+                (data?.category === 'loc' && showLocEdges) ||
+                (data?.category === 'thread' && showThreadEdges)
+              "
+              :d="
+                getBezierPath(
+                  sourceX,
+                  sourceY + (data?.staggerOffset || 0),
+                  targetX,
+                  targetY + (data?.staggerOffset || 0),
+                  data?.isLongRange
+                )
+              "
               :stroke="data?.color || 'var(--vers-default-edge)'"
-              :stroke-width="data?.category === 'group' ? (hoveredEdgeId === id ? 3.5 : 2.5) : (hoveredEdgeId === id ? 3 : 1.5)"
+              :stroke-width="
+                data?.category === 'group'
+                  ? hoveredEdgeId === id
+                    ? 3.5
+                    : 2.5
+                  : hoveredEdgeId === id
+                    ? 3
+                    : 1.5
+              "
               :stroke-dasharray="data?.category === 'group' ? '6 3' : undefined"
               :opacity="getEdgeOpacity(id)"
               fill="none"
@@ -1606,63 +1741,92 @@ async function arrangeExtendedStarLayout() {
               @mouseleave="hoveredEdgeId = null"
             />
             <foreignObject
-              v-if="data?.category === 'group' || (data?.category === 'char' && showCharEdges) || (data?.category === 'loc' && showLocEdges) || (data?.category === 'thread' && showThreadEdges)"
+              v-if="
+                data?.category === 'group' ||
+                (data?.category === 'char' && showCharEdges) ||
+                (data?.category === 'loc' && showLocEdges) ||
+                (data?.category === 'thread' && showThreadEdges)
+              "
               :x="(sourceX + targetX) / 2 - 40"
               :y="(sourceY + targetY) / 2 + (data?.staggerOffset || 0) - 10"
               width="80"
               height="20"
               class="edge-label-container"
             >
-              <div
-                class="edge-label"
-                :style="{ opacity: getEdgeOpacity(id) }"
-              >
+              <div class="edge-label" :style="{ opacity: getEdgeOpacity(id) }">
                 {{ data?.label || '' }}
               </div>
             </foreignObject>
           </template>
           <template #node-character="{ data, id }">
-            <div 
-              class="node-card" 
+            <div
+              class="node-card"
               :style="{ borderColor: data.color }"
               @mouseenter="handleNodeMouseEnter({ id })"
               @mouseleave="handleNodeMouseLeave"
             >
               <div class="flex items-center gap-2">
                 <BaseIcon :name="data.iconName" :size="16" :style="{ color: data.color }" />
-                <span class="font-medium text-sm text-text-primary node-label" :title="data.label">{{ data.label }}</span>
+                <span
+                  class="font-medium text-sm text-text-primary node-label"
+                  :title="data.label"
+                  >{{ data.label }}</span
+                >
               </div>
-              <span v-if="data.sublabel" class="text-2xs text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
+              <span
+                v-if="data.sublabel"
+                class="text-2xs text-text-hint node-sublabel"
+                :title="data.sublabel"
+                >{{ data.sublabel }}</span
+              >
             </div>
           </template>
-          
+
           <template #node-location="{ data, id }">
-            <div 
-              class="node-card" 
+            <div
+              class="node-card"
               :style="{ borderColor: data.color }"
               @mouseenter="handleNodeMouseEnter({ id })"
               @mouseleave="handleNodeMouseLeave"
             >
               <div class="flex items-center gap-2">
                 <BaseIcon :name="data.iconName" :size="16" :style="{ color: data.color }" />
-                <span class="font-medium text-sm text-text-primary node-label" :title="data.label">{{ data.label }}</span>
+                <span
+                  class="font-medium text-sm text-text-primary node-label"
+                  :title="data.label"
+                  >{{ data.label }}</span
+                >
               </div>
-              <span v-if="data.sublabel" class="text-2xs text-text-hint node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
+              <span
+                v-if="data.sublabel"
+                class="text-2xs text-text-hint node-sublabel"
+                :title="data.sublabel"
+                >{{ data.sublabel }}</span
+              >
             </div>
           </template>
-          
+
           <template #node-plotThread="{ data, id }">
-            <div 
-              class="node-card" 
+            <div
+              class="node-card"
               :style="{ borderColor: data.color }"
               @mouseenter="handleNodeMouseEnter({ id })"
               @mouseleave="handleNodeMouseLeave"
             >
               <div class="flex items-center gap-2">
                 <BaseIcon :name="data.iconName" :size="16" :style="{ color: data.color }" />
-                <span class="font-medium text-sm text-text-primary node-label" :title="data.label">{{ data.label }}</span>
+                <span
+                  class="font-medium text-sm text-text-primary node-label"
+                  :title="data.label"
+                  >{{ data.label }}</span
+                >
               </div>
-              <span v-if="data.sublabel" class="text-2xs px-1.5 py-0.5 rounded bg-bg-tertiary node-sublabel" :title="data.sublabel">{{ data.sublabel }}</span>
+              <span
+                v-if="data.sublabel"
+                class="text-2xs px-1.5 py-0.5 rounded bg-bg-tertiary node-sublabel"
+                :title="data.sublabel"
+                >{{ data.sublabel }}</span
+              >
             </div>
           </template>
 
@@ -1692,11 +1856,15 @@ async function arrangeExtendedStarLayout() {
                   @click.stop
                   @mousedown.stop
                 />
-                <span v-if="data.nodeCount" class="text-2xs px-1.5 py-0.5 rounded-full shrink-0 font-mono" :style="{ backgroundColor: data.color + '30', color: data.color }">
+                <span
+                  v-if="data.nodeCount"
+                  class="text-2xs px-1.5 py-0.5 rounded-full shrink-0 font-mono"
+                  :style="{ backgroundColor: data.color + '30', color: data.color }"
+                >
                   {{ data.nodeCount }}
                 </span>
-                <button 
-                  class="p-1 rounded shrink-0 text-text-hint hover:text-danger hover:bg-danger/10 transition-colors" 
+                <button
+                  class="p-1 rounded shrink-0 text-text-hint hover:text-danger hover:bg-danger/10 transition-colors"
                   title="Delete group"
                   @click.stop="deleteGroup(id)"
                 >
@@ -1708,12 +1876,25 @@ async function arrangeExtendedStarLayout() {
                 title="Resize"
                 @mousedown.stop="startGroupResize($event, id)"
               >
-                <svg viewBox="0 0 10 10" class="w-full h-full opacity-30 hover:opacity-70 transition-opacity">
+                <svg
+                  viewBox="0 0 10 10"
+                  class="w-full h-full opacity-30 hover:opacity-70 transition-opacity"
+                >
                   <path d="M 10 0 L 10 10 L 0 10" :fill="data.color" />
                 </svg>
               </div>
-              <Handle id="source" type="source" :position="Position.Right" class="!bg-accent !w-3 !h-3 !border-2 !border-white" />
-              <Handle id="target" type="target" :position="Position.Left" class="!bg-accent !w-3 !h-3 !border-2 !border-white" />
+              <Handle
+                id="source"
+                type="source"
+                :position="Position.Right"
+                class="!bg-accent !w-3 !h-3 !border-2 !border-white"
+              />
+              <Handle
+                id="target"
+                type="target"
+                :position="Position.Left"
+                class="!bg-accent !w-3 !h-3 !border-2 !border-white"
+              />
             </div>
           </template>
 
@@ -1734,7 +1915,10 @@ async function arrangeExtendedStarLayout() {
           />
         </VueFlow>
 
-        <div v-if="nodes.length === 0 && manualGroups.length === 0" class="absolute inset-0 flex items-center justify-center bg-bg-secondary">
+        <div
+          v-if="nodes.length === 0 && manualGroups.length === 0"
+          class="absolute inset-0 flex items-center justify-center bg-bg-secondary"
+        >
           <div class="text-center">
             <BaseIcon name="network" :size="48" class="mx-auto text-text-hint mb-4" />
             <p class="text-text-hint font-ui mb-2">No entities to visualize</p>
@@ -1760,17 +1944,25 @@ async function arrangeExtendedStarLayout() {
           </div>
         </Transition>
 
-        <div v-if="selectedConnection" class="absolute bottom-4 left-4 right-4 bg-bg-tertiary rounded-lg border border-border-subtle p-4 shadow-lg">
+        <div
+          v-if="selectedConnection"
+          class="absolute bottom-4 left-4 right-4 bg-bg-tertiary rounded-lg border border-border-subtle p-4 shadow-lg"
+        >
           <div class="flex items-center justify-between mb-2">
             <h3 class="font-medium text-sm text-text-primary">Connection Details</h3>
-            <button class="text-text-hint hover:text-text-primary" @click="selectedConnection = null">
+            <button
+              class="text-text-hint hover:text-text-primary"
+              @click="selectedConnection = null"
+            >
               <BaseIcon name="x" :size="16" />
             </button>
           </div>
           <div class="text-sm text-text-secondary mb-3">
-            <span class="capitalize">{{ selectedConnection.sourceType }}</span> 
+            <span class="capitalize">{{ selectedConnection.sourceType }}</span>
             <span class="text-text-hint mx-1">→</span>
-            <span class="capitalize">{{ selectedConnection.relationshipType.replace('_', ' ') }}</span>
+            <span class="capitalize">{{
+              selectedConnection.relationshipType.replace('_', ' ')
+            }}</span>
             <span class="text-text-hint mx-1">→</span>
             <span class="capitalize">{{ selectedConnection.targetType }}</span>
           </div>
@@ -1792,8 +1984,6 @@ async function arrangeExtendedStarLayout() {
             </button>
           </div>
         </div>
-
-        
       </div>
     </div>
 
@@ -1808,7 +1998,11 @@ async function arrangeExtendedStarLayout() {
       :plot-threads="storyBibleStore.plotThreads"
       :groups="manualGroups"
       :existing-edges="storyGraphStore.edges"
-      @close="showConnectionModal = false; nodeToConnect = null; targetNodeToConnect = null"
+      @close="
+        showConnectionModal = false
+        nodeToConnect = null
+        targetNodeToConnect = null
+      "
       @save="handleSaveConnection"
       @save-group-edge="handleSaveGroupEdge"
       @remove-node="handleRemoveNode"
@@ -1827,7 +2021,11 @@ async function arrangeExtendedStarLayout() {
       :show="showApplySuggestionsModal"
       :suggestions="pendingSuggestions"
       :groups="pendingGroups"
-      @close="showApplySuggestionsModal = false; pendingSuggestions = []; pendingGroups = []"
+      @close="
+        showApplySuggestionsModal = false
+        pendingSuggestions = []
+        pendingGroups = []
+      "
       @apply="handleApplyPendingSuggestions"
     />
 
@@ -1872,8 +2070,18 @@ async function arrangeExtendedStarLayout() {
               />
             </div>
             <div class="flex gap-2">
-              <button class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg text-sm hover:bg-surface-hover font-ui" @click="showCreateGroupModal = false">Cancel</button>
-              <button class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent/90 font-ui" @click="confirmCreateGroup">Create</button>
+              <button
+                class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg text-sm hover:bg-surface-hover font-ui"
+                @click="showCreateGroupModal = false"
+              >
+                Cancel
+              </button>
+              <button
+                class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent/90 font-ui"
+                @click="confirmCreateGroup"
+              >
+                Create
+              </button>
             </div>
           </div>
         </div>
@@ -1923,7 +2131,9 @@ async function arrangeExtendedStarLayout() {
 
 .edge-path {
   cursor: pointer;
-  transition: stroke-width 0.15s ease, opacity 0.15s ease;
+  transition:
+    stroke-width 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .edge-label-container {

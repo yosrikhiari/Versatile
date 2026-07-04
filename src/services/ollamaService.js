@@ -194,9 +194,9 @@ export async function getAvailableEmbeddingModels() {
     clearTimeout(timeout)
     if (response.ok) {
       const data = await response.json()
-      const allModels = data.models?.map(m => m.name) || []
-      const embeddingModels = allModels.filter(m => 
-        m.includes('embed') || m.includes('nomic') || m.includes('e5') || m.includes('bge')
+      const allModels = data.models?.map((m) => m.name) || []
+      const embeddingModels = allModels.filter(
+        (m) => m.includes('embed') || m.includes('nomic') || m.includes('e5') || m.includes('bge')
       )
       return embeddingModels.length > 0 ? embeddingModels : allModels.slice(0, 5)
     }
@@ -227,10 +227,17 @@ export async function ollamaStream(prompt, systemPrompt, onChunk) {
 export async function checkOllamaHealth() {
   try {
     const ok = await checkOllamaConnection()
-    if (!ok) return { online: false, message: 'Ollama is not reachable. Make sure it is running on port 11434.' }
+    if (!ok)
+      return {
+        online: false,
+        message: 'Ollama is not reachable. Make sure it is running on port 11434.'
+      }
     return { online: true, message: 'Ollama is reachable.' }
   } catch {
-    return { online: false, message: 'Ollama is not reachable. Make sure it is running on port 11434.' }
+    return {
+      online: false,
+      message: 'Ollama is not reachable. Make sure it is running on port 11434.'
+    }
   }
 }
 
@@ -238,11 +245,11 @@ export async function checkOllamaConnection() {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
-    
+
     const response = await fetch(`${getOllamaEndpoint()}/api/tags`, {
       signal: controller.signal
     })
-    
+
     clearTimeout(timeout)
     return response.ok
   } catch {
@@ -256,7 +263,7 @@ export async function checkOpenAIConnection(apiKey) {
     const timeout = setTimeout(() => controller.abort(), 10000)
     const response = await fetch('https://api.openai.com/v1/models', {
       headers: {
-        'Authorization': `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`
       },
       signal: controller.signal
     })
@@ -275,12 +282,10 @@ export async function getAvailableModels() {
     clearTimeout(timeout)
     if (response.ok) {
       const data = await response.json()
-      return data.models?.map(m => m.name) || []
+      return data.models?.map((m) => m.name) || []
     }
     return []
   } catch {
     return []
   }
 }
-
-

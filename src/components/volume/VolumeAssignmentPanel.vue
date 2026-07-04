@@ -32,7 +32,7 @@ const filteredVolumes = computed(() => {
   if (!searchQuery.value) {
     return volumeStore.volumes
   }
-  return volumeStore.volumes.filter(v =>
+  return volumeStore.volumes.filter((v) =>
     v.title.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 })
@@ -49,7 +49,7 @@ async function toggleVolume(volumeId) {
   try {
     if (assignedVolumeIds.value.includes(volumeId)) {
       await networkStore.removeEntityFromVolume(props.entityType, props.entityId, volumeId)
-      assignedVolumeIds.value = assignedVolumeIds.value.filter(id => id !== volumeId)
+      assignedVolumeIds.value = assignedVolumeIds.value.filter((id) => id !== volumeId)
     } else {
       await networkStore.assignEntityToVolume(props.entityType, props.entityId, volumeId, false)
       assignedVolumeIds.value.push(volumeId)
@@ -82,9 +82,7 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
   <div class="bg-bg-tertiary border border-border-subtle rounded-lg overflow-hidden">
     <div class="p-3 border-b border-border-subtle bg-bg-secondary">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-medium text-text-primary">
-          Assign "{{ entityName }}" to Volumes
-        </h3>
+        <h3 class="text-sm font-medium text-text-primary">Assign "{{ entityName }}" to Volumes</h3>
         <button
           class="text-text-hint hover:text-text-primary transition-colors"
           @click="$emit('close')"
@@ -133,9 +131,7 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
     </div>
 
     <div class="p-3 border-t border-border-subtle flex items-center justify-between">
-      <span class="text-xs text-text-hint">
-        Assigned: {{ assignedVolumeIds.length }}
-      </span>
+      <span class="text-xs text-text-hint"> Assigned: {{ assignedVolumeIds.length }} </span>
       <div class="flex gap-1">
         <button
           :disabled="loading || assignedVolumeIds.length === 0"
@@ -153,10 +149,7 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
       </div>
     </div>
 
-    <div
-      v-if="loading"
-      class="absolute inset-0 bg-black/20 flex items-center justify-center"
-    >
+    <div v-if="loading" class="absolute inset-0 bg-black/20 flex items-center justify-center">
       <BaseIcon name="loader-2" :size="20" class="animate-spin text-accent" />
     </div>
   </div>

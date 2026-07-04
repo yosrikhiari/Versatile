@@ -82,7 +82,7 @@ const description = ref('')
 
 const allEntities = computed(() => {
   const entities = []
-  
+
   for (const char of props.characters) {
     entities.push({
       id: char.id,
@@ -91,7 +91,7 @@ const allEntities = computed(() => {
       sublabel: char.role
     })
   }
-  
+
   for (const loc of props.locations) {
     entities.push({
       id: loc.id,
@@ -100,7 +100,7 @@ const allEntities = computed(() => {
       sublabel: loc.description?.slice(0, 30)
     })
   }
-  
+
   for (const thread of props.plotThreads) {
     entities.push({
       id: thread.id,
@@ -109,13 +109,17 @@ const allEntities = computed(() => {
       sublabel: thread.status
     })
   }
-  
+
   return entities
 })
 
 const isCharToChar = computed(() => {
-  const sourceEntity = allEntities.value.find(e => e.id === sourceId.value && e.type === sourceType.value)
-  const targetEntity = allEntities.value.find(e => e.id === targetId.value && e.type === targetType.value)
+  const sourceEntity = allEntities.value.find(
+    (e) => e.id === sourceId.value && e.type === sourceType.value
+  )
+  const targetEntity = allEntities.value.find(
+    (e) => e.id === targetId.value && e.type === targetType.value
+  )
   return sourceEntity?.type === 'character' && targetEntity?.type === 'character'
 })
 
@@ -135,73 +139,82 @@ const relationshipLabel = computed(() => {
 
 const targetOptions = computed(() => {
   if (!sourceId.value || !sourceType.value) return []
-  
+
   if (sourceType.value === 'group') {
-    return (props.groups || []).filter(g => g.id !== sourceId.value)
+    return (props.groups || []).filter((g) => g.id !== sourceId.value)
   }
-  
-  return allEntities.value.filter(e => {
+
+  return allEntities.value.filter((e) => {
     if (e.id === sourceId.value && e.type === sourceType.value) return false
     if (targetType.value && e.type !== targetType.value) return false
     return true
   })
 })
 
-watch(() => props.show, (newVal) => {
-  if (newVal) {
-    if (props.existingEdge) {
-      sourceId.value = props.existingEdge.sourceId
-      sourceType.value = props.existingEdge.sourceType
-      targetId.value = props.existingEdge.targetId
-      targetType.value = props.existingEdge.targetType
-      relationshipType.value = props.existingEdge.relationshipType
-      description.value = props.existingEdge.description || ''
-    } else if (props.sourceNode) {
-      const [prefix, id] = props.sourceNode.id.split('-')
-      if (prefix === 'group') {
-        sourceType.value = 'group'
-        sourceId.value = props.sourceNode.id
+watch(
+  () => props.show,
+  (newVal) => {
+    if (newVal) {
+      if (props.existingEdge) {
+        sourceId.value = props.existingEdge.sourceId
+        sourceType.value = props.existingEdge.sourceType
+        targetId.value = props.existingEdge.targetId
+        targetType.value = props.existingEdge.targetType
+        relationshipType.value = props.existingEdge.relationshipType
+        description.value = props.existingEdge.description || ''
+      } else if (props.sourceNode) {
+        const [prefix, id] = props.sourceNode.id.split('-')
+        if (prefix === 'group') {
+          sourceType.value = 'group'
+          sourceId.value = props.sourceNode.id
+        } else {
+          const PREFIX_MAP = { char: 'character', loc: 'location' }
+          sourceType.value = PREFIX_MAP[prefix] || 'plotThread'
+          sourceId.value = id
+        }
+
+        if (props.targetNode) {
+          targetType.value = 'group'
+          targetId.value = props.targetNode.id
+        } else {
+          targetId.value = ''
+          targetType.value = ''
+        }
+        relationshipType.value = 'connects_to'
+        description.value = ''
       } else {
-        const PREFIX_MAP = { char: 'character', loc: 'location' }
-        sourceType.value = PREFIX_MAP[prefix] || 'plotThread'
-        sourceId.value = id
-      }
-      
-      if (props.targetNode) {
-        targetType.value = 'group'
-        targetId.value = props.targetNode.id
-      } else {
+        sourceId.value = ''
+        sourceType.value = ''
         targetId.value = ''
         targetType.value = ''
+        relationshipType.value = 'connects_to'
+        description.value = ''
       }
-      relationshipType.value = 'connects_to'
-      description.value = ''
-    } else {
-      sourceId.value = ''
-      sourceType.value = ''
-      targetId.value = ''
-      targetType.value = ''
-      relationshipType.value = 'connects_to'
-      description.value = ''
     }
   }
-})
+)
 
 watch([sourceId, targetId, sourceType], () => {
-  const charCharTypeValues = charCharTypes.map(t => t.value)
-  const groupTypeValues = groupToGroupTypes.map(t => t.value)
-  
+  const charCharTypeValues = charCharTypes.map((t) => t.value)
+  const groupTypeValues = groupToGroupTypes.map((t) => t.value)
+
   if (isGroupToGroup.value && !groupTypeValues.includes(relationshipType.value)) {
     relationshipType.value = 'allied_with'
   } else if (isCharToChar.value && !charCharTypeValues.includes(relationshipType.value)) {
     relationshipType.value = 'ally'
-  } else if (!isCharToChar.value && !isGroupToGroup.value && charCharTypeValues.includes(relationshipType.value)) {
+  } else if (
+    !isCharToChar.value &&
+    !isGroupToGroup.value &&
+    charCharTypeValues.includes(relationshipType.value)
+  ) {
     relationshipType.value = 'connects_to'
   }
 })
 
 function handleSourceChange() {
-  const entity = allEntities.value.find(e => e.id === sourceId.value && e.type === sourceType.value)
+  const entity = allEntities.value.find(
+    (e) => e.id === sourceId.value && e.type === sourceType.value
+  )
   if (entity) {
     targetId.value = ''
     targetType.value = sourceType.value === 'group' ? 'group' : ''
@@ -209,7 +222,7 @@ function handleSourceChange() {
 }
 
 function handleTargetChange() {
-  const entity = allEntities.value.find(e => e.id === targetId.value)
+  const entity = allEntities.value.find((e) => e.id === targetId.value)
   if (entity) {
     targetType.value = entity.type
   }
@@ -228,7 +241,7 @@ function handleSave() {
   if (!isValid.value) {
     return
   }
-  
+
   if (isGroupToGroup.value) {
     const groupEdgeData = {
       sourceGroupId: sourceId.value,
@@ -266,7 +279,9 @@ function handleSave() {
         class="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50"
         @click.self="emit('close')"
       >
-        <div class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+        <div
+          class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto"
+        >
           <div class="p-6">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-lg font-semibold text-text-primary">
@@ -301,7 +316,7 @@ function handleSave() {
                   >
                     <option value="">Select...</option>
                     <option
-                      v-for="entity in allEntities.filter(e => e.type === sourceType)"
+                      v-for="entity in allEntities.filter((e) => e.type === sourceType)"
                       :key="`${entity.type}-${entity.id}`"
                       :value="entity.id"
                     >
@@ -316,11 +331,7 @@ function handleSave() {
                     @change="handleSourceChange"
                   >
                     <option value="">Select...</option>
-                    <option
-                      v-for="group in groups"
-                      :key="group.id"
-                      :value="group.id"
-                    >
+                    <option v-for="group in groups" :key="group.id" :value="group.id">
                       {{ group.name || 'Unnamed Group' }}
                     </option>
                   </select>
@@ -365,11 +376,7 @@ function handleSave() {
                     @change="() => handleGroupTargetChange(targetId)"
                   >
                     <option value="">Select...</option>
-                    <option
-                      v-for="group in groups"
-                      :key="group.id"
-                      :value="group.id"
-                    >
+                    <option v-for="group in groups" :key="group.id" :value="group.id">
                       {{ group.name || 'Unnamed Group' }}
                     </option>
                   </select>

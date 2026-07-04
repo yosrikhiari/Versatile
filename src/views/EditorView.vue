@@ -65,16 +65,23 @@ const editorWrapperRef = ref(null)
 
 // Restore persisted chat sessions once the project is known, otherwise the
 // in-memory store stays empty and every chat opens as a fresh duplicate
-watch(() => projectStore.currentProjectId, (pid) => {
-  if (pid) characterChatStore.loadSessions(pid)
-}, { immediate: true })
+watch(
+  () => projectStore.currentProjectId,
+  (pid) => {
+    if (pid) characterChatStore.loadSessions(pid)
+  },
+  { immediate: true }
+)
 
-watch(() => characterChatStore.activeSessionId, (newId) => {
-  if (newId && characterChatStore.activeSession) {
-    chattingCharacterIds.value = [...characterChatStore.activeSession.characterIds]
-    showCharacterChatModal.value = true
+watch(
+  () => characterChatStore.activeSessionId,
+  (newId) => {
+    if (newId && characterChatStore.activeSession) {
+      chattingCharacterIds.value = [...characterChatStore.activeSession.characterIds]
+      showCharacterChatModal.value = true
+    }
   }
-})
+)
 const containerWidth = ref(0)
 const containerHeight = ref(0)
 let resizeObserver = null
@@ -86,23 +93,54 @@ async function onDrop(event) {
     const entity = JSON.parse(raw)
     if (entity.type !== 'character') return
     const rect = editorWrapperRef.value.getBoundingClientRect()
-    const character = storyBibleStore.characters.find(c => c.id === entity.id)
+    const character = storyBibleStore.characters.find((c) => c.id === entity.id)
     if (!character) return
-    await bubbleStore.addBubbleFromCharacter(character, event.clientX - rect.left, event.clientY - rect.top, projectStore.currentProjectId)
+    await bubbleStore.addBubbleFromCharacter(
+      character,
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+      projectStore.currentProjectId
+    )
   } catch {}
 }
 
-const { ollamaAvailable, modelNotFound, showModelBanner, hasLoaded, initializeApp, checkModelAvailability, onOnboardingComplete, onOnboardingSkip } = useAppInitialization()
-const { importStatus, showImportModal, handleExport, handleExportPDF, handleExportEpub, handleImport } = useExportImport()
+const {
+  ollamaAvailable,
+  modelNotFound,
+  showModelBanner,
+  hasLoaded,
+  initializeApp,
+  checkModelAvailability,
+  onOnboardingComplete,
+  onOnboardingSkip
+} = useAppInitialization()
+const {
+  importStatus,
+  showImportModal,
+  handleExport,
+  handleExportPDF,
+  handleExportEpub,
+  handleImport
+} = useExportImport()
 
 useKeyboardShortcuts({
-  onSearchClose: () => { showSearchOverlay.value = false },
-  onToggleShortcuts: () => { showShortcutsModal.value = !showShortcutsModal.value },
-  onExport: () => { showSearchOverlay.value = true },
+  onSearchClose: () => {
+    showSearchOverlay.value = false
+  },
+  onToggleShortcuts: () => {
+    showShortcutsModal.value = !showShortcutsModal.value
+  },
+  onExport: () => {
+    showSearchOverlay.value = true
+  },
   onImport: handleImport,
   onSave: handleExport,
-  onToggleFocusMode: () => { focusMode.value = !focusMode.value },
-  onToggleFlow: (running) => { running ? timer.startSession(20) : timer.endSession() },
+  onToggleFocusMode: () => {
+    focusMode.value = !focusMode.value
+  },
+  onToggleFlow: (running) => {
+    running ? timer.startSession(20) : timer.endSession()
+  },
   timerIsRunning: timer.isRunning.value,
   onToggleSpark: () => appShell.value?.toggleSpark(),
   onToggleStoryGenerator: () => appShell.value?.toggleStoryGenerator(),
@@ -115,7 +153,9 @@ useKeyboardShortcuts({
   onToggleNetwork: () => appShell.value?.toggleNetwork(),
   onToggleTimeline: () => appShell.value?.toggleTimeline(),
   onToggleArchive: () => appShell.value?.toggleArchive(),
-  onCloseModal: () => { showShortcutsModal.value = false },
+  onCloseModal: () => {
+    showShortcutsModal.value = false
+  },
   appShell: appShell.value
 })
 
@@ -131,7 +171,7 @@ onMounted(async () => {
   if (wrapper) {
     containerWidth.value = wrapper.clientWidth
     containerHeight.value = wrapper.clientHeight
-    resizeObserver = new ResizeObserver(entries => {
+    resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         containerWidth.value = entry.contentRect.width
         containerHeight.value = entry.contentRect.height
@@ -139,9 +179,13 @@ onMounted(async () => {
     })
     resizeObserver.observe(wrapper)
   }
-  watch(() => manuscriptStore.storyElements.length, () => {
-    bubbleStore.loadBubblesFromManuscript(manuscriptStore.storyElements)
-  }, { immediate: true })
+  watch(
+    () => manuscriptStore.storyElements.length,
+    () => {
+      bubbleStore.loadBubblesFromManuscript(manuscriptStore.storyElements)
+    },
+    { immediate: true }
+  )
 })
 
 onBeforeUnmount(() => {
@@ -187,11 +231,18 @@ function handleOnboardingSkipWrapper() {
 
 <template>
   <div class="min-h-[100dvh] bg-manuscript relative">
-    <div v-if="!ollamaAvailable" class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200">
-      Ollama is not reachable at localhost:11434. AI features are disabled. Start your Ollama container to enable them.
+    <div
+      v-if="!ollamaAvailable"
+      class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200"
+    >
+      Ollama is not reachable at localhost:11434. AI features are disabled. Start your Ollama
+      container to enable them.
     </div>
 
-    <div v-if="showModelBanner && modelNotFound" class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200 flex items-center justify-between">
+    <div
+      v-if="showModelBanner && modelNotFound"
+      class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200 flex items-center justify-between"
+    >
       <span>AI model not found. Responses may fail — check your Ollama setup in Settings.</span>
       <button class="text-amber-200 hover:text-white" @click="showModelBanner = false">
         <BaseIcon name="x" :size="16" />
@@ -212,14 +263,25 @@ function handleOnboardingSkipWrapper() {
       @create-project="showOnboarding = true"
     >
       <template #editor>
-        <div ref="editorWrapperRef" class="relative isolate w-full h-full" @dragover.prevent @drop.prevent="onDrop">
+        <div
+          ref="editorWrapperRef"
+          class="relative isolate w-full h-full"
+          @dragover.prevent
+          @drop.prevent="onDrop"
+        >
           <FlowEditor
             ref="flowEditorRef"
             @paragraph-click="handleParagraphClick"
             @open-settings="showSettingsModal = true"
             @exit-flow="handleEndFlow"
           />
-          <CharacterBubble v-for="bubble in bubbleStore.bubbles" :key="bubble.id" :bubble="bubble" :container-width="containerWidth" :container-height="containerHeight" />
+          <CharacterBubble
+            v-for="bubble in bubbleStore.bubbles"
+            :key="bubble.id"
+            :bubble="bubble"
+            :container-width="containerWidth"
+            :container-height="containerHeight"
+          />
         </div>
       </template>
 
@@ -279,7 +341,7 @@ function handleOnboardingSkipWrapper() {
       </template>
     </AppShell>
 
-    <WelcomeOnboarding 
+    <WelcomeOnboarding
       v-if="showOnboarding && hasLoaded"
       :show="true"
       @complete="handleOnboardingCompleteWrapper"
@@ -287,104 +349,169 @@ function handleOnboardingSkipWrapper() {
     />
 
     <Transition name="spring-scale">
-      <div v-if="timer.showSessionEndModal.value" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="liquid-glass rounded-lg shadow-warm-lg p-8 max-w-md text-center">
-        <BaseIcon name="waves" :size="48" class="mb-4 mx-auto text-accent" />
-        <h2 class="text-xl font-semibold text-text-primary mb-2">Session complete</h2>
-        <p class="text-text-secondary mb-6">
-          You wrote {{ timer.sessionWordCountEnd.value }} words.
-        </p>
-        <div class="flex gap-3">
-          <button
-            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="timer.startNewSession(20)"
-          >
-            Start new session
-          </button>
-          <button
-            class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="timer.dismissModal()"
-          >
-            Keep writing (no timer)
-          </button>
-        </div>
-      </div>
-    </div>
-    </Transition>
-
-    <Transition name="spring-scale">
-      <div v-if="showImportModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showImportModal = false">
-      <div class="liquid-glass rounded-lg shadow-warm-lg p-8 max-w-md text-center relative">
-        <button class="absolute top-3 right-3 text-text-secondary hover:text-text-primary transition-colors" @click="showImportModal = false">
-          <BaseIcon name="x" :size="16" />
-        </button>
-        <p class="text-text-primary">{{ importStatus }}</p>
-      </div>
-    </div>
-    </Transition>
-
-    <Transition name="spring-scale">
-      <div v-if="showShortcutsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showShortcutsModal = false">
-      <div class="liquid-glass rounded-lg shadow-warm-lg p-6 max-w-lg w-full">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-text-primary">Keyboard Shortcuts</h2>
-          <button class="text-text-secondary hover:text-text-primary text-xl focus:outline-none focus:ring-2 focus:ring-accent rounded" @click="showShortcutsModal = false">&times;</button>
-        </div>
-        
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <h3 class="text-sm font-medium text-accent mb-2">Writing Tools</h3>
-              <div class="space-y-2 text-sm">
-                <div class="flex justify-between"><span class="text-text-secondary">Spark (AI)</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">1</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Polish</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">2</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Story Bible</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">3</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Revise</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">4</kbd></div>
-              </div>
-            </div>
-            <div>
-              <h3 class="text-sm font-medium text-accent mb-2">Planning Tools</h3>
-              <div class="space-y-2 text-sm">
-                <div class="flex justify-between"><span class="text-text-secondary"> Canvas</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">5</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Outline</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">6</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Chapters</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">7</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Network</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">8</kbd></div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle">
-            <div>
-              <h3 class="text-sm font-medium text-accent mb-2">Actions</h3>
-              <div class="space-y-2 text-sm">
-                <div class="flex justify-between"><span class="text-text-secondary">Story Generator</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">g</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Start/Stop Flow</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">f</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Export</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">Ctrl+S</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Import</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">Ctrl+I</kbd></div>
-              </div>
-            </div>
-            <div>
-              <h3 class="text-sm font-medium text-accent mb-2">General</h3>
-              <div class="space-y-2 text-sm">
-                <div class="flex justify-between"><span class="text-text-secondary">Show shortcuts</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">?</kbd></div>
-                <div class="flex justify-between"><span class="text-text-secondary">Close modal/Escape</span><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">Esc</kbd></div>
-              </div>
-            </div>
+      <div
+        v-if="timer.showSessionEndModal.value"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+      >
+        <div class="liquid-glass rounded-lg shadow-warm-lg p-8 max-w-md text-center">
+          <BaseIcon name="waves" :size="48" class="mb-4 mx-auto text-accent" />
+          <h2 class="text-xl font-semibold text-text-primary mb-2">Session complete</h2>
+          <p class="text-text-secondary mb-6">
+            You wrote {{ timer.sessionWordCountEnd.value }} words.
+          </p>
+          <div class="flex gap-3">
+            <button
+              class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+              @click="timer.startNewSession(20)"
+            >
+              Start new session
+            </button>
+            <button
+              class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
+              @click="timer.dismissModal()"
+            >
+              Keep writing (no timer)
+            </button>
           </div>
         </div>
       </div>
-    </div>
     </Transition>
 
-    <SearchOverlay 
-      v-if="showSearchOverlay" 
-      :editor="flowEditorRef?.editor" 
-      @close="showSearchOverlay = false" 
+    <Transition name="spring-scale">
+      <div
+        v-if="showImportModal"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+        @click.self="showImportModal = false"
+      >
+        <div class="liquid-glass rounded-lg shadow-warm-lg p-8 max-w-md text-center relative">
+          <button
+            class="absolute top-3 right-3 text-text-secondary hover:text-text-primary transition-colors"
+            @click="showImportModal = false"
+          >
+            <BaseIcon name="x" :size="16" />
+          </button>
+          <p class="text-text-primary">{{ importStatus }}</p>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="spring-scale">
+      <div
+        v-if="showShortcutsModal"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+        @click.self="showShortcutsModal = false"
+      >
+        <div class="liquid-glass rounded-lg shadow-warm-lg p-6 max-w-lg w-full">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-text-primary">Keyboard Shortcuts</h2>
+            <button
+              class="text-text-secondary hover:text-text-primary text-xl focus:outline-none focus:ring-2 focus:ring-accent rounded"
+              @click="showShortcutsModal = false"
+            >
+              &times;
+            </button>
+          </div>
+
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <h3 class="text-sm font-medium text-accent mb-2">Writing Tools</h3>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Spark (AI)</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">1</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Polish</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">2</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Story Bible</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">3</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Revise</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">4</kbd>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 class="text-sm font-medium text-accent mb-2">Planning Tools</h3>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary"> Canvas</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">5</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Outline</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">6</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Chapters</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">7</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Network</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">8</kbd>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle">
+              <div>
+                <h3 class="text-sm font-medium text-accent mb-2">Actions</h3>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Story Generator</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">g</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Start/Stop Flow</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">f</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Export</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">Ctrl+S</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Import</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">Ctrl+I</kbd>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 class="text-sm font-medium text-accent mb-2">General</h3>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Show shortcuts</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">?</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-text-secondary">Close modal/Escape</span
+                    ><kbd class="px-2 py-0.5 bg-bg-secondary rounded text-xs">Esc</kbd>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <SearchOverlay
+      v-if="showSearchOverlay"
+      :editor="flowEditorRef?.editor"
+      @close="showSearchOverlay = false"
     />
 
     <AuthModal :show="showAuthModal" @close="showAuthModal = false" />
 
-    <SettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @model-changed="checkModelAvailability" />
+    <SettingsModal
+      :show="showSettingsModal"
+      @close="showSettingsModal = false"
+      @model-changed="checkModelAvailability"
+    />
 
     <Modal :show="showCharacterChatModal" @close="onCharacterChatClose">
       <CharacterChatSession

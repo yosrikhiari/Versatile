@@ -11,7 +11,9 @@ export function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS) {
   }
 
   const truncated = { ...bundle }
-  const keys = ['entitiesBlock', 'relationshipBlock', 'manuscriptBlock'].filter(k => typeof truncated[k] === 'string')
+  const keys = ['entitiesBlock', 'relationshipBlock', 'manuscriptBlock'].filter(
+    (k) => typeof truncated[k] === 'string'
+  )
 
   const reductionLog = []
   while (totalChars > budget && keys.length > 0) {

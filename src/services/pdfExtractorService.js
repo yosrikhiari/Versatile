@@ -1,13 +1,14 @@
 import * as pdfjsLib from 'pdfjs-dist'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.0.227/pdf.worker.min.mjs'
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.0.227/pdf.worker.min.mjs'
 
 const SCANNED_PAGE_THRESHOLD = 50
 const SCANNED_MIN_PAGES = 3
 const MAX_PDF_PAGES = 500
 
 function yieldToMain() {
-  return new Promise(r => setTimeout(r, 0))
+  return new Promise((r) => setTimeout(r, 0))
 }
 
 export function detectFileType(file) {
@@ -34,7 +35,7 @@ export async function extractPdfText(file, onProgress = () => {}) {
     try {
       const page = await pdf.getPage(i)
       const content = await page.getTextContent()
-      pageText = content.items.map(item => item.str).join(' ')
+      pageText = content.items.map((item) => item.str).join(' ')
     } catch (err) {
       console.warn(`Failed to extract PDF page ${i}:`, err.message)
     }

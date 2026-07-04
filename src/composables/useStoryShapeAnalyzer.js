@@ -1,7 +1,11 @@
 import { ref, computed } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useHeuristicAnalyzer } from './useHeuristicAnalyzer'
-import { saveShapeAnalysis, getLatestShapeVersion, getAllShapeAnalyses } from '../services/db-story-shape'
+import {
+  saveShapeAnalysis,
+  getLatestShapeVersion,
+  getAllShapeAnalyses
+} from '../services/db-story-shape'
 
 export function useStoryShapeAnalyzer() {
   const projectStore = useProjectStore()

@@ -22,23 +22,9 @@ export const PROVIDER_BASE_URLS = {
 }
 
 export const PROVIDER_MODELS = {
-  [PROVIDERS.OPENAI]: [
-    'gpt-4o',
-    'gpt-4o-mini',
-    'gpt-4-turbo',
-    'gpt-4',
-    'gpt-3.5-turbo'
-  ],
-  [PROVIDERS.ANTHROPIC]: [
-    'claude-opus-4',
-    'claude-sonnet-4',
-    'claude-haiku-3'
-  ],
-  [PROVIDERS.GEMINI]: [
-    'gemini-2.5-pro',
-    'gemini-2.5-flash',
-    'gemini-1.5-pro'
-  ],
+  [PROVIDERS.OPENAI]: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+  [PROVIDERS.ANTHROPIC]: ['claude-opus-4', 'claude-sonnet-4', 'claude-haiku-3'],
+  [PROVIDERS.GEMINI]: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro'],
   [PROVIDERS.GROQ]: [
     'openai/gpt-oss-120b',
     'openai/gpt-oss-20b',

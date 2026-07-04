@@ -32,7 +32,9 @@ Respond ONLY with valid JSON:
 If no contradictions found, return { "contradictions": [] }`
 
 function formatCharacterCheck(character, storyBibleFacts, sceneExcerpts) {
-  const excerpts = sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`).join('\n\n')
+  const excerpts = sceneExcerpts
+    .map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`)
+    .join('\n\n')
   return `Character: ${character.name}
 Role: ${character.role || 'unknown'}
 Goal: ${character.goal || 'unknown'}
@@ -45,7 +47,9 @@ ${excerpts}`
 }
 
 function formatLocationCheck(location, storyBibleFacts, sceneExcerpts) {
-  const excerpts = sceneExcerpts.map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`).join('\n\n')
+  const excerpts = sceneExcerpts
+    .map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`)
+    .join('\n\n')
   return `Location: ${location.name}
 Description: ${location.description || 'unknown'}
 Notes: ${location.notes || 'unknown'}
@@ -60,7 +64,13 @@ export function useStoryCritic() {
   const isCheckingConsistency = ref(false)
   const consistencyReport = ref(null)
 
-  async function evaluateScene({ draft, sceneBrief, storyBible, chapterLog, existingEntitiesJson }) {
+  async function evaluateScene({
+    draft,
+    sceneBrief,
+    storyBible,
+    chapterLog,
+    existingEntitiesJson
+  }) {
     isEvaluating.value = true
 
     try {
@@ -72,7 +82,7 @@ export function useStoryCritic() {
       const hasFewCharacters = characterCount < 2
 
       const promptDims = getDimensionNames(categoryType)
-      const dimsList = promptDims.map(d => `  - ${d}`).join('\n')
+      const dimsList = promptDims.map((d) => `  - ${d}`).join('\n')
 
       let userPrompt = `Evaluate this scene draft across ALL of the following dimensions:
 ${dimsList}
@@ -133,10 +143,12 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         dimensionScores[dim] = typeof val === 'number' && val >= 1 && val <= 10 ? val : null
       }
 
-      const majorIssues = issues.filter(i => i.severity === 'major')
-      const minorIssues = issues.filter(i => i.severity === 'minor')
+      const majorIssues = issues.filter((i) => i.severity === 'major')
+      const minorIssues = issues.filter((i) => i.severity === 'minor')
 
-      const pass = (hasFewCharacters && majorIssues.length === 0) || (majorIssues.length === 0 && minorIssues.length <= 2)
+      const pass =
+        (hasFewCharacters && majorIssues.length === 0) ||
+        (majorIssues.length === 0 && minorIssues.length <= 2)
 
       return {
         pass,
@@ -168,30 +180,32 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
       // Pre-index scenes by character name (avoids O(C×S) repeated .filter() inside loop)
       const scenesByChar = new Map()
       for (const char of characters) {
-        scenesByChar.set(char.name, sceneProse.filter(s =>
-          (s.characters || []).includes(char.name)
-        ))
+        scenesByChar.set(
+          char.name,
+          sceneProse.filter((s) => (s.characters || []).includes(char.name))
+        )
       }
 
       // Pre-index scenes by location name
       const scenesByLoc = new Map()
       for (const loc of locations) {
-        scenesByLoc.set(loc.name, sceneProse.filter(s =>
-          s.location === loc.name
-        ))
+        scenesByLoc.set(
+          loc.name,
+          sceneProse.filter((s) => s.location === loc.name)
+        )
       }
 
       // Build task factories for characters and locations
       const charTasks = characters
-        .filter(char => (scenesByChar.get(char.name)?.length || 0) >= 2)
-        .map(char => async () => {
+        .filter((char) => (scenesByChar.get(char.name)?.length || 0) >= 2)
+        .map((char) => async () => {
           const charScenes = scenesByChar.get(char.name)
           const prompt = formatCharacterCheck(char, {}, charScenes)
-          const response = await aiGenerate(
-            systemNote + prompt,
-            CONSISTENCY_CRITIC_PROMPT,
-            { feature: FEATURES.STORY_GENERATION, temperature: 0.3, maxTokens: 1000 }
-          )
+          const response = await aiGenerate(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
+            feature: FEATURES.STORY_GENERATION,
+            temperature: 0.3,
+            maxTokens: 1000
+          })
           const parsed = sanitizeJson(response)
           if (parsed?.contradictions?.length > 0) {
             return { character: char.name, contradictions: parsed.contradictions }
@@ -200,15 +214,15 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         })
 
       const locTasks = locations
-        .filter(loc => (scenesByLoc.get(loc.name)?.length || 0) >= 2)
-        .map(loc => async () => {
+        .filter((loc) => (scenesByLoc.get(loc.name)?.length || 0) >= 2)
+        .map((loc) => async () => {
           const locScenes = scenesByLoc.get(loc.name)
           const prompt = formatLocationCheck(loc, {}, locScenes)
-          const response = await aiGenerate(
-            systemNote + prompt,
-            CONSISTENCY_CRITIC_PROMPT,
-            { feature: FEATURES.STORY_GENERATION, temperature: 0.3, maxTokens: 1000 }
-          )
+          const response = await aiGenerate(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
+            feature: FEATURES.STORY_GENERATION,
+            temperature: 0.3,
+            maxTokens: 1000
+          })
           const parsed = sanitizeJson(response)
           if (parsed?.contradictions?.length > 0) {
             return { location: loc.name, contradictions: parsed.contradictions }
@@ -221,8 +235,8 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
       const CONCURRENCY = 3
       const results = []
       for (let i = 0; i < allTasks.length; i += CONCURRENCY) {
-        const batch = allTasks.slice(i, i + CONCURRENCY).map(fn => fn())
-        results.push(...await Promise.all(batch))
+        const batch = allTasks.slice(i, i + CONCURRENCY).map((fn) => fn())
+        results.push(...(await Promise.all(batch)))
       }
 
       for (const r of results) {
@@ -240,7 +254,13 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
     return report
   }
 
-  return { evaluateScene, isEvaluating, checkContradictions, isCheckingConsistency, consistencyReport }
+  return {
+    evaluateScene,
+    isEvaluating,
+    checkContradictions,
+    isCheckingConsistency,
+    consistencyReport
+  }
 }
 
 export { sanitizeJson, countCharacters, formatCharacterCheck, formatLocationCheck }

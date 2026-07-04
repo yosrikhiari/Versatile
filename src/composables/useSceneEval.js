@@ -1,7 +1,11 @@
 import { ref, computed } from 'vue'
 import { useStoryCritic } from './useStoryCritic'
 import { useStoryRevisor } from './useStoryRevisor'
-import { gateDimensionCoverage, gateScoreDistribution, gateRevisionEffectiveness } from '../services/evalGates'
+import {
+  gateDimensionCoverage,
+  gateScoreDistribution,
+  gateRevisionEffectiveness
+} from '../services/evalGates'
 import { computeDegradation } from '../services/degradation'
 
 export function useSceneEval() {
@@ -9,7 +13,11 @@ export function useSceneEval() {
   const isRevising = ref(false)
   const hasBeenEvaluated = ref(false)
   const critiqueResult = ref(null)
-  const gateResults = ref({ dimensionCoverage: null, scoreDistribution: null, revisionEffectiveness: null })
+  const gateResults = ref({
+    dimensionCoverage: null,
+    scoreDistribution: null,
+    revisionEffectiveness: null
+  })
   const revisionResult = ref(null)
   const sceneResultsMap = ref({})
 
@@ -19,18 +27,21 @@ export function useSceneEval() {
   const aggregateStats = computed(() => {
     const entries = Object.values(sceneResultsMap.value)
     if (entries.length === 0) return null
-    const evaluated = entries.filter(e => e.critiqueResult)
+    const evaluated = entries.filter((e) => e.critiqueResult)
     if (evaluated.length === 0) return null
-    const scores = evaluated
-      .map(e => e.critiqueResult.score)
-      .filter(s => typeof s === 'number')
-    const avgScore = scores.length > 0
-      ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
-      : null
+    const scores = evaluated.map((e) => e.critiqueResult.score).filter((s) => typeof s === 'number')
+    const avgScore =
+      scores.length > 0
+        ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
+        : null
     const regressions = evaluated.reduce((sum, e) => {
       if (!e.revisionResult?.degradation?.dimensions) return sum
-      return sum + Object.values(e.revisionResult.degradation.dimensions)
-        .filter(d => d.status === 'regression').length
+      return (
+        sum +
+        Object.values(e.revisionResult.degradation.dimensions).filter(
+          (d) => d.status === 'regression'
+        ).length
+      )
     }, 0)
     const majorRegressions = evaluated.reduce((sum, e) => {
       if (!e.revisionResult?.degradation?.hasMajorRegressions) return sum
@@ -39,7 +50,7 @@ export function useSceneEval() {
     return {
       totalScenes: entries.length,
       evaluatedCount: evaluated.length,
-      revisedCount: entries.filter(e => e.revisionResult).length,
+      revisedCount: entries.filter((e) => e.revisionResult).length,
       averageScore: avgScore,
       totalRegressions: regressions,
       scenesWithMajorRegressions: majorRegressions
@@ -100,7 +111,11 @@ export function useSceneEval() {
       if (typeof sceneIdx === 'number') {
         updateSceneEntry(sceneIdx, {
           critiqueResult: result,
-          gateResults: { dimensionCoverage: dimCov, scoreDistribution: scoreDist, revisionEffectiveness: null },
+          gateResults: {
+            dimensionCoverage: dimCov,
+            scoreDistribution: scoreDist,
+            revisionEffectiveness: null
+          },
           hasBeenEvaluated: true
         })
       }
@@ -139,7 +154,10 @@ export function useSceneEval() {
         })
 
         const revEff = await gateRevisionEffectiveness(
-          critiqueResult.value, revisedDraft, scene.prose, revisedCritique
+          critiqueResult.value,
+          revisedDraft,
+          scene.prose,
+          revisedCritique
         )
 
         if (gateResults.value) {
@@ -182,7 +200,11 @@ export function useSceneEval() {
     isRevising.value = false
     hasBeenEvaluated.value = false
     critiqueResult.value = null
-    gateResults.value = { dimensionCoverage: null, scoreDistribution: null, revisionEffectiveness: null }
+    gateResults.value = {
+      dimensionCoverage: null,
+      scoreDistribution: null,
+      revisionEffectiveness: null
+    }
     revisionResult.value = null
     sceneResultsMap.value = {}
   }

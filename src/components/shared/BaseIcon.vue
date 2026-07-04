@@ -23,10 +23,11 @@ const props = defineProps({
 
 const iconComponent = computed(() => {
   const name = props.name || 'circle'
-  const pascalCase = name.split('-').map(part => 
-    part.charAt(0).toUpperCase() + part.slice(1)
-  ).join('')
-  
+  const pascalCase = name
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('')
+
   return LucideIcons[pascalCase] || LucideIcons.Circle
 })
 </script>

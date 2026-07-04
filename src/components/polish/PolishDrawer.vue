@@ -22,18 +22,18 @@ const polishModelLabel = computed(() => {
 
 const expanded = ref(false)
 
-const {
-  compactConversation,
-  isCompacting: compactIsCompacting,
-  addTurn
-} = useCompactConversation()
+const { compactConversation, isCompacting: compactIsCompacting, addTurn } = useCompactConversation()
 const compactCallId = 'polish_main'
 
 async function handleCompactPolish() {
   addTurn(compactCallId, 'user', 'User requested Polish analysis')
   const result = await compactConversation(compactCallId)
   if (result.compacted) {
-    addTurn(compactCallId, 'system', `Conversation compacted: ${result.summarizedCount} previous turns summarized`)
+    addTurn(
+      compactCallId,
+      'system',
+      `Conversation compacted: ${result.summarizedCount} previous turns summarized`
+    )
   }
 }
 
@@ -51,7 +51,7 @@ const lensOptions = [
 const currentAnnotations = computed(() => {
   if (polishStore.selectedParagraphIndex === null) return []
   return polishStore.annotations.filter(
-    a => a.paragraphIndex === polishStore.selectedParagraphIndex && a.status === 'pending'
+    (a) => a.paragraphIndex === polishStore.selectedParagraphIndex && a.status === 'pending'
   )
 })
 
@@ -66,7 +66,7 @@ const lensIssueCounts = computed(() => {
     }
     const type = typeMap[lens.key]
     counts[lens.key] = polishStore.annotations.filter(
-      a => a.type === type && a.status === 'pending'
+      (a) => a.type === type && a.status === 'pending'
     ).length
   }
   return counts
@@ -90,10 +90,24 @@ function handleParagraphClick(text, index) {
 }
 
 async function analyzeNow() {
-  if (polishStore.selectedParagraphText && polishStore.selectedParagraphIndex !== null && projectStore.currentProjectId) {
-    addTurn(compactCallId, 'user', `Analyze paragraph ${polishStore.selectedParagraphIndex} (${polishStore.selectedParagraphText.slice(0, 80)}...)`)
-    await polishStore.analyzeNow(polishStore.selectedParagraphText, polishStore.selectedParagraphIndex, projectStore.currentProjectId)
-    const pendingCount = polishStore.annotations.filter(a => a.paragraphIndex === polishStore.selectedParagraphIndex && a.status === 'pending').length
+  if (
+    polishStore.selectedParagraphText &&
+    polishStore.selectedParagraphIndex !== null &&
+    projectStore.currentProjectId
+  ) {
+    addTurn(
+      compactCallId,
+      'user',
+      `Analyze paragraph ${polishStore.selectedParagraphIndex} (${polishStore.selectedParagraphText.slice(0, 80)}...)`
+    )
+    await polishStore.analyzeNow(
+      polishStore.selectedParagraphText,
+      polishStore.selectedParagraphIndex,
+      projectStore.currentProjectId
+    )
+    const pendingCount = polishStore.annotations.filter(
+      (a) => a.paragraphIndex === polishStore.selectedParagraphIndex && a.status === 'pending'
+    ).length
     addTurn(compactCallId, 'assistant', `Analysis complete: ${pendingCount} issues found`)
   }
 }
@@ -122,7 +136,7 @@ defineExpose({
 </script>
 
 <template>
-  <div 
+  <div
     :class="[
       'flex flex-col h-full transition-[height] duration-200 ease-out motion-reduce:transition-none',
       expanded ? 'h-[50vh]' : 'h-[320px]'
@@ -134,21 +148,28 @@ defineExpose({
           v-for="lens in lensOptions"
           :key="lens.key"
           :class="[
-              'px-2 py-1 text-xs rounded-full transition-colors font-ui relative focus:outline-none focus:ring-2 focus:ring-accent',
-              polishStore.activeLenses[lens.key]
-                ? 'bg-accent text-accent-foreground'
-                : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-            ]"
-            @click="toggleLens(lens.key)"
+            'px-2 py-1 text-xs rounded-full transition-colors font-ui relative focus:outline-none focus:ring-2 focus:ring-accent',
+            polishStore.activeLenses[lens.key]
+              ? 'bg-accent text-accent-foreground'
+              : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
+          ]"
+          @click="toggleLens(lens.key)"
         >
           {{ lens.label }}
-          <span v-if="lensIssueCounts[lens.key] > 0 && polishStore.activeLenses[lens.key]" class="ml-1 opacity-75">
+          <span
+            v-if="lensIssueCounts[lens.key] > 0 && polishStore.activeLenses[lens.key]"
+            class="ml-1 opacity-75"
+          >
             {{ lensIssueCounts[lens.key] }}
           </span>
         </button>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-2xs text-text-hint font-ui truncate max-w-[140px]" :title="polishModelLabel">{{ polishModelLabel }}</span>
+        <span
+          class="text-2xs text-text-hint font-ui truncate max-w-[140px]"
+          :title="polishModelLabel"
+          >{{ polishModelLabel }}</span
+        >
         <button
           v-if="polishStore.selectedParagraphIndex !== null"
           :disabled="polishStore.isAnalyzing"
@@ -193,10 +214,15 @@ defineExpose({
     <div class="flex-1 flex overflow-hidden">
       <div class="flex-[3] p-4 overflow-y-auto border-r border-border-subtle">
         <div v-if="polishStore.selectedParagraphIndex === null" class="text-center py-8">
-          <p class="text-sm italic text-text-hint">Click any paragraph in the editor to analyze it</p>
+          <p class="text-sm italic text-text-hint">
+            Click any paragraph in the editor to analyze it
+          </p>
         </div>
-        
-        <div v-else-if="polishStore.isAnalyzing" class="flex flex-col items-center justify-center py-8 gap-4">
+
+        <div
+          v-else-if="polishStore.isAnalyzing"
+          class="flex flex-col items-center justify-center py-8 gap-4"
+        >
           <div class="flex items-center gap-2 text-text-secondary">
             <BaseIcon name="loader-2" :size="16" class="animate-spin" />
             <span>Analyzing...</span>
@@ -207,20 +233,29 @@ defineExpose({
             <div class="h-3 bg-surface-hover rounded w-5/6 animate-pulse"></div>
           </div>
         </div>
-        
-        <div v-else-if="currentAnnotations.length === 0 && !polishStore.error" class="text-center py-8">
+
+        <div
+          v-else-if="currentAnnotations.length === 0 && !polishStore.error"
+          class="text-center py-8"
+        >
           <p class="text-sm italic text-text-hint">No issues found — this paragraph looks clean</p>
         </div>
-        
-        <div v-else-if="polishStore.error" class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui">
+
+        <div
+          v-else-if="polishStore.error"
+          class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui"
+        >
           {{ polishStore.error }}
         </div>
-        
+
         <div v-else class="space-y-4">
-          <div v-if="overallNote" class="bg-accent-muted/30 border-l-2 border-accent rounded-r-lg p-3 text-sm text-text-secondary italic">
+          <div
+            v-if="overallNote"
+            class="bg-accent-muted/30 border-l-2 border-accent rounded-r-lg p-3 text-sm text-text-secondary italic"
+          >
             {{ overallNote }}
           </div>
-          
+
           <TransitionGroup name="fade-stagger" tag="div" class="space-y-4">
             <PolishAnnotation
               v-for="annotation in currentAnnotations"
@@ -233,7 +268,7 @@ defineExpose({
           </TransitionGroup>
         </div>
       </div>
-      
+
       <div class="flex-[2] p-4 overflow-y-auto">
         <SnippetsDrawer :snippets="polishStore.snippets" />
       </div>
@@ -257,7 +292,13 @@ defineExpose({
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

@@ -8,7 +8,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      Authorization: `Bearer ${apiKey}`
     },
     signal: options.signal,
     body: JSON.stringify({
@@ -38,7 +38,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      Authorization: `Bearer ${apiKey}`
     },
     signal: options.signal,
     body: JSON.stringify({
@@ -93,7 +93,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
 export async function testConnection(apiKey) {
   try {
     const response = await fetch(`${PROVIDER_BASE_URLS[PROVIDERS.OPENAI]}/models`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
+      headers: { Authorization: `Bearer ${apiKey}` }
     })
     return response.ok
   } catch {

@@ -5,9 +5,8 @@ export function formatEvalFeedback(sceneEvaluations) {
     const index = ev.sceneIndex ?? i + 1
     const status = ev.passed ? 'Pass' : 'FAIL'
     const score = ev.score != null ? ` (${ev.score})` : ''
-    const issues = ev.topIssues && ev.topIssues.length > 0
-      ? ` Issues: ${ev.topIssues.join('; ')}`
-      : ''
+    const issues =
+      ev.topIssues && ev.topIssues.length > 0 ? ` Issues: ${ev.topIssues.join('; ')}` : ''
     return `Scene ${index}: ${status}${score}${issues}`
   })
 

@@ -1,7 +1,7 @@
 function getFullText(story) {
   if (story.fullText) return story.fullText
   if (story.scenes && Array.isArray(story.scenes)) {
-    return story.scenes.map(s => s.prose || '').join('\n\n')
+    return story.scenes.map((s) => s.prose || '').join('\n\n')
   }
   return ''
 }
@@ -11,7 +11,10 @@ function getTitle(story) {
 }
 
 function sanitizeFilename(title) {
-  return title.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_')
+  return title
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
 }
 
 function exportAsText(story) {

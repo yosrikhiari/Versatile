@@ -109,7 +109,7 @@ export async function computeSemanticChunks(text, options = {}) {
         groups = await workerCall('applyBreaks', sentences, headingBreaks)
       }
     }
-    groupTexts = groups.map(g => g.sentences.join(' '))
+    groupTexts = groups.map((g) => g.sentences.join(' '))
   }
   onProgress(5, 'Grouping content...')
 
@@ -131,7 +131,12 @@ export async function computeSemanticChunks(text, options = {}) {
 
   let chunkGroups
   if (groupByParagraph && groups) {
-    chunkGroups = await workerCall('computeChunksFromParagraphGroups', groups, embeddings, threshold)
+    chunkGroups = await workerCall(
+      'computeChunksFromParagraphGroups',
+      groups,
+      embeddings,
+      threshold
+    )
   } else {
     chunkGroups = await workerCall('computeChunksForSentences', sentences, embeddings, threshold)
   }
@@ -144,7 +149,13 @@ export async function computeSemanticChunks(text, options = {}) {
     const chunkText = chunk.sentences.join(' ')
 
     if (chunkText.length > maxChunkSize && chunk.sentences.length > 1) {
-      const subChunks = await recursiveSplit(chunk, maxChunkSize, embeddingProvider, embeddingModel, threshold)
+      const subChunks = await recursiveSplit(
+        chunk,
+        maxChunkSize,
+        embeddingProvider,
+        embeddingModel,
+        threshold
+      )
       for (const sub of subChunks) {
         result.push({
           text: sub.text,
@@ -170,12 +181,14 @@ export async function computeSemanticChunks(text, options = {}) {
 async function recursiveSplit(chunk, maxChars, provider, model, threshold) {
   const { sentences, startIdx } = chunk
   if (sentences.length <= 1 || chunk.sentences.join(' ').length <= maxChars) {
-    return [{
-      text: chunk.sentences.join(' '),
-      sentences: [...sentences],
-      startIdx,
-      endIdx: chunk.endIdx
-    }]
+    return [
+      {
+        text: chunk.sentences.join(' '),
+        sentences: [...sentences],
+        startIdx,
+        endIdx: chunk.endIdx
+      }
+    ]
   }
 
   let embeddings
@@ -255,9 +268,10 @@ export async function chunkDocument(text, options = {}) {
     const pct = 90 + Math.round((index / chunks.length) * 10)
     onProgress(pct, `Extracting tags for chunk ${index + 1}/${chunks.length}`)
     const chunk = chunks[index]
-    const heading = headings.find(h =>
-      chunk.text.startsWith(h.text) ||
-      normalized.indexOf(h.text) <= normalized.indexOf(chunk.text)
+    const heading = headings.find(
+      (h) =>
+        chunk.text.startsWith(h.text) ||
+        normalized.indexOf(h.text) <= normalized.indexOf(chunk.text)
     )
     const tags = await workerCall('extractTags', chunk.text)
     for (const t of tags) allTags.add(t)

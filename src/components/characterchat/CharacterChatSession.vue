@@ -27,12 +27,12 @@ const messagesContainer = ref(null)
 
 const characters = computed(() => {
   return props.characterIds
-    .map(id => storyBibleStore.characters.find(c => c.id === id))
+    .map((id) => storyBibleStore.characters.find((c) => c.id === id))
     .filter(Boolean)
 })
 
 const headerTitle = computed(() => {
-  const names = characters.value.map(c => c.name)
+  const names = characters.value.map((c) => c.name)
   if (names.length === 0) return 'Chat'
   if (names.length === 1) return `Chat with ${names[0]}`
   return `Chat with ${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`
@@ -47,9 +47,11 @@ const lastStreamingMessage = computed(() => {
 })
 
 function matchesCharacterSet(session) {
-  return session &&
+  return (
+    session &&
     session.characterIds.length === props.characterIds.length &&
-    props.characterIds.every(id => session.characterIds.includes(id))
+    props.characterIds.every((id) => session.characterIds.includes(id))
+  )
 }
 
 function startOrResumeSession() {
@@ -58,7 +60,7 @@ function startOrResumeSession() {
 
   // Resume a persisted session for this character set instead of duplicating it
   const existing = chatStore.sessionList.find(
-    s => s.projectId === props.projectId && matchesCharacterSet(s)
+    (s) => s.projectId === props.projectId && matchesCharacterSet(s)
   )
   if (existing) {
     chatStore.setActiveSession(existing.id)
@@ -96,13 +98,13 @@ function scrollToBottom() {
 
 function getMessageCharacterName(msg) {
   if (!msg.characterId) return null
-  const c = storyBibleStore.characters.find(ch => ch.id === msg.characterId)
+  const c = storyBibleStore.characters.find((ch) => ch.id === msg.characterId)
   return c?.name || null
 }
 
 function getMessagePortrait(msg) {
   if (!msg.characterId) return null
-  const c = storyBibleStore.characters.find(ch => ch.id === msg.characterId)
+  const c = storyBibleStore.characters.find((ch) => ch.id === msg.characterId)
   return c?.portrait || null
 }
 
@@ -119,7 +121,9 @@ watch(
 
 <template>
   <div class="flex flex-col h-full bg-bg-primary rounded-lg overflow-hidden">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-bg-tertiary/50">
+    <div
+      class="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-bg-tertiary/50"
+    >
       <h3 class="text-sm font-medium text-text-primary">{{ headerTitle }}</h3>
       <button
         class="p-1.5 hover:bg-surface-hover rounded-lg transition-colors"
@@ -136,8 +140,9 @@ watch(
     >
       <BaseIcon name="message-square" :size="40" class="text-text-hint/40 mb-3" />
       <p class="text-sm text-text-hint max-w-xs">
-        Start a conversation with {{ characters.length === 1 ? characters[0].name : 'your characters' }}.
-        Ask questions, explore their backstory, or develop dialogue.
+        Start a conversation with
+        {{ characters.length === 1 ? characters[0].name : 'your characters' }}. Ask questions,
+        explore their backstory, or develop dialogue.
       </p>
     </div>
 
@@ -149,25 +154,16 @@ watch(
       <div
         v-for="msg in chatStore.activeMessages"
         :key="msg.id"
-        :class="[
-          'flex gap-2',
-          msg.role === 'user' ? 'justify-end' : 'justify-start'
-        ]"
+        :class="['flex gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start']"
       >
-        <div
-          v-if="msg.role !== 'user'"
-          class="flex-shrink-0 self-end"
-        >
+        <div v-if="msg.role !== 'user'" class="flex-shrink-0 self-end">
           <img
             v-if="getMessagePortrait(msg)"
             :src="getMessagePortrait(msg)"
             :alt="getMessageCharacterName(msg) || 'Character'"
             class="w-7 h-7 rounded-full object-cover"
           />
-          <div
-            v-else
-            class="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center"
-          >
+          <div v-else class="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center">
             <BaseIcon name="user" :size="12" class="text-accent" />
           </div>
         </div>
@@ -190,23 +186,28 @@ watch(
         </div>
       </div>
 
-      <div
-        v-if="chatStore.isStreaming"
-        class="flex justify-start gap-2"
-      >
-        <div class="max-w-[75%] rounded-lg px-3 py-2 bg-bg-tertiary border border-border-subtle text-sm rounded-bl-md">
+      <div v-if="chatStore.isStreaming" class="flex justify-start gap-2">
+        <div
+          class="max-w-[75%] rounded-lg px-3 py-2 bg-bg-tertiary border border-border-subtle text-sm rounded-bl-md"
+        >
           <div class="flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 0ms" />
-            <span class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 150ms" />
-            <span class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 300ms" />
+            <span
+              class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"
+              style="animation-delay: 0ms"
+            />
+            <span
+              class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"
+              style="animation-delay: 150ms"
+            />
+            <span
+              class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"
+              style="animation-delay: 300ms"
+            />
           </div>
         </div>
       </div>
 
-      <div
-        v-if="chatStore.streamError && !chatStore.isStreaming"
-        class="flex justify-center"
-      >
+      <div v-if="chatStore.streamError && !chatStore.isStreaming" class="flex justify-center">
         <div class="text-xs text-red-400 bg-red-400/10 px-3 py-1.5 rounded-lg">
           {{ chatStore.streamError }}
         </div>

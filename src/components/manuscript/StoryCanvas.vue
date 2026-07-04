@@ -19,10 +19,30 @@ const newElementTitle = ref('')
 const newElementType = ref('section')
 
 const elementTypes = [
-  { value: 'section', label: 'Section', color: 'var(--vers-element-section)', iconName: 'book-open' },
-  { value: 'character', label: 'Character', color: 'var(--vers-element-character)', iconName: 'user' },
-  { value: 'location', label: 'Location', color: 'var(--vers-element-location)', iconName: 'map-pin' },
-  { value: 'plotpoint', label: 'Plot Point', color: 'var(--vers-element-plotpoint)', iconName: 'zap' },
+  {
+    value: 'section',
+    label: 'Section',
+    color: 'var(--vers-element-section)',
+    iconName: 'book-open'
+  },
+  {
+    value: 'character',
+    label: 'Character',
+    color: 'var(--vers-element-character)',
+    iconName: 'user'
+  },
+  {
+    value: 'location',
+    label: 'Location',
+    color: 'var(--vers-element-location)',
+    iconName: 'map-pin'
+  },
+  {
+    value: 'plotpoint',
+    label: 'Plot Point',
+    color: 'var(--vers-element-plotpoint)',
+    iconName: 'zap'
+  },
   { value: 'note', label: 'Note', color: 'var(--vers-element-note)', iconName: 'file-text' }
 ]
 
@@ -44,11 +64,11 @@ const gridStyle = computed(() => ({
 }))
 
 function getElementIconName(type) {
-  return elementTypes.find(t => t.value === type)?.iconName || 'file'
+  return elementTypes.find((t) => t.value === type)?.iconName || 'file'
 }
 
 function getElementColor(type) {
-  return elementTypes.find(t => t.value === type)?.color || 'var(--vers-default-fallback)'
+  return elementTypes.find((t) => t.value === type)?.color || 'var(--vers-default-fallback)'
 }
 
 function selectElement(element) {
@@ -57,7 +77,7 @@ function selectElement(element) {
 
 function addNewElement() {
   if (!newElementTitle.value.trim()) return
-  
+
   const colors = [
     'var(--vers-element-section)',
     'var(--vers-element-character)',
@@ -66,7 +86,7 @@ function addNewElement() {
     'var(--vers-element-note)'
   ]
   const randomColor = colors[Math.floor(Math.random() * colors.length)]
-  
+
   manuscriptStore.addStoryElementData(projectStore.currentProjectId, {
     type: newElementType.value,
     title: newElementTitle.value,
@@ -76,7 +96,7 @@ function addNewElement() {
     height: 100,
     data: { color: randomColor }
   })
-  
+
   newElementTitle.value = ''
   showAddModal.value = false
 }
@@ -135,14 +155,23 @@ onMounted(() => {
           :list="manuscriptStore.sortedSections"
           item-key="id"
           v-bind="canvasDragOptions"
-          :clone="(el) => ({ id: `section-${el.id}`, type: 'section', title: el.title || `Section ${el.order + 1}`, data: { sectionId: el.id } })"
+          :clone="
+            (el) => ({
+              id: `section-${el.id}`,
+              type: 'section',
+              title: el.title || `Section ${el.order + 1}`,
+              data: { sectionId: el.id }
+            })
+          "
           class="flex gap-2 flex-wrap"
         >
           <template #item="{ element }">
             <div
               class="px-3 py-2 bg-bg-tertiary rounded border border-border-subtle text-sm font-ui cursor-grab hover:border-accent/50"
             >
-              <BaseIcon name="book-open" :size="14" class="inline mr-1" />{{ element.title || `Section ${element.order + 1}` }}
+              <BaseIcon name="book-open" :size="14" class="inline mr-1" />{{
+                element.title || `Section ${element.order + 1}`
+              }}
             </div>
           </template>
         </draggable>
@@ -170,8 +199,14 @@ onMounted(() => {
           >
             <div class="flex items-start justify-between">
               <div class="flex items-center gap-2">
-                <BaseIcon :name="getElementIconName(element.type)" :size="18" :style="{ color: getElementColor(element.type) }" />
-                <span class="font-semibold text-sm text-text-primary font-ui">{{ element.title }}</span>
+                <BaseIcon
+                  :name="getElementIconName(element.type)"
+                  :size="18"
+                  :style="{ color: getElementColor(element.type) }"
+                />
+                <span class="font-semibold text-sm text-text-primary font-ui">{{
+                  element.title
+                }}</span>
               </div>
               <button
                 class="text-text-hint hover:text-danger"
@@ -189,7 +224,9 @@ onMounted(() => {
       </draggable>
 
       <div v-if="manuscriptStore.storyElements.length === 0" class="text-center py-12">
-        <p class="text-text-hint font-ui text-sm">No elements yet. Add elements or drag sections from above.</p>
+        <p class="text-text-hint font-ui text-sm">
+          No elements yet. Add elements or drag sections from above.
+        </p>
       </div>
     </div>
 

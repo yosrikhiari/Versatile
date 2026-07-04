@@ -26,11 +26,7 @@ function handleAnalyze() {
   <div class="story-shape-panel">
     <div class="panel-header">
       <h3 class="panel-title">Story Shape</h3>
-      <button
-        class="analyze-btn"
-        :disabled="isAnalyzing"
-        @click="handleAnalyze"
-      >
+      <button class="analyze-btn" :disabled="isAnalyzing" @click="handleAnalyze">
         <span v-if="isAnalyzing" class="analyzing-spinner" />
         <template v-else>
           {{ hasAnalysis ? 'Reanalyze' : 'Analyze Manuscript' }}
@@ -44,9 +40,7 @@ function handleAnalyze() {
     </div>
 
     <template v-if="!isAnalyzing && hasAnalysis">
-      <div v-if="currentVersion > 0" class="version-badge">
-        v{{ currentVersion }}
-      </div>
+      <div v-if="currentVersion > 0" class="version-badge">v{{ currentVersion }}</div>
 
       <div class="section">
         <h4 class="section-title">Tension Curve</h4>
@@ -61,11 +55,21 @@ function handleAnalyze() {
             <span class="metric-label">Peak</span>
           </div>
           <div class="metric">
-            <span class="metric-value">{{ currentAnalysis.metrics.wordCount.toLocaleString() }}</span>
+            <span class="metric-value">{{
+              currentAnalysis.metrics.wordCount.toLocaleString()
+            }}</span>
             <span class="metric-label">Words</span>
           </div>
           <div class="metric">
-            <span :class="['metric-value', { 'text-accent': currentAnalysis.metrics.overallTensionLevel === 'high', 'text-yellow-400': currentAnalysis.metrics.overallTensionLevel === 'medium' }]">
+            <span
+              :class="[
+                'metric-value',
+                {
+                  'text-accent': currentAnalysis.metrics.overallTensionLevel === 'high',
+                  'text-yellow-400': currentAnalysis.metrics.overallTensionLevel === 'medium'
+                }
+              ]"
+            >
               {{ currentAnalysis.metrics.overallTensionLevel }}
             </span>
             <span class="metric-label">Level</span>
@@ -78,15 +82,21 @@ function handleAnalyze() {
         <div class="rhythm-block">
           <div class="rhythm-row">
             <span class="rhythm-label">Dialogue Ratio</span>
-            <span class="rhythm-value">{{ Math.round(currentAnalysis.metrics.dialogueRatio * 100) }}%</span>
+            <span class="rhythm-value"
+              >{{ Math.round(currentAnalysis.metrics.dialogueRatio * 100) }}%</span
+            >
           </div>
           <div class="rhythm-row">
             <span class="rhythm-label">Fingerprint</span>
-            <span class="rhythm-value capitalize">{{ currentAnalysis.metrics.rhythmFingerprint }}</span>
+            <span class="rhythm-value capitalize">{{
+              currentAnalysis.metrics.rhythmFingerprint
+            }}</span>
           </div>
           <div class="rhythm-row">
             <span class="rhythm-label">Pacing</span>
-            <span class="rhythm-value">{{ currentAnalysis.metrics.pacingGradient.toFixed(1) }}x</span>
+            <span class="rhythm-value"
+              >{{ currentAnalysis.metrics.pacingGradient.toFixed(1) }}x</span
+            >
           </div>
         </div>
       </div>
@@ -97,7 +107,10 @@ function handleAnalyze() {
           <div
             v-for="em in currentAnalysis.metrics.emotionBreakdown"
             :key="em.emotion"
-            :class="['emotion-bar', { dominant: currentAnalysis.metrics.dominantEmotion.emotion === em.emotion }]"
+            :class="[
+              'emotion-bar',
+              { dominant: currentAnalysis.metrics.dominantEmotion.emotion === em.emotion }
+            ]"
           >
             <div class="emotion-bar-header">
               <span class="emotion-name">{{ em.emotion }}</span>
@@ -106,7 +119,13 @@ function handleAnalyze() {
             <div class="emotion-track">
               <div
                 class="emotion-fill"
-                :style="{ width: Math.min((em.score / currentAnalysis.metrics.dominantEmotion.score) * 100, 100) + '%' }"
+                :style="{
+                  width:
+                    Math.min(
+                      (em.score / currentAnalysis.metrics.dominantEmotion.score) * 100,
+                      100
+                    ) + '%'
+                }"
               />
             </div>
           </div>
@@ -135,11 +154,21 @@ function handleAnalyze() {
 
     <div v-if="!isAnalyzing && !hasAnalysis" class="empty-state">
       <div class="empty-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-text-hint">
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          class="text-text-hint"
+        >
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
         </svg>
       </div>
-      <p class="empty-text">No analysis yet. Run an analysis to see the narrative shape of your manuscript.</p>
+      <p class="empty-text">
+        No analysis yet. Run an analysis to see the narrative shape of your manuscript.
+      </p>
     </div>
   </div>
 </template>
@@ -199,7 +228,9 @@ function handleAnalyze() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .analyzing-state {
@@ -260,7 +291,7 @@ function handleAnalyze() {
   gap: 1px;
   padding: 6px 4px;
   border-radius: 6px;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .metric-value {
@@ -289,7 +320,7 @@ function handleAnalyze() {
   align-items: center;
   padding: 4px 8px;
   border-radius: 4px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .rhythm-label {
@@ -333,7 +364,7 @@ function handleAnalyze() {
 .emotion-track {
   height: 4px;
   border-radius: 2px;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
 }
 
@@ -361,7 +392,7 @@ function handleAnalyze() {
   gap: 6px;
   padding: 6px 8px;
   border-radius: 6px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
   transition: background 0.15s;
 }
 

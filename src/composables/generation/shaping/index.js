@@ -14,20 +14,27 @@ export function shapeContext(rawContext, options = {}) {
   const totalLocations = entities.locations?.length || 0
   const totalPlotThreads = entities.plotThreads?.length || 0
 
-  const sortedCharacters = sortByRelevance(entities.characters, 'character').slice(0, MAX_CHARACTERS)
+  const sortedCharacters = sortByRelevance(entities.characters, 'character').slice(
+    0,
+    MAX_CHARACTERS
+  )
   const sortedLocations = sortByRelevance(entities.locations, 'location').slice(0, MAX_LOCATIONS)
-  const sortedPlotThreads = sortByRelevance(entities.plotThreads, 'plotThread').slice(0, MAX_PLOT_THREADS)
+  const sortedPlotThreads = sortByRelevance(entities.plotThreads, 'plotThread').slice(
+    0,
+    MAX_PLOT_THREADS
+  )
 
   const charactersBlock = buildEntityBlock(sortedCharacters, 'characters', formatCharacter)
   const locationsBlock = buildEntityBlock(sortedLocations, 'locations', formatLocation)
   const plotThreadsBlock = buildEntityBlock(sortedPlotThreads, 'plotThreads', formatPlotThread)
 
-  const projectBlock = rawContext.project.category || rawContext.project.description
-    ? `\n\nPROJECT CONTEXT:\n${['Category', 'Description']
-        .filter(k => rawContext.project[k.toLowerCase()])
-        .map(k => `${k}: ${rawContext.project[k.toLowerCase()]}`)
-        .join('\n')}`
-    : ''
+  const projectBlock =
+    rawContext.project.category || rawContext.project.description
+      ? `\n\nPROJECT CONTEXT:\n${['Category', 'Description']
+          .filter((k) => rawContext.project[k.toLowerCase()])
+          .map((k) => `${k}: ${rawContext.project[k.toLowerCase()]}`)
+          .join('\n')}`
+      : ''
 
   const relationshipsBlock = rawContext.relationships || ''
   const manuscriptBlock = rawContext.manuscript
@@ -56,7 +63,11 @@ function buildEntityBlock(entities, label, formatter) {
 
 function toTraitsArray(val) {
   if (Array.isArray(val)) return val
-  if (typeof val === 'string' && val) return val.split(';').map(t => t.trim()).filter(Boolean)
+  if (typeof val === 'string' && val)
+    return val
+      .split(';')
+      .map((t) => t.trim())
+      .filter(Boolean)
   return []
 }
 

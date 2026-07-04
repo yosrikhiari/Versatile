@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { generateSparkPrompt, generateOutline, generateContent, generateContentStreaming, testOllamaConnection } from '../composables/useOllama'
+import {
+  generateSparkPrompt,
+  generateOutline,
+  generateContent,
+  generateContentStreaming,
+  testOllamaConnection
+} from '../composables/useOllama'
 import { addSparkHistory, getSparkHistory, clearSparkHistory } from '../services/dbService'
 import { STORAGE_KEYS } from '../config/storageKeys'
 import { useLocalStorage } from '../composables/useLocalStorage'
@@ -31,7 +37,12 @@ export const useSparkStore = defineStore('spark', () => {
     isGenerating.value = true
     error.value = null
     try {
-      const promptText = await generateSparkPrompt(type, characterNames, relateToProject.value, manuscriptContext)
+      const promptText = await generateSparkPrompt(
+        type,
+        characterNames,
+        relateToProject.value,
+        manuscriptContext
+      )
       const result = { type, prompt: promptText }
       history.value.unshift(result)
       if (currentProjectId.value) {
@@ -46,19 +57,31 @@ export const useSparkStore = defineStore('spark', () => {
     }
   }
 
-  async function generateOutlineAction(idea, tone, characterNames = [], targetLength = 'full', manuscriptContext = null) {
+  async function generateOutlineAction(
+    idea,
+    tone,
+    characterNames = [],
+    targetLength = 'full',
+    manuscriptContext = null
+  ) {
     isGenerating.value = true
     error.value = null
     currentOutline.value = null
     try {
-      const outline = await generateOutline(idea, tone, characterNames, targetLength, manuscriptContext)
-      
+      const outline = await generateOutline(
+        idea,
+        tone,
+        characterNames,
+        targetLength,
+        manuscriptContext
+      )
+
       if (outline.error) {
         error.value = outline.error
         currentOutline.value = null
         return null
       }
-      
+
       currentOutline.value = outline
       const result = { type: 'outline', prompt: idea, outline: outline }
       history.value.unshift(result)
@@ -75,19 +98,31 @@ export const useSparkStore = defineStore('spark', () => {
     }
   }
 
-  async function generateContentAction(idea, tone, characterNames = [], targetLength = 'short', manuscriptContext = null) {
+  async function generateContentAction(
+    idea,
+    tone,
+    characterNames = [],
+    targetLength = 'short',
+    manuscriptContext = null
+  ) {
     isGenerating.value = true
     error.value = null
     currentContent.value = null
     try {
-      const result = await generateContent(idea, tone, characterNames, targetLength, manuscriptContext)
-      
+      const result = await generateContent(
+        idea,
+        tone,
+        characterNames,
+        targetLength,
+        manuscriptContext
+      )
+
       if (result.error) {
         error.value = result.error
         currentContent.value = null
         return null
       }
-      
+
       currentContent.value = result.text
       const historyItem = { type: 'content', prompt: idea, content: result.text }
       history.value.unshift(historyItem)
@@ -104,26 +139,35 @@ export const useSparkStore = defineStore('spark', () => {
     }
   }
 
-  async function generateContentStreamingAction(idea, tone, characterNames = [], targetLength = 'short', manuscriptContext = null) {
+  async function generateContentStreamingAction(
+    idea,
+    tone,
+    characterNames = [],
+    targetLength = 'short',
+    manuscriptContext = null
+  ) {
     isGenerating.value = true
     error.value = null
     currentStreamingContent.value = ''
     currentContent.value = null
     try {
       const result = await generateContentStreaming(
-        idea, tone, characterNames, targetLength,
+        idea,
+        tone,
+        characterNames,
+        targetLength,
         (chunk, full) => {
           currentStreamingContent.value = full
         },
         manuscriptContext
       )
-      
+
       if (result.error) {
         error.value = result.error
         currentStreamingContent.value = ''
         return null
       }
-      
+
       currentContent.value = result.text
       const historyItem = { type: 'content', prompt: idea, content: result.text }
       history.value.unshift(historyItem)
@@ -179,4 +223,3 @@ export const useSparkStore = defineStore('spark', () => {
     currentStreamingChapter: computed(() => currentStreamingContent.value)
   }
 })
-

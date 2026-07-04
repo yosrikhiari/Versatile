@@ -1,5 +1,11 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import { enqueue as serviceEnqueue, subscribe, getAllProgress, isQueueProcessing, retryDocument } from '../services/embeddingQueue'
+import {
+  enqueue as serviceEnqueue,
+  subscribe,
+  getAllProgress,
+  isQueueProcessing,
+  retryDocument
+} from '../services/embeddingQueue'
 
 export function useEmbeddingIndexer() {
   const isProcessing = ref(isQueueProcessing())
@@ -19,7 +25,10 @@ export function useEmbeddingIndexer() {
 
   function enqueueChunks(documentId, chunks) {
     serviceEnqueue(documentId, chunks)
-    indexProgress.value = { ...indexProgress.value, [documentId]: { indexed: 0, failed: 0, total: chunks.length } }
+    indexProgress.value = {
+      ...indexProgress.value,
+      [documentId]: { indexed: 0, failed: 0, total: chunks.length }
+    }
   }
 
   function progressFor(docId) {
@@ -40,5 +49,13 @@ export function useEmbeddingIndexer() {
     await retryDocument(documentId)
   }
 
-  return { isProcessing, indexProgress, enqueueChunks, progressFor, hasFailed, isDocumentIndexed, retryFailedChunks }
+  return {
+    isProcessing,
+    indexProgress,
+    enqueueChunks,
+    progressFor,
+    hasFailed,
+    isDocumentIndexed,
+    retryFailedChunks
+  }
 }

@@ -16,10 +16,7 @@ export async function getShapeAnalysisByScene(projectId, sceneId) {
 }
 
 export async function getShapeAnalysisByVersion(projectId, version) {
-  return db.storyShapeAnalysis
-    .where('[projectId+version]')
-    .equals([projectId, version])
-    .toArray()
+  return db.storyShapeAnalysis.where('[projectId+version]').equals([projectId, version]).toArray()
 }
 
 export async function getLatestShapeVersion(projectId) {
@@ -32,15 +29,9 @@ export async function getLatestShapeVersion(projectId) {
 }
 
 export async function getAllShapeAnalyses(projectId) {
-  return db.storyShapeAnalysis
-    .where('projectId')
-    .equals(projectId)
-    .toArray()
+  return db.storyShapeAnalysis.where('projectId').equals(projectId).toArray()
 }
 
 export async function deleteShapeAnalysesByProject(projectId) {
-  return db.storyShapeAnalysis
-    .where('projectId')
-    .equals(projectId)
-    .delete()
+  return db.storyShapeAnalysis.where('projectId').equals(projectId).delete()
 }

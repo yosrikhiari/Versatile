@@ -41,7 +41,9 @@ export function extractJson(raw) {
     try {
       return JSON.parse(cleaned)
     } catch (e2) {
-      throw new Error(`JSON parse failed after repair: ${e2.message}. Input start: ${raw.slice(0, 200)}`)
+      throw new Error(
+        `JSON parse failed after repair: ${e2.message}. Input start: ${raw.slice(0, 200)}`
+      )
     }
   }
 }

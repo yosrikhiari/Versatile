@@ -31,7 +31,7 @@ export function useDialogueIndexer() {
         id: char.id,
         name: char.name,
         color: char.color || '#6366f1',
-        aliases: (char.aliases || []).map(a => a.toLowerCase())
+        aliases: (char.aliases || []).map((a) => a.toLowerCase())
       }
     }
     return map
@@ -49,7 +49,12 @@ export function useDialogueIndexer() {
       if (dialogueLines.length === 0) continue
 
       const speakerMap = buildCharacterMap()
-      const identified = identifySpeakers(dialogueLines, speakerMap, paragraphs, paragraphs.indexOf(para))
+      const identified = identifySpeakers(
+        dialogueLines,
+        speakerMap,
+        paragraphs,
+        paragraphs.indexOf(para)
+      )
 
       for (const line of identified) {
         results.push({
@@ -101,7 +106,10 @@ export function useDialogueIndexer() {
       }
 
       lastResult.value = { total: subsections.length, newEntries: totalEntries }
-      addToast(`Dialogue index: ${totalEntries} lines across ${subsections.length} sections`, 'success')
+      addToast(
+        `Dialogue index: ${totalEntries} lines across ${subsections.length} sections`,
+        'success'
+      )
       return lastResult.value
     } catch (err) {
       console.error('[useDialogueIndexer] indexProjectContent error:', err)

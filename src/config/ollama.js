@@ -22,4 +22,3 @@ export function setOllamaModel(model) {
   // STORAGE_KEYS ref
   localStorage.setItem(STORAGE_KEYS.OLLAMA_MODEL, model)
 }
-

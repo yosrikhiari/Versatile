@@ -54,15 +54,25 @@ const debouncedSave = useDebounceFn(async () => {
     const content = editor.value?.getHTML() || ''
 
     if (manuscriptStore.activeSubsectionId) {
-      await manuscriptStore.updateSubsectionData(manuscriptStore.activeSubsectionId, { content }, projectStore.currentProjectId)
-      const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+      await manuscriptStore.updateSubsectionData(
+        manuscriptStore.activeSubsectionId,
+        { content },
+        projectStore.currentProjectId
+      )
+      const sub = manuscriptStore.subsections.find(
+        (s) => s.id === manuscriptStore.activeSubsectionId
+      )
       if (sub) {
-        dialogueIndexer.reindexSubsection(sub).catch(err =>
-          console.error('[FlowEditor] dialogue reindex failed:', err)
-        )
+        dialogueIndexer
+          .reindexSubsection(sub)
+          .catch((err) => console.error('[FlowEditor] dialogue reindex failed:', err))
       }
     } else if (manuscriptStore.activeSectionId) {
-      await manuscriptStore.updateSectionData(manuscriptStore.activeSectionId, { content }, projectStore.currentProjectId)
+      await manuscriptStore.updateSectionData(
+        manuscriptStore.activeSectionId,
+        { content },
+        projectStore.currentProjectId
+      )
     } else {
       projectStore.saveDocumentDebounced()
     }
@@ -73,7 +83,9 @@ const debouncedSave = useDebounceFn(async () => {
       content,
       'manuscript auto-save'
     )
-    setTimeout(() => { isSaving.value = false }, 1500)
+    setTimeout(() => {
+      isSaving.value = false
+    }, 1500)
   }
 }, 10000)
 
@@ -86,7 +98,7 @@ const editor = useEditor({
       codeBlock: false,
       blockquote: false,
       dropcursor: false,
-      gapCursor: false,
+      gapCursor: false
     }),
     Highlight.configure({
       multicolor: false
@@ -106,20 +118,24 @@ const editor = useEditor({
     if (textLen >= CONTENT_WARN_THRESHOLD) {
       const content = editor.getHTML()
       if (manuscriptStore.activeSubsectionId) {
-        const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+        const sub = manuscriptStore.subsections.find(
+          (s) => s.id === manuscriptStore.activeSubsectionId
+        )
         if (sub) sub.content = content
       } else if (manuscriptStore.activeSectionId) {
-        const sec = manuscriptStore.sections.find(s => s.id === manuscriptStore.activeSectionId)
+        const sec = manuscriptStore.sections.find((s) => s.id === manuscriptStore.activeSectionId)
         if (sec) sec.content = content
       } else {
         projectStore.updateContent(content, textContent)
       }
     } else {
       if (manuscriptStore.activeSubsectionId) {
-        const sub = manuscriptStore.subsections.find(s => s.id === manuscriptStore.activeSubsectionId)
+        const sub = manuscriptStore.subsections.find(
+          (s) => s.id === manuscriptStore.activeSubsectionId
+        )
         if (sub) sub.content = editor.getHTML()
       } else if (manuscriptStore.activeSectionId) {
-        const sec = manuscriptStore.sections.find(s => s.id === manuscriptStore.activeSectionId)
+        const sec = manuscriptStore.sections.find((s) => s.id === manuscriptStore.activeSectionId)
         if (sec) sec.content = editor.getHTML()
       } else {
         projectStore.updateContent(editor.getHTML(), textContent)
@@ -143,7 +159,9 @@ function handleKeydown(event) {
     if (!hasShownFlowHint.value) {
       hasShownFlowHint.value = true
       flowHintVisible.value = true
-      setTimeout(() => { flowHintVisible.value = false }, 1500)
+      setTimeout(() => {
+        flowHintVisible.value = false
+      }, 1500)
     }
     return
   }
@@ -215,52 +233,49 @@ defineExpose({
       @click="handleExitFlow"
     >
       Exit Flow
-      </button>
+    </button>
 
     <div
       v-if="contentSizeWarning !== 'ok'"
       class="flex-shrink-0 px-6 py-2 text-xs font-ui border-b"
-      :class="contentSizeWarning === 'critical'
-        ? 'bg-red-900/20 text-red-400 border-red-900/30'
-        : 'bg-amber-900/20 text-amber-400 border-amber-900/30'"
+      :class="
+        contentSizeWarning === 'critical'
+          ? 'bg-red-900/20 text-red-400 border-red-900/30'
+          : 'bg-amber-900/20 text-amber-400 border-amber-900/30'
+      "
     >
       <span class="flex items-center gap-2">
-        <BaseIcon :name="contentSizeWarning === 'critical' ? 'alert-triangle' : 'alert-circle'" :size="14" />
+        <BaseIcon
+          :name="contentSizeWarning === 'critical' ? 'alert-triangle' : 'alert-circle'"
+          :size="14"
+        />
         <span>
           This section is <strong>{{ (contentSize.value / 1000).toFixed(0) }}K</strong> characters.
-          {{ contentSizeWarning === 'critical'
-            ? 'Editor performance may degrade. Consider splitting into subsections.'
-            : 'Consider splitting into smaller subsections for better performance.' }}
+          {{
+            contentSizeWarning === 'critical'
+              ? 'Editor performance may degrade. Consider splitting into subsections.'
+              : 'Consider splitting into smaller subsections for better performance.'
+          }}
         </span>
       </span>
     </div>
 
-    <div 
+    <div
       ref="scrollContainer"
-      :class="[
-        'flex-1 overflow-y-auto scrollbar-thin',
-        flow.isDesaturated ? 'desaturated' : ''
-      ]"
+      :class="['flex-1 overflow-y-auto scrollbar-thin', flow.isDesaturated ? 'desaturated' : '']"
     >
-      <div 
+      <div
         class="editor-wrapper max-w-[760px] mx-auto px-8 py-16 relative z-1"
         @keydown="handleKeydown"
         @click="handleClick"
       >
-        <EditorContent 
-          v-if="editor" 
-          :editor="editor" 
-          class="tiptap-editor"
-        />
+        <EditorContent v-if="editor" :editor="editor" class="tiptap-editor" />
       </div>
     </div>
 
-    <FlowTimer
-      v-if="flow.isRunning.value"
-      @open-settings="emit('open-settings')"
-    />
+    <FlowTimer v-if="flow.isRunning.value" @open-settings="emit('open-settings')" />
 
-    <div 
+    <div
       v-if="isSaving"
       class="absolute bottom-3 right-4 text-2xs text-text-hint/50 font-ui flex items-center gap-1.5"
     >
@@ -292,10 +307,14 @@ defineExpose({
 
 <style scoped>
 .flow-hint-enter-active {
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.2s ease-out;
 }
 .flow-hint-leave-active {
-  transition: opacity 0.4s ease-in, transform 0.4s ease-in;
+  transition:
+    opacity 0.4s ease-in,
+    transform 0.4s ease-in;
 }
 .flow-hint-enter-from {
   opacity: 0;

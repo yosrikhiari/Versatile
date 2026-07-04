@@ -25,7 +25,7 @@ function findAllMatches(editor, query) {
   const results = []
   const doc = editor.state.doc
   const searchText = query.toLowerCase()
-  
+
   doc.descendants((node, pos) => {
     if (node.isText && node.text) {
       const text = node.text.toLowerCase()
@@ -37,7 +37,7 @@ function findAllMatches(editor, query) {
       }
     }
   })
-  
+
   return results
 }
 
@@ -45,67 +45,63 @@ function clearHighlights() {
   if (!props.editor) return
   const { state } = props.editor
   const { tr } = state
-  
+
   state.doc.descendants((node, pos) => {
-    if (node.marks && node.marks.some(m => m.type.name === 'highlight')) {
+    if (node.marks && node.marks.some((m) => m.type.name === 'highlight')) {
       tr.removeMark(pos, pos + node.nodeSize, props.editor.schema.marks.highlight)
     }
   })
-  
+
   props.editor.dispatch(tr)
 }
 
 function highlightMatches() {
   if (!props.editor || matches.value.length === 0) return
-  
+
   clearHighlights()
-  
+
   const { state } = props.editor
   const { tr } = state
   const markType = props.editor.schema.marks.highlight
-  
+
   if (!markType) {
     console.warn('Highlight mark not available')
     return
   }
-  
-  matches.value.forEach(match => {
+
+  matches.value.forEach((match) => {
     tr.addMark(match.from, match.to, markType.create())
   })
-  
+
   props.editor.dispatch(tr)
 }
 
 function goToMatch(index) {
   if (!props.editor || matches.value.length === 0) return
-  
+
   currentMatchIndex.value = index
   const match = matches.value[index]
-  
+
   props.editor.dispatch(
     props.editor.state.tr.setSelection(
-      props.editor.state.selection.constructor.near(
-        props.editor.state.doc.resolve(match.from)
-      )
+      props.editor.state.selection.constructor.near(props.editor.state.doc.resolve(match.from))
     )
   )
-  
+
   props.editor.commands.scrollIntoView()
 }
 
 function handlePrev() {
   if (matches.value.length === 0) return
-  const newIndex = currentMatchIndex.value > 0 
-    ? currentMatchIndex.value - 1 
-    : matches.value.length - 1
+  const newIndex =
+    currentMatchIndex.value > 0 ? currentMatchIndex.value - 1 : matches.value.length - 1
   goToMatch(newIndex)
 }
 
 function handleNext() {
   if (matches.value.length === 0) return
-  const newIndex = currentMatchIndex.value < matches.value.length - 1 
-    ? currentMatchIndex.value + 1 
-    : 0
+  const newIndex =
+    currentMatchIndex.value < matches.value.length - 1 ? currentMatchIndex.value + 1 : 0
   goToMatch(newIndex)
 }
 
@@ -118,7 +114,7 @@ watch(searchQuery, async () => {
   await nextTick()
   totalMatches.value = matches.value.length
   currentMatchIndex.value = 0
-  
+
   if (matches.value.length > 0) {
     highlightMatches()
     goToMatch(0)
@@ -153,7 +149,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div 
+  <div
     class="fixed top-0 left-0 right-0 z-50 bg-bg-secondary border-b border-border-subtle px-4 py-2 flex items-center gap-3"
     @keydown="handleKeydown"
   >
@@ -167,16 +163,14 @@ onMounted(() => {
         class="flex-1 bg-transparent text-text-primary text-sm focus:outline-none placeholder:text-text-hint"
       />
     </div>
-    
+
     <div class="flex items-center gap-2 text-xs text-text-muted">
-      <span v-if="matches.length > 0">
-        {{ currentMatchIndex + 1 }} of {{ matches.length }}
-      </span>
+      <span v-if="matches.length > 0"> {{ currentMatchIndex + 1 }} of {{ matches.length }} </span>
       <span v-else-if="searchQuery">No results</span>
     </div>
-    
+
     <div class="flex items-center gap-1">
-      <button 
+      <button
         :disabled="matches.length === 0"
         class="p-1 hover:bg-bg-tertiary rounded disabled:opacity-50"
         title="Previous (Shift+Enter)"
@@ -184,7 +178,7 @@ onMounted(() => {
       >
         <BaseIcon name="chevron-up" :size="14" />
       </button>
-      <button 
+      <button
         :disabled="matches.length === 0"
         class="p-1 hover:bg-bg-tertiary rounded disabled:opacity-50"
         title="Next (Enter)"
@@ -193,12 +187,8 @@ onMounted(() => {
         <BaseIcon name="chevron-down" :size="14" />
       </button>
     </div>
-    
-    <button 
-      class="p-1 hover:bg-bg-tertiary rounded"
-      title="Close (Esc)"
-      @click="handleClose"
-    >
+
+    <button class="p-1 hover:bg-bg-tertiary rounded" title="Close (Esc)" @click="handleClose">
       <BaseIcon name="x" :size="16" />
     </button>
   </div>

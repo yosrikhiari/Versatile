@@ -8,81 +8,104 @@
       fallback-title="Voice Upload Error"
       fallback-description="Failed to load the voice upload modal. Try closing and reopening it."
     >
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Upload Sample Text</h2>
-        <button class="close-btn" @click="close">✕</button>
-      </div>
-
-      <div class="modal-body">
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Paste additional text samples to refine your voice profile. The profile will merge this sample with your existing manuscript analysis.
-        </p>
-
-        <!-- Textarea -->
-        <div class="form-group">
-          <label for="sample-text" class="label">Sample Text</label>
-          <textarea
-            id="sample-text"
-            v-model="sampleText"
-            placeholder="Paste your sample text here (min 100 words recommended)..."
-            class="textarea"
-            rows="8"
-            @input="updatePreview"
-          ></textarea>
-          <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {{ sampleText.split(/\s+/).length }} words
-          </span>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Upload Sample Text</h2>
+          <button class="close-btn" @click="close">✕</button>
         </div>
 
-        <!-- Preview Section -->
-        <div v-if="mergedProfile" class="preview-section">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Merged Profile Preview</h3>
+        <div class="modal-body">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Paste additional text samples to refine your voice profile. The profile will merge this
+            sample with your existing manuscript analysis.
+          </p>
 
-          <div class="preview-grid">
-            <div class="preview-stat">
-              <span class="label">Avg Sentence Length</span>
-              <span class="old-value">{{ (currentProfile?.sentenceStructure?.averageSentenceLength || 0).toFixed(1) }}</span>
-              <span class="arrow">→</span>
-              <span class="new-value">{{ mergedProfile.sentenceStructure.averageSentenceLength.toFixed(1) }}</span>
-            </div>
+          <!-- Textarea -->
+          <div class="form-group">
+            <label for="sample-text" class="label">Sample Text</label>
+            <textarea
+              id="sample-text"
+              v-model="sampleText"
+              placeholder="Paste your sample text here (min 100 words recommended)..."
+              class="textarea"
+              rows="8"
+              @input="updatePreview"
+            ></textarea>
+            <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {{ sampleText.split(/\s+/).length }} words
+            </span>
+          </div>
 
-            <div class="preview-stat">
-              <span class="label">Dialogue Ratio</span>
-              <span class="old-value">{{ ((currentProfile?.sentenceStructure?.dialogueRatio || 0) * 100).toFixed(0) }}%</span>
-              <span class="arrow">→</span>
-              <span class="new-value">{{ (mergedProfile.sentenceStructure.dialogueRatio * 100).toFixed(0) }}%</span>
-            </div>
+          <!-- Preview Section -->
+          <div v-if="mergedProfile" class="preview-section">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+              Merged Profile Preview
+            </h3>
 
-            <div class="preview-stat">
-              <span class="label">Unique Word Ratio</span>
-              <span class="old-value">{{ ((currentProfile?.vocabulary?.uniqueWordRatio || 0) * 100).toFixed(1) }}%</span>
-              <span class="arrow">→</span>
-              <span class="new-value">{{ (mergedProfile.vocabulary.uniqueWordRatio * 100).toFixed(1) }}%</span>
-            </div>
+            <div class="preview-grid">
+              <div class="preview-stat">
+                <span class="label">Avg Sentence Length</span>
+                <span class="old-value">{{
+                  (currentProfile?.sentenceStructure?.averageSentenceLength || 0).toFixed(1)
+                }}</span>
+                <span class="arrow">→</span>
+                <span class="new-value">{{
+                  mergedProfile.sentenceStructure.averageSentenceLength.toFixed(1)
+                }}</span>
+              </div>
 
-            <div class="preview-stat">
-              <span class="label">Confidence</span>
-              <span class="old-value">{{ ((currentProfile?.metadata?.confidence || 0) * 100).toFixed(0) }}%</span>
-              <span class="arrow">→</span>
-              <span class="new-value">{{ (mergedProfile.metadata.confidence * 100).toFixed(0) }}%</span>
+              <div class="preview-stat">
+                <span class="label">Dialogue Ratio</span>
+                <span class="old-value"
+                  >{{
+                    ((currentProfile?.sentenceStructure?.dialogueRatio || 0) * 100).toFixed(0)
+                  }}%</span
+                >
+                <span class="arrow">→</span>
+                <span class="new-value"
+                  >{{ (mergedProfile.sentenceStructure.dialogueRatio * 100).toFixed(0) }}%</span
+                >
+              </div>
+
+              <div class="preview-stat">
+                <span class="label">Unique Word Ratio</span>
+                <span class="old-value"
+                  >{{
+                    ((currentProfile?.vocabulary?.uniqueWordRatio || 0) * 100).toFixed(1)
+                  }}%</span
+                >
+                <span class="arrow">→</span>
+                <span class="new-value"
+                  >{{ (mergedProfile.vocabulary.uniqueWordRatio * 100).toFixed(1) }}%</span
+                >
+              </div>
+
+              <div class="preview-stat">
+                <span class="label">Confidence</span>
+                <span class="old-value"
+                  >{{ ((currentProfile?.metadata?.confidence || 0) * 100).toFixed(0) }}%</span
+                >
+                <span class="arrow">→</span>
+                <span class="new-value"
+                  >{{ (mergedProfile.metadata.confidence * 100).toFixed(0) }}%</span
+                >
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Modal Footer -->
-      <div class="modal-footer">
-        <button class="btn-secondary" @click="close">Cancel</button>
-        <button
-          :disabled="!sampleText.trim() || isProcessing || sampleText.split(/\s+/).length < 50"
-          class="btn-primary"
-          @click="handleMerge"
-        >
-          {{ isProcessing ? 'Merging...' : 'Merge with Profile' }}
-        </button>
+        <!-- Modal Footer -->
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="close">Cancel</button>
+          <button
+            :disabled="!sampleText.trim() || isProcessing || sampleText.split(/\s+/).length < 50"
+            class="btn-primary"
+            @click="handleMerge"
+          >
+            {{ isProcessing ? 'Merging...' : 'Merge with Profile' }}
+          </button>
+        </div>
       </div>
-    </div>
     </ErrorBoundary>
   </div>
 </template>
@@ -234,7 +257,8 @@ async function handleMerge() {
   @apply flex gap-3 p-4 border-t border-gray-200 dark:border-gray-700;
 }
 
-.btn-primary, .btn-secondary {
+.btn-primary,
+.btn-secondary {
   @apply px-4 py-2 rounded-lg font-medium transition flex-1;
 }
 

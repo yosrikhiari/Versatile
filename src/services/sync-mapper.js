@@ -1,7 +1,7 @@
 import { db } from './db-core'
 
 export function findSyncConfig(tableName) {
-  return SYNC_ENTITIES.find(e => e.table === tableName)
+  return SYNC_ENTITIES.find((e) => e.table === tableName)
 }
 
 function tagsToApi(tags) {
@@ -11,7 +11,11 @@ function tagsToApi(tags) {
 
 function tagsFromApi(tags) {
   if (!tags) return []
-  try { return JSON.parse(tags) } catch { return [] }
+  try {
+    return JSON.parse(tags)
+  } catch {
+    return []
+  }
 }
 
 async function lookupApiId(table, localId) {
@@ -143,7 +147,8 @@ export const SYNC_ENTITIES = [
     toApi: (local) => ({
       name: local.name || '',
       type: 'Character',
-      description: local.notes || local.description || local.role || local.goal || local.voice || '',
+      description:
+        local.notes || local.description || local.role || local.goal || local.voice || '',
       metadata: JSON.stringify({
         role: local.role,
         goal: local.goal,
@@ -155,7 +160,11 @@ export const SYNC_ENTITIES = [
     }),
     fromApi: (api) => {
       let meta = {}
-      try { meta = JSON.parse(api.metadata || '{}') } catch { meta = {} }
+      try {
+        meta = JSON.parse(api.metadata || '{}')
+      } catch {
+        meta = {}
+      }
       return {
         apiId: api.id,
         name: api.name,
@@ -193,7 +202,11 @@ export const SYNC_ENTITIES = [
     }),
     fromApi: (api) => {
       let meta = {}
-      try { meta = JSON.parse(api.metadata || '{}') } catch { meta = {} }
+      try {
+        meta = JSON.parse(api.metadata || '{}')
+      } catch {
+        meta = {}
+      }
       return {
         apiId: api.id,
         name: api.name,
@@ -285,7 +298,9 @@ export const SYNC_ENTITIES = [
       description: local.description || null,
       color: local.color || '#6366f1',
       sortOrder: local.sortOrder ?? 0,
-      sectionIds: Array.isArray(local.sectionIds) ? JSON.stringify(local.sectionIds) : (local.sectionIds || null)
+      sectionIds: Array.isArray(local.sectionIds)
+        ? JSON.stringify(local.sectionIds)
+        : local.sectionIds || null
     }),
     fromApi: (api) => ({
       apiId: api.id,

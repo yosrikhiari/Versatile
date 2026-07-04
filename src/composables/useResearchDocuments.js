@@ -84,7 +84,7 @@ export function useResearchDocuments(projectId) {
     }
 
     if (oversized.length > 0) {
-      const names = oversized.map(f => f.name).join(', ')
+      const names = oversized.map((f) => f.name).join(', ')
       importError.value = `"${names}" ${oversized.length > 1 ? 'are' : 'is'} too large. Maximum file size is ${(MAX_SIZE / 1000000).toFixed(0)}MB.`
       return false
     }
@@ -115,9 +115,9 @@ export function useResearchDocuments(projectId) {
         await yieldToMain()
 
         const result = await extractFileText(file, (pct) => {
-        importPercent.value = Math.round(pct * 0.15)
-        importProgress.value = `Reading ${file.name} (${pct}%)...`
-      })
+          importPercent.value = Math.round(pct * 0.15)
+          importProgress.value = `Reading ${file.name} (${pct}%)...`
+        })
 
         if (result.isScanned) {
           importError.value = `"${file.name}" appears to be a scanned PDF with no selectable text. OCR is not yet supported.`
@@ -160,7 +160,8 @@ export function useResearchDocuments(projectId) {
             fastMode,
             onProgress: (pct, msg) => {
               const filePct = Math.round((processed / files.length) * 10)
-              importPercent.value = filePct + basePct + Math.round((pct / 100) * (90 / segments.length))
+              importPercent.value =
+                filePct + basePct + Math.round((pct / 100) * (90 / segments.length))
               importProgress.value = `${file.name}${modeLabel}: ${msg}`
             }
           })
@@ -187,7 +188,7 @@ export function useResearchDocuments(projectId) {
         totalChunks = chunkRows.length
         const ids = await addResearchChunks(chunkRows)
 
-        importPercent.value = 90 + Math.round(((processed) / files.length) * 8)
+        importPercent.value = 90 + Math.round((processed / files.length) * 8)
         importProgress.value = `Indexing ${file.name} (${totalChunks} chunks)...`
         const idTextPairs = ids.map((id, i) => ({ id, text: allChunks[i].text }))
         enqueueChunks(docId, idTextPairs)
@@ -211,7 +212,7 @@ export function useResearchDocuments(projectId) {
   }
 
   function yieldToMain() {
-    return new Promise(r => setTimeout(r, 0))
+    return new Promise((r) => setTimeout(r, 0))
   }
 
   async function removeDocument(id) {
@@ -309,7 +310,7 @@ export function useResearchDocuments(projectId) {
     const ids = await addResearchChunks(chunkRows)
 
     if (needsEmbedding.length > 0) {
-      const idTextPairs = needsEmbedding.map(i => ({
+      const idTextPairs = needsEmbedding.map((i) => ({
         id: ids[i],
         text: allChunks[i].text
       }))

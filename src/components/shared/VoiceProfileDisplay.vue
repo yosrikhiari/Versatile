@@ -12,10 +12,7 @@
         >
           {{ isRefreshing ? 'Refreshing...' : 'Refresh from Manuscript' }}
         </button>
-        <button
-          class="btn-secondary text-sm"
-          @click="toggleLock"
-        >
+        <button class="btn-secondary text-sm" @click="toggleLock">
           {{ isLocked ? '🔒 Locked' : '🔓 Unlocked' }}
         </button>
       </div>
@@ -25,11 +22,10 @@
     <div v-if="!profile" class="empty-state">
       <div class="empty-icon">📝</div>
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        Voice profile not extracted yet. Write at least 500 words in your manuscript to generate a profile.
+        Voice profile not extracted yet. Write at least 500 words in your manuscript to generate a
+        profile.
       </p>
-      <button class="btn-primary text-sm mt-4" @click="handleExtract">
-        Extract Profile
-      </button>
+      <button class="btn-primary text-sm mt-4" @click="handleExtract">Extract Profile</button>
     </div>
 
     <!-- Profile Exists -->
@@ -52,7 +48,7 @@
           <div class="confidence-bar">
             <div
               class="confidence-fill"
-              :style="{ width: (profile.metadata.confidence * 100) + '%' }"
+              :style="{ width: profile.metadata.confidence * 100 + '%' }"
             ></div>
           </div>
           <span class="value">{{ (profile.metadata.confidence * 100).toFixed(0) }}%</span>
@@ -91,7 +87,11 @@
         <div v-if="profile.vocabulary.mostCommonWords.length" class="common-words">
           <span class="label">Top Words:</span>
           <div class="word-list">
-            <span v-for="word in profile.vocabulary.mostCommonWords.slice(0, 10)" :key="word" class="word-tag">
+            <span
+              v-for="word in profile.vocabulary.mostCommonWords.slice(0, 10)"
+              :key="word"
+              class="word-tag"
+            >
               {{ word }}
             </span>
           </div>
@@ -104,15 +104,21 @@
         <div class="metric-grid">
           <div class="stat">
             <span class="label">Avg Sentence Length</span>
-            <span class="value">{{ profile.sentenceStructure.averageSentenceLength.toFixed(1) }} words</span>
+            <span class="value"
+              >{{ profile.sentenceStructure.averageSentenceLength.toFixed(1) }} words</span
+            >
           </div>
           <div class="stat">
             <span class="label">Dialogue Ratio</span>
-            <span class="value">{{ (profile.sentenceStructure.dialogueRatio * 100).toFixed(0) }}%</span>
+            <span class="value"
+              >{{ (profile.sentenceStructure.dialogueRatio * 100).toFixed(0) }}%</span
+            >
           </div>
           <div class="stat">
             <span class="label">Has Dialogue</span>
-            <span class="value">{{ profile.sentenceStructure.hasDialogue ? '✓ Yes' : '✗ No' }}</span>
+            <span class="value">{{
+              profile.sentenceStructure.hasDialogue ? '✓ Yes' : '✗ No'
+            }}</span>
           </div>
         </div>
         <div v-if="profile.sentenceStructure.sentenceLengthDistribution" class="distribution">
@@ -125,7 +131,7 @@
             >
               <span class="dist-range">{{ dist.range }}</span>
               <div class="bar-container">
-                <div class="bar-fill" :style="{ width: (dist.percentage * 100) + '%' }"></div>
+                <div class="bar-fill" :style="{ width: dist.percentage * 100 + '%' }"></div>
               </div>
               <span class="dist-pct">{{ (dist.percentage * 100).toFixed(0) }}%</span>
             </div>
@@ -139,7 +145,9 @@
         <div class="metric-grid">
           <div class="stat">
             <span class="label">Ellipsis</span>
-            <span class="value">{{ (profile.punctuation.ellipsisFrequency * 100).toFixed(1) }}%</span>
+            <span class="value"
+              >{{ (profile.punctuation.ellipsisFrequency * 100).toFixed(1) }}%</span
+            >
           </div>
           <div class="stat">
             <span class="label">Dashes</span>
@@ -147,11 +155,15 @@
           </div>
           <div class="stat">
             <span class="label">Exclamation</span>
-            <span class="value">{{ (profile.punctuation.exclamationFrequency * 100).toFixed(1) }}%</span>
+            <span class="value"
+              >{{ (profile.punctuation.exclamationFrequency * 100).toFixed(1) }}%</span
+            >
           </div>
           <div class="stat">
             <span class="label">Semicolon</span>
-            <span class="value">{{ (profile.punctuation.semicolonFrequency * 100).toFixed(1) }}%</span>
+            <span class="value"
+              >{{ (profile.punctuation.semicolonFrequency * 100).toFixed(1) }}%</span
+            >
           </div>
           <div class="stat">
             <span class="label">Comma</span>
@@ -180,8 +192,12 @@
         <span class="text-xs text-gray-500 dark:text-gray-400">
           Last updated: {{ formatDate(storyBibleStore.voiceProfile.lastUpdated) }}
         </span>
-        <span v-if="storyBibleStore.voiceProfile.supplementaryMergeCount" class="text-xs text-gray-500 dark:text-gray-400">
-          • {{ storyBibleStore.voiceProfile.supplementaryMergeCount }} supplementary sample(s) merged
+        <span
+          v-if="storyBibleStore.voiceProfile.supplementaryMergeCount"
+          class="text-xs text-gray-500 dark:text-gray-400"
+        >
+          • {{ storyBibleStore.voiceProfile.supplementaryMergeCount }} supplementary sample(s)
+          merged
         </span>
       </div>
     </div>
@@ -221,10 +237,10 @@ async function handleExtract() {
   try {
     isRefreshing.value = true
     await extractVoiceProfile()
-      addToast('Voice profile extracted from manuscript', 'success')
-    } catch (error) {
-      console.error('Error extracting profile:', error)
-      addToast('Failed to extract voice profile', 'error')
+    addToast('Voice profile extracted from manuscript', 'success')
+  } catch (error) {
+    console.error('Error extracting profile:', error)
+    addToast('Failed to extract voice profile', 'error')
   } finally {
     isRefreshing.value = false
   }
@@ -234,10 +250,10 @@ async function handleRefresh() {
   try {
     isRefreshing.value = true
     await refreshVoiceProfile()
-      addToast('Voice profile refreshed', 'success')
-    } catch (error) {
-      console.error('Error refreshing profile:', error)
-      addToast('Failed to refresh voice profile', 'error')
+    addToast('Voice profile refreshed', 'success')
+  } catch (error) {
+    console.error('Error refreshing profile:', error)
+    addToast('Failed to refresh voice profile', 'error')
   } finally {
     isRefreshing.value = false
   }
@@ -272,7 +288,8 @@ function formatDate(date) {
   @apply flex gap-2;
 }
 
-.btn-primary, .btn-secondary {
+.btn-primary,
+.btn-secondary {
   @apply px-3 py-2 rounded-lg font-medium transition;
 }
 

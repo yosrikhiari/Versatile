@@ -11,17 +11,24 @@ const MAX_EVIDENCE_ITEMS = 10
 function filterRelevant(entities, premise, isShortTerm) {
   if (!entities || entities.length === 0) return []
   if (isShortTerm && premise) {
-    const keywords = premise.toLowerCase().split(/\s+/).filter(k => k.length > 2)
-    const scored = entities.map(e => {
-      const text = `${e.name || e.title || ''} ${e.description || ''} ${e.goal || ''}`.toLowerCase()
-      const score = keywords.reduce((acc, kw) => {
-        const re = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
-        const matches = text.match(re)
-        return acc + (matches ? matches.length : 0)
-      }, 0)
-      return { entity: e, score }
-    }).filter(item => item.score > 0).sort((a, b) => b.score - a.score)
-    return scored.map(s => s.entity).slice(0, MAX_EVIDENCE_ITEMS)
+    const keywords = premise
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((k) => k.length > 2)
+    const scored = entities
+      .map((e) => {
+        const text =
+          `${e.name || e.title || ''} ${e.description || ''} ${e.goal || ''}`.toLowerCase()
+        const score = keywords.reduce((acc, kw) => {
+          const re = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
+          const matches = text.match(re)
+          return acc + (matches ? matches.length : 0)
+        }, 0)
+        return { entity: e, score }
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+    return scored.map((s) => s.entity).slice(0, MAX_EVIDENCE_ITEMS)
   }
   return entities.slice(0, MAX_EVIDENCE_ITEMS)
 }
@@ -68,7 +75,7 @@ export function useStoryResearcher() {
 
       evidenceText += `\n## Story Bible\n### Characters\n`
       if (finalCharacters.length > 0) {
-        finalCharacters.forEach(c => {
+        finalCharacters.forEach((c) => {
           evidenceText += `- **${c.name}** (${c.role || 'Character'}): ${c.description || ''} Goals: ${c.goal || 'None specified'}\n`
         })
       } else {
@@ -77,7 +84,7 @@ export function useStoryResearcher() {
 
       evidenceText += `\n### Locations\n`
       if (finalLocations.length > 0) {
-        finalLocations.forEach(l => {
+        finalLocations.forEach((l) => {
           evidenceText += `- **${l.name}**: ${l.description || ''}\n`
         })
       } else {
@@ -86,7 +93,7 @@ export function useStoryResearcher() {
 
       evidenceText += `\n## Plot Threads\n`
       if (finalPlotThreads.length > 0) {
-        finalPlotThreads.forEach(pt => {
+        finalPlotThreads.forEach((pt) => {
           evidenceText += `- **${pt.title}**: ${pt.description || ''} (Status: ${pt.status || 'open'})\n`
         })
       } else {
@@ -95,7 +102,9 @@ export function useStoryResearcher() {
 
       const estimatedTokens = Math.round(evidenceText.length / 4)
       if (estimatedTokens > 3000) {
-        console.warn(`[Evidence Gatherer] Payload exceeds estimated 3000 tokens (${estimatedTokens} tokens).`)
+        console.warn(
+          `[Evidence Gatherer] Payload exceeds estimated 3000 tokens (${estimatedTokens} tokens).`
+        )
       }
 
       return evidenceText

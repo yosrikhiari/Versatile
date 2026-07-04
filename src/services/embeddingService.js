@@ -1,5 +1,9 @@
 import { getOllamaEndpoint } from '../config/ollama'
-import { EMBEDDING_PROVIDERS, EMBEDDING_DEFAULTS, EMBEDDING_PROVIDER_CAPABILITIES } from '../config/ai'
+import {
+  EMBEDDING_PROVIDERS,
+  EMBEDDING_DEFAULTS,
+  EMBEDDING_PROVIDER_CAPABILITIES
+} from '../config/ai'
 import { getBulkCachedEmbeddings, setEmbeddingCacheEntry } from './researchDb'
 
 const MISTRAL_API_URL = 'https://api.mistral.ai/v1/embeddings'
@@ -9,8 +13,7 @@ try {
   if (import.meta.env.VITE_MISTRAL_API_KEY) {
     mistralApiKey = import.meta.env.VITE_MISTRAL_API_KEY
   }
-} catch {
-}
+} catch {}
 
 export function hasMistralKey() {
   return !!mistralApiKey
@@ -34,7 +37,7 @@ async function sha256(text) {
   const data = encoder.encode(text)
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 export function clearEmbeddingCache() {
@@ -48,7 +51,9 @@ export function getEmbeddingCacheSize() {
 async function embedBatch(inputs, model, provider) {
   if (inputs.length === 0) return []
 
-  const caps = EMBEDDING_PROVIDER_CAPABILITIES[provider] || EMBEDDING_PROVIDER_CAPABILITIES[EMBEDDING_PROVIDERS.OLLAMA]
+  const caps =
+    EMBEDDING_PROVIDER_CAPABILITIES[provider] ||
+    EMBEDDING_PROVIDER_CAPABILITIES[EMBEDDING_PROVIDERS.OLLAMA]
   const batchSize = caps.maxBatchSize || 32
 
   if (inputs.length <= batchSize) {
@@ -82,7 +87,7 @@ async function embedBatch(inputs, model, provider) {
 async function embedBatchInternal(inputs, model, provider) {
   if (inputs.length === 0) return []
 
-  const hashes = await Promise.all(inputs.map(t => sha256(t)))
+  const hashes = await Promise.all(inputs.map((t) => sha256(t)))
   const results = new Array(inputs.length)
   const uncachedInputs = []
   const uncachedIndices = []
@@ -98,9 +103,7 @@ async function embedBatchInternal(inputs, model, provider) {
   }
 
   if (uncachedInputs.length > 0) {
-    const dexieCached = await getBulkCachedEmbeddings(
-      uncachedIndices.map(idx => hashes[idx])
-    )
+    const dexieCached = await getBulkCachedEmbeddings(uncachedIndices.map((idx) => hashes[idx]))
     if (dexieCached.size > 0) {
       const stillUncachedInputs = []
       const stillUncachedIndices = []
@@ -129,13 +132,19 @@ async function embedBatchInternal(inputs, model, provider) {
     case EMBEDDING_PROVIDERS.MISTRAL: {
       if (!mistralApiKey) throw new Error('Mistral API key not configured in .env')
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(new DOMException('Embedding request timed out after 60000ms', 'AbortError')), 60000)
+      const timeout = setTimeout(
+        () =>
+          controller.abort(
+            new DOMException('Embedding request timed out after 60000ms', 'AbortError')
+          ),
+        60000
+      )
       try {
         const response = await fetch(MISTRAL_API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${mistralApiKey}`
+            Authorization: `Bearer ${mistralApiKey}`
           },
           body: JSON.stringify({ model: model || 'mistral-embed', input: uncachedInputs }),
           signal: controller.signal
@@ -146,7 +155,7 @@ async function embedBatchInternal(inputs, model, provider) {
           throw new Error(err.error?.message || `Mistral error: ${response.status}`)
         }
         const data = await response.json()
-        apiResults = data.data.map(d => d.embedding)
+        apiResults = data.data.map((d) => d.embedding)
       } catch (error) {
         clearTimeout(timeout)
         if (error instanceof DOMException && error.name === 'AbortError') {
@@ -159,7 +168,13 @@ async function embedBatchInternal(inputs, model, provider) {
     case EMBEDDING_PROVIDERS.OLLAMA:
     default: {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(new DOMException('Embedding request timed out after 60000ms', 'AbortError')), 60000)
+      const timeout = setTimeout(
+        () =>
+          controller.abort(
+            new DOMException('Embedding request timed out after 60000ms', 'AbortError')
+          ),
+        60000
+      )
       try {
         const response = await fetch(`${getOllamaEndpoint()}/api/embed`, {
           method: 'POST',
@@ -216,7 +231,7 @@ export async function getEmbedding(text, options = {}) {
 
 export async function getEmbeddings(texts, options = {}) {
   const valid = texts.map((t, i) => ({ text: t, index: i }))
-  const toEmbed = valid.filter(v => v.text && v.text.trim())
+  const toEmbed = valid.filter((v) => v.text && v.text.trim())
   if (toEmbed.length === 0) return { vectors: texts.map(() => null), provider: null, model: null }
 
   const uniqueMap = new Map()
@@ -236,7 +251,9 @@ export async function getEmbeddings(texts, options = {}) {
   const vectors = await embedBatch(uniqueTexts, model, provider)
   const elapsed = ((performance.now() - t0) / 1000).toFixed(1)
   if (uniqueTexts.length !== toEmbed.length) {
-    console.debug(`[embedding] deduped ${toEmbed.length} inputs → ${uniqueTexts.length} unique, embedded in ${elapsed}s`)
+    console.debug(
+      `[embedding] deduped ${toEmbed.length} inputs → ${uniqueTexts.length} unique, embedded in ${elapsed}s`
+    )
   } else if (elapsed > 2) {
     console.debug(`[embedding] ${uniqueTexts.length} inputs embedded in ${elapsed}s`)
   }

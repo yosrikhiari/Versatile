@@ -21,7 +21,6 @@ PLOT THREAD format: { "title": "...", "notes": "...", "traits": ["niche detail 1
 
 Return valid JSON with no markdown, no explanation. The JSON must have exactly three keys: "characters" (array), "locations" (array), "plotThreads" (array). Include ALL entities — both enhanced existing ones and any new ones — in the response arrays.`
 
-
 function normalizeName(name) {
   return name?.trim().toLowerCase() || ''
 }
@@ -61,26 +60,48 @@ export function useEntityBootstrapper() {
       const needLocs = Math.max(0, MIN_LOCATIONS - existingLocs.length)
       const needThreads = Math.max(0, MIN_THREADS - existingThreads.length)
 
-      const charsSparse = existingChars.some(c => !c.traits?.length || !c.goal)
-      const locsSparse = existingLocs.some(l => !l.description)
-      const threadsSparse = existingThreads.some(t => !t.notes)
+      const charsSparse = existingChars.some((c) => !c.traits?.length || !c.goal)
+      const locsSparse = existingLocs.some((l) => !l.description)
+      const threadsSparse = existingThreads.some((t) => !t.notes)
 
-      if (needChars === 0 && needLocs === 0 && needThreads === 0 && !charsSparse && !locsSparse && !threadsSparse) {
+      if (
+        needChars === 0 &&
+        needLocs === 0 &&
+        needThreads === 0 &&
+        !charsSparse &&
+        !locsSparse &&
+        !threadsSparse
+      ) {
         return { generatedIds: { characters: [], locations: [], plotThreads: [] } }
       }
 
-      const existingJson = JSON.stringify({
-        characters: existingChars.map(c => ({
-          name: c.name, role: c.role, description: c.description, goal: c.goal,
-          voice: c.voice, notes: c.notes, sampleDialogue: c.sampleDialogue, traits: c.traits || []
-        })),
-        locations: existingLocs.map(l => ({
-          name: l.name, description: l.description, notes: l.notes, traits: l.traits || []
-        })),
-        plotThreads: existingThreads.map(t => ({
-          title: t.title, notes: t.notes, traits: t.traits || []
-        }))
-      }, null, 2)
+      const existingJson = JSON.stringify(
+        {
+          characters: existingChars.map((c) => ({
+            name: c.name,
+            role: c.role,
+            description: c.description,
+            goal: c.goal,
+            voice: c.voice,
+            notes: c.notes,
+            sampleDialogue: c.sampleDialogue,
+            traits: c.traits || []
+          })),
+          locations: existingLocs.map((l) => ({
+            name: l.name,
+            description: l.description,
+            notes: l.notes,
+            traits: l.traits || []
+          })),
+          plotThreads: existingThreads.map((t) => ({
+            title: t.title,
+            notes: t.notes,
+            traits: t.traits || []
+          }))
+        },
+        null,
+        2
+      )
 
       const userPrompt = `Story synopsis: "${synopsis}"
 
@@ -96,32 +117,37 @@ TASK:
       const emittedNames = new Set()
       let scanOffset = 0
 
-      await aiStream(userPrompt, ENRICH_ENTITIES_PROMPT, (chunk) => {
-        accumulated += chunk
-        
-        const regex = /"name"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
-        regex.lastIndex = Math.max(0, scanOffset - 200)
-        let match
-        
-        while ((match = regex.exec(accumulated)) !== null) {
-          const name = match[1]
-          if (!emittedNames.has(name)) {
-            emittedNames.add(name)
-            
-            const charIdx = accumulated.lastIndexOf('"characters"', match.index)
-            const locIdx = accumulated.lastIndexOf('"locations"', match.index)
-            const type = locIdx > charIdx ? 'location' : 'character'
-            
-            try { 
-              if (onPartialData) onPartialData(type, name) 
-            } catch {}
+      await aiStream(
+        userPrompt,
+        ENRICH_ENTITIES_PROMPT,
+        (chunk) => {
+          accumulated += chunk
+
+          const regex = /"name"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
+          regex.lastIndex = Math.max(0, scanOffset - 200)
+          let match
+
+          while ((match = regex.exec(accumulated)) !== null) {
+            const name = match[1]
+            if (!emittedNames.has(name)) {
+              emittedNames.add(name)
+
+              const charIdx = accumulated.lastIndexOf('"characters"', match.index)
+              const locIdx = accumulated.lastIndexOf('"locations"', match.index)
+              const type = locIdx > charIdx ? 'location' : 'character'
+
+              try {
+                if (onPartialData) onPartialData(type, name)
+              } catch {}
+            }
           }
+          scanOffset = Math.max(0, accumulated.length - 200)
+        },
+        {
+          feature: FEATURES.STORY_GENERATION,
+          temperature: 0.7
         }
-        scanOffset = Math.max(0, accumulated.length - 200)
-      }, {
-        feature: FEATURES.STORY_GENERATION,
-        temperature: 0.7
-      })
+      )
 
       let parsed = sanitizeJson(accumulated)
       if (!parsed) {
@@ -139,7 +165,7 @@ TASK:
 
       const generatedIds = { characters: [], locations: [], plotThreads: [] }
 
-      for (const char of (parsed.characters || [])) {
+      for (const char of parsed.characters || []) {
         if (!char.name) continue
         const key = normalizeName(char.name)
         const existing = charByKey.get(key)
@@ -149,8 +175,10 @@ TASK:
           if (char.role && char.role !== existing.role) update.role = char.role
           if (char.goal && char.goal !== existing.goal) update.goal = char.goal
           if (char.voice && char.voice !== existing.voice) update.voice = char.voice
-          if (char.description && char.description !== existing.description) update.description = char.description
-          if (char.sampleDialogue && char.sampleDialogue !== existing.sampleDialogue) update.sampleDialogue = char.sampleDialogue
+          if (char.description && char.description !== existing.description)
+            update.description = char.description
+          if (char.sampleDialogue && char.sampleDialogue !== existing.sampleDialogue)
+            update.sampleDialogue = char.sampleDialogue
 
           const mergedTraits = mergeTraits(existing.traits, char.traits)
           if (mergedTraits.length !== (existing.traits || []).length) update.traits = mergedTraits
@@ -180,14 +208,15 @@ TASK:
         }
       }
 
-      for (const loc of (parsed.locations || [])) {
+      for (const loc of parsed.locations || []) {
         if (!loc.name) continue
         const key = normalizeName(loc.name)
         const existing = locByKey.get(key)
 
         if (existing) {
           const update = {}
-          if (loc.description && loc.description !== existing.description) update.description = loc.description
+          if (loc.description && loc.description !== existing.description)
+            update.description = loc.description
           const mergedTraits = mergeTraits(existing.traits, loc.traits)
           if (mergedTraits.length !== (existing.traits || []).length) update.traits = mergedTraits
           const mergedNotes = mergeNotes(existing.notes, loc.notes)
@@ -210,7 +239,7 @@ TASK:
         }
       }
 
-      for (const thread of (parsed.plotThreads || [])) {
+      for (const thread of parsed.plotThreads || []) {
         if (!thread.title) continue
         const key = normalizeName(thread.title)
         const existing = threadByKey.get(key)

@@ -26,11 +26,11 @@ const RETRYABLE_ERROR_PATTERNS = [
 
 function isRetryable(error) {
   const message = error?.message || ''
-  return RETRYABLE_ERROR_PATTERNS.some(p => p.test(message))
+  return RETRYABLE_ERROR_PATTERNS.some((p) => p.test(message))
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function withRetry(fn, isRetryableFn, options = {}) {
@@ -83,7 +83,7 @@ function resolveFeatureConfig(feature) {
   const store = useSettingsStore()
   const override = store.featureModels?.[feature]
   const defaultModelFor = (provider) =>
-    provider === PROVIDERS.OLLAMA ? store.ollamaModel : (PROVIDER_MODELS[provider]?.[0] || null)
+    provider === PROVIDERS.OLLAMA ? store.ollamaModel : PROVIDER_MODELS[provider]?.[0] || null
 
   if (override?.provider && override.provider !== 'default') {
     return {
@@ -183,7 +183,7 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
   try {
     return await withRetry(
       (attempt, isIntermediate) => {
-        const chunkHandler = (attempt > 0 && isIntermediate) ? undefined : onChunk
+        const chunkHandler = attempt > 0 && isIntermediate ? undefined : onChunk
         return providerModule.stream(prompt, systemPrompt, model, chunkHandler, providerOptions)
       },
       isRetryable,

@@ -3,8 +3,13 @@ import { ref } from 'vue'
 import { analyzePolish } from '../composables/useOllama'
 import { LENS_MAP } from '../config/statuses'
 import {
-  getAnnotations, addAnnotation, updateAnnotation, clearAnnotations,
-  getSnippets, deleteSnippet, incrementSnippetWord
+  getAnnotations,
+  addAnnotation,
+  updateAnnotation,
+  clearAnnotations,
+  getSnippets,
+  deleteSnippet,
+  incrementSnippetWord
 } from '../services/dbService'
 import { useLocalStorage } from '../composables/useLocalStorage'
 import { STORAGE_KEYS } from '../config/storageKeys'
@@ -24,7 +29,7 @@ export const usePolishStore = defineStore('polish', () => {
     clarity: true
   })
   const error = ref(null)
-  
+
   let debounceTimer = null
 
   async function loadAnnotations(projectId) {
@@ -38,18 +43,18 @@ export const usePolishStore = defineStore('polish', () => {
   function selectParagraph(text, index) {
     pendingParagraphText.value = text
     pendingParagraphIndex.value = index
-    
+
     if (debounceTimer) {
       clearTimeout(debounceTimer)
     }
-    
+
     debounceTimer = setTimeout(() => {
       if (projectStoreRef && pendingParagraphIndex.value !== null) {
         analyzeParagraphDebounced(pendingParagraphText.value, pendingParagraphIndex.value)
       }
     }, 800)
   }
-  
+
   let projectStoreRef = null
   function setProjectStore(store) {
     projectStoreRef = store
@@ -83,7 +88,7 @@ export const usePolishStore = defineStore('polish', () => {
 
     try {
       const result = await analyzePolish(text, lenses)
-      
+
       if (result.issues?.length > 0) {
         for (const issue of result.issues) {
           await addAnnotation(projectId, {
@@ -95,7 +100,7 @@ export const usePolishStore = defineStore('polish', () => {
             status: 'pending',
             overallNote: result.overallNote
           })
-          
+
           if (issue.type === 'repetition' && projectId) {
             const words = issue.original.split(/\s+/)
             for (const word of words) {
@@ -106,15 +111,15 @@ export const usePolishStore = defineStore('polish', () => {
             }
           }
         }
-        
+
         annotations.value = await getAnnotations(projectId)
         snippets.value = await getSnippets(projectId)
       }
-      
+
       if (result.error) {
         error.value = result.overallNote
       }
-      
+
       return result
     } catch (err) {
       error.value = err.message
@@ -125,7 +130,7 @@ export const usePolishStore = defineStore('polish', () => {
   }
 
   async function acceptAnnotation(id, projectId, projectStore) {
-    const annotation = annotations.value.find(a => a.id === id)
+    const annotation = annotations.value.find((a) => a.id === id)
     if (annotation?.suggestion && projectStore) {
       const content = projectStore.documentContent
       const updated = content.replace(annotation.original, annotation.suggestion)

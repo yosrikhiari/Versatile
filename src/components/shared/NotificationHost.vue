@@ -8,7 +8,10 @@ const { toasts, activeConfirm, removeToast } = useNotifications()
 <template>
   <div>
     <!-- Toasts -->
-    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none" aria-live="polite">
+    <div
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none"
+      aria-live="polite"
+    >
       <TransitionGroup name="toast">
         <div
           v-for="toast in toasts"
@@ -22,7 +25,10 @@ const { toasts, activeConfirm, removeToast } = useNotifications()
           }"
         >
           <span>{{ toast.message }}</span>
-          <button class="opacity-50 hover:opacity-100 transition-opacity" @click="removeToast(toast.id)">
+          <button
+            class="opacity-50 hover:opacity-100 transition-opacity"
+            @click="removeToast(toast.id)"
+          >
             <BaseIcon name="x" :size="14" />
           </button>
         </div>
@@ -31,19 +37,27 @@ const { toasts, activeConfirm, removeToast } = useNotifications()
 
     <!-- Confirm Dialog -->
     <Transition name="fade">
-      <div v-if="activeConfirm" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-bg-primary/80 backdrop-blur-sm">
-        <div class="bg-bg-tertiary border border-border-subtle rounded-xl shadow-2xl max-w-md w-full p-6" @click.stop>
+      <div
+        v-if="activeConfirm"
+        class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-bg-primary/80 backdrop-blur-sm"
+      >
+        <div
+          class="bg-bg-tertiary border border-border-subtle rounded-xl shadow-2xl max-w-md w-full p-6"
+          @click.stop
+        >
           <h3 class="text-lg font-display text-text-primary mb-2">{{ activeConfirm.title }}</h3>
-          <p class="text-text-secondary text-sm font-ui mb-6 whitespace-pre-wrap">{{ activeConfirm.message }}</p>
-          
+          <p class="text-text-secondary text-sm font-ui mb-6 whitespace-pre-wrap">
+            {{ activeConfirm.message }}
+          </p>
+
           <div class="flex items-center justify-end gap-3">
-            <button 
+            <button
               class="px-4 py-2 text-sm font-ui text-text-secondary hover:text-text-primary transition-colors focus:outline-none"
               @click="activeConfirm.resolve(false)"
             >
               Cancel
             </button>
-            <button 
+            <button
               class="px-4 py-2 text-sm font-ui font-medium rounded-lg text-white shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-bg-tertiary"
               :class="{
                 'bg-danger hover:bg-danger/90 focus:ring-danger': activeConfirm.type === 'danger',

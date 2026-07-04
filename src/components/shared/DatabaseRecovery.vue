@@ -1,6 +1,8 @@
 <template>
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-bg-tertiary rounded-xl shadow-xl max-w-md w-full border border-border-subtle max-h-[90vh] overflow-y-auto">
+    <div
+      class="bg-bg-tertiary rounded-xl shadow-xl max-w-md w-full border border-border-subtle max-h-[90vh] overflow-y-auto"
+    >
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-text-primary">Database Recovery</h2>
@@ -15,17 +17,24 @@
           <div class="bg-bg-secondary rounded-lg p-4">
             <div v-if="healthCheck" class="space-y-2">
               <div class="flex items-center gap-2">
-                <BaseIcon 
+                <BaseIcon
                   :name="healthCheck.healthy ? 'check-circle' : 'alert-circle'"
                   :class="healthCheck.healthy ? 'text-green-500' : 'text-red-500'"
                   :size="20"
                 />
-                <span class="text-sm" :class="healthCheck.healthy ? 'text-green-500' : 'text-red-500'">
+                <span
+                  class="text-sm"
+                  :class="healthCheck.healthy ? 'text-green-500' : 'text-red-500'"
+                >
                   {{ healthCheck.healthy ? 'Database is healthy' : 'Database has issues' }}
                 </span>
               </div>
               <div v-if="healthCheck.stores" class="text-xs text-text-secondary space-y-1">
-                <div v-for="(info, store) in healthCheck.stores" :key="store" class="flex justify-between">
+                <div
+                  v-for="(info, store) in healthCheck.stores"
+                  :key="store"
+                  class="flex justify-between"
+                >
                   <span>{{ store }}:</span>
                   <span :class="info.status === 'ok' ? 'text-green-500' : 'text-red-500'">
                     {{ info.status === 'ok' ? info.count + ' records' : 'Error' }}
@@ -51,7 +60,7 @@
 
         <!-- Actions -->
         <div class="space-y-3">
-          <button 
+          <button
             :disabled="working"
             class="w-full py-2 px-4 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
             @click="checkHealth"
@@ -60,7 +69,7 @@
             Check Database Health
           </button>
 
-          <button 
+          <button
             :disabled="working"
             class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-surface-hover/80 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
             @click="exportData"
@@ -68,18 +77,20 @@
             Export All Data
           </button>
 
-          <label class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-surface-hover/80 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 cursor-pointer block text-center">
+          <label
+            class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-surface-hover/80 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 cursor-pointer block text-center"
+          >
             Import Backup
-            <input 
-              type="file" 
-              accept=".json" 
+            <input
+              type="file"
+              accept=".json"
               class="hidden"
               :disabled="working"
               @change="handleFileImport"
-            >
+            />
           </label>
 
-          <button 
+          <button
             class="w-full py-2 px-4 text-danger hover:bg-danger/10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-danger"
             @click="showResetConfirm = true"
           >
@@ -88,13 +99,16 @@
         </div>
 
         <!-- Reset Confirmation -->
-        <div v-if="showResetConfirm" class="mt-4 p-4 bg-danger/10 rounded-lg border border-danger/20">
+        <div
+          v-if="showResetConfirm"
+          class="mt-4 p-4 bg-danger/10 rounded-lg border border-danger/20"
+        >
           <p class="text-sm text-danger mb-3">
             <BaseIcon name="alert-circle" :size="16" class="mr-1" />
             This will delete ALL data in your database. This cannot be undone.
           </p>
           <div class="flex gap-2">
-            <button 
+            <button
               :disabled="working"
               class="flex-1 py-2 px-4 bg-danger text-white rounded-lg font-medium hover:bg-danger/90 disabled:opacity-50"
               @click="resetDatabase"
@@ -102,7 +116,7 @@
               <BaseIcon v-if="working" name="loader-2" :size="14" class="animate-spin mr-1" />
               Yes, Reset Database
             </button>
-            <button 
+            <button
               :disabled="working"
               class="px-4 py-2 bg-surface-hover text-text-primary rounded-lg font-medium"
               @click="showResetConfirm = false"
@@ -113,7 +127,15 @@
         </div>
 
         <!-- Status Messages -->
-        <div v-if="status" class="mt-4 p-3 rounded-lg" :class="status.type === 'success' ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'">
+        <div
+          v-if="status"
+          class="mt-4 p-3 rounded-lg"
+          :class="
+            status.type === 'success'
+              ? 'bg-green-500/10 border border-green-500/20'
+              : 'bg-red-500/10 border border-red-500/20'
+          "
+        >
           <p class="text-sm" :class="status.type === 'success' ? 'text-green-200' : 'text-red-200'">
             {{ status.message }}
           </p>
@@ -125,7 +147,13 @@
 
 <script setup>
 import { ref } from 'vue'
-import { checkDatabaseHealth, exportAllData, importData, resetDatabaseVersion, getDatabaseSize } from '../../services/dbRecovery'
+import {
+  checkDatabaseHealth,
+  exportAllData,
+  importData,
+  resetDatabaseVersion,
+  getDatabaseSize
+} from '../../services/dbRecovery'
 import { useNotifications } from '../../composables/useNotifications'
 import BaseIcon from './BaseIcon.vue'
 
@@ -148,7 +176,10 @@ async function checkHealth() {
     if (healthCheck.value.healthy) {
       status.value = { type: 'success', message: 'Database is healthy!' }
     } else {
-      status.value = { type: 'error', message: 'Database has issues. Consider exporting your data.' }
+      status.value = {
+        type: 'error',
+        message: 'Database has issues. Consider exporting your data.'
+      }
     }
   } catch (err) {
     status.value = { type: 'error', message: 'Failed to check database: ' + err.message }
@@ -180,22 +211,29 @@ async function exportData() {
 async function handleFileImport(event) {
   const file = event.target.files[0]
   if (!file) return
-  
+
   working.value = true
   status.value = null
-  
+
   try {
     const text = await file.text()
     const data = JSON.parse(text)
-    
-    if (!(await showConfirm('Import Backup', 'This will replace ALL existing data. Continue?', 'Import', 'danger'))) {
+
+    if (
+      !(await showConfirm(
+        'Import Backup',
+        'This will replace ALL existing data. Continue?',
+        'Import',
+        'danger'
+      ))
+    ) {
       working.value = false
       return
     }
-    
+
     await importData(data)
     status.value = { type: 'success', message: 'Data imported successfully!' }
-    
+
     // Refresh health check
     setTimeout(() => checkHealth(), 1000)
   } catch (err) {
@@ -207,13 +245,20 @@ async function handleFileImport(event) {
 }
 
 async function resetDatabase() {
-  if (!(await showConfirm('Reset Database', 'ARE YOU SURE? This will delete ALL data permanently!', 'Delete Data', 'danger'))) {
+  if (
+    !(await showConfirm(
+      'Reset Database',
+      'ARE YOU SURE? This will delete ALL data permanently!',
+      'Delete Data',
+      'danger'
+    ))
+  ) {
     return
   }
-  
+
   working.value = true
   status.value = null
-  
+
   try {
     await resetDatabaseVersion()
     status.value = { type: 'success', message: 'Database reset. Please refresh the page.' }

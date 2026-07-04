@@ -1,6 +1,26 @@
 import { defineStore } from 'pinia'
 import { ref, toRaw } from 'vue'
-import { getGraphEdges, addGraphEdge, updateGraphEdge, deleteGraphEdge, clearAllGraphEdges, getNodePositions, saveNodePositions, getNodeInstances, saveNodeInstances as dbSaveNodeInstances, getCharacterRelationships, deleteCharacterRelationship, getGraphGroups, saveGraphGroups, getNodeParents as dbGetNodeParents, saveNodeParents as dbSaveNodeParents, getGroupEdges, addGroupEdge, updateGroupEdge, deleteGroupEdge } from '../services/dbService'
+import {
+  getGraphEdges,
+  addGraphEdge,
+  updateGraphEdge,
+  deleteGraphEdge,
+  clearAllGraphEdges,
+  getNodePositions,
+  saveNodePositions,
+  getNodeInstances,
+  saveNodeInstances as dbSaveNodeInstances,
+  getCharacterRelationships,
+  deleteCharacterRelationship,
+  getGraphGroups,
+  saveGraphGroups,
+  getNodeParents as dbGetNodeParents,
+  saveNodeParents as dbSaveNodeParents,
+  getGroupEdges,
+  addGroupEdge,
+  updateGroupEdge,
+  deleteGroupEdge
+} from '../services/dbService'
 import { useStoryBibleStore } from './storyBibleStore'
 
 function typeFromKey(key) {
@@ -24,33 +44,36 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     isLoading.value = true
     loadError.value = null
     try {
-    const graphEdgesData = await getGraphEdges(projectId)
-    const charRelationshipsData = await getCharacterRelationships(projectId)
-    const storyBibleStore = useStoryBibleStore()
-    const existingCharIds = new Set(storyBibleStore.characters.map(c => c.id))
-    
-    const charEdges = charRelationshipsData
-      .filter(rel => existingCharIds.has(rel.fromCharacterId) && existingCharIds.has(rel.toCharacterId))
-      .map(rel => ({
-        id: `char-rel-${rel.id}`,
-        sourceId: rel.fromCharacterId,
-        sourceType: 'character',
-        targetId: rel.toCharacterId,
-        targetType: 'character',
-        relationshipType: rel.type,
-        description: rel.notes || '',
-        isLegacy: true
-      }))
-    
-    edges.value = [...graphEdgesData, ...charEdges]
-    
-    const charIds = new Set()
-    for (const edge of charEdges) {
-      charIds.add(String(edge.sourceId))
-      charIds.add(String(edge.targetId))
-    }
-    
-    missingCharacterPositions.value = Array.from(charIds)
+      const graphEdgesData = await getGraphEdges(projectId)
+      const charRelationshipsData = await getCharacterRelationships(projectId)
+      const storyBibleStore = useStoryBibleStore()
+      const existingCharIds = new Set(storyBibleStore.characters.map((c) => c.id))
+
+      const charEdges = charRelationshipsData
+        .filter(
+          (rel) =>
+            existingCharIds.has(rel.fromCharacterId) && existingCharIds.has(rel.toCharacterId)
+        )
+        .map((rel) => ({
+          id: `char-rel-${rel.id}`,
+          sourceId: rel.fromCharacterId,
+          sourceType: 'character',
+          targetId: rel.toCharacterId,
+          targetType: 'character',
+          relationshipType: rel.type,
+          description: rel.notes || '',
+          isLegacy: true
+        }))
+
+      edges.value = [...graphEdgesData, ...charEdges]
+
+      const charIds = new Set()
+      for (const edge of charEdges) {
+        charIds.add(String(edge.sourceId))
+        charIds.add(String(edge.targetId))
+      }
+
+      missingCharacterPositions.value = Array.from(charIds)
     } catch (e) {
       loadError.value = e.message
       console.error('[storyGraphStore] loadEdges failed:', e)
@@ -66,9 +89,9 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     const cleaned = {}
     let changed = false
 
-    const existingCharIds = new Set(storyBibleStore.characters.map(c => String(c.id)))
-    const existingLocIds = new Set(storyBibleStore.locations.map(l => String(l.id)))
-    const existingThreadIds = new Set(storyBibleStore.plotThreads.map(t => String(t.id)))
+    const existingCharIds = new Set(storyBibleStore.characters.map((c) => String(c.id)))
+    const existingLocIds = new Set(storyBibleStore.locations.map((l) => String(l.id)))
+    const existingThreadIds = new Set(storyBibleStore.plotThreads.map((t) => String(t.id)))
 
     for (const [key, pos] of Object.entries(nodePositions.value)) {
       const type = typeFromKey(key)
@@ -108,9 +131,9 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     const storyBibleStore = useStoryBibleStore()
     const cleaned = {}
 
-    const existingCharIds = new Set(storyBibleStore.characters.map(c => String(c.id)))
-    const existingLocIds = new Set(storyBibleStore.locations.map(l => String(l.id)))
-    const existingThreadIds = new Set(storyBibleStore.plotThreads.map(t => String(t.id)))
+    const existingCharIds = new Set(storyBibleStore.characters.map((c) => String(c.id)))
+    const existingLocIds = new Set(storyBibleStore.locations.map((l) => String(l.id)))
+    const existingThreadIds = new Set(storyBibleStore.plotThreads.map((t) => String(t.id)))
 
     for (const [baseId, instanceIds] of Object.entries(instances || {})) {
       const type = typeFromKey(baseId)
@@ -164,7 +187,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
 
   async function updateEdgeData(id, edgeData, _projectId) {
     await updateGraphEdge(id, toRaw(edgeData))
-    const index = edges.value.findIndex(e => e.id === id)
+    const index = edges.value.findIndex((e) => e.id === id)
     if (index !== -1) {
       edges.value[index] = { ...edges.value[index], ...edgeData }
     }
@@ -172,12 +195,12 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
 
   async function deleteEdgeData(id, _projectId) {
     await deleteGraphEdge(id)
-    edges.value = edges.value.filter(e => e.id !== id)
+    edges.value = edges.value.filter((e) => e.id !== id)
   }
 
   async function deleteLegacyEdge(legacyId) {
     await deleteCharacterRelationship(legacyId)
-    edges.value = edges.value.filter(e => e.id !== `char-rel-${legacyId}`)
+    edges.value = edges.value.filter((e) => e.id !== `char-rel-${legacyId}`)
   }
 
   async function clearAllEdges(projectId) {
@@ -186,7 +209,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
   }
 
   function getEdgesForNode(nodeId) {
-    return edges.value.filter(e => e.sourceId === nodeId || e.targetId === nodeId)
+    return edges.value.filter((e) => e.sourceId === nodeId || e.targetId === nodeId)
   }
 
   function getConnectedNodes(nodeId) {
@@ -215,7 +238,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
 
   async function updateGroupEdgeData(id, data, _projectId) {
     await updateGroupEdge(id, toRaw(data))
-    const index = groupEdges.value.findIndex(e => e.id === id)
+    const index = groupEdges.value.findIndex((e) => e.id === id)
     if (index !== -1) {
       groupEdges.value[index] = { ...groupEdges.value[index], ...data }
     }
@@ -223,7 +246,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
 
   async function deleteGroupEdgeData(id, _projectId) {
     await deleteGroupEdge(id)
-    groupEdges.value = groupEdges.value.filter(e => e.id !== id)
+    groupEdges.value = groupEdges.value.filter((e) => e.id !== id)
   }
 
   return {

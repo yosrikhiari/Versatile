@@ -12,7 +12,7 @@ import {
 
 export const useVolumeStoryNetworkStore = defineStore('volumeStoryNetwork', () => {
   const volumeEntities = ref({}) // volumeId -> entity list
-  const volumeEdges = ref({})   // volumeId -> edge list
+  const volumeEdges = ref({}) // volumeId -> edge list
   const loading = ref(false)
 
   async function loadVolumeEntities(volumeId, entityType = null) {
@@ -41,10 +41,8 @@ export const useVolumeStoryNetworkStore = defineStore('volumeStoryNetwork', () =
   }
 
   async function loadVolumeSubgraph(volumeId, options = {}) {
-    const {
-      includeGlobalEdges = true,
-      entityTypes = ['character', 'location', 'plotThread']
-    } = options
+    const { includeGlobalEdges = true, entityTypes = ['character', 'location', 'plotThread'] } =
+      options
 
     loading.value = true
     try {
@@ -95,8 +93,24 @@ export const useVolumeStoryNetworkStore = defineStore('volumeStoryNetwork', () =
     }
   }
 
-  async function createVolumeEdge(projectId, sourceType, sourceId, targetType, targetId, relationshipType, volumeId = null) {
-    const id = await addVolumeEdge(projectId, sourceType, sourceId, targetType, targetId, relationshipType, volumeId)
+  async function createVolumeEdge(
+    projectId,
+    sourceType,
+    sourceId,
+    targetType,
+    targetId,
+    relationshipType,
+    volumeId = null
+  ) {
+    const id = await addVolumeEdge(
+      projectId,
+      sourceType,
+      sourceId,
+      targetType,
+      targetId,
+      relationshipType,
+      volumeId
+    )
     // Invalidate edge cache for this volume
     if (volumeId !== null) {
       delete volumeEdges.value[volumeId]
@@ -122,26 +136,41 @@ export const useVolumeStoryNetworkStore = defineStore('volumeStoryNetwork', () =
     const from = nameToId[event.from]
     const to = nameToId[event.to]
     if (!from || !to) {
-      console.warn(`[volumeStoryNetwork] Could not resolve network event: ${event.from} -> ${event.to}`)
+      console.warn(
+        `[volumeStoryNetwork] Could not resolve network event: ${event.from} -> ${event.to}`
+      )
       return null
     }
 
     // Assign both entities to volume if not already (idempotent at db level)
-    await assignEntityToVolume(from.type, from.id, volumeId, false).catch(() => console.warn(`[volumeStoryNetwork] Could not assign ${from.type}:${from.id} to volume ${volumeId}`))
-    await assignEntityToVolume(to.type, to.id, volumeId, false).catch(() => console.warn(`[volumeStoryNetwork] Could not assign ${to.type}:${to.id} to volume ${volumeId}`))
+    await assignEntityToVolume(from.type, from.id, volumeId, false).catch(() =>
+      console.warn(
+        `[volumeStoryNetwork] Could not assign ${from.type}:${from.id} to volume ${volumeId}`
+      )
+    )
+    await assignEntityToVolume(to.type, to.id, volumeId, false).catch(() =>
+      console.warn(
+        `[volumeStoryNetwork] Could not assign ${to.type}:${to.id} to volume ${volumeId}`
+      )
+    )
 
     // Create the edge
     try {
       const edgeId = await createVolumeEdge(
         projectId,
-        from.type, from.id,
-        to.type, to.id,
+        from.type,
+        from.id,
+        to.type,
+        to.id,
         event.label || 'relates_to',
         volumeId
       )
       return edgeId
     } catch (err) {
-      console.error(`[volumeStoryNetwork] Failed to create edge for ${event.from} -> ${event.to}:`, err)
+      console.error(
+        `[volumeStoryNetwork] Failed to create edge for ${event.from} -> ${event.to}:`,
+        err
+      )
       return null
     }
   }

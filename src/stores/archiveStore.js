@@ -47,9 +47,21 @@ export const useArchiveStore = defineStore('archive', () => {
 
   async function saveEndOfSessionState(projectId, sessionId, state) {
     const id = await dbSaveStateSnapshot(projectId, sessionId, state)
-    currentStateSnapshot.value = { id, projectId, sessionId, state, timestamp: new Date().toISOString() }
+    currentStateSnapshot.value = {
+      id,
+      projectId,
+      sessionId,
+      state,
+      timestamp: new Date().toISOString()
+    }
     await loadStateSnapshots(projectId)
-    await saveInteraction(projectId, ARCHIVE_TYPES.SESSION_END, state, ['session_end'], SIGNAL.ACCEPTED)
+    await saveInteraction(
+      projectId,
+      ARCHIVE_TYPES.SESSION_END,
+      state,
+      ['session_end'],
+      SIGNAL.ACCEPTED
+    )
     return id
   }
 

@@ -22,9 +22,11 @@ function lexicalScore(query, text, allChunkTexts) {
 
   let score = 0
   for (const token of qTokens) {
-    const tf = (lowerText.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+    const tf = (
+      lowerText.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []
+    ).length
     if (tf === 0) continue
-    const df = allChunkTexts.filter(t => t.toLowerCase().includes(token)).length
+    const df = allChunkTexts.filter((t) => t.toLowerCase().includes(token)).length
     const idf = Math.log((N - df + 0.5) / (df + 0.5) + 1)
     score += (1 + Math.log(tf)) * idf
   }
@@ -45,16 +47,34 @@ function enforceStructure(chapters, spec) {
 
   const out = (Array.isArray(chapters) ? chapters : []).slice(0, N)
   while (out.length < N) {
-    out.push({ title: `Chapter ${out.length + 1}`, goal: '', arcPosition: '', emotionalTarget: '', hookEnding: '', scenes: [] })
+    out.push({
+      title: `Chapter ${out.length + 1}`,
+      goal: '',
+      arcPosition: '',
+      emotionalTarget: '',
+      hookEnding: '',
+      scenes: []
+    })
   }
 
   return out.map((c, i) => {
     let scenes = (Array.isArray(c.scenes) ? c.scenes : []).slice(0, S)
     while (scenes.length < S) {
       scenes.push({
-        title: `Scene ${scenes.length + 1}`, emotionalGoal: '', whatChanges: '', obstacle: '',
-        sceneFunction: 'setup', charactersPresent: [], characterWants: {}, location: '',
-        setup: '', payoff: 'none', sensoryAnchor: '', arcPosition: 'setup', tension: 'medium', pacing: 'medium'
+        title: `Scene ${scenes.length + 1}`,
+        emotionalGoal: '',
+        whatChanges: '',
+        obstacle: '',
+        sceneFunction: 'setup',
+        charactersPresent: [],
+        characterWants: {},
+        location: '',
+        setup: '',
+        payoff: 'none',
+        sensoryAnchor: '',
+        arcPosition: 'setup',
+        tension: 'medium',
+        pacing: 'medium'
       })
     }
     scenes = scenes.map((s, j) => ({ ...s, sceneNumber: j + 1, estimatedWords: wordsPerScene }))
@@ -90,17 +110,30 @@ Return ONLY JSON, no markdown:
   "storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },
   "chapters": [ { "chapterNumber": 1, "title": "", "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
 }`
-  const skel = sanitizeJson(await aiGenerate(skeletonPrompt, systemPrompt, {
-    feature: FEATURES.STORY_GENERATION, temperature: 0.7, timeout: PLAN_TIMEOUT_MS
-  }))
+  const skel = sanitizeJson(
+    await aiGenerate(skeletonPrompt, systemPrompt, {
+      feature: FEATURES.STORY_GENERATION,
+      temperature: 0.7,
+      timeout: PLAN_TIMEOUT_MS
+    })
+  )
   if (!skel || !Array.isArray(skel.chapters) || skel.chapters.length === 0) {
-    throw new Error('The planning model timed out or returned invalid JSON. Try fewer chapters, a smaller word target, or a larger/faster model.')
+    throw new Error(
+      'The planning model timed out or returned invalid JSON. Try fewer chapters, a smaller word target, or a larger/faster model.'
+    )
   }
 
   const chapters = skel.chapters.slice(0, N)
   while (chapters.length < N) {
     const n = chapters.length + 1
-    chapters.push({ chapterNumber: n, title: `Chapter ${n}`, goal: '', arcPosition: '', emotionalTarget: '', hookEnding: '' })
+    chapters.push({
+      chapterNumber: n,
+      title: `Chapter ${n}`,
+      goal: '',
+      arcPosition: '',
+      emotionalTarget: '',
+      hookEnding: ''
+    })
   }
   const storyArc = skel.storyArc || {}
 
@@ -108,7 +141,9 @@ Return ONLY JSON, no markdown:
   for (let i = 0; i < chapters.length; i++) {
     const ch = chapters[i]
     const prev = chapters[i - 1]
-    try { onPartialData?.('scene', ch.title || `Chapter ${i + 1}`) } catch {}
+    try {
+      onPartialData?.('scene', ch.title || `Chapter ${i + 1}`)
+    } catch {}
     const scenePrompt = `Plan EXACTLY ${S} scenes for this chapter of the story.
 STORY: "${goal.premise}" (${goal.genre || 'Standard'}, ${goal.tone || 'Standard'})
 CHAPTER ${i + 1}: "${ch.title}"
@@ -119,12 +154,18 @@ ${prev ? `- The PREVIOUS chapter ended on: "${prev.hookEnding || ''}". Scene 1 m
 
 Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
 { "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium" } ] }`
-    const parsedScenes = sanitizeJson(await aiGenerate(scenePrompt, systemPrompt, {
-      feature: FEATURES.STORY_GENERATION, temperature: 0.7, timeout: PLAN_TIMEOUT_MS
-    }))
+    const parsedScenes = sanitizeJson(
+      await aiGenerate(scenePrompt, systemPrompt, {
+        feature: FEATURES.STORY_GENERATION,
+        temperature: 0.7,
+        timeout: PLAN_TIMEOUT_MS
+      })
+    )
     ch.scenes = Array.isArray(parsedScenes?.scenes) ? parsedScenes.scenes : []
     for (const sc of ch.scenes) {
-      try { onPartialData?.('scene', sc.title) } catch {}
+      try {
+        onPartialData?.('scene', sc.title)
+      } catch {}
     }
   }
 
@@ -145,13 +186,15 @@ export function useStoryDirector() {
       const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
 
       const s = goal.structure
-      const structureBlock = s ? `
+      const structureBlock = s
+        ? `
 
 ### STRUCTURE REQUIREMENTS (MANDATORY — follow these numbers exactly)
 - Produce EXACTLY ${s.chapters} chapters.${s.volumes > 1 ? ` These span ${s.volumes} volumes of ${s.chaptersPerVolume} chapters each, in order.` : ''}
 - Each chapter must contain EXACTLY ${s.scenesPerChapter || 3} scenes.
 - Target ${s.wordsPerChapter} words per chapter (~${Math.round(s.wordsPerChapter / (s.scenesPerChapter || 3))} words per scene).
-- LINKAGE: every chapter MUST end with a "hookEnding" that sets up the next chapter, and each chapter's first scene must pick up directly from the previous chapter's hook so the chapters read as one continuous story.` : ''
+- LINKAGE: every chapter MUST end with a "hookEnding" that sets up the next chapter, and each chapter's first scene must pick up directly from the previous chapter's hook so the chapters read as one continuous story.`
+        : ''
 
       const userPrompt = `Plan a complete document structure based on this GOAL.
 
@@ -181,11 +224,11 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
             const count = Math.min(allChunks.length, RESEARCH_CHUNKS_DEFAULT)
             const queryText = `Premise: ${goal.premise}. Genre: ${goal.genre || 'Standard'}. Tone: ${goal.tone || 'Professional'}`
             const K = Math.max(10, count * 10)
-            const allChunkTexts = allChunks.map(c => c.text)
+            const allChunkTexts = allChunks.map((c) => c.text)
 
             // Lexical ranking (TF-IDF based)
             const lexicalRanks = allChunks
-              .map(c => ({ chunk: c, score: lexicalScore(queryText, c.text, allChunkTexts) }))
+              .map((c) => ({ chunk: c, score: lexicalScore(queryText, c.text, allChunkTexts) }))
               .sort((a, b) => b.score - a.score)
             const lexicalRankMap = new Map()
             lexicalRanks.forEach((item, rank) => lexicalRankMap.set(item.chunk.id, rank + 1))
@@ -194,10 +237,10 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
             let semanticRankMap = new Map()
             try {
               const queryEmbedding = await getEmbedding(queryText)
-              if (queryEmbedding && allChunks.some(c => c.embedding)) {
-                const withEmb = allChunks.filter(c => c.embedding)
+              if (queryEmbedding && allChunks.some((c) => c.embedding)) {
+                const withEmb = allChunks.filter((c) => c.embedding)
                 const scored = withEmb
-                  .map(c => ({ chunk: c, score: cosineSimilarity(queryEmbedding, c.embedding) }))
+                  .map((c) => ({ chunk: c, score: cosineSimilarity(queryEmbedding, c.embedding) }))
                   .sort((a, b) => b.score - a.score)
                 scored.forEach((item, rank) => semanticRankMap.set(item.chunk.id, rank + 1))
               }
@@ -206,17 +249,17 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
             }
 
             // RRF fusion with dynamic K
-            const rrfScores = allChunks.map(chunk => {
+            const rrfScores = allChunks.map((chunk) => {
               const lr = lexicalRankMap.get(chunk.id) ?? Infinity
               const sr = semanticRankMap.get(chunk.id) ?? Infinity
-              const rrf = (1 / (K + lr)) + (1 / (K + sr))
+              const rrf = 1 / (K + lr) + 1 / (K + sr)
               return { chunk, rrf }
             })
             const selected = rrfScores
               .sort((a, b) => b.rrf - a.rrf)
               .slice(0, count)
-              .map(s => s.chunk)
-            researchContext = selected.map(c => c.text).join('\n\n---\n\n')
+              .map((s) => s.chunk)
+            researchContext = selected.map((c) => c.text).join('\n\n---\n\n')
           }
         } catch {
           researchContext = ''
@@ -235,30 +278,35 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
         const emittedTitles = new Set()
         let scanOffset = 0
 
-        await aiStream(userPrompt, finalSystemPrompt, (chunk) => {
-          accumulated += chunk
+        await aiStream(
+          userPrompt,
+          finalSystemPrompt,
+          (chunk) => {
+            accumulated += chunk
 
-          const regex = /"title"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
-          regex.lastIndex = Math.max(0, scanOffset - 200)
-          let match
+            const regex = /"title"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
+            regex.lastIndex = Math.max(0, scanOffset - 200)
+            let match
 
-          while ((match = regex.exec(accumulated)) !== null) {
-            const title = match[1]
-            if (!emittedTitles.has(title)) {
-              emittedTitles.add(title)
-              try {
-                if (onPartialData) onPartialData('scene', title)
-              } catch {}
+            while ((match = regex.exec(accumulated)) !== null) {
+              const title = match[1]
+              if (!emittedTitles.has(title)) {
+                emittedTitles.add(title)
+                try {
+                  if (onPartialData) onPartialData('scene', title)
+                } catch {}
+              }
             }
+            scanOffset = Math.max(0, accumulated.length - 200)
+          },
+          {
+            feature: FEATURES.STORY_GENERATION,
+            temperature: 0.7,
+            // Bound planning so a stalled model fails fast instead of hanging for
+            // Ollama's default 20 minutes with no visible progress.
+            timeout: PLAN_TIMEOUT_MS
           }
-          scanOffset = Math.max(0, accumulated.length - 200)
-        }, {
-          feature: FEATURES.STORY_GENERATION,
-          temperature: 0.7,
-          // Bound planning so a stalled model fails fast instead of hanging for
-          // Ollama's default 20 minutes with no visible progress.
-          timeout: PLAN_TIMEOUT_MS
-        })
+        )
 
         parsed = sanitizeJson(accumulated)
         if (!parsed) {
@@ -272,7 +320,9 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
       }
 
       if (!parsed) {
-        throw new Error('The planning model timed out or returned invalid JSON. Try fewer chapters, a smaller word target, or a larger/faster model.')
+        throw new Error(
+          'The planning model timed out or returned invalid JSON. Try fewer chapters, a smaller word target, or a larger/faster model.'
+        )
       }
 
       const chapters = parsed.chapters || []
@@ -287,21 +337,36 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
       for (const chapter of chapters) {
         if (!chapter.emotionalTarget) chapter.emotionalTarget = 'Unspecified emotion'
         if (!chapter.scenes) chapter.scenes = []
-        
+
         // Soft fallback for empty scenes
         if (chapter.scenes.length === 0) {
           chapter.scenes.push({
-            sceneNumber: 1, title: 'Opening', arcPosition: 'setup', sceneFunction: 'setup',
-            emotionalGoal: 'unknown', whatChanges: 'unknown', obstacle: 'unknown',
-            charactersPresent: [], characterWants: {}, location: '', setup: '', payoff: 'none',
-            sensoryAnchor: '', tension: 'medium', pacing: 'medium', estimatedWords: 500
+            sceneNumber: 1,
+            title: 'Opening',
+            arcPosition: 'setup',
+            sceneFunction: 'setup',
+            emotionalGoal: 'unknown',
+            whatChanges: 'unknown',
+            obstacle: 'unknown',
+            charactersPresent: [],
+            characterWants: {},
+            location: '',
+            setup: '',
+            payoff: 'none',
+            sensoryAnchor: '',
+            tension: 'medium',
+            pacing: 'medium',
+            estimatedWords: 500
           })
         }
-        
+
         if (!chapter.estimatedWords || chapter.estimatedWords < 1000) {
-          chapter.estimatedWords = Math.max(1500, Math.floor((goal.wordTarget || 4000) / Math.max(1, chapters.length)))
+          chapter.estimatedWords = Math.max(
+            1500,
+            Math.floor((goal.wordTarget || 4000) / Math.max(1, chapters.length))
+          )
         }
-        
+
         for (const scene of chapter.scenes) {
           if (!scene.arcPosition) scene.arcPosition = 'setup'
           if (!scene.obstacle) scene.obstacle = 'Unspecified obstacle'
@@ -325,22 +390,40 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
             obstacle: s.obstacle || '',
             sceneFunction: s.sceneFunction || s.arcPosition || 'setup',
             charactersPresent: Array.isArray(s.charactersPresent) ? s.charactersPresent : [],
-            characterWants: (s.characterWants && typeof s.characterWants === 'object') ? s.characterWants : {},
+            characterWants:
+              s.characterWants && typeof s.characterWants === 'object' ? s.characterWants : {},
             location: s.location || '',
             setup: s.setup || '',
             payoff: s.payoff || 'none',
             sensoryAnchor: s.sensoryAnchor || '',
-            arcPosition: ['setup', 'obstacle', 'turn', 'resolution', 'hook', 'opening', 'rising', 'climax', 'falling'].includes(s.arcPosition) ? s.arcPosition : 'setup',
+            arcPosition: [
+              'setup',
+              'obstacle',
+              'turn',
+              'resolution',
+              'hook',
+              'opening',
+              'rising',
+              'climax',
+              'falling'
+            ].includes(s.arcPosition)
+              ? s.arcPosition
+              : 'setup',
             tension: ['low', 'medium', 'high', 'peak'].includes(s.tension) ? s.tension : 'medium',
             pacing: ['slow', 'medium', 'fast'].includes(s.pacing) ? s.pacing : 'medium',
-            estimatedWords: typeof s.estimatedWords === 'number' ? s.estimatedWords : Math.round(c.estimatedWords / Math.max(c.scenes.length, 1))
+            estimatedWords:
+              typeof s.estimatedWords === 'number'
+                ? s.estimatedWords
+                : Math.round(c.estimatedWords / Math.max(c.scenes.length, 1))
           }))
         }
       })
 
       // Honor the user's exact volumes/chapters/words request if one was given
-      const finalChapters = goal.structure ? enforceStructure(validatedChapters, goal.structure) : validatedChapters
-      const flatScenes = finalChapters.flatMap(c => c.scenes)
+      const finalChapters = goal.structure
+        ? enforceStructure(validatedChapters, goal.structure)
+        : validatedChapters
+      const flatScenes = finalChapters.flatMap((c) => c.scenes)
 
       return {
         chapters: finalChapters,

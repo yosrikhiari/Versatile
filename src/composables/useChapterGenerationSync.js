@@ -19,7 +19,7 @@ function buildNameToIdMap(bibleStore) {
 }
 
 function lowerSet(arr) {
-  return new Set((arr || []).map(s => s.toLowerCase().trim()))
+  return new Set((arr || []).map((s) => s.toLowerCase().trim()))
 }
 
 export function useChapterGenerationSync() {
@@ -31,9 +31,9 @@ export function useChapterGenerationSync() {
     isDiscovering.value = true
     try {
       const bibleStore = useStoryBibleStore()
-      const knownCharNames = lowerSet(bibleStore.characters.map(c => c.name))
-      const knownLocNames = lowerSet(bibleStore.locations.map(l => l.name))
-      const knownThreadTitles = lowerSet(bibleStore.plotThreads.map(t => t.title))
+      const knownCharNames = lowerSet(bibleStore.characters.map((c) => c.name))
+      const knownLocNames = lowerSet(bibleStore.locations.map((l) => l.name))
+      const knownThreadTitles = lowerSet(bibleStore.plotThreads.map((t) => t.title))
 
       const usedChars = structured.usedEntities?.characterNames || []
       const usedLocs = structured.usedEntities?.locationNames || []
@@ -45,7 +45,7 @@ export function useChapterGenerationSync() {
 
       const changes = []
 
-      for (const nc of (structured.newEntities?.characters || [])) {
+      for (const nc of structured.newEntities?.characters || []) {
         if (!knownCharNames.has(nc.name.toLowerCase().trim())) {
           changes.push({
             type: 'character',
@@ -58,7 +58,7 @@ export function useChapterGenerationSync() {
         }
       }
 
-      for (const nl of (structured.newEntities?.locations || [])) {
+      for (const nl of structured.newEntities?.locations || []) {
         if (!knownLocNames.has(nl.name.toLowerCase().trim())) {
           changes.push({
             type: 'location',
@@ -71,7 +71,7 @@ export function useChapterGenerationSync() {
         }
       }
 
-      for (const nt of (structured.newEntities?.plotThreads || [])) {
+      for (const nt of structured.newEntities?.plotThreads || []) {
         if (!knownThreadTitles.has(nt.title.toLowerCase().trim())) {
           changes.push({
             type: 'plotThread',
@@ -91,7 +91,13 @@ export function useChapterGenerationSync() {
     }
   }
 
-  async function commitSync({ structuredOutputs, acceptedEntities, projectId, volumeId, chapterId }) {
+  async function commitSync({
+    structuredOutputs,
+    acceptedEntities,
+    projectId,
+    volumeId,
+    chapterId
+  }) {
     isCommitting.value = true
     try {
       const bibleStore = useStoryBibleStore()
@@ -104,7 +110,7 @@ export function useChapterGenerationSync() {
 
       // Deduplicate accepted entities by name within each type
       const seen = { character: new Set(), location: new Set(), plotThread: new Set() }
-      const uniqueChanges = acceptedEntities.filter(c => {
+      const uniqueChanges = acceptedEntities.filter((c) => {
         const key = (c.entity.name || c.entity.title || '').toLowerCase().trim()
         if (seen[c.type].has(key)) return false
         seen[c.type].add(key)
@@ -115,11 +121,16 @@ export function useChapterGenerationSync() {
         let entityId = null
 
         if (change.type === 'character') {
-          entityId = await bibleStore.addCharacterData(resolvedProjectId, {
-            name: change.entity.name,
-            role: change.entity.role || 'unknown',
-            description: change.entity.description || ''
-          }, 'generated', chapterId || null)
+          entityId = await bibleStore.addCharacterData(
+            resolvedProjectId,
+            {
+              name: change.entity.name,
+              role: change.entity.role || 'unknown',
+              description: change.entity.description || ''
+            },
+            'generated',
+            chapterId || null
+          )
           const nodeKey = `char-${entityId}`
           nameToId[change.entity.name] = { id: entityId, type: 'character' }
 
@@ -130,11 +141,16 @@ export function useChapterGenerationSync() {
           graphStore.nodeInstances[nodeKey].push(instanceKey)
           await graphStore.saveNodeInstances(resolvedProjectId)
         } else if (change.type === 'location') {
-          entityId = await bibleStore.addLocationData(resolvedProjectId, {
-            name: change.entity.name,
-            type: change.entity.type || 'unknown',
-            description: change.entity.description || ''
-          }, 'generated', chapterId || null)
+          entityId = await bibleStore.addLocationData(
+            resolvedProjectId,
+            {
+              name: change.entity.name,
+              type: change.entity.type || 'unknown',
+              description: change.entity.description || ''
+            },
+            'generated',
+            chapterId || null
+          )
           const nodeKey = `loc-${entityId}`
           nameToId[change.entity.name] = { id: entityId, type: 'location' }
 
@@ -145,11 +161,16 @@ export function useChapterGenerationSync() {
           graphStore.nodeInstances[nodeKey].push(instanceKey)
           await graphStore.saveNodeInstances(resolvedProjectId)
         } else if (change.type === 'plotThread') {
-          entityId = await bibleStore.addPlotThreadData(resolvedProjectId, {
-            title: change.entity.title,
-            status: change.entity.status || 'open',
-            summary: change.entity.summary || ''
-          }, 'generated', chapterId || null)
+          entityId = await bibleStore.addPlotThreadData(
+            resolvedProjectId,
+            {
+              title: change.entity.title,
+              status: change.entity.status || 'open',
+              summary: change.entity.summary || ''
+            },
+            'generated',
+            chapterId || null
+          )
           const nodeKey = `thread-${entityId}`
           nameToId[change.entity.title] = { id: entityId, type: 'plotThread' }
 
@@ -169,8 +190,8 @@ export function useChapterGenerationSync() {
       // Collect all network events across all structured outputs
       const seenEdges = new Set()
       const allNetworkEvents = []
-      for (const so of (structuredOutputs || [])) {
-        for (const event of (so.networkEvents || [])) {
+      for (const so of structuredOutputs || []) {
+        for (const event of so.networkEvents || []) {
           const edgeKey = `${event.from}|${event.to}|${event.label || 'relates_to'}`
           if (!seenEdges.has(edgeKey)) {
             seenEdges.add(edgeKey)
@@ -185,8 +206,10 @@ export function useChapterGenerationSync() {
         if (from && to) {
           await networkStore.createVolumeEdge(
             resolvedProjectId,
-            from.type, from.id,
-            to.type, to.id,
+            from.type,
+            from.id,
+            to.type,
+            to.id,
             event.label || 'relates_to',
             volumeId || null
           )

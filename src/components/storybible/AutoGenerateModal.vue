@@ -20,23 +20,38 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'generate', 'update:prompt', 'update:createGroups', 'update:fromScratch'])
+const emit = defineEmits([
+  'close',
+  'generate',
+  'update:prompt',
+  'update:createGroups',
+  'update:fromScratch'
+])
 
 const localPrompt = ref(props.prompt || '')
 const localCreateGroups = ref(props.createGroups || false)
 const localFromScratch = ref(props.fromScratch || false)
 
-watch(() => props.prompt, (val) => {
-  localPrompt.value = val || ''
-})
+watch(
+  () => props.prompt,
+  (val) => {
+    localPrompt.value = val || ''
+  }
+)
 
-watch(() => props.createGroups, (val) => {
-  localCreateGroups.value = val || false
-})
+watch(
+  () => props.createGroups,
+  (val) => {
+    localCreateGroups.value = val || false
+  }
+)
 
-watch(() => props.fromScratch, (val) => {
-  localFromScratch.value = val || false
-})
+watch(
+  () => props.fromScratch,
+  (val) => {
+    localFromScratch.value = val || false
+  }
+)
 
 watch(localPrompt, (val) => {
   emit('update:prompt', val)
@@ -71,7 +86,9 @@ function handleOverlayClick(event) {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         @click="handleOverlayClick"
       >
-        <div class="bg-bg-secondary border border-border-subtle rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div
+          class="bg-bg-secondary border border-border-subtle rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        >
           <div class="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
             <div class="flex items-center gap-2">
               <BaseIcon name="sparkles" :size="18" class="text-accent" />
@@ -88,7 +105,7 @@ function handleOverlayClick(event) {
           <div class="p-5 space-y-5">
             <div class="space-y-2">
               <label
-class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
+                class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
                 :class="{ 'border-accent bg-accent/5': !localFromScratch }"
               >
                 <input
@@ -100,14 +117,16 @@ class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border
                 <div>
                   <p class="text-sm font-medium text-text-primary">Add to existing</p>
                   <p class="text-xs text-text-hint mt-0.5">
-                    <span v-if="existingConnections > 0">{{ existingConnections }} connections, {{ existingGroups }} groups</span>
+                    <span v-if="existingConnections > 0"
+                      >{{ existingConnections }} connections, {{ existingGroups }} groups</span
+                    >
                     <span v-else>No existing connections</span>
                   </p>
                 </div>
               </label>
 
               <label
-class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
+                class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
                 :class="{ 'border-accent bg-accent/5': localFromScratch }"
               >
                 <input
@@ -118,7 +137,9 @@ class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border
                 />
                 <div>
                   <p class="text-sm font-medium text-text-primary">Generate from scratch</p>
-                  <p class="text-xs text-text-hint mt-0.5">Clear all existing connections and regenerate</p>
+                  <p class="text-xs text-text-hint mt-0.5">
+                    Clear all existing connections and regenerate
+                  </p>
                 </div>
               </label>
             </div>
@@ -139,7 +160,7 @@ class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border
 
             <div>
               <label
-class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
+                class="flex items-start gap-3 p-3 bg-bg-tertiary rounded-lg border border-border-subtle cursor-pointer hover:border-accent/50 transition-colors"
                 :class="{ 'border-accent bg-accent/5': localCreateGroups }"
               >
                 <input

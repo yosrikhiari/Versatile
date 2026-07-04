@@ -13,7 +13,8 @@ const SD_DEFAULTS = {
   batch_size: 1
 }
 
-const NEGATIVE_PROMPT = 'anime, bad hands, bad anatomy, blurry, low quality, worst quality, deformed, disfigured, watermark, text, signature, ugly, poorly drawn, extra digits, extra limbs, fused fingers, too many fingers, long neck, cross-eyed'
+const NEGATIVE_PROMPT =
+  'anime, bad hands, bad anatomy, blurry, low quality, worst quality, deformed, disfigured, watermark, text, signature, ugly, poorly drawn, extra digits, extra limbs, fused fingers, too many fingers, long neck, cross-eyed'
 
 export async function generateSDPrompt(character) {
   const systemPrompt = `You are an SD prompt engineer. Given character details, output ONLY a high-quality Stable Diffusion prompt (no explanation, no quotes).

@@ -71,20 +71,20 @@ export async function reorderSubsections(subsectionIds) {
 export async function getSectionWordCounts(projectId) {
   const sections = await getSections(projectId)
   const subsections = await getSubsections(projectId)
-  
+
   const sectionCounts = {}
   let totalWords = 0
-    
+
   for (const section of sections) {
-    const sectionSubsections = subsections.filter(s => s.sectionId === section.id)
+    const sectionSubsections = subsections.filter((s) => s.sectionId === section.id)
     let wordCount = 0
-      
+
     for (const subsection of sectionSubsections) {
       if (subsection.content) {
         wordCount += countWords(subsection.content)
       }
     }
-      
+
     sectionCounts[section.id] = {
       sectionId: section.id,
       title: section.title,
@@ -94,7 +94,7 @@ export async function getSectionWordCounts(projectId) {
     }
     totalWords += wordCount
   }
-    
+
   return { sectionCounts, totalWords }
 }
 
@@ -105,13 +105,13 @@ export async function getVolumes(projectId) {
 }
 
 export async function addVolume(projectId, data) {
-  return db.volumes.add({ 
-    projectId, 
+  return db.volumes.add({
+    projectId,
     title: data.title || 'Untitled Volume',
     description: data.description || '',
     color: data.color || '#6366f1',
     sectionIds: [],
-    ...data 
+    ...data
   })
 }
 

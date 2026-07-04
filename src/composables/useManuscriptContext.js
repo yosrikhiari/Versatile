@@ -1,5 +1,10 @@
 import { useManuscriptStore } from '../stores/manuscriptStore'
-import { ollamaEmbeddings, getEmbeddingCache, getEmbedding, cosineSimilarity } from '../services/ollamaService'
+import {
+  ollamaEmbeddings,
+  getEmbeddingCache,
+  getEmbedding,
+  cosineSimilarity
+} from '../services/ollamaService'
 import { getEmbeddings } from '../services/embeddingService'
 import { computeSemanticChunks } from './useSemanticChunking'
 import { getSubsections } from '../services/dbService'
@@ -18,7 +23,9 @@ export async function warmEmbeddingCache(projectId) {
       if (!scene.content) continue
       const key = `scene_${scene.id}`
       if (!cache[key] || cache[key].text !== scene.content) {
-        getEmbedding('scene', scene.id, scene.content).catch(() => console.warn(`[useManuscriptContext] Failed to warm embedding for scene ${scene.id}`))
+        getEmbedding('scene', scene.id, scene.content).catch(() =>
+          console.warn(`[useManuscriptContext] Failed to warm embedding for scene ${scene.id}`)
+        )
         warmed++
       }
     }
@@ -47,66 +54,71 @@ export function useManuscriptContext() {
     if (selector === 'current') {
       return { type: 'current' }
     }
-    
+
     if (selector === 'all') {
       return { type: 'all' }
     }
-    
+
     if (selector.startsWith('last:')) {
       const count = parseInt(selector.split(':')[1], 10)
       return { type: 'last', count }
     }
-    
+
     if (selector.startsWith('first:')) {
       const count = parseInt(selector.split(':')[1], 10)
       return { type: 'first', count }
     }
-    
+
     if (selector.startsWith('chapter:')) {
       const chapterNum = parseInt(selector.split(':')[1], 10)
       return { type: 'chapter', chapterNum }
     }
-    
+
     if (selector.startsWith('chapters:')) {
-      const nums = selector.split(':')[1].split(',').map(n => parseInt(n.trim(), 10))
+      const nums = selector
+        .split(':')[1]
+        .split(',')
+        .map((n) => parseInt(n.trim(), 10))
       return { type: 'chapters', chapterNums: nums }
     }
-    
+
     return null
   }
 
   function resolveSectionIds(parsed, sortedSections) {
     const sections = [...sortedSections].sort((a, b) => (a.order || 0) - (b.order || 0))
-    
+
     switch (parsed.type) {
       case 'current': {
         const activeId = manuscriptStore.activeSectionId
         if (activeId) {
-          const section = sections.find(s => s.id === activeId)
+          const section = sections.find((s) => s.id === activeId)
           return section ? [section] : []
         }
         return sections.length > 0 ? [sections.at(-1)] : []
       }
-      
+
       case 'all':
         return sections
-      
+
       case 'last':
         return sections.slice(-parsed.count)
-      
+
       case 'first':
         return sections.slice(0, parsed.count)
-      
+
       case 'section': {
-        const section = sections.find(s => s.order === parsed.sectionNum - 1 || s.id === parsed.sectionNum)
+        const section = sections.find(
+          (s) => s.order === parsed.sectionNum - 1 || s.id === parsed.sectionNum
+        )
         return section ? [section] : []
       }
-      
+
       case 'sections':
-        return sections.filter(s => 
-          parsed.sectionNums.includes(s.order + 1) || parsed.sectionNums.includes(s.id)
+        return sections.filter(
+          (s) => parsed.sectionNums.includes(s.order + 1) || parsed.sectionNums.includes(s.id)
         )
-      
+
       default:
         return []
     }
@@ -116,8 +128,8 @@ export function useManuscriptContext() {
     const subsections = (manuscriptStore.subsectionsBySection[sectionId] || [])
       .slice()
       .sort((a, b) => (a.order || 0) - (b.order || 0))
-    
-    return subsections.map(s => s.content || '').join('\n\n')
+
+    return subsections.map((s) => s.content || '').join('\n\n')
   }
 
   function getFullText(sections) {
@@ -175,7 +187,10 @@ export function useManuscriptContext() {
         truncated
       }
     } catch (error) {
-      console.warn('[useManuscriptContext] Semantic chunking failed, falling back to truncation:', error.message)
+      console.warn(
+        '[useManuscriptContext] Semantic chunking failed, falling back to truncation:',
+        error.message
+      )
       return truncateFallback(sections, maxChars)
     }
   }
@@ -230,7 +245,7 @@ export function useManuscriptContext() {
         threshold
       })
 
-      const chunkTexts = chunks.map(c => c.text).filter(Boolean)
+      const chunkTexts = chunks.map((c) => c.text).filter(Boolean)
       if (chunkTexts.length === 0) return null
 
       const { vectors: chunkEmbeddings } = await getEmbeddings(chunkTexts, {
@@ -238,16 +253,18 @@ export function useManuscriptContext() {
         model: embeddingModel
       })
 
-      const scored = chunks.map((chunk, i) => {
-        const emb = chunkEmbeddings[i]
-        if (!emb || !chunk.text.trim()) return null
-        const similarity = cosineSimilarity(queryEmbedding, emb)
-        return {
-          text: chunk.text,
-          score: similarity,
-          sentences: chunk.sentences
-        }
-      }).filter(Boolean)
+      const scored = chunks
+        .map((chunk, i) => {
+          const emb = chunkEmbeddings[i]
+          if (!emb || !chunk.text.trim()) return null
+          const similarity = cosineSimilarity(queryEmbedding, emb)
+          return {
+            text: chunk.text,
+            score: similarity,
+            sentences: chunk.sentences
+          }
+        })
+        .filter(Boolean)
 
       scored.sort((a, b) => b.score - a.score)
 
@@ -277,7 +294,7 @@ export function useManuscriptContext() {
 
   async function getSectionContext(selector = 'current', generatorType = 'spark') {
     const sortedSections = manuscriptStore.sortedSections
-    
+
     if (sortedSections.length === 0) {
       return {
         contextText: '',
@@ -286,9 +303,9 @@ export function useManuscriptContext() {
         totalChars: 0
       }
     }
-    
+
     const parsed = parseSelector(selector)
-    
+
     if (!parsed) {
       return {
         contextText: '',
@@ -297,9 +314,9 @@ export function useManuscriptContext() {
         totalChars: 0
       }
     }
-    
+
     const selectedSections = resolveSectionIds(parsed, sortedSections)
-    
+
     if (selectedSections.length === 0) {
       return {
         contextText: '',
@@ -308,11 +325,11 @@ export function useManuscriptContext() {
         totalChars: 0
       }
     }
-    
-    const sectionTitles = selectedSections.map(s => s.title || `Section ${(s.order || 0) + 1}`)
-    
+
+    const sectionTitles = selectedSections.map((s) => s.title || `Section ${(s.order || 0) + 1}`)
+
     const embeddingResult = await retrieveRelevantChunks(generatorType, MAX_CONTEXT_CHARS)
-    
+
     if (embeddingResult) {
       return {
         contextText: embeddingResult.contextText,
@@ -321,9 +338,12 @@ export function useManuscriptContext() {
         totalChars: embeddingResult.totalChars
       }
     }
-    
-    const { contextText, totalChars, truncated } = await buildContextText(selectedSections, MAX_CONTEXT_CHARS)
-    
+
+    const { contextText, totalChars, truncated } = await buildContextText(
+      selectedSections,
+      MAX_CONTEXT_CHARS
+    )
+
     return {
       contextText,
       sectionTitles,

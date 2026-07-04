@@ -49,7 +49,12 @@ export { detectEntities } from '../services/generation/entityDetection'
 
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
-import { hasOpenAIKey, hasPromptedForOpenAI, setStoredOpenAIKey, setPromptedForOpenAI } from '../services/ollamaService'
+import {
+  hasOpenAIKey,
+  hasPromptedForOpenAI,
+  setStoredOpenAIKey,
+  setPromptedForOpenAI
+} from '../services/ollamaService'
 import { retryWithBackoff } from '../services/ai/aiHelpers'
 
 const TEST_PROMPT = `Respond with 'OK' only. No other text.`

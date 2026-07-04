@@ -33,7 +33,9 @@ const emit = defineEmits(['action'])
       <BaseIcon :name="icon" :size="24" class="text-accent" />
     </div>
     <h3 class="text-sm font-ui font-medium text-text-primary mb-1.5">{{ title }}</h3>
-    <p v-if="description" class="text-xs text-text-hint max-w-xs leading-relaxed">{{ description }}</p>
+    <p v-if="description" class="text-xs text-text-hint max-w-xs leading-relaxed">
+      {{ description }}
+    </p>
     <slot />
     <button
       v-if="actionLabel"

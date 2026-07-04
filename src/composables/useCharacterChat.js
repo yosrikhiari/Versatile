@@ -19,7 +19,7 @@ function buildCharacterProfile(character) {
 
 function getCharacterById(id) {
   const bible = useStoryBibleStore()
-  return bible.characters.find(c => c.id === id) || null
+  return bible.characters.find((c) => c.id === id) || null
 }
 
 // Strip the noise weaker models emit: bracketed stage directions, echoed
@@ -55,8 +55,8 @@ function cleanReply(text, name) {
   return t
     .replace(/[ \t]{2,}/g, ' ')
     .split('\n')
-    .map(l => l.trim())
-    .filter(l => l.length)
+    .map((l) => l.trim())
+    .filter((l) => l.length)
     .join('\n')
     .trim()
 }
@@ -71,7 +71,7 @@ export function useCharacterChat() {
 
     const projectId = store.activeSession.projectId
     const characterIds = store.activeSession.characterIds
-    const characterProfiles = characterIds.map(id => getCharacterById(id)).filter(Boolean)
+    const characterProfiles = characterIds.map((id) => getCharacterById(id)).filter(Boolean)
 
     const primaryName = characterProfiles[0]?.name || 'Character'
 
@@ -84,17 +84,21 @@ Strict output rules:
 - Do NOT write the other person's lines or continue the conversation. Produce exactly one reply and stop.
 - Keep it concise and conversational unless asked for more.
 
-${characterProfiles.map(c => buildCharacterProfile(c)).join('\n')}`
+${characterProfiles.map((c) => buildCharacterProfile(c)).join('\n')}`
 
     // Clean transcript: label each turn with a real speaker name and sanitize
     // stored content so poisoned history doesn't teach the model bad formatting.
-    const transcript = store.activeMessages.slice(-MAX_TURNS).map(m => {
-      const speaker = m.characterId
-        ? (getCharacterById(m.characterId)?.name || 'Character')
-        : 'User'
-      const content = m.characterId ? cleanReply(m.content, speaker) : m.content
-      return `${speaker}: ${content}`
-    }).filter(line => line.split(': ').slice(1).join(': ').trim()).join('\n')
+    const transcript = store.activeMessages
+      .slice(-MAX_TURNS)
+      .map((m) => {
+        const speaker = m.characterId
+          ? getCharacterById(m.characterId)?.name || 'Character'
+          : 'User'
+        const content = m.characterId ? cleanReply(m.content, speaker) : m.content
+        return `${speaker}: ${content}`
+      })
+      .filter((line) => line.split(': ').slice(1).join(': ').trim())
+      .join('\n')
 
     const prompt = `${transcript}${transcript ? '\n' : ''}User: ${text}\n${primaryName}:`
 
@@ -108,13 +112,18 @@ ${characterProfiles.map(c => buildCharacterProfile(c)).join('\n')}`
     store.setStreamError(null)
 
     try {
-      await aiStream(prompt, systemPrompt, (chunk) => {
-        store.appendToLastMessage(chunk)
-      }, {
-        feature: FEATURES.CHARACTER_CHAT,
-        signal: abortController.signal,
-        stop
-      })
+      await aiStream(
+        prompt,
+        systemPrompt,
+        (chunk) => {
+          store.appendToLastMessage(chunk)
+        },
+        {
+          feature: FEATURES.CHARACTER_CHAT,
+          signal: abortController.signal,
+          stop
+        }
+      )
       // Sanitize the finished reply so display + persisted history stay clean
       const last = store.activeMessages[store.activeMessages.length - 1]
       if (last && last.content) {

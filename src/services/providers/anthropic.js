@@ -15,9 +15,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     body: JSON.stringify({
       model: model,
       system: systemPrompt,
-      messages: [
-        { role: 'user', content: prompt }
-      ],
+      messages: [{ role: 'user', content: prompt }],
       max_tokens: options.maxTokens || 4096,
       temperature: options.temperature ?? 0.7
     })
@@ -47,9 +45,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     body: JSON.stringify({
       model: model,
       system: systemPrompt,
-      messages: [
-        { role: 'user', content: prompt }
-      ],
+      messages: [{ role: 'user', content: prompt }],
       max_tokens: options.maxTokens || 4096,
       temperature: options.temperature ?? 0.7,
       stream: true

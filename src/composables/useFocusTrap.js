@@ -22,13 +22,17 @@ export function useFocusTrap(targetRef, options = {}) {
     }
   }
 
-  watch(targetRef, (el) => {
-    if (el) {
-      activate()
-    } else {
-      deactivate()
-    }
-  }, { immediate: true })
+  watch(
+    targetRef,
+    (el) => {
+      if (el) {
+        activate()
+      } else {
+        deactivate()
+      }
+    },
+    { immediate: true }
+  )
 
   onScopeDispose(deactivate)
 

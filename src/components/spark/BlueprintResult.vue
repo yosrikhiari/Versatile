@@ -28,7 +28,7 @@ ${b.closingBeat}
 SENSORY: ${b.sensoryAnchor}
 DIALOGUE HOOK: ${b.dialogueHook}
 NOTES: ${b.writingNotes}`
-  
+
   emit('insert', text)
 }
 </script>
@@ -44,38 +44,53 @@ NOTES: ${b.writingNotes}`
         Insert as Draft
       </button>
     </div>
-    
+
     <div class="space-y-3 text-sm">
       <div class="flex gap-2">
-        <span class="text-text-hint font-ui text-xs uppercase tracking-wider shrink-0 w-24">Opening</span>
+        <span class="text-text-hint font-ui text-xs uppercase tracking-wider shrink-0 w-24"
+          >Opening</span
+        >
         <span class="text-text-secondary">{{ blueprint.openingBeat }}</span>
       </div>
       <div class="flex gap-2">
-        <span class="text-text-hint font-ui text-xs uppercase tracking-wider shrink-0 w-24">Turning Pt</span>
+        <span class="text-text-hint font-ui text-xs uppercase tracking-wider shrink-0 w-24"
+          >Turning Pt</span
+        >
         <span class="text-text-secondary">{{ blueprint.turningPoint }}</span>
       </div>
       <div class="flex gap-2">
-        <span class="text-text-hint font-ui text-xs uppercase tracking-wider shrink-0 w-24">Confront</span>
+        <span class="text-text-hint font-ui text-xs uppercase tracking-wider shrink-0 w-24"
+          >Confront</span
+        >
         <span class="text-text-secondary">{{ blueprint.confrontationBeat }}</span>
       </div>
       <div class="flex gap-2">
-        <span class="text-text-hint font-ui text-xs uppercase tracking-wider shrink-0 w-24">Closing</span>
+        <span class="text-text-hint font-ui text-xs uppercase tracking-wider shrink-0 w-24"
+          >Closing</span
+        >
         <span class="text-text-secondary">{{ blueprint.closingBeat }}</span>
       </div>
     </div>
 
     <div class="bg-accent-muted/20 border-l-2 border-accent-muted rounded-r-md p-3 space-y-3">
       <div>
-        <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">Sensory Anchor</div>
+        <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">
+          Sensory Anchor
+        </div>
         <p class="text-sm text-text-secondary italic">{{ blueprint.sensoryAnchor }}</p>
       </div>
       <div>
-        <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">Dialogue Hook</div>
+        <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">
+          Dialogue Hook
+        </div>
         <p class="text-sm text-text-secondary italic">{{ blueprint.dialogueHook }}</p>
       </div>
     </div>
 
-    <div v-if="blueprint.writingNotes" class="text-xs italic text-text-hint border-l-2 border-accent-muted pl-3">
+    <div
+      v-if="blueprint.writingNotes"
+      class="text-xs italic text-text-hint border-l-2 border-accent-muted pl-3"
+    >
       {{ blueprint.writingNotes }}
     </div>
   </div>

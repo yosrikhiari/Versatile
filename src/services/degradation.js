@@ -34,7 +34,7 @@ export function computeDegradation(originalCritique, revisedCritique) {
       dimensions[dim] = {
         before,
         after,
-        delta: before != null ? -after : (after != null ? after : 0),
+        delta: before != null ? -after : after != null ? after : 0,
         status: 'unknown'
       }
     }

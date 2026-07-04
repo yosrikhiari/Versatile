@@ -1,25 +1,172 @@
 const ABBREVIATIONS = new Set([
-  'dr', 'mr', 'ms', 'mrs', 'jr', 'sr', 'st', 'ave', 'blvd', 'rd',
-  'etc', 'vs', 'inc', 'ltd', 'co', 'dept', 'est', 'govt',
-  'e.g', 'i.e', 'al', 'ch', 'vol', 'no', 'pp', 'pg',
-  'prof', 'sr', 'gen', 'col', 'maj', 'capt', 'lt', 'sgt',
-  'univ', 'assn', 'bros', 'corp'
+  'dr',
+  'mr',
+  'ms',
+  'mrs',
+  'jr',
+  'sr',
+  'st',
+  'ave',
+  'blvd',
+  'rd',
+  'etc',
+  'vs',
+  'inc',
+  'ltd',
+  'co',
+  'dept',
+  'est',
+  'govt',
+  'e.g',
+  'i.e',
+  'al',
+  'ch',
+  'vol',
+  'no',
+  'pp',
+  'pg',
+  'prof',
+  'sr',
+  'gen',
+  'col',
+  'maj',
+  'capt',
+  'lt',
+  'sgt',
+  'univ',
+  'assn',
+  'bros',
+  'corp'
 ])
 
 const HYPHEN_RE = /(\w)-\s*\n\s*/g
 const HEADING_RE = /^(#{1,6}\s+|[\w\s]{2,50}\n[=\-]+\s*$)/gm
 
 const STOP_WORDS = new Set([
-  'the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','as',
-  'is','was','were','are','be','been','being','have','has','had','do','does','did','will',
-  'would','could','should','may','might','shall','can','need','dare','ought','used',
-  'this','that','these','those','it','its','they','them','their','he','she','him','her',
-  'we','us','our','you','your','i','me','my','not','no','nor','so','if','than','then',
-  'also','very','just','about','up','out','over','into','through','during','before',
-  'after','above','below','between','under','again','further','once','here','there',
-  'when','where','why','how','all','each','every','both','few','more','most','other',
-  'some','such','only','own','same','too','very','what','which','who','whom','because',
-  'until','while','within','without','though','although','like','well','back','still'
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'in',
+  'on',
+  'at',
+  'to',
+  'for',
+  'of',
+  'with',
+  'by',
+  'from',
+  'as',
+  'is',
+  'was',
+  'were',
+  'are',
+  'be',
+  'been',
+  'being',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'shall',
+  'can',
+  'need',
+  'dare',
+  'ought',
+  'used',
+  'this',
+  'that',
+  'these',
+  'those',
+  'it',
+  'its',
+  'they',
+  'them',
+  'their',
+  'he',
+  'she',
+  'him',
+  'her',
+  'we',
+  'us',
+  'our',
+  'you',
+  'your',
+  'i',
+  'me',
+  'my',
+  'not',
+  'no',
+  'nor',
+  'so',
+  'if',
+  'than',
+  'then',
+  'also',
+  'very',
+  'just',
+  'about',
+  'up',
+  'out',
+  'over',
+  'into',
+  'through',
+  'during',
+  'before',
+  'after',
+  'above',
+  'below',
+  'between',
+  'under',
+  'again',
+  'further',
+  'once',
+  'here',
+  'there',
+  'when',
+  'where',
+  'why',
+  'how',
+  'all',
+  'each',
+  'every',
+  'both',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'such',
+  'only',
+  'own',
+  'same',
+  'too',
+  'very',
+  'what',
+  'which',
+  'who',
+  'whom',
+  'because',
+  'until',
+  'while',
+  'within',
+  'without',
+  'though',
+  'although',
+  'like',
+  'well',
+  'back',
+  'still'
 ])
 
 const VERB_SUFFIXES = ['ed', 'ing', 'tion', 's', 'es', 'ize', 'ify', 'en', 'ate']
@@ -28,7 +175,9 @@ const MAX_SAFE_CHUNK_SIZE = 300000
 
 function cosineSimilarity(a, b) {
   if (!a || !b || a.length !== b.length) return 0
-  let dotProduct = 0, normA = 0, normB = 0
+  let dotProduct = 0,
+    normA = 0,
+    normB = 0
   for (let i = 0; i < a.length; i++) {
     dotProduct += a[i] * b[i]
     normA += a[i] * a[i]
@@ -41,7 +190,7 @@ function cosineSimilarity(a, b) {
 function isLikelyVerb(word) {
   const v = word.toLowerCase()
   if (v.length <= 4) return false
-  return VERB_SUFFIXES.some(s => v.endsWith(s))
+  return VERB_SUFFIXES.some((s) => v.endsWith(s))
 }
 
 function normalizeText(text) {
@@ -81,7 +230,8 @@ function extractTags(text, maxTags = 10) {
 
   const bigrams = []
   for (let i = 0; i < tokens.length - 1; i++) {
-    const w1 = tokens[i], w2 = tokens[i + 1]
+    const w1 = tokens[i],
+      w2 = tokens[i + 1]
     if (!STOP_WORDS.has(w1) && !STOP_WORDS.has(w2)) {
       bigrams.push(w1 + ' ' + w2)
     }
@@ -133,14 +283,14 @@ function extractTags(text, maxTags = 10) {
 
   const seen = new Set()
   return scored
-    .filter(t => {
+    .filter((t) => {
       const key = t.label.replace(/\s+/g, ' ')
       if (seen.has(key)) return false
       seen.add(key)
       return true
     })
     .slice(0, maxTags)
-    .map(t => t.label)
+    .map((t) => t.label)
 }
 
 function splitSentences(text) {
@@ -165,7 +315,11 @@ function splitSentences(text) {
     const endsWithTerminal = /[.!?]$/.test(buffer)
     if (!endsWithTerminal) continue
 
-    const beforeLastWord = buffer.replace(/\.\s*$/, '').split(/\s+/).pop() || ''
+    const beforeLastWord =
+      buffer
+        .replace(/\.\s*$/, '')
+        .split(/\s+/)
+        .pop() || ''
     const lower = beforeLastWord.toLowerCase().replace(/\.$/, '')
     if (ABBREVIATIONS.has(lower)) continue
 
@@ -235,10 +389,7 @@ function mergeSmallChunks(chunks, minSentences) {
 
   if (merged.length > 1 && merged.at(-1).sentences.length < minSentences) {
     const last = merged.pop()
-    merged.at(-1).sentences = [
-      ...merged.at(-1).sentences,
-      ...last.sentences
-    ]
+    merged.at(-1).sentences = [...merged.at(-1).sentences, ...last.sentences]
     merged.at(-1).endIdx = last.endIdx
   }
 
@@ -306,7 +457,13 @@ function applyBreaks(sentences, breaks) {
 
 function computeChunksFromParagraphGroups(groups, embeddings, threshold) {
   if (groups.length <= 1) {
-    return [{ sentences: [...groups[0].sentences], startIdx: groups[0].startIdx, endIdx: groups[0].endIdx }]
+    return [
+      {
+        sentences: [...groups[0].sentences],
+        startIdx: groups[0].startIdx,
+        endIdx: groups[0].endIdx
+      }
+    ]
   }
 
   const mergeFlags = []
@@ -343,12 +500,12 @@ function computeChunksFromParagraphGroups(groups, embeddings, threshold) {
 }
 
 function sizeBasedChunk(text, maxChunkSize) {
-  let paragraphs = text.split(/\n\s*\n/).filter(p => p.trim())
+  let paragraphs = text.split(/\n\s*\n/).filter((p) => p.trim())
   if (paragraphs.length <= 1) {
-    paragraphs = text.split('\n').filter(p => p.trim())
+    paragraphs = text.split('\n').filter((p) => p.trim())
   }
   if (paragraphs.length <= 1) {
-    paragraphs = text.split(/(?<=[.!?])\s+/).filter(p => p.trim())
+    paragraphs = text.split(/(?<=[.!?])\s+/).filter((p) => p.trim())
   }
   if (paragraphs.length <= 1) {
     paragraphs = [text]

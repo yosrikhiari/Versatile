@@ -24,7 +24,10 @@ watch(selectedSelector, (val) => {
 
 watch(specificSections, (val) => {
   if (val.trim()) {
-    const sections = val.split(',').map(n => n.trim()).filter(n => n)
+    const sections = val
+      .split(',')
+      .map((n) => n.trim())
+      .filter((n) => n)
     if (sections.length > 0) {
       selectedSelector.value = `chapters:${sections.join(',')}`
     }
@@ -33,29 +36,27 @@ watch(specificSections, (val) => {
 
 const options = computed(() => {
   const sectionCount = getSectionCount()
-  const opts = [
-    { value: 'current', label: 'Current section' }
-  ]
-  
+  const opts = [{ value: 'current', label: 'Current section' }]
+
   if (sectionCount >= 3) {
     opts.push({ value: 'last:3', label: 'Last 3 sections' })
   }
-  
+
   if (sectionCount >= 5) {
     opts.push({ value: 'last:5', label: 'Last 5 sections' })
   }
-  
+
   if (sectionCount >= 10) {
     opts.push({ value: 'last:10', label: 'Last 10 sections' })
   }
-  
+
   if (sectionCount > 1) {
     opts.push({ value: 'all', label: 'From the beginning' })
   }
-  
+
   opts.push({ value: 'specific', label: 'Specific sections...' })
   opts.push({ value: 'none', label: 'None' })
-  
+
   return opts
 })
 
@@ -68,28 +69,33 @@ const currentSelector = computed(() => {
 
 const contextPreview = ref(null)
 
-watch(currentSelector, async (val) => {
-  if (val === 'none') {
-    contextPreview.value = null
-    return
-  }
-  
-  const result = await getSectionContext(val, 'spark')
-  if (!result.contextText) {
-    contextPreview.value = null
-    return
-  }
-  
-  const sectionLabel = result.sectionTitles.length === 1 
-    ? result.sectionTitles[0]
-    : `${result.sectionTitles.length} sections`
-  
-  contextPreview.value = {
-    label: sectionLabel,
-    chars: result.totalChars,
-    truncated: result.truncated
-  }
-}, { immediate: true })
+watch(
+  currentSelector,
+  async (val) => {
+    if (val === 'none') {
+      contextPreview.value = null
+      return
+    }
+
+    const result = await getSectionContext(val, 'spark')
+    if (!result.contextText) {
+      contextPreview.value = null
+      return
+    }
+
+    const sectionLabel =
+      result.sectionTitles.length === 1
+        ? result.sectionTitles[0]
+        : `${result.sectionTitles.length} sections`
+
+    contextPreview.value = {
+      label: sectionLabel,
+      chars: result.totalChars,
+      truncated: result.truncated
+    }
+  },
+  { immediate: true }
+)
 
 async function getContext() {
   if (currentSelector.value === 'none') {
@@ -117,7 +123,7 @@ defineExpose({
         </option>
       </select>
     </div>
-    
+
     <div v-if="selectedSelector === 'specific'" class="pl-16">
       <input
         v-model="specificSections"
@@ -127,11 +133,13 @@ defineExpose({
       />
       <p class="mt-1 text-2xs text-text-hint">Enter section numbers, separated by commas</p>
     </div>
-    
+
     <div v-if="contextPreview" class="pl-16 flex items-center gap-1.5 text-2xs text-text-hint">
       <BaseIcon name="file-text" :size="10" />
       <span>{{ contextPreview.label }}</span>
-      <span class="text-text-muted">({{ contextPreview.chars }}/{{ MAX_CONTEXT_CHARS }} chars)</span>
+      <span class="text-text-muted"
+        >({{ contextPreview.chars }}/{{ MAX_CONTEXT_CHARS }} chars)</span
+      >
       <span v-if="contextPreview.truncated" class="text-amber-500">truncated</span>
     </div>
   </div>

@@ -73,11 +73,7 @@ const labels = computed(() => {
           <stop offset="100%" :stop-color="color" stop-opacity="0.03" />
         </linearGradient>
       </defs>
-      <path
-        v-if="areaPath"
-        :d="areaPath"
-        fill="url(#tension-fill)"
-      />
+      <path v-if="areaPath" :d="areaPath" fill="url(#tension-fill)" />
       <polyline
         v-if="points"
         :points="points"
@@ -96,7 +92,12 @@ const labels = computed(() => {
         :dy="height - 4"
         text-anchor="middle"
         class="fill-text-hint"
-        style="font-size: 8px; font-family: system-ui; text-transform: uppercase; letter-spacing: 0.04em;"
+        style="
+          font-size: 8px;
+          font-family: system-ui;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        "
       >
         {{ l.label }}
       </text>

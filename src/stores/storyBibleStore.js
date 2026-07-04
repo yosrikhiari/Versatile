@@ -1,9 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import {
-  getCharacters, addCharacter, updateCharacter, deleteCharacter,
-  getLocations, addLocation, updateLocation, deleteLocation,
-  getPlotThreads, addPlotThread, updatePlotThread, deletePlotThread,
+  getCharacters,
+  addCharacter,
+  updateCharacter,
+  deleteCharacter,
+  getLocations,
+  addLocation,
+  updateLocation,
+  deleteLocation,
+  getPlotThreads,
+  addPlotThread,
+  updatePlotThread,
+  deletePlotThread,
   deleteCharacterRelationshipsByCharacter
 } from '../services/dbService'
 import {
@@ -45,9 +54,13 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
       const projectId = projectStore.currentProjectId
       if (!projectId) return
       const storyDocs = useStoryDocuments()
-      await Promise.all(docTypes.map(dt => storyDocs.regenerateDocument(projectId, dt).catch(err => {
-        console.error(`[storyBibleStore] Failed to regenerate ${dt}:`, err)
-      })))
+      await Promise.all(
+        docTypes.map((dt) =>
+          storyDocs.regenerateDocument(projectId, dt).catch((err) => {
+            console.error(`[storyBibleStore] Failed to regenerate ${dt}:`, err)
+          })
+        )
+      )
     }, DOC_REGEN_DEBOUNCE)
   }
 
@@ -58,7 +71,6 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
       characters.value = await getCharacters(projectId)
       locations.value = await getLocations(projectId)
       plotThreads.value = await getPlotThreads(projectId)
-
 
       const storyDocs = useStoryDocuments()
       await storyDocs.regenerateAllDocuments(projectId)
@@ -80,7 +92,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
 
   async function updateCharacterData(id, data, _projectId) {
     await updateCharacter(id, { ...data, lastEditedAt: Date.now() })
-    const index = characters.value.findIndex(c => c.id === id)
+    const index = characters.value.findIndex((c) => c.id === id)
     if (index !== -1) {
       characters.value[index] = { ...characters.value[index], ...data, lastEditedAt: Date.now() }
     }
@@ -96,7 +108,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
       removeEntityFromNodeParents(projectId, 'character', id)
     ])
     await deleteCharacter(id)
-    characters.value = characters.value.filter(c => c.id !== id)
+    characters.value = characters.value.filter((c) => c.id !== id)
     queueDocumentRegeneration(['characters', 'relationships'])
   }
 
@@ -109,7 +121,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
 
   async function updateLocationData(id, data, _projectId) {
     await updateLocation(id, data)
-    const index = locations.value.findIndex(l => l.id === id)
+    const index = locations.value.findIndex((l) => l.id === id)
     if (index !== -1) {
       locations.value[index] = { ...locations.value[index], ...data }
     }
@@ -118,14 +130,26 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
 
   async function deleteLocationData(id, _projectId) {
     await deleteLocation(id)
-    locations.value = locations.value.filter(l => l.id !== id)
+    locations.value = locations.value.filter((l) => l.id !== id)
     queueDocumentRegeneration(['world', 'relationships'])
   }
 
   async function addPlotThreadData(projectId, data, source = 'manual', chapterId = null) {
     const maxOrder = plotThreads.value.reduce((max, t) => Math.max(max, t.timelineOrder ?? 0), 0)
-    const id = await addPlotThread(projectId, { ...data, source, chapterId, timelineOrder: maxOrder + 1 })
-    plotThreads.value.push({ id, projectId, ...data, source, chapterId, timelineOrder: maxOrder + 1 })
+    const id = await addPlotThread(projectId, {
+      ...data,
+      source,
+      chapterId,
+      timelineOrder: maxOrder + 1
+    })
+    plotThreads.value.push({
+      id,
+      projectId,
+      ...data,
+      source,
+      chapterId,
+      timelineOrder: maxOrder + 1
+    })
     queueDocumentRegeneration(['timeline', 'relationships'])
     return id
   }
@@ -133,7 +157,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   async function reorderPlotThreads(orderedIds) {
     await Promise.all(
       orderedIds.map((id, i) => {
-        const thread = plotThreads.value.find(t => t.id === id)
+        const thread = plotThreads.value.find((t) => t.id === id)
         if (thread) thread.timelineOrder = i
         return updatePlotThread(id, { timelineOrder: i })
       })
@@ -143,7 +167,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
 
   async function updatePlotThreadData(id, data, _projectId) {
     await updatePlotThread(id, data)
-    const index = plotThreads.value.findIndex(t => t.id === id)
+    const index = plotThreads.value.findIndex((t) => t.id === id)
     if (index !== -1) {
       plotThreads.value[index] = { ...plotThreads.value[index], ...data }
     }
@@ -152,13 +176,13 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
 
   async function deletePlotThreadData(id, _projectId) {
     await deletePlotThread(id)
-    plotThreads.value = plotThreads.value.filter(t => t.id !== id)
+    plotThreads.value = plotThreads.value.filter((t) => t.id !== id)
     queueDocumentRegeneration(['timeline', 'relationships'])
   }
 
   async function updateThreadStatus(id, status, _projectId) {
     await updatePlotThread(id, { status })
-    const index = plotThreads.value.findIndex(t => t.id === id)
+    const index = plotThreads.value.findIndex((t) => t.id === id)
     if (index !== -1) {
       plotThreads.value[index].status = status
     }
@@ -166,7 +190,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   }
 
   function getCharacterNames() {
-    return characters.value.map(c => c.name)
+    return characters.value.map((c) => c.name)
   }
 
   // Voice profile methods
@@ -176,7 +200,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     voiceProfile.lastUpdated = new Date()
     voiceProfile.manuscriptSizeAtExtraction = profile.manuscriptSizeAtExtraction
     voiceProfile.supplementaryMergeCount = profile.supplementaryMergeCount || 0
-    
+
     // Save to IndexedDB
     const projectStore = useProjectStore()
     const projectId = projectStore.currentProjectId

@@ -174,7 +174,7 @@ class SyncEngine {
         return await fn()
       } catch (err) {
         if (attempt === maxRetries) throw err
-        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 800))
+        await new Promise((r) => setTimeout(r, Math.pow(2, attempt) * 800))
       }
     }
   }
@@ -188,9 +188,17 @@ class SyncEngine {
       await this._pushTable('projects')
     }
     const order = [
-      'projects', 'volumes', 'characters', 'locations',
-      'plotThreads', 'sections', 'subsections',
-      'characterRelationships', 'volumeEntities', 'manuscripts', 'researchDocuments'
+      'projects',
+      'volumes',
+      'characters',
+      'locations',
+      'plotThreads',
+      'sections',
+      'subsections',
+      'characterRelationships',
+      'volumeEntities',
+      'manuscripts',
+      'researchDocuments'
     ]
     for (const tableName of order) {
       await this._pushTable(tableName, storyApiId)
@@ -320,16 +328,24 @@ class SyncEngine {
         const localData = await fromApi(apiItem)
         localData._suppressHooks = true
 
-        if (!isTopLevel && parentField === 'projectId' && localParentId && !localData[parentField]) {
+        if (
+          !isTopLevel &&
+          parentField === 'projectId' &&
+          localParentId &&
+          !localData[parentField]
+        ) {
           localData[parentField] = localParentId
         }
 
         if (existingLocalId) {
-          await db[table].where('id').equals(existingLocalId).modify({
-            ...localData,
-            id: existingLocalId,
-            _suppressHooks: true
-          })
+          await db[table]
+            .where('id')
+            .equals(existingLocalId)
+            .modify({
+              ...localData,
+              id: existingLocalId,
+              _suppressHooks: true
+            })
         } else {
           const newId = await db[table].add(localData)
           this._idMap.localToApi[`${table}:${newId}`] = apiItem.id
@@ -347,7 +363,11 @@ class SyncEngine {
     this._stopFlushTimer()
     this._flushTimer = setInterval(async () => {
       if (this._destroyed) return
-      try { await this.push() } catch { /* ignore */ }
+      try {
+        await this.push()
+      } catch {
+        /* ignore */
+      }
     }, 30_000)
   }
 

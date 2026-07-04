@@ -18,7 +18,7 @@ function buildEntityText(entity, type) {
         entity.description && `Description: ${entity.description}`
       ].filter(Boolean)
       return charParts.join('. ')
-      
+
     case 'location':
       const locParts = [
         entity.name,
@@ -27,7 +27,7 @@ function buildEntityText(entity, type) {
         entity.history && `History: ${entity.history}`
       ].filter(Boolean)
       return locParts.join('. ')
-      
+
     case 'plotThread':
       const threadParts = [
         entity.title,
@@ -36,34 +36,41 @@ function buildEntityText(entity, type) {
         entity.arc && `Story Arc: ${entity.arc}`
       ].filter(Boolean)
       return threadParts.join('. ')
-      
+
     default:
       return JSON.stringify(entity)
   }
 }
 
-function generateEmbeddingRationale(source, target, sourceType, targetType, relationshipType, similarity) {
+function generateEmbeddingRationale(
+  source,
+  target,
+  sourceType,
+  targetType,
+  relationshipType,
+  similarity
+) {
   const sourceName = source.name || source.title || 'Entity'
   const targetName = target.name || target.title || 'Entity'
-  
+
   const relationshipDesc = {
-    'involves': 'involved in',
-    'appears_in': 'appears at',
-    'located_at': 'located at',
-    'connects_to': 'connected to',
-    'intersects_with': 'intersects with',
-    'features': 'features',
-    'ally': 'allied with',
-    'enemy': 'opposed to',
-    'family': 'family of',
-    'romantic': 'romantically connected to',
-    'mentor': 'mentors',
-    'rival': 'rivals with',
-    'neutral': 'neutral toward'
+    involves: 'involved in',
+    appears_in: 'appears at',
+    located_at: 'located at',
+    connects_to: 'connected to',
+    intersects_with: 'intersects with',
+    features: 'features',
+    ally: 'allied with',
+    enemy: 'opposed to',
+    family: 'family of',
+    romantic: 'romantically connected to',
+    mentor: 'mentors',
+    rival: 'rivals with',
+    neutral: 'neutral toward'
   }
-  
+
   const connectionType = relationshipDesc[relationshipType] || 'connected to'
-  
+
   let rationale = ''
   if (similarity >= 0.7) {
     rationale = `${sourceName} and ${targetName} share strong thematic similarity (${Math.round(similarity * 100)}% match). ${sourceName} is ${connectionType} ${targetName}.`
@@ -74,35 +81,43 @@ function generateEmbeddingRationale(source, target, sourceType, targetType, rela
   } else {
     rationale = `${sourceName} is ${connectionType} ${targetName}.`
   }
-  
+
   return rationale
 }
 
 function calculateEmbeddingConfidence(sourceType, targetType, source, target, similarity) {
   let confidence = similarity
-  
+
   if (sourceType === 'character' && targetType === 'character') {
     const role1 = ((source.role || '') + ' ' + (source.goal || '')).toLowerCase()
     const role2 = ((target.role || '') + ' ' + (target.goal || '')).toLowerCase()
-    
+
     const opposingPairs = [
-      ['hero', 'villain'], ['protagonist', 'antagonist'], ['leader', 'follower'],
-      ['mentor', 'student'], ['guardian', 'threat'], ['ruler', 'rebel'],
-      ['hunter', 'prey'], ['detective', 'criminal'], ['protector', 'destroyer']
+      ['hero', 'villain'],
+      ['protagonist', 'antagonist'],
+      ['leader', 'follower'],
+      ['mentor', 'student'],
+      ['guardian', 'threat'],
+      ['ruler', 'rebel'],
+      ['hunter', 'prey'],
+      ['detective', 'criminal'],
+      ['protector', 'destroyer']
     ]
-    
+
     for (const [a, b] of opposingPairs) {
       if ((role1.includes(a) && role2.includes(b)) || (role1.includes(b) && role2.includes(a))) {
         confidence += 0.15
         break
       }
     }
-    
+
     const complementaryRoles = [
-      ['protagonist', 'protagonist'], ['ally', 'ally'],
-      ['guard', 'protect'], ['guide', 'guide']
+      ['protagonist', 'protagonist'],
+      ['ally', 'ally'],
+      ['guard', 'protect'],
+      ['guide', 'guide']
     ]
-    
+
     for (const [a, b] of complementaryRoles) {
       if (role1.includes(a) && role2.includes(b)) {
         confidence += 0.1
@@ -110,7 +125,7 @@ function calculateEmbeddingConfidence(sourceType, targetType, source, target, si
       }
     }
   }
-  
+
   return Math.min(confidence, 0.95)
 }
 
@@ -133,7 +148,7 @@ function limitConnectionsPerEntity(suggestions, maxPerEntity = 3, maxTotal = Inf
   for (const suggestion of suggestions) {
     if (suggestion.sourceType === suggestion.targetType) continue
     if (result.length >= crossTypeLimit) break
-    
+
     const sourceKey = `${suggestion.sourceType}-${suggestion.sourceId}`
     const targetKey = `${suggestion.targetType}-${suggestion.targetId}`
     const sourceCount = entityConnectionCount[sourceKey] || 0
@@ -153,10 +168,10 @@ function limitConnectionsPerEntity(suggestions, maxPerEntity = 3, maxTotal = Inf
   for (const suggestion of suggestions) {
     if (result.length >= maxTotal) break
     if (suggestion.sourceType !== suggestion.targetType) continue
-    
+
     if (sameTypeCounts[suggestion.sourceType] >= sameTypePerTypeCap) continue
     if (sameTypeCounts[suggestion.targetType] >= sameTypePerTypeCap) continue
-    
+
     const sourceKey = `${suggestion.sourceType}-${suggestion.sourceId}`
     const targetKey = `${suggestion.targetType}-${suggestion.targetId}`
     const sourceCount = entityConnectionCount[sourceKey] || 0
@@ -175,12 +190,20 @@ function limitConnectionsPerEntity(suggestions, maxPerEntity = 3, maxTotal = Inf
 }
 
 const groupColors = [
-  '#f48fb1', '#ef5350', '#ce93d8', '#f06292', '#ba68c8',
-  '#ff7043', '#90a4ae', '#4fc3f7', '#80cbc4', '#aed581'
+  '#f48fb1',
+  '#ef5350',
+  '#ce93d8',
+  '#f06292',
+  '#ba68c8',
+  '#ff7043',
+  '#90a4ae',
+  '#4fc3f7',
+  '#80cbc4',
+  '#aed581'
 ]
 
 function generateGroupName(cluster, type) {
-  const names = cluster.members.map(m => {
+  const names = cluster.members.map((m) => {
     const entity = m.char || m.loc
     return entity?.name || entity?.title || 'Unknown'
   })
@@ -213,10 +236,14 @@ function findCommonPrefix(strings) {
 
 function getEntityTypePrefix(type) {
   switch (type) {
-    case 'character': return 'char'
-    case 'location': return 'loc'
-    case 'plotThread': return 'thread'
-    default: return 'unknown'
+    case 'character':
+      return 'char'
+    case 'location':
+      return 'loc'
+    case 'plotThread':
+      return 'thread'
+    default:
+      return 'unknown'
   }
 }
 
@@ -228,20 +255,48 @@ function generateMetadataConnections(characters, locations, plotThreads, existin
   const results = []
   const connected = new Set()
 
-  function add(sourceType, sourceId, sourceLabel, targetType, targetId, targetLabel, relationshipType, rationale, confidence) {
+  function add(
+    sourceType,
+    sourceId,
+    sourceLabel,
+    targetType,
+    targetId,
+    targetLabel,
+    relationshipType,
+    rationale,
+    confidence
+  ) {
     const key = canonicalKey(sourceType, String(sourceId), targetType, String(targetId))
     if (connected.has(key) || existingKeys.has(key)) return
     connected.add(key)
-    results.push({ sourceType, sourceId, sourceLabel, targetType, targetId, targetLabel, relationshipType, rationale, confidence, similarity: 0 })
+    results.push({
+      sourceType,
+      sourceId,
+      sourceLabel,
+      targetType,
+      targetId,
+      targetLabel,
+      relationshipType,
+      rationale,
+      confidence,
+      similarity: 0
+    })
   }
 
   // Character ↔ plotThread: each character involved in every plot thread
   for (const char of characters) {
     for (const thread of plotThreads) {
-      add('character', char.id, char.name, 'plotThread', thread.id, thread.title,
+      add(
+        'character',
+        char.id,
+        char.name,
+        'plotThread',
+        thread.id,
+        thread.title,
         'involved_in',
         `${char.name} is involved in "${thread.title}".`,
-        0.45)
+        0.45
+      )
     }
   }
 
@@ -249,45 +304,72 @@ function generateMetadataConnections(characters, locations, plotThreads, existin
   for (const char of characters) {
     for (let i = 0; i < Math.min(locations.length, 2); i++) {
       const loc = locations[i]
-      add('character', char.id, char.name, 'location', loc.id, loc.name,
+      add(
+        'character',
+        char.id,
+        char.name,
+        'location',
+        loc.id,
+        loc.name,
         'appears_in',
         `${char.name} appears at ${loc.name}.`,
-        0.4)
+        0.4
+      )
     }
   }
 
   // Location ↔ plotThread
   for (const loc of locations) {
     for (const thread of plotThreads) {
-      add('location', loc.id, loc.name, 'plotThread', thread.id, thread.title,
+      add(
+        'location',
+        loc.id,
+        loc.name,
+        'plotThread',
+        thread.id,
+        thread.title,
         'features',
         `${loc.name} features in "${thread.title}".`,
-        0.4)
+        0.4
+      )
     }
   }
 
   // Character ↔ character: role-based connections
   const opposingPairs = [
-    [['hero', 'protagonist', 'guardian', 'detective', 'protector'], ['villain', 'antagonist', 'threat', 'criminal', 'destroyer'], 'enemy'],
+    [
+      ['hero', 'protagonist', 'guardian', 'detective', 'protector'],
+      ['villain', 'antagonist', 'threat', 'criminal', 'destroyer'],
+      'enemy'
+    ],
     [['mentor', 'guide', 'teacher'], ['student', 'apprentice', 'follower'], 'mentor'],
-    [['leader', 'ruler', 'commander'], ['follower', 'ally', 'guard'], 'ally'],
+    [['leader', 'ruler', 'commander'], ['follower', 'ally', 'guard'], 'ally']
   ]
 
   for (let i = 0; i < characters.length; i++) {
     for (let j = i + 1; j < characters.length; j++) {
-      const a = characters[i], b = characters[j]
+      const a = characters[i],
+        b = characters[j]
       const roleA = ((a.role || '') + ' ' + (a.goal || '')).toLowerCase()
       const roleB = ((b.role || '') + ' ' + (b.goal || '')).toLowerCase()
 
       for (const [patternA, patternB, relType] of opposingPairs) {
-        const matchA = patternA.some(p => roleA.includes(p))
-        const matchB = patternB.some(p => roleB.includes(p))
-        const matchReverse = patternA.some(p => roleB.includes(p)) && patternB.some(p => roleA.includes(p))
+        const matchA = patternA.some((p) => roleA.includes(p))
+        const matchB = patternB.some((p) => roleB.includes(p))
+        const matchReverse =
+          patternA.some((p) => roleB.includes(p)) && patternB.some((p) => roleA.includes(p))
         if ((matchA && matchB) || matchReverse) {
-          add('character', a.id, a.name, 'character', b.id, b.name,
+          add(
+            'character',
+            a.id,
+            a.name,
+            'character',
+            b.id,
+            b.name,
             relType,
             `${a.name} (${a.role || 'character'}) — ${b.name} (${b.role || 'character'})`,
-            0.55)
+            0.55
+          )
           break
         }
       }
@@ -300,10 +382,17 @@ function generateMetadataConnections(characters, locations, plotThreads, existin
       for (const thread of plotThreads.slice(0, 1)) {
         const key = canonicalKey('character', String(char.id), 'plotThread', String(thread.id))
         if (!connected.has(key)) {
-          add('character', char.id, char.name, 'plotThread', thread.id, thread.title,
+          add(
+            'character',
+            char.id,
+            char.name,
+            'plotThread',
+            thread.id,
+            thread.title,
             'involved_in',
             `${char.name} is part of "${thread.title}".`,
-            0.35)
+            0.35
+          )
         }
       }
     }
@@ -317,33 +406,39 @@ export function useNetworkSuggestions() {
   const storyGraphStore = useStoryGraphStore()
   const projectStore = useProjectStore()
   const { getRelationshipContext } = useGraphContext()
-  
+
   const isAnalyzing = ref(false)
   const suggestions = ref([])
   const analysisError = ref('')
   const embeddingsLoaded = ref(false)
   const embeddingError = ref('')
-  
+
   const entityEmbeddings = ref({})
 
   function getEntityById(type, id) {
     switch (type) {
-      case 'character': return storyBibleStore.characters.find(c => c.id === id)
-      case 'location': return storyBibleStore.locations.find(l => l.id === id)
-      case 'plotThread': return storyBibleStore.plotThreads.find(t => t.id === id)
-      default: return null
+      case 'character':
+        return storyBibleStore.characters.find((c) => c.id === id)
+      case 'location':
+        return storyBibleStore.locations.find((l) => l.id === id)
+      case 'plotThread':
+        return storyBibleStore.plotThreads.find((t) => t.id === id)
+      default:
+        return null
     }
   }
 
   function isConnected(entity1Type, entity1Id, entity2Type, entity2Id) {
     const node1Id = `${getEntityTypePrefix(entity1Type)}-${entity1Id}`
     const node2Id = `${getEntityTypePrefix(entity2Type)}-${entity2Id}`
-    
-    return storyGraphStore.edges.some(edge => {
+
+    return storyGraphStore.edges.some((edge) => {
       const sourceId = `${getEntityTypePrefix(edge.sourceType)}-${edge.sourceId}`
       const targetId = `${getEntityTypePrefix(edge.targetType)}-${edge.targetId}`
-      return (sourceId === node1Id && targetId === node2Id) ||
-             (sourceId === node2Id && targetId === node1Id)
+      return (
+        (sourceId === node1Id && targetId === node2Id) ||
+        (sourceId === node2Id && targetId === node1Id)
+      )
     })
   }
 
@@ -358,9 +453,9 @@ export function useNetworkSuggestions() {
     }
 
     embeddingError.value = ''
-    
+
     const allEntities = []
-    
+
     for (const char of storyBibleStore.characters) {
       allEntities.push({
         type: 'character',
@@ -369,7 +464,7 @@ export function useNetworkSuggestions() {
         text: buildEntityText(char, 'character')
       })
     }
-    
+
     for (const loc of storyBibleStore.locations) {
       allEntities.push({
         type: 'location',
@@ -378,7 +473,7 @@ export function useNetworkSuggestions() {
         text: buildEntityText(loc, 'location')
       })
     }
-    
+
     for (const thread of storyBibleStore.plotThreads) {
       allEntities.push({
         type: 'plotThread',
@@ -387,10 +482,10 @@ export function useNetworkSuggestions() {
         text: buildEntityText(thread, 'plotThread')
       })
     }
-    
+
     let successCount = 0
     let failCount = 0
-    
+
     for (const entity of allEntities) {
       const key = `${entity.type}_${entity.id}`
       try {
@@ -405,11 +500,12 @@ export function useNetworkSuggestions() {
         failCount++
       }
     }
-    
+
     if (failCount > 0 && successCount === 0) {
-      embeddingError.value = 'Failed to generate embeddings. Is Ollama running with nomic-embed-text?'
+      embeddingError.value =
+        'Failed to generate embeddings. Is Ollama running with nomic-embed-text?'
     }
-    
+
     embeddingsLoaded.value = true
     return successCount > 0
   }
@@ -422,20 +518,24 @@ export function useNetworkSuggestions() {
   function calculateEmbeddingSimilarity(type1, id1, type2, id2) {
     const emb1 = getEntityEmbedding(type1, id1)
     const emb2 = getEntityEmbedding(type2, id2)
-    
+
     if (!emb1 || !emb2) {
       return 0
     }
-    
+
     return cosineSimilarity(emb1, emb2)
   }
 
   function getEntitiesByType(type) {
     switch (type) {
-      case 'character': return storyBibleStore.characters
-      case 'location': return storyBibleStore.locations
-      case 'plotThread': return storyBibleStore.plotThreads
-      default: return []
+      case 'character':
+        return storyBibleStore.characters
+      case 'location':
+        return storyBibleStore.locations
+      case 'plotThread':
+        return storyBibleStore.plotThreads
+      default:
+        return []
     }
   }
 
@@ -491,64 +591,76 @@ export function useNetworkSuggestions() {
   function getAllSuggestions() {
     const seen = new Set()
     const raw = [
-      ...getSuggestionsForPair('character', 'character', 'connects_to', { similarityThreshold: 0.7 }),
+      ...getSuggestionsForPair('character', 'character', 'connects_to', {
+        similarityThreshold: 0.7
+      }),
       ...getSuggestionsForPair('character', 'plotThread', 'involved_in'),
       ...getSuggestionsForPair('location', 'location', 'connects_to', { similarityThreshold: 0.7 }),
       ...getSuggestionsForPair('character', 'location', 'appears_in'),
-      ...getSuggestionsForPair('plotThread', 'plotThread', 'intersects_with', { similarityThreshold: 0.7 }),
+      ...getSuggestionsForPair('plotThread', 'plotThread', 'intersects_with', {
+        similarityThreshold: 0.7
+      }),
       ...getSuggestionsForPair('location', 'plotThread', 'located_at'),
       ...getSuggestionsForPair('plotThread', 'character', 'features')
     ]
-    return raw.filter(s => {
-      const key = canonicalKey(s.sourceType, s.sourceId, s.targetType, s.targetId)
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    }).sort((a, b) => b.confidence - a.confidence)
+    return raw
+      .filter((s) => {
+        const key = canonicalKey(s.sourceType, s.sourceId, s.targetType, s.targetId)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      .sort((a, b) => b.confidence - a.confidence)
   }
 
   async function generateNetworkWithAI() {
     isAnalyzing.value = true
     analysisError.value = ''
-    
+
     try {
-      if (storyBibleStore.characters.length === 0 && storyBibleStore.locations.length === 0 && storyBibleStore.plotThreads.length === 0) {
-        throw new Error('No story elements available. Please add characters, locations, or plot threads first.')
+      if (
+        storyBibleStore.characters.length === 0 &&
+        storyBibleStore.locations.length === 0 &&
+        storyBibleStore.plotThreads.length === 0
+      ) {
+        throw new Error(
+          'No story elements available. Please add characters, locations, or plot threads first.'
+        )
       }
 
       await loadEmbeddings()
 
-      const characters = storyBibleStore.characters.map(c => ({
+      const characters = storyBibleStore.characters.map((c) => ({
         id: c.id,
         name: c.name,
         role: c.role || 'unspecified',
         goal: c.goal || 'unspecified',
         backstory: c.backstory || ''
       }))
-      
-      const locations = storyBibleStore.locations.map(l => ({
+
+      const locations = storyBibleStore.locations.map((l) => ({
         id: l.id,
         name: l.name,
         description: l.description || 'unspecified'
       }))
-      
-      const plotThreads = storyBibleStore.plotThreads.map(t => ({
+
+      const plotThreads = storyBibleStore.plotThreads.map((t) => ({
         id: t.id,
         title: t.title,
         description: t.description || '',
         status: t.status
       }))
 
-      const existingConnections = storyGraphStore.edges.map(e => ({
+      const existingConnections = storyGraphStore.edges.map((e) => ({
         from: e.sourceType,
         to: e.targetType,
         type: e.relationshipType
       }))
 
       const entityIds = [
-        ...storyBibleStore.characters.map(c => ({ type: 'character', id: c.id })),
-        ...storyBibleStore.locations.map(l => ({ type: 'location', id: l.id })),
-        ...storyBibleStore.plotThreads.map(t => ({ type: 'plotThread', id: t.id }))
+        ...storyBibleStore.characters.map((c) => ({ type: 'character', id: c.id })),
+        ...storyBibleStore.locations.map((l) => ({ type: 'location', id: l.id })),
+        ...storyBibleStore.plotThreads.map((t) => ({ type: 'plotThread', id: t.id }))
       ]
       const relationshipContext = await getRelationshipContext(entityIds, 2)
       const relationshipContextSection = relationshipContext
@@ -562,44 +674,53 @@ export function useNetworkSuggestions() {
 Analyze these elements using semantic understanding and suggest meaningful new connections. Consider:\n1. Character-character: Protagonist/antagonist relationships, mentor/student, allies, rivals, family bonds\n2. Character-location: Where characters spend time, where key scenes happen, emotional connections\n3. Character-plotThread: Which characters are involved in which plot threads, motivations\n4. Location-plotThread: Where plot threads unfold, atmosphere fit\n5. Location-location: Connected through character travel or story events\n6. PlotThread-plotThread: Subplots that intersect or influence each other, thematic parallels\n\nFor each connection, consider semantic similarity in goals, themes, atmospheres, and story arcs - not just word matching.\n\nRespond with a JSON array of suggested connections, each with:\n- sourceType: "character" or "location" or "plotThread"\n- sourceId: the numeric id of the source element from the input\n- targetType: "character" or "location" or "plotThread"\n- targetId: the numeric id of the target element\n- relationshipType: "appears_in" | "involved_in" | "located_at" | "connects_to" | "intersects_with" | "features" | "ally" | "enemy" | "family" | "romantic" | "mentor" | "rival"\n- rationale: brief explanation of why this connection makes semantic sense\n- confidence: a number from 0.0 to 1.0 indicating how confident you are\n\nOnly suggest connections between elements that exist. Respond with valid JSON array only, no markdown.`
 
       const response = await aiGenerate(prompt, systemPrompt, { feature: FEATURES.NETWORK })
-      
+
       let parsedSuggestions = []
       try {
-        const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        const cleanedResponse = response
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .trim()
         const rawSuggestions = JSON.parse(cleanedResponse)
-        
-        parsedSuggestions = rawSuggestions.map(s => {
-          const sourceEntity = getEntityById(s.sourceType, s.sourceId)
-          const targetEntity = getEntityById(s.targetType, s.targetId)
-          
-          if (sourceEntity && targetEntity) {
-            const similarity = calculateEmbeddingSimilarity(s.sourceType, s.sourceId, s.targetType, s.targetId)
-            const confidence = Math.max(s.confidence || 0.5, similarity || 0)
-            
-            return {
-              sourceType: s.sourceType,
-              sourceId: sourceEntity.id,
-              sourceLabel: sourceEntity.name || sourceEntity.title,
-              targetType: s.targetType,
-              targetId: targetEntity.id,
-              targetLabel: targetEntity.name || targetEntity.title,
-              relationshipType: s.relationshipType,
-              rationale: s.rationale || '',
-              confidence,
-              similarity
+
+        parsedSuggestions = rawSuggestions
+          .map((s) => {
+            const sourceEntity = getEntityById(s.sourceType, s.sourceId)
+            const targetEntity = getEntityById(s.targetType, s.targetId)
+
+            if (sourceEntity && targetEntity) {
+              const similarity = calculateEmbeddingSimilarity(
+                s.sourceType,
+                s.sourceId,
+                s.targetType,
+                s.targetId
+              )
+              const confidence = Math.max(s.confidence || 0.5, similarity || 0)
+
+              return {
+                sourceType: s.sourceType,
+                sourceId: sourceEntity.id,
+                sourceLabel: sourceEntity.name || sourceEntity.title,
+                targetType: s.targetType,
+                targetId: targetEntity.id,
+                targetLabel: targetEntity.name || targetEntity.title,
+                relationshipType: s.relationshipType,
+                rationale: s.rationale || '',
+                confidence,
+                similarity
+              }
             }
-          }
-          return null
-        }).filter(s => s !== null)
-        
+            return null
+          })
+          .filter((s) => s !== null)
       } catch (parseError) {
         console.warn('AI parse error, falling back to embedding-based suggestions:', parseError)
-        analysisError.value = 'Could not parse AI suggestions. Using embedding-based suggestions instead.'
+        analysisError.value =
+          'Could not parse AI suggestions. Using embedding-based suggestions instead.'
         parsedSuggestions = getAllSuggestions().slice(0, 10)
       }
-      
-      return parsedSuggestions.slice(0, 15)
 
+      return parsedSuggestions.slice(0, 15)
     } catch (error) {
       analysisError.value = 'Failed to generate suggestions: ' + error.message
       return getAllSuggestions().slice(0, 5)
@@ -612,44 +733,64 @@ Analyze these elements using semantic understanding and suggest meaningful new c
     if (!projectStore.currentProjectId) {
       return { success: false, reason: 'no_project', message: 'No project selected' }
     }
-    
-    if (suggestion.sourceType === suggestion.targetType && suggestion.sourceId === suggestion.targetId) {
-      return { success: false, reason: 'self_reference', message: 'Cannot connect entity to itself' }
+
+    if (
+      suggestion.sourceType === suggestion.targetType &&
+      suggestion.sourceId === suggestion.targetId
+    ) {
+      return {
+        success: false,
+        reason: 'self_reference',
+        message: 'Cannot connect entity to itself'
+      }
     }
-    
-    if (isConnected(suggestion.sourceType, suggestion.sourceId, suggestion.targetType, suggestion.targetId)) {
+
+    if (
+      isConnected(
+        suggestion.sourceType,
+        suggestion.sourceId,
+        suggestion.targetType,
+        suggestion.targetId
+      )
+    ) {
       return { success: false, reason: 'already_connected', message: 'Connection already exists' }
     }
-    
+
     const sourceEntity = getEntityById(suggestion.sourceType, suggestion.sourceId)
     const targetEntity = getEntityById(suggestion.targetType, suggestion.targetId)
-    
+
     if (!sourceEntity) {
-      return { 
-        success: false, 
-        reason: 'source_not_found', 
-        message: `Source ${suggestion.sourceType} not found` 
+      return {
+        success: false,
+        reason: 'source_not_found',
+        message: `Source ${suggestion.sourceType} not found`
       }
     }
-    
+
     if (!targetEntity) {
-      return { 
-        success: false, 
-        reason: 'target_not_found', 
-        message: `Target ${suggestion.targetType} not found` 
+      return {
+        success: false,
+        reason: 'target_not_found',
+        message: `Target ${suggestion.targetType} not found`
       }
     }
-    
+
     const existingNodeId = `${getEntityTypePrefix(suggestion.sourceType)}-${suggestion.sourceId}`
     const targetNodeId = `${getEntityTypePrefix(suggestion.targetType)}-${suggestion.targetId}`
-    
+
     if (!storyGraphStore.nodePositions[existingNodeId]) {
-      storyGraphStore.saveNodePosition(projectStore.currentProjectId, existingNodeId, { x: 100, y: 100 })
+      storyGraphStore.saveNodePosition(projectStore.currentProjectId, existingNodeId, {
+        x: 100,
+        y: 100
+      })
     }
     if (!storyGraphStore.nodePositions[targetNodeId]) {
-      storyGraphStore.saveNodePosition(projectStore.currentProjectId, targetNodeId, { x: 300, y: 100 })
+      storyGraphStore.saveNodePosition(projectStore.currentProjectId, targetNodeId, {
+        x: 300,
+        y: 100
+      })
     }
-    
+
     if (!storyGraphStore.nodeInstances[existingNodeId]) {
       storyGraphStore.nodeInstances[existingNodeId] = []
     }
@@ -663,7 +804,7 @@ Analyze these elements using semantic understanding and suggest meaningful new c
       storyGraphStore.nodeInstances[targetNodeId].push(targetNodeId)
     }
     await storyGraphStore.saveNodeInstances(projectStore.currentProjectId)
-    
+
     const edgeData = {
       sourceId: suggestion.sourceId,
       sourceType: suggestion.sourceType,
@@ -672,14 +813,18 @@ Analyze these elements using semantic understanding and suggest meaningful new c
       relationshipType: suggestion.relationshipType,
       description: suggestion.rationale || ''
     }
-    
+
     try {
       await storyGraphStore.addEdgeData(projectStore.currentProjectId, edgeData)
       await storyGraphStore.loadEdges(projectStore.currentProjectId)
-      
+
       return { success: true, reason: null, message: null }
     } catch (error) {
-      return { success: false, reason: 'error', message: error.message || 'Failed to add connection' }
+      return {
+        success: false,
+        reason: 'error',
+        message: error.message || 'Failed to add connection'
+      }
     }
   }
 
@@ -692,14 +837,14 @@ Analyze these elements using semantic understanding and suggest meaningful new c
       existingEntities = null
     } = options
 
-    const characters = existingEntities 
-      ? storyBibleStore.characters.filter(c => existingEntities.includes(`char-${c.id}`))
+    const characters = existingEntities
+      ? storyBibleStore.characters.filter((c) => existingEntities.includes(`char-${c.id}`))
       : storyBibleStore.characters
     const locations = existingEntities
-      ? storyBibleStore.locations.filter(l => existingEntities.includes(`loc-${l.id}`))
+      ? storyBibleStore.locations.filter((l) => existingEntities.includes(`loc-${l.id}`))
       : storyBibleStore.locations
     const plotThreads = existingEntities
-      ? storyBibleStore.plotThreads.filter(t => existingEntities.includes(`thread-${t.id}`))
+      ? storyBibleStore.plotThreads.filter((t) => existingEntities.includes(`thread-${t.id}`))
       : storyBibleStore.plotThreads
 
     isAnalyzing.value = true
@@ -708,43 +853,49 @@ Analyze these elements using semantic understanding and suggest meaningful new c
     try {
       await loadEmbeddings(!!existingEntities)
 
-      const charactersForAI = characters.map(c => ({
-        id: c.id, name: c.name,
-        role: c.role || '', goal: c.goal || '',
+      const charactersForAI = characters.map((c) => ({
+        id: c.id,
+        name: c.name,
+        role: c.role || '',
+        goal: c.goal || '',
         backstory: (c.backstory || '').slice(0, 300),
         voice: (c.voice || '').slice(0, 100),
         notes: (c.notes || '').slice(0, 100)
       }))
-      const locationsForAI = locations.map(l => ({
-        id: l.id, name: l.name,
+      const locationsForAI = locations.map((l) => ({
+        id: l.id,
+        name: l.name,
         description: (l.description || '').slice(0, 120)
       }))
-      const plotThreadsForAI = plotThreads.map(t => ({
-        id: t.id, title: t.title,
+      const plotThreadsForAI = plotThreads.map((t) => ({
+        id: t.id,
+        title: t.title,
         description: (t.description || '').slice(0, 120),
         status: t.status
       }))
 
       const existingKeys = new Set(
-        storyGraphStore.edges.map(e => canonicalKey(e.sourceType, String(e.sourceId), e.targetType, String(e.targetId)))
+        storyGraphStore.edges.map((e) =>
+          canonicalKey(e.sourceType, String(e.sourceId), e.targetType, String(e.targetId))
+        )
       )
 
       const synopsisContext = projectStore.currentDescription?.trim()
         ? `Description:\n${projectStore.currentDescription.trim()}\n\n`
         : ''
-      
+
       const genreContext = projectStore.currentCategory?.trim()
         ? `Category: ${projectStore.currentCategory.trim()}\n\n`
         : ''
-      
+
       const contextLine = prompt?.trim()
         ? `Writer's focus: "${prompt.trim()}". Prioritise connections relevant to this theme.`
         : ''
 
       const entityIds = [
-        ...storyBibleStore.characters.map(c => ({ type: 'character', id: c.id })),
-        ...storyBibleStore.locations.map(l => ({ type: 'location', id: l.id })),
-        ...storyBibleStore.plotThreads.map(t => ({ type: 'plotThread', id: t.id }))
+        ...storyBibleStore.characters.map((c) => ({ type: 'character', id: c.id })),
+        ...storyBibleStore.locations.map((l) => ({ type: 'location', id: l.id })),
+        ...storyBibleStore.plotThreads.map((t) => ({ type: 'plotThread', id: t.id }))
       ]
       const relationshipContext = await getRelationshipContext(entityIds, 2)
       const relationshipContextSection = relationshipContext
@@ -774,14 +925,17 @@ Rules:
 - Only use IDs that exist in the provided data
 - Do not suggest connections where sourceId === targetId
 - Prefer specific relationship types over generic "connects_to"
-- ${contextLine ? 'Honour the writer\'s focus above' : 'Vary relationship types across the result set'}
+- ${contextLine ? "Honour the writer's focus above" : 'Vary relationship types across the result set'}
 - You MUST include cross-type connections: character→location (appears_in), character→plotThread (involved_in), location→plotThread (features). At least 50% of suggestions must be cross-type.`
 
       let rawSuggestions = []
 
       try {
         const response = await aiGenerate(userPrompt, systemPrompt, { feature: FEATURES.NETWORK })
-        const cleaned = response.replace(/```json\s*/gi, '').replace(/```/g, '').trim()
+        const cleaned = response
+          .replace(/```json\s*/gi, '')
+          .replace(/```/g, '')
+          .trim()
         const match = cleaned.match(/\[[\s\S]*\]/)
         if (match) {
           rawSuggestions = JSON.parse(match[0])
@@ -791,54 +945,63 @@ Rules:
         analysisError.value = 'Ollama unavailable — using embedding similarity instead.'
       }
 
-      let enriched = rawSuggestions.length > 0
-        ? rawSuggestions
-            .map(s => {
-              const sourceEntity = getEntityById(s.sourceType, s.sourceId)
-              const targetEntity = getEntityById(s.targetType, s.targetId)
-              if (!sourceEntity || !targetEntity) return null
-              if (s.sourceType === s.targetType && s.sourceId === s.targetId) return null
+      let enriched =
+        rawSuggestions.length > 0
+          ? rawSuggestions
+              .map((s) => {
+                const sourceEntity = getEntityById(s.sourceType, s.sourceId)
+                const targetEntity = getEntityById(s.targetType, s.targetId)
+                if (!sourceEntity || !targetEntity) return null
+                if (s.sourceType === s.targetType && s.sourceId === s.targetId) return null
 
-              const similarity = calculateEmbeddingSimilarity(s.sourceType, s.sourceId, s.targetType, s.targetId)
-              const blendedConfidence = Math.min(
-                (s.confidence || 0.5) * 0.7 + (similarity || 0) * 0.3,
-                0.95
-              )
+                const similarity = calculateEmbeddingSimilarity(
+                  s.sourceType,
+                  s.sourceId,
+                  s.targetType,
+                  s.targetId
+                )
+                const blendedConfidence = Math.min(
+                  (s.confidence || 0.5) * 0.7 + (similarity || 0) * 0.3,
+                  0.95
+                )
 
-              return {
-                sourceType: s.sourceType,
-                sourceId: sourceEntity.id,
-                sourceLabel: sourceEntity.name || sourceEntity.title,
-                targetType: s.targetType,
-                targetId: targetEntity.id,
-                targetLabel: targetEntity.name || targetEntity.title,
-                relationshipType: s.relationshipType || 'connects_to',
-                rationale: s.rationale || '',
-                confidence: blendedConfidence,
-                similarity
-              }
-            })
-            .filter(Boolean)
-        : []
+                return {
+                  sourceType: s.sourceType,
+                  sourceId: sourceEntity.id,
+                  sourceLabel: sourceEntity.name || sourceEntity.title,
+                  targetType: s.targetType,
+                  targetId: targetEntity.id,
+                  targetLabel: targetEntity.name || targetEntity.title,
+                  relationshipType: s.relationshipType || 'connects_to',
+                  rationale: s.rationale || '',
+                  confidence: blendedConfidence,
+                  similarity
+                }
+              })
+              .filter(Boolean)
+          : []
 
       if (enriched.length === 0) {
         let allSuggestions = getAllSuggestions()
-        
+
         // Filter to only canvas entities if specified
         if (existingEntities) {
-          allSuggestions = allSuggestions.filter(s => {
+          allSuggestions = allSuggestions.filter((s) => {
             const sourceKey = `${s.sourceType === 'character' ? 'char' : s.sourceType === 'location' ? 'loc' : 'thread'}-${s.sourceId}`
             const targetKey = `${s.targetType === 'character' ? 'char' : s.targetType === 'location' ? 'loc' : 'thread'}-${s.targetId}`
             return existingEntities.includes(sourceKey) && existingEntities.includes(targetKey)
           })
         }
-        
+
         // When falling back, STILL apply prompt filtering if provided
         if (prompt?.trim()) {
-          const keywords = prompt.toLowerCase().split(/\s+/).filter(k => k.length > 2)
-          const filtered = allSuggestions.filter(s => {
+          const keywords = prompt
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((k) => k.length > 2)
+          const filtered = allSuggestions.filter((s) => {
             const text = `${s.sourceLabel} ${s.targetLabel} ${s.rationale}`.toLowerCase()
-            return keywords.some(k => text.includes(k))
+            return keywords.some((k) => text.includes(k))
           })
           enriched = filtered.length > 0 ? filtered : allSuggestions.slice(0, 10)
         } else {
@@ -847,7 +1010,7 @@ Rules:
       }
 
       const seen = new Set()
-      const deduped = enriched.filter(s => {
+      const deduped = enriched.filter((s) => {
         const key = canonicalKey(s.sourceType, String(s.sourceId), s.targetType, String(s.targetId))
         if (seen.has(key) || existingKeys.has(key)) return false
         seen.add(key)
@@ -857,13 +1020,18 @@ Rules:
       deduped.sort((a, b) => b.confidence - a.confidence)
 
       let filteredSuggestions = limitConnectionsPerEntity(
-        deduped.filter(s => s.confidence >= confidenceThreshold),
+        deduped.filter((s) => s.confidence >= confidenceThreshold),
         maxPerEntity,
         maxConnections
       )
 
       if (filteredSuggestions.length === 0) {
-        const fallback = generateMetadataConnections(characters, locations, plotThreads, existingKeys)
+        const fallback = generateMetadataConnections(
+          characters,
+          locations,
+          plotThreads,
+          existingKeys
+        )
         filteredSuggestions = limitConnectionsPerEntity(fallback, maxPerEntity, maxConnections)
         if (filteredSuggestions.length > 0) {
           analysisError.value = 'Using metadata-based connections (AI and embeddings unavailable).'
@@ -871,7 +1039,6 @@ Rules:
       }
 
       return filteredSuggestions
-
     } finally {
       isAnalyzing.value = false
     }
@@ -890,7 +1057,7 @@ Rules:
           type: 'character_group',
           name: generateGroupName(cluster, 'characters'),
           color: groupColors[suggestions.length % groupColors.length],
-          members: cluster.members.map(m => ({ type: 'character', id: m.id })),
+          members: cluster.members.map((m) => ({ type: 'character', id: m.id })),
           confidence: cluster.confidence,
           rationale: `These ${cluster.members.length} characters frequently interact based on shared plot threads and relationships`
         })
@@ -903,7 +1070,7 @@ Rules:
           type: 'location_group',
           name: generateGroupName(cluster, 'locations'),
           color: groupColors[suggestions.length % groupColors.length],
-          members: cluster.members.map(m => ({ type: 'location', id: m.id })),
+          members: cluster.members.map((m) => ({ type: 'location', id: m.id })),
           confidence: cluster.confidence,
           rationale: `These ${cluster.members.length} locations are thematically or narratively connected`
         })
@@ -934,7 +1101,10 @@ Rules:
       for (const thread of plotThreads) {
         if (isConnected('character', char.id, 'plotThread', thread.id)) {
           for (const char2 of characters) {
-            if (char2.id !== char.id && isConnected('character', char2.id, 'plotThread', thread.id)) {
+            if (
+              char2.id !== char.id &&
+              isConnected('character', char2.id, 'plotThread', thread.id)
+            ) {
               adjacency[char.id].add(char2.id)
               adjacency[char2.id].add(char.id)
             }
@@ -958,7 +1128,7 @@ Rules:
         if (visited.has(currentId)) continue
 
         visited.add(currentId)
-        const currentChar = characters.find(c => c.id === currentId)
+        const currentChar = characters.find((c) => c.id === currentId)
         if (currentChar) {
           cluster.push({ id: currentId, char: currentChar })
         }
@@ -1004,8 +1174,10 @@ Rules:
       for (const thread of plotThreads) {
         if (isConnected('character', char.id, 'plotThread', thread.id)) {
           for (const loc of locations) {
-            if (isConnected('character', char.id, 'location', loc.id) &&
-                isConnected('character', char.id, 'plotThread', thread.id)) {
+            if (
+              isConnected('character', char.id, 'location', loc.id) &&
+              isConnected('character', char.id, 'plotThread', thread.id)
+            ) {
               for (const loc2 of locations) {
                 if (loc2.id !== loc.id && isConnected('character', char.id, 'location', loc2.id)) {
                   adjacency[loc.id].add(loc2.id)
@@ -1032,7 +1204,7 @@ Rules:
         if (visited.has(currentId)) continue
 
         visited.add(currentId)
-        const currentLoc = locations.find(l => l.id === currentId)
+        const currentLoc = locations.find((l) => l.id === currentId)
         if (currentLoc) {
           cluster.push({ id: currentId, loc: currentLoc })
         }
@@ -1065,14 +1237,14 @@ Rules:
       existingEntities = null
     } = options
 
-    const characters = existingEntities 
-      ? storyBibleStore.characters.filter(c => existingEntities.includes(`char-${c.id}`))
+    const characters = existingEntities
+      ? storyBibleStore.characters.filter((c) => existingEntities.includes(`char-${c.id}`))
       : storyBibleStore.characters
     const locations = existingEntities
-      ? storyBibleStore.locations.filter(l => existingEntities.includes(`loc-${l.id}`))
+      ? storyBibleStore.locations.filter((l) => existingEntities.includes(`loc-${l.id}`))
       : storyBibleStore.locations
     const plotThreads = existingEntities
-      ? storyBibleStore.plotThreads.filter(t => existingEntities.includes(`thread-${t.id}`))
+      ? storyBibleStore.plotThreads.filter((t) => existingEntities.includes(`thread-${t.id}`))
       : storyBibleStore.plotThreads
 
     isAnalyzing.value = true
@@ -1082,30 +1254,34 @@ Rules:
       await loadEmbeddings(!!existingEntities)
 
       let finalSuggestions = []
-      
+
       try {
-        const charactersForPrompt = characters.map(c => ({
-          id: c.id, name: c.name,
-          role: c.role || '', goal: c.goal || '',
+        const charactersForPrompt = characters.map((c) => ({
+          id: c.id,
+          name: c.name,
+          role: c.role || '',
+          goal: c.goal || '',
           backstory: (c.backstory || '').slice(0, 300),
           voice: (c.voice || '').slice(0, 100),
           notes: (c.notes || '').slice(0, 100)
         }))
-        const locationsForPrompt = locations.map(l => ({
-          id: l.id, name: l.name,
+        const locationsForPrompt = locations.map((l) => ({
+          id: l.id,
+          name: l.name,
           description: (l.description || '').slice(0, 120)
         }))
-        const plotThreadsForPrompt = plotThreads.map(t => ({
-          id: t.id, title: t.title,
+        const plotThreadsForPrompt = plotThreads.map((t) => ({
+          id: t.id,
+          title: t.title,
           description: (t.description || '').slice(0, 120),
           status: t.status
         }))
 
         const focusLine = prompt?.trim() ? `Focus: "${prompt}"\n\n` : ''
         const entityIds = [
-          ...storyBibleStore.characters.map(c => ({ type: 'character', id: c.id })),
-          ...storyBibleStore.locations.map(l => ({ type: 'location', id: l.id })),
-          ...storyBibleStore.plotThreads.map(t => ({ type: 'plotThread', id: t.id }))
+          ...storyBibleStore.characters.map((c) => ({ type: 'character', id: c.id })),
+          ...storyBibleStore.locations.map((l) => ({ type: 'location', id: l.id })),
+          ...storyBibleStore.plotThreads.map((t) => ({ type: 'plotThread', id: t.id }))
         ]
         const relationshipContext = await getRelationshipContext(entityIds, 2)
         const relationshipContextSection = relationshipContext
@@ -1126,27 +1302,32 @@ Suggest max 10 connections. Each:
 {"sourceType": "character"|"location"|"plotThread", "sourceId": <id>, "targetType": "...", "targetId": <id>, "relationshipType": "ally"|"enemy"|"family"|"romantic"|"mentor"|"rival"|"involved_in"|"located_at"|"connects_to", "rationale": "<one sentence>", "confidence": <0.6-1.0>}`
 
         const response = await aiGenerate(userPrompt, systemPrompt, { feature: FEATURES.NETWORK })
-        const cleaned = response.replace(/```json\s*/gi, '').replace(/```/g, '').trim()
+        const cleaned = response
+          .replace(/```json\s*/gi, '')
+          .replace(/```/g, '')
+          .trim()
         const match = cleaned.match(/\[[\s\S]*\]/)
         if (match) {
           const aiSuggestions = JSON.parse(match[0])
-          finalSuggestions = aiSuggestions.map(s => {
-            const sourceEntity = getEntityById(s.sourceType, s.sourceId)
-            const targetEntity = getEntityById(s.targetType, s.targetId)
-            if (!sourceEntity || !targetEntity) return null
-            
-            return {
-              sourceType: s.sourceType,
-              sourceId: sourceEntity.id,
-              sourceLabel: sourceEntity.name || sourceEntity.title,
-              targetType: s.targetType,
-              targetId: targetEntity.id,
-              targetLabel: targetEntity.name || targetEntity.title,
-              relationshipType: s.relationshipType || 'connects_to',
-              rationale: s.rationale || '',
-              confidence: s.confidence || 0.7
-            }
-          }).filter(Boolean)
+          finalSuggestions = aiSuggestions
+            .map((s) => {
+              const sourceEntity = getEntityById(s.sourceType, s.sourceId)
+              const targetEntity = getEntityById(s.targetType, s.targetId)
+              if (!sourceEntity || !targetEntity) return null
+
+              return {
+                sourceType: s.sourceType,
+                sourceId: sourceEntity.id,
+                sourceLabel: sourceEntity.name || sourceEntity.title,
+                targetType: s.targetType,
+                targetId: targetEntity.id,
+                targetLabel: targetEntity.name || targetEntity.title,
+                relationshipType: s.relationshipType || 'connects_to',
+                rationale: s.rationale || '',
+                confidence: s.confidence || 0.7
+              }
+            })
+            .filter(Boolean)
         }
       } catch (aiError) {
         console.warn('[AutoGenerateNetworkWithGroups] AI failed:', aiError.message)
@@ -1157,37 +1338,52 @@ Suggest max 10 connections. Each:
 
         // Filter to only canvas entities if specified
         if (existingEntities) {
-          allSuggestions = allSuggestions.filter(s => {
+          allSuggestions = allSuggestions.filter((s) => {
             const sourceKey = `${s.sourceType === 'character' ? 'char' : s.sourceType === 'location' ? 'loc' : 'thread'}-${s.sourceId}`
             const targetKey = `${s.targetType === 'character' ? 'char' : s.targetType === 'location' ? 'loc' : 'thread'}-${s.targetId}`
             return existingEntities.includes(sourceKey) && existingEntities.includes(targetKey)
           })
         }
-        
+
         // Lower threshold for group mode since AI couldn't guide
         const adjustedThreshold = Math.min(confidenceThreshold, 0.6)
-        const filteredSuggestions = allSuggestions.filter(s => s.confidence >= adjustedThreshold)
-        finalSuggestions = limitConnectionsPerEntity(filteredSuggestions, maxPerEntity, maxConnections)
-        
+        const filteredSuggestions = allSuggestions.filter((s) => s.confidence >= adjustedThreshold)
+        finalSuggestions = limitConnectionsPerEntity(
+          filteredSuggestions,
+          maxPerEntity,
+          maxConnections
+        )
       }
 
-      let limitedSuggestions = limitConnectionsPerEntity(finalSuggestions, maxPerEntity, maxConnections)
+      let limitedSuggestions = limitConnectionsPerEntity(
+        finalSuggestions,
+        maxPerEntity,
+        maxConnections
+      )
 
       if (limitedSuggestions.length === 0) {
         const existingKeys = new Set(
-          storyGraphStore.edges.map(e => canonicalKey(e.sourceType, String(e.sourceId), e.targetType, String(e.targetId)))
+          storyGraphStore.edges.map((e) =>
+            canonicalKey(e.sourceType, String(e.sourceId), e.targetType, String(e.targetId))
+          )
         )
-        const fallback = generateMetadataConnections(characters, locations, plotThreads, existingKeys)
+        const fallback = generateMetadataConnections(
+          characters,
+          locations,
+          plotThreads,
+          existingKeys
+        )
         limitedSuggestions = limitConnectionsPerEntity(fallback, maxPerEntity, maxConnections)
       }
 
-      const groupSuggestionList = generateGroupSuggestions({ confidenceThreshold: groupConfidenceThreshold })
+      const groupSuggestionList = generateGroupSuggestions({
+        confidenceThreshold: groupConfidenceThreshold
+      })
 
       return {
         connections: limitedSuggestions,
         groups: groupSuggestionList
       }
-
     } catch (error) {
       console.error('Auto-generate with groups failed:', error)
       analysisError.value = 'Failed to generate connections. Please try again.'
@@ -1197,7 +1393,7 @@ Suggest max 10 connections. Each:
     }
   }
 
-return {
+  return {
     isAnalyzing,
     suggestions,
     analysisError,

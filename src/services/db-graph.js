@@ -40,13 +40,14 @@ export async function deleteGraphEdgesByEntity(projectId, entityType, entityId) 
   const edges = await db.graphEdges
     .where('projectId')
     .equals(projectId)
-    .filter(e =>
-      (e.sourceType === entityType && e.sourceId === entityId) ||
-      (e.targetType === entityType && e.targetId === entityId)
+    .filter(
+      (e) =>
+        (e.sourceType === entityType && e.sourceId === entityId) ||
+        (e.targetType === entityType && e.targetId === entityId)
     )
     .toArray()
   if (edges.length > 0) {
-    await db.graphEdges.bulkDelete(edges.map(e => e.id))
+    await db.graphEdges.bulkDelete(edges.map((e) => e.id))
   }
   return edges.length
 }
@@ -94,7 +95,7 @@ export async function removeEntityFromNodeParents(projectId, entityType, entityI
 
 export async function clearAllGraphEdges(projectId) {
   const allEdges = await db.graphEdges.where('projectId').equals(projectId).toArray()
-  const edgeIds = allEdges.map(e => e.id)
+  const edgeIds = allEdges.map((e) => e.id)
   if (edgeIds.length > 0) {
     await db.graphEdges.bulkDelete(edgeIds)
   }

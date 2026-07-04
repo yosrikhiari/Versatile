@@ -73,9 +73,12 @@ export function useAuthorModel() {
     const parts = []
     if (p.genreFocus) parts.push(`Genre: ${p.genreFocus}`)
     if (p.preferredTone) parts.push(`Preferred tone: ${p.preferredTone}`)
-    if (p.favoriteLenses?.length > 0) parts.push(`The author frequently uses these critique lenses: ${p.favoriteLenses.join(', ')}`)
-    if (p.commonStrengths?.length > 0) parts.push(`The author's writing strengths: ${p.commonStrengths.join(', ')}`)
-    if (p.commonWeaknesses?.length > 0) parts.push(`Areas the author is working on: ${p.commonWeaknesses.join(', ')}`)
+    if (p.favoriteLenses?.length > 0)
+      parts.push(`The author frequently uses these critique lenses: ${p.favoriteLenses.join(', ')}`)
+    if (p.commonStrengths?.length > 0)
+      parts.push(`The author's writing strengths: ${p.commonStrengths.join(', ')}`)
+    if (p.commonWeaknesses?.length > 0)
+      parts.push(`Areas the author is working on: ${p.commonWeaknesses.join(', ')}`)
     if (p.sessionCount) parts.push(`Writing sessions completed: ${p.sessionCount}`)
     if (p.totalWordsWritten) parts.push(`Total words written: ${p.totalWordsWritten}`)
     return parts.length > 0 ? `[Author Profile]\n${parts.join('\n')}` : ''

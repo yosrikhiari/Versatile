@@ -6,12 +6,18 @@ import { FEATURES } from '../config/ai'
 export function useStoryRevisor() {
   const isRevising = ref(false)
 
-  async function reviseScene({ draft, critiqueResult, sceneBrief, storyBible, existingEntitiesJson }) {
+  async function reviseScene({
+    draft,
+    critiqueResult,
+    sceneBrief,
+    storyBible,
+    existingEntitiesJson
+  }) {
     isRevising.value = true
 
     try {
-      const majorIssues = critiqueResult.issues.filter(i => i.severity === 'major')
-      const minorIssues = critiqueResult.issues.filter(i => i.severity === 'minor')
+      const majorIssues = critiqueResult.issues.filter((i) => i.severity === 'major')
+      const minorIssues = critiqueResult.issues.filter((i) => i.severity === 'minor')
 
       if (majorIssues.length === 0 && minorIssues.length <= 2) {
         return draft
@@ -26,7 +32,7 @@ export function useStoryRevisor() {
       const userPrompt = `Revise this scene draft to fix the following issues.
 
 ISSUES TO FIX:
-${issuesToFix.map(i => `- [${i.severity}] ${i.type}: ${i.description}`).join('\n')}
+${issuesToFix.map((i) => `- [${i.severity}] ${i.type}: ${i.description}`).join('\n')}
 
 SCENE BRIEF (for context):
 - Title: ${sceneBrief.title}

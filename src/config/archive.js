@@ -29,7 +29,7 @@ export function createDryRunPreview(contextPackage) {
   return {
     contextText: contextPackage.contextText,
     sourceDescription: contextPackage.sourceDescription,
-    previewLines: contextPackage.previewLines.map(pl => ({
+    previewLines: contextPackage.previewLines.map((pl) => ({
       source: pl.source,
       type: pl.type,
       signal: pl.signal || null,

@@ -43,7 +43,7 @@ function getDefaultBlueprint(idea) {
     closingBeat: 'The scene ends with unresolved tension.',
     sensoryAnchor: 'A vivid detail grounds the reader.',
     dialogueHook: 'A moment to write toward.',
-    writingNotes: 'Focus on the character\'s emotional journey.'
+    writingNotes: "Focus on the character's emotional journey."
   }
 }
 
@@ -55,7 +55,12 @@ function getDefaultBlueprint(idea) {
  * @param {Object} [manuscriptContext=null] - Optional context from the manuscript.
  * @returns {Promise<string>} The generated prompt string.
  */
-export async function generateSparkPrompt(type, characterNames = [], relateToProject = false, manuscriptContext = null) {
+export async function generateSparkPrompt(
+  type,
+  characterNames = [],
+  relateToProject = false,
+  manuscriptContext = null
+) {
   const typeDescriptions = {
     seed: 'story seed — a compelling situation or world detail',
     scenario: 'character scenario — a specific emotional situation a character faces',
@@ -93,7 +98,13 @@ Make it vivid and specific. Do not write the scene.`
  * @returns {Promise<SparkBlueprint>} The generated scene blueprint object.
  * @throws {Error} If generation fails.
  */
-export async function generateOutline(idea, tone, _characterNames = [], _targetLength = 'full', manuscriptContext = null) {
+export async function generateOutline(
+  idea,
+  tone,
+  _characterNames = [],
+  _targetLength = 'full',
+  manuscriptContext = null
+) {
   const projectContext = getProjectContext()
 
   let contextInstruction = ''
@@ -107,14 +118,25 @@ Idea: ${idea}
 Tone: ${tone}${projectContext}${contextInstruction}`
 
   try {
-    const response = await aiGenerate(userPrompt, BLUEPRINT_SYSTEM_PROMPT, { feature: FEATURES.SPARK })
+    const response = await aiGenerate(userPrompt, BLUEPRINT_SYSTEM_PROMPT, {
+      feature: FEATURES.SPARK
+    })
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
       return getDefaultBlueprint(idea, tone)
     }
 
-    const requiredKeys = ['title', 'openingBeat', 'turningPoint', 'confrontationBeat', 'closingBeat', 'sensoryAnchor', 'dialogueHook', 'writingNotes']
-    const hasRequiredKeys = requiredKeys.every(key => key in parsed && parsed[key])
+    const requiredKeys = [
+      'title',
+      'openingBeat',
+      'turningPoint',
+      'confrontationBeat',
+      'closingBeat',
+      'sensoryAnchor',
+      'dialogueHook',
+      'writingNotes'
+    ]
+    const hasRequiredKeys = requiredKeys.every((key) => key in parsed && parsed[key])
 
     if (!hasRequiredKeys) {
       return getDefaultBlueprint(idea, tone)
@@ -123,7 +145,11 @@ Tone: ${tone}${projectContext}${contextInstruction}`
     return parsed
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -137,15 +163,23 @@ Tone: ${tone}${projectContext}${contextInstruction}`
  * @returns {Promise<GeneratedContentResult>} The generated content result.
  * @throws {Error} If generation fails.
  */
-export async function generateContent(idea, tone, characterNames = [], targetLength = 'short', manuscriptContext = null) {
-  const lengthInstructions = targetLength === 'short'
-    ? 'Write a short scene of about 300-500 words.'
-    : 'Write a full chapter of about 1500-2000 words.'
+export async function generateContent(
+  idea,
+  tone,
+  characterNames = [],
+  targetLength = 'short',
+  manuscriptContext = null
+) {
+  const lengthInstructions =
+    targetLength === 'short'
+      ? 'Write a short scene of about 300-500 words.'
+      : 'Write a full chapter of about 1500-2000 words.'
 
   const projectContext = getProjectContext()
   const { profileToContextString } = useAuthorModel()
   const profileStr = profileToContextString(useProjectStore().authorVoiceProfile)
-  const systemPrompt = 'You are a creative fiction writer. Write engaging prose.' +
+  const systemPrompt =
+    'You are a creative fiction writer. Write engaging prose.' +
     (profileStr ? '\n\n' + profileStr : '')
 
   let contextInstruction = ''
@@ -168,7 +202,11 @@ Scene idea: ${idea}${projectContext}${contextInstruction}`
     return { text: response, error: null }
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 
@@ -183,15 +221,24 @@ Scene idea: ${idea}${projectContext}${contextInstruction}`
  * @returns {Promise<GeneratedContentResult>} The generated content result.
  * @throws {Error} If generation fails.
  */
-export async function generateContentStreaming(idea, tone, characterNames = [], targetLength = 'short', onProgress = null, manuscriptContext = null) {
-  const lengthInstructions = targetLength === 'short'
-    ? 'Write a short scene of about 300-500 words.'
-    : 'Write a full chapter of about 1500-2000 words.'
+export async function generateContentStreaming(
+  idea,
+  tone,
+  characterNames = [],
+  targetLength = 'short',
+  onProgress = null,
+  manuscriptContext = null
+) {
+  const lengthInstructions =
+    targetLength === 'short'
+      ? 'Write a short scene of about 300-500 words.'
+      : 'Write a full chapter of about 1500-2000 words.'
 
   const projectContext = getProjectContext()
   const { profileToContextString } = useAuthorModel()
   const profileStr = profileToContextString(useProjectStore().authorVoiceProfile)
-  const systemPrompt = 'You are a creative fiction writer. Write engaging prose.' +
+  const systemPrompt =
+    'You are a creative fiction writer. Write engaging prose.' +
     (profileStr ? '\n\n' + profileStr : '')
 
   let contextInstruction = ''
@@ -214,7 +261,11 @@ Scene idea: ${idea}${projectContext}${contextInstruction}`
     return { text: response, error: null }
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
-    throw new Error(isApiError ? error.message : 'Generation failed. Ensure Ollama is running and your model is loaded.')
+    throw new Error(
+      isApiError
+        ? error.message
+        : 'Generation failed. Ensure Ollama is running and your model is loaded.'
+    )
   }
 }
 

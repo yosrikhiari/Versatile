@@ -19,38 +19,41 @@ function buildProseExcerpt(completedScenes, proseWindow) {
 function buildCharacterStates(completedScenes, characters) {
   if (!characters || characters.length === 0) return ''
 
-  const states = characters.map(char => {
-    const scenesWithChar = completedScenes.filter(s =>
-      s.prose && s.prose.toLowerCase().includes(char.name.toLowerCase())
-    )
-    if (scenesWithChar.length === 0) return null
+  const states = characters
+    .map((char) => {
+      const scenesWithChar = completedScenes.filter(
+        (s) => s.prose && s.prose.toLowerCase().includes(char.name.toLowerCase())
+      )
+      if (scenesWithChar.length === 0) return null
 
-    const lastAppearance = scenesWithChar.at(-1)
-    const sceneCount = scenesWithChar.length
+      const lastAppearance = scenesWithChar.at(-1)
+      const sceneCount = scenesWithChar.length
 
-    const critique = lastAppearance.critiqueResult
-    const charIssues = (critique?.issues || []).filter(i =>
-      i.description?.toLowerCase().includes(char.name.toLowerCase())
-    )
+      const critique = lastAppearance.critiqueResult
+      const charIssues = (critique?.issues || []).filter((i) =>
+        i.description?.toLowerCase().includes(char.name.toLowerCase())
+      )
 
-    const emotionalState = lastAppearance.brief?.emotionalGoal || 'unknown'
-    const location = lastAppearance.brief?.location || 'unknown'
-    const actionNote = charIssues.length > 0
-      ? charIssues[0].description
-      : `appears in scene ${lastAppearance.number}`
+      const emotionalState = lastAppearance.brief?.emotionalGoal || 'unknown'
+      const location = lastAppearance.brief?.location || 'unknown'
+      const actionNote =
+        charIssues.length > 0
+          ? charIssues[0].description
+          : `appears in scene ${lastAppearance.number}`
 
-    let summary = `CHARACTER STATE: ${char.name} is ${emotionalState} at ${location}. Last action: ${actionNote}. Scene count: ${sceneCount}.`
+      let summary = `CHARACTER STATE: ${char.name} is ${emotionalState} at ${location}. Last action: ${actionNote}. Scene count: ${sceneCount}.`
 
-    const relationships = (char.traits || []).map(t => ({
-      character: t,
-      status: 'unknown'
-    }))
-    for (const rel of relationships) {
-      summary += ` Relationship with ${rel.character}: ${rel.status}.`
-    }
+      const relationships = (char.traits || []).map((t) => ({
+        character: t,
+        status: 'unknown'
+      }))
+      for (const rel of relationships) {
+        summary += ` Relationship with ${rel.character}: ${rel.status}.`
+      }
 
-    return summary
-  }).filter(Boolean)
+      return summary
+    })
+    .filter(Boolean)
 
   if (states.length === 0) return ''
   return `CHARACTER STATES:\n${states.join('\n')}`
@@ -58,7 +61,7 @@ function buildCharacterStates(completedScenes, characters) {
 
 function buildSceneMemory(completedScenes, memoryLimit) {
   const recent = completedScenes.slice(-memoryLimit)
-  const entries = recent.map(s => {
+  const entries = recent.map((s) => {
     const title = s.brief?.title || `Scene ${s.number}`
     const whatChanged = s.brief?.whatChanges || 'unknown'
     const emotionalGoal = s.brief?.emotionalGoal || 'unknown'

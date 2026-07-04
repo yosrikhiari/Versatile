@@ -19,7 +19,7 @@ const dimensionScores = computed(() => {
   if (!raw) return []
   return Object.entries(raw).map(([key, val]) => ({
     key,
-    label: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+    label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     score: val,
     displayScore: val != null ? val : '—'
   }))
@@ -28,8 +28,8 @@ const dimensionScores = computed(() => {
 const issues = computed(() => props.critiqueResult?.issues || [])
 const strengths = computed(() => props.critiqueResult?.strengths || [])
 
-const majorIssues = computed(() => issues.value.filter(i => i.severity === 'major'))
-const minorIssues = computed(() => issues.value.filter(i => i.severity === 'minor'))
+const majorIssues = computed(() => issues.value.filter((i) => i.severity === 'major'))
+const minorIssues = computed(() => issues.value.filter((i) => i.severity === 'minor'))
 
 const hasGateResults = computed(() => {
   const g = props.gateResults
@@ -93,7 +93,11 @@ function gateColor(pass) {
     <!-- Overall Score -->
     <div v-if="!compact" class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <BaseIcon :name="passed ? 'check-circle' : 'x-circle'" :size="20" :class="passed ? 'text-success' : 'text-danger'" />
+        <BaseIcon
+          :name="passed ? 'check-circle' : 'x-circle'"
+          :size="20"
+          :class="passed ? 'text-success' : 'text-danger'"
+        />
         <span class="text-sm font-ui text-text-primary">
           {{ passed ? 'Passed' : 'Needs Revision' }}
         </span>
@@ -106,10 +110,14 @@ function gateColor(pass) {
 
     <!-- Gate Summary (aggregated across scenes) -->
     <div v-if="gateSummary" class="bg-bg-secondary border border-border-subtle rounded-lg p-3">
-      <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider mb-2">Eval Gates</h4>
+      <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider mb-2">
+        Eval Gates
+      </h4>
       <div class="flex items-center gap-3 text-xs font-ui">
         <span class="text-success">{{ gateSummary.passed }} passed</span>
-        <span v-if="gateSummary.failed > 0" class="text-danger">{{ gateSummary.failed }} failed</span>
+        <span v-if="gateSummary.failed > 0" class="text-danger"
+          >{{ gateSummary.failed }} failed</span
+        >
         <span class="text-text-hint">({{ gateSummary.total }} checks)</span>
       </div>
     </div>
@@ -117,13 +125,26 @@ function gateColor(pass) {
     <!-- Per-Gate Details -->
     <div v-if="hasGateResults && !compact" class="space-y-2">
       <!-- Dimension Coverage -->
-      <div v-if="props.gateResults.dimensionCoverage" class="bg-bg-secondary border border-border-subtle rounded-lg p-3">
+      <div
+        v-if="props.gateResults.dimensionCoverage"
+        class="bg-bg-secondary border border-border-subtle rounded-lg p-3"
+      >
         <div class="flex items-center justify-between mb-1">
-          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">Dimension Coverage</h4>
-          <BaseIcon :name="gateIcon(props.gateResults.dimensionCoverage.pass)" :size="14" :class="gateColor(props.gateResults.dimensionCoverage.pass)" />
+          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
+            Dimension Coverage
+          </h4>
+          <BaseIcon
+            :name="gateIcon(props.gateResults.dimensionCoverage.pass)"
+            :size="14"
+            :class="gateColor(props.gateResults.dimensionCoverage.pass)"
+          />
         </div>
         <div v-if="props.gateResults.dimensionCoverage.warnings?.length" class="space-y-0.5">
-          <p v-for="(w, i) in props.gateResults.dimensionCoverage.warnings" :key="i" class="text-xs text-warning font-ui">
+          <p
+            v-for="(w, i) in props.gateResults.dimensionCoverage.warnings"
+            :key="i"
+            class="text-xs text-warning font-ui"
+          >
             {{ w }}
           </p>
         </div>
@@ -131,13 +152,26 @@ function gateColor(pass) {
       </div>
 
       <!-- Score Distribution -->
-      <div v-if="props.gateResults.scoreDistribution" class="bg-bg-secondary border border-border-subtle rounded-lg p-3">
+      <div
+        v-if="props.gateResults.scoreDistribution"
+        class="bg-bg-secondary border border-border-subtle rounded-lg p-3"
+      >
         <div class="flex items-center justify-between mb-1">
-          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">Score Distribution</h4>
-          <BaseIcon :name="gateIcon(props.gateResults.scoreDistribution.pass)" :size="14" :class="gateColor(props.gateResults.scoreDistribution.pass)" />
+          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
+            Score Distribution
+          </h4>
+          <BaseIcon
+            :name="gateIcon(props.gateResults.scoreDistribution.pass)"
+            :size="14"
+            :class="gateColor(props.gateResults.scoreDistribution.pass)"
+          />
         </div>
         <div v-if="props.gateResults.scoreDistribution.flags?.length" class="space-y-0.5">
-          <p v-for="(f, i) in props.gateResults.scoreDistribution.flags" :key="i" class="text-xs text-warning font-ui">
+          <p
+            v-for="(f, i) in props.gateResults.scoreDistribution.flags"
+            :key="i"
+            class="text-xs text-warning font-ui"
+          >
             {{ f }}
           </p>
         </div>
@@ -145,20 +179,42 @@ function gateColor(pass) {
       </div>
 
       <!-- Revision Effectiveness -->
-      <div v-if="props.gateResults.revisionEffectiveness" class="bg-bg-secondary border border-border-subtle rounded-lg p-3">
+      <div
+        v-if="props.gateResults.revisionEffectiveness"
+        class="bg-bg-secondary border border-border-subtle rounded-lg p-3"
+      >
         <div class="flex items-center justify-between mb-1">
-          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">Revision Effectiveness</h4>
-          <BaseIcon :name="gateIcon(props.gateResults.revisionEffectiveness.pass)" :size="14" :class="gateColor(props.gateResults.revisionEffectiveness.pass)" />
+          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
+            Revision Effectiveness
+          </h4>
+          <BaseIcon
+            :name="gateIcon(props.gateResults.revisionEffectiveness.pass)"
+            :size="14"
+            :class="gateColor(props.gateResults.revisionEffectiveness.pass)"
+          />
         </div>
         <div class="space-y-0.5">
-          <p v-if="revisionDelta != null" class="text-xs font-ui" :class="revisionDelta >= 0 ? 'text-success' : 'text-danger'">
+          <p
+            v-if="revisionDelta != null"
+            class="text-xs font-ui"
+            :class="revisionDelta >= 0 ? 'text-success' : 'text-danger'"
+          >
             Score delta: {{ revisionDelta >= 0 ? '+' : '' }}{{ revisionDelta }}
           </p>
-          <p v-for="(r, i) in props.gateResults.revisionEffectiveness.regressions" :key="i" class="text-xs text-danger font-ui">
+          <p
+            v-for="(r, i) in props.gateResults.revisionEffectiveness.regressions"
+            :key="i"
+            class="text-xs text-danger font-ui"
+          >
             {{ r }}
           </p>
         </div>
-        <p v-if="!props.gateResults.revisionEffectiveness.regressions?.length && revisionDelta == null" class="text-xs text-text-hint font-ui">
+        <p
+          v-if="
+            !props.gateResults.revisionEffectiveness.regressions?.length && revisionDelta == null
+          "
+          class="text-xs text-text-hint font-ui"
+        >
           No revision needed
         </p>
       </div>
@@ -167,21 +223,33 @@ function gateColor(pass) {
     <!-- Dimension Scores Grid -->
     <div v-if="dimensionScores.length > 0 && !compact" class="grid grid-cols-2 gap-2">
       <div
-v-for="dim in dimensionScores" :key="dim.key"
+        v-for="dim in dimensionScores"
+        :key="dim.key"
         class="bg-gray-900/30 border border-gray-800/50 rounded-lg p-2.5"
-        :class="degradationBadgeClass(dim)">
+        :class="degradationBadgeClass(dim)"
+      >
         <div class="flex items-center justify-between mb-0.5">
           <div class="flex items-center gap-1 min-w-0">
             <span class="text-xs font-ui text-text-secondary truncate">{{ dim.label }}</span>
             <span
-v-if="dimensionDegradation(dim.key)" class="text-2xs font-ui shrink-0"
-              :class="dimensionDegradation(dim.key).status === 'major_regression' ? 'text-danger' : dimensionDegradation(dim.key).status === 'regressed' ? 'text-warning' : 'text-success'">
+              v-if="dimensionDegradation(dim.key)"
+              class="text-2xs font-ui shrink-0"
+              :class="
+                dimensionDegradation(dim.key).status === 'major_regression'
+                  ? 'text-danger'
+                  : dimensionDegradation(dim.key).status === 'regressed'
+                    ? 'text-warning'
+                    : 'text-success'
+              "
+            >
               {{ degradationDeltaText(dim) }}
             </span>
           </div>
-          <span class="text-sm font-bold font-ui" :class="scoreColor(dim.score)">{{ dim.displayScore }}</span>
+          <span class="text-sm font-bold font-ui" :class="scoreColor(dim.score)">{{
+            dim.displayScore
+          }}</span>
         </div>
-          <div class="w-full h-1 bg-bg-secondary rounded-full overflow-hidden">
+        <div class="w-full h-1 bg-bg-secondary rounded-full overflow-hidden">
           <div
             v-if="dim.score != null"
             class="h-full rounded-full transition-all duration-300"
@@ -199,9 +267,16 @@ v-if="dimensionDegradation(dim.key)" class="text-2xs font-ui shrink-0"
       </h4>
       <div class="space-y-1.5">
         <div v-for="(issue, i) in issues" :key="i" class="flex items-start gap-2 text-xs">
-          <BaseIcon name="alert-triangle" :size="12" :class="severityColor(issue.severity)" class="mt-0.5 shrink-0" />
+          <BaseIcon
+            name="alert-triangle"
+            :size="12"
+            :class="severityColor(issue.severity)"
+            class="mt-0.5 shrink-0"
+          />
           <div>
-            <span class="font-semibold" :class="severityColor(issue.severity)">[{{ issue.severity }}]</span>
+            <span class="font-semibold" :class="severityColor(issue.severity)"
+              >[{{ issue.severity }}]</span
+            >
             <span class="text-text-secondary"> {{ issue.description }}</span>
           </div>
         </div>
@@ -210,7 +285,9 @@ v-if="dimensionDegradation(dim.key)" class="text-2xs font-ui shrink-0"
 
     <!-- Strengths -->
     <div v-if="strengths.length > 0 && !compact">
-      <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider mb-2">Strengths</h4>
+      <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider mb-2">
+        Strengths
+      </h4>
       <div class="space-y-1.5">
         <div v-for="(strength, i) in strengths" :key="i" class="flex items-start gap-2 text-xs">
           <BaseIcon name="sparkles" :size="12" class="text-success mt-0.5 shrink-0" />
@@ -220,7 +297,10 @@ v-if="dimensionDegradation(dim.key)" class="text-2xs font-ui shrink-0"
     </div>
 
     <!-- No eval data -->
-    <div v-if="!critiqueResult && !hasGateResults" class="text-center py-6 text-xs text-text-hint font-ui">
+    <div
+      v-if="!critiqueResult && !hasGateResults"
+      class="text-center py-6 text-xs text-text-hint font-ui"
+    >
       No evaluation data yet
     </div>
   </div>

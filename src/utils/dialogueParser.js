@@ -27,10 +27,7 @@ export function parseHtmlToParagraphs(html) {
 
   function processNode(node) {
     if (node.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.includes(node.tagName)) {
-      const textContent = extractText(node)
-        .replace(/\n+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
+      const textContent = extractText(node).replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim()
 
       const htmlContent = node.outerHTML
 

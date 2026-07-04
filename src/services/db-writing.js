@@ -57,7 +57,10 @@ export async function deleteSnippet(id) {
 export async function incrementSnippetWord(projectId, word) {
   const existing = await db.snippets.where({ projectId, word }).first()
   if (existing) {
-    return db.snippets.update(existing.id, { count: existing.count + 1, lastSeen: new Date().toISOString() })
+    return db.snippets.update(existing.id, {
+      count: existing.count + 1,
+      lastSeen: new Date().toISOString()
+    })
   }
   return db.snippets.add({ projectId, word, count: 1, lastSeen: new Date().toISOString() })
 }
