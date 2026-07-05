@@ -1346,6 +1346,7 @@ defineExpose({ refresh })
           ></textarea>
         </div>
 
+        <!-- prettier-ignore -->
         <GenerateCharacterModal
           ref="generateModalRef"
           :show="showGenerateModal"

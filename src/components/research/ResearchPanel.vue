@@ -319,6 +319,7 @@ const aggregateStats = computed(() => {
               @input="onGlobalSearchInput"
             />
           </div>
+          <!-- prettier-ignore -->
           <button
             class="w-7 h-7 text-11px font-medium rounded-lg transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
             :class="
@@ -336,6 +337,7 @@ const aggregateStats = computed(() => {
           >
             T
           </button>
+          <!-- prettier-ignore -->
           <button
             class="w-7 h-7 text-11px font-medium rounded-lg transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
             :class="
@@ -495,6 +497,7 @@ const aggregateStats = computed(() => {
           class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0"
         >
           <div class="flex items-center gap-2 min-w-0">
+            <!-- prettier-ignore -->
             <button
               class="p-1 rounded-lg hover:bg-accent/20 text-text-hint hover:text-accent transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
               title="Back to library"

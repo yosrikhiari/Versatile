@@ -169,6 +169,7 @@ function signalBadge(signal) {
       </template>
 
       <div v-if="activeTab !== 'snapshots'" class="flex flex-wrap gap-1">
+        <!-- prettier-ignore -->
         <BaseChip
           v-for="opt in signalOptions"
           :key="opt.value || 'all'"

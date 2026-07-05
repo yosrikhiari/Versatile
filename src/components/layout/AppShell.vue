@@ -289,6 +289,7 @@ onMounted(async () => {
                 {{ project.name }}
               </button>
               <hr class="my-1 border-border-subtle/30 mx-2" />
+              <!-- prettier-ignore -->
               <button
                 class="w-full text-left px-3 py-2 text-sm text-text-hint hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
                 @click="
