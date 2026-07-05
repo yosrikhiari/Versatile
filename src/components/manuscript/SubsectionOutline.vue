@@ -217,6 +217,7 @@ onMounted(() => {
                           :size="14"
                           class="text-text-hint cursor-grab"
                         />
+                        <!-- prettier-ignore -->
                         <span
                           class="text-sm font-medium font-ui cursor-pointer hover:text-accent"
                           :class="

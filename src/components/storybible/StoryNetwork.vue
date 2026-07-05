@@ -1987,6 +1987,7 @@ async function arrangeExtendedStarLayout() {
       </div>
     </div>
 
+    <!-- prettier-ignore -->
     <AddConnectionModal
       :show="showConnectionModal"
       :existing-edge="editingEdge"
@@ -2013,6 +2014,7 @@ async function arrangeExtendedStarLayout() {
       @apply="handleApplySuggestions"
     />
 
+    <!-- prettier-ignore -->
     <ApplySuggestionsModal
       :show="showApplySuggestionsModal"
       :suggestions="pendingSuggestions"

@@ -1529,6 +1529,7 @@ function getPhaseLabel(phase) {
                   />
                   {{ sceneEval.isRevising.value ? 'Revising...' : 'Apply Revision' }}
                 </button>
+                <!-- prettier-ignore -->
                 <button
                   v-if="sceneEval.revisionResult.value"
                   class="flex-1 py-1 px-2 bg-emerald-600/20 text-emerald-400 rounded-md text-11px font-medium hover:bg-emerald-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"

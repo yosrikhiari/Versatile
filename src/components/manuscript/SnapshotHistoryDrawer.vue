@@ -253,6 +253,7 @@ onUnmounted(() => {
           @keyup.enter="saveWithLabel"
         />
         <div class="flex gap-2">
+          <!-- prettier-ignore -->
           <button
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
             @click="showLabelInput = false; newLabel = ''"
