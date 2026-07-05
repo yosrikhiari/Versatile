@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePolishStore } from '../../stores/polishStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -39,6 +39,10 @@ async function handleCompactPolish() {
 
 onMounted(() => {
   polishStore.setProjectStore(projectStore)
+})
+
+onUnmounted(() => {
+  polishStore.destroy()
 })
 
 const lensOptions = [

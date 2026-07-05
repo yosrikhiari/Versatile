@@ -193,6 +193,7 @@ onBeforeUnmount(() => {
     resizeObserver.disconnect()
     resizeObserver = null
   }
+  timer.destroy()
 })
 
 function handleParagraphClick(text, index) {
@@ -230,7 +231,7 @@ function handleOnboardingSkipWrapper() {
 </script>
 
 <template>
-  <div class="min-h-[100dvh] bg-manuscript relative">
+  <div class="h-[100dvh] bg-manuscript relative">
     <div
       v-if="!ollamaAvailable"
       class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200"

@@ -13,12 +13,12 @@ import { useChapterGenerationSync } from './useChapterGenerationSync'
 import { useStoryDocuments } from './useStoryDocuments'
 import { useActivityLog } from './useActivityLog'
 import { saveGenRun, clearGenRun, getGenRun } from '../services/db-generation'
-import { aiGenerate, getConfiguredModel } from '../services/aiService'
+import { aiGenerate, resolveFeatureConfig } from './useAiService'
 import { FEATURES, PROVIDERS } from '../config/ai'
 
 function isOllamaProvider() {
   try {
-    const config = getConfiguredModel(FEATURES.STORY_GENERATION)
+    const config = resolveFeatureConfig(FEATURES.STORY_GENERATION)
     return config.provider === PROVIDERS.OLLAMA
   } catch {
     return false

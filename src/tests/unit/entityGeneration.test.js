@@ -7,6 +7,12 @@ vi.mock('../../services/aiService', () => ({
   aiGenerate: (...args) => mockAiGenerate(...args)
 }))
 
+vi.mock('../../composables/useAiService', () => ({
+  aiGenerate: (...args) => mockAiGenerate(...args),
+  aiStream: vi.fn(),
+  useAiService: vi.fn()
+}))
+
 vi.mock('../../services/ai/aiHelpers', () => ({
   retryWithBackoff: (...args) => mockRetryWithBackoff(...args),
   sanitizeJsonResponse: vi.fn(),

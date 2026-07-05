@@ -2,7 +2,7 @@
  * Entity detection from manuscript text.
  * Extracted from useOllama.js.
  */
-import { aiGenerate } from '../aiService'
+import { aiGenerate } from '../../composables/useAiService'
 import { FEATURES } from '../../config/ai'
 import { retryWithBackoff, sanitizeJsonResponse } from '../ai/aiHelpers'
 

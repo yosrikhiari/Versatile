@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { aiGenerate, aiStream } from '../services/aiService'
+import { aiGenerate, aiStream } from './useAiService'
 import { FEATURES, RESEARCH_CHUNKS_DEFAULT } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { useProjectStore } from '../stores/projectStore'

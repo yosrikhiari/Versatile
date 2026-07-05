@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
-import { aiGenerate, aiStream } from '../services/aiService'
+import { aiGenerate, aiStream } from './useAiService'
 import { FEATURES } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { finalizeStream } from '../services/jsonExtractor'

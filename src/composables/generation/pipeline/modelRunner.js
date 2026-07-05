@@ -1,4 +1,4 @@
-import { aiGenerate } from '../../../services/aiService'
+import { aiGenerate } from '../../useAiService'
 import { FEATURES } from '../../../config/ai'
 import { retryWithBackoff, sanitizeJsonResponse, normalizeField } from '../utils'
 

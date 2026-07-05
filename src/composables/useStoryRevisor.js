@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
-import { aiGenerate } from '../services/aiService'
+import { aiGenerate } from './useAiService'
 import { FEATURES } from '../config/ai'
 
 export function useStoryRevisor() {
