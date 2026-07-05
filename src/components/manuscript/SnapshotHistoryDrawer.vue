@@ -255,10 +255,7 @@ onUnmounted(() => {
         <div class="flex gap-2">
           <button
             class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
-            @click="
-              showLabelInput = false
-              newLabel = ''
-            "
+            @click="showLabelInput = false; newLabel = ''"
           >
             Cancel
           </button>

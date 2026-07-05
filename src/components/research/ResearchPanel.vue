@@ -329,10 +329,7 @@ const aggregateStats = computed(() => {
             title="Lexical search (keyword matching)"
             aria-label="Lexical search mode"
             :aria-pressed="globalSearchMode === 'lexical'"
-            @click="
-              globalSearchMode = 'lexical'
-              if (globalSearchQuery) runGlobalSearch(globalSearchQuery)
-            "
+            @click="globalSearchMode = 'lexical'; if (globalSearchQuery) runGlobalSearch(globalSearchQuery)"
           >
             T
           </button>
@@ -346,10 +343,7 @@ const aggregateStats = computed(() => {
             title="Semantic search (embedding similarity)"
             aria-label="Semantic search mode"
             :aria-pressed="globalSearchMode === 'semantic'"
-            @click="
-              globalSearchMode = 'semantic'
-              if (globalSearchQuery) runGlobalSearch(globalSearchQuery)
-            "
+            @click="globalSearchMode = 'semantic'; if (globalSearchQuery) runGlobalSearch(globalSearchQuery)"
           >
             AI
           </button>
@@ -499,10 +493,7 @@ const aggregateStats = computed(() => {
               class="p-1 rounded-lg hover:bg-accent/20 text-text-hint hover:text-accent transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
               title="Back to library"
               aria-label="Back to library"
-              @click="
-                selectedDoc = null
-                selectedChunks = []
-              "
+              @click="selectedDoc = null; selectedChunks = []"
             >
               <BaseIcon name="arrow-left" size="14" />
             </button>

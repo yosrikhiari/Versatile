@@ -175,10 +175,7 @@ function signalBadge(signal) {
           variant="filter"
           size="sm"
           :active="signalFilter === opt.value"
-          @click="
-            signalFilter = opt.value
-            loadSessions()
-          "
+          @click="signalFilter = opt.value; loadSessions()"
         >
           {{ opt.label }}
         </BaseChip>
