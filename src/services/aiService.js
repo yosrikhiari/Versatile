@@ -1,4 +1,4 @@
-import { PROVIDERS, FEATURES, PROVIDER_MODELS } from '../config/ai'
+import { PROVIDERS, FEATURES, PROVIDER_MODELS, FEATURE_DEFAULTS } from '../config/ai'
 import { getApiKeyStorageKey } from '../config/storageKeys'
 import { useSettingsStore } from '../stores/settingsStore'
 import { deobfuscate } from './ollamaService'
@@ -91,9 +91,16 @@ function resolveFeatureConfig(feature) {
       model: override.model || defaultModelFor(override.provider)
     }
   }
+
+  const featDef = FEATURE_DEFAULTS[feature]
+  let model = defaultModelFor(store.aiProvider)
+  if (store.aiProvider === PROVIDERS.OLLAMA && featDef?.model) {
+    model = featDef.model
+  }
+
   return {
     provider: store.aiProvider,
-    model: defaultModelFor(store.aiProvider)
+    model
   }
 }
 

@@ -65,16 +65,16 @@ export const FEATURE_LABELS = {
 }
 
 export const FEATURE_DEFAULTS = {
-  [FEATURES.SPARK]: { provider: PROVIDERS.OLLAMA, model: null },
+  [FEATURES.SPARK]: { provider: PROVIDERS.OLLAMA, model: 'phi4-mini:3.8b' },
   [FEATURES.POLISH]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.CONTENT]: { provider: PROVIDERS.OLLAMA, model: null },
+  [FEATURES.CONTENT]: { provider: PROVIDERS.OLLAMA, model: 'dolphin-mistral:7b' },
   [FEATURES.WORLDBUILDING]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.COMPACTION]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.STORY_GENERATION]: { provider: PROVIDERS.OLLAMA, model: null },
+  [FEATURES.COMPACTION]: { provider: PROVIDERS.OLLAMA, model: 'phi4-mini:3.8b' },
+  [FEATURES.STORY_GENERATION]: { provider: PROVIDERS.OLLAMA, model: 'dolphin-mistral:7b' },
   [FEATURES.NETWORK]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.TAGGING]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.CHARACTER_CHAT]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.POV_WRITING]: { provider: PROVIDERS.OLLAMA, model: null }
+  [FEATURES.TAGGING]: { provider: PROVIDERS.OLLAMA, model: 'phi4-mini:3.8b' },
+  [FEATURES.CHARACTER_CHAT]: { provider: PROVIDERS.OLLAMA, model: 'dolphin-mistral:7b' },
+  [FEATURES.POV_WRITING]: { provider: PROVIDERS.OLLAMA, model: 'dolphin-mistral:7b' }
 }
 
 export const PROVIDER_DEFAULT = PROVIDERS.OLLAMA
