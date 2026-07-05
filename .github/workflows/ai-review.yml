@@ -24,12 +24,13 @@ jobs:
 
       - name: AI Code Review
         uses: actions/github-script@v7
-        if: hashFiles('pr-diff.txt') != '' && secrets.OPENAI_API_KEY != ''
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           script: |
             const fs = require('fs');
+            if (!process.env.OPENAI_API_KEY) { console.log('No API key, skipping'); return; }
+            if (!fs.existsSync('pr-diff.txt')) { console.log('No diff file, skipping'); return; }
             const diff = fs.readFileSync('pr-diff.txt', 'utf-8').slice(0, 30000);
             const prompt = [
               'Review this Vue 3 PR diff for:',
