@@ -14,50 +14,5 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/github-script@v7
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        with:
-          script: |
-            if (!process.env.OPENAI_API_KEY) { console.log('No API key, skipping'); return; }
-            const title = context.payload.issue.title;
-            const body = (context.payload.issue.body || '').slice(0, 2000);
-            const prompt = [
-              'Classify this GitHub issue for a Vue 3 project.',
-              'Respond with JSON:',
-              '{',
-              '  "type": "bug|feature|enhancement|question|docs",',
-              '  "priority": "high|medium|low",',
-              '  "labels": ["array of relevant label names"],',
-              '  "area": "component|store|router|api|tests|docs|build|other",',
-              '  "response": "brief first-responder message"',
-              '}',
-            ].join('\n');
-            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [
-                  { role: 'system', content: 'You classify GitHub issues for a Vue 3 project.' },
-                  { role: 'user', content: 'Title: ' + title + '\n\nBody: ' + body + '\n\n' + prompt }
-                ],
-                temperature: 0.2
-              })
-            });
-            const result = await resp.json();
-            const classification = JSON.parse(result.choices[0].message.content);
-            const labels = ['triage', classification.type, 'area:' + classification.area];
-            if (classification.priority === 'high') labels.push('priority:high');
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              labels: labels
-            });
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              body: classification.response
-            });
+      - run: echo "Triage requires AI API key — skipping"
+
