@@ -291,7 +291,10 @@ onMounted(async () => {
               <hr class="my-1 border-border-subtle/30 mx-2" />
               <button
                 class="w-full text-left px-3 py-2 text-sm text-text-hint hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
-                @click="showProjectDropdown = false; showProjectSettings = true"
+                @click="
+                  showProjectDropdown = false
+                  showProjectSettings = true
+                "
               >
                 <BaseIcon name="settings" :size="14" />
                 Project Settings
