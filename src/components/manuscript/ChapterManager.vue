@@ -575,6 +575,7 @@ function getVolumeForSection(section) {
                       :size="13"
                       class="text-text-tertiary flex-shrink-0 cursor-grab"
                     />
+                    <!-- prettier-ignore -->
                     <span
                       class="text-xs font-medium flex-1 min-w-0 cursor-pointer hover:text-accent"
                       :class="
@@ -735,6 +736,7 @@ function getVolumeForSection(section) {
       </div>
     </Modal>
 
+    <!-- prettier-ignore -->
     <SnapshotHistoryDrawer
       :show="showSnapshotDrawer"
       :chapter-id="snapshotSectionId"
