@@ -15,7 +15,8 @@ vi.mock('@/stores/settingsStore', () => ({
 vi.mock('@/config/ai', () => ({
   PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai', ANTHROPIC: 'anthropic', GEMINI: 'gemini', GROQ: 'groq' },
   FEATURES: { CONTENT: 'content', STORY_GENERATION: 'story_generation', WORLDBUILDING: 'worldbuilding' },
-  PROVIDER_MODELS: { openai: ['gpt-4'], anthropic: ['claude-3-opus'] }
+  PROVIDER_MODELS: { openai: ['gpt-4'], anthropic: ['claude-3-opus'] },
+  FEATURE_DEFAULTS: {}
 }))
 
 vi.mock('@/config/storageKeys', () => ({ getApiKeyStorageKey: vi.fn(() => 'key_storage') }))

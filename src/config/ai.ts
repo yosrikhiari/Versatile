@@ -1,10 +1,12 @@
-export const PROVIDERS = {
+import type { FeatureDefaults, FeatureName, ProviderName, EmbeddingCapabilities } from '../types/ai'
+
+export const PROVIDERS: Record<string, ProviderName> = {
   OLLAMA: 'ollama',
   OPENAI: 'openai',
   ANTHROPIC: 'anthropic',
   GEMINI: 'gemini',
   GROQ: 'groq'
-}
+} as const
 
 export const PROVIDER_LABELS = {
   [PROVIDERS.OLLAMA]: 'Ollama (Local)',
@@ -12,16 +14,16 @@ export const PROVIDER_LABELS = {
   [PROVIDERS.ANTHROPIC]: 'Anthropic (Claude)',
   [PROVIDERS.GEMINI]: 'Google Gemini',
   [PROVIDERS.GROQ]: 'Groq'
-}
+} as Record<ProviderName, string>
 
-export const PROVIDER_BASE_URLS = {
+export const PROVIDER_BASE_URLS: Partial<Record<ProviderName, string>> = {
   [PROVIDERS.OPENAI]: 'https://api.openai.com/v1',
   [PROVIDERS.ANTHROPIC]: 'https://api.anthropic.com/v1',
   [PROVIDERS.GEMINI]: 'https://generativelanguage.googleapis.com/v1beta',
   [PROVIDERS.GROQ]: 'https://api.groq.com/openai/v1'
 }
 
-export const PROVIDER_MODELS = {
+export const PROVIDER_MODELS: Partial<Record<ProviderName, string[]>> = {
   [PROVIDERS.OPENAI]: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
   [PROVIDERS.ANTHROPIC]: ['claude-opus-4', 'claude-sonnet-4', 'claude-haiku-3'],
   [PROVIDERS.GEMINI]: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro'],
@@ -38,7 +40,7 @@ export const PROVIDER_MODELS = {
   ]
 }
 
-export const FEATURES = {
+export const FEATURES: Record<string, FeatureName> = {
   SPARK: 'spark',
   POLISH: 'polish',
   CONTENT: 'content',
@@ -49,7 +51,7 @@ export const FEATURES = {
   TAGGING: 'tagging',
   CHARACTER_CHAT: 'character_chat',
   POV_WRITING: 'pov_writing'
-}
+} as const
 
 export const FEATURE_LABELS = {
   [FEATURES.SPARK]: 'Spark (prompts & outlines)',
@@ -62,7 +64,7 @@ export const FEATURE_LABELS = {
   [FEATURES.TAGGING]: 'Research auto-tagging',
   [FEATURES.CHARACTER_CHAT]: 'Character chat',
   [FEATURES.POV_WRITING]: 'POV writing assistant'
-}
+} as Record<FeatureName, string>
 
 export const FEATURE_DEFAULTS = {
   [FEATURES.SPARK]: { provider: PROVIDERS.OLLAMA, model: 'phi4-mini:3.8b' },
@@ -75,34 +77,34 @@ export const FEATURE_DEFAULTS = {
   [FEATURES.TAGGING]: { provider: PROVIDERS.OLLAMA, model: 'phi4-mini:3.8b' },
   [FEATURES.CHARACTER_CHAT]: { provider: PROVIDERS.OLLAMA, model: 'dolphin-mistral:7b' },
   [FEATURES.POV_WRITING]: { provider: PROVIDERS.OLLAMA, model: 'dolphin-mistral:7b' }
-}
+} as FeatureDefaults
 
-export const PROVIDER_DEFAULT = PROVIDERS.OLLAMA
+export const PROVIDER_DEFAULT: ProviderName = PROVIDERS.OLLAMA
 export const FALLBACK_NONE = null
 
 export const API_KEY_STORAGE_PREFIX = 'versatile_apikey_'
 
-export const FEATURE_LIST = Object.values(FEATURES)
-export const PROVIDER_LIST = Object.values(PROVIDERS)
+export const FEATURE_LIST: FeatureName[] = Object.values(FEATURES) as FeatureName[]
+export const PROVIDER_LIST: ProviderName[] = Object.values(PROVIDERS) as ProviderName[]
 
-export const EMBEDDING_PROVIDERS = {
+export const EMBEDDING_PROVIDERS: Record<string, string> = {
   OLLAMA: 'ollama',
   MISTRAL: 'mistral'
-}
+} as const
 
-export const EMBEDDING_PROVIDER_LABELS = {
+export const EMBEDDING_PROVIDER_LABELS: Record<string, string> = {
   [EMBEDDING_PROVIDERS.OLLAMA]: 'Ollama (Local)',
   [EMBEDDING_PROVIDERS.MISTRAL]: 'Mistral'
 }
 
-export const EMBEDDING_MODELS = {
+export const EMBEDDING_MODELS: Record<string, string[] | null> = {
   [EMBEDDING_PROVIDERS.OLLAMA]: null,
   [EMBEDDING_PROVIDERS.MISTRAL]: ['mistral-embed']
 }
 
 export const EMBEDDING_VERSION = 1
 
-export const EMBEDDING_PROVIDER_CAPABILITIES = {
+export const EMBEDDING_PROVIDER_CAPABILITIES: Record<string, EmbeddingCapabilities> = {
   [EMBEDDING_PROVIDERS.OLLAMA]: {
     maxBatchSize: 32,
     supportsBatching: true,
@@ -117,7 +119,7 @@ export const EMBEDDING_PROVIDER_CAPABILITIES = {
   }
 }
 
-export function getEmbeddingCapabilities(provider) {
+export function getEmbeddingCapabilities(provider: string): EmbeddingCapabilities | null {
   return EMBEDDING_PROVIDER_CAPABILITIES[provider] || null
 }
 

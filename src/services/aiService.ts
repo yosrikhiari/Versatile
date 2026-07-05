@@ -2,6 +2,7 @@ import { PROVIDERS, FEATURES, PROVIDER_MODELS, FEATURE_DEFAULTS } from '../confi
 import { getApiKeyStorageKey } from '../config/storageKeys'
 import { useSettingsStore } from '../stores/settingsStore'
 import { deobfuscate } from './ollamaService'
+import type { AiGenerateOptions, FeatureName, ProviderName, ProviderModule } from '../types/ai'
 import * as ollamaProvider from './providers/ollama'
 import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
@@ -24,19 +25,28 @@ const RETRYABLE_ERROR_PATTERNS = [
   /socket/i
 ]
 
-function isRetryable(error) {
-  const message = error?.message || ''
+function isRetryable(error: unknown): boolean {
+  const message = (error as Error)?.message || ''
   return RETRYABLE_ERROR_PATTERNS.some((p) => p.test(message))
 }
 
-function sleep(ms) {
+function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function withRetry(fn, isRetryableFn, options = {}) {
+interface RetryOptions {
+  maxRetries?: number
+  retryDelay?: number
+}
+
+async function withRetry<T>(
+  fn: (attempt: number, isIntermediate: boolean) => Promise<T>,
+  isRetryableFn: (error: unknown) => boolean,
+  options: RetryOptions = {}
+): Promise<T> {
   const maxRetries = options.maxRetries ?? 2
   const retryDelay = options.retryDelay ?? 1000
-  let lastError
+  let lastError: unknown
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
@@ -59,17 +69,16 @@ async function withRetry(fn, isRetryableFn, options = {}) {
 }
 
 const PROVIDER_MAP = {
-  [PROVIDERS.OLLAMA]: ollamaProvider,
-  [PROVIDERS.OPENAI]: openaiProvider,
-  [PROVIDERS.ANTHROPIC]: anthropicProvider,
-  [PROVIDERS.GEMINI]: geminiProvider,
-  [PROVIDERS.GROQ]: groqProvider
-}
+  [PROVIDERS.OLLAMA]: ollamaProvider as unknown as ProviderModule,
+  [PROVIDERS.OPENAI]: openaiProvider as ProviderModule,
+  [PROVIDERS.ANTHROPIC]: anthropicProvider as ProviderModule,
+  [PROVIDERS.GEMINI]: geminiProvider as ProviderModule,
+  [PROVIDERS.GROQ]: groqProvider as ProviderModule
+} as unknown as Record<ProviderName, ProviderModule>
 
-function getApiKey(provider) {
+function getApiKey(provider: ProviderName): string | null {
   if (provider === PROVIDERS.OLLAMA) return null
   const storageKey = getApiKeyStorageKey(provider)
-  // STORAGE_KEYS ref
   const encrypted = localStorage.getItem(storageKey)
   if (!encrypted) return ''
   try {
@@ -79,42 +88,56 @@ function getApiKey(provider) {
   }
 }
 
-function resolveFeatureConfig(feature) {
+interface FeatureOverride {
+  provider?: string
+  model?: string | null
+}
+
+export interface FeatureConfig {
+  provider: ProviderName
+  model: string | null
+}
+
+function resolveFeatureConfig(feature: FeatureName): FeatureConfig {
   const store = useSettingsStore()
-  const override = store.featureModels?.[feature]
-  const defaultModelFor = (provider) =>
+  const override = store.featureModels?.[feature] as FeatureOverride | undefined
+  const defaultModelFor = (provider: ProviderName): string | null =>
     provider === PROVIDERS.OLLAMA ? store.ollamaModel : PROVIDER_MODELS[provider]?.[0] || null
 
   if (override?.provider && override.provider !== 'default') {
     return {
-      provider: override.provider,
-      model: override.model || defaultModelFor(override.provider)
+      provider: override.provider as ProviderName,
+      model: override.model ?? defaultModelFor(override.provider as ProviderName)
     }
   }
 
   const featDef = FEATURE_DEFAULTS[feature]
-  let model = defaultModelFor(store.aiProvider)
+  let model = defaultModelFor(store.aiProvider as ProviderName)
   if (store.aiProvider === PROVIDERS.OLLAMA && featDef?.model) {
     model = featDef.model
   }
 
   return {
-    provider: store.aiProvider,
+    provider: store.aiProvider as ProviderName,
     model
   }
 }
 
-export function getConfiguredModel(feature) {
+export function getConfiguredModel(feature: FeatureName): string | null {
   const config = resolveFeatureConfig(feature)
   return config.model
 }
 
-export function getConfiguredProvider(feature) {
+export function getConfiguredProvider(feature: FeatureName): ProviderName {
   const config = resolveFeatureConfig(feature)
   return config.provider
 }
 
-export async function aiGenerate(prompt, systemPrompt, options = {}) {
+export async function aiGenerate(
+  prompt: string,
+  systemPrompt: string,
+  options: AiGenerateOptions = {}
+): Promise<string> {
   const feature = options.feature || FEATURES.CONTENT
   const config = resolveFeatureConfig(feature)
   const provider = options.provider || config.provider
@@ -146,9 +169,9 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
   } catch (error) {
     const store = useSettingsStore()
     if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
-      const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
+      const fallbackModule = PROVIDER_MAP[store.aiProviderFallback as ProviderName]
       if (fallbackModule) {
-        const fallbackKey = getApiKey(store.aiProviderFallback)
+        const fallbackKey = getApiKey(store.aiProviderFallback as ProviderName)
         if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
           return await fallbackModule.generate(prompt, systemPrompt, null, {
             apiKey: fallbackKey || undefined,
@@ -164,7 +187,12 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
   }
 }
 
-export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
+export async function aiStream(
+  prompt: string,
+  systemPrompt: string,
+  onChunk: ((chunk: string, full: string) => void) | undefined,
+  options: AiGenerateOptions = {}
+): Promise<string> {
   const feature = options.feature || FEATURES.CONTENT
   const config = resolveFeatureConfig(feature)
   const provider = options.provider || config.provider
@@ -199,9 +227,9 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
   } catch (error) {
     const store = useSettingsStore()
     if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
-      const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
+      const fallbackModule = PROVIDER_MAP[store.aiProviderFallback as ProviderName]
       if (fallbackModule) {
-        const fallbackKey = getApiKey(store.aiProviderFallback)
+        const fallbackKey = getApiKey(store.aiProviderFallback as ProviderName)
         if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
           return await fallbackModule.stream(prompt, systemPrompt, null, onChunk, {
             apiKey: fallbackKey || undefined,
@@ -217,16 +245,19 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
   }
 }
 
-export async function aiTestConnection(provider, apiKey) {
+export async function aiTestConnection(
+  provider: ProviderName,
+  apiKey?: string
+): Promise<boolean> {
   const providerModule = PROVIDER_MAP[provider]
   if (!providerModule) throw new Error(`Unknown provider: ${provider}`)
   if (provider === PROVIDERS.OLLAMA) {
-    return await providerModule.testConnection()
+    return await (providerModule as typeof ollamaProvider).testConnection()
   }
-  return await providerModule.testConnection(apiKey)
+  return await (providerModule as typeof openaiProvider).testConnection(apiKey!)
 }
 
-export async function aiListModels() {
+export async function aiListModels(): Promise<string[]> {
   return await ollamaProvider.listModels()
 }
 
