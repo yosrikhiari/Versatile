@@ -31,22 +31,24 @@ jobs:
           script: |
             const fs = require('fs');
             const diff = fs.readFileSync('pr-diff.txt', 'utf-8').slice(0, 30000);
-            const prompt = `Review this Vue 3 PR diff for:
-1. Vue 3 Composition API best practices
-2. Pinia store patterns
-3. Component design and reusability
-4. Vue Router usage
-5. Missing error/loading/empty states
-6. Accessibility concerns
-7. Performance issues
-Respond with raw JSON:
-{
-  "summary": "overview",
-  "findings": [
-    { "severity": "critical|major|minor", "file": "path", "line": 1, "message": "desc", "suggestion": "fix" }
-  ],
-  "positive": ["wins"]
-}`;
+            const prompt = [
+              'Review this Vue 3 PR diff for:',
+              '1. Vue 3 Composition API best practices',
+              '2. Pinia store patterns',
+              '3. Component design and reusability',
+              '4. Vue Router usage',
+              '5. Missing error/loading/empty states',
+              '6. Accessibility concerns',
+              '7. Performance issues',
+              'Respond with raw JSON:',
+              '{',
+              '  "summary": "overview",',
+              '  "findings": [',
+              '    { "severity": "critical|major|minor", "file": "path", "line": 1, "message": "desc", "suggestion": "fix" }',
+              '  ],',
+              '  "positive": ["wins"]',
+              '}',
+            ].join('\n');
             const resp = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },

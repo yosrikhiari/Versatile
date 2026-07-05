@@ -224,7 +224,10 @@ onMounted(() => {
                               ? 'text-accent'
                               : 'text-text-primary'
                           "
-                          @click.stop="manuscriptStore.setActiveSubsection(subsection.id); manuscriptStore.setActiveSection(subsection.sectionId)"
+                          @click.stop="
+                            manuscriptStore.setActiveSubsection(subsection.id)
+                            manuscriptStore.setActiveSection(subsection.sectionId)
+                          "
                           >{{ subsection.title || 'Untitled' }}</span
                         >
                       </div>
