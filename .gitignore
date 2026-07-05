@@ -3,7 +3,6 @@ dist/
 *.zip
 test-results/
 .env
-docker-compose.yml
 /debug/
 *_stdout.txt
 *_stderr.txt
@@ -11,9 +10,6 @@ skills-lock.json
 transform-novel.cjs
 vite_err.txt
 vite_out.txt
-# Backend (disconnected dead code - removed)
-/server/
-/backend/
 dir_check.txt
 elevation_test.txt
 perm_check.txt
@@ -45,3 +41,7 @@ CONTEXT.md
 .planning/STATE.md
 .planning/STATE.md
 skills/
+
+# .NET build artifacts
+backend/**/bin/
+backend/**/obj/

@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Versatile.Domain/Versatile.Domain.csproj" />
+  <Project Path="Versatile.Application/Versatile.Application.csproj" />
+  <Project Path="Versatile.Infrastructure/Versatile.Infrastructure.csproj" />
+  <Project Path="Versatile.Api/Versatile.Api.csproj" />
+  <Project Path="Versatile.Api.Tests/Versatile.Api.Tests.csproj" />
+</Solution>
