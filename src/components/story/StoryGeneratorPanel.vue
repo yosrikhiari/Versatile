@@ -1022,12 +1022,7 @@ function getPhaseLabel(phase) {
                           ? scene.characters.join(', ')
                           : (scene.charactersPresent || []).join(', ')
                       "
-                      @input="
-                        handleVolumeSceneEdit(
-                          i,
-                          'characters',
-                          $event.target.value.split(',').map((s) => s.trim())
-                        )
+                      @input="handleVolumeSceneEdit(i, 'characters', $event.target.value.split(',').map((s) => s.trim()))
                       "
                     />
                   </div>
@@ -1112,12 +1107,7 @@ function getPhaseLabel(phase) {
                       step="50"
                       class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                       :value="scene.estimatedWords || 800"
-                      @input="
-                        handleVolumeSceneEdit(
-                          i,
-                          'estimatedWords',
-                          parseInt($event.target.value) || 800
-                        )
+                      @input="handleVolumeSceneEdit(i, 'estimatedWords', parseInt($event.target.value) || 800)
                       "
                     />
                   </div>
