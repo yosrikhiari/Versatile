@@ -47,7 +47,7 @@ export { analyzePolish } from '../services/generation/polishAnalysis'
 // --- Entity detection ---
 export { detectEntities } from '../services/generation/entityDetection'
 
-import { aiGenerate } from '../services/aiService'
+import { aiGenerate } from './useAiService'
 import { FEATURES } from '../config/ai'
 import {
   hasOpenAIKey,

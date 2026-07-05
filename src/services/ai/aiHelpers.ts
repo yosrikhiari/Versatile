@@ -1,6 +1,3 @@
-import { useProjectStore } from '../../stores/projectStore'
-import { useStoryDocuments } from '../../composables/useStoryDocuments'
-
 const PERMANENT_ERROR_PATTERNS = [
   'not found',
   'not found in Ollama',
@@ -111,27 +108,24 @@ export function sanitizeJsonResponse(response: unknown): Record<string, unknown>
   }
 }
 
-export function getProjectContext(): string {
-  const projectStore = useProjectStore()
+export function getProjectContext(
+  category?: string,
+  description?: string
+): string {
   const parts: string[] = []
-  if (projectStore.currentCategory) {
-    parts.push(`Category: ${projectStore.currentCategory}`)
+  if (category) {
+    parts.push(`Category: ${category}`)
   }
-  if (projectStore.currentDescription) {
-    parts.push(`Description: ${projectStore.currentDescription}`)
+  if (description) {
+    parts.push(`Description: ${description}`)
   }
   return parts.length > 0 ? `\n\n${parts.join('\n')}` : ''
 }
 
-export async function getExistingEntitiesContext(): Promise<string> {
-  try {
-    const projectStore = useProjectStore()
-    const { getStoryDocumentContext } = useStoryDocuments()
-    const context = await getStoryDocumentContext(projectStore.currentProjectId)
-    return context ? `\n\n${context}` : ''
-  } catch {
-    return ''
-  }
+export async function getExistingEntitiesContext(
+  context?: string
+): Promise<string> {
+  return context ? `\n\n${context}` : ''
 }
 
 export const FIELD_LENGTH_CONSTRAINTS = {

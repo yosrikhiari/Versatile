@@ -3,7 +3,7 @@ import { useAiService } from './useAiService'
 import { useProjectStore } from '../stores/projectStore'
 import { getVoiceProfile, buildSceneContext, getDimensionNames, summarizeLog } from '../services/ai/sceneContext'
 import { DOCUMENT_PROMPTS } from '../services/ai/promptStore'
-import { sanitizeJsonResponse, getExistingEntitiesContext, getProjectContext, FIELD_LENGTH_CONSTRAINTS } from '../services/ai/aiHelpers'
+import { sanitizeJsonResponse, getProjectContext, FIELD_LENGTH_CONSTRAINTS } from '../services/ai/aiHelpers'
 import { finalizeStream } from '../services/jsonExtractor'
 import { formatEvalFeedback } from '../services/evalFeedback'
 import { useStoryDocuments } from './useStoryDocuments'
@@ -106,12 +106,12 @@ Write the scene prose directly. Do not include meta-commentary.
 }
 
 async function buildStructuredPrompt(params: WriterStructuredParams) {
-  const { getDocumentContext } = useStoryDocuments()
+  const { getDocumentContext, getStoryDocumentContext } = useStoryDocuments()
   const projectStore = useProjectStore()
   const brief = params.sceneBrief as any
   const storyBible = params.storyBible || (await getDocumentContext('story_bible'))
-  const existingEntitiesCtx = params.existingEntitiesJson || (await getExistingEntitiesContext())
-  const projectCtx = getProjectContext()
+  const existingEntitiesCtx = params.existingEntitiesJson || (await getStoryDocumentContext(projectStore.currentProjectId))
+  const projectCtx = getProjectContext(projectStore.currentCategory, projectStore.currentDescription)
   const contractSection = params.storyContract || (await getDocumentContext('story_contract'))
 
   const spineContext = params.spineContext
@@ -195,7 +195,7 @@ export async function writeScene(params: WriterParams): Promise<string> {
 
   try {
     const { stream } = useAiService()
-    const { getDocumentContext } = useStoryDocuments()
+    const { getDocumentContext, getStoryDocumentContext } = useStoryDocuments()
     const projectStore = useProjectStore()
     const [voiceProfile, sceneContext, dimensionNames] = await Promise.all([
       (getVoiceProfile?.(projectStore.currentProjectId) ?? Promise.resolve(null)) as Promise<string | null>,
@@ -205,8 +205,8 @@ export async function writeScene(params: WriterParams): Promise<string> {
 
     const storyBible = params.storyBible || (await getDocumentContext('story_bible'))
     const storyContract = params.storyContract || (await getDocumentContext('story_contract'))
-    const existingEntitiesCtx = params.existingEntitiesJson || (await getExistingEntitiesContext())
-    const projectCtx = getProjectContext()
+    const existingEntitiesCtx = params.existingEntitiesJson || (await getStoryDocumentContext(projectStore.currentProjectId))
+    const projectCtx = getProjectContext(projectStore.currentCategory, projectStore.currentDescription)
     const characterMap = params.characters || []
 
     const p = params as any

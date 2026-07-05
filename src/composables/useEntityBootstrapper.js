@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { aiStream } from '../services/aiService'
+import { aiStream } from './useAiService'
 import { FEATURES } from '../config/ai'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'

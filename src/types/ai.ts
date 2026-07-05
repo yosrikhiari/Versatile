@@ -52,6 +52,11 @@ export type FeatureDefaults = Record<FeatureName, FeatureDefault>
 
 // ── AI Generate options ──
 
+export interface FeatureOverride {
+  provider?: string
+  model?: string | null
+}
+
 export interface AiGenerateOptions {
   feature?: FeatureName
   model?: string | null
@@ -63,6 +68,11 @@ export interface AiGenerateOptions {
   timeout?: number
   maxRetries?: number
   retryDelay?: number
+  /** Injected settings — read from store by callers, consumed by aiGenerate/aiStream */
+  defaultProvider?: ProviderName
+  defaultModel?: string
+  featureModels?: Record<string, FeatureOverride>
+  fallbackProvider?: string
 }
 
 // ── Director ──
