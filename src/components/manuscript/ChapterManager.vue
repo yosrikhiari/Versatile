@@ -583,7 +583,10 @@ function getVolumeForSection(section) {
                           ? 'text-accent'
                           : 'text-text-primary'
                       "
-                      @click="manuscriptStore.setActiveSubsection(subsection.id); manuscriptStore.setActiveSection(subsection.sectionId)"
+                      @click="
+                        manuscriptStore.setActiveSubsection(subsection.id)
+                        manuscriptStore.setActiveSection(subsection.sectionId)
+                      "
                       >{{ subsection.title || 'Untitled Subsection' }}</span
                     >
                     <button
@@ -737,7 +740,10 @@ function getVolumeForSection(section) {
     <SnapshotHistoryDrawer
       :show="showSnapshotDrawer"
       :chapter-id="snapshotSectionId"
-      @close="showSnapshotDrawer = false; snapshotSectionId = null"
+      @close="
+        showSnapshotDrawer = false
+        snapshotSectionId = null
+      "
       @restored="
         (content) => {
           if (snapshotSectionId !== null) {

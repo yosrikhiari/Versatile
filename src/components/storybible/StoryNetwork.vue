@@ -1999,7 +1999,11 @@ async function arrangeExtendedStarLayout() {
       :plot-threads="storyBibleStore.plotThreads"
       :groups="manualGroups"
       :existing-edges="storyGraphStore.edges"
-      @close="showConnectionModal = false; nodeToConnect = null; targetNodeToConnect = null"
+      @close="
+        showConnectionModal = false
+        nodeToConnect = null
+        targetNodeToConnect = null
+      "
       @save="handleSaveConnection"
       @save-group-edge="handleSaveGroupEdge"
       @remove-node="handleRemoveNode"
@@ -2019,7 +2023,11 @@ async function arrangeExtendedStarLayout() {
       :show="showApplySuggestionsModal"
       :suggestions="pendingSuggestions"
       :groups="pendingGroups"
-      @close="showApplySuggestionsModal = false; pendingSuggestions = []; pendingGroups = []"
+      @close="
+        showApplySuggestionsModal = false
+        pendingSuggestions = []
+        pendingGroups = []
+      "
       @apply="handleApplyPendingSuggestions"
     />
 
