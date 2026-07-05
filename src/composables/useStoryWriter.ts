@@ -236,8 +236,8 @@ export async function writeScene(params: WriterParams): Promise<string> {
     const allPrompts = DOCUMENT_PROMPTS as unknown as Record<string, PromptSet>
     const prompts = allPrompts[categoryType] || allPrompts.creative
     const systemPrompt = prompts.writer
-    const fullText = await stream(prompt, systemPrompt, 'story_generation', {
-      onChunk: params.onChunk,
+    const fullText = await stream(prompt, systemPrompt, params.onChunk, {
+      feature: 'story_generation',
       temperature: 0.8
     })
 
@@ -266,8 +266,8 @@ export async function writeSceneStructured(params: WriterStructuredParams): Prom
     const systemPrompt = prompts.writer
 
     let accumulated = ''
-    const fullText = await stream(promptData.fullPrompt, systemPrompt, 'story_generation', {
-      onChunk: params.onRawChunk ? (chunk: string) => params.onRawChunk!(chunk) : undefined,
+    const fullText = await stream(promptData.fullPrompt, systemPrompt, params.onRawChunk, {
+      feature: 'story_generation',
       temperature: 0.8
     })
 
