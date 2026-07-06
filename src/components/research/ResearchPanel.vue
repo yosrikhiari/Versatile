@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useFocusTrap } from '../../composables/useFocusTrap'
 import { useProjectStore } from '../../stores/projectStore'
 import { useResearchDocuments } from '../../composables/useResearchDocuments'
@@ -191,6 +191,13 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(() => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
+})
+
 function triggerFileInput() {
   fileInput.value?.click()
 }
@@ -272,6 +279,21 @@ const aggregateStats = computed(() => {
   const failed = values.reduce((s, v) => s + v.failed, 0)
   return { total, indexed, failed }
 })
+
+function setLexicalSearch() {
+  globalSearchMode.value = 'lexical'
+  if (globalSearchQuery.value) runGlobalSearch(globalSearchQuery.value)
+}
+
+function setSemanticSearch() {
+  globalSearchMode.value = 'semantic'
+  if (globalSearchQuery.value) runGlobalSearch(globalSearchQuery.value)
+}
+
+function clearSelectedDoc() {
+  selectedDoc.value = null
+  selectedChunks.value = []
+}
 </script>
 
 <template>
@@ -279,7 +301,7 @@ const aggregateStats = computed(() => {
     fallback-title="Research Panel Error"
     fallback-description="Failed to render the Research panel. Try refreshing the page."
   >
-    <div class="h-full flex flex-col">
+    <div class="h-full flex flex-col overflow-hidden">
       <div
         class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0"
       >
@@ -330,10 +352,7 @@ const aggregateStats = computed(() => {
             title="Lexical search (keyword matching)"
             aria-label="Lexical search mode"
             :aria-pressed="globalSearchMode === 'lexical'"
-            @click="
-              globalSearchMode = 'lexical'
-              if (globalSearchQuery) runGlobalSearch(globalSearchQuery)
-            "
+            @click="setLexicalSearch()"
           >
             T
           </button>
@@ -348,10 +367,7 @@ const aggregateStats = computed(() => {
             title="Semantic search (embedding similarity)"
             aria-label="Semantic search mode"
             :aria-pressed="globalSearchMode === 'semantic'"
-            @click="
-              globalSearchMode = 'semantic'
-              if (globalSearchQuery) runGlobalSearch(globalSearchQuery)
-            "
+            @click="setSemanticSearch()"
           >
             AI
           </button>
@@ -502,10 +518,7 @@ const aggregateStats = computed(() => {
               class="p-1 rounded-lg hover:bg-accent/20 text-text-hint hover:text-accent transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
               title="Back to library"
               aria-label="Back to library"
-              @click="
-                selectedDoc = null
-                selectedChunks = []
-              "
+              @click="clearSelectedDoc()"
             >
               <BaseIcon name="arrow-left" size="14" />
             </button>
