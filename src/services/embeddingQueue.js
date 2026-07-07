@@ -18,6 +18,7 @@ const queue = []
 let isProcessing = false
 let isRunning = false
 let batchSizeOverride = null
+let retryDelayMs = 1000
 const progress = {}
 const subscribers = new Set()
 
@@ -58,7 +59,7 @@ async function processSingleBatch(batch, retryCount = 0) {
   } catch (err) {
     if (retryCount < 1) {
       console.warn(`[embeddingQueue] Batch failed (will retry):`, err.message)
-      await new Promise((r) => setTimeout(r, 1000))
+      await new Promise((r) => setTimeout(r, retryDelayMs))
       return processSingleBatch(batch, 1)
     }
     console.error(`[embeddingQueue] Batch failed:`, err.message)
@@ -143,6 +144,10 @@ async function processQueue() {
 
 export function setBatchSize(n) {
   batchSizeOverride = n
+}
+
+export function setRetryDelay(ms) {
+  retryDelayMs = ms
 }
 
 function cleanupOrphanedProgress(activeDocIds) {
