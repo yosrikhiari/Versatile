@@ -511,8 +511,8 @@ function getTensionColor(tension) {
 }
 
 function acceptRevision() {
-  if (selectedSceneIndex === null || selectedSceneIndex === undefined) return
-  volumeGenerator.writtenScenes.value[selectedSceneIndex].prose =
+  if (selectedSceneIndex.value === null || selectedSceneIndex.value === undefined) return
+  volumeGenerator.writtenScenes.value[selectedSceneIndex.value].prose =
     sceneEval.revisionResult.value.revisedProse
 }
 

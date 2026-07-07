@@ -12,7 +12,7 @@ import { useChapterGenerationSync } from './useChapterGenerationSync'
 import { useStoryDocuments } from './useStoryDocuments'
 import { useActivityLog } from './useActivityLog'
 import { generateRelationships } from './generation/generators/relationships'
-import { getFailedSubsections } from '../services/db-structure'
+import { getFailedSubsections, batchCreatePlanStructure } from '../services/db-structure'
 import {
   saveGenRun,
   clearGenRun,
@@ -752,6 +752,7 @@ export function useVolumeStoryGenerator() {
       ? `${synopsis}\n\nAdditional context from brainstorming:\n${sparkContext}`
       : synopsis
 
+    let activeStage = null
     try {
       progress.total = 4
       phase.value = 'bootstrapping'
@@ -796,6 +797,7 @@ export function useVolumeStoryGenerator() {
       // Phase 1 (Stage A — Story Bible): Bootstrap entities
       progress.current = 2
       progress.statusText = 'Conjuring Characters & World...'
+      activeStage = 'bible'
       await updateGenRunStage(projectId, 'bible', { status: 'running' })
       await bootstrapper.bootstrapEntities({
         synopsis: enhancedSynopsis,
@@ -804,6 +806,7 @@ export function useVolumeStoryGenerator() {
         onPartialData
       })
       await updateGenRunStage(projectId, 'bible', { status: 'done' })
+      activeStage = null
       actLog.updatePhase(currentTaskId, bpPhase, { status: 'done' })
       bpPhase = -1
 
@@ -851,6 +854,7 @@ export function useVolumeStoryGenerator() {
       phase.value = 'planning'
       onPhaseChange?.('planning')
       const planPhase = actLog.addPhase(currentTaskId, 'Planning')
+      activeStage = 'structure'
       await updateGenRunStage(projectId, 'structure', { status: 'running' })
 
       const directorResult = await director.generateStoryPlan({
@@ -961,6 +965,9 @@ export function useVolumeStoryGenerator() {
     } catch (err) {
       phase.value = 'error'
       error.value = err.message || 'Generation failed during initial phases'
+      if (activeStage) {
+        await updateGenRunStage(projectId, activeStage, { status: 'failed', error: error.value })
+      }
       throw err
     }
   }
@@ -1380,8 +1387,10 @@ export function useVolumeStoryGenerator() {
             fullProse.slice(0, 200)
           )
           if (runConsecutiveFailures.value >= QUALITY_FLOOR_CONSECUTIVE) {
-            phase.value = 'error'
             error.value = `Quality floor breached: ${runConsecutiveFailures.value} scenes in a row failed critique after retries. The writer or critic model is likely misconfigured. ${writtenScenes.value.length} scene(s) written and saved.`
+            persistCheckpoint(projectId)
+            await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
+            phase.value = 'error'
             actLog.updatePhase(currentTaskId, scenePhase, { status: 'error' })
             return
           }
@@ -1490,6 +1499,8 @@ export function useVolumeStoryGenerator() {
       volumeIdByIndex[v] = vid
     }
 
+    // Build chapter groups for batch creation
+    const groups = []
     if (chapterPlan.value && chapterPlan.value.length > 0) {
       let offset = 0
       for (const chapter of chapterPlan.value) {
@@ -1498,69 +1509,68 @@ export function useVolumeStoryGenerator() {
           offset += chapter.scenes.length
           continue
         }
-        const sectionData = {
-          title: chapter.title || `Chapter ${chapter.chapterNumber || sections.length + 1}`,
-          summary: group.map((s) => s.title || `Scene ${s.sceneNumber}`).join(', '),
-          wordCount: 0
-        }
-        const sectionId = await manuscriptStore.addSectionData(projectId, sectionData)
-        sections.push({ id: sectionId, scenes: group, subsectionIds: [], chapterMeta: chapter })
-
-        for (const scene of group) {
-          const subData = {
-            title: scene.title || `Scene ${scene.sceneNumber}`,
-            description: `Scene ${scene.sceneNumber}`,
-            content: '',
-            wordCount: 0,
-            type: 'scene',
-            sceneNumber: scene.sceneNumber,
-            contentStatus: 'pending'
-          }
-          const subId = await manuscriptStore.addSubsectionData(projectId, sectionId, subData)
-          sections.at(-1).subsectionIds.push(subId)
-          scene.subsectionId = subId
-        }
-
-        const targetVolumeId = volumeIdByIndex[chapter.volumeIndex || 1] || volumeId.value
-        if (targetVolumeId) {
-          await volumeStore.assignSection(sectionId, targetVolumeId, projectId)
-        }
+        groups.push({
+          title: chapter.title || `Chapter ${chapter.chapterNumber || groups.length + 1}`,
+          scenes: group,
+          volumeId: volumeIdByIndex[chapter.volumeIndex || 1] || volumeId.value,
+          chapterMeta: chapter
+        })
         offset += chapter.scenes.length
       }
     } else {
-      // Fallback: mechanical 3-scene split if no chapter plan
       for (let i = 0; i < editedPlan.length; i += 3) {
         const group = editedPlan.slice(i, i + 3)
-        const sectionData = {
+        groups.push({
           title: group[0].title
-            ? `Part ${sections.length + 1}: ${group[0].title}`
-            : `Part ${sections.length + 1}`,
-          summary: group.map((s) => s.title || `Scene ${s.sceneNumber}`).join(', '),
-          wordCount: 0
-        }
-        const sectionId = await manuscriptStore.addSectionData(projectId, sectionData)
-        sections.push({ id: sectionId, scenes: group, subsectionIds: [] })
-
-        for (const scene of group) {
-          const subData = {
-            title: scene.title || `Scene ${scene.sceneNumber}`,
-            description: `Scene ${scene.sceneNumber}`,
-            content: '',
-            wordCount: 0,
-            type: 'scene',
-            sceneNumber: scene.sceneNumber,
-            contentStatus: 'pending'
-          }
-          const subId = await manuscriptStore.addSubsectionData(projectId, sectionId, subData)
-          sections.at(-1).subsectionIds.push(subId)
-          scene.subsectionId = subId
-        }
-
-        if (volumeId.value) {
-          await volumeStore.assignSection(sectionId, volumeId.value, projectId)
-        }
+            ? `Part ${groups.length + 1}: ${group[0].title}`
+            : `Part ${groups.length + 1}`,
+          scenes: group,
+          volumeId: volumeId.value,
+          chapterMeta: null
+        })
       }
     }
+
+    // Batch-create all sections + subsections + volume assignments atomically
+    const batchResults = await batchCreatePlanStructure({ projectId, groups })
+
+    // Update Pinia reactive state
+    for (const sec of batchResults) {
+      manuscriptStore.sections.push({
+        id: sec.id,
+        projectId,
+        order: manuscriptStore.sections.length,
+        status: 'planning',
+        title: sec.title,
+        summary: sec.summary,
+        wordCount: 0
+      })
+      for (let j = 0; j < sec.subsectionIds.length; j++) {
+        const scene = sec.scenes[j]
+        manuscriptStore.subsections.push({
+          id: sec.subsectionIds[j],
+          projectId,
+          sectionId: sec.id,
+          title: scene.title || `Scene ${scene.sceneNumber}`,
+          description: `Scene ${scene.sceneNumber}`,
+          content: '',
+          wordCount: 0,
+          type: 'scene',
+          sceneNumber: scene.sceneNumber,
+          contentStatus: 'pending',
+          order: j
+        })
+      }
+    }
+    manuscriptStore.triggerStyleGuideRegen()
+
+    // Build the sections array expected by the write pipeline
+    sections.push(...batchResults.map((sec) => ({
+      id: sec.id,
+      scenes: sec.scenes,
+      subsectionIds: sec.subsectionIds,
+      chapterMeta: sec.chapterMeta
+    })))
 
     // Structure (volumes/sections/subsections) is now materialized.
     await updateGenRunStage(projectId, 'structure', { status: 'done' })
@@ -2043,16 +2053,16 @@ export function useVolumeStoryGenerator() {
         const chars = scene.characters || scene.charactersPresent || []
         const location = scene.location || ''
         if (!location || chars.length === 0) continue
-        let locId = locByName[location.toLowerCase().trim()]
+        const locId = locByName[location.toLowerCase().trim()]
         if (!locId) {
-          locId = await bibleStore.addLocationData(projectId, { name: location, generationStatus: 'generated' })
-          locByName[location.toLowerCase().trim()] = locId
+          console.warn(`[buildPreliminaryEdges] Skipping edge for unknown location "${location}"`)
+          continue
         }
         for (const charName of chars) {
-          let charId = charByName[charName.toLowerCase().trim()]
+          const charId = charByName[charName.toLowerCase().trim()]
           if (!charId) {
-            charId = await bibleStore.addCharacterData(projectId, { name: charName, generationStatus: 'generated' })
-            charByName[charName.toLowerCase().trim()] = charId
+            console.warn(`[buildPreliminaryEdges] Skipping edge for unknown character "${charName}"`)
+            continue
           }
           const key = `${charId}|${locId}`
           if (!pairMap.has(key)) {

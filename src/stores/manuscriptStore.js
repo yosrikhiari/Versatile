@@ -257,6 +257,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     setActiveSubsection,
     setManuscriptContent,
     getFullText,
-    clearManuscript
+    clearManuscript,
+    triggerStyleGuideRegen: queueStyleGuideRegen
   }
 })
