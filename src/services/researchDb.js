@@ -72,9 +72,9 @@ export async function addResearchChunks(chunks) {
 export async function updateChunkEmbeddings(updates, meta = {}) {
   const now = Date.now()
   const { provider, model, version } = meta
-  await Promise.all(
-    updates.map(({ id, embedding }) =>
-      db.researchChunks.update(id, {
+  await db.transaction('rw', db.researchChunks, async () => {
+    for (const { id, embedding } of updates) {
+      await db.researchChunks.update(id, {
         embedding,
         embeddingProvider: provider || null,
         embeddingModel: model || null,
@@ -82,12 +82,16 @@ export async function updateChunkEmbeddings(updates, meta = {}) {
         embeddedAt: now,
         embeddingStatus: READY
       })
-    )
-  )
+    }
+  })
 }
 
 export async function markProcessing(ids) {
-  await Promise.all(ids.map((id) => db.researchChunks.update(id, { embeddingStatus: PROCESSING })))
+  await db.transaction('rw', db.researchChunks, async () => {
+    for (const id of ids) {
+      await db.researchChunks.update(id, { embeddingStatus: PROCESSING })
+    }
+  })
 }
 
 export async function markFailed(ids) {
