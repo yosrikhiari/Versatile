@@ -510,6 +510,12 @@ function getTensionColor(tension) {
   }
 }
 
+function acceptRevision() {
+  if (selectedSceneIndex === null || selectedSceneIndex === undefined) return
+  volumeGenerator.writtenScenes.value[selectedSceneIndex].prose =
+    sceneEval.revisionResult.value.revisedProse
+}
+
 function getPhaseLabel(phase) {
   const labels = {
     bootstrapping: 'Preparing Story Elements',
@@ -526,7 +532,7 @@ function getPhaseLabel(phase) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-bg-primary">
+  <div class="h-full flex flex-col bg-bg-primary overflow-hidden">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <h2 class="text-base font-semibold text-text-primary font-ui mb-3">Story Tools</h2>
       <div class="flex w-full gap-0.5 p-0.5 bg-bg-secondary border border-border-subtle rounded-lg">
@@ -550,7 +556,7 @@ function getPhaseLabel(phase) {
 
     <div class="flex-1 overflow-y-auto scrollbar-thin">
       <!-- ==================== BRAINSTORM TAB ==================== -->
-      <div v-if="tab === MODE_BRAINSTORM" class="h-full flex flex-col">
+      <div v-if="tab === MODE_BRAINSTORM" class="h-full flex flex-col overflow-hidden">
         <div class="flex-1 overflow-y-auto">
           <SparkPanel embedded @use-as-context="handleSendSparkToGenerator" />
         </div>
@@ -1533,10 +1539,7 @@ function getPhaseLabel(phase) {
                 <button
                   v-if="sceneEval.revisionResult.value"
                   class="flex-1 py-1 px-2 bg-emerald-600/20 text-emerald-400 rounded-md text-11px font-medium hover:bg-emerald-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-                  @click="
-                    volumeGenerator.writtenScenes.value[selectedSceneIndex].prose =
-                      sceneEval.revisionResult.value.revisedProse
-                  "
+                  @click="acceptRevision()"
                 >
                   <BaseIcon name="check" :size="11" /> Accept Revision
                 </button>

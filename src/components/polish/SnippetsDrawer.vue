@@ -16,7 +16,7 @@ const sortedSnippets = computed(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col overflow-hidden">
     <h3 class="text-11px uppercase tracking-widest text-text-hint font-ui mb-3">Snippets</h3>
 
     <div v-if="sortedSnippets.length === 0" class="text-center py-4">

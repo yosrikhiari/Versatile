@@ -59,8 +59,6 @@ const canvasDragOptions = {
 const gridStyle = computed(() => ({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-  gap: '12px',
-  padding: '16px'
 }))
 
 function getElementIconName(type) {
@@ -118,7 +116,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-bg-secondary">
+  <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
       <span class="font-ui text-accent tracking-wide">Story Canvas</span>
       <div class="flex gap-2">
@@ -131,7 +129,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="flex-1 overflow-auto p-4">
+    <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-4">
       <div class="mb-4 flex gap-2 flex-wrap">
         <button
           v-for="type in elementTypes"
@@ -184,17 +182,17 @@ onMounted(() => {
         item-key="id"
         v-bind="storyDragOptions"
         :style="gridStyle"
-        class="min-h-[200px]"
+        class="min-h-[200px] gap-3 p-4"
       >
         <template #item="{ element }">
           <div
             :class="[
-              'p-3 rounded-lg border-2 cursor-pointer transition-all',
+              'p-3 rounded-lg border-2 border-l-4 cursor-pointer transition-all',
               selectedElement?.id === element.id
                 ? 'border-accent shadow-lg scale-[1.02]'
                 : 'border-border-subtle hover:border-accent/50'
             ]"
-            :style="{ borderLeftColor: getElementColor(element.type), borderLeftWidth: '4px' }"
+            :style="{ borderLeftColor: getElementColor(element.type) }"
             @click="selectElement(element)"
           >
             <div class="flex items-start justify-between">
@@ -277,12 +275,11 @@ onMounted(() => {
 
 <style scoped>
 .ghost {
-  opacity: 0.5;
+  @apply opacity-50 rounded-lg;
   background: var(--vers-accent-primary);
-  border-radius: 8px;
 }
 .drag {
-  opacity: 0.9;
+  @apply opacity-90;
   transform: rotate(2deg);
 }
 </style>
