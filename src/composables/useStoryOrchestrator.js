@@ -1,3 +1,9 @@
+/**
+ * @deprecated Legacy flat scene-by-scene generator. The end-to-end novel
+ * pipeline is now {@link useNovelPipeline} (which wraps
+ * {@link useVolumeStoryGenerator}). This module is retained only for backward
+ * compatibility and existing tests; do not build new features on it.
+ */
 import { ref, shallowRef } from 'vue'
 import { useStoryDirector } from './useStoryDirector'
 import { useStoryWriter } from './useStoryWriter'

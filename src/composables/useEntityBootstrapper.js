@@ -1,9 +1,60 @@
 import { ref } from 'vue'
-import { aiStream } from './useAiService'
+import { aiStream, aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
 import { sanitizeJson } from '../services/ai/aiHelpers'
+
+// Structured-output schema for the entity enrichment call. Used as a
+// non-streaming fallback when the streamed JSON can't be parsed.
+const ENTITIES_SCHEMA = {
+  type: 'object',
+  properties: {
+    characters: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          role: { type: 'string' },
+          goal: { type: 'string' },
+          voice: { type: 'string' },
+          notes: { type: 'string' },
+          sampleDialogue: { type: 'string' },
+          description: { type: 'string' },
+          traits: { type: 'array', items: { type: 'string' } }
+        },
+        required: ['name']
+      }
+    },
+    locations: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          description: { type: 'string' },
+          notes: { type: 'string' },
+          traits: { type: 'array', items: { type: 'string' } }
+        },
+        required: ['name']
+      }
+    },
+    plotThreads: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          notes: { type: 'string' },
+          traits: { type: 'array', items: { type: 'string' } }
+        },
+        required: ['title']
+      }
+    }
+  },
+  required: ['characters', 'locations', 'plotThreads']
+}
 
 const MIN_CHARACTERS = 3
 const MIN_LOCATIONS = 2
@@ -151,6 +202,17 @@ TASK:
 
       let parsed = sanitizeJson(accumulated)
       if (!parsed) {
+        // Streamed output wasn't parseable — retry once with structured output
+        // (native schema-constrained on capable providers, sanitizeJson fallback
+        // otherwise) so a single malformed stream doesn't abort the whole run.
+        parsed = await aiGenerateJson(userPrompt, ENRICH_ENTITIES_PROMPT, {
+          feature: FEATURES.STORY_GENERATION,
+          temperature: 0.7,
+          schema: ENTITIES_SCHEMA,
+          schemaName: 'story_entities'
+        }).catch(() => null)
+      }
+      if (!parsed) {
         throw new Error('Failed to parse generated entities')
       }
 
@@ -171,14 +233,22 @@ TASK:
         const existing = charByKey.get(key)
 
         if (existing) {
+          // Canon lock: hand-authored (approved) or explicitly locked entities
+          // may only be gap-filled, never overwritten — the enricher can add
+          // missing fields and merge traits/notes, but can't rewrite established
+          // core identity. Generated entities remain fully enrichable.
+          const locked = existing.canonLocked || existing.generationStatus === 'approved'
           const update = {}
-          if (char.role && char.role !== existing.role) update.role = char.role
-          if (char.goal && char.goal !== existing.goal) update.goal = char.goal
-          if (char.voice && char.voice !== existing.voice) update.voice = char.voice
-          if (char.description && char.description !== existing.description)
-            update.description = char.description
-          if (char.sampleDialogue && char.sampleDialogue !== existing.sampleDialogue)
-            update.sampleDialogue = char.sampleDialogue
+          const canSet = (field, val) => {
+            if (!val || val === existing[field]) return
+            if (locked && existing[field]) return
+            update[field] = val
+          }
+          canSet('role', char.role)
+          canSet('goal', char.goal)
+          canSet('voice', char.voice)
+          canSet('description', char.description)
+          canSet('sampleDialogue', char.sampleDialogue)
 
           const mergedTraits = mergeTraits(existing.traits, char.traits)
           if (mergedTraits.length !== (existing.traits || []).length) update.traits = mergedTraits
@@ -199,7 +269,8 @@ TASK:
             description: char.description || '',
             notes: char.notes || '',
             sampleDialogue: char.sampleDialogue || '',
-            traits: char.traits || []
+            traits: char.traits || [],
+            generationStatus: 'generated'
           })
           generatedIds.characters.push(id)
           if (volumeId) {
@@ -214,8 +285,9 @@ TASK:
         const existing = locByKey.get(key)
 
         if (existing) {
+          const locked = existing.canonLocked || existing.generationStatus === 'approved'
           const update = {}
-          if (loc.description && loc.description !== existing.description)
+          if (loc.description && loc.description !== existing.description && !(locked && existing.description))
             update.description = loc.description
           const mergedTraits = mergeTraits(existing.traits, loc.traits)
           if (mergedTraits.length !== (existing.traits || []).length) update.traits = mergedTraits
@@ -230,7 +302,8 @@ TASK:
             name: loc.name,
             description: loc.description || '',
             notes: loc.notes || '',
-            traits: loc.traits || []
+            traits: loc.traits || [],
+            generationStatus: 'generated'
           })
           generatedIds.locations.push(id)
           if (volumeId) {
@@ -258,7 +331,8 @@ TASK:
           const id = await storyBibleStore.addPlotThreadData(projectId, {
             title: thread.title,
             notes: thread.notes || '',
-            traits: thread.traits || []
+            traits: thread.traits || [],
+            generationStatus: 'generated'
           })
           generatedIds.plotThreads.push(id)
           if (volumeId) {

@@ -144,6 +144,9 @@ All values must be strings. No markdown.`
 
     return result
   } catch (error) {
+    if (error.message === 'Invalid JSON') {
+      throw new Error('Model returned malformed JSON. The response could not be parsed.')
+    }
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(
       isApiError
@@ -214,6 +217,9 @@ No markdown, no explanation, no preamble. JSON only.`
 
     return result
   } catch (error) {
+    if (error.message === 'Invalid JSON') {
+      throw new Error('Model returned malformed JSON. The response could not be parsed.')
+    }
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(
       isApiError
@@ -367,6 +373,9 @@ Single string value, no markdown.`
 
     return result
   } catch (error) {
+    if (error.message === 'Invalid JSON') {
+      throw new Error('Model returned malformed JSON. The response could not be parsed.')
+    }
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(
       isApiError
@@ -457,6 +466,9 @@ All values must be strings. No markdown.`
 
     return result
   } catch (error) {
+    if (error.message === 'Invalid JSON') {
+      throw new Error('Model returned malformed JSON. The response could not be parsed.')
+    }
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(
       isApiError
@@ -565,6 +577,9 @@ All values must be strings or arrays. No markdown.`
 
     return result
   } catch (error) {
+    if (error.message === 'Invalid JSON') {
+      throw new Error('Model returned malformed JSON. The response could not be parsed.')
+    }
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(
       isApiError
