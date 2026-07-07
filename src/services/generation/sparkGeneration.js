@@ -151,6 +151,9 @@ Tone: ${tone}${projectContext}${contextInstruction}`
 
     return parsed
   } catch (error) {
+    if (error.message === 'Invalid JSON') {
+      throw new Error('Model returned malformed JSON. The response could not be parsed.')
+    }
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(
       isApiError

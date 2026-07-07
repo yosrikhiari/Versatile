@@ -50,7 +50,7 @@ export function shapeContext(rawContext, options = {}) {
     manuscriptBlock
   }
 
-  const result = applyTokenBudget(bundle, options.tokenBudget)
+  const result = applyTokenBudget(bundle, options.tokenBudget, options.systemPrompt)
 
   return result
 }

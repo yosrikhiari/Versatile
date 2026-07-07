@@ -14,7 +14,8 @@ export async function generateEntity(entityType, extraInstructions = '', options
   })
 
   const shapedBundle = shapeContext(rawContext, {
-    tokenBudget: options.tokenBudget
+    tokenBudget: options.tokenBudget,
+    systemPrompt: schema.systemPrompt
   })
 
   const { userPrompt, systemPrompt } = buildPrompt({

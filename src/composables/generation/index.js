@@ -2,5 +2,7 @@ export { generateEntity } from './pipeline'
 export {
   generateRandomCharacter,
   generateRandomLocation,
-  generateRandomPlotThread
+  generateRandomPlotThread,
+  generateRelationships,
+  buildRelationshipEdges
 } from './generators'

@@ -19,12 +19,12 @@ export async function warmEmbeddingCache(projectId) {
     const cache = await getEmbeddingCache()
     let warmed = 0
 
-    for (const scene of allScenes) {
-      if (!scene.content) continue
-      const key = `scene_${scene.id}`
-      if (!cache[key] || cache[key].text !== scene.content) {
-        getEmbedding('scene', scene.id, scene.content).catch(() =>
-          console.warn(`[useManuscriptContext] Failed to warm embedding for scene ${scene.id}`)
+    for (const sub of allSubsections) {
+      if (!sub.content) continue
+      const key = `subsection_${sub.id}`
+      if (!cache[key] || cache[key].text !== sub.content) {
+        getEmbedding('subsection', sub.id, sub.content).catch(() =>
+          console.warn(`[useManuscriptContext] Failed to warm embedding for subsection ${sub.id}`)
         )
         warmed++
       }

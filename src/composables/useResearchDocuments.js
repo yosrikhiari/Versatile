@@ -55,7 +55,7 @@ export function useResearchDocuments(projectId) {
   const showSizeWarning = ref(false)
   const pendingImportInfo = ref({ files: [], totalChars: 0 })
   const truncationInfo = ref(null)
-  const { enqueueChunks } = useEmbeddingIndexer()
+  const { enqueueChunks, clearDocumentProgress } = useEmbeddingIndexer()
 
   function confirmImport() {
     showSizeWarning.value = false
@@ -147,8 +147,9 @@ export function useResearchDocuments(projectId) {
 
         const segments = splitText(text)
         const fastMode = text.length > FAST_MODE_THRESHOLD
-        let allChunks = []
         const allDocTags = new Set()
+        let chunkIndex = 0
+        totalChunks = 0
 
         for (let s = 0; s < segments.length; s++) {
           const basePct = Math.round((s / segments.length) * 90)
@@ -167,31 +168,31 @@ export function useResearchDocuments(projectId) {
           })
           const docTags = chunks.documentTags || []
           for (const t of docTags) allDocTags.add(t)
-          allChunks.push(...chunks)
+
+          const chunkRows = chunks.map((c, i) => ({
+            documentId: docId,
+            projectId: projectId.value,
+            text: c.text,
+            chunkIndex: chunkIndex + i,
+            heading: c.heading,
+            sentenceCount: c.sentenceCount,
+            charCount: c.charCount,
+            tokenEstimate: c.tokenEstimate,
+            tags: c.tags || []
+          }))
+
+          const ids = await addResearchChunks(chunkRows)
+          const idTextPairs = ids.map((id, i) => ({ id, text: chunks[i].text }))
+          enqueueChunks(docId, idTextPairs)
+
+          chunkIndex += chunks.length
+          totalChunks += chunks.length
           await yieldToMain()
         }
 
         await db.researchDocuments.update(docId, { tags: [...allDocTags].slice(0, 20) })
-
-        const chunkRows = allChunks.map((c, i) => ({
-          documentId: docId,
-          projectId: projectId.value,
-          text: c.text,
-          chunkIndex: i,
-          heading: c.heading,
-          sentenceCount: c.sentenceCount,
-          charCount: c.charCount,
-          tokenEstimate: c.tokenEstimate,
-          tags: c.tags || []
-        }))
-
-        totalChunks = chunkRows.length
-        const ids = await addResearchChunks(chunkRows)
-
         importPercent.value = 90 + Math.round((processed / files.length) * 8)
         importProgress.value = `Indexing ${file.name} (${totalChunks} chunks)...`
-        const idTextPairs = ids.map((id, i) => ({ id, text: allChunks[i].text }))
-        enqueueChunks(docId, idTextPairs)
 
         processed++
 
@@ -216,6 +217,7 @@ export function useResearchDocuments(projectId) {
   }
 
   async function removeDocument(id) {
+    clearDocumentProgress(id)
     await deleteResearchDocument(id)
     await loadDocuments()
   }
