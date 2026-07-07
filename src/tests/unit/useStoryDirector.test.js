@@ -16,7 +16,15 @@ const mockAiStream = vi.fn(async (user, system, onChunk, opts) => {
 
 vi.mock('@/services/aiService', () => ({
   aiGenerate: (...args) => mockAiGenerate(...args),
-  aiStream: (...args) => mockAiStream(...args)
+  aiStream: (...args) => mockAiStream(...args),
+  aiGenerateStructured: async (...args) => {
+    const r = await mockAiGenerate(...args)
+    if (r && typeof r === 'object') return r
+    const cleaned = String(r).replace(/```json/gi, '').replace(/```/g, '').trim()
+    const m = cleaned.match(/\{[\s\S]*\}/)
+    if (!m) throw new Error('structured parse failed')
+    return JSON.parse(m[0])
+  }
 }))
 
 vi.mock('@/config/ai', () => ({
