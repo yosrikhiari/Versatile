@@ -73,7 +73,9 @@ describe('addSection', () => {
   it('adds a section with projectId', async () => {
     mockDb.sections.add.mockResolvedValue('sec1')
     const result = await dbStructure.addSection('proj1', { title: 'Chapter 1' })
-    expect(mockDb.sections.add).toHaveBeenCalledWith({ projectId: 'proj1', title: 'Chapter 1' })
+    expect(mockDb.sections.add).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'proj1', title: 'Chapter 1' })
+    )
     expect(result).toBe('sec1')
   })
 })

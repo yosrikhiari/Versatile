@@ -145,3 +145,60 @@ export async function removeSectionFromVolume(sectionId) {
   if (sections.length === 0) return
   await db.sections.update(sectionId, { volumeId: null })
 }
+
+export async function batchCreatePlanStructure({ projectId, groups }) {
+  return db.transaction('rw', db.sections, db.subsections, async () => {
+    const results = []
+    const now = new Date().toISOString()
+
+    for (let i = 0; i < groups.length; i++) {
+      const group = groups[i]
+      const sectionId = await db.sections.add({
+        projectId,
+        title: group.title,
+        summary: group.scenes.map((s) => s.title || `Scene ${s.sceneNumber}`).join(', '),
+        wordCount: 0,
+        order: i,
+        status: 'planning',
+        createdAt: now,
+        updatedAt: now
+      })
+
+      const subsectionIds = []
+      for (let j = 0; j < group.scenes.length; j++) {
+        const scene = group.scenes[j]
+        const subId = await db.subsections.add({
+          projectId,
+          sectionId,
+          title: scene.title || `Scene ${scene.sceneNumber}`,
+          description: `Scene ${scene.sceneNumber}`,
+          content: '',
+          wordCount: 0,
+          type: 'scene',
+          sceneNumber: scene.sceneNumber,
+          contentStatus: 'pending',
+          order: j,
+          createdAt: now,
+          updatedAt: now
+        })
+        subsectionIds.push(subId)
+        scene.subsectionId = subId
+      }
+
+      if (group.volumeId) {
+        await db.sections.update(sectionId, { volumeId: group.volumeId })
+      }
+
+      results.push({
+        id: sectionId,
+        scenes: group.scenes,
+        subsectionIds,
+        chapterMeta: group.chapterMeta,
+        title: group.title,
+        summary: group.scenes.map((s) => s.title || `Scene ${s.sceneNumber}`).join(', ')
+      })
+    }
+
+    return results
+  })
+}

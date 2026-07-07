@@ -49,7 +49,8 @@ export {
   updateVolume,
   deleteVolume,
   assignSectionToVolume,
-  removeSectionFromVolume
+  removeSectionFromVolume,
+  batchCreatePlanStructure
 } from './db-structure'
 export {
   getVolumeEntities,
