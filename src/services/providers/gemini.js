@@ -4,7 +4,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('Gemini API key not configured')
 
-  const url = `${PROVIDER_BASE_URLS[PROVIDERS.GEMINI]}/models/${model}:generateContent?key=${apiKey}`
+  const url = `${PROVIDER_BASE_URLS[PROVIDERS.GEMINI]}/models/${model}:generateContent`
 
   const contents = []
   if (systemPrompt) {
@@ -15,7 +15,7 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     signal: options.signal,
     body: JSON.stringify({
       contents,
@@ -39,7 +39,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('Gemini API key not configured')
 
-  const url = `${PROVIDER_BASE_URLS[PROVIDERS.GEMINI]}/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`
+  const url = `${PROVIDER_BASE_URLS[PROVIDERS.GEMINI]}/models/${model}:streamGenerateContent?alt=sse`
 
   const contents = []
   if (systemPrompt) {
@@ -50,7 +50,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     signal: options.signal,
     body: JSON.stringify({
       contents,
@@ -101,8 +101,10 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
 
 export async function testConnection(apiKey) {
   try {
-    const url = `${PROVIDER_BASE_URLS[PROVIDERS.GEMINI]}/models?key=${apiKey}`
-    const response = await fetch(url)
+    const url = `${PROVIDER_BASE_URLS[PROVIDERS.GEMINI]}/models`
+    const response = await fetch(url, {
+      headers: { 'x-goog-api-key': apiKey }
+    })
     return response.ok
   } catch {
     return false

@@ -1,4 +1,9 @@
-import { aiGenerate as _aiGenerate, aiStream as _aiStream, resolveFeatureConfig as _resolveFeatureConfig } from '../services/aiService'
+import {
+  aiGenerate as _aiGenerate,
+  aiStream as _aiStream,
+  aiGenerateStructured as _aiGenerateStructured,
+  resolveFeatureConfig as _resolveFeatureConfig
+} from '../services/aiService'
 import type { AiGenerateOptions, FeatureName } from '../types/ai'
 import { useSettingsStore } from '../stores/settingsStore'
 
@@ -30,6 +35,19 @@ export async function aiStream(
   options: AiGenerateOptions = {}
 ): Promise<string> {
   return _aiStream(prompt, systemPrompt, onChunk, injectSettings(options))
+}
+
+/**
+ * Store-aware structured JSON generation. Pass `schema` to opt into native
+ * structured output (with automatic sanitizeJson fallback); omit it to just get
+ * a parsed JSON object from a plain call. Returns a parsed object or throws.
+ */
+export async function aiGenerateJson<T = Record<string, unknown>>(
+  prompt: string,
+  systemPrompt: string,
+  options: AiGenerateOptions & { schema?: Record<string, unknown>; schemaName?: string } = {}
+): Promise<T> {
+  return _aiGenerateStructured(prompt, systemPrompt, injectSettings(options)) as Promise<T>
 }
 
 /** Pure re-export (no store injection — resolveFeatureConfig is stateless) */

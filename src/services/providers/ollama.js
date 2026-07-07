@@ -101,6 +101,9 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
         system: systemPrompt,
         prompt: prompt,
         stream: false,
+        // `format` may be 'json' or a full JSON schema object — Ollama constrains
+        // decoding to it, giving us structured output on local models.
+        ...(options.format ? { format: options.format } : {}),
         ...buildOllamaOptions(options)
       }),
       signal: controller.signal
@@ -230,6 +233,13 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     }
     throw decorateOllamaError(error.message || String(error), error)
   }
+}
+
+// Structured output: constrain decoding to the JSON schema via Ollama's `format`
+// field, then parse the response. Non-streaming (structured + streaming don't mix).
+export async function generateStructured(prompt, systemPrompt, model, schema, options = {}) {
+  const raw = await generate(prompt, systemPrompt, model, { ...options, format: schema })
+  return JSON.parse(raw)
 }
 
 export async function listModels() {

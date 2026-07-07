@@ -6,7 +6,8 @@ import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
 import * as geminiProvider from './providers/gemini'
 import * as groqProvider from './providers/groq'
-import { deobfuscate } from './ollamaService'
+import { decrypt } from './ollamaService'
+import { getAuthHeaders } from './api'
 
 const PROVIDER_MAP = {
   [PROVIDERS.OLLAMA]: ollamaProvider as unknown as ProviderModule,
@@ -16,13 +17,29 @@ const PROVIDER_MAP = {
   [PROVIDERS.GROQ]: groqProvider as ProviderModule
 } as unknown as Record<ProviderName, ProviderModule>
 
-function getApiKey(provider: ProviderName): string | null {
+async function getApiKey(provider: ProviderName): Promise<string | null> {
   if (provider === PROVIDERS.OLLAMA) return null
+
+  // Try backend first (authenticated users)
+  try {
+    const headers = getAuthHeaders()
+    if (headers.Authorization) {
+      const res = await fetch(`/api/apikeys/${provider}`, { headers })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.key) return data.key
+      }
+    }
+  } catch {
+    // fall through to localStorage
+  }
+
+  // Fallback to localStorage (offline / unauthenticated)
   const storageKey = getApiKeyStorageKey(provider)
   const encrypted = localStorage.getItem(storageKey)
   if (!encrypted) return ''
   try {
-    return deobfuscate(encrypted)
+    return await decrypt(encrypted)
   } catch {
     return ''
   }

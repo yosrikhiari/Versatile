@@ -17,44 +17,89 @@ embeddingDB.version(1).stores({
   embeddings: 'key, embedding, text, timestamp'
 })
 
-export function obfuscate(text) {
+const CRYPTO_KEY_NAME = 'versatile-crypto-key'
+
+/** @returns {Promise<CryptoKey>} */
+async function getCryptoKey() {
+  const stored = localStorage.getItem(CRYPTO_KEY_NAME)
+  if (stored) {
+    const raw = Uint8Array.from(atob(stored), function(c) { return c.charCodeAt(0) })
+    return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+  }
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt'])
+  const raw = new Uint8Array(await crypto.subtle.exportKey('raw', key))
+  localStorage.setItem(CRYPTO_KEY_NAME, btoa(String.fromCharCode.apply(null, raw)))
+  return key
+}
+
+/**
+ * Encrypt text with AES-GCM and return a base64 string (iv + ciphertext).
+ * @param {string} text
+ * @returns {Promise<string>}
+ */
+export async function encrypt(text) {
   try {
-    const encoder = new TextEncoder()
-    const data = encoder.encode(text)
-    return btoa(String.fromCharCode(...data))
+    const key = await getCryptoKey()
+    const iv = crypto.getRandomValues(new Uint8Array(12))
+    const encoded = new TextEncoder().encode(text)
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded)
+    const combined = new Uint8Array(iv.length + encrypted.byteLength)
+    combined.set(iv)
+    combined.set(new Uint8Array(encrypted), iv.length)
+    return btoa(String.fromCharCode.apply(null, combined))
   } catch {
-    return text
+    return ''
   }
 }
 
-export function deobfuscate(encoded) {
+/**
+ * Fallback deobfuscation for legacy btoa()-encoded keys.
+ * @param {string} encoded
+ * @returns {string}
+ */
+function legacyDeobfuscate(encoded) {
   try {
-    const binaryString = atob(encoded)
-    const bytes = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
-    }
-    return new TextDecoder().decode(bytes)
+    return new TextDecoder().decode(
+      Uint8Array.from(atob(encoded), function(c) { return c.charCodeAt(0) })
+    )
   } catch {
-    return encoded
+    return ''
   }
 }
 
-export function getStoredOpenAIKey() {
-  // STORAGE_KEYS ref
+export async function decrypt(encoded) {
+  // Try Web Crypto AES-GCM first
+  try {
+    const key = await getCryptoKey()
+    const combined = Uint8Array.from(atob(encoded), function(c) { return c.charCodeAt(0) })
+    const iv = combined.slice(0, 12)
+    const data = combined.slice(12)
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data)
+    return new TextDecoder().decode(decrypted)
+  } catch {
+    // Fallback to legacy btoa() — handles existing stored keys during migration
+    const legacy = legacyDeobfuscate(encoded)
+    if (legacy) return legacy
+    return ''
+  }
+}
+
+export async function getStoredOpenAIKey() {
   const encrypted = localStorage.getItem(STORAGE_KEYS.OPENAI_KEY)
   if (!encrypted) return null
-  return deobfuscate(encrypted)
+  try {
+    return await decrypt(encrypted)
+  } catch {
+    return legacyDeobfuscate(encrypted) || null
+  }
 }
 
-export function setStoredOpenAIKey(key) {
-  const encrypted = obfuscate(key)
-  // STORAGE_KEYS ref
-  localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, encrypted)
+export async function setStoredOpenAIKey(key) {
+  localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, key ? await encrypt(key) : '')
 }
 
-export function hasOpenAIKey() {
-  return !!getStoredOpenAIKey()
+export async function hasOpenAIKey() {
+  return !!(await getStoredOpenAIKey())
 }
 
 export function hasPromptedForOpenAI() {

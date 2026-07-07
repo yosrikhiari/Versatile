@@ -25,6 +25,14 @@ export interface ProviderModule {
     onChunk: ((chunk: string, full: string) => void) | undefined,
     options: ProviderOptions
   ): Promise<string>
+  /** Optional native structured-output path (tool-use / json_schema / format). */
+  generateStructured?(
+    prompt: string,
+    systemPrompt: string,
+    model: string | null,
+    schema: Record<string, unknown>,
+    options: ProviderOptions & { schemaName?: string }
+  ): Promise<Record<string, unknown>>
 }
 
 export type ProviderMap = Record<ProviderName, ProviderModule>
@@ -73,6 +81,10 @@ export interface AiGenerateOptions {
   defaultModel?: string
   featureModels?: Record<string, FeatureOverride>
   fallbackProvider?: string
+  /** JSON schema for structured output (aiGenerateStructured / aiGenerateJson). */
+  schema?: Record<string, unknown>
+  /** Name for the structured-output tool / schema (provider-dependent). */
+  schemaName?: string
 }
 
 // ── Director ──
