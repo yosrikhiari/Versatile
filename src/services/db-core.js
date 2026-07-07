@@ -781,6 +781,50 @@ db.version(30).stores({
   genRuns: '++id, &projectId, updatedAt'
 })
 
+// v31: generation-pipeline status tracking. Adds `generationStatus` to the Story
+// Bible entities and `contentStatus` to subsections so the orchestrator can tell
+// pending/generated/authored/failed apart, drive a repair pass, and freeze canon.
+// Only the changed tables are listed; Dexie carries the rest forward.
+db.version(31)
+  .stores({
+    characters:
+      '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, generationStatus, apiId, syncStatus, lastSyncedAt',
+    locations:
+      '++id, projectId, name, description, notes, generationStatus, apiId, syncStatus, lastSyncedAt',
+    plotThreads:
+      '++id, projectId, title, status, notes, generationStatus, apiId, syncStatus, lastSyncedAt',
+    subsections:
+      '++id, projectId, sectionId, title, summary, order, content, *tags, contentStatus, apiId, syncStatus, lastSyncedAt'
+  })
+  .upgrade(async (trans) => {
+    const now = new Date().toISOString()
+    // Existing hand-authored/generated entities are treated as approved canon so
+    // the pipeline never re-generates or overwrites them.
+    await trans.characters
+      .toCollection()
+      .modify((c) => {
+        if (!c.generationStatus) c.generationStatus = 'approved'
+        if (!c.createdAt) c.createdAt = now
+        if (!c.updatedAt) c.updatedAt = now
+      })
+    await trans.locations.toCollection().modify((l) => {
+      if (!l.generationStatus) l.generationStatus = 'approved'
+      if (!l.createdAt) l.createdAt = now
+      if (!l.updatedAt) l.updatedAt = now
+    })
+    await trans.plotThreads.toCollection().modify((t) => {
+      if (!t.generationStatus) t.generationStatus = 'approved'
+      if (!t.createdAt) t.createdAt = now
+      if (!t.updatedAt) t.updatedAt = now
+    })
+    // A subsection with prose is 'generated'; an empty stub is 'draft'.
+    await trans.subsections.toCollection().modify((s) => {
+      if (!s.contentStatus) {
+        s.contentStatus = s.content && String(s.content).trim() ? 'generated' : 'draft'
+      }
+    })
+  })
+
 const recoveryFlag = 'versatile_db_recovery'
 
 let _ready

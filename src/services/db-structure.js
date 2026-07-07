@@ -9,11 +9,12 @@ export async function getSections(projectId) {
 }
 
 export async function addSection(projectId, data) {
-  return db.sections.add({ projectId, ...data })
+  const now = new Date().toISOString()
+  return db.sections.add({ projectId, createdAt: now, updatedAt: now, ...data })
 }
 
 export async function updateSection(id, data) {
-  return db.sections.update(id, data)
+  return db.sections.update(id, { ...data, updatedAt: new Date().toISOString() })
 }
 
 export async function deleteSection(id) {
@@ -38,7 +39,8 @@ export async function getSubsections(projectId, sectionId = null) {
 }
 
 export async function addSubsection(projectId, data) {
-  const result = await db.subsections.add({ projectId, ...data })
+  const now = new Date().toISOString()
+  const result = await db.subsections.add({ projectId, contentStatus: 'draft', createdAt: now, updatedAt: now, ...data })
   if (data.content) {
     getEmbedding('subsection', result, data.content).catch((err) => {
       console.error('Failed to generate embedding for new subsection:', result, err)
@@ -48,7 +50,7 @@ export async function addSubsection(projectId, data) {
 }
 
 export async function updateSubsection(id, data) {
-  await db.subsections.update(id, data)
+  await db.subsections.update(id, { ...data, updatedAt: new Date().toISOString() })
   if (data.content) {
     getEmbedding('subsection', id, data.content).catch((err) => {
       console.error('Failed to generate embedding for subsection update:', id, err)
@@ -58,6 +60,15 @@ export async function updateSubsection(id, data) {
 
 export async function deleteSubsection(id) {
   return db.subsections.delete(id)
+}
+
+// Subsections whose prose generation failed (or never ran) — drives the
+// end-of-run repair pass. `failed` first, then any left empty.
+export async function getFailedSubsections(projectId) {
+  const subs = await db.subsections.where('projectId').equals(projectId).toArray()
+  return subs.filter(
+    (s) => s.contentStatus === 'failed' || !(s.content && String(s.content).trim())
+  )
 }
 
 export async function reorderSubsections(subsectionIds) {

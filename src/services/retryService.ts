@@ -33,7 +33,7 @@ async function withRetry<T>(
   isRetryableFn: (error: unknown) => boolean,
   options: RetryOptions = {}
 ): Promise<T> {
-  const maxRetries = options.maxRetries ?? 2
+  const maxRetries = options.maxRetries ?? 4
   const retryDelay = options.retryDelay ?? 1000
   let lastError: unknown
 

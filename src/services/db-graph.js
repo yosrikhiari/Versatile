@@ -25,7 +25,18 @@ export async function getGraphEdges(projectId) {
 }
 
 export async function addGraphEdge(projectId, data) {
-  return db.graphEdges.add({ projectId, ...data })
+  return db.graphEdges.add({ projectId, createdAt: new Date().toISOString(), ...data })
+}
+
+// Atomic bulk insert for the Story Network stage — one transaction so a mid-run
+// failure never leaves a half-written edge set.
+export async function addGraphEdgesBatch(projectId, edges) {
+  if (!Array.isArray(edges) || edges.length === 0) return []
+  const now = new Date().toISOString()
+  const rows = edges.map((e) => ({ projectId, createdAt: now, ...e }))
+  return db.transaction('rw', db.graphEdges, async () => {
+    return db.graphEdges.bulkAdd(rows, { allKeys: true })
+  })
 }
 
 export async function updateGraphEdge(id, data) {

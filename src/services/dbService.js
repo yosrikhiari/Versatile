@@ -26,6 +26,7 @@ export {
   deletePlotThread,
   getCharacterRelationships,
   addCharacterRelationship,
+  addCharacterRelationshipsBatch,
   updateCharacterRelationship,
   deleteCharacterRelationship,
   deleteCharacterRelationshipsByCharacter
@@ -40,6 +41,7 @@ export {
   addSubsection,
   updateSubsection,
   deleteSubsection,
+  getFailedSubsections,
   reorderSubsections,
   getSectionWordCounts,
   getVolumes,
@@ -87,6 +89,7 @@ export {
   deleteStoryElement,
   getGraphEdges,
   addGraphEdge,
+  addGraphEdgesBatch,
   updateGraphEdge,
   deleteGraphEdge,
   clearAllGraphEdges,
