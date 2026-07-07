@@ -4,7 +4,8 @@ import {
   subscribe,
   getAllProgress,
   isQueueProcessing,
-  retryDocument
+  retryDocument,
+  clearProgress as serviceClearProgress
 } from '../services/embeddingQueue'
 
 export function useEmbeddingIndexer() {
@@ -15,7 +16,11 @@ export function useEmbeddingIndexer() {
   onMounted(() => {
     unsub = subscribe((documentId, p) => {
       const next = { ...indexProgress.value }
-      next[documentId] = { indexed: p.indexed, total: p.total, failed: p.failed }
+      if (p === null) {
+        delete next[documentId]
+      } else {
+        next[documentId] = { indexed: p.indexed, total: p.total, failed: p.failed }
+      }
       indexProgress.value = next
     })
   })
@@ -25,9 +30,17 @@ export function useEmbeddingIndexer() {
 
   function enqueueChunks(documentId, chunks) {
     serviceEnqueue(documentId, chunks)
-    indexProgress.value = {
-      ...indexProgress.value,
-      [documentId]: { indexed: 0, failed: 0, total: chunks.length }
+    const existing = indexProgress.value[documentId]
+    if (existing) {
+      indexProgress.value = {
+        ...indexProgress.value,
+        [documentId]: { ...existing, total: existing.total + chunks.length }
+      }
+    } else {
+      indexProgress.value = {
+        ...indexProgress.value,
+        [documentId]: { indexed: 0, failed: 0, total: chunks.length }
+      }
     }
   }
 
@@ -49,6 +62,13 @@ export function useEmbeddingIndexer() {
     await retryDocument(documentId)
   }
 
+  function clearDocumentProgress(documentId) {
+    const next = { ...indexProgress.value }
+    delete next[documentId]
+    indexProgress.value = next
+    serviceClearProgress(documentId)
+  }
+
   return {
     isProcessing,
     indexProgress,
@@ -56,6 +76,7 @@ export function useEmbeddingIndexer() {
     progressFor,
     hasFailed,
     isDocumentIndexed,
-    retryFailedChunks
+    retryFailedChunks,
+    clearDocumentProgress
   }
 }

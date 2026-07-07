@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { aiGenerate } from '../services/aiService'
+import { aiGenerate } from './useAiService'
 import { FEATURES } from '../config/ai'
 
 const MIN_TURNS_TO_COMPACT = 6

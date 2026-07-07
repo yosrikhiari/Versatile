@@ -75,6 +75,7 @@
     height: 100%;
     margin: 0;
     padding: 0;
+    overflow: hidden;
   }
 
   body {
@@ -243,29 +244,14 @@
     background-size: 256px 256px;
   }
 
-  /* ── Scrollbar ── */
+  /* ── Scrollbar (invisible) ── */
   * {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(46, 42, 37, 0.5) transparent;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
   ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: rgba(46, 42, 37, 0.5);
-    border-radius: 3px;
-    transition: background 0.2s ease;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(58, 54, 48, 0.7);
+    display: none;
   }
 
   /* ── Interactive Elements ── */

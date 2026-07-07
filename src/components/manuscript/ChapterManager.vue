@@ -288,12 +288,34 @@ function getVolumeForSection(section) {
   if (!section.volumeId) return null
   return volumeStore.volumes.find((v) => v.id === section.volumeId) || null
 }
+
+function handleSubsectionClick(subsection) {
+  manuscriptStore.setActiveSubsection(subsection.id)
+  manuscriptStore.setActiveSection(subsection.sectionId)
+}
+
+function handleSnapshotDrawerClose() {
+  showSnapshotDrawer.value = false
+  snapshotSectionId.value = null
+}
+
+function handleSnapshotRestored(content) {
+  if (snapshotSectionId.value !== null) {
+    manuscriptStore.updateSectionData(
+      snapshotSectionId.value,
+      { content },
+      projectStore.currentProjectId
+    )
+  }
+  showSnapshotDrawer.value = false
+  snapshotSectionId.value = null
+}
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-bg-primary">
+  <div class="h-full flex flex-col bg-bg-primary overflow-hidden">
     <div class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
-      <span class="text-sm font-medium text-text-primary tracking-wide">Section Manager</span>
+      <span class="font-ui text-accent tracking-wide">Section Manager</span>
       <button
         class="bg-bg-info text-text-info rounded-md text-xs px-3 py-1 font-medium hover:opacity-90"
         @click="openAddSection"
@@ -306,7 +328,7 @@ function getVolumeForSection(section) {
       v-if="allTags.length > 0"
       class="flex items-center gap-1.5 px-4 py-1.5 border-b border-border-subtle overflow-x-auto shrink-0"
     >
-      <span class="text-xs text-text-tertiary font-ui shrink-0">Filter:</span>
+      <span class="text-xs text-text-hint font-ui shrink-0">Filter:</span>
       <button
         v-for="tag in allTags"
         :key="tag"
@@ -334,7 +356,7 @@ function getVolumeForSection(section) {
     >
       <span class="text-xs font-medium text-text-secondary uppercase tracking-wider">Volumes</span>
       <button
-        class="text-xs px-2.5 py-0.5 bg-transparent text-text-secondary border border-border-secondary rounded-md hover:bg-surface-hover"
+        class="text-xs px-2.5 py-0.5 bg-transparent text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
         @click="openAddVolume"
       >
         + Add
@@ -358,7 +380,7 @@ function getVolumeForSection(section) {
             <BaseIcon
               :name="expandedVolumes.has(volume.id) ? 'chevron-down' : 'chevron-right'"
               :size="14"
-              class="text-text-tertiary flex-shrink-0"
+              class="text-text-hint flex-shrink-0"
             />
             <span
               class="w-2.5 h-2.5 rounded-full flex-shrink-0"
@@ -366,14 +388,14 @@ function getVolumeForSection(section) {
             ></span>
             <span class="text-sm font-medium text-text-primary">{{ volume.title }}</span>
             <span
-              class="text-xs text-text-tertiary bg-bg-primary border border-border-subtle rounded-full px-2 py-0.5 whitespace-nowrap"
+              class="text-xs text-text-hint bg-bg-primary border border-border-subtle rounded-full px-2 py-0.5 whitespace-nowrap"
             >
               {{ getSectionsInVolume(volume.id).length }} sections
             </span>
           </div>
           <div class="flex items-center gap-0.5" @click.stop>
             <button
-              class="p-1 text-text-tertiary hover:text-text-secondary rounded"
+              class="p-1 text-text-hint hover:text-text-secondary rounded"
               title="Assign sections"
               :class="assignMode && assignVolumeId === volume.id ? 'bg-accent/10 text-accent' : ''"
               @click="toggleAssignMode(volume.id)"
@@ -381,13 +403,15 @@ function getVolumeForSection(section) {
               <BaseIcon name="folder-plus" :size="14" />
             </button>
             <button
-              class="p-1 text-text-tertiary hover:text-text-secondary rounded"
+              class="p-1 text-text-hint hover:text-text-secondary rounded"
+              title="Edit volume"
               @click="openEditVolume(volume)"
             >
               <BaseIcon name="pencil" :size="14" />
             </button>
             <button
-              class="p-1 text-text-tertiary hover:text-danger rounded"
+              class="p-1 text-text-hint hover:text-danger rounded"
+              title="Delete volume"
               @click="deleteVolume(volume)"
             >
               <BaseIcon name="trash-2" :size="14" />
@@ -414,21 +438,22 @@ function getVolumeForSection(section) {
               >
             </div>
             <button
-              class="p-1 text-text-tertiary hover:text-danger rounded"
+              class="p-1 text-text-hint hover:text-danger rounded"
+              title="Remove section from volume"
               @click="removeFromVolume(section)"
             >
               <BaseIcon name="x" :size="12" />
             </button>
           </div>
           <div v-if="getSectionsInVolume(volume.id).length === 0" class="text-center py-2">
-            <p class="text-xs text-text-tertiary">No sections assigned</p>
+            <p class="text-xs text-text-hint">No sections assigned</p>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto px-3 pt-3 pb-2">
-      <p class="text-xs font-medium text-text-tertiary uppercase tracking-wider mx-1 mb-2">
+    <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-3 pt-3 pb-2">
+      <p class="text-xs font-medium text-text-hint uppercase tracking-wider mx-1 mb-2">
         Sections
       </p>
 
@@ -481,7 +506,7 @@ function getVolumeForSection(section) {
               <BaseIcon
                 name="grip-vertical"
                 :size="14"
-                class="text-text-tertiary flex-shrink-0 cursor-grab"
+                class="text-text-hint flex-shrink-0 cursor-grab"
               />
               <span
                 class="w-2.5 h-2.5 rounded-full flex-shrink-0"
@@ -500,11 +525,11 @@ function getVolumeForSection(section) {
                   >
                 </div>
                 <div class="flex items-center gap-3 mt-0.5">
-                  <span class="text-xs text-text-tertiary flex items-center gap-1">
+                  <span class="text-xs text-text-hint flex items-center gap-1">
                     <BaseIcon name="align-left" :size="12" class="flex-shrink-0" />
                     {{ getSectionWordCount(section.id) }} words
                   </span>
-                  <span class="text-xs text-text-tertiary flex items-center gap-1">
+                  <span class="text-xs text-text-hint flex items-center gap-1">
                     <BaseIcon name="list" :size="12" class="flex-shrink-0" />
                     {{ subsectionsBySection[section.id]?.length || 0 }} subsections
                   </span>
@@ -513,7 +538,7 @@ function getVolumeForSection(section) {
               <BaseIcon
                 :name="activeSectionExpanded === section.id ? 'chevron-down' : 'chevron-right'"
                 :size="14"
-                class="text-text-tertiary flex-shrink-0"
+                class="text-text-hint flex-shrink-0"
               />
             </div>
 
@@ -573,7 +598,7 @@ function getVolumeForSection(section) {
                     <BaseIcon
                       name="grip-vertical"
                       :size="13"
-                      class="text-text-tertiary flex-shrink-0 cursor-grab"
+                      class="text-text-hint flex-shrink-0 cursor-grab"
                     />
                     <!-- prettier-ignore -->
                     <span
@@ -583,10 +608,7 @@ function getVolumeForSection(section) {
                           ? 'text-accent'
                           : 'text-text-primary'
                       "
-                      @click="
-                        manuscriptStore.setActiveSubsection(subsection.id)
-                        manuscriptStore.setActiveSection(subsection.sectionId)
-                      "
+                      @click="handleSubsectionClick(subsection)"
                       >{{ subsection.title || 'Untitled Subsection' }}</span
                     >
                     <button
@@ -597,6 +619,7 @@ function getVolumeForSection(section) {
                     </button>
                     <button
                       class="bg-transparent border-none text-xs text-danger cursor-pointer px-1.5 py-0.5 hover:opacity-80"
+                      title="Delete subsection"
                       @click="deleteSubsection(subsection)"
                     >
                       <BaseIcon name="x" :size="12" />
@@ -606,7 +629,7 @@ function getVolumeForSection(section) {
               </draggable>
 
               <div v-if="!subsectionsBySection[section.id]?.length" class="text-center py-3">
-                <p class="text-xs text-text-tertiary">
+                <p class="text-xs text-text-hint">
                   No subsections yet. Break down this section into subsections.
                 </p>
               </div>
@@ -619,10 +642,10 @@ function getVolumeForSection(section) {
         v-if="sortedSections.length > 0"
         class="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between"
       >
-        <span class="text-xs text-text-tertiary"
+        <span class="text-xs text-text-hint"
           >Total: {{ totalWordCount.toLocaleString() }} words</span
         >
-        <span class="text-xs text-text-tertiary"
+        <span class="text-xs text-text-hint"
           >{{ sortedSections.length }} sections &middot;
           {{ totalSubsectionCount }} subsections</span
         >
@@ -740,23 +763,8 @@ function getVolumeForSection(section) {
     <SnapshotHistoryDrawer
       :show="showSnapshotDrawer"
       :chapter-id="snapshotSectionId"
-      @close="
-        showSnapshotDrawer = false
-        snapshotSectionId = null
-      "
-      @restored="
-        (content) => {
-          if (snapshotSectionId !== null) {
-            manuscriptStore.updateSectionData(
-              snapshotSectionId,
-              { content },
-              projectStore.currentProjectId
-            )
-          }
-          showSnapshotDrawer = false
-          snapshotSectionId = null
-        }
-      "
+      @close="handleSnapshotDrawerClose()"
+      @restored="handleSnapshotRestored"
     />
 
     <Modal :show="showVolumeModal" @close="showVolumeModal = false">

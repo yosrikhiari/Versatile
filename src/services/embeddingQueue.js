@@ -35,7 +35,16 @@ function notify(documentId) {
   }
 }
 
-async function processSingleBatch(batch) {
+async function markBatchFailed(ids, batch) {
+  await markFailed(ids)
+  for (let i = 0; i < batch.length; i++) {
+    const p = progress[batch[i].documentId]
+    if (p) p.failed++
+    notify(batch[i].documentId)
+  }
+}
+
+async function processSingleBatch(batch, retryCount = 0) {
   const ids = batch.map((e) => e.chunkId)
   await markProcessing(ids)
 
@@ -47,12 +56,13 @@ async function processSingleBatch(batch) {
     provider = result.provider
     model = result.model
   } catch (err) {
-    await markFailed(ids)
-    for (let i = 0; i < batch.length; i++) {
-      const p = progress[batch[i].documentId]
-      if (p) p.failed++
-      notify(batch[i].documentId)
+    if (retryCount < 1) {
+      console.warn(`[embeddingQueue] Batch failed (will retry):`, err.message)
+      await new Promise((r) => setTimeout(r, 1000))
+      return processSingleBatch(batch, 1)
     }
+    console.error(`[embeddingQueue] Batch failed:`, err.message)
+    await markBatchFailed(ids, batch)
     return
   }
 
@@ -122,6 +132,12 @@ async function processQueue() {
   } finally {
     isProcessing = false
     isRunning = false
+    if (queue.length > 0) {
+      isRunning = true
+      processQueue().catch((err) => {
+        console.error('[embeddingQueue] processQueue rejected:', err)
+      })
+    }
   }
 }
 
@@ -129,14 +145,30 @@ export function setBatchSize(n) {
   batchSizeOverride = n
 }
 
+function cleanupOrphanedProgress(activeDocIds) {
+  const active = new Set(activeDocIds)
+  for (const docId of Object.keys(progress)) {
+    if (!active.has(docId)) {
+      for (const cb of subscribers) {
+        cb(docId, null)
+      }
+      delete progress[docId]
+    }
+  }
+}
+
 export async function resume(projectId) {
   const chunks = await getUnindexedChunks(projectId)
-  if (chunks.length === 0) return 0
+  if (chunks.length === 0) {
+    cleanupOrphanedProgress([])
+    return 0
+  }
   const grouped = {}
   for (const c of chunks) {
     if (!grouped[c.documentId]) grouped[c.documentId] = []
     grouped[c.documentId].push({ id: c.id, text: c.text })
   }
+  cleanupOrphanedProgress(Object.keys(grouped))
   for (const [docId, entries] of Object.entries(grouped)) {
     enqueue(docId, entries)
   }
@@ -144,7 +176,12 @@ export async function resume(projectId) {
 }
 
 export function enqueue(documentId, entries) {
-  progress[documentId] = { indexed: 0, failed: 0, total: entries.length }
+  const existing = progress[documentId]
+  if (existing) {
+    existing.total += entries.length
+  } else {
+    progress[documentId] = { indexed: 0, failed: 0, total: entries.length }
+  }
   for (const entry of entries) {
     queue.push({ chunkId: entry.id, text: entry.text, documentId })
   }
@@ -171,6 +208,18 @@ export function isQueueProcessing() {
 export function subscribe(cb) {
   subscribers.add(cb)
   return () => subscribers.delete(cb)
+}
+
+export function clearProgress(documentId) {
+  delete progress[documentId]
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i].documentId === documentId) {
+      queue.splice(i, 1)
+    }
+  }
+  for (const cb of subscribers) {
+    cb(documentId, null)
+  }
 }
 
 export async function retryDocument(documentId) {

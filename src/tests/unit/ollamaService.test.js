@@ -34,9 +34,9 @@ describe('deobfuscate', () => {
     expect(decoded).toBe('test-value')
   })
 
-  it('returns original text on invalid input', () => {
+  it('returns empty string on invalid input', () => {
     const result = ollamaService.deobfuscate('not-base64!!!')
-    expect(result).toBe('not-base64!!!')
+    expect(result).toBe('')
   })
 
   it('round-trips correctly for various inputs', () => {

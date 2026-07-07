@@ -1,10 +1,49 @@
 import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
-import { aiGenerate } from '../services/aiService'
+import { aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { getDimensionNames } from '../config/evalDimensions'
 import { sanitizeJson } from '../services/ai/aiHelpers'
+
+const CRITIC_SCHEMA = {
+  type: 'object',
+  properties: {
+    score: { type: 'number' },
+    pass: { type: 'boolean' },
+    dimensionScores: { type: 'object' },
+    issues: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          severity: { type: 'string' },
+          type: { type: 'string' },
+          description: { type: 'string' }
+        }
+      }
+    },
+    strengths: { type: 'array', items: { type: 'string' } }
+  }
+}
+
+const CONTRADICTION_SCHEMA = {
+  type: 'object',
+  properties: {
+    contradictions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string' },
+          description: { type: 'string' },
+          between: { type: 'array', items: { type: 'string' } }
+        }
+      }
+    }
+  },
+  required: ['contradictions']
+}
 
 function countCharacters(storyBible) {
   if (!storyBible) return 0
@@ -112,13 +151,13 @@ ${draft.slice(0, 4000)}
 
 Return JSON evaluation with dimensionScores covering all listed dimensions.`
 
-      const response = await aiGenerate(userPrompt, activePrompts.critic, {
+      const parsed = await aiGenerateJson(userPrompt, activePrompts.critic, {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.3,
-        maxTokens: 1000
-      })
-
-      const parsed = sanitizeJson(response)
+        maxTokens: 1000,
+        schema: CRITIC_SCHEMA,
+        schemaName: 'scene_evaluation'
+      }).catch(() => null)
       if (!parsed) {
         // Don't fabricate a passing 7 — that poisons quality averages and makes
         // unattended runs look fine when the critic actually never ran.
@@ -201,12 +240,13 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         .map((char) => async () => {
           const charScenes = scenesByChar.get(char.name)
           const prompt = formatCharacterCheck(char, {}, charScenes)
-          const response = await aiGenerate(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
+          const parsed = await aiGenerateJson(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
             feature: FEATURES.STORY_GENERATION,
             temperature: 0.3,
-            maxTokens: 1000
-          })
-          const parsed = sanitizeJson(response)
+            maxTokens: 1000,
+            schema: CONTRADICTION_SCHEMA,
+            schemaName: 'contradiction_report'
+          }).catch(() => null)
           if (parsed?.contradictions?.length > 0) {
             return { character: char.name, contradictions: parsed.contradictions }
           }
@@ -218,12 +258,13 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         .map((loc) => async () => {
           const locScenes = scenesByLoc.get(loc.name)
           const prompt = formatLocationCheck(loc, {}, locScenes)
-          const response = await aiGenerate(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
+          const parsed = await aiGenerateJson(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
             feature: FEATURES.STORY_GENERATION,
             temperature: 0.3,
-            maxTokens: 1000
-          })
-          const parsed = sanitizeJson(response)
+            maxTokens: 1000,
+            schema: CONTRADICTION_SCHEMA,
+            schemaName: 'contradiction_report'
+          }).catch(() => null)
           if (parsed?.contradictions?.length > 0) {
             return { location: loc.name, contradictions: parsed.contradictions }
           }

@@ -123,9 +123,9 @@ function saveModel() {
   }
 }
 
-function saveOpenAIKey() {
-  settingsStore.setOpenaiApiKey(openAIKey.value)
-  setStoredOpenAIKey(openAIKey.value)
+async function saveOpenAIKey() {
+  await settingsStore.setOpenaiApiKey(openAIKey.value)
+  await setStoredOpenAIKey(openAIKey.value)
 }
 
 function saveEndpoint() {
@@ -133,17 +133,19 @@ function saveEndpoint() {
   connectionStatus.value = null
 }
 
-function loadOpenAIKey() {
-  openAIKey.value = settingsStore.openaiApiKey || getStoredOpenAIKey() || ''
+async function loadOpenAIKey() {
+  var stored = await getStoredOpenAIKey()
+  openAIKey.value = settingsStore.openaiApiKey || stored || ''
 }
 
 function loadEndpoint() {
   ollamaEndpoint.value = settingsStore.ollamaEndpoint
 }
 
-function loadAllProviderKeys() {
+async function loadAllProviderKeys() {
   for (const p of NON_OLLAMA_PROVIDERS.value) {
-    apiKeys.value[p] = settingsStore.getStoredApiKey(p) || ''
+    var k = await settingsStore.getStoredApiKey(p)
+    apiKeys.value[p] = k || ''
   }
 }
 
@@ -163,13 +165,13 @@ async function testProvider(provider) {
   testingProvider.value = null
 }
 
-function saveAllSettings() {
+async function saveAllSettings() {
   saveEndpoint()
   saveModel()
-  saveOpenAIKey()
+  await saveOpenAIKey()
 
   for (const p of NON_OLLAMA_PROVIDERS.value) {
-    settingsStore.setStoredApiKey(p, apiKeys.value[p] || '')
+    await settingsStore.setStoredApiKey(p, apiKeys.value[p] || '')
   }
 
   for (const f of FEATURE_LIST) {
@@ -191,13 +193,13 @@ function saveAllSettings() {
 
 watch(
   () => props.show,
-  (newVal) => {
+  async (newVal) => {
     if (newVal) {
       loadGoal()
       loadModels()
-      loadOpenAIKey()
+      await loadOpenAIKey()
       loadEndpoint()
-      loadAllProviderKeys()
+      await loadAllProviderKeys()
       loadFeatureSelections()
       activeTab.value = 'goals'
       connectionStatus.value = null

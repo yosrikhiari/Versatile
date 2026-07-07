@@ -47,7 +47,7 @@ export { analyzePolish } from '../services/generation/polishAnalysis'
 // --- Entity detection ---
 export { detectEntities } from '../services/generation/entityDetection'
 
-import { aiGenerate } from '../services/aiService'
+import { aiGenerate } from './useAiService'
 import { FEATURES } from '../config/ai'
 import {
   hasOpenAIKey,
@@ -60,7 +60,7 @@ import { retryWithBackoff } from '../services/ai/aiHelpers'
 const TEST_PROMPT = `Respond with 'OK' only. No other text.`
 
 export async function testOllamaConnection() {
-  if (hasOpenAIKey()) {
+  if (await hasOpenAIKey()) {
     return { success: true, message: 'Using OpenAI' }
   }
 
@@ -78,11 +78,11 @@ export async function testOllamaConnection() {
   }
 }
 
-export function saveOpenAIKey(key) {
-  setStoredOpenAIKey(key)
+export async function saveOpenAIKey(key) {
+  await setStoredOpenAIKey(key)
   setPromptedForOpenAI()
 }
 
-export function isUsingOpenAI() {
-  return hasOpenAIKey()
+export async function isUsingOpenAI() {
+  return await hasOpenAIKey()
 }

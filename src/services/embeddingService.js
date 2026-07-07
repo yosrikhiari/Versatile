@@ -20,7 +20,7 @@ export function hasMistralKey() {
 }
 
 const embeddingCache = new Map()
-const MAX_CACHE_SIZE = 5000
+const MAX_CACHE_SIZE = 20000
 
 function ensureCacheSize() {
   if (embeddingCache.size >= MAX_CACHE_SIZE) {
@@ -135,9 +135,9 @@ async function embedBatchInternal(inputs, model, provider) {
       const timeout = setTimeout(
         () =>
           controller.abort(
-            new DOMException('Embedding request timed out after 60000ms', 'AbortError')
+            new DOMException('Embedding request timed out after 300000ms', 'AbortError')
           ),
-        60000
+         300000
       )
       try {
         const response = await fetch(MISTRAL_API_URL, {
@@ -159,7 +159,7 @@ async function embedBatchInternal(inputs, model, provider) {
       } catch (error) {
         clearTimeout(timeout)
         if (error instanceof DOMException && error.name === 'AbortError') {
-          throw new Error('Embedding request timed out after 60000ms')
+          throw new Error('Embedding request timed out after 300000ms')
         }
         throw error
       }
@@ -171,15 +171,19 @@ async function embedBatchInternal(inputs, model, provider) {
       const timeout = setTimeout(
         () =>
           controller.abort(
-            new DOMException('Embedding request timed out after 60000ms', 'AbortError')
+            new DOMException('Embedding request timed out after 300000ms', 'AbortError')
           ),
-        60000
+         300000
       )
       try {
         const response = await fetch(`${getOllamaEndpoint()}/api/embed`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: model || 'nomic-embed-text', input: uncachedInputs }),
+          body: JSON.stringify({
+          model: model || 'nomic-embed-text',
+          input: uncachedInputs,
+          keep_alive: '5m'
+        }),
           signal: controller.signal
         })
         clearTimeout(timeout)
@@ -196,7 +200,7 @@ async function embedBatchInternal(inputs, model, provider) {
       } catch (error) {
         clearTimeout(timeout)
         if (error instanceof DOMException && error.name === 'AbortError') {
-          throw new Error('Embedding request timed out after 60000ms')
+          throw new Error('Embedding request timed out after 300000ms')
         }
         throw error
       }
@@ -210,11 +214,11 @@ async function embedBatchInternal(inputs, model, provider) {
     const idx = uncachedIndices[i]
     results[idx] = embedding
     if (embedding) {
-      ensureCacheSize()
       embeddingCache.set(hashes[idx], embedding)
       dexieWrites.push(setEmbeddingCacheEntry(hashes[idx], embedding))
     }
   }
+  ensureCacheSize()
   if (dexieWrites.length > 0) {
     Promise.all(dexieWrites).catch(() => {})
   }

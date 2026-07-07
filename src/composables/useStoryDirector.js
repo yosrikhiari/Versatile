@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { aiGenerate, aiStream } from '../services/aiService'
+import { aiGenerate, aiStream, aiGenerateJson } from './useAiService'
 import { FEATURES, RESEARCH_CHUNKS_DEFAULT } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { useProjectStore } from '../stores/projectStore'
@@ -88,6 +88,72 @@ function enforceStructure(chapters, spec) {
   })
 }
 
+// JSON schemas for the chunked planner's structured-output calls. On capable
+// providers these constrain decoding directly; on others aiGenerateJson falls
+// back to text + sanitizeJson, so this is strictly a reliability upgrade.
+const SKELETON_SCHEMA = {
+  type: 'object',
+  properties: {
+    storyArc: {
+      type: 'object',
+      properties: {
+        premise: { type: 'string' },
+        genre: { type: 'string' },
+        tone: { type: 'string' },
+        centralConflict: { type: 'string' },
+        emotionalJourney: { type: 'string' },
+        resolution: { type: 'string' }
+      }
+    },
+    chapters: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          chapterNumber: { type: 'number' },
+          title: { type: 'string' },
+          goal: { type: 'string' },
+          arcPosition: { type: 'string' },
+          emotionalTarget: { type: 'string' },
+          hookEnding: { type: 'string' }
+        },
+        required: ['title']
+      }
+    }
+  },
+  required: ['chapters']
+}
+
+const SCENES_SCHEMA = {
+  type: 'object',
+  properties: {
+    scenes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          sceneNumber: { type: 'number' },
+          title: { type: 'string' },
+          emotionalGoal: { type: 'string' },
+          whatChanges: { type: 'string' },
+          obstacle: { type: 'string' },
+          charactersPresent: { type: 'array', items: { type: 'string' } },
+          characterWants: { type: 'object' },
+          location: { type: 'string' },
+          setup: { type: 'string' },
+          payoff: { type: 'string' },
+          sensoryAnchor: { type: 'string' },
+          arcPosition: { type: 'string' },
+          tension: { type: 'string' },
+          pacing: { type: 'string' }
+        },
+        required: ['title']
+      }
+    }
+  },
+  required: ['scenes']
+}
+
 // Plan a large structured story in small, reliable chunks instead of one giant
 // JSON: first a chapter skeleton, then the scenes for each chapter (each planned
 // against the previous chapter's hook, which also tightens chapter-to-chapter
@@ -110,13 +176,13 @@ Return ONLY JSON, no markdown:
   "storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },
   "chapters": [ { "chapterNumber": 1, "title": "", "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
 }`
-  const skel = sanitizeJson(
-    await aiGenerate(skeletonPrompt, systemPrompt, {
-      feature: FEATURES.STORY_GENERATION,
-      temperature: 0.7,
-      timeout: PLAN_TIMEOUT_MS
-    })
-  )
+  const skel = await aiGenerateJson(skeletonPrompt, systemPrompt, {
+    feature: FEATURES.STORY_GENERATION,
+    temperature: 0.7,
+    timeout: PLAN_TIMEOUT_MS,
+    schema: SKELETON_SCHEMA,
+    schemaName: 'chapter_skeleton'
+  }).catch(() => null)
   if (!skel || !Array.isArray(skel.chapters) || skel.chapters.length === 0) {
     throw new Error(
       'The planning model timed out or returned invalid JSON. Try fewer chapters, a smaller word target, or a larger/faster model.'
@@ -154,13 +220,13 @@ ${prev ? `- The PREVIOUS chapter ended on: "${prev.hookEnding || ''}". Scene 1 m
 
 Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
 { "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium" } ] }`
-    const parsedScenes = sanitizeJson(
-      await aiGenerate(scenePrompt, systemPrompt, {
-        feature: FEATURES.STORY_GENERATION,
-        temperature: 0.7,
-        timeout: PLAN_TIMEOUT_MS
-      })
-    )
+    const parsedScenes = await aiGenerateJson(scenePrompt, systemPrompt, {
+      feature: FEATURES.STORY_GENERATION,
+      temperature: 0.7,
+      timeout: PLAN_TIMEOUT_MS,
+      schema: SCENES_SCHEMA,
+      schemaName: 'chapter_scenes'
+    }).catch(() => null)
     ch.scenes = Array.isArray(parsedScenes?.scenes) ? parsedScenes.scenes : []
     for (const sc of ch.scenes) {
       try {

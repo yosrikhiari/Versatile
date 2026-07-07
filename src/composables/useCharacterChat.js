@@ -1,6 +1,6 @@
 import { useCharacterChatStore } from '../stores/characterChatStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
-import { aiStream } from '../services/aiService'
+import { aiStream } from './useAiService'
 import { FEATURES } from '../config/ai'
 
 const MAX_TURNS = 30

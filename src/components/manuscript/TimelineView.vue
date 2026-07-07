@@ -55,7 +55,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-bg-secondary">
+  <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="p-4 border-b border-border-subtle">
       <h2 class="text-lg font-semibold text-text-primary font-ui">Timeline</h2>
       <p class="text-xs text-text-hint mt-1">Drag plot threads to arrange story order</p>
@@ -69,7 +69,7 @@ onMounted(() => {
       class="flex-1"
     />
 
-    <div v-else class="flex-1 overflow-x-auto p-6">
+    <div v-else class="flex-1 min-h-0 overflow-x-auto scrollbar-thin p-6">
       <div class="relative min-w-max">
         <div class="absolute top-8 left-8 right-8 h-px bg-border-subtle"></div>
         <div class="absolute top-8 left-0 w-4 h-px bg-border-subtle"></div>
@@ -84,8 +84,7 @@ onMounted(() => {
         >
           <template #item="{ element: thread }">
             <div
-              class="relative flex flex-col items-center"
-              style="min-width: 160px; max-width: 180px"
+              class="min-w-[160px] max-w-[180px] relative flex flex-col items-center"
             >
               <div
                 class="w-3 h-3 rounded-full mb-2 z-10 ring-2 ring-bg-secondary"
@@ -143,16 +142,11 @@ onMounted(() => {
 
 <style scoped>
 .ghost {
-  opacity: 0.3;
+  @apply opacity-30;
   transition: opacity 0.15s;
 }
 .drag {
-  opacity: 0.9;
+  @apply opacity-90;
 }
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+
 </style>

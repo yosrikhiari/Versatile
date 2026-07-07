@@ -8,6 +8,7 @@ export function setOnLogout(handler) {
   onLogout = handler
 }
 
+/** Returns Bearer token from localStorage (legacy) — cookie is sent automatically by the browser. */
 function getToken() {
   return localStorage.getItem(TOKEN_KEY)
 }
@@ -33,19 +34,29 @@ export function hasToken() {
   return !!getToken()
 }
 
+/**
+ * Returns Authorization headers if a token exists in storage.
+ * Used by providerRegistry.ts to authenticate backend API key fetch.
+ */
+export function getAuthHeaders() {
+  const token = getToken()
+  return token ? { Authorization: 'Bearer ' + token } : {}
+}
+
 async function tryRefresh() {
+  // Refresh endpoint reads the refresh_token from the HttpOnly cookie,
+  // but also accepts a body fallback for localStorage clients.
   const refresh = getRefreshToken()
-  if (!refresh) return false
   try {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+    const res = await fetch(BASE_URL + '/auth/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: refresh })
+      body: JSON.stringify({ refreshToken: refresh || '' })
     })
     if (!res.ok) return false
     const data = await res.json()
-    setToken(data.token)
-    setRefreshToken(data.refreshToken)
+    if (data.token) setToken(data.token)
+    if (data.refreshToken) setRefreshToken(data.refreshToken)
     return true
   } catch {
     return false
@@ -62,23 +73,27 @@ export function clearAuth() {
   if (onLogout) onLogout()
 }
 
-export async function api(path, options = {}) {
-  const { body, method = 'GET', headers = {}, auth = true } = options
+export async function api(path, options) {
+  options = options || {}
+  var body = options.body
+  var method = options.method || 'GET'
+  var headers = options.headers || {}
+  var auth = options.auth !== false
 
-  const requestHeaders = { ...headers }
+  var requestHeaders = Object.assign({}, headers)
   if (body && !(body instanceof FormData)) {
     requestHeaders['Content-Type'] = 'application/json'
   }
 
   if (auth) {
-    const token = getToken()
+    var token = getToken()
     if (token) {
-      requestHeaders['Authorization'] = `Bearer ${token}`
+      requestHeaders['Authorization'] = 'Bearer ' + token
     }
   }
 
-  const fetchOptions = {
-    method,
+  var fetchOptions = {
+    method: method,
     headers: requestHeaders,
     signal: options.signal
   }
@@ -86,13 +101,13 @@ export async function api(path, options = {}) {
     fetchOptions.body = body instanceof FormData ? body : JSON.stringify(body)
   }
 
-  let response = await fetch(`${BASE_URL}${path}`, fetchOptions)
+  var response = await fetch(BASE_URL + path, fetchOptions)
 
   if (response.status === 401 && auth) {
-    const refreshed = await tryRefresh()
+    var refreshed = await tryRefresh()
     if (refreshed) {
-      requestHeaders['Authorization'] = `Bearer ${getToken()}`
-      response = await fetch(`${BASE_URL}${path}`, fetchOptions)
+      requestHeaders['Authorization'] = 'Bearer ' + getToken()
+      response = await fetch(BASE_URL + path, fetchOptions)
     } else {
       clearAuth()
       throw new ApiError('Session expired. Please log in again.', 401)
@@ -100,8 +115,8 @@ export async function api(path, options = {}) {
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => null)
-    const message = errorBody?.message || errorBody?.title || `Request failed: ${response.status}`
+    var errorBody = await response.json().catch(function() { return null })
+    var message = (errorBody && errorBody.message) || (errorBody && errorBody.title) || ('Request failed: ' + response.status)
     throw new ApiError(message, response.status, errorBody)
   }
 
@@ -120,52 +135,60 @@ export class ApiError extends Error {
 
 function crud(prefix) {
   return {
-    list: (params) => {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : ''
-      return api(`${prefix}${qs}`)
+    list: function(params) {
+      var qs = params ? '?' + new URLSearchParams(params).toString() : ''
+      return api(prefix + qs)
     },
-    get: (id) => api(`${prefix}/${id}`),
-    create: (data) => api(prefix, { method: 'POST', body: data }),
-    update: (id, data) => api(`${prefix}/${id}`, { method: 'PUT', body: data }),
-    delete: (id) => api(`${prefix}/${id}`, { method: 'DELETE' })
+    get: function(id) { return api(prefix + '/' + id) },
+    create: function(data) { return api(prefix, { method: 'POST', body: data }) },
+    update: function(id, data) { return api(prefix + '/' + id, { method: 'PUT', body: data }) },
+    del: function(id) { return api(prefix + '/' + id, { method: 'DELETE' }) }
   }
 }
 
 export function storyApi(storyId) {
-  const base = `/story/${storyId}`
+  var base = '/story/' + storyId
   return {
-    ...crud(base),
-    chapters: crud(`${base}/chapter`),
-    entities: crud(`${base}/entity`),
-    flows: crud(`${base}/flow`),
-    research: crud(`${base}/research`),
-    bible: crud(`${base}/bible`)
+    list: crud(base).list,
+    get: crud(base).get,
+    create: crud(base).create,
+    update: crud(base).update,
+    del: crud(base).del,
+    chapters: crud(base + '/chapter'),
+    entities: crud(base + '/entity'),
+    flows: crud(base + '/flow'),
+    research: crud(base + '/research'),
+    bible: crud(base + '/bible')
   }
 }
 
 export function chapterApi(chapterId) {
   return {
-    ...crud(`/chapter/${chapterId}`),
-    scenes: crud(`/chapter/${chapterId}/scene`)
+    list: crud('/chapter/' + chapterId).list,
+    get: crud('/chapter/' + chapterId).get,
+    create: crud('/chapter/' + chapterId).create,
+    update: crud('/chapter/' + chapterId).update,
+    del: crud('/chapter/' + chapterId).del,
+    scenes: crud('/chapter/' + chapterId + '/scene')
   }
 }
 
 export function sceneApi(sceneId) {
-  return crud(`/scene/${sceneId}`)
+  return crud('/scene/' + sceneId)
 }
 
 export function entityApi(entityId) {
-  return crud(`/entity/${entityId}`)
+  return crud('/entity/' + entityId)
 }
 
 export function flowApi(flowId) {
-  return crud(`/flow/${flowId}`)
+  return crud('/flow/' + flowId)
 }
 
 export function researchApi(researchId) {
-  return crud(`/research/${researchId}`)
+  return crud('/research/' + researchId)
 }
 
 export function bibleApi(bibleId) {
-  return crud(`/bible/${bibleId}`)
+  return crud('/bible/' + bibleId)
 }

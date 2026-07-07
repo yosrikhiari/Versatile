@@ -116,10 +116,15 @@ function signalBadge(signal) {
         ? 'text-red-400'
         : 'text-text-hint'
 }
+
+function handleSignalClick(opt) {
+  signalFilter.value = opt.value
+  loadSessions()
+}
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col overflow-hidden">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between">
         <span class="font-semibold text-text-primary font-ui text-sm">Archive</span>
@@ -176,10 +181,7 @@ function signalBadge(signal) {
           variant="filter"
           size="sm"
           :active="signalFilter === opt.value"
-          @click="
-            signalFilter = opt.value
-            loadSessions()
-          "
+          @click="handleSignalClick(opt)"
         >
           {{ opt.label }}
         </BaseChip>

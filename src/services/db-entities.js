@@ -13,7 +13,15 @@ export async function getCharacters(projectId) {
 
 export async function addCharacter(projectId, data) {
   try {
-    return await db.characters.add({ projectId, ...data, lastEditedAt: Date.now() })
+    const now = new Date().toISOString()
+    return await db.characters.add({
+      projectId,
+      generationStatus: 'approved',
+      createdAt: now,
+      updatedAt: now,
+      ...data,
+      lastEditedAt: Date.now()
+    })
   } catch (error) {
     console.error('Failed to add character:', error)
     throw error
@@ -22,7 +30,10 @@ export async function addCharacter(projectId, data) {
 
 export async function updateCharacter(id, data) {
   try {
-    return await db.characters.update(id, deepPlain({ ...data, lastEditedAt: Date.now() }))
+    return await db.characters.update(
+      id,
+      deepPlain({ ...data, updatedAt: new Date().toISOString(), lastEditedAt: Date.now() })
+    )
   } catch (error) {
     console.error('Failed to update character:', error)
     throw error
@@ -49,11 +60,18 @@ export async function getLocations(projectId) {
 }
 
 export async function addLocation(projectId, data) {
-  return db.locations.add({ projectId, ...data })
+  const now = new Date().toISOString()
+  return db.locations.add({
+    projectId,
+    generationStatus: 'approved',
+    createdAt: now,
+    updatedAt: now,
+    ...data
+  })
 }
 
 export async function updateLocation(id, data) {
-  return db.locations.update(id, deepPlain(data))
+  return db.locations.update(id, deepPlain({ ...data, updatedAt: new Date().toISOString() }))
 }
 
 export async function deleteLocation(id) {
@@ -67,11 +85,18 @@ export async function getPlotThreads(projectId) {
 }
 
 export async function addPlotThread(projectId, data) {
-  return db.plotThreads.add({ projectId, ...data })
+  const now = new Date().toISOString()
+  return db.plotThreads.add({
+    projectId,
+    generationStatus: 'approved',
+    createdAt: now,
+    updatedAt: now,
+    ...data
+  })
 }
 
 export async function updatePlotThread(id, data) {
-  return db.plotThreads.update(id, deepPlain(data))
+  return db.plotThreads.update(id, deepPlain({ ...data, updatedAt: new Date().toISOString() }))
 }
 
 export async function deletePlotThread(id) {
@@ -86,6 +111,16 @@ export async function getCharacterRelationships(projectId) {
 
 export async function addCharacterRelationship(projectId, data) {
   return db.characterRelationships.add({ projectId, ...data })
+}
+
+// Atomic bulk insert for the Story Network stage.
+export async function addCharacterRelationshipsBatch(projectId, relationships) {
+  if (!Array.isArray(relationships) || relationships.length === 0) return []
+  const now = new Date().toISOString()
+  const rows = relationships.map((r) => ({ projectId, createdAt: now, ...r }))
+  return db.transaction('rw', db.characterRelationships, async () => {
+    return db.characterRelationships.bulkAdd(rows, { allKeys: true })
+  })
 }
 
 export async function updateCharacterRelationship(id, data) {

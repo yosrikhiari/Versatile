@@ -3,7 +3,7 @@ import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useProjectStore } from '../stores/projectStore'
 import { getEmbedding, cosineSimilarity, clearEmbeddingCache } from '../services/ollamaService'
-import { aiGenerate } from '../services/aiService'
+import { aiGenerate } from './useAiService'
 import { FEATURES } from '../config/ai'
 import { useGraphContext } from './useGraphContext'
 

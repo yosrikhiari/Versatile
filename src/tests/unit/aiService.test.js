@@ -15,7 +15,9 @@ vi.mock('@/stores/settingsStore', () => ({
 vi.mock('@/config/ai', () => ({
   PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai', ANTHROPIC: 'anthropic', GEMINI: 'gemini', GROQ: 'groq' },
   FEATURES: { CONTENT: 'content', STORY_GENERATION: 'story_generation', WORLDBUILDING: 'worldbuilding' },
-  PROVIDER_MODELS: { openai: ['gpt-4'], anthropic: ['claude-3-opus'] }
+  PROVIDER_MODELS: { openai: ['gpt-4'], anthropic: ['claude-3-opus'] },
+  FEATURE_DEFAULTS: {},
+  PROVIDER_DEFAULT: 'ollama'
 }))
 
 vi.mock('@/config/storageKeys', () => ({ getApiKeyStorageKey: vi.fn(() => 'key_storage') }))
@@ -40,36 +42,31 @@ beforeEach(async () => {
 
 describe('getConfiguredModel', () => {
   it('returns ollamaModel when provider is Ollama', () => {
-    expect(aiService.getConfiguredModel('content')).toBe('llama3')
+    expect(aiService.getConfiguredModel('content', { defaultProvider: 'ollama', defaultModel: 'llama3' })).toBe('llama3')
   })
 
   it('returns first model from PROVIDER_MODELS when provider is non-Ollama', () => {
-    mockSettingsStore.aiProvider = 'openai'
-    expect(aiService.getConfiguredModel('content')).toBe('gpt-4')
+    expect(aiService.getConfiguredModel('content', { defaultProvider: 'openai' })).toBe('gpt-4')
   })
 
   it('returns null when provider is unknown', () => {
-    mockSettingsStore.aiProvider = 'unknown'
-    expect(aiService.getConfiguredModel('content')).toBeNull()
+    expect(aiService.getConfiguredModel('content', { defaultProvider: 'unknown' })).toBeNull()
   })
 })
 
-describe('getConfiguredProvider', () => {
-  it('returns the configured provider from settings', () => {
-    mockSettingsStore.aiProvider = 'anthropic'
-    expect(aiService.getConfiguredProvider('content')).toBe('anthropic')
+describe('resolveFeatureConfig', () => {
+  it('returns the configured provider from options', () => {
+    expect(aiService.resolveFeatureConfig('content', { defaultProvider: 'anthropic' }).provider).toBe('anthropic')
   })
 
   it('returns feature override provider when set', () => {
-    mockSettingsStore.featureModels = { story_generation: { provider: 'openai', model: 'gpt-4' } }
-    expect(aiService.getConfiguredProvider('story_generation')).toBe('openai')
+    expect(aiService.resolveFeatureConfig('story_generation', { featureModels: { story_generation: { provider: 'openai', model: 'gpt-4' } } }).provider).toBe('openai')
   })
 })
 
 describe('aiGenerate', () => {
   it('throws for unknown provider', async () => {
-    mockSettingsStore.aiProvider = 'nonexistent'
-    await expect(aiService.aiGenerate('prompt', 'system')).rejects.toThrow('Unknown provider')
+    await expect(aiService.aiGenerate('prompt', 'system', { defaultProvider: 'nonexistent' })).rejects.toThrow('Unknown provider')
   })
 })
 

@@ -1,0 +1,22 @@
+2026/05/17 13:10:37 Running migration: 001_initial.sql
+2026/05/17 13:10:37 Migration 001_initial.sql completed
+2026/05/17 13:10:37 Server starting on 0.0.0.0:8080
+2026/05/24 10:23:40 GET /health 4.6816ms
+2026/05/24 10:23:45 POST /api/v1/auth/login 9.0995ms
+2026/05/24 10:34:28 GET / 0s
+2026/05/24 10:34:28 GET /favicon.ico 0s
+2026/05/25 09:37:11 GET /.well-known/appspecific/com.chrome.devtools.json 574µs
+2026/05/25 09:37:11 GET /favicon.ico 0s
+2026/05/25 09:37:13 GET / 0s
+2026/05/25 09:37:13 GET /.well-known/appspecific/com.chrome.devtools.json 0s
+2026/05/25 09:53:30 GET /.well-known/appspecific/com.chrome.devtools.json 0s
+2026/05/25 10:00:43 GET /.well-known/appspecific/com.chrome.devtools.json 0s
+2026/05/25 10:00:45 GET / 0s
+2026/05/25 10:00:45 GET /.well-known/appspecific/com.chrome.devtools.json 0s
+2026/05/26 08:37:17 GET /favicon.ico 519.9µs
+2026/05/26 08:37:17 GET /.well-known/appspecific/com.chrome.devtools.json 0s
+2026/05/26 08:45:11 GET /.well-known/appspecific/com.chrome.devtools.json 0s
+2026/05/26 13:33:54 GET / 515.5µs
+2026/05/26 13:33:54 GET /favicon.ico 0s
+2026/05/29 14:41:20 Shutting down server...
+2026/05/29 14:41:20 Server stopped

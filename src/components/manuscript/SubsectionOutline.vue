@@ -88,6 +88,11 @@ function getSectionTotalSubsections(sectionId) {
   return subsectionsBySection.value[sectionId]?.length || 0
 }
 
+function handleSubsectionClick(subsection) {
+  manuscriptStore.setActiveSubsection(subsection.id)
+  manuscriptStore.setActiveSection(subsection.sectionId)
+}
+
 onMounted(() => {
   if (projectStore.currentProjectId) {
     manuscriptStore.loadManuscript(projectStore.currentProjectId)
@@ -96,7 +101,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-bg-secondary">
+  <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="px-4 py-3 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-3">
         <span class="font-ui text-accent tracking-wide">Subsection Outline</span>
@@ -140,7 +145,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-4">
+    <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-4">
       <EmptyState
         v-if="sortedSections.length === 0"
         icon="folder-plus"
@@ -225,10 +230,7 @@ onMounted(() => {
                               ? 'text-accent'
                               : 'text-text-primary'
                           "
-                          @click.stop="
-                            manuscriptStore.setActiveSubsection(subsection.id)
-                            manuscriptStore.setActiveSection(subsection.sectionId)
-                          "
+                          @click.stop="handleSubsectionClick(subsection)"
                           >{{ subsection.title || 'Untitled' }}</span
                         >
                       </div>

@@ -1,12 +1,15 @@
 const DEFAULT_BUDGET_CHARS = 6000
 
-export function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS) {
+export function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS, systemPrompt = '') {
+  const overheadChars = typeof systemPrompt === 'string' ? systemPrompt.length : 0
+  const effectiveBudget = Math.max(budget - overheadChars, 1000)
+
   let totalChars = Object.entries(bundle)
     .filter(([key]) => key !== 'totalChars' && key !== 'truncated')
     .reduce((sum, [, val]) => sum + (typeof val === 'string' ? val.length : 0), 0)
 
-  if (totalChars <= budget) {
-    const result = { ...bundle, totalChars, truncated: false }
+  if (totalChars <= effectiveBudget) {
+    const result = { ...bundle, totalChars, truncated: false, systemPromptLength: overheadChars }
     return result
   }
 
@@ -15,19 +18,17 @@ export function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS) {
     (k) => typeof truncated[k] === 'string'
   )
 
-  const reductionLog = []
-  while (totalChars > budget && keys.length > 0) {
+  while (totalChars > effectiveBudget && keys.length > 0) {
     keys.sort((a, b) => (truncated[a] || '').length - (truncated[b] || '').length)
     const target = keys.pop()
     const current = truncated[target] || ''
     const reduced = truncateToLastSentence(current, Math.floor(current.length * 0.6))
     const reduction = current.length - reduced.length
-    reductionLog.push({ key: target, before: current.length, after: reduced.length, reduction })
     totalChars -= reduction
     truncated[target] = reduced
   }
 
-  const result = { ...truncated, totalChars, truncated: totalChars > budget }
+  const result = { ...truncated, totalChars, truncated: totalChars > effectiveBudget, systemPromptLength: overheadChars }
   return result
 }
 

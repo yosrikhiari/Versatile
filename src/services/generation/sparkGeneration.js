@@ -2,11 +2,9 @@
  * Spark generation functions: prompts, outlines, content (regular + streaming).
  * Extracted from useOllama.js.
  */
-import { aiGenerate, aiStream } from '../aiService'
+import { aiGenerate, aiStream } from '../../composables/useAiService'
 import { FEATURES } from '../../config/ai'
-import { useProjectStore } from '../../stores/projectStore'
-import { useAuthorModel } from '../../composables/useAuthorModel'
-import { retryWithBackoff, sanitizeJsonResponse, getProjectContext } from '../ai/aiHelpers'
+import { retryWithBackoff, sanitizeJsonResponse } from '../ai/aiHelpers'
 
 /**
  * @typedef {Object} SparkBlueprint
@@ -25,6 +23,13 @@ import { retryWithBackoff, sanitizeJsonResponse, getProjectContext } from '../ai
  * @property {string} text - The generated fiction prose.
  * @property {string|null} error - Any error encountered during generation.
  */
+
+function buildContextString(category, description) {
+  const parts = []
+  if (category) parts.push(`Category: ${category}`)
+  if (description) parts.push(`Description: ${description}`)
+  return parts.length > 0 ? `\n\n${parts.join('\n')}` : ''
+}
 
 const SPARK_SYSTEM_PROMPT = `You are a creative writing prompt generator for fiction writers.
 You generate short, specific, evocative prompts that inspire a writer 
@@ -59,7 +64,8 @@ export async function generateSparkPrompt(
   type,
   characterNames = [],
   relateToProject = false,
-  manuscriptContext = null
+  manuscriptContext = null,
+  { projectCategory, projectDescription } = {}
 ) {
   const typeDescriptions = {
     seed: 'story seed — a compelling situation or world detail',
@@ -68,7 +74,7 @@ export async function generateSparkPrompt(
     obstacle: 'obstacle — a moment where the character fails or is blocked'
   }
 
-  const projectContext = getProjectContext()
+  const projectContext = buildContextString(projectCategory, projectDescription)
 
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
@@ -103,9 +109,10 @@ export async function generateOutline(
   tone,
   _characterNames = [],
   _targetLength = 'full',
-  manuscriptContext = null
+  manuscriptContext = null,
+  { projectCategory, projectDescription } = {}
 ) {
-  const projectContext = getProjectContext()
+  const projectContext = buildContextString(projectCategory, projectDescription)
 
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
@@ -144,6 +151,9 @@ Tone: ${tone}${projectContext}${contextInstruction}`
 
     return parsed
   } catch (error) {
+    if (error.message === 'Invalid JSON') {
+      throw new Error('Model returned malformed JSON. The response could not be parsed.')
+    }
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
     throw new Error(
       isApiError
@@ -168,19 +178,18 @@ export async function generateContent(
   tone,
   characterNames = [],
   targetLength = 'short',
-  manuscriptContext = null
+  manuscriptContext = null,
+  { projectCategory, projectDescription, profileContextString } = {}
 ) {
   const lengthInstructions =
     targetLength === 'short'
       ? 'Write a short scene of about 300-500 words.'
       : 'Write a full chapter of about 1500-2000 words.'
 
-  const projectContext = getProjectContext()
-  const { profileToContextString } = useAuthorModel()
-  const profileStr = profileToContextString(useProjectStore().authorVoiceProfile)
+  const projectContext = buildContextString(projectCategory, projectDescription)
   const systemPrompt =
     'You are a creative fiction writer. Write engaging prose.' +
-    (profileStr ? '\n\n' + profileStr : '')
+    (profileContextString ? '\n\n' + profileContextString : '')
 
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
@@ -227,19 +236,18 @@ export async function generateContentStreaming(
   characterNames = [],
   targetLength = 'short',
   onProgress = null,
-  manuscriptContext = null
+  manuscriptContext = null,
+  { projectCategory, projectDescription, profileContextString } = {}
 ) {
   const lengthInstructions =
     targetLength === 'short'
       ? 'Write a short scene of about 300-500 words.'
       : 'Write a full chapter of about 1500-2000 words.'
 
-  const projectContext = getProjectContext()
-  const { profileToContextString } = useAuthorModel()
-  const profileStr = profileToContextString(useProjectStore().authorVoiceProfile)
+  const projectContext = buildContextString(projectCategory, projectDescription)
   const systemPrompt =
     'You are a creative fiction writer. Write engaging prose.' +
-    (profileStr ? '\n\n' + profileStr : '')
+    (profileContextString ? '\n\n' + profileContextString : '')
 
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
