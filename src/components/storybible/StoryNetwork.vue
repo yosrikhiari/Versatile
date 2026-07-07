@@ -1570,6 +1570,18 @@ async function arrangeExtendedStarLayout() {
 
   setTimeout(() => fitView({ padding: 0.15 }), 150)
 }
+
+function handleConnectionModalClose() {
+  showConnectionModal.value = false
+  nodeToConnect.value = null
+  targetNodeToConnect.value = null
+}
+
+function handleApplySuggestionsModalClose() {
+  showApplySuggestionsModal.value = false
+  pendingSuggestions.value = []
+  pendingGroups.value = []
+}
 </script>
 
 <template>
@@ -1999,11 +2011,7 @@ async function arrangeExtendedStarLayout() {
       :plot-threads="storyBibleStore.plotThreads"
       :groups="manualGroups"
       :existing-edges="storyGraphStore.edges"
-      @close="
-        showConnectionModal = false
-        nodeToConnect = null
-        targetNodeToConnect = null
-      "
+      @close="handleConnectionModalClose()"
       @save="handleSaveConnection"
       @save-group-edge="handleSaveGroupEdge"
       @remove-node="handleRemoveNode"
@@ -2023,11 +2031,7 @@ async function arrangeExtendedStarLayout() {
       :show="showApplySuggestionsModal"
       :suggestions="pendingSuggestions"
       :groups="pendingGroups"
-      @close="
-        showApplySuggestionsModal = false
-        pendingSuggestions = []
-        pendingGroups = []
-      "
+      @close="handleApplySuggestionsModalClose()"
       @apply="handleApplyPendingSuggestions"
     />
 

@@ -97,7 +97,7 @@ function toggleCollapse() {
 
     <aside
       :class="[
-        'flex flex-col bg-bg-secondary border-r border-border-subtle select-none shrink-0',
+        'flex flex-col bg-bg-secondary border-r border-border-subtle select-none shrink-0 overflow-hidden',
         'transition-[width,transform] duration-200 ease-out',
         'fixed inset-y-0 left-0 z-50 w-[220px]',
         mobileOpen ? 'translate-x-0' : '-translate-x-full',

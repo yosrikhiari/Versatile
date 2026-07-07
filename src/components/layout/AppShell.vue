@@ -187,6 +187,11 @@ function toggleFlow() {
   flowMode.value = !flowMode.value
 }
 
+function closeProjectDropdownAndOpen(target) {
+  showProjectDropdown.value = false
+  if (target === 'settings') showProjectSettings.value = true
+}
+
 function handleSidebarNav(name) {
   if (name === 'settings') {
     showProjectSettings.value = true
@@ -231,7 +236,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col overflow-hidden">
     <header
       class="h-12 glass flex items-center justify-between px-3 shrink-0 z-10 border-b border-border-subtle/60"
     >
@@ -292,10 +297,7 @@ onMounted(async () => {
               <!-- prettier-ignore -->
               <button
                 class="w-full text-left px-3 py-2 text-sm text-text-hint hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
-                @click="
-                  showProjectDropdown = false
-                  showProjectSettings = true
-                "
+                @click="closeProjectDropdownAndOpen('settings')"
               >
                 <BaseIcon name="settings" :size="14" />
                 Project Settings
@@ -383,63 +385,63 @@ onMounted(async () => {
       <div class="flex-1 flex overflow-hidden">
         <Transition name="panel-left" mode="out-in">
           <aside
-            v-if="activePanelName === 'story-generator' && !flowMode"
+            v-if="activePanelName === 'story-generator' && !flowMode && !focusMode"
             key="story-generator"
             class="w-[500px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
           >
             <slot name="story-generator"></slot>
           </aside>
           <aside
-            v-else-if="activePanelName === 'story-bible' && !flowMode"
+            v-else-if="activePanelName === 'story-bible' && !flowMode && !focusMode"
             key="story-bible"
-            class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+            class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
           >
             <slot name="story-bible"></slot>
           </aside>
           <aside
-            v-else-if="activePanelName === 'canvas' && !flowMode"
+            v-else-if="activePanelName === 'canvas' && !flowMode && !focusMode"
             key="canvas"
             class="w-[400px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
           >
             <slot name="canvas"></slot>
           </aside>
           <aside
-            v-else-if="activePanelName === 'outline' && !flowMode"
+            v-else-if="activePanelName === 'outline' && !flowMode && !focusMode"
             key="outline"
             class="w-[350px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
           >
             <slot name="outline"></slot>
           </aside>
           <aside
-            v-else-if="activePanelName === 'sections' && !flowMode"
+            v-else-if="activePanelName === 'sections' && !flowMode && !focusMode"
             key="sections"
             class="w-[320px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
           >
             <slot name="sections"></slot>
           </aside>
           <aside
-            v-else-if="activePanelName === 'network' && !flowMode"
+            v-else-if="activePanelName === 'network' && !flowMode && !focusMode"
             key="network"
             class="w-[900px] max-w-[95vw] xl:max-w-[900px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
           >
             <slot name="network"></slot>
           </aside>
           <aside
-            v-else-if="activePanelName === 'timeline' && !flowMode"
+            v-else-if="activePanelName === 'timeline' && !flowMode && !focusMode"
             key="timeline"
             class="w-[600px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
           >
             <slot name="timeline"></slot>
           </aside>
           <aside
-            v-else-if="activePanelName === 'voice-lab' && !flowMode"
+            v-else-if="activePanelName === 'voice-lab' && !flowMode && !focusMode"
             key="voice-lab"
             class="w-[420px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
           >
             <slot name="voice-lab"></slot>
           </aside>
           <aside
-            v-else-if="activePanelName === 'story-shape' && !flowMode"
+            v-else-if="activePanelName === 'story-shape' && !flowMode && !focusMode"
             key="story-shape"
             class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
           >
@@ -453,14 +455,14 @@ onMounted(async () => {
           </div>
           <Transition name="panel-bottom">
             <div
-              v-if="showRevise"
+              v-if="showRevise && !focusMode"
               class="bg-bg-secondary border-t border-border-subtle overflow-y-auto scrollbar-thin"
             >
               <slot name="revise"></slot>
             </div>
           </Transition>
           <div
-            v-if="activePanelName === 'revise' && !flowMode"
+            v-if="activePanelName === 'revise' && !flowMode && !focusMode"
             class="flex-1 overflow-hidden transition-all duration-200"
           >
             <slot name="revise"></slot>
@@ -469,14 +471,14 @@ onMounted(async () => {
 
         <Transition name="panel-right" mode="out-in">
           <aside
-            v-if="activePanelName === 'archive' && !flowMode"
+            v-if="activePanelName === 'archive' && !flowMode && !focusMode"
             key="archive"
             class="w-[320px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
           >
             <slot name="archive"></slot>
           </aside>
           <aside
-            v-else-if="activePanelName === 'research' && !flowMode"
+            v-else-if="activePanelName === 'research' && !flowMode && !focusMode"
             key="research"
             class="w-[360px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
           >

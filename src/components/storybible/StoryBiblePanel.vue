@@ -569,6 +569,11 @@ async function refresh() {
   }
 }
 
+function handleGenerateModalClose() {
+  showGenerateModal.value = false
+  characterToEnhance.value = null
+}
+
 defineExpose({ refresh })
 </script>
 
@@ -577,7 +582,7 @@ defineExpose({ refresh })
     fallback-title="Story Bible Error"
     fallback-description="Failed to render the Story Bible panel. Try refreshing the page."
   >
-    <div class="h-full flex flex-col">
+    <div class="h-full flex flex-col overflow-hidden">
       <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
         <div class="flex items-center justify-between mb-3">
           <span class="font-ui text-accent tracking-wide">{{
@@ -649,7 +654,8 @@ defineExpose({ refresh })
           </button>
         </div>
 
-        <div v-if="activeTab === 'characters'" class="flex-1 overflow-y-auto p-4 space-y-3">
+        <div class="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-thin">
+          <div v-if="activeTab === 'characters'" class="space-y-3">
           <div class="flex items-center gap-2 mb-2">
             <button
               class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
@@ -903,7 +909,7 @@ defineExpose({ refresh })
           </button>
         </div>
 
-        <div v-if="activeTab === 'plotThreads'" class="flex-1 overflow-y-auto p-4 space-y-3">
+          <div v-if="activeTab === 'plotThreads'" class="space-y-3">
           <div class="flex items-center gap-2 mb-2">
             <button
               class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1087,7 +1093,7 @@ defineExpose({ refresh })
           </button>
         </div>
 
-        <div v-if="activeTab === 'locations'" class="flex-1 overflow-y-auto p-4 space-y-3">
+          <div v-if="activeTab === 'locations'" class="space-y-3">
           <div class="flex items-center gap-2 mb-2">
             <button
               class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1264,7 +1270,7 @@ defineExpose({ refresh })
           </button>
         </div>
 
-        <div v-if="activeTab === 'documents'" class="flex-1 overflow-y-auto p-4">
+          <div v-if="activeTab === 'documents'">
           <div class="flex gap-1.5 flex-wrap mb-4">
             <button
               v-for="dt in documentTypes"
@@ -1344,6 +1350,7 @@ defineExpose({ refresh })
             :class="{ 'opacity-70 cursor-default': contentReadonly }"
             placeholder="No content yet. Add some story elements first."
           ></textarea>
+          </div>
         </div>
 
         <!-- prettier-ignore -->
@@ -1352,10 +1359,7 @@ defineExpose({ refresh })
           :show="showGenerateModal"
           :mode="generateMode"
           :existing-character="characterToEnhance"
-          @close="
-            showGenerateModal = false
-            characterToEnhance = null
-          "
+          @close="handleGenerateModalClose()"
           @generate="onModalGenerate"
           @reject="onRejectGeneration"
           @create="onCreateCharacter"

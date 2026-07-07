@@ -226,7 +226,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-manuscript relative">
+  <div class="h-full flex flex-col bg-manuscript relative overflow-hidden">
     <button
       v-if="flow.isRunning.value"
       class="absolute top-4 right-4 z-10 text-xs text-text-hint/60 hover:text-text-secondary font-ui transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2.5 py-1.5 btn-ghost"

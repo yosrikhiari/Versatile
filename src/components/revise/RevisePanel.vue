@@ -108,7 +108,7 @@ watch(() => projectStore.currentProjectId, loadComments)
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-manuscript">
+  <div class="h-full flex flex-col bg-manuscript overflow-hidden">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between">
         <span class="font-ui text-accent tracking-wide">Revise</span>

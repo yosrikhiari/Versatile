@@ -233,7 +233,7 @@ const inNetworkCount = computed(() => props.existingNodeIds.length)
 </script>
 
 <template>
-  <div class="entity-sidebar h-full flex flex-col bg-bg-secondary border-r border-border-subtle">
+  <div class="entity-sidebar h-full flex flex-col bg-bg-secondary border-r border-border-subtle overflow-hidden">
     <div class="p-3 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-2">
         <span class="text-xs font-medium text-text-secondary font-ui">Entities</span>
