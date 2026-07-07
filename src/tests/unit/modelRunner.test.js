@@ -37,7 +37,7 @@ describe('executeGeneration', () => {
 
     const { executeGeneration } = await import('../../composables/generation/pipeline/modelRunner')
     await expect(executeGeneration({ userPrompt: 'test', systemPrompt: 'test sys', schema }))
-      .rejects.toThrow('Invalid JSON')
+      .rejects.toThrow('malformed JSON')
   })
 
   it('throws on empty parsed response', async () => {
@@ -46,6 +46,6 @@ describe('executeGeneration', () => {
 
     const { executeGeneration } = await import('../../composables/generation/pipeline/modelRunner')
     await expect(executeGeneration({ userPrompt: 'test', systemPrompt: 'test sys', schema }))
-      .rejects.toThrow('Invalid JSON')
+      .rejects.toThrow('malformed JSON')
   })
 })
