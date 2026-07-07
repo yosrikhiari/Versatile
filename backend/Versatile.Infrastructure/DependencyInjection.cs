@@ -27,6 +27,7 @@ public static class DependencyInjection
         RegisterServicesByConvention(services);
 
         services.AddScoped<IChatStreamer, ChatClientStreamer>();
+        services.AddScoped<KeyManagementService>();
 
         services.AddTransient(sp =>
         {

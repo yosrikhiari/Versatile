@@ -21,10 +21,32 @@ public class AuthController : ControllerBase
         _auth = auth;
     }
 
+    private void SetAuthCookies(AuthResponse result)
+    {
+        Response.Cookies.Append("access_token", result.Token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = result.ExpiresAt,
+            Path = "/"
+        });
+
+        Response.Cookies.Append("refresh_token", result.RefreshToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTime.UtcNow.AddDays(7),
+            Path = "/api/auth"
+        });
+    }
+
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterCommand command)
     {
         var result = await _mediator.Send(command);
+        SetAuthCookies(result);
         return Ok(result);
     }
 
@@ -32,6 +54,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Login(LoginCommand command)
     {
         var result = await _auth.LoginAsync(new LoginRequest(command.Email, command.Password));
+        SetAuthCookies(result);
         return Ok(result);
     }
 
@@ -39,6 +62,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Refresh(RefreshTokenCommand command)
     {
         var result = await _auth.RefreshTokenAsync(command.RefreshToken);
+        SetAuthCookies(result);
         return Ok(result);
     }
 
@@ -55,6 +79,8 @@ public class AuthController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
         await _auth.LogoutAsync(userId);
+        Response.Cookies.Delete("access_token");
+        Response.Cookies.Delete("refresh_token");
         return Ok(new { message = "Logged out" });
     }
 }

@@ -1,0 +1,88 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Versatile.Domain.Entities;
+using Versatile.Infrastructure.Data;
+using Versatile.Infrastructure.Services;
+
+namespace Versatile.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]"), Authorize]
+public class ApiKeysController : ControllerBase
+{
+    private readonly ApplicationDbContext _db;
+    private readonly KeyManagementService _keys;
+
+    public ApiKeysController(ApplicationDbContext db, KeyManagementService keys)
+    {
+        _db = db;
+        _keys = keys;
+    }
+
+    [HttpGet("{provider}")]
+    public async Task<ActionResult<object>> GetKey(string provider)
+    {
+        var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        var user = await _db.Users.FindAsync(userId);
+        if (user?.ApiKeysEncrypted == null || user.ApiKeysNonce == null)
+            return NotFound(new { message = "No API keys stored" });
+
+        var json = _keys.Decrypt(user.ApiKeysEncrypted, user.ApiKeysNonce);
+        var keys = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+        return keys?.TryGetValue(provider, out var key) == true
+            ? Ok(new { key })
+            : NotFound(new { message = $"Key for {provider} not found" });
+    }
+
+    [HttpPut("{provider}")]
+    public async Task<ActionResult> StoreKey(string provider, [FromBody] StoreKeyRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        var user = await _db.Users.FindAsync(userId);
+
+        Dictionary<string, string> keys;
+        if (user?.ApiKeysEncrypted != null && user.ApiKeysNonce != null)
+        {
+            var json = _keys.Decrypt(user.ApiKeysEncrypted, user.ApiKeysNonce);
+            keys = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
+        }
+        else
+        {
+            keys = [];
+        }
+
+        keys[provider] = request.Key;
+        var (encrypted, nonce) = _keys.Encrypt(System.Text.Json.JsonSerializer.Serialize(keys));
+
+        if (user == null)
+            return Unauthorized();
+
+        user.ApiKeysEncrypted = encrypted;
+        user.ApiKeysNonce = nonce;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = $"Key for {provider} stored" });
+    }
+
+    [HttpDelete("{provider}")]
+    public async Task<ActionResult> DeleteKey(string provider)
+    {
+        var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        var user = await _db.Users.FindAsync(userId);
+        if (user?.ApiKeysEncrypted == null || user.ApiKeysNonce == null)
+            return NotFound();
+
+        var json = _keys.Decrypt(user.ApiKeysEncrypted, user.ApiKeysNonce);
+        var keys = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
+        keys.Remove(provider);
+
+        var (encrypted, nonce) = _keys.Encrypt(System.Text.Json.JsonSerializer.Serialize(keys));
+        user.ApiKeysEncrypted = encrypted;
+        user.ApiKeysNonce = nonce;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = $"Key for {provider} deleted" });
+    }
+}
+
+public record StoreKeyRequest(string Key);

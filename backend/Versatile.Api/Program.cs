@@ -1,13 +1,11 @@
 using Serilog;
 using Versatile.Application;
 using Versatile.Infrastructure;
-using Versatile.Infrastructure.Data;
 using Versatile.Infrastructure.Middleware;
 using Versatile.Api.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -42,6 +40,8 @@ try
                     var accessToken = context.Request.Query["access_token"];
                     if (!string.IsNullOrEmpty(accessToken))
                         context.Token = accessToken;
+                    else if (context.Request.Cookies.TryGetValue("access_token", out var cookieToken))
+                        context.Token = cookieToken;
                     return Task.CompletedTask;
                 }
             };
@@ -69,11 +69,14 @@ try
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
 
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
+
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
 
-    app.UseMiddleware<GlobalExceptionHandler>();
+    app.UseExceptionHandler();
     app.UseMiddleware<RateLimitingMiddleware>();
     app.UseMiddleware<InputSanitizationMiddleware>();
 
@@ -85,13 +88,6 @@ try
 
     app.MapHub<CollaborationHub>("/hubs/collaboration");
     app.MapHub<GenerationHub>("/hubs/generation");
-
-    using (var scope = app.Services.CreateScope())
-    {
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        if (app.Environment.IsProduction())
-            db.Database.Migrate();
-    }
 
     app.Run();
 }
