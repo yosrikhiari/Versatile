@@ -104,10 +104,10 @@ export const EMBEDDING_VERSION = 1
 
 export const EMBEDDING_PROVIDER_CAPABILITIES = {
   [EMBEDDING_PROVIDERS.OLLAMA]: {
-    maxBatchSize: 32,
+    maxBatchSize: 128,
     supportsBatching: true,
     maxInputTokens: 8192,
-    maxConcurrentRequests: 2
+    maxConcurrentRequests: 4
   },
   [EMBEDDING_PROVIDERS.MISTRAL]: {
     maxBatchSize: 16,

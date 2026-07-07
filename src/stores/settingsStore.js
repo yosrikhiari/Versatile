@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { obfuscate, deobfuscate } from '../services/ollamaService'
+import { encrypt, decrypt } from '../services/ollamaService'
+import { getAuthHeaders } from '../services/api'
 import { PROVIDERS, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS } from '../config/ai'
 import { aiTestConnection } from '../services/aiService'
 import { setOllamaEndpoint as setOllamaConfigEndpoint } from '../config/ollama'
@@ -73,11 +74,7 @@ export const useSettingsStore = defineStore('settings', () => {
       // STORAGE_KEYS ref
       const encryptedKey = localStorage.getItem(STORAGE_KEYS.OPENAI_KEY)
       if (encryptedKey) {
-        try {
-          openaiApiKey.value = deobfuscate(encryptedKey)
-        } catch {
-          openaiApiKey.value = ''
-        }
+        decrypt(encryptedKey).then(function(k) { openaiApiKey.value = k }).catch(function() { openaiApiKey.value = '' })
       }
 
       // featureModels loaded reactively via useLocalStorage
@@ -119,20 +116,11 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
-  /**
-   * SECURITY NOTE: API keys are stored in localStorage with basic obfuscation
-   * (obfuscate). This is NOT real encryption — any script running on the
-   * page can read and decode the key. This is a known limitation of a local-first
-   * browser app. Users should treat stored keys as low-privilege and avoid using
-   * high-spend keys.
-   */
-  function setOpenaiApiKey(key) {
+  async function setOpenaiApiKey(key) {
     openaiApiKey.value = key
     if (key) {
-      // STORAGE_KEYS ref
-      localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, obfuscate(key))
+      localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, await encrypt(key))
     } else {
-      // STORAGE_KEYS ref
       localStorage.removeItem(STORAGE_KEYS.OPENAI_KEY)
     }
     saveSettings()
@@ -161,21 +149,57 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
-  function getStoredApiKey(provider) {
+  async function getStoredApiKey(provider) {
+    // Try backend first
+    try {
+      const headers = getAuthHeaders()
+      if (headers.Authorization) {
+        const res = await fetch('/api/apikeys/' + provider, { headers })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.key) return data.key
+        }
+      }
+    } catch {
+      // fall through
+    }
+
     const encrypted = localStorage.getItem(getApiKeyStorageKey(provider))
     if (!encrypted) return ''
     try {
-      return deobfuscate(encrypted)
+      return await decrypt(encrypted)
     } catch {
       return ''
     }
   }
 
-  function setStoredApiKey(provider, key) {
+  async function setStoredApiKey(provider, key) {
+    const encrypted = key ? await encrypt(key) : ''
     if (key) {
-      localStorage.setItem(getApiKeyStorageKey(provider), obfuscate(key))
+      localStorage.setItem(getApiKeyStorageKey(provider), encrypted)
     } else {
       localStorage.removeItem(getApiKeyStorageKey(provider))
+    }
+
+    // Sync to backend if authenticated
+    try {
+      const headers = getAuthHeaders()
+      if (headers.Authorization) {
+        if (key) {
+          await fetch('/api/apikeys/' + provider, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...headers },
+            body: JSON.stringify({ key })
+          })
+        } else {
+          await fetch('/api/apikeys/' + provider, {
+            method: 'DELETE',
+            headers
+          })
+        }
+      }
+    } catch {
+      // silently fail — localStorage is the fallback
     }
   }
 
@@ -228,7 +252,7 @@ export const useSettingsStore = defineStore('settings', () => {
     if (provider === PROVIDERS.OLLAMA) {
       return await testOllamaConnection()
     }
-    const key = getStoredApiKey(provider)
+    const key = await getStoredApiKey(provider)
     if (!key) {
       return { success: false, message: 'No API key configured' }
     }
