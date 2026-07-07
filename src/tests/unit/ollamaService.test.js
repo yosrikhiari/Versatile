@@ -14,35 +14,35 @@ beforeEach(async () => {
   ollamaService = await import('@/services/ollamaService')
 })
 
-describe('obfuscate', () => {
-  it('encodes a string to base64', () => {
-    const result = ollamaService.obfuscate('hello')
+describe('encrypt', () => {
+  it('encodes a string to base64', async () => {
+    const result = await ollamaService.encrypt('hello')
     expect(typeof result).toBe('string')
     expect(result.length).toBeGreaterThan(0)
   })
 
-  it('returns the original text on failure', () => {
-    const result = ollamaService.obfuscate('')
+  it('returns the original text on failure', async () => {
+    const result = await ollamaService.encrypt('')
     expect(typeof result).toBe('string')
   })
 })
 
-describe('deobfuscate', () => {
-  it('decodes an encoded string', () => {
-    const encoded = ollamaService.obfuscate('test-value')
-    const decoded = ollamaService.deobfuscate(encoded)
+describe('decrypt', () => {
+  it('decodes an encoded string', async () => {
+    const encoded = await ollamaService.encrypt('test-value')
+    const decoded = await ollamaService.decrypt(encoded)
     expect(decoded).toBe('test-value')
   })
 
-  it('returns empty string on invalid input', () => {
-    const result = ollamaService.deobfuscate('not-base64!!!')
+  it('returns empty string on invalid input', async () => {
+    const result = await ollamaService.decrypt('not-base64!!!')
     expect(result).toBe('')
   })
 
-  it('round-trips correctly for various inputs', () => {
+  it('round-trips correctly for various inputs', async () => {
     const inputs = ['', 'abc', 'hello world', 'special chars: !@#$%']
     for (const input of inputs) {
-      expect(ollamaService.deobfuscate(ollamaService.obfuscate(input))).toBe(input)
+      expect(await ollamaService.decrypt(await ollamaService.encrypt(input))).toBe(input)
     }
   })
 })
