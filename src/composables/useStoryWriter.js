@@ -498,7 +498,8 @@ Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No e
   },
   "networkEvents": [
     { "type": "relationship", "from": "EntityName", "to": "EntityName", "label": "arrives at" }
-  ]
+  ],
+  "keyFacts": ["durable canon THIS scene establishes: who is now injured/dead/changed, who learned or revealed what, time elapsed. 0-4 short factual statements. Omit the field or use [] if nothing durable changed."]
 }
 
 IMPORTANT: The prose field must reach the word count target above. Do not end the scene early — keep writing until the word target is met.

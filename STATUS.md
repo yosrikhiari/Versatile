@@ -35,11 +35,11 @@ The declared DAG: **bible → network → structure → spine → prose → cons
   spine's per-chapter `keyFacts` (who's alive/injured/where, who knows what) into
   an ordered canon ledger, now fed into `checkContradictions` so the auditor
   flags prose that contradicts established canon.
-- **Fact ledger ← prose: NOT done.** The ledger is built from the spine's
-  *planned* keyFacts, not reconciled against what the prose actually generated. A
-  future pass could extract durable facts from written chapters and merge/correct
-  the ledger, so plan-vs-prose drift is caught. Lower urgency now that the
-  audit-against-canon half exists.
+- **Fact ledger ← prose: DONE.** The structured writer now emits an optional
+  per-scene `keyFacts[]`; `buildFactLedger(spine, writtenScenes)` prefers a
+  chapter's prose-derived facts over its planned ones, falling back to the spine
+  plan when a chapter produced none. So the auditor checks against what the story
+  actually did, not just what was planned.
 - **Full transactional atomicity** — batch inserts exist for graph edges
   (`addGraphEdgesBatch`) and char relationships, but not all stage writes are
   wrapped in `db.transaction`; no `addCharactersBatch` / `addSectionsBatch`.

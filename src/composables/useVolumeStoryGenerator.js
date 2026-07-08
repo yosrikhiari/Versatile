@@ -43,19 +43,54 @@ function formatFullSpineEntry(s) {
   return `Chapter ${s.chapterNumber} (${s.chapterTitle}):\n- Emotion at end: ${s.emotionalStateAtEnd}\n- Reader knows: ${s.readerKnowledgeAtEnd}\n- Transition: ${s.transitionToNext}${facts}`
 }
 
-// The accumulated story fact ledger: every durable canon fact the spine
-// established, in chapter order and attributed to its chapter. Fed to the
-// consistency auditor so it can catch prose that contradicts established canon
-// (deaths, injuries, who-knows-what) — not just per-character bible drift.
-function buildFactLedger(spine) {
-  if (!Array.isArray(spine)) return []
-  const ledger = []
-  for (const entry of spine) {
-    if (!entry || !Array.isArray(entry.keyFacts)) continue
-    for (const fact of entry.keyFacts) {
-      if (typeof fact === 'string' && fact.trim()) {
-        ledger.push(`Ch${entry.chapterNumber}: ${fact.trim()}`)
+// The accumulated story fact ledger: durable canon facts in chapter order,
+// attributed to their chapter. Fed to the consistency auditor so it can catch
+// prose that contradicts established canon (deaths, injuries, who-knows-what) —
+// not just per-character bible drift.
+//
+// Two sources: the spine's *planned* keyFacts, and the *actual* keyFacts the
+// writer emitted per written scene (carried on writtenScenes as `keyFacts` +
+// `chapterId`). Prose facts reflect what the story really did, so for any chapter
+// that produced prose facts they replace that chapter's planned facts; chapters
+// with no prose facts fall back to the spine's plan.
+function buildFactLedger(spine, writtenScenes) {
+  const proseByChapter = new Map()
+  if (Array.isArray(writtenScenes)) {
+    for (const scene of writtenScenes) {
+      if (!scene || scene.chapterId == null || !Array.isArray(scene.keyFacts)) continue
+      const key = String(scene.chapterId)
+      if (!proseByChapter.has(key)) proseByChapter.set(key, [])
+      const bucket = proseByChapter.get(key)
+      for (const fact of scene.keyFacts) {
+        if (typeof fact === 'string' && fact.trim()) bucket.push(fact.trim())
       }
+    }
+  }
+
+  const ledger = []
+  const emit = (chapterNumber, facts) => {
+    for (const fact of facts) ledger.push(`Ch${chapterNumber}: ${fact}`)
+  }
+
+  if (!Array.isArray(spine)) {
+    // No spine (edge case): emit whatever prose facts exist, in chapter order.
+    for (const key of [...proseByChapter.keys()].sort((a, b) => Number(a) - Number(b))) {
+      emit(key, proseByChapter.get(key))
+    }
+    return ledger
+  }
+
+  for (const entry of spine) {
+    if (!entry) continue
+    const key = String(entry.chapterNumber)
+    const prose = proseByChapter.get(key)
+    if (prose && prose.length) {
+      emit(entry.chapterNumber, prose)
+    } else if (Array.isArray(entry.keyFacts)) {
+      emit(
+        entry.chapterNumber,
+        entry.keyFacts.filter((f) => typeof f === 'string' && f.trim()).map((f) => f.trim())
+      )
     }
   }
   return ledger
@@ -1137,7 +1172,8 @@ export function useVolumeStoryGenerator() {
           location: scene.location || '',
           sceneNumber: scene.sceneNumber,
           subsectionId: scene.subsectionId,
-          chapterId: chapterNumber
+          chapterId: chapterNumber,
+          keyFacts: Array.isArray(result.structured?.keyFacts) ? result.structured.keyFacts : []
         }
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
         return { success: true, sceneIndex, structured: result.structured }
@@ -1271,7 +1307,8 @@ export function useVolumeStoryGenerator() {
           location: scene.location || '',
           sceneNumber: scene.sceneNumber,
           subsectionId: scene.subsectionId,
-          chapterId: chapterMeta.chapterNumber
+          chapterId: chapterMeta.chapterNumber,
+          keyFacts: Array.isArray(result.structured?.keyFacts) ? result.structured.keyFacts : []
         }
 
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
@@ -1809,7 +1846,7 @@ export function useVolumeStoryGenerator() {
         locations,
         sceneProse: written,
         synopsis: '',
-        ledger: buildFactLedger(spineArray.value)
+        ledger: buildFactLedger(spineArray.value, writtenScenes.value)
       })
       const issueCount =
         (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
@@ -1923,7 +1960,7 @@ export function useVolumeStoryGenerator() {
         locations,
         sceneProse: writtenScenes.value,
         synopsis: '',
-        ledger: buildFactLedger(spineArray.value)
+        ledger: buildFactLedger(spineArray.value, writtenScenes.value)
       })
       consistencyReport.value = report
     }
@@ -1963,7 +2000,7 @@ export function useVolumeStoryGenerator() {
           locations,
           sceneProse: writtenScenes.value,
           synopsis: '',
-          ledger: buildFactLedger(spineArray.value)
+          ledger: buildFactLedger(spineArray.value, writtenScenes.value)
         })
         consistencyReport.value = recheck
         if ((recheck.characterIssues?.length || 0) + (recheck.locationIssues?.length || 0) === 0)
