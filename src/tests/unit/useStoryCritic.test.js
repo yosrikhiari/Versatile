@@ -53,3 +53,25 @@ describe('formatLocationCheck', () => {
     expect(result).toContain('The forest was dark.')
   })
 })
+
+describe('fact ledger in consistency checks', () => {
+  it('includes established-canon facts in the character check when a ledger is provided', () => {
+    const char = { name: 'John', role: 'Hero' }
+    const excerpts = [{ prose: 'John walked in.' }]
+    const ledger = ['Ch2: John loses his left hand', 'Ch3: Mara learns the truth']
+    const result = formatCharacterCheck(char, ledger, excerpts)
+    expect(result).toContain('Established canon')
+    expect(result).toContain('John loses his left hand')
+  })
+
+  it('omits the canon block when the ledger is empty (backward compatible)', () => {
+    const result = formatCharacterCheck({ name: 'John' }, [], [{ prose: 'x' }])
+    expect(result).not.toContain('Established canon')
+  })
+
+  it('includes established-canon facts in the location check too', () => {
+    const result = formatLocationCheck({ name: 'Keep' }, ['Ch1: the Keep burns down'], [{ prose: 'x' }])
+    expect(result).toContain('Established canon')
+    expect(result).toContain('the Keep burns down')
+  })
+})

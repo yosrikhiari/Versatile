@@ -15,7 +15,7 @@ vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn(), getConfiguredMode
 vi.mock('../config/ai', () => ({ FEATURES: {}, PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai' } }))
 
 let buildEmbeddingContext, formatFullSpineEntry, compressSpine, buildExistingEntitiesBlob, parallelWithLimit
-let selectRelevantPriorScenes, planConsistencyFixes
+let selectRelevantPriorScenes, planConsistencyFixes, buildFactLedger
 let useVolumeStoryGenerator
 beforeEach(async () => {
   vi.resetModules()
@@ -27,6 +27,7 @@ beforeEach(async () => {
   compressSpine = mod.compressSpine
   buildExistingEntitiesBlob = mod.buildExistingEntitiesBlob
   parallelWithLimit = mod.parallelWithLimit
+  buildFactLedger = mod.buildFactLedger
   useVolumeStoryGenerator = mod.useVolumeStoryGenerator
 })
 
@@ -136,6 +137,70 @@ describe('formatFullSpineEntry', () => {
     expect(result).toContain('Hopeful')
     expect(result).toContain('Hero begins journey')
     expect(result).toContain('Time passes')
+  })
+})
+
+describe('buildFactLedger', () => {
+  it('flattens spine keyFacts with chapter attribution, in order (no prose)', () => {
+    const spine = [
+      { chapterNumber: 1, keyFacts: ['A is introduced'] },
+      { chapterNumber: 2, keyFacts: ['A is injured', 'B appears'] },
+      { chapterNumber: 3, keyFacts: [] }
+    ]
+    expect(buildFactLedger(spine)).toEqual([
+      'Ch1: A is introduced',
+      'Ch2: A is injured',
+      'Ch2: B appears'
+    ])
+  })
+
+  it('ignores entries without keyFacts and non-string facts', () => {
+    const spine = [
+      { chapterNumber: 1 },
+      { chapterNumber: 2, keyFacts: ['real', null, 42, '  '] }
+    ]
+    expect(buildFactLedger(spine)).toEqual(['Ch2: real'])
+  })
+
+  it('returns [] for a non-array spine', () => {
+    expect(buildFactLedger(null)).toEqual([])
+    expect(buildFactLedger(undefined)).toEqual([])
+  })
+
+  it('prefers prose keyFacts over the spine plan for a chapter that produced them', () => {
+    const spine = [
+      { chapterNumber: 1, keyFacts: ['planned: A meets B'] },
+      { chapterNumber: 2, keyFacts: ['planned: they travel'] }
+    ]
+    const writtenScenes = [
+      { chapterId: 1, keyFacts: ['A actually betrays B'] },
+      { chapterId: 1, keyFacts: ['B is wounded'] }
+      // chapter 2 produced no prose facts → falls back to the plan
+    ]
+    expect(buildFactLedger(spine, writtenScenes)).toEqual([
+      'Ch1: A actually betrays B',
+      'Ch1: B is wounded',
+      'Ch2: planned: they travel'
+    ])
+  })
+
+  it('ignores written scenes without a chapterId or keyFacts', () => {
+    const spine = [{ chapterNumber: 1, keyFacts: ['planned'] }]
+    const writtenScenes = [
+      { keyFacts: ['orphan fact, no chapter'] },
+      { chapterId: 1 },
+      { chapterId: 1, keyFacts: ['  ', null] }
+    ]
+    // No usable prose facts → falls back to the spine plan.
+    expect(buildFactLedger(spine, writtenScenes)).toEqual(['Ch1: planned'])
+  })
+
+  it('emits prose facts in chapter order when there is no spine', () => {
+    const writtenScenes = [
+      { chapterId: 2, keyFacts: ['later'] },
+      { chapterId: 1, keyFacts: ['earlier'] }
+    ]
+    expect(buildFactLedger(null, writtenScenes)).toEqual(['Ch1: earlier', 'Ch2: later'])
   })
 })
 
