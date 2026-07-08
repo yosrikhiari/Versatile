@@ -229,6 +229,7 @@ TASK:
 
       const generatedIds = { characters: [], locations: [], plotThreads: [] }
 
+      const newCharacters = []
       for (const char of parsed.characters || []) {
         if (!char.name) continue
         const key = normalizeName(char.name)
@@ -263,7 +264,7 @@ TASK:
           }
           charByKey.delete(key)
         } else {
-          const id = await storyBibleStore.addCharacterData(projectId, {
+          newCharacters.push({
             name: char.name,
             role: char.role || '',
             goal: char.goal || '',
@@ -274,13 +275,21 @@ TASK:
             traits: char.traits || [],
             generationStatus: 'generated'
           })
-          generatedIds.characters.push(id)
-          if (volumeId) {
+        }
+      }
+      // Atomic bulk insert of the new characters (all-or-nothing), then assign
+      // each to the active volume.
+      if (newCharacters.length) {
+        const ids = await storyBibleStore.addCharactersBatchData(projectId, newCharacters)
+        generatedIds.characters.push(...ids)
+        if (volumeId) {
+          for (const id of ids) {
             await networkStore.assignEntityToVolume('character', id, volumeId, false)
           }
         }
       }
 
+      const newLocations = []
       for (const loc of parsed.locations || []) {
         if (!loc.name) continue
         const key = normalizeName(loc.name)
@@ -300,20 +309,26 @@ TASK:
           }
           locByKey.delete(key)
         } else {
-          const id = await storyBibleStore.addLocationData(projectId, {
+          newLocations.push({
             name: loc.name,
             description: loc.description || '',
             notes: loc.notes || '',
             traits: loc.traits || [],
             generationStatus: 'generated'
           })
-          generatedIds.locations.push(id)
-          if (volumeId) {
+        }
+      }
+      if (newLocations.length) {
+        const ids = await storyBibleStore.addLocationsBatchData(projectId, newLocations)
+        generatedIds.locations.push(...ids)
+        if (volumeId) {
+          for (const id of ids) {
             await networkStore.assignEntityToVolume('location', id, volumeId, false)
           }
         }
       }
 
+      const newPlotThreads = []
       for (const thread of parsed.plotThreads || []) {
         if (!thread.title) continue
         const key = normalizeName(thread.title)
@@ -330,14 +345,19 @@ TASK:
           }
           threadByKey.delete(key)
         } else {
-          const id = await storyBibleStore.addPlotThreadData(projectId, {
+          newPlotThreads.push({
             title: thread.title,
             notes: thread.notes || '',
             traits: thread.traits || [],
             generationStatus: 'generated'
           })
-          generatedIds.plotThreads.push(id)
-          if (volumeId) {
+        }
+      }
+      if (newPlotThreads.length) {
+        const ids = await storyBibleStore.addPlotThreadsBatchData(projectId, newPlotThreads)
+        generatedIds.plotThreads.push(...ids)
+        if (volumeId) {
+          for (const id of ids) {
             await networkStore.assignEntityToVolume('plotThread', id, volumeId, false)
           }
         }

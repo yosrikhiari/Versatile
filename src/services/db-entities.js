@@ -53,6 +53,24 @@ export async function deleteCharacter(id) {
   return db.characters.delete(id)
 }
 
+// Atomic bulk insert — all-or-nothing so a crash mid-bible never leaves a
+// half-written character set. Returns the new ids in input order.
+export async function addCharactersBatch(projectId, characters) {
+  if (!Array.isArray(characters) || characters.length === 0) return []
+  const now = new Date().toISOString()
+  const rows = characters.map((data) => ({
+    projectId,
+    generationStatus: 'approved',
+    createdAt: now,
+    updatedAt: now,
+    ...data,
+    lastEditedAt: Date.now()
+  }))
+  return db.transaction('rw', db.characters, async () => {
+    return db.characters.bulkAdd(rows, { allKeys: true })
+  })
+}
+
 // ========== LOCATIONS ==========
 
 export async function getLocations(projectId) {
@@ -78,6 +96,22 @@ export async function deleteLocation(id) {
   return db.locations.delete(id)
 }
 
+// Atomic bulk insert for locations (see addCharactersBatch).
+export async function addLocationsBatch(projectId, locations) {
+  if (!Array.isArray(locations) || locations.length === 0) return []
+  const now = new Date().toISOString()
+  const rows = locations.map((data) => ({
+    projectId,
+    generationStatus: 'approved',
+    createdAt: now,
+    updatedAt: now,
+    ...data
+  }))
+  return db.transaction('rw', db.locations, async () => {
+    return db.locations.bulkAdd(rows, { allKeys: true })
+  })
+}
+
 // ========== PLOT THREADS ==========
 
 export async function getPlotThreads(projectId) {
@@ -101,6 +135,22 @@ export async function updatePlotThread(id, data) {
 
 export async function deletePlotThread(id) {
   return db.plotThreads.delete(id)
+}
+
+// Atomic bulk insert for plot threads (see addCharactersBatch).
+export async function addPlotThreadsBatch(projectId, plotThreads) {
+  if (!Array.isArray(plotThreads) || plotThreads.length === 0) return []
+  const now = new Date().toISOString()
+  const rows = plotThreads.map((data) => ({
+    projectId,
+    generationStatus: 'approved',
+    createdAt: now,
+    updatedAt: now,
+    ...data
+  }))
+  return db.transaction('rw', db.plotThreads, async () => {
+    return db.plotThreads.bulkAdd(rows, { allKeys: true })
+  })
 }
 
 // ========== CHARACTER RELATIONSHIPS ==========

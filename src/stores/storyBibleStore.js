@@ -3,14 +3,17 @@ import { ref, reactive } from 'vue'
 import {
   getCharacters,
   addCharacter,
+  addCharactersBatch,
   updateCharacter,
   deleteCharacter,
   getLocations,
   addLocation,
+  addLocationsBatch,
   updateLocation,
   deleteLocation,
   getPlotThreads,
   addPlotThread,
+  addPlotThreadsBatch,
   updatePlotThread,
   deletePlotThread,
   deleteCharacterRelationshipsByCharacter
@@ -90,6 +93,20 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     return id
   }
 
+  // Atomic bulk create: all characters inserted in one transaction, then the
+  // reactive store is updated in sync. Mirrors addCharacterData's defaults so a
+  // crash mid-bible leaves either all of this batch's characters or none.
+  async function addCharactersBatchData(projectId, dataList) {
+    if (!Array.isArray(dataList) || dataList.length === 0) return []
+    const rows = dataList.map((data) => ({ source: 'manual', chapterId: null, ...data }))
+    const ids = await addCharactersBatch(projectId, rows)
+    ids.forEach((id, i) => {
+      characters.value.push({ id, projectId, ...rows[i], lastEditedAt: Date.now() })
+    })
+    queueDocumentRegeneration(['characters', 'relationships'])
+    return ids
+  }
+
   async function updateCharacterData(id, data, _projectId) {
     await updateCharacter(id, { ...data, lastEditedAt: Date.now() })
     const index = characters.value.findIndex((c) => c.id === id)
@@ -117,6 +134,18 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     locations.value.push({ id, projectId, ...data, source, chapterId })
     queueDocumentRegeneration(['world', 'relationships'])
     return id
+  }
+
+  // Atomic bulk create for locations (see addCharactersBatchData).
+  async function addLocationsBatchData(projectId, dataList) {
+    if (!Array.isArray(dataList) || dataList.length === 0) return []
+    const rows = dataList.map((data) => ({ source: 'manual', chapterId: null, ...data }))
+    const ids = await addLocationsBatch(projectId, rows)
+    ids.forEach((id, i) => {
+      locations.value.push({ id, projectId, ...rows[i] })
+    })
+    queueDocumentRegeneration(['world', 'relationships'])
+    return ids
   }
 
   async function updateLocationData(id, data, _projectId) {
@@ -152,6 +181,25 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     })
     queueDocumentRegeneration(['timeline', 'relationships'])
     return id
+  }
+
+  // Atomic bulk create for plot threads (see addCharactersBatchData); assigns
+  // sequential timelineOrder values continuing from the current max.
+  async function addPlotThreadsBatchData(projectId, dataList) {
+    if (!Array.isArray(dataList) || dataList.length === 0) return []
+    let maxOrder = plotThreads.value.reduce((max, t) => Math.max(max, t.timelineOrder ?? 0), 0)
+    const rows = dataList.map((data) => ({
+      source: 'manual',
+      chapterId: null,
+      ...data,
+      timelineOrder: ++maxOrder
+    }))
+    const ids = await addPlotThreadsBatch(projectId, rows)
+    ids.forEach((id, i) => {
+      plotThreads.value.push({ id, projectId, ...rows[i] })
+    })
+    queueDocumentRegeneration(['timeline', 'relationships'])
+    return ids
   }
 
   async function reorderPlotThreads(orderedIds) {
@@ -238,12 +286,15 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     voiceProfile,
     loadAll,
     addCharacterData,
+    addCharactersBatchData,
     updateCharacterData,
     deleteCharacterData,
     addLocationData,
+    addLocationsBatchData,
     updateLocationData,
     deleteLocationData,
     addPlotThreadData,
+    addPlotThreadsBatchData,
     updatePlotThreadData,
     deletePlotThreadData,
     updateThreadStatus,
