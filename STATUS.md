@@ -54,12 +54,26 @@ The declared DAG: **bible → network → structure → spine → prose → cons
 - ✅ Retired dead `useStoryOrchestrator.js` (a second, unused scene generator).
 - ✅ Eliminated all 28 silent `catch {}` blocks (8 now warn, 20 documented).
 - ✅ Repo hygiene: dotnet run output + scratch `TestApi/` gitignored/removed.
+- ✅ **Recovered 35 test files** that a blanket `src/tests/` gitignore had silently
+  dropped from version control (they ran locally but were never committed).
+- ✅ **Backend `ApiControllerBase`**: hoisted the `UserId` claim extraction out of
+  34 controllers (`Auth`/`ApiKeys` excluded). Builds clean; 21 backend tests pass.
+- ✅ Circular dep `manuscriptStore` ↔ `projectStore` was **already mitigated** —
+  `projectStore` imports `manuscriptStore` via lazy `await import()`. No action.
 
-### Remaining (larger refactors — none urgent, none broken)
-- `StoryGeneratorPanel.vue` is ~1883 lines — split into composables + children.
-- Dexie schema: many incremental versions each restating the full table set.
-- Circular dep: `manuscriptStore` ↔ `projectStore` (verify + break).
-- Backend: 35 controllers duplicate `UserId` extraction → base controller.
+### Remaining — each needs a human-in-the-loop step, not blind execution
+- **`StoryGeneratorPanel.vue` split (~1883 lines, ~1244 template).** High Vue
+  regression risk (props/emits/reactivity) that build + unit tests won't catch;
+  needs a runtime smoke test through the logged-in generator flow to verify.
+- **Fact ledger ← prose.** The structured writer emits no durable facts, so this
+  needs a design decision first: extend the writer's output schema vs. add a
+  per-chapter extraction pass (each has real cost on the working pipeline).
+- **Full transactional atomicity.** Subtle: a Dexie transaction can't stay open
+  across the `await` to an AI enrich call, so the bootstrapper must be split into
+  compute-then-batch-write phases before `db.transaction` wrapping is safe.
+- **Dexie schema compaction.** Low value, HIGH data-loss risk (every migration
+  restates the full table set). Do only in a dedicated pass with a migration-test
+  harness — not worth the risk otherwise.
 
 ---
 
