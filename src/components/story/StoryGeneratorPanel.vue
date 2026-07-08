@@ -21,6 +21,7 @@ import {
 import { useSceneEval } from '../../composables/useSceneEval'
 import { useResearchScope } from '../../composables/useResearchScope'
 import { useGenerationHistory } from '../../composables/useGenerationHistory'
+import { useSparkContext } from '../../composables/useSparkContext'
 import EvalPanel from '../eval/EvalPanel.vue'
 import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
 import EvalDashboard from '../eval/EvalDashboard.vue'
@@ -52,61 +53,18 @@ const estimatedTotalWords = computed(
   () => volumes.value * chaptersPerVolume.value * wordsPerChapter.value
 )
 
-const sparkContext = ref('')
-
-// Human-readable label for what's about to be sent to the generator
-const sparkContextLabel = computed(() => {
-  if (sparkStore.currentOutline) {
-    const title = sparkStore.currentOutline.title
-    return title ? `Blueprint: "${title}"` : 'Chapter Blueprint'
+const {
+  sparkContext,
+  sparkContextLabel,
+  handleSendSparkToGenerator,
+  clearSparkContext
+} = useSparkContext({
+  sparkStore,
+  getTurns,
+  setTab: (v) => {
+    tab.value = v
   }
-  if (sparkStore.currentContent) {
-    const snippet = sparkStore.currentContent.slice(0, 60).replace(/\n/g, ' ')
-    return `Content: "${snippet}${sparkStore.currentContent.length > 60 ? '…' : ''}"`
-  }
-  return 'Spark output'
 })
-
-function formatBlueprintAsContext(blueprint) {
-  const lines = [
-    blueprint.title ? `Chapter: ${blueprint.title}` : null,
-    blueprint.openingBeat ? `Opening beat: ${blueprint.openingBeat}` : null,
-    blueprint.turningPoint ? `Turning point: ${blueprint.turningPoint}` : null,
-    blueprint.confrontationBeat ? `Confrontation: ${blueprint.confrontationBeat}` : null,
-    blueprint.closingBeat ? `Closing beat: ${blueprint.closingBeat}` : null,
-    blueprint.sensoryAnchor ? `Sensory anchor: ${blueprint.sensoryAnchor}` : null,
-    blueprint.dialogueHook ? `Dialogue hook: ${blueprint.dialogueHook}` : null,
-    blueprint.writingNotes ? `Notes: ${blueprint.writingNotes}` : null
-  ].filter(Boolean)
-  return lines.join('\n')
-}
-
-function handleSendSparkToGenerator() {
-  // Priority 1: blueprint — the most structured context; must be formatted from the object,
-  // not from the conversation turn (turns only store a compact summary string)
-  if (sparkStore.currentOutline) {
-    sparkContext.value = formatBlueprintAsContext(sparkStore.currentOutline)
-    tab.value = MODE_CHAPTER
-    return
-  }
-
-  // Priority 2: generated chapter content
-  if (sparkStore.currentContent) {
-    sparkContext.value = sparkStore.currentContent
-    tab.value = MODE_SCENE
-    return
-  }
-
-  // Priority 3: last assistant turn in the conversation (prompt / partial streaming)
-  const turns = getTurns('spark_default')
-  const lastAssistant = [...turns].reverse().find((t) => t.role === 'assistant')
-  sparkContext.value = lastAssistant?.content || sparkStore.currentStreamingContent || ''
-  tab.value = 'chapter'
-}
-
-function clearSparkContext() {
-  sparkContext.value = ''
-}
 
 const showVolumeReadModal = ref(false)
 
