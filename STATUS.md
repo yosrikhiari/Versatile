@@ -62,9 +62,12 @@ The declared DAG: **bible → network → structure → spine → prose → cons
   `projectStore` imports `manuscriptStore` via lazy `await import()`. No action.
 
 ### Remaining — each needs a human-in-the-loop step, not blind execution
-- **`StoryGeneratorPanel.vue` split (~1883 lines, ~1244 template).** High Vue
-  regression risk (props/emits/reactivity) that build + unit tests won't catch;
-  needs a runtime smoke test through the logged-in generator flow to verify.
+- **`StoryGeneratorPanel.vue` split — in progress (1883 → 1800).** Two cleanly-
+  separable script blocks extracted into tested composables (`useResearchScope`,
+  `useGenerationHistory`). Remaining: the generation-orchestration core (coupled
+  to panel streaming refs) and the ~1244-line template → child components. Those
+  carry real Vue regression risk that build + unit tests won't catch, so they
+  need a runtime smoke test through the logged-in generator flow.
 - **Fact ledger ← prose.** The structured writer emits no durable facts, so this
   needs a design decision first: extend the writer's output schema vs. add a
   per-chapter extraction pass (each has real cost on the working pipeline).
