@@ -12,6 +12,10 @@ import SparkPanel from '../spark/SparkPanel.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import GenerationSyncPreview from './GenerationSyncPreview.vue'
 import GenerationLoadingScreen from './GenerationLoadingScreen.vue'
+import PreviousGenerationsList from './PreviousGenerationsList.vue'
+import VolumeReadModal from './VolumeReadModal.vue'
+import ConsistencyReportModal from './ConsistencyReportModal.vue'
+import GenerationSettingsForm from './GenerationSettingsForm.vue'
 import {
   MODE_ARC,
   MODE_CHAPTER,
@@ -19,6 +23,10 @@ import {
   MODE_BRAINSTORM
 } from '../../constants/generationModes'
 import { useSceneEval } from '../../composables/useSceneEval'
+import { useResearchScope } from '../../composables/useResearchScope'
+import { useGenerationHistory } from '../../composables/useGenerationHistory'
+import { useSparkContext } from '../../composables/useSparkContext'
+import { useGenerationSettings } from '../../composables/useGenerationSettings'
 import EvalPanel from '../eval/EvalPanel.vue'
 import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
 import EvalDashboard from '../eval/EvalDashboard.vue'
@@ -38,73 +46,30 @@ const tab = ref(MODE_BRAINSTORM)
 const mode = computed(() =>
   tab.value === MODE_ARC ? MODE_ARC : tab.value === MODE_CHAPTER ? MODE_CHAPTER : MODE_SCENE
 )
-const genre = ref('')
-const tone = ref('')
-const wordTarget = ref(3500)
-const usePreciseStructure = ref(false)
-const volumes = ref(1)
-const chaptersPerVolume = ref(10)
-const wordsPerChapter = ref(2000)
-const scenesPerChapter = ref(3)
-const estimatedTotalWords = computed(
-  () => volumes.value * chaptersPerVolume.value * wordsPerChapter.value
-)
+const {
+  genre,
+  tone,
+  wordTarget,
+  usePreciseStructure,
+  volumes,
+  chaptersPerVolume,
+  wordsPerChapter,
+  scenesPerChapter,
+  estimatedTotalWords
+} = useGenerationSettings()
 
-const sparkContext = ref('')
-
-// Human-readable label for what's about to be sent to the generator
-const sparkContextLabel = computed(() => {
-  if (sparkStore.currentOutline) {
-    const title = sparkStore.currentOutline.title
-    return title ? `Blueprint: "${title}"` : 'Chapter Blueprint'
+const {
+  sparkContext,
+  sparkContextLabel,
+  handleSendSparkToGenerator,
+  clearSparkContext
+} = useSparkContext({
+  sparkStore,
+  getTurns,
+  setTab: (v) => {
+    tab.value = v
   }
-  if (sparkStore.currentContent) {
-    const snippet = sparkStore.currentContent.slice(0, 60).replace(/\n/g, ' ')
-    return `Content: "${snippet}${sparkStore.currentContent.length > 60 ? '…' : ''}"`
-  }
-  return 'Spark output'
 })
-
-function formatBlueprintAsContext(blueprint) {
-  const lines = [
-    blueprint.title ? `Chapter: ${blueprint.title}` : null,
-    blueprint.openingBeat ? `Opening beat: ${blueprint.openingBeat}` : null,
-    blueprint.turningPoint ? `Turning point: ${blueprint.turningPoint}` : null,
-    blueprint.confrontationBeat ? `Confrontation: ${blueprint.confrontationBeat}` : null,
-    blueprint.closingBeat ? `Closing beat: ${blueprint.closingBeat}` : null,
-    blueprint.sensoryAnchor ? `Sensory anchor: ${blueprint.sensoryAnchor}` : null,
-    blueprint.dialogueHook ? `Dialogue hook: ${blueprint.dialogueHook}` : null,
-    blueprint.writingNotes ? `Notes: ${blueprint.writingNotes}` : null
-  ].filter(Boolean)
-  return lines.join('\n')
-}
-
-function handleSendSparkToGenerator() {
-  // Priority 1: blueprint — the most structured context; must be formatted from the object,
-  // not from the conversation turn (turns only store a compact summary string)
-  if (sparkStore.currentOutline) {
-    sparkContext.value = formatBlueprintAsContext(sparkStore.currentOutline)
-    tab.value = MODE_CHAPTER
-    return
-  }
-
-  // Priority 2: generated chapter content
-  if (sparkStore.currentContent) {
-    sparkContext.value = sparkStore.currentContent
-    tab.value = MODE_SCENE
-    return
-  }
-
-  // Priority 3: last assistant turn in the conversation (prompt / partial streaming)
-  const turns = getTurns('spark_default')
-  const lastAssistant = [...turns].reverse().find((t) => t.role === 'assistant')
-  sparkContext.value = lastAssistant?.content || sparkStore.currentStreamingContent || ''
-  tab.value = 'chapter'
-}
-
-function clearSparkContext() {
-  sparkContext.value = ''
-}
 
 const showVolumeReadModal = ref(false)
 
@@ -239,102 +204,27 @@ const totalWordsWritten = computed(() =>
   )
 )
 
-const previousGenerations = ref([])
-async function loadPreviousGenerations() {
-  const pid = projectStore.currentProjectId
-  if (!pid) return
-  try {
-    previousGenerations.value = await db.generatedStories
-      .where('projectId')
-      .equals(pid)
-      .reverse()
-      .sortBy('generatedAt')
-  } catch {
-    /* ignore */
-  }
-}
-
-const resumableRun = ref(null)
-async function checkResumable() {
-  if (!projectStore.currentProjectId) {
-    resumableRun.value = null
-    return
-  }
-  try {
-    resumableRun.value = await volumeGenerator.getResumableRun(projectStore.currentProjectId)
-  } catch {
-    resumableRun.value = null
-  }
-}
+const {
+  previousGenerations,
+  resumableRun,
+  loadPreviousGenerations,
+  checkResumable,
+  handleDiscardResumable
+} = useGenerationHistory(() => projectStore.currentProjectId, volumeGenerator)
 
 // ----- Research sources: let the user pick which imported documents inform the plan -----
-const researchDocs = ref([]) // [{ id, fileName, chunkCount }]
-const useResearch = ref(true)
-const selectedResearchDocIds = ref(new Set())
-
-const hasResearchDocs = computed(() => researchDocs.value.length > 0)
-const selectedResearchCount = computed(() => {
-  let n = 0
-  for (const d of researchDocs.value) if (selectedResearchDocIds.value.has(d.id)) n++
-  return n
-})
-
-async function loadResearchSources() {
-  if (!projectStore.currentProjectId) return
-  try {
-    const { getAllResearchDocuments, getAllChunksForProject } = await import(
-      '../../services/researchDb'
-    )
-    const [docs, chunks] = await Promise.all([
-      getAllResearchDocuments(projectStore.currentProjectId),
-      getAllChunksForProject(projectStore.currentProjectId)
-    ])
-    const counts = new Map()
-    for (const c of chunks) counts.set(c.documentId, (counts.get(c.documentId) || 0) + 1)
-    researchDocs.value = docs.map((d) => ({
-      id: d.id,
-      fileName: d.fileName || 'Untitled source',
-      chunkCount: counts.get(d.id) || 0
-    }))
-    // Default: every source selected (narrow, don't opt-in).
-    selectedResearchDocIds.value = new Set(researchDocs.value.map((d) => d.id))
-  } catch {
-    researchDocs.value = []
-  }
-}
-
-function toggleResearchDoc(id) {
-  const next = new Set(selectedResearchDocIds.value)
-  if (next.has(id)) next.delete(id)
-  else next.add(id)
-  selectedResearchDocIds.value = next
-}
-
-function selectAllResearch() {
-  selectedResearchDocIds.value = new Set(researchDocs.value.map((d) => d.id))
-}
-
-function selectNoResearch() {
-  selectedResearchDocIds.value = new Set()
-}
-
-// The scope object passed to the generator. `documentIds: []` means "use all"
-// per the director contract, so we only send explicit IDs when the user has
-// deselected at least one source.
-function buildResearchScope() {
-  if (!hasResearchDocs.value) return undefined
-  // Toggle off, or on but with nothing selected → no research context.
-  if (!useResearch.value || selectedResearchCount.value === 0) {
-    return { enabled: false, documentIds: [] }
-  }
-  const allSelected = selectedResearchCount.value === researchDocs.value.length
-  // documentIds: [] is the director's "use all" signal; only send explicit IDs
-  // once the user has narrowed the set.
-  return {
-    enabled: true,
-    documentIds: allSelected ? [] : [...selectedResearchDocIds.value]
-  }
-}
+const {
+  researchDocs,
+  useResearch,
+  selectedResearchDocIds,
+  hasResearchDocs,
+  selectedResearchCount,
+  loadResearchSources,
+  toggleResearchDoc,
+  selectAllResearch,
+  selectNoResearch,
+  buildResearchScope
+} = useResearchScope(() => projectStore.currentProjectId)
 
 onMounted(() => {
   loadPreviousGenerations()
@@ -361,16 +251,6 @@ async function handleVolumeResume() {
   }
 }
 
-async function handleDiscardResumable() {
-  if (!projectStore.currentProjectId) return
-  try {
-    const { clearGenRun } = await import('../../services/db-generation')
-    await clearGenRun(projectStore.currentProjectId)
-  } catch {
-    /* ignore */
-  }
-  resumableRun.value = null
-}
 
 // ----- Volume pipeline -----
 async function handleVolumeGenerate() {
@@ -663,158 +543,22 @@ function getPhaseLabel(phase) {
               </div>
             </div>
 
-            <div>
-              <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2"
-                >Story Synopsis</label
-              >
-              <div
-                v-if="hasSynopsis"
-                class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary whitespace-pre-wrap"
-              >
-                {{ synopsis }}
-              </div>
-              <div
-                v-else
-                class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-hint italic flex items-center justify-center"
-              >
-                <span
-                  >No synopsis set — open Project Settings to add a category and description</span
-                >
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2"
-                >Genre</label
-              >
-              <div class="flex flex-wrap gap-1.5">
-                <button
-                  v-for="g in genres"
-                  :key="g"
-                  :class="[
-                    'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
-                    genre === g
-                      ? 'bg-accent text-accent-foreground'
-                      : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-                  ]"
-                  @click="genre = genre === g ? '' : g"
-                >
-                  {{ g }}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2"
-                >Tone</label
-              >
-              <div class="flex flex-wrap gap-1.5">
-                <button
-                  v-for="t in tones"
-                  :key="t"
-                  :class="[
-                    'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
-                    tone === t
-                      ? 'bg-accent text-accent-foreground'
-                      : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-                  ]"
-                  @click="tone = tone === t ? '' : t"
-                >
-                  {{ t }}
-                </button>
-              </div>
-            </div>
-
-            <div v-if="!usePreciseStructure">
-              <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">{{
-                mode === MODE_SCENE ? 'Words per Scene' : 'Total Word Target'
-              }}</label>
-              <input
-                v-model.number="wordTarget"
-                type="number"
-                min="500"
-                max="10000"
-                step="100"
-                class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </div>
-
-            <!-- Precise structure: exact volumes / chapters / words -->
-            <div class="rounded-lg border border-border-subtle p-3 space-y-3">
-              <label
-                class="flex items-center gap-2 text-xs text-text-primary font-ui cursor-pointer select-none"
-              >
-                <input
-                  v-model="usePreciseStructure"
-                  type="checkbox"
-                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-                />
-                Precise structure (exact volumes, chapters & length)
-              </label>
-
-              <div v-if="usePreciseStructure" class="grid grid-cols-2 gap-3">
-                <div>
-                  <label
-                    class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
-                    >Volumes</label
-                  >
-                  <input
-                    v-model.number="volumes"
-                    type="number"
-                    min="1"
-                    max="20"
-                    class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-                <div>
-                  <label
-                    class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
-                    >Chapters / volume</label
-                  >
-                  <input
-                    v-model.number="chaptersPerVolume"
-                    type="number"
-                    min="1"
-                    max="60"
-                    class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-                <div>
-                  <label
-                    class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
-                    >Words / chapter</label
-                  >
-                  <input
-                    v-model.number="wordsPerChapter"
-                    type="number"
-                    min="300"
-                    max="20000"
-                    step="100"
-                    class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-                <div>
-                  <label
-                    class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
-                    >Scenes / chapter</label
-                  >
-                  <input
-                    v-model.number="scenesPerChapter"
-                    type="number"
-                    min="1"
-                    max="12"
-                    class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-              </div>
-
-              <p v-if="usePreciseStructure" class="text-2xs text-text-hint font-ui">
-                {{ volumes * chaptersPerVolume }} chapters · ~{{
-                  estimatedTotalWords.toLocaleString()
-                }}
-                words total. Chapters are linked via hook endings + a shared spine for continuity.
-              </p>
-            </div>
+            <GenerationSettingsForm
+              v-model:genre="genre"
+              v-model:tone="tone"
+              v-model:wordTarget="wordTarget"
+              v-model:usePreciseStructure="usePreciseStructure"
+              v-model:volumes="volumes"
+              v-model:chaptersPerVolume="chaptersPerVolume"
+              v-model:wordsPerChapter="wordsPerChapter"
+              v-model:scenesPerChapter="scenesPerChapter"
+              :genres="genres"
+              :tones="tones"
+              :mode="mode"
+              :synopsis="synopsis"
+              :has-synopsis="hasSynopsis"
+              :estimated-total-words="estimatedTotalWords"
+            />
 
             <!-- Research sources: choose which imported documents inform the novel -->
             <div v-if="hasResearchDocs" class="rounded-lg border border-border-subtle p-3 space-y-3">
@@ -1753,131 +1497,21 @@ function getPhaseLabel(phase) {
     </div>
 
     <!-- ==================== PREVIOUS GENERATIONS ==================== -->
-    <div v-if="previousGenerations.length > 0" class="border-t border-border-subtle pt-4 mt-4">
-      <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-        Previous Generations
-      </h3>
-      <div class="space-y-1.5">
-        <div
-          v-for="(gen, i) in previousGenerations"
-          :key="gen.id || i"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-tertiary/30 border border-border-subtle text-xs"
-        >
-          <BaseIcon name="file-text" :size="14" class="text-text-hint shrink-0" />
-          <div class="flex-1 min-w-0">
-            <p class="text-text-primary truncate">{{ gen.title }}</p>
-            <p class="text-text-hint text-2xs font-ui">
-              {{ new Date(gen.generatedAt).toLocaleDateString() }}
-              <span v-if="gen.totalWords"> · {{ gen.totalWords }} words</span>
-              <span v-if="gen.qualityScore !== undefined"> · score {{ gen.qualityScore }}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <PreviousGenerationsList :generations="previousGenerations" />
 
     <!-- ==================== VOLUME READ MODAL ==================== -->
-    <div
-      v-if="showVolumeReadModal && volumeGenerator.writtenScenes.value.length > 0"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
-      @click.self="showVolumeReadModal = false"
-    >
-      <div
-        class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-text-primary font-ui">Generated Story</h2>
-          <button
-            class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
-            @click="showVolumeReadModal = false"
-          >
-            <BaseIcon name="x" :size="20" />
-          </button>
-        </div>
-        <div class="space-y-6">
-          <div v-for="(scene, i) in volumeGenerator.writtenScenes.value" :key="i" class="space-y-2">
-            <h3 class="text-sm font-semibold text-accent font-ui">
-              Scene {{ i + 1 }}: {{ scene.title }}
-            </h3>
-            <div class="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
-              {{ scene.prose }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <VolumeReadModal
+      v-if="showVolumeReadModal"
+      :scenes="volumeGenerator.writtenScenes.value"
+      @close="showVolumeReadModal = false"
+    />
 
     <!-- ==================== CONSISTENCY REPORT MODAL ==================== -->
-    <div
-      v-if="consistencyModalOpen && volumeGenerator.consistencyReport.value"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
-      @click.self="consistencyModalOpen = false"
-    >
-      <div
-        class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-text-primary font-ui">Consistency Report</h2>
-          <button
-            class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
-            @click="consistencyModalOpen = false"
-          >
-            <BaseIcon name="x" :size="20" />
-          </button>
-        </div>
-
-        <div
-          v-if="volumeGenerator.consistencyReport.value.characterIssues?.length > 0"
-          class="mb-4"
-        >
-          <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">
-            Character Contradictions
-          </h3>
-          <div
-            v-for="(item, i) in volumeGenerator.consistencyReport.value.characterIssues"
-            :key="'char-' + i"
-            class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg"
-          >
-            <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.character }}</p>
-            <div
-              v-for="(c, j) in item.contradictions"
-              :key="j"
-              class="text-xs text-text-secondary space-y-0.5 mb-1"
-            >
-              <p>
-                <span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="volumeGenerator.consistencyReport.value.locationIssues?.length > 0">
-          <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">
-            Location Contradictions
-          </h3>
-          <div
-            v-for="(item, i) in volumeGenerator.consistencyReport.value.locationIssues"
-            :key="'loc-' + i"
-            class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg"
-          >
-            <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.location }}</p>
-            <div
-              v-for="(c, j) in item.contradictions"
-              :key="j"
-              class="text-xs text-text-secondary space-y-0.5 mb-1"
-            >
-              <p>
-                <span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="volumeTotalConsistencyIssues === 0" class="text-center py-4">
-          <BaseIcon name="check-circle" :size="24" class="mx-auto text-green-400 mb-2" />
-          <p class="text-sm text-green-400 font-ui">No contradictions found</p>
-        </div>
-      </div>
-    </div>
+    <ConsistencyReportModal
+      v-if="consistencyModalOpen"
+      :report="volumeGenerator.consistencyReport.value"
+      :total-issues="volumeTotalConsistencyIssues"
+      @close="consistencyModalOpen = false"
+    />
   </div>
 </template>
