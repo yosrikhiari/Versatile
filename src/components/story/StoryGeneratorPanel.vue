@@ -20,6 +20,7 @@ import {
 } from '../../constants/generationModes'
 import { useSceneEval } from '../../composables/useSceneEval'
 import { useResearchScope } from '../../composables/useResearchScope'
+import { useGenerationHistory } from '../../composables/useGenerationHistory'
 import EvalPanel from '../eval/EvalPanel.vue'
 import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
 import EvalDashboard from '../eval/EvalDashboard.vue'
@@ -240,33 +241,13 @@ const totalWordsWritten = computed(() =>
   )
 )
 
-const previousGenerations = ref([])
-async function loadPreviousGenerations() {
-  const pid = projectStore.currentProjectId
-  if (!pid) return
-  try {
-    previousGenerations.value = await db.generatedStories
-      .where('projectId')
-      .equals(pid)
-      .reverse()
-      .sortBy('generatedAt')
-  } catch {
-    /* ignore */
-  }
-}
-
-const resumableRun = ref(null)
-async function checkResumable() {
-  if (!projectStore.currentProjectId) {
-    resumableRun.value = null
-    return
-  }
-  try {
-    resumableRun.value = await volumeGenerator.getResumableRun(projectStore.currentProjectId)
-  } catch {
-    resumableRun.value = null
-  }
-}
+const {
+  previousGenerations,
+  resumableRun,
+  loadPreviousGenerations,
+  checkResumable,
+  handleDiscardResumable
+} = useGenerationHistory(() => projectStore.currentProjectId, volumeGenerator)
 
 // ----- Research sources: let the user pick which imported documents inform the plan -----
 const {
@@ -307,16 +288,6 @@ async function handleVolumeResume() {
   }
 }
 
-async function handleDiscardResumable() {
-  if (!projectStore.currentProjectId) return
-  try {
-    const { clearGenRun } = await import('../../services/db-generation')
-    await clearGenRun(projectStore.currentProjectId)
-  } catch {
-    /* ignore */
-  }
-  resumableRun.value = null
-}
 
 // ----- Volume pipeline -----
 async function handleVolumeGenerate() {
