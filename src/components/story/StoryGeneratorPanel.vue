@@ -12,6 +12,9 @@ import SparkPanel from '../spark/SparkPanel.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import GenerationSyncPreview from './GenerationSyncPreview.vue'
 import GenerationLoadingScreen from './GenerationLoadingScreen.vue'
+import PreviousGenerationsList from './PreviousGenerationsList.vue'
+import VolumeReadModal from './VolumeReadModal.vue'
+import ConsistencyReportModal from './ConsistencyReportModal.vue'
 import {
   MODE_ARC,
   MODE_CHAPTER,
@@ -1628,131 +1631,21 @@ function getPhaseLabel(phase) {
     </div>
 
     <!-- ==================== PREVIOUS GENERATIONS ==================== -->
-    <div v-if="previousGenerations.length > 0" class="border-t border-border-subtle pt-4 mt-4">
-      <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-        Previous Generations
-      </h3>
-      <div class="space-y-1.5">
-        <div
-          v-for="(gen, i) in previousGenerations"
-          :key="gen.id || i"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-tertiary/30 border border-border-subtle text-xs"
-        >
-          <BaseIcon name="file-text" :size="14" class="text-text-hint shrink-0" />
-          <div class="flex-1 min-w-0">
-            <p class="text-text-primary truncate">{{ gen.title }}</p>
-            <p class="text-text-hint text-2xs font-ui">
-              {{ new Date(gen.generatedAt).toLocaleDateString() }}
-              <span v-if="gen.totalWords"> · {{ gen.totalWords }} words</span>
-              <span v-if="gen.qualityScore !== undefined"> · score {{ gen.qualityScore }}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <PreviousGenerationsList :generations="previousGenerations" />
 
     <!-- ==================== VOLUME READ MODAL ==================== -->
-    <div
-      v-if="showVolumeReadModal && volumeGenerator.writtenScenes.value.length > 0"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
-      @click.self="showVolumeReadModal = false"
-    >
-      <div
-        class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-text-primary font-ui">Generated Story</h2>
-          <button
-            class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
-            @click="showVolumeReadModal = false"
-          >
-            <BaseIcon name="x" :size="20" />
-          </button>
-        </div>
-        <div class="space-y-6">
-          <div v-for="(scene, i) in volumeGenerator.writtenScenes.value" :key="i" class="space-y-2">
-            <h3 class="text-sm font-semibold text-accent font-ui">
-              Scene {{ i + 1 }}: {{ scene.title }}
-            </h3>
-            <div class="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
-              {{ scene.prose }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <VolumeReadModal
+      v-if="showVolumeReadModal"
+      :scenes="volumeGenerator.writtenScenes.value"
+      @close="showVolumeReadModal = false"
+    />
 
     <!-- ==================== CONSISTENCY REPORT MODAL ==================== -->
-    <div
-      v-if="consistencyModalOpen && volumeGenerator.consistencyReport.value"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
-      @click.self="consistencyModalOpen = false"
-    >
-      <div
-        class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-text-primary font-ui">Consistency Report</h2>
-          <button
-            class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
-            @click="consistencyModalOpen = false"
-          >
-            <BaseIcon name="x" :size="20" />
-          </button>
-        </div>
-
-        <div
-          v-if="volumeGenerator.consistencyReport.value.characterIssues?.length > 0"
-          class="mb-4"
-        >
-          <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">
-            Character Contradictions
-          </h3>
-          <div
-            v-for="(item, i) in volumeGenerator.consistencyReport.value.characterIssues"
-            :key="'char-' + i"
-            class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg"
-          >
-            <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.character }}</p>
-            <div
-              v-for="(c, j) in item.contradictions"
-              :key="j"
-              class="text-xs text-text-secondary space-y-0.5 mb-1"
-            >
-              <p>
-                <span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="volumeGenerator.consistencyReport.value.locationIssues?.length > 0">
-          <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">
-            Location Contradictions
-          </h3>
-          <div
-            v-for="(item, i) in volumeGenerator.consistencyReport.value.locationIssues"
-            :key="'loc-' + i"
-            class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg"
-          >
-            <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.location }}</p>
-            <div
-              v-for="(c, j) in item.contradictions"
-              :key="j"
-              class="text-xs text-text-secondary space-y-0.5 mb-1"
-            >
-              <p>
-                <span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="volumeTotalConsistencyIssues === 0" class="text-center py-4">
-          <BaseIcon name="check-circle" :size="24" class="mx-auto text-green-400 mb-2" />
-          <p class="text-sm text-green-400 font-ui">No contradictions found</p>
-        </div>
-      </div>
-    </div>
+    <ConsistencyReportModal
+      v-if="consistencyModalOpen"
+      :report="volumeGenerator.consistencyReport.value"
+      :total-issues="volumeTotalConsistencyIssues"
+      @close="consistencyModalOpen = false"
+    />
   </div>
 </template>
