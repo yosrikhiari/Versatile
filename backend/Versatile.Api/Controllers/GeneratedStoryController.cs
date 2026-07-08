@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/generated-story"), Authorize]
-public class GeneratedStoryController : ControllerBase
+public class GeneratedStoryController : ApiControllerBase
 {
     private readonly IGeneratedStoryService _service;
 
     public GeneratedStoryController(IGeneratedStoryService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<GeneratedStoryDto>>> GetAll(Guid storyId)

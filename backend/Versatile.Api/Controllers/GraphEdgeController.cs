@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/graph-edge"), Authorize]
-public class GraphEdgeController : ControllerBase
+public class GraphEdgeController : ApiControllerBase
 {
     private readonly IGraphEdgeService _service;
 
     public GraphEdgeController(IGraphEdgeService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<GraphEdgeDto>>> GetAll(Guid storyId)

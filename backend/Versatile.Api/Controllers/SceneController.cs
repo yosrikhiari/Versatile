@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/chapter/{chapterId}/scene"), Authorize]
-public class SceneController : ControllerBase
+public class SceneController : ApiControllerBase
 {
     private readonly ISceneService _scene;
 
     public SceneController(ISceneService scene) => _scene = scene;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<SceneDto>>> GetAll(Guid chapterId)

@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/session-archive"), Authorize]
-public class SessionArchiveItemController : ControllerBase
+public class SessionArchiveItemController : ApiControllerBase
 {
     private readonly ISessionArchiveItemService _service;
 
     public SessionArchiveItemController(ISessionArchiveItemService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<SessionArchiveItemDto>>> GetAll(Guid storyId)

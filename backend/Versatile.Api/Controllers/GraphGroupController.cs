@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/graph-group"), Authorize]
-public class GraphGroupController : ControllerBase
+public class GraphGroupController : ApiControllerBase
 {
     private readonly IGraphGroupService _service;
 
     public GraphGroupController(IGraphGroupService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<GraphGroupDto>>> GetAll(Guid storyId)

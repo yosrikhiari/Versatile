@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/group-edge"), Authorize]
-public class GroupEdgeController : ControllerBase
+public class GroupEdgeController : ApiControllerBase
 {
     private readonly IGroupEdgeService _service;
 
     public GroupEdgeController(IGroupEdgeService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<GroupEdgeDto>>> GetAll(Guid storyId)

@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/node-position"), Authorize]
-public class NodePositionController : ControllerBase
+public class NodePositionController : ApiControllerBase
 {
     private readonly INodePositionService _service;
 
     public NodePositionController(INodePositionService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<NodePositionDto>>> GetAll(Guid storyId)

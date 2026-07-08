@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/character-relationship"), Authorize]
-public class CharacterRelationshipController : ControllerBase
+public class CharacterRelationshipController : ApiControllerBase
 {
     private readonly ICharacterRelationshipService _service;
 
     public CharacterRelationshipController(ICharacterRelationshipService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<CharacterRelationshipDto>>> GetAll(Guid storyId)

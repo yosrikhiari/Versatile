@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/revision-comment"), Authorize]
-public class RevisionCommentController : ControllerBase
+public class RevisionCommentController : ApiControllerBase
 {
     private readonly IRevisionCommentService _service;
 
     public RevisionCommentController(IRevisionCommentService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<RevisionCommentDto>>> GetAll(Guid storyId)

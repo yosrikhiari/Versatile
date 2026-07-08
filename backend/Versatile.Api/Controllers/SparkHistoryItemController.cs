@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/spark-history"), Authorize]
-public class SparkHistoryItemController : ControllerBase
+public class SparkHistoryItemController : ApiControllerBase
 {
     private readonly ISparkHistoryItemService _service;
 
     public SparkHistoryItemController(ISparkHistoryItemService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<SparkHistoryItemDto>>> GetAll(Guid storyId)

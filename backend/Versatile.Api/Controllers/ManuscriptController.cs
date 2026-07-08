@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/manuscript"), Authorize]
-public class ManuscriptController : ControllerBase
+public class ManuscriptController : ApiControllerBase
 {
     private readonly IManuscriptService _service;
 
     public ManuscriptController(IManuscriptService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<ManuscriptDto>>> GetAll(Guid storyId)

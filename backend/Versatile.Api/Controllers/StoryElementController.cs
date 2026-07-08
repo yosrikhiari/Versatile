@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/story-element"), Authorize]
-public class StoryElementController : ControllerBase
+public class StoryElementController : ApiControllerBase
 {
     private readonly IStoryElementService _service;
 
     public StoryElementController(IStoryElementService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<StoryElementDto>>> GetAll(Guid storyId)

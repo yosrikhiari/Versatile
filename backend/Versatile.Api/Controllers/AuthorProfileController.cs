@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/author-profile"), Authorize]
-public class AuthorProfileController : ControllerBase
+public class AuthorProfileController : ApiControllerBase
 {
     private readonly IAuthorProfileService _service;
 
     public AuthorProfileController(IAuthorProfileService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<AuthorProfileDto>>> GetAll(Guid storyId)

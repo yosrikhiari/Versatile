@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/volume-entity"), Authorize]
-public class VolumeEntityController : ControllerBase
+public class VolumeEntityController : ApiControllerBase
 {
     private readonly IVolumeEntityService _service;
 
     public VolumeEntityController(IVolumeEntityService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<VolumeEntityDto>>> GetAll(Guid storyId)

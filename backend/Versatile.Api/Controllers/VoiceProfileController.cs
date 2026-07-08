@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/voice-profile"), Authorize]
-public class VoiceProfileController : ControllerBase
+public class VoiceProfileController : ApiControllerBase
 {
     private readonly IVoiceProfileService _service;
 
     public VoiceProfileController(IVoiceProfileService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<VoiceProfileDto>>> GetAll(Guid storyId)

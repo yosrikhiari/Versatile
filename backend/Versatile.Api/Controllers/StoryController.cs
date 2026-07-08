@@ -9,13 +9,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]"), Authorize]
-public class StoryController : ControllerBase
+public class StoryController : ApiControllerBase
 {
     private readonly IMediator _mediator;
 
     public StoryController(IMediator mediator) => _mediator = mediator;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<StoryDto>>> GetAll() =>

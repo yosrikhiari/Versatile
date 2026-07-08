@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/research-chunk"), Authorize]
-public class ResearchChunkController : ControllerBase
+public class ResearchChunkController : ApiControllerBase
 {
     private readonly IResearchChunkService _service;
 
     public ResearchChunkController(IResearchChunkService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<ResearchChunkDto>>> GetAll(Guid storyId)

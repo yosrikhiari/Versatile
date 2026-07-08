@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/plot-thread"), Authorize]
-public class PlotThreadController : ControllerBase
+public class PlotThreadController : ApiControllerBase
 {
     private readonly IPlotThreadService _service;
 
     public PlotThreadController(IPlotThreadService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<PlotThreadDto>>> GetAll(Guid storyId)
