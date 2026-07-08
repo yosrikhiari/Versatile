@@ -40,9 +40,12 @@ The declared DAG: **bible → network → structure → spine → prose → cons
   chapter's prose-derived facts over its planned ones, falling back to the spine
   plan when a chapter produced none. So the auditor checks against what the story
   actually did, not just what was planned.
-- **Full transactional atomicity** — batch inserts exist for graph edges
-  (`addGraphEdgesBatch`) and char relationships, but not all stage writes are
-  wrapped in `db.transaction`; no `addCharactersBatch` / `addSectionsBatch`.
+- **Bible-stage atomicity: DONE.** `addCharactersBatch` / `addLocationsBatch` /
+  `addPlotThreadsBatch` (bulkAdd in one transaction) + store batch methods; the
+  bootstrapper create-path inserts each entity type all-or-nothing. (Structure
+  writes were already batched via `batchCreatePlanStructure`; graph edges via
+  `addGraphEdgesBatch`.) The bootstrapper commit loop still lacks a direct test —
+  smoke-test bible generation after related changes.
 
 ---
 
@@ -61,22 +64,19 @@ The declared DAG: **bible → network → structure → spine → prose → cons
 - ✅ Circular dep `manuscriptStore` ↔ `projectStore` was **already mitigated** —
   `projectStore` imports `manuscriptStore` via lazy `await import()`. No action.
 
-### Remaining — each needs a human-in-the-loop step, not blind execution
-- **`StoryGeneratorPanel.vue` split — in progress (1883 → 1800).** Two cleanly-
-  separable script blocks extracted into tested composables (`useResearchScope`,
-  `useGenerationHistory`). Remaining: the generation-orchestration core (coupled
-  to panel streaming refs) and the ~1244-line template → child components. Those
-  carry real Vue regression risk that build + unit tests won't catch, so they
-  need a runtime smoke test through the logged-in generator flow.
-- **Fact ledger ← prose.** The structured writer emits no durable facts, so this
-  needs a design decision first: extend the writer's output schema vs. add a
-  per-chapter extraction pass (each has real cost on the working pipeline).
-- **Full transactional atomicity.** Subtle: a Dexie transaction can't stay open
-  across the `await` to an AI enrich call, so the bootstrapper must be split into
-  compute-then-batch-write phases before `db.transaction` wrapping is safe.
-- **Dexie schema compaction.** Low value, HIGH data-loss risk (every migration
-  restates the full table set). Do only in a dedicated pass with a migration-test
-  harness — not worth the risk otherwise.
+### Remaining
+- **`StoryGeneratorPanel.vue` split — partially done (1883 → 1758).** Three
+  cleanly-separable script blocks are now tested composables (`useResearchScope`,
+  `useGenerationHistory`, `useSparkContext`). What's left is the harder half: the
+  generation-orchestration core (tightly coupled to the panel's streaming refs)
+  and the ~1244-line template → child components. Both carry Vue regression risk
+  that build + unit tests won't catch, and the template decomposition is a
+  UI-structure decision — finish them with a runtime smoke test of the generator
+  flow and agreement on the component boundaries. This is the only substantial
+  remaining item.
+
+Done since the first draft of this section: fact ledger ← prose, bible-stage
+atomicity, and the Dexie schema compaction (see the sections above).
 
 ---
 
