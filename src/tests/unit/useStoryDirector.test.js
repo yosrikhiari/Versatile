@@ -196,6 +196,95 @@ describe('useStoryDirector', () => {
       expect(result.chapters.map(c => c.volumeIndex)).toEqual([1, 1])
     })
 
+    it('batches the skeleton for a long novel and plans every chapter (no giant single call)', async () => {
+      // 30 chapters → ceil(30/12) = 3 skeleton batches + 30 scene calls.
+      const skeleton12 = JSON.stringify({
+        storyArc: { premise: 'P', genre: 'Fantasy', tone: 'Dark', centralConflict: 'c' },
+        chapters: Array.from({ length: 12 }, (_, i) => ({
+          chapterNumber: i + 1,
+          title: `Ch${i + 1}`,
+          goal: `g${i + 1}`,
+          hookEnding: `h${i + 1}`
+        }))
+      })
+      const scenesJson = JSON.stringify({
+        scenes: [
+          { sceneNumber: 1, title: 'S1' },
+          { sceneNumber: 2, title: 'S2' }
+        ]
+      })
+      mockAiGenerate.mockImplementation((prompt) =>
+        /chapter skeleton/i.test(prompt) ? skeleton12 : scenesJson
+      )
+
+      const { generateStoryPlan } = useStoryDirector()
+      const structuredGoal = {
+        ...goal,
+        horizon: 'long_term',
+        structure: { chapters: 30, scenesPerChapter: 2, wordsPerChapter: 1000, chaptersPerVolume: 10, volumes: 3 }
+      }
+      const result = await generateStoryPlan({ goal: structuredGoal, evidence: '' })
+
+      expect(result.chapters).toHaveLength(30)
+      expect(result.chapters.every((c) => c.scenes.length === 2)).toBe(true)
+      expect(result.scenes).toHaveLength(60)
+
+      const calls = mockAiGenerate.mock.calls.map((c) => c[0])
+      const skeletonCalls = calls.filter((p) => /chapter skeleton/i.test(p))
+      const sceneCalls = calls.filter((p) => /Plan EXACTLY/i.test(p))
+      expect(skeletonCalls).toHaveLength(3) // batched, never one 30-chapter call
+      expect(sceneCalls).toHaveLength(30)
+
+      // Volumes tagged 10/10/10
+      const volumeCounts = result.chapters.reduce((acc, c) => {
+        acc[c.volumeIndex] = (acc[c.volumeIndex] || 0) + 1
+        return acc
+      }, {})
+      expect(volumeCounts).toEqual({ 1: 10, 2: 10, 3: 10 })
+    })
+
+    it('degrades to a padded plan instead of throwing when the skeleton model fails', async () => {
+      // Model returns unparseable output for everything → planChunked must still
+      // produce the requested structure rather than aborting the whole run.
+      mockAiGenerate.mockResolvedValue('not json at all')
+      const { generateStoryPlan } = useStoryDirector()
+      const structuredGoal = {
+        ...goal,
+        horizon: 'long_term',
+        structure: { chapters: 6, scenesPerChapter: 3, wordsPerChapter: 1500, chaptersPerVolume: 3, volumes: 2 }
+      }
+      const result = await generateStoryPlan({ goal: structuredGoal, evidence: '' })
+      expect(result.chapters).toHaveLength(6)
+      expect(result.chapters.every((c) => c.scenes.length === 3)).toBe(true)
+      expect(result.chapters.map((c) => c.volumeIndex)).toEqual([1, 1, 1, 2, 2, 2])
+    })
+
+    it('pads a short skeleton batch up to the requested count', async () => {
+      // Skeleton returns only 2 chapters when 5 were asked for → the missing 3 are
+      // padded so the arc never loses its length to a truncated batch.
+      const shortSkeleton = JSON.stringify({
+        storyArc: { premise: 'P' },
+        chapters: [
+          { chapterNumber: 1, title: 'Real1', hookEnding: 'h1' },
+          { chapterNumber: 2, title: 'Real2', hookEnding: 'h2' }
+        ]
+      })
+      const scenesJson = JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }] })
+      mockAiGenerate.mockImplementation((prompt) =>
+        /chapter skeleton/i.test(prompt) ? shortSkeleton : scenesJson
+      )
+      const { generateStoryPlan } = useStoryDirector()
+      const structuredGoal = {
+        ...goal,
+        horizon: 'long_term',
+        structure: { chapters: 5, scenesPerChapter: 1, wordsPerChapter: 800, chaptersPerVolume: 5, volumes: 1 }
+      }
+      const result = await generateStoryPlan({ goal: structuredGoal, evidence: '' })
+      expect(result.chapters).toHaveLength(5)
+      expect(result.chapters[0].title).toBe('Real1')
+      expect(result.chapters[3].title).toBe('Chapter 4') // padded
+    })
+
     it('sets isPlanning ref correctly', async () => {
       mockAiGenerate.mockResolvedValue(makeValidResponse())
       const { generateStoryPlan, isPlanning } = useStoryDirector()

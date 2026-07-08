@@ -1,8 +1,11 @@
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useProjectStore } from '../stores/projectStore'
+import { db, deepPlain } from '../services/dbService'
+
+const TARGET_TABLES = [db.characters, db.locations, db.plotThreads, db.nodePositions, db.volumeEntities]
 
 function buildNameToIdMap(bibleStore) {
   const map = {}
@@ -117,73 +120,79 @@ export function useChapterGenerationSync() {
         return true
       })
 
+      async function cleanupFailedEntity(entityId, type, name, preEntityNodeSnapshot) {
+        const arr = type === 'character' ? bibleStore.characters
+          : type === 'location' ? bibleStore.locations
+          : bibleStore.plotThreads
+        const idx = arr.findIndex(e => e.id === entityId)
+        if (idx !== -1) arr.splice(idx, 1)
+
+        if (name) delete nameToId[name]
+
+        if (preEntityNodeSnapshot) {
+          graphStore.nodeInstances.value = preEntityNodeSnapshot
+          try {
+            await graphStore.saveNodeInstances(resolvedProjectId)
+          } catch (restoreErr) {
+            console.error(`[commitSync] Cleanup restore-save also failed for "${name}":`, restoreErr)
+          }
+        }
+      }
+
       for (const change of uniqueChanges) {
         let entityId = null
+        const name = change.entity.name || change.entity.title
+        const preEntityNodeSnapshot = deepPlain(toRaw(graphStore.nodeInstances.value))
 
-        if (change.type === 'character') {
-          entityId = await bibleStore.addCharacterData(
-            resolvedProjectId,
-            {
-              name: change.entity.name,
-              role: change.entity.role || 'unknown',
-              description: change.entity.description || ''
-            },
-            'generated',
-            chapterId || null
-          )
-          const nodeKey = `char-${entityId}`
-          nameToId[change.entity.name] = { id: entityId, type: 'character' }
+        try {
+          await db.transaction('rw', TARGET_TABLES, async () => {
+            if (change.type === 'character') {
+              entityId = await bibleStore.addCharacterData(
+                resolvedProjectId,
+                { name: change.entity.name, role: change.entity.role || 'unknown', description: change.entity.description || '' },
+                'generated', chapterId || null
+              )
+              const nodeKey = `char-${entityId}`
+              nameToId[name] = { id: entityId, type: 'character' }
+              if (!graphStore.nodeInstances[nodeKey]) graphStore.nodeInstances[nodeKey] = []
+              const instanceKey = `inst-${nodeKey}-${Date.now()}`
+              graphStore.nodeInstances[nodeKey].push(instanceKey)
+              await graphStore.saveNodeInstances(resolvedProjectId)
+            } else if (change.type === 'location') {
+              entityId = await bibleStore.addLocationData(
+                resolvedProjectId,
+                { name: change.entity.name, type: change.entity.type || 'unknown', description: change.entity.description || '' },
+                'generated', chapterId || null
+              )
+              const nodeKey = `loc-${entityId}`
+              nameToId[name] = { id: entityId, type: 'location' }
+              if (!graphStore.nodeInstances[nodeKey]) graphStore.nodeInstances[nodeKey] = []
+              const instanceKey = `inst-${nodeKey}-${Date.now()}`
+              graphStore.nodeInstances[nodeKey].push(instanceKey)
+              await graphStore.saveNodeInstances(resolvedProjectId)
+            } else if (change.type === 'plotThread') {
+              entityId = await bibleStore.addPlotThreadData(
+                resolvedProjectId,
+                { title: change.entity.title, status: change.entity.status || 'open', summary: change.entity.summary || '' },
+                'generated', chapterId || null
+              )
+              const nodeKey = `thread-${entityId}`
+              nameToId[name] = { id: entityId, type: 'plotThread' }
+              if (!graphStore.nodeInstances[nodeKey]) graphStore.nodeInstances[nodeKey] = []
+              const instanceKey = `inst-${nodeKey}-${Date.now()}`
+              graphStore.nodeInstances[nodeKey].push(instanceKey)
+              await graphStore.saveNodeInstances(resolvedProjectId)
+            }
 
-          if (!graphStore.nodeInstances[nodeKey]) {
-            graphStore.nodeInstances[nodeKey] = []
+            if (entityId && volumeId) {
+              await networkStore.assignEntityToVolume(change.type, entityId, volumeId, false)
+            }
+          })
+        } catch (err) {
+          console.error(`[commitSync] Failed to commit entity "${name}":`, err)
+          if (entityId) {
+            await cleanupFailedEntity(entityId, change.type, name, preEntityNodeSnapshot)
           }
-          const instanceKey = `inst-${nodeKey}-${Date.now()}`
-          graphStore.nodeInstances[nodeKey].push(instanceKey)
-          await graphStore.saveNodeInstances(resolvedProjectId)
-        } else if (change.type === 'location') {
-          entityId = await bibleStore.addLocationData(
-            resolvedProjectId,
-            {
-              name: change.entity.name,
-              type: change.entity.type || 'unknown',
-              description: change.entity.description || ''
-            },
-            'generated',
-            chapterId || null
-          )
-          const nodeKey = `loc-${entityId}`
-          nameToId[change.entity.name] = { id: entityId, type: 'location' }
-
-          if (!graphStore.nodeInstances[nodeKey]) {
-            graphStore.nodeInstances[nodeKey] = []
-          }
-          const instanceKey = `inst-${nodeKey}-${Date.now()}`
-          graphStore.nodeInstances[nodeKey].push(instanceKey)
-          await graphStore.saveNodeInstances(resolvedProjectId)
-        } else if (change.type === 'plotThread') {
-          entityId = await bibleStore.addPlotThreadData(
-            resolvedProjectId,
-            {
-              title: change.entity.title,
-              status: change.entity.status || 'open',
-              summary: change.entity.summary || ''
-            },
-            'generated',
-            chapterId || null
-          )
-          const nodeKey = `thread-${entityId}`
-          nameToId[change.entity.title] = { id: entityId, type: 'plotThread' }
-
-          if (!graphStore.nodeInstances[nodeKey]) {
-            graphStore.nodeInstances[nodeKey] = []
-          }
-          const instanceKey = `inst-${nodeKey}-${Date.now()}`
-          graphStore.nodeInstances[nodeKey].push(instanceKey)
-          await graphStore.saveNodeInstances(resolvedProjectId)
-        }
-
-        if (entityId && volumeId) {
-          await networkStore.assignEntityToVolume(change.type, entityId, volumeId, false)
         }
       }
 
