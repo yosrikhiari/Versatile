@@ -299,10 +299,9 @@ function isCleanPass(ev) {
   return !!(ev && !ev.evalUnavailable && ev.pass)
 }
 
-// Context strategy for buildEmbeddingContext.
-// 'prose' — last 2 scenes' prose excerpts (correct for 6–15 scenes).
-// 'embedding' — future: embedding-similarity retrieval (for 25+ scenes).
-const CONTEXT_STRATEGY = 'prose'
+// Prose-excerpt continuity: the cheap strategy for short drafts, and the
+// fallback for buildRetrievalContext (below) when embeddings are unavailable.
+// For 25+ scenes the primary path is embedding-similarity retrieval.
 const PROSE_EXCERPT_MAX_SCENES = 25
 
 function buildEmbeddingContext(currentScene, priorScenes) {
@@ -310,14 +309,10 @@ function buildEmbeddingContext(currentScene, priorScenes) {
 
   if (priorScenes.length > PROSE_EXCERPT_MAX_SCENES) {
     console.warn(
-      `[VolumeStoryGenerator] Story has ${priorScenes.length} scenes — ` +
-        `prose excerpt context strategy may be insufficient. ` +
-        `Consider switching CONTEXT_STRATEGY to 'embedding'.`
+      `[VolumeStoryGenerator] Falling back to prose-excerpt continuity for ` +
+        `${priorScenes.length} scenes — embedding retrieval was unavailable; ` +
+        `continuity beyond the last two scenes may suffer.`
     )
-  }
-
-  if (CONTEXT_STRATEGY === 'embedding') {
-    // Future: implement embedding-similarity retrieval here
   }
 
   let context = ''
