@@ -33,7 +33,9 @@ GETTING-STARTED.md
 .planning/REQUIREMENTS.md
 README.md
 .planning/REQUIREMENTS.md
-src/tests/
+# NOTE: src/tests/ is intentionally tracked. Do not re-add a blanket ignore here —
+# vitest runs test files regardless of gitignore, so ignoring them silently drops
+# them from version control while they still pass locally (they did: 33 files).
 src/tests/unit/ollamaService.test.js
 .agents/
 .claude/
