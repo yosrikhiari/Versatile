@@ -57,6 +57,8 @@ const CONSISTENCY_CRITIC_PROMPT = `You are a continuity editor. Given a characte
 
 Check for contradictions in: name spelling, physical appearance, personality traits, niche traits/characteristics, goals/motivations, timeline/logical sequence.
 
+If an "Established canon" list is provided, also flag any scene that contradicts those durable facts — e.g. a character acting alive after being established dead, appearing in two places at once, or knowing something not yet revealed to them.
+
 Respond ONLY with valid JSON:
 {
   "contradictions": [
@@ -70,7 +72,19 @@ Respond ONLY with valid JSON:
 
 If no contradictions found, return { "contradictions": [] }`
 
-function formatCharacterCheck(character, storyBibleFacts, sceneExcerpts) {
+// Render the accumulated story fact ledger (durable canon established by prior
+// chapters) so the continuity check can flag prose that contradicts it — a
+// character acting alive after being established dead, in two places at once,
+// or knowing something not yet revealed. Empty/non-array → no block (the caller
+// may pass '' or omit it), keeping the check backward compatible.
+function formatLedgerBlock(ledger) {
+  if (!Array.isArray(ledger) || ledger.length === 0) return ''
+  return `\nEstablished canon (flag any prose that contradicts these facts):\n${ledger
+    .map((f) => `- ${f}`)
+    .join('\n')}\n`
+}
+
+function formatCharacterCheck(character, ledger, sceneExcerpts) {
   const excerpts = sceneExcerpts
     .map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`)
     .join('\n\n')
@@ -80,12 +94,12 @@ Goal: ${character.goal || 'unknown'}
 Voice: ${character.voice || 'unknown'}
 Notes: ${character.notes || 'none'}
 Traits: ${character.traits?.length ? character.traits.join(', ') : 'none'}
-
+${formatLedgerBlock(ledger)}
 Scenes this character appears in with excerpts:
 ${excerpts}`
 }
 
-function formatLocationCheck(location, storyBibleFacts, sceneExcerpts) {
+function formatLocationCheck(location, ledger, sceneExcerpts) {
   const excerpts = sceneExcerpts
     .map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`)
     .join('\n\n')
@@ -93,7 +107,7 @@ function formatLocationCheck(location, storyBibleFacts, sceneExcerpts) {
 Description: ${location.description || 'unknown'}
 Notes: ${location.notes || 'unknown'}
 Traits: ${location.traits?.length ? location.traits.join(', ') : 'none'}
-
+${formatLedgerBlock(ledger)}
 Scenes set at this location:
 ${excerpts}`
 }
@@ -209,7 +223,7 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
     }
   }
 
-  async function checkContradictions({ characters, locations, sceneProse, synopsis }) {
+  async function checkContradictions({ characters, locations, sceneProse, synopsis, ledger }) {
     isCheckingConsistency.value = true
     const report = { characterIssues: [], locationIssues: [] }
 
@@ -239,7 +253,7 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         .filter((char) => (scenesByChar.get(char.name)?.length || 0) >= 2)
         .map((char) => async () => {
           const charScenes = scenesByChar.get(char.name)
-          const prompt = formatCharacterCheck(char, {}, charScenes)
+          const prompt = formatCharacterCheck(char, ledger, charScenes)
           const parsed = await aiGenerateJson(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
             feature: FEATURES.STORY_GENERATION,
             temperature: 0.3,
@@ -257,7 +271,7 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         .filter((loc) => (scenesByLoc.get(loc.name)?.length || 0) >= 2)
         .map((loc) => async () => {
           const locScenes = scenesByLoc.get(loc.name)
-          const prompt = formatLocationCheck(loc, {}, locScenes)
+          const prompt = formatLocationCheck(loc, ledger, locScenes)
           const parsed = await aiGenerateJson(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
             feature: FEATURES.STORY_GENERATION,
             temperature: 0.3,

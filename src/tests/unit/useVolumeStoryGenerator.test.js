@@ -15,7 +15,7 @@ vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn(), getConfiguredMode
 vi.mock('../config/ai', () => ({ FEATURES: {}, PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai' } }))
 
 let buildEmbeddingContext, formatFullSpineEntry, compressSpine, buildExistingEntitiesBlob, parallelWithLimit
-let selectRelevantPriorScenes, planConsistencyFixes
+let selectRelevantPriorScenes, planConsistencyFixes, buildFactLedger
 let useVolumeStoryGenerator
 beforeEach(async () => {
   vi.resetModules()
@@ -27,6 +27,7 @@ beforeEach(async () => {
   compressSpine = mod.compressSpine
   buildExistingEntitiesBlob = mod.buildExistingEntitiesBlob
   parallelWithLimit = mod.parallelWithLimit
+  buildFactLedger = mod.buildFactLedger
   useVolumeStoryGenerator = mod.useVolumeStoryGenerator
 })
 
@@ -136,6 +137,34 @@ describe('formatFullSpineEntry', () => {
     expect(result).toContain('Hopeful')
     expect(result).toContain('Hero begins journey')
     expect(result).toContain('Time passes')
+  })
+})
+
+describe('buildFactLedger', () => {
+  it('flattens spine keyFacts with chapter attribution, in order', () => {
+    const spine = [
+      { chapterNumber: 1, keyFacts: ['A is introduced'] },
+      { chapterNumber: 2, keyFacts: ['A is injured', 'B appears'] },
+      { chapterNumber: 3, keyFacts: [] }
+    ]
+    expect(buildFactLedger(spine)).toEqual([
+      'Ch1: A is introduced',
+      'Ch2: A is injured',
+      'Ch2: B appears'
+    ])
+  })
+
+  it('ignores entries without keyFacts and non-string facts', () => {
+    const spine = [
+      { chapterNumber: 1 },
+      { chapterNumber: 2, keyFacts: ['real', null, 42, '  '] }
+    ]
+    expect(buildFactLedger(spine)).toEqual(['Ch2: real'])
+  })
+
+  it('returns [] for a non-array input', () => {
+    expect(buildFactLedger(null)).toEqual([])
+    expect(buildFactLedger(undefined)).toEqual([])
   })
 })
 

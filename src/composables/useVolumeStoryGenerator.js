@@ -43,6 +43,24 @@ function formatFullSpineEntry(s) {
   return `Chapter ${s.chapterNumber} (${s.chapterTitle}):\n- Emotion at end: ${s.emotionalStateAtEnd}\n- Reader knows: ${s.readerKnowledgeAtEnd}\n- Transition: ${s.transitionToNext}${facts}`
 }
 
+// The accumulated story fact ledger: every durable canon fact the spine
+// established, in chapter order and attributed to its chapter. Fed to the
+// consistency auditor so it can catch prose that contradicts established canon
+// (deaths, injuries, who-knows-what) — not just per-character bible drift.
+function buildFactLedger(spine) {
+  if (!Array.isArray(spine)) return []
+  const ledger = []
+  for (const entry of spine) {
+    if (!entry || !Array.isArray(entry.keyFacts)) continue
+    for (const fact of entry.keyFacts) {
+      if (typeof fact === 'string' && fact.trim()) {
+        ledger.push(`Ch${entry.chapterNumber}: ${fact.trim()}`)
+      }
+    }
+  }
+  return ledger
+}
+
 const SPINE_ENTRY_SCHEMA = {
   type: 'object',
   properties: {
@@ -1790,7 +1808,8 @@ export function useVolumeStoryGenerator() {
         characters,
         locations,
         sceneProse: written,
-        synopsis: ''
+        synopsis: '',
+        ledger: buildFactLedger(spineArray.value)
       })
       const issueCount =
         (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
@@ -1903,7 +1922,8 @@ export function useVolumeStoryGenerator() {
         characters,
         locations,
         sceneProse: writtenScenes.value,
-        synopsis: ''
+        synopsis: '',
+        ledger: buildFactLedger(spineArray.value)
       })
       consistencyReport.value = report
     }
@@ -1942,7 +1962,8 @@ export function useVolumeStoryGenerator() {
           characters,
           locations,
           sceneProse: writtenScenes.value,
-          synopsis: ''
+          synopsis: '',
+          ledger: buildFactLedger(spineArray.value)
         })
         consistencyReport.value = recheck
         if ((recheck.characterIssues?.length || 0) + (recheck.locationIssues?.length || 0) === 0)
@@ -2249,6 +2270,7 @@ export {
   selectRelevantPriorScenes,
   planConsistencyFixes,
   formatFullSpineEntry,
+  buildFactLedger,
   compressSpine,
   buildExistingEntitiesBlob,
   parallelWithLimit,
