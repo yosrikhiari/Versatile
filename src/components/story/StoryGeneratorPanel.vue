@@ -25,6 +25,7 @@ import { useSceneEval } from '../../composables/useSceneEval'
 import { useResearchScope } from '../../composables/useResearchScope'
 import { useGenerationHistory } from '../../composables/useGenerationHistory'
 import { useSparkContext } from '../../composables/useSparkContext'
+import { useGenerationSettings } from '../../composables/useGenerationSettings'
 import EvalPanel from '../eval/EvalPanel.vue'
 import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
 import EvalDashboard from '../eval/EvalDashboard.vue'
@@ -44,17 +45,17 @@ const tab = ref(MODE_BRAINSTORM)
 const mode = computed(() =>
   tab.value === MODE_ARC ? MODE_ARC : tab.value === MODE_CHAPTER ? MODE_CHAPTER : MODE_SCENE
 )
-const genre = ref('')
-const tone = ref('')
-const wordTarget = ref(3500)
-const usePreciseStructure = ref(false)
-const volumes = ref(1)
-const chaptersPerVolume = ref(10)
-const wordsPerChapter = ref(2000)
-const scenesPerChapter = ref(3)
-const estimatedTotalWords = computed(
-  () => volumes.value * chaptersPerVolume.value * wordsPerChapter.value
-)
+const {
+  genre,
+  tone,
+  wordTarget,
+  usePreciseStructure,
+  volumes,
+  chaptersPerVolume,
+  wordsPerChapter,
+  scenesPerChapter,
+  estimatedTotalWords
+} = useGenerationSettings()
 
 const {
   sparkContext,
