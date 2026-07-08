@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/daily-goal"), Authorize]
-public class DailyGoalController : ControllerBase
+public class DailyGoalController : ApiControllerBase
 {
     private readonly IDailyGoalService _service;
 
     public DailyGoalController(IDailyGoalService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<DailyGoalDto>>> GetAll(Guid storyId)

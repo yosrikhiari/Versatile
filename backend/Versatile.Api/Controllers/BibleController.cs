@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/bible"), Authorize]
-public class BibleController : ControllerBase
+public class BibleController : ApiControllerBase
 {
     private readonly IBibleService _bible;
 
     public BibleController(IBibleService bible) => _bible = bible;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<BibleEntryDto>>> GetAll(Guid storyId)

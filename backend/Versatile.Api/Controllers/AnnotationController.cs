@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/annotation"), Authorize]
-public class AnnotationController : ControllerBase
+public class AnnotationController : ApiControllerBase
 {
     private readonly IAnnotationService _service;
 
     public AnnotationController(IAnnotationService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<AnnotationDto>>> GetAll(Guid storyId)

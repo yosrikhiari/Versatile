@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/flow"), Authorize]
-public class FlowController : ControllerBase
+public class FlowController : ApiControllerBase
 {
     private readonly IFlowService _flow;
 
     public FlowController(IFlowService flow) => _flow = flow;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<FlowDto>> Get(Guid storyId)

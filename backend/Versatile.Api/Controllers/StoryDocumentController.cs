@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/story-document"), Authorize]
-public class StoryDocumentController : ControllerBase
+public class StoryDocumentController : ApiControllerBase
 {
     private readonly IStoryDocumentService _service;
 
     public StoryDocumentController(IStoryDocumentService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<StoryDocumentDto>>> GetAll(Guid storyId)

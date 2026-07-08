@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/section"), Authorize]
-public class SectionController : ControllerBase
+public class SectionController : ApiControllerBase
 {
     private readonly ISectionService _service;
 
     public SectionController(ISectionService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<SectionDto>>> GetAll(Guid storyId)

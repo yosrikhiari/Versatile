@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/snapshot"), Authorize]
-public class SnapshotController : ControllerBase
+public class SnapshotController : ApiControllerBase
 {
     private readonly ISnapshotService _service;
 
     public SnapshotController(ISnapshotService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<SnapshotDto>>> GetAll(Guid storyId)

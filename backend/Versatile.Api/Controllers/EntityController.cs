@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/entity"), Authorize]
-public class EntityController : ControllerBase
+public class EntityController : ApiControllerBase
 {
     private readonly IEntityService _entity;
 
     public EntityController(IEntityService entity) => _entity = entity;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<EntityDto>>> GetAll(Guid storyId)

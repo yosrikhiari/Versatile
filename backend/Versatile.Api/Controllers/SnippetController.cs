@@ -7,13 +7,12 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/story/{storyId}/snippet"), Authorize]
-public class SnippetController : ControllerBase
+public class SnippetController : ApiControllerBase
 {
     private readonly ISnippetService _service;
 
     public SnippetController(ISnippetService service) => _service = service;
 
-    private Guid UserId => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
     [HttpGet]
     public async Task<ActionResult<List<SnippetDto>>> GetAll(Guid storyId)
