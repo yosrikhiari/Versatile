@@ -85,7 +85,9 @@ function tryExtractProse(raw) {
   try {
     const parsed = finalizeStream(raw)
     if (parsed && typeof parsed.prose === 'string') return parsed.prose
-  } catch {}
+  } catch {
+    // Not valid JSON yet; fall through to lenient extraction below.
+  }
 
   // Fallback: locate prose between "prose": " and the next known key
   const proseKey = '"prose": "'
@@ -158,7 +160,9 @@ function tryExtractStructured(raw) {
       if (endIdx === -1) continue
       const keyName = key.slice(1, -1)
       result[keyName] = JSON.parse(raw.slice(valueStart, endIdx + 1))
-    } catch {}
+    } catch {
+      // This key's value isn't complete/valid JSON yet; skip it.
+    }
   }
   return Object.keys(result).length ? result : null
 }

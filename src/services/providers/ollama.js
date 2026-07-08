@@ -30,7 +30,9 @@ async function ensureModelAvailable(model) {
         }
         modelCacheLoaded = true
       }
-    } catch {}
+    } catch {
+      // Best-effort model-cache warm-up; leave cache empty on failure.
+    }
   }
 
   if (modelCacheLoaded && !modelCache.has(model)) {
@@ -117,7 +119,9 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
       try {
         const errBody = await response.json()
         detail = errBody.error || JSON.stringify(errBody)
-      } catch {}
+      } catch {
+        // Response body wasn't JSON; fall through and throw with status only.
+      }
       const msg = `Ollama error (${response.status}): ${detail}`.trim()
       throw decorateOllamaError(msg, detail)
     }
@@ -180,7 +184,9 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
       try {
         const errBody = await response.json()
         detail = errBody.error || JSON.stringify(errBody)
-      } catch {}
+      } catch {
+        // Response body wasn't JSON; fall through and throw with status only.
+      }
       const msg = `Ollama error (${response.status}): ${detail}`.trim()
       throw decorateOllamaError(msg, detail)
     }
@@ -193,7 +199,9 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
     function onStreamAbort() {
       try {
         reader.cancel()
-      } catch {}
+      } catch {
+        // Reader may already be closed on abort; ignore.
+      }
     }
     if (externalSignal) {
       if (externalSignal.aborted) {
@@ -217,7 +225,9 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
               fullResponse += parsed.response
               if (onChunk) onChunk(parsed.response, fullResponse)
             }
-          } catch {}
+          } catch {
+            // Partial/non-JSON SSE line mid-stream; skip — the next chunk continues.
+          }
         }
       }
     } finally {

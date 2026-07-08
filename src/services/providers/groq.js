@@ -147,7 +147,9 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
             fullResponse += delta
             if (onChunk) onChunk(delta, fullResponse)
           }
-        } catch {}
+        } catch {
+          // Partial/non-JSON SSE line mid-stream; skip — the next chunk continues.
+        }
       }
     }
 

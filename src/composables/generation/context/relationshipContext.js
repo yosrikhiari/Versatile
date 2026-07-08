@@ -16,7 +16,9 @@ export async function getRelationshipContext(entityType) {
     if (relationshipContext) {
       return `\n\nRelationship context:\n${relationshipContext}\n`
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[relationshipContext] Failed to load relationship context:', e)
+  }
   return ''
 }
 

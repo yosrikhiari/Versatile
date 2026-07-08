@@ -101,7 +101,9 @@ async function onDrop(event) {
       event.clientY - rect.top,
       projectStore.currentProjectId
     )
-  } catch {}
+  } catch (err) {
+    console.warn('[EditorView] Failed to add character bubble:', err)
+  }
 }
 
 const {

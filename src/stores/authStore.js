@@ -157,7 +157,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
     try {
       await api('/auth/logout', { method: 'POST' })
-    } catch {}
+    } catch (err) {
+      console.warn('[authStore] Logout request failed; clearing local auth anyway:', err)
+    }
     clearAuth()
     destroySyncEngine()
     user.value = null

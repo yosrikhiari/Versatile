@@ -189,7 +189,9 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
     if (activeSession.value) {
       try {
         await persistSession(activeSession.value)
-      } catch {}
+      } catch (err) {
+        console.warn('[characterChatStore] Failed to persist session:', err)
+      }
     }
     activeSessionId.value = null
     streamError.value = null

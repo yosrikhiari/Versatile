@@ -70,15 +70,21 @@ export function useExportImport() {
         try {
           const m = await import('../stores/sparkStore')
           sparkStore = m.useSparkStore()
-        } catch {}
+        } catch (err) {
+          console.warn('[useExportImport] sparkStore unavailable:', err)
+        }
         try {
           const m = await import('../stores/polishStore')
           polishStore = m.usePolishStore()
-        } catch {}
+        } catch (err) {
+          console.warn('[useExportImport] polishStore unavailable:', err)
+        }
         try {
           const m = await import('../stores/storyBibleStore')
           storyBibleStore = m.useStoryBibleStore()
-        } catch {}
+        } catch (err) {
+          console.warn('[useExportImport] storyBibleStore unavailable:', err)
+        }
 
         if (sparkStore) await sparkStore.loadHistory(newProjectId)
         if (polishStore) {

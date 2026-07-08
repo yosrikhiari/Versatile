@@ -175,7 +175,9 @@ This chapter must pick up from that.
     completed++
     try {
       onEntryDone?.(completed, chapters.length)
-    } catch {}
+    } catch {
+      // Best-effort progress callback; a throwing consumer must not break the run.
+    }
   })
 
   await parallelWithLimit(tasks, PARALLEL_CHAPTER_LIMIT())
@@ -941,7 +943,9 @@ export function useVolumeStoryGenerator() {
         onPartialData: (type, name) => {
           try {
             actLog.appendThought(currentTaskId, planPhase, `• ${name}\n`)
-          } catch {}
+          } catch {
+            // Best-effort progress callback; a throwing consumer must not break the run.
+          }
           onPartialData?.(type, name)
         }
       })
