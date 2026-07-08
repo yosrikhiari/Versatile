@@ -864,17 +864,21 @@ db.on('ready', async () => {
     })
   }
 
-  const userCount = await db.users.count()
-  if (userCount === 0) {
-    const testUser = await db.users.add({
-      username: 'test',
-      passwordHash: 'ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae',
-      displayName: 'Test User',
-      createdAt: new Date().toISOString()
-    })
-    const projectsWithoutUser = await db.projects.filter((p) => !p.userId).toArray()
-    for (const p of projectsWithoutUser) {
-      await db.projects.update(p.id, { userId: testUser })
+  // Dev-only convenience seed. Never ship a hardcoded credential to production:
+  // real users authenticate, so a fresh production DB should have no test user.
+  if (DEV_MODE) {
+    const userCount = await db.users.count()
+    if (userCount === 0) {
+      const testUser = await db.users.add({
+        username: 'test',
+        passwordHash: 'ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae',
+        displayName: 'Test User',
+        createdAt: new Date().toISOString()
+      })
+      const projectsWithoutUser = await db.projects.filter((p) => !p.userId).toArray()
+      for (const p of projectsWithoutUser) {
+        await db.projects.update(p.id, { userId: testUser })
+      }
     }
   }
 })

@@ -33,7 +33,6 @@
     "lucide-vue-next": "^1.0.0",
     "pdfjs-dist": "^6.0.227",
     "pinia": "^2.1.0",
-    "shaders": "^2.5.128",
     "vue": "^3.4.0",
     "vue-router": "^4.2.0",
     "vuedraggable": "^4.1.0"
