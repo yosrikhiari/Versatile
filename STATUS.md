@@ -30,12 +30,16 @@ The declared DAG: **bible → network → structure → spine → prose → cons
 | **Canon lock after Stage A** | ✅ Done | `canonLocked` in `useEntityBootstrapper.js` |
 | **End-of-run repair pass** | ✅ Done | `repairFailedScenes` |
 
-### Genuinely NOT built (pipeline)
-- **Structured fact ledger** — an explicit per-chapter canon-state object (who's
-  alive/injured, who knows what, current location, elapsed time) fed into the
-  writer and the auditor. Today continuity rides on spine + embedding retrieval +
-  contradiction audit; there is no discrete ledger object. **This is the one real
-  remaining continuity feature.**
+### Partially built / remaining (pipeline)
+- **Fact ledger → auditor: DONE.** `buildFactLedger(spine)` accumulates the
+  spine's per-chapter `keyFacts` (who's alive/injured/where, who knows what) into
+  an ordered canon ledger, now fed into `checkContradictions` so the auditor
+  flags prose that contradicts established canon.
+- **Fact ledger ← prose: NOT done.** The ledger is built from the spine's
+  *planned* keyFacts, not reconciled against what the prose actually generated. A
+  future pass could extract durable facts from written chapters and merge/correct
+  the ledger, so plan-vs-prose drift is caught. Lower urgency now that the
+  audit-against-canon half exists.
 - **Full transactional atomicity** — batch inserts exist for graph edges
   (`addGraphEdgesBatch`) and char relationships, but not all stage writes are
   wrapped in `db.transaction`; no `addCharactersBatch` / `addSectionsBatch`.
