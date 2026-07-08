@@ -78,6 +78,37 @@ describe('useActivityLog', () => {
     expect(log.tasks.value[0].phases[0].status).toBe('done')
   })
 
+  it('updatePhase stamps elapsedMs when a phase finishes (drawer stops live-ticking)', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'thinking')
+    expect(log.tasks.value[0].phases[0].elapsedMs).toBe(0)
+    log.updatePhase(id, 0, { status: 'done' })
+    expect(log.tasks.value[0].phases[0].elapsedMs).toBeGreaterThanOrEqual(0)
+    expect(typeof log.tasks.value[0].phases[0].elapsedMs).toBe('number')
+    // A frozen (non-zero after time) value is not overwritten on later updates.
+    const frozen = log.tasks.value[0].phases[0].elapsedMs
+    log.updatePhase(id, 0, { detail: 'x' })
+    expect(log.tasks.value[0].phases[0].elapsedMs).toBe(frozen)
+  })
+
+  it('updatePhase stamps elapsedMs on failure too', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'thinking')
+    log.updatePhase(id, 0, { status: 'failed' })
+    expect(log.tasks.value[0].phases[0].elapsedMs).toBeGreaterThanOrEqual(0)
+  })
+
+  it('completeTask stamps elapsedMs on the phases it flips to done', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'p1')
+    log.completeTask(id)
+    expect(log.tasks.value[0].phases[0].status).toBe('done')
+    expect(log.tasks.value[0].phases[0].elapsedMs).toBeGreaterThanOrEqual(0)
+  })
+
   it('updatePhase does nothing for out-of-range index', async () => {
     const log = await createLog()
     const id = log.addTask({ name: 'Test', type: 'generate' })

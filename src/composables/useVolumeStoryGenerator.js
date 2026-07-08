@@ -88,11 +88,37 @@ async function parallelWithLimit(tasks, limit = 3) {
   return Promise.all(results)
 }
 
-async function generateSpine(chapters, storyArc) {
-  const spine = []
-  for (let i = 0; i < chapters.length; i++) {
-    const chapter = chapters[i]
-    const prevEntry = i > 0 ? spine[i - 1] : null
+// Bound each spine call so a stalled model degrades to a plan-derived fallback
+// in a couple of minutes instead of hanging on Ollama's long default.
+const SPINE_TIMEOUT_MS = 120000
+
+// A usable spine entry synthesized purely from the chapter plan — used whenever a
+// model call fails, times out, or returns unusable JSON. This is what turns spine
+// generation from a single point of failure (one bad chapter aborting a 100-chapter
+// run) into a degrade-and-continue stage.
+function fallbackSpineEntry(chapter) {
+  return {
+    chapterNumber: chapter.chapterNumber,
+    chapterTitle: chapter.title,
+    emotionalStateAtEnd: chapter.emotionalTarget || 'the chapter reaches its turning point',
+    readerKnowledgeAtEnd: chapter.goal || `the events of "${chapter.title}"`,
+    transitionToNext: chapter.hookEnding || 'the story carries forward into the next chapter',
+    keyFacts: [],
+    wordCount: chapter.estimatedWords || 100
+  }
+}
+
+// Build the narrative spine. Entries are planned with bounded, provider-aware
+// concurrency using each chapter's PLAN (its predecessor's hook/emotional target)
+// as the "previous" context — the plan already threads chapter-to-chapter linkage,
+// so we don't need the previous *generated* entry and can run chapters in parallel.
+// A failed chapter falls back to a plan-derived entry; the stage never throws.
+async function generateSpine(chapters, storyArc, onEntryDone) {
+  const spine = new Array(chapters.length)
+  let completed = 0
+
+  const tasks = chapters.map((chapter, i) => async () => {
+    const prevChapter = i > 0 ? chapters[i - 1] : null
 
     let prompt = `You are designing a narrative spine for a novel.
 Generate a 150-word spine entry for Chapter ${chapter.chapterNumber}: "${chapter.title}"
@@ -102,10 +128,12 @@ EMOTIONAL TARGET: ${chapter.emotionalTarget}
 HOOK ENDING: ${chapter.hookEnding}
 
 `
-    if (prevEntry) {
-      prompt += `PREVIOUS CHAPTER (${prevEntry.chapterNumber}) ENDED WITH:
-- Emotion: ${prevEntry.emotionalStateAtEnd}
-- Transition to this chapter: ${prevEntry.transitionToNext}
+    if (prevChapter) {
+      prompt += `THE PREVIOUS CHAPTER (${prevChapter.chapterNumber}: "${prevChapter.title}") WAS PLANNED TO END ON:
+- Emotional target: ${prevChapter.emotionalTarget || 'unspecified'}
+- Hook into this chapter: ${prevChapter.hookEnding || 'unspecified'}
+
+This chapter must pick up from that.
 
 `
     }
@@ -125,24 +153,32 @@ HOOK ENDING: ${chapter.hookEnding}
       {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.7,
+        timeout: SPINE_TIMEOUT_MS,
         schema: SPINE_ENTRY_SCHEMA,
         schemaName: 'spine_entry'
       }
     ).catch(() => null)
-    if (!parsed || !parsed.emotionalStateAtEnd) {
-      throw new Error(`Failed to generate spine for chapter ${chapter.chapterNumber}`)
-    }
 
-    spine.push({
-      chapterNumber: chapter.chapterNumber,
-      chapterTitle: chapter.title,
-      emotionalStateAtEnd: parsed.emotionalStateAtEnd,
-      readerKnowledgeAtEnd: parsed.readerKnowledgeAtEnd,
-      transitionToNext: parsed.transitionToNext,
-      keyFacts: Array.isArray(parsed.keyFacts) ? parsed.keyFacts : [],
-      wordCount: parsed.wordCount || 100
-    })
-  }
+    spine[i] =
+      parsed && parsed.emotionalStateAtEnd
+        ? {
+            chapterNumber: chapter.chapterNumber,
+            chapterTitle: chapter.title,
+            emotionalStateAtEnd: parsed.emotionalStateAtEnd,
+            readerKnowledgeAtEnd: parsed.readerKnowledgeAtEnd,
+            transitionToNext: parsed.transitionToNext,
+            keyFacts: Array.isArray(parsed.keyFacts) ? parsed.keyFacts : [],
+            wordCount: parsed.wordCount || 100
+          }
+        : fallbackSpineEntry(chapter)
+
+    completed++
+    try {
+      onEntryDone?.(completed, chapters.length)
+    } catch {}
+  })
+
+  await parallelWithLimit(tasks, PARALLEL_CHAPTER_LIMIT())
   return spine
 }
 
@@ -710,6 +746,7 @@ export function useVolumeStoryGenerator() {
     sparkContext,
     auto,
     structure,
+    research,
     onPhaseChange,
     onPartialData,
     onChunk
@@ -816,6 +853,12 @@ export function useVolumeStoryGenerator() {
       progress.statusText = 'Weaving the Story Network (relationships)...'
       const networkPhase = actLog.addPhase(currentTaskId, 'Story Network')
       await updateGenRunStage(projectId, 'network', { status: 'running' })
+      actLog.appendThought(
+        currentTaskId,
+        networkPhase,
+        `Analyzing relationships across ${storyBibleStore.characters.length} characters, ` +
+          `${storyBibleStore.locations.length} locations, ${storyBibleStore.plotThreads.length} plot threads...\n`
+      )
       try {
         const netResult = await generateRelationships({
           projectId,
@@ -826,10 +869,34 @@ export function useVolumeStoryGenerator() {
           genre,
           tone
         })
-        actLog.updatePhase(currentTaskId, networkPhase, {
-          status: 'done',
-          detail: `${netResult.characterRelationships} relationships, ${netResult.graphEdges} edges`
-        })
+        const REASON_MESSAGES = {
+          ai_empty: 'The model found no relationships to map for this cast.',
+          ai_failed: 'The relationship model call failed after retry (see console).',
+          all_dropped:
+            "Suggested relationships were dropped — the model's names didn't match the cast.",
+          all_duplicate: 'All suggested relationships already existed.',
+          too_few_characters: 'Not enough characters yet to form relationships.'
+        }
+        const rels = netResult.characterRelationships
+        const edges = netResult.graphEdges
+        const droppedN = netResult.dropped || 0
+        let detail = `${rels} relationships, ${edges} edges`
+        if (droppedN) detail += ` · ${droppedN} dropped`
+        actLog.appendThought(
+          currentTaskId,
+          networkPhase,
+          `Created ${rels} relationships and ${edges} graph edges` +
+            (droppedN ? ` (${droppedN} dropped: names didn't match the cast)` : '') +
+            '.\n'
+        )
+        if (rels === 0 && edges === 0 && REASON_MESSAGES[netResult.reason]) {
+          actLog.appendThought(
+            currentTaskId,
+            networkPhase,
+            REASON_MESSAGES[netResult.reason] + '\n'
+          )
+        }
+        actLog.updatePhase(currentTaskId, networkPhase, { status: 'done', detail })
         await updateGenRunStage(projectId, 'network', { status: 'done' })
       } catch (err) {
         console.warn('[useVolumeStoryGenerator] Story Network generation failed:', err)
@@ -856,6 +923,7 @@ export function useVolumeStoryGenerator() {
       const planPhase = actLog.addPhase(currentTaskId, 'Planning')
       activeStage = 'structure'
       await updateGenRunStage(projectId, 'structure', { status: 'running' })
+      actLog.appendThought(currentTaskId, planPhase, 'Outlining chapters and scenes...\n')
 
       const directorResult = await director.generateStoryPlan({
         goal: {
@@ -867,7 +935,15 @@ export function useVolumeStoryGenerator() {
           structure: structureSpec
         },
         evidence: updatedEvidence,
-        onPartialData
+        research,
+        // Mirror planning progress into the Planning phase so the Activity drawer
+        // shows what's being outlined, then forward to the caller's handler.
+        onPartialData: (type, name) => {
+          try {
+            actLog.appendThought(currentTaskId, planPhase, `• ${name}\n`)
+          } catch {}
+          onPartialData?.(type, name)
+        }
       })
 
       const scenes = directorResult.scenes
@@ -1583,7 +1659,12 @@ export function useVolumeStoryGenerator() {
     await updateGenRunStage(projectId, 'spine', { status: 'running' })
 
     try {
-      spineArray.value = await generateSpine(chapterPlan.value, storyArc)
+      spineArray.value = await generateSpine(chapterPlan.value, storyArc, (done, total) => {
+        progress.statusText = `Generating narrative spine (${done}/${total} chapters)...`
+        actLog.updatePhase(currentTaskId, spinePhase, {
+          detail: `${done}/${total} chapter spine entries`
+        })
+      })
       spineContext.value = compressSpine(spineArray.value)
       actLog.updatePhase(currentTaskId, spinePhase, { status: 'done' })
       await updateGenRunStage(projectId, 'spine', { status: 'done' })
@@ -2171,5 +2252,7 @@ export {
   formatFullSpineEntry,
   compressSpine,
   buildExistingEntitiesBlob,
-  parallelWithLimit
+  parallelWithLimit,
+  generateSpine,
+  fallbackSpineEntry
 }

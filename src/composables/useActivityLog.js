@@ -34,7 +34,10 @@ function completeTask(taskId) {
     task.status = 'done'
     task.completedAt = Date.now()
     task.phases.forEach((p) => {
-      if (p.status === 'running') p.status = 'done'
+      if (p.status === 'running') {
+        p.status = 'done'
+        if (!p.elapsedMs) p.elapsedMs = Date.now() - p.startedAt
+      }
     })
   }
 }
@@ -46,7 +49,10 @@ function failTask(taskId, error) {
     task.error = error
     task.completedAt = Date.now()
     task.phases.forEach((p) => {
-      if (p.status === 'running') p.status = 'failed'
+      if (p.status === 'running') {
+        p.status = 'failed'
+        if (!p.elapsedMs) p.elapsedMs = Date.now() - p.startedAt
+      }
     })
   }
 }
@@ -68,7 +74,17 @@ function addPhase(taskId, name) {
 function updatePhase(taskId, phaseIndex, updates) {
   const task = tasks.value.find((t) => t.id === taskId)
   if (task && task.phases[phaseIndex]) {
-    Object.assign(task.phases[phaseIndex], updates)
+    const phase = task.phases[phaseIndex]
+    Object.assign(phase, updates)
+    // Freeze the duration the moment a phase finishes, so the drawer shows its
+    // real elapsed time instead of live-ticking `now - startedAt` forever.
+    if (
+      (updates.status === 'done' || updates.status === 'failed') &&
+      updates.elapsedMs == null &&
+      !phase.elapsedMs
+    ) {
+      phase.elapsedMs = Date.now() - phase.startedAt
+    }
   }
 }
 

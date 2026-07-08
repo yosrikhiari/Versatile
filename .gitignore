@@ -45,3 +45,14 @@ skills/
 # .NET build artifacts
 backend/**/bin/
 backend/**/obj/
+
+# dotnet run / process output redirects
+stdout*.txt
+stderr*.txt
+run_out.txt
+run_err.txt
+backend/**/stdout*.txt
+backend/**/stderr*.txt
+
+# scratch .NET playground
+backend/TestApi/

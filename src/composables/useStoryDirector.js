@@ -1,6 +1,6 @@
 import { ref } from 'vue'
-import { aiGenerate, aiStream, aiGenerateJson } from './useAiService'
-import { FEATURES, RESEARCH_CHUNKS_DEFAULT } from '../config/ai'
+import { aiGenerate, aiStream, aiGenerateJson, resolveFeatureConfig } from './useAiService'
+import { FEATURES, PROVIDERS, RESEARCH_CHUNKS_DEFAULT } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { useProjectStore } from '../stores/projectStore'
 import { getAllChunksForProject } from '../services/researchDb'
@@ -14,23 +14,47 @@ import { sanitizeJson } from '../services/ai/aiHelpers'
 // error in a few minutes instead of hanging on Ollama's 20-minute default.
 const PLAN_TIMEOUT_MS = 240000
 
-function lexicalScore(query, text, allChunkTexts) {
-  const qTokens = query.toLowerCase().split(/\W+/).filter(Boolean)
-  if (qTokens.length === 0) return 0
-  const lowerText = text.toLowerCase()
-  const N = allChunkTexts.length || 1
+// Hard cap on how many chunks we lexically rank in one planning call. Retrieval
+// only needs the top handful, and scanning an unbounded corpus on the main thread
+// is what froze the "Planning" phase on large research sets.
+const LEXICAL_SCAN_CAP = 4000
 
-  let score = 0
+// Rank chunks by BM25-ish TF-IDF against the query, computing document frequency
+// ONCE per token (the previous version recomputed df — and re-lowercased every
+// chunk — inside a per-chunk loop, which was O(N²) and blocked the UI thread).
+function rankChunksLexically(queryText, lowerTexts) {
+  const qTokens = queryText.toLowerCase().split(/\W+/).filter(Boolean)
+  const N = lowerTexts.length || 1
+  if (qTokens.length === 0) return new Array(N).fill(0)
+
+  // df[token] — how many chunks contain the token — computed once.
+  const df = new Map()
   for (const token of qTokens) {
-    const tf = (
-      lowerText.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []
-    ).length
-    if (tf === 0) continue
-    const df = allChunkTexts.filter((t) => t.toLowerCase().includes(token)).length
-    const idf = Math.log((N - df + 0.5) / (df + 0.5) + 1)
-    score += (1 + Math.log(tf)) * idf
+    let d = 0
+    for (let i = 0; i < lowerTexts.length; i++) {
+      if (lowerTexts[i].includes(token)) d++
+    }
+    df.set(token, d)
   }
-  return score
+
+  return lowerTexts.map((lowerText) => {
+    let score = 0
+    for (const token of qTokens) {
+      const dfv = df.get(token)
+      if (!dfv) continue
+      // term frequency via indexOf (no per-token regex construction)
+      let tf = 0
+      let idx = lowerText.indexOf(token)
+      while (idx !== -1) {
+        tf++
+        idx = lowerText.indexOf(token, idx + token.length)
+      }
+      if (tf === 0) continue
+      const idf = Math.log((N - dfv + 0.5) / (dfv + 0.5) + 1)
+      score += (1 + Math.log(tf)) * idf
+    }
+    return score
+  })
 }
 
 // sanitizeJson imported from aiHelpers.js
@@ -154,58 +178,109 @@ const SCENES_SCHEMA = {
   required: ['scenes']
 }
 
-// Plan a large structured story in small, reliable chunks instead of one giant
-// JSON: first a chapter skeleton, then the scenes for each chapter (each planned
-// against the previous chapter's hook, which also tightens chapter-to-chapter
-// linkage). Far faster and far less likely to produce unparseable output on a
-// local model — which is what makes "Forging the Story Graph" hang.
+// How many chapters to request per skeleton call. A single call emitting 100+
+// chapter objects is what truncates/times out and makes "Forging the Story Graph"
+// hang; batching keeps every call small and reliable.
+const SKELETON_BATCH_SIZE = 12
+
+// Provider-aware planning concurrency. Ollama runs one model locally, so parallel
+// calls only queue (no speedup, memory pressure) — keep it serial. Cloud providers
+// plan chapters concurrently, which is the difference between minutes and an hour
+// on a long novel.
+function planConcurrency() {
+  try {
+    const config = resolveFeatureConfig(FEATURES.STORY_GENERATION)
+    return config.provider === PROVIDERS.OLLAMA ? 1 : 4
+  } catch {
+    return 2
+  }
+}
+
+// Bounded-concurrency map: runs the tasks with at most `limit` in flight, pulling
+// the next task only when a slot frees (so each task's timeout clock starts when it
+// actually launches, not up front). Task functions must not throw — planning tasks
+// swallow their own errors and degrade.
+async function runWithConcurrency(tasks, limit) {
+  const results = new Array(tasks.length)
+  let cursor = 0
+  async function worker() {
+    while (cursor < tasks.length) {
+      const idx = cursor++
+      results[idx] = await tasks[idx]()
+    }
+  }
+  const poolSize = Math.max(1, Math.min(limit, tasks.length))
+  await Promise.all(Array.from({ length: poolSize }, () => worker()))
+  return results
+}
+
+// Plan a large structured story in small, reliable pieces instead of one giant
+// JSON: build the chapter skeleton in bounded batches (each batch threaded off the
+// previous batch's last hook so the arc stays continuous), then plan each chapter's
+// scenes with bounded concurrency. Every step degrades to padding rather than
+// throwing, so a long novel always yields a usable plan — that is what keeps the
+// "Forging the Story Graph" stage from hanging or aborting at scale.
 async function planChunked({ goal, systemPrompt, onPartialData }) {
   const s = goal.structure
   const N = Math.max(1, s.chapters)
   const S = Math.max(1, s.scenesPerChapter || 3)
 
-  // 1) Chapter skeleton (small JSON, no scenes)
-  const skeletonPrompt = `Plan the chapter skeleton for this story.
+  // 1) Chapter skeleton — in batches of SKELETON_BATCH_SIZE
+  const chapters = []
+  let storyArc = {}
+  while (chapters.length < N) {
+    const batchStart = chapters.length
+    const batchCount = Math.min(SKELETON_BATCH_SIZE, N - batchStart)
+    const needArc = batchStart === 0
+    const prevHook = batchStart > 0 ? chapters[batchStart - 1].hookEnding : ''
+
+    const skeletonPrompt = `Plan the chapter skeleton for this story.
 PREMISE: "${goal.premise}"
 GENRE: ${goal.genre || 'Standard'}
 TONE: ${goal.tone || 'Standard'}
 
-Produce EXACTLY ${N} chapters forming ONE continuous arc. Each chapter's "hookEnding" must set up the next chapter.
+Produce EXACTLY ${batchCount} chapters, numbered ${batchStart + 1} through ${batchStart + batchCount}, forming part of ONE continuous arc across ${N} total chapters. Each chapter's "hookEnding" must set up the next chapter.
+${prevHook ? `The PREVIOUS chapter (#${batchStart}) ended on: "${prevHook}". Chapter ${batchStart + 1} must follow directly from that.` : 'This batch opens the story.'}
 Return ONLY JSON, no markdown:
 {
-  "storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },
-  "chapters": [ { "chapterNumber": 1, "title": "", "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
+  ${needArc ? '"storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },\n  ' : ''}"chapters": [ { "chapterNumber": ${batchStart + 1}, "title": "", "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
 }`
-  const skel = await aiGenerateJson(skeletonPrompt, systemPrompt, {
-    feature: FEATURES.STORY_GENERATION,
-    temperature: 0.7,
-    timeout: PLAN_TIMEOUT_MS,
-    schema: SKELETON_SCHEMA,
-    schemaName: 'chapter_skeleton'
-  }).catch(() => null)
-  if (!skel || !Array.isArray(skel.chapters) || skel.chapters.length === 0) {
-    throw new Error(
-      'The planning model timed out or returned invalid JSON. Try fewer chapters, a smaller word target, or a larger/faster model.'
-    )
+    const skel = await aiGenerateJson(skeletonPrompt, systemPrompt, {
+      feature: FEATURES.STORY_GENERATION,
+      temperature: 0.7,
+      timeout: PLAN_TIMEOUT_MS,
+      schema: SKELETON_SCHEMA,
+      schemaName: 'chapter_skeleton'
+    }).catch(() => null)
+
+    if (needArc && skel && skel.storyArc && typeof skel.storyArc === 'object') {
+      storyArc = skel.storyArc
+    }
+
+    const batchChapters = Array.isArray(skel?.chapters) ? skel.chapters : []
+    // Fill exactly batchCount chapters, padding any the model omitted so the arc
+    // never loses its length to a single flaky/truncated batch.
+    for (let k = 0; k < batchCount; k++) {
+      const raw = batchChapters[k] || {}
+      const chapterNumber = batchStart + k + 1
+      chapters.push({
+        chapterNumber,
+        title: raw.title || `Chapter ${chapterNumber}`,
+        goal: raw.goal || '',
+        arcPosition: raw.arcPosition || '',
+        emotionalTarget: raw.emotionalTarget || '',
+        hookEnding: raw.hookEnding || ''
+      })
+    }
+    try {
+      onPartialData?.('scene', `Outlined chapters ${batchStart + 1}–${batchStart + batchCount}`)
+    } catch {}
   }
 
-  const chapters = skel.chapters.slice(0, N)
-  while (chapters.length < N) {
-    const n = chapters.length + 1
-    chapters.push({
-      chapterNumber: n,
-      title: `Chapter ${n}`,
-      goal: '',
-      arcPosition: '',
-      emotionalTarget: '',
-      hookEnding: ''
-    })
-  }
-  const storyArc = skel.storyArc || {}
-
-  // 2) Scenes per chapter (small JSON each, linked to the previous chapter)
-  for (let i = 0; i < chapters.length; i++) {
-    const ch = chapters[i]
+  // 2) Scenes per chapter — independent given the skeleton, so plan them with
+  //    bounded, provider-aware concurrency. Each chapter is still linked to the
+  //    previous chapter's hook for continuity.
+  const sceneTasks = chapters.map((ch, i) => async () => {
     const prev = chapters[i - 1]
     try {
       onPartialData?.('scene', ch.title || `Chapter ${i + 1}`)
@@ -233,7 +308,8 @@ Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
         onPartialData?.('scene', sc.title)
       } catch {}
     }
-  }
+  })
+  await runWithConcurrency(sceneTasks, planConcurrency())
 
   return { chapters, storyArc }
 }
@@ -242,7 +318,13 @@ export function useStoryDirector() {
   const isPlanning = ref(false)
   const planError = ref(null)
 
-  async function generateStoryPlan({ goal, evidence, onPartialData }) {
+  // `research` (optional, from the generator UI) scopes which imported research
+  // documents inform the plan:
+  //   { enabled?: boolean, documentIds?: number[] }
+  // - enabled omitted → fall back to the global RESEARCH_ENABLED preference
+  // - documentIds omitted/empty → use every document in the project (current behavior)
+  // - documentIds set → restrict retrieval to exactly those documents
+  async function generateStoryPlan({ goal, evidence, onPartialData, research }) {
     isPlanning.value = true
     planError.value = null
 
@@ -281,20 +363,37 @@ Return ONLY valid JSON with no markdown, no explanation, no code fences.
 The JSON must have a "chapters" array. Each chapter object must contain a "scenes" array with the scene details.`
       }
 
-      const researchEnabled = useLocalStorage(RESEARCH_KEYS.RESEARCH_ENABLED, true)
+      const researchDefault = useLocalStorage(RESEARCH_KEYS.RESEARCH_ENABLED, true)
+      const researchEnabled =
+        research && typeof research.enabled === 'boolean' ? research.enabled : researchDefault.value
+      const selectedDocIds =
+        Array.isArray(research?.documentIds) && research.documentIds.length
+          ? new Set(research.documentIds)
+          : null
       let researchContext = ''
-      if (researchEnabled.value) {
+      if (researchEnabled) {
         try {
-          const allChunks = await getAllChunksForProject(projectStore.currentProjectId)
+          let allChunks = await getAllChunksForProject(projectStore.currentProjectId)
+          if (selectedDocIds) {
+            allChunks = allChunks.filter((c) => selectedDocIds.has(c.documentId))
+          }
+          // Bound the working set so ranking can't block the UI on a huge corpus.
+          if (allChunks.length > LEXICAL_SCAN_CAP) {
+            console.warn(
+              `[StoryDirector] ${allChunks.length} research chunks exceeds scan cap; ranking first ${LEXICAL_SCAN_CAP}.`
+            )
+            allChunks = allChunks.slice(0, LEXICAL_SCAN_CAP)
+          }
           if (allChunks.length > 0) {
             const count = Math.min(allChunks.length, RESEARCH_CHUNKS_DEFAULT)
             const queryText = `Premise: ${goal.premise}. Genre: ${goal.genre || 'Standard'}. Tone: ${goal.tone || 'Professional'}`
             const K = Math.max(10, count * 10)
-            const allChunkTexts = allChunks.map((c) => c.text)
+            const lowerTexts = allChunks.map((c) => (c.text || '').toLowerCase())
 
-            // Lexical ranking (TF-IDF based)
+            // Lexical ranking (TF-IDF), df computed once — O(N·tokens), not O(N²).
+            const lexicalScores = rankChunksLexically(queryText, lowerTexts)
             const lexicalRanks = allChunks
-              .map((c) => ({ chunk: c, score: lexicalScore(queryText, c.text, allChunkTexts) }))
+              .map((c, i) => ({ chunk: c, score: lexicalScores[i] }))
               .sort((a, b) => b.score - a.score)
             const lexicalRankMap = new Map()
             lexicalRanks.forEach((item, rank) => lexicalRankMap.set(item.chunk.id, rank + 1))

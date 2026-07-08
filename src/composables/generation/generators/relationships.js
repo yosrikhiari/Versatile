@@ -185,6 +185,18 @@ export function buildRelationshipEdges(aiResult, { characters, locations, plotTh
   return { characterRelationships, graphEdges, dropped }
 }
 
+// Total connections the model proposed across all four categories — used to
+// decide whether a result is worth keeping or worth one retry.
+export function countAiConnections(aiResult) {
+  if (!aiResult) return 0
+  return (
+    (aiResult.characterRelationships?.length || 0) +
+    (aiResult.characterLocations?.length || 0) +
+    (aiResult.characterPlotThreads?.length || 0) +
+    (aiResult.plotThreadLinks?.length || 0)
+  )
+}
+
 function buildUserPrompt({ characters, locations, plotThreads, synopsis, genre, tone }) {
   const payload = {
     synopsis: synopsis || '',
@@ -213,26 +225,37 @@ export async function generateRelationships({
 }) {
   if (!projectId) throw new Error('generateRelationships requires a projectId')
   if (!characters || characters.length < 2) {
-    return { characterRelationships: 0, graphEdges: 0, dropped: 0 }
+    return { characterRelationships: 0, graphEdges: 0, dropped: 0, reason: 'too_few_characters' }
   }
 
-  const aiResult = await aiGenerateJson(
-    buildUserPrompt({ characters, locations, plotThreads, synopsis, genre, tone }),
-    SYSTEM_PROMPT,
-    {
+  // A single structured call on a small local model frequently comes back empty
+  // ("no meaningful connections"). Retry once before giving up so the Story
+  // Network isn't silently empty on a transient miss.
+  const MAX_ATTEMPTS = 2
+  const userPrompt = buildUserPrompt({ characters, locations, plotThreads, synopsis, genre, tone })
+  let aiResult = null
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    aiResult = await aiGenerateJson(userPrompt, SYSTEM_PROMPT, {
       feature: FEATURES.NETWORK,
       temperature: 0.5,
       schema: RELATIONSHIP_SCHEMA,
       schemaName: 'story_network',
       signal
+    }).catch((err) => {
+      console.warn(`[generateRelationships] attempt ${attempt} failed:`, err)
+      return null
+    })
+    if (countAiConnections(aiResult) > 0) break
+    if (attempt < MAX_ATTEMPTS) {
+      console.warn(
+        `[generateRelationships] attempt ${attempt} returned no connections; retrying.`
+      )
     }
-  ).catch((err) => {
-    console.warn('[generateRelationships] generation failed:', err)
-    return null
-  })
+  }
 
-  if (!aiResult) return { characterRelationships: 0, graphEdges: 0, dropped: 0 }
+  if (!aiResult) return { characterRelationships: 0, graphEdges: 0, dropped: 0, reason: 'ai_failed' }
 
+  const aiTotal = countAiConnections(aiResult)
   const { characterRelationships, graphEdges, dropped } = buildRelationshipEdges(aiResult, {
     characters,
     locations,
@@ -259,9 +282,19 @@ export async function generateRelationships({
   if (freshRels.length) await addCharacterRelationshipsBatch(projectId, freshRels)
   if (freshEdges.length) await addGraphEdgesBatch(projectId, freshEdges)
 
+  // Explain a zero result so the UI/console can distinguish "model said nothing",
+  // "names didn't match the cast", and "everything already existed".
+  let reason = 'ok'
+  if (aiTotal === 0) {
+    reason = 'ai_empty'
+  } else if (freshRels.length === 0 && freshEdges.length === 0) {
+    reason = dropped.length > 0 ? 'all_dropped' : 'all_duplicate'
+  }
+
   return {
     characterRelationships: freshRels.length,
     graphEdges: freshEdges.length,
-    dropped: dropped.length
+    dropped: dropped.length,
+    reason
   }
 }

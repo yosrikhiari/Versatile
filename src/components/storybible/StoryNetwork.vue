@@ -11,8 +11,15 @@ import '@vue-flow/controls/dist/style.css'
 import { useStoryGraphStore } from '../../stores/storyGraphStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
+import { useVolumeStore } from '../../stores/volumeStore'
+import { getVolumeEntities } from '../../services/dbService'
 import { useNotifications } from '../../composables/useNotifications'
 import { useNetworkSuggestions } from '../../composables/useNetworkSuggestions'
+import {
+  computeVolumeGroups,
+  wouldCreateCycle,
+  sortGroupsParentFirst
+} from '../../utils/networkGrouping'
 import BaseIcon from '../shared/BaseIcon.vue'
 import EntitySidebar from './EntitySidebar.vue'
 import AddConnectionModal from './AddConnectionModal.vue'
@@ -35,6 +42,7 @@ function entityTypeFromPrefix(key) {
 const storyGraphStore = useStoryGraphStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
+const volumeStore = useVolumeStore()
 const networkSuggestions = useNetworkSuggestions()
 
 const {
@@ -123,6 +131,81 @@ function createGroup(groupData) {
   return newGroup
 }
 
+const isGroupingByVolume = ref(false)
+
+// Arrange the network into one group per volume, named by the volume, containing
+// the entities assigned to that volume. Non-destructive: existing manual groups
+// are preserved, and re-running reuses each volume's group (no duplicates).
+async function groupByVolume() {
+  const projectId = projectStore.currentProjectId
+  if (!projectId || isGroupingByVolume.value) return
+  isGroupingByVolume.value = true
+  try {
+    if (!volumeStore.volumes.length) {
+      await volumeStore.loadVolumes(projectId)
+    }
+    const projectVolumes = volumeStore.volumes.filter((v) => v.projectId === projectId)
+    if (projectVolumes.length === 0) {
+      addToast('No volumes to group by yet')
+      return
+    }
+
+    // Resolve each volume's entities → the graph node instance ids on the canvas,
+    // placing each instance under the first volume that claims it.
+    const assigned = new Set()
+    const volumeNodeIds = {}
+    for (const vol of projectVolumes) {
+      const ids = []
+      for (const type of ['character', 'location', 'plotThread']) {
+        let ents = []
+        try {
+          ents = await getVolumeEntities(projectId, vol.id, type)
+        } catch {
+          ents = []
+        }
+        for (const e of ents) {
+          const baseId = `${ENTITY_TYPE_TO_PREFIX[type]}-${e.id}`
+          const instances = storyGraphStore.nodeInstances[baseId] || []
+          for (const instId of instances) {
+            if (assigned.has(instId)) continue
+            assigned.add(instId)
+            ids.push(instId)
+          }
+        }
+      }
+      volumeNodeIds[vol.id] = ids
+    }
+
+    const { groups, nodeParents: newParents, nodePositions: newPositions, emptyVolumeIds } =
+      computeVolumeGroups({
+        volumes: projectVolumes,
+        volumeNodeIds,
+        existingGroups: manualGroups.value
+      })
+
+    manualGroups.value = groups
+    nodeParents.value = { ...nodeParents.value, ...newParents }
+    nodePositions.value = { ...nodePositions.value, ...newPositions }
+
+    await storyGraphStore.saveGroups(projectId, manualGroups.value)
+    await storyGraphStore.saveNodeParents(projectId, nodeParents.value)
+    await storyGraphStore.saveAllNodePositions(projectId, nodePositions.value)
+
+    const placed = Object.keys(newParents).length
+    const grouped = projectVolumes.length - emptyVolumeIds.length
+    addToast(
+      placed > 0
+        ? `Grouped ${placed} node${placed === 1 ? '' : 's'} into ${grouped} volume${grouped === 1 ? '' : 's'}`
+        : 'No entities are assigned to volumes yet'
+    )
+  } catch (err) {
+    console.error('[StoryNetwork] groupByVolume failed:', err)
+    addToast('Group by volume failed')
+  } finally {
+    isGroupingByVolume.value = false
+  }
+}
+
 function deleteGroup(groupId) {
   const nodesToRemove = []
 
@@ -142,10 +225,22 @@ function deleteGroup(groupId) {
     delete nodeInstances.value[baseId]
   }
 
+  // Detach any child groups to the top level, converting their positions to
+  // absolute so they don't jump or dangle a reference to the deleted parent.
+  for (const child of manualGroups.value) {
+    if (child.parentGroupId === groupId) {
+      const abs = getAbsoluteGroupPosition(child)
+      child.parentGroupId = null
+      child.x = abs.x
+      child.y = abs.y
+    }
+  }
+
   manualGroups.value = manualGroups.value.filter((g) => g.id !== groupId)
 
   if (projectStore.currentProjectId) {
     storyGraphStore.saveNodeInstances(projectStore.currentProjectId)
+    storyGraphStore.saveGroups(projectStore.currentProjectId, manualGroups.value)
   }
 }
 
@@ -294,18 +389,21 @@ function generateInstanceId(baseId, existingInstances) {
 const nodes = computed(() => {
   const result = []
 
-  for (const group of manualGroups.value) {
+  // Parents must be emitted before their children (Vue Flow requirement for
+  // nested groups). A group's position is relative to its parent when nested.
+  for (const group of sortGroupsParentFirst(manualGroups.value)) {
     if (!group.id) continue
     const nodeCount = Object.values(nodeParents.value).filter((p) => p === group.id).length
     result.push({
       id: group.id,
       type: 'group',
       position: { x: group.x || 0, y: group.y || 0 },
+      parentNode: group.parentGroupId || undefined,
       style: { width: (group.width || 200) + 'px', height: (group.height || 100) + 'px' },
       data: { label: group.name || 'Unnamed Group', color: group.color, nodeCount },
       draggable: true,
       selectable: true,
-      zIndex: 0
+      zIndex: group.parentGroupId ? 1 : 0
     })
   }
 
@@ -534,29 +632,90 @@ watch(
   { deep: true }
 )
 
+// Absolute canvas position of a group, summing offsets up the parent chain
+// (a nested group's stored x/y is relative to its parent).
+function getAbsoluteGroupPosition(group) {
+  let x = 0
+  let y = 0
+  let cur = group
+  const seen = new Set()
+  while (cur && !seen.has(cur.id)) {
+    seen.add(cur.id)
+    x += cur.x || 0
+    y += cur.y || 0
+    cur = cur.parentGroupId ? manualGroups.value.find((g) => g.id === cur.parentGroupId) : null
+  }
+  return { x, y }
+}
+
 function getAbsoluteNodePosition(node) {
   const currentParentId = nodeParents.value[node.id]
   if (currentParentId) {
     const parentGroup = manualGroups.value.find((g) => g.id === currentParentId)
     if (parentGroup) {
+      const abs = getAbsoluteGroupPosition(parentGroup)
       return {
-        x: parentGroup.x + node.position.x,
-        y: parentGroup.y + node.position.y
+        x: abs.x + node.position.x,
+        y: abs.y + node.position.y
       }
     }
   }
   return { x: node.position.x, y: node.position.y }
 }
 
+// Map of groupId -> parentGroupId for cycle checks during re-parenting.
+function currentParentOf() {
+  const m = {}
+  for (const g of manualGroups.value) m[g.id] = g.parentGroupId || null
+  return m
+}
+
+// Re-parent a dragged group: nest it into a group it was dropped inside (unless
+// that would create a cycle), or detach it to the top level. Positions are kept
+// relative to the new parent so the visual location doesn't jump.
+function reparentGroupOnDrop(groupNode) {
+  const group = manualGroups.value.find((g) => g.id === groupNode.id)
+  if (!group) return
+  const absPos = getAbsoluteGroupPosition({ ...group, x: groupNode.position.x, y: groupNode.position.y })
+
+  let target = null
+  for (const candidate of manualGroups.value) {
+    if (candidate.id === group.id) continue
+    const cAbs = getAbsoluteGroupPosition(candidate)
+    const inside =
+      absPos.x >= cAbs.x &&
+      absPos.x <= cAbs.x + candidate.width &&
+      absPos.y >= cAbs.y &&
+      absPos.y <= cAbs.y + candidate.height
+    if (inside && !wouldCreateCycle(group.id, candidate.id, currentParentOf())) {
+      // Prefer the innermost (smallest) containing group.
+      if (!target || candidate.width * candidate.height < target.width * target.height) {
+        target = candidate
+      }
+    }
+  }
+
+  if (target) {
+    const tAbs = getAbsoluteGroupPosition(target)
+    group.parentGroupId = target.id
+    group.x = absPos.x - tAbs.x
+    group.y = absPos.y - tAbs.y
+  } else {
+    group.parentGroupId = null
+    group.x = absPos.x
+    group.y = absPos.y
+  }
+  if (projectStore.currentProjectId) {
+    storyGraphStore.saveGroups(projectStore.currentProjectId, manualGroups.value)
+  }
+}
+
 onNodeDragStop(({ node }) => {
   dragOverGroupId.value = null
 
   if (manualGroups.value.some((g) => g.id === node.id)) {
-    const group = manualGroups.value.find((g) => g.id === node.id)
-    if (group) {
-      group.x = node.position.x
-      group.y = node.position.y
-    }
+    // A dragged group may be nested into another group (or detached to top level).
+    reparentGroupOnDrop(node)
     return
   }
 
@@ -1199,6 +1358,16 @@ async function initGraph(projectId) {
       nodeParents.value[nodeId] = null
     }
   }
+  // Repair: detach any group whose parent group no longer exists, so Vue Flow
+  // never references a missing parentNode.
+  let groupsRepaired = false
+  for (const g of manualGroups.value) {
+    if (g.parentGroupId && !validGroupIds.has(g.parentGroupId)) {
+      g.parentGroupId = null
+      groupsRepaired = true
+    }
+  }
+  if (groupsRepaired) await storyGraphStore.saveGroups(projectId, manualGroups.value)
   await storyGraphStore.saveNodeParents(projectId, nodeParents.value)
 
   // Backfill: rebuild node instances from existing positions
@@ -1648,6 +1817,14 @@ function handleApplySuggestionsModalClose() {
           @click="openCreateGroupModal"
         >
           <BaseIcon name="folder-plus" :size="18" />
+        </button>
+        <button
+          class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Group by volume — one group per volume, named by the volume"
+          :disabled="isGroupingByVolume"
+          @click="groupByVolume"
+        >
+          <BaseIcon :name="isGroupingByVolume ? 'loader' : 'layers'" :size="18" :class="isGroupingByVolume ? 'animate-spin' : ''" />
         </button>
         <button
           class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"

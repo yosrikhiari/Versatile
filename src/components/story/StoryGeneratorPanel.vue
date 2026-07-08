@@ -267,9 +267,79 @@ async function checkResumable() {
   }
 }
 
+// ----- Research sources: let the user pick which imported documents inform the plan -----
+const researchDocs = ref([]) // [{ id, fileName, chunkCount }]
+const useResearch = ref(true)
+const selectedResearchDocIds = ref(new Set())
+
+const hasResearchDocs = computed(() => researchDocs.value.length > 0)
+const selectedResearchCount = computed(() => {
+  let n = 0
+  for (const d of researchDocs.value) if (selectedResearchDocIds.value.has(d.id)) n++
+  return n
+})
+
+async function loadResearchSources() {
+  if (!projectStore.currentProjectId) return
+  try {
+    const { getAllResearchDocuments, getAllChunksForProject } = await import(
+      '../../services/researchDb'
+    )
+    const [docs, chunks] = await Promise.all([
+      getAllResearchDocuments(projectStore.currentProjectId),
+      getAllChunksForProject(projectStore.currentProjectId)
+    ])
+    const counts = new Map()
+    for (const c of chunks) counts.set(c.documentId, (counts.get(c.documentId) || 0) + 1)
+    researchDocs.value = docs.map((d) => ({
+      id: d.id,
+      fileName: d.fileName || 'Untitled source',
+      chunkCount: counts.get(d.id) || 0
+    }))
+    // Default: every source selected (narrow, don't opt-in).
+    selectedResearchDocIds.value = new Set(researchDocs.value.map((d) => d.id))
+  } catch {
+    researchDocs.value = []
+  }
+}
+
+function toggleResearchDoc(id) {
+  const next = new Set(selectedResearchDocIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedResearchDocIds.value = next
+}
+
+function selectAllResearch() {
+  selectedResearchDocIds.value = new Set(researchDocs.value.map((d) => d.id))
+}
+
+function selectNoResearch() {
+  selectedResearchDocIds.value = new Set()
+}
+
+// The scope object passed to the generator. `documentIds: []` means "use all"
+// per the director contract, so we only send explicit IDs when the user has
+// deselected at least one source.
+function buildResearchScope() {
+  if (!hasResearchDocs.value) return undefined
+  // Toggle off, or on but with nothing selected → no research context.
+  if (!useResearch.value || selectedResearchCount.value === 0) {
+    return { enabled: false, documentIds: [] }
+  }
+  const allSelected = selectedResearchCount.value === researchDocs.value.length
+  // documentIds: [] is the director's "use all" signal; only send explicit IDs
+  // once the user has narrowed the set.
+  return {
+    enabled: true,
+    documentIds: allSelected ? [] : [...selectedResearchDocIds.value]
+  }
+}
+
 onMounted(() => {
   loadPreviousGenerations()
   checkResumable()
+  loadResearchSources()
 })
 
 async function handleVolumeResume() {
@@ -332,6 +402,7 @@ async function handleVolumeGenerate() {
             scenesPerChapter: scenesPerChapter.value
           }
         : null,
+      research: buildResearchScope(),
       onPhaseChange: (_p) => {},
       onPartialData: (type, name) => {
         liveEntities.value.push({
@@ -743,6 +814,67 @@ function getPhaseLabel(phase) {
                 }}
                 words total. Chapters are linked via hook endings + a shared spine for continuity.
               </p>
+            </div>
+
+            <!-- Research sources: choose which imported documents inform the novel -->
+            <div v-if="hasResearchDocs" class="rounded-lg border border-border-subtle p-3 space-y-3">
+              <label
+                class="flex items-center gap-2 text-xs text-text-primary font-ui cursor-pointer select-none"
+              >
+                <input
+                  v-model="useResearch"
+                  type="checkbox"
+                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
+                />
+                Use research to inform this novel
+              </label>
+
+              <div v-if="useResearch" class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-2xs uppercase tracking-widest text-text-hint font-ui">
+                    {{ selectedResearchCount }} of {{ researchDocs.length }} sources
+                  </span>
+                  <div class="flex items-center gap-3">
+                    <button
+                      type="button"
+                      class="text-2xs font-ui text-text-hint hover:text-accent focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                      @click="selectAllResearch"
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      class="text-2xs font-ui text-text-hint hover:text-accent focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                      @click="selectNoResearch"
+                    >
+                      None
+                    </button>
+                  </div>
+                </div>
+
+                <ul class="max-h-40 overflow-y-auto space-y-1 pr-1">
+                  <li v-for="doc in researchDocs" :key="doc.id">
+                    <label
+                      class="flex items-center gap-2 text-xs text-text-secondary font-ui cursor-pointer select-none hover:text-text-primary"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="selectedResearchDocIds.has(doc.id)"
+                        class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent shrink-0"
+                        @change="toggleResearchDoc(doc.id)"
+                      />
+                      <span class="flex-1 truncate">{{ doc.fileName }}</span>
+                      <span class="text-2xs text-text-hint tabular-nums shrink-0">{{
+                        doc.chunkCount
+                      }}</span>
+                    </label>
+                  </li>
+                </ul>
+
+                <p v-if="selectedResearchCount === 0" class="text-2xs text-text-hint font-ui">
+                  No sources selected — generation will proceed without research context.
+                </p>
+              </div>
             </div>
 
             <!-- Spark context badge -->
