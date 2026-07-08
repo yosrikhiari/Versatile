@@ -13,7 +13,9 @@ try {
   if (import.meta.env.VITE_MISTRAL_API_KEY) {
     mistralApiKey = import.meta.env.VITE_MISTRAL_API_KEY
   }
-} catch {}
+} catch {
+  // import.meta.env may be unavailable in some runtimes; key stays null.
+}
 
 export function hasMistralKey() {
   return !!mistralApiKey
@@ -192,7 +194,9 @@ async function embedBatchInternal(inputs, model, provider) {
           try {
             const errBody = await response.json()
             detail = errBody.error || JSON.stringify(errBody)
-          } catch {}
+          } catch {
+            // Error body wasn't JSON; throw with status only (below).
+          }
           throw new Error(`Ollama embeddings error (${response.status}): ${detail}`.trim())
         }
         const data = await response.json()

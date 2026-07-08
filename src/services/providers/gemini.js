@@ -92,7 +92,9 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
           fullResponse += text
           if (onChunk) onChunk(text, fullResponse)
         }
-      } catch {}
+      } catch {
+        // Partial/non-JSON SSE line mid-stream; skip — the next chunk continues.
+      }
     }
   }
 

@@ -274,7 +274,9 @@ Return ONLY JSON, no markdown:
     }
     try {
       onPartialData?.('scene', `Outlined chapters ${batchStart + 1}–${batchStart + batchCount}`)
-    } catch {}
+    } catch {
+      // Best-effort progress callback; a throwing consumer must not break planning.
+    }
   }
 
   // 2) Scenes per chapter — independent given the skeleton, so plan them with
@@ -284,7 +286,9 @@ Return ONLY JSON, no markdown:
     const prev = chapters[i - 1]
     try {
       onPartialData?.('scene', ch.title || `Chapter ${i + 1}`)
-    } catch {}
+    } catch {
+      // Best-effort progress callback; a throwing consumer must not break planning.
+    }
     const scenePrompt = `Plan EXACTLY ${S} scenes for this chapter of the story.
 STORY: "${goal.premise}" (${goal.genre || 'Standard'}, ${goal.tone || 'Standard'})
 CHAPTER ${i + 1}: "${ch.title}"
@@ -306,7 +310,9 @@ Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
     for (const sc of ch.scenes) {
       try {
         onPartialData?.('scene', sc.title)
-      } catch {}
+      } catch {
+        // Best-effort progress callback; a throwing consumer must not break planning.
+      }
     }
   })
   await runWithConcurrency(sceneTasks, planConcurrency())
@@ -459,7 +465,9 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
                 emittedTitles.add(title)
                 try {
                   if (onPartialData) onPartialData('scene', title)
-                } catch {}
+                } catch {
+                  // Best-effort progress callback; a throwing consumer must not break planning.
+                }
               }
             }
             scanOffset = Math.max(0, accumulated.length - 200)

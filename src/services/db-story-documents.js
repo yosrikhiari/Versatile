@@ -63,7 +63,9 @@ export async function appendRejectedPattern(projectId, pattern) {
       let patterns = []
       try {
         patterns = JSON.parse(doc.content || '[]')
-      } catch {}
+      } catch (err) {
+        console.warn('[db-story-documents] Corrupt pattern JSON; starting fresh:', err)
+      }
       patterns.push(entry)
       await db.storyDocuments.update(doc.id, {
         content: JSON.stringify(patterns),

@@ -189,7 +189,9 @@ TASK:
 
               try {
                 if (onPartialData) onPartialData(type, name)
-              } catch {}
+              } catch {
+                // Best-effort progress callback; a throwing consumer must not break streaming.
+              }
             }
           }
           scanOffset = Math.max(0, accumulated.length - 200)
