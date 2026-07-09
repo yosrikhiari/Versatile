@@ -65,15 +65,16 @@ The declared DAG: **bible → network → structure → spine → prose → cons
   `projectStore` imports `manuscriptStore` via lazy `await import()`. No action.
 
 ### Remaining
-- **`StoryGeneratorPanel.vue` split — partially done (1883 → 1758).** Three
-  cleanly-separable script blocks are now tested composables (`useResearchScope`,
-  `useGenerationHistory`, `useSparkContext`). What's left is the harder half: the
-  generation-orchestration core (tightly coupled to the panel's streaming refs)
-  and the ~1244-line template → child components. Both carry Vue regression risk
-  that build + unit tests won't catch, and the template decomposition is a
-  UI-structure decision — finish them with a runtime smoke test of the generator
-  flow and agreement on the component boundaries. This is the only substantial
-  remaining item.
+- **`StoryGeneratorPanel.vue` split — in progress (1883 → 1517, −19%).** Extracted
+  so far: five composables (`useResearchScope`, `useGenerationHistory`,
+  `useSparkContext`, `useGenerationSettings`) and four child components
+  (`PreviousGenerationsList`, `VolumeReadModal`, `ConsistencyReportModal`,
+  `GenerationSettingsForm`), with mount tests (the repo's first component tests).
+  What's left is the biggest, most-coupled section: the active-generation UI
+  (streaming display, plan review, scene review, sync preview) bound tightly to
+  the generator's streaming refs and handlers. That extraction has a wide
+  prop/emit surface and streaming reactivity that build + unit tests only
+  partially cover — verify it with a runtime smoke test of a live generation run.
 
 Done since the first draft of this section: fact ledger ← prose, bible-stage
 atomicity, and the Dexie schema compaction (see the sections above).
