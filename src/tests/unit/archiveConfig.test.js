@@ -12,9 +12,19 @@ describe('SIGNAL', () => {
 
 describe('ARCHIVE_TYPES', () => {
   it('has all expected types', () => {
-    const types = ['spark_prompt', 'spark_outline', 'spark_content', 'polish_analysis',
-      'polish_annotation', 'revise_comment', 'entity_generation', 'entity_enhance',
-      'session_end', 'state_snapshot', 'manual_state']
+    const types = [
+      'spark_prompt',
+      'spark_outline',
+      'spark_content',
+      'polish_analysis',
+      'polish_annotation',
+      'revise_comment',
+      'entity_generation',
+      'entity_enhance',
+      'session_end',
+      'state_snapshot',
+      'manual_state'
+    ]
     for (const t of types) {
       expect(Object.values(ARCHIVE_TYPES)).toContain(t)
     }

@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('./db-core', () => ({
-  db: { storyElements: {}, graphEdges: {}, nodePositions: {}, nodeInstances: {}, nodeParents: {}, graphGroups: {}, groupEdges: {} },
+  db: {
+    storyElements: {},
+    graphEdges: {},
+    nodePositions: {},
+    nodeInstances: {},
+    nodeParents: {},
+    graphGroups: {},
+    groupEdges: {}
+  },
   deepPlain: vi.fn()
 }))
 

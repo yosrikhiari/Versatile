@@ -298,7 +298,11 @@ TASK:
         if (existing) {
           const locked = existing.canonLocked || existing.generationStatus === 'approved'
           const update = {}
-          if (loc.description && loc.description !== existing.description && !(locked && existing.description))
+          if (
+            loc.description &&
+            loc.description !== existing.description &&
+            !(locked && existing.description)
+          )
             update.description = loc.description
           const mergedTraits = mergeTraits(existing.traits, loc.traits)
           if (mergedTraits.length !== (existing.traits || []).length) update.traits = mergedTraits

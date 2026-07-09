@@ -89,41 +89,59 @@ describe('generateTraitSuggestions', () => {
   })
 
   it('returns traits for a character when AI responds', async () => {
-    mockAiGenerate.mockResolvedValue(JSON.stringify({
-      traits: ['hates the rain', 'trusts no one', 'counts steps', 'desperate to prove worth']
-    }))
+    mockAiGenerate.mockResolvedValue(
+      JSON.stringify({
+        traits: ['hates the rain', 'trusts no one', 'counts steps', 'desperate to prove worth']
+      })
+    )
     const traits = await generateTraitSuggestions('character', characterData)
     expect(traits).toHaveLength(4)
     expect(traits[0]).toBe('hates the rain')
   })
 
   it('filters out already-added traits', async () => {
-    mockAiGenerate.mockResolvedValue(JSON.stringify({
-      traits: ['hates the rain', 'trusts no one', 'counts steps', 'desperate to prove worth']
-    }))
-    const traits = await generateTraitSuggestions('character', characterData, ['hates the rain', 'counts steps'])
+    mockAiGenerate.mockResolvedValue(
+      JSON.stringify({
+        traits: ['hates the rain', 'trusts no one', 'counts steps', 'desperate to prove worth']
+      })
+    )
+    const traits = await generateTraitSuggestions('character', characterData, [
+      'hates the rain',
+      'counts steps'
+    ])
     expect(traits).toEqual(['trusts no one', 'desperate to prove worth'])
   })
 
   it('handles location entity type', async () => {
-    mockAiGenerate.mockResolvedValue(JSON.stringify({
-      traits: ['smells of wet stone', 'eerie silence at noon', 'crumbling walls', 'forgotten by time']
-    }))
+    mockAiGenerate.mockResolvedValue(
+      JSON.stringify({
+        traits: [
+          'smells of wet stone',
+          'eerie silence at noon',
+          'crumbling walls',
+          'forgotten by time'
+        ]
+      })
+    )
     const traits = await generateTraitSuggestions('location', { name: 'Dark Forest' })
     expect(traits).toHaveLength(4)
   })
 
   it('handles plotThread entity type', async () => {
-    mockAiGenerate.mockResolvedValue(JSON.stringify({
-      traits: ['hidden betrayal', 'race against time', 'unreliable ally', 'fatal discovery']
-    }))
+    mockAiGenerate.mockResolvedValue(
+      JSON.stringify({
+        traits: ['hidden betrayal', 'race against time', 'unreliable ally', 'fatal discovery']
+      })
+    )
     const traits = await generateTraitSuggestions('plotThread', { title: 'The Conspiracy' })
     expect(traits).toHaveLength(4)
   })
 
   it('includes manuscript context when provided', async () => {
     mockAiGenerate.mockResolvedValue(JSON.stringify({ traits: ['brave'] }))
-    await generateTraitSuggestions('character', characterData, [], { contextText: 'The hero enters the cave' })
+    await generateTraitSuggestions('character', characterData, [], {
+      contextText: 'The hero enters the cave'
+    })
     expect(mockAiGenerate).toHaveBeenCalled()
     const prompt = mockAiGenerate.mock.calls[0][0]
     expect(prompt).toContain('The hero enters the cave')

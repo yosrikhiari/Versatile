@@ -7,9 +7,22 @@ describe('BLUEPRINTS', () => {
   })
 
   const expectedTypes = [
-    'novel', 'screenplay', 'invoice', 'presentation', 'email',
-    'documentation', 'pressRelease', 'grant', 'meeting', 'caseStudy',
-    'general', 'creative', 'legal', 'technical', 'business', 'research'
+    'novel',
+    'screenplay',
+    'invoice',
+    'presentation',
+    'email',
+    'documentation',
+    'pressRelease',
+    'grant',
+    'meeting',
+    'caseStudy',
+    'general',
+    'creative',
+    'legal',
+    'technical',
+    'business',
+    'research'
   ]
 
   it('has entries for all workspace types', () => {

@@ -65,9 +65,12 @@ describe('embeddingQueue', () => {
 
       enqueue('doc-2', [{ id: 'chunk-2', text: 'world' }])
 
-      await vi.waitFor(() => {
-        expect(getEmbeddings).toHaveBeenCalledTimes(3)
-      }, { timeout: 5000 })
+      await vi.waitFor(
+        () => {
+          expect(getEmbeddings).toHaveBeenCalledTimes(3)
+        },
+        { timeout: 5000 }
+      )
 
       expect(isQueueProcessing()).toBe(false)
     })
@@ -108,9 +111,12 @@ describe('embeddingQueue', () => {
       }
       enqueue('doc-1', entries)
 
-      await vi.waitFor(() => {
-        expect(isQueueProcessing()).toBe(false)
-      }, { timeout: 10000 })
+      await vi.waitFor(
+        () => {
+          expect(isQueueProcessing()).toBe(false)
+        },
+        { timeout: 10000 }
+      )
 
       expect(getEmbeddings).toHaveBeenCalledTimes(4)
     })
@@ -131,7 +137,7 @@ describe('embeddingQueue', () => {
       mockUnindexedChunks.mockResolvedValue([
         { id: 'c1', documentId: 'doc-1', text: 'hello' },
         { id: 'c2', documentId: 'doc-1', text: 'world' },
-        { id: 'c3', documentId: 'doc-2', text: 'foo' },
+        { id: 'c3', documentId: 'doc-2', text: 'foo' }
       ])
 
       const mod = await importFreshQueue()
@@ -211,9 +217,7 @@ describe('embeddingQueue', () => {
     })
 
     it('should retry failed chunks for a document', async () => {
-      mockResetChunksStatus.mockResolvedValue([
-        { id: 'chunk-1', text: 'hello' }
-      ])
+      mockResetChunksStatus.mockResolvedValue([{ id: 'chunk-1', text: 'hello' }])
 
       const { retryDocument } = await importFreshQueue()
 

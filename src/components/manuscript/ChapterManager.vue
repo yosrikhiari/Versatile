@@ -453,9 +453,7 @@ function handleSnapshotRestored(content) {
     </div>
 
     <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-3 pt-3 pb-2">
-      <p class="text-xs font-medium text-text-hint uppercase tracking-wider mx-1 mb-2">
-        Sections
-      </p>
+      <p class="text-xs font-medium text-text-hint uppercase tracking-wider mx-1 mb-2">Sections</p>
 
       <div
         v-if="filteredSections.length === 0 && sortedSections.length > 0"

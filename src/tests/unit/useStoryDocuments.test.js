@@ -63,7 +63,12 @@ describe('useStoryDocuments', () => {
 })
 
 describe('document generators', () => {
-  let generateSynopsisDoc, generateCharactersDoc, generateWorldDoc, generateTimelineDoc, generateRelationshipsDoc, generateStyleGuideDoc
+  let generateSynopsisDoc,
+    generateCharactersDoc,
+    generateWorldDoc,
+    generateTimelineDoc,
+    generateRelationshipsDoc,
+    generateStyleGuideDoc
   let mockProjectStore, mockBibleStore, mockGraphStore, mockManuscriptStore
 
   beforeEach(async () => {
@@ -71,7 +76,13 @@ describe('document generators', () => {
     vi.resetModules()
 
     mockProjectStore = {
-      terminology: { synopsisLabel: 'Summary', characters: 'Characters', locations: 'World', plotThreads: 'Timeline', characterRole: 'Role' },
+      terminology: {
+        synopsisLabel: 'Summary',
+        characters: 'Characters',
+        locations: 'World',
+        plotThreads: 'Timeline',
+        characterRole: 'Role'
+      },
       currentCategory: 'Fantasy',
       currentDescription: 'A tale of adventure'
     }
@@ -147,11 +158,26 @@ describe('document generators', () => {
 
     it('renders characters with relationships', async () => {
       mockBibleStore.characters = [
-        { id: 'c1', name: 'John', role: 'Hero', goal: 'Save world', voice: 'Bold', notes: 'Brave', lastEditedAt: 100 },
+        {
+          id: 'c1',
+          name: 'John',
+          role: 'Hero',
+          goal: 'Save world',
+          voice: 'Bold',
+          notes: 'Brave',
+          lastEditedAt: 100
+        },
         { id: 'c2', name: 'Jane', role: 'Mentor', goal: 'Guide', voice: 'Wise', lastEditedAt: 50 }
       ]
       mockGraphStore.edges = [
-        { sourceId: 'c1', sourceType: 'character', targetId: 'c2', targetType: 'character', relationshipType: 'mentor', description: 'Teaches' }
+        {
+          sourceId: 'c1',
+          sourceType: 'character',
+          targetId: 'c2',
+          targetType: 'character',
+          relationshipType: 'mentor',
+          description: 'Teaches'
+        }
       ]
       const result = await generateCharactersDoc('proj-1')
       expect(result).toContain('# Characters')
@@ -222,8 +248,22 @@ describe('document generators', () => {
       ]
       mockBibleStore.locations = [{ id: 'l1', name: 'Village' }]
       mockGraphStore.edges = [
-        { sourceType: 'character', sourceId: 'c1', targetType: 'character', targetId: 'c2', relationshipType: 'ally', description: 'Fighting together' },
-        { sourceType: 'character', sourceId: 'c2', targetType: 'location', targetId: 'l1', relationshipType: 'located_at', description: 'Home' }
+        {
+          sourceType: 'character',
+          sourceId: 'c1',
+          targetType: 'character',
+          targetId: 'c2',
+          relationshipType: 'ally',
+          description: 'Fighting together'
+        },
+        {
+          sourceType: 'character',
+          sourceId: 'c2',
+          targetType: 'location',
+          targetId: 'l1',
+          relationshipType: 'located_at',
+          description: 'Home'
+        }
       ]
       const result = generateRelationshipsDoc()
       expect(result).toContain('# Relationships')
@@ -245,7 +285,8 @@ describe('document generators', () => {
 
     it('detects POV and tense from prose', () => {
       mockManuscriptStore.sortedSections = [{ id: 's5' }]
-      const longText = 'He was walking. She was running. They were fighting. He was fighting. She was walking. They were running. He was running. She was fighting. They were walking. He was walking quickly. She was running fast. They were fighting hard. He was winning. She was losing. They were struggling. He was strong. She was brave. They were tired. He was determined. She was hopeful. They were victorious. He was happy. She was relieved. They were celebrating. He was laughing. She was crying. They were embracing.'
+      const longText =
+        'He was walking. She was running. They were fighting. He was fighting. She was walking. They were running. He was running. She was fighting. They were walking. He was walking quickly. She was running fast. They were fighting hard. He was winning. She was losing. They were struggling. He was strong. She was brave. They were tired. He was determined. She was hopeful. They were victorious. He was happy. She was relieved. They were celebrating. He was laughing. She was crying. They were embracing.'
       mockManuscriptStore.subsections = [{ sectionId: 's5', content: longText, order: 1 }]
       const result = generateStyleGuideDoc()
       expect(result).toContain('POV: third')

@@ -12,15 +12,114 @@ import { computeAll } from '@/evaluation/ragMetrics'
 
 const PROJECT_ID = 'eval-test-project'
 const TOPIC_KEYWORDS = {
-  fantasy: ['magic', 'wizard', 'dragon', 'spell', 'enchanted', 'sword', 'quest', 'kingdom', 'prophecy', 'mythical'],
-  mystery: ['detective', 'clue', 'suspect', 'murder', 'investigation', 'motive', 'evidence', 'alibi', 'whodunit', 'mystery'],
-  romance: ['love', 'heart', 'passion', 'embrace', 'devotion', 'romance', 'soulmate', 'chemistry', 'courtship', 'attraction'],
-  sciFi: ['space', 'robot', 'alien', 'quantum', 'futuristic', 'starship', 'dimension', 'technology', 'cyborg', 'artificial'],
-  historical: ['medieval', 'ancient', 'empire', 'throne', 'revolution', 'century', 'era', 'kingdom', 'heritage', 'ancestor'],
-  horror: ['dark', 'shadow', 'monster', 'ghost', 'haunted', 'blood', 'terror', 'scream', 'creature', 'nightmare'],
-  adventure: ['journey', 'expedition', 'treasure', 'explore', 'survive', 'discover', 'voyage', 'wilderness', 'peril', 'quest'],
-  thriller: ['conspiracy', 'chase', 'agent', 'secret', 'mission', 'pursuit', 'undercover', 'hostage', 'cover', 'intrigue'],
-  drama: ['conflict', 'betrayal', 'struggle', 'sacrifice', 'redemption', 'emotional', 'tragedy', 'crisis', 'family', 'relationship'],
+  fantasy: [
+    'magic',
+    'wizard',
+    'dragon',
+    'spell',
+    'enchanted',
+    'sword',
+    'quest',
+    'kingdom',
+    'prophecy',
+    'mythical'
+  ],
+  mystery: [
+    'detective',
+    'clue',
+    'suspect',
+    'murder',
+    'investigation',
+    'motive',
+    'evidence',
+    'alibi',
+    'whodunit',
+    'mystery'
+  ],
+  romance: [
+    'love',
+    'heart',
+    'passion',
+    'embrace',
+    'devotion',
+    'romance',
+    'soulmate',
+    'chemistry',
+    'courtship',
+    'attraction'
+  ],
+  sciFi: [
+    'space',
+    'robot',
+    'alien',
+    'quantum',
+    'futuristic',
+    'starship',
+    'dimension',
+    'technology',
+    'cyborg',
+    'artificial'
+  ],
+  historical: [
+    'medieval',
+    'ancient',
+    'empire',
+    'throne',
+    'revolution',
+    'century',
+    'era',
+    'kingdom',
+    'heritage',
+    'ancestor'
+  ],
+  horror: [
+    'dark',
+    'shadow',
+    'monster',
+    'ghost',
+    'haunted',
+    'blood',
+    'terror',
+    'scream',
+    'creature',
+    'nightmare'
+  ],
+  adventure: [
+    'journey',
+    'expedition',
+    'treasure',
+    'explore',
+    'survive',
+    'discover',
+    'voyage',
+    'wilderness',
+    'peril',
+    'quest'
+  ],
+  thriller: [
+    'conspiracy',
+    'chase',
+    'agent',
+    'secret',
+    'mission',
+    'pursuit',
+    'undercover',
+    'hostage',
+    'cover',
+    'intrigue'
+  ],
+  drama: [
+    'conflict',
+    'betrayal',
+    'struggle',
+    'sacrifice',
+    'redemption',
+    'emotional',
+    'tragedy',
+    'crisis',
+    'family',
+    'relationship'
+  ],
   comedy: ['funny', 'humor', 'wit', 'satire', 'irony', 'comic', 'absurd', 'quirky', 'laugh', 'joke']
 }
 
@@ -28,7 +127,7 @@ const TOPIC_NAMES = Object.keys(TOPIC_KEYWORDS)
 
 function buildTopicVector(text) {
   const lower = text.toLowerCase()
-  return TOPIC_NAMES.map(topic => {
+  return TOPIC_NAMES.map((topic) => {
     const kw = TOPIC_KEYWORDS[topic]
     let count = 0
     for (const word of kw) {
@@ -42,7 +141,7 @@ function buildTopicVector(text) {
 
 function normalizeVector(vec) {
   const mag = Math.sqrt(vec.reduce((s, v) => s + v * v, 0))
-  return mag === 0 ? vec.map(() => 0) : vec.map(v => v / mag)
+  return mag === 0 ? vec.map(() => 0) : vec.map((v) => v / mag)
 }
 
 function generateChunks() {
@@ -50,40 +149,44 @@ function generateChunks() {
   const all = []
   for (const topic of TOPIC_NAMES) {
     const keywords = TOPIC_KEYWORDS[topic]
-    const text = `This text focuses on ${topic} storytelling. ` +
-      keywords.slice(0, 5).map(kw => {
-        if (topic === 'fantasy') {
-          return `The ${kw} cast a powerful ${kw === 'spell' ? 'spell' : 'enchantment'} across the land.`
-        }
-        if (topic === 'mystery') {
-          return `The ${kw} examined the ${kw === 'evidence' ? 'evidence' : 'scene'} for clues.`
-        }
-        if (topic === 'romance') {
-          return `Their ${kw} grew stronger with each passing day.`
-        }
-        if (topic === 'sciFi') {
-          return `The ${kw} represented the pinnacle of futuristic technology.`
-        }
-        if (topic === 'historical') {
-          return `During the ${kw} period, great empires rose and fell.`
-        }
-        if (topic === 'horror') {
-          return `A ${kw} figure emerged from the darkness.`
-        }
-        if (topic === 'adventure') {
-          return `Their ${kw} took them across uncharted territories.`
-        }
-        if (topic === 'thriller') {
-          return `The ${kw} operation proceeded with extreme caution.`
-        }
-        if (topic === 'drama') {
-          return `The ${kw} created tension between the characters.`
-        }
-        if (topic === 'comedy') {
-          return `His ${kw} remark lightened the mood considerably.`
-        }
-        return `${kw} was central to the narrative.`
-      }).join(' ')
+    const text =
+      `This text focuses on ${topic} storytelling. ` +
+      keywords
+        .slice(0, 5)
+        .map((kw) => {
+          if (topic === 'fantasy') {
+            return `The ${kw} cast a powerful ${kw === 'spell' ? 'spell' : 'enchantment'} across the land.`
+          }
+          if (topic === 'mystery') {
+            return `The ${kw} examined the ${kw === 'evidence' ? 'evidence' : 'scene'} for clues.`
+          }
+          if (topic === 'romance') {
+            return `Their ${kw} grew stronger with each passing day.`
+          }
+          if (topic === 'sciFi') {
+            return `The ${kw} represented the pinnacle of futuristic technology.`
+          }
+          if (topic === 'historical') {
+            return `During the ${kw} period, great empires rose and fell.`
+          }
+          if (topic === 'horror') {
+            return `A ${kw} figure emerged from the darkness.`
+          }
+          if (topic === 'adventure') {
+            return `Their ${kw} took them across uncharted territories.`
+          }
+          if (topic === 'thriller') {
+            return `The ${kw} operation proceeded with extreme caution.`
+          }
+          if (topic === 'drama') {
+            return `The ${kw} created tension between the characters.`
+          }
+          if (topic === 'comedy') {
+            return `His ${kw} remark lightened the mood considerably.`
+          }
+          return `${kw} was central to the narrative.`
+        })
+        .join(' ')
     const vec = normalizeVector(buildTopicVector(text))
     all.push({
       id: `chunk-${topic}-0`,
@@ -131,7 +234,7 @@ async function seedChunks() {
   })
   const ids = await addResearchChunks(CHUNKS)
   await updateChunkEmbeddings(
-    CHUNKS.map(c => ({ id: c.id, embedding: c.embedding })),
+    CHUNKS.map((c) => ({ id: c.id, embedding: c.embedding })),
     { provider: 'synthetic', model: 'topic-vector', version: 1 }
   )
   return ids
@@ -144,27 +247,18 @@ describe('RAG Evaluation', () => {
 
   describe('ragMetrics', () => {
     it('computes hitRate = 1 when a relevant result is in top-k', () => {
-      const results = [
-        { id: 'chunk-fantasy-0' },
-        { id: 'chunk-mystery-1' }
-      ]
+      const results = [{ id: 'chunk-fantasy-0' }, { id: 'chunk-mystery-1' }]
       expect(computeAll(results, ['chunk-fantasy-0']).hitRate).toBe(1)
       expect(computeAll(results, ['chunk-fantasy-0'], { k: 1 }).hitRate).toBe(1)
     })
 
     it('computes hitRate = 0 when no relevant result in top-k', () => {
-      const results = [
-        { id: 'chunk-comedy-0' },
-        { id: 'chunk-drama-1' }
-      ]
+      const results = [{ id: 'chunk-comedy-0' }, { id: 'chunk-drama-1' }]
       expect(computeAll(results, ['chunk-fantasy-0'], { k: 2 }).hitRate).toBe(0)
     })
 
     it('computes MRR = 1 when first result is relevant', () => {
-      const results = [
-        { id: 'chunk-fantasy-0' },
-        { id: 'chunk-mystery-1' }
-      ]
+      const results = [{ id: 'chunk-fantasy-0' }, { id: 'chunk-mystery-1' }]
       expect(computeAll(results, ['chunk-fantasy-0']).mrr).toBe(1)
     })
 
@@ -178,10 +272,7 @@ describe('RAG Evaluation', () => {
     })
 
     it('computes MRR = 0 when no relevant result', () => {
-      const results = [
-        { id: 'chunk-comedy-0' },
-        { id: 'chunk-drama-1' }
-      ]
+      const results = [{ id: 'chunk-comedy-0' }, { id: 'chunk-drama-1' }]
       expect(computeAll(results, ['chunk-fantasy-0']).mrr).toBe(0)
     })
 
@@ -197,18 +288,12 @@ describe('RAG Evaluation', () => {
     })
 
     it('computes NDCG = 1 when all top-k are relevant', () => {
-      const results = [
-        { id: 'chunk-fantasy-0' },
-        { id: 'chunk-mystery-1' }
-      ]
+      const results = [{ id: 'chunk-fantasy-0' }, { id: 'chunk-mystery-1' }]
       expect(computeAll(results, ['chunk-fantasy-0', 'chunk-mystery-1'], { k: 2 }).ndcg).toBe(1)
     })
 
     it('computes recall = 1 when all relevant docs retrieved', () => {
-      const results = [
-        { id: 'chunk-fantasy-0' },
-        { id: 'chunk-adventure-0' }
-      ]
+      const results = [{ id: 'chunk-fantasy-0' }, { id: 'chunk-adventure-0' }]
       expect(computeAll(results, ['chunk-fantasy-0', 'chunk-adventure-0']).recall).toBe(1)
     })
 
@@ -232,7 +317,7 @@ describe('RAG Evaluation', () => {
 
   describe('lexical search evaluation', () => {
     it('retrieves fantasy chunks for magic-related queries via lexical search', async () => {
-      const q = TEST_QUERIES.find(t => t.targetTopic === 'fantasy')
+      const q = TEST_QUERIES.find((t) => t.targetTopic === 'fantasy')
       const relevantId = `chunk-fantasy-0`
       const results = await searchLexical(PROJECT_ID, q.query, 10)
       const metrics = computeAll(results, [relevantId], { k: 5 })
@@ -241,7 +326,7 @@ describe('RAG Evaluation', () => {
     })
 
     it('retrieves mystery chunks for detective-related queries via lexical search', async () => {
-      const q = TEST_QUERIES.find(t => t.targetTopic === 'mystery')
+      const q = TEST_QUERIES.find((t) => t.targetTopic === 'mystery')
       const results = await searchLexical(PROJECT_ID, q.query, 10)
       const metrics = computeAll(results, [`chunk-mystery-0`], { k: 5 })
       expect(metrics.hitRate).toBe(1)
@@ -250,7 +335,7 @@ describe('RAG Evaluation', () => {
     it('retrieves correct chunk for each topic via lexical search', async () => {
       const report = await runEvaluation({
         searchFn: (q, pid, opts) => searchLexical(pid, q, opts?.k || 20),
-        testCases: TEST_QUERIES.map(tc => ({
+        testCases: TEST_QUERIES.map((tc) => ({
           query: tc.query,
           relevantChunkIds: [`chunk-${tc.targetTopic}-0`],
           label: tc.targetTopic
@@ -266,7 +351,7 @@ describe('RAG Evaluation', () => {
 
   describe('semantic search evaluation', () => {
     it('finds fantasy chunks for magic-related queries via semantic search', async () => {
-      const q = TEST_QUERIES.find(t => t.targetTopic === 'fantasy')
+      const q = TEST_QUERIES.find((t) => t.targetTopic === 'fantasy')
       const queryVec = normalizeVector(buildTopicVector(q.query))
       const results = await semanticSearch(PROJECT_ID, queryVec, 10)
       const metrics = computeAll(results, [`chunk-fantasy-0`], { k: 5 })
@@ -301,21 +386,21 @@ describe('RAG Evaluation', () => {
 
   describe('topic vector integrity', () => {
     it('gives fantasy chunk highest similarity to a fantasy query', async () => {
-      const q = TEST_QUERIES.find(t => t.targetTopic === 'fantasy')
+      const q = TEST_QUERIES.find((t) => t.targetTopic === 'fantasy')
       const queryVec = normalizeVector(buildTopicVector(q.query))
       const results = await semanticSearch(PROJECT_ID, queryVec, 10)
       expect(results[0].id).toBe('chunk-fantasy-0')
     })
 
     it('gives sciFi chunk highest similarity to a sci-fi query', async () => {
-      const q = TEST_QUERIES.find(t => t.targetTopic === 'sciFi')
+      const q = TEST_QUERIES.find((t) => t.targetTopic === 'sciFi')
       const queryVec = normalizeVector(buildTopicVector(q.query))
       const results = await semanticSearch(PROJECT_ID, queryVec, 10)
       expect(results[0].id).toBe('chunk-sciFi-0')
     })
 
     it('gives horror chunk highest similarity to a horror query', async () => {
-      const q = TEST_QUERIES.find(t => t.targetTopic === 'horror')
+      const q = TEST_QUERIES.find((t) => t.targetTopic === 'horror')
       const queryVec = normalizeVector(buildTopicVector(q.query))
       const results = await semanticSearch(PROJECT_ID, queryVec, 10)
       expect(results[0].id).toBe('chunk-horror-0')

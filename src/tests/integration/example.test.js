@@ -4,7 +4,7 @@ describe('Integration Tests', () => {
   it('should have valid test setup', () => {
     const mockData = {
       projectId: 'test-project',
-      name: 'Test Project',
+      name: 'Test Project'
     }
     expect(mockData.projectId).toBeDefined()
     expect(mockData.name).toBe('Test Project')

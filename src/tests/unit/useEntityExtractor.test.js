@@ -117,7 +117,7 @@ describe('extractPotentialEntities', () => {
 
   it('deduplicates entities', () => {
     const result = extractPotentialEntities('Character: John. Named John.')
-    expect(result.characters.filter(c => c === 'John').length).toBe(1)
+    expect(result.characters.filter((c) => c === 'John').length).toBe(1)
   })
 
   it('handles text with multiple entities using explicit labels', () => {

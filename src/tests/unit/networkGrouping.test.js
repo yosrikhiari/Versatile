@@ -75,8 +75,14 @@ describe('computeVolumeGroups', () => {
   it('does not overlap groups across rows (row y-stride ≥ tallest group)', () => {
     const many = Array.from({ length: 5 }, (_, i) => ({ id: i + 1, title: `V${i + 1}` }))
     const ids = {}
-    many.forEach((v, i) => (ids[v.id] = Array.from({ length: (i + 1) * 2 }, (_, k) => `n-${i}-${k}`)))
-    const { groups } = computeVolumeGroups({ volumes: many, volumeNodeIds: ids, layout: { groupsPerRow: 3 } })
+    many.forEach(
+      (v, i) => (ids[v.id] = Array.from({ length: (i + 1) * 2 }, (_, k) => `n-${i}-${k}`))
+    )
+    const { groups } = computeVolumeGroups({
+      volumes: many,
+      volumeNodeIds: ids,
+      layout: { groupsPerRow: 3 }
+    })
     const g = (id) => groups.find((x) => x.volumeId === id)
     // Row 2 (volume 4) must start below the bottom of the tallest row-1 group.
     const row1Bottom = Math.max(g(1).y + g(1).height, g(2).y + g(2).height, g(3).y + g(3).height)
@@ -123,7 +129,10 @@ describe('sortGroupsParentFirst', () => {
   })
 
   it('is stable for flat (unparented) groups', () => {
-    const groups = [{ id: 'a', parentGroupId: null }, { id: 'b', parentGroupId: null }]
+    const groups = [
+      { id: 'a', parentGroupId: null },
+      { id: 'b', parentGroupId: null }
+    ]
     expect(sortGroupsParentFirst(groups).map((g) => g.id)).toEqual(['a', 'b'])
   })
 })

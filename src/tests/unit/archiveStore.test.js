@@ -7,7 +7,13 @@ const mockDb = {
   getSessionArchive: vi.fn(() => [{ id: 1, type: 'test' }]),
   searchSessionArchive: vi.fn(() => [{ id: 2 }]),
   saveStateSnapshot: vi.fn(() => 'snap1'),
-  getLatestStateSnapshot: vi.fn(() => ({ id: 'snap1', projectId: 'p1', sessionId: 's1', state: {}, timestamp: '2025-01-01' })),
+  getLatestStateSnapshot: vi.fn(() => ({
+    id: 'snap1',
+    projectId: 'p1',
+    sessionId: 's1',
+    state: {},
+    timestamp: '2025-01-01'
+  })),
   getStateSnapshotHistory: vi.fn(() => [{ id: 'snap1', projectId: 'p1' }]),
   saveAuthorProfile: vi.fn(() => undefined),
   getAuthorProfile: vi.fn(() => ({ name: 'Author' })),
@@ -50,13 +56,13 @@ describe('archiveStore', () => {
     })
 
     it('throws if signal is null', async () => {
-      await expect(store.saveInteraction('p1', 'edit', {}))
-        .rejects.toThrow('signal is required')
+      await expect(store.saveInteraction('p1', 'edit', {})).rejects.toThrow('signal is required')
     })
 
     it('throws if signal is undefined', async () => {
-      await expect(store.saveInteraction('p1', 'edit', {}, [], undefined))
-        .rejects.toThrow('signal is required')
+      await expect(store.saveInteraction('p1', 'edit', {}, [], undefined)).rejects.toThrow(
+        'signal is required'
+      )
     })
   })
 
@@ -104,7 +110,13 @@ describe('archiveStore', () => {
       await store.loadStateSnapshots('p1')
       expect(mockDb.getStateSnapshotHistory).toHaveBeenCalledWith('p1')
       expect(mockDb.getLatestStateSnapshot).toHaveBeenCalledWith('p1')
-      expect(store.currentStateSnapshot).toEqual({ id: 'snap1', projectId: 'p1', sessionId: 's1', state: {}, timestamp: '2025-01-01' })
+      expect(store.currentStateSnapshot).toEqual({
+        id: 'snap1',
+        projectId: 'p1',
+        sessionId: 's1',
+        state: {},
+        timestamp: '2025-01-01'
+      })
     })
   })
 

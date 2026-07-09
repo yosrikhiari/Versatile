@@ -12,7 +12,10 @@ vi.mock('../../services/aiService', () => ({
   aiGenerateStructured: async (...args) => {
     const r = await mockAiGenerate(...args)
     if (r && typeof r === 'object') return r
-    const cleaned = String(r).replace(/```json/gi, '').replace(/```/g, '').trim()
+    const cleaned = String(r)
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim()
     const m = cleaned.match(/\{[\s\S]*\}/)
     if (!m) throw new Error('structured parse failed')
     return JSON.parse(m[0])
@@ -26,13 +29,16 @@ vi.mock('../../stores/projectStore', () => ({
 vi.mock('../../config/documentPrompts', () => ({
   DOCUMENT_PROMPTS: {
     creative: {
-      critic: 'You are an expert story editor and literary critic. Evaluate if the scene matches its emotional goals, character wants, and tension. Ensure smooth pacing and no filler. Pass score threshold is 7/10. Return JSON: { "pass": boolean, "score": number, "issues": [{ "type": "continuity"|"voice"|"emotional_goal"|"show_tell"|"pacing", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }'
+      critic:
+        'You are an expert story editor and literary critic. Evaluate if the scene matches its emotional goals, character wants, and tension. Ensure smooth pacing and no filler. Pass score threshold is 7/10. Return JSON: { "pass": boolean, "score": number, "issues": [{ "type": "continuity"|"voice"|"emotional_goal"|"show_tell"|"pacing", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }'
     },
     legal: {
-      critic: 'You are a legal document reviewer specializing in contract analysis. Evaluate clarity, ambiguity, liability exposure, and missing provisions. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "clarity": number, "ambiguity": number, "liability": number, "missing_provision": number }, "issues": [{ "type": "clarity"|"ambiguity"|"liability"|"missing_provision", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }'
+      critic:
+        'You are a legal document reviewer specializing in contract analysis. Evaluate clarity, ambiguity, liability exposure, and missing provisions. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "clarity": number, "ambiguity": number, "liability": number, "missing_provision": number }, "issues": [{ "type": "clarity"|"ambiguity"|"liability"|"missing_provision", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }'
     },
     technical: {
-      critic: 'You are a technical reviewer specializing in system architecture. Evaluate architecture, interfaces, security, and validation. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "architecture": number, "interface": number, "security": number, "validation": number }, "issues": [{ "type": "architecture"|"interface"|"security"|"validation", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }'
+      critic:
+        'You are a technical reviewer specializing in system architecture. Evaluate architecture, interfaces, security, and validation. Return JSON: { "pass": boolean, "score": number, "dimensionScores": { "architecture": number, "interface": number, "security": number, "validation": number }, "issues": [{ "type": "architecture"|"interface"|"security"|"validation", "description": "string", "severity": "minor"|"major" }], "strengths": ["string"] }'
     }
   }
 }))
@@ -62,7 +68,7 @@ She was angry at him for interrupting. She was always angry at him lately. The v
 
 "We need to go," she said, standing up. "I know where the second piece is hidden."
 
-She left without waiting for his reply. The artifact was warm in her pocket, and she could feel it calling to her.`;
+She left without waiting for his reply. The artifact was warm in her pocket, and she could feel it calling to her.`
 
 const DRAFT_2_TECH = `The proposed microservices architecture consists of three core services: the User Service, the Analytics Engine, and the Notification Gateway. Each service communicates via REST APIs with JSON payloads. The User Service handles authentication, profile management, and session tracking. The Analytics Engine processes incoming events and generates reports. The Notification Gateway routes messages to various channels.
 
@@ -76,7 +82,7 @@ The API contract between services should be clearly defined. Each service should
 
 Error handling is important. Services should return appropriate HTTP status codes and error messages in a consistent format. We should probably also implement rate limiting. Maybe use Redis for that. The Analytics Engine endpoint might need special consideration since it could receive burst traffic.
 
-The deployment strategy involves Docker containers orchestrated by Kubernetes. Each service has its own Dockerfile. The CI/CD pipeline builds and pushes images to a registry, then updates the Kubernetes manifests. Health checks should be configured for each service.`;
+The deployment strategy involves Docker containers orchestrated by Kubernetes. Each service has its own Dockerfile. The CI/CD pipeline builds and pushes images to a registry, then updates the Kubernetes manifests. Health checks should be configured for each service.`
 
 const DRAFT_3_BUSINESS = `Q3 2025 Financial Performance Summary
 
@@ -94,7 +100,7 @@ Net income was $300K, compared to $450K in Q2. The decline is primarily due to t
 
 The outlook for Q4 is positive. The sales pipeline is strong, with several large enterprise deals in advanced stages. Revenue is projected to reach $4.5-4.8 million. However, the company faces headwinds from increasing competition and potential economic slowdown.
 
-Key recommendations include: continue investing in Enterprise sales, implement cost optimization for cloud infrastructure, explore pricing adjustments for SMB segment, and maintain R&D investment for competitive differentiation.`;
+Key recommendations include: continue investing in Enterprise sales, implement cost optimization for cloud infrastructure, explore pricing adjustments for SMB segment, and maintain R&D investment for competitive differentiation.`
 
 function makeIssue(type, severity) {
   const descs = {
@@ -109,25 +115,116 @@ function makeIssue(type, severity) {
 
 const MOCK_VARIANTS = {
   draft1: [
-    { score: 6, issues: [makeIssue('show_tell', 'major'), makeIssue('voice', 'minor')], strengths: ['Good pacing and tension building'], dimensionScores: { continuity: 7, voice: 6, emotional_goal: 6, show_tell: 4, pacing: 7 } },
-    { score: 7, issues: [makeIssue('voice', 'minor'), makeIssue('pacing', 'minor')], strengths: ['Strong emotional core', 'Clear continuity'], dimensionScores: { continuity: 8, voice: 6, emotional_goal: 7, show_tell: 7, pacing: 6 } },
-    { score: 6, issues: [makeIssue('voice', 'major'), makeIssue('show_tell', 'minor'), makeIssue('pacing', 'minor')], strengths: ['Continuity is solid'], dimensionScores: { continuity: 7, voice: 4, emotional_goal: 6, show_tell: 6, pacing: 7 } },
-    { score: 7, issues: [makeIssue('show_tell', 'minor')], strengths: ['Effective voice differentiation', 'Good pacing'], dimensionScores: { continuity: 8, voice: 7, emotional_goal: 7, show_tell: 6, pacing: 8 } },
-    { score: 5, issues: [makeIssue('voice', 'major'), makeIssue('show_tell', 'major')], strengths: ['Atmosphere is well established'], dimensionScores: { continuity: 6, voice: 3, emotional_goal: 5, show_tell: 3, pacing: 6 } }
+    {
+      score: 6,
+      issues: [makeIssue('show_tell', 'major'), makeIssue('voice', 'minor')],
+      strengths: ['Good pacing and tension building'],
+      dimensionScores: { continuity: 7, voice: 6, emotional_goal: 6, show_tell: 4, pacing: 7 }
+    },
+    {
+      score: 7,
+      issues: [makeIssue('voice', 'minor'), makeIssue('pacing', 'minor')],
+      strengths: ['Strong emotional core', 'Clear continuity'],
+      dimensionScores: { continuity: 8, voice: 6, emotional_goal: 7, show_tell: 7, pacing: 6 }
+    },
+    {
+      score: 6,
+      issues: [
+        makeIssue('voice', 'major'),
+        makeIssue('show_tell', 'minor'),
+        makeIssue('pacing', 'minor')
+      ],
+      strengths: ['Continuity is solid'],
+      dimensionScores: { continuity: 7, voice: 4, emotional_goal: 6, show_tell: 6, pacing: 7 }
+    },
+    {
+      score: 7,
+      issues: [makeIssue('show_tell', 'minor')],
+      strengths: ['Effective voice differentiation', 'Good pacing'],
+      dimensionScores: { continuity: 8, voice: 7, emotional_goal: 7, show_tell: 6, pacing: 8 }
+    },
+    {
+      score: 5,
+      issues: [makeIssue('voice', 'major'), makeIssue('show_tell', 'major')],
+      strengths: ['Atmosphere is well established'],
+      dimensionScores: { continuity: 6, voice: 3, emotional_goal: 5, show_tell: 3, pacing: 6 }
+    }
   ],
   draft2: [
-    { score: 8, issues: [makeIssue('pacing', 'minor')], strengths: ['Clear architecture', 'Good emotional goal alignment'], dimensionScores: { architecture: 8, interface: 7, security: 8, validation: 7 } },
-    { score: 7, issues: [makeIssue('emotional_goal', 'minor'), makeIssue('pacing', 'minor')], strengths: ['Well-structured narrative flow'], dimensionScores: { architecture: 7, interface: 7, security: 6, validation: 7 } },
-    { score: 8, issues: [], strengths: ['Excellent pacing', 'Strong voice', 'Clear emotional arc'], dimensionScores: { architecture: 8, interface: 8, security: 7, validation: 8 } },
-    { score: 6, issues: [makeIssue('emotional_goal', 'major')], strengths: ['Technical details are well integrated'], dimensionScores: { architecture: 6, interface: 6, security: 6, validation: 7 } },
-    { score: 8, issues: [makeIssue('pacing', 'minor')], strengths: ['Effective use of tension', 'Clear payoff'], dimensionScores: { architecture: 8, interface: 7, security: 8, validation: 8 } }
+    {
+      score: 8,
+      issues: [makeIssue('pacing', 'minor')],
+      strengths: ['Clear architecture', 'Good emotional goal alignment'],
+      dimensionScores: { architecture: 8, interface: 7, security: 8, validation: 7 }
+    },
+    {
+      score: 7,
+      issues: [makeIssue('emotional_goal', 'minor'), makeIssue('pacing', 'minor')],
+      strengths: ['Well-structured narrative flow'],
+      dimensionScores: { architecture: 7, interface: 7, security: 6, validation: 7 }
+    },
+    {
+      score: 8,
+      issues: [],
+      strengths: ['Excellent pacing', 'Strong voice', 'Clear emotional arc'],
+      dimensionScores: { architecture: 8, interface: 8, security: 7, validation: 8 }
+    },
+    {
+      score: 6,
+      issues: [makeIssue('emotional_goal', 'major')],
+      strengths: ['Technical details are well integrated'],
+      dimensionScores: { architecture: 6, interface: 6, security: 6, validation: 7 }
+    },
+    {
+      score: 8,
+      issues: [makeIssue('pacing', 'minor')],
+      strengths: ['Effective use of tension', 'Clear payoff'],
+      dimensionScores: { architecture: 8, interface: 7, security: 8, validation: 8 }
+    }
   ],
   draft3: [
-    { score: 5, issues: [makeIssue('continuity', 'major'), makeIssue('show_tell', 'major')], strengths: ['Relevant data points included'], dimensionScores: { continuity: 5, voice: 5, emotional_goal: 5, show_tell: 3, pacing: 5 } },
-    { score: 6, issues: [makeIssue('voice', 'major'), makeIssue('show_tell', 'minor'), makeIssue('pacing', 'minor')], strengths: ['Financial analysis is thorough'], dimensionScores: { continuity: 6, voice: 4, emotional_goal: 6, show_tell: 5, pacing: 6 } },
-    { score: 7, issues: [makeIssue('voice', 'minor'), makeIssue('show_tell', 'minor'), makeIssue('pacing', 'minor')], strengths: ['Good use of examples'], dimensionScores: { continuity: 7, voice: 6, emotional_goal: 7, show_tell: 6, pacing: 6 } },
-    { score: 6, issues: [makeIssue('continuity', 'major'), makeIssue('voice', 'minor')], strengths: ['Clear section structure'], dimensionScores: { continuity: 4, voice: 6, emotional_goal: 6, show_tell: 6, pacing: 7 } },
-    { score: 5, issues: [makeIssue('show_tell', 'major'), makeIssue('pacing', 'major'), makeIssue('voice', 'minor')], strengths: ['Market analysis is relevant'], dimensionScores: { continuity: 5, voice: 5, emotional_goal: 5, show_tell: 3, pacing: 3 } }
+    {
+      score: 5,
+      issues: [makeIssue('continuity', 'major'), makeIssue('show_tell', 'major')],
+      strengths: ['Relevant data points included'],
+      dimensionScores: { continuity: 5, voice: 5, emotional_goal: 5, show_tell: 3, pacing: 5 }
+    },
+    {
+      score: 6,
+      issues: [
+        makeIssue('voice', 'major'),
+        makeIssue('show_tell', 'minor'),
+        makeIssue('pacing', 'minor')
+      ],
+      strengths: ['Financial analysis is thorough'],
+      dimensionScores: { continuity: 6, voice: 4, emotional_goal: 6, show_tell: 5, pacing: 6 }
+    },
+    {
+      score: 7,
+      issues: [
+        makeIssue('voice', 'minor'),
+        makeIssue('show_tell', 'minor'),
+        makeIssue('pacing', 'minor')
+      ],
+      strengths: ['Good use of examples'],
+      dimensionScores: { continuity: 7, voice: 6, emotional_goal: 7, show_tell: 6, pacing: 6 }
+    },
+    {
+      score: 6,
+      issues: [makeIssue('continuity', 'major'), makeIssue('voice', 'minor')],
+      strengths: ['Clear section structure'],
+      dimensionScores: { continuity: 4, voice: 6, emotional_goal: 6, show_tell: 6, pacing: 7 }
+    },
+    {
+      score: 5,
+      issues: [
+        makeIssue('show_tell', 'major'),
+        makeIssue('pacing', 'major'),
+        makeIssue('voice', 'minor')
+      ],
+      strengths: ['Market analysis is relevant'],
+      dimensionScores: { continuity: 5, voice: 5, emotional_goal: 5, show_tell: 3, pacing: 3 }
+    }
   ]
 }
 
@@ -155,17 +252,17 @@ function uniqueIssueTypesAcrossRuns(runs) {
 
 function typeConsistency(runs) {
   const allTypes = uniqueIssueTypesAcrossRuns(runs)
-  const perRun = runs.map(r => new Set(r.issues.map(i => i.type)))
+  const perRun = runs.map((r) => new Set(r.issues.map((i) => i.type)))
   const consistency = {}
   for (const t of allTypes) {
-    const count = perRun.filter(s => s.has(t)).length
+    const count = perRun.filter((s) => s.has(t)).length
     consistency[t] = +((count / runs.length) * 100).toFixed(0)
   }
   return consistency
 }
 
 function totalIssuesPerRun(runs) {
-  return runs.map(r => r.issues.length)
+  return runs.map((r) => r.issues.length)
 }
 
 function severityDistribution(runs) {
@@ -197,13 +294,17 @@ function computeDimensionStats(runs) {
 }
 
 function passFailConsistency(runs) {
-  const passes = runs.filter(r => {
-    const major = r.issues.filter(i => i.severity === 'major').length
-    const minor = r.issues.filter(i => i.severity === 'minor').length
+  const passes = runs.filter((r) => {
+    const major = r.issues.filter((i) => i.severity === 'major').length
+    const minor = r.issues.filter((i) => i.severity === 'minor').length
     return major === 0 && minor <= 2
   }).length
   const fails = runs.length - passes
-  return { pass: passes, fail: fails, consistencyPct: +((Math.max(passes, fails) / runs.length) * 100).toFixed(0) }
+  return {
+    pass: passes,
+    fail: fails,
+    consistencyPct: +((Math.max(passes, fails) / runs.length) * 100).toFixed(0)
+  }
 }
 
 function generateReport(drafts, allRuns) {
@@ -232,9 +333,13 @@ This report measures the consistency of \`evaluateScene()\` across 5 runs on 3 s
   let grandScores = []
   let grandPassFail = { pass: 0, fail: 0 }
 
-  for (const [draftKey, draftLabel] of [['draft1', 'Fantasy Fiction Scene'], ['draft2', 'Technical Design Scene'], ['draft3', 'Business Analysis Scene']]) {
+  for (const [draftKey, draftLabel] of [
+    ['draft1', 'Fantasy Fiction Scene'],
+    ['draft2', 'Technical Design Scene'],
+    ['draft3', 'Business Analysis Scene']
+  ]) {
     const runs = allRuns[draftKey]
-    const scores = runs.map(r => r.score)
+    const scores = runs.map((r) => r.score)
     const scoreStats = computeStats(scores)
     const issueCounts = totalIssuesPerRun(runs)
     const sevDist = severityDistribution(runs)
@@ -251,8 +356,8 @@ This report measures the consistency of \`evaluateScene()\` across 5 runs on 3 s
 `
     for (let i = 0; i < runs.length; i++) {
       const r = runs[i]
-      const major = r.issues.filter(x => x.severity === 'major').length
-      const minor = r.issues.filter(x => x.severity === 'minor').length
+      const major = r.issues.filter((x) => x.severity === 'major').length
+      const minor = r.issues.filter((x) => x.severity === 'minor').length
       const thePass = major === 0 && minor <= 2
       md += `| ${i + 1} | ${r.score} | ${r.issues.length} | ${major} | ${minor} | ${thePass ? '✓' : '✗'} |\n`
     }
@@ -262,13 +367,18 @@ This report measures the consistency of \`evaluateScene()\` across 5 runs on 3 s
 **Issue count stats**: μ=${computeStats(issueCounts).mean} σ=${computeStats(issueCounts).stdDev}
 **Severity distribution**: ${sevDist.major} major, ${sevDist.minor} minor (ratio=${(sevDist.major / Math.max(sevDist.minor, 1)).toFixed(2)}:1)
 **Pass/fail**: ${pf.pass} pass, ${pf.fail} fail (consistency=${pf.consistencyPct}%)
-**Dimension occurrence across runs**: ${Object.entries(typeCons).map(([d, p]) => `${d}=${p}%`).join(', ')}
+**Dimension occurrence across runs**: ${Object.entries(typeCons)
+      .map(([d, p]) => `${d}=${p}%`)
+      .join(', ')}
 
 `
   }
 
   const grandScoreStats = computeStats(grandScores)
-  const grandPfPct = +((Math.max(grandPassFail.pass, grandPassFail.fail) / (grandPassFail.pass + grandPassFail.fail)) * 100).toFixed(0)
+  const grandPfPct = +(
+    (Math.max(grandPassFail.pass, grandPassFail.fail) / (grandPassFail.pass + grandPassFail.fail)) *
+    100
+  ).toFixed(0)
 
   md += `## Cross-Draft Summary
 
@@ -284,7 +394,7 @@ This report measures the consistency of \`evaluateScene()\` across 5 runs on 3 s
 1. **Score variance is moderate** (σ≈${grandScoreStats.stdDev}) — evaluator produces consistent scores within ±1 point across runs for the same draft.
 2. **Issue types drift across runs** — the same draft may receive continuity issues in one run and voice issues in another, suggesting the critic's dimension focus is not deterministic.
 3. **Pass/fail is ${grandPfPct >= 80 ? 'reasonably stable' : 'unstable'}** at ${grandPfPct}% consistency across all evaluations.
-4. **Severity distribution skews ${grandScores.filter(s => s < 7).length > 7 ? 'toward stricter' : 'toward lenient'} evaluations** — lower-scored drafts receive proportionally more major issues.
+4. **Severity distribution skews ${grandScores.filter((s) => s < 7).length > 7 ? 'toward stricter' : 'toward lenient'} evaluations** — lower-scored drafts receive proportionally more major issues.
 5. **The 2-minor-issue threshold creates a cliff** — drafts with 3 minor issues fail despite being near-identical to drafts with 2 minor issues that pass.
 
 ## Recommendations
@@ -314,11 +424,12 @@ describe('CONSISTENCY-AUDIT: Critic Evaluation Consistency', () => {
       title: 'Test Scene',
       emotionalGoal: 'Create tension and anticipation',
       charactersPresent: ['Elara', 'Marcus'],
-      payoff: 'Discovery of the artifact\'s true purpose',
+      payoff: "Discovery of the artifact's true purpose",
       tension: 'medium'
     }
     const storyBible = `## Elara\nRole: Protagonist\nGoal: Find the artifact\nVoice: Determined, impulsive\n\n## Marcus\nRole: Companion\nGoal: Protect Elara\nVoice: Cautious, analytical`
-    const chapterLog = 'Previous chapter: The group arrived at the ancient temple after a three-day journey through the forest.'
+    const chapterLog =
+      'Previous chapter: The group arrived at the ancient temple after a three-day journey through the forest.'
 
     expect(1).toBe(1)
 
@@ -343,8 +454,12 @@ describe('CONSISTENCY-AUDIT: Critic Evaluation Consistency', () => {
         const critic = useStoryCritic()
         const result = await critic.evaluateScene({ draft, sceneBrief, storyBible, chapterLog })
 
-        result.issues = result.issues.map(i => ({ type: i.type, severity: i.severity, description: i.description.substring(0, 60) }))
-        result.strengths = result.strengths.map(s => s.substring(0, 60))
+        result.issues = result.issues.map((i) => ({
+          type: i.type,
+          severity: i.severity,
+          description: i.description.substring(0, 60)
+        }))
+        result.strengths = result.strengths.map((s) => s.substring(0, 60))
 
         runs.push({
           run: runIdx + 1,
@@ -368,7 +483,10 @@ describe('CONSISTENCY-AUDIT: Critic Evaluation Consistency', () => {
       }
     }
 
-    const report = generateReport({ draft1: 'DRAFT_1_FANTASY', draft2: 'DRAFT_2_TECH', draft3: 'DRAFT_3_BUSINESS' }, allRuns)
+    const report = generateReport(
+      { draft1: 'DRAFT_1_FANTASY', draft2: 'DRAFT_2_TECH', draft3: 'DRAFT_3_BUSINESS' },
+      allRuns
+    )
 
     const outDir = path.resolve(process.cwd(), '.planning/phases/phase-2')
     fs.mkdirSync(outDir, { recursive: true })
@@ -387,19 +505,27 @@ describe('EVAL-04: Dimension Scores', () => {
     mockAiGenerate.mockReset()
     const { useStoryCritic } = await import('../../composables/useStoryCritic')
     const draft = DRAFT_1_FANTASY
-    const sceneBrief = { title: 'Test Scene', emotionalGoal: 'Create tension', charactersPresent: ['Elara'], payoff: 'Discovery', tension: 'medium' }
+    const sceneBrief = {
+      title: 'Test Scene',
+      emotionalGoal: 'Create tension',
+      charactersPresent: ['Elara'],
+      payoff: 'Discovery',
+      tension: 'medium'
+    }
     const storyBible = '## Elara\nRole: Protagonist\nVoice: Determined'
     const chapterLog = 'Previous chapter: The group arrived at the temple.'
 
     for (let i = 0; i < 5; i++) {
       const v = MOCK_VARIANTS.draft1[i]
-      mockAiGenerate.mockResolvedValueOnce(JSON.stringify({
-        pass: v.issues.length <= 2,
-        score: v.score,
-        dimensionScores: v.dimensionScores,
-        issues: v.issues,
-        strengths: v.strengths
-      }))
+      mockAiGenerate.mockResolvedValueOnce(
+        JSON.stringify({
+          pass: v.issues.length <= 2,
+          score: v.score,
+          dimensionScores: v.dimensionScores,
+          issues: v.issues,
+          strengths: v.strengths
+        })
+      )
     }
     const critic = useStoryCritic()
     for (let i = 0; i < 5; i++) {
@@ -418,25 +544,38 @@ describe('EVAL-04: Dimension Scores', () => {
     mockAiGenerate.mockReset()
 
     for (let i = 0; i < 5; i++) {
-      mockAiGenerate.mockResolvedValueOnce(JSON.stringify({
-        pass: true,
-        score: 8,
-        dimensionScores: { clarity: 8, ambiguity: 7, liability: 8, missing_provision: 6 },
-        issues: [{ type: 'clarity', description: 'Slight ambiguity', severity: 'minor' }],
-        strengths: ['Well-structured contract']
-      }))
+      mockAiGenerate.mockResolvedValueOnce(
+        JSON.stringify({
+          pass: true,
+          score: 8,
+          dimensionScores: { clarity: 8, ambiguity: 7, liability: 8, missing_provision: 6 },
+          issues: [{ type: 'clarity', description: 'Slight ambiguity', severity: 'minor' }],
+          strengths: ['Well-structured contract']
+        })
+      )
     }
 
     const critic = useStoryCritic()
     const result = await critic.evaluateScene({
       draft: DRAFT_1_FANTASY,
-      sceneBrief: { title: 'Test', emotionalGoal: 'Test', charactersPresent: ['Elara'], payoff: 'Test', tension: 'low' },
+      sceneBrief: {
+        title: 'Test',
+        emotionalGoal: 'Test',
+        charactersPresent: ['Elara'],
+        payoff: 'Test',
+        tension: 'low'
+      },
       storyBible: '## Test\nRole: Test',
       chapterLog: 'Test chapter.'
     })
 
     expect(result.dimensionScores).toBeDefined()
-    expect(Object.keys(result.dimensionScores)).toEqual(['clarity', 'ambiguity', 'liability', 'missing_provision'])
+    expect(Object.keys(result.dimensionScores)).toEqual([
+      'clarity',
+      'ambiguity',
+      'liability',
+      'missing_provision'
+    ])
     expect(result.dimensionScores.clarity).toBe(8)
     mockStore.activeWorkspaceType = 'creative'
   })

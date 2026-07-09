@@ -27,7 +27,7 @@ describe('manuscriptStore', () => {
       { id: 'ch2', order: 1 },
       { id: 'ch1', order: 0 }
     ]
-    
+
     const sorted = store.sortedSections
     expect(sorted[0].id).toBe('ch1')
     expect(sorted[1].id).toBe('ch2')
@@ -39,7 +39,7 @@ describe('manuscriptStore', () => {
       { id: 'sc2', sectionId: 'ch2' },
       { id: 'sc3', sectionId: 'ch1' }
     ]
-    
+
     const subsectionsBySection = store.subsectionsBySection
     expect(subsectionsBySection['ch1']).toHaveLength(2)
     expect(subsectionsBySection['ch2']).toHaveLength(1)
@@ -51,7 +51,7 @@ describe('manuscriptStore', () => {
       { id: 'ch2', title: 'Section 2' }
     ]
     store.activeSectionId = 'ch1'
-    
+
     expect(store.activeSection).toBeDefined()
     expect(store.activeSection.id).toBe('ch1')
   })
@@ -62,7 +62,7 @@ describe('manuscriptStore', () => {
       { id: 'sc2', title: 'Subsection 2' }
     ]
     store.activeSubsectionId = 'sc2'
-    
+
     expect(store.activeSubsection).toBeDefined()
     expect(store.activeSubsection.id).toBe('sc2')
   })

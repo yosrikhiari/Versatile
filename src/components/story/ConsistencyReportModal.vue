@@ -45,7 +45,9 @@ const emit = defineEmits(['close'])
             :key="j"
             class="text-xs text-text-secondary space-y-0.5 mb-1"
           >
-            <p><span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}</p>
+            <p>
+              <span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}
+            </p>
           </div>
         </div>
       </div>
@@ -65,7 +67,9 @@ const emit = defineEmits(['close'])
             :key="j"
             class="text-xs text-text-secondary space-y-0.5 mb-1"
           >
-            <p><span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}</p>
+            <p>
+              <span class="text-text-hint">[{{ c.type }}]</span> {{ c.description }}
+            </p>
           </div>
         </div>
       </div>

@@ -28,7 +28,9 @@ describe('Anthropic provider', () => {
       json: () => Promise.resolve({ error: { message: 'Invalid key' } })
     })
     const { generate } = await import('../../services/providers/anthropic')
-    await expect(generate('test', 'sys', 'claude-3', { apiKey: 'sk-test' })).rejects.toThrow('Invalid key')
+    await expect(generate('test', 'sys', 'claude-3', { apiKey: 'sk-test' })).rejects.toThrow(
+      'Invalid key'
+    )
   })
 
   it('generate throws with status when no error body', async () => {
@@ -38,7 +40,9 @@ describe('Anthropic provider', () => {
       json: () => Promise.reject(new Error('parse fail'))
     })
     const { generate } = await import('../../services/providers/anthropic')
-    await expect(generate('test', 'sys', 'claude-3', { apiKey: 'sk-test' })).rejects.toThrow('Anthropic error: 500')
+    await expect(generate('test', 'sys', 'claude-3', { apiKey: 'sk-test' })).rejects.toThrow(
+      'Anthropic error: 500'
+    )
   })
 
   it('testConnection returns true on success', async () => {

@@ -82,9 +82,9 @@ export const mockDb = {
 
 // Helper to reset all mocks
 export function resetDbMocks() {
-  Object.values(mockDb).forEach(value => {
+  Object.values(mockDb).forEach((value) => {
     if (typeof value === 'object' && value !== null) {
-      Object.values(value).forEach(fn => {
+      Object.values(value).forEach((fn) => {
         if (typeof fn === 'function' && fn.mockReset) {
           fn.mockReset()
         }

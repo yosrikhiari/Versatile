@@ -64,10 +64,13 @@ describe('gateDimensionCoverage', () => {
 
 describe('gateScoreDistribution', () => {
   it('passes on a valid score', () => {
-    const result = makeCritiqueResult({ score: 8, issues: [
-      { type: 'voice', severity: 'minor' },
-      { type: 'pacing', severity: 'minor' }
-    ]})
+    const result = makeCritiqueResult({
+      score: 8,
+      issues: [
+        { type: 'voice', severity: 'minor' },
+        { type: 'pacing', severity: 'minor' }
+      ]
+    })
     const gate = gateScoreDistribution(result)
     expect(gate.pass).toBe(true)
   })
@@ -83,7 +86,7 @@ describe('gateScoreDistribution', () => {
   it('flags suspect score value', () => {
     const result = makeCritiqueResult({ score: 7 })
     const gate = gateScoreDistribution(result)
-    expect(gate.flags.some(f => f.includes('suspect value'))).toBe(true)
+    expect(gate.flags.some((f) => f.includes('suspect value'))).toBe(true)
   })
 
   it('detects high score with major issues mismatch', () => {
@@ -96,7 +99,7 @@ describe('gateScoreDistribution', () => {
       ]
     })
     const gate = gateScoreDistribution(result)
-    expect(gate.flags.some(f => f.includes('possible mismatch'))).toBe(true)
+    expect(gate.flags.some((f) => f.includes('possible mismatch'))).toBe(true)
   })
 
   it('passes high score with few major issues', () => {
@@ -118,7 +121,12 @@ describe('gateRevisionEffectiveness', () => {
   it('passes when score improves', async () => {
     const orig = makeCritiqueResult({ score: 5 })
     const revised = makeCritiqueResult({ score: 8 })
-    const gate = await gateRevisionEffectiveness(orig, 'revised draft v2', 'original draft v1', revised)
+    const gate = await gateRevisionEffectiveness(
+      orig,
+      'revised draft v2',
+      'original draft v1',
+      revised
+    )
     expect(gate.pass).toBe(true)
     expect(gate.delta).toBe(3)
   })
@@ -137,7 +145,7 @@ describe('gateRevisionEffectiveness', () => {
     const draft = 'identical text'
     const gate = await gateRevisionEffectiveness(orig, draft, draft)
     expect(gate.pass).toBe(false)
-    expect(gate.regressions.some(r => r.includes('Revision unchanged'))).toBe(true)
+    expect(gate.regressions.some((r) => r.includes('Revision unchanged'))).toBe(true)
   })
 
   it('passes unchanged draft when original had no issues', async () => {
@@ -153,12 +161,16 @@ describe('gateRevisionEffectiveness', () => {
     const shortDraft = 'a'
     const longDraft = 'a ' + 'word '.repeat(100)
     const gate = await gateRevisionEffectiveness(orig, longDraft, shortDraft)
-    expect(gate.regressions.some(r => r.includes('Word count'))).toBe(true)
+    expect(gate.regressions.some((r) => r.includes('Word count'))).toBe(true)
   })
 
   it('handles empty drafts', async () => {
     const orig = makeCritiqueResult({ score: 5 })
-    const gate = await gateRevisionEffectiveness(orig, '', '', { score: 7, issues: [], strengths: [] })
+    const gate = await gateRevisionEffectiveness(orig, '', '', {
+      score: 7,
+      issues: [],
+      strengths: []
+    })
     expect(gate.pass).toBe(true)
   })
 })

@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { identifySpeakers, buildSpeakerIndex, getUnidentifiedLines } from '../../utils/speakerIdentifier'
+import {
+  identifySpeakers,
+  buildSpeakerIndex,
+  getUnidentifiedLines
+} from '../../utils/speakerIdentifier'
 
 describe('speakerIdentifier', () => {
   const characters = [
     { id: 'char1', name: 'John Smith' },
     { id: 'char2', name: 'Jane Doe' },
-    { id: 'char3', name: 'Bob', aliases: ['Bobby', 'Robert'] },
+    { id: 'char3', name: 'Bob', aliases: ['Bobby', 'Robert'] }
   ]
 
   describe('identifySpeakers', () => {
@@ -17,7 +21,7 @@ describe('speakerIdentifier', () => {
 
     it('identifies speaker from tag match (full name)', () => {
       const lines = [
-        { speakerCandidate: 'John', dialogueText: 'Hello', tag: 'said', tagPosition: 'after' },
+        { speakerCandidate: 'John', dialogueText: 'Hello', tag: 'said', tagPosition: 'after' }
       ]
       const result = identifySpeakers(lines, characters)
       expect(result).toHaveLength(1)
@@ -28,9 +32,7 @@ describe('speakerIdentifier', () => {
     })
 
     it('identifies speaker from tag match (alias)', () => {
-      const lines = [
-        { speakerCandidate: 'Bobby', dialogueText: 'Hey', tag: 'said' },
-      ]
+      const lines = [{ speakerCandidate: 'Bobby', dialogueText: 'Hey', tag: 'said' }]
       const result = identifySpeakers(lines, characters)
       expect(result[0].speakerId).toBe('char3')
       expect(result[0].speakerName).toBe('Bob')
@@ -38,8 +40,15 @@ describe('speakerIdentifier', () => {
 
     it('falls back to context when no tag match', () => {
       const lines = [
-        { speakerId: 'char1', speakerName: 'John Smith', needsReview: false, confidence: 0.9, dialogueText: 'First', fullParagraphText: 'First line.' },
-        { speakerCandidate: null, dialogueText: 'Response', fullParagraphText: 'Response.' },
+        {
+          speakerId: 'char1',
+          speakerName: 'John Smith',
+          needsReview: false,
+          confidence: 0.9,
+          dialogueText: 'First',
+          fullParagraphText: 'First line.'
+        },
+        { speakerCandidate: null, dialogueText: 'Response', fullParagraphText: 'Response.' }
       ]
       const result = identifySpeakers(lines, characters)
       expect(result).toHaveLength(2)
@@ -50,7 +59,7 @@ describe('speakerIdentifier', () => {
 
     it('marks needsReview when no speaker identified', () => {
       const lines = [
-        { speakerCandidate: null, dialogueText: 'Unknown', fullParagraphText: 'Unknown line.' },
+        { speakerCandidate: null, dialogueText: 'Unknown', fullParagraphText: 'Unknown line.' }
       ]
       const result = identifySpeakers(lines, characters)
       expect(result[0].speakerId).toBeNull()
@@ -60,16 +69,20 @@ describe('speakerIdentifier', () => {
     })
 
     it('matches partial name (first name only)', () => {
-      const lines = [
-        { speakerCandidate: 'John', dialogueText: 'Hey' },
-      ]
+      const lines = [{ speakerCandidate: 'John', dialogueText: 'Hey' }]
       const result = identifySpeakers(lines, characters)
       expect(result[0].speakerId).toBe('char1')
     })
 
     it('preserves all original properties on enriched line', () => {
       const lines = [
-        { speakerCandidate: 'John', dialogueText: 'Hi', tag: 'said', paragraphIndex: 5, quoteChar: '"' },
+        {
+          speakerCandidate: 'John',
+          dialogueText: 'Hi',
+          tag: 'said',
+          paragraphIndex: 5,
+          quoteChar: '"'
+        }
       ]
       const result = identifySpeakers(lines, characters)
       expect(result[0].dialogueText).toBe('Hi')
@@ -88,7 +101,7 @@ describe('speakerIdentifier', () => {
       const lines = [
         { speakerId: 'char1', speakerName: 'John Smith', dialogueText: 'First' },
         { speakerId: 'char2', speakerName: 'Jane Doe', dialogueText: 'Second' },
-        { speakerId: 'char1', speakerName: 'John Smith', dialogueText: 'Third' },
+        { speakerId: 'char1', speakerName: 'John Smith', dialogueText: 'Third' }
       ]
       const index = buildSpeakerIndex(lines)
       expect(Object.keys(index)).toHaveLength(2)
@@ -101,7 +114,7 @@ describe('speakerIdentifier', () => {
     it('skips lines without speakerId', () => {
       const lines = [
         { speakerId: null, dialogueText: 'Orphan' },
-        { speakerId: 'char1', speakerName: 'John Smith', dialogueText: 'Known' },
+        { speakerId: 'char1', speakerName: 'John Smith', dialogueText: 'Known' }
       ]
       const index = buildSpeakerIndex(lines)
       expect(Object.keys(index)).toHaveLength(1)
@@ -117,7 +130,7 @@ describe('speakerIdentifier', () => {
       const lines = [
         { speakerId: 'char1', needsReview: false, dialogueText: 'Known' },
         { speakerId: null, needsReview: true, dialogueText: 'Unknown 1' },
-        { speakerId: 'char2', needsReview: true, dialogueText: 'Uncertain' },
+        { speakerId: 'char2', needsReview: true, dialogueText: 'Uncertain' }
       ]
       const result = getUnidentifiedLines(lines)
       expect(result).toHaveLength(2)

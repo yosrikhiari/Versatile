@@ -36,8 +36,9 @@ describe('executeGeneration', () => {
     sanitizeJsonResponse.mockReturnValue(null)
 
     const { executeGeneration } = await import('../../composables/generation/pipeline/modelRunner')
-    await expect(executeGeneration({ userPrompt: 'test', systemPrompt: 'test sys', schema }))
-      .rejects.toThrow('malformed JSON')
+    await expect(
+      executeGeneration({ userPrompt: 'test', systemPrompt: 'test sys', schema })
+    ).rejects.toThrow('malformed JSON')
   })
 
   it('throws on empty parsed response', async () => {
@@ -45,7 +46,8 @@ describe('executeGeneration', () => {
     sanitizeJsonResponse.mockReturnValue({})
 
     const { executeGeneration } = await import('../../composables/generation/pipeline/modelRunner')
-    await expect(executeGeneration({ userPrompt: 'test', systemPrompt: 'test sys', schema }))
-      .rejects.toThrow('malformed JSON')
+    await expect(
+      executeGeneration({ userPrompt: 'test', systemPrompt: 'test sys', schema })
+    ).rejects.toThrow('malformed JSON')
   })
 })

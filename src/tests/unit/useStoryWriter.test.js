@@ -103,7 +103,9 @@ describe('writeScene', () => {
   it('throws and sets writeError on failure', async () => {
     mockAiGenerate.mockRejectedValue(new Error('API down'))
     const { writeScene, writeError } = useStoryWriter()
-    await expect(writeScene({ sceneBrief: baseSceneBrief, storyArc: defaultArc })).rejects.toThrow('API down')
+    await expect(writeScene({ sceneBrief: baseSceneBrief, storyArc: defaultArc })).rejects.toThrow(
+      'API down'
+    )
     expect(writeError.value).toBe('API down')
   })
 
@@ -215,7 +217,9 @@ describe('writeSceneStructured', () => {
   it('re-throws non-JSON errors', async () => {
     mockAiGenerate.mockRejectedValue(new Error('API error'))
     const { writeSceneStructured, writeError } = useStoryWriter()
-    await expect(writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })).rejects.toThrow('API error')
+    await expect(
+      writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+    ).rejects.toThrow('API error')
     expect(writeError.value).toBe('API error')
   })
 

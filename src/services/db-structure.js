@@ -40,7 +40,13 @@ export async function getSubsections(projectId, sectionId = null) {
 
 export async function addSubsection(projectId, data) {
   const now = new Date().toISOString()
-  const result = await db.subsections.add({ projectId, contentStatus: 'draft', createdAt: now, updatedAt: now, ...data })
+  const result = await db.subsections.add({
+    projectId,
+    contentStatus: 'draft',
+    createdAt: now,
+    updatedAt: now,
+    ...data
+  })
   if (data.content) {
     getEmbedding('subsection', result, data.content).catch((err) => {
       console.error('Failed to generate embedding for new subsection:', result, err)

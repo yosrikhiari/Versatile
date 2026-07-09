@@ -17,34 +17,47 @@ beforeEach(async () => {
 describe('ollama generate', () => {
   it('returns response text on success', async () => {
     mockFetch
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ models: [{ name: 'llama3' }] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ models: [{ name: 'llama3' }] })
+      })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ response: 'Hello world' }) })
     const result = await ollama.generate('prompt', 'system', 'llama3')
     expect(result).toBe('Hello world')
   })
 
   it('throws timeout error when request is aborted', async () => {
-    mockFetch
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ models: [{ name: 'llama3' }] }) })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ models: [{ name: 'llama3' }] })
+    })
     mockFetch.mockImplementationOnce(() => {
       const error = new DOMException('The operation was aborted', 'AbortError')
       return Promise.reject(error)
     })
-    await expect(ollama.generate('prompt', 'system', 'llama3', { timeout: 1 })).rejects.toThrow('Ollama request timed out after 1ms')
+    await expect(ollama.generate('prompt', 'system', 'llama3', { timeout: 1 })).rejects.toThrow(
+      'Ollama request timed out after 1ms'
+    )
   })
 
   it('throws error when model is not available', async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ models: [] }) })
-    await expect(ollama.generate('prompt', 'system', 'nonexistent-model')).rejects.toThrow('Model').catch(() => {})
+    await expect(ollama.generate('prompt', 'system', 'nonexistent-model'))
+      .rejects.toThrow('Model')
+      .catch(() => {})
   })
 
   it('decorates GPU errors', async () => {
-    mockFetch
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ models: [{ name: 'llama3' }] }) })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ models: [{ name: 'llama3' }] })
+    })
     mockFetch.mockImplementationOnce(() => {
       return Promise.reject(new Error('CUDA error: out of memory'))
     })
-    await expect(ollama.generate('prompt', 'system', 'llama3', { timeout: 1 })).rejects.toThrow('GPU')
+    await expect(ollama.generate('prompt', 'system', 'llama3', { timeout: 1 })).rejects.toThrow(
+      'GPU'
+    )
   })
 })
 
@@ -67,11 +80,13 @@ describe('ollama stream', () => {
 
   it('calls onChunk for each response line', async () => {
     mockFetch
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ models: [{ name: 'llama3' }] }) })
-      .mockResolvedValueOnce(makeStreamResponse([
-        '{"response":"Hello"}\n',
-        '{"response":" world"}\n'
-      ]))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ models: [{ name: 'llama3' }] })
+      })
+      .mockResolvedValueOnce(
+        makeStreamResponse(['{"response":"Hello"}\n', '{"response":" world"}\n'])
+      )
     const onChunk = vi.fn()
     const result = await ollama.stream('prompt', 'system', 'llama3', onChunk)
     expect(onChunk).toHaveBeenCalledTimes(2)
@@ -81,7 +96,10 @@ describe('ollama stream', () => {
 
 describe('ollama listModels', () => {
   it('returns model names', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ models: [{ name: 'llama3' }, { name: 'mistral' }] }) })
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ models: [{ name: 'llama3' }, { name: 'mistral' }] })
+    })
     const models = await ollama.listModels()
     expect(models).toEqual(['llama3', 'mistral'])
   })

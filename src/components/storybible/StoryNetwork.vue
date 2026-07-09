@@ -176,12 +176,16 @@ async function groupByVolume() {
       volumeNodeIds[vol.id] = ids
     }
 
-    const { groups, nodeParents: newParents, nodePositions: newPositions, emptyVolumeIds } =
-      computeVolumeGroups({
-        volumes: projectVolumes,
-        volumeNodeIds,
-        existingGroups: manualGroups.value
-      })
+    const {
+      groups,
+      nodeParents: newParents,
+      nodePositions: newPositions,
+      emptyVolumeIds
+    } = computeVolumeGroups({
+      volumes: projectVolumes,
+      volumeNodeIds,
+      existingGroups: manualGroups.value
+    })
 
     manualGroups.value = groups
     nodeParents.value = { ...nodeParents.value, ...newParents }
@@ -676,7 +680,11 @@ function currentParentOf() {
 function reparentGroupOnDrop(groupNode) {
   const group = manualGroups.value.find((g) => g.id === groupNode.id)
   if (!group) return
-  const absPos = getAbsoluteGroupPosition({ ...group, x: groupNode.position.x, y: groupNode.position.y })
+  const absPos = getAbsoluteGroupPosition({
+    ...group,
+    x: groupNode.position.x,
+    y: groupNode.position.y
+  })
 
   let target = null
   for (const candidate of manualGroups.value) {
@@ -1824,7 +1832,11 @@ function handleApplySuggestionsModalClose() {
           :disabled="isGroupingByVolume"
           @click="groupByVolume"
         >
-          <BaseIcon :name="isGroupingByVolume ? 'loader' : 'layers'" :size="18" :class="isGroupingByVolume ? 'animate-spin' : ''" />
+          <BaseIcon
+            :name="isGroupingByVolume ? 'loader' : 'layers'"
+            :size="18"
+            :class="isGroupingByVolume ? 'animate-spin' : ''"
+          />
         </button>
         <button
           class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"

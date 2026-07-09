@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { shapeContext, formatCharacter, formatLocation, formatPlotThread, buildEntityBlock } from '../../composables/generation/shaping/index'
+import {
+  shapeContext,
+  formatCharacter,
+  formatLocation,
+  formatPlotThread,
+  buildEntityBlock
+} from '../../composables/generation/shaping/index'
 
 const mockContext = {
   entities: {
@@ -14,7 +20,12 @@ const mockContext = {
 
 describe('formatCharacter', () => {
   it('formats character with role and traits', () => {
-    const result = formatCharacter({ name: 'John', role: 'Hero', goal: 'Save the world', traits: ['brave', 'kind'] })
+    const result = formatCharacter({
+      name: 'John',
+      role: 'Hero',
+      goal: 'Save the world',
+      traits: ['brave', 'kind']
+    })
     expect(result).toContain('"John"')
     expect(result).toContain('(Hero)')
     expect(result).toContain('Save the world')
@@ -29,7 +40,11 @@ describe('formatCharacter', () => {
 
 describe('formatLocation', () => {
   it('formats location with description and traits', () => {
-    const result = formatLocation({ name: 'Forest', description: 'Dark woods', traits: ['magical'] })
+    const result = formatLocation({
+      name: 'Forest',
+      description: 'Dark woods',
+      traits: ['magical']
+    })
     expect(result).toContain('"Forest"')
     expect(result).toContain('Dark woods')
     expect(result).toContain('[magical]')
@@ -38,7 +53,11 @@ describe('formatLocation', () => {
 
 describe('formatPlotThread', () => {
   it('formats plot thread with notes and traits', () => {
-    const result = formatPlotThread({ title: 'War', notes: 'Impending conflict', traits: ['political'] })
+    const result = formatPlotThread({
+      title: 'War',
+      notes: 'Impending conflict',
+      traits: ['political']
+    })
     expect(result).toContain('"War"')
     expect(result).toContain('Impending conflict')
     expect(result).toContain('[political]')

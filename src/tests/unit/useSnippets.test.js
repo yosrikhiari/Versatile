@@ -24,7 +24,9 @@ describe('useSnippets', () => {
 
   it('getTopSnippets returns limited items', async () => {
     const { getTopSnippets } = await create([
-      { text: 'a', count: 5 }, { text: 'b', count: 4 }, { text: 'c', count: 3 }
+      { text: 'a', count: 5 },
+      { text: 'b', count: 4 },
+      { text: 'c', count: 3 }
     ])
     expect(getTopSnippets(2)).toHaveLength(2)
     expect(getTopSnippets(2)[0].text).toBe('a')

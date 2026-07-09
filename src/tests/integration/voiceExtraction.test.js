@@ -70,7 +70,8 @@ describe('Voice Extraction Integration (Phase 1)', () => {
     it('should prevent refresh when profile is locked', async () => {
       const manuscriptStore = useManuscriptStore()
       const storyBibleStore = useStoryBibleStore()
-      const { extractVoiceProfile, refreshVoiceProfile, toggleProfileLock } = useVoiceFromManuscript()
+      const { extractVoiceProfile, refreshVoiceProfile, toggleProfileLock } =
+        useVoiceFromManuscript()
 
       // Setup: Extract initial profile
       const initialText = 'This is a test manuscript. ' + 'It has multiple sentences. '.repeat(200)
@@ -82,15 +83,18 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       expect(storyBibleStore.voiceProfile.locked).toBe(true)
 
       // Change manuscript
-      const newText = 'This is a very different manuscript with short punchy sentences. ' + 'Boom. Bang. Pow. '.repeat(100)
+      const newText =
+        'This is a very different manuscript with short punchy sentences. ' +
+        'Boom. Bang. Pow. '.repeat(100)
       manuscriptStore.setManuscriptContent(newText)
 
       // Attempt refresh (should not update)
       await refreshVoiceProfile()
 
       // Assert: Profile metrics should remain same as initial
-      expect(storyBibleStore.voiceProfile.profile.sentenceStructure.averageSentenceLength)
-        .toBe(initialProfile.sentenceStructure.averageSentenceLength)
+      expect(storyBibleStore.voiceProfile.profile.sentenceStructure.averageSentenceLength).toBe(
+        initialProfile.sentenceStructure.averageSentenceLength
+      )
     })
 
     it('should allow refresh when profile is unlocked', async () => {
@@ -104,13 +108,15 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       await extractVoiceProfile()
       toggleProfileLock()
 
-      const lockedSentenceLength = storyBibleStore.voiceProfile.profile.sentenceStructure.averageSentenceLength
+      const lockedSentenceLength =
+        storyBibleStore.voiceProfile.profile.sentenceStructure.averageSentenceLength
 
       // Action: Unlock and change manuscript
       toggleProfileLock()
       expect(storyBibleStore.voiceProfile.locked).toBe(false)
 
-      const newText = 'Short. Sentences. Everywhere. ' + 'Boom. Bang. Pow. Crack. Snap. '.repeat(100)
+      const newText =
+        'Short. Sentences. Everywhere. ' + 'Boom. Bang. Pow. Crack. Snap. '.repeat(100)
       manuscriptStore.setManuscriptContent(newText)
 
       // Refresh should update
@@ -208,7 +214,9 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       const profile2 = await extract2()
 
       // Assert: Metrics should match
-      expect(profile1.sentenceStructure.averageSentenceLength).toBe(profile2.sentenceStructure.averageSentenceLength)
+      expect(profile1.sentenceStructure.averageSentenceLength).toBe(
+        profile2.sentenceStructure.averageSentenceLength
+      )
       expect(profile1.vocabulary.uniqueWords).toBe(profile2.vocabulary.uniqueWords)
       expect(profile1.metadata.confidence).toBe(profile2.metadata.confidence)
     })
@@ -219,7 +227,8 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       const manuscriptStore = useManuscriptStore()
       const { extractVoiceProfile } = useVoiceFromManuscript()
 
-      const textWithSpecial = '"What is this?" she asked. ' + '"I don\'t know," he replied. '.repeat(200)
+      const textWithSpecial =
+        '"What is this?" she asked. ' + '"I don\'t know," he replied. '.repeat(200)
       manuscriptStore.setManuscriptContent(textWithSpecial)
 
       const profile = await extractVoiceProfile()
@@ -232,7 +241,9 @@ describe('Voice Extraction Integration (Phase 1)', () => {
       const manuscriptStore = useManuscriptStore()
       const { extractVoiceProfile } = useVoiceFromManuscript()
 
-      const textWithPunctuation = 'Exclamation! Question? Ellipsis... Dash — here. ' + 'Semicolon; here. More words. '.repeat(150)
+      const textWithPunctuation =
+        'Exclamation! Question? Ellipsis... Dash — here. ' +
+        'Semicolon; here. More words. '.repeat(150)
       manuscriptStore.setManuscriptContent(textWithPunctuation)
 
       const profile = await extractVoiceProfile()

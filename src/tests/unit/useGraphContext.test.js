@@ -8,7 +8,13 @@ const mockCharacters = [
 const mockLocations = [{ id: 1, name: 'Castle' }]
 const mockPlotThreads = [{ id: 1, title: 'Main Plot' }]
 const mockEdges = [
-  { sourceType: 'character', sourceId: 1, targetType: 'location', targetId: 1, relationshipType: 'located_at' }
+  {
+    sourceType: 'character',
+    sourceId: 1,
+    targetType: 'location',
+    targetId: 1,
+    relationshipType: 'located_at'
+  }
 ]
 
 vi.mock('@/stores/storyGraphStore', () => ({

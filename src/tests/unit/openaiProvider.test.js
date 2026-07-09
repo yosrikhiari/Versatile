@@ -8,7 +8,9 @@ describe('OpenAI provider', () => {
 
   it('generate throws without API key', async () => {
     const { generate } = await import('../../services/providers/openai')
-    await expect(generate('prompt', 'system', 'gpt-4', {})).rejects.toThrow('API key not configured')
+    await expect(generate('prompt', 'system', 'gpt-4', {})).rejects.toThrow(
+      'API key not configured'
+    )
   })
 
   it('generate returns content on success', async () => {
@@ -29,7 +31,9 @@ describe('OpenAI provider', () => {
       json: () => Promise.resolve({ error: { message: 'Invalid key' } })
     })
     const { generate } = await import('../../services/providers/openai')
-    await expect(generate('test', 'sys', 'gpt-4', { apiKey: 'sk-test' })).rejects.toThrow('Invalid key')
+    await expect(generate('test', 'sys', 'gpt-4', { apiKey: 'sk-test' })).rejects.toThrow(
+      'Invalid key'
+    )
   })
 
   it('generate throws with status message when no error body', async () => {
@@ -39,7 +43,9 @@ describe('OpenAI provider', () => {
       json: () => Promise.reject(new Error('parse fail'))
     })
     const { generate } = await import('../../services/providers/openai')
-    await expect(generate('test', 'sys', 'gpt-4', { apiKey: 'sk-test' })).rejects.toThrow('OpenAI error: 500')
+    await expect(generate('test', 'sys', 'gpt-4', { apiKey: 'sk-test' })).rejects.toThrow(
+      'OpenAI error: 500'
+    )
   })
 
   it('testConnection returns true on success', async () => {

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { validateVoiceProfile, createEmptyVoiceProfile, createEmptyVoiceProfileState } from '../../services/generation/voiceProfileSchema'
+import {
+  validateVoiceProfile,
+  createEmptyVoiceProfile,
+  createEmptyVoiceProfileState
+} from '../../services/generation/voiceProfileSchema'
 
 describe('createEmptyVoiceProfile', () => {
   it('returns a valid empty profile', () => {
@@ -46,7 +50,12 @@ describe('validateVoiceProfile', () => {
 
   it('validates vocabulary types', () => {
     const profile = createEmptyVoiceProfile()
-    profile.vocabulary = { totalWords: 'bad', uniqueWords: 'bad', mostCommonWords: 'bad', wordFrequency: 'bad' }
+    profile.vocabulary = {
+      totalWords: 'bad',
+      uniqueWords: 'bad',
+      mostCommonWords: 'bad',
+      wordFrequency: 'bad'
+    }
     const result = validateVoiceProfile(profile)
     expect(result.valid).toBe(false)
     expect(result.errors).toContain('vocabulary.totalWords must be number')
@@ -56,7 +65,13 @@ describe('validateVoiceProfile', () => {
 
   it('validates sentenceStructure', () => {
     const profile = createEmptyVoiceProfile()
-    profile.sentenceStructure = { sentences: 'bad', lengths: 'bad', averageSentenceLength: 'bad', sentenceLengthDistribution: [], hasDialogue: 'bad' }
+    profile.sentenceStructure = {
+      sentences: 'bad',
+      lengths: 'bad',
+      averageSentenceLength: 'bad',
+      sentenceLengthDistribution: [],
+      hasDialogue: 'bad'
+    }
     const result = validateVoiceProfile(profile)
     expect(result.valid).toBe(false)
     expect(result.errors).toContain('sentenceStructure.sentences must be array')
@@ -68,12 +83,20 @@ describe('validateVoiceProfile', () => {
     const profile = createEmptyVoiceProfile()
     profile.sentenceStructure.sentenceLengthDistribution = [1, 2, 3]
     const result = validateVoiceProfile(profile)
-    expect(result.errors).toContain('sentenceStructure.sentenceLengthDistribution must have 4 buckets')
+    expect(result.errors).toContain(
+      'sentenceStructure.sentenceLengthDistribution must have 4 buckets'
+    )
   })
 
   it('validates punctuation types', () => {
     const profile = createEmptyVoiceProfile()
-    profile.punctuation = { ellipsisFrequency: 0.5, dashFrequency: true, exclamationFrequency: null, semicolonFrequency: 'abc', commaFrequency: '0.5' }
+    profile.punctuation = {
+      ellipsisFrequency: 0.5,
+      dashFrequency: true,
+      exclamationFrequency: null,
+      semicolonFrequency: 'abc',
+      commaFrequency: '0.5'
+    }
     const result = validateVoiceProfile(profile)
     expect(result.valid).toBe(false)
     expect(result.errors).toContain('punctuation.ellipsisFrequency must be numeric string')
@@ -92,7 +115,12 @@ describe('validateVoiceProfile', () => {
 
   it('validates metadata types', () => {
     const profile = createEmptyVoiceProfile()
-    profile.metadata = { totalCharacters: 'bad', totalWords: 'bad', totalSentences: 'bad', confidence: 1.5 }
+    profile.metadata = {
+      totalCharacters: 'bad',
+      totalWords: 'bad',
+      totalSentences: 'bad',
+      confidence: 1.5
+    }
     const result = validateVoiceProfile(profile)
     expect(result.valid).toBe(false)
     expect(result.errors).toContain('metadata.totalCharacters must be number')
@@ -101,8 +129,18 @@ describe('validateVoiceProfile', () => {
 
   it('passes valid profile with required array lengths', () => {
     const profile = createEmptyVoiceProfile()
-    profile.sentenceStructure.sentenceLengthDistribution = [{ range: '1-10', percentage: '0.5' }, { range: '11-20', percentage: '0.3' }, { range: '21-30', percentage: '0.15' }, { range: '31+', percentage: '0.05' }]
-    profile.pacing.paragraphLengthDistribution = [{ range: '1-50', percentage: '0.5' }, { range: '51-150', percentage: '0.3' }, { range: '151-300', percentage: '0.15' }, { range: '301+', percentage: '0.05' }]
+    profile.sentenceStructure.sentenceLengthDistribution = [
+      { range: '1-10', percentage: '0.5' },
+      { range: '11-20', percentage: '0.3' },
+      { range: '21-30', percentage: '0.15' },
+      { range: '31+', percentage: '0.05' }
+    ]
+    profile.pacing.paragraphLengthDistribution = [
+      { range: '1-50', percentage: '0.5' },
+      { range: '51-150', percentage: '0.3' },
+      { range: '151-300', percentage: '0.15' },
+      { range: '301+', percentage: '0.05' }
+    ]
     const result = validateVoiceProfile(profile)
     expect(result.valid).toBe(true)
     expect(result.errors).toEqual([])

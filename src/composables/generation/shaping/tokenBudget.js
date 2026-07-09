@@ -28,7 +28,12 @@ export function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS, systemPr
     truncated[target] = reduced
   }
 
-  const result = { ...truncated, totalChars, truncated: totalChars > effectiveBudget, systemPromptLength: overheadChars }
+  const result = {
+    ...truncated,
+    totalChars,
+    truncated: totalChars > effectiveBudget,
+    systemPromptLength: overheadChars
+  }
   return result
 }
 

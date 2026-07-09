@@ -17,7 +17,10 @@ vi.mock('@/services/aiService', () => ({
   aiGenerateStructured: async (...args) => {
     const r = await mockAiGenerate(...args)
     if (r && typeof r === 'object') return r
-    const cleaned = String(r).replace(/```json/gi, '').replace(/```/g, '').trim()
+    const cleaned = String(r)
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim()
     const m = cleaned.match(/\{[\s\S]*\}/)
     if (!m) throw new Error('structured parse failed')
     return JSON.parse(m[0])
@@ -29,7 +32,12 @@ vi.mock('@/config/ai', () => ({
   PROVIDER_DEFAULT: 'ollama',
   PROVIDERS: { OLLAMA: 'ollama' },
   FEATURE_DEFAULTS: { story_generation: { provider: 'ollama', model: null } },
-  EMBEDDING_DEFAULTS: { provider: 'ollama', model: 'nomic-embed-text', threshold: 0.75, batchSize: 32 },
+  EMBEDDING_DEFAULTS: {
+    provider: 'ollama',
+    model: 'nomic-embed-text',
+    threshold: 0.75,
+    batchSize: 32
+  },
   EMBEDDING_PROVIDERS: { OLLAMA: 'ollama' },
   RESEARCH_CHUNKS_DEFAULT: 8
 }))
@@ -55,12 +63,24 @@ beforeEach(async () => {
   useStoryDirector = mod.useStoryDirector
 })
 
-const goal = { premise: 'A quest', genre: 'Fantasy', tone: 'Dark', wordTarget: 4000, horizon: 'long_term' }
+const goal = {
+  premise: 'A quest',
+  genre: 'Fantasy',
+  tone: 'Dark',
+  wordTarget: 4000,
+  horizon: 'long_term'
+}
 
 function validPlan() {
   return JSON.stringify({
     chapters: [
-      { chapterNumber: 1, title: 'Ch1', emotionalTarget: 'Hope', estimatedWords: 4000, scenes: [{ sceneNumber: 1, title: 'S1', arcPosition: 'setup', obstacle: 'ob' }] }
+      {
+        chapterNumber: 1,
+        title: 'Ch1',
+        emotionalTarget: 'Hope',
+        estimatedWords: 4000,
+        scenes: [{ sceneNumber: 1, title: 'S1', arcPosition: 'setup', obstacle: 'ob' }]
+      }
     ],
     storyArc: { premise: 'A quest' }
   })
@@ -103,7 +123,11 @@ describe('generateStoryPlan — research scope selection', () => {
 
   it('omits research entirely when disabled, even if documents exist', async () => {
     const { generateStoryPlan } = useStoryDirector()
-    await generateStoryPlan({ goal, evidence: '', research: { enabled: false, documentIds: [10, 20] } })
+    await generateStoryPlan({
+      goal,
+      evidence: '',
+      research: { enabled: false, documentIds: [10, 20] }
+    })
     const sys = systemPromptOf()
     expect(sys).not.toContain('## Research Context')
     expect(sys).not.toContain('ALPHA_DOC')

@@ -58,18 +58,14 @@ const {
   estimatedTotalWords
 } = useGenerationSettings()
 
-const {
-  sparkContext,
-  sparkContextLabel,
-  handleSendSparkToGenerator,
-  clearSparkContext
-} = useSparkContext({
-  sparkStore,
-  getTurns,
-  setTab: (v) => {
-    tab.value = v
-  }
-})
+const { sparkContext, sparkContextLabel, handleSendSparkToGenerator, clearSparkContext } =
+  useSparkContext({
+    sparkStore,
+    getTurns,
+    setTab: (v) => {
+      tab.value = v
+    }
+  })
 
 const showVolumeReadModal = ref(false)
 
@@ -250,7 +246,6 @@ async function handleVolumeResume() {
     /* phase/error set internally */
   }
 }
-
 
 // ----- Volume pipeline -----
 async function handleVolumeGenerate() {
@@ -561,7 +556,10 @@ function getPhaseLabel(phase) {
             />
 
             <!-- Research sources: choose which imported documents inform the novel -->
-            <div v-if="hasResearchDocs" class="rounded-lg border border-border-subtle p-3 space-y-3">
+            <div
+              v-if="hasResearchDocs"
+              class="rounded-lg border border-border-subtle p-3 space-y-3"
+            >
               <label
                 class="flex items-center gap-2 text-xs text-text-primary font-ui cursor-pointer select-none"
               >

@@ -23,10 +23,18 @@ const CRYPTO_KEY_NAME = 'versatile-crypto-key'
 async function getCryptoKey() {
   const stored = localStorage.getItem(CRYPTO_KEY_NAME)
   if (stored) {
-    const raw = Uint8Array.from(atob(stored), function(c) { return c.charCodeAt(0) })
-    return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+    const raw = Uint8Array.from(atob(stored), function (c) {
+      return c.charCodeAt(0)
+    })
+    return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, [
+      'encrypt',
+      'decrypt'
+    ])
   }
-  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt'])
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, [
+    'encrypt',
+    'decrypt'
+  ])
   const raw = new Uint8Array(await crypto.subtle.exportKey('raw', key))
   localStorage.setItem(CRYPTO_KEY_NAME, btoa(String.fromCharCode.apply(null, raw)))
   return key
@@ -60,7 +68,9 @@ export async function encrypt(text) {
 function legacyDeobfuscate(encoded) {
   try {
     return new TextDecoder().decode(
-      Uint8Array.from(atob(encoded), function(c) { return c.charCodeAt(0) })
+      Uint8Array.from(atob(encoded), function (c) {
+        return c.charCodeAt(0)
+      })
     )
   } catch {
     return ''
@@ -71,7 +81,9 @@ export async function decrypt(encoded) {
   // Try Web Crypto AES-GCM first
   try {
     const key = await getCryptoKey()
-    const combined = Uint8Array.from(atob(encoded), function(c) { return c.charCodeAt(0) })
+    const combined = Uint8Array.from(atob(encoded), function (c) {
+      return c.charCodeAt(0)
+    })
     const iv = combined.slice(0, 12)
     const data = combined.slice(12)
     const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data)

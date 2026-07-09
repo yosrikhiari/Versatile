@@ -37,9 +37,10 @@ function isOllamaProvider() {
 const PARALLEL_CHAPTER_LIMIT = () => (isOllamaProvider() ? 1 : 3)
 
 function formatFullSpineEntry(s) {
-  const facts = Array.isArray(s.keyFacts) && s.keyFacts.length
-    ? `\n- Established facts: ${s.keyFacts.join('; ')}`
-    : ''
+  const facts =
+    Array.isArray(s.keyFacts) && s.keyFacts.length
+      ? `\n- Established facts: ${s.keyFacts.join('; ')}`
+      : ''
   return `Chapter ${s.chapterNumber} (${s.chapterTitle}):\n- Emotion at end: ${s.emotionalStateAtEnd}\n- Reader knows: ${s.readerKnowledgeAtEnd}\n- Transition: ${s.transitionToNext}${facts}`
 }
 
@@ -1372,9 +1373,7 @@ export function useVolumeStoryGenerator() {
     // Build running chapter log once from existing scenes (Fix #2 — avoids O(n²) rebuild per scene)
     const runningChapterLog = writtenScenes.value
       .filter(Boolean)
-      .map(
-        (ws) => `Scene ${ws.sceneNumber} ("${ws.title}"): ${ws.summary || '(written)'}`
-      )
+      .map((ws) => `Scene ${ws.sceneNumber} ("${ws.title}"): ${ws.summary || '(written)'}`)
 
     // Build entities JSON once per batch (Fix #3 — entities don't change within a batch)
     const existingEntitiesJson = buildExistingEntitiesBlob(
@@ -1494,7 +1493,13 @@ export function useVolumeStoryGenerator() {
         return
       }
 
-      await commitAndStoreScene(scene, fullProse, sectionIndexForScene(sections, i), sections, projectId)
+      await commitAndStoreScene(
+        scene,
+        fullProse,
+        sectionIndexForScene(sections, i),
+        sections,
+        projectId
+      )
       persistCheckpoint(projectId)
 
       if (retryGate && chosenEval) {
@@ -1695,12 +1700,14 @@ export function useVolumeStoryGenerator() {
     manuscriptStore.triggerStyleGuideRegen()
 
     // Build the sections array expected by the write pipeline
-    sections.push(...batchResults.map((sec) => ({
-      id: sec.id,
-      scenes: sec.scenes,
-      subsectionIds: sec.subsectionIds,
-      chapterMeta: sec.chapterMeta
-    })))
+    sections.push(
+      ...batchResults.map((sec) => ({
+        id: sec.id,
+        scenes: sec.scenes,
+        subsectionIds: sec.subsectionIds,
+        chapterMeta: sec.chapterMeta
+      }))
+    )
 
     // Structure (volumes/sections/subsections) is now materialized.
     await updateGenRunStage(projectId, 'structure', { status: 'done' })
@@ -1877,8 +1884,7 @@ export function useVolumeStoryGenerator() {
 
     const storyDocuments = useStoryDocuments()
     const storyBibleDocs =
-      writeParams.value?.storyBibleDocs ||
-      (await storyDocuments.getStoryDocumentContext(projectId))
+      writeParams.value?.storyBibleDocs || (await storyDocuments.getStoryDocumentContext(projectId))
     const storyArc = writeParams.value?.storyArc || null
     const storyContract = writeParams.value?.storyContract || ''
     const existingEntitiesJson = buildExistingEntitiesBlob(
@@ -1890,7 +1896,9 @@ export function useVolumeStoryGenerator() {
     for (const sub of failed) {
       const { scene, index } = scenesBySub.get(sub.id)
       try {
-        const priorScenes = writtenScenes.value.filter(Boolean).filter((s) => s.subsectionId !== sub.id)
+        const priorScenes = writtenScenes.value
+          .filter(Boolean)
+          .filter((s) => s.subsectionId !== sub.id)
         const embeddingContext = await buildRetrievalContext(scene, priorScenes)
         const result = await writer.writeSceneStructured({
           sceneBrief: scene,
@@ -1905,7 +1913,11 @@ export function useVolumeStoryGenerator() {
         if (fullProse && fullProse.trim()) {
           await manuscriptStore.updateSubsectionData(
             sub.id,
-            { content: fullProse, wordCount: fullProse.split(/\s+/).length, contentStatus: 'generated' },
+            {
+              content: fullProse,
+              wordCount: fullProse.split(/\s+/).length,
+              contentStatus: 'generated'
+            },
             projectId
           )
           const rebuilt = {
@@ -2199,7 +2211,9 @@ export function useVolumeStoryGenerator() {
         for (const charName of chars) {
           const charId = charByName[charName.toLowerCase().trim()]
           if (!charId) {
-            console.warn(`[buildPreliminaryEdges] Skipping edge for unknown character "${charName}"`)
+            console.warn(
+              `[buildPreliminaryEdges] Skipping edge for unknown character "${charName}"`
+            )
             continue
           }
           const key = `${charId}|${locId}`

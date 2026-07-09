@@ -122,7 +122,12 @@ describe('Revisor Quality — reviseScene edge cases and measurement', () => {
           { severity: 'minor', type: 'grammar', description: 'Tiny grammar fix' }
         ]
       },
-      sceneBrief: { title: 'S1', emotionalGoal: 'Excited', charactersPresent: ['X'], tension: 'high' },
+      sceneBrief: {
+        title: 'S1',
+        emotionalGoal: 'Excited',
+        charactersPresent: ['X'],
+        tension: 'high'
+      },
       storyBible: 'B'
     })
 
@@ -156,7 +161,9 @@ describe('Revisor Quality — reviseScene edge cases and measurement', () => {
 
     await revisor.reviseScene({
       draft: 'Text with major issue.',
-      critiqueResult: { issues: [{ severity: 'major', type: 'error', description: 'Big problem' }] },
+      critiqueResult: {
+        issues: [{ severity: 'major', type: 'error', description: 'Big problem' }]
+      },
       sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], tension: 'm' },
       storyBible: 'B'
     })

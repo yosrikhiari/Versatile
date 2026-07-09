@@ -115,8 +115,13 @@ export async function api(path, options) {
   }
 
   if (!response.ok) {
-    var errorBody = await response.json().catch(function() { return null })
-    var message = (errorBody && errorBody.message) || (errorBody && errorBody.title) || ('Request failed: ' + response.status)
+    var errorBody = await response.json().catch(function () {
+      return null
+    })
+    var message =
+      (errorBody && errorBody.message) ||
+      (errorBody && errorBody.title) ||
+      'Request failed: ' + response.status
     throw new ApiError(message, response.status, errorBody)
   }
 
@@ -135,14 +140,22 @@ export class ApiError extends Error {
 
 function crud(prefix) {
   return {
-    list: function(params) {
+    list: function (params) {
       var qs = params ? '?' + new URLSearchParams(params).toString() : ''
       return api(prefix + qs)
     },
-    get: function(id) { return api(prefix + '/' + id) },
-    create: function(data) { return api(prefix, { method: 'POST', body: data }) },
-    update: function(id, data) { return api(prefix + '/' + id, { method: 'PUT', body: data }) },
-    del: function(id) { return api(prefix + '/' + id, { method: 'DELETE' }) }
+    get: function (id) {
+      return api(prefix + '/' + id)
+    },
+    create: function (data) {
+      return api(prefix, { method: 'POST', body: data })
+    },
+    update: function (id, data) {
+      return api(prefix + '/' + id, { method: 'PUT', body: data })
+    },
+    del: function (id) {
+      return api(prefix + '/' + id, { method: 'DELETE' })
+    }
   }
 }
 

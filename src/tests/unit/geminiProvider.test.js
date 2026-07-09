@@ -28,7 +28,9 @@ describe('Gemini provider', () => {
       json: () => Promise.resolve({ error: { message: 'Forbidden' } })
     })
     const { generate } = await import('../../services/providers/gemini')
-    await expect(generate('test', 'sys', 'gemini-pro', { apiKey: 'gk-test' })).rejects.toThrow('Forbidden')
+    await expect(generate('test', 'sys', 'gemini-pro', { apiKey: 'gk-test' })).rejects.toThrow(
+      'Forbidden'
+    )
   })
 
   it('generate throws with status when no error body', async () => {
@@ -38,7 +40,9 @@ describe('Gemini provider', () => {
       json: () => Promise.reject(new Error('parse fail'))
     })
     const { generate } = await import('../../services/providers/gemini')
-    await expect(generate('test', 'sys', 'gemini-pro', { apiKey: 'gk-test' })).rejects.toThrow('Gemini error: 500')
+    await expect(generate('test', 'sys', 'gemini-pro', { apiKey: 'gk-test' })).rejects.toThrow(
+      'Gemini error: 500'
+    )
   })
 
   it('testConnection returns true on success', async () => {

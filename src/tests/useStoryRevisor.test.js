@@ -165,7 +165,11 @@ describe('useStoryRevisor — reviseScene', () => {
 
   it('tracks isRevising state correctly', async () => {
     let resolvePromise
-    aiGenerate.mockReturnValue(new Promise(r => { resolvePromise = r }))
+    aiGenerate.mockReturnValue(
+      new Promise((r) => {
+        resolvePromise = r
+      })
+    )
     const { reviseScene, isRevising } = useStoryRevisor()
 
     const promise = reviseScene({

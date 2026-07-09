@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getEmbeddings, clearEmbeddingCache, getEmbeddingCacheSize } from '../../services/embeddingService'
+import {
+  getEmbeddings,
+  clearEmbeddingCache,
+  getEmbeddingCacheSize
+} from '../../services/embeddingService'
 
 vi.mock('../../services/researchDb', () => ({
   getBulkCachedEmbeddings: vi.fn(() => Promise.resolve(new Map())),

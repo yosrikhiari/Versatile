@@ -656,700 +656,700 @@ defineExpose({ refresh })
 
         <div class="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-thin">
           <div v-if="activeTab === 'characters'" class="space-y-3">
-          <div class="flex items-center gap-2 mb-2">
-            <button
-              class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="isGenerating"
-              @click="handleGenerateCharacter"
-            >
-              <svg
-                v-if="isGenerating"
-                class="animate-spin h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+            <div class="flex items-center gap-2 mb-2">
+              <button
+                class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="isGenerating"
+                @click="handleGenerateCharacter"
               >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  class="opacity-20"
-                />
-                <path
-                  d="M4 12a8 8 0 018-8"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <BaseIcon v-else name="sparkles" :size="12" />
-              {{ isGenerating ? 'Generating...' : 'Generate' }}
-            </button>
-          </div>
-          <div
-            v-for="character in filteredCharacters"
-            :key="character.id"
-            class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
-            draggable="true"
-            @dragstart="handleDragStart($event, character)"
-          >
-            <CharacterPortrait
-              v-if="editingId === character.id"
-              :character="editData"
-              :project-id="projectStore.currentProjectId"
-              class="mb-3"
-              @updated="refresh"
-            />
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <img
-                  v-if="character.portrait && editingId !== character.id"
-                  :src="character.portrait"
-                  :alt="character.name"
-                  class="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                />
-                <BaseIcon v-else name="user" :size="18" class="text-text-hint" />
-                <input
-                  v-if="editingId === character.id"
-                  v-model="editData.name"
-                  class="bg-bg-secondary px-1 py-0.5 text-text-primary rounded"
-                  @keydown.enter="saveEdit(character.id, 'character')"
-                  @keydown.escape="cancelEdit"
-                />
-                <span v-else class="font-medium text-text-primary">{{ character.name }}</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span v-if="roleEditingId === character.id" class="inline-flex items-center">
+                <svg
+                  v-if="isGenerating"
+                  class="animate-spin h-3 w-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    class="opacity-20"
+                  />
+                  <path
+                    d="M4 12a8 8 0 018-8"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <BaseIcon v-else name="sparkles" :size="12" />
+                {{ isGenerating ? 'Generating...' : 'Generate' }}
+              </button>
+            </div>
+            <div
+              v-for="character in filteredCharacters"
+              :key="character.id"
+              class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
+              draggable="true"
+              @dragstart="handleDragStart($event, character)"
+            >
+              <CharacterPortrait
+                v-if="editingId === character.id"
+                :character="editData"
+                :project-id="projectStore.currentProjectId"
+                class="mb-3"
+                @updated="refresh"
+              />
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <img
+                    v-if="character.portrait && editingId !== character.id"
+                    :src="character.portrait"
+                    :alt="character.name"
+                    class="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                  />
+                  <BaseIcon v-else name="user" :size="18" class="text-text-hint" />
                   <input
-                    v-model="roleEditValue"
-                    class="w-28 text-xs px-2 py-0.5 bg-bg-primary text-text-primary border border-border-subtle rounded outline-none focus:ring-1 focus:ring-accent/50"
-                    placeholder="Role"
-                    autofocus
-                    @keydown.enter="saveRoleEdit(character.id)"
-                    @keydown.escape="cancelRoleEdit"
-                    @blur="saveRoleEdit(character.id)"
-                    @click.stop
+                    v-if="editingId === character.id"
+                    v-model="editData.name"
+                    class="bg-bg-secondary px-1 py-0.5 text-text-primary rounded"
+                    @keydown.enter="saveEdit(character.id, 'character')"
+                    @keydown.escape="cancelEdit"
                   />
-                </span>
-                <span
-                  v-else-if="character.role"
-                  class="text-xs px-2 py-0.5 bg-bg-secondary text-text-secondary rounded cursor-pointer hover:bg-accent/10 hover:text-accent transition-colors"
-                  :title="'Click to edit role'"
-                  @click="startRoleEdit(character)"
-                >
-                  {{ character.role }}
-                </span>
-                <button
-                  v-if="editingId !== character.id && !isEnhancing"
-                  class="p-1 hover:bg-accent/10 rounded"
-                  title="Enhance with AI"
-                  @click="handleEnhanceCharacter(character)"
-                >
-                  <BaseIcon name="sparkles" :size="14" class="text-text-hint hover:text-accent" />
-                </button>
-                <button
-                  v-if="editingId !== character.id"
-                  class="p-1 hover:bg-accent/10 rounded"
-                  title="Chat with character"
-                  @click="openChat(character)"
-                >
-                  <BaseIcon
-                    name="message-square"
-                    :size="14"
-                    class="text-text-hint hover:text-accent"
-                  />
-                </button>
-                <button
-                  v-if="editingId !== character.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Edit"
-                  @click="startEdit(character, 'character')"
-                >
-                  <BaseIcon name="edit-2" :size="14" class="text-text-hint" />
-                </button>
-                <button
-                  v-if="editingId === character.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Save"
-                  @click="saveEdit(character.id, 'character')"
-                >
-                  <BaseIcon name="check" :size="14" class="text-green-400" />
-                </button>
-                <button
-                  v-if="editingId === character.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Cancel"
-                  @click="cancelEdit"
-                >
-                  <BaseIcon name="x" :size="14" class="text-text-hint" />
-                </button>
-                <button
-                  v-if="editingId !== character.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Delete"
-                  @click="deleteCharacter(character.id)"
-                >
-                  <BaseIcon name="trash-2" :size="14" class="text-red-400" />
-                </button>
-              </div>
-            </div>
-            <div
-              v-if="character.notes && editingId !== character.id"
-              class="mt-2 text-sm text-text-secondary"
-            >
-              {{ character.notes }}
-            </div>
-            <div
-              v-if="character.sampleDialogue && editingId !== character.id"
-              class="mt-2 text-sm italic text-text-hint border-l-2 border-accent/30 pl-3"
-            >
-              &ldquo;{{ character.sampleDialogue }}&rdquo;
-            </div>
-            <div
-              v-if="character.traits?.length && editingId !== character.id"
-              class="mt-2 flex flex-wrap gap-1"
-            >
-              <span
-                v-for="trait in character.traits"
-                :key="trait"
-                class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full"
-                >{{ trait }}</span
-              >
-            </div>
-            <CharacterPortrait
-              v-if="editingId !== character.id && character.portrait"
-              :character="character"
-              :project-id="projectStore.currentProjectId"
-              class="mt-2"
-              @updated="refresh"
-            />
-            <div v-if="editingId === character.id" class="mt-2 space-y-2">
-              <input
-                v-model="editData.role"
-                placeholder="Role (e.g., Protagonist)"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"
-              />
-              <input
-                v-model="editData.goal"
-                placeholder="Goal — what do they want?"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"
-              />
-              <input
-                v-model="editData.voice"
-                placeholder="Voice — how do they speak?"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"
-              />
-              <textarea
-                v-model="editData.notes"
-                placeholder="Notes"
-                rows="2"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
-              />
-              <textarea
-                v-model="editData.sampleDialogue"
-                placeholder='Sample dialogue — "A line this character would actually say."'
-                rows="1"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
-              />
-              <div class="flex items-center gap-1">
-                <TagInput v-model="editData.traits" placeholder="Add trait..." />
-                <button
-                  class="p-1.5 rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  :disabled="isSuggestingTraits"
-                  title="Suggest traits"
-                  @click="handleSuggestTraits('character')"
-                >
-                  <svg
-                    v-if="isSuggestingTraits"
-                    class="animate-spin h-4 w-4 text-accent"
-                    viewBox="0 0 24 24"
-                    fill="none"
+                  <span v-else class="font-medium text-text-primary">{{ character.name }}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <span v-if="roleEditingId === character.id" class="inline-flex items-center">
+                    <input
+                      v-model="roleEditValue"
+                      class="w-28 text-xs px-2 py-0.5 bg-bg-primary text-text-primary border border-border-subtle rounded outline-none focus:ring-1 focus:ring-accent/50"
+                      placeholder="Role"
+                      autofocus
+                      @keydown.enter="saveRoleEdit(character.id)"
+                      @keydown.escape="cancelRoleEdit"
+                      @blur="saveRoleEdit(character.id)"
+                      @click.stop
+                    />
+                  </span>
+                  <span
+                    v-else-if="character.role"
+                    class="text-xs px-2 py-0.5 bg-bg-secondary text-text-secondary rounded cursor-pointer hover:bg-accent/10 hover:text-accent transition-colors"
+                    :title="'Click to edit role'"
+                    @click="startRoleEdit(character)"
                   >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                      class="opacity-20"
+                    {{ character.role }}
+                  </span>
+                  <button
+                    v-if="editingId !== character.id && !isEnhancing"
+                    class="p-1 hover:bg-accent/10 rounded"
+                    title="Enhance with AI"
+                    @click="handleEnhanceCharacter(character)"
+                  >
+                    <BaseIcon name="sparkles" :size="14" class="text-text-hint hover:text-accent" />
+                  </button>
+                  <button
+                    v-if="editingId !== character.id"
+                    class="p-1 hover:bg-accent/10 rounded"
+                    title="Chat with character"
+                    @click="openChat(character)"
+                  >
+                    <BaseIcon
+                      name="message-square"
+                      :size="14"
+                      class="text-text-hint hover:text-accent"
                     />
-                    <path
-                      d="M4 12a8 8 0 018-8"
-                      stroke="currentColor"
-                      stroke-width="4"
-                      stroke-linecap="round"
-                    />
-                  </svg>
-                  <BaseIcon v-else name="sparkles" :size="16" class="text-accent" />
-                </button>
+                  </button>
+                  <button
+                    v-if="editingId !== character.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Edit"
+                    @click="startEdit(character, 'character')"
+                  >
+                    <BaseIcon name="edit-2" :size="14" class="text-text-hint" />
+                  </button>
+                  <button
+                    v-if="editingId === character.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Save"
+                    @click="saveEdit(character.id, 'character')"
+                  >
+                    <BaseIcon name="check" :size="14" class="text-green-400" />
+                  </button>
+                  <button
+                    v-if="editingId === character.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Cancel"
+                    @click="cancelEdit"
+                  >
+                    <BaseIcon name="x" :size="14" class="text-text-hint" />
+                  </button>
+                  <button
+                    v-if="editingId !== character.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Delete"
+                    @click="deleteCharacter(character.id)"
+                  >
+                    <BaseIcon name="trash-2" :size="14" class="text-red-400" />
+                  </button>
+                </div>
               </div>
               <div
-                v-if="suggestingId === editingId && traitSuggestions.length"
-                ref="suggestPopoverRef"
-                class="flex flex-wrap gap-1.5 p-2 bg-bg-secondary border border-border-subtle rounded-lg mt-1"
+                v-if="character.notes && editingId !== character.id"
+                class="mt-2 text-sm text-text-secondary"
               >
-                <button
-                  v-for="t in traitSuggestions"
-                  :key="t"
-                  class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
-                  @click="addSuggestionTrait(t)"
+                {{ character.notes }}
+              </div>
+              <div
+                v-if="character.sampleDialogue && editingId !== character.id"
+                class="mt-2 text-sm italic text-text-hint border-l-2 border-accent/30 pl-3"
+              >
+                &ldquo;{{ character.sampleDialogue }}&rdquo;
+              </div>
+              <div
+                v-if="character.traits?.length && editingId !== character.id"
+                class="mt-2 flex flex-wrap gap-1"
+              >
+                <span
+                  v-for="trait in character.traits"
+                  :key="trait"
+                  class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full"
+                  >{{ trait }}</span
                 >
-                  + {{ t }}
-                </button>
+              </div>
+              <CharacterPortrait
+                v-if="editingId !== character.id && character.portrait"
+                :character="character"
+                :project-id="projectStore.currentProjectId"
+                class="mt-2"
+                @updated="refresh"
+              />
+              <div v-if="editingId === character.id" class="mt-2 space-y-2">
+                <input
+                  v-model="editData.role"
+                  placeholder="Role (e.g., Protagonist)"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"
+                />
+                <input
+                  v-model="editData.goal"
+                  placeholder="Goal — what do they want?"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"
+                />
+                <input
+                  v-model="editData.voice"
+                  placeholder="Voice — how do they speak?"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint"
+                />
+                <textarea
+                  v-model="editData.notes"
+                  placeholder="Notes"
+                  rows="2"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
+                />
+                <textarea
+                  v-model="editData.sampleDialogue"
+                  placeholder='Sample dialogue — "A line this character would actually say."'
+                  rows="1"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
+                />
+                <div class="flex items-center gap-1">
+                  <TagInput v-model="editData.traits" placeholder="Add trait..." />
+                  <button
+                    class="p-1.5 rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    :disabled="isSuggestingTraits"
+                    title="Suggest traits"
+                    @click="handleSuggestTraits('character')"
+                  >
+                    <svg
+                      v-if="isSuggestingTraits"
+                      class="animate-spin h-4 w-4 text-accent"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                        class="opacity-20"
+                      />
+                      <path
+                        d="M4 12a8 8 0 018-8"
+                        stroke="currentColor"
+                        stroke-width="4"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <BaseIcon v-else name="sparkles" :size="16" class="text-accent" />
+                  </button>
+                </div>
+                <div
+                  v-if="suggestingId === editingId && traitSuggestions.length"
+                  ref="suggestPopoverRef"
+                  class="flex flex-wrap gap-1.5 p-2 bg-bg-secondary border border-border-subtle rounded-lg mt-1"
+                >
+                  <button
+                    v-for="t in traitSuggestions"
+                    :key="t"
+                    class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
+                    @click="addSuggestionTrait(t)"
+                  >
+                    + {{ t }}
+                  </button>
+                </div>
               </div>
             </div>
+            <button
+              class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
+              @click="addCharacter"
+            >
+              + Add {{ projectStore.terminology.characters.toLowerCase() }}
+            </button>
           </div>
-          <button
-            class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
-            @click="addCharacter"
-          >
-            + Add {{ projectStore.terminology.characters.toLowerCase() }}
-          </button>
-        </div>
 
           <div v-if="activeTab === 'plotThreads'" class="space-y-3">
-          <div class="flex items-center gap-2 mb-2">
-            <button
-              class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="isGeneratingPlotThread"
-              @click="handleGeneratePlotThread"
-            >
-              <svg
-                v-if="isGeneratingPlotThread"
-                class="animate-spin h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+            <div class="flex items-center gap-2 mb-2">
+              <button
+                class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="isGeneratingPlotThread"
+                @click="handleGeneratePlotThread"
               >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  class="opacity-20"
-                />
-                <path
-                  d="M4 12a8 8 0 018-8"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <BaseIcon v-else name="sparkles" :size="12" />
-              {{ isGeneratingPlotThread ? 'Generating...' : 'Generate' }}
-            </button>
-          </div>
-          <div
-            v-for="thread in filteredPlotThreads"
-            :key="thread.id"
-            class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <BaseIcon name="zap" :size="18" class="text-text-hint" />
-                <input
-                  v-if="editingId === thread.id"
-                  v-model="editData.title"
-                  class="bg-bg-secondary px-1 py-0.5 text-text-primary rounded"
-                  @keydown.enter="saveEdit(thread.id, 'plotThread')"
-                  @keydown.escape="cancelEdit"
-                />
-                <span v-else class="font-medium text-text-primary">{{ thread.title }}</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span
-                  :class="[
-                    'text-xs px-2 py-0.5 rounded',
-                    thread.status === 'open'
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-gray-500/20 text-gray-400'
-                  ]"
+                <svg
+                  v-if="isGeneratingPlotThread"
+                  class="animate-spin h-3 w-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  {{ thread.status }}
-                </span>
-                <button
-                  v-if="editingId !== thread.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Edit"
-                  @click="startEdit(thread, 'plotThread')"
-                >
-                  <BaseIcon name="edit-2" :size="14" class="text-text-hint" />
-                </button>
-                <button
-                  v-if="editingId === thread.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Save"
-                  @click="saveEdit(thread.id, 'plotThread')"
-                >
-                  <BaseIcon name="check" :size="14" class="text-green-400" />
-                </button>
-                <button
-                  v-if="editingId === thread.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Cancel"
-                  @click="cancelEdit"
-                >
-                  <BaseIcon name="x" :size="14" class="text-text-hint" />
-                </button>
-                <button
-                  v-if="editingId !== thread.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Delete"
-                  @click="deletePlotThread(thread.id)"
-                >
-                  <BaseIcon name="trash-2" :size="14" class="text-red-400" />
-                </button>
-              </div>
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    class="opacity-20"
+                  />
+                  <path
+                    d="M4 12a8 8 0 018-8"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <BaseIcon v-else name="sparkles" :size="12" />
+                {{ isGeneratingPlotThread ? 'Generating...' : 'Generate' }}
+              </button>
             </div>
             <div
-              v-if="thread.notes && editingId !== thread.id"
-              class="mt-2 text-sm text-text-secondary"
+              v-for="thread in filteredPlotThreads"
+              :key="thread.id"
+              class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
             >
-              {{ thread.notes }}
-            </div>
-            <div
-              v-if="thread.traits?.length && editingId !== thread.id"
-              class="mt-2 flex flex-wrap gap-1"
-            >
-              <span
-                v-for="trait in thread.traits"
-                :key="trait"
-                class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full"
-                >{{ trait }}</span
-              >
-            </div>
-            <div v-if="editingId === thread.id" class="mt-2 space-y-2">
-              <select
-                v-model="editData.status"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded"
-              >
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
-              <textarea
-                v-model="editData.notes"
-                placeholder="Notes"
-                rows="2"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
-              />
-              <div class="flex items-center gap-1">
-                <TagInput v-model="editData.traits" placeholder="Add trait..." />
-                <button
-                  class="p-1.5 rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  :disabled="isSuggestingTraits"
-                  title="Suggest traits"
-                  @click="handleSuggestTraits('plotThread')"
-                >
-                  <svg
-                    v-if="isSuggestingTraits"
-                    class="animate-spin h-4 w-4 text-accent"
-                    viewBox="0 0 24 24"
-                    fill="none"
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <BaseIcon name="zap" :size="18" class="text-text-hint" />
+                  <input
+                    v-if="editingId === thread.id"
+                    v-model="editData.title"
+                    class="bg-bg-secondary px-1 py-0.5 text-text-primary rounded"
+                    @keydown.enter="saveEdit(thread.id, 'plotThread')"
+                    @keydown.escape="cancelEdit"
+                  />
+                  <span v-else class="font-medium text-text-primary">{{ thread.title }}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <span
+                    :class="[
+                      'text-xs px-2 py-0.5 rounded',
+                      thread.status === 'open'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-gray-500/20 text-gray-400'
+                    ]"
                   >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                      class="opacity-20"
-                    />
-                    <path
-                      d="M4 12a8 8 0 018-8"
-                      stroke="currentColor"
-                      stroke-width="4"
-                      stroke-linecap="round"
-                    />
-                  </svg>
-                  <BaseIcon v-else name="sparkles" :size="16" class="text-accent" />
-                </button>
+                    {{ thread.status }}
+                  </span>
+                  <button
+                    v-if="editingId !== thread.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Edit"
+                    @click="startEdit(thread, 'plotThread')"
+                  >
+                    <BaseIcon name="edit-2" :size="14" class="text-text-hint" />
+                  </button>
+                  <button
+                    v-if="editingId === thread.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Save"
+                    @click="saveEdit(thread.id, 'plotThread')"
+                  >
+                    <BaseIcon name="check" :size="14" class="text-green-400" />
+                  </button>
+                  <button
+                    v-if="editingId === thread.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Cancel"
+                    @click="cancelEdit"
+                  >
+                    <BaseIcon name="x" :size="14" class="text-text-hint" />
+                  </button>
+                  <button
+                    v-if="editingId !== thread.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Delete"
+                    @click="deletePlotThread(thread.id)"
+                  >
+                    <BaseIcon name="trash-2" :size="14" class="text-red-400" />
+                  </button>
+                </div>
               </div>
               <div
-                v-if="suggestingId === editingId && traitSuggestions.length"
-                ref="suggestPopoverRef"
-                class="flex flex-wrap gap-1.5 p-2 bg-bg-secondary border border-border-subtle rounded-lg mt-1"
+                v-if="thread.notes && editingId !== thread.id"
+                class="mt-2 text-sm text-text-secondary"
               >
-                <button
-                  v-for="t in traitSuggestions"
-                  :key="t"
-                  class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
-                  @click="addSuggestionTrait(t)"
+                {{ thread.notes }}
+              </div>
+              <div
+                v-if="thread.traits?.length && editingId !== thread.id"
+                class="mt-2 flex flex-wrap gap-1"
+              >
+                <span
+                  v-for="trait in thread.traits"
+                  :key="trait"
+                  class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full"
+                  >{{ trait }}</span
                 >
-                  + {{ t }}
-                </button>
+              </div>
+              <div v-if="editingId === thread.id" class="mt-2 space-y-2">
+                <select
+                  v-model="editData.status"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded"
+                >
+                  <option value="open">Open</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </select>
+                <textarea
+                  v-model="editData.notes"
+                  placeholder="Notes"
+                  rows="2"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
+                />
+                <div class="flex items-center gap-1">
+                  <TagInput v-model="editData.traits" placeholder="Add trait..." />
+                  <button
+                    class="p-1.5 rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    :disabled="isSuggestingTraits"
+                    title="Suggest traits"
+                    @click="handleSuggestTraits('plotThread')"
+                  >
+                    <svg
+                      v-if="isSuggestingTraits"
+                      class="animate-spin h-4 w-4 text-accent"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                        class="opacity-20"
+                      />
+                      <path
+                        d="M4 12a8 8 0 018-8"
+                        stroke="currentColor"
+                        stroke-width="4"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <BaseIcon v-else name="sparkles" :size="16" class="text-accent" />
+                  </button>
+                </div>
+                <div
+                  v-if="suggestingId === editingId && traitSuggestions.length"
+                  ref="suggestPopoverRef"
+                  class="flex flex-wrap gap-1.5 p-2 bg-bg-secondary border border-border-subtle rounded-lg mt-1"
+                >
+                  <button
+                    v-for="t in traitSuggestions"
+                    :key="t"
+                    class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
+                    @click="addSuggestionTrait(t)"
+                  >
+                    + {{ t }}
+                  </button>
+                </div>
               </div>
             </div>
+            <button
+              class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
+              @click="addPlotThread"
+            >
+              + Add {{ projectStore.terminology.plotThreads.toLowerCase() }}
+            </button>
           </div>
-          <button
-            class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
-            @click="addPlotThread"
-          >
-            + Add {{ projectStore.terminology.plotThreads.toLowerCase() }}
-          </button>
-        </div>
 
           <div v-if="activeTab === 'locations'" class="space-y-3">
-          <div class="flex items-center gap-2 mb-2">
-            <button
-              class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="isGeneratingLocation"
-              @click="handleGenerateLocation"
-            >
-              <svg
-                v-if="isGeneratingLocation"
-                class="animate-spin h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+            <div class="flex items-center gap-2 mb-2">
+              <button
+                class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="isGeneratingLocation"
+                @click="handleGenerateLocation"
               >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  class="opacity-20"
-                />
-                <path
-                  d="M4 12a8 8 0 018-8"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <BaseIcon v-else name="sparkles" :size="12" />
-              {{ isGeneratingLocation ? 'Generating...' : 'Generate' }}
-            </button>
-          </div>
-          <div
-            v-for="location in filteredLocations"
-            :key="location.id"
-            class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <BaseIcon name="map-pin" :size="18" class="text-text-hint" />
-                <input
-                  v-if="editingId === location.id"
-                  v-model="editData.name"
-                  class="bg-bg-secondary px-1 py-0.5 text-text-primary rounded"
-                  @keydown.enter="saveEdit(location.id, 'location')"
-                  @keydown.escape="cancelEdit"
-                />
-                <span v-else class="font-medium text-text-primary">{{ location.name }}</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <button
-                  v-if="editingId !== location.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Edit"
-                  @click="startEdit(location, 'location')"
+                <svg
+                  v-if="isGeneratingLocation"
+                  class="animate-spin h-3 w-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <BaseIcon name="edit-2" :size="14" class="text-text-hint" />
-                </button>
-                <button
-                  v-if="editingId === location.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Save"
-                  @click="saveEdit(location.id, 'location')"
-                >
-                  <BaseIcon name="check" :size="14" class="text-green-400" />
-                </button>
-                <button
-                  v-if="editingId === location.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Cancel"
-                  @click="cancelEdit"
-                >
-                  <BaseIcon name="x" :size="14" class="text-text-hint" />
-                </button>
-                <button
-                  v-if="editingId !== location.id"
-                  class="p-1 hover:bg-surface-hover rounded"
-                  title="Delete"
-                  @click="deleteLocation(location.id)"
-                >
-                  <BaseIcon name="trash-2" :size="14" class="text-red-400" />
-                </button>
-              </div>
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    class="opacity-20"
+                  />
+                  <path
+                    d="M4 12a8 8 0 018-8"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <BaseIcon v-else name="sparkles" :size="12" />
+                {{ isGeneratingLocation ? 'Generating...' : 'Generate' }}
+              </button>
             </div>
             <div
-              v-if="location.description && editingId !== location.id"
-              class="mt-2 text-sm text-text-secondary"
+              v-for="location in filteredLocations"
+              :key="location.id"
+              class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
             >
-              {{ location.description }}
-            </div>
-            <div
-              v-if="location.traits?.length && editingId !== location.id"
-              class="mt-2 flex flex-wrap gap-1"
-            >
-              <span
-                v-for="trait in location.traits"
-                :key="trait"
-                class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full"
-                >{{ trait }}</span
-              >
-            </div>
-            <div v-if="editingId === location.id" class="mt-2 space-y-2">
-              <textarea
-                v-model="editData.notes"
-                placeholder="Notes"
-                rows="2"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
-              />
-              <textarea
-                v-model="editData.notes"
-                placeholder="Notes"
-                rows="2"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
-              />
-              <textarea
-                v-model="editData.sampleDialogue"
-                placeholder='Sample dialogue — "A line this character would actually say."'
-                rows="1"
-                class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
-              />
-              <div class="flex items-center gap-1">
-                <TagInput v-model="editData.traits" placeholder="Add trait..." />
-                <button
-                  class="p-1.5 rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  :disabled="isSuggestingTraits"
-                  title="Suggest traits"
-                  @click="handleSuggestTraits('location')"
-                >
-                  <svg
-                    v-if="isSuggestingTraits"
-                    class="animate-spin h-4 w-4 text-accent"
-                    viewBox="0 0 24 24"
-                    fill="none"
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <BaseIcon name="map-pin" :size="18" class="text-text-hint" />
+                  <input
+                    v-if="editingId === location.id"
+                    v-model="editData.name"
+                    class="bg-bg-secondary px-1 py-0.5 text-text-primary rounded"
+                    @keydown.enter="saveEdit(location.id, 'location')"
+                    @keydown.escape="cancelEdit"
+                  />
+                  <span v-else class="font-medium text-text-primary">{{ location.name }}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button
+                    v-if="editingId !== location.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Edit"
+                    @click="startEdit(location, 'location')"
                   >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                      class="opacity-20"
-                    />
-                    <path
-                      d="M4 12a8 8 0 018-8"
-                      stroke="currentColor"
-                      stroke-width="4"
-                      stroke-linecap="round"
-                    />
-                  </svg>
-                  <BaseIcon v-else name="sparkles" :size="16" class="text-accent" />
-                </button>
+                    <BaseIcon name="edit-2" :size="14" class="text-text-hint" />
+                  </button>
+                  <button
+                    v-if="editingId === location.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Save"
+                    @click="saveEdit(location.id, 'location')"
+                  >
+                    <BaseIcon name="check" :size="14" class="text-green-400" />
+                  </button>
+                  <button
+                    v-if="editingId === location.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Cancel"
+                    @click="cancelEdit"
+                  >
+                    <BaseIcon name="x" :size="14" class="text-text-hint" />
+                  </button>
+                  <button
+                    v-if="editingId !== location.id"
+                    class="p-1 hover:bg-surface-hover rounded"
+                    title="Delete"
+                    @click="deleteLocation(location.id)"
+                  >
+                    <BaseIcon name="trash-2" :size="14" class="text-red-400" />
+                  </button>
+                </div>
               </div>
               <div
-                v-if="suggestingId === editingId && traitSuggestions.length"
-                ref="suggestPopoverRef"
-                class="flex flex-wrap gap-1.5 p-2 bg-bg-secondary border border-border-subtle rounded-lg mt-1"
+                v-if="location.description && editingId !== location.id"
+                class="mt-2 text-sm text-text-secondary"
               >
-                <button
-                  v-for="t in traitSuggestions"
-                  :key="t"
-                  class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
-                  @click="addSuggestionTrait(t)"
+                {{ location.description }}
+              </div>
+              <div
+                v-if="location.traits?.length && editingId !== location.id"
+                class="mt-2 flex flex-wrap gap-1"
+              >
+                <span
+                  v-for="trait in location.traits"
+                  :key="trait"
+                  class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full"
+                  >{{ trait }}</span
                 >
-                  + {{ t }}
-                </button>
+              </div>
+              <div v-if="editingId === location.id" class="mt-2 space-y-2">
+                <textarea
+                  v-model="editData.notes"
+                  placeholder="Notes"
+                  rows="2"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
+                />
+                <textarea
+                  v-model="editData.notes"
+                  placeholder="Notes"
+                  rows="2"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
+                />
+                <textarea
+                  v-model="editData.sampleDialogue"
+                  placeholder='Sample dialogue — "A line this character would actually say."'
+                  rows="1"
+                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
+                />
+                <div class="flex items-center gap-1">
+                  <TagInput v-model="editData.traits" placeholder="Add trait..." />
+                  <button
+                    class="p-1.5 rounded hover:bg-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    :disabled="isSuggestingTraits"
+                    title="Suggest traits"
+                    @click="handleSuggestTraits('location')"
+                  >
+                    <svg
+                      v-if="isSuggestingTraits"
+                      class="animate-spin h-4 w-4 text-accent"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                        class="opacity-20"
+                      />
+                      <path
+                        d="M4 12a8 8 0 018-8"
+                        stroke="currentColor"
+                        stroke-width="4"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <BaseIcon v-else name="sparkles" :size="16" class="text-accent" />
+                  </button>
+                </div>
+                <div
+                  v-if="suggestingId === editingId && traitSuggestions.length"
+                  ref="suggestPopoverRef"
+                  class="flex flex-wrap gap-1.5 p-2 bg-bg-secondary border border-border-subtle rounded-lg mt-1"
+                >
+                  <button
+                    v-for="t in traitSuggestions"
+                    :key="t"
+                    class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
+                    @click="addSuggestionTrait(t)"
+                  >
+                    + {{ t }}
+                  </button>
+                </div>
               </div>
             </div>
+            <button
+              class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
+              @click="addLocation"
+            >
+              + Add {{ projectStore.terminology.locations.toLowerCase() }}
+            </button>
           </div>
-          <button
-            class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
-            @click="addLocation"
-          >
-            + Add {{ projectStore.terminology.locations.toLowerCase() }}
-          </button>
-        </div>
 
           <div v-if="activeTab === 'documents'">
-          <div class="flex gap-1.5 flex-wrap mb-4">
-            <button
-              v-for="dt in documentTypes"
-              :key="dt.key"
-              :class="[
-                'px-2.5 py-1 text-11px font-medium rounded-lg font-ui transition-colors',
-                selectedDocType === dt.key
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-bg-secondary text-text-secondary hover:bg-surface-hover'
-              ]"
-              @click="selectedDocType = dt.key"
-            >
-              {{ dt.label }}
-            </button>
-          </div>
+            <div class="flex gap-1.5 flex-wrap mb-4">
+              <button
+                v-for="dt in documentTypes"
+                :key="dt.key"
+                :class="[
+                  'px-2.5 py-1 text-11px font-medium rounded-lg font-ui transition-colors',
+                  selectedDocType === dt.key
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-bg-secondary text-text-secondary hover:bg-surface-hover'
+                ]"
+                @click="selectedDocType = dt.key"
+              >
+                {{ dt.label }}
+              </button>
+            </div>
 
-          <div class="flex items-center gap-2 mb-3 flex-wrap">
-            <button
-              class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-accent text-accent-foreground disabled:opacity-40"
-              :disabled="!hasUnsavedChanges"
-              @click="saveDocument"
-            >
-              Save
-            </button>
-            <button
-              class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-bg-secondary text-text-secondary hover:bg-surface-hover"
-              @click="downloadDocument"
-            >
-              Download .md
-            </button>
-            <button
-              class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-bg-secondary text-text-secondary hover:bg-surface-hover"
-              @click="regenerateDocumentWithConfirm"
-            >
-              Regenerate
-            </button>
-            <button
-              class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-bg-secondary text-text-secondary hover:bg-surface-hover"
-              @click="fileInput.click()"
-            >
-              Upload .md
-            </button>
-            <input
-              ref="fileInput"
-              type="file"
-              accept=".md,.markdown,.txt"
-              class="hidden"
-              @change="uploadDocument"
-            />
-            <span v-if="hasUnsavedChanges" class="text-xs text-amber-400 ml-auto"
-              >Unsaved changes</span
-            >
-          </div>
+            <div class="flex items-center gap-2 mb-3 flex-wrap">
+              <button
+                class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-accent text-accent-foreground disabled:opacity-40"
+                :disabled="!hasUnsavedChanges"
+                @click="saveDocument"
+              >
+                Save
+              </button>
+              <button
+                class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-bg-secondary text-text-secondary hover:bg-surface-hover"
+                @click="downloadDocument"
+              >
+                Download .md
+              </button>
+              <button
+                class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-bg-secondary text-text-secondary hover:bg-surface-hover"
+                @click="regenerateDocumentWithConfirm"
+              >
+                Regenerate
+              </button>
+              <button
+                class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-bg-secondary text-text-secondary hover:bg-surface-hover"
+                @click="fileInput.click()"
+              >
+                Upload .md
+              </button>
+              <input
+                ref="fileInput"
+                type="file"
+                accept=".md,.markdown,.txt"
+                class="hidden"
+                @change="uploadDocument"
+              />
+              <span v-if="hasUnsavedChanges" class="text-xs text-amber-400 ml-auto"
+                >Unsaved changes</span
+              >
+            </div>
 
-          <div
-            v-if="isLargeContent"
-            class="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20"
-          >
-            <span>Large file — {{ documentContent.length.toLocaleString() }} characters.</span>
-            <span v-if="contentReadonly" class="ml-1 text-amber-400/70"
-              >Displayed as read-only to prevent slowdowns.</span
+            <div
+              v-if="isLargeContent"
+              class="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20"
             >
-            <button
-              v-if="contentReadonly"
-              class="ml-auto px-2 py-0.5 rounded text-11px font-medium bg-amber-500/20 hover:bg-amber-500/30 transition-colors"
-              @click="contentReadonly = false"
-            >
-              Enable Editing
-            </button>
-          </div>
+              <span>Large file — {{ documentContent.length.toLocaleString() }} characters.</span>
+              <span v-if="contentReadonly" class="ml-1 text-amber-400/70"
+                >Displayed as read-only to prevent slowdowns.</span
+              >
+              <button
+                v-if="contentReadonly"
+                class="ml-auto px-2 py-0.5 rounded text-11px font-medium bg-amber-500/20 hover:bg-amber-500/30 transition-colors"
+                @click="contentReadonly = false"
+              >
+                Enable Editing
+              </button>
+            </div>
 
-          <textarea
-            v-model="documentContent"
-            :readonly="contentReadonly"
-            spellcheck="false"
-            class="w-full p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary font-mono leading-relaxed min-h-[300px] resize-y focus:outline-none focus:ring-1 focus:ring-accent/50"
-            :class="{ 'opacity-70 cursor-default': contentReadonly }"
-            placeholder="No content yet. Add some story elements first."
-          ></textarea>
+            <textarea
+              v-model="documentContent"
+              :readonly="contentReadonly"
+              spellcheck="false"
+              class="w-full p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary font-mono leading-relaxed min-h-[300px] resize-y focus:outline-none focus:ring-1 focus:ring-accent/50"
+              :class="{ 'opacity-70 cursor-default': contentReadonly }"
+              placeholder="No content yet. Add some story elements first."
+            ></textarea>
           </div>
         </div>
 

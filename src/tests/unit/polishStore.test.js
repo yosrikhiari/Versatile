@@ -149,7 +149,12 @@ describe('polishStore', () => {
     it('increments snippet words for repetition issues', async () => {
       mockAnalyzePolish.mockResolvedValue({
         issues: [
-          { type: 'repetition', original: 'very very good', suggestion: 'excellent', reason: 'Redundant' }
+          {
+            type: 'repetition',
+            original: 'very very good',
+            suggestion: 'excellent',
+            reason: 'Redundant'
+          }
         ],
         overallNote: ''
       })
@@ -224,7 +229,12 @@ describe('polishStore', () => {
     it('updates active lenses', () => {
       const store = usePolishStore()
       store.setActiveLenses({ weakVerbs: false, repetition: true, pacing: false, clarity: true })
-      expect(store.activeLenses).toEqual({ weakVerbs: false, repetition: true, pacing: false, clarity: true })
+      expect(store.activeLenses).toEqual({
+        weakVerbs: false,
+        repetition: true,
+        pacing: false,
+        clarity: true
+      })
     })
   })
 })

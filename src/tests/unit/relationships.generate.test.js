@@ -45,7 +45,11 @@ const cast = {
 describe('generateRelationships — robustness & diagnosability', () => {
   it('returns too_few_characters without calling the model', async () => {
     const res = await generateRelationships({ ...cast, characters: [{ id: 1, name: 'Solo' }] })
-    expect(res).toMatchObject({ characterRelationships: 0, graphEdges: 0, reason: 'too_few_characters' })
+    expect(res).toMatchObject({
+      characterRelationships: 0,
+      graphEdges: 0,
+      reason: 'too_few_characters'
+    })
     expect(mockAiGenerateJson).not.toHaveBeenCalled()
   })
 
@@ -66,11 +70,9 @@ describe('generateRelationships — robustness & diagnosability', () => {
   })
 
   it('recovers on the second attempt when the first is empty', async () => {
-    mockAiGenerateJson
-      .mockResolvedValueOnce({ characterRelationships: [] })
-      .mockResolvedValueOnce({
-        characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }]
-      })
+    mockAiGenerateJson.mockResolvedValueOnce({ characterRelationships: [] }).mockResolvedValueOnce({
+      characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }]
+    })
     const res = await generateRelationships(cast)
     expect(mockAiGenerateJson).toHaveBeenCalledTimes(2)
     expect(res.characterRelationships).toBe(1)

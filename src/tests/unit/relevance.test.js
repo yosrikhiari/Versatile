@@ -9,7 +9,7 @@ describe('sortByRelevance', () => {
       { name: 'mid', lastEditedAt: 200 }
     ]
     const sorted = sortByRelevance(entities, 'character')
-    expect(sorted.map(e => e.name)).toEqual(['new', 'mid', 'old'])
+    expect(sorted.map((e) => e.name)).toEqual(['new', 'mid', 'old'])
   })
 
   it('sorts plotThreads by timelineOrder ascending', () => {
@@ -19,7 +19,7 @@ describe('sortByRelevance', () => {
       { title: 'a', timelineOrder: 5 }
     ]
     const sorted = sortByRelevance(entities, 'plotThread')
-    expect(sorted.map(e => e.title)).toEqual(['a', 'b', 'c'])
+    expect(sorted.map((e) => e.title)).toEqual(['a', 'b', 'c'])
   })
 
   it('defaults to lastEditedAt descending for unknown type', () => {
@@ -28,7 +28,7 @@ describe('sortByRelevance', () => {
       { name: 'new', lastEditedAt: 300 }
     ]
     const sorted = sortByRelevance(entities, 'unknown')
-    expect(sorted.map(e => e.name)).toEqual(['new', 'old'])
+    expect(sorted.map((e) => e.name)).toEqual(['new', 'old'])
   })
 
   it('handles missing sort fields', () => {

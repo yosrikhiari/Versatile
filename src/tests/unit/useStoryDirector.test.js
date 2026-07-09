@@ -20,7 +20,10 @@ vi.mock('@/services/aiService', () => ({
   aiGenerateStructured: async (...args) => {
     const r = await mockAiGenerate(...args)
     if (r && typeof r === 'object') return r
-    const cleaned = String(r).replace(/```json/gi, '').replace(/```/g, '').trim()
+    const cleaned = String(r)
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim()
     const m = cleaned.match(/\{[\s\S]*\}/)
     if (!m) throw new Error('structured parse failed')
     return JSON.parse(m[0])
@@ -32,7 +35,12 @@ vi.mock('@/config/ai', () => ({
   PROVIDER_DEFAULT: 'ollama',
   PROVIDERS: { OLLAMA: 'ollama' },
   FEATURE_DEFAULTS: { story_generation: { provider: 'ollama', model: null } },
-  EMBEDDING_DEFAULTS: { provider: 'ollama', model: 'nomic-embed-text', threshold: 0.75, batchSize: 32 },
+  EMBEDDING_DEFAULTS: {
+    provider: 'ollama',
+    model: 'nomic-embed-text',
+    threshold: 0.75,
+    batchSize: 32
+  },
   EMBEDDING_PROVIDERS: { OLLAMA: 'ollama' }
 }))
 
@@ -181,19 +189,33 @@ describe('useStoryDirector', () => {
           { chapterNumber: 2, title: 'Ch2', goal: 'g2', hookEnding: 'h2' }
         ]
       })
-      const sceneJson = JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }, { sceneNumber: 2, title: 'S2' }] })
+      const sceneJson = JSON.stringify({
+        scenes: [
+          { sceneNumber: 1, title: 'S1' },
+          { sceneNumber: 2, title: 'S2' }
+        ]
+      })
       mockAiGenerate.mockResolvedValueOnce(skeleton).mockResolvedValue(sceneJson)
 
       const { generateStoryPlan } = useStoryDirector()
-      const structuredGoal = { ...goal, structure: { chapters: 2, scenesPerChapter: 2, wordsPerChapter: 1000, chaptersPerVolume: 2, volumes: 1 } }
+      const structuredGoal = {
+        ...goal,
+        structure: {
+          chapters: 2,
+          scenesPerChapter: 2,
+          wordsPerChapter: 1000,
+          chaptersPerVolume: 2,
+          volumes: 1
+        }
+      }
       const result = await generateStoryPlan({ goal: structuredGoal, evidence: '' })
 
       expect(result.chapters).toHaveLength(2)
-      expect(result.chapters.every(c => c.scenes.length === 2)).toBe(true)
+      expect(result.chapters.every((c) => c.scenes.length === 2)).toBe(true)
       expect(result.scenes).toHaveLength(4)
       // 1 skeleton call + 1 per chapter = 3 non-streaming calls (no giant single plan)
       expect(mockAiGenerate).toHaveBeenCalledTimes(3)
-      expect(result.chapters.map(c => c.volumeIndex)).toEqual([1, 1])
+      expect(result.chapters.map((c) => c.volumeIndex)).toEqual([1, 1])
     })
 
     it('batches the skeleton for a long novel and plans every chapter (no giant single call)', async () => {
@@ -221,7 +243,13 @@ describe('useStoryDirector', () => {
       const structuredGoal = {
         ...goal,
         horizon: 'long_term',
-        structure: { chapters: 30, scenesPerChapter: 2, wordsPerChapter: 1000, chaptersPerVolume: 10, volumes: 3 }
+        structure: {
+          chapters: 30,
+          scenesPerChapter: 2,
+          wordsPerChapter: 1000,
+          chaptersPerVolume: 10,
+          volumes: 3
+        }
       }
       const result = await generateStoryPlan({ goal: structuredGoal, evidence: '' })
 
@@ -251,7 +279,13 @@ describe('useStoryDirector', () => {
       const structuredGoal = {
         ...goal,
         horizon: 'long_term',
-        structure: { chapters: 6, scenesPerChapter: 3, wordsPerChapter: 1500, chaptersPerVolume: 3, volumes: 2 }
+        structure: {
+          chapters: 6,
+          scenesPerChapter: 3,
+          wordsPerChapter: 1500,
+          chaptersPerVolume: 3,
+          volumes: 2
+        }
       }
       const result = await generateStoryPlan({ goal: structuredGoal, evidence: '' })
       expect(result.chapters).toHaveLength(6)
@@ -277,7 +311,13 @@ describe('useStoryDirector', () => {
       const structuredGoal = {
         ...goal,
         horizon: 'long_term',
-        structure: { chapters: 5, scenesPerChapter: 1, wordsPerChapter: 800, chaptersPerVolume: 5, volumes: 1 }
+        structure: {
+          chapters: 5,
+          scenesPerChapter: 1,
+          wordsPerChapter: 800,
+          chaptersPerVolume: 5,
+          volumes: 1
+        }
       }
       const result = await generateStoryPlan({ goal: structuredGoal, evidence: '' })
       expect(result.chapters).toHaveLength(5)
@@ -323,15 +363,20 @@ describe('useStoryDirector', () => {
 
     it('validates scene payloads with defaults', async () => {
       const minimalResponse = JSON.stringify({
-        chapters: [{
-          chapterNumber: 1,
-          title: 'Chapter 1',
-          emotionalTarget: 'Hope',
-          estimatedWords: 6000,
-          scenes: Array.from({ length: 4 }, (_, i) => ({
-            sceneNumber: i + 1, title: `Scene ${i + 1}`, arcPosition: 'setup', obstacle: 'ob'
-          }))
-        }],
+        chapters: [
+          {
+            chapterNumber: 1,
+            title: 'Chapter 1',
+            emotionalTarget: 'Hope',
+            estimatedWords: 6000,
+            scenes: Array.from({ length: 4 }, (_, i) => ({
+              sceneNumber: i + 1,
+              title: `Scene ${i + 1}`,
+              arcPosition: 'setup',
+              obstacle: 'ob'
+            }))
+          }
+        ],
         storyArc: {}
       })
       mockAiGenerate.mockResolvedValue(minimalResponse)
@@ -355,19 +400,27 @@ describe('useStoryDirector', () => {
 
     it('handles custom actions missing but parses successfully anyway', async () => {
       const response = JSON.stringify({
-        chapters: [{
-          chapterNumber: 1,
-          emotionalTarget: 'Hope',
-          estimatedWords: 6000,
-          scenes: Array.from({ length: 4 }, (_, i) => ({
-            sceneNumber: i + 1, title: `Scene ${i + 1}`, arcPosition: 'setup', obstacle: 'ob'
-          }))
-        }],
+        chapters: [
+          {
+            chapterNumber: 1,
+            emotionalTarget: 'Hope',
+            estimatedWords: 6000,
+            scenes: Array.from({ length: 4 }, (_, i) => ({
+              sceneNumber: i + 1,
+              title: `Scene ${i + 1}`,
+              arcPosition: 'setup',
+              obstacle: 'ob'
+            }))
+          }
+        ],
         storyArc: {}
       })
       mockAiGenerate.mockResolvedValue(response)
       const { generateStoryPlan } = useStoryDirector()
-      const result = await generateStoryPlan({ goal: { ...goal, horizon: 'short_term' }, evidence: '' })
+      const result = await generateStoryPlan({
+        goal: { ...goal, horizon: 'short_term' },
+        evidence: ''
+      })
       expect(result.chapters).toHaveLength(1)
     })
 
@@ -387,12 +440,18 @@ describe('enforceStructure', () => {
       { title: 'B', scenes: [{ title: 's1' }] },
       { title: 'C', scenes: [] }
     ]
-    const out = enforceStructure(raw, { chapters: 2, scenesPerChapter: 3, wordsPerChapter: 3000, chaptersPerVolume: 2, volumes: 1 })
+    const out = enforceStructure(raw, {
+      chapters: 2,
+      scenesPerChapter: 3,
+      wordsPerChapter: 3000,
+      chaptersPerVolume: 2,
+      volumes: 1
+    })
     expect(out.length).toBe(2)
     for (const ch of out) {
       expect(ch.scenes.length).toBe(3)
       expect(ch.estimatedWords).toBe(3000)
-      expect(ch.scenes.every(s => s.estimatedWords === 1000)).toBe(true)
+      expect(ch.scenes.every((s) => s.estimatedWords === 1000)).toBe(true)
     }
     expect(out[0].chapterNumber).toBe(1)
     expect(out[1].chapterNumber).toBe(2)
@@ -400,15 +459,25 @@ describe('enforceStructure', () => {
 
   it('pads chapters up to the requested count', async () => {
     const { enforceStructure } = await import('@/composables/useStoryDirector')
-    const out = enforceStructure([{ title: 'Only', scenes: [{ title: 'x' }] }], { chapters: 4, scenesPerChapter: 2, wordsPerChapter: 1000 })
+    const out = enforceStructure([{ title: 'Only', scenes: [{ title: 'x' }] }], {
+      chapters: 4,
+      scenesPerChapter: 2,
+      wordsPerChapter: 1000
+    })
     expect(out.length).toBe(4)
-    expect(out.every(c => c.scenes.length === 2)).toBe(true)
+    expect(out.every((c) => c.scenes.length === 2)).toBe(true)
   })
 
   it('tags chapters with volumeIndex by chaptersPerVolume', async () => {
     const { enforceStructure } = await import('@/composables/useStoryDirector')
     const raw = Array.from({ length: 6 }, (_, i) => ({ title: `C${i}`, scenes: [] }))
-    const out = enforceStructure(raw, { chapters: 6, scenesPerChapter: 1, wordsPerChapter: 800, chaptersPerVolume: 3, volumes: 2 })
-    expect(out.map(c => c.volumeIndex)).toEqual([1, 1, 1, 2, 2, 2])
+    const out = enforceStructure(raw, {
+      chapters: 6,
+      scenesPerChapter: 1,
+      wordsPerChapter: 800,
+      chaptersPerVolume: 3,
+      volumes: 2
+    })
+    expect(out.map((c) => c.volumeIndex)).toEqual([1, 1, 1, 2, 2, 2])
   })
 })

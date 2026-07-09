@@ -21,9 +21,22 @@ describe('workspace config exports', () => {
 
 describe('WORKSPACE_TYPES', () => {
   const expectedKeys = [
-    'CREATIVE', 'NOVEL', 'SCREENPLAY', 'INVOICE', 'PRESENTATION',
-    'EMAIL', 'DOCUMENTATION', 'PRESS_RELEASE', 'GRANT', 'MEETING',
-    'CASE_STUDY', 'GENERAL', 'LEGAL', 'TECHNICAL', 'BUSINESS', 'RESEARCH'
+    'CREATIVE',
+    'NOVEL',
+    'SCREENPLAY',
+    'INVOICE',
+    'PRESENTATION',
+    'EMAIL',
+    'DOCUMENTATION',
+    'PRESS_RELEASE',
+    'GRANT',
+    'MEETING',
+    'CASE_STUDY',
+    'GENERAL',
+    'LEGAL',
+    'TECHNICAL',
+    'BUSINESS',
+    'RESEARCH'
   ]
 
   it('has all expected keys', () => {
@@ -100,7 +113,18 @@ describe('WORKSPACE_DESCRIPTIONS', () => {
 })
 
 describe('WORKSPACE_TERMINOLOGY', () => {
-  const expectedKeys = ['bible', 'sections', 'generator', 'generatorLabel', 'entityLabel', 'characters', 'characterRole', 'locations', 'plotThreads', 'synopsisLabel']
+  const expectedKeys = [
+    'bible',
+    'sections',
+    'generator',
+    'generatorLabel',
+    'entityLabel',
+    'characters',
+    'characterRole',
+    'locations',
+    'plotThreads',
+    'synopsisLabel'
+  ]
 
   it('has entries for each workspace type', () => {
     for (const type of Object.keys(WORKSPACE_LABELS)) {

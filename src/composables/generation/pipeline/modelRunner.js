@@ -26,10 +26,7 @@ export async function executeGeneration({ userPrompt, systemPrompt, schema }) {
 }
 
 function isValid(parsed, schema) {
-  const alternates = [
-    schema.modelKeys,
-    schema.promptKeys
-  ]
+  const alternates = [schema.modelKeys, schema.promptKeys]
   const keys = alternates.find((k) => k?.length) || schema.modelKeys
   return keys.every((key) => {
     const val = parsed[key] ?? parsed[key.charAt(0).toUpperCase() + key.slice(1)]

@@ -113,7 +113,7 @@ describe('storyGraphStore', () => {
   describe('nodePositions', () => {
     it('saveNodePosition saves position and reloads', async () => {
       await store.saveNodePosition('proj1', 'char1', { x: 100, y: 200 })
-      expect(mockDb.saveNodePositions).toHaveBeenCalledWith('proj1', { 'char1': { x: 100, y: 200 } })
+      expect(mockDb.saveNodePositions).toHaveBeenCalledWith('proj1', { char1: { x: 100, y: 200 } })
     })
 
     it('loadNodePositions loads and cleans positions', async () => {

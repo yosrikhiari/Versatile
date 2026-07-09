@@ -79,7 +79,10 @@ describe('gateDimensionCoverage', () => {
   })
 
   it('passes with no issues when strict=false', () => {
-    const result = gateDimensionCoverage({ score: 10, issues: [], strengths: [], pass: true }, 'creative')
+    const result = gateDimensionCoverage(
+      { score: 10, issues: [], strengths: [], pass: true },
+      'creative'
+    )
     expect(result.pass).toBe(true)
     expect(result.missing.length).toBe(5)
   })
@@ -134,7 +137,7 @@ describe('gateScoreDistribution', () => {
       pass: true
     })
     expect(result.pass).toBe(false)
-    expect(result.flags.some(f => f.includes('suspect'))).toBe(true)
+    expect(result.flags.some((f) => f.includes('suspect'))).toBe(true)
   })
 
   it('flags score outside range', () => {
@@ -145,7 +148,7 @@ describe('gateScoreDistribution', () => {
       pass: true
     })
     expect(result.pass).toBe(false)
-    expect(result.flags.some(f => f.includes('outside expected range'))).toBe(true)
+    expect(result.flags.some((f) => f.includes('outside expected range'))).toBe(true)
   })
 
   it('flags high score with major issues', () => {
@@ -160,7 +163,7 @@ describe('gateScoreDistribution', () => {
       pass: true
     })
     expect(result.pass).toBe(false)
-    expect(result.flags.some(f => f.includes('mismatch'))).toBe(true)
+    expect(result.flags.some((f) => f.includes('mismatch'))).toBe(true)
   })
 
   it('flags score>=7 with zero issues', () => {
@@ -171,7 +174,7 @@ describe('gateScoreDistribution', () => {
       pass: true
     })
     expect(result.pass).toBe(false)
-    expect(result.flags.some(f => f.includes('degenerate'))).toBe(true)
+    expect(result.flags.some((f) => f.includes('degenerate'))).toBe(true)
   })
 
   it('passes for null critiqueResult', () => {
@@ -197,7 +200,7 @@ describe('gateRevisionEffectiveness', () => {
     }
     const result = await gateRevisionEffectiveness(critique, 'same draft', 'same draft')
     expect(result.pass).toBe(false)
-    expect(result.regressions.some(r => r.includes('unchanged'))).toBe(true)
+    expect(result.regressions.some((r) => r.includes('unchanged'))).toBe(true)
     expect(result.delta).toBe(0)
   })
 
@@ -209,7 +212,12 @@ describe('gateRevisionEffectiveness', () => {
       pass: false
     }
     const revisionResult = { score: 8, issues: [], strengths: ['Improved'], pass: true }
-    const result = await gateRevisionEffectiveness(critique, 'improved draft text here', 'original draft text here', revisionResult)
+    const result = await gateRevisionEffectiveness(
+      critique,
+      'improved draft text here',
+      'original draft text here',
+      revisionResult
+    )
     expect(result.delta).toBe(3)
     expect(result.pass).toBe(true)
   })
@@ -221,11 +229,21 @@ describe('gateRevisionEffectiveness', () => {
       strengths: [],
       pass: true
     }
-    const revisionResult = { score: 3, issues: [{ type: 'voice', description: 'Flat', severity: 'major' }], strengths: [], pass: false }
-    const result = await gateRevisionEffectiveness(critique, 'worse draft', 'original draft', revisionResult)
+    const revisionResult = {
+      score: 3,
+      issues: [{ type: 'voice', description: 'Flat', severity: 'major' }],
+      strengths: [],
+      pass: false
+    }
+    const result = await gateRevisionEffectiveness(
+      critique,
+      'worse draft',
+      'original draft',
+      revisionResult
+    )
     expect(result.delta).toBe(-3)
     expect(result.pass).toBe(false)
-    expect(result.regressions.some(r => r.includes('decreased'))).toBe(true)
+    expect(result.regressions.some((r) => r.includes('decreased'))).toBe(true)
   })
 
   it('passes with identical draft and no issues', async () => {
@@ -247,6 +265,6 @@ describe('gateRevisionEffectiveness', () => {
     }
     const revisionResult = { score: 7, issues: [], strengths: [], pass: true }
     const result = await gateRevisionEffectiveness(critique, shortDraft, longDraft, revisionResult)
-    expect(result.regressions.some(r => r.includes('Word count') && r.includes('95%'))).toBe(true)
+    expect(result.regressions.some((r) => r.includes('Word count') && r.includes('95%'))).toBe(true)
   })
 })
