@@ -11,11 +11,37 @@ function makeWhereChain(result) {
 }
 
 const mockDb = {
-  sections: { where: vi.fn(() => makeWhereChain([])), add: vi.fn(), update: vi.fn(), delete: vi.fn(), transaction: vi.fn() },
-  subsections: { where: vi.fn(() => makeWhereChain([])), add: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  chapters: { where: vi.fn(() => makeWhereChain([])), add: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  scenes: { where: vi.fn(() => makeWhereChain([])), add: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  volumes: { where: vi.fn(() => makeWhereChain([])), add: vi.fn(), update: vi.fn(), delete: vi.fn() }
+  sections: {
+    where: vi.fn(() => makeWhereChain([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    transaction: vi.fn()
+  },
+  subsections: {
+    where: vi.fn(() => makeWhereChain([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn()
+  },
+  chapters: {
+    where: vi.fn(() => makeWhereChain([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn()
+  },
+  scenes: {
+    where: vi.fn(() => makeWhereChain([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn()
+  },
+  volumes: {
+    where: vi.fn(() => makeWhereChain([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn()
+  }
 }
 
 vi.mock('@/services/db-core', () => ({ db: mockDb }))
@@ -115,7 +141,9 @@ describe('volume operations', () => {
   it('adds a volume with defaults', async () => {
     mockDb.volumes.add.mockResolvedValue('v1')
     const result = await dbStructure.addVolume('proj1', { title: 'Vol 1' })
-    expect(mockDb.volumes.add).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'proj1', title: 'Vol 1' }))
+    expect(mockDb.volumes.add).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'proj1', title: 'Vol 1' })
+    )
     expect(result).toBe('v1')
   })
 })

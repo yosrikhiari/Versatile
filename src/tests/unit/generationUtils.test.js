@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
-import { sanitizeJsonResponse, normalizeField, wrapApiError, FIELD_LENGTH_CONSTRAINTS } from '@/composables/generation/utils'
+import {
+  sanitizeJsonResponse,
+  normalizeField,
+  wrapApiError,
+  FIELD_LENGTH_CONSTRAINTS
+} from '@/composables/generation/utils'
 
 describe('sanitizeJsonResponse', () => {
   it('returns null for empty/null input', () => {
@@ -80,7 +85,8 @@ describe('retryWithBackoff', () => {
 
   it('retries on transient errors then succeeds', async () => {
     const { retryWithBackoff } = await import('@/composables/generation/utils')
-    const fn = vi.fn()
+    const fn = vi
+      .fn()
       .mockRejectedValueOnce(new Error('timeout'))
       .mockRejectedValueOnce(new Error('timeout'))
       .mockResolvedValueOnce('recovered')

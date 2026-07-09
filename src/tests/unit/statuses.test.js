@@ -13,7 +13,7 @@ describe('statuses config', () => {
       { value: 'review', label: 'Under Review' },
       { value: 'final', label: 'Final' }
     ])('includes status $value with label $label', ({ value, label }) => {
-      const entry = SECTION_STATUSES.find(s => s.value === value)
+      const entry = SECTION_STATUSES.find((s) => s.value === value)
       expect(entry).toBeDefined()
       expect(entry.label).toBe(label)
     })

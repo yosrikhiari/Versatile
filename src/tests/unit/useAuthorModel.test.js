@@ -8,7 +8,6 @@ vi.mock('../stores/projectStore', () => ({
 }))
 
 describe('useAuthorModel', () => {
-
   describe('buildProfileFromSession', () => {
     it('creates default profile for first session', async () => {
       const { buildProfileFromSession } = useAuthorModel()

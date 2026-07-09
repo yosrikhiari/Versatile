@@ -34,7 +34,8 @@ describe('dialogueParser', () => {
     })
 
     it('handles DIV, H1-H6, LI, BLOCKQUOTE as block elements', () => {
-      const html = '<div>Div content</div><h2>Heading</h2><li>List item</li><blockquote>Quote</blockquote>'
+      const html =
+        '<div>Div content</div><h2>Heading</h2><li>List item</li><blockquote>Quote</blockquote>'
       const result = parseHtmlToParagraphs(html)
       expect(result).toHaveLength(4)
     })
@@ -61,7 +62,7 @@ describe('dialogueParser', () => {
     it('assigns sequential paragraph indices', () => {
       const html = '<p>A</p><p>B</p><p>C</p>'
       const result = parseHtmlToParagraphs(html)
-      expect(result.map(p => p.paragraphIndex)).toEqual([0, 1, 2])
+      expect(result.map((p) => p.paragraphIndex)).toEqual([0, 1, 2])
     })
   })
 
@@ -75,7 +76,7 @@ describe('dialogueParser', () => {
 
     it('attaches dialogue detection results to each block', () => {
       const html = '<p>Narration.</p><p>"Dialogue," he said.</p>'
-      const mockDetector = vi.fn(text => {
+      const mockDetector = vi.fn((text) => {
         if (text.includes('Dialogue')) {
           return [{ dialogueText: 'Dialogue,', speakerCandidate: 'he' }]
         }

@@ -2,21 +2,17 @@ import { db, deepPlain } from './db-core'
 
 // Ordered list of pipeline stages. `currentStage` points at the first stage that
 // is not yet `done`, so a resumed run re-enters here instead of restarting.
-export const PIPELINE_STAGES = [
-  'bible',
-  'network',
-  'structure',
-  'spine',
-  'prose',
-  'consistency'
-]
+export const PIPELINE_STAGES = ['bible', 'network', 'structure', 'spine', 'prose', 'consistency']
 
 // Fresh stage-structured checkpoint (state.version 2). The generator merges its
 // writing-resume fields (scenePlan, chapterPlan, writtenMeta, ...) into this.
 export function makeInitialGenState(extra = {}) {
   const stages = {}
   for (const name of PIPELINE_STAGES) {
-    stages[name] = name === 'prose' ? { status: 'pending', written: 0, total: 0 } : { status: 'pending', error: null }
+    stages[name] =
+      name === 'prose'
+        ? { status: 'pending', written: 0, total: 0 }
+        : { status: 'pending', error: null }
   }
   return { version: 2, currentStage: PIPELINE_STAGES[0], stages, ...extra }
 }

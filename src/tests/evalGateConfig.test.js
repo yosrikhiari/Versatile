@@ -35,7 +35,7 @@ describe('evalGateConfig', () => {
   })
 
   it('all gates are enabled by default', () => {
-    const allEnabled = Object.values(EVAL_GATE_CONFIG).every(g => g.enabled)
+    const allEnabled = Object.values(EVAL_GATE_CONFIG).every((g) => g.enabled)
     expect(allEnabled).toBe(true)
   })
 })

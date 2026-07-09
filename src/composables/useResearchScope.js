@@ -20,9 +20,8 @@ export function useResearchScope(getProjectId) {
     const projectId = getProjectId?.()
     if (!projectId) return
     try {
-      const { getAllResearchDocuments, getAllChunksForProject } = await import(
-        '../services/researchDb'
-      )
+      const { getAllResearchDocuments, getAllChunksForProject } =
+        await import('../services/researchDb')
       const [docs, chunks] = await Promise.all([
         getAllResearchDocuments(projectId),
         getAllChunksForProject(projectId)

@@ -38,7 +38,9 @@ describe('snapshotStore', () => {
     it('loads snapshots for a project and chapter', async () => {
       await store.loadSnapshots('proj1', 'ch1')
       expect(mockDb.getSnapshots).toHaveBeenCalledWith('proj1', 'ch1')
-      expect(store.snapshots).toEqual([{ id: 1, chapterId: 'ch1', timestamp: '2025-01-01', wordCount: 100 }])
+      expect(store.snapshots).toEqual([
+        { id: 1, chapterId: 'ch1', timestamp: '2025-01-01', wordCount: 100 }
+      ])
       expect(store.isLoading).toBe(false)
     })
 

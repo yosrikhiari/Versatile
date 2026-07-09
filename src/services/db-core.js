@@ -205,13 +205,11 @@ db.version(31)
     const now = new Date().toISOString()
     // Existing hand-authored/generated entities are treated as approved canon so
     // the pipeline never re-generates or overwrites them.
-    await trans.characters
-      .toCollection()
-      .modify((c) => {
-        if (!c.generationStatus) c.generationStatus = 'approved'
-        if (!c.createdAt) c.createdAt = now
-        if (!c.updatedAt) c.updatedAt = now
-      })
+    await trans.characters.toCollection().modify((c) => {
+      if (!c.generationStatus) c.generationStatus = 'approved'
+      if (!c.createdAt) c.createdAt = now
+      if (!c.updatedAt) c.updatedAt = now
+    })
     await trans.locations.toCollection().modify((l) => {
       if (!l.generationStatus) l.generationStatus = 'approved'
       if (!l.createdAt) l.createdAt = now

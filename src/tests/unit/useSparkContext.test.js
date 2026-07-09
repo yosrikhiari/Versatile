@@ -36,14 +36,20 @@ describe('useSparkContext', () => {
   describe('formatBlueprintAsContext', () => {
     it('formats only the present fields, one per line', () => {
       const { scope } = make()
-      const out = scope.formatBlueprintAsContext({ title: 'T', turningPoint: 'TP', writingNotes: '' })
+      const out = scope.formatBlueprintAsContext({
+        title: 'T',
+        turningPoint: 'TP',
+        writingNotes: ''
+      })
       expect(out).toBe('Chapter: T\nTurning point: TP')
     })
   })
 
   describe('handleSendSparkToGenerator', () => {
     it('prefers a blueprint, formats it, and switches to the chapter tab', () => {
-      const { scope, setTab } = make({ sparkStore: { currentOutline: { title: 'T', openingBeat: 'OB' } } })
+      const { scope, setTab } = make({
+        sparkStore: { currentOutline: { title: 'T', openingBeat: 'OB' } }
+      })
       scope.handleSendSparkToGenerator()
       expect(scope.sparkContext.value).toContain('Chapter: T')
       expect(scope.sparkContext.value).toContain('Opening beat: OB')

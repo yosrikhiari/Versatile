@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { splitSentences, computeChunksForSentences, mergeSmallChunks } from '@/composables/useSemanticChunking'
+import {
+  splitSentences,
+  computeChunksForSentences,
+  mergeSmallChunks
+} from '@/composables/useSemanticChunking'
 
 describe('splitSentences', () => {
   it('returns empty array for empty input', async () => {
@@ -41,7 +45,11 @@ describe('computeChunksForSentences', () => {
 
   it('splits at low similarity points', async () => {
     const sentences = ['First.', 'Second.', 'Third.']
-    const embeddings = [[1, 0], [1, 0.1], [0, 1]]
+    const embeddings = [
+      [1, 0],
+      [1, 0.1],
+      [0, 1]
+    ]
     const result = await computeChunksForSentences(sentences, embeddings, 0.5)
     expect(result.length).toBeGreaterThanOrEqual(1)
   })

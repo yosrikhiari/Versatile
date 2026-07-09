@@ -5,7 +5,13 @@ import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useProjectStore } from '../stores/projectStore'
 import { db, deepPlain } from '../services/dbService'
 
-const TARGET_TABLES = [db.characters, db.locations, db.plotThreads, db.nodePositions, db.volumeEntities]
+const TARGET_TABLES = [
+  db.characters,
+  db.locations,
+  db.plotThreads,
+  db.nodePositions,
+  db.volumeEntities
+]
 
 function buildNameToIdMap(bibleStore) {
   const map = {}
@@ -121,10 +127,13 @@ export function useChapterGenerationSync() {
       })
 
       async function cleanupFailedEntity(entityId, type, name, preEntityNodeSnapshot) {
-        const arr = type === 'character' ? bibleStore.characters
-          : type === 'location' ? bibleStore.locations
-          : bibleStore.plotThreads
-        const idx = arr.findIndex(e => e.id === entityId)
+        const arr =
+          type === 'character'
+            ? bibleStore.characters
+            : type === 'location'
+              ? bibleStore.locations
+              : bibleStore.plotThreads
+        const idx = arr.findIndex((e) => e.id === entityId)
         if (idx !== -1) arr.splice(idx, 1)
 
         if (name) delete nameToId[name]
@@ -134,7 +143,10 @@ export function useChapterGenerationSync() {
           try {
             await graphStore.saveNodeInstances(resolvedProjectId)
           } catch (restoreErr) {
-            console.error(`[commitSync] Cleanup restore-save also failed for "${name}":`, restoreErr)
+            console.error(
+              `[commitSync] Cleanup restore-save also failed for "${name}":`,
+              restoreErr
+            )
           }
         }
       }
@@ -149,8 +161,13 @@ export function useChapterGenerationSync() {
             if (change.type === 'character') {
               entityId = await bibleStore.addCharacterData(
                 resolvedProjectId,
-                { name: change.entity.name, role: change.entity.role || 'unknown', description: change.entity.description || '' },
-                'generated', chapterId || null
+                {
+                  name: change.entity.name,
+                  role: change.entity.role || 'unknown',
+                  description: change.entity.description || ''
+                },
+                'generated',
+                chapterId || null
               )
               const nodeKey = `char-${entityId}`
               nameToId[name] = { id: entityId, type: 'character' }
@@ -161,8 +178,13 @@ export function useChapterGenerationSync() {
             } else if (change.type === 'location') {
               entityId = await bibleStore.addLocationData(
                 resolvedProjectId,
-                { name: change.entity.name, type: change.entity.type || 'unknown', description: change.entity.description || '' },
-                'generated', chapterId || null
+                {
+                  name: change.entity.name,
+                  type: change.entity.type || 'unknown',
+                  description: change.entity.description || ''
+                },
+                'generated',
+                chapterId || null
               )
               const nodeKey = `loc-${entityId}`
               nameToId[name] = { id: entityId, type: 'location' }
@@ -173,8 +195,13 @@ export function useChapterGenerationSync() {
             } else if (change.type === 'plotThread') {
               entityId = await bibleStore.addPlotThreadData(
                 resolvedProjectId,
-                { title: change.entity.title, status: change.entity.status || 'open', summary: change.entity.summary || '' },
-                'generated', chapterId || null
+                {
+                  title: change.entity.title,
+                  status: change.entity.status || 'open',
+                  summary: change.entity.summary || ''
+                },
+                'generated',
+                chapterId || null
               )
               const nodeKey = `thread-${entityId}`
               nameToId[name] = { id: entityId, type: 'plotThread' }

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { retryWithBackoff, sanitizeJsonResponse, FIELD_LENGTH_CONSTRAINTS } from '@/services/ai/aiHelpers'
+import {
+  retryWithBackoff,
+  sanitizeJsonResponse,
+  FIELD_LENGTH_CONSTRAINTS
+} from '@/services/ai/aiHelpers'
 
 describe('retryWithBackoff', () => {
   it('returns result on first success', async () => {
@@ -9,7 +13,8 @@ describe('retryWithBackoff', () => {
   })
 
   it('retries on failure and eventually succeeds', async () => {
-    const fn = vi.fn()
+    const fn = vi
+      .fn()
       .mockRejectedValueOnce(new Error('temporary'))
       .mockRejectedValueOnce(new Error('temporary'))
       .mockResolvedValue('ok')

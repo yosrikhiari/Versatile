@@ -139,7 +139,7 @@ async function embedBatchInternal(inputs, model, provider) {
           controller.abort(
             new DOMException('Embedding request timed out after 300000ms', 'AbortError')
           ),
-         300000
+        300000
       )
       try {
         const response = await fetch(MISTRAL_API_URL, {
@@ -175,17 +175,17 @@ async function embedBatchInternal(inputs, model, provider) {
           controller.abort(
             new DOMException('Embedding request timed out after 300000ms', 'AbortError')
           ),
-         300000
+        300000
       )
       try {
         const response = await fetch(`${getOllamaEndpoint()}/api/embed`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-          model: model || 'nomic-embed-text',
-          input: uncachedInputs,
-          keep_alive: '5m'
-        }),
+            model: model || 'nomic-embed-text',
+            input: uncachedInputs,
+            keep_alive: '5m'
+          }),
           signal: controller.signal
         })
         clearTimeout(timeout)

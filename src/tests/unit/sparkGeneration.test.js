@@ -5,7 +5,13 @@ vi.mock('../../config/ai', () => ({
   FEATURES: {},
   PROVIDER_DEFAULT: 'ollama',
   EMBEDDING_DEFAULTS: { provider: 'ollama', model: 'nomic-embed-text', threshold: 0.7 },
-  PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai', ANTHROPIC: 'anthropic', GEMINI: 'gemini', GROQ: 'groq' }
+  PROVIDERS: {
+    OLLAMA: 'ollama',
+    OPENAI: 'openai',
+    ANTHROPIC: 'anthropic',
+    GEMINI: 'gemini',
+    GROQ: 'groq'
+  }
 }))
 vi.mock('../../stores/projectStore', () => ({ useProjectStore: vi.fn() }))
 vi.mock('../../composables/useAuthorModel', () => ({ useAuthorModel: vi.fn() }))
@@ -39,7 +45,16 @@ describe('getDefaultBlueprint', () => {
 
   it('always returns complete blueprint structure', () => {
     const result = getDefaultBlueprint('test', 'moody')
-    const keys = ['title', 'openingBeat', 'turningPoint', 'confrontationBeat', 'closingBeat', 'sensoryAnchor', 'dialogueHook', 'writingNotes']
+    const keys = [
+      'title',
+      'openingBeat',
+      'turningPoint',
+      'confrontationBeat',
+      'closingBeat',
+      'sensoryAnchor',
+      'dialogueHook',
+      'writingNotes'
+    ]
     for (const key of keys) {
       expect(result).toHaveProperty(key)
     }

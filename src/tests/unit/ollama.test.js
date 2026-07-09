@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { getOllamaEndpoint, setOllamaEndpoint, getOllamaModel, setOllamaModel } from '../../config/ollama'
+import {
+  getOllamaEndpoint,
+  setOllamaEndpoint,
+  getOllamaModel,
+  setOllamaModel
+} from '../../config/ollama'
 
 describe('ollama config', () => {
   beforeEach(() => {

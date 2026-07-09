@@ -67,10 +67,16 @@ describe('ConsistencyReportModal', () => {
       props: {
         report: {
           characterIssues: [
-            { character: 'Mara', contradictions: [{ type: 'timeline', description: 'alive after death' }] }
+            {
+              character: 'Mara',
+              contradictions: [{ type: 'timeline', description: 'alive after death' }]
+            }
           ],
           locationIssues: [
-            { location: 'The Keep', contradictions: [{ type: 'state', description: 'burned then intact' }] }
+            {
+              location: 'The Keep',
+              contradictions: [{ type: 'state', description: 'burned then intact' }]
+            }
           ]
         },
         totalIssues: 2

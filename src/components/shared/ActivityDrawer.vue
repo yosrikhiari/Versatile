@@ -216,10 +216,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
 
                   <!-- Streaming thought / detail panel -->
                   <Transition name="fade">
-                    <div
-                      v-if="expandedPhases.has(`${task.id}-${pi}`)"
-                      class="px-4 pb-3 space-y-2"
-                    >
+                    <div v-if="expandedPhases.has(`${task.id}-${pi}`)" class="px-4 pb-3 space-y-2">
                       <p v-if="phase.detail" class="text-2xs font-ui text-text-secondary">
                         {{ phase.detail }}
                       </p>
@@ -228,10 +225,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                         class="text-11px font-mono text-text-secondary bg-bg-secondary rounded-lg p-3 max-h-[200px] overflow-y-auto leading-relaxed whitespace-pre-wrap break-all"
                         >{{ phase.thought }}</pre
                       >
-                      <p
-                        v-else-if="!phase.detail"
-                        class="text-2xs font-ui italic text-text-hint"
-                      >
+                      <p v-else-if="!phase.detail" class="text-2xs font-ui italic text-text-hint">
                         {{
                           phase.status === 'running'
                             ? 'Working… no streamed output for this step yet.'

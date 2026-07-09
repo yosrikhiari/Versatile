@@ -23,7 +23,8 @@ vi.mock('../../config/documentPrompts', () => ({
   DOCUMENT_PROMPTS: {
     creative: {
       critic: 'Mock critic prompt',
-      revisor: 'You are an expert editor. Revise the scene to fix the specified issues while preserving voice and continuity. Output the full revised text.'
+      revisor:
+        'You are an expert editor. Revise the scene to fix the specified issues while preserving voice and continuity. Output the full revised text.'
     }
   }
 }))
@@ -92,14 +93,24 @@ const TEST_CASES = [
   {
     name: 'boundary_2_minor',
     label: 'Boundary — 2 Minor Issues (should short-circuit)',
-    critiqueResult: { issues: [makeIssue('voive', 'minor'), makeIssue('pacing', 'minor')], score: 7 },
+    critiqueResult: {
+      issues: [makeIssue('voive', 'minor'), makeIssue('pacing', 'minor')],
+      score: 7
+    },
     expectedShortCircuit: true,
     revisions: []
   },
   {
     name: 'boundary_3_minor',
     label: 'Boundary — 3 Minor Issues (should revise)',
-    critiqueResult: { issues: [makeIssue('show_tell', 'minor'), makeIssue('voice', 'minor'), makeIssue('pacing', 'minor')], score: 6 },
+    critiqueResult: {
+      issues: [
+        makeIssue('show_tell', 'minor'),
+        makeIssue('voice', 'minor'),
+        makeIssue('pacing', 'minor')
+      ],
+      score: 6
+    },
     expectedShortCircuit: false,
     revisions: ['revision_v1', 'revision_v2', 'revision_v3', 'revision_v4', 'revision_v5']
   },
@@ -113,7 +124,14 @@ const TEST_CASES = [
   {
     name: 'mixed_severity',
     label: 'Mixed Severity (1 major + 2 minor, should revise)',
-    critiqueResult: { issues: [makeIssue('voice', 'major'), makeIssue('show_tell', 'minor'), makeIssue('pacing', 'minor')], score: 5 },
+    critiqueResult: {
+      issues: [
+        makeIssue('voice', 'major'),
+        makeIssue('show_tell', 'minor'),
+        makeIssue('pacing', 'minor')
+      ],
+      score: 5
+    },
     expectedShortCircuit: false,
     revisions: ['revision_v1', 'revision_v2', 'revision_v3', 'revision_v4', 'revision_v5']
   }
@@ -173,7 +191,7 @@ This report measures the behavior of \`reviseScene()\` across 5 test case scenar
 
   for (const tc of results) {
     md += `#### ${tc.label}\n\n`
-    md += `- **Critique**: ${tc.critiqueResult.issues.length} issue(s): ${tc.critiqueResult.issues.map(i => `${i.type} (${i.severity})`).join(', ')}\n`
+    md += `- **Critique**: ${tc.critiqueResult.issues.length} issue(s): ${tc.critiqueResult.issues.map((i) => `${i.type} (${i.severity})`).join(', ')}\n`
     md += `- **Original word count**: ${originalWordCount}\n`
 
     if (tc.shortCircuited) {
@@ -191,7 +209,7 @@ This report measures the behavior of \`reviseScene()\` across 5 test case scenar
         const original = originalWordCount
         const minOk = Math.round(original * 0.85)
         const maxOk = Math.round(original * 1.15)
-        const violations = wc.filter(w => w < minOk || w > maxOk).length
+        const violations = wc.filter((w) => w < minOk || w > maxOk).length
         md += `- **Tolerance violations**: ${violations}/${wc.length}\n`
       }
     }
@@ -216,13 +234,17 @@ This report measures the behavior of \`reviseScene()\` across 5 test case scenar
 
 ## Raw Data
 \`\`\`json
-${JSON.stringify(results.map(tc => ({
-  name: tc.name,
-  shortCircuited: tc.shortCircuited,
-  aiCalls: tc.aiCalls,
-  revisionWordCounts: tc.revisionWordCounts,
-  withinTolerance: tc.withinTolerance
-})), null, 2)}
+${JSON.stringify(
+  results.map((tc) => ({
+    name: tc.name,
+    shortCircuited: tc.shortCircuited,
+    aiCalls: tc.aiCalls,
+    revisionWordCounts: tc.revisionWordCounts,
+    withinTolerance: tc.withinTolerance
+  })),
+  null,
+  2
+)}
 \`\`\`
 `
   return md
@@ -239,7 +261,7 @@ describe('REVISOR-AUDIT: Scene Revision Quality', () => {
       title: 'The Artifact Chamber',
       emotionalGoal: 'Create tension and anticipation',
       charactersPresent: ['Elara', 'Marcus'],
-      payoff: 'Discovery of the artifact\'s true purpose',
+      payoff: "Discovery of the artifact's true purpose",
       tension: 'medium'
     }
     const storyBible = `## Elara\nRole: Protagonist\nGoal: Find the artifact\nVoice: Determined, impulsive\n\n## Marcus\nRole: Companion\nGoal: Protect Elara\nVoice: Cautious, analytical`
@@ -260,12 +282,19 @@ describe('REVISOR-AUDIT: Scene Revision Quality', () => {
         results.push({
           name: tc.name,
           label: tc.label,
-          critiqueResult: { issues: tc.critiqueResult.issues.map(i => ({ type: i.type, severity: i.severity })) },
+          critiqueResult: {
+            issues: tc.critiqueResult.issues.map((i) => ({ type: i.type, severity: i.severity }))
+          },
           shortCircuited: result === DRAFT,
           aiCalls: mockAiGenerate.mock.calls.length,
           revisionWordCounts: [],
           avgWordCount: wordCount(DRAFT),
-          wcStats: { mean: wordCount(DRAFT), stdDev: 0, min: wordCount(DRAFT), max: wordCount(DRAFT) },
+          wcStats: {
+            mean: wordCount(DRAFT),
+            stdDev: 0,
+            min: wordCount(DRAFT),
+            max: wordCount(DRAFT)
+          },
           withinTolerance: '✓ Yes (no revision)'
         })
         expect(result).toBe(DRAFT)
@@ -300,13 +329,16 @@ describe('REVISOR-AUDIT: Scene Revision Quality', () => {
       const originalWc = wordCount(DRAFT)
       const minOk = Math.round(originalWc * 0.85)
       const maxOk = Math.round(originalWc * 1.15)
-      const violations = revisionWordCounts.filter(w => w < minOk || w > maxOk).length
-      const withinTolerance = violations === 0 ? '✓ Yes' : `✗ ${violations}/${revisionWordCounts.length} violations`
+      const violations = revisionWordCounts.filter((w) => w < minOk || w > maxOk).length
+      const withinTolerance =
+        violations === 0 ? '✓ Yes' : `✗ ${violations}/${revisionWordCounts.length} violations`
 
       results.push({
         name: tc.name,
         label: tc.label,
-        critiqueResult: { issues: tc.critiqueResult.issues.map(i => ({ type: i.type, severity: i.severity })) },
+        critiqueResult: {
+          issues: tc.critiqueResult.issues.map((i) => ({ type: i.type, severity: i.severity }))
+        },
         shortCircuited: false,
         aiCalls: 5,
         revisionWordCounts,
@@ -318,8 +350,8 @@ describe('REVISOR-AUDIT: Scene Revision Quality', () => {
 
     expect(results.length).toBe(TEST_CASES.length)
 
-    const shortCircuited = results.filter(r => r.shortCircuited)
-    const revised = results.filter(r => !r.shortCircuited)
+    const shortCircuited = results.filter((r) => r.shortCircuited)
+    const revised = results.filter((r) => !r.shortCircuited)
 
     expect(shortCircuited.length).toBe(2)
     expect(revised.length).toBe(3)
@@ -347,7 +379,7 @@ describe('REVISOR-AUDIT: Scene Revision Quality', () => {
       title: 'The Artifact Chamber',
       emotionalGoal: 'Create tension and anticipation',
       charactersPresent: ['Elara', 'Marcus'],
-      payoff: 'Discovery of the artifact\'s true purpose',
+      payoff: "Discovery of the artifact's true purpose",
       tension: 'medium'
     }
     const storyBible = `## Elara\nRole: Protagonist\nGoal: Find the artifact\nVoice: Determined, impulsive`
@@ -375,7 +407,7 @@ describe('REVISOR-AUDIT: Scene Revision Quality', () => {
       title: 'The Artifact Chamber',
       emotionalGoal: 'Create tension and anticipation',
       charactersPresent: ['Elara', 'Marcus'],
-      payoff: 'Discovery of the artifact\'s true purpose',
+      payoff: "Discovery of the artifact's true purpose",
       tension: 'medium'
     }
     const storyBible = `## Elara\nRole: Protagonist\nGoal: Find the artifact\nVoice: Determined, impulsive`

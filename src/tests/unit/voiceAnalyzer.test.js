@@ -1,180 +1,185 @@
-import { describe, it, expect } from 'vitest';
-import { analyzeVoiceProfile } from '../../services/generation/voiceAnalyzer';
+import { describe, it, expect } from 'vitest'
+import { analyzeVoiceProfile } from '../../services/generation/voiceAnalyzer'
 
 describe('voiceAnalyzer', () => {
   describe('analyzeVoiceProfile', () => {
     it('should return null for empty input', () => {
-      expect(analyzeVoiceProfile([])).toBeNull();
-      expect(analyzeVoiceProfile(null)).toBeNull();
-    });
+      expect(analyzeVoiceProfile([])).toBeNull()
+      expect(analyzeVoiceProfile(null)).toBeNull()
+    })
 
     it('should return null if text is too short', () => {
-      const shortText = 'This is too short.';
-      expect(analyzeVoiceProfile([shortText])).toBeNull();
-    });
+      const shortText = 'This is too short.'
+      expect(analyzeVoiceProfile([shortText])).toBeNull()
+    })
 
     it('should extract metrics from valid text sample', () => {
-      const literarySample = generateLiterarySample();
-      const profile = analyzeVoiceProfile([literarySample]);
+      const literarySample = generateLiterarySample()
+      const profile = analyzeVoiceProfile([literarySample])
 
-      expect(profile).not.toBeNull();
-      expect(profile.vocabulary).toBeDefined();
-      expect(profile.sentenceStructure).toBeDefined();
-      expect(profile.punctuation).toBeDefined();
-      expect(profile.pacing).toBeDefined();
-      expect(profile.metadata).toBeDefined();
-    });
+      expect(profile).not.toBeNull()
+      expect(profile.vocabulary).toBeDefined()
+      expect(profile.sentenceStructure).toBeDefined()
+      expect(profile.punctuation).toBeDefined()
+      expect(profile.pacing).toBeDefined()
+      expect(profile.metadata).toBeDefined()
+    })
 
     it('should calculate vocabulary metrics correctly', () => {
-      const text = 'The cat sat. The dog ran. The bird flew. The cat sat again.';
+      const text = 'The cat sat. The dog ran. The bird flew. The cat sat again.'
       // Pad to minimum length
-      const paddedText = text + '\n' + text.repeat(100);
-      const profile = analyzeVoiceProfile([paddedText]);
+      const paddedText = text + '\n' + text.repeat(100)
+      const profile = analyzeVoiceProfile([paddedText])
 
-      expect(profile.vocabulary.totalWords).toBeGreaterThan(0);
-      expect(profile.vocabulary.uniqueWords).toBeGreaterThan(0);
-      expect(parseFloat(profile.vocabulary.uniqueWordRatio)).toBeGreaterThan(0);
-      expect(parseFloat(profile.vocabulary.uniqueWordRatio)).toBeLessThanOrEqual(1);
-      expect(profile.vocabulary.averageWordLength).toBeGreaterThan(0);
-      expect(profile.vocabulary.mostCommonWords.length).toBeGreaterThan(0);
-    });
+      expect(profile.vocabulary.totalWords).toBeGreaterThan(0)
+      expect(profile.vocabulary.uniqueWords).toBeGreaterThan(0)
+      expect(parseFloat(profile.vocabulary.uniqueWordRatio)).toBeGreaterThan(0)
+      expect(parseFloat(profile.vocabulary.uniqueWordRatio)).toBeLessThanOrEqual(1)
+      expect(profile.vocabulary.averageWordLength).toBeGreaterThan(0)
+      expect(profile.vocabulary.mostCommonWords.length).toBeGreaterThan(0)
+    })
 
     it('should calculate sentence structure metrics', () => {
-      const sample = generateLiterarySample();
-      const profile = analyzeVoiceProfile([sample]);
+      const sample = generateLiterarySample()
+      const profile = analyzeVoiceProfile([sample])
 
-      expect(profile.sentenceStructure.sentences.length).toBeGreaterThan(0);
-      expect(profile.sentenceStructure.lengths.length).toBeGreaterThan(0);
-      expect(parseFloat(profile.sentenceStructure.averageSentenceLength)).toBeGreaterThan(0);
-      expect(profile.sentenceStructure.sentenceLengthDistribution).toBeDefined();
-      expect(profile.sentenceStructure.sentenceLengthDistribution.length).toBe(4);
-      expect(parseFloat(profile.sentenceStructure.dialogueRatio)).toBeGreaterThanOrEqual(0);
-      expect(parseFloat(profile.sentenceStructure.dialogueRatio)).toBeLessThanOrEqual(1);
-    });
+      expect(profile.sentenceStructure.sentences.length).toBeGreaterThan(0)
+      expect(profile.sentenceStructure.lengths.length).toBeGreaterThan(0)
+      expect(parseFloat(profile.sentenceStructure.averageSentenceLength)).toBeGreaterThan(0)
+      expect(profile.sentenceStructure.sentenceLengthDistribution).toBeDefined()
+      expect(profile.sentenceStructure.sentenceLengthDistribution.length).toBe(4)
+      expect(parseFloat(profile.sentenceStructure.dialogueRatio)).toBeGreaterThanOrEqual(0)
+      expect(parseFloat(profile.sentenceStructure.dialogueRatio)).toBeLessThanOrEqual(1)
+    })
 
     it('should calculate punctuation metrics', () => {
-      const textWithPunctuation = generateTextWithVariedPunctuation();
-      const profile = analyzeVoiceProfile([textWithPunctuation]);
+      const textWithPunctuation = generateTextWithVariedPunctuation()
+      const profile = analyzeVoiceProfile([textWithPunctuation])
 
-      expect(profile.punctuation.ellipsisFrequency).toBeDefined();
-      expect(profile.punctuation.dashFrequency).toBeDefined();
-      expect(profile.punctuation.exclamationFrequency).toBeDefined();
-      expect(profile.punctuation.semicolonFrequency).toBeDefined();
-      expect(profile.punctuation.commaFrequency).toBeDefined();
-    });
+      expect(profile.punctuation.ellipsisFrequency).toBeDefined()
+      expect(profile.punctuation.dashFrequency).toBeDefined()
+      expect(profile.punctuation.exclamationFrequency).toBeDefined()
+      expect(profile.punctuation.semicolonFrequency).toBeDefined()
+      expect(profile.punctuation.commaFrequency).toBeDefined()
+    })
 
     it('should calculate pacing metrics', () => {
-      const sample = generateLiterarySample();
-      const profile = analyzeVoiceProfile([sample]);
+      const sample = generateLiterarySample()
+      const profile = analyzeVoiceProfile([sample])
 
-      expect(profile.pacing.averageParagraphLength).toBeGreaterThan(0);
-      expect(profile.pacing.paragraphLengthDistribution).toBeDefined();
-      expect(profile.pacing.paragraphLengthDistribution.length).toBe(4);
-      expect(profile.pacing.averageLineBreaks).toBeGreaterThanOrEqual(0);
-    });
+      expect(profile.pacing.averageParagraphLength).toBeGreaterThan(0)
+      expect(profile.pacing.paragraphLengthDistribution).toBeDefined()
+      expect(profile.pacing.paragraphLengthDistribution.length).toBe(4)
+      expect(profile.pacing.averageLineBreaks).toBeGreaterThanOrEqual(0)
+    })
 
     it('should calculate confidence based on sample size', () => {
-      const smallSample = generateTextOfWordCount(500);
-      const largeSample = generateTextOfWordCount(5000);
+      const smallSample = generateTextOfWordCount(500)
+      const largeSample = generateTextOfWordCount(5000)
 
-      const smallProfile = analyzeVoiceProfile([smallSample]);
-      const largeProfile = analyzeVoiceProfile([largeSample]);
+      const smallProfile = analyzeVoiceProfile([smallSample])
+      const largeProfile = analyzeVoiceProfile([largeSample])
 
-      expect(smallProfile.metadata.confidence).toBeGreaterThanOrEqual(0.5);
-      expect(largeProfile.metadata.confidence).toBeGreaterThan(smallProfile.metadata.confidence);
-      expect(largeProfile.metadata.confidence).toBeLessThanOrEqual(1);
-    });
+      expect(smallProfile.metadata.confidence).toBeGreaterThanOrEqual(0.5)
+      expect(largeProfile.metadata.confidence).toBeGreaterThan(smallProfile.metadata.confidence)
+      expect(largeProfile.metadata.confidence).toBeLessThanOrEqual(1)
+    })
 
     it('should distinguish between literary and commercial prose', () => {
-      const literarySample = generateLiterarySample();
-      const commercialSample = generateCommercialSample();
+      const literarySample = generateLiterarySample()
+      const commercialSample = generateCommercialSample()
 
-      const literaryProfile = analyzeVoiceProfile([literarySample]);
-      const commercialProfile = analyzeVoiceProfile([commercialSample]);
+      const literaryProfile = analyzeVoiceProfile([literarySample])
+      const commercialProfile = analyzeVoiceProfile([commercialSample])
 
       // Literary typically has longer sentences
-      expect(parseFloat(literaryProfile.sentenceStructure.averageSentenceLength))
-        .toBeGreaterThan(parseFloat(commercialProfile.sentenceStructure.averageSentenceLength));
+      expect(parseFloat(literaryProfile.sentenceStructure.averageSentenceLength)).toBeGreaterThan(
+        parseFloat(commercialProfile.sentenceStructure.averageSentenceLength)
+      )
 
       // Both profiles should be different (commercial is more action-oriented)
-      expect(commercialProfile.sentenceStructure.averageSentenceLength).not.toBe(literaryProfile.sentenceStructure.averageSentenceLength);
-    });
+      expect(commercialProfile.sentenceStructure.averageSentenceLength).not.toBe(
+        literaryProfile.sentenceStructure.averageSentenceLength
+      )
+    })
 
     it('should handle multiple text samples by merging them', () => {
-      const sample1 = generateTextOfWordCount(500);
-      const sample2 = generateTextOfWordCount(500);
+      const sample1 = generateTextOfWordCount(500)
+      const sample2 = generateTextOfWordCount(500)
 
-      const mergedProfile = analyzeVoiceProfile([sample1, sample2]);
+      const mergedProfile = analyzeVoiceProfile([sample1, sample2])
 
-      expect(mergedProfile).not.toBeNull();
-      expect(mergedProfile.metadata.totalWords).toBeGreaterThanOrEqual(1000);
-    });
+      expect(mergedProfile).not.toBeNull()
+      expect(mergedProfile.metadata.totalWords).toBeGreaterThanOrEqual(1000)
+    })
 
     it('should calculate consistency score for varied sentence lengths', () => {
-      const consistentText = generateConsistentText();
-      const variedText = generateVariedText();
+      const consistentText = generateConsistentText()
+      const variedText = generateVariedText()
 
-      const consistentProfile = analyzeVoiceProfile([consistentText]);
-      const variedProfile = analyzeVoiceProfile([variedText]);
+      const consistentProfile = analyzeVoiceProfile([consistentText])
+      const variedProfile = analyzeVoiceProfile([variedText])
 
       // Consistent text should have higher consistency score
-      expect(parseFloat(consistentProfile.metadata.consistency))
-        .toBeGreaterThan(parseFloat(variedProfile.metadata.consistency));
-    });
+      expect(parseFloat(consistentProfile.metadata.consistency)).toBeGreaterThan(
+        parseFloat(variedProfile.metadata.consistency)
+      )
+    })
 
     it('should handle dialogue-heavy prose', () => {
-      const dialogueSample = generateDialogueHeavySample();
-      const profile = analyzeVoiceProfile([dialogueSample]);
+      const dialogueSample = generateDialogueHeavySample()
+      const profile = analyzeVoiceProfile([dialogueSample])
 
-      expect(profile.sentenceStructure.hasDialogue).toBe(true);
-      expect(parseFloat(profile.sentenceStructure.dialogueRatio)).toBeGreaterThan(0.15);
-    });
+      expect(profile.sentenceStructure.hasDialogue).toBe(true)
+      expect(parseFloat(profile.sentenceStructure.dialogueRatio)).toBeGreaterThan(0.15)
+    })
 
     it('should handle introspective prose with little dialogue', () => {
-      const introspectiveSample = generateIntrospectiveSample();
-      const profile = analyzeVoiceProfile([introspectiveSample]);
+      const introspectiveSample = generateIntrospectiveSample()
+      const profile = analyzeVoiceProfile([introspectiveSample])
 
-      expect(parseFloat(profile.sentenceStructure.dialogueRatio)).toBeLessThan(0.1);
-    });
+      expect(parseFloat(profile.sentenceStructure.dialogueRatio)).toBeLessThan(0.1)
+    })
 
     it('should handle text with ellipsis and dashes', () => {
       const textWithPunctuation = `
         She stood there... waiting. The wind was cold—too cold.
         He wondered if she would return. The silence stretched between them...
         ${generateTextOfWordCount(600)}
-      `;
+      `
 
-      const profile = analyzeVoiceProfile([textWithPunctuation]);
+      const profile = analyzeVoiceProfile([textWithPunctuation])
 
-      expect(parseFloat(profile.punctuation.ellipsisFrequency)).toBeGreaterThan(0);
-      expect(parseFloat(profile.punctuation.dashFrequency)).toBeGreaterThan(0);
-    });
+      expect(parseFloat(profile.punctuation.ellipsisFrequency)).toBeGreaterThan(0)
+      expect(parseFloat(profile.punctuation.dashFrequency)).toBeGreaterThan(0)
+    })
 
     it('should return metadata with correct word/sentence/character counts', () => {
-      const sample = generateLiterarySample();
-      const profile = analyzeVoiceProfile([sample]);
+      const sample = generateLiterarySample()
+      const profile = analyzeVoiceProfile([sample])
 
-      expect(profile.metadata.totalCharacters).toBeGreaterThan(0);
-      expect(profile.metadata.totalWords).toBeGreaterThan(0);
-      expect(profile.metadata.totalSentences).toBeGreaterThan(0);
-      expect(profile.metadata.sampleSize).toEqual(profile.metadata.totalWords);
-      expect(parseFloat(profile.metadata.consistency)).toBeGreaterThanOrEqual(0);
-      expect(parseFloat(profile.metadata.consistency)).toBeLessThanOrEqual(1);
-    });
+      expect(profile.metadata.totalCharacters).toBeGreaterThan(0)
+      expect(profile.metadata.totalWords).toBeGreaterThan(0)
+      expect(profile.metadata.totalSentences).toBeGreaterThan(0)
+      expect(profile.metadata.sampleSize).toEqual(profile.metadata.totalWords)
+      expect(parseFloat(profile.metadata.consistency)).toBeGreaterThanOrEqual(0)
+      expect(parseFloat(profile.metadata.consistency)).toBeLessThanOrEqual(1)
+    })
 
     it('should be stable across multiple analyses of same text', () => {
-      const sample = generateLiterarySample();
+      const sample = generateLiterarySample()
 
-      const profile1 = analyzeVoiceProfile([sample]);
-      const profile2 = analyzeVoiceProfile([sample]);
+      const profile1 = analyzeVoiceProfile([sample])
+      const profile2 = analyzeVoiceProfile([sample])
 
-      expect(profile1.vocabulary.averageWordLength).toEqual(profile2.vocabulary.averageWordLength);
-      expect(profile1.sentenceStructure.averageSentenceLength)
-        .toEqual(profile2.sentenceStructure.averageSentenceLength);
-      expect(profile1.pacing.averageParagraphLength).toEqual(profile2.pacing.averageParagraphLength);
-    });
-  });
-});
+      expect(profile1.vocabulary.averageWordLength).toEqual(profile2.vocabulary.averageWordLength)
+      expect(profile1.sentenceStructure.averageSentenceLength).toEqual(
+        profile2.sentenceStructure.averageSentenceLength
+      )
+      expect(profile1.pacing.averageParagraphLength).toEqual(profile2.pacing.averageParagraphLength)
+    })
+  })
+})
 
 // ============================================================================
 // Test Helper Functions
@@ -206,7 +211,7 @@ acceptance and resignation.
 
 And there, in the dappled light beneath the ancient trees, two souls found what they had been 
 seeking all along—not answers, but the comfort of being found.
-  `.repeat(3); // Repeat to ensure sufficient length
+  `.repeat(3) // Repeat to ensure sufficient length
 }
 
 function generateCommercialSample() {
@@ -231,7 +236,7 @@ was done. And done was better than perfect when the clock was ticking.
 "Great work everyone," Sarah said, finally allowing herself to sit down. "Seriously. I couldn't 
 have done this without you." The team cheered. They had survived another crisis. Tomorrow there 
 would be new problems to solve. But tonight? Tonight they would celebrate.
-  `.repeat(3);
+  `.repeat(3)
 }
 
 function generateDialogueHeavySample() {
@@ -265,7 +270,7 @@ James reached for her, but she stepped back. The distance between them felt vast
 "I don't know what to do here," James whispered.
 
 "Neither do I," Maya replied, and she walked out of the room.
-  `.repeat(5);
+  `.repeat(5)
 }
 
 function generateIntrospectiveSample() {
@@ -296,13 +301,14 @@ in one incomprehensible package.
 
 She turned and walked back toward the town, her footsteps slow and deliberate, her mind still churning 
 with these unanswerable questions.
-  `.repeat(4);
+  `.repeat(4)
 }
 
 function generateConsistentText() {
   // Sentences of similar length
-  const template = 'The cat sat on the mat. The dog ran through the yard. The bird flew above the trees.';
-  return template.repeat(50);
+  const template =
+    'The cat sat on the mat. The dog ran through the yard. The bird flew above the trees.'
+  return template.repeat(50)
 }
 
 function generateVariedText() {
@@ -313,21 +319,108 @@ winding path. He ran. They wandered through the marketplace, examining the vario
 displayed by the merchants. It was dark. The ancient cathedral stood silent and magnificent, a 
 testament to the devotion and craftsmanship of generations long past, its soaring arches reaching 
 toward the heavens in eternal aspiration.
-  `.repeat(20);
+  `.repeat(20)
 }
 
 function generateTextOfWordCount(targetWords) {
-  let text = '';
-  const words = ['the', 'and', 'a', 'to', 'of', 'in', 'that', 'is', 'was', 'he', 'for', 'it', 'with', 'as', 'I', 'his', 'they', 'be', 'at', 'one', 'all', 'have', 'this', 'from', 'or', 'had', 'by', 'on', 'are', 'but', 'not', 'you', 'can', 'her', 'there', 'been', 'has', 'were', 'said', 'did', 'do', 'who', 'would', 'could', 'their', 'will', 'more', 'when', 'time', 'very', 'what', 'some', 'could', 'them', 'these', 'then', 'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also', 'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well', 'way', 'even', 'new', 'want', 'because', 'any', 'these', 'give', 'day', 'most', 'us', 'know', 'such'];
+  let text = ''
+  const words = [
+    'the',
+    'and',
+    'a',
+    'to',
+    'of',
+    'in',
+    'that',
+    'is',
+    'was',
+    'he',
+    'for',
+    'it',
+    'with',
+    'as',
+    'I',
+    'his',
+    'they',
+    'be',
+    'at',
+    'one',
+    'all',
+    'have',
+    'this',
+    'from',
+    'or',
+    'had',
+    'by',
+    'on',
+    'are',
+    'but',
+    'not',
+    'you',
+    'can',
+    'her',
+    'there',
+    'been',
+    'has',
+    'were',
+    'said',
+    'did',
+    'do',
+    'who',
+    'would',
+    'could',
+    'their',
+    'will',
+    'more',
+    'when',
+    'time',
+    'very',
+    'what',
+    'some',
+    'could',
+    'them',
+    'these',
+    'then',
+    'now',
+    'look',
+    'only',
+    'come',
+    'its',
+    'over',
+    'think',
+    'also',
+    'back',
+    'after',
+    'use',
+    'two',
+    'how',
+    'our',
+    'work',
+    'first',
+    'well',
+    'way',
+    'even',
+    'new',
+    'want',
+    'because',
+    'any',
+    'these',
+    'give',
+    'day',
+    'most',
+    'us',
+    'know',
+    'such'
+  ]
 
-  let wordCount = 0;
+  let wordCount = 0
   while (wordCount < targetWords) {
-    const randomWord = words[Math.floor(Math.random() * words.length)];
-    text += randomWord + ' ';
-    wordCount++;
+    const randomWord = words[Math.floor(Math.random() * words.length)]
+    text += randomWord + ' '
+    wordCount++
   }
 
-  return text;
+  return text
 }
 
 function generateTextWithVariedPunctuation() {
@@ -338,5 +431,5 @@ Really, truly frustrated. "This is ridiculous," she muttered. The silence stretc
 and on. It was unbearable—absolutely unbearable. She had to do something; anything; something!
 
 ${generateTextOfWordCount(600)}
-  `;
+  `
 }

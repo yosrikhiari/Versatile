@@ -6,7 +6,8 @@ function timeoutSignal(options) {
   const externalSignal = options.signal
 
   const timer = setTimeout(
-    () => controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')),
+    () =>
+      controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')),
     timeoutMs
   )
 
@@ -21,7 +22,13 @@ function timeoutSignal(options) {
     }
   }
 
-  return { signal: controller.signal, cleanup() { clearTimeout(timer); if (externalSignal) externalSignal.removeEventListener('abort', onAbort) } }
+  return {
+    signal: controller.signal,
+    cleanup() {
+      clearTimeout(timer)
+      if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
+    }
+  }
 }
 
 export async function generate(prompt, systemPrompt, model, options = {}) {

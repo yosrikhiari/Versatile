@@ -40,8 +40,7 @@ describe('evalDimensions', () => {
   })
 
   it('NOVEL shares the same dimensions as CREATIVE', () => {
-    expect(EVAL_DIMENSIONS[WORKSPACE_TYPES.NOVEL])
-      .toBe(EVAL_DIMENSIONS[WORKSPACE_TYPES.CREATIVE])
+    expect(EVAL_DIMENSIONS[WORKSPACE_TYPES.NOVEL]).toBe(EVAL_DIMENSIONS[WORKSPACE_TYPES.CREATIVE])
   })
 
   it('LEGAL has 4 dimensions with correct keys', () => {
@@ -131,7 +130,9 @@ describe('evalDimensions', () => {
       for (const [key, dim] of Object.entries(dims)) {
         const levels = Object.values(dim.rubric)
         for (let i = 1; i < levels.length; i++) {
-          expect(levels[i], `${type}/${key} level ${i + 1} is identical to ${i}`).not.toBe(levels[i - 1])
+          expect(levels[i], `${type}/${key} level ${i + 1} is identical to ${i}`).not.toBe(
+            levels[i - 1]
+          )
         }
       }
     }

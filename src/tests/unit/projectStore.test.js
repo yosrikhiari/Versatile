@@ -15,7 +15,7 @@ vi.mock('@/services/dbService', () => ({
   getStreakData: vi.fn(),
   getLastSessionData: vi.fn(),
   updateDailyWordCount: vi.fn(),
-  countWords: vi.fn((text) => text.split(/\s+/).filter(w => w.length > 0).length)
+  countWords: vi.fn((text) => text.split(/\s+/).filter((w) => w.length > 0).length)
 }))
 
 describe('projectStore', () => {
@@ -26,7 +26,7 @@ describe('projectStore', () => {
 
   it('should initialize with default values', () => {
     const store = useProjectStore()
-    
+
     expect(store.currentProjectId).toBeNull()
     expect(store.documentContent).toBe('')
     expect(store.wordCount).toBe(0)
@@ -39,7 +39,7 @@ describe('projectStore', () => {
   it('should create new project and load it', async () => {
     const store = useProjectStore()
     const mockProjectId = 'test-project-1'
-    
+
     dbService.createProject.mockResolvedValue(mockProjectId)
     dbService.getProject.mockResolvedValue({
       id: mockProjectId,
@@ -51,9 +51,9 @@ describe('projectStore', () => {
     dbService.getDailyGoal.mockResolvedValue(500)
     dbService.getStreakData.mockResolvedValue({ currentStreak: 0, longestStreak: 0 })
     dbService.getLastSessionData.mockResolvedValue(null)
-    
+
     await store.createNewProject('Test Project', 'Fantasy', 'A test')
-    
+
     expect(store.currentProjectId).toBe(mockProjectId)
     expect(store.currentProjectName).toBe('Test Project')
     expect(store.currentCategory).toBe('Fantasy')
@@ -63,9 +63,9 @@ describe('projectStore', () => {
   it('should update content and recalculate word count', () => {
     const store = useProjectStore()
     const content = '<p>Hello world this is a test</p>'
-    
+
     store.updateContent(content)
-    
+
     expect(store.documentContent).toBe(content)
     expect(store.wordCount).toBeGreaterThan(0)
   })
@@ -74,7 +74,7 @@ describe('projectStore', () => {
     const store = useProjectStore()
     store.sessionGoal = 1000
     store.sessionWordCount = 250
-    
+
     const expectedProgress = Math.round((250 / 1000) * 100)
     expect(store.sessionProgress).toBe(expectedProgress)
   })
@@ -83,7 +83,7 @@ describe('projectStore', () => {
     const store = useProjectStore()
     store.dailyGoal = 500
     store.dailyWordCount = 125
-    
+
     const expectedProgress = Math.round((125 / 500) * 100)
     expect(store.dailyProgress).toBe(expectedProgress)
   })
@@ -93,9 +93,9 @@ describe('projectStore', () => {
     store.currentProjectId = 'test-id'
     store.documentContent = '<p>Content</p>'
     store.wordCount = 2
-    
+
     await store.saveDocumentDebounced()
-    
+
     expect(dbService.saveManuscript).toHaveBeenCalledWith('test-id', '<p>Content</p>')
   })
 })

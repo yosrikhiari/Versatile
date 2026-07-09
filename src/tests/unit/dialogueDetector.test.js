@@ -53,8 +53,8 @@ describe('dialogueDetector', () => {
       const text = '"First," he said. "Second," she replied.'
       const results = detectDialogue(text, 0)
       expect(results.length).toBeGreaterThanOrEqual(2)
-      expect(results.some(r => r.dialogueText.includes('First'))).toBe(true)
-      expect(results.some(r => r.dialogueText.includes('Second'))).toBe(true)
+      expect(results.some((r) => r.dialogueText.includes('First'))).toBe(true)
+      expect(results.some((r) => r.dialogueText.includes('Second'))).toBe(true)
     })
 
     it('assigns paragraph index to each result', () => {
@@ -75,7 +75,7 @@ describe('dialogueDetector', () => {
       const paragraphs = [
         { textContent: '"Hello," he said.', paragraphIndex: 0 },
         { textContent: 'The narrator continued.', paragraphIndex: 1 },
-        { textContent: '"Goodbye," she replied.', paragraphIndex: 2 },
+        { textContent: '"Goodbye," she replied.', paragraphIndex: 2 }
       ]
       const results = detectDialogueBatch(paragraphs)
       expect(results).toHaveLength(2)
@@ -84,9 +84,7 @@ describe('dialogueDetector', () => {
     })
 
     it('preserves full paragraph text in each result', () => {
-      const paragraphs = [
-        { textContent: '"Hey," John said with a smile.', paragraphIndex: 0 },
-      ]
+      const paragraphs = [{ textContent: '"Hey," John said with a smile.', paragraphIndex: 0 }]
       const results = detectDialogueBatch(paragraphs)
       expect(results[0].fullParagraphText).toBe('"Hey," John said with a smile.')
     })

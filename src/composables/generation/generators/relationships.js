@@ -247,13 +247,12 @@ export async function generateRelationships({
     })
     if (countAiConnections(aiResult) > 0) break
     if (attempt < MAX_ATTEMPTS) {
-      console.warn(
-        `[generateRelationships] attempt ${attempt} returned no connections; retrying.`
-      )
+      console.warn(`[generateRelationships] attempt ${attempt} returned no connections; retrying.`)
     }
   }
 
-  if (!aiResult) return { characterRelationships: 0, graphEdges: 0, dropped: 0, reason: 'ai_failed' }
+  if (!aiResult)
+    return { characterRelationships: 0, graphEdges: 0, dropped: 0, reason: 'ai_failed' }
 
   const aiTotal = countAiConnections(aiResult)
   const { characterRelationships, graphEdges, dropped } = buildRelationshipEdges(aiResult, {
@@ -268,7 +267,8 @@ export async function generateRelationships({
     existingRels.map((r) => [r.fromCharacterId, r.toCharacterId].sort((a, b) => a - b).join('|'))
   )
   const freshRels = characterRelationships.filter(
-    (r) => !existingRelKeys.has([r.fromCharacterId, r.toCharacterId].sort((a, b) => a - b).join('|'))
+    (r) =>
+      !existingRelKeys.has([r.fromCharacterId, r.toCharacterId].sort((a, b) => a - b).join('|'))
   )
 
   const existingEdges = await getGraphEdges(projectId)

@@ -31,7 +31,8 @@ import { useSceneEval } from '../composables/useSceneEval'
 
 const mockCreativeScene = {
   title: 'Opening Scene',
-  prose: 'Once upon a time there was a story with enough words to pass the prose check and get evaluated properly.',
+  prose:
+    'Once upon a time there was a story with enough words to pass the prose check and get evaluated properly.',
   characters: ['Hero', 'Villain']
 }
 
@@ -83,7 +84,9 @@ describe('useSceneEval', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockEvaluateScene.mockResolvedValue(critiqueResponse)
-    mockReviseScene.mockResolvedValue('Revised prose with improvements and more words for better quality.')
+    mockReviseScene.mockResolvedValue(
+      'Revised prose with improvements and more words for better quality.'
+    )
     evalComposable = useSceneEval()
   })
 
@@ -199,13 +202,17 @@ describe('useSceneEval', () => {
     })
 
     it('updates revisionResult after revision', async () => {
-      mockReviseScene.mockResolvedValue('Revised prose with improvements and more words for better quality.')
+      mockReviseScene.mockResolvedValue(
+        'Revised prose with improvements and more words for better quality.'
+      )
       await evalComposable.evaluate(mockCreativeScene, 'creative', mockPlanItem)
       await evalComposable.revise(mockCreativeScene, 'creative', mockPlanItem)
 
       expect(evalComposable.revisionResult.value).not.toBeNull()
       expect(evalComposable.revisionResult.value.originalProse).toBe(mockCreativeScene.prose)
-      expect(evalComposable.revisionResult.value.revisedProse).toBe('Revised prose with improvements and more words for better quality.')
+      expect(evalComposable.revisionResult.value.revisedProse).toBe(
+        'Revised prose with improvements and more words for better quality.'
+      )
       expect(evalComposable.revisionResult.value.delta).toBe(2)
     })
 
@@ -218,7 +225,9 @@ describe('useSceneEval', () => {
     })
 
     it('stores degradation data in revisionResult', async () => {
-      mockReviseScene.mockResolvedValue('Revised prose with improvements and more words for better quality.')
+      mockReviseScene.mockResolvedValue(
+        'Revised prose with improvements and more words for better quality.'
+      )
       mockEvaluateScene
         .mockResolvedValueOnce(critiqueResponse)
         .mockResolvedValueOnce(betterCritiqueResponse)
@@ -247,7 +256,9 @@ describe('useSceneEval', () => {
         strengths: []
       }
 
-      mockReviseScene.mockResolvedValue('Revised prose with worse quality to test regression detection.')
+      mockReviseScene.mockResolvedValue(
+        'Revised prose with worse quality to test regression detection.'
+      )
       mockEvaluateScene
         .mockResolvedValueOnce(critiqueResponse)
         .mockResolvedValueOnce(regressedCritique)

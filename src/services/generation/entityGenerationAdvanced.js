@@ -147,9 +147,16 @@ const LOCATION_SYSTEM_PROMPT = `You generate diverse, unique fictional locations
  * @returns {Promise<GeneratedCharacter>} The generated character.
  * @throws {Error} If generation or parsing fails.
  */
-export async function generateCharacterFromIdea(characterIdea, manuscriptContext = null, existingCharacters = []) {
+export async function generateCharacterFromIdea(
+  characterIdea,
+  manuscriptContext = null,
+  existingCharacters = []
+) {
   const entityContext = await getExistingEntitiesContext()
-  const relationshipContextSection = await getIdeaRelationshipContext(characterIdea, existingCharacters)
+  const relationshipContextSection = await getIdeaRelationshipContext(
+    characterIdea,
+    existingCharacters
+  )
 
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {
@@ -205,7 +212,10 @@ export async function generateCharactersForPlotThread(
   const entityContext = await getExistingEntitiesContext()
 
   const plotThreadText = plotThread ? `${plotThread.title} ${plotThread.notes || ''}` : ''
-  const relationshipContextSection = await getIdeaRelationshipContext(plotThreadText, existingCharacters)
+  const relationshipContextSection = await getIdeaRelationshipContext(
+    plotThreadText,
+    existingCharacters
+  )
 
   let contextInstruction = ''
   if (manuscriptContext?.contextText) {

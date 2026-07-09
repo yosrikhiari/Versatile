@@ -14,7 +14,11 @@ vi.mock('./useActivityLog', () => ({ useActivityLog: vi.fn() }))
 vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn(), getConfiguredModel: vi.fn() }))
 vi.mock('../config/ai', () => ({ FEATURES: {}, PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai' } }))
 
-let buildEmbeddingContext, formatFullSpineEntry, compressSpine, buildExistingEntitiesBlob, parallelWithLimit
+let buildEmbeddingContext,
+  formatFullSpineEntry,
+  compressSpine,
+  buildExistingEntitiesBlob,
+  parallelWithLimit
 let selectRelevantPriorScenes, planConsistencyFixes, buildFactLedger
 let useVolumeStoryGenerator
 beforeEach(async () => {
@@ -35,21 +39,45 @@ function makeScene(sceneNumber, title, prose, summary) {
   return { sceneNumber, title, prose: prose || '', summary: summary || '' }
 }
 
-function makeSpineEntry(chapterNumber, chapterTitle, emotionalStateAtEnd, readerKnowledgeAtEnd, transitionToNext) {
-  return { chapterNumber, chapterTitle, emotionalStateAtEnd, readerKnowledgeAtEnd, transitionToNext }
+function makeSpineEntry(
+  chapterNumber,
+  chapterTitle,
+  emotionalStateAtEnd,
+  readerKnowledgeAtEnd,
+  transitionToNext
+) {
+  return {
+    chapterNumber,
+    chapterTitle,
+    emotionalStateAtEnd,
+    readerKnowledgeAtEnd,
+    transitionToNext
+  }
 }
 
 describe('selectRelevantPriorScenes', () => {
   const candidates = [
-    { sceneNumber: 1, title: 'Meet Alice', characters: ['Alice'], location: 'Village', summary: 's1' },
+    {
+      sceneNumber: 1,
+      title: 'Meet Alice',
+      characters: ['Alice'],
+      location: 'Village',
+      summary: 's1'
+    },
     { sceneNumber: 2, title: 'Bob alone', characters: ['Bob'], location: 'Forest', summary: 's2' },
-    { sceneNumber: 3, title: 'Alice + Bob', characters: ['Alice', 'Bob'], location: 'Village', summary: 's3' }
+    {
+      sceneNumber: 3,
+      title: 'Alice + Bob',
+      characters: ['Alice', 'Bob'],
+      location: 'Village',
+      summary: 's3'
+    }
   ]
 
   it('picks scenes sharing a character with the current scene', () => {
     const cur = { charactersPresent: ['Alice'], location: 'Castle' }
     const out = selectRelevantPriorScenes(cur, candidates, 3)
-    const nums = out.map(s => s.sceneNumber)
+    const nums = out.map((s) => s.sceneNumber)
     expect(nums).toContain(1)
     expect(nums).toContain(3)
     expect(nums).not.toContain(2)
@@ -65,7 +93,11 @@ describe('selectRelevantPriorScenes', () => {
   it('respects the limit and returns [] when nothing matches', () => {
     const cur = { charactersPresent: ['Zed'], location: 'Nowhere' }
     expect(selectRelevantPriorScenes(cur, candidates, 3)).toEqual([])
-    const limited = selectRelevantPriorScenes({ charactersPresent: ['Alice', 'Bob'] }, candidates, 1)
+    const limited = selectRelevantPriorScenes(
+      { charactersPresent: ['Alice', 'Bob'] },
+      candidates,
+      1
+    )
     expect(limited.length).toBe(1)
   })
 
@@ -76,17 +108,43 @@ describe('selectRelevantPriorScenes', () => {
 
 describe('planConsistencyFixes', () => {
   const scenes = [
-    { sceneNumber: 1, title: 'A', prose: 'Alice had bright green eyes and lived in the Village.', characters: ['Alice'], location: 'Village' },
-    { sceneNumber: 2, title: 'B', prose: 'Bob wandered the forest alone.', characters: ['Bob'], location: 'Forest' },
-    { sceneNumber: 3, title: 'C', prose: 'Alice had brown eyes now, back in the Village again.', characters: ['Alice'], location: 'Village' }
+    {
+      sceneNumber: 1,
+      title: 'A',
+      prose: 'Alice had bright green eyes and lived in the Village.',
+      characters: ['Alice'],
+      location: 'Village'
+    },
+    {
+      sceneNumber: 2,
+      title: 'B',
+      prose: 'Bob wandered the forest alone.',
+      characters: ['Bob'],
+      location: 'Forest'
+    },
+    {
+      sceneNumber: 3,
+      title: 'C',
+      prose: 'Alice had brown eyes now, back in the Village again.',
+      characters: ['Alice'],
+      location: 'Village'
+    }
   ]
 
   it('targets the later scene matched by excerpt', () => {
     const report = {
-      characterIssues: [{
-        character: 'Alice',
-        contradictions: [{ type: 'appearance', description: 'eye colour changes', between: ['Alice had bright green eyes', 'Alice had brown eyes now'] }]
-      }],
+      characterIssues: [
+        {
+          character: 'Alice',
+          contradictions: [
+            {
+              type: 'appearance',
+              description: 'eye colour changes',
+              between: ['Alice had bright green eyes', 'Alice had brown eyes now']
+            }
+          ]
+        }
+      ],
       locationIssues: []
     }
     const fixes = planConsistencyFixes(report, scenes)
@@ -97,7 +155,14 @@ describe('planConsistencyFixes', () => {
 
   it('falls back to the latest scene the entity appears in when excerpts do not match', () => {
     const report = {
-      characterIssues: [{ character: 'Alice', contradictions: [{ type: 'trait', description: 'x', between: ['nonexistent excerpt text zzz'] }] }],
+      characterIssues: [
+        {
+          character: 'Alice',
+          contradictions: [
+            { type: 'trait', description: 'x', between: ['nonexistent excerpt text zzz'] }
+          ]
+        }
+      ],
       locationIssues: []
     }
     const fixes = planConsistencyFixes(report, scenes)
@@ -118,9 +183,30 @@ describe('planConsistencyFixes', () => {
 describe('buildEmbeddingContext relevance recall', () => {
   it('includes an earlier related scene beyond the last two', () => {
     const prior = [
-      { sceneNumber: 1, title: 'Alice in Village', prose: 'x'.repeat(50), summary: 'Alice does a thing', characters: ['Alice'], location: 'Village' },
-      { sceneNumber: 2, title: 'Filler', prose: 'y'.repeat(50), summary: 'filler', characters: ['Carol'], location: 'Sea' },
-      { sceneNumber: 3, title: 'More filler', prose: 'z'.repeat(50), summary: 'more', characters: ['Dan'], location: 'Sky' }
+      {
+        sceneNumber: 1,
+        title: 'Alice in Village',
+        prose: 'x'.repeat(50),
+        summary: 'Alice does a thing',
+        characters: ['Alice'],
+        location: 'Village'
+      },
+      {
+        sceneNumber: 2,
+        title: 'Filler',
+        prose: 'y'.repeat(50),
+        summary: 'filler',
+        characters: ['Carol'],
+        location: 'Sea'
+      },
+      {
+        sceneNumber: 3,
+        title: 'More filler',
+        prose: 'z'.repeat(50),
+        summary: 'more',
+        characters: ['Dan'],
+        location: 'Sky'
+      }
     ]
     const current = { sceneNumber: 4, charactersPresent: ['Alice'], location: 'Village' }
     const ctx = buildEmbeddingContext(current, prior)
@@ -155,10 +241,7 @@ describe('buildFactLedger', () => {
   })
 
   it('ignores entries without keyFacts and non-string facts', () => {
-    const spine = [
-      { chapterNumber: 1 },
-      { chapterNumber: 2, keyFacts: ['real', null, 42, '  '] }
-    ]
+    const spine = [{ chapterNumber: 1 }, { chapterNumber: 2, keyFacts: ['real', null, 42, '  '] }]
     expect(buildFactLedger(spine)).toEqual(['Ch2: real'])
   })
 
@@ -289,7 +372,10 @@ describe('buildEmbeddingContext', () => {
 
   it('stops adding older scenes when max chars reached', () => {
     const veryLongSummary = 'x'.repeat(1500)
-    const prior = [makeScene(1, 'Scene 1', 'text', veryLongSummary), makeScene(2, 'Scene 2', 'Latest')]
+    const prior = [
+      makeScene(1, 'Scene 1', 'text', veryLongSummary),
+      makeScene(2, 'Scene 2', 'Latest')
+    ]
     const result = buildEmbeddingContext(makeScene(3, 'Scene 3', 'text'), prior)
     expect(result).toBeTruthy()
   })
@@ -298,8 +384,12 @@ describe('buildEmbeddingContext', () => {
 describe('buildExistingEntitiesBlob', () => {
   it('serializes characters, locations, and plotThreads', () => {
     const chars = [{ name: 'Alice', role: 'hero', description: 'Brave', traits: ['brave'] }]
-    const locs = [{ name: 'Forest', description: 'Dark woods', notes: 'Eerie', traits: ['mysterious'] }]
-    const threads = [{ title: 'Main Plot', status: 'active', notes: 'Central conflict', traits: [] }]
+    const locs = [
+      { name: 'Forest', description: 'Dark woods', notes: 'Eerie', traits: ['mysterious'] }
+    ]
+    const threads = [
+      { title: 'Main Plot', status: 'active', notes: 'Central conflict', traits: [] }
+    ]
     const result = JSON.parse(buildExistingEntitiesBlob(chars, locs, threads))
     expect(result.characters).toHaveLength(1)
     expect(result.characters[0].name).toBe('Alice')
@@ -325,11 +415,7 @@ describe('buildExistingEntitiesBlob', () => {
 
 describe('parallelWithLimit', () => {
   it('executes all tasks and returns results in order', async () => {
-    const tasks = [
-      () => Promise.resolve(1),
-      () => Promise.resolve(2),
-      () => Promise.resolve(3)
-    ]
+    const tasks = [() => Promise.resolve(1), () => Promise.resolve(2), () => Promise.resolve(3)]
     const results = await parallelWithLimit(tasks, 2)
     expect(results).toEqual([1, 2, 3])
   })
@@ -340,7 +426,7 @@ describe('parallelWithLimit', () => {
     const tasks = Array.from({ length: 5 }, (_, i) => async () => {
       concurrent++
       maxConcurrent = Math.max(maxConcurrent, concurrent)
-      await new Promise(r => setTimeout(r, 10))
+      await new Promise((r) => setTimeout(r, 10))
       concurrent--
       return i
     })
@@ -355,10 +441,7 @@ describe('parallelWithLimit', () => {
   })
 
   it('rejects when any task rejects', async () => {
-    const tasks = [
-      () => Promise.resolve('ok'),
-      () => Promise.reject(new Error('fail'))
-    ]
+    const tasks = [() => Promise.resolve('ok'), () => Promise.reject(new Error('fail'))]
     await expect(parallelWithLimit(tasks, 2)).rejects.toThrow('fail')
   })
 })

@@ -52,7 +52,8 @@ vi.mock('@/services/dbService', () => ({
   addPlotThread: (...args) => mockDbService.addPlotThread(...args),
   updatePlotThread: (...args) => mockDbService.updatePlotThread(...args),
   deletePlotThread: (...args) => mockDbService.deletePlotThread(...args),
-  deleteCharacterRelationshipsByCharacter: (...args) => mockDbService.deleteCharacterRelationshipsByCharacter(...args)
+  deleteCharacterRelationshipsByCharacter: (...args) =>
+    mockDbService.deleteCharacterRelationshipsByCharacter(...args)
 }))
 
 vi.mock('@/services/db-graph', () => ({
@@ -122,7 +123,11 @@ describe('storyBibleStore', () => {
   describe('characters', () => {
     it('addCharacterData adds character and queues regen', async () => {
       await store.addCharacterData('proj1', { name: 'Alice' })
-      expect(mockDbService.addCharacter).toHaveBeenCalledWith('proj1', { name: 'Alice', source: 'manual', chapterId: null })
+      expect(mockDbService.addCharacter).toHaveBeenCalledWith('proj1', {
+        name: 'Alice',
+        source: 'manual',
+        chapterId: null
+      })
       expect(store.characters.length).toBe(1)
       expect(store.characters[0].name).toBe('Alice')
     })
@@ -131,7 +136,10 @@ describe('storyBibleStore', () => {
       mockDbService.getCharacters.mockResolvedValue([{ id: 1, name: 'Alice' }])
       await store.loadAll('proj1')
       await store.updateCharacterData(1, { name: 'Alice Updated' }, 'proj1')
-      expect(mockDbService.updateCharacter).toHaveBeenCalledWith(1, { name: 'Alice Updated', lastEditedAt: expect.any(Number) })
+      expect(mockDbService.updateCharacter).toHaveBeenCalledWith(1, {
+        name: 'Alice Updated',
+        lastEditedAt: expect.any(Number)
+      })
       expect(store.characters[0].name).toBe('Alice Updated')
     })
 
@@ -149,7 +157,11 @@ describe('storyBibleStore', () => {
   describe('locations', () => {
     it('addLocationData adds location', async () => {
       await store.addLocationData('proj1', { name: 'Forest' })
-      expect(mockDbService.addLocation).toHaveBeenCalledWith('proj1', { name: 'Forest', source: 'manual', chapterId: null })
+      expect(mockDbService.addLocation).toHaveBeenCalledWith('proj1', {
+        name: 'Forest',
+        source: 'manual',
+        chapterId: null
+      })
     })
 
     it('deleteLocationData removes location', async () => {
@@ -164,7 +176,12 @@ describe('storyBibleStore', () => {
   describe('plotThreads', () => {
     it('addPlotThreadData adds thread with timeline order', async () => {
       await store.addPlotThreadData('proj1', { title: 'Main' })
-      expect(mockDbService.addPlotThread).toHaveBeenCalledWith('proj1', { title: 'Main', source: 'manual', chapterId: null, timelineOrder: 1 })
+      expect(mockDbService.addPlotThread).toHaveBeenCalledWith('proj1', {
+        title: 'Main',
+        source: 'manual',
+        chapterId: null,
+        timelineOrder: 1
+      })
     })
 
     it('updateThreadStatus updates thread status', async () => {
@@ -175,7 +192,10 @@ describe('storyBibleStore', () => {
     })
 
     it('reorderPlotThreads updates order', async () => {
-      mockDbService.getPlotThreads.mockResolvedValue([{ id: 3, title: 'Main' }, { id: 4, title: 'Sub' }])
+      mockDbService.getPlotThreads.mockResolvedValue([
+        { id: 3, title: 'Main' },
+        { id: 4, title: 'Sub' }
+      ])
       await store.loadAll('proj1')
       await store.reorderPlotThreads([4, 3])
       expect(mockDbService.updatePlotThread).toHaveBeenCalledWith(4, { timelineOrder: 0 })
@@ -185,8 +205,14 @@ describe('storyBibleStore', () => {
 
   describe('getCharacterNames', () => {
     it('returns list of character names', () => {
-      mockDbService.getCharacters.mockResolvedValue([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }])
-      store.characters = [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }]
+      mockDbService.getCharacters.mockResolvedValue([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' }
+      ])
+      store.characters = [
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' }
+      ]
       expect(store.getCharacterNames()).toEqual(['Alice', 'Bob'])
     })
   })
@@ -197,9 +223,12 @@ describe('storyBibleStore', () => {
       await store.setVoiceProfile(profile)
       expect(store.voiceProfile.isExtracted).toBe(true)
       expect(store.voiceProfile.profile).toStrictEqual(profile)
-      expect(mockDbEntities.saveVoiceProfile).toHaveBeenCalledWith('proj1', expect.objectContaining({
-        isExtracted: true
-      }))
+      expect(mockDbEntities.saveVoiceProfile).toHaveBeenCalledWith(
+        'proj1',
+        expect.objectContaining({
+          isExtracted: true
+        })
+      )
     })
 
     it('lockVoiceProfile toggles lock', () => {

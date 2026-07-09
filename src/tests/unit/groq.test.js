@@ -33,7 +33,9 @@ function makeStreamResponse(chunks) {
 
 describe('groq generate', () => {
   it('throws if no API key provided', async () => {
-    await expect(groq.generate('prompt', 'system', 'mixtral', {})).rejects.toThrow('Groq API key not configured')
+    await expect(groq.generate('prompt', 'system', 'mixtral', {})).rejects.toThrow(
+      'Groq API key not configured'
+    )
   })
 
   it('returns content on successful response', async () => {
@@ -51,7 +53,9 @@ describe('groq generate', () => {
       status: 401,
       json: () => Promise.resolve({ error: { message: 'Unauthorized' } })
     })
-    await expect(groq.generate('prompt', 'system', 'mixtral', { apiKey: 'bad' })).rejects.toThrow('Unauthorized')
+    await expect(groq.generate('prompt', 'system', 'mixtral', { apiKey: 'bad' })).rejects.toThrow(
+      'Unauthorized'
+    )
   })
 
   it('uses generic error when error body is not parseable', async () => {
@@ -60,7 +64,9 @@ describe('groq generate', () => {
       status: 500,
       json: () => Promise.reject(new Error('parse fail'))
     })
-    await expect(groq.generate('prompt', 'system', 'mixtral', { apiKey: 'key' })).rejects.toThrow('Groq error: 500')
+    await expect(groq.generate('prompt', 'system', 'mixtral', { apiKey: 'key' })).rejects.toThrow(
+      'Groq error: 500'
+    )
   })
 
   it('throws timeout error when request is aborted', async () => {
@@ -68,12 +74,16 @@ describe('groq generate', () => {
       const error = new DOMException('The operation was aborted', 'AbortError')
       return Promise.reject(error)
     })
-    await expect(groq.generate('prompt', 'system', 'mixtral', { apiKey: 'key', timeout: 1 })).rejects.toThrow('Groq request timed out after 1ms')
+    await expect(
+      groq.generate('prompt', 'system', 'mixtral', { apiKey: 'key', timeout: 1 })
+    ).rejects.toThrow('Groq request timed out after 1ms')
   })
 
   it('re-throws non-timeout errors', async () => {
     mockFetch.mockRejectedValue(new Error('Network error'))
-    await expect(groq.generate('prompt', 'system', 'mixtral', { apiKey: 'key' })).rejects.toThrow('Network error')
+    await expect(groq.generate('prompt', 'system', 'mixtral', { apiKey: 'key' })).rejects.toThrow(
+      'Network error'
+    )
   })
 
   it('returns empty string when content is missing', async () => {
@@ -88,7 +98,9 @@ describe('groq generate', () => {
 
 describe('groq stream', () => {
   it('throws if no API key provided', async () => {
-    await expect(groq.stream('prompt', 'system', 'mixtral', vi.fn(), {})).rejects.toThrow('Groq API key not configured')
+    await expect(groq.stream('prompt', 'system', 'mixtral', vi.fn(), {})).rejects.toThrow(
+      'Groq API key not configured'
+    )
   })
 
   it('calls onChunk for each delta', async () => {
@@ -118,10 +130,7 @@ describe('groq stream', () => {
   })
 
   it('skips non-data lines', async () => {
-    const streamData = [
-      ': keepalive\n',
-      'data: {"choices":[{"delta":{"content":"Hi"}}]}\n'
-    ]
+    const streamData = [': keepalive\n', 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n']
     mockFetch.mockResolvedValue(makeStreamResponse(streamData))
     const result = await groq.stream('prompt', 'system', 'mixtral', vi.fn(), { apiKey: 'key' })
     expect(result).toBe('Hi')
@@ -132,12 +141,20 @@ describe('groq stream', () => {
       const error = new DOMException('The operation was aborted', 'AbortError')
       return Promise.reject(error)
     })
-    await expect(groq.stream('prompt', 'system', 'mixtral', vi.fn(), { apiKey: 'key', timeout: 1 })).rejects.toThrow('Groq stream timed out after 1ms')
+    await expect(
+      groq.stream('prompt', 'system', 'mixtral', vi.fn(), { apiKey: 'key', timeout: 1 })
+    ).rejects.toThrow('Groq stream timed out after 1ms')
   })
 
   it('throws on non-ok response', async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 429, json: () => Promise.resolve({ error: { message: 'Rate limited' } }) })
-    await expect(groq.stream('prompt', 'system', 'mixtral', vi.fn(), { apiKey: 'key' })).rejects.toThrow('Rate limited')
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: () => Promise.resolve({ error: { message: 'Rate limited' } })
+    })
+    await expect(
+      groq.stream('prompt', 'system', 'mixtral', vi.fn(), { apiKey: 'key' })
+    ).rejects.toThrow('Rate limited')
   })
 })
 

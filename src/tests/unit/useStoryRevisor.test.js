@@ -35,8 +35,15 @@ describe('useStoryRevisor', () => {
     const draft = 'This is a scene draft.'
     const result = await revisor.reviseScene({
       draft,
-      critiqueResult: { issues: [{ severity: 'minor', type: 'style', description: 'Needs polish' }] },
-      sceneBrief: { title: 'Test', emotionalGoal: 'Excited', charactersPresent: ['Alice'], tension: 'medium' },
+      critiqueResult: {
+        issues: [{ severity: 'minor', type: 'style', description: 'Needs polish' }]
+      },
+      sceneBrief: {
+        title: 'Test',
+        emotionalGoal: 'Excited',
+        charactersPresent: ['Alice'],
+        tension: 'medium'
+      },
       storyBible: 'Some bible'
     })
     expect(result).toBe(draft)
@@ -54,8 +61,15 @@ describe('useStoryRevisor', () => {
     const draft = 'This is a longer scene draft with several words to test revision.'
     const result = await revisor.reviseScene({
       draft,
-      critiqueResult: { issues: [{ severity: 'major', type: 'plot_hole', description: 'Missing motivation' }] },
-      sceneBrief: { title: 'Test', emotionalGoal: 'Sad', charactersPresent: ['Bob'], tension: 'high' },
+      critiqueResult: {
+        issues: [{ severity: 'major', type: 'plot_hole', description: 'Missing motivation' }]
+      },
+      sceneBrief: {
+        title: 'Test',
+        emotionalGoal: 'Sad',
+        charactersPresent: ['Bob'],
+        tension: 'high'
+      },
       storyBible: 'Bible content'
     })
     expect(result).toBe('Revised text')
@@ -77,7 +91,7 @@ describe('useStoryRevisor', () => {
   })
 
   it('tracks revising state', async () => {
-    mockAiGenerate.mockImplementation(() => new Promise(r => setTimeout(() => r('Revised'), 50)))
+    mockAiGenerate.mockImplementation(() => new Promise((r) => setTimeout(() => r('Revised'), 50)))
     const { useStoryRevisor } = await import('@/composables/useStoryRevisor')
     const revisor = useStoryRevisor()
     const promise = revisor.reviseScene({

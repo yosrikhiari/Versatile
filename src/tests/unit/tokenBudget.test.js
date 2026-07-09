@@ -11,7 +11,11 @@ describe('applyTokenBudget', () => {
   })
 
   it('truncates blocks when over budget', () => {
-    const bundle = { entitiesBlock: 'A'.repeat(5000), relationshipBlock: 'B'.repeat(5000), manuscriptBlock: 'C'.repeat(5000) }
+    const bundle = {
+      entitiesBlock: 'A'.repeat(5000),
+      relationshipBlock: 'B'.repeat(5000),
+      manuscriptBlock: 'C'.repeat(5000)
+    }
     const result = applyTokenBudget(bundle, 8000)
     expect(result.truncated).toBe(true)
     expect(result.totalChars).toBeGreaterThan(0)
@@ -19,7 +23,11 @@ describe('applyTokenBudget', () => {
   })
 
   it('marks truncated when budget cannot be fully met', () => {
-    const bundle = { entitiesBlock: 'A'.repeat(5000), relationshipBlock: 'B'.repeat(5000), manuscriptBlock: 'C'.repeat(5000) }
+    const bundle = {
+      entitiesBlock: 'A'.repeat(5000),
+      relationshipBlock: 'B'.repeat(5000),
+      manuscriptBlock: 'C'.repeat(5000)
+    }
     const result = applyTokenBudget(bundle, 1000)
     expect(result.truncated).toBe(true)
     expect(result.totalChars).toBeGreaterThan(1000)

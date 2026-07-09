@@ -16,8 +16,7 @@ const EXPECTED = {
     '++id | apiId, color, generationStatus, goal, lastEditedAt, lastSyncedAt, name, notes, portrait, projectId, role, syncStatus, voice',
   chatSessions: '++id | projectId, updatedAt',
   dailyGoals: '++id | [projectId+date], date, projectId',
-  dialogueIndex:
-    '++id | [projectId+speakerId], paragraphIndex, projectId, sectionId, speakerId',
+  dialogueIndex: '++id | [projectId+speakerId], paragraphIndex, projectId, sectionId, speakerId',
   embeddingCache: 'hash | createdAt',
   genRuns: '++id | &projectId, updatedAt',
   generatedStories: '++id | generatedAt, projectId, qualityScore, title, totalWords',
@@ -58,7 +57,8 @@ const EXPECTED = {
   voiceProfiles: '++id | createdAt, projectId, updatedAt',
   volumeEntities:
     '++id | &[volumeId+entityType+entityId], apiId, assignedAt, entityId, entityType, isPrimary, lastSyncedAt, syncStatus, volumeId',
-  volumes: '++id | apiId, chapterIds, color, description, lastSyncedAt, projectId, syncStatus, title'
+  volumes:
+    '++id | apiId, chapterIds, color, description, lastSyncedAt, projectId, syncStatus, title'
 }
 
 describe('resolved Dexie schema', () => {

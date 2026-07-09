@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { deepPlain } from '@/services/db-core'
 
 vi.mock('vue', () => ({
-  toRaw: vi.fn(obj => obj)
+  toRaw: vi.fn((obj) => obj)
 }))
 
 describe('deepPlain', () => {

@@ -13,7 +13,10 @@ vi.mock('@/services/aiService', () => ({
   aiGenerateStructured: async (...args) => {
     const r = await mockAiGenerate(...args)
     if (r && typeof r === 'object') return r
-    const cleaned = String(r).replace(/```json/gi, '').replace(/```/g, '').trim()
+    const cleaned = String(r)
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim()
     const m = cleaned.match(/\{[\s\S]*\}/)
     if (!m) throw new Error('structured parse failed')
     return JSON.parse(m[0])
@@ -39,14 +42,26 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
   })
 
   it('parses a valid AI response correctly', async () => {
-    mockAiGenerate.mockResolvedValue(makeResponse({ score: 9, issues: [{ type: 'pacing', severity: 'minor', description: 'Slightly fast' }], strengths: ['Engaging'] }))
+    mockAiGenerate.mockResolvedValue(
+      makeResponse({
+        score: 9,
+        issues: [{ type: 'pacing', severity: 'minor', description: 'Slightly fast' }],
+        strengths: ['Engaging']
+      })
+    )
 
     const { useStoryCritic } = await import('@/composables/useStoryCritic')
     const critic = useStoryCritic()
 
     const result = await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: 'Bible',
       chapterLog: ''
     })
@@ -58,18 +73,26 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
   })
 
   it('flags scene as not-passing when major issues exist', async () => {
-    mockAiGenerate.mockResolvedValue(makeResponse({
-      score: 4,
-      issues: [{ type: 'plot_hole', severity: 'major', description: 'Missing setup' }],
-      strengths: []
-    }))
+    mockAiGenerate.mockResolvedValue(
+      makeResponse({
+        score: 4,
+        issues: [{ type: 'plot_hole', severity: 'major', description: 'Missing setup' }],
+        strengths: []
+      })
+    )
 
     const { useStoryCritic } = await import('@/composables/useStoryCritic')
     const critic = useStoryCritic()
 
     const result = await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: 'Bible',
       chapterLog: ''
     })
@@ -79,22 +102,30 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
   })
 
   it('flags scene as not-passing when more than 2 minor issues exist', async () => {
-    mockAiGenerate.mockResolvedValue(makeResponse({
-      score: 6,
-      issues: [
-        { type: 'style', severity: 'minor', description: 'A' },
-        { type: 'style', severity: 'minor', description: 'B' },
-        { type: 'style', severity: 'minor', description: 'C' }
-      ],
-      strengths: ['Readable']
-    }))
+    mockAiGenerate.mockResolvedValue(
+      makeResponse({
+        score: 6,
+        issues: [
+          { type: 'style', severity: 'minor', description: 'A' },
+          { type: 'style', severity: 'minor', description: 'B' },
+          { type: 'style', severity: 'minor', description: 'C' }
+        ],
+        strengths: ['Readable']
+      })
+    )
 
     const { useStoryCritic } = await import('@/composables/useStoryCritic')
     const critic = useStoryCritic()
 
     const result = await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: '## Character1\n## Character2',
       chapterLog: ''
     })
@@ -110,7 +141,13 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
 
     const result = await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: 'Bible',
       chapterLog: ''
     })
@@ -123,14 +160,22 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
   })
 
   it('handles markdown-fenced JSON', async () => {
-    mockAiGenerate.mockResolvedValue('```json\n{"score": 6, "issues": [{"type": "pacing", "severity": "minor", "description": "Rushed"}], "strengths": []}\n```')
+    mockAiGenerate.mockResolvedValue(
+      '```json\n{"score": 6, "issues": [{"type": "pacing", "severity": "minor", "description": "Rushed"}], "strengths": []}\n```'
+    )
 
     const { useStoryCritic } = await import('@/composables/useStoryCritic')
     const critic = useStoryCritic()
 
     const result = await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: 'Bible',
       chapterLog: ''
     })
@@ -140,19 +185,27 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
   })
 
   it('passes when fewer than 2 characters and no major issues', async () => {
-    mockAiGenerate.mockResolvedValue(makeResponse({
-      score: 7,
-      issues: [{ type: 'style', severity: 'minor', description: 'Tweak needed' }],
-      strengths: []
-    }))
+    mockAiGenerate.mockResolvedValue(
+      makeResponse({
+        score: 7,
+        issues: [{ type: 'style', severity: 'minor', description: 'Tweak needed' }],
+        strengths: []
+      })
+    )
 
     const { useStoryCritic } = await import('@/composables/useStoryCritic')
     const critic = useStoryCritic()
 
     const result = await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
-      storyBible: '## Only one character',  // matches countCharacters regex
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
+      storyBible: '## Only one character', // matches countCharacters regex
       chapterLog: ''
     })
 
@@ -172,7 +225,13 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
 
     await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: 'Bible',
       chapterLog: ''
     })
@@ -193,7 +252,13 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
 
     await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: 'Bible',
       chapterLog: ''
     })
@@ -210,7 +275,13 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
 
     const result = await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: 'Bible',
       chapterLog: ''
     })
@@ -223,42 +294,58 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
   })
 
   it('preserves all issue types and severities from AI response', async () => {
-    mockAiGenerate.mockResolvedValue(makeResponse({
-      score: 5,
-      issues: [
-        { type: 'plot_hole', severity: 'major', description: 'Missing clue' },
-        { type: 'character_voice', severity: 'major', description: 'OOC dialogue' },
-        { type: 'pacing', severity: 'minor', description: 'Slightly rushed ending' },
-        { type: 'continuity', severity: 'minor', description: 'Time skip unclear' }
-      ],
-      strengths: ['Good dialogue', 'Strong opening']
-    }))
+    mockAiGenerate.mockResolvedValue(
+      makeResponse({
+        score: 5,
+        issues: [
+          { type: 'plot_hole', severity: 'major', description: 'Missing clue' },
+          { type: 'character_voice', severity: 'major', description: 'OOC dialogue' },
+          { type: 'pacing', severity: 'minor', description: 'Slightly rushed ending' },
+          { type: 'continuity', severity: 'minor', description: 'Time skip unclear' }
+        ],
+        strengths: ['Good dialogue', 'Strong opening']
+      })
+    )
 
     const { useStoryCritic } = await import('@/composables/useStoryCritic')
     const critic = useStoryCritic()
 
     const result = await critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: 'Bible',
       chapterLog: ''
     })
 
     expect(result.issues).toHaveLength(4)
-    expect(result.issues.filter(i => i.severity === 'major')).toHaveLength(2)
-    expect(result.issues.filter(i => i.severity === 'minor')).toHaveLength(2)
+    expect(result.issues.filter((i) => i.severity === 'major')).toHaveLength(2)
+    expect(result.issues.filter((i) => i.severity === 'minor')).toHaveLength(2)
     expect(result.pass).toBe(false)
   })
 
   it('tracks evaluating state', async () => {
-    mockAiGenerate.mockImplementation(() => new Promise(r => setTimeout(() => r(makeResponse()), 50)))
+    mockAiGenerate.mockImplementation(
+      () => new Promise((r) => setTimeout(() => r(makeResponse()), 50))
+    )
 
     const { useStoryCritic } = await import('@/composables/useStoryCritic')
     const critic = useStoryCritic()
 
     const promise = critic.evaluateScene({
       draft: 'Scene text.',
-      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], payoff: 'P', tension: 'm' },
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
       storyBible: 'Bible',
       chapterLog: ''
     })

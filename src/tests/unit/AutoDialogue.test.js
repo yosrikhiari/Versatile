@@ -12,18 +12,16 @@ function createEditor(content) {
         codeBlock: false,
         blockquote: false,
         dropcursor: false,
-        gapCursor: false,
+        gapCursor: false
       }),
-      AutoDialogue,
+      AutoDialogue
     ],
-    content: content || '',
+    content: content || ''
   })
 }
 
 function getDecos(editor) {
-  const plugin = editor.state.plugins.find(
-    p => p.key.startsWith('autoDialogue$')
-  )
+  const plugin = editor.state.plugins.find((p) => p.key.startsWith('autoDialogue$'))
   if (!plugin) throw new Error('autoDialogue plugin not found')
   const state = plugin.getState(editor.state)
   if (!state) throw new Error('plugin state is null/undefined')
@@ -41,8 +39,10 @@ describe('AutoDialogue', () => {
     editor = createEditor('<p>"Hello there," he said.</p>')
     // Diagnostic: what text nodes does the doc contain?
     const texts = []
-    editor.state.doc.descendants((n, p) => { if (n.isText) texts.push({t: n.text, p}) })
-    const hasQuote = texts.some(t => t.t.includes('"'))
+    editor.state.doc.descendants((n, p) => {
+      if (n.isText) texts.push({ t: n.text, p })
+    })
+    const hasQuote = texts.some((t) => t.t.includes('"'))
     expect(texts.length).toBeGreaterThan(0)
     expect(hasQuote).toBe(true)
     const decos = getDecos(editor)

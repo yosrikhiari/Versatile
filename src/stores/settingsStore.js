@@ -74,7 +74,13 @@ export const useSettingsStore = defineStore('settings', () => {
       // STORAGE_KEYS ref
       const encryptedKey = localStorage.getItem(STORAGE_KEYS.OPENAI_KEY)
       if (encryptedKey) {
-        decrypt(encryptedKey).then(function(k) { openaiApiKey.value = k }).catch(function() { openaiApiKey.value = '' })
+        decrypt(encryptedKey)
+          .then(function (k) {
+            openaiApiKey.value = k
+          })
+          .catch(function () {
+            openaiApiKey.value = ''
+          })
       }
 
       // featureModels loaded reactively via useLocalStorage

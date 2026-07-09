@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { sanitizeJson, countCharacters, formatCharacterCheck, formatLocationCheck } from '@/composables/useStoryCritic'
+import {
+  sanitizeJson,
+  countCharacters,
+  formatCharacterCheck,
+  formatLocationCheck
+} from '@/composables/useStoryCritic'
 
 describe('sanitizeJson', () => {
   it('parses valid JSON', () => {
@@ -70,7 +75,11 @@ describe('fact ledger in consistency checks', () => {
   })
 
   it('includes established-canon facts in the location check too', () => {
-    const result = formatLocationCheck({ name: 'Keep' }, ['Ch1: the Keep burns down'], [{ prose: 'x' }])
+    const result = formatLocationCheck(
+      { name: 'Keep' },
+      ['Ch1: the Keep burns down'],
+      [{ prose: 'x' }]
+    )
     expect(result).toContain('Established canon')
     expect(result).toContain('the Keep burns down')
   })

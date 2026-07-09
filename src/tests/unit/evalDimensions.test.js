@@ -39,7 +39,10 @@ describe('EVAL_DIMENSIONS', () => {
         for (let score = 1; score <= 10; score++) {
           expect(rubric, `${type}.${key} rubric[${score}]`).toHaveProperty(score)
           const desc = rubric[score]
-          expect(desc.length, `${type}.${key} rubric[${score}] too short: "${desc}"`).toBeGreaterThan(20)
+          expect(
+            desc.length,
+            `${type}.${key} rubric[${score}] too short: "${desc}"`
+          ).toBeGreaterThan(20)
         }
       }
     }

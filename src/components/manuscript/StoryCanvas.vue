@@ -58,7 +58,7 @@ const canvasDragOptions = {
 
 const gridStyle = computed(() => ({
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))'
 }))
 
 function getElementIconName(type) {

@@ -43,7 +43,11 @@ describe('db-dialogue', () => {
     })
 
     it('returns empty array on error', async () => {
-      mockDb.dialogueIndex.where.mockReturnValue(makeEquals(() => { throw new Error('fail') }))
+      mockDb.dialogueIndex.where.mockReturnValue(
+        makeEquals(() => {
+          throw new Error('fail')
+        })
+      )
       const result = await dbDialogue.getDialogueByProject('p1')
       expect(result).toEqual([])
     })
@@ -60,7 +64,11 @@ describe('db-dialogue', () => {
     })
 
     it('returns empty array on error', async () => {
-      mockDb.dialogueIndex.where = vi.fn(() => makeEquals(() => { throw new Error('fail') }))
+      mockDb.dialogueIndex.where = vi.fn(() =>
+        makeEquals(() => {
+          throw new Error('fail')
+        })
+      )
       const result = await dbDialogue.getDialogueBySpeaker('p1', 's1')
       expect(result).toEqual([])
     })
@@ -194,8 +202,12 @@ describe('db-dialogue', () => {
     })
 
     it('handles reindex errors gracefully', async () => {
-      mockDb.dialogueIndex.where.mockReturnValue({ delete: vi.fn().mockRejectedValue(new Error('fail')) })
-      await expect(dbDialogue.reindexSection('sec1', 'p1', [{ projectId: 'p1' }])).resolves.toBeUndefined()
+      mockDb.dialogueIndex.where.mockReturnValue({
+        delete: vi.fn().mockRejectedValue(new Error('fail'))
+      })
+      await expect(
+        dbDialogue.reindexSection('sec1', 'p1', [{ projectId: 'p1' }])
+      ).resolves.toBeUndefined()
     })
   })
 })

@@ -106,13 +106,29 @@ describe('volumeStoryNetworkStore', () => {
     it('creates edge and refreshes edges cache', async () => {
       mockDb.getVolumeEdges.mockResolvedValue([])
       await store.createVolumeEdge('proj1', 'character', 1, 'location', 2, 'lives-in', 'vol1')
-      expect(mockDb.addVolumeEdge).toHaveBeenCalledWith('proj1', 'character', 1, 'location', 2, 'lives-in', 'vol1')
+      expect(mockDb.addVolumeEdge).toHaveBeenCalledWith(
+        'proj1',
+        'character',
+        1,
+        'location',
+        2,
+        'lives-in',
+        'vol1'
+      )
     })
 
     it('creates edge without volumeId', async () => {
       mockDb.getVolumeEdges.mockResolvedValue([])
       await store.createVolumeEdge('proj1', 'character', 1, 'character', 2, 'knows')
-      expect(mockDb.addVolumeEdge).toHaveBeenCalledWith('proj1', 'character', 1, 'character', 2, 'knows', null)
+      expect(mockDb.addVolumeEdge).toHaveBeenCalledWith(
+        'proj1',
+        'character',
+        1,
+        'character',
+        2,
+        'knows',
+        null
+      )
     })
   })
 

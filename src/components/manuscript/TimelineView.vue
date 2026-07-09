@@ -83,9 +83,7 @@ onMounted(() => {
           @end="onEnd"
         >
           <template #item="{ element: thread }">
-            <div
-              class="min-w-[160px] max-w-[180px] relative flex flex-col items-center"
-            >
+            <div class="min-w-[160px] max-w-[180px] relative flex flex-col items-center">
               <div
                 class="w-3 h-3 rounded-full mb-2 z-10 ring-2 ring-bg-secondary"
                 :style="{
@@ -148,5 +146,4 @@ onMounted(() => {
 .drag {
   @apply opacity-90;
 }
-
 </style>

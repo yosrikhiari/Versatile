@@ -4,7 +4,14 @@ const mockDb = {
   characters: { where: vi.fn(), add: vi.fn(), update: vi.fn(), get: vi.fn(), delete: vi.fn() },
   locations: { where: vi.fn(), add: vi.fn(), update: vi.fn(), delete: vi.fn() },
   plotThreads: { where: vi.fn(), add: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  characterRelationships: { where: vi.fn(), add: vi.fn(), update: vi.fn(), delete: vi.fn(), filter: vi.fn(), bulkDelete: vi.fn() }
+  characterRelationships: {
+    where: vi.fn(),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    filter: vi.fn(),
+    bulkDelete: vi.fn()
+  }
 }
 
 vi.mock('@/services/db-core', () => ({
@@ -24,12 +31,17 @@ describe('db-entities', () => {
     it('wraps data with deepPlain and updates character', async () => {
       mockDb.characters.update.mockResolvedValue(1)
       await dbEntities.updateCharacter('char1', { name: 'John', role: 'Hero' })
-      expect(mockDb.characters.update).toHaveBeenCalledWith('char1', expect.objectContaining({ name: 'John', role: 'Hero' }))
+      expect(mockDb.characters.update).toHaveBeenCalledWith(
+        'char1',
+        expect.objectContaining({ name: 'John', role: 'Hero' })
+      )
     })
 
     it('throws on failure', async () => {
       mockDb.characters.update.mockRejectedValue(new Error('DB error'))
-      await expect(dbEntities.updateCharacter('char1', { name: 'John' })).rejects.toThrow('DB error')
+      await expect(dbEntities.updateCharacter('char1', { name: 'John' })).rejects.toThrow(
+        'DB error'
+      )
     })
   })
 
@@ -37,7 +49,10 @@ describe('db-entities', () => {
     it('wraps data with deepPlain and updates location', async () => {
       mockDb.locations.update.mockResolvedValue(1)
       await dbEntities.updateLocation('loc1', { name: 'Forest' })
-      expect(mockDb.locations.update).toHaveBeenCalledWith('loc1', expect.objectContaining({ name: 'Forest' }))
+      expect(mockDb.locations.update).toHaveBeenCalledWith(
+        'loc1',
+        expect.objectContaining({ name: 'Forest' })
+      )
     })
   })
 
@@ -45,7 +60,10 @@ describe('db-entities', () => {
     it('wraps data with deepPlain and updates plot thread', async () => {
       mockDb.plotThreads.update.mockResolvedValue(1)
       await dbEntities.updatePlotThread('pt1', { title: 'Mystery' })
-      expect(mockDb.plotThreads.update).toHaveBeenCalledWith('pt1', expect.objectContaining({ title: 'Mystery' }))
+      expect(mockDb.plotThreads.update).toHaveBeenCalledWith(
+        'pt1',
+        expect.objectContaining({ title: 'Mystery' })
+      )
     })
   })
 

@@ -50,7 +50,16 @@ describe('writeSceneStructured pastEvalResults integration', () => {
     const evalFeedback = `## PAST EVALUATION FEEDBACK\nScene 1: FAIL (4.5)\n  - weak pacing\n`
 
     await writeSceneStructured({
-      sceneBrief: { sceneNumber: 1, title: 'Test', goal: 'test', obstacle: 'test', characters: [], location: 'here', change: 'nothing', toneNote: '' },
+      sceneBrief: {
+        sceneNumber: 1,
+        title: 'Test',
+        goal: 'test',
+        obstacle: 'test',
+        characters: [],
+        location: 'here',
+        change: 'nothing',
+        toneNote: ''
+      },
       storyArc: { title: 'Arc' },
       chapterLog: '',
       storyBible: '',
@@ -66,7 +75,16 @@ describe('writeSceneStructured pastEvalResults integration', () => {
 
   it('omits PAST EVALUATION FEEDBACK section when pastEvalResults is empty', async () => {
     await writeSceneStructured({
-      sceneBrief: { sceneNumber: 1, title: 'Test', goal: 'test', obstacle: 'test', characters: [], location: 'here', change: 'nothing', toneNote: '' },
+      sceneBrief: {
+        sceneNumber: 1,
+        title: 'Test',
+        goal: 'test',
+        obstacle: 'test',
+        characters: [],
+        location: 'here',
+        change: 'nothing',
+        toneNote: ''
+      },
       storyArc: { title: 'Arc' },
       chapterLog: '',
       storyBible: '',
@@ -80,7 +98,16 @@ describe('writeSceneStructured pastEvalResults integration', () => {
 
   it('omits PAST EVALUATION FEEDBACK section when pastEvalResults is undefined', async () => {
     await writeSceneStructured({
-      sceneBrief: { sceneNumber: 1, title: 'Test', goal: 'test', obstacle: 'test', characters: [], location: 'here', change: 'nothing', toneNote: '' },
+      sceneBrief: {
+        sceneNumber: 1,
+        title: 'Test',
+        goal: 'test',
+        obstacle: 'test',
+        characters: [],
+        location: 'here',
+        change: 'nothing',
+        toneNote: ''
+      },
       storyArc: { title: 'Arc' },
       chapterLog: '',
       storyBible: '',
@@ -94,11 +121,25 @@ describe('writeSceneStructured pastEvalResults integration', () => {
   it('includes feedback from formatEvalFeedback output correctly', async () => {
     const { formatEvalFeedback } = await import('../services/evalFeedback')
     const feedback = formatEvalFeedback([
-      { sceneIndex: 1, passed: false, score: 4.5, topIssues: ['weak pacing', 'dialogue feels flat'] }
+      {
+        sceneIndex: 1,
+        passed: false,
+        score: 4.5,
+        topIssues: ['weak pacing', 'dialogue feels flat']
+      }
     ])
 
     await writeSceneStructured({
-      sceneBrief: { sceneNumber: 2, title: 'Test', goal: 'test', obstacle: 'test', characters: [], location: 'here', change: 'nothing', toneNote: '' },
+      sceneBrief: {
+        sceneNumber: 2,
+        title: 'Test',
+        goal: 'test',
+        obstacle: 'test',
+        characters: [],
+        location: 'here',
+        change: 'nothing',
+        toneNote: ''
+      },
       storyArc: { title: 'Arc' },
       chapterLog: '',
       storyBible: '',
@@ -115,7 +156,16 @@ describe('writeSceneStructured pastEvalResults integration', () => {
     const feedback = '## PAST EVALUATION FEEDBACK\nScene 1: FAIL (4.5)\n  - weak pacing'
 
     await writeSceneStructured({
-      sceneBrief: { sceneNumber: 2, title: 'Test', goal: 'test', obstacle: 'test', characters: [], location: 'here', change: 'nothing', toneNote: '' },
+      sceneBrief: {
+        sceneNumber: 2,
+        title: 'Test',
+        goal: 'test',
+        obstacle: 'test',
+        characters: [],
+        location: 'here',
+        change: 'nothing',
+        toneNote: ''
+      },
       storyArc: { title: 'Arc' },
       chapterLog: '',
       storyBible: '',
@@ -134,7 +184,16 @@ describe('writeSceneStructured pastEvalResults integration', () => {
     const feedback = '## PAST EVALUATION FEEDBACK\nScene 1: FAIL (4.5)'
 
     await writeSceneStructured({
-      sceneBrief: { sceneNumber: 2, title: 'Test', goal: 'test', obstacle: 'test', characters: [], location: 'here', change: 'nothing', toneNote: '' },
+      sceneBrief: {
+        sceneNumber: 2,
+        title: 'Test',
+        goal: 'test',
+        obstacle: 'test',
+        characters: [],
+        location: 'here',
+        change: 'nothing',
+        toneNote: ''
+      },
       storyArc: { title: 'Arc' },
       chapterLog: '',
       storyBible: '',

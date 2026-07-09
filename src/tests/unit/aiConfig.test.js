@@ -30,7 +30,12 @@ describe('PROVIDER_BASE_URLS', () => {
 
 describe('PROVIDER_MODELS', () => {
   it('has model lists for each provider', () => {
-    for (const p of [ai.PROVIDERS.OPENAI, ai.PROVIDERS.ANTHROPIC, ai.PROVIDERS.GEMINI, ai.PROVIDERS.GROQ]) {
+    for (const p of [
+      ai.PROVIDERS.OPENAI,
+      ai.PROVIDERS.ANTHROPIC,
+      ai.PROVIDERS.GEMINI,
+      ai.PROVIDERS.GROQ
+    ]) {
       expect(Array.isArray(ai.PROVIDER_MODELS[p])).toBe(true)
       expect(ai.PROVIDER_MODELS[p].length).toBeGreaterThan(0)
     }
@@ -39,7 +44,15 @@ describe('PROVIDER_MODELS', () => {
 
 describe('FEATURES', () => {
   it('has all expected features', () => {
-    const expected = ['spark', 'polish', 'content', 'worldbuilding', 'compaction', 'story_generation', 'network']
+    const expected = [
+      'spark',
+      'polish',
+      'content',
+      'worldbuilding',
+      'compaction',
+      'story_generation',
+      'network'
+    ]
     for (const f of expected) {
       expect(Object.values(ai.FEATURES)).toContain(f)
     }
