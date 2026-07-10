@@ -33,6 +33,7 @@ export interface ProviderModule {
     schema: Record<string, unknown>,
     options: ProviderOptions & { schemaName?: string }
   ): Promise<Record<string, unknown>>
+  testConnection(apiKey?: string): Promise<boolean>
 }
 
 export type ProviderMap = Record<ProviderName, ProviderModule>

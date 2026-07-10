@@ -5,7 +5,7 @@
 > `PIPELINE-PLAN.md` and `CLEANUP-PLAN.md`, which described as "to-do" a large
 > body of work that is in fact already built and passing.
 >
-> Health at last check: `npm run build` passes; **1092 unit tests pass** (107 files).
+> Health at last check: `npm run build` passes; **1159 unit tests pass** (113 files).
 
 ---
 
