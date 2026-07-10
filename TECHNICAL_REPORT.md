@@ -253,7 +253,7 @@ There is **no single god store** — `projectStore` is the closest hub but stays
 - **The AI abstraction is clean and well-tested** — module-map dispatch, a single retry/fallback seam, native-structured-output-with-graceful-fallback, and every provider adapter has unit tests.
 - **Disciplined resilience** — degrade-and-continue, crash-safe checkpoint/resume from DB truth, atomic batch inserts, DB auto-recovery, and an honest Critic that refuses to fabricate scores.
 - **Real evaluation engineering** — both LLM-as-judge with deterministic anti-degeneracy gates *and* a classic IR benchmark (MRR/nDCG) for retrieval quality.
-- **Strong logic-layer test coverage** — **113 test files** (STATUS.md's 107 is stale; I did not run the suite so can't confirm the "1092 tests" count). Providers, the Dexie layer, stores, most composables, config, and the eval subsystem are well covered; LLMs are always mocked and `fake-indexeddb` backs the DB tests.
+- **Strong logic-layer test coverage** — **113 test files, 1159 tests** (STATUS.md's 107/1092 was stale; since confirmed via live run). Providers, the Dexie layer, stores, most composables, config, and the eval subsystem are well covered; LLMs are always mocked and `fake-indexeddb` backs the DB tests.
 - **Architectural boundaries are codified** — ESLint import restrictions, a custom design-token linter (`scripts/lint-tokens.mjs`), and CSS-variable design tokens.
 - **Performance-conscious hot path** — ProseMirror `textContent` for word counts, 10s-debounced HTML saves, O(1) paragraph resolution, hand-rolled streaming parsers to avoid O(n²).
 
@@ -304,4 +304,4 @@ Prioritized for impact:
 
 ---
 
-*Uncertainties I did not fully verify:* I did not execute the test suite, so the "1092 tests" figure is unconfirmed (I only counted 113 test files). I did not run the generation pipeline end-to-end at runtime. Backend line counts and the "34 DbSets / 36 entities" split are from a directed read, not an exhaustive per-file audit. Everything else is grounded in files read directly during this review.
+*Uncertainties I did not fully verify:* The test suite was subsequently run — **1159 tests pass across 113 files** (the "1092 tests" figure in the original STATUS.md was stale). I did not run the generation pipeline end-to-end at runtime. Backend line counts and the "34 DbSets / 36 entities" split are from a directed read, not an exhaustive per-file audit. Everything else is grounded in files read directly during this review.

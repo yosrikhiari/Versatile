@@ -8,7 +8,7 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 - Tailwind CSS with `--vers-*` CSS custom properties for dark theming
 - Ollama for local AI inference (text generation, brainstorming, evaluation)
 - Vite-only build (no meta-framework)
-- Contenteditable-based rich text editor (no ProseMirror/TipTap)
+- TipTap-based rich text editor
 
 ## Progress
 
@@ -60,7 +60,7 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 
 ## Key Decisions
 1. **Offline-first**: Dexie IndexedDB as primary store; remote API optional. All core functionality works without network.
-2. **Contenteditable editor**: Chose over ProseMirror/TipTap for simplicity. Rich text via `document.execCommand` + custom formatting toolbar.
+2. **TipTap editor**: ProseMirror-based rich text editor with custom extensions (AutoDialogue, formatting toolbar) and Vue 3 integration.
 3. **No component library**: Tailwind + custom CSS custom properties for theming. Glassmorphism + dark palette aesthetic.
 4. **Dialogue indexing**: Server-side parsing (browser DOMParser), not regex-on-raw-HTML. 7 quote pair types + em-dash support. Confidence-scored speaker identification with human review flag.
 5. **Structured AI output**: Prompt builder enforces JSON-only responses with escaped dialogue quotes. Used for scene generation with entity tracking.
@@ -81,9 +81,9 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 - **Last commit**: Auth, sync engine, eval, and DB versioning overhaul (large)
 - **Phase**: v0.5 — Research/RAG infrastructure phase after completing Phases 1-4 (AI Pipeline Evaluation & Quality Gates)
 - **Recent cleanup**: `debugSnapshot.js` removed — was posting to nonexistent `/__debug/snapshot` endpoint, wasted requests on every generation call
-- **Debt**: Contenteditable editor has known focus/selection quirks; no automated E2E tests exist; mobile UX incomplete
+- **Debt**: TipTap integration still evolving; no automated E2E tests exist; mobile UX incomplete
 - **AI dependency**: Ollama must be running locally for generation/eval features to work
-- **No CI/CD**: No test runner configured in CI; manual testing only
+- **CI/CD**: GitHub Actions workflow configured (`.github/workflows/ci.yml`) — lint + test on push/PR
 
 ## Relevant Files
 
