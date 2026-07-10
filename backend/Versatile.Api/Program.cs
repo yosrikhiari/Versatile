@@ -66,6 +66,8 @@ try
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
 
+    builder.Services.AddHttpClient();
+
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
 

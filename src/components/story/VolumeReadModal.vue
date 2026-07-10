@@ -19,7 +19,10 @@ const emit = defineEmits(['close'])
       class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin"
     >
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-text-primary font-ui">Generated Story</h2>
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-semibold text-text-primary font-ui">Generated Story</h2>
+          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-medium whitespace-nowrap">Unsaved Preview</span>
+        </div>
         <button
           class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
           @click="emit('close')"
@@ -37,6 +40,10 @@ const emit = defineEmits(['close'])
           </div>
         </div>
       </div>
+
+      <p class="mt-4 text-[11px] text-text-hint text-center italic">
+        Preview only — use <strong>Save to Manuscript</strong> to persist these scenes.
+      </p>
     </div>
   </div>
 </template>

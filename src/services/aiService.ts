@@ -74,22 +74,6 @@ export function resolveFeatureConfig(
   }
 }
 
-export function getConfiguredModel(
-  feature: FeatureName,
-  options?: Pick<AiGenerateOptions, 'defaultProvider' | 'defaultModel' | 'featureModels'>
-): string | null {
-  const config = resolveFeatureConfig(feature, options)
-  return config.model
-}
-
-export function getConfiguredProvider(
-  feature: FeatureName,
-  options?: Pick<AiGenerateOptions, 'defaultProvider' | 'defaultModel' | 'featureModels'>
-): ProviderName {
-  const config = resolveFeatureConfig(feature, options)
-  return config.provider
-}
-
 export async function aiGenerate(
   prompt: string,
   systemPrompt: string,

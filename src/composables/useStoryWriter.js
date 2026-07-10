@@ -191,8 +191,14 @@ export function useStoryWriter() {
     try {
       const styleGuide = extractDoc(storyBible || '', 'Style Guide')
       const rejectedPatterns = extractDoc(storyBible || '', 'Avoid These Patterns')
-      const charactersSection = extractDoc(storyBible || '', 'Characters')
-      const worldSection = extractDoc(storyBible || '', 'World')
+      // Inject the full context document wholesale as authoritative canon. Previously
+      // only the Characters/World headings were extracted, silently dropping timeline,
+      // relationships, and the story-so-far summary — a major cause of hallucinated and
+      // self-contradicting scenes when continuing an existing draft.
+      const storyContextBlock =
+        storyBible && storyBible.trim()
+          ? `STORY CONTEXT (established canon — everything below is already TRUE; never contradict or re-invent it):\n${storyBible.trim()}\n`
+          : ''
 
       const profileResult = voiceProfile ? getVoiceProfile(voiceProfile, FALLBACK_VOICE) : null
       const voiceInstruction = profileResult?.voiceInstruction || styleGuide || FALLBACK_VOICE
@@ -295,12 +301,7 @@ STORY ARC (for tonal reference):
 - Tone: ${storyArc?.tone || ''}
 - Central conflict: ${storyArc?.centralConflict || ''}
 
-CHARACTER SHEETS:
-${charactersSection || '(No character sheets available)'}
-
-WORLD CONTEXT:
-${worldSection || '(No world context available)'}
-
+${storyContextBlock}
 Target word count: approximately ${sceneBrief.estimatedWords || 800} words.
 
 Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
@@ -359,8 +360,14 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     try {
       const styleGuide = extractDoc(storyBible || '', 'Style Guide')
       const rejectedPatterns = extractDoc(storyBible || '', 'Avoid These Patterns')
-      const charactersSection = extractDoc(storyBible || '', 'Characters')
-      const worldSection = extractDoc(storyBible || '', 'World')
+      // Inject the full context document wholesale as authoritative canon. Previously
+      // only the Characters/World headings were extracted, silently dropping timeline,
+      // relationships, and the story-so-far summary — a major cause of hallucinated and
+      // self-contradicting scenes when continuing an existing draft.
+      const storyContextBlock =
+        storyBible && storyBible.trim()
+          ? `STORY CONTEXT (established canon — everything below is already TRUE; never contradict or re-invent it):\n${storyBible.trim()}\n`
+          : ''
 
       const profileResult = voiceProfile ? getVoiceProfile(voiceProfile, FALLBACK_VOICE) : null
       const voiceInstruction = profileResult?.voiceInstruction || styleGuide || FALLBACK_VOICE
@@ -475,11 +482,7 @@ STORY ARC (for tonal reference):
 - Tone: ${storyArc?.tone || ''}
 - Central conflict: ${storyArc?.centralConflict || ''}
 
-CHARACTER SHEETS:
-${charactersSection || '(No character sheets available)'}
-
-WORLD CONTEXT:
-${worldSection || '(No world context available)'}${existingContext}
+${storyContextBlock}${existingContext}
 The scene MUST be at least ${sceneBrief.estimatedWords || 800} words. Do not end the scene early. If you are below the word count, continue writing until you reach it.
 
 Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No explanation outside the JSON.

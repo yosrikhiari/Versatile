@@ -152,6 +152,7 @@ db.version(26)
   })
   .upgrade(async (trans) => {
     if (!DEV_MODE) return
+    // ⚠️ Dead code behind DEV_MODE=false — test-user seed only, never runs in production.
     const userCount = await trans.users.count()
     if (userCount === 0) {
       const testUser = await trans.users.add({

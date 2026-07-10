@@ -71,22 +71,6 @@ beforeEach(async () => {
   aiService = await import('@/services/aiService')
 })
 
-describe('getConfiguredModel', () => {
-  it('returns ollamaModel when provider is Ollama', () => {
-    expect(
-      aiService.getConfiguredModel('content', { defaultProvider: 'ollama', defaultModel: 'llama3' })
-    ).toBe('llama3')
-  })
-
-  it('returns first model from PROVIDER_MODELS when provider is non-Ollama', () => {
-    expect(aiService.getConfiguredModel('content', { defaultProvider: 'openai' })).toBe('gpt-4')
-  })
-
-  it('returns null when provider is unknown', () => {
-    expect(aiService.getConfiguredModel('content', { defaultProvider: 'unknown' })).toBeNull()
-  })
-})
-
 describe('resolveFeatureConfig', () => {
   it('returns the configured provider from options', () => {
     expect(

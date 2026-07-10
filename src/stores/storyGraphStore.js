@@ -208,6 +208,44 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     edges.value = []
   }
 
+  // A graph edge is orphaned when an entity-typed endpoint points at a character/
+  // location/plot thread that no longer exists (e.g. the entity was deleted, or the
+  // edge leaked in from another project). These render as "Character 42" placeholders
+  // and add noise to the network — this finds them without touching anything else.
+  // Legacy char↔char edges are already existence-filtered in loadEdges, and edges to
+  // groups/other node types are deliberately left alone.
+  function findOrphanedEdges() {
+    const bible = useStoryBibleStore()
+    const existing = {
+      character: new Set(bible.characters.map((c) => String(c.id))),
+      location: new Set(bible.locations.map((l) => String(l.id))),
+      plotThread: new Set(bible.plotThreads.map((t) => String(t.id)))
+    }
+    const endpointMissing = (type, id) =>
+      (type === 'character' || type === 'location' || type === 'plotThread') &&
+      !existing[type].has(String(id))
+    return edges.value.filter(
+      (e) =>
+        !e.isLegacy &&
+        (endpointMissing(e.sourceType, e.sourceId) || endpointMissing(e.targetType, e.targetId))
+    )
+  }
+
+  async function cleanOrphanedEdges(projectId) {
+    if (!projectId) return { removed: 0 }
+    // Work from fresh truth so we never delete based on a stale in-memory list.
+    await loadEdges(projectId)
+    const orphans = findOrphanedEdges()
+    for (const edge of orphans) {
+      await deleteGraphEdge(edge.id)
+    }
+    if (orphans.length > 0) {
+      const removedIds = new Set(orphans.map((e) => e.id))
+      edges.value = edges.value.filter((e) => !removedIds.has(e.id))
+    }
+    return { removed: orphans.length }
+  }
+
   function getEdgesForNode(nodeId) {
     return edges.value.filter((e) => e.sourceId === nodeId || e.targetId === nodeId)
   }
@@ -272,6 +310,8 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     deleteEdgeData,
     deleteLegacyEdge,
     clearAllEdges,
+    findOrphanedEdges,
+    cleanOrphanedEdges,
     getEdgesForNode,
     getConnectedNodes,
     loadGroupEdges,
