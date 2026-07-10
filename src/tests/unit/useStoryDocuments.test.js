@@ -68,7 +68,11 @@ describe('document generators', () => {
     generateWorldDoc,
     generateTimelineDoc,
     generateRelationshipsDoc,
-    generateStyleGuideDoc
+    generateStyleGuideDoc,
+    generateStorySoFarDoc,
+    splitAuthorZone,
+    buildStoryContextDoc,
+    CONTEXT_SENTINEL
   let mockProjectStore, mockBibleStore, mockGraphStore, mockManuscriptStore
 
   beforeEach(async () => {
@@ -133,6 +137,64 @@ describe('document generators', () => {
     generateTimelineDoc = mod.generateTimelineDoc
     generateRelationshipsDoc = mod.generateRelationshipsDoc
     generateStyleGuideDoc = mod.generateStyleGuideDoc
+    generateStorySoFarDoc = mod.generateStorySoFarDoc
+    splitAuthorZone = mod.splitAuthorZone
+    buildStoryContextDoc = mod.buildStoryContextDoc
+    CONTEXT_SENTINEL = mod.CONTEXT_SENTINEL
+  })
+
+  describe('generateStorySoFarDoc', () => {
+    it('returns empty when nothing is written', () => {
+      expect(generateStorySoFarDoc()).toBe('')
+    })
+
+    it('summarizes written scenes and strips HTML', () => {
+      mockManuscriptStore.sortedSections = [{ id: 's1', title: 'Chapter 1' }]
+      mockManuscriptStore.subsections = [
+        { sectionId: 's1', title: 'Opening', order: 1, content: '<p>The door <b>slammed</b> shut.</p>' },
+        { sectionId: 's1', title: 'Empty', order: 2, content: '' }
+      ]
+      const result = generateStorySoFarDoc()
+      expect(result).toContain('# Story So Far')
+      expect(result).toContain('Chapter 1')
+      expect(result).toContain('Opening')
+      expect(result).toContain('The door slammed shut.')
+      expect(result).not.toContain('<p>')
+      // Empty scenes are omitted
+      expect(result).not.toContain('Empty')
+    })
+  })
+
+  describe('splitAuthorZone', () => {
+    it('treats content without a sentinel as all author zone', () => {
+      const { authorZone, autoZone } = splitAuthorZone('# My notes\nkeep this')
+      expect(authorZone).toBe('# My notes\nkeep this')
+      expect(autoZone).toBe('')
+    })
+
+    it('splits at the sentinel', () => {
+      const content = `# Notes\nkeep me\n\n${CONTEXT_SENTINEL}\n\n# Auto\ndrop me`
+      const { authorZone, autoZone } = splitAuthorZone(content)
+      expect(authorZone).toBe('# Notes\nkeep me')
+      expect(autoZone).toBe('# Auto\ndrop me')
+    })
+  })
+
+  describe('buildStoryContextDoc', () => {
+    it('preserves a provided author zone and inserts the sentinel', async () => {
+      const doc = await buildStoryContextDoc('proj-1', '# My Canon\nThe king is dead.')
+      expect(doc.startsWith('# My Canon')).toBe(true)
+      expect(doc).toContain('The king is dead.')
+      expect(doc).toContain(CONTEXT_SENTINEL)
+      // Auto zone still aggregates existing docs (synopsis from mock project store)
+      expect(doc).toContain('# Summary')
+    })
+
+    it('falls back to the author template when none is provided', async () => {
+      const doc = await buildStoryContextDoc('proj-1', '')
+      expect(doc).toContain('Author Canon & Notes')
+      expect(doc).toContain(CONTEXT_SENTINEL)
+    })
   })
 
   describe('generateSynopsisDoc', () => {
@@ -195,6 +257,47 @@ describe('document generators', () => {
       const newIdx = result.indexOf('New')
       const oldIdx = result.indexOf('Old')
       expect(newIdx).toBeLessThan(oldIdx)
+    })
+
+    it('flips a directional relationship so it is not circular', async () => {
+      mockBibleStore.characters = [
+        { id: 'c1', name: 'Sage', lastEditedAt: 2 },
+        { id: 'c2', name: 'Pupil', lastEditedAt: 1 }
+      ]
+      mockGraphStore.edges = [
+        {
+          sourceId: 'c1',
+          sourceType: 'character',
+          targetId: 'c2',
+          targetType: 'character',
+          relationshipType: 'mentor'
+        }
+      ]
+      const result = await generateCharactersDoc('proj-1')
+      // Source side reads "mentors", target side reads "mentored by" — not circular.
+      expect(result).toContain('mentors Pupil')
+      expect(result).toContain('mentored by Sage')
+      // The pupil must never be shown mentoring the sage.
+      const pupilSection = result.slice(result.indexOf('## Pupil'))
+      expect(pupilSection).not.toContain('mentors Sage')
+    })
+
+    it('drops relationships pointing at entities that no longer exist', async () => {
+      mockBibleStore.characters = [{ id: 'c1', name: 'Solo', lastEditedAt: 1 }]
+      mockGraphStore.edges = [
+        {
+          sourceId: 'c1',
+          sourceType: 'character',
+          targetId: 'ghost',
+          targetType: 'character',
+          relationshipType: 'ally'
+        }
+      ]
+      const result = await generateCharactersDoc('proj-1')
+      expect(result).toContain('Solo')
+      expect(result).not.toContain('Character ghost')
+      // Orphaned edge dropped → no relationships section at all.
+      expect(result).not.toContain('### Relationships')
     })
   })
 
@@ -269,6 +372,22 @@ describe('document generators', () => {
       expect(result).toContain('# Relationships')
       expect(result).toContain('Hero')
       expect(result).toContain('allied with')
+    })
+
+    it('returns empty when every edge points at a missing entity', () => {
+      mockBibleStore.characters = [{ id: 'c1', name: 'Real' }]
+      mockBibleStore.locations = []
+      mockGraphStore.edges = [
+        {
+          sourceType: 'character',
+          sourceId: 'c1',
+          targetType: 'location',
+          targetId: '99',
+          relationshipType: 'located_at'
+        }
+      ]
+      // The location is gone, so the only edge is orphaned → no bare header.
+      expect(generateRelationshipsDoc()).toBe('')
     })
   })
 

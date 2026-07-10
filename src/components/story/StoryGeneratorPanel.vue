@@ -14,6 +14,7 @@ import GenerationSyncPreview from './GenerationSyncPreview.vue'
 import GenerationLoadingScreen from './GenerationLoadingScreen.vue'
 import PreviousGenerationsList from './PreviousGenerationsList.vue'
 import VolumeReadModal from './VolumeReadModal.vue'
+import StoryContextModal from './StoryContextModal.vue'
 import ConsistencyReportModal from './ConsistencyReportModal.vue'
 import GenerationSettingsForm from './GenerationSettingsForm.vue'
 import {
@@ -68,6 +69,7 @@ const { sparkContext, sparkContextLabel, handleSendSparkToGenerator, clearSparkC
   })
 
 const showVolumeReadModal = ref(false)
+const showStoryContextModal = ref(false)
 
 const volumeStreamingText = ref('')
 const volumeCurrentScene = ref(0)
@@ -420,24 +422,46 @@ async function handleRegenerateScene(sceneIndex) {
   await volumeGenerator.regenerateScene(projectStore.currentProjectId, sceneIndex)
 }
 
+const saveStatus = ref(null)
+
 async function handleVolumeSaveToManuscript() {
   const scenes = volumeGenerator.writtenScenes.value
   if (scenes.length === 0 || !projectStore.currentProjectId) return
 
+  saveStatus.value = { type: 'saving', message: `Saving ${scenes.length} scene(s)...` }
+  let saved = 0
+  let skipped = 0
+  let errors = 0
+
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i]
     const subsectionId = scene.subsectionId || volumeGenerator.scenePlan.value[i]?.subsectionId
-    if (!subsectionId) continue
+    if (!subsectionId) {
+      skipped++
+      continue
+    }
 
-    await manuscriptStore.updateSubsectionData(
-      subsectionId,
-      {
-        content: scene.prose,
-        wordCount: scene.prose.split(/\s+/).length
-      },
-      projectStore.currentProjectId
-    )
+    try {
+      await manuscriptStore.updateSubsectionData(
+        subsectionId,
+        {
+          content: scene.prose,
+          wordCount: scene.prose.split(/\s+/).length
+        },
+        projectStore.currentProjectId
+      )
+      saved++
+    } catch (err) {
+      console.error('[StoryGeneratorPanel] failed to save scene', i, err)
+      errors++
+    }
   }
+
+  saveStatus.value = {
+    type: 'done',
+    message: `Saved ${saved} scene(s)${skipped > 0 ? `, ${skipped} skipped (no subsection)` : ''}${errors > 0 ? `, ${errors} error(s)` : ''}`
+  }
+  setTimeout(() => { saveStatus.value = null }, 5000)
 }
 
 // ----- Shared -----
@@ -513,6 +537,16 @@ function getPhaseLabel(phase) {
         <!-- ==================== IDLE / CONTROLS ==================== -->
         <template v-if="volumeGenerator.phase.value === 'idle'">
           <div class="p-4 space-y-5">
+            <!-- Story Context: the canonical grounding doc fed to the writer -->
+            <button
+              class="w-full flex items-center gap-2 py-2 px-3 text-xs text-text-secondary hover:text-text-primary border border-border-subtle rounded-lg font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
+              @click="showStoryContextModal = true"
+            >
+              <BaseIcon name="book-open" :size="15" class="text-accent shrink-0" />
+              <span class="flex-1 text-left">Story Context</span>
+              <span class="text-[10px] text-text-hint">keeps the writer grounded</span>
+            </button>
+
             <!-- Resume an interrupted one-click run -->
             <div
               v-if="resumableRun"
@@ -1444,12 +1478,19 @@ function getPhaseLabel(phase) {
             >
               <BaseIcon name="book-open" :size="12" /> Read
             </button>
-            <button
-              class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-              @click="handleVolumeSaveToManuscript"
-            >
-              <BaseIcon name="save" :size="12" /> Save
-            </button>
+            <div class="relative flex-1">
+              <button
+                class="w-full py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+                @click="handleVolumeSaveToManuscript"
+              >
+                <BaseIcon name="save" :size="12" /> Save
+              </button>
+              <span
+                v-if="saveStatus"
+                class="absolute -top-2 right-0 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
+                :class="saveStatus.type === 'saving' ? 'bg-accent text-accent-foreground' : 'bg-green-600/20 text-green-400'"
+              >{{ saveStatus.message }}</span>
+            </div>
             <button
               class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
               @click="emit('openChapters')"
@@ -1502,6 +1543,13 @@ function getPhaseLabel(phase) {
       v-if="showVolumeReadModal"
       :scenes="volumeGenerator.writtenScenes.value"
       @close="showVolumeReadModal = false"
+    />
+
+    <!-- ==================== STORY CONTEXT MODAL ==================== -->
+    <StoryContextModal
+      :show="showStoryContextModal"
+      :project-id="projectStore.currentProjectId"
+      @close="showStoryContextModal = false"
     />
 
     <!-- ==================== CONSISTENCY REPORT MODAL ==================== -->

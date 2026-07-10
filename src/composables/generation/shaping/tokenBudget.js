@@ -1,4 +1,4 @@
-const DEFAULT_BUDGET_CHARS = 6000
+export const DEFAULT_BUDGET_CHARS = 6000
 
 export function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS, systemPrompt = '') {
   const overheadChars = typeof systemPrompt === 'string' ? systemPrompt.length : 0

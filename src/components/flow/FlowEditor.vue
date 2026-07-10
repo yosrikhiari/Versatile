@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount, onDeactivated } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useSnapshotStore } from '../../stores/snapshotStore'
@@ -48,28 +48,32 @@ const activeContent = computed(() => {
   return projectStore.documentContent
 })
 
+let _flushResolver = null
+
 const debouncedSave = useDebounceFn(async () => {
   if (projectStore.currentProjectId) {
     isSaving.value = true
     const content = editor.value?.getHTML() || ''
+    const saveSubId = _pendingSubsectionId
+    const saveSecId = _pendingSectionId
+    _pendingSubsectionId = null
+    _pendingSectionId = null
 
-    if (manuscriptStore.activeSubsectionId) {
+    if (saveSubId) {
       await manuscriptStore.updateSubsectionData(
-        manuscriptStore.activeSubsectionId,
+        saveSubId,
         { content },
         projectStore.currentProjectId
       )
-      const sub = manuscriptStore.subsections.find(
-        (s) => s.id === manuscriptStore.activeSubsectionId
-      )
+      const sub = manuscriptStore.subsections.find((s) => s.id === saveSubId)
       if (sub) {
         dialogueIndexer
           .reindexSubsection(sub)
           .catch((err) => console.error('[FlowEditor] dialogue reindex failed:', err))
       }
-    } else if (manuscriptStore.activeSectionId) {
+    } else if (saveSecId) {
       await manuscriptStore.updateSectionData(
-        manuscriptStore.activeSectionId,
+        saveSecId,
         { content },
         projectStore.currentProjectId
       )
@@ -77,9 +81,14 @@ const debouncedSave = useDebounceFn(async () => {
       projectStore.saveDocumentDebounced()
     }
 
+    if (_flushResolver) {
+      _flushResolver()
+      _flushResolver = null
+    }
+
     await snapshotStore.saveNewSnapshot(
       projectStore.currentProjectId,
-      manuscriptStore.activeSubsectionId || manuscriptStore.activeSectionId || null,
+      saveSubId || saveSecId || null,
       content,
       'manuscript auto-save'
     )
@@ -88,6 +97,19 @@ const debouncedSave = useDebounceFn(async () => {
     }, 1500)
   }
 }, 10000)
+
+let _pendingSubsectionId = null
+let _pendingSectionId = null
+
+function scheduleSave() {
+  const content = editor.value?.getHTML() || ''
+  if (manuscriptStore.activeSubsectionId) {
+    _pendingSubsectionId = manuscriptStore.activeSubsectionId
+  } else if (manuscriptStore.activeSectionId) {
+    _pendingSectionId = manuscriptStore.activeSectionId
+  }
+  debouncedSave()
+}
 
 const editor = useEditor({
   content: activeContent.value || '',
@@ -115,33 +137,7 @@ const editor = useEditor({
     const textLen = textContent.length
     contentSize.value = textLen
 
-    if (textLen >= CONTENT_WARN_THRESHOLD) {
-      const content = editor.getHTML()
-      if (manuscriptStore.activeSubsectionId) {
-        const sub = manuscriptStore.subsections.find(
-          (s) => s.id === manuscriptStore.activeSubsectionId
-        )
-        if (sub) sub.content = content
-      } else if (manuscriptStore.activeSectionId) {
-        const sec = manuscriptStore.sections.find((s) => s.id === manuscriptStore.activeSectionId)
-        if (sec) sec.content = content
-      } else {
-        projectStore.updateContent(content, textContent)
-      }
-    } else {
-      if (manuscriptStore.activeSubsectionId) {
-        const sub = manuscriptStore.subsections.find(
-          (s) => s.id === manuscriptStore.activeSubsectionId
-        )
-        if (sub) sub.content = editor.getHTML()
-      } else if (manuscriptStore.activeSectionId) {
-        const sec = manuscriptStore.sections.find((s) => s.id === manuscriptStore.activeSectionId)
-        if (sec) sec.content = editor.getHTML()
-      } else {
-        projectStore.updateContent(editor.getHTML(), textContent)
-      }
-    }
-    debouncedSave()
+    scheduleSave()
     flow.handleKeystroke()
   },
   onSelectionUpdate: ({ editor: _editor }) => {
@@ -208,6 +204,7 @@ watch(activeContent, (newContent) => {
 })
 
 onBeforeUnmount(() => {
+  debouncedSave.flush()
   if (editor.value) {
     editor.value.destroy()
   }

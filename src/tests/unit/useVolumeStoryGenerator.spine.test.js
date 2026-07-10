@@ -20,7 +20,7 @@ vi.mock('./useStoryCritic', () => ({ useStoryCritic: vi.fn() }))
 vi.mock('./useChapterGenerationSync', () => ({ useChapterGenerationSync: vi.fn() }))
 vi.mock('./useStoryDocuments', () => ({ useStoryDocuments: vi.fn() }))
 vi.mock('./useActivityLog', () => ({ useActivityLog: vi.fn() }))
-vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn(), getConfiguredModel: vi.fn() }))
+vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn() }))
 vi.mock('../config/ai', () => ({
   FEATURES: { STORY_GENERATION: 'story_generation' },
   PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai' }

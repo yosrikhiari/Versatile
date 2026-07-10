@@ -203,6 +203,12 @@ export const FIELD_LENGTH_CONSTRAINTS = {
       maxWords: 50,
       guidance:
         'A single line this character would actually say — not a description of how they speak, but the actual words (e.g., "Get out of my sight.")'
+    },
+    traits: {
+      maxSentences: 3,
+      maxWords: 30,
+      guidance:
+        '3-5 traits, EACH rooted in this character\'s role, goal, or backstory — never generic or a random quirk. Every trait must connect to who they are and what they have been through (e.g., for a healer who lost her parents to plague: "distrusts any cure she did not make herself"). Do not invent unmotivated tics.'
     }
   },
   location: {
@@ -228,6 +234,12 @@ export const FIELD_LENGTH_CONSTRAINTS = {
       maxSentences: 4,
       maxWords: 60,
       guidance: '2-4 sentences, conflict, tension, or unresolved question'
+    },
+    traits: {
+      maxSentences: 3,
+      maxWords: 30,
+      guidance:
+        '2-4 tags describing this thread (e.g., "slow-burn", "betrayal", "mystery"), each consistent with how the involved characters are already described.'
     }
   }
 }

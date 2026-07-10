@@ -12,6 +12,22 @@ import {
 
 const MAX_DOC_TOKENS = 600
 const STORY_DOC_BUDGET_TOKENS = 2000
+// The canonical Story Context doc is the primary grounding, so it gets a larger
+// slice than the legacy per-doc assembly.
+const STORY_CONTEXT_BUDGET_TOKENS = 3500
+
+// Splits the editable Story Context doc into a user-owned zone (kept forever) and
+// an auto-generated zone (replaced on "Rebuild from story").
+const CONTEXT_SENTINEL =
+  '<!-- ⚙ AUTO-GENERATED BELOW — "Rebuild from story" replaces everything under this line. Your notes above are always kept. -->'
+
+const AUTHOR_ZONE_TEMPLATE = `# Story Context
+
+> This document is treated as established canon. The AI reads it before writing every scene and must not contradict it. Edit anything here freely.
+
+## Author Canon & Notes
+
+_Add anything the writer must honor: hard world rules, key character facts, tone, or what must NOT happen. This section is never overwritten by Rebuild._`
 
 function tokenCount(str) {
   return Math.ceil((str || '').length / 4)
@@ -66,35 +82,53 @@ function getLookupMaps() {
   }
 }
 
-function getEntityName(type, id, maps = null) {
-  if (maps) {
-    switch (type) {
-      case 'character':
-        return maps.characters.get(id)?.name || `Character ${id}`
-      case 'location':
-        return maps.locations.get(id)?.name || `Location ${id}`
-      case 'plotThread':
-        return maps.plotThreads.get(id)?.title || `Plot ${id}`
-      default:
-        return `Entity ${id}`
-    }
-  }
-
-  const store = useStoryBibleStore()
-  switch (type) {
-    case 'character':
-      return store.characters.find((c) => c.id === id)?.name || `Character ${id}`
-    case 'location':
-      return store.locations.find((l) => l.id === id)?.name || `Location ${id}`
-    case 'plotThread':
-      return store.plotThreads.find((t) => t.id === id)?.title || `Plot ${id}`
-    default:
-      return `Entity ${id}`
-  }
+// Directional relationships read differently from each side. When a character is
+// the TARGET (not the source) of one of these, we flip the label — otherwise a
+// single "A mentors B" edge renders as both "A mentors B" AND "B mentors A",
+// which looks like a contradiction (everyone mentoring everyone). Types not listed
+// here are treated as symmetric and keep the same label on both sides.
+const inverseRelationshipLabels = {
+  mentor: 'mentored by',
+  located_at: 'location of',
+  appears_in: 'features',
+  involved_in: 'involves',
+  connects_to: 'connected to'
 }
 
 function getRelationshipLabel(type) {
   return relationshipLabels[type] || type
+}
+
+function getRelationshipLabelDirected(type, fromTarget) {
+  if (fromTarget && inverseRelationshipLabels[type]) return inverseRelationshipLabels[type]
+  return getRelationshipLabel(type)
+}
+
+// Ids on graph edges may be stored as strings while store maps are keyed by the
+// entity's native id — look up tolerantly across both forms.
+function lookupById(map, id) {
+  if (map.has(id)) return map.get(id)
+  const asNum = Number(id)
+  if (!Number.isNaN(asNum) && map.has(asNum)) return map.get(asNum)
+  const asStr = String(id)
+  if (map.has(asStr)) return map.get(asStr)
+  return undefined
+}
+
+// Resolve an entity's display name, or null if it no longer exists. Returning null
+// (instead of a "Character 42" placeholder) lets callers drop orphaned edges that
+// point at deleted or foreign entities so they never reach the writer.
+function resolveEntityName(type, id, maps) {
+  switch (type) {
+    case 'character':
+      return lookupById(maps.characters, id)?.name || null
+    case 'location':
+      return lookupById(maps.locations, id)?.name || null
+    case 'plotThread':
+      return lookupById(maps.plotThreads, id)?.title || null
+    default:
+      return null
+  }
 }
 
 function generateSynopsisDoc() {
@@ -142,18 +176,32 @@ async function generateCharactersDoc(projectId) {
         (e.sourceId === c.id && e.sourceType === 'character') ||
         (e.targetId === c.id && e.targetType === 'character')
     )
-    if (relationships.length > 0) {
+    const relLines = []
+    const seenRel = new Set()
+    for (const r of relationships) {
+      const isSource = r.sourceId === c.id && r.sourceType === 'character'
+      // Skip self-loops — a character related to itself is never meaningful.
+      if (r.sourceId === r.targetId && r.sourceType === r.targetType) continue
+      const otherName = isSource
+        ? resolveEntityName(r.targetType, r.targetId, maps)
+        : resolveEntityName(r.sourceType, r.sourceId, maps)
+      // Drop orphaned edges pointing at deleted/foreign entities (the "Character 42"
+      // placeholders) instead of leaking them into the writer's context.
+      if (!otherName) continue
+      // Flip the label when this character is on the receiving end of a directional
+      // relationship, so "A mentors B" doesn't also read as "B mentors A".
+      const label = getRelationshipLabelDirected(r.relationshipType, !isSource)
+      // Collapse reciprocal duplicates (an A↔B pair stored as two edges).
+      const dedupeKey = `${label}|${otherName}`
+      if (seenRel.has(dedupeKey)) continue
+      seenRel.add(dedupeKey)
+      const desc = r.description ? `: ${r.description}` : ''
+      relLines.push(`- ${label} ${otherName}${desc}`)
+    }
+    if (relLines.length > 0) {
       entry.push('')
       entry.push('### Relationships')
-      for (const r of relationships) {
-        const isSource = r.sourceId === c.id && r.sourceType === 'character'
-        const otherName = isSource
-          ? getEntityName(r.targetType, r.targetId, maps)
-          : getEntityName(r.sourceType, r.sourceId, maps)
-        const label = getRelationshipLabel(r.relationshipType)
-        const desc = r.description ? `: ${r.description}` : ''
-        entry.push(`- ${label} ${otherName}${desc}`)
-      }
+      entry.push(...relLines)
     }
 
     parts.push(entry.join('\n'))
@@ -229,19 +277,28 @@ function generateRelationshipsDoc() {
   const maps = getLookupMaps()
 
   for (const e of relevantEdges) {
+    if (e.sourceId === e.targetId && e.sourceType === e.targetType) continue
     const isCharSource = e.sourceType === 'character'
     const charName = isCharSource
-      ? getEntityName(e.sourceType, e.sourceId, maps)
-      : getEntityName(e.targetType, e.targetId, maps)
+      ? resolveEntityName(e.sourceType, e.sourceId, maps)
+      : resolveEntityName(e.targetType, e.targetId, maps)
     const otherName = isCharSource
-      ? getEntityName(e.targetType, e.targetId, maps)
-      : getEntityName(e.sourceType, e.sourceId, maps)
-    const label = getRelationshipLabel(e.relationshipType)
+      ? resolveEntityName(e.targetType, e.targetId, maps)
+      : resolveEntityName(e.sourceType, e.sourceId, maps)
+    // Drop the edge entirely if either end no longer resolves to a real entity.
+    if (!charName || !otherName) continue
+    // The grouped character is the source unless the edge points at it, in which
+    // case flip the label so direction reads correctly.
+    const label = getRelationshipLabelDirected(e.relationshipType, !isCharSource)
 
     if (!byCharacter[charName]) byCharacter[charName] = []
     const relDesc = e.description ? `: ${e.description}` : ''
-    byCharacter[charName].push(`- **${label}** ${otherName}${relDesc}`)
+    const line = `- **${label}** ${otherName}${relDesc}`
+    if (!byCharacter[charName].includes(line)) byCharacter[charName].push(line)
   }
+
+  // Every edge may have been dropped as orphaned — don't emit a bare header.
+  if (Object.keys(byCharacter).length === 0) return ''
 
   const parts = ['# Relationships']
   for (const [name, rels] of Object.entries(byCharacter)) {
@@ -610,6 +667,115 @@ async function generateRejectedPatternsDoc(projectId) {
   return parts.join('\n')
 }
 
+// Strips HTML/whitespace and clips prose to a short excerpt for the "Story So Far"
+// running summary. Subsection content can be plain prose (AI-written) or Tiptap HTML.
+function summarizeExcerpt(content, wordLimit = 45) {
+  const text = String(content || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!text) return ''
+  const words = text.split(' ')
+  if (words.length <= wordLimit) return text
+  return words.slice(0, wordLimit).join(' ') + '…'
+}
+
+// A running account of what has actually been written, chapter by chapter. This is
+// what stops continued generation from re-inventing events that already happened.
+function generateStorySoFarDoc() {
+  const manuscriptStore = useManuscriptStore()
+  const sections = manuscriptStore.sortedSections || []
+  const subsections = manuscriptStore.subsections || []
+  if (sections.length === 0) return ''
+
+  const parts = []
+  for (const section of sections) {
+    const sectionSubs = subsections
+      .filter((s) => s.sectionId === section.id)
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+    const written = sectionSubs.filter((s) => s.content && s.content.trim())
+    if (written.length === 0) continue
+
+    const lines = [`## ${section.title || 'Chapter'}`]
+    for (const sub of written) {
+      const excerpt = summarizeExcerpt(sub.content)
+      if (excerpt) lines.push(`- **${sub.title || 'Scene'}:** ${excerpt}`)
+    }
+    if (lines.length > 1) parts.push(lines.join('\n'))
+  }
+
+  if (parts.length === 0) return ''
+  return [
+    '# Story So Far',
+    'What has already been written. Continue consistently with these events — do not contradict or repeat them.',
+    ...parts
+  ].join('\n\n')
+}
+
+// Assembles the auto-generated body of the Story Context doc from the story bible
+// plus the prose written so far. Empty sections are skipped.
+async function buildStoryContextAuto(projectId) {
+  const blocks = []
+  const push = (v) => {
+    if (v && v.trim()) blocks.push(v.trim())
+  }
+
+  push(generateSynopsisDoc())
+  push(await generateCharactersDoc(projectId))
+  push(generateWorldDoc())
+  push(generateTimelineDoc())
+  push(generateRelationshipsDoc())
+  push(generateStorySoFarDoc())
+  push(generateStyleGuideDoc())
+  push(await generateRejectedPatternsDoc(projectId))
+
+  return blocks.join('\n\n')
+}
+
+// Splits a stored Story Context doc at the sentinel: everything above is the
+// user-owned author zone, everything below is regenerable.
+function splitAuthorZone(content) {
+  if (!content) return { authorZone: '', autoZone: '' }
+  const idx = content.indexOf(CONTEXT_SENTINEL)
+  if (idx === -1) return { authorZone: content.trimEnd(), autoZone: '' }
+  return {
+    authorZone: content.slice(0, idx).trimEnd(),
+    autoZone: content.slice(idx + CONTEXT_SENTINEL.length).trimStart()
+  }
+}
+
+// Builds a complete Story Context doc, preserving the given author zone (or the
+// starter template when there isn't one yet).
+async function buildStoryContextDoc(projectId, existingAuthorZone) {
+  const authorZone =
+    existingAuthorZone && existingAuthorZone.trim()
+      ? existingAuthorZone.trimEnd()
+      : AUTHOR_ZONE_TEMPLATE
+  const auto = await buildStoryContextAuto(projectId)
+  return `${authorZone}\n\n${CONTEXT_SENTINEL}\n\n${auto}`.trim()
+}
+
+async function getStoryContextDoc(projectId) {
+  if (!projectId) return null
+  return getDocument(projectId, DOC_TYPES.STORY_CONTEXT)
+}
+
+async function saveStoryContextDoc(projectId, content) {
+  if (!projectId) return
+  await upsertStoryDocument(projectId, DOC_TYPES.STORY_CONTEXT, content || '')
+}
+
+// Regenerates the auto zone from the current story state while keeping the user's
+// author zone intact. Creates the doc on first use.
+async function rebuildStoryContextDoc(projectId) {
+  if (!projectId) return ''
+  const existing = await getDocument(projectId, DOC_TYPES.STORY_CONTEXT)
+  const { authorZone } = splitAuthorZone(existing?.content || '')
+  const doc = await buildStoryContextDoc(projectId, authorZone)
+  await upsertStoryDocument(projectId, DOC_TYPES.STORY_CONTEXT, doc)
+  return doc
+}
+
 async function loadDocuments(projectId) {
   return getAllStoryDocuments(projectId)
 }
@@ -675,6 +841,14 @@ async function getStoryDocumentContext(projectId, budgetTokens = STORY_DOC_BUDGE
     docMap[d.docType] = d.content
   }
 
+  // When a canonical Story Context doc exists, it IS the grounding — it already
+  // aggregates synopsis, bible, and story-so-far, and the user may have edited it.
+  const contextDoc = docMap[DOC_TYPES.STORY_CONTEXT]
+  if (contextDoc && contextDoc.trim()) {
+    const budget = Math.max(budgetTokens, STORY_CONTEXT_BUDGET_TOKENS)
+    return truncateToBudget(contextDoc, budget)
+  }
+
   const parts = []
   let remaining = budgetTokens
 
@@ -723,11 +897,16 @@ export function useStoryDocuments() {
     regenerateDocument,
     regenerateAllDocuments,
     getStoryDocumentContext,
-    logRejectedPattern
+    logRejectedPattern,
+    getStoryContextDoc,
+    saveStoryContextDoc,
+    rebuildStoryContextDoc,
+    buildStoryContextDoc
   }
 }
 
 export {
+  CONTEXT_SENTINEL,
   tokenCount,
   truncateToBudget,
   getRelationshipLabel,
@@ -736,5 +915,8 @@ export {
   generateWorldDoc,
   generateTimelineDoc,
   generateRelationshipsDoc,
-  generateStyleGuideDoc
+  generateStyleGuideDoc,
+  generateStorySoFarDoc,
+  splitAuthorZone,
+  buildStoryContextDoc
 }

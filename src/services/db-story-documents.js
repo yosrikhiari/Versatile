@@ -7,7 +7,11 @@ export const DOC_TYPES = {
   TIMELINE: 'timeline',
   RELATIONSHIPS: 'relationships',
   REJECTED_PATTERNS: 'rejected_patterns',
-  STYLE_GUIDE: 'style_guide'
+  STYLE_GUIDE: 'style_guide',
+  // A single user-editable, canonical context document. When present and
+  // non-empty it becomes the primary grounding fed to the writer, so continued
+  // generation stays consistent with what already exists instead of hallucinating.
+  STORY_CONTEXT: 'story_context'
 }
 
 export async function getStoryDocument(projectId, docType) {

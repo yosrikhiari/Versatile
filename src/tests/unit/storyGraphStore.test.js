@@ -142,4 +142,52 @@ describe('storyGraphStore', () => {
       expect(store.edges).toEqual([])
     })
   })
+
+  describe('orphaned edges', () => {
+    beforeEach(() => {
+      mockStoryBibleStore.characters = [
+        { id: 1, name: 'A' },
+        { id: 2, name: 'B' }
+      ]
+      mockStoryBibleStore.locations = [{ id: 10, name: 'Home' }]
+      mockStoryBibleStore.plotThreads = []
+      mockDb.getCharacterRelationships.mockResolvedValue([])
+    })
+
+    it('finds edges with missing endpoints, ignoring groups and valid edges', async () => {
+      mockDb.getGraphEdges.mockResolvedValue([
+        { id: 'e1', sourceId: '1', sourceType: 'character', targetId: '10', targetType: 'location' },
+        { id: 'e2', sourceId: '1', sourceType: 'character', targetId: '99', targetType: 'location' },
+        { id: 'e3', sourceId: '77', sourceType: 'character', targetId: '2', targetType: 'character' },
+        { id: 'e4', sourceId: 'g1', sourceType: 'group', targetId: 'g2', targetType: 'group' }
+      ])
+      await store.loadEdges('proj1')
+      const orphans = store.findOrphanedEdges()
+      expect(orphans.map((e) => e.id).sort()).toEqual(['e2', 'e3'])
+    })
+
+    it('cleanOrphanedEdges deletes only orphans and updates state', async () => {
+      mockDb.getGraphEdges.mockResolvedValue([
+        { id: 'e1', sourceId: '1', sourceType: 'character', targetId: '10', targetType: 'location' },
+        { id: 'e2', sourceId: '1', sourceType: 'character', targetId: '99', targetType: 'location' },
+        { id: 'e3', sourceId: '77', sourceType: 'character', targetId: '2', targetType: 'character' }
+      ])
+      const result = await store.cleanOrphanedEdges('proj1')
+      expect(result).toEqual({ removed: 2 })
+      expect(mockDb.deleteGraphEdge).toHaveBeenCalledWith('e2')
+      expect(mockDb.deleteGraphEdge).toHaveBeenCalledWith('e3')
+      expect(mockDb.deleteGraphEdge).not.toHaveBeenCalledWith('e1')
+      expect(store.edges.map((e) => e.id)).toEqual(['e1'])
+    })
+
+    it('never deletes legacy char-char relationships', async () => {
+      mockDb.getGraphEdges.mockResolvedValue([])
+      mockDb.getCharacterRelationships.mockResolvedValue([
+        { id: 5, fromCharacterId: 1, toCharacterId: 2, type: 'ally' }
+      ])
+      const result = await store.cleanOrphanedEdges('proj1')
+      expect(result).toEqual({ removed: 0 })
+      expect(mockDb.deleteGraphEdge).not.toHaveBeenCalled()
+    })
+  })
 })

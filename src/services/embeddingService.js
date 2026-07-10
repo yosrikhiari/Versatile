@@ -6,19 +6,13 @@ import {
 } from '../config/ai'
 import { getBulkCachedEmbeddings, setEmbeddingCacheEntry } from './researchDb'
 
-const MISTRAL_API_URL = 'https://api.mistral.ai/v1/embeddings'
-
-let mistralApiKey = null
-try {
-  if (import.meta.env.VITE_MISTRAL_API_KEY) {
-    mistralApiKey = import.meta.env.VITE_MISTRAL_API_KEY
-  }
-} catch {
-  // import.meta.env may be unavailable in some runtimes; key stays null.
-}
+const BACKEND_API_BASE = '/api'
+const MISTRAL_API_URL = `${BACKEND_API_BASE}/embedding/mistral`
 
 export function hasMistralKey() {
-  return !!mistralApiKey
+  // Mistral key is now managed server-side; the backend proxy endpoint
+  // handles it. The frontend just checks if the proxy is reachable.
+  return true
 }
 
 const embeddingCache = new Map()
@@ -132,7 +126,6 @@ async function embedBatchInternal(inputs, model, provider) {
   let apiResults
   switch (provider) {
     case EMBEDDING_PROVIDERS.MISTRAL: {
-      if (!mistralApiKey) throw new Error('Mistral API key not configured in .env')
       const controller = new AbortController()
       const timeout = setTimeout(
         () =>
@@ -144,10 +137,7 @@ async function embedBatchInternal(inputs, model, provider) {
       try {
         const response = await fetch(MISTRAL_API_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${mistralApiKey}`
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ model: model || 'mistral-embed', input: uncachedInputs }),
           signal: controller.signal
         })
