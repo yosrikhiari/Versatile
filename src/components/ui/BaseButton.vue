@@ -99,7 +99,7 @@ const ariaAttrs = computed(() => {
     />
     <slot />
     <BaseIcon
-      v-if="icon && iconPosition === 'right'"
+      v-if="!loading && icon && iconPosition === 'right'"
       :name="icon"
       :size="iconSize"
       class="shrink-0"

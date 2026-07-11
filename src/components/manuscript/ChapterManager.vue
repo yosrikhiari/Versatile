@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, inject, nextTick } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
@@ -102,6 +102,18 @@ const subsectionDragOptions = {
 
 // The active section for expand/collapse
 const activeSectionExpanded = ref(null)
+const navigateTarget = inject('consistencyNavigateTarget', ref(null))
+
+watch(navigateTarget, (target) => {
+  if (!target) return
+  activeSectionExpanded.value = target
+  manuscriptStore.setActiveSection(target)
+  nextTick(() => {
+    document
+      .getElementById('section-' + target)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+})
 
 function openAddSection() {
   editingSection.value = null
@@ -488,6 +500,7 @@ function handleSnapshotRestored(content) {
       >
         <template #item="{ element: section }">
           <div
+            :id="'section-' + section.id"
             :class="[
               'border border-border-subtle rounded-lg overflow-hidden',
               assignMode ? 'ring-2 ring-accent cursor-pointer' : ''

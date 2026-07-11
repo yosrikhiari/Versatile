@@ -1,5 +1,5 @@
 <script setup>
-import { ref, provide, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, provide, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useFlowSession } from '../composables/useFlowSession'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
@@ -25,6 +25,8 @@ import ResearchPanel from '../components/research/ResearchPanel.vue'
 import StoryGeneratorPanel from '../components/story/StoryGeneratorPanel.vue'
 import VoiceLabPanel from '../components/voice-lab/VoiceLabPanel.vue'
 import StoryShapePanel from '../components/storyshape/StoryShapePanel.vue'
+import ConsistencyPanel from '../components/consistency/ConsistencyPanel.vue'
+import BetaReaderPanel from '../components/betareader/BetaReaderPanel.vue'
 import ActivityToast from '../components/shared/ActivityToast.vue'
 import ActivityDrawer from '../components/shared/ActivityDrawer.vue'
 import AuthModal from '../components/auth/AuthModal.vue'
@@ -49,10 +51,13 @@ const flowEditorRef = ref(null)
 const appShell = ref(null)
 const showSearchOverlay = ref(false)
 const focusMode = ref(false)
+const consistencyNavigateTarget = ref(null)
 
 provide('insertAtCursor', (text) => {
   flowEditorRef.value?.insertAtCursor(text)
 })
+
+provide('consistencyNavigateTarget', consistencyNavigateTarget)
 
 const bubbleStore = useBubbleStore()
 const projectStore = useProjectStore()
@@ -216,6 +221,39 @@ function handleOpenChapters() {
   appShell.value?.toggleSections()
 }
 
+function handleConsistencyNavigate(action) {
+  if (action.type === 'open-bible') {
+    appShell.value?.toggleStoryBible(true)
+    nextTick(() => {
+      consistencyNavigateTarget.value = action.payload
+    })
+  } else if (action.type === 'open-section') {
+    appShell.value?.toggleSections(true)
+    nextTick(() => {
+      consistencyNavigateTarget.value = action.payload
+    })
+  } else if (action.type === 'open-graph') {
+    appShell.value?.toggleNetwork(true)
+    nextTick(() => {
+      consistencyNavigateTarget.value = action.payload
+    })
+  }
+}
+
+function handleBetaReaderNavigate(action) {
+  if (action.type === 'open-section') {
+    appShell.value?.toggleSections(true)
+    nextTick(() => {
+      consistencyNavigateTarget.value = action.payload
+    })
+  } else if (action.type === 'open-bible') {
+    appShell.value?.toggleStoryBible(true)
+    nextTick(() => {
+      consistencyNavigateTarget.value = action.payload
+    })
+  }
+}
+
 async function handleOnboardingCompleteWrapper() {
   showOnboarding.value = false
   await onOnboardingComplete()
@@ -341,6 +379,15 @@ function handleOnboardingSkipWrapper() {
       </template>
       <template #story-shape>
         <StoryShapePanel />
+      </template>
+      <template #consistency>
+        <ConsistencyPanel @navigate="handleConsistencyNavigate" />
+      </template>
+      <template #beta-reader>
+        <BetaReaderPanel v-if="ollamaAvailable" @navigate="handleBetaReaderNavigate" />
+        <div v-else class="p-4 text-center text-text-secondary">
+          AI features disabled — Ollama unavailable
+        </div>
       </template>
     </AppShell>
 

@@ -46,6 +46,9 @@ AGENT.md
 Report.md
 learning-records/
 
+# Planning / spec documents (tracked in project management, not code)
+docs/superpowers/specs/
+
 # Coverage reports (regenerated on each test run - noise in diffs)
 coverage/
 reports/

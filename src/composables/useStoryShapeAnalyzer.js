@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useHeuristicAnalyzer } from './useHeuristicAnalyzer'
+import { useAIShapeAnalyzer } from './useAIShapeAnalyzer'
 import {
   saveShapeAnalysis,
   getLatestShapeVersion,
@@ -10,11 +11,13 @@ import {
 export function useStoryShapeAnalyzer() {
   const projectStore = useProjectStore()
   const { analyzeScene } = useHeuristicAnalyzer()
+  const { runAIAnalysis, isAnalyzing: isAIAnalyzing } = useAIShapeAnalyzer()
 
   const sceneAnalyses = ref([])
   const currentAnalysis = ref(null)
   const isAnalyzing = ref(false)
   const currentVersion = ref(0)
+  const aiInsights = ref(null)
 
   const combinedTension = computed(() => {
     if (!currentAnalysis.value) return []
@@ -28,6 +31,7 @@ export function useStoryShapeAnalyzer() {
     if (!content || content.trim().length === 0) return
 
     isAnalyzing.value = true
+    aiInsights.value = null
     try {
       const latestVersion = await getLatestShapeVersion(projectStore.currentProjectId)
       currentVersion.value = latestVersion + 1
@@ -43,6 +47,11 @@ export function useStoryShapeAnalyzer() {
         version: currentVersion.value,
         analysis: result
       })
+
+      const insights = await runAIAnalysis(content)
+      if (insights) {
+        aiInsights.value = insights
+      }
     } catch (err) {
       console.error('[StoryShape] Analysis failed:', err)
     } finally {
@@ -67,9 +76,11 @@ export function useStoryShapeAnalyzer() {
     sceneAnalyses,
     currentAnalysis,
     isAnalyzing,
+    isAIAnalyzing,
     currentVersion,
     combinedTension,
     hasAnalysis,
+    aiInsights,
     runFullAnalysis,
     loadLatestAnalysis
   }

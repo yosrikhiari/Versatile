@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "description": "Sample eval history for testing the active learning pipeline. Includes creative, legal, and technical workspace evals with varied scores.",
+  "exportedAt": "2026-07-11T14:00:00.000Z",
+  "evals": [
+    {
+      "projectId": "proj-creative-001",
+      "sceneId": "scene-001",
+      "evalType": "story",
+      "score": 8.2,
+      "dimensionScores": {
+        "continuity": 9,
+        "voice": 8,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 9
+      },
+      "issues": [],
+      "strengths": ["Strong continuity", "Good pacing"],
+      "timestamp": "2026-07-01T10:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-001",
+      "sceneId": "scene-002",
+      "evalType": "story",
+      "score": 6.5,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 5,
+        "emotional_goal": 6,
+        "show_tell": 7,
+        "pacing": 7
+      },
+      "issues": [
+        {
+          "severity": "major",
+          "type": "weak_voice",
+          "message": "Character dialogue lacks distinction"
+        }
+      ],
+      "strengths": ["Continuity maintained"],
+      "timestamp": "2026-07-01T11:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-001",
+      "sceneId": "scene-003",
+      "evalType": "story",
+      "score": 7.0,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 6,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": ["Pacing effective"],
+      "timestamp": "2026-07-02T10:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-002",
+      "sceneId": "scene-004",
+      "evalType": "story",
+      "score": 5.8,
+      "dimensionScores": {
+        "continuity": 5,
+        "voice": 4,
+        "emotional_goal": 6,
+        "show_tell": 6,
+        "pacing": 6
+      },
+      "issues": [
+        {
+          "severity": "major",
+          "type": "continuity_break",
+          "message": "Character name changed mid-scene"
+        }
+      ],
+      "strengths": ["Emotional goal partially met"],
+      "timestamp": "2026-07-03T09:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-002",
+      "sceneId": "scene-005",
+      "evalType": "story",
+      "score": 7.5,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": ["Strong show vs tell", "Good voice differentiation"],
+      "timestamp": "2026-07-04T10:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-003",
+      "sceneId": "scene-006",
+      "evalType": "story",
+      "score": 5.2,
+      "dimensionScores": {
+        "continuity": 6,
+        "voice": 4,
+        "emotional_goal": 5,
+        "show_tell": 5,
+        "pacing": 6
+      },
+      "issues": [
+        { "severity": "major", "type": "weak_show_tell", "message": "Heavy telling throughout" }
+      ],
+      "strengths": [],
+      "timestamp": "2026-07-05T10:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-legal-001",
+      "sceneId": "clause-001",
+      "evalType": "document",
+      "score": 7.0,
+      "dimensionScores": { "clarity": 7, "ambiguity": 6, "liability": 7, "missing_provision": 8 },
+      "issues": [
+        {
+          "severity": "minor",
+          "type": "ambiguous_qualifier",
+          "message": "'Reasonable' used without qualification"
+        }
+      ],
+      "strengths": ["All provisions present"],
+      "timestamp": "2026-07-02T14:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-001",
+      "sceneId": "clause-002",
+      "evalType": "document",
+      "score": 6.5,
+      "dimensionScores": { "clarity": 7, "ambiguity": 5, "liability": 6, "missing_provision": 7 },
+      "issues": [
+        {
+          "severity": "major",
+          "type": "ambiguity",
+          "message": "Term 'consequential damages' undefined"
+        }
+      ],
+      "strengths": ["Governing law clause clear"],
+      "timestamp": "2026-07-03T15:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-002",
+      "sceneId": "clause-003",
+      "evalType": "document",
+      "score": 6.0,
+      "dimensionScores": { "clarity": 6, "ambiguity": 5, "liability": 5, "missing_provision": 6 },
+      "issues": [
+        {
+          "severity": "major",
+          "type": "missing_provision",
+          "message": "Force majeure clause absent"
+        }
+      ],
+      "strengths": [],
+      "timestamp": "2026-07-04T12:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-tech-001",
+      "sceneId": "spec-001",
+      "evalType": "document",
+      "score": 7.0,
+      "dimensionScores": { "architecture": 7, "interface": 6, "security": 7, "validation": 7 },
+      "issues": [
+        {
+          "severity": "minor",
+          "type": "interface_gap",
+          "message": "Error responses not specified for POST"
+        }
+      ],
+      "strengths": ["Good architecture separation"],
+      "timestamp": "2026-07-05T10:00:00.000Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-tech-001",
+      "sceneId": "spec-002",
+      "evalType": "document",
+      "score": 6.0,
+      "dimensionScores": { "architecture": 6, "interface": 5, "security": 6, "validation": 6 },
+      "issues": [
+        {
+          "severity": "major",
+          "type": "interface_incomplete",
+          "message": "Response schemas missing for 3 endpoints"
+        }
+      ],
+      "strengths": ["Auth section present"],
+      "timestamp": "2026-07-06T11:00:00.000Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-tech-002",
+      "sceneId": "spec-003",
+      "evalType": "document",
+      "score": 8.0,
+      "dimensionScores": { "architecture": 8, "interface": 8, "security": 8, "validation": 8 },
+      "issues": [],
+      "strengths": ["Comprehensive spec", "Clear contracts"],
+      "timestamp": "2026-07-07T10:00:00.000Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-business-001",
+      "sceneId": "plan-001",
+      "evalType": "document",
+      "score": 6.5,
+      "dimensionScores": { "viability": 7, "financial": 5, "assumptions": 6, "kpi_clarity": 6 },
+      "issues": [
+        {
+          "severity": "major",
+          "type": "weak_financials",
+          "message": "Unit economics not calculated"
+        }
+      ],
+      "strengths": ["Market need identified"],
+      "timestamp": "2026-07-06T14:00:00.000Z",
+      "workspaceType": "business"
+    },
+    {
+      "projectId": "proj-business-002",
+      "sceneId": "plan-002",
+      "evalType": "document",
+      "score": 7.5,
+      "dimensionScores": { "viability": 8, "financial": 7, "assumptions": 7, "kpi_clarity": 8 },
+      "issues": [],
+      "strengths": ["Strong viability case", "Clear KPIs"],
+      "timestamp": "2026-07-07T15:00:00.000Z",
+      "workspaceType": "business"
+    },
+    {
+      "projectId": "proj-research-001",
+      "sceneId": "paper-001",
+      "evalType": "document",
+      "score": 6.0,
+      "dimensionScores": { "rigor": 6, "methodology": 5, "citations": 7, "reproducibility": 5 },
+      "issues": [
+        { "severity": "major", "type": "methodology_gap", "message": "Sample size not justified" }
+      ],
+      "strengths": ["Citations adequate"],
+      "timestamp": "2026-07-08T10:00:00.000Z",
+      "workspaceType": "research"
+    },
+    {
+      "projectId": "proj-research-002",
+      "sceneId": "paper-002",
+      "evalType": "document",
+      "score": 8.5,
+      "dimensionScores": { "rigor": 9, "methodology": 8, "citations": 9, "reproducibility": 8 },
+      "issues": [],
+      "strengths": ["Rigorous methodology", "Excellent citations"],
+      "timestamp": "2026-07-09T10:00:00.000Z",
+      "workspaceType": "research"
+    }
+  ]
+}

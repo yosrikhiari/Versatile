@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
@@ -37,6 +37,21 @@ const { getSectionContext } = useManuscriptContext()
 const activeTab = ref('characters')
 const searchQuery = ref('')
 const editingId = ref(null)
+const navigateTarget = inject('consistencyNavigateTarget', ref(null))
+
+watch(navigateTarget, (target) => {
+  if (!target) return
+  if (target.startsWith('char-')) {
+    activeTab.value = 'characters'
+  } else if (target.startsWith('loc-')) {
+    activeTab.value = 'locations'
+  } else if (target.startsWith('thread-')) {
+    activeTab.value = 'plotThreads'
+  }
+  nextTick(() => {
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+})
 const editData = ref({
   name: '',
   role: '',
@@ -690,6 +705,7 @@ defineExpose({ refresh })
             </div>
             <div
               v-for="character in filteredCharacters"
+              :id="'char-' + character.id"
               :key="character.id"
               class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
               draggable="true"
@@ -944,6 +960,7 @@ defineExpose({ refresh })
             </div>
             <div
               v-for="thread in filteredPlotThreads"
+              :id="'thread-' + thread.id"
               :key="thread.id"
               class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
             >
@@ -1128,6 +1145,7 @@ defineExpose({ refresh })
             </div>
             <div
               v-for="location in filteredLocations"
+              :id="'loc-' + location.id"
               :key="location.id"
               class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
             >

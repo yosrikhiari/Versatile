@@ -81,11 +81,11 @@ The production build outputs static files to the `dist/` directory. These files 
 
 Key build configuration (from `vite.config.js`):
 
-| Setting | Value |
-|---------|-------|
-| Output directory | `dist/` |
+| Setting                  | Value   |
+| ------------------------ | ------- |
+| Output directory         | `dist/` |
 | Chunk size warning limit | 2500 kB |
-| Dev server port | 5173 |
+| Dev server port          | 5173    |
 
 ### Backend
 
@@ -102,30 +102,30 @@ The following environment variables must be set in the production environment. T
 
 ### Backend (ASP.NET Core)
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ConnectionStrings__DefaultConnection` | Yes | — | PostgreSQL connection string (e.g., `Host=db.example.com;Port=5432;Database=versatile;Username=user;Password=pass`) |
-| `Jwt__Key` | Yes | — | Symmetric signing key for JWT token generation and validation. Must be a sufficiently long string (32+ characters) |
-| `Jwt__Issuer` | No | `Versatile.Api` | JWT issuer claim |
-| `Jwt__Audience` | No | `Versatile.App` | JWT audience claim |
-| `Ai__ApiKey` | Yes | — | OpenAI-compatible API key used by the chat and AI generation services |
-| `Ai__Endpoint` | No | — | Custom OpenAI-compatible endpoint URL. If omitted, the default OpenAI endpoint is used |
-| `Ai__Model` | No | `gpt-4o-minim` | The model identifier to use for AI completions |
-| `ASPNETCORE_URLS` | No | `http://localhost:5171` | The URL the Kestrel server binds to |
+| Variable                               | Required | Default                 | Description                                                                                                         |
+| -------------------------------------- | -------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `ConnectionStrings__DefaultConnection` | Yes      | —                       | PostgreSQL connection string (e.g., `Host=db.example.com;Port=5432;Database=versatile;Username=user;Password=pass`) |
+| `Jwt__Key`                             | Yes      | —                       | Symmetric signing key for JWT token generation and validation. Must be a sufficiently long string (32+ characters)  |
+| `Jwt__Issuer`                          | No       | `Versatile.Api`         | JWT issuer claim                                                                                                    |
+| `Jwt__Audience`                        | No       | `Versatile.App`         | JWT audience claim                                                                                                  |
+| `Ai__ApiKey`                           | Yes      | —                       | OpenAI-compatible API key used by the chat and AI generation services                                               |
+| `Ai__Endpoint`                         | No       | —                       | Custom OpenAI-compatible endpoint URL. If omitted, the default OpenAI endpoint is used                              |
+| `Ai__Model`                            | No       | `gpt-4o-minim`          | The model identifier to use for AI completions                                                                      |
+| `ASPNETCORE_URLS`                      | No       | `http://localhost:5171` | The URL the Kestrel server binds to                                                                                 |
 
 ### Frontend (Vite / Build-time)
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `VITE_MISTRAL_API_KEY` | Yes | — | API key for Mistral AI embedding service. Referenced at build time |
+| Variable               | Required | Default | Description                                                        |
+| ---------------------- | -------- | ------- | ------------------------------------------------------------------ |
+| `VITE_MISTRAL_API_KEY` | Yes      | —       | API key for Mistral AI embedding service. Referenced at build time |
 
 ### Docker / Runtime
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `PORT` | No | `8080` | Alternative port mapping for containerized deployments |
-| `HOST` | No | `0.0.0.0` | Bind address for the server |
-| `OLLAMA_ENDPOINT` | No | `http://localhost:11434` | Local Ollama instance endpoint (used during local development) |
+| Variable          | Required | Default                  | Description                                                    |
+| ----------------- | -------- | ------------------------ | -------------------------------------------------------------- |
+| `PORT`            | No       | `8080`                   | Alternative port mapping for containerized deployments         |
+| `HOST`            | No       | `0.0.0.0`                | Bind address for the server                                    |
+| `OLLAMA_ENDPOINT` | No       | `http://localhost:11434` | Local Ollama instance endpoint (used during local development) |
 
 ## Deploying the Database
 
@@ -172,26 +172,26 @@ The pipeline runs on:
 
 **test** — runs on `ubuntu-latest` with a Node.js matrix (18.x and 20.x):
 
-| Step | Description |
-|------|-------------|
-| `actions/checkout@v4` | Clone repository |
-| `actions/setup-node@v4` | Install Node.js with npm cache |
-| `npm ci` | Install exact dependencies |
-| `npm run lint` | Run ESLint |
-| ESLint report | Generate JSON report (Node 20.x only, non-failing) |
-| `npm run test:run` | Run Vitest test suite |
-| `npm run test:coverage` | Run tests with coverage |
-| Upload coverage | Send to Codecov (Node 20.x only) |
+| Step                    | Description                                        |
+| ----------------------- | -------------------------------------------------- |
+| `actions/checkout@v4`   | Clone repository                                   |
+| `actions/setup-node@v4` | Install Node.js with npm cache                     |
+| `npm ci`                | Install exact dependencies                         |
+| `npm run lint`          | Run ESLint                                         |
+| ESLint report           | Generate JSON report (Node 20.x only, non-failing) |
+| `npm run test:run`      | Run Vitest test suite                              |
+| `npm run test:coverage` | Run tests with coverage                            |
+| Upload coverage         | Send to Codecov (Node 20.x only)                   |
 
 **build** — runs on `ubuntu-latest` with Node.js 20.x:
 
-| Step | Description |
-|------|-------------|
-| `actions/checkout@v4` | Clone repository |
-| `actions/setup-node@v4` | Install Node.js 20.x with npm cache |
-| `npm ci` | Install exact dependencies |
-| `npm run build` | Build frontend to `dist/` |
-| Upload artifacts | Upload `dist/` for subsequent deployment jobs |
+| Step                    | Description                                   |
+| ----------------------- | --------------------------------------------- |
+| `actions/checkout@v4`   | Clone repository                              |
+| `actions/setup-node@v4` | Install Node.js 20.x with npm cache           |
+| `npm ci`                | Install exact dependencies                    |
+| `npm run build`         | Build frontend to `dist/`                     |
+| Upload artifacts        | Upload `dist/` for subsequent deployment jobs |
 
 ### Adding backend CI
 
@@ -278,11 +278,11 @@ Extend the existing `docker-compose.yml` to include the frontend and backend ser
 
 The Vite dev server proxies the following paths to backend services:
 
-| Path | Target | Description |
-|------|--------|-------------|
-| `/api` | `http://localhost:5171` | Backend ASP.NET API |
-| `/ollama` | `http://localhost:11434` | Local Ollama instance |
-| `/sdapi` | `http://127.0.0.1:7860` | Stable Diffusion WebUI API |
+| Path      | Target                   | Description                |
+| --------- | ------------------------ | -------------------------- |
+| `/api`    | `http://localhost:5171`  | Backend ASP.NET API        |
+| `/ollama` | `http://localhost:11434` | Local Ollama instance      |
+| `/sdapi`  | `http://127.0.0.1:7860`  | Stable Diffusion WebUI API |
 
 In production, use a reverse proxy (Nginx, Caddy, or your cloud provider's load balancer) to route `/api` (and optionally `/hub/*` for SignalR WebSocket connections) to the backend.
 

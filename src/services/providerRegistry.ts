@@ -45,10 +45,13 @@ async function getApiKey(provider: ProviderName): Promise<string | null> {
   }
 }
 
-function getDefaultModelForProvider(provider: ProviderName, defaultOllamaModel?: string): string | null {
+function getDefaultModelForProvider(
+  provider: ProviderName,
+  defaultOllamaModel?: string
+): string | null {
   return provider === PROVIDERS.OLLAMA
     ? (defaultOllamaModel ?? null)
-    : (PROVIDER_MODELS[provider]?.[0] || null)
+    : PROVIDER_MODELS[provider]?.[0] || null
 }
 
 function getProviderModule(provider: ProviderName): ProviderModule {

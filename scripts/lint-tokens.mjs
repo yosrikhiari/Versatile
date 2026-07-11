@@ -2,8 +2,14 @@ import { readFileSync, readdirSync, statSync } from 'fs'
 import { join, extname, resolve } from 'path'
 
 const patterns = [
-  { regex: /bg-accent text-white/g, desc: 'bg-accent text-white should be bg-accent text-accent-foreground' },
-  { regex: /font-spark|font-flow|font-polish|font-revise|font-storybible/g, desc: 'retired display font class' },
+  {
+    regex: /bg-accent text-white/g,
+    desc: 'bg-accent text-white should be bg-accent text-accent-foreground'
+  },
+  {
+    regex: /font-spark|font-flow|font-polish|font-revise|font-storybible/g,
+    desc: 'retired display font class'
+  }
 ]
 
 function walk(dir) {

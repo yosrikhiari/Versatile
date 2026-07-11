@@ -97,6 +97,7 @@ function resolveFeatureConfig(feature) {
   }
 }
 
+export { resolveFeatureConfig }
 export function getConfiguredModel(feature) {
   const config = resolveFeatureConfig(feature)
   return config.model

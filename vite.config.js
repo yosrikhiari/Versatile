@@ -20,7 +20,7 @@ function debugSnapshotPlugin() {
           return res.end()
         }
         let body = ''
-        req.on('data', c => (body += c))
+        req.on('data', (c) => (body += c))
         req.on('end', () => {
           try {
             const { stage, data } = JSON.parse(body)

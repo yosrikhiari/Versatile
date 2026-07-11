@@ -13,18 +13,49 @@ vi.mock('@/stores/settingsStore', () => ({
 }))
 
 vi.mock('@/config/ai', () => ({
-  PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai', ANTHROPIC: 'anthropic', GEMINI: 'gemini', GROQ: 'groq' },
-  FEATURES: { CONTENT: 'content', STORY_GENERATION: 'story_generation', WORLDBUILDING: 'worldbuilding' },
+  PROVIDERS: {
+    OLLAMA: 'ollama',
+    OPENAI: 'openai',
+    ANTHROPIC: 'anthropic',
+    GEMINI: 'gemini',
+    GROQ: 'groq'
+  },
+  FEATURES: {
+    CONTENT: 'content',
+    STORY_GENERATION: 'story_generation',
+    WORLDBUILDING: 'worldbuilding'
+  },
   PROVIDER_MODELS: { openai: ['gpt-4'], anthropic: ['claude-3-opus'] }
 }))
 
 vi.mock('@/config/storageKeys', () => ({ getApiKeyStorageKey: vi.fn(() => 'key_storage') }))
 vi.mock('@/services/ollamaService', () => ({ simpleDecrypt: vi.fn((s) => s) }))
-vi.mock('@/services/providers/ollama', () => ({ generate: vi.fn(), stream: vi.fn(), testConnection: vi.fn(), listModels: vi.fn() }))
-vi.mock('@/services/providers/openai', () => ({ generate: vi.fn(), stream: vi.fn(), testConnection: vi.fn() }))
-vi.mock('@/services/providers/anthropic', () => ({ generate: vi.fn(), stream: vi.fn(), testConnection: vi.fn() }))
-vi.mock('@/services/providers/gemini', () => ({ generate: vi.fn(), stream: vi.fn(), testConnection: vi.fn() }))
-vi.mock('@/services/providers/groq', () => ({ generate: vi.fn(), stream: vi.fn(), testConnection: vi.fn() }))
+vi.mock('@/services/providers/ollama', () => ({
+  generate: vi.fn(),
+  stream: vi.fn(),
+  testConnection: vi.fn(),
+  listModels: vi.fn()
+}))
+vi.mock('@/services/providers/openai', () => ({
+  generate: vi.fn(),
+  stream: vi.fn(),
+  testConnection: vi.fn()
+}))
+vi.mock('@/services/providers/anthropic', () => ({
+  generate: vi.fn(),
+  stream: vi.fn(),
+  testConnection: vi.fn()
+}))
+vi.mock('@/services/providers/gemini', () => ({
+  generate: vi.fn(),
+  stream: vi.fn(),
+  testConnection: vi.fn()
+}))
+vi.mock('@/services/providers/groq', () => ({
+  generate: vi.fn(),
+  stream: vi.fn(),
+  testConnection: vi.fn()
+}))
 
 let aiService
 beforeEach(async () => {

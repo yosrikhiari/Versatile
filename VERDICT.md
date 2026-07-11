@@ -1,11 +1,15 @@
 ## Goal
+
 - Investigate and accelerate document embedding indexing throughput.
 
 ## Constraints & Preferences
+
 - (none)
 
 ## Progress
+
 ### Done
+
 - Fixed port mismatch: Vite proxy target changed from 5269 to 5171 (`vite.config.js:66`).
 - Added migration auto-apply: `db.Database.Migrate()` on startup (`Program.cs:139-143`).
 - Added initial sync on auth: `authStore.js` now calls `syncNow()` after sync engine init (push + pull on login/register/hydrate).
@@ -27,12 +31,15 @@
 - **`embeddingService.js` — Added performance logging**: Lightweight `performance.now()` timing on batch operations, logged via `console.debug` only when elapsed > 2s or dedup ratio is notable.
 
 ### In Progress
+
 - (none)
 
 ### Blocked
+
 - (none)
 
 ## Key Decisions
+
 - **Corrected bottleneck model**: The original plan's four bottlenecks were based on incomplete assumptions — three of four (sequential queue, all-or-nothing reindex, no content-hash cache) are already well-implemented. The real bottleneck was `embedBatch()`'s sequential sub-batch processing loop, which serialized API calls even though the provider supports concurrent requests.
 - The concurrent worker pool pattern in `embedBatch()` mirrors the same pattern already proven in `embeddingQueue.js`, ensuring consistency.
 - Deduplication is done at the `getEmbeddings()` level (the public API entry point) rather than deeper in `embedBatchInternal`, so all callers benefit without redundant cache-hash work.
@@ -40,9 +47,11 @@
 - Bumped `maxConcurrentRequests` is the main tunable for throughput gains when the provider (esp. Ollama) can handle it.
 
 ## Next Steps
+
 - (none — Todo 3 complete)
 
 ## Critical Context
+
 - TipTap loads the entire document content into ProseMirror's DOM node at once — the primary bottleneck for 1M+ characters is DOM node count and full-HTML serialization on every keystroke.
 - The three-level content model (subsection < section < flat manuscript) already provides a natural chunking structure; the 50K/200K warnings encourage users to split into subsections before hitting DOM limits.
 - Key performance wins from Todo 1: (1) regex-based HTML stripping avoids DOM creation, (2) ProseMirror's `textContent` avoids any HTML parsing for word counts, (3) full HTML serialization (`getHTML()`) deferred to 10-second debounced save instead of every keystroke, (4) paragraph-click resolution uses O(1) ProseMirror position API instead of O(n) descendant scan.
@@ -52,6 +61,7 @@
 - **Embedding pipeline state after fixes**: (1) Queue has parallel workers (maxConcurrentRequests tunable), (2) `embedBatch()` now uses concurrent worker pool instead of sequential loop, (3) `getEmbeddings()` deduplicates identical inputs, (4) Content-hash cache is persistent in Dexie with both in-memory and indexed fallback, (5) Reindex is already incremental with text-hash comparison.
 
 ## Relevant Files
+
 - **`src/services/embeddingService.js`**: `embedBatch()` (line 48) — **fixed**: sequential sub-batch loop replaced with concurrent worker pool; `getEmbeddings()` (line 214) — **fixed**: added input deduplication + performance logging.
 - **`src/composables/useSemanticChunking.js`**: `computeSemanticChunks()` (line 299) — calls `getEmbeddings()` for boundary detection; now benefits from concurrent batching fix.
 - **`src/services/embeddingQueue.js`**: parallel workers (line 89-120) with `maxConcurrentRequests` — already optimized.

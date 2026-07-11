@@ -21,4 +21,3 @@ jobs:
       - name: Get PR diff
         id: diff
         run: git diff origin/${{ github.base_ref }}...HEAD -- '*.js' '*.vue' '*.css' > pr-diff.txt
-

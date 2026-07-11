@@ -156,9 +156,27 @@ describe('storyGraphStore', () => {
 
     it('finds edges with missing endpoints, ignoring groups and valid edges', async () => {
       mockDb.getGraphEdges.mockResolvedValue([
-        { id: 'e1', sourceId: '1', sourceType: 'character', targetId: '10', targetType: 'location' },
-        { id: 'e2', sourceId: '1', sourceType: 'character', targetId: '99', targetType: 'location' },
-        { id: 'e3', sourceId: '77', sourceType: 'character', targetId: '2', targetType: 'character' },
+        {
+          id: 'e1',
+          sourceId: '1',
+          sourceType: 'character',
+          targetId: '10',
+          targetType: 'location'
+        },
+        {
+          id: 'e2',
+          sourceId: '1',
+          sourceType: 'character',
+          targetId: '99',
+          targetType: 'location'
+        },
+        {
+          id: 'e3',
+          sourceId: '77',
+          sourceType: 'character',
+          targetId: '2',
+          targetType: 'character'
+        },
         { id: 'e4', sourceId: 'g1', sourceType: 'group', targetId: 'g2', targetType: 'group' }
       ])
       await store.loadEdges('proj1')
@@ -168,9 +186,27 @@ describe('storyGraphStore', () => {
 
     it('cleanOrphanedEdges deletes only orphans and updates state', async () => {
       mockDb.getGraphEdges.mockResolvedValue([
-        { id: 'e1', sourceId: '1', sourceType: 'character', targetId: '10', targetType: 'location' },
-        { id: 'e2', sourceId: '1', sourceType: 'character', targetId: '99', targetType: 'location' },
-        { id: 'e3', sourceId: '77', sourceType: 'character', targetId: '2', targetType: 'character' }
+        {
+          id: 'e1',
+          sourceId: '1',
+          sourceType: 'character',
+          targetId: '10',
+          targetType: 'location'
+        },
+        {
+          id: 'e2',
+          sourceId: '1',
+          sourceType: 'character',
+          targetId: '99',
+          targetType: 'location'
+        },
+        {
+          id: 'e3',
+          sourceId: '77',
+          sourceType: 'character',
+          targetId: '2',
+          targetType: 'character'
+        }
       ])
       const result = await store.cleanOrphanedEdges('proj1')
       expect(result).toEqual({ removed: 2 })

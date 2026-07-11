@@ -308,18 +308,42 @@ export function useHeuristicAnalyzer() {
       dialogueRatio > 0.5 ? 'dialogue-heavy' : dialogueRatio > 0.2 ? 'balanced' : 'narration-heavy'
 
     const wordBasedScores = []
+    const emotionByChunk = []
+    const chunks = []
     const step = Math.max(Math.floor(wordCount / 20), 1)
     const words = cleanText.split(/\s+/).filter((w) => w.length > 0)
+    const allEmotionKeys = Object.keys(EMOTION_KEYWORDS)
     for (let i = 0; i < words.length; i += step) {
       const chunk = words.slice(i, i + step).join(' ')
       const high = countKeywordHits(chunk, TENSION_KEYWORDS.high) * 3
       const medium = countKeywordHits(chunk, TENSION_KEYWORDS.medium) * 2
       wordBasedScores.push(Math.min(high + medium, 10))
+      chunks.push(chunk)
+
+      const cLower = chunk.toLowerCase()
+      const emo = {}
+      let totalPos = 0
+      let totalNeg = 0
+      for (const key of allEmotionKeys) {
+        const hits = countKeywordHits(cLower, EMOTION_KEYWORDS[key])
+        emo[key] = hits
+        if (key === 'joy') totalPos += hits
+        else if (key !== 'surprise') totalNeg += hits
+      }
+      const intensity = totalPos + totalNeg + (emo.surprise || 0)
+      const net = totalPos - totalNeg
+      emotionByChunk.push({
+        ...emo,
+        netValence: Math.max(-5, Math.min(5, net)),
+        intensity: Math.min(intensity, 10)
+      })
     }
 
     const result = {
       tensionPulse,
       wordBasedTension: wordBasedScores,
+      emotionByChunk,
+      chunks,
       metrics: {
         avgTension: Math.round(avgTension * 100) / 100,
         maxTension,

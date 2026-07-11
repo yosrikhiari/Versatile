@@ -24,219 +24,32 @@ import { aiGenerate, aiGenerateJson, resolveFeatureConfig } from './useAiService
 import { FEATURES, PROVIDERS } from '../config/ai'
 import { getEmbedding } from '../services/embeddingService'
 import { cosineSimilarity } from '../services/ollamaService'
-
-function isOllamaProvider() {
-  try {
-    const config = resolveFeatureConfig(FEATURES.STORY_GENERATION)
-    return config.provider === PROVIDERS.OLLAMA
-  } catch {
-    return false
-  }
-}
-
-const PARALLEL_CHAPTER_LIMIT = () => (isOllamaProvider() ? 1 : 3)
-
-function formatFullSpineEntry(s) {
-  const facts =
-    Array.isArray(s.keyFacts) && s.keyFacts.length
-      ? `\n- Established facts: ${s.keyFacts.join('; ')}`
-      : ''
-  return `Chapter ${s.chapterNumber} (${s.chapterTitle}):\n- Emotion at end: ${s.emotionalStateAtEnd}\n- Reader knows: ${s.readerKnowledgeAtEnd}\n- Transition: ${s.transitionToNext}${facts}`
-}
-
-// The accumulated story fact ledger: durable canon facts in chapter order,
-// attributed to their chapter. Fed to the consistency auditor so it can catch
-// prose that contradicts established canon (deaths, injuries, who-knows-what) —
-// not just per-character bible drift.
-//
-// Two sources: the spine's *planned* keyFacts, and the *actual* keyFacts the
-// writer emitted per written scene (carried on writtenScenes as `keyFacts` +
-// `chapterId`). Prose facts reflect what the story really did, so for any chapter
-// that produced prose facts they replace that chapter's planned facts; chapters
-// with no prose facts fall back to the spine's plan.
-function buildFactLedger(spine, writtenScenes) {
-  const proseByChapter = new Map()
-  if (Array.isArray(writtenScenes)) {
-    for (const scene of writtenScenes) {
-      if (!scene || scene.chapterId == null || !Array.isArray(scene.keyFacts)) continue
-      const key = String(scene.chapterId)
-      if (!proseByChapter.has(key)) proseByChapter.set(key, [])
-      const bucket = proseByChapter.get(key)
-      for (const fact of scene.keyFacts) {
-        if (typeof fact === 'string' && fact.trim()) bucket.push(fact.trim())
-      }
-    }
-  }
-
-  const ledger = []
-  const emit = (chapterNumber, facts) => {
-    for (const fact of facts) ledger.push(`Ch${chapterNumber}: ${fact}`)
-  }
-
-  if (!Array.isArray(spine)) {
-    // No spine (edge case): emit whatever prose facts exist, in chapter order.
-    for (const key of [...proseByChapter.keys()].sort((a, b) => Number(a) - Number(b))) {
-      emit(key, proseByChapter.get(key))
-    }
-    return ledger
-  }
-
-  for (const entry of spine) {
-    if (!entry) continue
-    const key = String(entry.chapterNumber)
-    const prose = proseByChapter.get(key)
-    if (prose && prose.length) {
-      emit(entry.chapterNumber, prose)
-    } else if (Array.isArray(entry.keyFacts)) {
-      emit(
-        entry.chapterNumber,
-        entry.keyFacts.filter((f) => typeof f === 'string' && f.trim()).map((f) => f.trim())
-      )
-    }
-  }
-  return ledger
-}
-
-const SPINE_ENTRY_SCHEMA = {
-  type: 'object',
-  properties: {
-    emotionalStateAtEnd: { type: 'string' },
-    readerKnowledgeAtEnd: { type: 'string' },
-    transitionToNext: { type: 'string' },
-    keyFacts: { type: 'array', items: { type: 'string' } },
-    wordCount: { type: 'number' }
-  },
-  required: ['emotionalStateAtEnd']
-}
-
-function compressSpine(spine, tokenCap = 800) {
-  if (spine.length <= 3) return spine.map(formatFullSpineEntry).join('\n')
-  const full = spine.slice(-3)
-  const compressed = spine
-    .slice(0, -3)
-    .map((s) => `Chapter ${s.chapterNumber} (${s.chapterTitle}): ${s.emotionalStateAtEnd}`)
-  const combined = [...compressed, ...full.map(formatFullSpineEntry)]
-  const text = combined.join('\n')
-  return text.length > tokenCap * 4 ? text.slice(0, tokenCap * 4) + '\n[spine truncated]' : text
-}
-
-async function parallelWithLimit(tasks, limit = 3) {
-  const results = []
-  const executing = []
-  for (const task of tasks) {
-    const p = Promise.resolve().then(() => task())
-    results.push(p)
-    const e = p.then(
-      () => {
-        const idx = executing.indexOf(e)
-        if (idx !== -1) executing.splice(idx, 1)
-      },
-      () => {
-        const idx = executing.indexOf(e)
-        if (idx !== -1) executing.splice(idx, 1)
-      }
-    )
-    executing.push(e)
-    if (executing.length >= limit) await Promise.race(executing)
-  }
-  return Promise.all(results)
-}
-
-// Bound each spine call so a stalled model degrades to a plan-derived fallback
-// in a couple of minutes instead of hanging on Ollama's long default.
-const SPINE_TIMEOUT_MS = 120000
-
-// A usable spine entry synthesized purely from the chapter plan — used whenever a
-// model call fails, times out, or returns unusable JSON. This is what turns spine
-// generation from a single point of failure (one bad chapter aborting a 100-chapter
-// run) into a degrade-and-continue stage.
-function fallbackSpineEntry(chapter) {
-  return {
-    chapterNumber: chapter.chapterNumber,
-    chapterTitle: chapter.title,
-    emotionalStateAtEnd: chapter.emotionalTarget || 'the chapter reaches its turning point',
-    readerKnowledgeAtEnd: chapter.goal || `the events of "${chapter.title}"`,
-    transitionToNext: chapter.hookEnding || 'the story carries forward into the next chapter',
-    keyFacts: [],
-    wordCount: chapter.estimatedWords || 100
-  }
-}
-
-// Build the narrative spine. Entries are planned with bounded, provider-aware
-// concurrency using each chapter's PLAN (its predecessor's hook/emotional target)
-// as the "previous" context — the plan already threads chapter-to-chapter linkage,
-// so we don't need the previous *generated* entry and can run chapters in parallel.
-// A failed chapter falls back to a plan-derived entry; the stage never throws.
-async function generateSpine(chapters, storyArc, onEntryDone) {
-  const spine = new Array(chapters.length)
-  let completed = 0
-
-  const tasks = chapters.map((chapter, i) => async () => {
-    const prevChapter = i > 0 ? chapters[i - 1] : null
-
-    let prompt = `You are designing a narrative spine for a novel.
-Generate a 150-word spine entry for Chapter ${chapter.chapterNumber}: "${chapter.title}"
-
-CHAPTER GOAL: ${chapter.goal}
-EMOTIONAL TARGET: ${chapter.emotionalTarget}
-HOOK ENDING: ${chapter.hookEnding}
-
-`
-    if (prevChapter) {
-      prompt += `THE PREVIOUS CHAPTER (${prevChapter.chapterNumber}: "${prevChapter.title}") WAS PLANNED TO END ON:
-- Emotional target: ${prevChapter.emotionalTarget || 'unspecified'}
-- Hook into this chapter: ${prevChapter.hookEnding || 'unspecified'}
-
-This chapter must pick up from that.
-
-`
-    }
-
-    prompt += `Provide a JSON object with EXACTLY these keys:
-{
-  "emotionalStateAtEnd": "string (emotional state of characters at chapter END)",
-  "readerKnowledgeAtEnd": "string (what the reader knows by chapter end)",
-  "transitionToNext": "string (what changes between this chapter and the next)",
-  "keyFacts": ["durable fact established this chapter (who is alive/injured/where, who knows what, what has changed) — 2-5 short facts"],
-  "wordCount": number
-}`
-
-    const parsed = await aiGenerateJson(
-      prompt,
-      `You are a structural story architect. Genre: ${storyArc?.genre || 'fiction'}. Tone: ${storyArc?.tone || 'standard'}. Return ONLY valid JSON.`,
-      {
-        feature: FEATURES.STORY_GENERATION,
-        temperature: 0.7,
-        timeout: SPINE_TIMEOUT_MS,
-        schema: SPINE_ENTRY_SCHEMA,
-        schemaName: 'spine_entry'
-      }
-    ).catch(() => null)
-
-    spine[i] =
-      parsed && parsed.emotionalStateAtEnd
-        ? {
-            chapterNumber: chapter.chapterNumber,
-            chapterTitle: chapter.title,
-            emotionalStateAtEnd: parsed.emotionalStateAtEnd,
-            readerKnowledgeAtEnd: parsed.readerKnowledgeAtEnd,
-            transitionToNext: parsed.transitionToNext,
-            keyFacts: Array.isArray(parsed.keyFacts) ? parsed.keyFacts : [],
-            wordCount: parsed.wordCount || 100
-          }
-        : fallbackSpineEntry(chapter)
-
-    completed++
-    try {
-      onEntryDone?.(completed, chapters.length)
-    } catch {
-      // Best-effort progress callback; a throwing consumer must not break the run.
-    }
-  })
-
-  await parallelWithLimit(tasks, PARALLEL_CHAPTER_LIMIT())
-  return spine
-}
+import {
+  isOllamaProvider,
+  PARALLEL_CHAPTER_LIMIT,
+  formatFullSpineEntry,
+  SPINE_ENTRY_SCHEMA,
+  compressSpine,
+  SPINE_TIMEOUT_MS,
+  fallbackSpineEntry,
+  generateSpine
+} from './generation/context/spine'
+import {
+  buildExistingEntitiesBlob,
+  EMBEDDING_CONTEXT_MAX_CHARS,
+  PROSE_EXCERPT_MAX_SCENES,
+  buildEmbeddingContext,
+  selectRelevantPriorScenes,
+  buildRetrievalContext
+} from './generation/context/sceneContext'
+import { parallelWithLimit, computeSummary } from './generation/utils'
+import { CommitService } from './generation/commit'
+import { ConsistencyService } from './generation/consistency'
+import { GenerationLifecycleService } from './generation/lifecycle'
+import { SceneInteractionService } from './generation/interaction'
+import { ParallelWritingService, SceneWritingService } from './generation/writing'
+import { getResumableRun } from './generation/checkpoint'
+import { buildPreliminaryEdges } from './generation/graph'
 
 // Map a global scene index to its section (chapter) index using each section's
 // actual scene count — replaces the old Math.floor(i / 3) that silently assumed
@@ -251,34 +64,6 @@ function sectionIndexForScene(sections, sceneIndex) {
   return Math.max(0, sections.length - 1)
 }
 
-function buildExistingEntitiesBlob(characterList, locationList, plotThreadList) {
-  return JSON.stringify(
-    {
-      characters: characterList.map((c) => ({
-        name: c.name,
-        role: c.role,
-        description: c.description,
-        traits: c.traits || []
-      })),
-      locations: locationList.map((l) => ({
-        name: l.name,
-        description: l.description,
-        notes: l.notes,
-        traits: l.traits || []
-      })),
-      plotThreads: plotThreadList.map((t) => ({
-        title: t.title,
-        status: t.status,
-        notes: t.notes,
-        traits: t.traits || []
-      }))
-    },
-    null,
-    2
-  )
-}
-
-const EMBEDDING_CONTEXT_MAX_CHARS = 1400
 const MAX_REJECTED_PATTERNS = 5
 const SYNC_BATCH_SIZE = 3
 // One-click quality guardrails: rewrite a scene that fails critique up to this
@@ -286,208 +71,12 @@ const SYNC_BATCH_SIZE = 3
 // (signals a broken model/critic rather than letting it churn out garbage).
 const SCENE_MAX_ATTEMPTS = 2
 const QUALITY_FLOOR_CONSECUTIVE = 3
-// Consistency auto-fix: how many rewrite→recheck rounds, and how many scenes to
-// rewrite per round (bounds cost on a long unattended run).
-const CONSISTENCY_FIX_ROUNDS = 2
-const CONSISTENCY_FIX_MAX_SCENES = 3
-
-// Map a consistency report's contradictions to the scene index that should be
-// rewritten. Prefers matching the contradiction's prose excerpts to a scene
-// (the later of the two), and falls back to the latest scene the entity is in.
-function planConsistencyFixes(report, writtenScenes) {
-  const fixes = new Map() // sceneIndex -> Set<reason>
-  if (!report || !Array.isArray(writtenScenes) || writtenScenes.length === 0) return fixes
-
-  const norm = (t) => (t || '').toLowerCase().replace(/\s+/g, ' ').trim()
-  const normedProse = writtenScenes.map((s) => norm(s.prose))
-
-  const findByExcerpt = (excerpt) => {
-    const e = norm(excerpt)
-    if (e.length < 12) return -1
-    for (const probeLen of [60, 40, 24]) {
-      const probe = e.slice(0, probeLen)
-      if (probe.length < 12) continue
-      for (let i = normedProse.length - 1; i >= 0; i--) {
-        if (normedProse[i].includes(probe)) return i
-      }
-    }
-    return -1
-  }
-
-  const latestWithEntity = (name, kind) => {
-    for (let i = writtenScenes.length - 1; i >= 0; i--) {
-      const ws = writtenScenes[i]
-      const match =
-        kind === 'Character' ? (ws.characters || []).includes(name) : ws.location === name
-      if (match) return i
-    }
-    return -1
-  }
-
-  const addReason = (idx, reason) => {
-    if (idx < 0) return
-    if (!fixes.has(idx)) fixes.set(idx, new Set())
-    fixes.get(idx).add(reason)
-  }
-
-  const handle = (name, kind, contradictions) => {
-    for (const c of contradictions || []) {
-      const reason =
-        `${kind} "${name}" — ${c.type || 'inconsistency'}: ${c.description || ''}`.trim()
-      const idxs = (c.between || []).map(findByExcerpt).filter((i) => i >= 0)
-      const target = idxs.length ? Math.max(...idxs) : latestWithEntity(name, kind)
-      addReason(target, reason)
-    }
-  }
-
-  for (const ci of report.characterIssues || [])
-    handle(ci.character, 'Character', ci.contradictions)
-  for (const li of report.locationIssues || []) handle(li.location, 'Location', li.contradictions)
-  return fixes
-}
 
 function attemptScore(ev) {
   return ev && !ev.evalUnavailable && typeof ev.score === 'number' ? ev.score : -1
 }
 function isCleanPass(ev) {
   return !!(ev && !ev.evalUnavailable && ev.pass)
-}
-
-// Prose-excerpt continuity: the cheap strategy for short drafts, and the
-// fallback for buildRetrievalContext (below) when embeddings are unavailable.
-// For 25+ scenes the primary path is embedding-similarity retrieval.
-const PROSE_EXCERPT_MAX_SCENES = 25
-
-function buildEmbeddingContext(currentScene, priorScenes) {
-  if (priorScenes.length === 0) return ''
-
-  if (priorScenes.length > PROSE_EXCERPT_MAX_SCENES) {
-    console.warn(
-      `[VolumeStoryGenerator] Falling back to prose-excerpt continuity for ` +
-        `${priorScenes.length} scenes — embedding retrieval was unavailable; ` +
-        `continuity beyond the last two scenes may suffer.`
-    )
-  }
-
-  let context = ''
-
-  const precedingScene = priorScenes.at(-1)
-  if (precedingScene) {
-    const endingExcerpt =
-      precedingScene.prose.length > 1200
-        ? '...' + precedingScene.prose.slice(-1200)
-        : precedingScene.prose
-    context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}"]\n${endingExcerpt}\n\n`
-  }
-
-  const olderScene = priorScenes.at(-2)
-  if (olderScene && context.length < EMBEDDING_CONTEXT_MAX_CHARS) {
-    context += `[Summary of Scene ${olderScene.sceneNumber}: "${olderScene.title}"]\n${olderScene.summary || olderScene.prose.slice(0, 300) + '...'}\n\n`
-  }
-
-  // Relevance recall: pull summaries of EARLIER scenes (beyond the last two) that
-  // share a character or location with the current scene, so long drafts keep
-  // continuity with what actually matters — not just the two most recent scenes.
-  const relevant = selectRelevantPriorScenes(currentScene, priorScenes.slice(0, -2), 3)
-  if (relevant.length) {
-    context += `[Earlier related scenes]\n`
-    for (const s of relevant) {
-      if (context.length >= EMBEDDING_CONTEXT_MAX_CHARS) break
-      context += `- Scene ${s.sceneNumber} ("${s.title}"): ${s.summary || s.prose.slice(0, 200) + '...'}\n`
-    }
-    context += '\n'
-  }
-
-  return context.trim()
-}
-
-function selectRelevantPriorScenes(currentScene, candidates, limit) {
-  if (!candidates || candidates.length === 0) return []
-  const names = new Set(
-    [...(currentScene.charactersPresent || []), ...(currentScene.characters || [])]
-      .filter(Boolean)
-      .map((n) => String(n).toLowerCase())
-  )
-  const loc = currentScene.location ? String(currentScene.location).toLowerCase() : ''
-
-  const scored = []
-  for (const s of candidates) {
-    let score = 0
-    const sceneNames = (s.characters || []).map((n) => String(n).toLowerCase())
-    for (const n of sceneNames) if (names.has(n)) score++
-    if (loc && s.location && String(s.location).toLowerCase() === loc) score += 1
-    if (score > 0) scored.push({ s, score, sceneNumber: s.sceneNumber })
-  }
-  // Highest overlap first, then most recent
-  scored.sort((a, b) => b.score - a.score || (b.sceneNumber || 0) - (a.sceneNumber || 0))
-  return scored.slice(0, limit).map((x) => x.s)
-}
-
-// Continuity context that scales past the prose-excerpt ceiling. For short
-// drafts the prose-excerpt strategy is cheaper and correct; for long ones we
-// embed the current scene's brief and retrieve the top-k semantically relevant
-// prior scenes (by their summaries), so a character's canon survives 25+ scenes.
-// Summary embeddings are cached on each scene object. Always falls back to the
-// prose strategy if embeddings are unavailable (e.g. Ollama offline).
-async function buildRetrievalContext(currentScene, priorScenes, k = 5) {
-  if (!priorScenes || priorScenes.length <= PROSE_EXCERPT_MAX_SCENES) {
-    return buildEmbeddingContext(currentScene, priorScenes || [])
-  }
-  try {
-    const query = [
-      currentScene.title,
-      currentScene.emotionalGoal || currentScene.goal,
-      currentScene.whatChanges,
-      (currentScene.charactersPresent || currentScene.characters || []).join(' '),
-      currentScene.location
-    ]
-      .filter(Boolean)
-      .join(' ')
-
-    const queryEmbedding = await getEmbedding(query)
-    if (!queryEmbedding) return buildEmbeddingContext(currentScene, priorScenes)
-
-    const scored = []
-    for (const s of priorScenes) {
-      if (!s.summary) continue
-      if (!s._summaryEmbedding) {
-        try {
-          s._summaryEmbedding = await getEmbedding(s.summary)
-        } catch {
-          s._summaryEmbedding = null
-        }
-      }
-      if (s._summaryEmbedding) {
-        scored.push({ s, score: cosineSimilarity(queryEmbedding, s._summaryEmbedding) })
-      }
-    }
-    if (scored.length === 0) return buildEmbeddingContext(currentScene, priorScenes)
-
-    scored.sort((a, b) => b.score - a.score)
-    const top = scored.slice(0, k).map((x) => x.s)
-
-    let context = ''
-    // The immediately preceding scene anchors local continuity — always include
-    // its ending verbatim, even if it isn't the most semantically similar.
-    const preceding = priorScenes.at(-1)
-    if (preceding) {
-      const end =
-        preceding.prose.length > 1200 ? '...' + preceding.prose.slice(-1200) : preceding.prose
-      context += `[Ending of Preceding Scene ${preceding.sceneNumber}: "${preceding.title}"]\n${end}\n\n`
-    }
-
-    const others = top.filter((s) => s !== preceding)
-    if (others.length) {
-      context += `[Semantically related earlier scenes]\n`
-      for (const s of others) {
-        context += `- Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}\n`
-      }
-    }
-    return context.trim()
-  } catch (err) {
-    console.warn('[useVolumeStoryGenerator] retrieval context failed, using prose strategy:', err)
-    return buildEmbeddingContext(currentScene, priorScenes)
-  }
 }
 
 export function useVolumeStoryGenerator() {
@@ -528,6 +117,41 @@ export function useVolumeStoryGenerator() {
   const volumeStore = useVolumeStore()
   const manuscriptStore = useManuscriptStore()
 
+  const commitService = new CommitService({
+    writeParams,
+    volumeId,
+    scenePlan,
+    chapterPlan,
+    spineArray,
+    spineContext,
+    autoMode,
+    writtenScenes,
+    lastSyncedResultIndex,
+    progress,
+    manuscriptStore,
+    getGenRun,
+    saveGenRun,
+    makeInitialGenState
+  })
+
+  const consistencyService = new ConsistencyService({
+    writeParams,
+    scenePlan,
+    chapterPlan,
+    spineArray,
+    autoMode,
+    writtenScenes,
+    consistencyReport,
+    phase,
+    progress,
+    storyBibleStore,
+    critic,
+    writer,
+    manuscriptStore,
+    updateGenRunStage,
+    actLog
+  })
+
   function logRejectedPattern(context, prose) {
     rejectedPatterns.value.push({ context, prose, timestamp: Date.now() })
     if (rejectedPatterns.value.length > MAX_REJECTED_PATTERNS) {
@@ -535,94 +159,9 @@ export function useVolumeStoryGenerator() {
     }
   }
 
-  async function computeSummary(fullProse) {
-    try {
-      const summaryPrompt = `You are a copyeditor. Summarize the following narrative scene in exactly one concise sentence:\n\n"${fullProse.slice(0, 3000)}"`
-      const summaryResponse = await aiGenerate(
-        summaryPrompt,
-        'Summarize the scene in one sentence.',
-        {
-          feature: FEATURES.STORY_GENERATION,
-          temperature: 0.3,
-          maxTokens: 200
-        }
-      )
-      return summaryResponse
-        .replace(/^Summary:\s*/i, '')
-        .replace(/(^")|("$)/g, '')
-        .trim()
-    } catch (err) {
-      console.warn('[useVolumeStoryGenerator] Fallback slice summary used:', err)
-      return fullProse.slice(0, 150).replace(/\s+\S*$/, '') + '...'
-    }
-  }
-
   // Lightweight checkpoint of an in-progress one-click run. Stores the plan +
   // progress markers (not prose — that's already in subsections) so an
   // interrupted draft can be detected and, later, resumed.
-  function buildCheckpointState() {
-    const wp = writeParams.value || {}
-    return {
-      phase: 'writing',
-      volumeId: volumeId.value,
-      scenePlan: scenePlan.value,
-      chapterPlan: chapterPlan.value,
-      spineArray: spineArray.value,
-      spineContext: spineContext.value,
-      storyArc: wp.storyArc || null,
-      storyContract: wp.storyContract || '',
-      synopsis: wp.synopsis || '',
-      autoMode: autoMode.value,
-      writtenCount: writtenScenes.value.length,
-      // Prose-less summaries so resume can rebuild continuity context without
-      // re-summarizing (prose itself is reloaded from the subsections in the DB)
-      writtenMeta: writtenScenes.value
-        .filter((s) => s)
-        .map((s) => ({
-          sceneNumber: s.sceneNumber,
-          title: s.title,
-          summary: s.summary,
-          characters: s.characters,
-          location: s.location,
-          subsectionId: s.subsectionId
-        })),
-      lastSyncedResultIndex: lastSyncedResultIndex.value,
-      progressTotal: progress.total
-    }
-  }
-
-  async function persistCheckpoint(projectId) {
-    if (!autoMode.value || !projectId) return
-    // Merge the writing-resume fields into the stage-structured (v2) checkpoint so
-    // per-scene progress never clobbers stage tracking. Best-effort throughout.
-    try {
-      const run = await getGenRun(projectId)
-      const base = run?.state?.version === 2 ? run.state : makeInitialGenState()
-      const merged = { ...base, ...buildCheckpointState(), version: 2 }
-      merged.stages = {
-        ...base.stages,
-        prose: {
-          ...(base.stages?.prose || {}),
-          status: 'running',
-          written: writtenScenes.value.length,
-          total: scenePlan.value.length
-        }
-      }
-      merged.currentStage = 'prose'
-      saveGenRun(projectId, merged).catch(() => {})
-    } catch {
-      // never let checkpointing break the run
-    }
-  }
-
-  async function getResumableRun(projectId) {
-    const run = await getGenRun(projectId)
-    if (!run || !run.state) return null
-    const written = run.state.writtenCount || 0
-    const total = Array.isArray(run.state.scenePlan) ? run.state.scenePlan.length : 0
-    if (total === 0 || written >= total) return null
-    return { written, total, updatedAt: run.updatedAt, projectId }
-  }
 
   // Resume an interrupted one-click run. Truth comes from the DB (which
   // subsections already hold prose), NOT the checkpoint counter — so we only
@@ -745,46 +284,6 @@ export function useVolumeStoryGenerator() {
       error.value = err.message || 'Resume failed'
       return { resumed: false, reason: 'error', error: error.value }
     }
-  }
-
-  async function commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId) {
-    progress.statusText = 'Compiling prose and generating plot-accurate continuity summaries...'
-    const summary = await computeSummary(fullProse)
-    const wordCount = fullProse.split(/\s+/).length
-
-    if (scene.subsectionId) {
-      await manuscriptStore.updateSubsectionData(
-        scene.subsectionId,
-        {
-          content: fullProse,
-          wordCount,
-          contentStatus: 'generated'
-        },
-        projectId
-      )
-    }
-
-    const section = sections[sectionIdx]
-    if (section) {
-      // Sum this section's words by its own subsection membership (not a fixed
-      // 3-scene stride). The current scene isn't in writtenScenes yet, so add it.
-      const idSet = new Set(section.subsectionIds || [])
-      const totalWords =
-        writtenScenes.value
-          .filter((s) => s && idSet.has(s.subsectionId))
-          .reduce((sum, s) => sum + (s.prose ? s.prose.split(/\s+/).length : 0), 0) + wordCount
-      await manuscriptStore.updateSectionData(section.id, { wordCount: totalWords }, projectId)
-    }
-
-    writtenScenes.value.push({
-      title: scene.title || `Scene ${scene.sceneNumber}`,
-      prose: fullProse,
-      summary,
-      characters: scene.characters || scene.charactersPresent || [],
-      location: scene.location || '',
-      sceneNumber: scene.sceneNumber,
-      subsectionId: scene.subsectionId
-    })
   }
 
   async function startGeneration({
@@ -1493,14 +992,14 @@ export function useVolumeStoryGenerator() {
         return
       }
 
-      await commitAndStoreScene(
+      await commitService.commitAndStoreScene(
         scene,
         fullProse,
         sectionIndexForScene(sections, i),
         sections,
         projectId
       )
-      persistCheckpoint(projectId)
+      commitService.persistCheckpoint(projectId)
 
       if (retryGate && chosenEval) {
         sceneEvalResults.value.push({
@@ -1523,7 +1022,7 @@ export function useVolumeStoryGenerator() {
           )
           if (runConsecutiveFailures.value >= QUALITY_FLOOR_CONSECUTIVE) {
             error.value = `Quality floor breached: ${runConsecutiveFailures.value} scenes in a row failed critique after retries. The writer or critic model is likely misconfigured. ${writtenScenes.value.length} scene(s) written and saved.`
-            persistCheckpoint(projectId)
+            commitService.persistCheckpoint(projectId)
             await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
             phase.value = 'error'
             actLog.updatePhase(currentTaskId, scenePhase, { status: 'error' })
@@ -1557,7 +1056,7 @@ export function useVolumeStoryGenerator() {
     }
 
     // Early continuity audit at chapter boundaries (detection only).
-    await maybeRunIncrementalConsistency(endIndex)
+    await consistencyService.maybeRunIncrementalConsistency(endIndex)
 
     // Discover entities from this batch only
     const freshStructured = structuredResults.slice(lastSyncedResultIndex.value)
@@ -1768,104 +1267,6 @@ export function useVolumeStoryGenerator() {
     await runParallelGeneration(writeParams.value)
   }
 
-  // Rewrite a single scene to resolve continuity errors, preserving its events.
-  async function rewriteSceneForConsistency(projectId, sceneIndex, instruction, storyBibleDocs) {
-    const scene = scenePlan.value[sceneIndex]
-    if (!scene || !writeParams.value) return
-    const { storyArc, storyContract } = writeParams.value
-    const priorScenes = writtenScenes.value.filter((_, i) => i !== sceneIndex)
-    const embeddingContext = await buildRetrievalContext(scene, priorScenes)
-    const chapterLog = priorScenes
-      .map((ws, idx) => `Scene ${idx + 1} ("${ws.title}"): ${ws.summary || '(written)'}`)
-      .slice(-20)
-      .join('\n')
-    const existingEntitiesJson = buildExistingEntitiesBlob(
-      storyBibleStore.characters,
-      storyBibleStore.locations,
-      storyBibleStore.plotThreads
-    )
-    scene.totalScenes = scenePlan.value.length
-
-    const fixContract = `${storyContract}\n\nCONTINUITY FIX (mandatory): rewrite this scene to resolve the following contradictions while keeping the scene's events, outcome and length the same:\n${instruction}`
-
-    const result = await writer.writeSceneStructured({
-      sceneBrief: scene,
-      storyArc,
-      chapterLog,
-      storyBible: storyBibleDocs,
-      embeddingContext,
-      storyContract: fixContract,
-      existingEntitiesJson
-    })
-    const fullProse = result.prose
-    writtenScenes.value[sceneIndex] = {
-      title: scene.title || `Scene ${scene.sceneNumber}`,
-      prose: fullProse,
-      summary: await computeSummary(fullProse),
-      characters: scene.characters || scene.charactersPresent || [],
-      location: scene.location || '',
-      sceneNumber: scene.sceneNumber,
-      subsectionId: scene.subsectionId
-    }
-    if (scene.subsectionId) {
-      await manuscriptStore.updateSubsectionData(
-        scene.subsectionId,
-        {
-          content: fullProse,
-          wordCount: fullProse.split(/\s+/).length,
-          contentStatus: 'generated'
-        },
-        projectId
-      )
-    }
-  }
-
-  // Incremental continuity check: when a batch finishes a chapter, audit all
-  // prose written so far against the Story Bible so cross-chapter drift surfaces
-  // early instead of only at the terminal audit. Detection only — the bounded
-  // auto-fix still runs in completeGeneration. Bounded to chapter boundaries to
-  // keep cost linear in chapters, not scenes.
-  async function maybeRunIncrementalConsistency(writtenUpToIndex) {
-    const chapters = chapterPlan.value
-    if (!Array.isArray(chapters) || chapters.length < 1) return
-    let boundary = 0
-    let atChapterEnd = false
-    for (const ch of chapters) {
-      boundary += (ch.scenes && ch.scenes.length) || 0
-      if (boundary === writtenUpToIndex) {
-        atChapterEnd = true
-        break
-      }
-    }
-    // Skip the final chapter — the terminal audit covers the whole draft anyway.
-    if (!atChapterEnd || writtenUpToIndex >= scenePlan.value.length) return
-
-    const characters = storyBibleStore.characters
-    const locations = storyBibleStore.locations
-    if (characters.length <= 1 && locations.length <= 1) return
-
-    const written = writtenScenes.value.filter(Boolean)
-    if (written.length < 2) return
-
-    try {
-      const report = await critic.checkContradictions({
-        characters,
-        locations,
-        sceneProse: written,
-        synopsis: '',
-        ledger: buildFactLedger(spineArray.value, writtenScenes.value)
-      })
-      const issueCount =
-        (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
-      if (issueCount > 0) {
-        // Surface progressively so the UI shows drift as soon as it appears.
-        consistencyReport.value = report
-      }
-    } catch (err) {
-      console.warn('[useVolumeStoryGenerator] incremental consistency check failed:', err)
-    }
-  }
-
   // End-of-run repair: regenerate any scene whose subsection was left empty (a
   // failed prose attempt in the parallel path). Isolated, best-effort, one extra
   // attempt each — a single bad scene never leaves a hole in the finished draft.
@@ -1957,71 +1358,9 @@ export function useVolumeStoryGenerator() {
       written: writtenScenes.value.length,
       total: writtenScenes.value.length
     })
-    const consistencyPhase = actLog.addPhase(currentTaskId, 'Consistency Check')
-    phase.value = 'consistency-check'
-    await updateGenRunStage(projectId, 'consistency', { status: 'running' })
-    progress.statusText =
-      'Auditing written prose against character bio sheets to find narrative contradictions...'
-    const characters = storyBibleStore.characters
-    const locations = storyBibleStore.locations
-    const canCheck = characters.length > 1 || locations.length > 1
 
-    if (canCheck) {
-      const report = await critic.checkContradictions({
-        characters,
-        locations,
-        sceneProse: writtenScenes.value,
-        synopsis: '',
-        ledger: buildFactLedger(spineArray.value, writtenScenes.value)
-      })
-      consistencyReport.value = report
-    }
+    await consistencyService.runTerminalConsistencyAudit(projectId, currentTaskId)
 
-    // One-click auto-fix: rewrite the offending scenes and re-check, bounded by
-    // CONSISTENCY_FIX_ROUNDS so continuity issues don't require manual cleanup.
-    if (autoMode.value && canCheck && consistencyReport.value) {
-      const storyDocuments = useStoryDocuments()
-      const storyBibleDocs =
-        writeParams.value?.storyBibleDocs ||
-        (await storyDocuments.getStoryDocumentContext(projectId))
-      for (let round = 0; round < CONSISTENCY_FIX_ROUNDS; round++) {
-        const fixMap = planConsistencyFixes(consistencyReport.value, writtenScenes.value)
-        if (fixMap.size === 0) break
-        const targets = [...fixMap.entries()]
-          .sort((a, b) => b[0] - a[0])
-          .slice(0, CONSISTENCY_FIX_MAX_SCENES)
-        progress.statusText = `Resolving ${targets.length} continuity issue(s) (pass ${round + 1})...`
-        for (const [sceneIndex, reasons] of targets) {
-          try {
-            await rewriteSceneForConsistency(
-              projectId,
-              sceneIndex,
-              [...reasons].map((r) => `- ${r}`).join('\n'),
-              storyBibleDocs
-            )
-          } catch (err) {
-            console.warn(
-              '[useVolumeStoryGenerator] Consistency fix failed for scene',
-              sceneIndex,
-              err
-            )
-          }
-        }
-        const recheck = await critic.checkContradictions({
-          characters,
-          locations,
-          sceneProse: writtenScenes.value,
-          synopsis: '',
-          ledger: buildFactLedger(spineArray.value, writtenScenes.value)
-        })
-        consistencyReport.value = recheck
-        if ((recheck.characterIssues?.length || 0) + (recheck.locationIssues?.length || 0) === 0)
-          break
-      }
-    }
-
-    actLog.updatePhase(currentTaskId, consistencyPhase, { status: 'done' })
-    await updateGenRunStage(projectId, 'consistency', { status: 'done' })
     actLog.completeTask(currentTaskId)
 
     // Run finished cleanly — drop the crash-recovery checkpoint
@@ -2163,7 +1502,7 @@ export function useVolumeStoryGenerator() {
     const { projectId, sections } = writeParams.value
     currentSceneResult.value = null
     progress.statusText = 'Approving scene and continuing...'
-    await commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId)
+    await commitService.commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId)
     phase.value = 'writing'
     await writeNextBatch(currentWriteIndex.value)
   }
@@ -2186,74 +1525,6 @@ export function useVolumeStoryGenerator() {
     progress.statusText = 'Rewriting scene with user revisions...'
     phase.value = 'writing'
     await writeNextBatch(i)
-  }
-
-  async function buildPreliminaryEdges(projectId, volumeId, plan) {
-    try {
-      const bibleStore = useStoryBibleStore()
-      const charByName = {}
-      for (const c of bibleStore.characters) charByName[c.name.toLowerCase().trim()] = c.id
-      const locByName = {}
-      for (const l of bibleStore.locations) locByName[l.name.toLowerCase().trim()] = l.id
-
-      // Fix #11: Use Map with string keys instead of Set with objects
-      // (Set compares by reference, so { charId, locId } objects were never deduplicated)
-      const pairMap = new Map()
-      for (const scene of plan) {
-        const chars = scene.characters || scene.charactersPresent || []
-        const location = scene.location || ''
-        if (!location || chars.length === 0) continue
-        const locId = locByName[location.toLowerCase().trim()]
-        if (!locId) {
-          console.warn(`[buildPreliminaryEdges] Skipping edge for unknown location "${location}"`)
-          continue
-        }
-        for (const charName of chars) {
-          const charId = charByName[charName.toLowerCase().trim()]
-          if (!charId) {
-            console.warn(
-              `[buildPreliminaryEdges] Skipping edge for unknown character "${charName}"`
-            )
-            continue
-          }
-          const key = `${charId}|${locId}`
-          if (!pairMap.has(key)) {
-            pairMap.set(key, { charId, locId, charName, location })
-          }
-        }
-      }
-
-      if (pairMap.size === 0) return
-
-      const graphStore = useStoryGraphStore()
-      await graphStore.loadEdges(projectId)
-
-      // Pinia unwraps the `edges` ref on the store proxy — it's the array itself,
-      // NOT `edges.value` (which was undefined and made this whole function throw
-      // silently, so preliminary edges were never created).
-      const existingEdgeKeys = new Set()
-      for (const edge of graphStore.edges || []) {
-        existingEdgeKeys.add(`${edge.sourceId}|${edge.targetId}`)
-        existingEdgeKeys.add(`${edge.targetId}|${edge.sourceId}`)
-      }
-
-      for (const [key, pair] of pairMap) {
-        if (!existingEdgeKeys.has(key)) {
-          await graphStore.addEdgeData(projectId, {
-            sourceId: String(pair.charId),
-            sourceType: 'character',
-            targetId: String(pair.locId),
-            targetType: 'location',
-            relationshipType: 'planned',
-            description: `${pair.charName} visits ${pair.location} (planned)`,
-            planned: true,
-            volumeId: volumeId || null
-          })
-        }
-      }
-    } catch (err) {
-      console.warn('[VolumeStoryGenerator] buildPreliminaryEdges failed:', err)
-    }
   }
 
   function reset() {
@@ -2319,9 +1590,7 @@ export function useVolumeStoryGenerator() {
 export {
   buildEmbeddingContext,
   selectRelevantPriorScenes,
-  planConsistencyFixes,
   formatFullSpineEntry,
-  buildFactLedger,
   compressSpine,
   buildExistingEntitiesBlob,
   parallelWithLimit,

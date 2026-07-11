@@ -8,25 +8,17 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/tests/setup.js'],
-    include: [
-      'src/tests/**/*.test.{js,ts,jsx,tsx}',
-    ],
+    include: ['src/tests/**/*.test.{js,ts,jsx,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
-      include: [
-        'src/**/*.{js,ts,vue}',
-      ],
-      exclude: [
-        'src/tests/**',
-        'src/main.js',
-        'node_modules/**',
-      ],
-    },
+      include: ['src/**/*.{js,ts,vue}'],
+      exclude: ['src/tests/**', 'src/main.js', 'node_modules/**']
+    }
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
-    },
-  },
+      '@': resolve(__dirname, './src')
+    }
+  }
 })

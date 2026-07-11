@@ -4,6 +4,8 @@ vi.mock('dexie', () => {
   function DexieMock() {
     this.version = vi.fn().mockReturnThis()
     this.stores = vi.fn().mockReturnThis()
+    this.upgrade = vi.fn().mockReturnThis()
+    this.on = vi.fn()
   }
   return { default: DexieMock }
 })

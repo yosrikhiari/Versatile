@@ -5,12 +5,14 @@ A browser-based fiction writing environment with AI-powered tools for planning, 
 ## Features
 
 ### Writing Environment
+
 - **Rich text editor** powered by Tiptap with distraction-free interface
 - **Flow Sessions** — timed writing sprints with word count goals, idle detection, and nudge reminders
 - **Focus Mode** — minimal UI for uninterrupted writing
 - **Auto-save** to local IndexedDB via Dexie
 
 ### AI-Powered Tools
+
 - **Spark** — AI prompts and outlines from user-provided ideas
 - **Polish** — paragraph-level prose analysis (repetition, pacing, dialogue, show-don't-tell, etc.)
 - **Novel Pipeline** — autonomous DAG: bible → network → structure → spine → prose → consistency
@@ -21,6 +23,7 @@ A browser-based fiction writing environment with AI-powered tools for planning, 
 - **Author Voice Learning** — statistical voice profiling without LLM calls
 
 ### Planning & Organization
+
 - **Story Bible** — characters, locations, plot threads, relationships with visual graph network
 - **Chapter & Scene Management** — section/subsection hierarchy with drag-and-drop reordering
 - **Story Canvas** — spatial storyboard
@@ -29,6 +32,7 @@ A browser-based fiction writing environment with AI-powered tools for planning, 
 - **Volume Management** — organize chapters into volumes
 
 ### Export & Archive
+
 - Export to **PDF** and **EPUB**
 - Session history archive with author model tracking
 - Goal tracking (session and daily word counts)
@@ -37,7 +41,7 @@ A browser-based fiction writing environment with AI-powered tools for planning, 
 
 ```
 src/
-├── components/         — Vue components (80 across 20 feature dirs)
+├── components/         — Vue components (81 across 20 feature dirs)
 ├── composables/        — Reusable stateful logic (~55 composables)
 │   ├── generation/     — Context, shaping, pipeline, schemas, generators
 │   ├── useNovelPipeline.js     — Declarative DAG facade
@@ -47,7 +51,7 @@ src/
 │   ├── useStoryCritic.js       — Draft consistency analysis
 │   └── ...
 ├── services/           — Persistence and external API wrappers (~55 modules)
-│   ├── db-core.js      — Dexie IndexedDB schema (v31, ~34 tables)
+│   ├── db-core.js      — Dexie IndexedDB schema (v33, ~40 tables)
 │   ├── aiService.ts    — Unified AI provider interface
 │   ├── providers/      — OpenAI, Anthropic, Gemini, Groq, Ollama adapters
 │   ├── sync-engine.js  — Offline-to-server sync
@@ -56,7 +60,7 @@ src/
 │                       — manuscript, polish, project, settings, snapshot, spark,
 │                       — storyBible, storyGraph, volume, volumeStoryNetwork)
 ├── config/             — AI providers, document prompts, eval rubrics, blueprints
-└── tests/              — 113 test files (1159 tests)
+└── tests/              — 115 test files (1193 tests)
 ```
 
 ## Getting Started
@@ -91,26 +95,26 @@ The dev server starts at `http://localhost:5173`.
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build |
-| `npm test` | Run unit tests (watch mode) |
-| `npm run test:run` | Run unit tests once (1159 tests) |
-| `npm run test:coverage` | Run tests with coverage report |
-| `npm run lint` | ESLint check |
-| `npm run format` | Prettier formatting |
+| Script                  | Description                      |
+| ----------------------- | -------------------------------- |
+| `npm run dev`           | Start development server         |
+| `npm run build`         | Production build                 |
+| `npm run preview`       | Preview production build         |
+| `npm test`              | Run unit tests (watch mode)      |
+| `npm run test:run`      | Run unit tests once (1193 tests) |
+| `npm run test:coverage` | Run tests with coverage report   |
+| `npm run lint`          | ESLint check                     |
+| `npm run format`        | Prettier formatting              |
 
 ## Tech Stack
 
 - **Framework**: Vue 3 (Composition API, `<script setup>`)
 - **State**: Pinia (15 stores)
 - **Editor**: Tiptap (ProseMirror)
-- **Persistence**: Dexie v31 (IndexedDB, ~34 tables)
+- **Persistence**: Dexie v33 (IndexedDB, ~40 tables)
 - **Styling**: Tailwind CSS
 - **Build**: Vite
-- **Testing**: Vitest + jsdom (113 files, 1159 tests)
+- **Testing**: Vitest + jsdom (115 files, 1193 tests)
 - **AI**: Ollama, OpenAI, Anthropic, Gemini, Groq
 - **Backend**: .NET 10 (optional, for cloud sync)
 - **Graph**: Vue Flow (node graph for story network)

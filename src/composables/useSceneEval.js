@@ -7,6 +7,7 @@ import {
   gateRevisionEffectiveness
 } from '../services/evalGates'
 import { computeDegradation } from '../services/degradation'
+import { useEvalPersistence } from './useEvalPersistence'
 
 export function useSceneEval() {
   const isEvaluating = ref(false)
@@ -20,6 +21,8 @@ export function useSceneEval() {
   })
   const revisionResult = ref(null)
   const sceneResultsMap = ref({})
+
+  const evalPersistence = useEvalPersistence()
 
   const { evaluateScene } = useStoryCritic()
   const { reviseScene } = useStoryRevisor()
@@ -84,7 +87,7 @@ export function useSceneEval() {
     }
   }
 
-  async function evaluate(scene, workspaceType, scenePlanItem, sceneIdx) {
+  async function evaluate(scene, workspaceType, scenePlanItem, sceneIdx, projectId) {
     if (!scene?.prose) return
 
     isEvaluating.value = true
@@ -119,6 +122,26 @@ export function useSceneEval() {
           hasBeenEvaluated: true
         })
       }
+
+      if (projectId) {
+        evalPersistence.saveRecord({
+          projectId,
+          sceneId: sceneIdx != null ? String(sceneIdx) : null,
+          evalType: 'critique',
+          score: result.score ?? null,
+          sceneTitle: sceneBrief.title,
+          rawResult: {
+            critiqueResult: result,
+            gateResults: {
+              dimensionCoverage: dimCov,
+              scoreDistribution: scoreDist
+            }
+          },
+          dimensionScores: result.dimensionScores ?? null,
+          issues: result.issues ?? null,
+          strengths: result.strengths ?? null
+        })
+      }
     } catch {
       critiqueResult.value = {
         pass: true,
@@ -132,7 +155,7 @@ export function useSceneEval() {
     }
   }
 
-  async function revise(scene, workspaceType, scenePlanItem, sceneIdx) {
+  async function revise(scene, workspaceType, scenePlanItem, sceneIdx, projectId) {
     if (!critiqueResult.value) return
 
     isRevising.value = true
@@ -187,6 +210,25 @@ export function useSceneEval() {
             hasBeenEvaluated: true
           })
         }
+
+        if (projectId) {
+          evalPersistence.saveRecord({
+            projectId,
+            sceneId: sceneIdx != null ? String(sceneIdx) : null,
+            evalType: 'revision',
+            score: revEff.delta ?? null,
+            sceneTitle: sceneBrief.title,
+            rawResult: {
+              originalCritique: revResult.originalCritique,
+              revisedCritique,
+              revisionEffectiveness: revEff
+            },
+            dimensionScores: degradation.dimensions ?? null,
+            delta: revEff.delta ?? null,
+            hasRegressions: degradation.hasRegressions ?? null,
+            hasMajorRegressions: degradation.hasMajorRegressions ?? null
+          })
+        }
       }
     } catch {
       // silently return
@@ -220,6 +262,7 @@ export function useSceneEval() {
     aggregateStats,
     evaluate,
     revise,
-    reset
+    reset,
+    evalPersistence
   }
 }

@@ -8,11 +8,14 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+const emit = defineEmits(['hover', 'leave'])
+
 const props = defineProps({
   data: { type: Array, default: () => [] },
   width: { type: Number, default: 400 },
   height: { type: Number, default: 160 },
-  color: { type: String, default: '#c8922a' }
+  color: { type: String, default: '#c8922a' },
+  hoverIndex: { type: Number, default: null }
 })
 
 const padding = { top: 10, right: 10, bottom: 20, left: 10 }
@@ -53,6 +56,22 @@ const areaPath = computed(() => {
 
 const shadowColor = computed(() => hexToRgba(props.color, 0.2))
 
+const hoverX = computed(() => {
+  if (props.hoverIndex === null || !props.data || props.data.length === 0) return null
+  const w = props.width - padding.left - padding.right
+  return padding.left + (props.hoverIndex / (props.data.length - 1)) * w
+})
+
+function onMouseMove(e) {
+  if (!props.data || props.data.length < 2) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const plotW = props.width - padding.left - padding.right
+  const ratio = Math.max(0, Math.min(1, (x - padding.left) / plotW))
+  const index = Math.round(ratio * (props.data.length - 1))
+  emit('hover', index)
+}
+
 const labels = computed(() => {
   if (!props.data || props.data.length === 0) return []
   const count = 5
@@ -83,6 +102,23 @@ const labels = computed(() => {
         stroke-linecap="round"
         stroke-linejoin="round"
         class="tension-line"
+      />
+      <line
+        v-if="hoverX !== null"
+        :x1="hoverX"
+        :y1="padding.top"
+        :x2="hoverX"
+        :y2="height - padding.bottom"
+        stroke="rgba(255,255,255,0.12)"
+        stroke-width="1"
+        stroke-dasharray="2,2"
+      />
+      <rect
+        :width="width"
+        :height="height"
+        fill="transparent"
+        @mousemove="onMouseMove"
+        @mouseleave="() => emit('leave')"
       />
       <text
         v-for="(l, i) in labels"

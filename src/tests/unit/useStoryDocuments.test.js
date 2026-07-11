@@ -151,7 +151,12 @@ describe('document generators', () => {
     it('summarizes written scenes and strips HTML', () => {
       mockManuscriptStore.sortedSections = [{ id: 's1', title: 'Chapter 1' }]
       mockManuscriptStore.subsections = [
-        { sectionId: 's1', title: 'Opening', order: 1, content: '<p>The door <b>slammed</b> shut.</p>' },
+        {
+          sectionId: 's1',
+          title: 'Opening',
+          order: 1,
+          content: '<p>The door <b>slammed</b> shut.</p>'
+        },
         { sectionId: 's1', title: 'Empty', order: 2, content: '' }
       ]
       const result = generateStorySoFarDoc()

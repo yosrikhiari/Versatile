@@ -72,11 +72,7 @@ const debouncedSave = useDebounceFn(async () => {
           .catch((err) => console.error('[FlowEditor] dialogue reindex failed:', err))
       }
     } else if (saveSecId) {
-      await manuscriptStore.updateSectionData(
-        saveSecId,
-        { content },
-        projectStore.currentProjectId
-      )
+      await manuscriptStore.updateSectionData(saveSecId, { content }, projectStore.currentProjectId)
     } else {
       projectStore.saveDocumentDebounced()
     }

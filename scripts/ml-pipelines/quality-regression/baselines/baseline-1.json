@@ -1,0 +1,181 @@
+{
+  "timestamp": "2026-07-11T11:01:32.991Z",
+  "suiteVersion": 1,
+  "testCount": 6,
+  "passed": 6,
+  "gateAlerts": 0,
+  "passRate": 1,
+  "results": [
+    {
+      "id": "creative-river-crossing",
+      "workspaceType": "creative",
+      "name": "Creative — Atmospheric River Scene",
+      "score": 6.8,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 6,
+        "show_tell": 7,
+        "pacing": 7
+      },
+      "wordCount": 72,
+      "issueCount": 0,
+      "issueTypes": [],
+      "gates": {
+        "coverage": {
+          "pass": true,
+          "missing": [],
+          "warnings": [],
+          "coverage": 1
+        },
+        "distribution": {
+          "pass": true,
+          "flags": []
+        },
+        "passed": true
+      }
+    },
+    {
+      "id": "creative-market-dispute",
+      "workspaceType": "creative",
+      "name": "Creative — Market Argument Scene",
+      "score": 7.4,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 8,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 7
+      },
+      "wordCount": 83,
+      "issueCount": 0,
+      "issueTypes": [],
+      "gates": {
+        "coverage": {
+          "pass": true,
+          "missing": [],
+          "warnings": [],
+          "coverage": 1
+        },
+        "distribution": {
+          "pass": true,
+          "flags": []
+        },
+        "passed": true
+      }
+    },
+    {
+      "id": "legal-nda-clause",
+      "workspaceType": "legal",
+      "name": "Legal — Mutual NDA Core Clause",
+      "score": 7.3,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 7,
+        "liability": 7,
+        "missing_provision": 7
+      },
+      "wordCount": 106,
+      "issueCount": 0,
+      "issueTypes": [],
+      "gates": {
+        "coverage": {
+          "pass": true,
+          "missing": [],
+          "warnings": [],
+          "coverage": 1
+        },
+        "distribution": {
+          "pass": true,
+          "flags": []
+        },
+        "passed": true
+      }
+    },
+    {
+      "id": "technical-api-contract",
+      "workspaceType": "technical",
+      "name": "Technical — REST API Contract",
+      "score": 7.8,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 8,
+        "security": 7,
+        "validation": 8
+      },
+      "wordCount": 75,
+      "issueCount": 0,
+      "issueTypes": [],
+      "gates": {
+        "coverage": {
+          "pass": true,
+          "missing": [],
+          "warnings": [],
+          "coverage": 1
+        },
+        "distribution": {
+          "pass": true,
+          "flags": []
+        },
+        "passed": true
+      }
+    },
+    {
+      "id": "business-strategy-report",
+      "workspaceType": "business",
+      "name": "Business — Market Expansion Report",
+      "score": 7.5,
+      "dimensionScores": {
+        "viability": 8,
+        "financial": 7,
+        "assumptions": 7,
+        "kpi_clarity": 8
+      },
+      "wordCount": 90,
+      "issueCount": 0,
+      "issueTypes": [],
+      "gates": {
+        "coverage": {
+          "pass": true,
+          "missing": [],
+          "warnings": [],
+          "coverage": 1
+        },
+        "distribution": {
+          "pass": true,
+          "flags": []
+        },
+        "passed": true
+      }
+    },
+    {
+      "id": "research-methodology",
+      "workspaceType": "research",
+      "name": "Research — Experimental Method",
+      "score": 6.3,
+      "dimensionScores": {
+        "rigor": 8,
+        "methodology": 8,
+        "citations": 1,
+        "reproducibility": 8
+      },
+      "wordCount": 85,
+      "issueCount": 0,
+      "issueTypes": [],
+      "gates": {
+        "coverage": {
+          "pass": true,
+          "missing": [],
+          "warnings": [],
+          "coverage": 1
+        },
+        "distribution": {
+          "pass": true,
+          "flags": []
+        },
+        "passed": true
+      }
+    }
+  ],
+  "degradation": null
+}

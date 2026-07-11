@@ -24,14 +24,15 @@ let useVolumeStoryGenerator
 beforeEach(async () => {
   vi.resetModules()
   const mod = await import('@/composables/useVolumeStoryGenerator')
+  const modCtx = await import('@/composables/generation/context/sceneContext')
   buildEmbeddingContext = mod.buildEmbeddingContext
   selectRelevantPriorScenes = mod.selectRelevantPriorScenes
-  planConsistencyFixes = mod.planConsistencyFixes
+  planConsistencyFixes = modCtx.planConsistencyFixes
   formatFullSpineEntry = mod.formatFullSpineEntry
   compressSpine = mod.compressSpine
   buildExistingEntitiesBlob = mod.buildExistingEntitiesBlob
   parallelWithLimit = mod.parallelWithLimit
-  buildFactLedger = mod.buildFactLedger
+  buildFactLedger = modCtx.buildFactLedger
   useVolumeStoryGenerator = mod.useVolumeStoryGenerator
 })
 

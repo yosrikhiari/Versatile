@@ -21,16 +21,18 @@ import {
   MODE_ARC,
   MODE_CHAPTER,
   MODE_SCENE,
-  MODE_BRAINSTORM
+  MODE_BRAINSTORM,
+  MODE_BLURB
 } from '../../constants/generationModes'
+import { useStoryBlurb } from '../../composables/useStoryBlurb'
 import { useSceneEval } from '../../composables/useSceneEval'
 import { useResearchScope } from '../../composables/useResearchScope'
 import { useGenerationHistory } from '../../composables/useGenerationHistory'
 import { useSparkContext } from '../../composables/useSparkContext'
 import { useGenerationSettings } from '../../composables/useGenerationSettings'
-import EvalPanel from '../eval/EvalPanel.vue'
-import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
-import EvalDashboard from '../eval/EvalDashboard.vue'
+import VolumeCompletePanel from './VolumeCompletePanel.vue'
+import VolumeSceneReview from './VolumeSceneReview.vue'
+import VolumePlanPreview from './VolumePlanPreview.vue'
 
 const emit = defineEmits(['openChapters'])
 
@@ -68,6 +70,56 @@ const { sparkContext, sparkContextLabel, handleSendSparkToGenerator, clearSparkC
     }
   })
 
+const blurbTone = ref('dramatic')
+const blurbLength = ref('standard')
+const blurbResult = ref('')
+const blurbHistory = ref([])
+const blurbToneOptions = [
+  { id: 'dramatic', label: 'Dramatic' },
+  { id: 'mysterious', label: 'Mysterious' },
+  { id: 'commercial', label: 'Commercial' },
+  { id: 'literary', label: 'Literary' }
+]
+const blurbLengthOptions = [
+  { id: 'short', label: 'Short (50-80w)' },
+  { id: 'standard', label: 'Standard (120-180w)' },
+  { id: 'long', label: 'Long (250-350w)' }
+]
+
+const {
+  generating: blurbGenerating,
+  error: blurbError,
+  generateBlurb,
+  getBlurbHistory,
+  deleteBlurb
+} = useStoryBlurb()
+
+async function loadBlurbHistory() {
+  blurbHistory.value = await getBlurbHistory()
+}
+
+async function handleGenerateBlurb() {
+  blurbResult.value = ''
+  const result = await generateBlurb({ tone: blurbTone.value, length: blurbLength.value })
+  if (result.success) {
+    blurbResult.value = result.blurb
+    await loadBlurbHistory()
+  }
+}
+
+async function handleCopyBlurb(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    // clipboard not available
+  }
+}
+
+async function handleDeleteBlurb(id) {
+  await deleteBlurb(id)
+  await loadBlurbHistory()
+}
+
 const showVolumeReadModal = ref(false)
 const showStoryContextModal = ref(false)
 
@@ -83,9 +135,6 @@ const consistencyModalOpen = ref(false)
 const selectedSceneIndex = ref(0)
 const showDashboard = ref(false)
 
-const pitchOpen = ref(-1)
-const showReRequestInput = ref(false)
-const reRequestEdits = ref('')
 const sceneReviewEnabled = computed({
   get: () => volumeGenerator.sceneReviewMode.value,
   set: (val) => {
@@ -104,34 +153,9 @@ const autoRun = computed({
     volumeGenerator.autoMode.value = val
   }
 })
-function togglePitch(i) {
-  pitchOpen.value = pitchOpen.value === i ? -1 : i
-}
-function formatWants(wants) {
-  if (!wants || typeof wants !== 'object') return ''
-  return Object.entries(wants)
-    .map(([name, goal]) => `${name} → ${goal}`)
-    .join(', ')
-}
-
 const previewScenes = computed(() =>
   volumePlanEdits.value.length > 0 ? volumePlanEdits.value : volumeGenerator.scenePlan.value
 )
-
-function getTensionBarClass(tension) {
-  switch (tension) {
-    case 'peak':
-      return 'bg-red-400'
-    case 'high':
-      return 'bg-orange-400'
-    case 'medium':
-      return 'bg-yellow-400'
-    case 'low':
-      return 'bg-gray-400'
-    default:
-      return 'bg-gray-400'
-  }
-}
 
 const sceneEval = useSceneEval()
 
@@ -140,7 +164,7 @@ function handleEvaluateScene(idx) {
   const planItem = volumeGenerator.scenePlan.value?.[idx]
   if (!scene) return
   const ws = projectStore.activeWorkspaceType || 'creative'
-  sceneEval.evaluate(scene, ws, planItem, idx)
+  sceneEval.evaluate(scene, ws, planItem, idx, projectStore.currentProjectId)
 }
 
 function handleReviseScene(idx) {
@@ -148,7 +172,7 @@ function handleReviseScene(idx) {
   const planItem = volumeGenerator.scenePlan.value?.[idx]
   if (!scene || !sceneEval.critiqueResult.value) return
   const ws = projectStore.activeWorkspaceType || 'creative'
-  sceneEval.revise(scene, ws, planItem, idx)
+  sceneEval.revise(scene, ws, planItem, idx, projectStore.currentProjectId)
 }
 
 const genres = [
@@ -228,6 +252,7 @@ onMounted(() => {
   loadPreviousGenerations()
   checkResumable()
   loadResearchSources()
+  loadBlurbHistory()
 })
 
 async function handleVolumeResume() {
@@ -351,16 +376,12 @@ async function handleApproveScene() {
 }
 
 async function handleRejectScene() {
-  showReRequestInput.value = false
-  reRequestEdits.value = ''
   await volumeGenerator.rejectScene()
 }
 
-async function handleRerequestScene() {
-  if (!reRequestEdits.value.trim()) return
-  await volumeGenerator.rerequestScene(reRequestEdits.value)
-  reRequestEdits.value = ''
-  showReRequestInput.value = false
+async function handleRerequestScene(edits) {
+  if (!edits?.trim()) return
+  await volumeGenerator.rerequestScene(edits)
 }
 
 function handleVolumeReset() {
@@ -461,23 +482,9 @@ async function handleVolumeSaveToManuscript() {
     type: 'done',
     message: `Saved ${saved} scene(s)${skipped > 0 ? `, ${skipped} skipped (no subsection)` : ''}${errors > 0 ? `, ${errors} error(s)` : ''}`
   }
-  setTimeout(() => { saveStatus.value = null }, 5000)
-}
-
-// ----- Shared -----
-function getTensionColor(tension) {
-  switch (tension) {
-    case 'peak':
-      return 'text-red-400 bg-red-950/30'
-    case 'high':
-      return 'text-orange-400 bg-orange-950/30'
-    case 'medium':
-      return 'text-yellow-400 bg-yellow-950/30'
-    case 'low':
-      return 'text-gray-400 bg-gray-800/30'
-    default:
-      return 'text-gray-400 bg-gray-800/30'
-  }
+  setTimeout(() => {
+    saveStatus.value = null
+  }, 5000)
 }
 
 function acceptRevision() {
@@ -511,7 +518,8 @@ function getPhaseLabel(phase) {
             { id: MODE_BRAINSTORM, label: 'Ideate' },
             { id: MODE_SCENE, label: 'Scene' },
             { id: MODE_CHAPTER, label: 'Chapter' },
-            { id: MODE_ARC, label: 'Arc' }
+            { id: MODE_ARC, label: 'Arc' },
+            { id: MODE_BLURB, label: 'Blurb' }
           ]"
           :key="m.id"
           class="flex-1 py-1.5 text-xs rounded-md font-ui transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-accent"
@@ -532,8 +540,162 @@ function getPhaseLabel(phase) {
         </div>
       </div>
 
+      <!-- ==================== BLURB TAB ==================== -->
+      <div v-if="tab === MODE_BLURB" class="h-full flex flex-col overflow-hidden">
+        <div class="flex-1 overflow-y-auto p-4 space-y-5">
+          <!-- Tone selector -->
+          <div class="space-y-2">
+            <label class="text-xs text-text-primary font-semibold font-ui">Tone</label>
+            <div class="flex gap-1.5 flex-wrap">
+              <button
+                v-for="opt in blurbToneOptions"
+                :key="opt.id"
+                class="px-3 py-1.5 text-xs rounded-lg border font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
+                :class="
+                  blurbTone === opt.id
+                    ? 'border-accent text-accent'
+                    : 'border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-strong'
+                "
+                :style="
+                  blurbTone === opt.id
+                    ? { background: 'rgba(var(--vers-accent-primary-rgb),0.14)' }
+                    : {}
+                "
+                @click="blurbTone = opt.id"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Length selector -->
+          <div class="space-y-2">
+            <label class="text-xs text-text-primary font-semibold font-ui">Length</label>
+            <div class="flex gap-1.5">
+              <button
+                v-for="opt in blurbLengthOptions"
+                :key="opt.id"
+                class="flex-1 py-1.5 text-xs rounded-lg border font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
+                :class="
+                  blurbLength === opt.id
+                    ? 'border-accent text-accent'
+                    : 'border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-strong'
+                "
+                :style="
+                  blurbLength === opt.id
+                    ? { background: 'rgba(var(--vers-accent-primary-rgb),0.14)' }
+                    : {}
+                "
+                @click="blurbLength = opt.id"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Generate button -->
+          <button
+            :disabled="blurbGenerating"
+            class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            @click="handleGenerateBlurb"
+          >
+            <span class="flex items-center justify-center gap-2">
+              <BaseIcon name="book-open" :size="16" />
+              Generate Blurb
+            </span>
+          </button>
+
+          <!-- Loading -->
+          <div
+            v-if="blurbGenerating"
+            class="flex items-center justify-center gap-2 py-4 text-text-secondary"
+          >
+            <BaseIcon name="loader" :size="18" class="animate-spin text-accent" />
+            <span class="text-xs font-ui">Writing your blurb...</span>
+          </div>
+
+          <!-- Error -->
+          <div
+            v-if="blurbError && !blurbGenerating"
+            class="rounded-lg bg-red-950/20 border border-red-800/30 p-3 text-center"
+          >
+            <p class="text-xs text-red-400 font-ui">{{ blurbError }}</p>
+          </div>
+
+          <!-- Result -->
+          <div v-if="blurbResult" class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-text-primary font-semibold font-ui">Generated Blurb</span>
+              <button
+                class="flex items-center gap-1 text-2xs text-text-hint hover:text-accent font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5"
+                @click="handleCopyBlurb(blurbResult)"
+              >
+                <BaseIcon name="copy" :size="12" />
+                Copy
+              </button>
+            </div>
+            <div
+              class="rounded-lg bg-bg-tertiary border border-border-subtle p-3 text-sm text-text-primary whitespace-pre-wrap leading-relaxed"
+            >
+              {{ blurbResult }}
+            </div>
+          </div>
+
+          <!-- History -->
+          <div v-if="blurbHistory.length > 0" class="space-y-2">
+            <details class="group">
+              <summary
+                class="flex items-center gap-2 text-xs text-text-hover font-ui cursor-pointer select-none py-1"
+              >
+                <BaseIcon
+                  name="chevron-right"
+                  :size="14"
+                  class="transition-transform group-open:rotate-90"
+                />
+                Previous blurbs ({{ blurbHistory.length }})
+              </summary>
+              <div class="mt-2 space-y-2">
+                <div
+                  v-for="item in blurbHistory"
+                  :key="item.id"
+                  class="rounded-lg border border-border-subtle p-3 space-y-1.5"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-2xs text-text-hint font-ui">
+                      {{ item.tone }} · {{ item.length }}
+                      <span v-if="item.generatedAt" class="ml-1">{{
+                        new Date(item.generatedAt).toLocaleDateString()
+                      }}</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                      <button
+                        class="text-text-hint hover:text-accent transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                        title="Copy"
+                        @click="handleCopyBlurb(item.blurb)"
+                      >
+                        <BaseIcon name="copy" :size="12" />
+                      </button>
+                      <button
+                        class="text-text-hint hover:text-red-400 transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                        title="Delete"
+                        @click="handleDeleteBlurb(item.id)"
+                      >
+                        <BaseIcon name="trash-2" :size="12" />
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-xs text-text-secondary leading-relaxed line-clamp-3">
+                    {{ item.blurb }}
+                  </p>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================== CHAPTER / VOLUME TABS ==================== -->
-      <template v-if="tab !== MODE_BRAINSTORM">
+      <template v-if="tab !== MODE_BRAINSTORM && tab !== MODE_BLURB">
         <!-- ==================== IDLE / CONTROLS ==================== -->
         <template v-if="volumeGenerator.phase.value === 'idle'">
           <div class="p-4 space-y-5">
@@ -575,12 +737,12 @@ function getPhaseLabel(phase) {
             <GenerationSettingsForm
               v-model:genre="genre"
               v-model:tone="tone"
-              v-model:wordTarget="wordTarget"
-              v-model:usePreciseStructure="usePreciseStructure"
+              v-model:word-target="wordTarget"
+              v-model:use-precise-structure="usePreciseStructure"
               v-model:volumes="volumes"
-              v-model:chaptersPerVolume="chaptersPerVolume"
-              v-model:wordsPerChapter="wordsPerChapter"
-              v-model:scenesPerChapter="scenesPerChapter"
+              v-model:chapters-per-volume="chaptersPerVolume"
+              v-model:words-per-chapter="wordsPerChapter"
+              v-model:scenes-per-chapter="scenesPerChapter"
               :genres="genres"
               :tones="tones"
               :mode="mode"
@@ -783,298 +945,16 @@ function getPhaseLabel(phase) {
         </div>
 
         <!-- PLAN PREVIEW -->
-        <div v-if="volumeGenerator.phase.value === 'plan-preview'" class="p-4 space-y-4">
-          <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 space-y-3">
-            <h3 class="text-sm font-semibold text-text-primary font-ui">
-              {{ mode === MODE_SCENE ? 'Scene' : mode === MODE_CHAPTER ? 'Chapter' : 'Arc' }} Plan —
-              {{ volumeGenerator.scenePlan.value.length }} scene{{
-                volumeGenerator.scenePlan.value.length === 1 ? '' : 's'
-              }}
-            </h3>
-            <p class="text-xs text-text-hint">
-              Edit scene fields before writing begins. Narrative pitches are auto-generated previews
-              — edit the underlying fields to update them.
-            </p>
-          </div>
-
-          <div class="space-y-2">
-            <h3 class="text-xs uppercase tracking-widest text-text-hint font-ui">Scenes</h3>
-
-            <!-- Tension arc visualization -->
-            <div
-              class="flex gap-0.5 h-3 rounded overflow-hidden bg-bg-tertiary"
-              title="Tension arc across scenes"
-            >
-              <div
-                v-for="(scene, j) in previewScenes"
-                :key="j"
-                :class="getTensionBarClass(scene.tension)"
-                class="h-full transition-colors"
-                :style="{ width: 100 / previewScenes.length + '%' }"
-                :title="'Scene ' + (j + 1) + ': ' + scene.tension"
-              />
-            </div>
-
-            <div
-              v-for="(scene, i) in previewScenes"
-              :key="i"
-              class="rounded-lg bg-bg-secondary border border-border-subtle p-3 space-y-2"
-            >
-              <!-- Header -->
-              <div class="flex items-center justify-between">
-                <span class="text-sm font-semibold text-text-primary font-ui"
-                  >Scene {{ scene.sceneNumber || i + 1 }}: {{ scene.title }}</span
-                >
-                <span
-                  :class="['px-2 py-0.5 rounded text-xs font-ui', getTensionColor(scene.tension)]"
-                  >{{ scene.tension }}</span
-                >
-              </div>
-
-              <!-- Collapsible narrative pitch -->
-              <div class="rounded-lg bg-bg-tertiary/50 border border-border-subtle">
-                <button
-                  class="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-hover hover:text-text-primary transition-colors font-ui focus:outline-none"
-                  @click="togglePitch(i)"
-                >
-                  <BaseIcon :name="pitchOpen === i ? 'chevron-down' : 'chevron-right'" :size="12" />
-                  <span class="font-medium">Narrative Pitch</span>
-                </button>
-                <div
-                  v-if="pitchOpen === i"
-                  class="px-3 pb-2.5 text-xs text-text-secondary leading-relaxed space-y-1.5 border-t border-border-subtle pt-2"
-                >
-                  <p v-if="scene.goal">
-                    Emotional goal:
-                    <span class="text-text-primary font-medium">{{ scene.goal }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.obstacle">
-                    What changes / obstacle:
-                    <span class="text-text-primary">{{ scene.obstacle }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.setup">
-                    Sets up: <span class="text-text-primary">{{ scene.setup }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.payoff">
-                    Pays off: <span class="text-text-primary">{{ scene.payoff }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.sensoryAnchor">
-                    Sensory anchor:
-                    <span class="text-text-primary italic">{{ scene.sensoryAnchor }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.location">
-                    Location: <span class="text-text-primary">{{ scene.location }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.tension">
-                    Tension: <span class="text-text-primary font-medium">{{ scene.tension }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.pacing">
-                    Pacing: <span class="text-text-primary font-medium">{{ scene.pacing }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.arcPosition">
-                    Arc position:
-                    <span class="text-text-primary font-medium">{{ scene.arcPosition }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.emotionalGoal">
-                    Reader's emotional response:
-                    <span class="text-text-primary">{{ scene.emotionalGoal }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.characterWants && Object.keys(scene.characterWants).length > 0">
-                    Character wants:
-                    <span class="text-text-primary">{{ formatWants(scene.characterWants) }}</span
-                    >.
-                  </p>
-                  <p v-if="scene.estimatedWords">
-                    Target words: <span class="text-text-primary">{{ scene.estimatedWords }}</span
-                    >.
-                  </p>
-                  <p
-                    v-if="
-                      !scene.goal &&
-                      !scene.setup &&
-                      !scene.payoff &&
-                      !scene.sensoryAnchor &&
-                      !scene.obstacle &&
-                      !scene.tension &&
-                      !scene.pacing
-                    "
-                    class="text-text-hint italic"
-                  >
-                    No narrative details yet.
-                  </p>
-                </div>
-              </div>
-
-              <!-- 2-column editable field grid -->
-              <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                <!-- Left column -->
-                <div class="space-y-1.5">
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Goal:</span>
-                    <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.goal || ''"
-                      @input="handleVolumeSceneEdit(i, 'goal', $event.target.value)"
-                    />
-                  </div>
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Characters:</span>
-                    <!-- prettier-ignore -->
-                    <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="
-                        scene.characters
-                          ? scene.characters.join(', ')
-                          : (scene.charactersPresent || []).join(', ')
-                      "
-                      @input="handleVolumeSceneEdit(i, 'characters', $event.target.value.split(',').map((s) => s.trim()))"
-                    />
-                  </div>
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Setup:</span>
-                    <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.setup || ''"
-                      @input="handleVolumeSceneEdit(i, 'setup', $event.target.value)"
-                    />
-                  </div>
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Sensory:</span>
-                    <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.sensoryAnchor || ''"
-                      @input="handleVolumeSceneEdit(i, 'sensoryAnchor', $event.target.value)"
-                    />
-                  </div>
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Tension:</span>
-                    <select
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.tension || 'medium'"
-                      @change="handleVolumeSceneEdit(i, 'tension', $event.target.value)"
-                    >
-                      <option value="low">low</option>
-                      <option value="medium">medium</option>
-                      <option value="high">high</option>
-                      <option value="peak">peak</option>
-                    </select>
-                  </div>
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Arc Pos:</span>
-                    <select
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.arcPosition || ''"
-                      @change="handleVolumeSceneEdit(i, 'arcPosition', $event.target.value)"
-                    >
-                      <option value="">—</option>
-                      <option value="opening">opening</option>
-                      <option value="rising">rising</option>
-                      <option value="climax">climax</option>
-                      <option value="falling">falling</option>
-                      <option value="resolution">resolution</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Right column -->
-                <div class="space-y-1.5">
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Changes:</span>
-                    <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.obstacle || ''"
-                      @input="handleVolumeSceneEdit(i, 'obstacle', $event.target.value)"
-                    />
-                  </div>
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Location:</span>
-                    <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.location || ''"
-                      @input="handleVolumeSceneEdit(i, 'location', $event.target.value)"
-                    />
-                  </div>
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Payoff:</span>
-                    <input
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.payoff || ''"
-                      @input="handleVolumeSceneEdit(i, 'payoff', $event.target.value)"
-                    />
-                  </div>
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Words:</span>
-                    <!-- prettier-ignore -->
-                    <input
-                      type="number"
-                      min="100"
-                      max="5000"
-                      step="50"
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.estimatedWords || 800"
-                      @input="handleVolumeSceneEdit(i, 'estimatedWords', parseInt($event.target.value) || 800)"
-                    />
-                  </div>
-                  <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-hint font-ui w-16 shrink-0">Pacing:</span>
-                    <select
-                      class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                      :value="scene.pacing || 'medium'"
-                      @change="handleVolumeSceneEdit(i, 'pacing', $event.target.value)"
-                    >
-                      <option value="slow">slow</option>
-                      <option value="medium">medium</option>
-                      <option value="fast">fast</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Editable characterWants full-width display -->
-              <div class="text-xs text-text-hint border-t border-border-subtle pt-1.5">
-                <span class="font-ui text-text-hover">Character Wants:</span>
-                <input
-                  class="ml-1 flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-0.5 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent w-full mt-1"
-                  :value="
-                    scene.characterWants && Object.keys(scene.characterWants).length > 0
-                      ? formatWants(scene.characterWants)
-                      : ''
-                  "
-                  placeholder="CharacterName → goal description, AnotherChar → their goal"
-                  @input="handleWantsEdit(i, $event.target.value)"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div class="flex gap-2">
-            <button
-              class="flex-1 py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="handleVolumeConfirmPlan"
-            >
-              <span class="flex items-center justify-center gap-2">
-                <BaseIcon name="play" :size="16" />
-                Confirm & Start Writing
-              </span>
-            </button>
-            <button
-              class="px-4 py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="handleVolumeReset"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <VolumePlanPreview
+          v-if="volumeGenerator.phase.value === 'plan-preview'"
+          :scenes="previewScenes"
+          :plan-label="mode === MODE_SCENE ? 'Scene' : mode === MODE_CHAPTER ? 'Chapter' : 'Arc'"
+          :scene-count="volumeGenerator.scenePlan.value.length"
+          @scene-edit="handleVolumeSceneEdit"
+          @wants-edit="handleWantsEdit"
+          @confirm="handleVolumeConfirmPlan"
+          @cancel="handleVolumeReset"
+        />
 
         <!-- WRITING STATE -->
         <div v-if="volumeGenerator.phase.value === 'writing'" class="p-4 space-y-4">
@@ -1149,90 +1029,13 @@ function getPhaseLabel(phase) {
         </div>
 
         <!-- SCENE REVIEW STATE -->
-        <div v-if="volumeGenerator.phase.value === 'scene-review'" class="p-4 space-y-4">
-          <div class="space-y-2">
-            <div class="flex items-center justify-between text-xs text-text-hint font-ui">
-              <span
-                >Scene Review — Scene
-                {{ volumeGenerator.currentSceneResult.value?.scene?.sceneNumber || '...' }}:
-                {{ volumeGenerator.currentSceneResult.value?.scene?.title || '...' }}</span
-              >
-            </div>
-            <div
-              class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin"
-            >
-              <div class="p-3 text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
-                {{ volumeGenerator.currentSceneResult.value?.fullProse || '...' }}
-                <BaseIcon
-                  v-if="volumeGenerator.currentSceneResult.value?.fullProse"
-                  name="loader-2"
-                  :size="12"
-                  class="animate-spin inline ml-1 text-accent"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div v-if="!showReRequestInput" class="flex gap-2">
-            <button
-              class="flex-1 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="handleApproveScene"
-            >
-              <span class="flex items-center justify-center gap-2"
-                ><BaseIcon name="check" :size="16" /> Approve</span
-              >
-            </button>
-            <button
-              class="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-500 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="handleRejectScene"
-            >
-              <span class="flex items-center justify-center gap-2"
-                ><BaseIcon name="x" :size="16" /> Reject</span
-              >
-            </button>
-            <button
-              class="flex-1 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-500 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="showReRequestInput = true"
-            >
-              <span class="flex items-center justify-center gap-2"
-                ><BaseIcon name="pencil" :size="16" /> Re-request</span
-              >
-            </button>
-          </div>
-
-          <div v-if="showReRequestInput" class="space-y-2">
-            <textarea
-              v-model="reRequestEdits"
-              placeholder="Describe what to change in this scene..."
-              class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-              rows="3"
-            />
-            <div class="flex gap-2">
-              <button
-                class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-                :disabled="!reRequestEdits.trim()"
-                @click="handleRerequestScene"
-              >
-                <span class="flex items-center justify-center gap-2"
-                  ><BaseIcon name="refresh" :size="16" /> Submit Revisions</span
-                >
-              </button>
-              <button
-                class="px-4 py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-                @click="showReRequestInput = false"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-
-          <button
-            class="w-full py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="handleVolumeReset"
-          >
-            Cancel
-          </button>
-        </div>
+        <VolumeSceneReview
+          :volume-generator="volumeGenerator"
+          @approve="handleApproveScene"
+          @reject="handleRejectScene"
+          @rerequest="handleRerequestScene"
+          @cancel="handleVolumeReset"
+        />
 
         <!-- CONSISTENCY CHECK STATE -->
         <div
@@ -1254,267 +1057,23 @@ function getPhaseLabel(phase) {
         </div>
 
         <!-- COMPLETE STATE -->
-        <div v-if="volumeGenerator.phase.value === 'complete'" class="p-4 space-y-4">
-          <!-- Scene list header with inline stats -->
-          <div class="flex items-center justify-between gap-2">
-            <h3 class="text-xs uppercase tracking-widest text-text-hint font-ui">
-              Scenes ({{ volumeGenerator.writtenScenes.value.length }})
-              <span class="font-normal tracking-normal text-text-hint/60"
-                >· {{ totalWordsWritten.toLocaleString() }} words</span
-              >
-            </h3>
-            <div class="flex items-center gap-1.5">
-              <div v-if="volumeTotalConsistencyIssues > 0">
-                <button
-                  class="text-2xs text-yellow-400 font-ui flex items-center gap-1 hover:text-yellow-300 focus:outline-none focus:ring-1 focus:ring-accent rounded"
-                  @click="consistencyModalOpen = true"
-                >
-                  <BaseIcon name="alert-triangle" :size="10" />
-                  {{ volumeTotalConsistencyIssues }}
-                </button>
-              </div>
-              <div v-else class="text-2xs text-green-400/60 font-ui flex items-center gap-1">
-                <BaseIcon name="check-circle" :size="10" />
-                ok
-              </div>
-            </div>
-          </div>
-
-          <!-- Quality summary card -->
-          <div
-            v-if="volumeGenerator.consistencyReport.value"
-            class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border-subtle bg-bg-secondary/50"
-          >
-            <div class="flex items-center gap-2">
-              <BaseIcon
-                :name="qualityGrade === 'good' ? 'check-circle' : 'alert-triangle'"
-                :size="14"
-                :class="
-                  qualityGrade === 'good'
-                    ? 'text-green-400'
-                    : qualityGrade === 'fair'
-                      ? 'text-yellow-400'
-                      : 'text-red-400'
-                "
-              />
-              <span class="text-xs font-ui text-text-secondary">
-                Quality:
-                <span
-                  :class="
-                    qualityGrade === 'good'
-                      ? 'text-green-400'
-                      : qualityGrade === 'fair'
-                        ? 'text-yellow-400'
-                        : 'text-red-400'
-                  "
-                  >{{ qualityGrade }}</span
-                >
-              </span>
-            </div>
-            <div class="flex gap-3 text-2xs text-text-hint">
-              <span>{{ totalCharacterIssues }} character issues</span>
-              <span>{{ totalLocationIssues }} location issues</span>
-            </div>
-          </div>
-
-          <!-- Story-level eval aggregate summary -->
-          <div class="rounded-lg border border-border-subtle bg-bg-secondary/50 px-3 py-2">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-2xs uppercase tracking-wider text-text-hint font-ui"
-                >Evaluations</span
-              >
-              <div class="flex items-center gap-2">
-                <div class="flex gap-3 text-2xs text-text-hint">
-                  <span
-                    >{{ sceneEval.aggregateStats.value?.evaluatedCount || 0 }} /
-                    {{ sceneEval.aggregateStats.value?.totalScenes || 0 }} scenes</span
-                  >
-                  <span
-                    v-if="sceneEval.aggregateStats.value?.averageScore !== null"
-                    class="text-indigo-400"
-                  >
-                    Avg: {{ sceneEval.aggregateStats.value?.averageScore }}
-                  </span>
-                  <span
-                    v-if="sceneEval.aggregateStats.value?.totalRegressions > 0"
-                    class="text-yellow-400"
-                  >
-                    {{ sceneEval.aggregateStats.value?.totalRegressions }} regressions
-                  </span>
-                </div>
-                <button
-                  class="text-2xs text-accent font-ui hover:text-accent/80 transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5"
-                  @click="showDashboard = !showDashboard"
-                >
-                  {{ showDashboard ? 'Hide' : 'Dashboard' }}
-                </button>
-              </div>
-            </div>
-            <EvalDashboard
-              v-if="showDashboard"
-              :scene-results-map="sceneEval.sceneResultsMap.value"
-              :gate-results="sceneEval.gateResults.value"
-              :workspace-type="projectStore.activeWorkspaceType || 'creative'"
-              class="mt-2 border-t border-border-subtle pt-2"
-            />
-          </div>
-
-          <!-- Scene list -->
-          <div class="rounded-lg border border-border-subtle overflow-hidden">
-            <div
-              v-for="(scene, i) in volumeGenerator.writtenScenes.value"
-              :key="i"
-              class="px-3 py-2.5 border-b border-border-subtle last:border-b-0 cursor-pointer transition-colors hover:bg-surface-hover"
-              :class="
-                i === selectedSceneIndex
-                  ? 'border-l-2 border-accent bg-bg-secondary'
-                  : 'border-l-2 border-transparent'
-              "
-              @click="selectedSceneIndex = i"
-            >
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-sm font-semibold text-text-primary font-ui truncate"
-                  >Scene {{ i + 1 }}: {{ scene.title }}</span
-                >
-                <span class="text-2xs text-text-hint/60 font-ui whitespace-nowrap"
-                  >{{ scene.prose.split(/\s+/).length }} words</span
-                >
-              </div>
-            </div>
-          </div>
-
-          <!-- Selected scene actions -->
-          <div v-if="selectedSceneIndex >= 0" class="space-y-2">
-            <div class="flex gap-1.5">
-              <button
-                class="flex-1 py-1.5 px-2 bg-yellow-600/20 text-yellow-400 rounded-md text-xs font-medium hover:bg-yellow-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-                @click="handleRegenerateScene(selectedSceneIndex)"
-              >
-                <BaseIcon name="refresh-cw" :size="12" /> Re-generate Scene
-                {{ selectedSceneIndex + 1 }}
-              </button>
-              <button
-                class="flex-1 py-1.5 px-2 bg-accent/10 text-accent rounded-md text-xs font-medium hover:bg-accent/20 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
-                :disabled="
-                  sceneEval.isEvaluating.value ||
-                  !volumeGenerator.writtenScenes.value?.[selectedSceneIndex]?.prose
-                "
-                @click="handleEvaluateScene(selectedSceneIndex)"
-              >
-                <BaseIcon
-                  :name="sceneEval.isEvaluating.value ? 'loader' : 'check-circle'"
-                  :size="12"
-                />
-                {{
-                  sceneEval.isEvaluating.value
-                    ? 'Evaluating...'
-                    : sceneEval.hasBeenEvaluated.value
-                      ? 'Re-evaluate'
-                      : 'Evaluate'
-                }}
-              </button>
-            </div>
-
-            <div
-              v-if="sceneEval.hasBeenEvaluated.value || sceneEval.isEvaluating.value"
-              class="space-y-2 border border-border-subtle rounded-lg p-3 bg-bg-secondary/50"
-            >
-              <EvalPanel
-                :critique-result="sceneEval.critiqueResult.value"
-                :gate-results="sceneEval.gateResults.value"
-                :eval-gates="{
-                  dimensionCoverage: sceneEval.gateResults.value?.dimensionCoverage,
-                  scoreDistribution: sceneEval.gateResults.value?.scoreDistribution,
-                  revisionEffectiveness: sceneEval.gateResults.value?.revisionEffectiveness
-                }"
-                :workspace-type="projectStore.activeWorkspaceType || 'creative'"
-                :compact="true"
-              />
-
-              <div v-if="sceneEval.hasBeenEvaluated.value" class="flex gap-1.5">
-                <button
-                  class="flex-1 py-1 px-2 bg-indigo-600/20 text-indigo-400 rounded-md text-11px font-medium hover:bg-indigo-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
-                  :disabled="sceneEval.isRevising.value || !sceneEval.critiqueResult.value"
-                  @click="handleReviseScene(selectedSceneIndex)"
-                >
-                  <BaseIcon
-                    :name="sceneEval.isRevising.value ? 'loader' : 'refresh-cw'"
-                    :size="11"
-                  />
-                  {{ sceneEval.isRevising.value ? 'Revising...' : 'Apply Revision' }}
-                </button>
-                <!-- prettier-ignore -->
-                <button
-                  v-if="sceneEval.revisionResult.value"
-                  class="flex-1 py-1 px-2 bg-emerald-600/20 text-emerald-400 rounded-md text-11px font-medium hover:bg-emerald-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-                  @click="acceptRevision()"
-                >
-                  <BaseIcon name="check" :size="11" /> Accept Revision
-                </button>
-              </div>
-
-              <RevisionDeltaPanel
-                :revision-result="sceneEval.revisionResult.value"
-                :compact="true"
-              />
-            </div>
-          </div>
-
-          <!-- Primary action -->
-          <button
-            class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="handleVolumeReset"
-          >
-            <span class="flex items-center justify-center gap-2"
-              ><BaseIcon name="plus" :size="16" /> Generate Another</span
-            >
-          </button>
-
-          <!-- Secondary actions -->
-          <div class="flex gap-1.5">
-            <button
-              class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-              @click="showVolumeReadModal = true"
-            >
-              <BaseIcon name="book-open" :size="12" /> Read
-            </button>
-            <div class="relative flex-1">
-              <button
-                class="w-full py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-                @click="handleVolumeSaveToManuscript"
-              >
-                <BaseIcon name="save" :size="12" /> Save
-              </button>
-              <span
-                v-if="saveStatus"
-                class="absolute -top-2 right-0 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
-                :class="saveStatus.type === 'saving' ? 'bg-accent text-accent-foreground' : 'bg-green-600/20 text-green-400'"
-              >{{ saveStatus.message }}</span>
-            </div>
-            <button
-              class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-              @click="emit('openChapters')"
-            >
-              <BaseIcon name="list" :size="12" /> Chapters
-            </button>
-          </div>
-
-          <!-- Tertiary / Export actions -->
-          <div class="flex gap-1.5">
-            <button
-              class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1"
-              @click="handleVolumeExportTxt"
-            >
-              <BaseIcon name="file-text" :size="10" /> .txt
-            </button>
-            <button
-              class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1"
-              @click="handleVolumeExportMd"
-            >
-              <BaseIcon name="file-down" :size="10" /> .md
-            </button>
-          </div>
-        </div>
+        <VolumeCompletePanel
+          v-if="volumeGenerator.phase.value === 'complete'"
+          :volume-generator="volumeGenerator"
+          :scene-eval="sceneEval"
+          :save-status="saveStatus"
+          @regenerate="handleRegenerateScene"
+          @evaluate="handleEvaluateScene"
+          @revise="handleReviseScene"
+          @accept-revision="acceptRevision"
+          @reset="handleVolumeReset"
+          @save="handleVolumeSaveToManuscript"
+          @export-txt="handleVolumeExportTxt"
+          @export-md="handleVolumeExportMd"
+          @open-chapters="emit('openChapters')"
+          @open-consistency="consistencyModalOpen = true"
+          @open-read="showVolumeReadModal = true"
+        />
 
         <!-- ERROR STATE -->
         <div v-if="volumeGenerator.phase.value === 'error'" class="p-4 space-y-4">

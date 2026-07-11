@@ -12,7 +12,19 @@
     "lint": "eslint src/**/*.{js,vue}",
     "lint:tokens": "node scripts/lint-tokens.mjs",
     "lint:fix": "eslint src/**/*.{js,vue} --fix",
-    "format": "prettier --write \"src/**/*.{js,vue,css}\""
+    "format": "prettier --write \"src/**/*.{js,vue,css}\"",
+    "eval:rag": "npx vite-node scripts/evaluate-rag.js",
+    "eval:scene": "npx vite-node scripts/evaluate-scene-retrieval.js",
+    "pipeline:quality": "npx vite-node scripts/ml-pipelines/quality-regression/evaluate.js",
+    "pipeline:benchmark": "npx vite-node scripts/ml-pipelines/model-benchmarking/evaluate.js",
+    "pipeline:active": "npx vite-node scripts/ml-pipelines/active-learning/analyze.js",
+    "pipeline:active:sample": "npx vite-node scripts/ml-pipelines/active-learning/analyze.js --source scripts/ml-pipelines/active-learning/sample-eval-history.json",
+    "pipeline:curate": "npx vite-node scripts/ml-pipelines/fine-tuning-curation/curate.js",
+    "pipeline:curate:sample": "npx vite-node scripts/ml-pipelines/fine-tuning-curation/curate.js --source scripts/ml-pipelines/active-learning/sample-eval-history.json",
+    "pipeline:drift": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js",
+    "pipeline:drift:sample": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/active-learning/sample-eval-history.json",
+    "pipeline:drift:synthetic": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/drift-monitor/sample-drift-evals.json --threshold 1",
+    "pipeline:drift:edge": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/drift-monitor/sample-drift-edge-evals.json --threshold 1"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",

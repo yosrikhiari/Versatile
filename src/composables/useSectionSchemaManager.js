@@ -4,6 +4,7 @@ import { useProjectStore } from '../stores/projectStore'
 import { SECTION_STATUSES } from '../config/statuses'
 import { countWords } from '../utils/textUtils'
 import { useNotifications } from './useNotifications'
+import { useDialogueIndexer } from './useDialogueIndexer'
 
 export { SECTION_STATUSES }
 
@@ -52,11 +53,13 @@ export function useSectionSchemaManager() {
     showSubsectionModal.value = true
   }
 
-  function saveSubsection() {
+  async function saveSubsection() {
     if (!newSubsection.value.title?.trim()) return
 
+    const dialogueIndexer = useDialogueIndexer()
+
     if (editingSubsection.value) {
-      manuscriptStore.updateSubsectionData(
+      await manuscriptStore.updateSubsectionData(
         editingSubsection.value.id,
         {
           title: newSubsection.value.title,
@@ -66,12 +69,20 @@ export function useSectionSchemaManager() {
         },
         projectStore.currentProjectId
       )
+      const sub = manuscriptStore.subsections.find((s) => s.id === editingSubsection.value.id)
+      if (sub?.content) {
+        dialogueIndexer.reindexSubsection(sub)
+      }
     } else if (activeSectionId.value) {
-      manuscriptStore.addSubsectionData(
+      const id = await manuscriptStore.addSubsectionData(
         projectStore.currentProjectId,
         activeSectionId.value,
         newSubsection.value
       )
+      const sub = manuscriptStore.subsections.find((s) => s.id === id)
+      if (sub?.content) {
+        dialogueIndexer.reindexSubsection(sub)
+      }
     }
 
     showSubsectionModal.value = false

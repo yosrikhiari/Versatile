@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "description": "Curated test synopses for quality regression checking across workspace types",
+  "tests": [
+    {
+      "id": "creative-river-crossing",
+      "workspaceType": "creative",
+      "name": "Creative — Atmospheric River Scene",
+      "synopsis": "Elara stood at the river's edge, the cold mist clinging to her cloak. She had crossed a hundred rivers in her journey south, but this one felt different. The water ran dark and fast, swollen by spring melt from the distant mountains. Somewhere beyond the far bank, hidden in the ancient forest, lay the answers she had travelled three moons to find. She tightened her pack straps and stepped into the current.",
+      "expected": {
+        "minScores": {
+          "continuity": 7,
+          "voice": 7,
+          "emotional_goal": 6,
+          "show_tell": 7,
+          "pacing": 7
+        },
+        "majorIssueCount": 0,
+        "totalIssueCount": 3
+      }
+    },
+    {
+      "id": "creative-market-dispute",
+      "workspaceType": "creative",
+      "name": "Creative — Market Argument Scene",
+      "synopsis": "The merchant's hands shook as he counted the coins. 'This is half what you owe me,' he said, not meeting Kael's eyes. Kael leaned against the stall, arms crossed, watching the crowd part around them. 'Half is what I promised. The other half when the shipment clears the south gate.' The merchant's jaw tightened. 'That wasn't the arrangement and you know it.' Around them, the market continued its rhythm — haggling, laughing, hollering — but at this stall, the air had gone still.",
+      "expected": {
+        "minScores": {
+          "continuity": 7,
+          "voice": 8,
+          "emotional_goal": 7,
+          "show_tell": 8,
+          "pacing": 7
+        },
+        "majorIssueCount": 0,
+        "totalIssueCount": 2
+      }
+    },
+    {
+      "id": "legal-nda-clause",
+      "workspaceType": "legal",
+      "name": "Legal — Mutual NDA Core Clause",
+      "synopsis": "Each party agrees to hold the other's confidential information in strict confidence for a period of three years from the date of disclosure. Confidential information shall include all written materials marked as confidential and any oral or visual information identified as confidential at the time of disclosure and reduced to writing within thirty days. This obligation shall not apply to information that: (a) is or becomes publicly known through no fault of the receiving party; (b) was rightfully in the receiving party's possession prior to disclosure; (c) is independently developed by the receiving party; or (d) is required to be disclosed by law or court order.",
+      "expected": {
+        "minScores": {
+          "clarity": 8,
+          "ambiguity": 7,
+          "liability": 7,
+          "missing_provision": 7
+        },
+        "majorIssueCount": 0,
+        "totalIssueCount": 3
+      }
+    },
+    {
+      "id": "technical-api-contract",
+      "workspaceType": "technical",
+      "name": "Technical — REST API Contract",
+      "synopsis": "POST /api/v2/orders/create accepts a JSON body with fields: customerId (string, required), items (array of OrderItem, required, min 1), shippingAddress (Address, required), couponCode (string, optional). Returns 201 with OrderResponse on success, 400 with ValidationError on invalid input, 401 if authentication token is missing or expired, 404 if customerId does not exist, and 429 if rate limit exceeded. All requests must include an Authorization header with a Bearer JWT token. Idempotency-Key header is supported for retry safety.",
+      "expected": {
+        "minScores": {
+          "architecture": 8,
+          "interface": 8,
+          "security": 7,
+          "validation": 8
+        },
+        "majorIssueCount": 0,
+        "totalIssueCount": 2
+      }
+    },
+    {
+      "id": "business-strategy-report",
+      "workspaceType": "business",
+      "name": "Business — Market Expansion Report",
+      "synopsis": "Our analysis indicates the Asia-Pacific region presents a $12M total addressable market for our product, growing at 18% year over year. Customer discovery interviews with 47 prospects across three markets identified pricing sensitivity as the primary barrier (cited by 62% of respondents). We recommend a phased entry: (1) establish a regional partner network in Singapore by Q2, (2) localize the product for Japanese and Korean markets by Q3, and (3) deploy a dedicated APAC sales team by Q4. Unit economics project a 14-month payback period with a 3.2x LTV/CAC ratio.",
+      "expected": {
+        "minScores": {
+          "viability": 8,
+          "financial": 7,
+          "assumptions": 7,
+          "kpi_clarity": 8
+        },
+        "majorIssueCount": 0,
+        "totalIssueCount": 3
+      }
+    },
+    {
+      "id": "research-methodology",
+      "workspaceType": "research",
+      "name": "Research — Experimental Method",
+      "synopsis": "We recruited 120 participants (60 female, 60 male, mean age 34.2, SD 8.7) from a university subject pool. Participants were randomly assigned to one of three conditions: control (neutral text), treatment A (high-causal language), and treatment B (low-causal language). Each participant read a 500-word narrative and then completed a comprehension test with 20 items. We measured response time, accuracy, and self-reported engagement on a 7-point Likert scale. Data were analyzed using a one-way ANOVA with Tukey post-hoc comparisons. Effect sizes are reported as Cohen's d.",
+      "expected": {
+        "minScores": {
+          "rigor": 8,
+          "methodology": 8,
+          "citations": 1,
+          "reproducibility": 8
+        },
+        "majorIssueCount": 0,
+        "totalIssueCount": 3
+      }
+    }
+  ]
+}

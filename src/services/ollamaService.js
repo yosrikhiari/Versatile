@@ -76,6 +76,7 @@ function legacyDeobfuscate(encoded) {
     return ''
   }
 }
+export { legacyDeobfuscate as deobfuscate }
 
 export async function decrypt(encoded) {
   // Try Web Crypto AES-GCM first

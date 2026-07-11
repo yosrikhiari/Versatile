@@ -38,7 +38,9 @@ const navGroups = [
     items: [
       { label: 'Outline', panel: 'outline', icon: 'list' },
       { label: 'Sections', panel: 'sections', icon: 'book-marked' },
-      { label: 'Canvas', panel: 'canvas', icon: 'palette' }
+      { label: 'Canvas', panel: 'canvas', icon: 'palette' },
+      { label: 'Consistency', panel: 'consistency', icon: 'clipboard-check' },
+      { label: 'Beta Reader', panel: 'beta-reader', icon: 'eye' }
     ]
   },
   {

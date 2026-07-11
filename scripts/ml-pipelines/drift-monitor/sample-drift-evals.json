@@ -1,0 +1,1642 @@
+{
+  "version": 1,
+  "description": "Synthetic drift-test dataset. creative: pacing+emotional_goal regress after Jan 31. legal: stable throughout. technical: clarity+interface improve after Jan 31.",
+  "exportedAt": "2026-07-11T16:14:53.807Z",
+  "evals": [
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-001",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 8,
+        "show_tell": 7,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-15T00:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-002",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-20T03:25:42.857Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-003",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-25T06:51:25.714Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-004",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 6,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-30T10:17:08.571Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-005",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 7,
+        "show_tell": 6,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-04T13:42:51.428Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-006",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 6,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-09T17:08:34.285Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-007",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-14T20:34:17.142Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-008",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 6,
+        "emotional_goal": 6,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-20T00:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-009",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-25T03:25:42.857Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-010",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-02T06:51:25.714Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-011",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-07T10:17:08.571Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-012",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-12T13:42:51.428Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-013",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 6,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-17T17:08:34.285Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-014",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-22T20:34:17.142Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-015",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-28T00:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-016",
+      "evalType": "story",
+      "score": 8,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 7,
+        "emotional_goal": 8,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-02T03:25:42.857Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-017",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-07T06:51:25.714Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-018",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-12T10:17:08.571Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-019",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-17T13:42:51.428Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-020",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 8,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-22T17:08:34.285Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-021",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 8,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-27T20:34:17.142Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-022",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-03T00:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-023",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 6,
+        "show_tell": 7,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-08T03:25:42.857Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-024",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 6,
+        "show_tell": 8,
+        "pacing": 5
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-13T06:51:25.714Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-025",
+      "evalType": "story",
+      "score": 6,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 5,
+        "show_tell": 7,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-18T10:17:08.571Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-026",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 6,
+        "show_tell": 8,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-23T13:42:51.428Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-027",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 6,
+        "show_tell": 7,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-28T17:08:34.285Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-028",
+      "evalType": "story",
+      "score": 6,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 5,
+        "show_tell": 7,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-02T20:34:17.142Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-029",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 7,
+        "emotional_goal": 6,
+        "show_tell": 7,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-08T00:00:00.000Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-030",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 6,
+        "show_tell": 7,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-13T03:25:42.857Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-031",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 7,
+        "emotional_goal": 5,
+        "show_tell": 8,
+        "pacing": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-18T06:51:25.714Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-032",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 7,
+        "emotional_goal": 6,
+        "show_tell": 8,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-23T10:17:08.571Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-c",
+      "sceneId": "creative-eval-033",
+      "evalType": "story",
+      "score": 6,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 5,
+        "show_tell": 6,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-28T13:42:51.428Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-a",
+      "sceneId": "creative-eval-034",
+      "evalType": "story",
+      "score": 6,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 6,
+        "emotional_goal": 5,
+        "show_tell": 7,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-07-03T17:08:34.285Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-creative-b",
+      "sceneId": "creative-eval-035",
+      "evalType": "story",
+      "score": 7,
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 7,
+        "emotional_goal": 5,
+        "show_tell": 7,
+        "pacing": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-07-08T20:34:17.142Z",
+      "workspaceType": "creative"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-001",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 9,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-20T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-002",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 9,
+        "ambiguity": 7,
+        "liability": 7,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-26T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-003",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 9,
+        "ambiguity": 7,
+        "liability": 7,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-01T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-004",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 7,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-07T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-005",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "clarity": 7,
+        "ambiguity": 7,
+        "liability": 7,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-13T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-006",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 9,
+        "ambiguity": 7,
+        "liability": 7,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-19T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-007",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 7,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-25T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-008",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-03T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-009",
+      "evalType": "document",
+      "score": 9,
+      "dimensionScores": {
+        "clarity": 9,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-09T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-010",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 7,
+        "liability": 8,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-15T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-011",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 7,
+        "liability": 8,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-21T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-012",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 9,
+        "ambiguity": 7,
+        "liability": 7,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-27T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-013",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-02T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-014",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 7,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-08T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-015",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-14T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-016",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 7,
+        "ambiguity": 8,
+        "liability": 7,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-20T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-017",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 7,
+        "liability": 7,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-26T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-018",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 7,
+        "liability": 7,
+        "missing_provision": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-02T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-019",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 7,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-08T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-020",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 7,
+        "liability": 7,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-14T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-021",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-20T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-022",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 7,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-26T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-023",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 9,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-01T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-024",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 7,
+        "liability": 8,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-07T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-025",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 9,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-13T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-026",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 9,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-19T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-027",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-25T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-a",
+      "sceneId": "legal-eval-028",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 7,
+        "missing_provision": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-07-01T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-b",
+      "sceneId": "legal-eval-029",
+      "evalType": "document",
+      "score": 9,
+      "dimensionScores": {
+        "clarity": 9,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-07-07T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-legal-c",
+      "sceneId": "legal-eval-030",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "clarity": 8,
+        "ambiguity": 8,
+        "liability": 8,
+        "missing_provision": 9
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-07-13T00:00:00.000Z",
+      "workspaceType": "legal"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-001",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 6,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-10T00:00:00.000Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-002",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 7,
+        "validation": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-15T03:25:42.857Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-003",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 6,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-20T06:51:25.714Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-004",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 6,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-25T10:17:08.571Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-005",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 6,
+        "interface": 6,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-01-30T13:42:51.428Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-006",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 6,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-04T17:08:34.285Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-007",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 7,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-09T20:34:17.142Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-008",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 7,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-15T00:00:00.000Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-009",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 8,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-20T03:25:42.857Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-010",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 6,
+        "security": 7,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-02-25T06:51:25.714Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-011",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 6,
+        "security": 8,
+        "validation": 6
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-02T10:17:08.571Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-012",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 7,
+        "security": 7,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-07T13:42:51.428Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-013",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-12T17:08:34.285Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-014",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-17T20:34:17.142Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-015",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-23T00:00:00.000Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-016",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 6,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-03-28T03:25:42.857Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-017",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 6,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-02T06:51:25.714Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-018",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 6,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-07T10:17:08.571Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-019",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-12T13:42:51.428Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-020",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 7,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-17T17:08:34.285Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-021",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 7,
+        "security": 8,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-22T20:34:17.142Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-022",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-04-28T00:00:00.000Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-023",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 8,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-03T03:25:42.857Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-024",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 7,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-08T06:51:25.714Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-025",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 7,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-13T10:17:08.571Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-026",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 8,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-18T13:42:51.428Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-027",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 8,
+        "security": 8,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-23T17:08:34.285Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-028",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 8,
+        "security": 8,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-05-28T20:34:17.142Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-029",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 8,
+        "security": 7,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-03T00:00:00.000Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-030",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 6,
+        "interface": 8,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-08T03:25:42.857Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-031",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 8,
+        "security": 7,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-13T06:51:25.714Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-032",
+      "evalType": "document",
+      "score": 7,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 7,
+        "security": 7,
+        "validation": 7
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-18T10:17:08.571Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-c",
+      "sceneId": "technical-eval-033",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 8,
+        "security": 8,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-23T13:42:51.428Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-a",
+      "sceneId": "technical-eval-034",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 7,
+        "interface": 8,
+        "security": 8,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-06-28T17:08:34.285Z",
+      "workspaceType": "technical"
+    },
+    {
+      "projectId": "proj-technical-b",
+      "sceneId": "technical-eval-035",
+      "evalType": "document",
+      "score": 8,
+      "dimensionScores": {
+        "architecture": 8,
+        "interface": 7,
+        "security": 7,
+        "validation": 8
+      },
+      "issues": [],
+      "strengths": [],
+      "timestamp": "2026-07-03T20:34:17.142Z",
+      "workspaceType": "technical"
+    }
+  ]
+}

@@ -18,6 +18,7 @@ const EXPECTED = {
   dailyGoals: '++id | [projectId+date], date, projectId',
   dialogueIndex: '++id | [projectId+speakerId], paragraphIndex, projectId, sectionId, speakerId',
   embeddingCache: 'hash | createdAt',
+  evalResults: '++id | evalType, projectId, sceneId, score, timestamp',
   genRuns: '++id | &projectId, updatedAt',
   generatedStories: '++id | generatedAt, projectId, qualityScore, title, totalWords',
   graphEdges:
@@ -31,6 +32,7 @@ const EXPECTED = {
   pendingDeletions: '++id | apiId, deletedAt, table',
   plotThreads:
     '++id | apiId, generationStatus, lastSyncedAt, notes, projectId, status, syncStatus, title',
+  projectBlurbs: '++id | generatedAt, projectId',
   projects:
     '++id | apiId, createdAt, genre, lastSyncedAt, name, syncStatus, synopsis, updatedAt, userId',
   researchChunks: '++id | chunkIndex, documentId, embeddingStatus, projectId',
@@ -75,7 +77,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(31)
+    expect(verno).toBe(33)
   })
 
   it('has exactly the expected set of tables', () => {

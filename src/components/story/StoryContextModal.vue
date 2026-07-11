@@ -171,8 +171,8 @@ watch(
         <BaseIcon name="unlink" :size="13" class="text-text-hint shrink-0" />
         <template v-if="orphanCount === null">
           <span class="text-text-hint flex-1"
-            >Remove relationships pointing at deleted entities (the "Character 42"
-            noise) from the network.</span
+            >Remove relationships pointing at deleted entities (the "Character 42" noise) from the
+            network.</span
           >
           <button
             class="py-1 px-2.5 text-text-secondary hover:text-text-primary border border-border-subtle rounded-md focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
@@ -210,9 +210,7 @@ watch(
       </div>
 
       <!-- Footer -->
-      <div
-        class="flex items-center justify-between gap-3 p-4 border-t border-border-subtle"
-      >
+      <div class="flex items-center justify-between gap-3 p-4 border-t border-border-subtle">
         <span class="text-[11px] text-text-hint font-ui">
           {{ wordCount }} words
           <span v-if="dirty" class="text-amber-400"> · unsaved changes</span>

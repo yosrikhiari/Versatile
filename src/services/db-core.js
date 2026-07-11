@@ -229,6 +229,17 @@ db.version(31)
     })
   })
 
+// v32: blurb/synopsis generation history per project
+db.version(32).stores({
+  projectBlurbs: '++id, projectId, generatedAt'
+})
+
+// v33: evaluation persistence — saves critique/gate/revision results so the
+// app can show score trends, regression history, and aggregate stats.
+db.version(33).stores({
+  evalResults: '++id, projectId, sceneId, timestamp, evalType, score'
+})
+
 const recoveryFlag = 'versatile_db_recovery'
 
 let _ready

@@ -124,10 +124,10 @@ function togglePolish() {
   }
 }
 
-function toggleStoryBible() {
-  if (activePanelName.value !== 'story-bible') {
+function toggleStoryBible(force) {
+  if (force || activePanelName.value !== 'story-bible') {
     activePanelName.value = 'story-bible'
-    markCoreLoop('build')
+    if (!force) markCoreLoop('build')
   } else {
     activePanelName.value = null
   }
@@ -141,12 +141,20 @@ function toggleOutline() {
   activePanelName.value = activePanelName.value === 'outline' ? null : 'outline'
 }
 
-function toggleSections() {
-  activePanelName.value = activePanelName.value === 'sections' ? null : 'sections'
+function toggleSections(force) {
+  if (force || activePanelName.value !== 'sections') {
+    activePanelName.value = 'sections'
+  } else {
+    activePanelName.value = null
+  }
 }
 
-function toggleNetwork() {
-  activePanelName.value = activePanelName.value === 'network' ? null : 'network'
+function toggleNetwork(force) {
+  if (force || activePanelName.value !== 'network') {
+    activePanelName.value = 'network'
+  } else {
+    activePanelName.value = null
+  }
 }
 
 function toggleTimeline() {
@@ -167,6 +175,14 @@ function toggleVoiceLab() {
 
 function toggleStoryShape() {
   activePanelName.value = activePanelName.value === 'story-shape' ? null : 'story-shape'
+}
+
+function toggleConsistency() {
+  activePanelName.value = activePanelName.value === 'consistency' ? null : 'consistency'
+}
+
+function toggleBetaReader() {
+  activePanelName.value = activePanelName.value === 'beta-reader' ? null : 'beta-reader'
 }
 
 function toggleSpark() {
@@ -210,7 +226,9 @@ function handleSidebarNav(name) {
     archive: toggleArchive,
     research: toggleResearch,
     'voice-lab': toggleVoiceLab,
-    'story-shape': toggleStoryShape
+    'story-shape': toggleStoryShape,
+    consistency: toggleConsistency,
+    'beta-reader': toggleBetaReader
   }
   map[name]?.()
 }
@@ -227,7 +245,9 @@ defineExpose({
   toggleNetwork,
   toggleResearch,
   toggleVoiceLab,
-  toggleStoryShape
+  toggleStoryShape,
+  toggleConsistency,
+  toggleBetaReader
 })
 
 onMounted(async () => {
@@ -446,6 +466,20 @@ onMounted(async () => {
             class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
           >
             <slot name="story-shape"></slot>
+          </aside>
+          <aside
+            v-else-if="activePanelName === 'consistency' && !flowMode && !focusMode"
+            key="consistency"
+            class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          >
+            <slot name="consistency"></slot>
+          </aside>
+          <aside
+            v-else-if="activePanelName === 'beta-reader' && !flowMode && !focusMode"
+            key="beta-reader"
+            class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          >
+            <slot name="beta-reader"></slot>
           </aside>
         </Transition>
 

@@ -48,7 +48,9 @@ export const FEATURES = {
   NETWORK: 'network',
   TAGGING: 'tagging',
   CHARACTER_CHAT: 'character_chat',
-  POV_WRITING: 'pov_writing'
+  POV_WRITING: 'pov_writing',
+  SHAPE_ANALYSIS: 'shape_analysis',
+  BLURB: 'blurb'
 }
 
 export const FEATURE_LABELS = {
@@ -61,7 +63,9 @@ export const FEATURE_LABELS = {
   [FEATURES.NETWORK]: 'Network (relationship suggestions)',
   [FEATURES.TAGGING]: 'Research auto-tagging',
   [FEATURES.CHARACTER_CHAT]: 'Character chat',
-  [FEATURES.POV_WRITING]: 'POV writing assistant'
+  [FEATURES.POV_WRITING]: 'POV writing assistant',
+  [FEATURES.SHAPE_ANALYSIS]: 'Story shape analysis',
+  [FEATURES.BLURB]: 'Blurb/synopsis generation'
 }
 
 export const FEATURE_DEFAULTS = {
@@ -74,7 +78,9 @@ export const FEATURE_DEFAULTS = {
   [FEATURES.NETWORK]: { provider: PROVIDERS.OLLAMA, model: null },
   [FEATURES.TAGGING]: { provider: PROVIDERS.OLLAMA, model: null },
   [FEATURES.CHARACTER_CHAT]: { provider: PROVIDERS.OLLAMA, model: null },
-  [FEATURES.POV_WRITING]: { provider: PROVIDERS.OLLAMA, model: null }
+  [FEATURES.POV_WRITING]: { provider: PROVIDERS.OLLAMA, model: null },
+  [FEATURES.SHAPE_ANALYSIS]: { provider: PROVIDERS.OLLAMA, model: null },
+  [FEATURES.BLURB]: { provider: PROVIDERS.OLLAMA, model: null }
 }
 
 export const PROVIDER_DEFAULT = PROVIDERS.OLLAMA

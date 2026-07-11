@@ -25,7 +25,13 @@ module.exports = {
           {
             patterns: [
               {
-                group: ['../stores', '../stores/*', '../../stores/*', '../../../stores/*', '@/stores/*'],
+                group: [
+                  '../stores',
+                  '../stores/*',
+                  '../../stores/*',
+                  '../../../stores/*',
+                  '@/stores/*'
+                ],
                 message:
                   'Services must not import from stores. Inject dependencies or pass data as parameters.'
               }
