@@ -116,7 +116,7 @@ export class SceneWritingService {
     for (let i = startIndex; i < endIndex; i++) {
       const scene = this.scenePlan.value[i]
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
-      const scenePhase = this.actLog.addPhase(this.currentTaskId, phaseName)
+      const scenePhase = this.actLog.addPhase(this.currentTaskId.value, phaseName)
       this.progress.current = i + 1
       this.progress.sceneLabel = scene.title || `Scene ${scene.sceneNumber}`
       this.progress.statusText =
@@ -162,7 +162,7 @@ export class SceneWritingService {
               scene
             })
           },
-          onRawChunk: (chunk) => this.actLog.appendThought(this.currentTaskId, scenePhase, chunk),
+          onRawChunk: (chunk) => this.actLog.appendThought(this.currentTaskId.value, scenePhase, chunk),
           embeddingContext,
           storyContract: effectiveStoryContract,
           rejectedPatterns: extraRejected,
@@ -198,7 +198,7 @@ export class SceneWritingService {
           }
         ])
       }
-      this.actLog.updatePhase(this.currentTaskId, scenePhase, { status: 'done' })
+      this.actLog.updatePhase(this.currentTaskId.value, scenePhase, { status: 'done' })
 
       const fullProse = chosenProse
       this.structuredResults.push({ sceneIndex: i, structured: chosenStructured })
@@ -249,7 +249,7 @@ export class SceneWritingService {
               error: this.error.value
             })
             this.phase.value = 'error'
-            this.actLog.updatePhase(this.currentTaskId, scenePhase, { status: 'error' })
+            this.actLog.updatePhase(this.currentTaskId.value, scenePhase, { status: 'error' })
             return
           }
         } else {

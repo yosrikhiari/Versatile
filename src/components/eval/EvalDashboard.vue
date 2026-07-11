@@ -132,6 +132,47 @@
       </div>
     </div>
 
+    <!-- Drift Detection -->
+    <div
+      v-if="enableDrift"
+      class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
+    >
+      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
+        Drift Detection
+      </h4>
+      <DriftAlerts
+        :drift-report="driftReport"
+        :analysis-error="driftAnalysisError"
+        :is-analyzing="driftIsAnalyzing"
+        :flagged-regressions="driftFlaggedRegressions"
+        :flagged-improvements="driftFlaggedImprovements"
+        :flagged-volatility="driftFlaggedVolatility"
+        :has-drift="driftHasDrift"
+        :has-high-severity="driftHasHighSeverity"
+        @run-analysis="$emit('run-drift-analysis')"
+      />
+    </div>
+
+    <!-- Active Learning -->
+    <div
+      v-if="enableActiveLearning"
+      class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
+    >
+      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
+        Active Learning
+      </h4>
+      <ActiveLearningPanel
+        :analysis-report="alAnalysisReport"
+        :analysis-error="alAnalysisError"
+        :is-analyzing="alIsAnalyzing"
+        :recommendations="alRecommendations"
+        :below-threshold-recs="alBelowThresholdRecs"
+        :no-data-recs="alNoDataRecs"
+        :has-actionable-items="alHasActionableItems"
+        @run-analysis="$emit('run-active-learning')"
+      />
+    </div>
+
     <!-- Empty State -->
     <div
       v-if="totalScenes === 0"
@@ -150,16 +191,40 @@
 import { computed } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import { getDimensionsForWorkspace } from '../../config/evalDimensions'
+import DriftAlerts from './DriftAlerts.vue'
+import ActiveLearningPanel from './ActiveLearningPanel.vue'
 
 export default {
   name: 'EvalDashboard',
-  components: { BaseIcon },
+  components: { BaseIcon, DriftAlerts, ActiveLearningPanel },
   props: {
     sceneResultsMap: { type: Object, required: true },
     gateResults: { type: Object, default: () => ({}) },
     workspaceType: { type: String, default: 'creative' },
-    evaluateAll: { type: Function, default: null }
+    evaluateAll: { type: Function, default: null },
+
+    // Drift detection
+    enableDrift: { type: Boolean, default: false },
+    driftReport: { type: Object, default: null },
+    driftAnalysisError: { type: String, default: null },
+    driftIsAnalyzing: { type: Boolean, default: false },
+    driftFlaggedRegressions: { type: Array, default: () => [] },
+    driftFlaggedImprovements: { type: Array, default: () => [] },
+    driftFlaggedVolatility: { type: Array, default: () => [] },
+    driftHasDrift: { type: Boolean, default: false },
+    driftHasHighSeverity: { type: Boolean, default: false },
+
+    // Active learning
+    enableActiveLearning: { type: Boolean, default: false },
+    alAnalysisReport: { type: Object, default: null },
+    alAnalysisError: { type: String, default: null },
+    alIsAnalyzing: { type: Boolean, default: false },
+    alRecommendations: { type: Array, default: () => [] },
+    alBelowThresholdRecs: { type: Array, default: () => [] },
+    alNoDataRecs: { type: Array, default: () => [] },
+    alHasActionableItems: { type: Boolean, default: false }
   },
+  emits: ['run-drift-analysis', 'run-active-learning'],
   setup(props) {
     const dimensionNames = computed(() => {
       const dims = getDimensionsForWorkspace(props.workspaceType)

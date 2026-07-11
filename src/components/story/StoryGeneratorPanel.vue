@@ -333,6 +333,7 @@ async function handleVolumeGenerate() {
 
 async function handleVolumeConfirmPlan() {
   if (!projectStore.currentProjectId) return
+  if (!volumeStoryArc.value) return
 
   const editedPlan =
     volumePlanEdits.value.length > 0 ? volumePlanEdits.value : volumeGenerator.scenePlan.value

@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "description": "Maps each eval dimension to the writer prompt template section it influences and how to improve it",
+  "dimensionMap": {
+    "continuity": {
+      "label": "Continuity",
+      "promptKeywords": ["prose grounded in physical detail", "advance the scene"],
+      "improvementGuidance": "Add an explicit instruction to preserve character traits, setting details, and timeline consistency across the full scene. Remind the writer to check every established detail before introducing new ones.",
+      "exampleSnippet": "Maintain strict continuity with established characters, settings, and timeline. Every detail introduced must not contradict prior material."
+    },
+    "voice": {
+      "label": "Voice",
+      "promptKeywords": ["character action", "reveal character"],
+      "improvementGuidance": "Strengthen instruction to differentiate character voices through word choice, rhythm, and perspective. Explicitly forbid generic or interchangeable dialogue.",
+      "exampleSnippet": "Give each character a distinct voice — word choice, sentence rhythm, and perspective must differ per character. No generic dialogue."
+    },
+    "emotional_goal": {
+      "label": "Emotional Goal",
+      "promptKeywords": ["emotional pacing", "deepen tension"],
+      "improvementGuidance": "Add explicit instruction to map the emotional target from the brief into specific prose techniques (word choice, sentence length, sensory detail).",
+      "exampleSnippet": "Hit the emotional target precisely: use short sentences for urgency, sensory detail for intimacy, and pacing to control the reader's emotional response."
+    },
+    "show_tell": {
+      "label": "Show vs Tell",
+      "promptKeywords": ["dramatize every beat", "concrete nouns", "active verbs"],
+      "improvementGuidance": "Reinforce the show-don't-tell directive with concrete examples. Add prohibition against emotional summary labels (e.g., 'he felt angry' → show the anger through action).",
+      "exampleSnippet": "Dramatize every beat — no emotional summaries. Show anger through clenched fists, not by naming the emotion. Use sensory detail (sight, sound, touch, smell) in every paragraph."
+    },
+    "pacing": {
+      "label": "Pacing",
+      "promptKeywords": ["advance the scene", "no filler", "every sentence must earn its place"],
+      "improvementGuidance": "Add explicit pacing guidance: vary sentence length, avoid redundant description, and ensure each paragraph advances plot or character.",
+      "exampleSnippet": "Vary sentence length to control pacing. No filler paragraphs — every sentence must advance plot, reveal character, or deepen tension."
+    },
+    "clarity": {
+      "label": "Clarity",
+      "promptKeywords": ["precise", "unambiguous"],
+      "improvementGuidance": "Strengthen clarity instruction: define all terms, use consistent language, avoid ambiguous modifiers, structure obligations with clear subjects.",
+      "exampleSnippet": "Use precise, unambiguous language. Define every term on first use. Avoid 'reasonable', 'promptly', and other vague modifiers. Each obligation must have a clear subject and verb."
+    },
+    "ambiguity": {
+      "label": "Ambiguity",
+      "promptKeywords": ["unambiguous"],
+      "improvementGuidance": "Add explicit instruction to eliminate all double interpretations. Define qualifiers, bound every obligation with measurable criteria, and flag undefined terms.",
+      "exampleSnippet": "Eliminate every ambiguity. Qualify all terms with measurable bounds. No undefined terms. Flag any language open to more than one interpretation."
+    },
+    "liability": {
+      "label": "Liability",
+      "promptKeywords": [],
+      "improvementGuidance": "Add instruction to include standard liability clauses, limitation of liability caps, indemnification provisions, and exclusions of consequential damages where appropriate.",
+      "exampleSnippet": "Include standard liability provisions: limitation of liability cap, mutual indemnification, exclusion of consequential damages, and a clear liability allocation framework."
+    },
+    "missing_provision": {
+      "label": "Missing Provision",
+      "promptKeywords": [],
+      "improvementGuidance": "Add a checklist reminder to cover all standard provisions for the document type: governing law, dispute resolution, force majeure, assignment, waiver, severability, entire agreement.",
+      "exampleSnippet": "Cover all standard provisions for this document type: governing law, dispute resolution, force majeure, assignment, waiver, severability, entire agreement, notice, amendments."
+    },
+    "architecture": {
+      "label": "Architecture",
+      "promptKeywords": [],
+      "improvementGuidance": "Add instruction to describe the system architecture with clear layers, separation of concerns, and dependency direction. Identify components and their responsibilities.",
+      "exampleSnippet": "Describe a clean layered architecture with explicit separation of concerns. Name each component, its responsibility, and its dependencies. Dependencies must point in one direction."
+    },
+    "interface": {
+      "label": "Interface",
+      "promptKeywords": [],
+      "improvementGuidance": "Strengthen interface specification: enumerate all endpoints, request/response schemas, error codes, authentication requirements, and rate limits.",
+      "exampleSnippet": "Specify every interface contract completely: endpoints, request schemas, response schemas, error responses, auth requirements, and rate limits. Leave nothing implied."
+    },
+    "security": {
+      "label": "Security",
+      "promptKeywords": [],
+      "improvementGuidance": "Add security-first instruction: cover authentication, authorization, input validation, data protection, and common vulnerability prevention at every layer.",
+      "exampleSnippet": "Address security at every layer: authentication, authorization, input validation, output encoding, data-at-rest encryption, data-in-transit encryption, and rate limiting."
+    },
+    "validation": {
+      "label": "Validation",
+      "promptKeywords": [],
+      "improvementGuidance": "Add explicit validation requirements: input format checks, boundary conditions, type constraints, business rule enforcement, and error message clarity.",
+      "exampleSnippet": "Validate every input: type, format, range, and business rules. Handle boundary conditions explicitly. Error messages must identify the exact field and reason."
+    },
+    "viability": {
+      "label": "Viability",
+      "promptKeywords": [],
+      "improvementGuidance": "Add instruction to evaluate market need, competitive landscape, business model sustainability, and differentiation. Require evidence for each viability claim.",
+      "exampleSnippet": "Ground every viability claim in evidence. Identify market need with specific customer segments, competitive alternatives, and a clear differentiation strategy. Evaluate business model sustainability."
+    },
+    "financial": {
+      "label": "Financial",
+      "promptKeywords": [],
+      "improvementGuidance": "Strengthen financial rigor instruction: require unit economics, cost model breakdown, revenue projections with assumptions, and sensitivity analysis.",
+      "exampleSnippet": "Include unit economics, cost model with line-item breakdown, 3-5 year revenue projections with explicit assumptions, and sensitivity analysis on key variables."
+    },
+    "assumptions": {
+      "label": "Assumptions",
+      "promptKeywords": [],
+      "improvementGuidance": "Add instruction to explicitly surface all assumptions, distinguish facts from assumptions, and stress-test the most critical ones.",
+      "exampleSnippet": "Surface every assumption explicitly. Distinguish between facts and assumptions. For each critical assumption, describe what would invalidate it and the impact."
+    },
+    "kpi_clarity": {
+      "label": "KPI Clarity",
+      "promptKeywords": [],
+      "improvementGuidance": "Add instruction to define measurable KPIs with baselines, targets, measurement methods, and leading/lagging classification.",
+      "exampleSnippet": "Define KPIs with: baseline value, target value, measurement method, measurement frequency, and whether it is a leading or lagging indicator."
+    },
+    "rigor": {
+      "label": "Rigor",
+      "promptKeywords": [],
+      "improvementGuidance": "Add instruction to state the hypothesis explicitly, identify variables, describe methodology, and discuss validity threats.",
+      "exampleSnippet": "State the hypothesis explicitly. Identify independent, dependent, and controlled variables. Describe methodology with enough detail for reproduction. Discuss validity threats."
+    },
+    "methodology": {
+      "label": "Methodology",
+      "promptKeywords": [],
+      "improvementGuidance": "Strengthen method description: sample size justification, procedure step-by-step, data collection instruments, and bias mitigation.",
+      "exampleSnippet": "Describe the experimental design step by step. Justify sample size. Specify data collection instruments and procedures. Address potential biases and how they were mitigated."
+    },
+    "citations": {
+      "label": "Citations",
+      "promptKeywords": [],
+      "improvementGuidance": "Add citation quality instruction: prefer primary sources, cite recent work, use consistent citation format, and identify gaps in existing literature.",
+      "exampleSnippet": "Cite primary sources where available. Prefer work from the last 5 years. Use consistent citation format. Identify gaps in the literature that your work addresses."
+    },
+    "reproducibility": {
+      "label": "Reproducibility",
+      "promptKeywords": [],
+      "improvementGuidance": "Add instruction to document the full environment: software versions, data availability, parameter settings, and replication scripts.",
+      "exampleSnippet": "Document the complete environment: OS, software versions, parameter settings, seed values, and data sources. Provide data availability or a reproduction script."
+    }
+  }
+}

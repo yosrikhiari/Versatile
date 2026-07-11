@@ -5,6 +5,8 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import EvalPanel from '../eval/EvalPanel.vue'
 import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
 import EvalDashboard from '../eval/EvalDashboard.vue'
+import { useDriftMonitor } from '../../composables/useDriftMonitor'
+import { useActiveLearning } from '../../composables/useActiveLearning'
 
 defineOptions({ name: 'VolumeCompletePanel' })
 
@@ -29,6 +31,9 @@ const emit = defineEmits([
 ])
 
 const projectStore = useProjectStore()
+
+const driftMonitor = useDriftMonitor()
+const activeLearning = useActiveLearning()
 
 const selectedSceneIndex = ref(-1)
 const showDashboard = ref(false)
@@ -161,7 +166,26 @@ const totalWordsWritten = computed(() =>
         :scene-results-map="sceneEval.sceneResultsMap.value"
         :gate-results="sceneEval.gateResults.value"
         :workspace-type="projectStore.activeWorkspaceType || 'creative'"
+        :enable-drift="true"
+        :drift-report="driftMonitor.driftReport.value"
+        :drift-analysis-error="driftMonitor.analysisError.value"
+        :drift-is-analyzing="driftMonitor.isAnalyzing.value"
+        :drift-flagged-regressions="driftMonitor.flaggedRegressions.value"
+        :drift-flagged-improvements="driftMonitor.flaggedImprovements.value"
+        :drift-flagged-volatility="driftMonitor.flaggedVolatility.value"
+        :drift-has-drift="driftMonitor.hasDrift.value"
+        :drift-has-high-severity="driftMonitor.hasHighSeverity.value"
+        :enable-active-learning="true"
+        :al-analysis-report="activeLearning.analysisReport.value"
+        :al-analysis-error="activeLearning.analysisError.value"
+        :al-is-analyzing="activeLearning.isAnalyzing.value"
+        :al-recommendations="activeLearning.recommendations.value"
+        :al-below-threshold-recs="activeLearning.belowThresholdRecs.value"
+        :al-no-data-recs="activeLearning.noDataRecs.value"
+        :al-has-actionable-items="activeLearning.hasActionableItems.value"
+        @run-drift-analysis="driftMonitor.analyze(projectStore.currentProjectId)"
         class="mt-2 border-t border-border-subtle pt-2"
+        @run-active-learning="activeLearning.analyze(projectStore.currentProjectId)"
       />
     </div>
 

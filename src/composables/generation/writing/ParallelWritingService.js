@@ -75,7 +75,7 @@ export class ParallelWritingService {
 
     const generateAnchor = async (scene, role, constraints, sceneIndex, chapterIndex) => {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
-      const scenePhase = this.actLog.addPhase(this.currentTaskId, phaseName)
+      const scenePhase = this.actLog.addPhase(this.currentTaskId.value, phaseName)
       try {
         let fullProse = ''
         const result = await this.writer.writeSceneStructured({
@@ -98,7 +98,7 @@ export class ParallelWritingService {
               scene
             })
           },
-          onRawChunk: (chunk) => this.actLog.appendThought(this.currentTaskId, scenePhase, chunk)
+          onRawChunk: (chunk) => this.actLog.appendThought(this.currentTaskId.value, scenePhase, chunk)
         })
         fullProse = result.prose
 
@@ -126,10 +126,10 @@ export class ParallelWritingService {
           chapterId: chapterNumber,
           keyFacts: Array.isArray(result.structured?.keyFacts) ? result.structured.keyFacts : []
         }
-        this.actLog.updatePhase(this.currentTaskId, scenePhase, { status: 'done' })
+        this.actLog.updatePhase(this.currentTaskId.value, scenePhase, { status: 'done' })
         return { success: true, sceneIndex, structured: result.structured }
       } catch (err) {
-        this.actLog.updatePhase(this.currentTaskId, scenePhase, { status: 'failed' })
+        this.actLog.updatePhase(this.currentTaskId.value, scenePhase, { status: 'failed' })
         return { success: false, sceneIndex, error: err.message }
       }
     }
@@ -205,7 +205,7 @@ export class ParallelWritingService {
 
     const generateMiddleScene = async (scene, sceneIndex, chapterMeta) => {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
-      const scenePhase = this.actLog.addPhase(this.currentTaskId, phaseName)
+      const scenePhase = this.actLog.addPhase(this.currentTaskId.value, phaseName)
       try {
         const logEntries = this.writtenScenes.value
           .filter((s) => s && s.chapterId === chapterMeta.chapterNumber && s.summary)
@@ -232,7 +232,7 @@ export class ParallelWritingService {
               scene
             })
           },
-          onRawChunk: (chunk) => this.actLog.appendThought(this.currentTaskId, scenePhase, chunk)
+          onRawChunk: (chunk) => this.actLog.appendThought(this.currentTaskId.value, scenePhase, chunk)
         })
         fullProse = result.prose
 
@@ -260,10 +260,10 @@ export class ParallelWritingService {
           keyFacts: Array.isArray(result.structured?.keyFacts) ? result.structured.keyFacts : []
         }
 
-        this.actLog.updatePhase(this.currentTaskId, scenePhase, { status: 'done' })
+        this.actLog.updatePhase(this.currentTaskId.value, scenePhase, { status: 'done' })
         return { success: true, sceneIndex, structured: result.structured }
       } catch (err) {
-        this.actLog.updatePhase(this.currentTaskId, scenePhase, { status: 'failed' })
+        this.actLog.updatePhase(this.currentTaskId.value, scenePhase, { status: 'failed' })
         return { success: false, sceneIndex, error: err.message }
       }
     }
