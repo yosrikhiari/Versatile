@@ -37,7 +37,7 @@ A browser-based fiction writing environment with AI-powered tools for planning, 
 
 ```
 src/
-├── components/         — Vue components (79 across 20 feature dirs)
+├── components/         — Vue components (80 across 20 feature dirs)
 ├── composables/        — Reusable stateful logic (~55 composables)
 │   ├── generation/     — Context, shaping, pipeline, schemas, generators
 │   ├── useNovelPipeline.js     — Declarative DAG facade

@@ -13,7 +13,7 @@
 
 The target user (per `MARKET_ANALYSIS.md`) is the **"sovereignty-seeking" self-published fiction author** — privacy-conscious, technically inclined, and averse to subscription lock-in. The problem it solves is that the leading AI writing tools (Sudowrite, Novelcrafter) are cloud-only, subscription-based, and send your manuscript to a vendor. Versatile's wager is local-first drafting with your own local model, plus a genuinely autonomous "generate a coherent draft" pipeline rather than sentence-level autocomplete.
 
-It is a large, real codebase: **~52k LOC of frontend** (79 Vue components, ~55 composables, 15 Pinia stores, ~55 service modules) and **~16k LOC of a .NET 10 Clean-Architecture backend**. It is mostly the work of a solo developer and shows the corresponding profile: an ambitious, mostly-complete pipeline with strong logic-layer test coverage alongside real tech-debt seams (a stale abandoned TS migration, committed secrets, a large "god composable").
+It is a large, real codebase: **~52k LOC of frontend** (80 Vue components, ~55 composables, 15 Pinia stores, 46 service modules) and **~16k LOC of a .NET 10 Clean-Architecture backend**. It is mostly the work of a solo developer and shows the corresponding profile: an ambitious, mostly-complete pipeline with strong logic-layer test coverage alongside real tech-debt seams (a stale abandoned TS migration, committed secrets, a large "god composable").
 
 ---
 
@@ -23,14 +23,14 @@ It is a large, real codebase: **~52k LOC of frontend** (79 Vue components, ~55 c
 
 | Concern | Choice | Notes |
 |---|---|---|
-| Framework | **Vue 3** (Composition API, `<script setup>`) | All 79 `.vue` files use `<script setup>` in JS |
+| Framework | **Vue 3** (Composition API, `<script setup>`) | All 80 `.vue` files use `<script setup>` in JS |
 | Build | **Vite 5** | `@` → `src` alias; custom dev-only debug-snapshot middleware |
 | State | **Pinia 2** | 15 setup-style stores; no persistence plugin |
 | Persistence | **Dexie 3 / IndexedDB** | DB `VersatileDB`, schema at **v31** (~39 tables) |
 | Rich text | **Tiptap 2 (ProseMirror)** | Exactly one editor instance; one custom extension |
 | Graph UI | **Vue Flow 1.x** (`core`, `background`, `minimap`, `controls`) | Powers the story relationship network |
 | Styling | **Tailwind 3** | `darkMode: 'class'`; design tokens as `--vers-*` CSS vars |
-| Language | **JavaScript** with a thin **TypeScript** seam | 158 JS + 79 Vue vs 17 TS files; `vue-tsc` typecheck |
+| Language | **JavaScript** with a thin **TypeScript** seam | 158 JS + 80 Vue vs 17 TS files; `vue-tsc` typecheck |
 | Testing | **Vitest + jsdom + @vue/test-utils** | `fake-indexeddb`; LLM calls always mocked |
 
 **Key third-party libraries and why:** `dexie` (IndexedDB is the primary datastore — offline-first); `@tiptap/*` (ProseMirror-based editor with a custom dialogue-highlight extension); `@vue-flow/*` (the interactive entity graph); `@vueuse/core` (`useDebounceFn`, `useLocalStorage` throughout); `jspdf` + `jspdf-autotable` + `html2canvas` (PDF export); `pdfjs-dist` (extracting text from imported research PDFs); `vuedraggable` (chapter/scene reordering); `focus-trap` (modal accessibility); `lucide-vue-next` (icons, referenced by name in workspace config); `@fontsource-variable/geist` (self-hosted UI font). `playwright` is a dev dependency but no meaningful E2E suite was found.
@@ -64,7 +64,7 @@ The frontend is **offline-first**; the backend is a **dormant, opt-in sync targe
 │        │              flow · polish · spark · settings · auth · …          │
 │        ▼                                                                    │
 │  Composables (~55)   ┌─ useNovelPipeline (DAG facade)                       │
-│        │             └─ useVolumeStoryGenerator (2330-line engine)          │
+│        │             └─ useVolumeStoryGenerator (2114-line engine)          │
 │        │                  ├─ useStoryDirector  (plan)                       │
 │        │                  ├─ useStoryWriter    (prose + structured entities)│
 │        │                  ├─ useStoryCritic    (score + continuity audit)   │
@@ -94,8 +94,8 @@ The **single most important architectural fact**: page routing is trivial (3 rou
 ### 3.2 Directory-by-directory
 
 **Frontend `src/`:**
-- `views/` (3) — `LoginView`, `WorkspaceView` (project picker), `EditorView` (532 lines; wires ~30 components + composables and fills AppShell's slots).
-- `components/` (79 across 20 feature dirs) — `layout/` (shell, settings, onboarding), `flow/` (the Tiptap editor + flow-mode timer/nudge), `manuscript/` (chapters/sections/outline/canvas/timeline), `storybible/` (entities + the Vue Flow network), `story/` (the generation panel), `spark/` (brainstorm), `polish/` (prose critique), `revise/`, `research/`, `eval/` (quality dashboards), `storyshape/` (tension curves), `voice-lab/`, `volume/`, `characterchat/`, `editor/` (floating character bubbles), `auth/`, `shared/` (15 primitives), `ui/` (atoms).
+- `views/` (3) — `LoginView`, `WorkspaceView` (project picker), `EditorView` (489 lines; wires ~30 components + composables and fills AppShell's slots).
+- `components/` (80 across 20 feature dirs) — `layout/` (shell, settings, onboarding), `flow/` (the Tiptap editor + flow-mode timer/nudge), `manuscript/` (chapters/sections/outline/canvas/timeline), `storybible/` (entities + the Vue Flow network), `story/` (the generation panel), `spark/` (brainstorm), `polish/` (prose critique), `revise/`, `research/`, `eval/` (quality dashboards), `storyshape/` (tension curves), `voice-lab/`, `volume/`, `characterchat/`, `editor/` (floating character bubbles), `auth/`, `shared/` (15 primitives), `ui/` (atoms).
 - `composables/` (~55) — reusable stateful logic; `generation/` holds the clean four-stage entity mini-pipeline (`context/`, `shaping/`, `pipeline/`, `schemas/`, `generators/`); the top-level `useStory*`/`useVolumeStoryGenerator`/`useNovelPipeline` hold the novel pipeline.
 - `services/` (~55) — persistence (`db-*.js`, one module per table group), the AI provider layer (`aiService.ts`, `providerRegistry.ts`, `providers/*`), embeddings, chunking (main + web worker), sync (`sync-engine.js`, `sync-mapper.js`), export, portraits.
 - `stores/` (15) — Pinia state per domain (see §6).
@@ -154,13 +154,13 @@ The domain is a **novel decomposed into a structural tree plus a knowledge graph
 
 **What it does:** turns a premise into a coherent multi-chapter draft through a fixed DAG: **bible → network → structure → spine → prose → consistency** (`PIPELINE_DAG`, `useNovelPipeline.js:16`; `PIPELINE_STAGES`, `db-generation.js:5`).
 
-**Files:** `useNovelPipeline.js` (133 lines — a thin declarative facade) delegates to `useVolumeStoryGenerator.js` (**2330 lines — the real engine**), which orchestrates `useStoryDirector.js` (627), `useStoryWriter.js` (589), `useStoryCritic.js` (321), and `useEntityBootstrapper.js` (382). The cleaner per-entity generator lives under `composables/generation/`.
+**Files:** `useNovelPipeline.js` (133 lines — a thin declarative facade) delegates to `useVolumeStoryGenerator.js` (**2114 lines — the real engine**), which orchestrates `useStoryDirector.js` (627), `useStoryWriter.js` (589), `useStoryCritic.js` (321), and `useEntityBootstrapper.js` (382). The cleaner per-entity generator lives under `composables/generation/`.
 
 **How triggered:** from `StoryGeneratorPanel.vue` via `startGeneration()` (`:790`) → `confirmPlan()` (`:1603`) → `completeGeneration()` (`:1947`). An `autoMode` flag auto-advances every human-review gate.
 
 **Design patterns:**
 - **Persona/agent decomposition** (Director/Writer/Critic).
-- **Facade over god-object** — `useNovelPipeline` is a clean DAG interface; all real logic is the 2330-line engine (~30 closures over ~20 refs).
+- **Facade over god-object** — `useNovelPipeline` is a clean DAG interface; all real logic is the 2114-line engine (~30 closures over ~20 refs).
 - **Degrade-and-continue as a first-class principle** — every model call has a plan-derived fallback (`fallbackSpineEntry` `:153`; `planChunked` pads missing chapters/scenes; network failure is caught and the run continues). No single scene aborts a 100-chapter run.
 - **Bounded, provider-aware concurrency** — `parallelWithLimit`, `planConcurrency()` returns 1 for Ollama vs 3–4 for cloud, so local models aren't swamped.
 - **Two-phase prose** — chapter anchors (opening/closing) generated in parallel first, then middles fill between locked endpoints.
@@ -259,7 +259,7 @@ There is **no single god store** — `projectStore` is the closest hub but stays
 
 ### Risks / smells
 - **Abandoned TypeScript migration (real dead code).** Five composables exist as *both* `.js` and `.ts` (`useStoryWriter`, `useStoryCritic`, `useStoryDirector`, `useStoryRevisor`, `useAiService`). Extensionless imports resolve `.js` first, so the **`.ts` copies are stale, superseded duplicates** — a live trap for anyone who edits the wrong file. ARCHITECTURE.md even claims "No TypeScript," which is false.
-- **A 2330-line god composable** (`useVolumeStoryGenerator.js`) with two parallel write engines, a dead Revisor, and recursion the author already flagged for refactor.
+- **A 2114-line god composable** (`useVolumeStoryGenerator.js`) with two parallel write engines, a dead Revisor, and recursion the author already flagged for refactor.
 - **Committed secrets** — the Mistral key (above), plus the backend's dev `Jwt:Key` and `Encryption:MasterKey` in `appsettings.json`, and a hardcoded test-user password hash in `db-core.js` (correctly gated behind `DEV_MODE=false`, but present).
 - **Very large components** — `StoryNetwork.vue` (2413), `StoryGeneratorPanel.vue` (1544, mid-refactor per STATUS.md), `StoryBiblePanel.vue` (1384), `ChapterManager.vue` (823).
 - **Documentation drift** — README says Dexie v16 (actually v31); CONTEXT.md says v11 and describes a retired `useStoryOrchestrator`; ARCHITECTURE.md says "13 stores / no TypeScript" (15 stores, TS present). STATUS.md is the one trustworthy doc.
@@ -267,13 +267,13 @@ There is **no single god store** — `projectStore` is the closest hub but stays
 - **Repo hygiene** — many scratch files at root (`vite_out.txt`, `backend_stdout.txt`, `perm_check.txt`, `package-lock.json.tmp`, `dir_check.txt`, `debug/`).
 
 ### Test coverage: what isn't tested
-Components (79 `.vue` files) are almost entirely untested — the first component mount tests were only just added for the `StoryGeneratorPanel` split. Integration coverage is thin (2 files, one named `example`). STATUS.md explicitly flags the bootstrapper commit loop and the streaming active-generation UI as needing runtime smoke tests. The backend tests cover only security middleware + crypto + AI prompt logic (4 files); controllers, MediatR handlers, repositories, and hubs are untested.
+Components (80 `.vue` files) are almost entirely untested — the first component mount tests were only just added for the `StoryGeneratorPanel` split. Integration coverage is thin (2 files, one named `example`). STATUS.md explicitly flags the bootstrapper commit loop and the streaming active-generation UI as needing runtime smoke tests. The backend tests cover only security middleware + crypto + AI prompt logic (4 files); controllers, MediatR handlers, repositories, and hubs are untested.
 
 ---
 
 ## 9. Areas of Complexity
 
-**The single most complex module is `src/composables/useVolumeStoryGenerator.js` (2330 lines).** It is the entire novel-generation engine: bootstrapping, planning, spine, parallel + sequential prose generation, per-scene critique with best-of-N retry, embedding retrieval, fact-ledger construction, contradiction auditing with a bounded auto-fix loop, checkpoint/resume, and end-of-run repair — all as ~30 closures sharing ~20 module-level refs. It is powerful and, impressively, largely works, but it is very hard to test or modify in isolation.
+**The single most complex module is `src/composables/useVolumeStoryGenerator.js` (2114 lines).** It is the entire novel-generation engine: bootstrapping, planning, spine, parallel + sequential prose generation, per-scene critique with best-of-N retry, embedding retrieval, fact-ledger construction, contradiction auditing with a bounded auto-fix loop, checkpoint/resume, and end-of-run repair — all as ~30 closures sharing ~20 module-level refs. It is powerful and, impressively, largely works, but it is very hard to test or modify in isolation.
 
 Runner-up: **`StoryNetwork.vue` (2413 lines)** — it hand-rolls multi-instance graph nodes (one entity can appear many times, with edge fan-out and stagger offsets), nested manual groups with mouse-driven resize and cycle-safe reparenting, per-volume auto-grouping, a ~300-line radial "star" auto-layout, custom bezier edges with HTML labels, and an AI-suggestion flow — all on top of Vue Flow.
 
@@ -296,7 +296,7 @@ Prioritized for impact:
 3. **Refactor `useVolumeStoryGenerator.js`.** Extract the two write engines, the consistency/auto-fix loop, and the retrieval/context builder into separately-testable units; remove the dead Revisor or wire it in; convert the flagged `writeNextBatch` recursion to a loop. This is the biggest single lever on maintainability and testability.
 4. **Finish the `StoryGeneratorPanel.vue` split** (already in progress per STATUS.md) and add the runtime smoke test STATUS.md asks for — the streaming active-generation UI is the riskiest untested surface.
 5. **Reconcile the docs.** README/ARCHITECTURE/CONTEXT are materially stale (Dexie version, store count, "no TypeScript," retired modules). Either regenerate them from the code or delete them in favor of STATUS.md, which is accurate.
-6. **Add component and integration tests.** Logic is well covered; the 79 components and the end-to-end generation flow are not. A handful of mount tests + one full mocked-LLM generation run would catch the highest-value regressions.
+6. **Add component and integration tests.** Logic is well covered; the 80 components and the end-to-end generation flow are not. A handful of mount tests + one full mocked-LLM generation run would catch the highest-value regressions.
 7. **Decide the backend's fate.** Either wire up the SignalR hubs (real-time collab / server streaming are built and unused) and finish CQRS consistently, or trim them to reduce the surface. Harden rate limiting (per-process in-memory won't survive scaling) and add controller/handler tests.
 8. **Repo hygiene.** Gitignore/remove the root scratch files (`vite_out.txt`, `backend_stdout.txt`, `*.tmp`, `debug/`, etc.) and drop the legacy `chapters`/`scenes` tables once a migration confirms no readers remain.
 ```
