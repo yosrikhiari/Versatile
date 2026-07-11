@@ -14,38 +14,46 @@ dir_check.txt
 elevation_test.txt
 perm_check.txt
 perm_result.txt
-Report.md
-AGENT.md
-MARKET_ANALYSIS.md
-TECH_DEBT_PIPELINE.md
-ARCHITECTURE.md
+
+# Agent / skill directories
 .opencode/
+.agents/
+.claude/
+skills/
+
+# Planning & tracking artifacts
 .planning/
-API.md
-.gitignore
-.gitignore
-.gitignore
-.planning/REQUIREMENTS.md
-TESTING.md
+REQUIREMENTS.md
 CONFIGURATION.md
 DEVELOPMENT.md
 GETTING-STARTED.md
-.planning/REQUIREMENTS.md
-README.md
-.planning/REQUIREMENTS.md
+STATE.md
+STATUS.md
+TECHNICAL_REPORT.md
+anchored-summary.md
+PLAN-*.md
+SPEC-*.md
+GLOSSARY.md
+MISSION.md
+phase-3-extraction.md
+CONTEXT.md
+API.md
+TESTING.md
+MARKET_ANALYSIS.md
+TECH_DEBT_PIPELINE.md
+ARCHITECTURE.md
+AGENT.md
+Report.md
+learning-records/
+
+# Coverage reports (regenerated on each test run - noise in diffs)
+coverage/
+reports/
+
 # NOTE: src/tests/ is intentionally tracked. Do not re-add a blanket ignore here —
 # vitest runs test files regardless of gitignore, so ignoring them silently drops
 # them from version control while they still pass locally (they did: 33 files).
 src/tests/unit/ollamaService.test.js
-.agents/
-.claude/
-CONTEXT.md
-.planning/STATE.md
-.planning/STATE.md
-skills/
-
-# Coverage reports (regenerated on each test run - noise in diffs)
-coverage/
 
 # .NET build artifacts
 backend/**/bin/
