@@ -44,6 +44,9 @@ CONTEXT.md
 .planning/STATE.md
 skills/
 
+# Coverage reports (regenerated on each test run - noise in diffs)
+coverage/
+
 # .NET build artifacts
 backend/**/bin/
 backend/**/obj/
