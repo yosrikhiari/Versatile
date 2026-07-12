@@ -49,7 +49,6 @@ const loadingChunks = ref(false)
 const dbStatusCounts = ref({})
 const searchQuery = ref('')
 const chunkSearchQuery = ref('')
-const chunkSearchMode = ref(false)
 
 const globalSearchQuery = ref('')
 const globalSearchMode = ref('lexical')

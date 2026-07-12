@@ -2,8 +2,7 @@ import { describe, it, expect, beforeAll, vi } from 'vitest'
 import {
   buildRetrievalContext,
   buildEmbeddingContext,
-  selectRelevantPriorScenes,
-  PROSE_EXCERPT_MAX_SCENES
+  selectRelevantPriorScenes
 } from '@/composables/generation/context/sceneContext'
 import { computeAll } from '@/evaluation/ragMetrics'
 
@@ -278,7 +277,7 @@ function makeCurrentScene(topic) {
 }
 
 const SCENES_PER_TOPIC = 5
-const TOTAL_SCENES = TOPIC_NAMES.length * SCENES_PER_TOPIC // 50
+void TOPIC_NAMES.length * SCENES_PER_TOPIC // 50
 
 describe('Production Scene-Retrieval Evaluation', () => {
   beforeAll(() => {
@@ -429,7 +428,7 @@ describe('Production Scene-Retrieval Evaluation', () => {
         const m = line.match(/Scene (\d+)/)
         if (m) citedSceneNums.push(parseInt(m[1]))
       }
-      const fantasyNums = new Set(Array.from({ length: SCENES_PER_TOPIC }, (_, i) => i + 1))
+      void new Set(Array.from({ length: SCENES_PER_TOPIC }, (_, i) => i + 1))
       const topicCounts = {}
       for (const topic of TOPIC_NAMES) {
         const start = TOPIC_NAMES.indexOf(topic) * SCENES_PER_TOPIC + 1

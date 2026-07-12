@@ -226,7 +226,7 @@ class SyncEngine {
   }
 
   async _pushOne(config, local, storyApiId) {
-    const { table, endpoint, isTopLevel, toApi } = config
+    const { table, endpoint: _endpoint, isTopLevel, toApi } = config
     const resolved = this._resolveEndpoint(config, storyApiId)
 
     try {

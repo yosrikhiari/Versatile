@@ -13,8 +13,6 @@ import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
 import { useAuthStore } from '../../stores/authStore'
 
-import { CREATIVE_WORKSPACE_TYPES } from '../../config/workspace'
-
 const projectStore = useProjectStore()
 
 const activePanelName = ref(null)
@@ -32,7 +30,7 @@ const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, {
   build: false
 })
 
-const props = defineProps({
+defineProps({
   focusMode: {
     type: Boolean,
     default: false
@@ -53,10 +51,6 @@ const emit = defineEmits([
 
 const authStore = useAuthStore()
 const router = useRouter()
-
-const isNarrativeWorkspace = computed(() =>
-  CREATIVE_WORKSPACE_TYPES.includes(projectStore.activeWorkspaceType)
-)
 
 const wordCount = computed(() => projectStore.wordCount)
 const projectName = computed(() => projectStore.currentProjectName)
@@ -105,10 +99,6 @@ async function switchProject(projectId) {
 function handleCreateProjectClick() {
   showProjectDropdown.value = false
   emit('create-project')
-}
-
-function closeAllPanels() {
-  activePanelName.value = null
 }
 
 function toggleStoryGenerator() {

@@ -97,8 +97,6 @@ const showCharEdges = ref(true)
 const showLocEdges = ref(true)
 const showThreadEdges = ref(true)
 
-const forceRefreshKey = ref(0)
-
 const manualGroups = ref([])
 
 const nodeParents = ref({}) // { 'char-1': 'group-123', 'char-2': null }

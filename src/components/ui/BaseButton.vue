@@ -18,7 +18,7 @@ const props = defineProps({
   },
   disabled: Boolean,
   loading: Boolean,
-  icon: String,
+  icon: { type: String, default: '' },
   iconPosition: {
     type: String,
     default: 'left'

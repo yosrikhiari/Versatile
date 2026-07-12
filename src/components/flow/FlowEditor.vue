@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onBeforeUnmount, onDeactivated } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useSnapshotStore } from '../../stores/snapshotStore'
@@ -98,7 +98,6 @@ let _pendingSubsectionId = null
 let _pendingSectionId = null
 
 function scheduleSave() {
-  const content = editor.value?.getHTML() || ''
   if (manuscriptStore.activeSubsectionId) {
     _pendingSubsectionId = manuscriptStore.activeSubsectionId
   } else if (manuscriptStore.activeSectionId) {

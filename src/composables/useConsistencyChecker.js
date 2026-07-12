@@ -124,7 +124,6 @@ export function useConsistencyChecker() {
     const graph = useStoryGraphStore()
 
     const charMap = new Map(bible.characters.map((c) => [c.id, c]))
-    const locMap = new Map(bible.locations.map((l) => [l.id, l]))
 
     const charNameLower = new Map()
     for (const c of bible.characters) {

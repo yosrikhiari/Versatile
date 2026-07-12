@@ -12,7 +12,6 @@ const {
   counts,
   resultsBySeverity,
   summary,
-  activePass,
   currentPhase,
   progress,
   scan,

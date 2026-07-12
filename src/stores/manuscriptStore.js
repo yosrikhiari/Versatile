@@ -20,7 +20,9 @@ import {
   updateCharacterRelationship,
   deleteCharacterRelationship
 } from '../services/dbService'
+// eslint-disable-next-line no-restricted-imports
 import { warmEmbeddingCache } from '../composables/useManuscriptContext'
+// eslint-disable-next-line no-restricted-imports
 import { useStoryDocuments } from '../composables/useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
 

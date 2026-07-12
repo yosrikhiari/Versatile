@@ -28,7 +28,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['remove'])
+const emit = defineEmits(['remove', 'click'])
 
 const sizeClasses = computed(
   () =>

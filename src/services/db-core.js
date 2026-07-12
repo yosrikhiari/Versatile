@@ -240,6 +240,13 @@ db.version(33).stores({
   evalResults: '++id, projectId, sceneId, timestamp, evalType, score'
 })
 
+// v34: prompt-optimization sessions — records each side-by-side comparison
+// run so the user can review past results, track which prompts improved and
+// which didn't, and iterate on repeated regressions.
+db.version(34).stores({
+  optimizationSessions: '++id, projectId, sceneId, timestamp, status'
+})
+
 const recoveryFlag = 'versatile_db_recovery'
 
 let _ready

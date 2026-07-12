@@ -1,8 +1,3 @@
-function countWords(text) {
-  if (!text) return 0
-  return text.trim().split(/\s+/).filter(Boolean).length
-}
-
 function extractLastWords(text, wordCount) {
   if (!text) return ''
   const words = text.trim().split(/\s+/).filter(Boolean)
@@ -81,7 +76,7 @@ function buildSceneMemory(completedScenes, memoryLimit) {
  * @param {number} [options.options.memoryLimit=8] - Max scene memories to include
  * @returns {string} Formatted context string, or empty string if no completed scenes
  */
-export function buildSceneContext({ completedScenes, characters, currentSceneIndex, options }) {
+export function buildSceneContext({ completedScenes, characters, currentSceneIndex: _currentSceneIndex, options }) {
   if (!completedScenes || completedScenes.length === 0) return ''
 
   const opts = options || {}

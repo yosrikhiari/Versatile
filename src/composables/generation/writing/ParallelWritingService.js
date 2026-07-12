@@ -174,7 +174,7 @@ export class ParallelWritingService {
     })
 
     const limit = PARALLEL_CHAPTER_LIMIT()
-    const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
+    const _anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
 
     let anchorEvalFeedback = ''
     if (this.inlineEvalEnabled.value) {
@@ -279,9 +279,9 @@ export class ParallelWritingService {
       }
     }
 
-    let middleOutcomes = []
+    let _middleOutcomes = []
     if (middleTasks.length > 0) {
-      middleOutcomes = await parallelWithLimit(middleTasks, limit)
+      _middleOutcomes = await parallelWithLimit(middleTasks, limit)
     }
 
     if (this.inlineEvalEnabled.value) {

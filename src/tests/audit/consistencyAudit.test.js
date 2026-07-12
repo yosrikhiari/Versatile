@@ -277,22 +277,6 @@ function severityDistribution(runs) {
   return { major, minor }
 }
 
-function computeDimensionStats(runs) {
-  const dimScores = {}
-  for (const r of runs) {
-    const ds = r.dimensionScores || {}
-    for (const [dim, score] of Object.entries(ds)) {
-      if (!dimScores[dim]) dimScores[dim] = []
-      dimScores[dim].push(score)
-    }
-  }
-  const result = {}
-  for (const [dim, scores] of Object.entries(dimScores)) {
-    result[dim] = computeStats(scores)
-  }
-  return result
-}
-
 function passFailConsistency(runs) {
   const passes = runs.filter((r) => {
     const major = r.issues.filter((i) => i.severity === 'major').length
@@ -531,7 +515,7 @@ describe('EVAL-04: Dimension Scores', () => {
     for (let i = 0; i < 5; i++) {
       const result = await critic.evaluateScene({ draft, sceneBrief, storyBible, chapterLog })
       expect(result.dimensionScores).toBeDefined()
-      for (const [dim, score] of Object.entries(result.dimensionScores)) {
+      for (const [, score] of Object.entries(result.dimensionScores)) {
         expect(score).toBeGreaterThanOrEqual(1)
         expect(score).toBeLessThanOrEqual(10)
       }

@@ -2,7 +2,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useProjectStore } from './projectStore'
 import { useArchiveStore } from './archiveStore'
+// eslint-disable-next-line no-restricted-imports
 import { useAuthorModel } from '../composables/useAuthorModel'
+// eslint-disable-next-line no-restricted-imports
 import { useStateSummarizer } from '../composables/useStateSummarizer'
 
 export const useFlowStore = defineStore('flow', () => {

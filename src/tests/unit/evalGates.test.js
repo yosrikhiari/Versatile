@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { EVAL_GATE_CONFIG } from '@/config/evalGateConfig'
+import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('../../services/aiService', () => ({
   aiGenerate: (...args) => mockAiGenerate(...args)
@@ -27,10 +26,6 @@ vi.mock('../../config/ai', async (importOriginal) => {
 
 const mockAiGenerate = vi.fn()
 
-async function setupCriticMock(response) {
-  mockAiGenerate.mockResolvedValue(JSON.stringify(response))
-  await import('../../services/evalGates')
-}
 
 describe('gateDimensionCoverage', () => {
   let gateDimensionCoverage

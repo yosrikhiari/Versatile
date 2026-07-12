@@ -8,11 +8,6 @@ const LABEL_HEADINGS = { characters: 'EXISTING CHARACTERS:', locations: 'EXISTIN
 
 export function shapeContext(rawContext, options = {}) {
   const { entities } = rawContext
-  const entityType = rawContext.entityType || 'unknown'
-
-  const totalCharacters = entities.characters?.length || 0
-  const totalLocations = entities.locations?.length || 0
-  const totalPlotThreads = entities.plotThreads?.length || 0
 
   const sortedCharacters = sortByRelevance(entities.characters, 'character').slice(
     0,

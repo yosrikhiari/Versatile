@@ -8,6 +8,7 @@ import {
   removeSectionFromVolume,
   getVolumeEntityCount
 } from '../services/dbService'
+// eslint-disable-next-line no-restricted-imports
 import { useLoading } from '../composables/useLoading'
 
 const VOLUME_COLORS = [

@@ -17,6 +17,7 @@ import {
 import { countWords, stripHtmlTags } from '../utils/textUtils'
 import { WORKSPACE_TYPES, WORKSPACE_TERMINOLOGY } from '../config/workspace'
 import { STORAGE_KEYS } from '../config/storageKeys'
+// eslint-disable-next-line no-restricted-imports
 import { useLocalStorage } from '../composables/useLocalStorage'
 import { getSyncEngine } from '../services/sync-engine'
 
@@ -142,7 +143,7 @@ export const useProjectStore = defineStore('project', () => {
       try {
         const { useStateSummarizer } = await import('../composables/useStateSummarizer')
         const { useArchiveStore } = await import('./archiveStore')
-        const { summarize, snapshotToContextString } = useStateSummarizer()
+        const { summarize } = useStateSummarizer()
         const snapshot = summarize()
         if (snapshot) {
           const archiveStore = useArchiveStore()

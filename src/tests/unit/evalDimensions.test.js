@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest'
-import { WORKSPACE_TYPES } from '@/config/workspace'
 import {
   EVAL_DIMENSIONS,
   getDimensionsForWorkspace,

@@ -4,7 +4,7 @@ import BaseIcon from '../shared/BaseIcon.vue'
 
 defineOptions({ name: 'VolumeSceneReview' })
 
-const props = defineProps({
+defineProps({
   volumeGenerator: { type: Object, required: true }
 })
 

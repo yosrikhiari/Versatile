@@ -132,6 +132,42 @@
       </div>
     </div>
 
+    <!-- Score Sparkline Preview -->
+    <div
+      v-if="sparklineScores.length >= 2"
+      class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
+    >
+      <div class="flex items-center justify-between mb-2">
+        <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui">
+          Recent Scores
+        </h4>
+        <button
+          class="text-2xs text-accent font-ui hover:text-accent/80 transition-colors"
+          @click="showTrends = !showTrends"
+        >
+          {{ showTrends ? 'Hide Trends' : 'View Trends' }}
+        </button>
+      </div>
+      <div class="flex items-end gap-1 h-12">
+        <div
+          v-for="(s, i) in sparklineScores"
+          :key="i"
+          class="flex-1 rounded-t transition-all duration-200"
+          :class="s >= 7 ? 'bg-emerald-500' : s >= 5 ? 'bg-amber-500' : 'bg-red-500'"
+          :style="{ height: (s / 10) * 100 + '%' }"
+          :title="'Score: ' + s"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Trends Panel -->
+    <EvalTrends
+      v-if="showTrends && projectId"
+      :project-id="projectId"
+      :workspace-type="workspaceType"
+      @close="showTrends = false"
+    />
+
     <!-- Drift Detection -->
     <div
       v-if="enableDrift"
@@ -188,20 +224,22 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import { getDimensionsForWorkspace } from '../../config/evalDimensions'
 import DriftAlerts from './DriftAlerts.vue'
 import ActiveLearningPanel from './ActiveLearningPanel.vue'
+import EvalTrends from './EvalTrends.vue'
 
 export default {
   name: 'EvalDashboard',
-  components: { BaseIcon, DriftAlerts, ActiveLearningPanel },
+  components: { BaseIcon, DriftAlerts, ActiveLearningPanel, EvalTrends },
   props: {
     sceneResultsMap: { type: Object, required: true },
     gateResults: { type: Object, default: () => ({}) },
     workspaceType: { type: String, default: 'creative' },
     evaluateAll: { type: Function, default: null },
+    projectId: { type: String, default: null },
 
     // Drift detection
     enableDrift: { type: Boolean, default: false },
@@ -226,6 +264,15 @@ export default {
   },
   emits: ['run-drift-analysis', 'run-active-learning'],
   setup(props) {
+    const _showTrends = ref(false)
+
+    const _sparklineScores = computed(() => {
+      return Object.values(props.sceneResultsMap)
+        .map((s) => s.score)
+        .filter((s) => s != null)
+        .slice(-10)
+    })
+
     const dimensionNames = computed(() => {
       const dims = getDimensionsForWorkspace(props.workspaceType)
       return Object.entries(dims).map(([key, cfg]) => ({
@@ -406,6 +453,8 @@ export default {
     })
 
     return {
+      showTrends: _showTrends,
+      sparklineScores: _sparklineScores,
       totalScenes,
       evaluatedScenes,
       hasResults,

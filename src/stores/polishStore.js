@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+// eslint-disable-next-line no-restricted-imports
 import { analyzePolish } from '../composables/useOllama'
 import { LENS_MAP } from '../config/statuses'
 import {
@@ -11,6 +12,7 @@ import {
   deleteSnippet,
   incrementSnippetWord
 } from '../services/dbService'
+// eslint-disable-next-line no-restricted-imports
 import { useLocalStorage } from '../composables/useLocalStorage'
 import { STORAGE_KEYS } from '../config/storageKeys'
 

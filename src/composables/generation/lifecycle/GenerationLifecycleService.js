@@ -79,7 +79,7 @@ export class GenerationLifecycleService {
   onWriteNextBatch = null
 
   async startGeneration(opts = {}) {
-    const { projectId, volumeId, forceRegenerate, autoMode } = opts
+    const { projectId, volumeId, forceRegenerate: _forceRegenerate, autoMode } = opts
     this.volumeId.value = volumeId || this.volumeId.value
     this.currentTaskId.value = this.actLog.startPhase(
       'volume-generation',
@@ -211,7 +211,7 @@ export class GenerationLifecycleService {
     }
   }
 
-  async confirmPlan(projectId, opts = {}) {
+  async confirmPlan(projectId, _opts = {}) {
     this.phase.value = 'confirming'
     this.actLog.appendThought(this.currentTaskId.value, 'Plan confirmed, starting generation...')
     if (this.onRunParallelGeneration) {
@@ -219,7 +219,7 @@ export class GenerationLifecycleService {
     }
   }
 
-  async completeGeneration(projectId) {
+  async completeGeneration(_projectId) {
     this.phase.value = 'completing'
     this.actLog.appendThought(
       this.currentTaskId.value,
@@ -286,12 +286,7 @@ export class GenerationLifecycleService {
       return { success: true, repaired: 0 }
     }
 
-    const totalScenes = scenePlan.reduce((sum, s) => sum + s.scenes.length, 0)
-    const bible = this.storyBibleStore.bible
-    const lore = this.storyBibleStore.lore
-    const notes = this.storyBibleStore.notes
     const novelSettings = this.writeParams.value.novelSettings
-    const creativeBrief = this.writeParams.value.creativeBrief
 
     let repaired = 0
     for (const idx of failedIndexes) {

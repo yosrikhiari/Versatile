@@ -3,7 +3,11 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useBubbleStore } from '../../stores/bubbleStore'
 import { useProjectStore } from '../../stores/projectStore'
 
-const props = defineProps({ bubble: Object, containerWidth: Number, containerHeight: Number })
+const props = defineProps({
+  bubble: { type: Object, default: () => ({}) },
+  containerWidth: { type: Number, default: 0 },
+  containerHeight: { type: Number, default: 0 }
+})
 const store = useBubbleStore()
 const projectStore = useProjectStore()
 const bubbleEl = ref(null)
@@ -98,7 +102,7 @@ async function handleDoubleClick() {
   await store.removeBubbleAndPersist(props.bubble.id)
 }
 
-function onGlobalClick(e) {
+function onGlobalClick(_e) {
   if (showMenu.value) {
     showMenu.value = false
   }

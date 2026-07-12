@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+// eslint-disable-next-line no-restricted-imports
 import {
   generateSparkPrompt,
   generateOutline,
@@ -9,6 +10,7 @@ import {
 } from '../composables/useOllama'
 import { addSparkHistory, getSparkHistory, clearSparkHistory } from '../services/dbService'
 import { STORAGE_KEYS } from '../config/storageKeys'
+// eslint-disable-next-line no-restricted-imports
 import { useLocalStorage } from '../composables/useLocalStorage'
 
 export const useSparkStore = defineStore('spark', () => {

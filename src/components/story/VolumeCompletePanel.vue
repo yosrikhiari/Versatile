@@ -13,7 +13,7 @@ defineOptions({ name: 'VolumeCompletePanel' })
 const props = defineProps({
   volumeGenerator: { type: Object, required: true },
   sceneEval: { type: Object, required: true },
-  saveStatus: { default: null }
+  saveStatus: { type: Object, default: null }
 })
 
 const emit = defineEmits([
@@ -183,8 +183,8 @@ const totalWordsWritten = computed(() =>
         :al-below-threshold-recs="activeLearning.belowThresholdRecs.value"
         :al-no-data-recs="activeLearning.noDataRecs.value"
         :al-has-actionable-items="activeLearning.hasActionableItems.value"
-        @run-drift-analysis="driftMonitor.analyze(projectStore.currentProjectId)"
         class="mt-2 border-t border-border-subtle pt-2"
+        @run-drift-analysis="driftMonitor.analyze(projectStore.currentProjectId)"
         @run-active-learning="activeLearning.analyze(projectStore.currentProjectId)"
       />
     </div>

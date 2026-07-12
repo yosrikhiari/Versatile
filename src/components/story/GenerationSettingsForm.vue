@@ -6,14 +6,14 @@ import { MODE_SCENE } from '../../constants/generationModes'
 // StoryGeneratorPanel; the eight editable settings are two-way bound via
 // defineModel so the panel keeps ownership of the state (its generate handler
 // reads it), while the read-only display data comes in as props.
-const genre = defineModel('genre')
-const tone = defineModel('tone')
-const wordTarget = defineModel('wordTarget')
-const usePreciseStructure = defineModel('usePreciseStructure')
-const volumes = defineModel('volumes')
-const chaptersPerVolume = defineModel('chaptersPerVolume')
-const wordsPerChapter = defineModel('wordsPerChapter')
-const scenesPerChapter = defineModel('scenesPerChapter')
+const genre = defineModel('genre', { type: String })
+const tone = defineModel('tone', { type: String })
+const wordTarget = defineModel('wordTarget', { type: Number })
+const usePreciseStructure = defineModel('usePreciseStructure', { type: Boolean })
+const volumes = defineModel('volumes', { type: Number })
+const chaptersPerVolume = defineModel('chaptersPerVolume', { type: Number })
+const wordsPerChapter = defineModel('wordsPerChapter', { type: Number })
+const scenesPerChapter = defineModel('scenesPerChapter', { type: Number })
 
 defineProps({
   genres: { type: Array, default: () => [] },

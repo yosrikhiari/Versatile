@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { db } from '../../services/db-core'
 import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
@@ -33,9 +32,6 @@ import { useGenerationSettings } from '../../composables/useGenerationSettings'
 import VolumeCompletePanel from './VolumeCompletePanel.vue'
 import VolumeSceneReview from './VolumeSceneReview.vue'
 import VolumePlanPreview from './VolumePlanPreview.vue'
-import EvalPanel from '../eval/EvalPanel.vue'
-import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
-import EvalDashboard from '../eval/EvalDashboard.vue'
 
 const emit = defineEmits(['openChapters'])
 
@@ -136,7 +132,6 @@ const liveEntities = ref([])
 
 const consistencyModalOpen = ref(false)
 const selectedSceneIndex = ref(0)
-const showDashboard = ref(false)
 
 const sceneReviewEnabled = computed({
   get: () => volumeGenerator.sceneReviewMode.value,
@@ -207,27 +202,6 @@ const volumeTotalConsistencyIssues = computed(() => {
   if (!report) return 0
   return (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
 })
-
-const qualityGrade = computed(() => {
-  const n = volumeTotalConsistencyIssues.value
-  if (n === 0) return 'good'
-  if (n <= 3) return 'fair'
-  return 'poor'
-})
-
-const totalCharacterIssues = computed(
-  () => volumeGenerator.consistencyReport.value?.characterIssues?.length || 0
-)
-const totalLocationIssues = computed(
-  () => volumeGenerator.consistencyReport.value?.locationIssues?.length || 0
-)
-
-const totalWordsWritten = computed(() =>
-  volumeGenerator.writtenScenes.value.reduce(
-    (sum, s) => sum + (s.prose?.split(/\s+/).length || 0),
-    0
-  )
-)
 
 const {
   previousGenerations,
@@ -495,10 +469,6 @@ function acceptRevision() {
   if (selectedSceneIndex.value === null || selectedSceneIndex.value === undefined) return
   volumeGenerator.writtenScenes.value[selectedSceneIndex.value].prose =
     sceneEval.revisionResult.value.revisedProse
-}
-
-async function handleSceneEdit(index) {
-  sceneEval.editingSceneIndex.value = index
 }
 
 function getPhaseLabel(phase) {

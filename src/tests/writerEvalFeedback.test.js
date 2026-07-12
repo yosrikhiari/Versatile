@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { ref } from 'vue'
 
 const mockAiGenerate = vi.fn()
 const mockAiStream = vi.fn()

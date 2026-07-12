@@ -1,5 +1,4 @@
 import { ref, computed } from 'vue'
-import { useProjectStore } from '../stores/projectStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useNotifications } from '../composables/useNotifications'
@@ -15,7 +14,6 @@ import {
 } from '../services/db-dialogue'
 
 export function useDialogueIndexer() {
-  const projectStore = useProjectStore()
   const storyBibleStore = useStoryBibleStore()
   const manuscriptStore = useManuscriptStore()
   const { addToast } = useNotifications()

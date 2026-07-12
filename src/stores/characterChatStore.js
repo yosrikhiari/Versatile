@@ -7,7 +7,6 @@ import {
   deleteChatSession as removePersistedSession,
   deleteChatSessionsByCharacter as removeSessionsByCharacter
 } from '../services/db-chats'
-import { FEATURES } from '../config/ai'
 
 let messageIdCounter = 0
 let sessionIdCounter = 0

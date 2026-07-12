@@ -217,7 +217,7 @@ export function useVolumeWrite(ctx) {
     })
 
     const limit = PARALLEL_CHAPTER_LIMIT()
-    const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
+    const _anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
 
     let anchorEvalFeedback = ''
     if (inlineEvalEnabled.value) {
@@ -322,9 +322,9 @@ export function useVolumeWrite(ctx) {
       }
     }
 
-    let middleOutcomes = []
+    let _middleOutcomes = []
     if (middleTasks.length > 0) {
-      middleOutcomes = await parallelWithLimit(middleTasks, limit)
+      _middleOutcomes = await parallelWithLimit(middleTasks, limit)
     }
 
     if (inlineEvalEnabled.value) {

@@ -2,7 +2,7 @@
 import { ref, onErrorCaptured, provide } from 'vue'
 import BaseIcon from './BaseIcon.vue'
 
-const props = defineProps({
+defineProps({
   fallbackTitle: {
     type: String,
     default: 'Something went wrong'

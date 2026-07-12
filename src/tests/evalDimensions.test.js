@@ -24,7 +24,7 @@ describe('evalDimensions', () => {
     const keys = Object.keys(dims)
     expect(keys).toEqual(['continuity', 'voice', 'emotional_goal', 'show_tell', 'pacing'])
 
-    for (const [key, dim] of Object.entries(dims)) {
+    for (const [, dim] of Object.entries(dims)) {
       expect(dim).toHaveProperty('label')
       expect(dim).toHaveProperty('description')
       expect(dim).toHaveProperty('rubric')
@@ -100,8 +100,8 @@ describe('evalDimensions', () => {
   })
 
   it('every rubric has exactly 10 score levels', () => {
-    for (const [type, dims] of Object.entries(EVAL_DIMENSIONS)) {
-      for (const [key, dim] of Object.entries(dims)) {
+    for (const [, dims] of Object.entries(EVAL_DIMENSIONS)) {
+      for (const [, dim] of Object.entries(dims)) {
         expect(Object.keys(dim.rubric).length).toBe(10)
       }
     }

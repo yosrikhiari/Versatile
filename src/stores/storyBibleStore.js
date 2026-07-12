@@ -24,6 +24,7 @@ import {
   removeEntityFromNodePositions,
   removeEntityFromNodeParents
 } from '../services/db-graph'
+// eslint-disable-next-line no-restricted-imports
 import { useStoryDocuments } from '../composables/useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
 import { saveVoiceProfile, loadVoiceProfile } from '../services/db-entities'

@@ -1,8 +1,7 @@
 import { EMBEDDING_DEFAULTS } from '../config/ai'
 import { getEmbeddings } from './embeddingService'
+// eslint-disable-next-line no-restricted-imports
 import { useSettingsStore } from '../stores/settingsStore'
-
-const MAX_SAFE_CHUNK_SIZE = 300000
 
 let worker = null
 let requestId = 0
@@ -26,7 +25,7 @@ function getWorker() {
   return worker
 }
 
-function terminateWorker() {
+function _terminateWorker() {
   if (worker) {
     worker.terminate()
     worker = null

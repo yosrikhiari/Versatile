@@ -3,7 +3,6 @@ import { formatEvalFeedback } from '../services/evalFeedback'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
-import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useStoryDirector } from './useStoryDirector'
 import { useEntityBootstrapper } from './useEntityBootstrapper'
 import { useStoryWriter } from './useStoryWriter'
@@ -20,24 +19,15 @@ import {
   updateGenRunStage,
   makeInitialGenState
 } from '../services/db-generation'
-import { aiGenerate, aiGenerateJson, resolveFeatureConfig } from './useAiService'
-import { FEATURES, PROVIDERS } from '../config/ai'
-import { getEmbedding } from '../services/embeddingService'
-import { cosineSimilarity } from '../services/ollamaService'
 import {
-  isOllamaProvider,
   PARALLEL_CHAPTER_LIMIT,
   formatFullSpineEntry,
-  SPINE_ENTRY_SCHEMA,
   compressSpine,
-  SPINE_TIMEOUT_MS,
   fallbackSpineEntry,
   generateSpine
 } from './generation/context/spine'
 import {
   buildExistingEntitiesBlob,
-  EMBEDDING_CONTEXT_MAX_CHARS,
-  PROSE_EXCERPT_MAX_SCENES,
   buildEmbeddingContext,
   selectRelevantPriorScenes,
   buildRetrievalContext
@@ -51,33 +41,7 @@ import { ParallelWritingService, SceneWritingService } from './generation/writin
 import { getResumableRun } from './generation/checkpoint'
 import { buildPreliminaryEdges } from './generation/graph'
 
-// Map a global scene index to its section (chapter) index using each section's
-// actual scene count — replaces the old Math.floor(i / 3) that silently assumed
-// exactly 3 scenes per chapter and mis-attributed word counts otherwise.
-function sectionIndexForScene(sections, sceneIndex) {
-  let offset = 0
-  for (let i = 0; i < sections.length; i++) {
-    const count = (sections[i].scenes && sections[i].scenes.length) || 0
-    if (sceneIndex < offset + count) return i
-    offset += count
-  }
-  return Math.max(0, sections.length - 1)
-}
-
 const MAX_REJECTED_PATTERNS = 5
-const SYNC_BATCH_SIZE = 3
-// One-click quality guardrails: rewrite a scene that fails critique up to this
-// many times, and abort the whole run if this many scenes fail back-to-back
-// (signals a broken model/critic rather than letting it churn out garbage).
-const SCENE_MAX_ATTEMPTS = 2
-const QUALITY_FLOOR_CONSECUTIVE = 3
-
-function attemptScore(ev) {
-  return ev && !ev.evalUnavailable && typeof ev.score === 'number' ? ev.score : -1
-}
-function isCleanPass(ev) {
-  return !!(ev && !ev.evalUnavailable && ev.pass)
-}
 
 export function useVolumeStoryGenerator() {
   const phase = ref('idle')
@@ -720,7 +684,7 @@ export function useVolumeStoryGenerator() {
     }
   }
 
-  async function runParallelGeneration(writeParamsVal) {
+  async function _runParallelGeneration(writeParamsVal) {
     if (!writeParamsVal) return
     const { storyArc, storyBibleDocs, storyContract, projectId, onChunk } = writeParamsVal
 
@@ -843,7 +807,7 @@ export function useVolumeStoryGenerator() {
     })
 
     const limit = PARALLEL_CHAPTER_LIMIT()
-    const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
+    await parallelWithLimit(anchorTasks, limit)
 
     let anchorEvalFeedback = ''
     if (inlineEvalEnabled.value) {
@@ -951,9 +915,8 @@ export function useVolumeStoryGenerator() {
       }
     }
 
-    let middleOutcomes = []
     if (middleTasks.length > 0) {
-      middleOutcomes = await parallelWithLimit(middleTasks, limit)
+      await parallelWithLimit(middleTasks, limit)
     }
 
     if (inlineEvalEnabled.value) {

@@ -133,14 +133,6 @@ export default {
 
     const hasMultiProvider = computed(() => providers.value.length > 1)
 
-    const providerColors = [
-      'bg-emerald-500',
-      'bg-blue-500',
-      'bg-violet-500',
-      'bg-amber-500',
-      'bg-rose-500'
-    ]
-
     const sortedProviders = computed(() => {
       return [...providers.value].sort((a, b) => {
         const sa = aggregates.value[a]?.avgScore ?? 0
