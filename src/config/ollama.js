@@ -1,6 +1,6 @@
 import { STORAGE_KEYS } from './storageKeys'
 
-const DEFAULT_MODEL = 'dolphin-mistral:7b'
+const DEFAULT_MODEL = 'qwen3:8b'
 const DEFAULT_ENDPOINT = '/ollama'
 
 export function getOllamaEndpoint() {
