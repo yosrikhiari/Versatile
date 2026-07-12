@@ -17,6 +17,12 @@ export const STORAGE_KEYS = {
   OPENAI_FALLBACK_PROMPTED: 'versatile_openai_fallback_prompted',
   EMBEDDING_MODEL: 'versatile_embedding_model',
 
+  // Observability
+  LANGFUSE_PUBLIC_KEY: 'versatile_langfuse_public_key',
+  LANGFUSE_SECRET_KEY: 'versatile_langfuse_secret_key',
+  LANGFUSE_HOST: 'versatile_langfuse_host',
+  LANGFUSE_ENABLED: 'versatile_langfuse_enabled',
+
   // Dynamic Keys (Prefixes)
   API_KEY_PREFIX: 'versatile_api_key_',
   EMBEDDING_PREFIX: 'versatile_embedding_',

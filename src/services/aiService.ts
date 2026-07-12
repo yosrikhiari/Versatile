@@ -3,6 +3,21 @@ import type { AiGenerateOptions, FeatureName, ProviderName, ProviderModule, Feat
 import { getApiKey, getProviderModule, PROVIDER_MAP } from './providerRegistry'
 import { isRetryable, withRetry } from './retryService'
 import { sanitizeJson } from './ai/aiHelpers'
+import { langfuseService } from './langfuseService'
+import { useSettingsStore } from '../stores/settingsStore'
+
+function getLangfuse() {
+  const settings = useSettingsStore()
+  if (settings.langfuseEnabled && settings.langfusePublicKey && settings.langfuseSecretKey) {
+    langfuseService.configure({
+      publicKey: settings.langfusePublicKey,
+      secretKey: settings.langfuseSecretKey,
+      host: settings.langfuseHost
+    })
+    return langfuseService
+  }
+  return null
+}
 
 async function tryFallbackProvider<T>(
   error: unknown,
@@ -99,13 +114,33 @@ export async function aiGenerate(
     timeout: options.timeout
   }
 
+  const traceId = crypto.randomUUID()
+  const generationId = crypto.randomUUID()
+  const lf = getLangfuse()
+  if (lf) {
+    lf.createTrace(traceId, { name: 'ai-generate', tags: [provider, model, feature].filter(Boolean) })
+    lf.createGeneration(traceId, generationId, {
+      name: feature,
+      model,
+      provider,
+      input: prompt,
+      metadata: { systemPrompt: systemPrompt?.slice(0, 2000) }
+    })
+  }
+
   try {
-    return await withRetry(
+    const result = await withRetry(
       () => providerModule.generate(prompt, systemPrompt, model, providerOptions),
       isRetryable,
       { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
     )
+    if (lf) lf.endGeneration(generationId, { output: result })
+    return result
   } catch (error) {
+    if (lf) {
+      lf.endGeneration(generationId, { level: 'ERROR', statusMessage: String(error), output: '' })
+      lf.score(traceId, 'error', 0, String(error))
+    }
     return await tryFallbackProvider(error, options, (mod, key) =>
       mod.generate(prompt, systemPrompt, null, { ...pickProviderOptions(options), apiKey: key })
     )
@@ -138,16 +173,42 @@ export async function aiStream(
     timeout: options.timeout
   }
 
+  const traceId = crypto.randomUUID()
+  const generationId = crypto.randomUUID()
+  let fullOutput = ''
+  const lf = getLangfuse()
+  if (lf) {
+    lf.createTrace(traceId, { name: 'ai-stream', tags: [provider, model, feature].filter(Boolean) })
+    lf.createGeneration(traceId, generationId, {
+      name: feature,
+      model,
+      provider,
+      input: prompt,
+      metadata: { systemPrompt: systemPrompt?.slice(0, 2000) }
+    })
+  }
+
   try {
-    return await withRetry(
+    const result = await withRetry(
       (attempt, isIntermediate) => {
-        const chunkHandler = attempt > 0 && isIntermediate ? undefined : onChunk
+        const chunkHandler = attempt > 0 && isIntermediate
+          ? undefined
+          : (chunk: string) => {
+              fullOutput += chunk
+              onChunk?.(chunk, fullOutput)
+            }
         return providerModule.stream(prompt, systemPrompt, model, chunkHandler, providerOptions)
       },
       isRetryable,
       { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
     )
+    if (lf) lf.endGeneration(generationId, { output: result })
+    return result
   } catch (error) {
+    if (lf) {
+      lf.endGeneration(generationId, { level: 'ERROR', statusMessage: String(error), output: fullOutput })
+      lf.score(traceId, 'error', 0, String(error))
+    }
     return await tryFallbackProvider(error, options, (mod, key) =>
       mod.stream(prompt, systemPrompt, null, onChunk, { ...pickProviderOptions(options), apiKey: key })
     )
@@ -171,6 +232,20 @@ export async function aiGenerateStructured(
   const model = options.model || config.model
   const schema = options.schema
 
+  const traceId = crypto.randomUUID()
+  const generationId = crypto.randomUUID()
+  const lf = getLangfuse()
+  if (lf) {
+    lf.createTrace(traceId, { name: 'ai-generate-structured', tags: [provider, model, feature].filter(Boolean) })
+    lf.createGeneration(traceId, generationId, {
+      name: feature,
+      model,
+      provider,
+      input: prompt,
+      metadata: { systemPrompt: systemPrompt?.slice(0, 2000), schema: schema ? JSON.stringify(schema).slice(0, 1000) : undefined }
+    })
+  }
+
   const providerModule = getProviderModule(provider)
   const apiKey = await getApiKey(provider)
   const hasKey = provider === PROVIDERS.OLLAMA || !!apiKey
@@ -191,10 +266,11 @@ export async function aiGenerateStructured(
         isRetryable,
         { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
       )
-      if (result && typeof result === 'object') return result
+      if (result && typeof result === 'object') {
+        if (lf) lf.endGeneration(generationId, { output: JSON.stringify(result) })
+        return result
+      }
     } catch (err) {
-      // Native path failed (unsupported model, strict-schema rejection, …) —
-      // fall through to the text + sanitizeJson path below.
       console.warn('[aiGenerateStructured] native structured output failed, falling back:', err)
     }
   }
@@ -206,8 +282,13 @@ export async function aiGenerateStructured(
   const text = await aiGenerate(prompt, systemPrompt + jsonDirective, options)
   const parsed = sanitizeJson(text)
   if (!parsed) {
+    if (lf) {
+      lf.endGeneration(generationId, { level: 'ERROR', statusMessage: 'Invalid JSON', output: text })
+      lf.score(traceId, 'parse-error', 0, 'Model did not return valid JSON')
+    }
     throw new Error('Structured generation failed: the model did not return valid JSON.')
   }
+  if (lf) lf.endGeneration(generationId, { output: text })
   return parsed
 }
 

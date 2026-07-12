@@ -6,6 +6,7 @@ import { PROVIDERS, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS } fro
 import { aiTestConnection } from '../services/aiService'
 import { setOllamaEndpoint as setOllamaConfigEndpoint } from '../config/ollama'
 import { STORAGE_KEYS, getApiKeyStorageKey } from '../config/storageKeys'
+// eslint-disable-next-line no-restricted-imports
 import { useLocalStorage } from '../composables/useLocalStorage'
 
 const DEFAULT_SETTINGS = {
@@ -17,7 +18,11 @@ const DEFAULT_SETTINGS = {
   aiProviderFallback: 'none',
   embeddingProvider: EMBEDDING_DEFAULTS.provider,
   embeddingModel: EMBEDDING_DEFAULTS.model,
-  embeddingThreshold: EMBEDDING_DEFAULTS.threshold
+  embeddingThreshold: EMBEDDING_DEFAULTS.threshold,
+  langfusePublicKey: '',
+  langfuseSecretKey: '',
+  langfuseHost: 'https://cloud.langfuse.com',
+  langfuseEnabled: false
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -30,6 +35,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const embeddingProvider = ref(DEFAULT_SETTINGS.embeddingProvider)
   const embeddingModel = ref(DEFAULT_SETTINGS.embeddingModel)
   const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
+  const langfusePublicKey = ref(DEFAULT_SETTINGS.langfusePublicKey)
+  const langfuseSecretKey = ref(DEFAULT_SETTINGS.langfuseSecretKey)
+  const langfuseHost = ref(DEFAULT_SETTINGS.langfuseHost)
+  const langfuseEnabled = ref(DEFAULT_SETTINGS.langfuseEnabled)
 
   const featureModels = useLocalStorage(STORAGE_KEYS.FEATURE_MODELS, {})
 
@@ -69,6 +78,10 @@ export const useSettingsStore = defineStore('settings', () => {
         if (data.embeddingModel) embeddingModel.value = data.embeddingModel
         if (data.embeddingThreshold !== undefined)
           embeddingThreshold.value = data.embeddingThreshold
+        if (data.langfusePublicKey) langfusePublicKey.value = data.langfusePublicKey
+        if (data.langfuseSecretKey) langfuseSecretKey.value = data.langfuseSecretKey
+        if (data.langfuseHost) langfuseHost.value = data.langfuseHost
+        if (data.langfuseEnabled !== undefined) langfuseEnabled.value = data.langfuseEnabled
       }
 
       // STORAGE_KEYS ref
@@ -103,7 +116,11 @@ export const useSettingsStore = defineStore('settings', () => {
           aiProviderFallback: aiProviderFallback.value,
           embeddingProvider: embeddingProvider.value,
           embeddingModel: embeddingModel.value,
-          embeddingThreshold: embeddingThreshold.value
+          embeddingThreshold: embeddingThreshold.value,
+          langfusePublicKey: langfusePublicKey.value,
+          langfuseSecretKey: langfuseSecretKey.value,
+          langfuseHost: langfuseHost.value,
+          langfuseEnabled: langfuseEnabled.value
         })
       )
     } catch (e) {
@@ -224,6 +241,23 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
+  function setLangfusePublicKey(key) {
+    langfusePublicKey.value = key
+    saveSettings()
+  }
+  function setLangfuseSecretKey(key) {
+    langfuseSecretKey.value = key
+    saveSettings()
+  }
+  function setLangfuseHost(host) {
+    langfuseHost.value = host
+    saveSettings()
+  }
+  function setLangfuseEnabled(enabled) {
+    langfuseEnabled.value = enabled
+    saveSettings()
+  }
+
   function resetToDefaults() {
     ollamaEndpoint.value = DEFAULT_SETTINGS.ollamaEndpoint
     setOllamaConfigEndpoint(DEFAULT_SETTINGS.ollamaEndpoint)
@@ -235,6 +269,10 @@ export const useSettingsStore = defineStore('settings', () => {
     embeddingProvider.value = DEFAULT_SETTINGS.embeddingProvider
     embeddingModel.value = DEFAULT_SETTINGS.embeddingModel
     embeddingThreshold.value = DEFAULT_SETTINGS.embeddingThreshold
+    langfusePublicKey.value = DEFAULT_SETTINGS.langfusePublicKey
+    langfuseSecretKey.value = DEFAULT_SETTINGS.langfuseSecretKey
+    langfuseHost.value = DEFAULT_SETTINGS.langfuseHost
+    langfuseEnabled.value = DEFAULT_SETTINGS.langfuseEnabled
     featureModels.value = {}
     saveSettings()
   }
@@ -301,6 +339,14 @@ export const useSettingsStore = defineStore('settings', () => {
     setEmbeddingProvider,
     setEmbeddingModel,
     setEmbeddingThreshold,
+    langfusePublicKey,
+    langfuseSecretKey,
+    langfuseHost,
+    langfuseEnabled,
+    setLangfusePublicKey,
+    setLangfuseSecretKey,
+    setLangfuseHost,
+    setLangfuseEnabled,
     resetToDefaults,
     testOllamaConnection,
     testProviderConnection

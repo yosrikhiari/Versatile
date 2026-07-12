@@ -52,7 +52,8 @@ const tabOptions = [
   { key: 'ai', label: 'AI Providers' },
   { key: 'embedding', label: 'Embeddings' },
   { key: 'features', label: 'Features' },
-  { key: 'voice', label: 'Voice' }
+  { key: 'voice', label: 'Voice' },
+  { key: 'observability', label: 'Observability' }
 ]
 
 const apiKeys = ref({})
@@ -514,6 +515,65 @@ watch(
               </button>
             </div>
             <VoiceUploadModal :is-open="showVoiceUpload" @close="showVoiceUpload = false" />
+          </div>
+
+          <div v-if="activeTab === 'observability'" class="space-y-5">
+            <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
+              <h3 class="text-sm font-medium text-text-primary">Langfuse</h3>
+              <p class="text-2xs text-text-hint">
+                Trace LLM calls with Langfuse. Uses the direct HTTP ingestion API.
+              </p>
+              <div class="flex items-center gap-3">
+                <label class="text-xs text-text-secondary">Enabled</label>
+                <button
+                  class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+                  :class="settingsStore.langfuseEnabled ? 'bg-accent' : 'bg-border-subtle'"
+                  @click="settingsStore.setLangfuseEnabled(!settingsStore.langfuseEnabled)"
+                >
+                  <span
+                    class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
+                    :class="settingsStore.langfuseEnabled ? 'translate-x-4' : 'translate-x-1'"
+                  />
+                </button>
+              </div>
+              <div>
+                <label for="langfuse-host" class="block text-xs text-text-secondary mb-1">Host</label>
+                <input
+                  id="langfuse-host"
+                  :value="settingsStore.langfuseHost"
+                  type="text"
+                  placeholder="https://cloud.langfuse.com"
+                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  @input="settingsStore.setLangfuseHost($event.target.value)"
+                />
+              </div>
+              <div>
+                <label for="langfuse-public-key" class="block text-xs text-text-secondary mb-1"
+                  >Public Key</label
+                >
+                <input
+                  id="langfuse-public-key"
+                  :value="settingsStore.langfusePublicKey"
+                  type="password"
+                  placeholder="pk-..."
+                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 font-mono text-xs"
+                  @input="settingsStore.setLangfusePublicKey($event.target.value)"
+                />
+              </div>
+              <div>
+                <label for="langfuse-secret-key" class="block text-xs text-text-secondary mb-1"
+                  >Secret Key</label
+                >
+                <input
+                  id="langfuse-secret-key"
+                  :value="settingsStore.langfuseSecretKey"
+                  type="password"
+                  placeholder="sk-..."
+                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 font-mono text-xs"
+                  @input="settingsStore.setLangfuseSecretKey($event.target.value)"
+                />
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-3 mt-6">

@@ -1,5 +1,6 @@
 import { PROVIDERS, FEATURES, PROVIDER_MODELS } from '../config/ai'
 import { getApiKeyStorageKey } from '../config/storageKeys'
+// eslint-disable-next-line no-restricted-imports
 import { useSettingsStore } from '../stores/settingsStore'
 import { deobfuscate } from './ollamaService'
 import * as ollamaProvider from './providers/ollama'
