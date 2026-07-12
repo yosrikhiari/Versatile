@@ -1,5 +1,6 @@
 import { formatEvalFeedback } from '../../../services/evalFeedback'
 import { buildExistingEntitiesBlob, buildRetrievalContext } from '../context/sceneContext'
+import { useRagSelfRefine } from '../../rag/useRagSelfRefine'
 
 const SYNC_BATCH_SIZE = 3
 const SCENE_MAX_ATTEMPTS = 2
@@ -88,6 +89,7 @@ export class SceneWritingService {
     this.autoMode = autoMode
     this.structuredResults = structuredResults
     this.volumeId = volumeId
+    this.selfRefine = useRagSelfRefine()
   }
 
   onConfirmSync = null
@@ -122,7 +124,10 @@ export class SceneWritingService {
       this.progress.statusText =
         'Drafting scene details, building continuity context, and streaming prose...'
 
-      const embeddingContext = await buildRetrievalContext(scene, this.writtenScenes.value)
+      const ragOptions = projectId && storyBibleDocs?.length
+        ? { projectId, bibleData: { characters: [], locations: [], plotThreads: [] } }
+        : null
+      const embeddingContext = await buildRetrievalContext(scene, this.writtenScenes.value, 5, ragOptions)
 
       const chapterLog = runningChapterLog.slice(-20).join('\n')
 
@@ -199,6 +204,17 @@ export class SceneWritingService {
         ])
       }
       this.actLog.updatePhase(this.currentTaskId.value, scenePhase, { status: 'done' })
+
+      if (ragOptions && retryGate && this.selfRefine) {
+        try {
+          const refined = await this.selfRefine.refineProse(chosenProse, scene, embeddingContext, this.writer, this.writeParams.value)
+          if (refined && refined !== chosenProse) {
+            chosenProse = refined
+          }
+        } catch (refineErr) {
+          console.warn('[SceneWritingService] self-refine failed, using original prose:', refineErr)
+        }
+      }
 
       const fullProse = chosenProse
       this.structuredResults.push({ sceneIndex: i, structured: chosenStructured })

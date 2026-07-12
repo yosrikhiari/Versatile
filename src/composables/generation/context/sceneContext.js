@@ -1,5 +1,9 @@
 import { getEmbedding } from '../../../services/embeddingService'
 import { cosineSimilarity } from '../../../services/ollamaService'
+import { rewriteQueries } from '../../rag/useQueryRewriter'
+import { multiHopRetrieve } from '../../../services/ragMultiHopRetrieval'
+import { formatCitationContext } from '../../../services/ragCitationInjector'
+import { searchLexical as rsSearchLexical, semanticSearch as rsSemanticSearch } from '../../../services/researchDb'
 
 const EMBEDDING_CONTEXT_MAX_CHARS = 1400
 const CONSISTENCY_FIX_ROUNDS = 2
@@ -188,7 +192,7 @@ function selectRelevantPriorScenes(currentScene, candidates, limit) {
   return scored.slice(0, limit).map((x) => x.s)
 }
 
-async function buildRetrievalContext(currentScene, priorScenes, k = 5) {
+async function buildRetrievalContext(currentScene, priorScenes, k = 5, ragOptions = null) {
   if (!priorScenes || priorScenes.length <= PROSE_EXCERPT_MAX_SCENES) {
     return buildEmbeddingContext(currentScene, priorScenes || [])
   }
@@ -240,10 +244,33 @@ async function buildRetrievalContext(currentScene, priorScenes, k = 5) {
         context += `- Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}\n`
       }
     }
+    context = await appendRagContext(context, currentScene, priorScenes, ragOptions)
     return context.trim()
   } catch (err) {
     console.warn('[useVolumeStoryGenerator] retrieval context failed, using prose strategy:', err)
     return buildEmbeddingContext(currentScene, priorScenes)
+  }
+}
+
+async function appendRagContext(baseContext, currentScene, priorScenes, ragOptions) {
+  if (!ragOptions?.projectId || !baseContext.trim()) return baseContext
+  try {
+    const ragQueries = await rewriteQueries(currentScene)
+    if (!ragQueries.length) return baseContext
+    const retrievedChunks = await multiHopRetrieve({
+      projectId: ragOptions.projectId,
+      queries: ragQueries,
+      bibleData: ragOptions.bibleData || { characters: [], locations: [], plotThreads: [] },
+      priorScenes,
+      getEmbedding,
+      searchLexical: rsSearchLexical,
+      semanticSearch: rsSemanticSearch
+    })
+    if (!retrievedChunks.length) return baseContext
+    return baseContext + '\n\n' + formatCitationContext(retrievedChunks)
+  } catch (err) {
+    console.warn('[sceneContext] RAG multi-hop retrieval failed:', err)
+    return baseContext
   }
 }
 

@@ -17,6 +17,8 @@ export function createAgentMemory() {
   const hasPendingBatches = ref(false)
   const pendingBatchStart = ref(0)
   const sceneInconsistencies = ref([])
+  const error = ref(null)
+  const consistencyReport = ref(null)
   const currentSceneResult = ref(null)
   const currentWriteIndex = ref(0)
   const lastSyncedResultIndex = ref(-1)
@@ -112,6 +114,8 @@ export function createAgentMemory() {
     hasPendingBatches.value = false
     pendingBatchStart.value = 0
     sceneInconsistencies.value = []
+    error.value = null
+    consistencyReport.value = null
     currentSceneResult.value = null
     currentWriteIndex.value = 0
     lastSyncedResultIndex.value = -1
@@ -134,6 +138,8 @@ export function createAgentMemory() {
     hasPendingBatches,
     pendingBatchStart,
     sceneInconsistencies,
+    error,
+    consistencyReport,
     currentSceneResult,
     currentWriteIndex,
     lastSyncedResultIndex,
