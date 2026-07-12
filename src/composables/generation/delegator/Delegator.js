@@ -302,6 +302,15 @@ async function handleRetry(memory, payload) {
 }
 
 /**
+ * ERROR ──ERROR──► (stay in error)
+ * Generic error handler — logs the error and flags it on memory.
+ */
+async function handleError(memory, payload) {
+  const msg = payload?.error?.message || payload?.message || payload?.error || 'Unknown error'
+  memory.setProgress(`Error: ${msg}`, 0)
+}
+
+/**
  * ERROR ──RESET──► IDLE
  * Full reset — calls memory.reset().
  */

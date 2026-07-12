@@ -81,7 +81,6 @@ function isCleanPass(ev) {
 }
 
 export function useVolumeStoryGenerator() {
-  const phase = ref('idle')
   const progress = reactive({ current: 0, total: 0, sceneLabel: '', statusText: '' })
   const error = ref(null)
   const volumeId = ref(null)
@@ -121,6 +120,7 @@ export function useVolumeStoryGenerator() {
   const storyDocuments = useStoryDocuments()
 
   const delegatorApi = useDelegatorGeneration()
+  const phase = delegatorApi.memory.phase
 
   const commitService = new CommitService({
     writeParams,
@@ -187,21 +187,11 @@ export function useVolumeStoryGenerator() {
   sceneInteractionService.onWriteNextBatch = (i) => writeNextBatch(i)
   sceneInteractionService.onCompleteGeneration = (pid) => completeGeneration(pid)
 
-  delegatorApi.initializeToolInstances({
-    director,
+  Object.assign(delegatorApi.memory.instances, {
     bootstrapper,
-    writer,
-    critic,
-    sync,
-    storyBibleStore,
     volumeStore,
-    manuscriptStore,
     storyGraphStore,
-    actLog,
-    storyDocuments,
-    commitService,
-    consistencyService,
-    sceneInteractionService
+    storyDocuments
   })
 
   function logRejectedPattern(context, prose) {
@@ -327,14 +317,12 @@ export function useVolumeStoryGenerator() {
     }
 
     phase.value = 'writing'
-    delegatorApi.memory.phase.value = 'writing'
     onPhaseChange?.('writing')
     try {
       await writeNextBatch(resumeIndex)
       return { resumed: true, from: resumeIndex, total: plan.length }
     } catch (err) {
       phase.value = 'error'
-      delegatorApi.memory.phase.value = 'error'
       error.value = err.message || 'Resume failed'
       return { resumed: false, reason: 'error', error: error.value }
     }
@@ -397,7 +385,6 @@ export function useVolumeStoryGenerator() {
     try {
       progress.total = 4
       phase.value = 'bootstrapping'
-      delegatorApi.memory.phase.value = 'bootstrapping'
       onPhaseChange?.('bootstrapping')
 
       // Phase 0: Create volume first (so bootstrapping has a real volume ID)
@@ -524,7 +511,6 @@ export function useVolumeStoryGenerator() {
       progress.current = 3
       progress.statusText = 'Forging the Story Graph (Planning scenes)...'
       phase.value = 'planning'
-      delegatorApi.memory.phase.value = 'planning'
       onPhaseChange?.('planning')
       const planPhase = actLog.addPhase(currentTaskId, 'Planning')
       activeStage = 'structure'
@@ -626,7 +612,6 @@ export function useVolumeStoryGenerator() {
 
       // Phase 2.5: Pause at plan-preview for user editing
       phase.value = 'plan-preview'
-      delegatorApi.memory.phase.value = 'plan-preview'
       onPhaseChange?.('plan-preview')
       // Return control; user edits plan and calls confirmPlan() to proceed
 
@@ -649,7 +634,6 @@ export function useVolumeStoryGenerator() {
       return { scenes: scenePlan.value, storyArc, volumeId: vId, storyContract }
     } catch (err) {
       phase.value = 'error'
-      delegatorApi.memory.phase.value = 'error'
       error.value = err.message || 'Generation failed during initial phases'
       if (activeStage) {
         await updateGenRunStage(projectId, activeStage, { status: 'failed', error: error.value })
@@ -679,7 +663,6 @@ export function useVolumeStoryGenerator() {
 
     progress.statusText = 'Phase 1: Generating chapter anchors in parallel...'
     phase.value = 'writing'
-    delegatorApi.memory.phase.value = 'writing'
 
     async function generateAnchor(scene, role, constraints, sceneIndex, chapterIndex) {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
@@ -1048,7 +1031,6 @@ export function useVolumeStoryGenerator() {
         }
         currentWriteIndex.value = i + 1
         phase.value = 'scene-review'
-        delegatorApi.memory.phase.value = 'scene-review'
         return
       }
 
@@ -1085,7 +1067,6 @@ export function useVolumeStoryGenerator() {
             commitService.persistCheckpoint(projectId)
             await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
             phase.value = 'error'
-            delegatorApi.memory.phase.value = 'error'
             actLog.updatePhase(currentTaskId, scenePhase, { status: 'error' })
             return
           }
@@ -1137,7 +1118,6 @@ export function useVolumeStoryGenerator() {
         pendingBatchStart.value = endIndex
         syncPreview.value = batchChanges
         phase.value = 'sync-preview'
-        delegatorApi.memory.phase.value = 'sync-preview'
         // One-click mode: accept every discovered entity and keep writing
         if (autoMode.value) {
           await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
@@ -1152,7 +1132,6 @@ export function useVolumeStoryGenerator() {
     if (batchChanges.length > 0) {
       syncPreview.value = batchChanges
       phase.value = 'sync-preview'
-      delegatorApi.memory.phase.value = 'sync-preview'
       if (autoMode.value) {
         await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
       }
@@ -1277,7 +1256,6 @@ export function useVolumeStoryGenerator() {
     // Phase 0: Spine Generation
     progress.statusText = 'Generating hierarchical narrative spine...'
     phase.value = 'spine-generation'
-    delegatorApi.memory.phase.value = 'spine-generation'
     onPhaseChange?.('spine-generation')
     const spinePhase = actLog.addPhase(currentTaskId, 'Spine Generation')
     await updateGenRunStage(projectId, 'spine', { status: 'running' })
@@ -1295,14 +1273,12 @@ export function useVolumeStoryGenerator() {
     } catch (err) {
       error.value = err.message || 'Fatal: Spine generation failed'
       phase.value = 'error'
-      delegatorApi.memory.phase.value = 'error'
       await updateGenRunStage(projectId, 'spine', { status: 'failed', error: err.message })
       throw err
     }
 
     // Phase 3: Incremental writing
     phase.value = 'writing'
-    delegatorApi.memory.phase.value = 'writing'
     onPhaseChange?.('writing')
     error.value = null
     progress.statusText = 'Entering incremental drafting pipeline...'
@@ -1433,7 +1409,6 @@ export function useVolumeStoryGenerator() {
     await clearGenRun(projectId)
 
     phase.value = 'complete'
-    delegatorApi.memory.phase.value = 'complete'
     progress.statusText = 'Volume generation complete!'
 
     // Compute total words once (Fix #10 — was computed twice in quick succession)
@@ -1479,7 +1454,6 @@ export function useVolumeStoryGenerator() {
 
   function reset() {
     phase.value = 'idle'
-    delegatorApi.memory.phase.value = 'idle'
     progress.current = 0
     progress.total = 0
     progress.sceneLabel = ''

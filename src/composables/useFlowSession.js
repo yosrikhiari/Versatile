@@ -57,7 +57,8 @@ export function useFlowSession() {
     handleBackspace: timer.handleBackspace,
     formatTime: timer.formatTime,
     dismissNudge: timer.dismissNudge,
-    dismissBackspaceToast: timer.dismissBackspaceToast
+    dismissBackspaceToast: timer.dismissBackspaceToast,
+    destroy: timer.destroy
   }
 
   return _instance

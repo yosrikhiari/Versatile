@@ -1,7 +1,7 @@
 import { getEmbedding } from '../../../services/embeddingService'
 import { cosineSimilarity } from '../../../services/ollamaService'
-import { multiHopRetrieval } from '../../../services/ragMultiHopRetrieval'
-import { buildRagCitations } from '../../../services/ragCitationInjector'
+import { multiHopRetrieval as multiHopRetrieve } from '../../../services/ragMultiHopRetrieval'
+import { formatCitationContext } from '../../../services/ragCitationInjector'
 
 const EMBEDDING_CONTEXT_MAX_CHARS = 1400
 const CONSISTENCY_FIX_ROUNDS = 2
@@ -203,12 +203,12 @@ async function buildRetrievalContext(currentScene, priorScenes, k = 5, ragOption
       .filter(Boolean)
       .join(' ')
     if (queryText.trim().length < 10) return baseContext
-    const chunks = await multiHopRetrieval({
+    const chunks = await multiHopRetrieve({
       queries: [queryText],
       projectId: ragOptions.projectId
     })
     if (!chunks || chunks.length === 0) return baseContext
-    const citations = buildRagCitations(chunks)
+    const citations = formatCitationContext(chunks)
     return [baseContext, citations].filter(Boolean).join('\n\n')
   } catch {
     return baseContext

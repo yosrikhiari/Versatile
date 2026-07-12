@@ -1,4 +1,5 @@
 import { formatEvalFeedback } from '../../../services/evalFeedback'
+import { saveEvalResult, getEvalResultsByType } from '../../../services/db-evals'
 import { buildExistingEntitiesBlob, buildRetrievalContext } from '../context/sceneContext'
 import { useRagSelfRefine } from '../../rag/useRagSelfRefine'
 
@@ -114,7 +115,15 @@ export class SceneWritingService {
       this.storyBibleStore.plotThreads
     )
 
-    let batchEvalFeedback = ''
+    const pastWritingEvals = projectId ? await getEvalResultsByType(projectId, 'writing-critique') : []
+    let batchEvalFeedback = pastWritingEvals.length > 0
+      ? formatEvalFeedback(pastWritingEvals.map((e) => ({
+          sceneIndex: e.sceneId != null ? Number(e.sceneId) : undefined,
+          passed: e.passed,
+          score: e.score,
+          topIssues: (e.issues || []).slice(0, 3)
+        })))
+      : ''
 
     for (let i = startIndex; i < endIndex; i++) {
       const scene = this.scenePlan.value[i]
@@ -246,6 +255,18 @@ export class SceneWritingService {
           score: chosenEval.score,
           topIssues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         })
+        if (projectId) {
+          saveEvalResult({
+            projectId,
+            sceneId: i + 1,
+            evalType: 'writing-critique',
+            score: chosenEval.score,
+            passed: chosenEval.pass,
+            issues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss),
+            strengths: (chosenEval.strengths || []).slice(0, 3),
+            timestamp: new Date().toISOString()
+          })
+        }
         batchEvalFeedback = formatEvalFeedback(this.sceneEvalResults.value)
 
         const judged = chosenEval && !chosenEval.evalUnavailable && chosenEval.score != null
@@ -284,6 +305,18 @@ export class SceneWritingService {
           topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         }
         this.sceneEvalResults.value.push(evalEntry)
+        if (projectId) {
+          saveEvalResult({
+            projectId,
+            sceneId: i + 1,
+            evalType: 'writing-critique',
+            score: criticResult.score,
+            passed: criticResult.pass,
+            issues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss),
+            strengths: (criticResult.strengths || []).slice(0, 3),
+            timestamp: new Date().toISOString()
+          })
+        }
         batchEvalFeedback = formatEvalFeedback(this.sceneEvalResults.value)
       }
 

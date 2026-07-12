@@ -139,11 +139,16 @@ export function useDelegatorGeneration() {
   // --- Public bridge API ---
   const dispatch = (event, payload) => delegator.dispatch(event, payload)
 
+  const initializeToolInstances = (toolInstances) => {
+    Object.assign(memory.instances, toolInstances)
+  }
+
   return {
     memory,
     tools,
     delegator,
     dispatch,
-    getResumableRun: getResumableRunFn
+    getResumableRun: getResumableRunFn,
+    initializeToolInstances
   }
 }

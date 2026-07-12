@@ -1,4 +1,5 @@
 import { formatEvalFeedback } from '../../../services/evalFeedback'
+import { saveEvalResult, getEvalResultsByType } from '../../../services/db-evals'
 import { buildExistingEntitiesBlob } from '../context/sceneContext'
 import { computeSummary, parallelWithLimit } from '../utils'
 
@@ -176,7 +177,15 @@ export class ParallelWritingService {
     const limit = PARALLEL_CHAPTER_LIMIT()
     const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
 
-    let anchorEvalFeedback = ''
+    const pastWritingEvals = projectId ? await getEvalResultsByType(projectId, 'writing-critique') : []
+    let anchorEvalFeedback = pastWritingEvals.length > 0
+      ? formatEvalFeedback(pastWritingEvals.map((e) => ({
+          sceneIndex: e.sceneId != null ? Number(e.sceneId) : undefined,
+          passed: e.passed,
+          score: e.score,
+          topIssues: (e.issues || []).slice(0, 3)
+        })))
+      : ''
     if (this.inlineEvalEnabled.value) {
       this.progress.statusText = 'Evaluating chapter anchors...'
       const anchorResults = []
@@ -196,6 +205,18 @@ export class ParallelWritingService {
           score: criticResult.score,
           topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
         })
+        if (projectId) {
+          saveEvalResult({
+            projectId,
+            sceneId: idx + 1,
+            evalType: 'writing-critique',
+            score: criticResult.score,
+            passed: criticResult.pass,
+            issues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i),
+            strengths: (criticResult.strengths || []).slice(0, 3),
+            timestamp: new Date().toISOString()
+          })
+        }
       }
       this.sceneEvalResults.value = anchorResults
       anchorEvalFeedback = formatEvalFeedback(anchorResults)
@@ -303,6 +324,18 @@ export class ParallelWritingService {
           score: criticResult.score,
           topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
         })
+        if (projectId) {
+          saveEvalResult({
+            projectId,
+            sceneId: idx + 1,
+            evalType: 'writing-critique',
+            score: criticResult.score,
+            passed: criticResult.pass,
+            issues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i),
+            strengths: (criticResult.strengths || []).slice(0, 3),
+            timestamp: new Date().toISOString()
+          })
+        }
       }
       this.sceneEvalResults.value = [...this.sceneEvalResults.value, ...middleResults]
     }

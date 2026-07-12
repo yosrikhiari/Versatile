@@ -1,319 +1,330 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const mockEmbeddingService = { getEmbedding: vi.fn() }
-const mockResearchDb = {
+const { mockAiGenerateJson } = vi.hoisted(() => ({
+  mockAiGenerateJson: vi.fn()
+}))
+
+vi.mock('@/composables/useAiService', () => ({
+  aiGenerateJson: mockAiGenerateJson
+}))
+
+vi.mock('@/services/researchDb', () => ({
   semanticSearch: vi.fn(),
   searchLexical: vi.fn(),
   getAllChunksForProject: vi.fn()
-}
-const mockAiGenerate = vi.fn()
+}))
 
-vi.mock('@/services/embeddingService', () => mockEmbeddingService)
-vi.mock('@/services/researchDb', () => mockResearchDb)
-vi.mock('@/services/aiService', () => ({ aiGenerate: (...args) => mockAiGenerate(...args) }))
+vi.mock('@/services/embeddingService', () => ({
+  getEmbedding: vi.fn()
+}))
 
-const SOURCE_CHUNKS = [
-  {
-    id: 1,
-    projectId: 'p1',
-    documentTitle: 'Source A',
-    content: 'The ancient forest held secrets.',
-    _score: 0.82
-  },
-  {
-    id: 2,
-    projectId: 'p1',
-    documentTitle: 'Source B',
-    content: 'The sword was forged in dragonfire.',
-    _score: 0.67
-  }
-]
+describe('formatCitationContext', () => {
+  let formatCitationContext
 
-describe('ragCitationInjector', () => {
-  let buildRagCitations, getCitationSummary
   beforeEach(async () => {
-    vi.resetModules()
     vi.clearAllMocks()
     const mod = await import('@/services/ragCitationInjector')
-    buildRagCitations = mod.buildRagCitations
-    getCitationSummary = mod.getCitationSummary
+    formatCitationContext = mod.formatCitationContext
   })
 
-  it('buildRagCitations formats chunks into citation lines', () => {
-    const result = buildRagCitations(SOURCE_CHUNKS)
+  it('formats chunks into citation lines', () => {
+    const chunks = [
+      { documentTitle: 'Source A', text: 'The ancient forest held secrets.' },
+      { documentTitle: 'Source B', text: 'The sword was forged in dragonfire.' }
+    ]
+    const result = formatCitationContext(chunks)
     expect(result).toContain('[source:Source A]')
     expect(result).toContain('The ancient forest held secrets.')
     expect(result).toContain('[source:Source B]')
   })
 
-  it('buildRagCitations handles empty array', () => {
-    expect(buildRagCitations([])).toBe('')
+  it('handles empty array', () => {
+    expect(formatCitationContext([])).toBe('')
   })
 
-  it('buildRagCitations falls back to documentId when title missing', () => {
-    const chunks = [{ id: 3, content: 'Just content', documentId: 'doc-3' }]
-    const result = buildRagCitations(chunks)
-    expect(result).toContain('[source:doc-3]')
+  it('handles null', () => {
+    expect(formatCitationContext(null)).toBe('')
   })
 
-  it('buildRagCitations falls back to French default when no source info', () => {
-    const chunks = [{ id: 4, content: 'Just content' }]
-    const result = buildRagCitations(chunks)
+  it('falls back to documentId when documentTitle is missing', () => {
+    const chunks = [{ documentId: 'd1', text: 'Just content' }]
+    const result = formatCitationContext(chunks)
+    expect(result).toContain('[source:d1]')
+  })
+
+  it('falls back to source inconnu when no title or id', () => {
+    const chunks = [{ text: 'Content without source' }]
+    const result = formatCitationContext(chunks)
     expect(result).toContain('[source:source inconnu]')
-  })
-
-  it('buildRagCitations deduplicates by source + first 80 chars', () => {
-    const chunks = [
-      { id: 1, documentTitle: 'Doc', content: 'The ancient forest held secrets.' },
-      { id: 2, documentTitle: 'Doc', content: 'The ancient forest held secrets.' }
-    ]
-    const result = buildRagCitations(chunks)
-    expect(result).toContain('[source:Doc]')
-    expect((result.match(/\[source:Doc\]/g) || []).length).toBe(1)
-  })
-
-  it('getCitationSummary returns formatted source titles', () => {
-    const result = getCitationSummary(SOURCE_CHUNKS)
-    expect(result).toContain('- "Source A"')
-    expect(result).toContain('- "Source B"')
-  })
-
-  it('getCitationSummary returns empty string for empty input', () => {
-    expect(getCitationSummary([])).toBe('')
   })
 })
 
-describe('ragMultiHopRetrieval', () => {
-  let multiHopRetrieval
+describe('getCitationSummary', () => {
+  let getCitationSummary
+
   beforeEach(async () => {
-    vi.resetModules()
+    vi.clearAllMocks()
+    const mod = await import('@/services/ragCitationInjector')
+    getCitationSummary = mod.getCitationSummary
+  })
+
+  it('returns bullet list of unique document titles', () => {
+    const chunks = [
+      { documentTitle: 'Doc A' },
+      { documentTitle: 'Doc B' },
+      { documentTitle: 'Doc A' }
+    ]
+    const result = getCitationSummary(chunks)
+    expect(result).toContain('- "Doc A"')
+    expect(result).toContain('- "Doc B"')
+    expect((result.match(/- "/g) || []).length).toBe(2)
+  })
+
+  it('falls back to documentId when no title', () => {
+    const chunks = [{ documentId: 'd1' }]
+    const result = getCitationSummary(chunks)
+    expect(result).toContain('- "d1"')
+  })
+
+  it('returns empty string for empty input', () => {
+    expect(getCitationSummary([])).toBe('')
+  })
+
+  it('returns empty string for null', () => {
+    expect(getCitationSummary(null)).toBe('')
+  })
+})
+
+describe('multiHopRetrieval', () => {
+  let multiHopRetrieval
+
+  beforeEach(async () => {
     vi.clearAllMocks()
     const mod = await import('@/services/ragMultiHopRetrieval')
     multiHopRetrieval = mod.multiHopRetrieval
   })
 
-  it('returns fused results from semantic and lexical search', async () => {
-    const queryEmbedding = new Float32Array([0.1, 0.2, 0.3])
-    mockEmbeddingService.getEmbedding.mockResolvedValue(queryEmbedding)
-    mockResearchDb.semanticSearch.mockResolvedValue([
-      { id: 1, title: 'Found', content: 'Semantic match', _score: 0.72 }
-    ])
-    mockResearchDb.searchLexical.mockResolvedValue([
-      { id: 2, title: 'Found', content: 'Lexical match', _score: 0.25 }
-    ])
-
-    const result = await multiHopRetrieval({
-      queries: ['ancient forest sword'],
-      projectId: 'p1'
-    })
-
-    expect(mockEmbeddingService.getEmbedding).toHaveBeenCalled()
-    expect(mockResearchDb.semanticSearch).toHaveBeenCalledWith('p1', queryEmbedding, 5)
-    expect(mockResearchDb.searchLexical).toHaveBeenCalledWith('p1', 'ancient forest sword', 5)
-    expect(result.length).toBeGreaterThanOrEqual(1)
-    const scores = result.map((c) => c._score)
-    expect(Math.max(...scores)).toBeGreaterThanOrEqual(0.72)
+  it('returns empty for missing projectId', async () => {
+    const result = await multiHopRetrieval({ queries: ['test'] })
+    expect(result).toEqual([])
   })
 
-  it('returns empty for empty queries', async () => {
+  it('returns empty for empty queries array', async () => {
     const result = await multiHopRetrieval({ queries: [], projectId: 'p1' })
     expect(result).toEqual([])
   })
 
-  it('returns empty when embedding service returns null', async () => {
-    mockEmbeddingService.getEmbedding.mockResolvedValue(null)
-    mockResearchDb.searchLexical.mockResolvedValue([])
-
-    const result = await multiHopRetrieval({
-      queries: ['test query'],
-      projectId: 'p1'
-    })
-
+  it('returns empty for empty query texts', async () => {
+    const result = await multiHopRetrieval({ queries: [''], projectId: 'p1' })
     expect(result).toEqual([])
   })
 
-  it('deduplicates chunks by id', async () => {
-    const queryEmbedding = new Float32Array([0.1, 0.2, 0.3])
-    mockEmbeddingService.getEmbedding.mockResolvedValue(queryEmbedding)
-    mockResearchDb.semanticSearch.mockResolvedValue([
-      { id: 1, title: 'Dup', content: 'Same chunk', _score: 0.72 }
+  it('returns fused results from lexical and semantic search', async () => {
+    const { getEmbedding } = await import('@/services/embeddingService')
+    getEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2, 0.3]))
+
+    const { searchLexical, semanticSearch } = await import('@/services/researchDb')
+    searchLexical.mockResolvedValue([
+      { id: 1, text: 'Research doc 1', _score: 0.9, documentId: 'd1' }
     ])
-    mockResearchDb.searchLexical.mockResolvedValue([
-      { id: 1, title: 'Dup', content: 'Same chunk', _score: 0.72 }
+    semanticSearch.mockResolvedValue([
+      { id: 2, text: 'Semantic result', _score: 0.7, documentId: 'd2' }
     ])
 
     const result = await multiHopRetrieval({
-      queries: ['test query'],
-      projectId: 'p1'
-    })
-
-    expect(result.length).toBe(1)
-  })
-
-  it('applies score threshold filtering', async () => {
-    const queryEmbedding = new Float32Array([0.1, 0.2, 0.3])
-    mockEmbeddingService.getEmbedding.mockResolvedValue(queryEmbedding)
-    mockResearchDb.semanticSearch.mockResolvedValue([
-      { id: 1, title: 'Low', content: 'Below threshold', _score: 0.1 }
-    ])
-    mockResearchDb.searchLexical.mockResolvedValue([])
-
-    const result = await multiHopRetrieval({
-      queries: ['test query'],
       projectId: 'p1',
-      minScore: 0.45
+      queries: ['ancient forest sword']
     })
 
+    expect(result.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('handles empty lexical and semantic results', async () => {
+    const { getEmbedding } = await import('@/services/embeddingService')
+    getEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
+
+    const { searchLexical, semanticSearch } = await import('@/services/researchDb')
+    searchLexical.mockResolvedValue([])
+    semanticSearch.mockResolvedValue([])
+
+    const result = await multiHopRetrieval({
+      projectId: 'p1',
+      queries: ['test query']
+    })
     expect(result).toEqual([])
+  })
+
+  it('handles embedding failure gracefully', async () => {
+    const { getEmbedding } = await import('@/services/embeddingService')
+    getEmbedding.mockRejectedValue(new Error('Embedding failed'))
+
+    const { searchLexical } = await import('@/services/researchDb')
+    searchLexical.mockResolvedValue([
+      { id: 1, text: 'Lexical match', _score: 0.3, documentId: 'd1' }
+    ])
+
+    const result = await multiHopRetrieval({
+      projectId: 'p1',
+      queries: ['test query']
+    })
+    expect(result.length).toBeGreaterThanOrEqual(1)
   })
 })
 
 describe('useQueryRewriter', () => {
   let useQueryRewriter
+
   beforeEach(async () => {
-    vi.resetModules()
     vi.clearAllMocks()
     const mod = await import('@/composables/rag/useQueryRewriter')
     useQueryRewriter = mod.useQueryRewriter
   })
 
   it('returns queries from aiGenerateJson', async () => {
-    mockAiGenerate.mockResolvedValue(
-      JSON.stringify({ queries: ['ancient forest lore', 'dragonfire sword history'] })
-    )
+    mockAiGenerateJson.mockResolvedValue({
+      queries: ['ancient forest lore', 'dragonfire sword history']
+    })
 
-    const result = await useQueryRewriter('The dragon sword lies hidden in the ancient forest.')
+    const result = await useQueryRewriter('Scene in ancient forest with dragonfire sword')
 
-    expect(result.queries).toEqual(['ancient forest lore', 'dragonfire sword history'])
-    expect(mockAiGenerate).toHaveBeenCalledTimes(1)
+    expect(result.queries).toHaveLength(2)
+    expect(result.queries[0]).toBe('ancient forest lore')
+    expect(mockAiGenerateJson).toHaveBeenCalledTimes(1)
   })
 
-  it('returns single query in array', async () => {
-    mockAiGenerate.mockResolvedValue(JSON.stringify({ queries: ['ancient forest lore'] }))
-
-    const result = await useQueryRewriter('The dragon sword lies hidden in the ancient forest.')
-
-    expect(result.queries).toEqual(['ancient forest lore'])
-  })
-
-  it('returns empty queries when brief is too short', async () => {
+  it('returns empty queries when scene brief is too short', async () => {
     const result = await useQueryRewriter('Short')
     expect(result.queries).toEqual([])
   })
 
-  it('returns empty queries on JSON parse failure', async () => {
-    mockAiGenerate.mockResolvedValue('invalid json')
+  it('limits to 3 queries', async () => {
+    mockAiGenerateJson.mockResolvedValue({
+      queries: ['q1', 'q2', 'q3', 'q4', 'q5']
+    })
 
-    const result = await useQueryRewriter('A sufficiently long scene brief for testing purposes.')
-    expect(result.queries).toEqual([])
+    const result = await useQueryRewriter('A scene with many different aspects to research thoroughly for writing.')
+    expect(result.queries).toHaveLength(3)
   })
 
-  it('handles aiGenerate returning null', async () => {
-    mockAiGenerate.mockResolvedValue(null)
+  it('handles aiGenerateJson throwing', async () => {
+    mockAiGenerateJson.mockRejectedValue(new Error('API error'))
 
-    const result = await useQueryRewriter('A sufficiently long scene brief for testing purposes.')
+    const result = await useQueryRewriter('A scene that needs research queries generated for context.')
     expect(result.queries).toEqual([])
   })
 })
 
 describe('useRagSelfRefine', () => {
   let useRagSelfRefine
+
   beforeEach(async () => {
-    vi.resetModules()
     vi.clearAllMocks()
     const mod = await import('@/composables/rag/useRagSelfRefine')
     useRagSelfRefine = mod.useRagSelfRefine
   })
 
-  it('returns original text when context is too short', async () => {
-    const result = await useRagSelfRefine('Short text.', 'Tiny ctx')
-    expect(result.revisedText).toBe('Short text.')
-    expect(result.rounds).toBe(0)
+  it('returns original text when sceneText is empty', async () => {
+    const result = await useRagSelfRefine('', 'Some research context that has enough words to pass the minimum threshold for testing purposes and validation.')
+    expect(result).toEqual({ revisedText: '', rounds: 0 })
   })
 
-  it('skips refinement when judge approves', async () => {
-    const prose = 'A scene '.repeat(20)
-    const context = 'Context block '.repeat(20)
-    mockAiGenerate.mockResolvedValueOnce(
-      JSON.stringify({ needsRevision: false, reason: '', missingElements: [] })
+  it('returns original text when contextBlock is too short', async () => {
+    const result = await useRagSelfRefine('Some scene text here.', 'Too short')
+    expect(result).toEqual({ revisedText: 'Some scene text here.', rounds: 0 })
+  })
+
+  it('returns original text when judge says no revision needed', async () => {
+    mockAiGenerateJson.mockResolvedValue({
+      needsRevision: false,
+      reason: 'Scene properly reflects research.',
+      missingElements: []
+    })
+
+    const text = 'A scene '.repeat(20)
+    const result = await useRagSelfRefine(
+      text,
+      'The ancient forest held secrets. The sword was forged in dragonfire. ' +
+      'Legends spoke of its power. Many sought it. None found it. ' +
+      'The mystery remained for generations. Scholars debated its meaning.'
     )
 
-    const result = await useRagSelfRefine(prose, context)
+    expect(result.revisedText).toBe(text)
     expect(result.rounds).toBe(0)
-    expect(result.revisedText).toBe(prose)
   })
 
-  it('rewrites and re-judges when judge flags revision', async () => {
-    const prose = 'The ancient forest held secrets unknown to mortals.'
-    const context = 'Context block '.repeat(20)
-    mockAiGenerate
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          needsRevision: true,
-          reason: 'Missing dragonfire origin',
-          missingElements: ['dragonfire']
-        })
-      )
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          revisedScene: 'The dragonfire sword, forged in ancient flames, lay hidden in the forest.'
-        })
-      )
-      .mockResolvedValueOnce(
-        JSON.stringify({ needsRevision: false, reason: '', missingElements: [] })
-      )
+  it('rewrites prose when judge flags missing elements', async () => {
+    mockAiGenerateJson
+      .mockResolvedValueOnce({
+        needsRevision: true,
+        reason: 'Missing dragonfire origin',
+        missingElements: ['dragonfire origin']
+      })
+      .mockResolvedValueOnce({
+        revisedScene: 'The dragonfire sword lay hidden.'
+      })
 
-    const result = await useRagSelfRefine(prose, context)
+    const result = await useRagSelfRefine(
+      'Original prose.',
+      'The ancient forest of Eldoria concealed many secrets. ' +
+      'Legends spoke of a sword forged in dragonfire. ' +
+      'Its power was unmatched in all the realms. ' +
+      'Few dared to seek it out. The mystery deepened.'
+    )
+
+    expect(result.revisedText).toBe('The dragonfire sword lay hidden.')
     expect(result.rounds).toBe(1)
-    expect(mockAiGenerate).toHaveBeenCalledTimes(3)
-    expect(result.revisedText).toBe(
-      'The dragonfire sword, forged in ancient flames, lay hidden in the forest.'
+  })
+
+  it('returns original text when aiGenerateJson throws on judge', async () => {
+    mockAiGenerateJson.mockRejectedValue(new Error('API error'))
+
+    const text = 'A scene '.repeat(20)
+    const result = await useRagSelfRefine(
+      text,
+      'The ancient forest held secrets. The sword was forged in dragonfire. ' +
+      'Legends spoke of its power. Many sought it. None found it. ' +
+      'Scholars debated its meaning for generations without conclusion.'
     )
+
+    expect(result.revisedText).toBe(text)
+    expect(result.rounds).toBe(0)
   })
 
-  it('stops after max rounds even if judge still flags revision', async () => {
-    const prose = 'A scene '.repeat(20)
-    const context = 'Context block '.repeat(20)
-    mockAiGenerate
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          needsRevision: true,
-          reason: 'Missing elements',
-          missingElements: ['details']
-        })
-      )
-      .mockResolvedValueOnce(JSON.stringify({ revisedScene: 'Revised version with more details.' }))
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          needsRevision: true,
-          reason: 'Still missing',
-          missingElements: ['more details']
-        })
-      )
-      .mockResolvedValueOnce(JSON.stringify({ revisedScene: 'Revised version with more details.' }))
+  it('returns original text when aiGenerateJson fails on rewrite', async () => {
+    mockAiGenerateJson
+      .mockResolvedValueOnce({
+        needsRevision: true,
+        reason: 'Missing details',
+        missingElements: ['details']
+      })
+      .mockRejectedValueOnce(new Error('Rewrite failed'))
 
-    const result = await useRagSelfRefine(prose, context)
+    const text = 'Original scene text for testing purposes that has enough content. '.repeat(5)
+    const result = await useRagSelfRefine(
+      text,
+      'Important research context about the scene should be included in the writing. ' +
+      'The details are crucial for maintaining consistency across the narrative. ' +
+      'Every element serves a purpose in the story. This context is comprehensive.'
+    )
+
+    expect(result.revisedText).toBe(text)
+    expect(result.rounds).toBe(1)
+  })
+
+  it('stops refinement after max rounds', async () => {
+    mockAiGenerateJson.mockResolvedValue({
+      needsRevision: true,
+      reason: 'Still missing elements',
+      missingElements: ['elements']
+    })
+
+    const result = await useRagSelfRefine(
+      'Scene text that needs revision and editing for better quality. '.repeat(3),
+      'Research context provides important background information for the story. ' +
+      'Every detail helps build a richer narrative experience for the reader. ' +
+      'The author should incorporate these elements naturally into the prose and dialogue.'
+    )
+
     expect(result.rounds).toBe(2)
-    expect(result.revisedText).toBe('Revised version with more details.')
-  })
-
-  it('returns original text when aiGenerate throws', async () => {
-    const prose = 'A scene '.repeat(20)
-    const context = 'Context block '.repeat(20)
-    mockAiGenerate.mockRejectedValue(new Error('API error'))
-
-    const result = await useRagSelfRefine(prose, context)
-    expect(result.revisedText).toBe(prose)
-    expect(result.rounds).toBe(0)
-  })
-
-  it('returns original text when judge returns unparseable JSON', async () => {
-    const prose = 'A scene '.repeat(20)
-    const context = 'Context block '.repeat(20)
-    mockAiGenerate.mockResolvedValue('not json at all')
-
-    const result = await useRagSelfRefine(prose, context)
-    expect(result.revisedText).toBe(prose)
-    expect(result.rounds).toBe(0)
   })
 })

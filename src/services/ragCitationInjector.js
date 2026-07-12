@@ -21,6 +21,8 @@ export function buildRagCitations(chunks) {
   return lines.join('\n')
 }
 
+export const formatCitationContext = buildRagCitations
+
 export function getCitationSummary(chunks) {
   if (!chunks || chunks.length === 0) return ''
   const sources = new Set()
