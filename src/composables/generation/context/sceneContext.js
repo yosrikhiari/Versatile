@@ -1,5 +1,7 @@
 import { getEmbedding } from '../../../services/embeddingService'
 import { cosineSimilarity } from '../../../services/ollamaService'
+import { multiHopRetrieval } from '../../../services/ragMultiHopRetrieval'
+import { buildRagCitations } from '../../../services/ragCitationInjector'
 
 const EMBEDDING_CONTEXT_MAX_CHARS = 1400
 const CONSISTENCY_FIX_ROUNDS = 2
@@ -188,7 +190,32 @@ function selectRelevantPriorScenes(currentScene, candidates, limit) {
   return scored.slice(0, limit).map((x) => x.s)
 }
 
-async function buildRetrievalContext(currentScene, priorScenes, k = 5) {
+async function buildRetrievalContext(currentScene, priorScenes, k = 5, ragOptions) {
+  const baseContext = await buildBaseRetrievalContext(currentScene, priorScenes, k)
+  if (!ragOptions || !ragOptions.projectId) return baseContext
+  try {
+    const queryText = [
+      currentScene.title,
+      currentScene.goal || currentScene.emotionalGoal,
+      (currentScene.charactersPresent || currentScene.characters || []).join(' '),
+      currentScene.location
+    ]
+      .filter(Boolean)
+      .join(' ')
+    if (queryText.trim().length < 10) return baseContext
+    const chunks = await multiHopRetrieval({
+      queries: [queryText],
+      projectId: ragOptions.projectId
+    })
+    if (!chunks || chunks.length === 0) return baseContext
+    const citations = buildRagCitations(chunks)
+    return [baseContext, citations].filter(Boolean).join('\n\n')
+  } catch {
+    return baseContext
+  }
+}
+
+async function buildBaseRetrievalContext(currentScene, priorScenes, k = 5) {
   if (!priorScenes || priorScenes.length <= PROSE_EXCERPT_MAX_SCENES) {
     return buildEmbeddingContext(currentScene, priorScenes || [])
   }

@@ -1,5 +1,6 @@
 import { formatEvalFeedback } from '../../../services/evalFeedback'
 import { buildExistingEntitiesBlob, buildRetrievalContext } from '../context/sceneContext'
+import { useRagSelfRefine } from '../../rag/useRagSelfRefine'
 
 const SYNC_BATCH_SIZE = 3
 const SCENE_MAX_ATTEMPTS = 2
@@ -55,7 +56,8 @@ export class SceneWritingService {
     sceneReviewMode,
     autoMode,
     structuredResults,
-    volumeId
+    volumeId,
+    ragOptions
   }) {
     this.writeParams = writeParams
     this.scenePlan = scenePlan
@@ -88,6 +90,7 @@ export class SceneWritingService {
     this.autoMode = autoMode
     this.structuredResults = structuredResults
     this.volumeId = volumeId
+    this.ragOptions = ragOptions
   }
 
   onConfirmSync = null
@@ -122,7 +125,12 @@ export class SceneWritingService {
       this.progress.statusText =
         'Drafting scene details, building continuity context, and streaming prose...'
 
-      const embeddingContext = await buildRetrievalContext(scene, this.writtenScenes.value)
+      const embeddingContext = await buildRetrievalContext(
+        scene,
+        this.writtenScenes.value,
+        5,
+        this.ragOptions
+      )
 
       const chapterLog = runningChapterLog.slice(-20).join('\n')
 
@@ -169,7 +177,14 @@ export class SceneWritingService {
           existingEntitiesJson,
           pastEvalResults: attemptFeedback || undefined
         })
-        const proseText = result.prose
+        let proseText = result.prose
+
+        if (this.ragOptions && embeddingContext) {
+          const refined = await useRagSelfRefine(proseText, embeddingContext)
+          if (refined.rounds > 0) {
+            proseText = refined.revisedText
+          }
+        }
 
         if (!retryGate) {
           chosenProse = proseText

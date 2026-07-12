@@ -77,13 +77,15 @@ export function computeDrift(evals, dimensionNames, options = {}) {
     const baseMean = baseVals.reduce((a, b) => a + b, 0) / baseVals.length
     const recentMean = recentVals.reduce((a, b) => a + b, 0) / recentVals.length
     const baseVariance = baseVals.reduce((acc, v) => acc + (v - baseMean) ** 2, 0) / baseVals.length
-    const recentVariance = recentVals.reduce((acc, v) => acc + (v - recentMean) ** 2, 0) / recentVals.length
+    const recentVariance =
+      recentVals.reduce((acc, v) => acc + (v - recentMean) ** 2, 0) / recentVals.length
     const baseStddev = Math.sqrt(baseVariance)
     const recentStddev = Math.sqrt(recentVariance)
 
     const delta = parseFloat((recentMean - baseMean).toFixed(2))
     const absDelta = Math.abs(delta)
-    const varianceRatio = baseStddev > 0 ? recentStddev / baseStddev : recentStddev > 0 ? Infinity : 1
+    const varianceRatio =
+      baseStddev > 0 ? recentStddev / baseStddev : recentStddev > 0 ? Infinity : 1
 
     let status = 'stable'
     let severity = null
@@ -184,11 +186,15 @@ export function analyzeWorkspace(evals, workspaceType, options) {
 
   const overallTrend = computeOverallTrend(matched)
   const drift = computeDrift(matched, dimensionNames, options)
-  const dimCoverage = matched.length > 0
-    ? parseFloat(
-        (matched.filter((e) => e.dimensionScores && Object.keys(e.dimensionScores).length > 0).length / matched.length).toFixed(2)
-      )
-    : 0
+  const dimCoverage =
+    matched.length > 0
+      ? parseFloat(
+          (
+            matched.filter((e) => e.dimensionScores && Object.keys(e.dimensionScores).length > 0)
+              .length / matched.length
+          ).toFixed(2)
+        )
+      : 0
 
   return {
     workspaceType,
@@ -209,9 +215,12 @@ export function generateReport(results, options) {
   for (const r of results) {
     if (r.error) continue
     for (const [dim, d] of Object.entries(r.drift?.dimensionDrifts || {})) {
-      if (d.status === 'regression') regressions.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
-      if (d.status === 'improvement') improvements.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
-      if (d.status === 'volatility_increase') volatilities.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
+      if (d.status === 'regression')
+        regressions.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
+      if (d.status === 'improvement')
+        improvements.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
+      if (d.status === 'volatility_increase')
+        volatilities.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
     }
   }
 
