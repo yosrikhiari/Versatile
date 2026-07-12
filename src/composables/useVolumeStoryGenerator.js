@@ -47,6 +47,7 @@ import { CommitService } from './generation/commit'
 import { ConsistencyService } from './generation/consistency'
 import { GenerationLifecycleService } from './generation/lifecycle'
 import { SceneInteractionService } from './generation/interaction'
+import { useDelegatorGeneration } from './generation/delegator'
 import { ParallelWritingService, SceneWritingService } from './generation/writing'
 import { getResumableRun } from './generation/checkpoint'
 import { buildPreliminaryEdges } from './generation/graph'
@@ -116,6 +117,10 @@ export function useVolumeStoryGenerator() {
   const storyBibleStore = useStoryBibleStore()
   const volumeStore = useVolumeStore()
   const manuscriptStore = useManuscriptStore()
+  const storyGraphStore = useStoryGraphStore()
+  const storyDocuments = useStoryDocuments()
+
+  const delegatorApi = useDelegatorGeneration()
 
   const commitService = new CommitService({
     writeParams,
@@ -150,6 +155,53 @@ export function useVolumeStoryGenerator() {
     manuscriptStore,
     updateGenRunStage,
     actLog
+  })
+
+  const sceneInteractionService = new SceneInteractionService({
+    writeParams,
+    scenePlan,
+    phase,
+    progress,
+    writer,
+    sync,
+    actLog,
+    writtenScenes,
+    structuredResults,
+    hasPendingBatches,
+    pendingBatchStart,
+    manuscriptStore,
+    storyBibleStore,
+    commitService,
+    rejectedPatterns,
+    autoMode,
+    sceneReviewMode,
+    currentSceneResult,
+    currentWriteIndex,
+    sceneEvalResults,
+    lastSyncedResultIndex,
+    syncPreview,
+    currentTaskId,
+    volumeId,
+    consistencyService
+  })
+  sceneInteractionService.onWriteNextBatch = (i) => writeNextBatch(i)
+  sceneInteractionService.onCompleteGeneration = (pid) => completeGeneration(pid)
+
+  delegatorApi.initializeToolInstances({
+    director,
+    bootstrapper,
+    writer,
+    critic,
+    sync,
+    storyBibleStore,
+    volumeStore,
+    manuscriptStore,
+    storyGraphStore,
+    actLog,
+    storyDocuments,
+    commitService,
+    consistencyService,
+    sceneInteractionService
   })
 
   function logRejectedPattern(context, prose) {
@@ -275,12 +327,14 @@ export function useVolumeStoryGenerator() {
     }
 
     phase.value = 'writing'
+    delegatorApi.memory.phase.value = 'writing'
     onPhaseChange?.('writing')
     try {
       await writeNextBatch(resumeIndex)
       return { resumed: true, from: resumeIndex, total: plan.length }
     } catch (err) {
       phase.value = 'error'
+      delegatorApi.memory.phase.value = 'error'
       error.value = err.message || 'Resume failed'
       return { resumed: false, reason: 'error', error: error.value }
     }
@@ -343,6 +397,7 @@ export function useVolumeStoryGenerator() {
     try {
       progress.total = 4
       phase.value = 'bootstrapping'
+      delegatorApi.memory.phase.value = 'bootstrapping'
       onPhaseChange?.('bootstrapping')
 
       // Phase 0: Create volume first (so bootstrapping has a real volume ID)
@@ -469,6 +524,7 @@ export function useVolumeStoryGenerator() {
       progress.current = 3
       progress.statusText = 'Forging the Story Graph (Planning scenes)...'
       phase.value = 'planning'
+      delegatorApi.memory.phase.value = 'planning'
       onPhaseChange?.('planning')
       const planPhase = actLog.addPhase(currentTaskId, 'Planning')
       activeStage = 'structure'
@@ -570,6 +626,7 @@ export function useVolumeStoryGenerator() {
 
       // Phase 2.5: Pause at plan-preview for user editing
       phase.value = 'plan-preview'
+      delegatorApi.memory.phase.value = 'plan-preview'
       onPhaseChange?.('plan-preview')
       // Return control; user edits plan and calls confirmPlan() to proceed
 
@@ -592,6 +649,7 @@ export function useVolumeStoryGenerator() {
       return { scenes: scenePlan.value, storyArc, volumeId: vId, storyContract }
     } catch (err) {
       phase.value = 'error'
+      delegatorApi.memory.phase.value = 'error'
       error.value = err.message || 'Generation failed during initial phases'
       if (activeStage) {
         await updateGenRunStage(projectId, activeStage, { status: 'failed', error: error.value })
@@ -621,6 +679,7 @@ export function useVolumeStoryGenerator() {
 
     progress.statusText = 'Phase 1: Generating chapter anchors in parallel...'
     phase.value = 'writing'
+    delegatorApi.memory.phase.value = 'writing'
 
     async function generateAnchor(scene, role, constraints, sceneIndex, chapterIndex) {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
@@ -989,6 +1048,7 @@ export function useVolumeStoryGenerator() {
         }
         currentWriteIndex.value = i + 1
         phase.value = 'scene-review'
+        delegatorApi.memory.phase.value = 'scene-review'
         return
       }
 
@@ -1025,6 +1085,7 @@ export function useVolumeStoryGenerator() {
             commitService.persistCheckpoint(projectId)
             await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
             phase.value = 'error'
+            delegatorApi.memory.phase.value = 'error'
             actLog.updatePhase(currentTaskId, scenePhase, { status: 'error' })
             return
           }
@@ -1076,6 +1137,7 @@ export function useVolumeStoryGenerator() {
         pendingBatchStart.value = endIndex
         syncPreview.value = batchChanges
         phase.value = 'sync-preview'
+        delegatorApi.memory.phase.value = 'sync-preview'
         // One-click mode: accept every discovered entity and keep writing
         if (autoMode.value) {
           await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
@@ -1090,6 +1152,7 @@ export function useVolumeStoryGenerator() {
     if (batchChanges.length > 0) {
       syncPreview.value = batchChanges
       phase.value = 'sync-preview'
+      delegatorApi.memory.phase.value = 'sync-preview'
       if (autoMode.value) {
         await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
       }
@@ -1214,6 +1277,7 @@ export function useVolumeStoryGenerator() {
     // Phase 0: Spine Generation
     progress.statusText = 'Generating hierarchical narrative spine...'
     phase.value = 'spine-generation'
+    delegatorApi.memory.phase.value = 'spine-generation'
     onPhaseChange?.('spine-generation')
     const spinePhase = actLog.addPhase(currentTaskId, 'Spine Generation')
     await updateGenRunStage(projectId, 'spine', { status: 'running' })
@@ -1231,12 +1295,14 @@ export function useVolumeStoryGenerator() {
     } catch (err) {
       error.value = err.message || 'Fatal: Spine generation failed'
       phase.value = 'error'
+      delegatorApi.memory.phase.value = 'error'
       await updateGenRunStage(projectId, 'spine', { status: 'failed', error: err.message })
       throw err
     }
 
     // Phase 3: Incremental writing
     phase.value = 'writing'
+    delegatorApi.memory.phase.value = 'writing'
     onPhaseChange?.('writing')
     error.value = null
     progress.statusText = 'Entering incremental drafting pipeline...'
@@ -1367,6 +1433,7 @@ export function useVolumeStoryGenerator() {
     await clearGenRun(projectId)
 
     phase.value = 'complete'
+    delegatorApi.memory.phase.value = 'complete'
     progress.statusText = 'Volume generation complete!'
 
     // Compute total words once (Fix #10 — was computed twice in quick succession)
@@ -1390,145 +1457,29 @@ export function useVolumeStoryGenerator() {
     }
   }
 
-  async function confirmSync({ acceptedEntities, projectId, volumeId, chapterId }) {
-    if (phase.value !== 'sync-preview') return
-    progress.statusText = 'Integrating accepted entities and syncing story graph network...'
-
-    const validStructured = structuredResults
-      .filter((sr) => sr.structured)
-      .map((sr) => sr.structured)
-    await sync.commitSync({
-      structuredOutputs: validStructured,
-      acceptedEntities,
-      projectId,
-      volumeId: volumeId || volumeId.value,
-      chapterId: chapterId || null
-    })
-
-    if (hasPendingBatches.value) {
-      hasPendingBatches.value = false
-      const resumeFrom = pendingBatchStart.value
-      pendingBatchStart.value = 0
-      phase.value = 'writing'
-      await writeNextBatch(resumeFrom)
-      return
-    }
-
-    await completeGeneration(projectId)
+  async function confirmSync(opts) {
+    await sceneInteractionService.confirmSync(opts)
   }
 
   async function regenerateScene(projectId, sceneIndex) {
-    if (phase.value !== 'complete') return
-    if (!writeParams.value) return
-
-    progress.statusText = `Re-generating scene ${sceneIndex + 1}...`
-    phase.value = 'writing'
-
-    const storyDocuments = useStoryDocuments()
-    const storyBibleDocs = await storyDocuments.getStoryDocumentContext(projectId)
-
-    // Build context from all scenes except the one being regenerated
-    const priorScenes = writtenScenes.value.filter((_, i) => i !== sceneIndex)
-    const scene = scenePlan.value[sceneIndex]
-    const embeddingContext = await buildRetrievalContext(scene, priorScenes)
-
-    const rawLog = priorScenes.map(
-      (ws, idx) => `Scene ${idx + 1} ("${ws.title}"): ${ws.summary || '(written)'}`
-    )
-    const chapterLog = rawLog.slice(-20).join('\n')
-    const extraRejected = rejectedPatterns.value.length > 0 ? rejectedPatterns.value : undefined
-
-    const existingEntitiesJson = buildExistingEntitiesBlob(
-      storyBibleStore.characters,
-      storyBibleStore.locations,
-      storyBibleStore.plotThreads
-    )
-
-    scene.totalScenes = scenePlan.value.length
-
-    const { storyArc, storyContract, onChunk } = writeParams.value
-
-    let fullProse = ''
-    const result = await writer.writeSceneStructured({
-      sceneBrief: scene,
-      storyArc,
-      chapterLog,
-      storyBible: storyBibleDocs,
-      onChunk: (_chunk, proseChunk) => {
-        fullProse += proseChunk || ''
-        onChunk?.({
-          sceneIndex: sceneIndex + 1,
-          total: scenePlan.value.length,
-          chunk: proseChunk,
-          fullProse,
-          scene
-        })
-      },
-      embeddingContext,
-      storyContract,
-      rejectedPatterns: extraRejected,
-      existingEntitiesJson
-    })
-    fullProse = result.prose
-
-    writtenScenes.value[sceneIndex] = {
-      title: scene.title || `Scene ${scene.sceneNumber}`,
-      prose: fullProse,
-      summary: await computeSummary(fullProse),
-      characters: scene.characters || scene.charactersPresent || [],
-      location: scene.location || '',
-      sceneNumber: scene.sceneNumber,
-      subsectionId: scene.subsectionId
-    }
-
-    if (scene.subsectionId) {
-      await manuscriptStore.updateSubsectionData(
-        scene.subsectionId,
-        {
-          content: fullProse,
-          wordCount: fullProse.split(/\s+/).length,
-          contentStatus: 'generated'
-        },
-        projectId
-      )
-    }
-
-    await completeGeneration(projectId)
+    await sceneInteractionService.regenerateScene(projectId, sceneIndex)
   }
 
   async function approveScene() {
-    if (!currentSceneResult.value || !writeParams.value) return
-    const { scene, fullProse, sectionIdx } = currentSceneResult.value
-    const { projectId, sections } = writeParams.value
-    currentSceneResult.value = null
-    progress.statusText = 'Approving scene and continuing...'
-    await commitService.commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId)
-    phase.value = 'writing'
-    await writeNextBatch(currentWriteIndex.value)
+    await sceneInteractionService.approveScene()
   }
 
   async function rejectScene() {
-    if (!currentSceneResult.value) return
-    const { scene, fullProse } = currentSceneResult.value
-    logRejectedPattern(scene.goal || scene.title, fullProse.slice(0, 500))
-    currentSceneResult.value = null
-    progress.statusText = 'Rejecting scene, rewriting...'
-    phase.value = 'writing'
-    await writeNextBatch(currentWriteIndex.value - 1)
+    await sceneInteractionService.rejectScene()
   }
 
   async function rerequestScene(edits) {
-    if (!currentSceneResult.value || !edits?.trim()) return
-    const i = currentWriteIndex.value - 1
-    scenePlan.value[i].reRequestInstruction = edits
-    currentSceneResult.value = null
-    progress.statusText = 'Rewriting scene with user revisions...'
-    phase.value = 'writing'
-    await writeNextBatch(i)
+    await sceneInteractionService.rerequestScene(edits)
   }
 
   function reset() {
     phase.value = 'idle'
+    delegatorApi.memory.phase.value = 'idle'
     progress.current = 0
     progress.total = 0
     progress.sceneLabel = ''
@@ -1583,7 +1534,10 @@ export function useVolumeStoryGenerator() {
     rejectScene,
     rerequestScene,
     regenerateScene,
-    reset
+    reset,
+    delegator: delegatorApi.delegator,
+    memory: delegatorApi.memory,
+    dispatch: delegatorApi.dispatch
   }
 }
 
