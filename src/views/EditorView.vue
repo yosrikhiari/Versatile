@@ -27,6 +27,7 @@ import VoiceLabPanel from '../components/voice-lab/VoiceLabPanel.vue'
 import StoryShapePanel from '../components/storyshape/StoryShapePanel.vue'
 import ConsistencyPanel from '../components/consistency/ConsistencyPanel.vue'
 import BetaReaderPanel from '../components/betareader/BetaReaderPanel.vue'
+import BenchmarkDashboard from '../components/eval/BenchmarkDashboard.vue'
 import ActivityToast from '../components/shared/ActivityToast.vue'
 import ActivityDrawer from '../components/shared/ActivityDrawer.vue'
 import AuthModal from '../components/auth/AuthModal.vue'
@@ -388,6 +389,9 @@ function handleOnboardingSkipWrapper() {
         <div v-else class="p-4 text-center text-text-secondary">
           AI features disabled — Ollama unavailable
         </div>
+      </template>
+      <template #benchmarks>
+        <BenchmarkDashboard report-url="/reports/model-benchmarking-quality-regression-v1.json" />
       </template>
     </AppShell>
 

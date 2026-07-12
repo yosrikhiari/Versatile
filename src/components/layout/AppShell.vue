@@ -165,6 +165,10 @@ function toggleArchive() {
   activePanelName.value = activePanelName.value === 'archive' ? null : 'archive'
 }
 
+function toggleBenchmarks() {
+  activePanelName.value = activePanelName.value === 'benchmarks' ? null : 'benchmarks'
+}
+
 function toggleResearch() {
   activePanelName.value = activePanelName.value === 'research' ? null : 'research'
 }
@@ -225,6 +229,7 @@ function handleSidebarNav(name) {
     timeline: toggleTimeline,
     archive: toggleArchive,
     research: toggleResearch,
+    benchmarks: toggleBenchmarks,
     'voice-lab': toggleVoiceLab,
     'story-shape': toggleStoryShape,
     consistency: toggleConsistency,
@@ -247,7 +252,8 @@ defineExpose({
   toggleVoiceLab,
   toggleStoryShape,
   toggleConsistency,
-  toggleBetaReader
+  toggleBetaReader,
+  toggleBenchmarks
 })
 
 onMounted(async () => {
@@ -517,6 +523,13 @@ onMounted(async () => {
             class="w-[360px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
           >
             <slot name="research"></slot>
+          </aside>
+          <aside
+            v-else-if="activePanelName === 'benchmarks' && !flowMode && !focusMode"
+            key="benchmarks"
+            class="w-[420px] max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          >
+            <slot name="benchmarks"></slot>
           </aside>
         </Transition>
       </div>

@@ -31,7 +31,7 @@ describe('ollama config', () => {
 
   describe('getOllamaModel', () => {
     it('returns default model when nothing stored', () => {
-      expect(getOllamaModel()).toBe('dolphin-mistral:7b')
+      expect(getOllamaModel()).toBe('qwen3:8b')
     })
 
     it('returns stored model', () => {

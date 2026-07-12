@@ -20,7 +20,7 @@ describe('Ollama config', () => {
 
   it('getOllamaModel returns default when nothing stored', async () => {
     const { getOllamaModel } = await import('../../config/ollama')
-    expect(getOllamaModel()).toBe('dolphin-mistral:7b')
+    expect(getOllamaModel()).toBe('qwen3:8b')
   })
 
   it('setOllamaModel stores and retrieves value', async () => {

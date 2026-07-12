@@ -57,6 +57,7 @@ const navGroups = [
 const systemItems = [
   { label: 'Research', panel: 'research', icon: 'search' },
   { label: 'Archive', panel: 'archive', icon: 'archive' },
+  { label: 'Benchmarks', panel: 'benchmarks', icon: 'bar-chart' },
   { label: 'Settings', panel: 'settings', icon: 'settings' }
 ]
 

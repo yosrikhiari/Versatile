@@ -110,7 +110,7 @@ The following environment variables must be set in the production environment. T
 | `Jwt__Audience`                        | No       | `Versatile.App`         | JWT audience claim                                                                                                  |
 | `Ai__ApiKey`                           | Yes      | —                       | OpenAI-compatible API key used by the chat and AI generation services                                               |
 | `Ai__Endpoint`                         | No       | —                       | Custom OpenAI-compatible endpoint URL. If omitted, the default OpenAI endpoint is used                              |
-| `Ai__Model`                            | No       | `gpt-4o-minim`          | The model identifier to use for AI completions                                                                      |
+| `Ai__Model`                            | No       | `gpt-4o-mini`           | The model identifier to use for AI completions                                                                      |
 | `ASPNETCORE_URLS`                      | No       | `http://localhost:5171` | The URL the Kestrel server binds to                                                                                 |
 
 ### Frontend (Vite / Build-time)

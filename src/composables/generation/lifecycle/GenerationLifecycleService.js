@@ -354,15 +354,15 @@ IMPORTANT: Return JSON with keys: title, content (1500-2500 words), overview, wo
 
   async reset() {
     this.phase.value = 'idle'
-    this.progress.value = { current: 0, total: 0, stage: '' }
-    this.scenePlan.value = null
-    this.chapterPlan.value = null
+    Object.assign(this.progress, { current: 0, total: 0, stage: '' })
+    this.scenePlan.value = []
+    this.chapterPlan.value = []
     this.spineArray.value = []
     this.spineContext.value = []
     this.writtenScenes.value = []
     this.consistencyReport.value = null
     this.rejectedPatterns.value = []
-    this.syncPreview.value = null
+    this.syncPreview.value = []
     this.hasPendingBatches.value = false
     this.pendingBatchStart.value = 0
     this.lastSyncedResultIndex.value = 0
@@ -376,5 +376,6 @@ IMPORTANT: Return JSON with keys: title, content (1500-2500 words), overview, wo
     this.sceneEvalResults.value = []
     this.structuredResults.splice(0)
     this.currentTaskId.value = null
+    this.volumeId.value = null
   }
 }

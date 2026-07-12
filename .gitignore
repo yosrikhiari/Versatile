@@ -3,6 +3,14 @@ dist/
 *.zip
 test-results/
 .env
+
+# Ignore all markdown files except README and docs/
+*.md
+!README.md
+!docs/*.md
+!AGENTS.md
+!AGENT.md
+!scripts/ml-pipelines/README.md
 /debug/
 *_stdout.txt
 *_stderr.txt
@@ -36,6 +44,10 @@ SPEC-*.md
 GLOSSARY.md
 MISSION.md
 phase-3-extraction.md
+# NOTE: src/tests/ is intentionally tracked. Do not re-add a blanket ignore here —
+# vitest runs test files regardless of gitignore, so ignoring them silently drops
+# them from version control while they still pass locally (they did: 33 files).
+src/tests/unit/ollamaService.test.js
 CONTEXT.md
 API.md
 TESTING.md

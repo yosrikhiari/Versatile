@@ -24,7 +24,8 @@
     "pipeline:drift": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js",
     "pipeline:drift:sample": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/active-learning/sample-eval-history.json",
     "pipeline:drift:synthetic": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/drift-monitor/sample-drift-evals.json --threshold 1",
-    "pipeline:drift:edge": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/drift-monitor/sample-drift-edge-evals.json --threshold 1"
+    "pipeline:drift:edge": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/drift-monitor/sample-drift-edge-evals.json --threshold 1",
+    "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
@@ -42,6 +43,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
+    "langfuse": "^3.38.20",
     "lucide-vue-next": "^1.0.0",
     "pdfjs-dist": "^6.0.227",
     "pinia": "^2.1.0",
@@ -53,6 +55,7 @@
     "@vitejs/plugin-vue": "^5.0.0",
     "@vitest/coverage-v8": "^1.0.0",
     "@vue/test-utils": "^2.4.0",
+    "@vue/tsconfig": "^0.9.1",
     "autoprefixer": "^10.4.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.2",
@@ -63,7 +66,9 @@
     "postcss": "^8.4.0",
     "prettier": "^3.8.3",
     "tailwindcss": "^3.4.0",
+    "typescript": "^6.0.3",
     "vite": "^5.0.0",
-    "vitest": "^1.0.0"
+    "vitest": "^1.0.0",
+    "vue-tsc": "^3.3.6"
   }
 }

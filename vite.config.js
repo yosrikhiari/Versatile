@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { existsSync, mkdirSync, writeFileSync } from 'fs'
-import { resolve, dirname } from 'path'
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs'
+import { resolve, dirname, extname } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -13,6 +13,21 @@ function debugSnapshotPlugin() {
     name: 'debug-snapshot',
     configureServer(server) {
       if (!existsSync(debugDir)) mkdirSync(debugDir, { recursive: true })
+
+      server.middlewares.use('/reports', (req, res) => {
+        const segments = req.url.replace(/^\//, '').split('?')[0]
+        if (!segments) { res.statusCode = 404; res.end('Not found'); return }
+        const filePath = resolve(__dirname, 'reports', segments)
+        if (existsSync(filePath) && !filePath.endsWith('/')) {
+          const ext = extname(filePath)
+          const mime = ext === '.json' ? 'application/json' : ext === '.html' ? 'text/html' : 'application/octet-stream'
+          res.setHeader('Content-Type', mime)
+          res.end(readFileSync(filePath))
+        } else {
+          res.statusCode = 404
+          res.end('Not found')
+        }
+      })
 
       server.middlewares.use('/__debug/snapshot', (req, res) => {
         if (req.method !== 'POST') {

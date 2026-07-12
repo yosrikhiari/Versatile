@@ -175,7 +175,17 @@ export function useVolumeStoryGenerator() {
     sceneEvalResults,
     lastSyncedResultIndex,
     syncPreview,
-    error
+    error,
+    spineArray,
+    spineContext,
+    writtenScenes,
+    consistencyReport,
+    sceneReviewMode,
+    autoMode,
+    hasPendingBatches,
+    pendingBatchStart,
+    autoMode,
+    structuredResults
   })
 
   const sceneWritingService = new SceneWritingService({
@@ -1387,6 +1397,7 @@ export function useVolumeStoryGenerator() {
 
   function reset() {
     generationLifecycleService.reset()
+    volumeId.value = null
     consistencyReport.value = null
     syncPreview.value = []
     structuredResults.splice(0)

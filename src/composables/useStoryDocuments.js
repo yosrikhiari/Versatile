@@ -884,6 +884,12 @@ async function getStoryDocumentContext(projectId, budgetTokens = STORY_DOC_BUDGE
   return parts.join('\n\n')
 }
 
+async function getDocumentContext(docType) {
+  const projectStore = useProjectStore()
+  const doc = await getDocument(projectStore.currentProjectId, docType)
+  return doc?.content || ''
+}
+
 async function logRejectedPattern(projectId, pattern) {
   if (!projectId) return
   await appendRejectedPattern(projectId, pattern)
@@ -894,6 +900,7 @@ export function useStoryDocuments() {
   return {
     loadDocuments,
     getDocument,
+    getDocumentContext,
     regenerateDocument,
     regenerateAllDocuments,
     getStoryDocumentContext,

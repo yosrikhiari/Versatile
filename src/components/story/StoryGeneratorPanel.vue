@@ -33,6 +33,9 @@ import { useGenerationSettings } from '../../composables/useGenerationSettings'
 import VolumeCompletePanel from './VolumeCompletePanel.vue'
 import VolumeSceneReview from './VolumeSceneReview.vue'
 import VolumePlanPreview from './VolumePlanPreview.vue'
+import EvalPanel from '../eval/EvalPanel.vue'
+import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
+import EvalDashboard from '../eval/EvalDashboard.vue'
 
 const emit = defineEmits(['openChapters'])
 
@@ -492,6 +495,10 @@ function acceptRevision() {
   if (selectedSceneIndex.value === null || selectedSceneIndex.value === undefined) return
   volumeGenerator.writtenScenes.value[selectedSceneIndex.value].prose =
     sceneEval.revisionResult.value.revisedProse
+}
+
+async function handleSceneEdit(index) {
+  sceneEval.editingSceneIndex.value = index
 }
 
 function getPhaseLabel(phase) {

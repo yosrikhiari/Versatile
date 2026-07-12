@@ -1,4 +1,11 @@
-export function formatEvalFeedback(sceneEvaluations) {
+interface SceneEvaluation {
+  sceneIndex?: number
+  passed?: boolean
+  score?: number | null
+  topIssues?: string[]
+}
+
+export function formatEvalFeedback(sceneEvaluations: SceneEvaluation[]): string {
   if (!sceneEvaluations || sceneEvaluations.length === 0) return ''
 
   const lines = sceneEvaluations.map((ev, i) => {
