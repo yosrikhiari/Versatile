@@ -35,21 +35,16 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 - **UX improvements**: ErrorBoundary component, EmptyState component available
 
 ### In Progress (uncommitted working set)
-- **Dialogue Detection & Indexing**: HTML content parsed → dialogue extracted via quote matching (7 quote pair types) + em-dash. Speaker identification via dialogue tags + context proximity windows (10-line lookback). Confidence scoring (0.9 tag-match, 0.6 context-match). Stored in IndexedDB `dialogueIndex` table with compound key `[projectId+speakerId]`.
-  - Files: `utils/dialogueDetector.js`, `utils/dialogueParser.js`, `utils/speakerIdentifier.js`, `services/db-dialogue.js`, `composables/useDialogueIndexer.js`
-- **Scene Context Service**: Builds AI prompt context from completed scenes — prose excerpts (last N words), character states (emotional state, location, scene count, relationships), scene memory (last N scene summaries). Designed for writer prompt injection.
-  - File: `services/sceneContextService.js`
-- **AI Prompt Builder**: Builds system prompts from voice profiles + craft rules + eval feedback; user prompts from scene briefs, story arcs, chapter logs, embedding context, character sheets, world context. Supports structured JSON output mode with escaped dialogue handling.
-  - Files: `composables/usePromptBuilder.js`, `config/documentPrompts.js`
-- **Voice Profiles**: 5 literary registers — literary, pulp, minimalist, conversational, atmospheric — each with prose rules, forbidden patterns, sentence rhythm, sensory priorities, dialogue approach, pacing.
-  - File: `config/voiceProfiles.js`
-- **Voice Lab Panel**: New TTS voice management panel component
-  - File: `components/voice-lab/VoiceLabPanel.vue`
-- **Focus Trap composable**: Wraps `focus-trap` library as Vue composable with reactive watcher + scope disposal
-  - File: `composables/useFocusTrap.js`
-- **Async Error composable**: Captures async errors via injected handler for centralized error tracking
-  - File: `composables/useAsyncError.js`
-- **Modified across 30+ files**: Components (auth, eval, polish, research, spark, storybible, layout, shell), generation pipeline (model runner, prompt builder, shaping, context, entity gen), stores (manuscript, polish, storyBible), services (aiService, db-core, dbService, documentChunker, pdfExtractor), views (Editor, Login, Workspace), config/tests.
+- **Delegator Refactoring**: Modular Delegator pattern replacing monolithic `useVolumeStoryGenerator.js` (1599 lines). Centralized shared state (`AgentMemory` with 27 reactive refs + 14 instance slots), event-driven state machine (`Delegator` with routing table + 11 state transitions), narrow agent tool APIs (8 factories), and Vue integration composable (`useDelegatorGeneration`).
+  - **Created**: `composables/generation/delegator/` — AgentMemory.js, Delegator.js, useDelegatorGeneration.js, 8 tool factories (director, writer, critic, sync, commit, consistency, scene, graph)
+  - **Created**: 5 extracted generation service files (settings, writing, bootstrapper, sync, volumeWrite)
+  - **Fixed**: `graphTool.js` — was calling nonexistent `storyGraphService.buildPreliminaryEdges`, now directly imports `buildPreliminaryEdges` from `generation/graph.js` with correct `(projectId, volumeId, plan)` signature
+  - **Fixed**: `consistencyTool.js` — `runTerminalConsistencyAudit` now passes `currentTaskId` as 2nd arg matching service signature
+  - **Fixed**: `AgentMemory.instances` — added `commitService`, `consistencyService`, `sceneInteractionService` slots (3 new)
+  - **Fixed**: `useDelegatorGeneration.initializeToolInstances` — accepts all 14 instance params including 3 new services
+  - **Pending**: Integrate Delegator + AgentMemory into `useVolumeStoryGenerator.js` replacing inline phase logic with `dispatch()` calls
+  - **Pending**: Construct and wire `SceneInteractionService` (not yet instantiated anywhere)
+  - **Pending**: Verify old composable files (`useStorySettings.js`, `useStoryWriter.js`, etc.) for deletion
 
 ### Blocked / Known Issues
 - `FocusMode` component registered as keyboard shortcut but file was never created (dead shortcut)
@@ -67,14 +62,16 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 6. **Voice profiles as data**: Not templates — each profile includes sensory priorities, forbidden patterns, sentence rhythm, dialogue style. Seeded from config, consumed by prompt builder.
 
 ## Next Steps
-1. **Complete Dialogue Indexing**: Wire `useDialogueIndexer` into manuscript save flow, add UI for review of low-confidence speaker assignments, integrate speaker stats into story bible
-2. **Integrate Prompt Builder**: Connect `usePromptBuilder` + `sceneContextService` into the generation pipeline for context-aware scene writing
-3. **UX Gap fixes**: Empty states across 10+ panels, route/page transitions, mobile responsiveness (hamburger, touch targets, safe-area), skeleton loaders, toast type visual differentiation
-4. **Auth consolidation**: Unify local/remote auth paths, differentiate in UI, wire sync engine for local auth, add password strength + forgot password
-5. **FocusMode**: Implement or remove dead shortcut/component reference
-6. **Evaluation v0.5**: Embedding indexing throughput already investigated/perf-fixed; Research/RAG infrastructure next
-7. **Keyboard shortcuts**: Add `?` overlay, `Ctrl+N`, `F11`, `Ctrl+K` command palette
-8. **Tests**: Expand unit test coverage beyond `useSemanticChunking`
+1. **Complete Delegator integration**: Wire Delegator/AgentMemory/useDelegatorGeneration into `useVolumeStoryGenerator.js` replacing inline phase logic with `dispatch()` calls
+2. **Construct SceneInteractionService**: `SceneInteractionService` needs both `commitService` and `consistencyService` — must be instantiated and passed via `initializeToolInstances()`
+3. **Verify stale composables**: Audit `useStorySettings.js`, `useStoryWriter.js`, `useVolumeWrite.js`, `useStoryBootstrapper.js`, `useStorySync.js` — either delete or re-export through generation services
+4. **Complete Dialogue Indexing**: Wire `useDialogueIndexer` into manuscript save flow, add UI for review of low-confidence speaker assignments, integrate speaker stats into story bible
+5. **Integrate Prompt Builder**: Connect `usePromptBuilder` + `sceneContextService` into the generation pipeline for context-aware scene writing
+6. **UX Gap fixes**: Empty states across 10+ panels, route/page transitions, mobile responsiveness (hamburger, touch targets, safe-area), skeleton loaders, toast type visual differentiation
+7. **Auth consolidation**: Unify local/remote auth paths, differentiate in UI, wire sync engine for local auth, add password strength + forgot password
+8. **Evaluation v0.5**: Embedding indexing throughput already investigated/perf-fixed; Research/RAG infrastructure next
+9. **Keyboard shortcuts**: Add `?` overlay, `Ctrl+F` search, `Ctrl+K` command palette
+10. **Tests**: Expand unit test coverage beyond `useSemanticChunking`
 
 ## Critical Context
 - **Branch**: `feature/improvements` (diverged from `main` with ~50+ changed files)
@@ -116,8 +113,23 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 | `src/composables/generation/pipeline/modelRunner.js` | Model invocation with streaming |
 | `src/composables/generation/context/relationshipContext.js` | Relationship context for prompts |
 | `src/composables/useDialogueIndexer.js` | Dialogue indexing orchestrator |
-| `src/composables/useStoryWriter.js` | Scene-by-scene writer |
-| `src/composables/useVolumeStoryGenerator.js` | Volume-level generation |
+| `src/composables/useStoryWriter.js` | Scene-by-scene writer (legacy) |
+| `src/composables/useVolumeStoryGenerator.js` | Volume-level generation (1599 lines, targeted for replacement) |
+| `src/composables/generation/delegator/AgentMemory.js` | Centralized reactive shared state (27 refs, 14 instance slots) |
+| `src/composables/generation/delegator/Delegator.js` | Event-driven state machine (11 transitions, routing table) |
+| `src/composables/generation/delegator/useDelegatorGeneration.js` | Vue composable wiring Delegator + tools + instances |
+| `src/composables/generation/delegator/tools/directorTool.js` | Tool: plan generation |
+| `src/composables/generation/delegator/tools/writerTool.js` | Tool: scene prose writing |
+| `src/composables/generation/delegator/tools/criticTool.js` | Tool: scene evaluation + contradiction check |
+| `src/composables/generation/delegator/tools/syncTool.js` | Tool: entity sync |
+| `src/composables/generation/delegator/tools/commitTool.js` | Tool: checkpoint persist + scene commit |
+| `src/composables/generation/delegator/tools/consistencyTool.js` | Tool: incremental + terminal consistency checks |
+| `src/composables/generation/delegator/tools/sceneTool.js` | Tool: scene review approval/rejection/regeneration |
+| `src/composables/generation/delegator/tools/graphTool.js` | Tool: preliminary entity graph edges |
+| `src/composables/generation/commit/CommitService.js` | Service: checkpoint + commit logic |
+| `src/composables/generation/consistency/ConsistencyService.js` | Service: consistency rewrite + audit |
+| `src/composables/generation/interaction/SceneInteractionService.js` | Service: scene review/lifecycle (not yet constructed) |
+| `src/composables/generation/graph.js` | Standalone: buildPreliminaryEdges |
 
 ### Dialogue System (New)
 | File | Purpose |
