@@ -43,19 +43,21 @@ export function createAgentMemory() {
     isConsistencyFix: computed(() => phase.value === 'consistency-fix'),
     isCommitting: computed(() => phase.value === 'committing'),
     isError: computed(() => phase.value === 'error'),
-    isComplete: computed(() => phase.value === 'complete'),
+    isComplete: computed(() => phase.value === 'complete')
   }
 
   const derived = {
-    writtenCount: computed(() => writtenScenes.value.filter(s => s !== null).length),
+    writtenCount: computed(() => writtenScenes.value.filter((s) => s !== null).length),
     totalSceneCount: computed(() => scenePlan.value.length),
     progressPercent: computed(() => progress.value.percent),
     hasRemainingScenes: computed(() => currentWriteIndex.value < scenePlan.value.length),
     currentScene: computed(() => scenePlan.value[currentWriteIndex.value] ?? null),
-    pendingBatchCount: computed(() => Math.max(0, writtenScenes.value.length - lastSyncedResultIndex.value)),
+    pendingBatchCount: computed(() =>
+      Math.max(0, writtenScenes.value.length - lastSyncedResultIndex.value)
+    ),
     hasSyncPreview: computed(() => syncPreview.value !== null),
     hasInconsistencies: computed(() => sceneInconsistencies.value.length > 0),
-    hasStructuredResults: computed(() => structuredResults.value.length > 0),
+    hasStructuredResults: computed(() => structuredResults.value.length > 0)
   }
 
   // ── Non-reactive Instances (injected at init) ──────────────
@@ -74,7 +76,7 @@ export function createAgentMemory() {
     consistencyService: null,
     commitService: null,
     sceneInteractionService: null,
-    graphBuilder: null,
+    graphBuilder: null
   }
 
   // ── Service Constants ─────────────────────────────────────
@@ -83,7 +85,7 @@ export function createAgentMemory() {
     SCENE_MAX_ATTEMPTS: 2,
     QUALITY_FLOOR_CONSECUTIVE: 3,
     PARALLEL_CHAPTER_LIMIT: 5,
-    CONSISTENCY_FIX_ROUNDS: 2,
+    CONSISTENCY_FIX_ROUNDS: 2
   }
 
   // ── Convenience Mutators ──────────────────────────────────
@@ -162,6 +164,6 @@ export function createAgentMemory() {
     setProgress,
     appendScene,
     appendStructured,
-    reset,
+    reset
   }
 }

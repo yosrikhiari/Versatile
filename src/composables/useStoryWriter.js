@@ -7,6 +7,7 @@ import { finalizeStream } from '../services/jsonExtractor'
 import { formatEvalFeedback } from '../services/evalFeedback'
 import { getVoiceProfile } from '../config/voiceProfiles'
 import { buildSceneContext } from '../services/sceneContextService'
+import { usePromptBuilder } from './usePromptBuilder'
 import { summarizeLog } from '../utils/promptUtils'
 
 const FALLBACK_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
@@ -348,6 +349,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     anchorRole,
     anchorConstraints,
     pastEvalResults,
+    focusInstructions,
     voiceProfile,
     completedScenes,
     characters
@@ -398,7 +400,6 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
-      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
       const activeCraftRules =
         categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
@@ -406,16 +407,18 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
         ? `IMPORTANT: Apply the following voice guidance within the craft constraints above. The craft constraints are hard rules and take priority.\n\n`
         : ''
 
-      const systemPrompt = `${activePrompts.writer}${activeCraftRules}
-
-${PROSE_STYLE_GUIDE}
-${profileStyleGuide ? `\n${profileStyleGuide}\n` : ''}
-
-${voiceConstraint}${voiceInstruction}
-
-${antiPatterns ? antiPatterns + '\n' : ''}
-${pastEvalResults ? `\n## PAST EVALUATION FEEDBACK\n${pastEvalResults}\n` : ''}
-Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside the JSON.`
+      const { buildSystemPrompt } = usePromptBuilder()
+      const systemPrompt = buildSystemPrompt({
+        categoryType,
+        voiceInstruction,
+        antiPatterns,
+        activeCraftRules,
+        pastEvalResults,
+        proseStyleGuide: PROSE_STYLE_GUIDE,
+        focusInstructions,
+        profileStyleGuide,
+        voiceConstraint
+      })
 
       const logSummary = summarizeLog(chapterLog)
 

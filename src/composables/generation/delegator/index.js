@@ -9,5 +9,5 @@ export {
   createCommitTool,
   createConsistencyTool,
   createSceneTool,
-  createGraphTool,
+  createGraphTool
 } from './tools'

@@ -4,6 +4,6 @@ export function createDirectorTool(memory) {
   return {
     generateStoryPlan(params) {
       return director.generateStoryPlan(params)
-    },
+    }
   }
 }

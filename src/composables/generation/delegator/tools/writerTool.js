@@ -8,6 +8,6 @@ export function createWriterTool(memory) {
 
     writeSceneStructured(params) {
       return writer.writeSceneStructured(params)
-    },
+    }
   }
 }

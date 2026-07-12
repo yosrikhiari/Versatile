@@ -1,4 +1,4 @@
-import { formatEvalFeedback } from '../../../services/evalFeedback'
+import { formatEvalFeedback, buildFocusInstructions } from '../../../services/evalFeedback'
 import { saveEvalResult, getEvalResultsByType } from '../../../services/db-evals'
 import { buildExistingEntitiesBlob } from '../context/sceneContext'
 import { computeSummary, parallelWithLimit } from '../utils'
@@ -177,15 +177,21 @@ export class ParallelWritingService {
     const limit = PARALLEL_CHAPTER_LIMIT()
     const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
 
-    const pastWritingEvals = projectId ? await getEvalResultsByType(projectId, 'writing-critique') : []
-    let anchorEvalFeedback = pastWritingEvals.length > 0
-      ? formatEvalFeedback(pastWritingEvals.map((e) => ({
-          sceneIndex: e.sceneId != null ? Number(e.sceneId) : undefined,
-          passed: e.passed,
-          score: e.score,
-          topIssues: (e.issues || []).slice(0, 3)
-        })))
-      : ''
+    const pastWritingEvals = projectId
+      ? await getEvalResultsByType(projectId, 'writing-critique')
+      : []
+    const pastAnchorEvalObjects =
+      pastWritingEvals.length > 0
+        ? pastWritingEvals.map((e) => ({
+            sceneIndex: e.sceneId != null ? Number(e.sceneId) : undefined,
+            passed: e.passed,
+            score: e.score,
+            topIssues: (e.issues || []).slice(0, 3),
+            dimensionScores: e.dimensionScores || null
+          }))
+        : []
+    let anchorEvalFeedback = pastAnchorEvalObjects.length > 0 ? formatEvalFeedback(pastAnchorEvalObjects) : ''
+    let anchorFocusInstructions = pastAnchorEvalObjects.length > 0 ? buildFocusInstructions(pastAnchorEvalObjects) : ''
     if (this.inlineEvalEnabled.value) {
       this.progress.statusText = 'Evaluating chapter anchors...'
       const anchorResults = []
@@ -203,7 +209,8 @@ export class ParallelWritingService {
           sceneIndex: idx + 1,
           passed: criticResult.pass,
           score: criticResult.score,
-          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
+          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i),
+          dimensionScores: criticResult.dimensionScores || null
         })
         if (projectId) {
           saveEvalResult({
@@ -212,6 +219,7 @@ export class ParallelWritingService {
             evalType: 'writing-critique',
             score: criticResult.score,
             passed: criticResult.pass,
+            dimensionScores: criticResult.dimensionScores || null,
             issues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i),
             strengths: (criticResult.strengths || []).slice(0, 3),
             timestamp: new Date().toISOString()
@@ -220,6 +228,7 @@ export class ParallelWritingService {
       }
       this.sceneEvalResults.value = anchorResults
       anchorEvalFeedback = formatEvalFeedback(anchorResults)
+      anchorFocusInstructions = buildFocusInstructions(anchorResults)
     }
 
     this.progress.statusText = 'Phase 2: Generating chapter middle scenes...'
@@ -243,6 +252,7 @@ export class ParallelWritingService {
           storyContract,
           existingEntitiesJson,
           pastEvalResults: anchorEvalFeedback || undefined,
+          focusInstructions: anchorFocusInstructions || undefined,
           onChunk: (_chunk, proseChunk) => {
             fullProse += proseChunk || ''
             onChunk?.({
@@ -322,7 +332,8 @@ export class ParallelWritingService {
           sceneIndex: idx + 1,
           passed: criticResult.pass,
           score: criticResult.score,
-          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
+          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i),
+          dimensionScores: criticResult.dimensionScores || null
         })
         if (projectId) {
           saveEvalResult({
@@ -331,6 +342,7 @@ export class ParallelWritingService {
             evalType: 'writing-critique',
             score: criticResult.score,
             passed: criticResult.pass,
+            dimensionScores: criticResult.dimensionScores || null,
             issues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i),
             strengths: (criticResult.strengths || []).slice(0, 3),
             timestamp: new Date().toISOString()

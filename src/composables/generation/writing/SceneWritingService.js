@@ -1,4 +1,4 @@
-import { formatEvalFeedback } from '../../../services/evalFeedback'
+import { formatEvalFeedback, buildFocusInstructions } from '../../../services/evalFeedback'
 import { saveEvalResult, getEvalResultsByType } from '../../../services/db-evals'
 import { buildExistingEntitiesBlob, buildRetrievalContext } from '../context/sceneContext'
 import { useRagSelfRefine } from '../../rag/useRagSelfRefine'
@@ -115,15 +115,22 @@ export class SceneWritingService {
       this.storyBibleStore.plotThreads
     )
 
-    const pastWritingEvals = projectId ? await getEvalResultsByType(projectId, 'writing-critique') : []
-    let batchEvalFeedback = pastWritingEvals.length > 0
-      ? formatEvalFeedback(pastWritingEvals.map((e) => ({
-          sceneIndex: e.sceneId != null ? Number(e.sceneId) : undefined,
-          passed: e.passed,
-          score: e.score,
-          topIssues: (e.issues || []).slice(0, 3)
-        })))
-      : ''
+    const pastWritingEvals = projectId
+      ? await getEvalResultsByType(projectId, 'writing-critique')
+      : []
+    const pastEvalObjects =
+      pastWritingEvals.length > 0
+        ? pastWritingEvals.map((e) => ({
+            sceneIndex: e.sceneId != null ? Number(e.sceneId) : undefined,
+            passed: e.passed,
+            score: e.score,
+            topIssues: (e.issues || []).slice(0, 3),
+            dimensionScores: e.dimensionScores || null
+          }))
+        : []
+    let batchEvalFeedback = pastEvalObjects.length > 0 ? formatEvalFeedback(pastEvalObjects) : ''
+    let batchFocusInstructions =
+      pastEvalObjects.length > 0 ? buildFocusInstructions(pastEvalObjects) : ''
 
     for (let i = startIndex; i < endIndex; i++) {
       const scene = this.scenePlan.value[i]
@@ -160,6 +167,7 @@ export class SceneWritingService {
       let chosenStructured = null
       let chosenEval = null
       let attemptFeedback = batchEvalFeedback
+      let attemptFocusInstructions = batchFocusInstructions
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         let fullProse = ''
@@ -184,7 +192,8 @@ export class SceneWritingService {
           storyContract: effectiveStoryContract,
           rejectedPatterns: extraRejected,
           existingEntitiesJson,
-          pastEvalResults: attemptFeedback || undefined
+          pastEvalResults: attemptFeedback || undefined,
+          focusInstructions: attemptFocusInstructions || undefined
         })
         let proseText = result.prose
 
@@ -213,14 +222,15 @@ export class SceneWritingService {
           chosenEval = criticResult
         }
         if (!criticResult || criticResult.evalUnavailable || criticResult.pass) break
-        attemptFeedback = formatEvalFeedback([
-          {
-            sceneIndex: i + 1,
-            passed: criticResult.pass,
-            score: criticResult.score,
-            topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
-          }
-        ])
+        const retryEval = {
+          sceneIndex: i + 1,
+          passed: criticResult.pass,
+          score: criticResult.score,
+          topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss),
+          dimensionScores: criticResult.dimensionScores || null
+        }
+        attemptFeedback = formatEvalFeedback([retryEval])
+        attemptFocusInstructions = buildFocusInstructions([retryEval])
       }
       this.actLog.updatePhase(this.currentTaskId, scenePhase, { status: 'done' })
 
@@ -253,7 +263,8 @@ export class SceneWritingService {
           sceneIndex: i + 1,
           passed: chosenEval.pass,
           score: chosenEval.score,
-          topIssues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss)
+          topIssues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss),
+          dimensionScores: chosenEval.dimensionScores || null
         })
         if (projectId) {
           saveEvalResult({
@@ -262,12 +273,14 @@ export class SceneWritingService {
             evalType: 'writing-critique',
             score: chosenEval.score,
             passed: chosenEval.pass,
+            dimensionScores: chosenEval.dimensionScores || null,
             issues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss),
             strengths: (chosenEval.strengths || []).slice(0, 3),
             timestamp: new Date().toISOString()
           })
         }
         batchEvalFeedback = formatEvalFeedback(this.sceneEvalResults.value)
+        batchFocusInstructions = buildFocusInstructions(this.sceneEvalResults.value)
 
         const judged = chosenEval && !chosenEval.evalUnavailable && chosenEval.score != null
         if (judged && !isCleanPass(chosenEval)) {
@@ -302,7 +315,8 @@ export class SceneWritingService {
           sceneIndex: i + 1,
           passed: criticResult.pass,
           score: criticResult.score,
-          topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
+          topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss),
+          dimensionScores: criticResult.dimensionScores || null
         }
         this.sceneEvalResults.value.push(evalEntry)
         if (projectId) {
@@ -312,12 +326,14 @@ export class SceneWritingService {
             evalType: 'writing-critique',
             score: criticResult.score,
             passed: criticResult.pass,
+            dimensionScores: criticResult.dimensionScores || null,
             issues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss),
             strengths: (criticResult.strengths || []).slice(0, 3),
             timestamp: new Date().toISOString()
           })
         }
         batchEvalFeedback = formatEvalFeedback(this.sceneEvalResults.value)
+        batchFocusInstructions = buildFocusInstructions(this.sceneEvalResults.value)
       }
 
       const latestScene = this.writtenScenes.value.at(-1)

@@ -8,6 +8,6 @@ export function createCriticTool(memory) {
 
     checkContradictions(params) {
       return critic.checkContradictions(params)
-    },
+    }
   }
 }

@@ -1,6 +1,10 @@
 import { ref, computed } from 'vue'
 import { useEvalPersistence } from './useEvalPersistence.js'
-import { aggregateDimensionScores, generateRecommendations, generateReport } from '../evaluation/activeLearningAnalyzer.js'
+import {
+  aggregateDimensionScores,
+  generateRecommendations,
+  generateReport
+} from '../evaluation/activeLearningAnalyzer.js'
 import dimensionPromptMap from '../evaluation/dimensionPromptMap.json'
 
 export function useActiveLearning() {
@@ -41,7 +45,13 @@ export function useActiveLearning() {
       if (!evals || evals.length === 0) {
         analysisReport.value = {
           generatedAt: new Date().toISOString(),
-          summary: { workspacesAnalyzed: 0, totalEvals: 0, dimensionsFlagged: 0, dimensionsWithNoData: 0, actionableRecommendations: 0 },
+          summary: {
+            workspacesAnalyzed: 0,
+            totalEvals: 0,
+            dimensionsFlagged: 0,
+            dimensionsWithNoData: 0,
+            actionableRecommendations: 0
+          },
           workspaceResults: [],
           recommendations: [],
           overview: 'No eval data available.'
@@ -49,7 +59,9 @@ export function useActiveLearning() {
         return analysisReport.value
       }
 
-      const workspaceTypes = [...new Set(evals.map((e) => e.workspaceType || 'unknown').filter(Boolean))]
+      const workspaceTypes = [
+        ...new Set(evals.map((e) => e.workspaceType || 'unknown').filter(Boolean))
+      ]
       const aggregatedList = []
       const allRecommendations = []
 

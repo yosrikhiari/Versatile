@@ -70,7 +70,10 @@ CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes in
  * @param {string} params.antiPatterns
  * @param {string} params.activeCraftRules
  * @param {string|null} [params.pastEvalResults]
- * @param {string} params.proseStyleGuide
+ * @param {string} [params.proseStyleGuide]
+ * @param {string|null} [params.focusInstructions]
+ * @param {string} [params.profileStyleGuide]
+ * @param {string} [params.voiceConstraint]
  * @returns {string}
  */
 function buildSystemPrompt({
@@ -79,27 +82,32 @@ function buildSystemPrompt({
   antiPatterns,
   activeCraftRules,
   pastEvalResults,
-  proseStyleGuide
+  proseStyleGuide,
+  focusInstructions,
+  profileStyleGuide,
+  voiceConstraint
 }) {
   const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
 
-  const base = `${activePrompts.writer}
-
-${voiceInstruction}
-
-${antiPatterns ? antiPatterns + '\n' : ''}${activeCraftRules}`
-
   if (!proseStyleGuide) {
-    return `${base}
+    return `${activePrompts.writer}${activeCraftRules || ''}
 
+${voiceConstraint || ''}${voiceInstruction}
+
+${antiPatterns ? antiPatterns + '\n' : ''}
 Write ONLY the detailed content for this section. Do not summarize. Start writing immediately.`
   }
 
-  return `${base}
+  return `${activePrompts.writer}${activeCraftRules || ''}
 
 ${proseStyleGuide}
+${profileStyleGuide ? `\n${profileStyleGuide}\n` : ''}
 
+${voiceConstraint || ''}${voiceInstruction}
+
+${antiPatterns ? antiPatterns + '\n' : ''}
 ${pastEvalResults ? `\n## PAST EVALUATION FEEDBACK\n${pastEvalResults}\n` : ''}
+${focusInstructions ? `\n${focusInstructions}\n` : ''}
 Respond ONLY with valid JSON. No markdown. No preamble. No explanation outside the JSON.`
 }
 

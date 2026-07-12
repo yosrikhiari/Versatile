@@ -280,7 +280,9 @@ const CREATIVE_DIMENSIONS = {
       'Evaluates story consistency, logical coherence, and absence of contradictions across scenes',
     rubric: CONTINUITY_RUBRIC,
     weight: 1.0,
-    defaultThreshold: 7
+    defaultThreshold: 7,
+    focusInstruction:
+      "Check that this scene's events follow logically from the prior scene and the established timeline. Reference each character's known backstory, location, and relationships. Avoid contradicting or ignoring established facts."
   },
   voice: {
     label: 'Voice',
@@ -288,28 +290,36 @@ const CREATIVE_DIMENSIONS = {
       "Evaluates character voice authenticity and whether dialogue fits each character's established personality",
     rubric: VOICE_RUBRIC,
     weight: 1.0,
-    defaultThreshold: 7
+    defaultThreshold: 7,
+    focusInstruction:
+      "Differentiate each speaking character through distinct word choice, rhythm, and attitude. Refer to each character's described personality and background from the story bible. Every line of dialogue should feel like it could only come from that character."
   },
   emotional_goal: {
     label: 'Emotional Goal',
     description: "Evaluates whether the prose achieves the scene's intended emotional target",
     rubric: EMOTIONAL_GOAL_RUBRIC,
     weight: 1.0,
-    defaultThreshold: 7
+    defaultThreshold: 7,
+    focusInstruction:
+      'Let every paragraph serve the scene\'s stated emotional target. Build the intended feeling gradually through character reactions, sensory details, and pacing rather than stating it directly. The reader should feel what the brief says they should feel.'
   },
   show_tell: {
     label: 'Show vs Tell',
     description: 'Evaluates whether prose dramatizes (shows) vs summarizes (tells)',
     rubric: SHOW_TELL_RUBRIC,
     weight: 1.0,
-    defaultThreshold: 7
+    defaultThreshold: 7,
+    focusInstruction:
+      'Dramatize key moments through concrete sensory details, physical action, and dialogue rather than summarising or explaining. Show the reader what happens — do not describe it to them. Express abstract emotions through specific, observable behaviour.'
   },
   pacing: {
     label: 'Pacing',
     description: 'Evaluates narrative pacing — speed, filler content, and rhythm',
     rubric: PACING_RUBRIC,
     weight: 1.0,
-    defaultThreshold: 7
+    defaultThreshold: 7,
+    focusInstruction:
+      'Match sentence and paragraph length to the scene\'s tension and pacing requirements. Cut any exposition, description, or interiority that does not advance the moment. Every paragraph should either complicate, escalate, or land a beat.'
   }
 }
 

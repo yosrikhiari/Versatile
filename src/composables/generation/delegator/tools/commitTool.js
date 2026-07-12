@@ -12,6 +12,6 @@ export function createCommitTool(memory) {
 
     commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId) {
       return svc.commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId)
-    },
+    }
   }
 }

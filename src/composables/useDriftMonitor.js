@@ -1,10 +1,6 @@
 import { ref, computed } from 'vue'
 import { useEvalPersistence } from './useEvalPersistence.js'
-import {
-  analyzeWorkspace,
-  generateReport,
-  DEFAULTS
-} from '../evaluation/driftAnalyzer.js'
+import { analyzeWorkspace, generateReport, DEFAULTS } from '../evaluation/driftAnalyzer.js'
 
 export function useDriftMonitor() {
   const { loadHistory } = useEvalPersistence()
@@ -51,8 +47,19 @@ export function useDriftMonitor() {
         driftReport.value = {
           generatedAt: new Date().toISOString(),
           pipeline: 'drift-monitor',
-          config: { recentWindow: DEFAULTS.recentWindow, driftThreshold: DEFAULTS.driftThreshold, minDataPoints: DEFAULTS.minDataPoints },
-          summary: { totalEvals: 0, workspacesAnalyzed: 0, workspacesWithDrift: 0, dimensionsWithRegression: 0, dimensionsWithImprovement: 0, dimensionsWithVolatility: 0 },
+          config: {
+            recentWindow: DEFAULTS.recentWindow,
+            driftThreshold: DEFAULTS.driftThreshold,
+            minDataPoints: DEFAULTS.minDataPoints
+          },
+          summary: {
+            totalEvals: 0,
+            workspacesAnalyzed: 0,
+            workspacesWithDrift: 0,
+            dimensionsWithRegression: 0,
+            dimensionsWithImprovement: 0,
+            dimensionsWithVolatility: 0
+          },
           workspaceResults: [],
           flaggedItems: { regressions: [], improvements: [], volatilityIncreases: [] }
         }
@@ -65,7 +72,9 @@ export function useDriftMonitor() {
         minData: DEFAULTS.minDataPoints
       }
 
-      const workspaceTypes = [...new Set(evals.map((e) => e.workspaceType || 'unknown').filter(Boolean))]
+      const workspaceTypes = [
+        ...new Set(evals.map((e) => e.workspaceType || 'unknown').filter(Boolean))
+      ]
       const results = workspaceTypes.map((wt) => analyzeWorkspace(evals, wt, options))
       driftReport.value = generateReport(results, options)
       return driftReport.value

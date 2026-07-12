@@ -4,6 +4,6 @@ export function createGraphTool(memory) {
   return {
     buildPreliminaryEdges(projectId, volumeId, plan) {
       return graphBuilder.buildPreliminaryEdges(projectId, volumeId, plan)
-    },
+    }
   }
 }

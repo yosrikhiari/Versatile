@@ -8,11 +8,7 @@ export async function createOptimizationSession(session) {
 }
 
 export async function getOptimizationSessionsByProject(projectId) {
-  return db.optimizationSessions
-    .where('projectId')
-    .equals(projectId)
-    .reverse()
-    .sortBy('timestamp')
+  return db.optimizationSessions.where('projectId').equals(projectId).reverse().sortBy('timestamp')
 }
 
 export async function getOptimizationSessionsByScene(projectId, sceneId) {

@@ -1,4 +1,5 @@
 # .NET Agent Skills
+
 ## Dashboard
 
 This repository contains the .NET team's curated set of core skills and custom agents for coding agents. For information about the Agent Skills standard, see agentskills.io.
@@ -7,23 +8,23 @@ This repository contains the .NET team's curated set of core skills and custom a
 
 ## What's Included
 
-| Plugin | Description |
-|--------|-------------|
-| dotnet | C# language server (LSP) integration for coding agents and high-level .NET development skills. |
-| dotnet-advanced | Collection of .NET skills for handling specific .NET tasks for special scenarios. |
-| dotnet-data | Skills for .NET data access and Entity Framework related tasks. |
-| dotnet-diag | Skills for .NET performance investigations, debugging, and incident analysis. |
-| dotnet-msbuild | Comprehensive MSBuild and .NET build skills: failure diagnosis, performance optimization, code quality, and modernization. |
-| dotnet-nuget | NuGet and .NET package management: dependency management and modernization. |
-| dotnet-upgrade | Skills for migrating and upgrading .NET projects across framework versions, language features, and compatibility targets. |
-| dotnet-maui | Skills for .NET MAUI development: environment setup, diagnostics, and troubleshooting. |
-| dotnet-ai | AI and ML skills for .NET: technology selection, LLM integration, agentic workflows, RAG pipelines, MCP, and classic ML with ML.NET. |
-| dotnet-template-engine | .NET Template Engine skills: template discovery, project scaffolding, and template authoring. |
-| dotnet-test | Skills for running, generating, analyzing, and improving .NET tests: test execution, filtering, platform detection, coverage, testability, and MSTest workflows. |
-| dotnet-test-migration | Skills and an orchestrator agent for migrating .NET test frameworks and platforms: MSTest and xUnit version upgrades, xUnit-to-MSTest conversion, and VSTest to Microsoft.Testing.Platform. |
-| dotnet-aspnetcore | ASP.NET Core web development skills including middleware, endpoints, real-time communication, and API patterns. |
-| dotnet-blazor | Skills for Blazor development: component authoring, interactivity, and web application patterns. |
-| dotnet11 | Skills for new .NET 11 APIs and language features. |
+| Plugin                 | Description                                                                                                                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| dotnet                 | C# language server (LSP) integration for coding agents and high-level .NET development skills.                                                                                              |
+| dotnet-advanced        | Collection of .NET skills for handling specific .NET tasks for special scenarios.                                                                                                           |
+| dotnet-data            | Skills for .NET data access and Entity Framework related tasks.                                                                                                                             |
+| dotnet-diag            | Skills for .NET performance investigations, debugging, and incident analysis.                                                                                                               |
+| dotnet-msbuild         | Comprehensive MSBuild and .NET build skills: failure diagnosis, performance optimization, code quality, and modernization.                                                                  |
+| dotnet-nuget           | NuGet and .NET package management: dependency management and modernization.                                                                                                                 |
+| dotnet-upgrade         | Skills for migrating and upgrading .NET projects across framework versions, language features, and compatibility targets.                                                                   |
+| dotnet-maui            | Skills for .NET MAUI development: environment setup, diagnostics, and troubleshooting.                                                                                                      |
+| dotnet-ai              | AI and ML skills for .NET: technology selection, LLM integration, agentic workflows, RAG pipelines, MCP, and classic ML with ML.NET.                                                        |
+| dotnet-template-engine | .NET Template Engine skills: template discovery, project scaffolding, and template authoring.                                                                                               |
+| dotnet-test            | Skills for running, generating, analyzing, and improving .NET tests: test execution, filtering, platform detection, coverage, testability, and MSTest workflows.                            |
+| dotnet-test-migration  | Skills and an orchestrator agent for migrating .NET test frameworks and platforms: MSTest and xUnit version upgrades, xUnit-to-MSTest conversion, and VSTest to Microsoft.Testing.Platform. |
+| dotnet-aspnetcore      | ASP.NET Core web development skills including middleware, endpoints, real-time communication, and API patterns.                                                                             |
+| dotnet-blazor          | Skills for Blazor development: component authoring, interactivity, and web application patterns.                                                                                            |
+| dotnet11               | Skills for new .NET 11 APIs and language features.                                                                                                                                          |
 
 ## Installation
 

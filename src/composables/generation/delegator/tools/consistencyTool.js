@@ -12,6 +12,6 @@ export function createConsistencyTool(memory) {
 
     runTerminalConsistencyAudit(projectId, currentTaskId) {
       return svc.runTerminalConsistencyAudit(projectId, currentTaskId)
-    },
+    }
   }
 }

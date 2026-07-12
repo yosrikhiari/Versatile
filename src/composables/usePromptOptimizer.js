@@ -8,7 +8,13 @@ export function usePromptOptimizer() {
   const comparison = ref(null)
   const error = ref(null)
 
-  async function optimize({ projectId, sceneId, entityType = 'character', lowDimensions = [], onGenerate }) {
+  async function optimize({
+    projectId,
+    sceneId,
+    entityType = 'character',
+    lowDimensions = [],
+    onGenerate
+  }) {
     if (!lowDimensions.length) {
       error.value = 'No low-scoring dimensions to optimize for.'
       return

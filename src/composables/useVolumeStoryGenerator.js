@@ -1,5 +1,5 @@
 import { ref, reactive } from 'vue'
-import { formatEvalFeedback } from '../services/evalFeedback'
+import { buildFocusInstructions, formatEvalFeedback } from '../services/evalFeedback'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
@@ -768,6 +768,7 @@ export function useVolumeStoryGenerator() {
     const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
 
     let anchorEvalFeedback = ''
+    let anchorFocusInstructions = ''
     if (inlineEvalEnabled.value) {
       progress.statusText = 'Evaluating chapter anchors...'
       const anchorResults = []
@@ -785,11 +786,13 @@ export function useVolumeStoryGenerator() {
           sceneIndex: idx + 1,
           passed: criticResult.pass,
           score: criticResult.score,
-          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
+          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i),
+          dimensionScores: criticResult.dimensionScores || null
         })
       }
       sceneEvalResults.value = anchorResults
       anchorEvalFeedback = formatEvalFeedback(anchorResults)
+      anchorFocusInstructions = buildFocusInstructions(anchorResults)
     }
 
     // Phase 2: Generate middle scenes per chapter
@@ -815,6 +818,7 @@ export function useVolumeStoryGenerator() {
           storyContract,
           existingEntitiesJson,
           pastEvalResults: anchorEvalFeedback || undefined,
+          focusInstructions: anchorFocusInstructions || undefined,
           onChunk: (_chunk, proseChunk) => {
             fullProse += proseChunk || ''
             onChunk?.({
@@ -924,6 +928,7 @@ export function useVolumeStoryGenerator() {
     )
 
     let batchEvalFeedback = ''
+    let batchFocusInstructions = ''
 
     for (let i = startIndex; i < endIndex; i++) {
       const scene = scenePlan.value[i]
@@ -961,6 +966,7 @@ export function useVolumeStoryGenerator() {
       let chosenStructured = null
       let chosenEval = null
       let attemptFeedback = batchEvalFeedback
+      let attemptFocusInstructions = batchFocusInstructions
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         let fullProse = ''
@@ -985,7 +991,8 @@ export function useVolumeStoryGenerator() {
           storyContract: effectiveStoryContract,
           rejectedPatterns: extraRejected,
           existingEntitiesJson,
-          pastEvalResults: attemptFeedback || undefined
+          pastEvalResults: attemptFeedback || undefined,
+          focusInstructions: attemptFocusInstructions || undefined
         })
         const proseText = result.prose
 
@@ -1009,6 +1016,7 @@ export function useVolumeStoryGenerator() {
         // Stop retrying on a clean pass, or when the critic can't judge (no point burning attempts)
         if (!criticResult || criticResult.evalUnavailable || criticResult.pass) break
         attemptFeedback = formatEvalFeedback([
+        attemptFocusInstructions = buildFocusInstructions([
           {
             sceneIndex: i + 1,
             passed: criticResult.pass,
@@ -1051,6 +1059,7 @@ export function useVolumeStoryGenerator() {
           topIssues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         })
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
+        batchFocusInstructions = buildFocusInstructions(sceneEvalResults.value)
 
         // Quality floor: a scene that still fails after all retries counts against
         // the run; too many in a row aborts (work so far is already saved).
@@ -1088,6 +1097,7 @@ export function useVolumeStoryGenerator() {
         }
         sceneEvalResults.value.push(evalEntry)
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
+        batchFocusInstructions = buildFocusInstructions(sceneEvalResults.value)
       }
 
       // Append to running log after scene completes (avoids full rebuild next iteration)

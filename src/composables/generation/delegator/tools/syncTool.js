@@ -8,6 +8,6 @@ export function createSyncTool(memory) {
 
     commitSync(params) {
       return sync.commitSync(params)
-    },
+    }
   }
 }

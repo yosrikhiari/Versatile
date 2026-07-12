@@ -26,7 +26,7 @@ import {
   createCommitTool,
   createConsistencyTool,
   createSceneTool,
-  createGraphTool,
+  createGraphTool
 } from './tools'
 
 export function useDelegatorGeneration() {
@@ -54,7 +54,7 @@ export function useDelegatorGeneration() {
       if (tid) {
         _actLog.appendThought(tid, type, JSON.stringify(data ?? {}))
       }
-    },
+    }
   }
 
   // --- Wire service classes with shared AgentMemory refs ---
@@ -118,7 +118,7 @@ export function useDelegatorGeneration() {
     syncPreview: memory.syncPreview,
     currentTaskId: memory.currentTaskId,
     volumeId: memory.volumeId,
-    consistencyService: memory.instances.consistencyService,
+    consistencyService: memory.instances.consistencyService
   })
 
   // --- Create narrow agent tool wrappers ---
@@ -130,7 +130,7 @@ export function useDelegatorGeneration() {
     commit: createCommitTool(memory),
     consistency: createConsistencyTool(memory),
     scene: createSceneTool(memory),
-    graph: createGraphTool(memory),
+    graph: createGraphTool(memory)
   }
 
   // --- Create the Delegator ---

@@ -202,14 +202,18 @@ describe('useQueryRewriter', () => {
       queries: ['q1', 'q2', 'q3', 'q4', 'q5']
     })
 
-    const result = await useQueryRewriter('A scene with many different aspects to research thoroughly for writing.')
+    const result = await useQueryRewriter(
+      'A scene with many different aspects to research thoroughly for writing.'
+    )
     expect(result.queries).toHaveLength(3)
   })
 
   it('handles aiGenerateJson throwing', async () => {
     mockAiGenerateJson.mockRejectedValue(new Error('API error'))
 
-    const result = await useQueryRewriter('A scene that needs research queries generated for context.')
+    const result = await useQueryRewriter(
+      'A scene that needs research queries generated for context.'
+    )
     expect(result.queries).toEqual([])
   })
 })
@@ -224,7 +228,10 @@ describe('useRagSelfRefine', () => {
   })
 
   it('returns original text when sceneText is empty', async () => {
-    const result = await useRagSelfRefine('', 'Some research context that has enough words to pass the minimum threshold for testing purposes and validation.')
+    const result = await useRagSelfRefine(
+      '',
+      'Some research context that has enough words to pass the minimum threshold for testing purposes and validation.'
+    )
     expect(result).toEqual({ revisedText: '', rounds: 0 })
   })
 
@@ -244,8 +251,8 @@ describe('useRagSelfRefine', () => {
     const result = await useRagSelfRefine(
       text,
       'The ancient forest held secrets. The sword was forged in dragonfire. ' +
-      'Legends spoke of its power. Many sought it. None found it. ' +
-      'The mystery remained for generations. Scholars debated its meaning.'
+        'Legends spoke of its power. Many sought it. None found it. ' +
+        'The mystery remained for generations. Scholars debated its meaning.'
     )
 
     expect(result.revisedText).toBe(text)
@@ -266,9 +273,9 @@ describe('useRagSelfRefine', () => {
     const result = await useRagSelfRefine(
       'Original prose.',
       'The ancient forest of Eldoria concealed many secrets. ' +
-      'Legends spoke of a sword forged in dragonfire. ' +
-      'Its power was unmatched in all the realms. ' +
-      'Few dared to seek it out. The mystery deepened.'
+        'Legends spoke of a sword forged in dragonfire. ' +
+        'Its power was unmatched in all the realms. ' +
+        'Few dared to seek it out. The mystery deepened.'
     )
 
     expect(result.revisedText).toBe('The dragonfire sword lay hidden.')
@@ -282,8 +289,8 @@ describe('useRagSelfRefine', () => {
     const result = await useRagSelfRefine(
       text,
       'The ancient forest held secrets. The sword was forged in dragonfire. ' +
-      'Legends spoke of its power. Many sought it. None found it. ' +
-      'Scholars debated its meaning for generations without conclusion.'
+        'Legends spoke of its power. Many sought it. None found it. ' +
+        'Scholars debated its meaning for generations without conclusion.'
     )
 
     expect(result.revisedText).toBe(text)
@@ -303,8 +310,8 @@ describe('useRagSelfRefine', () => {
     const result = await useRagSelfRefine(
       text,
       'Important research context about the scene should be included in the writing. ' +
-      'The details are crucial for maintaining consistency across the narrative. ' +
-      'Every element serves a purpose in the story. This context is comprehensive.'
+        'The details are crucial for maintaining consistency across the narrative. ' +
+        'Every element serves a purpose in the story. This context is comprehensive.'
     )
 
     expect(result.revisedText).toBe(text)
@@ -321,8 +328,8 @@ describe('useRagSelfRefine', () => {
     const result = await useRagSelfRefine(
       'Scene text that needs revision and editing for better quality. '.repeat(3),
       'Research context provides important background information for the story. ' +
-      'Every detail helps build a richer narrative experience for the reader. ' +
-      'The author should incorporate these elements naturally into the prose and dialogue.'
+        'Every detail helps build a richer narrative experience for the reader. ' +
+        'The author should incorporate these elements naturally into the prose and dialogue.'
     )
 
     expect(result.rounds).toBe(2)

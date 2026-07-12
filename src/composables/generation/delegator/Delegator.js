@@ -10,56 +10,56 @@ import { buildGenerationContext } from '../context/index'
  */
 const ROUTING_TABLE = {
   idle: {
-    START: { nextPhase: 'planning', handler: handleStart },
+    START: { nextPhase: 'planning', handler: handleStart }
   },
   planning: {
     PLAN_READY: { nextPhase: 'bootstrapping', handler: handlePlanReady },
-    ERROR: { nextPhase: 'error', handler: handleError },
+    ERROR: { nextPhase: 'error', handler: handleError }
   },
   bootstrapping: {
     BOOTSTRAPPED: { nextPhase: 'confirming', handler: handleBootstrapped },
-    ERROR: { nextPhase: 'error', handler: handleError },
+    ERROR: { nextPhase: 'error', handler: handleError }
   },
   confirming: {
     CONFIRMED: { nextPhase: 'writing', handler: handleConfirmed },
     REJECTED: { nextPhase: 'planning', handler: handleRejected },
-    ERROR: { nextPhase: 'error', handler: handleError },
+    ERROR: { nextPhase: 'error', handler: handleError }
   },
   writing: {
     SCENE_WRITTEN: { nextPhase: 'scene-review', handler: handleSceneWritten },
     BATCH_COMPLETE: { nextPhase: 'sync-preview', handler: handleBatchComplete },
     ALL_WRITTEN: { nextPhase: 'consistency-audit', handler: handleAllWritten },
-    ERROR: { nextPhase: 'error', handler: handleError },
+    ERROR: { nextPhase: 'error', handler: handleError }
   },
   'scene-review': {
     APPROVED: { nextPhase: 'writing', handler: handleSceneApproved },
     REJECTED: { nextPhase: 'writing', handler: handleSceneRejected },
-    ERROR: { nextPhase: 'error', handler: handleError },
+    ERROR: { nextPhase: 'error', handler: handleError }
   },
   'sync-preview': {
     SYNC_APPROVED: { nextPhase: 'writing', handler: handleSyncApproved },
     SYNC_REJECTED: { nextPhase: 'writing', handler: handleSyncRejected },
-    ERROR: { nextPhase: 'error', handler: handleError },
+    ERROR: { nextPhase: 'error', handler: handleError }
   },
   'consistency-audit': {
     HAS_ISSUES: { nextPhase: 'consistency-fix', handler: handleConsistencyIssues },
     NO_ISSUES: { nextPhase: 'committing', handler: handleConsistencyClean },
-    ERROR: { nextPhase: 'error', handler: handleError },
+    ERROR: { nextPhase: 'error', handler: handleError }
   },
   'consistency-fix': {
     FIXED: { nextPhase: 'consistency-audit', handler: handleConsistencyFixed },
     MAX_ROUNDS: { nextPhase: 'committing', handler: handleConsistencyMaxRounds },
-    ERROR: { nextPhase: 'error', handler: handleError },
+    ERROR: { nextPhase: 'error', handler: handleError }
   },
   committing: {
     COMMITTED: { nextPhase: 'complete', handler: handleCommitted },
-    ERROR: { nextPhase: 'error', handler: handleError },
+    ERROR: { nextPhase: 'error', handler: handleError }
   },
   complete: {},
   error: {
     RETRY: { nextPhase: null, handler: handleRetry },
-    RESET: { nextPhase: 'idle', handler: handleReset },
-  },
+    RESET: { nextPhase: 'idle', handler: handleReset }
+  }
 }
 
 // ─── Phase transition helpers ────────────────────────────────
@@ -102,7 +102,7 @@ async function handlePlanReady(memory, payload) {
 
   const context = await buildGenerationContext({
     entityType: 'scene',
-    manuscriptContext: null,
+    manuscriptContext: null
   })
   memory.spineContext.value = context.manuscript ?? ''
 }
@@ -152,7 +152,7 @@ async function handleSceneWritten(memory, payload) {
   memory.currentWriteIndex.value = idx + 1
   memory.setProgress(
     `Scene ${idx + 1} of ${memory.derived.totalSceneCount.value} written`,
-    20 + Math.round(60 * (idx / memory.derived.totalSceneCount.value)),
+    20 + Math.round(60 * (idx / memory.derived.totalSceneCount.value))
   )
 }
 
@@ -163,7 +163,7 @@ async function handleSceneWritten(memory, payload) {
 async function handleSceneApproved(memory, payload) {
   memory.sceneEvalResults.value = [
     ...memory.sceneEvalResults.value,
-    { ...payload, index: memory.currentWriteIndex.value - 1 },
+    { ...payload, index: memory.currentWriteIndex.value - 1 }
   ]
 }
 
@@ -180,7 +180,7 @@ async function handleSceneRejected(memory, payload) {
   memory.currentWriteIndex.value = rejectedIdx
   memory.sceneEvalResults.value = [
     ...memory.sceneEvalResults.value,
-    { ...payload, index: rejectedIdx, verdict: 'rejected' },
+    { ...payload, index: rejectedIdx, verdict: 'rejected' }
   ]
   memory.setProgress(`Re-writing scene ${rejectedIdx + 1}...`, 20)
 }
@@ -195,7 +195,7 @@ async function handleBatchComplete(memory, payload) {
   memory.lastSyncedResultIndex.value = payload.batchEnd
 
   const preview = await memory.instances.sync.discoverSync(
-    memory.structuredResults.value.slice(payload.batchStart, payload.batchEnd),
+    memory.structuredResults.value.slice(payload.batchStart, payload.batchEnd)
   )
   memory.syncPreview.value = preview
   memory.setProgress('Reviewing batch sync changes...', 75)
@@ -219,7 +219,7 @@ async function handleSyncApproved(memory, payload) {
     acceptedEntities: payload.acceptedEntities,
     projectId: memory.projectId.value,
     volumeId: memory.volumeId.value,
-    chapterId: payload.chapterId,
+    chapterId: payload.chapterId
   })
   memory.syncPreview.value = null
   memory.hasPendingBatches.value = false
@@ -261,7 +261,7 @@ async function handleConsistencyClean(memory, _payload) {
 async function handleConsistencyFixed(memory, payload) {
   memory.instances.actLog?.addEntry?.('consistency-fix', {
     round: payload.round,
-    fixedCount: payload.fixedCount,
+    fixedCount: payload.fixedCount
   })
 }
 
@@ -273,7 +273,7 @@ async function handleConsistencyMaxRounds(memory, payload) {
   memory.setProgress('Committing (consistency max rounds reached)...', 95)
   memory.instances.actLog?.addEntry?.('consistency-max-rounds', {
     rounds: payload.round,
-    remainingIssues: payload.remaining,
+    remainingIssues: payload.remaining
   })
 }
 
@@ -284,7 +284,7 @@ async function handleConsistencyMaxRounds(memory, payload) {
 async function handleCommitted(memory, _payload) {
   await memory.instances.commitService.buildManuscript?.(
     memory.scenePlan.value,
-    memory.writtenScenes.value,
+    memory.writtenScenes.value
   )
   await memory.instances.commitService.finalize?.(memory.currentTaskId.value)
   memory.setProgress('Complete', 100)
@@ -340,7 +340,7 @@ export class Delegator {
     if (!route) {
       throw new Error(
         `Delegator: no route for event "${event}" in phase "${currentPhase}". ` +
-        `Available events: [${Object.keys(ROUTING_TABLE[currentPhase] ?? {}).join(', ')}]`,
+          `Available events: [${Object.keys(ROUTING_TABLE[currentPhase] ?? {}).join(', ')}]`
       )
     }
 

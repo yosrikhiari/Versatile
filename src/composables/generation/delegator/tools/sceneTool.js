@@ -20,6 +20,6 @@ export function createSceneTool(memory) {
 
     regenerateScene(projectId, sceneIndex) {
       return svc.regenerateScene(projectId, sceneIndex)
-    },
+    }
   }
 }
