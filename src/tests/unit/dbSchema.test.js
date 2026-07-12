@@ -20,6 +20,7 @@ const EXPECTED = {
   embeddingCache: 'hash | createdAt',
   evalResults: '++id | evalType, projectId, sceneId, score, timestamp',
   genRuns: '++id | &projectId, updatedAt',
+  optimizationSessions: '++id | projectId, sceneId, status, timestamp',
   generatedStories: '++id | generatedAt, projectId, qualityScore, title, totalWords',
   graphEdges:
     '++id | projectId, relationshipType, sourceId, sourceType, targetId, targetType, volumeId',
@@ -77,7 +78,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(33)
+    expect(verno).toBe(34)
   })
 
   it('has exactly the expected set of tables', () => {

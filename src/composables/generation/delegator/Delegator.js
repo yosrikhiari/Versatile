@@ -111,7 +111,7 @@ async function handlePlanReady(memory, payload) {
  * BOOTSTRAPPING ──BOOTSTRAPPED──► CONFIRMING
  * Wait for human confirmation of the spine / plan.
  */
-async function handleBootstrapped(memory, payload) {
+async function handleBootstrapped(memory, _payload) {
   memory.setProgress('Awaiting confirmation...', 15)
 }
 
@@ -205,7 +205,7 @@ async function handleBatchComplete(memory, payload) {
  * WRITING ──ALL_WRITTEN──► CONSISTENCY_AUDIT
  * Every scene has an initial draft — run cross-scene audit.
  */
-async function handleAllWritten(memory, payload) {
+async function handleAllWritten(memory, _payload) {
   memory.setProgress('Auditing cross-scene consistency...', 85)
 }
 
@@ -250,7 +250,7 @@ async function handleConsistencyIssues(memory, payload) {
  * CONSISTENCY_AUDIT ──NO_ISSUES──► COMMITTING
  * No contradictions found — proceed to finalize.
  */
-async function handleConsistencyClean(memory, payload) {
+async function handleConsistencyClean(memory, _payload) {
   memory.setProgress('Committing...', 95)
 }
 
@@ -281,7 +281,7 @@ async function handleConsistencyMaxRounds(memory, payload) {
  * COMMITTING ──COMMITTED──► COMPLETE
  * Finalize: build manuscript, checkpoint, sync, persist.
  */
-async function handleCommitted(memory, payload) {
+async function handleCommitted(memory, _payload) {
   await memory.instances.commitService.buildManuscript?.(
     memory.scenePlan.value,
     memory.writtenScenes.value,
@@ -305,7 +305,7 @@ async function handleRetry(memory, payload) {
  * ERROR ──RESET──► IDLE
  * Full reset — calls memory.reset().
  */
-async function handleReset(memory, payload) {
+async function handleReset(memory, _payload) {
   memory.reset()
 }
 
