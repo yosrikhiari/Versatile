@@ -7,7 +7,6 @@ test-results/
 # Ignore all markdown files except README and docs/
 *.md
 !README.md
-!docs/*.md
 !AGENTS.md
 !AGENT.md
 !scripts/ml-pipelines/README.md
@@ -69,6 +68,9 @@ reports/
 # vitest runs test files regardless of gitignore, so ignoring them silently drops
 # them from version control while they still pass locally (they did: 33 files).
 src/tests/unit/ollamaService.test.js
+
+# Server runtime artifacts (output logs)
+server/
 
 # .NET build artifacts
 backend/**/bin/
