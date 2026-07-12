@@ -13,7 +13,7 @@ module.exports = {
   rules: {
     'vue/multi-word-component-names': 'off',
     'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-    'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }]
+    'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }]
   },
   ignorePatterns: ['dist', 'node_modules', '*.config.js', '*.config.cjs'],
   overrides: [
