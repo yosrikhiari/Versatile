@@ -633,13 +633,117 @@ export function useVolumeStoryGenerator() {
       // Store arc for later use
       return { scenes: scenePlan.value, storyArc, volumeId: vId, storyContract }
     } catch (err) {
-      await delegatorApi.dispatch('ERROR', { error: err, message: err.message || 'Generation failed during initial phases' })
+      await delegatorApi.dispatch('ERROR', {
+        error: err,
+        message: err.message || 'Generation failed during initial phases'
+      })
       error.value = err.message || 'Generation failed during initial phases'
       if (activeStage) {
         await updateGenRunStage(projectId, activeStage, { status: 'failed', error: error.value })
       }
       throw err
     }
+  }
+
+  // Shared per-scene writer with the one-click quality gate. In autoMode it
+  // writes up to SCENE_MAX_ATTEMPTS times, critiques each attempt, keeps the
+  // best, applies a continuity floor, and feeds each attempt's critique into
+  // the next. Manual mode writes once. Both the sequential (writeNextBatch)
+  // and parallel (runParallelGeneration) paths route through this so the same
+  // quality gates apply regardless of generation mode.
+  async function writeSceneWithGate({
+    scene,
+    sceneIndex,
+    scenePhase,
+    storyArc,
+    chapterLog = '',
+    storyBible,
+    storyContract,
+    existingEntitiesJson,
+    embeddingContext = '',
+    extraRejected,
+    pastEvalResults,
+    focusInstructions,
+    anchorRole,
+    anchorConstraints,
+    emitChunk
+  }) {
+    const retryGate = autoMode.value
+    const maxAttempts = retryGate ? SCENE_MAX_ATTEMPTS : 1
+    let chosenProse = ''
+    let chosenStructured = null
+    let chosenEval = null
+    let attemptFeedback = pastEvalResults
+    let attemptFocusInstructions = focusInstructions
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      let fullProse = ''
+      const result = await writer.writeSceneStructured({
+        sceneBrief: scene,
+        storyArc,
+        chapterLog,
+        storyBible,
+        spineContext: spineContext.value,
+        anchorRole,
+        anchorConstraints,
+        onChunk: (_chunk, proseChunk) => {
+          fullProse += proseChunk || ''
+          emitChunk?.(proseChunk, fullProse)
+        },
+        onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk),
+        embeddingContext,
+        storyContract,
+        rejectedPatterns: extraRejected,
+        existingEntitiesJson,
+        pastEvalResults: attemptFeedback || undefined,
+        focusInstructions: attemptFocusInstructions || undefined
+      })
+      const proseText = result.prose
+
+      if (!retryGate) {
+        chosenProse = proseText
+        chosenStructured = result.structured
+        break
+      }
+
+      const criticResult = await critic.evaluateScene({
+        draft: proseText,
+        sceneBrief: scene,
+        storyBible,
+        chapterLog: ''
+      })
+      if (!chosenEval || attemptScore(criticResult) > attemptScore(chosenEval)) {
+        chosenProse = proseText
+        chosenStructured = result.structured
+        chosenEval = criticResult
+      }
+
+      const dimCov = gateDimensionCoverage(criticResult, workspaceType.value)
+      const scoreDist = gateScoreDistribution(criticResult)
+      if (!dimCov.pass && dimCov.warnings.length > 0) {
+        console.warn('[evalGate] dimensionCoverage:', dimCov.warnings.join('; '))
+      }
+      if (!scoreDist.pass && scoreDist.flags.length > 0) {
+        console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
+      }
+
+      const continuityOk = (criticResult.dimensionScores?.continuity ?? 10) >= 6
+      if (!criticResult || criticResult.evalUnavailable || (criticResult.pass && continuityOk)) {
+        break
+      }
+
+      const evalSnapshot = {
+        sceneIndex: sceneIndex + 1,
+        passed: criticResult.pass,
+        score: criticResult.score,
+        dimensionScores: criticResult.dimensionScores || null,
+        topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
+      }
+      attemptFeedback = formatEvalFeedback([evalSnapshot])
+      attemptFocusInstructions = buildFocusInstructions([evalSnapshot])
+    }
+
+    return { chosenProse, chosenStructured, chosenEval }
   }
 
   async function runParallelGeneration(writeParamsVal) {
@@ -667,19 +771,18 @@ export function useVolumeStoryGenerator() {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
       const scenePhase = actLog.addPhase(currentTaskId, phaseName)
       try {
-        let fullProse = ''
-        const result = await writer.writeSceneStructured({
-          sceneBrief: scene,
+        const { chosenProse, chosenStructured, chosenEval } = await writeSceneWithGate({
+          scene,
+          sceneIndex,
+          scenePhase,
           storyArc,
           chapterLog: '',
           storyBible: storyBibleDocs,
-          spineContext: spineContext.value,
-          anchorRole: role,
-          anchorConstraints: constraints,
           storyContract,
           existingEntitiesJson,
-          onChunk: (_chunk, proseChunk) => {
-            fullProse += proseChunk || ''
+          anchorRole: role,
+          anchorConstraints: constraints,
+          emitChunk: (proseChunk, fullProse) => {
             onChunk?.({
               sceneIndex: sceneIndex + 1,
               total: scenePlan.value.length,
@@ -687,10 +790,9 @@ export function useVolumeStoryGenerator() {
               fullProse,
               scene
             })
-          },
-          onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk)
+          }
         })
-        fullProse = result.prose
+        const fullProse = chosenProse
 
         progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
         const summary = await computeSummary(fullProse)
@@ -714,10 +816,10 @@ export function useVolumeStoryGenerator() {
           sceneNumber: scene.sceneNumber,
           subsectionId: scene.subsectionId,
           chapterId: chapterNumber,
-          keyFacts: Array.isArray(result.structured?.keyFacts) ? result.structured.keyFacts : []
+          keyFacts: Array.isArray(chosenStructured?.keyFacts) ? chosenStructured.keyFacts : []
         }
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
-        return { success: true, sceneIndex, structured: result.structured }
+        return { success: true, sceneIndex, structured: chosenStructured, eval: chosenEval }
       } catch (err) {
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
         return { success: false, sceneIndex, error: err.message }
@@ -807,19 +909,18 @@ export function useVolumeStoryGenerator() {
           .map((s) => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}`)
         const chapterLog = logEntries.join('\n')
 
-        let fullProse = ''
-        const result = await writer.writeSceneStructured({
-          sceneBrief: scene,
+        const { chosenProse, chosenStructured, chosenEval } = await writeSceneWithGate({
+          scene,
+          sceneIndex,
+          scenePhase,
           storyArc,
           chapterLog,
           storyBible: storyBibleDocs,
-          spineContext: spineContext.value,
           storyContract,
           existingEntitiesJson,
           pastEvalResults: anchorEvalFeedback || undefined,
           focusInstructions: anchorFocusInstructions || undefined,
-          onChunk: (_chunk, proseChunk) => {
-            fullProse += proseChunk || ''
+          emitChunk: (proseChunk, fullProse) => {
             onChunk?.({
               sceneIndex: sceneIndex + 1,
               total: scenePlan.value.length,
@@ -827,10 +928,9 @@ export function useVolumeStoryGenerator() {
               fullProse,
               scene
             })
-          },
-          onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk)
+          }
         })
-        fullProse = result.prose
+        const fullProse = chosenProse
 
         progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
         const summary = await computeSummary(fullProse)
@@ -853,11 +953,11 @@ export function useVolumeStoryGenerator() {
           sceneNumber: scene.sceneNumber,
           subsectionId: scene.subsectionId,
           chapterId: chapterMeta.chapterNumber,
-          keyFacts: Array.isArray(result.structured?.keyFacts) ? result.structured.keyFacts : []
+          keyFacts: Array.isArray(chosenStructured?.keyFacts) ? chosenStructured.keyFacts : []
         }
 
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
-        return { success: true, sceneIndex, structured: result.structured }
+        return { success: true, sceneIndex, structured: chosenStructured, eval: chosenEval }
       } catch (err) {
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
         return { success: false, sceneIndex, error: err.message }
@@ -903,6 +1003,30 @@ export function useVolumeStoryGenerator() {
         })
       }
       sceneEvalResults.value = [...sceneEvalResults.value, ...middleResults]
+    }
+
+    // Parallel-safe quality floor. The sequential path aborts on N *consecutive*
+    // gate failures, which is undefined under parallel execution — so here we
+    // use an aggregate fail-ratio over judged scenes. Only meaningful when the
+    // gate actually ran (autoMode); otherwise no per-scene evals were produced.
+    if (autoMode.value) {
+      const QUALITY_FLOOR_FAIL_RATIO = 0.5
+      const QUALITY_FLOOR_MIN_JUDGED = 4
+      const anchorEvals = anchorOutcomes.flatMap((o) => (o?.results || []).map((r) => r?.eval))
+      const gateEvals = [...anchorEvals, ...middleOutcomes.map((r) => r?.eval)].filter(Boolean)
+      const judged = gateEvals.filter((e) => !e.evalUnavailable && e.score != null)
+      const failed = judged.filter((e) => !isCleanPass(e))
+      runFailedScenes.value = failed.length
+      if (
+        judged.length >= QUALITY_FLOOR_MIN_JUDGED &&
+        failed.length / judged.length >= QUALITY_FLOOR_FAIL_RATIO
+      ) {
+        error.value = `Quality floor breached: ${failed.length}/${judged.length} scenes failed critique after retries. The writer or critic model is likely misconfigured. ${writtenScenes.value.filter(Boolean).length} scene(s) written and saved.`
+        commitService.persistCheckpoint(projectId)
+        await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
+        await delegatorApi.dispatch('ERROR', { error: error.value, message: error.value })
+        return
+      }
     }
 
     await completeGeneration(projectId)
@@ -958,90 +1082,33 @@ export function useVolumeStoryGenerator() {
         : storyContract
       if (scene.reRequestInstruction) delete scene.reRequestInstruction
 
-      // In one-click mode, gate each scene on critique and rewrite failures
-      // (keeping the best attempt). Manual mode writes once, as before.
+      // Route through the shared per-scene quality gate (retry + critique +
+      // best-attempt selection) — identical logic to the parallel path.
       const retryGate = autoMode.value
       const maxAttempts = retryGate ? SCENE_MAX_ATTEMPTS : 1
-      let chosenProse = ''
-      let chosenStructured = null
-      let chosenEval = null
-      let attemptFeedback = batchEvalFeedback
-      let attemptFocusInstructions = batchFocusInstructions
-
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        let fullProse = ''
-        const result = await writer.writeSceneStructured({
-          sceneBrief: scene,
-          storyArc,
-          chapterLog,
-          storyBible: storyBibleDocs,
-          spineContext: spineContext.value,
-          onChunk: (_chunk, proseChunk) => {
-            fullProse += proseChunk || ''
-            onChunk?.({
-              sceneIndex: i + 1,
-              total: scenePlan.value.length,
-              chunk: proseChunk,
-              fullProse,
-              scene
-            })
-          },
-          onRawChunk: (chunk) => actLog.appendThought(currentTaskId, scenePhase, chunk),
-          embeddingContext,
-          storyContract: effectiveStoryContract,
-          rejectedPatterns: extraRejected,
-          existingEntitiesJson,
-          pastEvalResults: attemptFeedback || undefined,
-          focusInstructions: attemptFocusInstructions || undefined
-        })
-        const proseText = result.prose
-
-        if (!retryGate) {
-          chosenProse = proseText
-          chosenStructured = result.structured
-          break
+      const { chosenProse, chosenStructured, chosenEval } = await writeSceneWithGate({
+        scene,
+        sceneIndex: i,
+        scenePhase,
+        storyArc,
+        chapterLog,
+        storyBible: storyBibleDocs,
+        storyContract: effectiveStoryContract,
+        existingEntitiesJson,
+        embeddingContext,
+        extraRejected,
+        pastEvalResults: batchEvalFeedback,
+        focusInstructions: batchFocusInstructions,
+        emitChunk: (proseChunk, fullProse) => {
+          onChunk?.({
+            sceneIndex: i + 1,
+            total: scenePlan.value.length,
+            chunk: proseChunk,
+            fullProse,
+            scene
+          })
         }
-
-        const criticResult = await critic.evaluateScene({
-          draft: proseText,
-          sceneBrief: scene,
-          storyBible: storyBibleDocs,
-          chapterLog: ''
-        })
-        if (!chosenEval || attemptScore(criticResult) > attemptScore(chosenEval)) {
-          chosenProse = proseText
-          chosenStructured = result.structured
-          chosenEval = criticResult
-        }
-
-        // Eval gate: warn when dimension coverage or score distribution look suspect
-        const dimCov = gateDimensionCoverage(criticResult, workspaceType.value)
-        const scoreDist = gateScoreDistribution(criticResult)
-        if (!dimCov.pass && dimCov.warnings.length > 0) {
-          console.warn('[evalGate] dimensionCoverage:', dimCov.warnings.join('; '))
-        }
-        if (!scoreDist.pass && scoreDist.flags.length > 0) {
-          console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
-        }
-
-        // Continuity floor: treat a scene that scores < 6 on continuity as a fail
-        // regardless of the overall pass flag, so the retry loop regenerates it.
-        const continuityOk = (criticResult.dimensionScores?.continuity ?? 10) >= 6
-
-        // Stop retrying on a clean pass with acceptable continuity, or when the
-        // critic can't judge (no point burning attempts)
-        if (!criticResult || criticResult.evalUnavailable || (criticResult.pass && continuityOk)) break
-
-        const evalSnapshot = {
-          sceneIndex: i + 1,
-          passed: criticResult.pass,
-          score: criticResult.score,
-          dimensionScores: criticResult.dimensionScores || null,
-          topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
-        }
-        attemptFeedback = formatEvalFeedback([evalSnapshot])
-        attemptFocusInstructions = buildFocusInstructions([evalSnapshot])
-      }
+      })
       actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
 
       const fullProse = chosenProse
@@ -1055,7 +1122,10 @@ export function useVolumeStoryGenerator() {
           sectionIdx: sectionIndexForScene(sections, i)
         }
         currentWriteIndex.value = i + 1
-        await delegatorApi.dispatch('SCENE_WRITTEN', { sceneResult: currentSceneResult.value, sceneIndex: i })
+        await delegatorApi.dispatch('SCENE_WRITTEN', {
+          sceneResult: currentSceneResult.value,
+          sceneIndex: i
+        })
         return
       }
 
@@ -1146,7 +1216,10 @@ export function useVolumeStoryGenerator() {
         hasPendingBatches.value = true
         pendingBatchStart.value = endIndex
         syncPreview.value = batchChanges
-        await delegatorApi.dispatch('BATCH_COMPLETE', { batchStart: pendingBatchStart.value, batchEnd: writtenScenes.value.length })
+        await delegatorApi.dispatch('BATCH_COMPLETE', {
+          batchStart: pendingBatchStart.value,
+          batchEnd: writtenScenes.value.length
+        })
         // One-click mode: accept every discovered entity and keep writing
         if (autoMode.value) {
           await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
@@ -1160,7 +1233,10 @@ export function useVolumeStoryGenerator() {
 
     if (batchChanges.length > 0) {
       syncPreview.value = batchChanges
-      await delegatorApi.dispatch('BATCH_COMPLETE', { batchStart: pendingBatchStart.value, batchEnd: writtenScenes.value.length })
+      await delegatorApi.dispatch('BATCH_COMPLETE', {
+        batchStart: pendingBatchStart.value,
+        batchEnd: writtenScenes.value.length
+      })
       if (autoMode.value) {
         await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
       }
@@ -1284,7 +1360,11 @@ export function useVolumeStoryGenerator() {
 
     // Phase 0: Spine Generation
     progress.statusText = 'Generating hierarchical narrative spine...'
-    await delegatorApi.dispatch('CONFIRMED', { autoMode: autoMode.value, sceneReviewMode: sceneReviewMode.value, inlineEval: inlineEvalEnabled.value })
+    await delegatorApi.dispatch('CONFIRMED', {
+      autoMode: autoMode.value,
+      sceneReviewMode: sceneReviewMode.value,
+      inlineEval: inlineEvalEnabled.value
+    })
     const spinePhase = actLog.addPhase(currentTaskId, 'Spine Generation')
     await updateGenRunStage(projectId, 'spine', { status: 'running' })
 
@@ -1300,7 +1380,10 @@ export function useVolumeStoryGenerator() {
       await updateGenRunStage(projectId, 'spine', { status: 'done' })
     } catch (err) {
       error.value = err.message || 'Fatal: Spine generation failed'
-      await delegatorApi.dispatch('ERROR', { error: err, message: err.message || 'Fatal: Spine generation failed' })
+      await delegatorApi.dispatch('ERROR', {
+        error: err,
+        message: err.message || 'Fatal: Spine generation failed'
+      })
       await updateGenRunStage(projectId, 'spine', { status: 'failed', error: err.message })
       throw err
     }
