@@ -2,6 +2,7 @@ import { PROVIDERS, FEATURES, PROVIDER_MODELS } from '../config/ai'
 import { getApiKeyStorageKey } from '../config/storageKeys'
 import { useSettingsStore } from '../stores/settingsStore'
 import { decrypt } from './ollamaService'
+import { sanitizeJson } from './ai/aiHelpers'
 import * as ollamaProvider from './providers/ollama'
 import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
@@ -236,6 +237,66 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
     }
     throw error
   }
+}
+
+/**
+ * Structured JSON generation. Prefers the provider's native structured-output
+ * path (Anthropic tool-use / OpenAI json_schema / Ollama format grammar) when a
+ * JSON `schema` is supplied and the provider supports it; otherwise, or on any
+ * failure, falls back to a plain generate + sanitizeJson. Always returns a
+ * parsed object or throws — never leaks raw model text to the caller.
+ *
+ * Ported from the previously-dead aiService.ts so the single live (.js) chain
+ * owns structured output; gemini/groq (no generateStructured) transparently use
+ * the fallback path.
+ */
+export async function aiGenerateStructured(prompt, systemPrompt, options = {}) {
+  const feature = options.feature || FEATURES.CONTENT
+  const config = resolveFeatureConfig(feature)
+  const provider = options.provider || config.provider
+  const model = options.model || config.model
+  const schema = options.schema
+
+  const providerModule = PROVIDER_MAP[provider]
+  if (!providerModule) throw new Error(`Unknown provider: ${provider}`)
+
+  const apiKey = await getApiKey(provider)
+  const hasKey = provider === PROVIDERS.OLLAMA || !!apiKey
+
+  // 1) Native structured output when supported and we have a key.
+  if (schema && hasKey && typeof providerModule.generateStructured === 'function') {
+    try {
+      const result = await withRetry(
+        () =>
+          providerModule.generateStructured(prompt, systemPrompt, model, schema, {
+            apiKey: apiKey || undefined,
+            signal: options.signal,
+            temperature: options.temperature,
+            maxTokens: options.maxTokens,
+            timeout: options.timeout,
+            schemaName: options.schemaName
+          }),
+        isRetryable,
+        { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
+      )
+      if (result && typeof result === 'object') return result
+    } catch (err) {
+      // Native path failed (unsupported model, strict-schema rejection, …) —
+      // fall through to the text + sanitizeJson path below.
+      console.warn('[aiGenerateStructured] native structured output failed, falling back:', err)
+    }
+  }
+
+  // 2) Fallback: plain generation (keeps aiGenerate's retry + provider fallback)
+  //    with an explicit JSON directive, then sanitizeJson.
+  const jsonDirective =
+    '\n\nRespond with ONLY a single valid JSON object. No prose, no markdown, no code fences.'
+  const text = await aiGenerate(prompt, systemPrompt + jsonDirective, options)
+  const parsed = sanitizeJson(text)
+  if (!parsed) {
+    throw new Error('Structured generation failed: the model did not return valid JSON.')
+  }
+  return parsed
 }
 
 export async function aiTestConnection(provider, apiKey) {
