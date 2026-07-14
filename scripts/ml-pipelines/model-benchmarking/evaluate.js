@@ -102,6 +102,20 @@ function computeAggregates(resultsByProvider) {
     const wordCounts = completed.map((r) => r.wordCount)
     const costs = completed.map((r) => r.estimatedCost || 0)
 
+    const meanScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null
+    // Cross-test spread: how consistent a provider is across the suite.
+    const scoreStdDev =
+      scores.length > 1 && meanScore != null
+        ? +Math.sqrt(scores.reduce((a, s) => a + (s - meanScore) ** 2, 0) / scores.length).toFixed(
+            2
+          )
+        : 0
+    // Mean within-cell run-to-run noise (only meaningful with --repeats > 1).
+    const runStdevs = completed.map((r) => r.scoreStdDev).filter((s) => typeof s === 'number')
+    const avgRunStdDev = runStdevs.length
+      ? +(runStdevs.reduce((a, b) => a + b, 0) / runStdevs.length).toFixed(2)
+      : 0
+
     aggregates[pid] = {
       status: 'ok',
       completedCount: completed.length,
@@ -110,8 +124,9 @@ function computeAggregates(resultsByProvider) {
       avgLatencyMs: Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length),
       minLatencyMs: Math.min(...latencies),
       maxLatencyMs: Math.max(...latencies),
-      avgScore:
-        scores.length > 0 ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : null,
+      avgScore: meanScore != null ? +meanScore.toFixed(1) : null,
+      scoreStdDev,
+      avgRunStdDev,
       avgWordCount: Math.round(wordCounts.reduce((a, b) => a + b, 0) / wordCounts.length),
       estimatedTotalCost: +costs.reduce((a, b) => a + b, 0).toFixed(4)
     }
@@ -261,8 +276,13 @@ function printResults(providerConfigs, resultsByProvider, aggregates, rankings) 
 }
 
 async function evaluate() {
+  const REPEATS = (() => {
+    const i = process.argv.indexOf('--repeats')
+    return i >= 0 ? Math.max(1, parseInt(process.argv[i + 1], 10) || 1) : 1
+  })()
   const available = expandModelVariants(getAvailableProviders())
   const suites = loadTestSuite()
+  if (REPEATS > 1) console.log(`Repeats per cell: ${REPEATS} (reporting mean ± stddev)\n`)
 
   if (available.length === 0) {
     console.log('No providers available. Set at least one API key:')
@@ -316,42 +336,76 @@ async function evaluate() {
           : `Generate a ${test.workspaceType || 'creative'} text for the following context:\n\n${test.name}\n\n${test.synopsis}`
 
         process.stdout.write(`    ${test.id.padEnd(40)} `)
-        const result = await runTest(cfg.id, prompt, systemPrompt, cfg.model)
 
-        if (result.error) {
+        // Run each cell REPEATS times so we can report run-to-run variance
+        // instead of trusting a single sample (which lets rankings flip on noise).
+        const runs = []
+        let firstError = null
+        for (let r = 0; r < REPEATS; r++) {
+          const result = await runTest(cfg.id, prompt, systemPrompt, cfg.model)
+          if (result.error) {
+            firstError = firstError || result
+            continue
+          }
+          const scored = await judgeOutput(result.output, test, prompt)
+          runs.push({ result, scored })
+        }
+
+        if (runs.length === 0) {
           // runTest returns latencyMs (not elapsedMs); reading elapsedMs here
           // printed/stored `undefined` for every errored call.
-          process.stdout.write(`ERROR ${result.latencyMs}ms\n`)
+          process.stdout.write(`ERROR ${firstError?.latencyMs}ms\n`)
           resultsByProvider[cfg.id].push({
             testId: test.id,
             taskType: test.taskType || null,
             status: 'error',
-            error: result.error,
-            latencyMs: result.latencyMs,
+            error: firstError?.error,
+            latencyMs: firstError?.latencyMs,
             score: null,
             wordCount: 0
           })
         } else {
-          const scored = await judgeOutput(result.output, test, prompt)
-          const costStr = result.estimatedCost !== null ? ` $${result.estimatedCost}` : ''
+          const scores = runs.map((r) => r.scored.score).filter((s) => typeof s === 'number')
+          const meanScore = scores.length
+            ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)
+            : null
+          const stdev =
+            scores.length > 1 && meanScore != null
+              ? +Math.sqrt(
+                  scores.reduce((a, s) => a + (s - meanScore) ** 2, 0) / scores.length
+                ).toFixed(2)
+              : 0
+          const meanLatency = Math.round(
+            runs.reduce((a, r) => a + r.result.latencyMs, 0) / runs.length
+          )
+          const allCosts = runs.every((r) => r.result.estimatedCost != null)
+          const meanCost = allCosts
+            ? +(runs.reduce((a, r) => a + r.result.estimatedCost, 0) / runs.length).toFixed(6)
+            : runs[runs.length - 1].result.estimatedCost
+          const rep = runs[runs.length - 1]
+          const costStr = meanCost != null ? ` $${meanCost}` : ''
+          const spreadStr = REPEATS > 1 ? ` ±${stdev} (n=${runs.length})` : ''
           process.stdout.write(
-            `${String(result.latencyMs).padStart(7)}ms  ${scored.score}/10  ${result.wordCount}w${costStr}\n`
+            `${String(meanLatency).padStart(7)}ms  ${meanScore}/10${spreadStr}  ${rep.result.wordCount}w${costStr}\n`
           )
           resultsByProvider[cfg.id].push({
             testId: test.id,
             taskType: test.taskType || null,
             status: 'completed',
-            model: result.model,
-            latencyMs: result.latencyMs,
-            score: scored.score,
-            wordCount: result.wordCount,
-            charCount: result.charCount,
-            inputTokens: result.inputTokens,
-            outputTokens: result.outputTokens,
-            estimatedCost: result.estimatedCost,
-            output: result.output,
-            dimensionScores: scored.dimensionScores,
-            issues: scored.issues
+            model: rep.result.model,
+            latencyMs: meanLatency,
+            score: meanScore,
+            scoreStdDev: stdev,
+            runScores: scores,
+            repeats: runs.length,
+            wordCount: rep.result.wordCount,
+            charCount: rep.result.charCount,
+            inputTokens: rep.result.inputTokens,
+            outputTokens: rep.result.outputTokens,
+            estimatedCost: meanCost,
+            output: rep.result.output,
+            dimensionScores: rep.scored.dimensionScores,
+            issues: rep.scored.issues
           })
         }
       }
@@ -371,6 +425,7 @@ async function evaluate() {
       suite: suite.label,
       suiteVersion: suite.version,
       testCount: suite.tests.length,
+      repeats: REPEATS,
       providers: available.map((c) => ({ id: c.id, label: c.label, model: c.model })),
       aggregates,
       rankings,
