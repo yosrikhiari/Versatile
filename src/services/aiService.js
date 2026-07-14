@@ -203,16 +203,28 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
     timeout: options.timeout
   }
 
+  // A failed stream can't be safely resumed: generation is non-deterministic,
+  // so a retry re-streams from token 0. Once we've forwarded any chunk to the
+  // caller, replaying would duplicate/garble the visible output — so we only
+  // retry (and only fall back) while nothing has been emitted yet. After the
+  // first chunk, a failure propagates with the partial output already shown.
+  let emittedAny = false
+  const trackedOnChunk = onChunk
+    ? (delta, full) => {
+        emittedAny = true
+        onChunk(delta, full)
+      }
+    : undefined
+  const shouldRetry = (error) => !emittedAny && isRetryable(error)
+
   try {
     return await withRetry(
-      (attempt, isIntermediate) => {
-        const chunkHandler = attempt > 0 && isIntermediate ? undefined : onChunk
-        return providerModule.stream(prompt, systemPrompt, model, chunkHandler, providerOptions)
-      },
-      isRetryable,
+      () => providerModule.stream(prompt, systemPrompt, model, trackedOnChunk, providerOptions),
+      shouldRetry,
       { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
     )
   } catch (error) {
+    if (emittedAny) throw error
     const store = useSettingsStore()
     if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
       const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
@@ -221,13 +233,19 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
         if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
           const fallbackModel = defaultModelForProvider(store.aiProviderFallback)
           try {
-            return await fallbackModule.stream(prompt, systemPrompt, fallbackModel, onChunk, {
-              apiKey: fallbackKey || undefined,
-              signal: options.signal,
-              temperature: options.temperature,
-              maxTokens: options.maxTokens,
-              timeout: options.timeout
-            })
+            return await fallbackModule.stream(
+              prompt,
+              systemPrompt,
+              fallbackModel,
+              trackedOnChunk,
+              {
+                apiKey: fallbackKey || undefined,
+                signal: options.signal,
+                temperature: options.temperature,
+                maxTokens: options.maxTokens,
+                timeout: options.timeout
+              }
+            )
           } catch (fallbackError) {
             fallbackError.cause = error
             throw fallbackError
