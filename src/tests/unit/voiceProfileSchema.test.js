@@ -88,20 +88,22 @@ describe('validateVoiceProfile', () => {
     )
   })
 
-  it('validates punctuation types', () => {
+  it('validates punctuation types (accepts number or numeric string)', () => {
     const profile = createEmptyVoiceProfile()
     profile.punctuation = {
-      ellipsisFrequency: 0.5,
-      dashFrequency: true,
-      exclamationFrequency: null,
-      semicolonFrequency: 'abc',
-      commaFrequency: '0.5'
+      ellipsisFrequency: 0.5, // number — valid (this is what the analyzer emits)
+      dashFrequency: true, // invalid
+      exclamationFrequency: null, // invalid
+      semicolonFrequency: 'abc', // non-numeric string — invalid
+      commaFrequency: '0.5' // numeric string — valid
     }
     const result = validateVoiceProfile(profile)
     expect(result.valid).toBe(false)
-    expect(result.errors).toContain('punctuation.ellipsisFrequency must be numeric string')
-    expect(result.errors).toContain('punctuation.dashFrequency must be numeric string')
-    expect(result.errors).toContain('punctuation.semicolonFrequency must be numeric string')
+    expect(result.errors).not.toContain('punctuation.ellipsisFrequency must be a number')
+    expect(result.errors).not.toContain('punctuation.commaFrequency must be a number')
+    expect(result.errors).toContain('punctuation.dashFrequency must be a number')
+    expect(result.errors).toContain('punctuation.exclamationFrequency must be a number')
+    expect(result.errors).toContain('punctuation.semicolonFrequency must be a number')
   })
 
   it('validates pacing types', () => {

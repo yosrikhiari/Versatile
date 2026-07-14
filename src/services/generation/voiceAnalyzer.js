@@ -12,6 +12,8 @@
  * - Metadata: sample size, consistency score
  */
 
+import { validateVoiceProfile } from './voiceProfileSchema'
+
 const MINIMUM_TEXT_LENGTH = 500 // words
 const MINIMUM_SENTENCES = 10
 
@@ -43,7 +45,7 @@ export const analyzeVoiceProfile = (textSamples) => {
   // Calculate confidence based on sample size
   const confidence = calculateConfidence(wordCount, sentenceStructure.sentences.length)
 
-  return {
+  const profile = {
     vocabulary,
     sentenceStructure,
     punctuation,
@@ -57,6 +59,20 @@ export const analyzeVoiceProfile = (textSamples) => {
       confidence
     }
   }
+
+  // Guard: surface a schema drift between this producer and validateVoiceProfile
+  // instead of letting a malformed profile flow downstream silently. Purely
+  // diagnostic — must never break analysis, so it's wrapped defensively.
+  try {
+    const { valid, errors } = validateVoiceProfile(profile)
+    if (!valid) {
+      console.warn('[voiceAnalyzer] produced a profile that fails validation:', errors.join('; '))
+    }
+  } catch (e) {
+    console.warn('[voiceAnalyzer] validation guard errored:', e?.message)
+  }
+
+  return profile
 }
 
 /**

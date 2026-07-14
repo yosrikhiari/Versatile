@@ -139,11 +139,14 @@ export const validateVoiceProfile = (profile) => {
       'commaFrequency'
     ]
     punctKeys.forEach((key) => {
-      if (
-        typeof profile.punctuation[key] !== 'string' ||
-        isNaN(parseFloat(profile.punctuation[key]))
-      ) {
-        errors.push(`punctuation.${key} must be numeric string`)
+      // Accept a number (what the analyzer actually emits) or a numeric string
+      // (legacy/serialized profiles). Numbers are canonical.
+      const v = profile.punctuation[key]
+      const ok =
+        (typeof v === 'number' && Number.isFinite(v)) ||
+        (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(parseFloat(v)))
+      if (!ok) {
+        errors.push(`punctuation.${key} must be a number`)
       }
     })
   }
