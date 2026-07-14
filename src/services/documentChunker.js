@@ -71,6 +71,26 @@ export async function mergeSmallChunks(chunks, minSentences) {
   return workerCall('mergeSmallChunks', chunks, minSentences)
 }
 
+const CHUNK_OVERLAP_SENTENCES = 1
+
+// Prepend the tail (last N sentences) of the previous chunk to each chunk, so a
+// fact that straddles a hard boundary still appears in full in at least one
+// chunk's retrievable text. Applied to the final flat chunk list, so it is
+// path-agnostic (semantic / paragraph-group / size-based). Only `text` (what
+// gets embedded and retrieved) is augmented; startIdx/endIdx keep pointing at
+// the chunk's own sentences, so heading association is unaffected.
+function addChunkOverlap(chunks, overlap = CHUNK_OVERLAP_SENTENCES) {
+  if (!Array.isArray(chunks) || chunks.length <= 1 || overlap <= 0) return chunks
+  return chunks.map((chunk, i) => {
+    if (i === 0) return chunk
+    const prevSentences = chunks[i - 1].sentences
+    if (!Array.isArray(prevSentences) || prevSentences.length === 0) return chunk
+    const tail = prevSentences.slice(-overlap).join(' ').trim()
+    if (!tail) return chunk
+    return { ...chunk, text: `${tail} ${chunk.text}`.trim() }
+  })
+}
+
 export async function computeSemanticChunks(text, options = {}) {
   const store = useSettingsStore()
   const threshold = options.threshold ?? store.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
@@ -94,7 +114,7 @@ export async function computeSemanticChunks(text, options = {}) {
     } else {
       console.warn(`Large document (${SENTENCE_COUNT} sentences), using size-based chunking`)
     }
-    return await workerCall('sizeBasedChunk', text, maxChunkSize)
+    return addChunkOverlap(await workerCall('sizeBasedChunk', text, maxChunkSize))
   }
 
   const groupByParagraph = SENTENCE_COUNT >= 12
@@ -175,7 +195,7 @@ export async function computeSemanticChunks(text, options = {}) {
   }
 
   onProgress(100, 'Chunking complete')
-  return result
+  return addChunkOverlap(result)
 }
 
 async function recursiveSplit(chunk, maxChars, provider, model, threshold) {

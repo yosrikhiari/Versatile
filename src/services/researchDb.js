@@ -6,6 +6,38 @@ const READY = 'READY'
 const FAILED = 'FAILED'
 const STALE = 'STALE'
 
+// In-memory cache of each project's chunks. Retrieval (searchLexical /
+// semanticSearch) runs once per scene during generation and previously reloaded
+// + deserialized every chunk (full text + 768-float embedding) from IndexedDB
+// on every call — the dominant retrieval cost. A single global version counter,
+// bumped by every researchChunks mutation, transparently invalidates all cached
+// projects, so a stale read is impossible as long as writes go through this
+// module (they all do).
+let chunkCacheVersion = 0
+const chunkCache = new Map() // projectId -> { version, chunks }
+const CHUNK_SCALE_WARN_AT = 1500
+const warnedScaleProjects = new Set()
+
+function invalidateChunkCache() {
+  chunkCacheVersion++
+}
+
+async function getCachedProjectChunks(projectId) {
+  const cached = chunkCache.get(projectId)
+  if (cached && cached.version === chunkCacheVersion) return cached.chunks
+  const chunks = await db.researchChunks.where({ projectId }).toArray()
+  chunkCache.set(projectId, { version: chunkCacheVersion, chunks })
+  if (chunks.length > CHUNK_SCALE_WARN_AT && !warnedScaleProjects.has(projectId)) {
+    warnedScaleProjects.add(projectId)
+    console.warn(
+      `[researchDb] project ${projectId} has ${chunks.length} chunks; brute-force ` +
+        `main-thread retrieval will start to lag past ~${CHUNK_SCALE_WARN_AT}. ` +
+        `Consider an ANN index / worker-offloaded search at this scale.`
+    )
+  }
+  return chunks
+}
+
 export function getStatuses() {
   return { PENDING, PROCESSING, READY, FAILED, STALE }
 }
@@ -24,6 +56,7 @@ export async function addResearchDocument(doc) {
 
 export async function deleteResearchDocument(id) {
   await db.researchChunks.where({ documentId: id }).delete()
+  invalidateChunkCache()
   return db.researchDocuments.delete(id)
 }
 
@@ -50,11 +83,13 @@ export async function addResearchChunks(chunks) {
         await new Promise((r) => setTimeout(r, 0))
       }
     }
+    invalidateChunkCache()
     return allIds
   } catch (err) {
     if (committedIds.length > 0) {
       try {
         await db.researchChunks.bulkDelete(committedIds)
+        invalidateChunkCache()
       } catch (rollbackErr) {
         throw new Error(
           `addResearchChunks failed after committing ${committedIds.length} chunks. ` +
@@ -84,6 +119,7 @@ export async function updateChunkEmbeddings(updates, meta = {}) {
       })
     }
   })
+  invalidateChunkCache()
 }
 
 export async function markProcessing(ids) {
@@ -92,10 +128,12 @@ export async function markProcessing(ids) {
       await db.researchChunks.update(id, { embeddingStatus: PROCESSING })
     }
   })
+  invalidateChunkCache()
 }
 
 export async function markFailed(ids) {
   await Promise.all(ids.map((id) => db.researchChunks.update(id, { embeddingStatus: FAILED })))
+  invalidateChunkCache()
 }
 
 export async function markStale(projectId, currentProvider, currentModel, currentVersion) {
@@ -116,6 +154,7 @@ export async function markStale(projectId, currentProvider, currentModel, curren
       await db.researchChunks.update(id, { embeddingStatus: STALE })
     }
   })
+  invalidateChunkCache()
   return ids.length
 }
 
@@ -133,11 +172,15 @@ export async function countByStatus(projectId) {
 }
 
 export async function deleteChunksForDocument(documentId) {
-  return db.researchChunks.where({ documentId }).delete()
+  const n = await db.researchChunks.where({ documentId }).delete()
+  invalidateChunkCache()
+  return n
 }
 
 export async function updateChunkEmbedding(chunkId, embedding) {
-  return db.researchChunks.update(chunkId, { embedding })
+  const r = await db.researchChunks.update(chunkId, { embedding })
+  invalidateChunkCache()
+  return r
 }
 
 export async function getDocumentChunkEmbeddings(documentId) {
@@ -185,7 +228,7 @@ export async function searchLexical(projectId, query, limit = 20) {
     .filter((t) => t.length > 1)
   if (qTokens.length === 0) return []
 
-  const allChunks = await db.researchChunks.where({ projectId }).toArray()
+  const allChunks = await getCachedProjectChunks(projectId)
   const N = allChunks.length
   if (N === 0) return []
 
@@ -230,14 +273,13 @@ export function cosineSimilarity(a, b) {
 
 export async function semanticSearch(projectId, queryEmbedding, limit = 20) {
   if (!queryEmbedding) return []
-  const chunks = await db.researchChunks
-    .where({ projectId })
+  const allChunks = await getCachedProjectChunks(projectId)
+  const scored = allChunks
     .filter((c) => c.embedding && c.embedding.length > 0)
-    .toArray()
-  const scored = chunks.map((c) => ({
-    ...c,
-    _score: cosineSimilarity(c.embedding, queryEmbedding)
-  }))
+    .map((c) => ({
+      ...c,
+      _score: cosineSimilarity(c.embedding, queryEmbedding)
+    }))
   return scored
     .filter((c) => c._score > 0.1)
     .sort((a, b) => b._score - a._score)
@@ -291,5 +333,6 @@ export async function resetChunksStatus(documentId, fromStatus) {
       await db.researchChunks.update(id, { embeddingStatus: PENDING })
     }
   })
+  invalidateChunkCache()
   return chunks.map((c) => ({ id: c.id, text: c.text }))
 }

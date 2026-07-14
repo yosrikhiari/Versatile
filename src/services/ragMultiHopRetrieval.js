@@ -5,6 +5,10 @@ const MAX_CHUNKS_PER_SOURCE = 5
 const MAX_TOTAL_CHARS = 4000
 const SEMANTIC_MIN_SCORE = 0.45
 const LEXICAL_MIN_SCORE = 0.15
+// Reciprocal Rank Fusion constant. 60 is the standard value from the original
+// RRF paper — it damps the contribution of low-ranked items without letting the
+// top rank dominate.
+const RRF_K = 60
 
 export async function multiHopRetrieval({ queries, projectId, topK = MAX_CHUNKS_PER_SOURCE }) {
   if (!projectId) return []
@@ -13,44 +17,43 @@ export async function multiHopRetrieval({ queries, projectId, topK = MAX_CHUNKS_
   const queryTexts = queries.map((q) => (typeof q === 'string' ? q : q.query)).filter(Boolean)
   if (queryTexts.length === 0) return []
 
-  const allResults = new Map()
+  // Reciprocal Rank Fusion. Lexical (BM25, unbounded ~0–10+) and semantic
+  // (cosine, 0–1) scores live on incomparable scales, so the old max/weighted
+  // merge let lexical almost always dominate — the semantic signal was
+  // effectively decorative. RRF discards magnitudes and fuses by *rank* within
+  // each list: score = Σ 1/(k + rank) across every ranked list a chunk appears
+  // in, so lexical and semantic contribute symmetrically.
+  const fusion = new Map() // id -> { chunk, score }
+  const fuseRanked = (list) => {
+    list.forEach((chunk, rank) => {
+      const key = chunk.id
+      const contribution = 1 / (RRF_K + rank + 1)
+      const existing = fusion.get(key)
+      if (existing) existing.score += contribution
+      else fusion.set(key, { chunk, score: contribution })
+    })
+  }
 
   for (const text of queryTexts) {
-    let embedding
+    const lexical = await searchLexical(projectId, text, topK)
+    fuseRanked(lexical.filter((c) => c._score >= LEXICAL_MIN_SCORE))
+
+    let embedding = null
     try {
       embedding = await getEmbedding(text)
     } catch {
       embedding = null
     }
-
-    const lexical = await searchLexical(projectId, text, topK)
-
-    const scored = lexical
-      .filter((c) => c._score >= LEXICAL_MIN_SCORE)
-      .map((c) => ({ ...c, _score: c._score * 0.8 }))
-
     if (embedding) {
       const semantic = await semanticSearch(projectId, embedding, topK)
-      for (const s of semantic) {
-        const key = s.id
-        if (!allResults.has(key) || allResults.get(key)._score < s._score) {
-          allResults.set(key, { ...s, _score: s._score >= SEMANTIC_MIN_SCORE ? s._score : 0 })
-        }
-      }
-    }
-
-    for (const s of scored) {
-      const key = s.id
-      if (!allResults.has(key) || allResults.get(key)._score < s._score) {
-        allResults.set(key, s)
-      }
+      fuseRanked(semantic.filter((c) => c._score >= SEMANTIC_MIN_SCORE))
     }
   }
 
-  const fused = [...allResults.values()]
-    .filter((c) => c._score > 0)
-    .sort((a, b) => b._score - a._score)
+  const fused = [...fusion.values()]
+    .sort((a, b) => b.score - a.score)
     .slice(0, topK)
+    .map(({ chunk, score }) => ({ ...chunk, _score: score }))
 
   let totalChars = 0
   const deduped = []
