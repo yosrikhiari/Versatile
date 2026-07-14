@@ -8,6 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const PIPELINE_DIR = resolve(__dirname)
 const REPORTS_DIR = resolve(PIPELINE_DIR, '..', '..', '..', 'reports')
 const QR_SUITE_PATH = resolve(PIPELINE_DIR, '..', 'quality-regression', 'test-suite.json')
+const TASK_SUITE_PATH = resolve(PIPELINE_DIR, 'task-suite.json')
 
 function ensureDir(path) {
   if (!existsSync(path)) mkdirSync(path, { recursive: true })
@@ -15,6 +16,10 @@ function ensureDir(path) {
 
 function loadTestSuite() {
   const testSuites = [{ path: QR_SUITE_PATH, label: 'quality-regression' }]
+
+  if (existsSync(TASK_SUITE_PATH)) {
+    testSuites.push({ path: TASK_SUITE_PATH, label: 'task-suite' })
+  }
 
   const additionalPath = resolve(PIPELINE_DIR, 'test-suite.json')
   if (existsSync(additionalPath)) {
@@ -145,6 +150,74 @@ function computeRankings(aggregates) {
   }
 }
 
+function computeTaskTypeAggregates(resultsByProvider, suiteTests) {
+  const taskTypeMap = {}
+  for (const test of suiteTests) {
+    if (test.taskType) {
+      if (!taskTypeMap[test.taskType]) taskTypeMap[test.taskType] = new Set()
+      taskTypeMap[test.taskType].add(test.id)
+    }
+  }
+
+  const taskTypes = Object.keys(taskTypeMap)
+  if (taskTypes.length === 0) return null
+
+  const breakdown = {}
+  for (const tt of taskTypes) {
+    const testIds = taskTypeMap[tt]
+    breakdown[tt] = {}
+    for (const [pid, results] of Object.entries(resultsByProvider)) {
+      const byType = results.filter((r) => testIds.has(r.testId))
+      const completed = byType.filter((r) => r.status === 'completed')
+      const errors = byType.filter((r) => r.status === 'error')
+
+      if (completed.length === 0) {
+        breakdown[tt][pid] = {
+          status: 'all_errors',
+          errorCount: errors.length,
+          testCount: byType.length
+        }
+        continue
+      }
+
+      breakdown[tt][pid] = {
+        status: 'ok',
+        completedCount: completed.length,
+        errorCount: errors.length,
+        testCount: byType.length,
+        reliability: +((completed.length / (completed.length + errors.length)) * 100).toFixed(1),
+        avgLatencyMs: Math.round(completed.reduce((a, r) => a + r.latencyMs, 0) / completed.length),
+        avgScore: (() => {
+          const scores = completed.map((r) => r.score).filter((s) => s !== null)
+          return scores.length > 0
+            ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
+            : null
+        })(),
+        avgWordCount: Math.round(completed.reduce((a, r) => a + r.wordCount, 0) / completed.length),
+        estimatedTotalCost: +completed.reduce((a, r) => a + (r.estimatedCost || 0), 0).toFixed(4)
+      }
+    }
+  }
+
+  const rankings = {}
+  for (const tt of taskTypes) {
+    const pids = Object.keys(breakdown[tt]).filter((pid) => breakdown[tt][pid].status === 'ok')
+    if (pids.length < 2) {
+      rankings[tt] = null
+      continue
+    }
+    const byScore = [...pids].sort(
+      (a, b) => (breakdown[tt][b].avgScore || 0) - (breakdown[tt][a].avgScore || 0)
+    )
+    const byLatency = [...pids].sort(
+      (a, b) => breakdown[tt][a].avgLatencyMs - breakdown[tt][b].avgLatencyMs
+    )
+    rankings[tt] = { bestScore: byScore[0] || null, fastest: byLatency[0] }
+  }
+
+  return { taskTypes: Object.keys(taskTypeMap), breakdown, rankings }
+}
+
 function printResults(providerConfigs, resultsByProvider, aggregates, rankings) {
   console.log('╔══════════════════════════════════════════════════════════════╗')
   console.log('║            Model Benchmarking Pipeline Results              ║')
@@ -212,31 +285,61 @@ async function evaluate() {
       resultsByProvider[cfg.id] = []
       console.log(`  ${cfg.label}…`)
 
+      const TASK_PROMPTS = {
+        SPARK: {
+          system:
+            'You are a creative brainstorming assistant. Generate original ideas, concepts, or angles. Be specific and imaginative.',
+          user: (test) =>
+            `Brainstorm ideas for the following:\n\nTopic: ${test.name}\n\nContext: ${test.synopsis}\n\n${test.prompt || ''}`
+        },
+        STORY: {
+          system:
+            'You are a narrative writing assistant. Continue the story with vivid detail, consistent voice, and logical continuity.',
+          user: (test) =>
+            `Continue the narrative based on this context:\n\nTitle: ${test.name}\n\nSynopsis: ${test.synopsis}\n\n${test.prompt || ''}`
+        },
+        POLISH: {
+          system:
+            'You are a text refinement assistant. Polish and improve the provided text while preserving all meaning and key details.',
+          user: (test) =>
+            `Polish and improve the following text. Preserve the original meaning but improve clarity, concision, and impact:\n\n${test.prompt || test.synopsis}`
+        }
+      }
+
       for (const test of suite.tests) {
-        const systemPrompt = `You are an expert writing assistant working in ${test.workspaceType} mode. Respond with the requested output only.`
-        const prompt = `Generate a ${test.workspaceType} text for the following context:\n\n${test.name}\n\n${test.synopsis}`
+        const taskTemplate = test.taskType ? TASK_PROMPTS[test.taskType] : null
+        const systemPrompt = taskTemplate
+          ? taskTemplate.system
+          : `You are an expert writing assistant working in ${test.workspaceType || 'creative'} mode. Respond with the requested output only.`
+        const prompt = taskTemplate
+          ? taskTemplate.user(test)
+          : `Generate a ${test.workspaceType || 'creative'} text for the following context:\n\n${test.name}\n\n${test.synopsis}`
 
         process.stdout.write(`    ${test.id.padEnd(40)} `)
         const result = await runTest(cfg.id, prompt, systemPrompt, cfg.model)
 
         if (result.error) {
-          process.stdout.write(`ERROR ${result.elapsedMs}ms\n`)
+          // runTest returns latencyMs (not elapsedMs); reading elapsedMs here
+          // printed/stored `undefined` for every errored call.
+          process.stdout.write(`ERROR ${result.latencyMs}ms\n`)
           resultsByProvider[cfg.id].push({
             testId: test.id,
+            taskType: test.taskType || null,
             status: 'error',
             error: result.error,
-            latencyMs: result.elapsedMs,
+            latencyMs: result.latencyMs,
             score: null,
             wordCount: 0
           })
         } else {
-          const scored = await judgeOutput(result.output, test)
+          const scored = await judgeOutput(result.output, test, prompt)
           const costStr = result.estimatedCost !== null ? ` $${result.estimatedCost}` : ''
           process.stdout.write(
             `${String(result.latencyMs).padStart(7)}ms  ${scored.score}/10  ${result.wordCount}w${costStr}\n`
           )
           resultsByProvider[cfg.id].push({
             testId: test.id,
+            taskType: test.taskType || null,
             status: 'completed',
             model: result.model,
             latencyMs: result.latencyMs,
@@ -258,6 +361,7 @@ async function evaluate() {
     const aggregates = computeAggregates(resultsByProvider)
     const rankings = computeRankings(aggregates)
     const matrix = buildComparisonMatrix(resultsByProvider)
+    const taskTypeAggs = computeTaskTypeAggregates(resultsByProvider, suite.tests)
 
     printResults(available, resultsByProvider, aggregates, rankings)
 
@@ -271,6 +375,7 @@ async function evaluate() {
       aggregates,
       rankings,
       comparisonMatrix: matrix,
+      taskTypeBreakdown: taskTypeAggs,
       detailedResults: resultsByProvider
     }
 

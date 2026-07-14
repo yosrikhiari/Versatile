@@ -25,8 +25,8 @@ export async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 5):
     try {
       return await fn()
     } catch (error) {
-      const isPermanent = PERMANENT_ERROR_PATTERNS.some(
-        (p) => (error as Error).message?.includes(p)
+      const isPermanent = PERMANENT_ERROR_PATTERNS.some((p) =>
+        (error as Error).message?.includes(p)
       )
       if (isPermanent || attempt >= maxRetries - 1) {
         throw error
@@ -38,6 +38,37 @@ export async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 5):
   throw new Error('retryWithBackoff exhausted')
 }
 
+/**
+ * Extract the first balanced top-level JSON object from a string, respecting
+ * string literals and escapes. Replaces the previous regex approaches which
+ * were either non-greedy (`/\{[\s\S]*?\}/`, truncates at the first `}` and so
+ * breaks on any nested object) or greedy (`/\{[\s\S]*\}/`, over-matches when
+ * trailing text contains a `}`).
+ */
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf('{')
+  if (start === -1) return null
+  let depth = 0
+  let inStr = false
+  let escaped = false
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+    if (inStr) {
+      if (escaped) escaped = false
+      else if (ch === '\\') escaped = true
+      else if (ch === '"') inStr = false
+    } else if (ch === '"') {
+      inStr = true
+    } else if (ch === '{') {
+      depth++
+    } else if (ch === '}') {
+      depth--
+      if (depth === 0) return text.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
 export function sanitizeJson(raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== 'string') return null
   let cleaned = raw.trim()
@@ -46,10 +77,10 @@ export function sanitizeJson(raw: unknown): Record<string, unknown> | null {
   cleaned = cleaned.replace(/```$/i, '')
   cleaned = cleaned.replace(/```json$/i, '')
   cleaned = cleaned.trim()
-  const match = cleaned.match(/\{[\s\S]*\}/)
+  const match = extractJsonObject(cleaned)
   if (!match) return null
   try {
-    return JSON.parse(match[0]) as Record<string, unknown>
+    return JSON.parse(match) as Record<string, unknown>
   } catch {
     return null
   }
@@ -69,11 +100,11 @@ export function sanitizeJsonResponse(response: unknown): Record<string, unknown>
 
   cleaned = cleaned.trim()
 
-  const jsonMatch = cleaned.match(/\{[\s\S]*?\}/)
+  const jsonMatch = extractJsonObject(cleaned)
   if (!jsonMatch) return null
 
   try {
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>
+    const parsed = JSON.parse(jsonMatch) as Record<string, unknown>
 
     const flattened: Record<string, string | string[]> = {}
     for (const [key, value] of Object.entries(parsed)) {
@@ -85,7 +116,9 @@ export function sanitizeJsonResponse(response: unknown): Record<string, unknown>
           const innerParsed = JSON.parse(str)
           str =
             typeof innerParsed === 'string' ? innerParsed : Object.values(innerParsed).join('; ')
-        } catch { /* not inner JSON */ }
+        } catch {
+          /* not inner JSON */
+        }
         flattened[key] = str.replace(/^\{"?|"}$/g, '').replace(/\\"/g, '"')
       } else if (typeof value === 'number' || typeof value === 'boolean') {
         flattened[key] = String(value)
@@ -108,10 +141,7 @@ export function sanitizeJsonResponse(response: unknown): Record<string, unknown>
   }
 }
 
-export function getProjectContext(
-  category?: string,
-  description?: string
-): string {
+export function getProjectContext(category?: string, description?: string): string {
   const parts: string[] = []
   if (category) {
     parts.push(`Category: ${category}`)
@@ -122,9 +152,7 @@ export function getProjectContext(
   return parts.length > 0 ? `\n\n${parts.join('\n')}` : ''
 }
 
-export async function getExistingEntitiesContext(
-  context?: string
-): Promise<string> {
+export async function getExistingEntitiesContext(context?: string): Promise<string> {
   return context ? `\n\n${context}` : ''
 }
 

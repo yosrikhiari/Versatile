@@ -476,7 +476,7 @@ describe('useVolumeStoryGenerator', () => {
     expect(typeof gen.regenerateScene).toBe('function')
   })
 
-  it('reset restores initial state', () => {
+  it('reset restores initial state', async () => {
     const gen = useVolumeStoryGenerator()
     gen.phase.value = 'writing'
     gen.error.value = 'Something went wrong'
@@ -484,7 +484,7 @@ describe('useVolumeStoryGenerator', () => {
     gen.scenePlan.value = [{ id: 1 }]
     gen.progress.current = 5
     gen.progress.total = 10
-    gen.reset()
+    await gen.reset()
     expect(gen.phase.value).toBe('idle')
     expect(gen.error.value).toBeNull()
     expect(gen.volumeId.value).toBeNull()

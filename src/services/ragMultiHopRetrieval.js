@@ -1,5 +1,5 @@
 import { getEmbedding } from './embeddingService'
-import { semanticSearch, searchLexical, getAllChunksForProject } from './researchDb'
+import { semanticSearch, searchLexical, getAllResearchDocuments } from './researchDb'
 
 const MAX_CHUNKS_PER_SOURCE = 5
 const MAX_TOTAL_CHARS = 4000
@@ -59,6 +59,21 @@ export async function multiHopRetrieval({ queries, projectId, topK = MAX_CHUNKS_
     if (totalChars + text.length > MAX_TOTAL_CHARS) break
     deduped.push(r)
     totalChars += text.length
+  }
+
+  // Attach a human-readable source title so citations show the document name /
+  // section heading instead of a bare numeric documentId. Documents (not chunks)
+  // are few, so a single lookup keyed by id is cheap.
+  if (deduped.length > 0) {
+    try {
+      const docs = await getAllResearchDocuments(projectId)
+      const titleById = new Map(docs.map((d) => [d.id, d.title || d.fileName || d.name]))
+      for (const r of deduped) {
+        r.documentTitle = titleById.get(r.documentId) || r.heading || r.documentTitle
+      }
+    } catch {
+      // Title enrichment is best-effort; fall back to whatever label the chunk has.
+    }
   }
 
   return deduped

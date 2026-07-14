@@ -10,52 +10,81 @@ import { buildGenerationContext } from '../context/index'
  */
 const ROUTING_TABLE = {
   idle: {
-    START: { nextPhase: 'planning', handler: handleStart }
+    START: { nextPhase: 'volume-creating', handler: handleCreateVolume },
+    BOOTSTRAP_START: { nextPhase: 'bootstrapping', handler: handleBootstrapping },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
-  planning: {
-    PLAN_READY: { nextPhase: 'bootstrapping', handler: handlePlanReady },
-    ERROR: { nextPhase: 'error', handler: handleError }
+  'volume-creating': {
+    VOLUME_CREATED: { nextPhase: 'bootstrapping', handler: handleBootstrapping },
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
   bootstrapping: {
-    BOOTSTRAPPED: { nextPhase: 'confirming', handler: handleBootstrapped },
-    ERROR: { nextPhase: 'error', handler: handleError }
+    BOOTSTRAPPED: { nextPhase: 'planning', handler: handlePlanGenerated },
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
-  confirming: {
-    CONFIRMED: { nextPhase: 'writing', handler: handleConfirmed },
+  planning: {
+    PLAN_READY: { nextPhase: 'plan-preview', handler: handlePlanReady },
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
+  },
+  'plan-preview': {
+    CONFIRMED: { nextPhase: 'spine-generation', handler: handleConfirmed },
     REJECTED: { nextPhase: 'planning', handler: handleRejected },
-    ERROR: { nextPhase: 'error', handler: handleError }
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
+  },
+  'spine-generation': {
+    SPINE_GENERATED: { nextPhase: 'writing', handler: handleSpineGenerated },
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
   writing: {
     SCENE_WRITTEN: { nextPhase: 'scene-review', handler: handleSceneWritten },
     BATCH_COMPLETE: { nextPhase: 'sync-preview', handler: handleBatchComplete },
-    ALL_WRITTEN: { nextPhase: 'consistency-audit', handler: handleAllWritten },
-    ERROR: { nextPhase: 'error', handler: handleError }
+    ALL_WRITTEN: { nextPhase: 'repairing', handler: handleAllWritten },
+    WRITING_DONE: { nextPhase: 'complete', handler: handleWritingDone },
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
   'scene-review': {
     APPROVED: { nextPhase: 'writing', handler: handleSceneApproved },
     REJECTED: { nextPhase: 'writing', handler: handleSceneRejected },
-    ERROR: { nextPhase: 'error', handler: handleError }
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
   'sync-preview': {
     SYNC_APPROVED: { nextPhase: 'writing', handler: handleSyncApproved },
     SYNC_REJECTED: { nextPhase: 'writing', handler: handleSyncRejected },
-    ERROR: { nextPhase: 'error', handler: handleError }
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
-  'consistency-audit': {
+  repairing: {
+    REPAIRED: { nextPhase: 'consistency-check', handler: handleRepairFailed },
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
+  },
+  'consistency-check': {
     HAS_ISSUES: { nextPhase: 'consistency-fix', handler: handleConsistencyIssues },
     NO_ISSUES: { nextPhase: 'committing', handler: handleConsistencyClean },
-    ERROR: { nextPhase: 'error', handler: handleError }
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
   'consistency-fix': {
-    FIXED: { nextPhase: 'consistency-audit', handler: handleConsistencyFixed },
+    FIXED: { nextPhase: 'consistency-check', handler: handleConsistencyFixed },
     MAX_ROUNDS: { nextPhase: 'committing', handler: handleConsistencyMaxRounds },
-    ERROR: { nextPhase: 'error', handler: handleError }
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
   committing: {
     COMMITTED: { nextPhase: 'complete', handler: handleCommitted },
-    ERROR: { nextPhase: 'error', handler: handleError }
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
   },
-  complete: {},
+  complete: {
+    RESET: { nextPhase: 'idle', handler: handleReset }
+  },
   error: {
     RETRY: { nextPhase: null, handler: handleRetry },
     RESET: { nextPhase: 'idle', handler: handleReset }
@@ -73,17 +102,27 @@ function transitionTo(memory, phase, reason) {
 // ─── Route Handlers ──────────────────────────────────────────
 
 /**
- * IDLE ──START──► PLANNING
- * Director agent generates the scene/chapter plan from write params.
+ * VOLUME_CREATING ──VOLUME_CREATED──► BOOTSTRAPPING
+ * Stub — inline code owns entity bootstrapping for now.
+ * In the final state this handler would call bootstrapper.bootstrapEntities.
  */
-async function handleStart(memory, payload) {
-  const { projectId, volumeId, writeParams, writerParams } = payload
+async function handleBootstrapping(memory, payload) {
+  const { projectId, volumeId } = payload
   memory.projectId.value = projectId
   memory.volumeId.value = volumeId
-  memory.writeParams.value = writeParams
-  memory.setProgress('Generating plan...', 5)
+  memory.setProgress('Bootstrapping entities...', 10)
+  memory.instances.actLog?.addEntry?.('bootstrap', { projectId, volumeId })
+}
 
-  const plan = await memory.instances.director.generatePlan(writerParams)
+/**
+ * BOOTSTRAPPING ──BOOTSTRAPPED──► PLANNING
+ * Accept plan from payload (inline mode) or generate via director (final mode).
+ */
+async function handlePlanGenerated(memory, payload) {
+  memory.setProgress('Generating plan...', 15)
+
+  const plan =
+    payload.plan ?? (await memory.instances.director.generateStoryPlan(payload.writerParams))
   memory.scenePlan.value = plan.scenes ?? []
   memory.chapterPlan.value = plan.chapters ?? []
   memory.spineArray.value = plan.spine ?? []
@@ -91,7 +130,32 @@ async function handleStart(memory, payload) {
 }
 
 /**
- * PLANNING ──PLAN_READY──► BOOTSTRAPPING
+ * IDLE ──START──► VOLUME_CREATING
+ * Create the volume record and assign it to memory.
+ */
+async function handleCreateVolume(memory, payload) {
+  const { projectId, volumeId, writeParams } = payload
+  memory.projectId.value = projectId
+  memory.volumeId.value = volumeId
+  memory.writeParams.value = writeParams
+  memory.setProgress('Creating volume...', 2)
+
+  memory.instances.actLog?.addEntry?.('volume', { projectId, volumeId })
+}
+
+/**
+ * REPAIRING ──REPAIRED──► CONSISTENCY_AUDIT
+ * Post-writing repair of failed/weak scenes.
+ */
+async function handleRepairFailed(memory, payload) {
+  memory.setProgress('Repairing ragged scenes...', 82)
+  memory.instances.actLog?.addEntry?.('repair', {
+    sceneCount: payload.failedScenes?.length
+  })
+}
+
+/**
+ * PLANNING ──PLAN_READY──► PLAN_PREVIEW
  * Pre-seed graph edges and build retrieval context for every scene.
  */
 async function handlePlanReady(memory, payload) {
@@ -108,16 +172,8 @@ async function handlePlanReady(memory, payload) {
 }
 
 /**
- * BOOTSTRAPPING ──BOOTSTRAPPED──► CONFIRMING
- * Wait for human confirmation of the spine / plan.
- */
-async function handleBootstrapped(memory, _payload) {
-  memory.setProgress('Awaiting confirmation...', 15)
-}
-
-/**
- * CONFIRMING ──CONFIRMED──► WRITING
- * User approved the plan — begin scene-by-scene writing.
+ * PLAN_PREVIEW ──CONFIRMED──► SPINE_GENERATION
+ * User approved the plan — prepare writing state.
  */
 async function handleConfirmed(memory, payload) {
   memory.currentWriteIndex.value = 0
@@ -130,7 +186,15 @@ async function handleConfirmed(memory, payload) {
 }
 
 /**
- * CONFIRMING ──REJECTED──► PLANNING
+ * SPINE_GENERATION ──SPINE_GENERATED──► WRITING
+ * Spine has been generated — writing phase is ready to begin.
+ */
+async function handleSpineGenerated(memory, _payload) {
+  memory.setProgress('Spine generated, starting scene writing...', 20)
+}
+
+/**
+ * PLAN_PREVIEW ──REJECTED──► PLANNING
  * User rejected the plan — re-enter planning.
  */
 async function handleRejected(memory, payload) {
@@ -202,8 +266,8 @@ async function handleBatchComplete(memory, payload) {
 }
 
 /**
- * WRITING ──ALL_WRITTEN──► CONSISTENCY_AUDIT
- * Every scene has an initial draft — run cross-scene audit.
+ * WRITING ──ALL_WRITTEN──► REPAIRING
+ * Every scene has an initial draft — run post-writing repair.
  */
 async function handleAllWritten(memory, _payload) {
   memory.setProgress('Auditing cross-scene consistency...', 85)
@@ -275,6 +339,14 @@ async function handleConsistencyMaxRounds(memory, payload) {
     rounds: payload.round,
     remainingIssues: payload.remaining
   })
+}
+
+/**
+ * WRITING_DONE from writing phase (direct transition to complete)
+ * Used when the inline generation pipeline finishes all work.
+ */
+async function handleWritingDone(memory, _payload) {
+  memory.setProgress('Generation complete', 100)
 }
 
 /**

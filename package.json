@@ -21,6 +21,8 @@
     "pipeline:active:sample": "npx vite-node scripts/ml-pipelines/active-learning/analyze.js --source scripts/ml-pipelines/active-learning/sample-eval-history.json",
     "pipeline:curate": "npx vite-node scripts/ml-pipelines/fine-tuning-curation/curate.js",
     "pipeline:curate:sample": "npx vite-node scripts/ml-pipelines/fine-tuning-curation/curate.js --source scripts/ml-pipelines/active-learning/sample-eval-history.json",
+    "pipeline:curate:export": "npx vite-node scripts/ml-pipelines/fine-tuning-curation/export-training-set.js",
+    "pipeline:curate:train": "npx vite-node scripts/ml-pipelines/fine-tuning-curation/export-training-set.js --source scripts/ml-pipelines/active-learning/sample-eval-history.json",
     "pipeline:drift": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js",
     "pipeline:drift:sample": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/active-learning/sample-eval-history.json",
     "pipeline:drift:synthetic": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/drift-monitor/sample-drift-evals.json --threshold 1",

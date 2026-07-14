@@ -1,5 +1,7 @@
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { buildFocusInstructions, formatEvalFeedback } from '../services/evalFeedback'
+import { gateDimensionCoverage, gateScoreDistribution } from '../services/evalGates'
+import { useProjectStore } from '../stores/projectStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
@@ -48,7 +50,7 @@ import { ConsistencyService } from './generation/consistency'
 import { GenerationLifecycleService } from './generation/lifecycle'
 import { SceneInteractionService } from './generation/interaction'
 import { useDelegatorGeneration } from './generation/delegator'
-import { ParallelWritingService, SceneWritingService } from './generation/writing'
+
 import { getResumableRun } from './generation/checkpoint'
 import { buildPreliminaryEdges } from './generation/graph'
 
@@ -118,6 +120,8 @@ export function useVolumeStoryGenerator() {
   const manuscriptStore = useManuscriptStore()
   const storyGraphStore = useStoryGraphStore()
   const storyDocuments = useStoryDocuments()
+  const projectStore = useProjectStore()
+  const workspaceType = computed(() => projectStore.activeWorkspaceType)
 
   const delegatorApi = useDelegatorGeneration()
   const phase = delegatorApi.memory.phase
@@ -187,12 +191,12 @@ export function useVolumeStoryGenerator() {
   sceneInteractionService.onWriteNextBatch = (i) => writeNextBatch(i)
   sceneInteractionService.onCompleteGeneration = (pid) => completeGeneration(pid)
 
-  Object.assign(delegatorApi.memory.instances, {
-    bootstrapper,
-    volumeStore,
-    storyGraphStore,
-    storyDocuments
-  })
+  // Wire locally-constructed services into Delegator memory so tool wrappers
+  // (commitTool, consistencyTool, sceneTool) can reach them via memory.instances.*
+  const { memory } = delegatorApi
+  memory.instances.commitService = commitService
+  memory.instances.consistencyService = consistencyService
+  memory.instances.sceneInteractionService = sceneInteractionService
 
   function logRejectedPattern(context, prose) {
     rejectedPatterns.value.push({ context, prose, timestamp: Date.now() })
@@ -316,13 +320,12 @@ export function useVolumeStoryGenerator() {
       storyBibleDocs
     }
 
-    phase.value = 'writing'
-    onPhaseChange?.('writing')
+    await delegatorApi.dispatch('SPINE_GENERATED')
     try {
       await writeNextBatch(resumeIndex)
       return { resumed: true, from: resumeIndex, total: plan.length }
     } catch (err) {
-      phase.value = 'error'
+      await delegatorApi.dispatch('ERROR', { error: err, message: err.message || 'Resume failed' })
       error.value = err.message || 'Resume failed'
       return { resumed: false, reason: 'error', error: error.value }
     }
@@ -384,9 +387,6 @@ export function useVolumeStoryGenerator() {
     let activeStage = null
     try {
       progress.total = 4
-      phase.value = 'bootstrapping'
-      onPhaseChange?.('bootstrapping')
-
       // Phase 0: Create volume first (so bootstrapping has a real volume ID)
       progress.current = 1
       progress.statusText = 'Creating volume...'
@@ -397,6 +397,8 @@ export function useVolumeStoryGenerator() {
         sectionIds: []
       })
       volumeId.value = vId
+
+      await delegatorApi.dispatch('BOOTSTRAP_START', { projectId, volumeId: vId })
 
       // Load story bible context and existing manuscript as evidence for the Director
       progress.statusText = 'Loading story context for planning...'
@@ -510,8 +512,7 @@ export function useVolumeStoryGenerator() {
       // Phase 2: Generate story plan using the updated context
       progress.current = 3
       progress.statusText = 'Forging the Story Graph (Planning scenes)...'
-      phase.value = 'planning'
-      onPhaseChange?.('planning')
+      await delegatorApi.dispatch('BOOTSTRAPPED')
       const planPhase = actLog.addPhase(currentTaskId, 'Planning')
       activeStage = 'structure'
       await updateGenRunStage(projectId, 'structure', { status: 'running' })
@@ -611,8 +612,7 @@ export function useVolumeStoryGenerator() {
       actLog.updatePhase(currentTaskId, planPhase, { status: 'done' })
 
       // Phase 2.5: Pause at plan-preview for user editing
-      phase.value = 'plan-preview'
-      onPhaseChange?.('plan-preview')
+      await delegatorApi.dispatch('PLAN_READY', { projectId, volumeId: vId, plan: scenePlan.value })
       // Return control; user edits plan and calls confirmPlan() to proceed
 
       // In one-click mode, approve the plan as-is and run straight through to
@@ -633,7 +633,7 @@ export function useVolumeStoryGenerator() {
       // Store arc for later use
       return { scenes: scenePlan.value, storyArc, volumeId: vId, storyContract }
     } catch (err) {
-      phase.value = 'error'
+      await delegatorApi.dispatch('ERROR', { error: err, message: err.message || 'Generation failed during initial phases' })
       error.value = err.message || 'Generation failed during initial phases'
       if (activeStage) {
         await updateGenRunStage(projectId, activeStage, { status: 'failed', error: error.value })
@@ -662,7 +662,6 @@ export function useVolumeStoryGenerator() {
     }
 
     progress.statusText = 'Phase 1: Generating chapter anchors in parallel...'
-    phase.value = 'writing'
 
     async function generateAnchor(scene, role, constraints, sceneIndex, chapterIndex) {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
@@ -899,6 +898,7 @@ export function useVolumeStoryGenerator() {
           sceneIndex: idx + 1,
           passed: criticResult.pass,
           score: criticResult.score,
+          dimensionScores: criticResult.dimensionScores || null,
           topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
         })
       }
@@ -1013,17 +1013,34 @@ export function useVolumeStoryGenerator() {
           chosenStructured = result.structured
           chosenEval = criticResult
         }
-        // Stop retrying on a clean pass, or when the critic can't judge (no point burning attempts)
-        if (!criticResult || criticResult.evalUnavailable || criticResult.pass) break
-        attemptFeedback = formatEvalFeedback([
-        attemptFocusInstructions = buildFocusInstructions([
-          {
-            sceneIndex: i + 1,
-            passed: criticResult.pass,
-            score: criticResult.score,
-            topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
-          }
-        ])
+
+        // Eval gate: warn when dimension coverage or score distribution look suspect
+        const dimCov = gateDimensionCoverage(criticResult, workspaceType.value)
+        const scoreDist = gateScoreDistribution(criticResult)
+        if (!dimCov.pass && dimCov.warnings.length > 0) {
+          console.warn('[evalGate] dimensionCoverage:', dimCov.warnings.join('; '))
+        }
+        if (!scoreDist.pass && scoreDist.flags.length > 0) {
+          console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
+        }
+
+        // Continuity floor: treat a scene that scores < 6 on continuity as a fail
+        // regardless of the overall pass flag, so the retry loop regenerates it.
+        const continuityOk = (criticResult.dimensionScores?.continuity ?? 10) >= 6
+
+        // Stop retrying on a clean pass with acceptable continuity, or when the
+        // critic can't judge (no point burning attempts)
+        if (!criticResult || criticResult.evalUnavailable || (criticResult.pass && continuityOk)) break
+
+        const evalSnapshot = {
+          sceneIndex: i + 1,
+          passed: criticResult.pass,
+          score: criticResult.score,
+          dimensionScores: criticResult.dimensionScores || null,
+          topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
+        }
+        attemptFeedback = formatEvalFeedback([evalSnapshot])
+        attemptFocusInstructions = buildFocusInstructions([evalSnapshot])
       }
       actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
 
@@ -1038,7 +1055,7 @@ export function useVolumeStoryGenerator() {
           sectionIdx: sectionIndexForScene(sections, i)
         }
         currentWriteIndex.value = i + 1
-        phase.value = 'scene-review'
+        await delegatorApi.dispatch('SCENE_WRITTEN', { sceneResult: currentSceneResult.value, sceneIndex: i })
         return
       }
 
@@ -1056,6 +1073,7 @@ export function useVolumeStoryGenerator() {
           sceneIndex: i + 1,
           passed: chosenEval.pass,
           score: chosenEval.score,
+          dimensionScores: chosenEval.dimensionScores || null,
           topIssues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         })
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
@@ -1075,7 +1093,7 @@ export function useVolumeStoryGenerator() {
             error.value = `Quality floor breached: ${runConsecutiveFailures.value} scenes in a row failed critique after retries. The writer or critic model is likely misconfigured. ${writtenScenes.value.length} scene(s) written and saved.`
             commitService.persistCheckpoint(projectId)
             await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
-            phase.value = 'error'
+            await delegatorApi.dispatch('ERROR', { error: error.value, message: error.value })
             actLog.updatePhase(currentTaskId, scenePhase, { status: 'error' })
             return
           }
@@ -1093,6 +1111,7 @@ export function useVolumeStoryGenerator() {
           sceneIndex: i + 1,
           passed: criticResult.pass,
           score: criticResult.score,
+          dimensionScores: criticResult.dimensionScores || null,
           topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         }
         sceneEvalResults.value.push(evalEntry)
@@ -1127,7 +1146,7 @@ export function useVolumeStoryGenerator() {
         hasPendingBatches.value = true
         pendingBatchStart.value = endIndex
         syncPreview.value = batchChanges
-        phase.value = 'sync-preview'
+        await delegatorApi.dispatch('BATCH_COMPLETE', { batchStart: pendingBatchStart.value, batchEnd: writtenScenes.value.length })
         // One-click mode: accept every discovered entity and keep writing
         if (autoMode.value) {
           await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
@@ -1141,7 +1160,7 @@ export function useVolumeStoryGenerator() {
 
     if (batchChanges.length > 0) {
       syncPreview.value = batchChanges
-      phase.value = 'sync-preview'
+      await delegatorApi.dispatch('BATCH_COMPLETE', { batchStart: pendingBatchStart.value, batchEnd: writtenScenes.value.length })
       if (autoMode.value) {
         await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
       }
@@ -1265,8 +1284,7 @@ export function useVolumeStoryGenerator() {
 
     // Phase 0: Spine Generation
     progress.statusText = 'Generating hierarchical narrative spine...'
-    phase.value = 'spine-generation'
-    onPhaseChange?.('spine-generation')
+    await delegatorApi.dispatch('CONFIRMED', { autoMode: autoMode.value, sceneReviewMode: sceneReviewMode.value, inlineEval: inlineEvalEnabled.value })
     const spinePhase = actLog.addPhase(currentTaskId, 'Spine Generation')
     await updateGenRunStage(projectId, 'spine', { status: 'running' })
 
@@ -1282,14 +1300,13 @@ export function useVolumeStoryGenerator() {
       await updateGenRunStage(projectId, 'spine', { status: 'done' })
     } catch (err) {
       error.value = err.message || 'Fatal: Spine generation failed'
-      phase.value = 'error'
+      await delegatorApi.dispatch('ERROR', { error: err, message: err.message || 'Fatal: Spine generation failed' })
       await updateGenRunStage(projectId, 'spine', { status: 'failed', error: err.message })
       throw err
     }
 
     // Phase 3: Incremental writing
-    phase.value = 'writing'
-    onPhaseChange?.('writing')
+    await delegatorApi.dispatch('SPINE_GENERATED')
     error.value = null
     progress.statusText = 'Entering incremental drafting pipeline...'
     await updateGenRunStage(projectId, 'prose', {
@@ -1418,7 +1435,7 @@ export function useVolumeStoryGenerator() {
     // Run finished cleanly — drop the crash-recovery checkpoint
     await clearGenRun(projectId)
 
-    phase.value = 'complete'
+    await delegatorApi.dispatch('WRITING_DONE')
     progress.statusText = 'Volume generation complete!'
 
     // Compute total words once (Fix #10 — was computed twice in quick succession)
@@ -1462,8 +1479,8 @@ export function useVolumeStoryGenerator() {
     await sceneInteractionService.rerequestScene(edits)
   }
 
-  function reset() {
-    phase.value = 'idle'
+  async function reset() {
+    await delegatorApi.dispatch('RESET')
     progress.current = 0
     progress.total = 0
     progress.sceneLabel = ''

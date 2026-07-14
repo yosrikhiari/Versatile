@@ -29,6 +29,8 @@ npm run pipeline:active:sample   # Active Learning — analyze sample eval histo
 npm run pipeline:active          # Active Learning — analyze full eval history
 npm run pipeline:curate:sample   # Fine-tuning Curation — demo with sample data
 npm run pipeline:curate          # Fine-tuning Curation — run with --source
+npm run pipeline:curate:export   # Fine-tuning Curation — export training set (JSONL) from exported JSON
+npm run pipeline:curate:train    # Fine-tuning Curation — export training set from sample data
 npm run pipeline:drift:sample    # Drift Monitor — demo with sample data (16 evals)
 npm run pipeline:drift:synthetic # Drift Monitor — synthetic drift dataset (100 evals, threshold 1)
 npm run pipeline:drift:edge      # Drift Monitor — edge case dataset (80 evals, threshold 1)
@@ -51,3 +53,31 @@ Compares providers on a shared test suite, producing a JSON report with per-test
 Aggregates eval scores per dimension per workspace type and flags dimensions consistently below threshold. Uses `dimension-prompt-map.json` to surface targeted improvement guidance and example snippets for each flagged dimension.
 
 **Output:** `reports/active-learning-report.json` — includes workspace-level aggregates, per-dimension stats (mean, min, max, stddev), and sorted recommendations (insufficient data first, then widest gap).
+
+## Fine-tuning Training Set Export
+
+Exports curated training examples from eval history as JSONL files for model fine-tuning. Each training example pairs a scene's prose with its structured critique (dimension scores, issues, strengths).
+
+### Workflow
+
+```
+1. Export eval history from the browser app (triggers JSON download)
+2. Curate and export training sets:
+   npm run pipeline:curate:export -- --source path/to/exported-eval-history.json
+```
+
+### Flags
+
+| Flag           | Description                                      | Default       |
+| -------------- | ------------------------------------------------ | ------------- |
+| `--source`     | Path to exported eval JSON (required)            | —             |
+| `--content`    | Path to content lookup JSON (overrides embedded) | embedded data |
+| `--top-k`      | Max training examples to output                  | 100           |
+| `--floor`      | Minimum quality score to include                 | 5             |
+| `--format`     | Output format: `jsonl` or `json`                 | `jsonl`       |
+| `--min-samples`| Minimum eval samples per workspace               | 3             |
+
+### Output
+
+- `reports/training-data-{workspaceType}.jsonl` — one JSON object per line: `{ prompt, completion, evalId }`
+- `reports/training-export-summary.json` — export metadata and counts

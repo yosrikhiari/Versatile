@@ -42,7 +42,8 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
       signal,
       body: JSON.stringify({
@@ -83,7 +84,8 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
       signal,
       body: JSON.stringify({
@@ -159,7 +161,8 @@ export async function generateStructured(prompt, systemPrompt, model, schema, op
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
       signal,
       body: JSON.stringify({
@@ -206,7 +209,8 @@ export async function testConnection(apiKey) {
     const response = await fetch(`${PROVIDER_BASE_URLS[PROVIDERS.ANTHROPIC]}/models`, {
       headers: {
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       }
     })
     return response.ok

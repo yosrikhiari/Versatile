@@ -1,2 +1,1 @@
-export { ParallelWritingService, setParallelChapterLimit } from './ParallelWritingService'
-export { SceneWritingService } from './SceneWritingService'
+// barrel — currently empty after dead-file removal

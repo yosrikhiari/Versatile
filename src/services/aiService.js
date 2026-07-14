@@ -1,7 +1,7 @@
 import { PROVIDERS, FEATURES, PROVIDER_MODELS } from '../config/ai'
 import { getApiKeyStorageKey } from '../config/storageKeys'
 import { useSettingsStore } from '../stores/settingsStore'
-import { deobfuscate } from './ollamaService'
+import { decrypt } from './ollamaService'
 import * as ollamaProvider from './providers/ollama'
 import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
@@ -66,17 +66,28 @@ const PROVIDER_MAP = {
   [PROVIDERS.GROQ]: groqProvider
 }
 
-function getApiKey(provider) {
+async function getApiKey(provider) {
   if (provider === PROVIDERS.OLLAMA) return null
   const storageKey = getApiKeyStorageKey(provider)
   // STORAGE_KEYS ref
   const encrypted = localStorage.getItem(storageKey)
   if (!encrypted) return ''
   try {
-    return deobfuscate(encrypted)
+    // Keys are persisted AES-GCM-encrypted by the settings store; decrypt()
+    // handles both that and legacy base64-obfuscated keys. (A prior version
+    // used the base64-only deobfuscate() here, which silently corrupted every
+    // AES-GCM key and broke cloud-provider auth.)
+    return await decrypt(encrypted)
   } catch {
     return ''
   }
+}
+
+function defaultModelForProvider(provider) {
+  if (provider === PROVIDERS.OLLAMA) {
+    return useSettingsStore().ollamaModel
+  }
+  return PROVIDER_MODELS[provider]?.[0] || null
 }
 
 function resolveFeatureConfig(feature) {
@@ -117,7 +128,7 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
   const providerModule = PROVIDER_MAP[provider]
   if (!providerModule) throw new Error(`Unknown provider: ${provider}`)
 
-  const apiKey = getApiKey(provider)
+  const apiKey = await getApiKey(provider)
   if (provider !== PROVIDERS.OLLAMA && !apiKey) {
     throw new Error(`${provider} API key not configured. Please add it in Settings > AI Providers.`)
   }
@@ -142,15 +153,25 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
     if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
       const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
       if (fallbackModule) {
-        const fallbackKey = getApiKey(store.aiProviderFallback)
+        const fallbackKey = await getApiKey(store.aiProviderFallback)
         if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
-          return await fallbackModule.generate(prompt, systemPrompt, null, {
-            apiKey: fallbackKey || undefined,
-            signal: options.signal,
-            temperature: options.temperature,
-            maxTokens: options.maxTokens,
-            timeout: options.timeout
-          })
+          // Resolve the fallback provider's default model — passing null here
+          // sent `model: null` in the request body and made every fallback fail.
+          const fallbackModel = defaultModelForProvider(store.aiProviderFallback)
+          try {
+            return await fallbackModule.generate(prompt, systemPrompt, fallbackModel, {
+              apiKey: fallbackKey || undefined,
+              signal: options.signal,
+              temperature: options.temperature,
+              maxTokens: options.maxTokens,
+              timeout: options.timeout
+            })
+          } catch (fallbackError) {
+            // Preserve the original failure as the cause so the root error
+            // isn't masked by a secondary fallback error.
+            fallbackError.cause = error
+            throw fallbackError
+          }
         }
       }
     }
@@ -167,7 +188,7 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
   const providerModule = PROVIDER_MAP[provider]
   if (!providerModule) throw new Error(`Unknown provider: ${provider}`)
 
-  const apiKey = getApiKey(provider)
+  const apiKey = await getApiKey(provider)
   if (provider !== PROVIDERS.OLLAMA && !apiKey) {
     throw new Error(`${provider} API key not configured. Please add it in Settings > AI Providers.`)
   }
@@ -195,15 +216,21 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
     if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
       const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
       if (fallbackModule) {
-        const fallbackKey = getApiKey(store.aiProviderFallback)
+        const fallbackKey = await getApiKey(store.aiProviderFallback)
         if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
-          return await fallbackModule.stream(prompt, systemPrompt, null, onChunk, {
-            apiKey: fallbackKey || undefined,
-            signal: options.signal,
-            temperature: options.temperature,
-            maxTokens: options.maxTokens,
-            timeout: options.timeout
-          })
+          const fallbackModel = defaultModelForProvider(store.aiProviderFallback)
+          try {
+            return await fallbackModule.stream(prompt, systemPrompt, fallbackModel, onChunk, {
+              apiKey: fallbackKey || undefined,
+              signal: options.signal,
+              temperature: options.temperature,
+              maxTokens: options.maxTokens,
+              timeout: options.timeout
+            })
+          } catch (fallbackError) {
+            fallbackError.cause = error
+            throw fallbackError
+          }
         }
       }
     }

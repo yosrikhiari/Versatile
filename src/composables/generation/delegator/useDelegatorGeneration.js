@@ -2,22 +2,17 @@ import { createAgentMemory } from './AgentMemory'
 import { Delegator } from './Delegator'
 import { useStoryBibleStore } from '../../../stores/storyBibleStore'
 import { useManuscriptStore } from '../../../stores/manuscriptStore'
+import { useVolumeStore } from '../../../stores/volumeStore'
+import { useStoryGraphStore } from '../../../stores/storyGraphStore'
 import { useStoryDirector } from '../../useStoryDirector'
 import { useStoryWriter } from '../../useStoryWriter'
 import { useStoryCritic } from '../../useStoryCritic'
 import { useChapterGenerationSync } from '../../useChapterGenerationSync'
+import { useEntityBootstrapper } from '../../useEntityBootstrapper'
+import { useStoryDocuments } from '../../useStoryDocuments'
 import { useActivityLog } from '../../useActivityLog'
-import { CommitService } from '../commit'
-import { ConsistencyService } from '../consistency'
-import { SceneInteractionService } from '../interaction'
 import { buildPreliminaryEdges } from '../graph'
 import { getResumableRun as getResumableRunFn } from '../checkpoint'
-import {
-  getGenRun,
-  saveGenRun,
-  updateGenRunStage,
-  makeInitialGenState
-} from '../../../services/db-generation'
 import {
   createDirectorTool,
   createWriterTool,
@@ -35,6 +30,12 @@ export function useDelegatorGeneration() {
   // --- Wire Pinia stores ---
   memory.instances.storyBibleStore = useStoryBibleStore()
   memory.instances.manuscriptStore = useManuscriptStore()
+  memory.instances.volumeStore = useVolumeStore()
+  memory.instances.storyGraphStore = useStoryGraphStore()
+
+  // --- Wire Vue composable service instances ---
+  memory.instances.bootstrapper = useEntityBootstrapper()
+  memory.instances.storyDocuments = useStoryDocuments()
 
   // --- Wire Vue composable service instances ---
   memory.instances.director = useStoryDirector()
@@ -57,69 +58,8 @@ export function useDelegatorGeneration() {
     }
   }
 
-  // --- Wire service classes with shared AgentMemory refs ---
-  memory.instances.commitService = new CommitService({
-    writeParams: memory.writeParams,
-    volumeId: memory.volumeId,
-    scenePlan: memory.scenePlan,
-    chapterPlan: memory.chapterPlan,
-    spineArray: memory.spineArray,
-    spineContext: memory.spineContext,
-    autoMode: memory.autoMode,
-    writtenScenes: memory.writtenScenes,
-    lastSyncedResultIndex: memory.lastSyncedResultIndex,
-    progress: memory.progress,
-    manuscriptStore: memory.instances.manuscriptStore,
-    getGenRun,
-    saveGenRun,
-    makeInitialGenState
-  })
-
-  memory.instances.consistencyService = new ConsistencyService({
-    writeParams: memory.writeParams,
-    scenePlan: memory.scenePlan,
-    chapterPlan: memory.chapterPlan,
-    spineArray: memory.spineArray,
-    autoMode: memory.autoMode,
-    writtenScenes: memory.writtenScenes,
-    consistencyReport: memory.consistencyReport,
-    phase: memory.phase,
-    progress: memory.progress,
-    storyBibleStore: memory.instances.storyBibleStore,
-    critic: memory.instances.critic,
-    writer: memory.instances.writer,
-    manuscriptStore: memory.instances.manuscriptStore,
-    updateGenRunStage,
-    actLog: memory.instances.actLog
-  })
-
-  memory.instances.sceneInteractionService = new SceneInteractionService({
-    writeParams: memory.writeParams,
-    scenePlan: memory.scenePlan,
-    phase: memory.phase,
-    progress: memory.progress,
-    writer: memory.instances.writer,
-    sync: memory.instances.sync,
-    actLog: memory.instances.actLog,
-    writtenScenes: memory.writtenScenes,
-    structuredResults: memory.structuredResults,
-    hasPendingBatches: memory.hasPendingBatches,
-    pendingBatchStart: memory.pendingBatchStart,
-    manuscriptStore: memory.instances.manuscriptStore,
-    storyBibleStore: memory.instances.storyBibleStore,
-    commitService: memory.instances.commitService,
-    rejectedPatterns: memory.rejectedPatterns,
-    autoMode: memory.autoMode,
-    sceneReviewMode: memory.sceneReviewMode,
-    currentSceneResult: memory.currentSceneResult,
-    currentWriteIndex: memory.currentWriteIndex,
-    sceneEvalResults: memory.sceneEvalResults,
-    lastSyncedResultIndex: memory.lastSyncedResultIndex,
-    syncPreview: memory.syncPreview,
-    currentTaskId: memory.currentTaskId,
-    volumeId: memory.volumeId,
-    consistencyService: memory.instances.consistencyService
-  })
+  // --- Service class instances are injected externally (from useVolumeStoryGenerator)
+  //     and wired into memory.instances.*Service before dispatch() is called.
 
   // --- Create narrow agent tool wrappers ---
   const tools = {

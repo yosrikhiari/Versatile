@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "description": "Model benchmarking test suite organized by task type (SPARK, STORY, POLISH) across workspace domains",
+  "taskTypes": {
+    "SPARK": {
+      "label": "Ideation & Brainstorming",
+      "description": "Short-form creative bursts: concept generation, idea exploration, hypothesis formation",
+      "evalDimensions": ["creativity", "relevance", "clarity"],
+      "typicalPromptLength": "short",
+      "typicalOutputWords": "50-200"
+    },
+    "STORY": {
+      "label": "Narrative & Content Generation",
+      "description": "Full-form generation: scene writing, report drafting, documentation, structured content",
+      "evalDimensions": ["continuity", "voice", "structure", "completeness"],
+      "typicalPromptLength": "medium",
+      "typicalOutputWords": "200-800"
+    },
+    "POLISH": {
+      "label": "Refinement & Editing",
+      "description": "Output improvement: tightening prose, fixing errors, enhancing clarity, restructuring",
+      "evalDimensions": ["improvement", "fidelity", "concision"],
+      "typicalPromptLength": "long",
+      "typicalOutputWords": "100-500"
+    }
+  },
+  "tests": [
+    {
+      "id": "spark-creative-story-concept",
+      "taskType": "SPARK",
+      "workspaceType": "creative",
+      "name": "Creative — Story Concept Pitch",
+      "prompt": "Generate 3 high-concept story ideas for a sci-fi novel set in a world where memories can be traded like currency. Each idea should include a logline, a central conflict, and the emotional arc.",
+      "expectedMinWords": 80
+    },
+    {
+      "id": "spark-creative-character",
+      "taskType": "SPARK",
+      "workspaceType": "creative",
+      "name": "Creative — Character Concept",
+      "prompt": "Create a character concept for a morally ambiguous detective in a noir fantasy setting. Include a defining trait, a flaw, a secret, and one line of dialogue that captures their voice.",
+      "expectedMinWords": 60
+    },
+    {
+      "id": "spark-business-market-idea",
+      "taskType": "SPARK",
+      "workspaceType": "business",
+      "name": "Business — Market Expansion Idea",
+      "prompt": "Propose three creative market expansion strategies for a B2B SaaS company that sells AI-powered customer support tools. Target market: mid-sized retailers in Southeast Asia. Be specific about channels and initial traction.",
+      "expectedMinWords": 100
+    },
+    {
+      "id": "spark-technical-feature-spec",
+      "taskType": "SPARK",
+      "workspaceType": "technical",
+      "name": "Technical — Feature Brainstorm",
+      "prompt": "Outline three possible approaches to implement real-time collaborative editing in a web-based document editor. For each approach, state the core mechanism, key trade-off, and a rough complexity estimate.",
+      "expectedMinWords": 80
+    },
+    {
+      "id": "spark-research-hypothesis",
+      "taskType": "SPARK",
+      "workspaceType": "research",
+      "name": "Research — Hypothesis Generation",
+      "prompt": "Generate two testable hypotheses about why users churn in the first 7 days of a mobile productivity app. For each, propose a simple experiment design, a success metric, and a control condition.",
+      "expectedMinWords": 80
+    },
+    {
+      "id": "spark-legal-contract-outline",
+      "taskType": "SPARK",
+      "workspaceType": "legal",
+      "name": "Legal — Contract Structure Idea",
+      "prompt": "Outline the key sections needed in a data processing agreement between a SaaS provider (data processor) and an enterprise customer (data controller) under GDPR. For each section, note one critical clause that must be included.",
+      "expectedMinWords": 80
+    },
+    {
+      "id": "spark-creative-twist",
+      "taskType": "SPARK",
+      "workspaceType": "creative",
+      "name": "Creative — Plot Twist Generator",
+      "prompt": "Suggest three unexpected but narratively satisfying plot twists for a mystery novel where the protagonist is a librarian who can see 30 seconds into the future. Each twist should recontextualize a key premise.",
+      "expectedMinWords": 70
+    },
+    {
+      "id": "spark-business-pricing",
+      "taskType": "SPARK",
+      "workspaceType": "business",
+      "name": "Business — Pricing Model Ideas",
+      "prompt": "Propose three pricing models for a new API-first identity verification service targeting fintech startups. Compare usage-based, tiered, and flat-rate approaches with specific price points and break-even reasoning.",
+      "expectedMinWords": 90
+    },
+    {
+      "id": "story-creative-scene",
+      "taskType": "STORY",
+      "workspaceType": "creative",
+      "name": "Creative — Scene Continuation",
+      "synopsis": "Elara stood at the river's edge, the cold mist clinging to her cloak. She had crossed a hundred rivers in her journey south, but this one felt different. The water ran dark and fast, swollen by spring melt from the distant mountains. Somewhere beyond the far bank, hidden in the ancient forest, lay the answers she had travelled three moons to find. She tightened her pack straps and stepped into the current.",
+      "prompt": "Continue this scene for 3-4 paragraphs. Maintain the atmospheric tone, advance the emotional stakes, and end on a moment of discovery or danger.",
+      "expectedMinWords": 200
+    },
+    {
+      "id": "story-creative-dialogue",
+      "taskType": "STORY",
+      "workspaceType": "creative",
+      "name": "Creative — Dialogue Scene",
+      "synopsis": "The merchant's hands shook as he counted the coins. 'This is half what you owe me,' he said, not meeting Kael's eyes. Kael leaned against the stall, arms crossed, watching the crowd part around them.",
+      "prompt": "Write the full argument scene that follows. The merchant has been cheated before, and Kael has a reputation for playing both sides. Make the dialogue reveal their history and escalate the tension.",
+      "expectedMinWords": 250
+    },
+    {
+      "id": "story-technical-api-doc",
+      "taskType": "STORY",
+      "workspaceType": "technical",
+      "name": "Technical — API Endpoint Documentation",
+      "synopsis": "POST /api/v2/orders/create accepts a JSON body with fields: customerId, items, shippingAddress, couponCode.",
+      "prompt": "Write complete API documentation for this endpoint. Include the request schema with all field types and constraints, response schemas for 201, 400, 401, 404, and 429 status codes, a curl example, and notes on idempotency and rate limiting.",
+      "expectedMinWords": 250
+    },
+    {
+      "id": "story-business-report",
+      "taskType": "STORY",
+      "workspaceType": "business",
+      "name": "Business — Strategic Market Report",
+      "synopsis": "Company analysis: 12M TAM APAC market, 18% YoY growth, 47 customer interviews, pricing sensitivity cited by 62%.",
+      "prompt": "Write an executive summary of the market expansion analysis. Cover the opportunity size, key findings from customer discovery, recommended phased entry strategy, and projected unit economics. Use business-appropriate language and structure.",
+      "expectedMinWords": 300
+    },
+    {
+      "id": "story-legal-nda-clause",
+      "taskType": "STORY",
+      "workspaceType": "legal",
+      "name": "Legal — Mutual NDA Clause Drafting",
+      "synopsis": "Mutual NDA between two companies sharing confidential information for a potential partnership.",
+      "prompt": "Draft the confidentiality clause for a mutual non-disclosure agreement. Cover: definition of confidential information, exclusions, term of confidentiality, required markings, and permitted disclosures. Use formal legal language appropriate for a B2B contract.",
+      "expectedMinWords": 200
+    },
+    {
+      "id": "story-research-methods",
+      "taskType": "STORY",
+      "workspaceType": "research",
+      "name": "Research — Methods Section",
+      "synopsis": "Study: 120 participants, 3 conditions (control, high-causal language, low-causal language), comprehension test with 20 items.",
+      "prompt": "Write the Methods section for this study. Describe participant recruitment, inclusion criteria, random assignment procedure, stimulus materials, task instructions, dependent measures, and the statistical analysis plan. Use APA-style scientific writing.",
+      "expectedMinWords": 250
+    },
+    {
+      "id": "story-creative-atmospheric",
+      "taskType": "STORY",
+      "workspaceType": "creative",
+      "name": "Creative — Atmospheric Description",
+      "synopsis": "A character enters an abandoned library in a city that has been flooded for decades. The lower floors are submerged, and the upper shelves hold water-damaged books that tell stories of the old world.",
+      "prompt": "Write a 3-paragraph atmospheric description of this discovery. Focus on sensory details: what the character sees, hears, and smells. Build the mood through contrast between the lost knowledge above and the encroaching water below.",
+      "expectedMinWords": 200
+    },
+    {
+      "id": "polish-creative-prose",
+      "taskType": "POLISH",
+      "workspaceType": "creative",
+      "name": "Creative — Prose Refinement",
+      "synopsis": "Original: 'The room was very dark and she was scared. She walked slowly because she couldn't see anything. There was a noise that made her jump and she realized she wasn't alone. It was a bad situation and she knew she had to do something.'",
+      "prompt": "Rewrite this passage to show instead of tell. Replace vague language with specific sensory details and concrete actions. Maintain the same plot beats but elevate the prose quality to a literary fiction standard. Output only the rewritten version.",
+      "expectedMinWords": 100
+    },
+    {
+      "id": "polish-creative-dialogue",
+      "taskType": "POLISH",
+      "workspaceType": "creative",
+      "name": "Creative — Dialogue Polish",
+      "synopsis": "Original dialogue: 'I don't know if I can trust you anymore,' said John. 'You should trust me because I never lied to you,' replied Sarah. 'That's not true, you lied about the money,' John said. 'The money was complicated and I can explain,' Sarah said.",
+      "prompt": "Rewrite this dialogue exchange to add subtext, distinctive character voices, and natural rhythm. Remove exposition disguised as dialogue. Let the characters' word choices reveal their emotional states without stating them directly.",
+      "expectedMinWords": 80
+    },
+    {
+      "id": "polish-technical-error-messages",
+      "taskType": "POLISH",
+      "workspaceType": "technical",
+      "name": "Technical — Error Message Improvement",
+      "synopsis": "Current messages: 'Error 403', 'Something went wrong', 'Invalid input', 'Access denied', 'Please try again later'.",
+      "prompt": "Rewrite these error messages following UX best practices. Each message should: state what happened, explain why (where relevant), and tell the user what to do next. Add appropriate technical context for developers while keeping the tone helpful. Output each original and improved version as a pair.",
+      "expectedMinWords": 150
+    },
+    {
+      "id": "polish-business-summary",
+      "taskType": "POLISH",
+      "workspaceType": "business",
+      "name": "Business — Executive Summary Tightening",
+      "synopsis": "Original summary (verbose): 'In terms of our quarterly performance, we have seen a significant increase in revenue which grew by approximately 23 percent compared to the same period last year. This growth was primarily driven by the new enterprise tier that we launched in Q2 which has been adopted by over 40 new customers. Additionally, our retention rates have improved from 89 percent to 94 percent which is a meaningful improvement that demonstrates increased customer satisfaction with our platform overall.'",
+      "prompt": "Tighten this executive summary to half the length while preserving all key data points. Use active voice, cut redundancies, and front-load the most important information. Output only the revised version.",
+      "expectedMinWords": 60
+    },
+    {
+      "id": "polish-legal-clause",
+      "taskType": "POLISH",
+      "workspaceType": "legal",
+      "name": "Legal — Clause Tightening",
+      "synopsis": "Original: 'The receiving party agrees and understands that they shall not disclose any confidential information obtained from the disclosing party to any third party who is not authorized to receive such information, unless such disclosure is required by applicable law or regulation, in which case the receiving party shall provide the disclosing party with prompt written notice of such required disclosure to the extent permitted by law.'",
+      "prompt": "Revise this confidentiality clause to be more concise while preserving all legal protections. Remove redundant phrasing, simplify the sentence structure, and ensure the obligations are clearly bounded. Output only the revised clause.",
+      "expectedMinWords": 60
+    },
+    {
+      "id": "polish-research-abstract",
+      "taskType": "POLISH",
+      "workspaceType": "research",
+      "name": "Research — Abstract Revision",
+      "synopsis": "Original abstract: 'This study investigated the effects of sleep deprivation on cognitive performance in a sample of undergraduate students. A total of 85 participants were recruited from the university subject pool and were randomly assigned to either a sleep deprivation condition or a control condition. Participants in the sleep deprivation condition stayed awake for a period of 24 hours while those in the control condition slept normally. Results showed that sleep deprived participants performed significantly worse on measures of working memory and attention compared to control participants. These findings suggest that sleep deprivation has a negative impact on cognitive functioning and that further research is needed to understand the mechanisms underlying these effects.'",
+      "prompt": "Rewrite this abstract to be punchier and more information-dense. Cut passive constructions, reduce wordiness, and front-load the key findings. Aim for 40% reduction while keeping the study design, main results, and conclusion intact.",
+      "expectedMinWords": 80
+    },
+    {
+      "id": "polish-creative-pacing",
+      "taskType": "POLISH",
+      "workspaceType": "creative",
+      "name": "Creative — Pacing Improvement",
+      "synopsis": "Original: 'The door opened and a man walked into the room. He looked around at everyone sitting at the table. He was tall and wore a dark coat. He walked over to the empty chair and sat down. He put his briefcase on the table and opened it. He took out some papers and arranged them in front of him. Then he looked up and began to speak. 'Thank you all for coming,' he said. 'I know this is short notice.' His voice was calm but there was tension in the room. Nobody said anything for a long moment. Finally, Maria spoke up. 'We weren't told there would be a new investigator assigned to the case.' She said it flatly, not as a question but as a statement of fact.'",
+      "prompt": "Rewrite this passage to improve pacing. Cut redundant action beats, compress predictable movements, and use sentence length variation to create tension. Keep the essential character moment and dialogue intact but make the prose leaner and more rhythmic.",
+      "expectedMinWords": 80
+    }
+  ]
+}

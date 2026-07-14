@@ -63,6 +63,19 @@ describe('sanitizeJsonResponse', () => {
   it('handles numbers and booleans', () => {
     expect(sanitizeJsonResponse('{"n": 42, "b": true}')).toEqual({ n: '42', b: 'true' })
   })
+
+  it('extracts a full object with a nested object without truncating', () => {
+    // Regression: the previous non-greedy regex stopped at the first "}" and
+    // corrupted any response containing a nested object.
+    const out = sanitizeJsonResponse('{"meta": {"k": 1}, "name": "Ada"}')
+    expect(out).not.toBeNull()
+    expect(out.name).toBe('Ada')
+  })
+
+  it('ignores prose surrounding the JSON object', () => {
+    const out = sanitizeJsonResponse('Sure! Here you go:\n{"title": "X"}\nHope that helps.')
+    expect(out).toEqual({ title: 'X' })
+  })
 })
 
 describe('FIELD_LENGTH_CONSTRAINTS', () => {

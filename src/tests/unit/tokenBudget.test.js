@@ -47,6 +47,25 @@ describe('applyTokenBudget', () => {
     expect(result.truncated).toBe(false)
   })
 
+  it('truncates the real shapeContext bundle keys, not a hardcoded subset', () => {
+    // Regression: the truncatable-key list used to be hardcoded to
+    // entitiesBlock/relationshipBlock and did not match the keys shapeContext
+    // actually emits, so entity context was never trimmed.
+    const bundle = {
+      projectBlock: 'P'.repeat(200),
+      charactersBlock: 'C'.repeat(5000),
+      locationsBlock: 'L'.repeat(5000),
+      plotThreadsBlock: 'T'.repeat(3000),
+      relationshipsBlock: 'R'.repeat(3000),
+      manuscriptBlock: 'M'.repeat(5000)
+    }
+    const before = Object.values(bundle).reduce((n, v) => n + v.length, 0)
+    const result = applyTokenBudget(bundle, 8000)
+    expect(result.truncated).toBe(true)
+    expect(result.totalChars).toBeLessThan(before)
+    expect(result.totalChars).toBeLessThan(15000)
+  })
+
   it('uses default budget of 6000', () => {
     const bundle = { entitiesBlock: 'A'.repeat(3000), relationshipBlock: 'B'.repeat(3000) }
     const result = applyTokenBudget(bundle)

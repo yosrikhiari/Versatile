@@ -15,31 +15,67 @@ const PROVIDER_BASE_URLS = {
 const PROVIDER_CONFIGS = [
   {
     id: 'openai',
-    label: 'OpenAI',
+    label: 'OpenAI (4o)',
     model: 'gpt-4o',
     envKey: 'OPENAI_API_KEY',
-    supportsStreaming: true
+    supportsStreaming: true,
+    tier: 'premium'
+  },
+  {
+    id: 'openai/gpt-4o-mini',
+    label: 'OpenAI (4o-mini)',
+    model: 'gpt-4o-mini',
+    envKey: 'OPENAI_API_KEY',
+    supportsStreaming: true,
+    tier: 'economy'
   },
   {
     id: 'anthropic',
-    label: 'Anthropic',
+    label: 'Anthropic (Sonnet)',
     model: 'claude-sonnet-4-20250514',
     envKey: 'ANTHROPIC_API_KEY',
-    supportsStreaming: true
+    supportsStreaming: true,
+    tier: 'premium'
+  },
+  {
+    id: 'anthropic/claude-haiku',
+    label: 'Anthropic (Haiku)',
+    model: 'claude-haiku-3-5-20241022',
+    envKey: 'ANTHROPIC_API_KEY',
+    supportsStreaming: true,
+    tier: 'economy'
   },
   {
     id: 'gemini',
-    label: 'Gemini',
+    label: 'Gemini (Flash)',
     model: 'gemini-2.5-flash',
     envKey: 'GEMINI_API_KEY',
-    supportsStreaming: true
+    supportsStreaming: true,
+    tier: 'economy'
+  },
+  {
+    id: 'gemini/gemini-2.5-pro',
+    label: 'Gemini (Pro)',
+    model: 'gemini-2.5-pro',
+    envKey: 'GEMINI_API_KEY',
+    supportsStreaming: true,
+    tier: 'premium'
   },
   {
     id: 'groq',
-    label: 'Groq',
+    label: 'Groq (70B)',
     model: 'llama-3.3-70b-versatile',
     envKey: 'GROQ_API_KEY',
-    supportsStreaming: true
+    supportsStreaming: true,
+    tier: 'economy'
+  },
+  {
+    id: 'groq/llama-3.1-8b',
+    label: 'Groq (8B)',
+    model: 'llama-3.1-8b-instant',
+    envKey: 'GROQ_API_KEY',
+    supportsStreaming: true,
+    tier: 'budget'
   },
   {
     id: 'ollama',
@@ -47,7 +83,8 @@ const PROVIDER_CONFIGS = [
     model: process.env.OLLAMA_MODEL || 'phi4-mini:3.8b',
     envKey: null,
     supportsStreaming: true,
-    isLocal: true
+    isLocal: true,
+    tier: 'local'
   }
 ]
 
@@ -83,11 +120,18 @@ function estimateCost(model, promptTokens, outputTokens) {
   return +(inputCost + outputCost).toFixed(6)
 }
 
+function resolveBaseId(providerId) {
+  const idx = providerId.indexOf('/')
+  return idx > 0 ? providerId.slice(0, idx) : providerId
+}
+
 export function getAvailableProviders() {
-  return PROVIDER_CONFIGS.filter((cfg) => {
+  const configured = PROVIDER_CONFIGS.filter((cfg) => {
     if (cfg.id === 'ollama') return true
-    return !!process.env[cfg.envKey]
+    if (cfg.envKey && process.env[cfg.envKey]) return true
+    return false
   })
+  return configured
 }
 
 export function expandModelVariants(providers) {
@@ -125,7 +169,8 @@ async function timeProviderCall(fn) {
   }
 }
 
-async function callOpenAI(prompt, systemPrompt, model) {
+async function callOpenAI(prompt, systemPrompt, model, options = {}) {
+  const temperature = options.temperature ?? 0.7
   const { signal, cleanup } = makeTimeout()
   try {
     const resp = await fetch(`${PROVIDER_BASE_URLS.openai}/chat/completions`, {
@@ -141,7 +186,7 @@ async function callOpenAI(prompt, systemPrompt, model) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.7,
+        temperature,
         max_tokens: 4096
       })
     })
@@ -158,7 +203,8 @@ async function callOpenAI(prompt, systemPrompt, model) {
   }
 }
 
-async function callAnthropic(prompt, systemPrompt, model) {
+async function callAnthropic(prompt, systemPrompt, model, options = {}) {
+  const temperature = options.temperature ?? 0.7
   const { signal, cleanup } = makeTimeout()
   try {
     const resp = await fetch(`${PROVIDER_BASE_URLS.anthropic}/messages`, {
@@ -174,7 +220,7 @@ async function callAnthropic(prompt, systemPrompt, model) {
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 4096,
-        temperature: 0.7
+        temperature
       })
     })
     cleanup()
@@ -190,7 +236,8 @@ async function callAnthropic(prompt, systemPrompt, model) {
   }
 }
 
-async function callGemini(prompt, systemPrompt, model) {
+async function callGemini(prompt, systemPrompt, model, options = {}) {
+  const temperature = options.temperature ?? 0.7
   const contents = []
   if (systemPrompt) {
     contents.push({ role: 'user', parts: [{ text: systemPrompt }] })
@@ -210,7 +257,7 @@ async function callGemini(prompt, systemPrompt, model) {
       signal,
       body: JSON.stringify({
         contents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+        generationConfig: { temperature, maxOutputTokens: 4096 }
       })
     })
     cleanup()
@@ -226,7 +273,8 @@ async function callGemini(prompt, systemPrompt, model) {
   }
 }
 
-async function callGroq(prompt, systemPrompt, model) {
+async function callGroq(prompt, systemPrompt, model, options = {}) {
+  const temperature = options.temperature ?? 0.7
   const { signal, cleanup } = makeTimeout()
   try {
     const resp = await fetch(`${PROVIDER_BASE_URLS.groq}/chat/completions`, {
@@ -242,7 +290,7 @@ async function callGroq(prompt, systemPrompt, model) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.7,
+        temperature,
         max_tokens: 4096
       })
     })
@@ -259,7 +307,8 @@ async function callGroq(prompt, systemPrompt, model) {
   }
 }
 
-async function callOllama(prompt, systemPrompt, model) {
+async function callOllama(prompt, systemPrompt, model, options = {}) {
+  const temperature = options.temperature ?? 0.7
   const m = model || 'phi4-mini'
   const { signal, cleanup } = makeTimeout(300000)
   try {
@@ -272,7 +321,7 @@ async function callOllama(prompt, systemPrompt, model) {
         system: systemPrompt,
         prompt,
         stream: false,
-        options: { temperature: 0.7, num_predict: 4096 }
+        options: { temperature, num_predict: 4096 }
       })
     })
     cleanup()
@@ -307,7 +356,7 @@ const JUDGE_MODELS = {
 export function selectJudge() {
   const override = process.env.JUDGE_PROVIDER
   if (override) {
-    const baseId = override.split(':')[0]
+    const baseId = resolveBaseId(override)
     if (PROVIDER_DISPATCH[baseId]) {
       return {
         providerId: override,
@@ -330,15 +379,15 @@ export function selectJudge() {
   return null
 }
 
-export async function callModel(providerId, prompt, systemPrompt, model) {
-  const baseId = providerId.split(':')[0]
+export async function callModel(providerId, prompt, systemPrompt, model, options = {}) {
+  const baseId = resolveBaseId(providerId)
   const fn = PROVIDER_DISPATCH[baseId]
   if (!fn) throw new Error(`Unknown provider: ${providerId}`)
-  return fn(prompt, systemPrompt, model)
+  return fn(prompt, systemPrompt, model, options)
 }
 
 export async function runTest(providerId, prompt, systemPrompt, model) {
-  const baseId = providerId.split(':')[0]
+  const baseId = resolveBaseId(providerId)
   const fn = PROVIDER_DISPATCH[baseId]
   if (!fn) throw new Error(`Unknown provider: ${providerId}`)
   const start = performance.now()
@@ -346,22 +395,22 @@ export async function runTest(providerId, prompt, systemPrompt, model) {
   const output = result.output
   const wordCount = output ? output.trim().split(/\s+/).filter(Boolean).length : 0
   const charCount = output ? output.length : 0
-  const outputTokens = estimateTokens(charCount)
-  const inputTokens = estimateTokens(systemPrompt.length + prompt.length)
-
-  const cfg = PROVIDER_CONFIGS.find((p) => p.id === baseId)
-  const modelName = model || cfg?.model || 'unknown'
+  // estimateTokens expects a STRING (it divides text.length by 4). Passing the
+  // numeric charCount / summed lengths made every token count — and therefore
+  // every cost estimate — NaN.
+  const outputTokens = estimateTokens(output || '')
+  const inputTokens = estimateTokens((systemPrompt || '') + (prompt || ''))
 
   return {
     provider: providerId,
-    model: modelName,
+    model: model,
     output,
     wordCount,
     charCount,
     latencyMs: result.elapsedMs,
     inputTokens,
     outputTokens,
-    estimatedCost: estimateCost(modelName, inputTokens, outputTokens),
+    estimatedCost: estimateCost(model, inputTokens, outputTokens),
     error: result.error
   }
 }

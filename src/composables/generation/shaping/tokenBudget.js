@@ -14,8 +14,14 @@ export function applyTokenBudget(bundle, budget = DEFAULT_BUDGET_CHARS, systemPr
   }
 
   const truncated = { ...bundle }
-  const keys = ['entitiesBlock', 'relationshipBlock', 'manuscriptBlock'].filter(
-    (k) => typeof truncated[k] === 'string'
+  // Derive truncatable keys from the bundle itself. The previous hardcoded list
+  // (`entitiesBlock`/`relationshipBlock`) did not match the keys `shapeContext`
+  // actually emits (`charactersBlock`/`locationsBlock`/`plotThreadsBlock`/
+  // `relationshipsBlock`), so entity context was never trimmed and the budget
+  // was effectively a no-op for real callers.
+  const RESERVED = new Set(['totalChars', 'truncated', 'systemPromptLength'])
+  const keys = Object.keys(truncated).filter(
+    (k) => !RESERVED.has(k) && typeof truncated[k] === 'string'
   )
 
   while (totalChars > effectiveBudget && keys.length > 0) {

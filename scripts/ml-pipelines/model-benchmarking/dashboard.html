@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Model Benchmarking Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#232734;--border:#2d3140;--text:#e4e6ed;--text2:#9498a8;--accent:#5b8def;--accent2:#47c77f;--warn:#f0a63a;--danger:#e55d5d;--radius:8px;--font:system-ui,-apple-system,sans-serif}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;padding:24px}
+h1{font-size:1.6rem;font-weight:600;margin-bottom:4px}
+h2{font-size:1.15rem;font-weight:600;margin-bottom:12px;color:var(--text2)}
+.subtitle{color:var(--text2);font-size:0.85rem;margin-bottom:24px}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:48px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:28px}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(91,141,239,.06)}
+.upload-zone p{color:var(--text2);font-size:0.95rem}
+.upload-zone .icon{font-size:2rem;margin-bottom:8px;display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.card-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
+.stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center}
+.stat-card .value{font-size:1.6rem;font-weight:700;color:var(--accent)}
+.stat-card .label{font-size:0.8rem;color:var(--text2);margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:0.9rem}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--text2);font-weight:500;font-size:0.8rem;text-transform:uppercase;letter-spacing:.5px}
+td{font-variant-numeric:tabular-nums}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600}
+.badge-ok{background:rgba(71,199,127,.15);color:var(--accent2)}
+.badge-err{background:rgba(229,93,93,.15);color:var(--danger)}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+@media(max-width:900px){.chart-grid{grid-template-columns:1fr}}
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.chart-box canvas{max-height:320px;max-width:100%}
+.section{display:none}
+.section.active{display:block}
+.file-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.file-tag{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 12px;font-size:0.82rem;cursor:pointer;transition:.2s}
+.file-tag.active{border-color:var(--accent);color:var(--accent)}
+.file-tag .close{margin-left:6px;opacity:.5;cursor:pointer}
+.file-tag .close:hover{opacity:1}
+.empty-state{color:var(--text2);text-align:center;padding:60px 20px;font-size:0.95rem}
+.empty-state strong{display:block;font-size:1.1rem;color:var(--text);margin-bottom:8px}
+th.sorted{color:var(--accent)}
+.sort-icon{margin-left:4px;opacity:.5;font-size:0.7rem}
+</style>
+</head>
+<body>
+
+<h1> Model Benchmarking Dashboard</h1>
+<p class="subtitle">Upload report JSONs to compare model cost, quality, and latency</p>
+
+<div class="upload-zone" id="uploadZone">
+  <span class="icon"> </span>
+  <p><strong>Drop report JSON files here</strong> or click to select</p>
+  <p style="font-size:0.82rem;margin-top:6px">model-benchmarking-*.json files from the reports directory</p>
+  <input type="file" id="fileInput" accept=".json" multiple style="display:none">
+</div>
+
+<div id="mainContent">
+  <div class="empty-state" id="emptyState">
+    <strong>No reports loaded</strong>
+    Upload one or more model-benchmarking report JSONs to get started
+  </div>
+
+  <div class="section" id="sectionOverview">
+    <div class="card-row" id="statCards"></div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div class="card">
+      <h2>Provider Comparison</h2>
+      <div style="overflow-x:auto"><table><thead><tr id="compHead"></tr></thead><tbody id="compBody"></tbody></table></div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-box"><h2 style="margin-bottom:8px">Average Score</h2><canvas id="scoreChart"></canvas></div>
+      <div class="chart-box"><h2 style="margin-bottom:8px">Average Latency (ms)</h2><canvas id="latencyChart"></canvas></div>
+      <div class="chart-box"><h2 style="margin-bottom:8px">Reliability (%)</h2><canvas id="reliabilityChart"></canvas></div>
+      <div class="chart-box"><h2 style="margin-bottom:8px">Estimated Cost ($)</h2><canvas id="costChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section" id="sectionTaskType">
+    <div class="card" id="taskTypeControls">
+      <h2>Task Type Breakdown</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px" id="taskTypeTabs"></div>
+      <div class="chart-grid" id="taskTypeCharts"></div>
+    </div>
+  </div>
+
+  <div class="section" id="sectionRadar">
+    <div class="card">
+      <h2>Dimension Score Radar</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px" id="radarTestSelect"></div>
+      <div style="max-width:500px;margin:0 auto"><canvas id="radarChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = ['#5b8def','#47c77f','#f0a63a','#e55d5d','#a78bfa','#60a5fa','#f472b6','#34d399']
+const COLOR_ALPHA = 'rgba(91,141,239,0.2)'
+
+let reports = []
+let chartInstances = {}
+let activeFileIdx = 0
+let activeTaskType = null
+let activeRadarTest = null
+
+document.getElementById('uploadZone').addEventListener('click',()=>document.getElementById('fileInput').click())
+document.getElementById('uploadZone').addEventListener('dragover',e=>{e.preventDefault();e.currentTarget.classList.add('dragover')})
+document.getElementById('uploadZone').addEventListener('dragleave',e=>{e.currentTarget.classList.remove('dragover')})
+document.getElementById('uploadZone').addEventListener('drop',e=>{e.preventDefault();e.currentTarget.classList.remove('dragover');handleFiles(e.dataTransfer.files)})
+document.getElementById('fileInput').addEventListener('change',e=>handleFiles(e.target.files))
+
+function handleFiles(fileList) {
+  let pending = 0
+  for (const file of fileList) {
+    if (!file.name.endsWith('.json')) continue
+    pending++
+    const reader = new FileReader()
+    reader.onload = e => {
+      pending--
+      try {
+        const data = JSON.parse(e.target.result)
+        if (!data.suite || !data.testCount || !data.providers) {
+          console.warn('Skipped — not a model-benchmarking report:', file.name)
+          if (pending === 0) render()
+          return
+        }
+        data._fileName = file.name
+        reports.push(data)
+      } catch(err) { console.warn('Failed to parse', file.name, err) }
+      if (pending === 0) render()
+    }
+    reader.readAsText(file)
+  }
+}
+
+function getActive() { return reports[activeFileIdx] }
+
+function render() {
+  if (reports.length === 0) return
+  activeFileIdx = Math.min(activeFileIdx, reports.length - 1)
+  document.getElementById('emptyState').style.display = 'none'
+  document.querySelectorAll('.section').forEach(s => s.classList.add('active'))
+  renderFileList()
+  renderStats()
+  renderComparison()
+  renderCharts()
+  renderTaskType()
+  renderRadar()
+}
+
+function renderFileList() {
+  const el = document.getElementById('fileList')
+  el.innerHTML = reports.map((r,i) => {
+    const label = r.suite ? `${r.suite} v${r.suiteVersion}` : r._fileName
+    return `<span class="file-tag${i===activeFileIdx?' active':''}" data-idx="${i}">
+      ${label} <span class="close" data-action="remove" data-idx="${i}">✕</span>
+    </span>`
+  }).join('')
+  el.querySelectorAll('.file-tag').forEach(tag => {
+    tag.addEventListener('click', e => {
+      if (e.target.dataset.action === 'remove') {
+        const idx = parseInt(e.target.dataset.idx)
+        reports.splice(idx, 1)
+        if (activeFileIdx >= reports.length) activeFileIdx = reports.length - 1
+        if (reports.length === 0) {
+          document.getElementById('emptyState').style.display = ''
+          document.querySelectorAll('.section').forEach(s => s.classList.remove('active'))
+          document.getElementById('fileList').innerHTML = ''
+          document.getElementById('statCards').innerHTML = ''
+          document.getElementById('compHead').innerHTML = ''
+          document.getElementById('compBody').innerHTML = ''
+          return
+        }
+        render()
+        return
+      }
+      activeFileIdx = parseInt(tag.dataset.idx)
+      render()
+    })
+  })
+}
+
+function renderStats() {
+  const r = getActive()
+  const provs = r.providers || []
+  const aggs = r.aggregates || {}
+  const ok = Object.values(aggs).filter(a => a.status === 'ok')
+  const totalCost = ok.reduce((s, a) => s + (a.estimatedTotalCost || 0), 0)
+  const avgScore = ok.length ? ok.reduce((s, a) => s + (a.avgScore || 0), 0) / ok.length : 0
+  const bestScore = ok.length ? Math.max(...ok.map(a => a.avgScore || 0)) : 0
+
+  document.getElementById('statCards').innerHTML = `
+    <div class="stat-card"><div class="value">${r.testCount}</div><div class="label">Tests</div></div>
+    <div class="stat-card"><div class="value">${provs.length}</div><div class="label">Providers</div></div>
+    <div class="stat-card"><div class="value">${avgScore ? avgScore.toFixed(1) : '—'}</div><div class="label">Avg Score /10</div></div>
+    <div class="stat-card"><div class="value">${bestScore ? bestScore.toFixed(1) : '—'}</div><div class="label">Best Score</div></div>
+    <div class="stat-card"><div class="value">${new Date(r.timestamp).toLocaleDateString()}</div><div class="label">Date</div></div>
+    <div class="stat-card"><div class="value">${totalCost > 0 ? '$' + totalCost.toFixed(4) : 'Free'}</div><div class="label">Total Cost</div></div>
+  `
+}
+
+function renderComparison() {
+  const r = getActive()
+  const provs = r.providers || []
+  const aggs = r.aggregates || {}
+
+  document.getElementById('compHead').innerHTML = `<th>Provider</th><th data-sort="score" class="sortable">Score ⇅</th><th data-sort="latency" class="sortable">Latency ⇅</th><th data-sort="reliability" class="sortable">Reliability ⇅</th><th data-sort="cost" class="sortable">Cost ⇅</th><th>Words</th><th>Completed</th>`
+
+  const rows = provs.map(p => {
+    const a = aggs[p.id]
+    if (!a) return `<tr><td>${p.label}</td><td colspan="6" style="color:var(--text2)">skipped (no API key)</td></tr>`
+    if (a.status === 'all_errors') return `<tr><td>${p.label} <span class="badge badge-err">ALL ERRORS</span></td><td colspan="6">${a.errorCount} test(s) failed</td></tr>`
+    return `<tr>
+      <td><strong>${p.label}</strong><br><span style="font-size:0.75rem;color:var(--text2)">${p.model || ''}</span></td>
+      <td>${a.avgScore !== null ? a.avgScore + '/10' : '<span style="color:var(--text2)">N/A</span>'}</td>
+      <td>${a.avgLatencyMs}ms <span style="font-size:0.75rem;color:var(--text2)">(${a.minLatencyMs}–${a.maxLatencyMs})</span></td>
+      <td><span class="badge ${a.reliability >= 90 ? 'badge-ok' : 'badge-err'}">${a.reliability}%</span></td>
+      <td>${a.estimatedTotalCost > 0 ? '$' + a.estimatedTotalCost.toFixed(4) : '<span style="color:var(--text2)">free</span>'}</td>
+      <td>${a.avgWordCount}</td>
+      <td>${a.completedCount}/${a.completedCount + (a.errorCount || 0)}</td>
+    </tr>`
+  }).join('')
+  document.getElementById('compBody').innerHTML = rows
+
+  document.querySelectorAll('.sortable').forEach(th => {
+    th.addEventListener('click', () => sortTable(th.dataset.sort))
+  })
+}
+
+function sortTable(key) {
+  const r = getActive()
+  const provs = [...(r.providers || [])]
+  const aggs = r.aggregates || {}
+  const map = { score: 'avgScore', latency: 'avgLatencyMs', reliability: 'reliability', cost: 'estimatedTotalCost' }
+  const field = map[key]
+  provs.sort((a, b) => {
+    const va = aggs[a.id] ? (aggs[a.id][field] || 0) : 0
+    const vb = aggs[b.id] ? (aggs[b.id][field] || 0) : 0
+    return key === 'latency' || key === 'cost' ? va - vb : vb - va
+  })
+  r.providers = provs
+  renderComparison()
+}
+
+function destroyChart(key) {
+  if (chartInstances[key]) { chartInstances[key].destroy(); delete chartInstances[key] }
+}
+
+function renderCharts() {
+  const r = getActive()
+  const provs = r.providers || []
+  const aggs = r.aggregates || {}
+  const labels = provs.map(p => p.label)
+  const ok = provs.filter(p => aggs[p.id] && aggs[p.id].status === 'ok')
+
+  function buildData(fn) {
+    return { labels: ok.map(p => p.label), datasets: [{ data: ok.map(p => fn(aggs[p.id])), backgroundColor: COLORS.slice(0, ok.length), borderColor: COLORS.slice(0, ok.length), borderWidth: 1 }] }
+  }
+
+  function makeChart(id, type, data, opts) {
+    destroyChart(id)
+    const ctx = document.getElementById(id)
+    if (!ctx) return
+    chartInstances[id] = new Chart(ctx, {
+      type, data,
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#9498a8' } }, x: { grid: { display: false }, ticks: { color: '#9498a8' } } },
+        ...opts
+      }
+    })
+  }
+
+  makeChart('scoreChart', 'bar', buildData(a => ({ y: a.avgScore || 0 })), { scales: { y: { beginAtZero: false, min: 0, max: 10, grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#9498a8' } } } })
+  makeChart('latencyChart', 'bar', buildData(a => a.avgLatencyMs))
+  makeChart('reliabilityChart', 'bar', buildData(a => a.reliability), { scales: { y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#9498a8' } } } })
+  makeChart('costChart', 'bar', buildData(a => a.estimatedTotalCost || 0))
+}
+
+function renderTaskType() {
+  const r = getActive()
+  const ttb = r.taskTypeBreakdown
+  if (!ttb || !ttb.taskTypes || ttb.taskTypes.length === 0) {
+    document.getElementById('sectionTaskType').classList.remove('active')
+    return
+  }
+  document.getElementById('sectionTaskType').classList.add('active')
+  const tabs = document.getElementById('taskTypeTabs')
+  if (!activeTaskType || !ttb.taskTypes.includes(activeTaskType)) activeTaskType = ttb.taskTypes[0]
+
+  tabs.innerHTML = ttb.taskTypes.map(tt =>
+    `<span class="file-tag${tt===activeTaskType?' active':''}" data-tt="${tt}">${tt}</span>`
+  ).join('')
+  tabs.querySelectorAll('.file-tag').forEach(el => {
+    el.addEventListener('click', () => { activeTaskType = el.dataset.tt; renderTaskTypeCharts() })
+  })
+  renderTaskTypeCharts()
+}
+
+function renderTaskTypeCharts() {
+  const r = getActive()
+  const ttb = r.taskTypeBreakdown
+  const breakdown = ttb.breakdown[activeTaskType]
+  if (!breakdown) return
+
+  const pids = Object.keys(breakdown).filter(pid => breakdown[pid].status === 'ok')
+  const labels = pids.map(pid => { const p = r.providers.find(pr => pr.id === pid); return p ? p.label : pid })
+  const colors = COLORS.slice(0, pids.length)
+
+  const chartsEl = document.getElementById('taskTypeCharts')
+  chartsEl.innerHTML = `
+    <div class="chart-box"><h2 style="margin-bottom:8px">${activeTaskType} — Avg Score</h2><canvas id="ttScoreChart"></canvas></div>
+    <div class="chart-box"><h2 style="margin-bottom:8px">${activeTaskType} — Avg Latency (ms)</h2><canvas id="ttLatChart"></canvas></div>
+    <div class="chart-box"><h2 style="margin-bottom:8px">${activeTaskType} — Reliability (%)</h2><canvas id="ttRelChart"></canvas></div>
+    <div class="chart-box"><h2 style="margin-bottom:8px">${activeTaskType} — Est. Cost ($)</h2><canvas id="ttCostChart"></canvas></div>
+  `
+
+  const ttRankings = ttb.rankings?.[activeTaskType]
+  if (ttRankings) {
+    const info = document.createElement('div')
+    info.style.cssText = 'grid-column:1/-1;color:var(--text2);font-size:0.85rem'
+    info.innerHTML = `Best score: <strong style="color:var(--accent)">${ttRankings.bestScore || '—'}</strong> &nbsp;·&nbsp; Fastest: <strong style="color:var(--accent2)">${ttRankings.fastest || '—'}</strong>`
+    chartsEl.prepend(info)
+  }
+
+  function data(fn) { return { labels, datasets: [{ data: pids.map(pid => fn(breakdown[pid])), backgroundColor: colors, borderColor: colors, borderWidth: 1 }] } }
+
+  ;[
+    ['ttScoreChart','bar',data(d=>d.avgScore||0),{scales:{y:{min:0,max:10,grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9498a8'}}}}],
+    ['ttLatChart','bar',data(d=>d.avgLatencyMs),{scales:{y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9498a8'}}}}],
+    ['ttRelChart','bar',data(d=>d.reliability),{scales:{y:{min:0,max:100,grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9498a8'}}}}],
+    ['ttCostChart','bar',data(d=>d.estimatedTotalCost||0),{scales:{y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9498a8'}}}}]
+  ].forEach(([id,type,dataset,opts]) => {
+    destroyChart(id)
+    const ctx = document.getElementById(id)
+    if (!ctx) return
+    chartInstances[id] = new Chart(ctx, { type, data: dataset, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, ...opts } })
+  })
+}
+
+function renderRadar() {
+  const r = getActive()
+  const provs = r.providers || []
+  const dr = r.detailedResults || {}
+  const allTests = new Set()
+  for (const results of Object.values(dr)) {
+    for (const res of results) if (res.dimensionScores) allTests.add(res.testId)
+  }
+  const testIds = [...allTests].sort()
+  if (testIds.length === 0) { document.getElementById('sectionRadar').classList.remove('active'); return }
+  document.getElementById('sectionRadar').classList.add('active')
+
+  if (!activeRadarTest || !testIds.includes(activeRadarTest)) activeRadarTest = testIds[0]
+  const sel = document.getElementById('radarTestSelect')
+  sel.innerHTML = testIds.map(tid =>
+    `<span class="file-tag${tid===activeRadarTest?' active':''}" data-tid="${tid}">${tid}</span>`
+  ).join('')
+  sel.querySelectorAll('.file-tag').forEach(el => {
+    el.addEventListener('click', () => { activeRadarTest = el.dataset.tid; renderRadarChart() } )
+  })
+  renderRadarChart()
+}
+
+function renderRadarChart() {
+  const r = getActive()
+  const dr = r.detailedResults || {}
+  const provs = r.providers || []
+
+  const allDims = new Set()
+  const entries = []
+  for (const p of provs) {
+    const res = (dr[p.id] || []).find(d => d.testId === activeRadarTest)
+    if (res && res.dimensionScores) {
+      entries.push({ label: p.label, scores: res.dimensionScores })
+      Object.keys(res.dimensionScores).forEach(k => allDims.add(k))
+    }
+  }
+  const dims = [...allDims]
+  if (entries.length === 0 || dims.length === 0) return
+
+  destroyChart('radarChart')
+  const ctx = document.getElementById('radarChart')
+  chartInstances['radarChart'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: dims,
+      datasets: entries.map((e, i) => ({
+        label: e.label,
+        data: dims.map(d => e.scores[d] || 0),
+        borderColor: COLORS[i % COLORS.length],
+        backgroundColor: COLORS[i % COLORS.length] + '20',
+        pointBackgroundColor: COLORS[i % COLORS.length],
+        borderWidth: 2,
+        pointRadius: 4
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: { r: { beginAtZero: true, max: 10, ticks: { stepSize: 2, color: '#9498a8', backdropColor: 'transparent' }, grid: { color: 'rgba(255,255,255,.08)' }, angleLines: { color: 'rgba(255,255,255,.08)' }, pointLabels: { color: '#e4e6ed', font: { size: 11 } } } },
+      plugins: { legend: { labels: { color: '#9498a8', font: { size: 12 } } } }
+    }
+  })
+}
+
+// If reports were passed via URL params (for saved reports), we could auto-load
+// For now, user drops files manually.
+
+</script>
+</body>
+</html>

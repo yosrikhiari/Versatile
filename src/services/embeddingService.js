@@ -83,7 +83,14 @@ async function embedBatch(inputs, model, provider) {
 async function embedBatchInternal(inputs, model, provider) {
   if (inputs.length === 0) return []
 
-  const hashes = await Promise.all(inputs.map((t) => sha256(t)))
+  // Scope the cache key by provider + model so switching embedding models never
+  // returns a vector produced by a different model (different semantics, often a
+  // different dimensionality). A bare text hash silently served stale vectors
+  // across a model change, defeating the markStale invalidation path.
+  const keyModel =
+    model || (provider === EMBEDDING_PROVIDERS.MISTRAL ? 'mistral-embed' : 'nomic-embed-text')
+  const keyPrefix = `${provider}:${keyModel}:`
+  const hashes = await Promise.all(inputs.map((t) => sha256(keyPrefix + t)))
   const results = new Array(inputs.length)
   const uncachedInputs = []
   const uncachedIndices = []
