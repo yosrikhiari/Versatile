@@ -10,6 +10,19 @@ vi.mock('../../services/researchDb', () => ({
   setEmbeddingCacheEntry: vi.fn()
 }))
 
+/**
+ * Compare a returned vector against the values the API mock produced.
+ *
+ * Vectors are Float32Array now, so an exact toEqual against a plain float64
+ * literal fails on both type and precision (float32 0.1 is 0.10000000149...).
+ * Assert the values, at float32 tolerance.
+ */
+function expectVector(actual, expected) {
+  expect(actual).toBeInstanceOf(Float32Array)
+  expect(actual).toHaveLength(expected.length)
+  expected.forEach((v, i) => expect(actual[i]).toBeCloseTo(v, 6))
+}
+
 describe('content-hash embedding cache', () => {
   beforeEach(() => {
     clearEmbeddingCache()
@@ -32,12 +45,29 @@ describe('content-hash embedding cache', () => {
     })
 
     const r1 = await getEmbeddings(['hello world'])
-    expect(r1.vectors[0]).toEqual(mockVec)
+    expectVector(r1.vectors[0], mockVec)
     expect(globalThis.fetch).toHaveBeenCalledTimes(1)
 
     const r2 = await getEmbeddings(['hello world'])
-    expect(r2.vectors[0]).toEqual(mockVec)
+    expectVector(r2.vectors[0], mockVec)
     expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns Float32Array, not the float64 array the API decoded to', async () => {
+    // Contract change: vectors arrive from JSON.parse as plain float64 arrays
+    // (8 bytes/element) and are converted at this boundary. At 768 dims and a
+    // 5000-entry cache that is the difference between ~30MB and ~15MB resident —
+    // and on a machine running the model locally, browser RAM comes straight out
+    // of the KV cache. float32 is what every vector store uses; the ~1e-7
+    // relative error is far below anything cosine similarity can notice, and the
+    // RAG eval harness reports identical NDCG/MRR before and after.
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ embeddings: [[0.1, 0.2, 0.3]], model: 'nomic-embed-text' })
+    })
+
+    const r = await getEmbeddings(['hello world'])
+    expect(r.vectors[0]).toBeInstanceOf(Float32Array)
   })
 
   it('different texts each miss cache and call API', async () => {
@@ -70,8 +100,8 @@ describe('content-hash embedding cache', () => {
     await getEmbeddings(['first call'])
     const r2 = await getEmbeddings(['first call', 'new text'])
     expect(r2.vectors).toHaveLength(2)
-    expect(r2.vectors[0]).toEqual([0.1])
-    expect(r2.vectors[1]).toEqual([0.2])
+    expectVector(r2.vectors[0], [0.1])
+    expectVector(r2.vectors[1], [0.2])
     expect(globalThis.fetch).toHaveBeenCalledTimes(2)
   })
 

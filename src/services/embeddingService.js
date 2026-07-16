@@ -16,7 +16,20 @@ export function hasMistralKey() {
 }
 
 const embeddingCache = new Map()
-const MAX_CACHE_SIZE = 20000
+
+/**
+ * In-memory hot cache of text -> embedding.
+ *
+ * Was 20000. At 768 dims that is ~120MB of float64 vectors resident in the JS
+ * heap (it half-evicts at the cap, so it oscillates 10k-20k). On a machine
+ * running the model locally that RAM is taken directly from the KV cache — i.e.
+ * from the context window — so it was never free.
+ *
+ * 5000 Float32Array entries is ~15MB, and there is a persistent Dexie layer
+ * behind this (getBulkCachedEmbeddings), so a miss here is a fast local read,
+ * not a re-embed.
+ */
+const MAX_CACHE_SIZE = 5000
 
 function ensureCacheSize() {
   if (embeddingCache.size >= MAX_CACHE_SIZE) {
@@ -211,7 +224,12 @@ async function embedBatchInternal(inputs, model, provider) {
 
   const dexieWrites = []
   for (let i = 0; i < apiResults.length; i++) {
-    const embedding = apiResults[i]
+    // The API's vectors arrive as JSON.parse output — plain JS arrays at 8 bytes
+    // per element. Converting here, at the single point where they enter the
+    // app, halves every downstream cost: this in-memory cache, the Dexie
+    // embeddingCache table, and the embedding column on researchChunks.
+    const raw = apiResults[i]
+    const embedding = raw ? new Float32Array(raw) : null
     const idx = uncachedIndices[i]
     results[idx] = embedding
     if (embedding) {

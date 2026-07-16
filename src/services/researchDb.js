@@ -18,15 +18,74 @@ const chunkCache = new Map() // projectId -> { version, chunks }
 const CHUNK_SCALE_WARN_AT = 1500
 const warnedScaleProjects = new Set()
 
+// The cache was unbounded: every project ever searched stayed resident for the
+// page's lifetime. On a machine running the model locally, browser RAM is taken
+// directly from the model's KV cache, so this is not housekeeping — it is
+// context. Map iterates in insertion order, so evicting the first key is LRU
+// enough for a handful of projects.
+const MAX_CACHED_PROJECTS = 3
+
 function invalidateChunkCache() {
   chunkCacheVersion++
+}
+
+const warnedDimProjects = new Set()
+function warnDimMismatch(projectId, mismatched, total, queryDim) {
+  if (warnedDimProjects.has(projectId)) return
+  warnedDimProjects.add(projectId)
+  console.warn(
+    `[researchDb] project ${projectId}: ${mismatched}/${total} chunks were skipped because ` +
+      `their embedding dimension does not match the query's (${queryDim}). The corpus was ` +
+      `likely embedded with a different model — re-index it, or semantic search will keep ` +
+      `silently missing those chunks.`
+  )
+}
+
+/**
+ * Unit-length Float32Array, or null.
+ *
+ * Two problems solved at once. (1) Vectors arrive from Ollama as JSON.parse
+ * output — plain JS arrays at 8 bytes per element — and the codebase was
+ * inconsistent about it: getBulkCachedEmbeddings returned Float32Array while
+ * setEmbeddingCacheEntry wrote Array.from() back to float64. Float32Array halves
+ * the resident cost. (2) cosineSimilarity recomputed BOTH magnitudes for every
+ * chunk on every query; pre-normalising means the query reduces to a plain dot
+ * product, which is ~3x less arithmetic per chunk.
+ *
+ * Normalising HERE — at the cache boundary rather than on write — means no
+ * stored-format migration and no risk to the raw-vector paths
+ * (getAllChunksForProject, getDocumentChunkEmbeddings) which still use the full
+ * cosineSimilarity below.
+ */
+function toNormalizedF32(embedding) {
+  if (!embedding || !embedding.length) return null
+  const len = embedding.length
+  let mag = 0
+  for (let i = 0; i < len; i++) mag += embedding[i] * embedding[i]
+  mag = Math.sqrt(mag)
+  if (mag === 0) return null
+  const out = new Float32Array(len)
+  for (let i = 0; i < len; i++) out[i] = embedding[i] / mag
+  return out
 }
 
 async function getCachedProjectChunks(projectId) {
   const cached = chunkCache.get(projectId)
   if (cached && cached.version === chunkCacheVersion) return cached.chunks
   const chunks = await db.researchChunks.where({ projectId }).toArray()
+
+  // Replace the float64 arrays in place so the originals become garbage rather
+  // than being retained alongside the converted copies.
+  for (const c of chunks) {
+    if (c.embedding) c.embedding = toNormalizedF32(c.embedding)
+  }
+
+  if (chunkCache.size >= MAX_CACHED_PROJECTS && !chunkCache.has(projectId)) {
+    const oldest = chunkCache.keys().next().value
+    chunkCache.delete(oldest)
+  }
   chunkCache.set(projectId, { version: chunkCacheVersion, chunks })
+
   if (chunks.length > CHUNK_SCALE_WARN_AT && !warnedScaleProjects.has(projectId)) {
     warnedScaleProjects.add(projectId)
     console.warn(
@@ -232,29 +291,50 @@ export async function searchLexical(projectId, query, limit = 20) {
   const N = allChunks.length
   if (N === 0) return []
 
-  const df = {}
-  for (const token of qTokens) {
-    df[token] = allChunks.filter((c) => c.text.toLowerCase().includes(token)).length
+  // Compile once per query, not once per (chunk x token) — this was building a
+  // fresh RegExp inside the per-chunk map. The 'i' flag also removes the need to
+  // lowercase each chunk's full text, which was allocating a complete copy of
+  // the corpus (tokens+1) times per query: ~22MB of garbage on a 1500-chunk
+  // project, on the main thread, once per scene.
+  const matchers = qTokens.map((t) => new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'))
+  const T = matchers.length
+
+  // One sweep for term AND document frequencies. tf was previously computed
+  // twice — once via includes() to derive df, then again via match() to score.
+  const df = new Array(T).fill(0)
+  const tfs = new Array(N)
+  for (let i = 0; i < N; i++) {
+    const text = allChunks[i].text || ''
+    const row = new Array(T)
+    for (let t = 0; t < T; t++) {
+      const re = matchers[t]
+      re.lastIndex = 0
+      let count = 0
+      // exec-loop rather than match(): counts without materialising an array of
+      // every match. Tokens are length > 1, so a zero-width match is impossible
+      // and this cannot spin.
+      while (re.exec(text) !== null) count++
+      row[t] = count
+      if (count > 0) df[t]++
+    }
+    tfs[i] = row
   }
 
-  const scored = allChunks.map((chunk) => {
-    const lowerText = chunk.text.toLowerCase()
+  // Only the survivors get spread — the old code cloned every chunk in the
+  // project, then filtered.
+  const scored = []
+  for (let i = 0; i < N; i++) {
     let score = 0
-    for (const token of qTokens) {
-      const tf = (
-        lowerText.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []
-      ).length
+    for (let t = 0; t < T; t++) {
+      const tf = tfs[i][t]
       if (tf === 0) continue
-      const idf = Math.log((N - df[token] + 0.5) / (df[token] + 0.5) + 1)
+      const idf = Math.log((N - df[t] + 0.5) / (df[t] + 0.5) + 1)
       score += (1 + Math.log(tf)) * idf
     }
-    return { ...chunk, _score: score }
-  })
+    if (score > 0) scored.push({ ...allChunks[i], _score: score })
+  }
 
-  return scored
-    .filter((c) => c._score > 0)
-    .sort((a, b) => b._score - a._score)
-    .slice(0, limit)
+  return scored.sort((a, b) => b._score - a._score).slice(0, limit)
 }
 
 export function cosineSimilarity(a, b) {
@@ -274,16 +354,35 @@ export function cosineSimilarity(a, b) {
 export async function semanticSearch(projectId, queryEmbedding, limit = 20) {
   if (!queryEmbedding) return []
   const allChunks = await getCachedProjectChunks(projectId)
-  const scored = allChunks
-    .filter((c) => c.embedding && c.embedding.length > 0)
-    .map((c) => ({
-      ...c,
-      _score: cosineSimilarity(c.embedding, queryEmbedding)
-    }))
-  return scored
-    .filter((c) => c._score > 0.1)
-    .sort((a, b) => b._score - a._score)
-    .slice(0, limit)
+
+  // Chunks come out of the cache already unit-length, so normalising the query
+  // once reduces every comparison to a dot product: the magnitude of both
+  // vectors no longer has to be recomputed for each of the N chunks.
+  const q = toNormalizedF32(queryEmbedding)
+  if (!q) return []
+
+  const scored = []
+  let dimMismatches = 0
+  for (const c of allChunks) {
+    const v = c.embedding
+    if (!v) continue
+    if (v.length !== q.length) {
+      dimMismatches++
+      continue
+    }
+    let dot = 0
+    for (let i = 0; i < v.length; i++) dot += v[i] * q[i]
+    if (dot > 0.1) scored.push({ ...c, _score: dot })
+  }
+
+  // A dimension mismatch means the corpus was embedded with a different model
+  // (nomic-embed-text is 768, mistral-embed is 1024). The old code fell through
+  // cosineSimilarity's length guard and scored 0, so switching embedding
+  // provider silently produced zero recall instead of an error. Say so.
+  if (dimMismatches > 0) {
+    warnDimMismatch(projectId, dimMismatches, allChunks.length, q.length)
+  }
+  return scored.sort((a, b) => b._score - a._score).slice(0, limit)
 }
 
 export async function getEmbeddingCacheEntry(hash) {
@@ -293,7 +392,12 @@ export async function getEmbeddingCacheEntry(hash) {
 export async function setEmbeddingCacheEntry(hash, embedding) {
   await db.embeddingCache.put({
     hash,
-    embedding: Array.from(embedding),
+    // Float32Array, not Array.from(): IndexedDB's structured clone stores typed
+    // arrays natively at half the bytes. This previously converted BACK to
+    // float64 on write while getBulkCachedEmbeddings read it out as
+    // Float32Array — the two disagreed. Reads stay backward compatible because
+    // `new Float32Array(x)` accepts both a plain array and a Float32Array.
+    embedding: embedding instanceof Float32Array ? embedding : new Float32Array(embedding),
     createdAt: Date.now()
   })
 }
@@ -310,15 +414,25 @@ export async function getBulkCachedEmbeddings(hashes) {
   return map
 }
 
+/**
+ * Trim the persistent embedding cache to its most recent `maxEntries`.
+ *
+ * Had zero callers, so the table grew for the life of the install. Now invoked
+ * once per app start from useAppInitialization.
+ *
+ * @returns {Promise<number>} how many entries were deleted
+ */
 export async function pruneEmbeddingCache(maxEntries = 20000) {
   const count = await db.embeddingCache.count()
-  if (count <= maxEntries) return
+  if (count <= maxEntries) return 0
   const toPrune = await db.embeddingCache
     .orderBy('createdAt')
     .limit(count - maxEntries)
     .toArray()
   const keys = toPrune.map((e) => e.hash)
-  if (keys.length) await db.embeddingCache.bulkDelete(keys)
+  if (!keys.length) return 0
+  await db.embeddingCache.bulkDelete(keys)
+  return keys.length
 }
 
 export async function resetChunksStatus(documentId, fromStatus) {
