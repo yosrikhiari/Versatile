@@ -48,6 +48,33 @@ const REPORTS_DIR = resolve(__dirname, '..', '..', '..', 'reports')
 const CONTEXT_TIERS = [2048, 4096, 8192, 16384, 32768]
 
 /**
+ * Logical LLM calls per volume, traced from useVolumeStoryGenerator.
+ *
+ * Prompt size is the quality bug; call count is the time bug. On a local model
+ * every one of these is seconds of wall clock, so the cheapest optimisation is
+ * always the call you don't make.
+ */
+const VOLUME = { chapters: 10, scenesPerChapter: 3 }
+
+function callBudget({ chapters, scenesPerChapter }) {
+  const scenes = chapters * scenesPerChapter
+  return {
+    scenes,
+    bootstrap: 1, // useEntityBootstrapper:171
+    relationships: 1, // generators/relationships.js:238
+    skeleton: Math.ceil(chapters / 12), // useStoryDirector SKELETON_BATCH_SIZE=12
+    directorScenes: chapters, // one per chapter
+    spine: chapters, // spine.js:95
+    writer: scenes, // one per scene (clean pass)
+    critic: scenes, // one per scene (autoMode gate)
+    // Was one aiGenerate per scene, purely to summarize prose the writer had
+    // just produced. Now a field on the writer's existing structured output.
+    summaryBefore: scenes,
+    summaryAfter: 0
+  }
+}
+
+/**
  * Project scales, in (characters, locations, plotThreads).
  *
  * These are not arbitrary. A story bible starts small and grows monotonically
@@ -449,6 +476,41 @@ function report(rows) {
     )
   }
   push()
+
+  push(`LLM CALLS PER VOLUME  (${VOLUME.chapters} chapters x ${VOLUME.scenesPerChapter} scenes)`)
+  push('='.repeat(78))
+  push()
+  {
+    const b = callBudget(VOLUME)
+    const fixed = b.bootstrap + b.relationships + b.skeleton + b.directorScenes + b.spine
+    const before = fixed + b.writer + b.critic + b.summaryBefore
+    const after = fixed + b.writer + b.critic + b.summaryAfter
+    const row = (label, n) => push(`  ${label.padEnd(34)} ${String(n).padStart(4)}`)
+    row('entity bootstrap', b.bootstrap)
+    row('relationships', b.relationships)
+    row('director skeleton', b.skeleton)
+    row('director scenes', b.directorScenes)
+    row('spine', b.spine)
+    row('writer (1/scene, clean pass)', b.writer)
+    row('critic (1/scene, autoMode gate)', b.critic)
+    push('-'.repeat(78))
+    row('per-scene summary — BEFORE', b.summaryBefore)
+    row('per-scene summary — AFTER', b.summaryAfter)
+    push('-'.repeat(78))
+    row('TOTAL before', before)
+    row('TOTAL after', after)
+    push()
+    push(
+      `  ${b.summaryBefore} calls removed = ${Math.round((1 - after / before) * 100)}% of the volume's logical calls,`
+    )
+    push(`  by moving one field into structured output the writer already emits.`)
+    push()
+    push('  Each was a ~3000-char prompt asking the model to summarize prose it')
+    push('  had just written itself. Worst case is higher than shown: the writer')
+    push('  and critic can each run twice (SCENE_MAX_ATTEMPTS=2), and every')
+    push('  logical call is up to 3 retry attempts plus a fallback at transport.')
+    push()
+  }
 
   push('KV-CACHE RAM COST OF EACH TIER  (~7-8B GQA model, fp16 KV — ESTIMATE)')
   push('='.repeat(78))

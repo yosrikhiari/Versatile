@@ -878,7 +878,9 @@ export function useVolumeStoryGenerator() {
         const fullProse = chosenProse
 
         progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
-        const summary = await computeSummary(fullProse)
+        // The writer already returned a summary in its structured output; this
+        // only falls back to a separate LLM call if it didn't.
+        const summary = await computeSummary(fullProse, chosenStructured)
         const wordCount = fullProse.split(/\s+/).length
 
         if (scene.subsectionId) {
@@ -1018,7 +1020,9 @@ export function useVolumeStoryGenerator() {
         const fullProse = chosenProse
 
         progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
-        const summary = await computeSummary(fullProse)
+        // The writer already returned a summary in its structured output; this
+        // only falls back to a separate LLM call if it didn't.
+        const summary = await computeSummary(fullProse, chosenStructured)
         const wordCount = fullProse.split(/\s+/).length
 
         if (scene.subsectionId) {
@@ -1222,7 +1226,8 @@ export function useVolumeStoryGenerator() {
         fullProse,
         sectionIndexForScene(sections, i),
         sections,
-        projectId
+        projectId,
+        chosenStructured
       )
       commitService.persistCheckpoint(projectId)
 
@@ -1564,7 +1569,7 @@ export function useVolumeStoryGenerator() {
           const rebuilt = {
             title: scene.title || `Scene ${scene.sceneNumber}`,
             prose: fullProse,
-            summary: await computeSummary(fullProse),
+            summary: await computeSummary(fullProse, result.structured),
             characters: scene.characters || scene.charactersPresent || [],
             location: scene.location || '',
             sceneNumber: scene.sceneNumber,

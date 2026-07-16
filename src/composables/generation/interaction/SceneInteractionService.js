@@ -89,11 +89,18 @@ export class SceneInteractionService {
 
   async approveScene() {
     if (!this.currentSceneResult.value || !this.writeParams.value) return
-    const { scene, fullProse, sectionIdx } = this.currentSceneResult.value
+    const { scene, fullProse, sectionIdx, structured } = this.currentSceneResult.value
     const { projectId, sections } = this.writeParams.value
     this.currentSceneResult.value = null
     this.progress.statusText = 'Approving scene and continuing...'
-    await this.commitService.commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId)
+    await this.commitService.commitAndStoreScene(
+      scene,
+      fullProse,
+      sectionIdx,
+      sections,
+      projectId,
+      structured
+    )
     this.phase.value = 'writing'
     await this.onWriteNextBatch?.(this.currentWriteIndex.value)
   }
@@ -179,7 +186,9 @@ export class SceneInteractionService {
     this.writtenScenes.value[sceneIndex] = {
       title: scene.title || `Scene ${scene.sceneNumber}`,
       prose: fullProse,
-      summary: await computeSummary(fullProse),
+      // Reuses the summary the writer already returned; only costs a separate
+      // LLM call when the model omitted it.
+      summary: await computeSummary(fullProse, result.structured),
       characters: scene.characters || scene.charactersPresent || [],
       location: scene.location || '',
       sceneNumber: scene.sceneNumber,

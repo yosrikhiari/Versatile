@@ -84,10 +84,16 @@ export class CommitService {
     }
   }
 
-  async commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId) {
+  /**
+   * @param {object} [structured] The writer's parsed JSON. When it carries a
+   *   `summary`, that is used directly instead of spending a whole extra LLM
+   *   round-trip asking the model to summarize prose it just wrote. Optional, so
+   *   callers without it keep the old behaviour.
+   */
+  async commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId, structured) {
     this.progress.statusText =
       'Compiling prose and generating plot-accurate continuity summaries...'
-    const summary = await computeSummary(fullProse)
+    const summary = await computeSummary(fullProse, structured)
     const wordCount = fullProse.split(/\s+/).length
 
     if (scene.subsectionId) {

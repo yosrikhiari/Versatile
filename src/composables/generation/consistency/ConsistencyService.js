@@ -76,7 +76,9 @@ export class ConsistencyService {
     this.writtenScenes.value[sceneIndex] = {
       title: scene.title || `Scene ${scene.sceneNumber}`,
       prose: fullProse,
-      summary: await computeSummary(fullProse),
+      // Reuses the summary the writer already returned; only costs a separate
+      // LLM call when the model omitted it.
+      summary: await computeSummary(fullProse, result.structured),
       characters: scene.characters || scene.charactersPresent || [],
       location: scene.location || '',
       sceneNumber: scene.sceneNumber,

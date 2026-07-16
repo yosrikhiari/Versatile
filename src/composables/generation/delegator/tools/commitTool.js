@@ -10,8 +10,8 @@ export function createCommitTool(memory) {
       return svc.persistCheckpoint(projectId)
     },
 
-    commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId) {
-      return svc.commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId)
+    commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId, structured) {
+      return svc.commitAndStoreScene(scene, fullProse, sectionIdx, sections, projectId, structured)
     }
   }
 }
