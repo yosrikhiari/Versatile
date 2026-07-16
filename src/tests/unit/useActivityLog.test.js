@@ -123,6 +123,11 @@ describe('useActivityLog', () => {
     log.addPhase(id, 'thinking')
     log.appendThought(id, 0, 'Hello ')
     log.appendThought(id, 0, 'World')
+    // Appends are buffered and flushed once per frame, so reading synchronously
+    // requires an explicit flush. Tokens arrive ~10-60x/sec during generation and
+    // each one used to be its own reactive write (and its own <pre> re-render
+    // when the drawer was expanded).
+    log.flushThoughts()
     expect(log.tasks.value[0].phases[0].thought).toBe('Hello World')
   })
 
@@ -130,7 +135,61 @@ describe('useActivityLog', () => {
     const log = await createLog()
     const id = log.addTask({ name: 'Test', type: 'generate' })
     log.appendThought(id, 0, 'Should not appear')
+    log.flushThoughts()
     expect(log.tasks.value[0].phases).toHaveLength(0)
+  })
+
+  it('coalesces a burst of chunks into one reactive write', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'thinking')
+    for (let i = 0; i < 100; i++) log.appendThought(id, 0, 'x')
+
+    // Nothing applied yet — the whole burst is still buffered.
+    expect(log.tasks.value[0].phases[0].thought).toBe('')
+    log.flushThoughts()
+    expect(log.tasks.value[0].phases[0].thought).toHaveLength(100)
+  })
+
+  it('completeTask flushes buffered tokens rather than dropping them', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'thinking')
+    log.appendThought(id, 0, 'tail output')
+    log.completeTask(id)
+    expect(log.tasks.value[0].phases[0].thought).toBe('tail output')
+  })
+
+  it('failTask flushes buffered tokens — they usually explain the failure', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'thinking')
+    log.appendThought(id, 0, 'error detail')
+    log.failTask(id, 'boom')
+    expect(log.tasks.value[0].phases[0].thought).toBe('error detail')
+  })
+
+  it('keeps separate phases separate when both are buffered', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'one')
+    log.addPhase(id, 'two')
+    log.appendThought(id, 0, 'first')
+    log.appendThought(id, 1, 'second')
+    log.flushThoughts()
+    expect(log.tasks.value[0].phases[0].thought).toBe('first')
+    expect(log.tasks.value[0].phases[1].thought).toBe('second')
+  })
+
+  it('ignores empty chunks', async () => {
+    const log = await createLog()
+    const id = log.addTask({ name: 'Test', type: 'generate' })
+    log.addPhase(id, 'thinking')
+    log.appendThought(id, 0, '')
+    log.appendThought(id, 0, null)
+    log.appendThought(id, 0, undefined)
+    log.flushThoughts()
+    expect(log.tasks.value[0].phases[0].thought).toBe('')
   })
 
   it('activeTasks returns only running tasks', async () => {

@@ -9,6 +9,7 @@ import { getVoiceProfile } from '../config/voiceProfiles'
 import { buildSceneContext } from '../services/sceneContextService'
 import { usePromptBuilder } from './usePromptBuilder'
 import { summarizeLog } from '../utils/promptUtils'
+import { fitSceneContext } from '../services/ai/contextBudget'
 
 const FALLBACK_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
 
@@ -352,7 +353,8 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     focusInstructions,
     voiceProfile,
     completedScenes,
-    characters
+    characters,
+    signal
   }) {
     isWriting.value = true
     writeError.value = null
@@ -422,8 +424,38 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
 
       const logSummary = summarizeLog(chapterLog)
 
-      const contractSection = storyContract
-        ? `\nSTORY CONTRACT (world rules — never break these):\n${storyContract}\n`
+      // Fit the variable context to the model's REAL window before assembling.
+      //
+      // Ollama does not reject an oversized prompt — it silently discards part of
+      // it. Measured: ~6,153 tokens sent at num_ctx=4096, 2,050 evaluated, no
+      // error (reports/ollama-probe.json). And it discards from the FRONT, where
+      // the canon lives, while the JSON rules at the end always survive.
+      //
+      // So the question is not whether context gets dropped. It is whether WE
+      // choose — by value, and out loud — or the server chooses, by position, in
+      // silence. Only the variable inputs are budgeted; the template below is
+      // untouched, so the prompt's shape and wording do not move.
+      const outputTokens = Math.max(
+        2000,
+        Math.min(4500, Math.ceil((sceneBrief.estimatedWords || 800) * 1.8) + 800)
+      )
+      const fitted = fitSceneContext({
+        storyContract,
+        spineContext,
+        storyContextBlock,
+        existingEntitiesJson,
+        sceneContext,
+        logSummary,
+        outputTokens
+      })
+      if (fitted.note) {
+        console.warn(
+          `[useStoryWriter] scene "${sceneBrief.title || sceneBrief.sceneNumber || ''}" context budget: ${fitted.note}`
+        )
+      }
+
+      const contractSection = fitted.storyContract
+        ? `\nSTORY CONTRACT (world rules — never break these):\n${fitted.storyContract}\n`
         : ''
 
       const briefLines =
@@ -459,24 +491,25 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       const sceneId = sceneBrief.sceneNumber || sceneBrief.sceneIndex || 1
       const sceneTitle = sceneBrief.title || `Scene ${sceneId}`
 
-      const existingContext = existingEntitiesJson
-        ? `\nEXISTING WORLD CONTEXT:\n${existingEntitiesJson}\n`
+      const existingContext = fitted.existingEntitiesJson
+        ? `\nEXISTING WORLD CONTEXT:\n${fitted.existingEntitiesJson}\n`
         : ''
 
       const anchorSection = anchorRole
         ? `\nANCHOR ROLE: ${anchorRole}\n${anchorConstraints || ''}\n`
         : ''
-      const spineSection = spineContext
-        ? `\nNOVEL SPINE (read this to maintain cross-chapter coherence):\n${spineContext}\n`
+
+      const spineSection = fitted.spineContext
+        ? `\nNOVEL SPINE (read this to maintain cross-chapter coherence):\n${fitted.spineContext}\n`
         : ''
 
       const userPrompt = `${contractSection}${spineSection}${anchorSection}
 Write scene ${sceneId}: "${sceneTitle}"
 
 CHAPTER LOG (what has happened before this scene):
-${logSummary || '(This is the first scene — nothing has happened yet.)'}
+${fitted.logSummary || '(This is the first scene — nothing has happened yet.)'}
 
-${sceneContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${sceneContext}\n` : ''}
+${fitted.sceneContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${fitted.sceneContext}\n` : ''}
 SCENE BRIEF:
 ${briefSection}
 
@@ -485,7 +518,7 @@ STORY ARC (for tonal reference):
 - Tone: ${storyArc?.tone || ''}
 - Central conflict: ${storyArc?.centralConflict || ''}
 
-${storyContextBlock}${existingContext}
+${fitted.storyContextBlock}${existingContext}
 The scene MUST be at least ${sceneBrief.estimatedWords || 800} words. Do not end the scene early. If you are below the word count, continue writing until you reach it.
 
 Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No explanation outside the JSON.
@@ -560,12 +593,13 @@ CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes in
               onChunk(chunk, chunk)
             }
           },
-          { feature: FEATURES.STORY_GENERATION, maxTokens }
+          { feature: FEATURES.STORY_GENERATION, maxTokens, signal }
         )
       } else {
         accumulated = await aiGenerate(userPrompt, systemPrompt, {
           feature: FEATURES.STORY_GENERATION,
-          maxTokens
+          maxTokens,
+          signal
         })
       }
 
@@ -592,4 +626,4 @@ CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes in
   return { writeScene, writeSceneStructured, isWriting, writeError }
 }
 
-export { summarizeLog }
+export { summarizeLog, CRAFT_RULES, PROSE_STYLE_GUIDE, FALLBACK_VOICE }

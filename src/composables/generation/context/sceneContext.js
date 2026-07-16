@@ -50,31 +50,84 @@ function buildFactLedger(spine, writtenScenes) {
   return ledger
 }
 
+function fullCharacter(c) {
+  return { name: c.name, role: c.role, description: c.description, traits: c.traits || [] }
+}
+function fullLocation(l) {
+  return { name: l.name, description: l.description, notes: l.notes, traits: l.traits || [] }
+}
+function fullThread(t) {
+  return { title: t.title, status: t.status, notes: t.notes, traits: t.traits || [] }
+}
+
 function buildExistingEntitiesBlob(characterList, locationList, plotThreadList) {
   return JSON.stringify(
     {
-      characters: characterList.map((c) => ({
-        name: c.name,
-        role: c.role,
-        description: c.description,
-        traits: c.traits || []
-      })),
-      locations: locationList.map((l) => ({
-        name: l.name,
-        description: l.description,
-        notes: l.notes,
-        traits: l.traits || []
-      })),
-      plotThreads: plotThreadList.map((t) => ({
-        title: t.title,
-        status: t.status,
-        notes: t.notes,
-        traits: t.traits || []
-      }))
+      characters: characterList.map(fullCharacter),
+      locations: locationList.map(fullLocation),
+      plotThreads: plotThreadList.map(fullThread)
     },
     null,
     2
   )
+}
+
+function nameKey(v) {
+  return String(v || '')
+    .trim()
+    .toLowerCase()
+}
+
+/**
+ * Entity context scoped to one scene, rather than the whole story bible.
+ *
+ * The full dump grows with the novel and rides in every writer call, so prompts
+ * scaled with the project instead of the scene — the wrong axis. The scene brief
+ * already knows its own cast via `charactersPresent`, so spend detail on who is
+ * actually here and give everyone else a name+role index, which preserves the
+ * "these people exist, don't reinvent them" signal at a fraction of the tokens.
+ *
+ * Plot threads are NOT scoped: the scene schema has no per-scene thread link
+ * (see useStoryDirector.js:301), so there is no signal to scope on. They stay
+ * whole.
+ *
+ * Returns `null` when the scene names nobody — the director's fallback path
+ * leaves `charactersPresent` empty (useStoryDirector.js:93), and scoping on an
+ * empty cast would send zero character detail. Callers fall back to the full
+ * dump in that case.
+ *
+ * @returns {string|null} compact JSON, or null if the scene has no usable cast
+ */
+function buildSceneEntitiesBlob(scene, { characters = [], locations = [], plotThreads = [] } = {}) {
+  const present = new Set(
+    [...(scene?.charactersPresent || []), ...(scene?.characters || [])].filter(Boolean).map(nameKey)
+  )
+  if (present.size === 0) return null
+
+  const here = nameKey(scene?.location)
+  const isPresent = (c) => present.has(nameKey(c.name))
+  const isHere = (l) => here !== '' && nameKey(l.name) === here
+
+  const cast = characters.filter(isPresent)
+  if (cast.length === 0) return null
+
+  const elsewhere = characters.filter((c) => !isPresent(c))
+  const hereLocs = locations.filter(isHere)
+  const otherLocs = locations.filter((l) => !isHere(l))
+
+  const payload = {
+    charactersInScene: cast.map(fullCharacter),
+    plotThreads: plotThreads.map(fullThread)
+  }
+  // Name-only indexes: enough to know they exist, cheap enough to always send.
+  if (elsewhere.length) {
+    payload.otherCharacters = elsewhere.map((c) => ({ name: c.name, role: c.role }))
+  }
+  if (hereLocs.length) payload.locationsInScene = hereLocs.map(fullLocation)
+  if (otherLocs.length) payload.otherLocations = otherLocs.map((l) => l.name)
+
+  // No pretty-print: indentation costs tokens and no model needs it.
+  return JSON.stringify(payload)
 }
 
 function planConsistencyFixes(report, writtenScenes) {
@@ -277,6 +330,7 @@ async function buildBaseRetrievalContext(currentScene, priorScenes, k = 5) {
 export {
   buildFactLedger,
   buildExistingEntitiesBlob,
+  buildSceneEntitiesBlob,
   planConsistencyFixes,
   buildEmbeddingContext,
   selectRelevantPriorScenes,

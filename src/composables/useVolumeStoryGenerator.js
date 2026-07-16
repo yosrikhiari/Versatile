@@ -38,6 +38,7 @@ import {
 } from './generation/context/spine'
 import {
   buildExistingEntitiesBlob,
+  buildSceneEntitiesBlob,
   EMBEDDING_CONTEXT_MAX_CHARS,
   PROSE_EXCERPT_MAX_SCENES,
   buildEmbeddingContext,
@@ -101,6 +102,51 @@ export function useVolumeStoryGenerator() {
   const writeParams = ref(null)
   const sceneReviewMode = ref(false)
   const autoMode = ref(false)
+  // How many scenes were accepted without the quality gate actually running.
+  // Non-zero means the run's quality signal is partly fiction.
+  const evalUnavailableCount = ref(0)
+
+  // Run-level cancellation.
+  //
+  // A volume is 130-230 LLM calls. Until now the only way to stop one was to
+  // reload the page: `reset()` cleared the refs while in-flight fetches kept
+  // running and completed writers kept writing into the store behind it.
+  //
+  // `options.signal` was already plumbed all the way to the providers — no
+  // generation caller ever passed one. (Note it could not safely be passed
+  // before: `onAbort` was block-scoped inside the providers' try blocks, so any
+  // error raised while a signal was attached threw a ReferenceError that masked
+  // the real one. That is fixed; this is now safe to turn on.)
+  let runController = null
+  const isCancelling = ref(false)
+
+  function runSignal() {
+    return runController?.signal
+  }
+
+  /** True once the user has asked to stop; loops use it to leave promptly. */
+  function isAborted() {
+    return !!runController?.signal.aborted
+  }
+
+  /**
+   * Bail out of a loop between units of work.
+   *
+   * Cheap and honest: the in-flight request is aborted by the signal, and this
+   * stops the *next* one from starting. A scene is 3-5 calls, so a run stops
+   * within roughly one scene rather than one volume.
+   */
+  function throwIfAborted() {
+    if (isAborted()) {
+      const err = new Error('Generation cancelled')
+      err.name = 'AbortError'
+      throw err
+    }
+  }
+
+  function isAbortError(e) {
+    return e?.name === 'AbortError' || /cancel/i.test(e?.message || '')
+  }
   const runConsecutiveFailures = ref(0)
   const runFailedScenes = ref(0)
   const currentSceneResult = ref(null)
@@ -347,6 +393,9 @@ export function useVolumeStoryGenerator() {
     onChunk
   }) {
     if (phase.value !== 'idle') return
+
+    runController = new AbortController()
+    isCancelling.value = false
 
     // Normalize an explicit volumes/chapters/words request into a structure spec
     let structureSpec = null
@@ -633,6 +682,15 @@ export function useVolumeStoryGenerator() {
       // Store arc for later use
       return { scenes: scenePlan.value, storyArc, volumeId: vId, storyContract }
     } catch (err) {
+      // A user-requested stop is an outcome, not a fault. Reporting it as
+      // "Generation failed" would be the app lying about its own state.
+      if (isAbortError(err)) {
+        progress.statusText = 'Stopped'
+        if (activeStage) {
+          await updateGenRunStage(projectId, activeStage, { status: 'cancelled' })
+        }
+        throw err
+      }
       await delegatorApi.dispatch('ERROR', {
         error: err,
         message: err.message || 'Generation failed during initial phases'
@@ -676,7 +734,17 @@ export function useVolumeStoryGenerator() {
     let attemptFeedback = pastEvalResults
     let attemptFocusInstructions = focusInstructions
 
+    // Spend prompt budget on this scene's cast, not the whole bible. Falls back
+    // to the caller's full dump when the scene names nobody to scope on.
+    const sceneEntitiesJson =
+      buildSceneEntitiesBlob(scene, {
+        characters: storyBibleStore.characters,
+        locations: storyBibleStore.locations,
+        plotThreads: storyBibleStore.plotThreads
+      }) || existingEntitiesJson
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      throwIfAborted()
       let fullProse = ''
       const result = await writer.writeSceneStructured({
         sceneBrief: scene,
@@ -686,6 +754,7 @@ export function useVolumeStoryGenerator() {
         spineContext: spineContext.value,
         anchorRole,
         anchorConstraints,
+        signal: runSignal(),
         onChunk: (_chunk, proseChunk) => {
           fullProse += proseChunk || ''
           emitChunk?.(proseChunk, fullProse)
@@ -694,7 +763,7 @@ export function useVolumeStoryGenerator() {
         embeddingContext,
         storyContract,
         rejectedPatterns: extraRejected,
-        existingEntitiesJson,
+        existingEntitiesJson: sceneEntitiesJson,
         pastEvalResults: attemptFeedback || undefined,
         focusInstructions: attemptFocusInstructions || undefined
       })
@@ -725,6 +794,20 @@ export function useVolumeStoryGenerator() {
       }
       if (!scoreDist.pass && scoreDist.flags.length > 0) {
         console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
+      }
+
+      // A critic that cannot parse its own output makes the run look healthier
+      // and cheaper than it is: the gate exits, the draft is accepted, and
+      // nothing in the UI says the quality gate never ran. Retrying the writer
+      // would not help — it is the critic that failed — so we still break, but
+      // loudly, where the user is actually looking.
+      if (criticResult?.evalUnavailable) {
+        evalUnavailableCount.value += 1
+        actLog.appendThought(
+          currentTaskId,
+          scenePhase,
+          "\n⚠ Quality gate did not run for this scene — the critic's output could not be parsed. The draft was accepted unchecked.\n"
+        )
       }
 
       const continuityOk = (criticResult.dimensionScores?.continuity ?? 10) >= 6
@@ -865,8 +948,10 @@ export function useVolumeStoryGenerator() {
       }
     })
 
+    throwIfAborted()
     const limit = PARALLEL_CHAPTER_LIMIT()
     const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
+    throwIfAborted()
 
     let anchorEvalFeedback = ''
     let anchorFocusInstructions = ''
@@ -978,7 +1063,9 @@ export function useVolumeStoryGenerator() {
 
     let middleOutcomes = []
     if (middleTasks.length > 0) {
+      throwIfAborted()
       middleOutcomes = await parallelWithLimit(middleTasks, limit)
+      throwIfAborted()
     }
 
     if (inlineEvalEnabled.value) {
@@ -1055,6 +1142,7 @@ export function useVolumeStoryGenerator() {
     let batchFocusInstructions = ''
 
     for (let i = startIndex; i < endIndex; i++) {
+      throwIfAborted()
       const scene = scenePlan.value[i]
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
       const scenePhase = actLog.addPhase(currentTaskId, phaseName)
@@ -1562,7 +1650,39 @@ export function useVolumeStoryGenerator() {
     await sceneInteractionService.rerequestScene(edits)
   }
 
+  /**
+   * Ask the current run to stop.
+   *
+   * Aborts the in-flight request via the signal the providers already honour,
+   * and the `throwIfAborted()` guards stop the next unit of work from starting.
+   * A scene is 3-5 calls, so a run unwinds within roughly one scene rather than
+   * one volume.
+   *
+   * Prose already committed stays committed — that is deliberate. A user who
+   * stops after 20 good scenes wants the 20 scenes, not an empty project. The
+   * checkpoint written per scene is what makes resuming possible.
+   *
+   * @returns {boolean} whether there was anything to stop
+   */
+  function stop() {
+    if (!runController || runController.signal.aborted) return false
+    isCancelling.value = true
+    progress.statusText = 'Stopping…'
+    runController.abort()
+    if (currentTaskId) {
+      actLog.appendThought(currentTaskId, 0, '\n⏹ Generation stopped by user.\n')
+    }
+    return true
+  }
+
   async function reset() {
+    // Abort before clearing. Previously reset() cleared the refs while in-flight
+    // fetches kept running and their writers kept writing into the store behind
+    // it — the state came back, seconds after being wiped.
+    stop()
+    runController = null
+    isCancelling.value = false
+
     await delegatorApi.dispatch('RESET')
     progress.current = 0
     progress.total = 0
@@ -1583,6 +1703,7 @@ export function useVolumeStoryGenerator() {
     autoMode.value = false
     runConsecutiveFailures.value = 0
     runFailedScenes.value = 0
+    evalUnavailableCount.value = 0
     currentSceneResult.value = null
     currentWriteIndex.value = 0
   }
@@ -1596,6 +1717,9 @@ export function useVolumeStoryGenerator() {
     writtenScenes,
     consistencyReport,
     rejectedPatterns,
+    evalUnavailableCount,
+    stop,
+    isCancelling,
     isBootstrapping: bootstrapper.isBootstrapping,
     isWriting: writer.isWriting,
     isCheckingConsistency: critic.isCheckingConsistency,
@@ -1631,6 +1755,7 @@ export {
   formatFullSpineEntry,
   compressSpine,
   buildExistingEntitiesBlob,
+  buildSceneEntitiesBlob,
   parallelWithLimit,
   generateSpine,
   fallbackSpineEntry

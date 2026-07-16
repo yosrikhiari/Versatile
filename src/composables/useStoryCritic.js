@@ -53,6 +53,50 @@ function countCharacters(storyBible) {
 
 const CONSISTENCY_EXCERPT_MAX_CHARS = 2000
 
+/**
+ * Scene excerpts per continuity check.
+ *
+ * This was uncapped: a character appearing in 20 scenes produced a single
+ * ~40,000-char prompt. That does not survive contact with a real context window
+ * — probe-ollama.js measured the server silently evaluating ~2,050 of ~6,153
+ * tokens sent and reporting no error. So an uncapped prompt was ALREADY losing
+ * scenes, just arbitrarily and invisibly. Choosing which to drop is strictly
+ * better than letting the server choose.
+ *
+ * 6 x 2000 chars ~= 12k chars, which leaves room for the ledger and the
+ * character sheet inside a 16k window.
+ */
+const CONSISTENCY_MAX_SCENES = 6
+
+/**
+ * Keep the establishing scene and the most recent ones.
+ *
+ * Continuity drift is a function of distance from where a fact was established,
+ * so the first appearance and the latest appearances carry the most signal; the
+ * middle is where a contradiction is least likely to be newly introduced. Scenes
+ * stay in narrative order, and the caller reports the elision so the model does
+ * not read the gap as "nothing happened".
+ */
+function selectConsistencyScenes(scenes, max = CONSISTENCY_MAX_SCENES) {
+  if (!Array.isArray(scenes) || scenes.length <= max) {
+    return { selected: scenes || [], omitted: 0 }
+  }
+  const head = scenes.slice(0, 1)
+  const tail = scenes.slice(-(max - 1))
+  return { selected: [...head, ...tail], omitted: scenes.length - max }
+}
+
+function formatExcerpts(scenes) {
+  const { selected, omitted } = selectConsistencyScenes(scenes)
+  const body = selected
+    .map(
+      (s, i) => `--- Scene ${i + 1} ---\n${(s.prose || '').slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`
+    )
+    .join('\n\n')
+  if (!omitted) return body
+  return `(${omitted} middle scene${omitted === 1 ? '' : 's'} omitted for length — the first and most recent appearances are shown.)\n\n${body}`
+}
+
 const CONSISTENCY_CRITIC_PROMPT = `You are a continuity editor. Given a character's facts and every scene they appear in, list any contradictions.
 
 Check for contradictions in: name spelling, physical appearance, personality traits, niche traits/characteristics, goals/motivations, timeline/logical sequence.
@@ -85,9 +129,7 @@ function formatLedgerBlock(ledger) {
 }
 
 function formatCharacterCheck(character, ledger, sceneExcerpts) {
-  const excerpts = sceneExcerpts
-    .map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`)
-    .join('\n\n')
+  const excerpts = formatExcerpts(sceneExcerpts)
   return `Character: ${character.name}
 Role: ${character.role || 'unknown'}
 Goal: ${character.goal || 'unknown'}
@@ -100,9 +142,7 @@ ${excerpts}`
 }
 
 function formatLocationCheck(location, ledger, sceneExcerpts) {
-  const excerpts = sceneExcerpts
-    .map((s, i) => `--- Scene ${i + 1} ---\n${s.prose.slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`)
-    .join('\n\n')
+  const excerpts = formatExcerpts(sceneExcerpts)
   return `Location: ${location.name}
 Description: ${location.description || 'unknown'}
 Notes: ${location.notes || 'unknown'}
@@ -175,6 +215,15 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
       if (!parsed) {
         // Don't fabricate a passing 7 — that poisons quality averages and makes
         // unattended runs look fine when the critic actually never ran.
+        //
+        // `pass: true` here is a surrender, not a verdict: the gate cannot
+        // usefully retry a writer when it is the CRITIC that failed, so it
+        // accepts the draft. That is defensible, but it must not be quiet — a
+        // broken critic otherwise makes the pipeline cheaper and the run look
+        // healthier. Callers surface evalUnavailable; this warn is the backstop.
+        console.warn(
+          '[useStoryCritic] Scene evaluation unavailable — critic output could not be parsed. The quality gate did NOT run for this scene.'
+        )
         return {
           pass: true,
           score: null,

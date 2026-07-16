@@ -18,6 +18,7 @@ let buildEmbeddingContext,
   formatFullSpineEntry,
   compressSpine,
   buildExistingEntitiesBlob,
+  buildSceneEntitiesBlob,
   parallelWithLimit
 let selectRelevantPriorScenes, planConsistencyFixes, buildFactLedger
 let useVolumeStoryGenerator
@@ -31,6 +32,7 @@ beforeEach(async () => {
   formatFullSpineEntry = mod.formatFullSpineEntry
   compressSpine = mod.compressSpine
   buildExistingEntitiesBlob = mod.buildExistingEntitiesBlob
+  buildSceneEntitiesBlob = mod.buildSceneEntitiesBlob
   parallelWithLimit = mod.parallelWithLimit
   buildFactLedger = modCtx.buildFactLedger
   useVolumeStoryGenerator = mod.useVolumeStoryGenerator
@@ -411,6 +413,93 @@ describe('buildExistingEntitiesBlob', () => {
     const chars = [{ name: 'Bob', role: '', description: '', traits: undefined }]
     const result = JSON.parse(buildExistingEntitiesBlob(chars, [], []))
     expect(result.characters[0].traits).toEqual([])
+  })
+})
+
+describe('buildSceneEntitiesBlob', () => {
+  const chars = [
+    { name: 'Alice', role: 'hero', description: 'Brave', traits: ['brave'] },
+    { name: 'Bob', role: 'foil', description: 'Cautious', traits: ['wary'] },
+    { name: 'Carol', role: 'villain', description: 'Ruthless', traits: ['cold'] }
+  ]
+  const locs = [
+    { name: 'Forest', description: 'Dark woods', notes: 'Eerie', traits: [] },
+    { name: 'Castle', description: 'Cold stone', notes: 'Fortified', traits: [] }
+  ]
+  const threads = [{ title: 'Main Plot', status: 'active', notes: 'Central', traits: [] }]
+  const bible = { characters: chars, locations: locs, plotThreads: threads }
+
+  it('gives full detail to the scene cast and a name index to everyone else', () => {
+    const scene = { charactersPresent: ['Alice'], location: 'Forest' }
+    const result = JSON.parse(buildSceneEntitiesBlob(scene, bible))
+
+    expect(result.charactersInScene).toHaveLength(1)
+    expect(result.charactersInScene[0]).toMatchObject({ name: 'Alice', description: 'Brave' })
+
+    expect(result.otherCharacters).toEqual([
+      { name: 'Bob', role: 'foil' },
+      { name: 'Carol', role: 'villain' }
+    ])
+    // The index must not carry descriptions — that is the whole saving.
+    expect(result.otherCharacters[0].description).toBeUndefined()
+  })
+
+  it('scopes locations to the scene and name-indexes the rest', () => {
+    const scene = { charactersPresent: ['Alice'], location: 'Forest' }
+    const result = JSON.parse(buildSceneEntitiesBlob(scene, bible))
+
+    expect(result.locationsInScene).toHaveLength(1)
+    expect(result.locationsInScene[0].name).toBe('Forest')
+    expect(result.otherLocations).toEqual(['Castle'])
+  })
+
+  it('keeps plot threads whole — there is no per-scene thread link to scope on', () => {
+    const scene = { charactersPresent: ['Alice'], location: 'Forest' }
+    const result = JSON.parse(buildSceneEntitiesBlob(scene, bible))
+    expect(result.plotThreads).toHaveLength(1)
+    expect(result.plotThreads[0].notes).toBe('Central')
+  })
+
+  it('matches names case-insensitively and tolerates whitespace', () => {
+    const scene = { charactersPresent: ['  alICE '], location: '  forest' }
+    const result = JSON.parse(buildSceneEntitiesBlob(scene, bible))
+    expect(result.charactersInScene).toHaveLength(1)
+    expect(result.charactersInScene[0].name).toBe('Alice')
+    expect(result.locationsInScene[0].name).toBe('Forest')
+  })
+
+  it('reads the legacy `characters` field as well as `charactersPresent`', () => {
+    const scene = { characters: ['Bob'], location: 'Castle' }
+    const result = JSON.parse(buildSceneEntitiesBlob(scene, bible))
+    expect(result.charactersInScene).toHaveLength(1)
+    expect(result.charactersInScene[0].name).toBe('Bob')
+  })
+
+  it('returns null when the scene names nobody, so callers fall back', () => {
+    // The director's fallback path leaves charactersPresent empty; scoping on
+    // that would send zero character detail, which is worse than the full dump.
+    expect(buildSceneEntitiesBlob({ charactersPresent: [], location: 'Forest' }, bible)).toBeNull()
+    expect(buildSceneEntitiesBlob({}, bible)).toBeNull()
+    expect(buildSceneEntitiesBlob(null, bible)).toBeNull()
+  })
+
+  it('returns null when named characters match nothing in the bible', () => {
+    const scene = { charactersPresent: ['Nobody'], location: 'Forest' }
+    expect(buildSceneEntitiesBlob(scene, bible)).toBeNull()
+  })
+
+  it('omits the location blocks when the scene has no location', () => {
+    const scene = { charactersPresent: ['Alice'] }
+    const result = JSON.parse(buildSceneEntitiesBlob(scene, bible))
+    expect(result.locationsInScene).toBeUndefined()
+    expect(result.otherLocations).toEqual(['Forest', 'Castle'])
+  })
+
+  it('is materially smaller than the full dump', () => {
+    const scene = { charactersPresent: ['Alice'], location: 'Forest' }
+    const scoped = buildSceneEntitiesBlob(scene, bible)
+    const full = buildExistingEntitiesBlob(chars, locs, threads)
+    expect(scoped.length).toBeLessThan(full.length)
   })
 })
 

@@ -203,6 +203,49 @@ describe('writeSceneStructured', () => {
     expect(userPrompt).toContain('John: Hero')
   })
 
+  it('forwards the cancellation signal to aiGenerate', async () => {
+    // The whole point of run cancellation: options.signal was already plumbed
+    // all the way to the providers, but no generation caller ever passed one, so
+    // a 130-230 call run could only be stopped by reloading the page.
+    mockFinalizeStream.mockReturnValue(structuredOutput)
+    mockAiGenerate.mockResolvedValue(JSON.stringify(structuredOutput))
+    const controller = new AbortController()
+    const { writeSceneStructured } = useStoryWriter()
+
+    await writeSceneStructured({
+      sceneBrief: baseSceneBrief,
+      storyArc: defaultArc,
+      signal: controller.signal
+    })
+
+    expect(mockAiGenerate.mock.calls[0][2].signal).toBe(controller.signal)
+  })
+
+  it('forwards the cancellation signal to aiStream', async () => {
+    mockFinalizeStream.mockReturnValue(structuredOutput)
+    mockAiStream.mockResolvedValue(undefined)
+    const controller = new AbortController()
+    const { writeSceneStructured } = useStoryWriter()
+
+    await writeSceneStructured({
+      sceneBrief: baseSceneBrief,
+      storyArc: defaultArc,
+      onChunk: vi.fn(),
+      signal: controller.signal
+    })
+
+    expect(mockAiStream.mock.calls[0][3].signal).toBe(controller.signal)
+  })
+
+  it('works without a signal — cancellation is opt-in', async () => {
+    mockFinalizeStream.mockReturnValue(structuredOutput)
+    mockAiGenerate.mockResolvedValue(JSON.stringify(structuredOutput))
+    const { writeSceneStructured } = useStoryWriter()
+    const result = await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+    expect(result.prose).toBe('Once upon a time...')
+    expect(mockAiGenerate.mock.calls[0][2].signal).toBeUndefined()
+  })
+
   it('gracefully degrades on JSON parse failure', async () => {
     mockFinalizeStream.mockImplementation(() => {
       throw new Error('JSON parse error')
