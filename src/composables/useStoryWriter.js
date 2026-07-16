@@ -1,15 +1,53 @@
 import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
-import { aiGenerate, aiStream } from './useAiService'
+import { aiGenerate, aiStream, aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
-import { finalizeStream } from '../services/jsonExtractor'
 import { formatEvalFeedback } from '../services/evalFeedback'
 import { getVoiceProfile } from '../config/voiceProfiles'
 import { buildSceneContext } from '../services/sceneContextService'
 import { usePromptBuilder } from './usePromptBuilder'
 import { summarizeLog } from '../utils/promptUtils'
 import { fitSceneContext } from '../services/ai/contextBudget'
+
+// Schema for the metadata-extraction pass (call 2). Extractive, not generative:
+// the prose already exists, so a small local model does this well even though it
+// cannot write long prose inside a JSON envelope (verified — see the note on
+// writeSceneStructured). Native structured output (Ollama grammar) is ideal here
+// precisely because there is no length to suppress.
+const SCENE_METADATA_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    usedEntities: {
+      type: 'object',
+      properties: {
+        characterNames: { type: 'array', items: { type: 'string' } },
+        locationNames: { type: 'array', items: { type: 'string' } },
+        plotThreadTitles: { type: 'array', items: { type: 'string' } }
+      }
+    },
+    newEntities: {
+      type: 'object',
+      properties: {
+        characters: { type: 'array', items: { type: 'object' } },
+        locations: { type: 'array', items: { type: 'object' } },
+        plotThreads: { type: 'array', items: { type: 'object' } }
+      }
+    },
+    networkEvents: { type: 'array', items: { type: 'object' } },
+    keyFacts: { type: 'array', items: { type: 'string' } }
+  },
+  required: ['summary']
+}
+
+const EMPTY_METADATA = {
+  summary: '',
+  usedEntities: { characterNames: [], locationNames: [], plotThreadTitles: [] },
+  newEntities: { characters: [], locations: [], plotThreads: [] },
+  networkEvents: [],
+  keyFacts: []
+}
 
 const FALLBACK_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
 
@@ -82,91 +120,77 @@ function extractDoc(docString, heading) {
   return match ? match[0].trim() : ''
 }
 
-function tryExtractProse(raw) {
-  // Attempt full parse first
-  try {
-    const parsed = finalizeStream(raw)
-    if (parsed && typeof parsed.prose === 'string') return parsed.prose
-  } catch {
-    // Not valid JSON yet; fall through to lenient extraction below.
-  }
-
-  // Fallback: locate prose between "prose": " and the next known key
-  const proseKey = '"prose": "'
-  const proseIdx = raw.indexOf(proseKey)
-  if (proseIdx === -1) return ''
-
-  const afterKey = proseIdx + proseKey.length
-
-  // Find whichever structural key comes first after the prose value
-  let endIdx = -1
-  for (const key of ['"usedEntities"', '"newEntities"']) {
-    const idx = raw.indexOf(key, afterKey)
-    if (idx !== -1 && (endIdx === -1 || idx < endIdx)) endIdx = idx
-  }
-  if (endIdx === -1) return ''
-
-  // Work backward from the end marker to find the last unescaped " before it
-  let proseEnd = -1
-  let i = endIdx - 1
-  while (i >= afterKey) {
-    if (raw[i] === '"') {
-      let bs = 0
-      while (i - bs - 1 >= 0 && raw[i - bs - 1] === '\\') bs++
-      if (bs % 2 === 0) {
-        proseEnd = i
-        break
-      }
+/**
+ * Undo wrapping a model sometimes adds despite being told to emit plain prose:
+ * a markdown code fence, or a leftover {"prose": "..."} envelope. Best-effort and
+ * cheap — if nothing matches, the text is returned unchanged.
+ */
+function stripAccidentalWrapping(text) {
+  let out = String(text || '').trim()
+  // ```lang\n...\n```
+  const fence = out.match(/^```[a-z]*\n([\s\S]*?)\n```$/i)
+  if (fence) out = fence[1].trim()
+  // A stray JSON envelope — pull the prose field back out.
+  if (out.startsWith('{')) {
+    try {
+      const obj = JSON.parse(out)
+      if (obj && typeof obj.prose === 'string' && obj.prose.trim()) return obj.prose.trim()
+    } catch {
+      // Not valid JSON — leave it; the prose is still readable as-is.
     }
-    i--
   }
-  if (proseEnd === -1) return ''
-
-  return raw
-    .slice(afterKey, proseEnd)
-    .replace(/\\"/g, '"')
-    .replace(/\\n/g, '\n')
-    .replace(/\\t/g, '\t')
-    .replace(/\\\\/g, '\\')
+  return out
 }
 
-function tryExtractStructured(raw) {
-  const result = {}
-  for (const key of ['"usedEntities"', '"newEntities"', '"networkEvents"']) {
-    try {
-      const keyIdx = raw.indexOf(key)
-      if (keyIdx === -1) continue
-      const colonIdx = raw.indexOf(':', keyIdx + key.length)
-      if (colonIdx === -1) continue
-      const openChars = ['{', '[']
-      let valueStart = -1
-      for (const ch of openChars) {
-        const idx = raw.indexOf(ch, colonIdx)
-        if (idx !== -1 && (valueStart === -1 || idx < valueStart)) valueStart = idx
+/**
+ * Second pass: extract entities/facts/summary FROM finished prose.
+ *
+ * Split out from generation because asking a small local model to write long
+ * prose inside a JSON envelope suppresses the prose ~44x (dolphin-mistral:7b: 711
+ * words as plain prose vs 16 words JSON-wrapped, same brief — see
+ * scripts/ml-pipelines/potato-profile/smoke-writer.js). Generation and
+ * extraction are different skills; a 7B model is fine at the second when it is
+ * not simultaneously doing the first.
+ *
+ * Never throws — metadata is enrichment, not the deliverable. A failed
+ * extraction returns empty structures so the scene's prose still lands.
+ *
+ * @returns {Promise<object>} the metadata fields, always shaped like EMPTY_METADATA
+ */
+async function extractSceneMetadata(prose, { entityContext, signal } = {}) {
+  const excerpt = String(prose || '').slice(0, 6000)
+  if (!excerpt.trim()) return { ...EMPTY_METADATA }
+
+  const prompt = `Read this scene and extract structured metadata about it. Do not rewrite or summarize the prose beyond the one-sentence summary field.
+
+${entityContext ? `KNOWN ENTITIES (already established — classify references to these as "used", anything genuinely new as "new"):\n${entityContext}\n\n` : ''}SCENE:
+${excerpt}
+
+Extract:
+- summary: exactly one concise sentence describing what happens, for the chapter log.
+- usedEntities: names of already-known characters/locations/plotThreads that appear.
+- newEntities: characters/locations/plotThreads introduced here that were not already known.
+- networkEvents: relationship changes, e.g. { "type": "relationship", "from": "A", "to": "B", "label": "arrives at" }.
+- keyFacts: 0-4 short statements of durable canon this scene establishes (who is now injured/dead/changed, who learned what, time elapsed). [] if nothing durable changed.`
+
+  try {
+    const meta = await aiGenerateJson(
+      prompt,
+      'You extract structured metadata from prose. Respond only with the requested JSON.',
+      {
+        feature: FEATURES.STORY_GENERATION,
+        temperature: 0.2,
+        maxTokens: 800,
+        schema: SCENE_METADATA_SCHEMA,
+        schemaName: 'scene_metadata',
+        signal
       }
-      if (valueStart === -1) continue
-      const openChar = raw[valueStart]
-      const closeChar = openChar === '{' ? '}' : ']'
-      let depth = 0,
-        endIdx = -1
-      for (let i = valueStart; i < raw.length; i++) {
-        if (raw[i] === openChar) depth++
-        else if (raw[i] === closeChar) {
-          depth--
-          if (depth === 0) {
-            endIdx = i
-            break
-          }
-        }
-      }
-      if (endIdx === -1) continue
-      const keyName = key.slice(1, -1)
-      result[keyName] = JSON.parse(raw.slice(valueStart, endIdx + 1))
-    } catch {
-      // This key's value isn't complete/valid JSON yet; skip it.
-    }
+    )
+    return { ...EMPTY_METADATA, ...meta }
+  } catch (err) {
+    console.warn('[useStoryWriter] metadata extraction failed; prose kept, metadata empty:', err)
+    return { ...EMPTY_METADATA }
   }
-  return Object.keys(result).length ? result : null
 }
 
 export function useStoryWriter() {
@@ -521,78 +545,24 @@ STORY ARC (for tonal reference):
 ${fitted.storyContextBlock}${existingContext}
 The scene MUST be at least ${sceneBrief.estimatedWords || 800} words. Do not end the scene early. If you are below the word count, continue writing until you reach it.
 
-Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No explanation outside the JSON.
-
-{
-  "prose": "...",
-  "usedEntities": {
-    "characterNames": [...],
-    "locationNames": [...],
-    "plotThreadTitles": [...]
-  },
-  "newEntities": {
-    "characters": [{ "name": "...", "role": "...", "description": "..." }],
-    "locations": [{ "name": "...", "type": "...", "description": "..." }],
-    "plotThreads": [{ "title": "...", "status": "open", "summary": "..." }]
-  },
-  "networkEvents": [
-    { "type": "relationship", "from": "EntityName", "to": "EntityName", "label": "arrives at" }
-  ],
-  "keyFacts": ["durable canon THIS scene establishes: who is now injured/dead/changed, who learned or revealed what, time elapsed. 0-4 short factual statements. Omit the field or use [] if nothing durable changed."],
-  "summary": "exactly one concise sentence summarizing what happens in this scene, for the chapter log"
-}
-
-IMPORTANT: The prose field must reach the word count target above. Do not end the scene early — keep writing until the word target is met.
-CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes inside it MUST be escaped as \" — especially dialogue quotes. For dialogue, use single quotes or curly quotes (\u201C/\u201D) to avoid breaking the JSON.`
+Write the scene now as prose. Output ONLY the scene text — no JSON, no headings, no preamble, no notes. Start with the first sentence of the scene.`
 
       // Compute a tight token cap based on the scene's word target
       const estimatedWords = sceneBrief.estimatedWords || 800
       const maxTokens = Math.max(2000, Math.min(4500, Math.ceil(estimatedWords * 1.8) + 800))
 
+      // CALL 1 — prose. Plain text, not wrapped in a JSON envelope, because that
+      // envelope suppresses prose length ~44x on a small local model (verified,
+      // see extractSceneMetadata). Every streamed token IS prose now, so the old
+      // state machine that dug prose out of a streaming JSON string is gone.
       if (onChunk) {
-        // Lightweight prose detection state machine — avoids O(n²) full-buffer
-        // re-scanning that tryExtractProse() would cause on every chunk.
-        let proseStarted = false
-        let pendingPrefix = ''
-        let proseEnded = false
-        const END_MARKERS = ['"usedEntities"', '"newEntities"', '"networkEvents"']
-        let recentTail = '' // rolling window for end-of-prose detection
-
         await aiStream(
           userPrompt,
           systemPrompt,
           (chunk) => {
             accumulated += chunk
             if (onRawChunk) onRawChunk(chunk)
-            if (proseEnded) return
-
-            if (!proseStarted) {
-              pendingPrefix += chunk
-              const proseKey = '"prose"'
-              const keyIdx = pendingPrefix.indexOf(proseKey)
-              if (keyIdx !== -1) {
-                proseStarted = true
-                const colonIdx = pendingPrefix.indexOf(':', keyIdx + proseKey.length)
-                if (colonIdx !== -1) {
-                  const quoteIdx = pendingPrefix.indexOf('"', colonIdx + 1)
-                  if (quoteIdx !== -1) {
-                    const remainder = pendingPrefix.slice(quoteIdx + 1)
-                    if (remainder.length > 0) onChunk(remainder, remainder)
-                  }
-                }
-                pendingPrefix = '' // free memory
-              }
-            } else {
-              // Check rolling tail for structural key (end of prose value)
-              recentTail = (recentTail + chunk).slice(-40)
-              for (const marker of END_MARKERS) {
-                if (recentTail.includes(marker)) {
-                  proseEnded = true
-                  return
-                }
-              }
-              onChunk(chunk, chunk)
-            }
+            onChunk(chunk, chunk)
           },
           { feature: FEATURES.STORY_GENERATION, maxTokens, signal }
         )
@@ -604,18 +574,25 @@ CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes in
         })
       }
 
-      // Extract structured JSON after streaming completes
-      const parsed = finalizeStream(accumulated)
-      return {
-        prose: parsed.prose || accumulated,
-        structured: parsed
-      }
+      const prose = stripAccidentalWrapping(accumulated)
+
+      // CALL 2 — metadata. Extractive over the finished prose; never throws, so a
+      // metadata failure still yields the scene. Net-neutral on call count: the
+      // per-scene summary call this subsumes was removed in the same series.
+      const structured = await extractSceneMetadata(prose, {
+        entityContext: existingEntitiesJson,
+        signal
+      })
+
+      return { prose, structured: { ...structured, prose } }
     } catch (err) {
-      // Graceful degradation: return extracted prose if JSON parsing failed
-      if (err.message?.includes('JSON')) {
-        const fallback = tryExtractProse(accumulated) || accumulated
-        const structured = tryExtractStructured(accumulated)
-        return { prose: fallback, structured }
+      if (accumulated.trim()) {
+        // Prose was produced before something downstream failed. Prose is the
+        // deliverable, so return it rather than lose a written scene.
+        return {
+          prose: stripAccidentalWrapping(accumulated),
+          structured: { ...EMPTY_METADATA }
+        }
       }
       writeError.value = err.message || 'Scene writing failed'
       throw err

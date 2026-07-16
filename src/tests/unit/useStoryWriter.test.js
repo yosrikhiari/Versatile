@@ -3,14 +3,18 @@ import { setActivePinia, createPinia } from 'pinia'
 
 const mockAiGenerate = vi.fn()
 const mockAiStream = vi.fn()
-const mockFinalizeStream = vi.fn()
+const mockAiGenerateJson = vi.fn()
 const mockProjectStore = {
   activeWorkspaceType: 'creative'
 }
 
-vi.mock('@/services/aiService', () => ({
+// The writer talks to the composable wrapper, not the raw service. Mocking it
+// here lets us assert the two-call contract directly: aiGenerate/aiStream for
+// prose, aiGenerateJson (schema) for the metadata extraction pass.
+vi.mock('@/composables/useAiService', () => ({
   aiGenerate: (...args) => mockAiGenerate(...args),
-  aiStream: (...args) => mockAiStream(...args)
+  aiStream: (...args) => mockAiStream(...args),
+  aiGenerateJson: (...args) => mockAiGenerateJson(...args)
 }))
 
 vi.mock('@/config/ai', () => ({
@@ -23,10 +27,6 @@ vi.mock('@/config/ai', () => ({
 
 vi.mock('@/stores/projectStore', () => ({
   useProjectStore: () => mockProjectStore
-}))
-
-vi.mock('@/services/jsonExtractor', () => ({
-  finalizeStream: (...args) => mockFinalizeStream(...args)
 }))
 
 vi.mock('@/config/documentPrompts', () => ({
@@ -173,45 +173,93 @@ describe('writeScene', () => {
   })
 })
 
-describe('writeSceneStructured', () => {
-  const structuredOutput = {
-    prose: 'Once upon a time...',
+describe('writeSceneStructured (prose-first, two calls)', () => {
+  // The metadata a healthy second-pass extraction returns.
+  const metadata = {
+    summary: 'John reaches the forest.',
     usedEntities: { characterNames: ['John'], locationNames: ['Forest'], plotThreadTitles: [] },
     newEntities: { characters: [], locations: [], plotThreads: [] },
-    networkEvents: []
+    networkEvents: [],
+    keyFacts: []
   }
 
-  it('returns prose and structured data', async () => {
-    mockFinalizeStream.mockReturnValue(structuredOutput)
-    mockAiGenerate.mockResolvedValue(JSON.stringify(structuredOutput))
-    const { writeSceneStructured } = useStoryWriter()
-    const result = await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
-    expect(result.prose).toBe('Once upon a time...')
-    expect(result.structured).toEqual(structuredOutput)
+  beforeEach(() => {
+    // Default happy path: prose from call 1, metadata from call 2.
+    mockAiGenerate.mockResolvedValue('Once upon a time, John walked into the forest.')
+    mockAiGenerateJson.mockResolvedValue({ ...metadata })
   })
 
-  it('includes existingEntitiesJson in prompt when provided', async () => {
-    mockFinalizeStream.mockReturnValue(structuredOutput)
-    mockAiGenerate.mockResolvedValue(JSON.stringify(structuredOutput))
+  it('returns the prose from call 1 and metadata from call 2', async () => {
+    const { writeSceneStructured } = useStoryWriter()
+    const result = await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+
+    expect(result.prose).toBe('Once upon a time, John walked into the forest.')
+    expect(result.structured.summary).toBe('John reaches the forest.')
+    // The prose is echoed into structured for callers that read it there.
+    expect(result.structured.prose).toBe(result.prose)
+  })
+
+  it('asks for prose as prose, not wrapped in a JSON envelope', async () => {
+    // The reason this whole path exists: a JSON envelope suppresses prose length
+    // ~44x on a small local model.
+    const { writeSceneStructured } = useStoryWriter()
+    await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+
+    const prosePrompt = mockAiGenerate.mock.calls[0][0]
+    expect(prosePrompt).toContain('as prose')
+    expect(prosePrompt).not.toContain('"usedEntities"')
+  })
+
+  it('makes exactly two model calls per scene (net-neutral vs the old summary call)', async () => {
+    const { writeSceneStructured } = useStoryWriter()
+    await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+
+    expect(mockAiGenerate).toHaveBeenCalledTimes(1) // prose
+    expect(mockAiGenerateJson).toHaveBeenCalledTimes(1) // metadata
+  })
+
+  it('gives the extraction pass the known entities, not the whole prompt', async () => {
     const { writeSceneStructured } = useStoryWriter()
     await writeSceneStructured({
       sceneBrief: baseSceneBrief,
       storyArc: defaultArc,
       existingEntitiesJson: 'John: Hero'
     })
-    const userPrompt = mockAiGenerate.mock.calls[0][0]
-    expect(userPrompt).toContain('John: Hero')
+    const extractionPrompt = mockAiGenerateJson.mock.calls[0][0]
+    expect(extractionPrompt).toContain('John: Hero')
+    // The extraction pass reads the finished prose, not the generation prompt.
+    expect(extractionPrompt).toContain('walked into the forest')
   })
 
-  it('forwards the cancellation signal to aiGenerate', async () => {
-    // The whole point of run cancellation: options.signal was already plumbed
-    // all the way to the providers, but no generation caller ever passed one, so
-    // a 130-230 call run could only be stopped by reloading the page.
-    mockFinalizeStream.mockReturnValue(structuredOutput)
-    mockAiGenerate.mockResolvedValue(JSON.stringify(structuredOutput))
+  it('keeps the prose even when metadata extraction fails', async () => {
+    // Metadata is enrichment; a scene must never be lost because the second pass
+    // choked. extractSceneMetadata swallows its own error and returns empties.
+    mockAiGenerateJson.mockRejectedValue(new Error('schema rejected'))
+    const { writeSceneStructured } = useStoryWriter()
+    const result = await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+
+    expect(result.prose).toBe('Once upon a time, John walked into the forest.')
+    expect(result.structured.summary).toBe('')
+    expect(result.structured.keyFacts).toEqual([])
+  })
+
+  it('unwraps a stray JSON envelope the model added despite instructions', async () => {
+    mockAiGenerate.mockResolvedValue('{"prose": "The real scene text."}')
+    const { writeSceneStructured } = useStoryWriter()
+    const result = await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+    expect(result.prose).toBe('The real scene text.')
+  })
+
+  it('unwraps a markdown code fence', async () => {
+    mockAiGenerate.mockResolvedValue('```\nThe real scene text.\n```')
+    const { writeSceneStructured } = useStoryWriter()
+    const result = await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+    expect(result.prose).toBe('The real scene text.')
+  })
+
+  it('forwards the cancellation signal to both calls', async () => {
     const controller = new AbortController()
     const { writeSceneStructured } = useStoryWriter()
-
     await writeSceneStructured({
       sceneBrief: baseSceneBrief,
       storyArc: defaultArc,
@@ -219,45 +267,17 @@ describe('writeSceneStructured', () => {
     })
 
     expect(mockAiGenerate.mock.calls[0][2].signal).toBe(controller.signal)
-  })
-
-  it('forwards the cancellation signal to aiStream', async () => {
-    mockFinalizeStream.mockReturnValue(structuredOutput)
-    mockAiStream.mockResolvedValue(undefined)
-    const controller = new AbortController()
-    const { writeSceneStructured } = useStoryWriter()
-
-    await writeSceneStructured({
-      sceneBrief: baseSceneBrief,
-      storyArc: defaultArc,
-      onChunk: vi.fn(),
-      signal: controller.signal
-    })
-
-    expect(mockAiStream.mock.calls[0][3].signal).toBe(controller.signal)
+    expect(mockAiGenerateJson.mock.calls[0][2].signal).toBe(controller.signal)
   })
 
   it('works without a signal — cancellation is opt-in', async () => {
-    mockFinalizeStream.mockReturnValue(structuredOutput)
-    mockAiGenerate.mockResolvedValue(JSON.stringify(structuredOutput))
     const { writeSceneStructured } = useStoryWriter()
     const result = await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
-    expect(result.prose).toBe('Once upon a time...')
+    expect(result.prose).toContain('John')
     expect(mockAiGenerate.mock.calls[0][2].signal).toBeUndefined()
   })
 
-  it('gracefully degrades on JSON parse failure', async () => {
-    mockFinalizeStream.mockImplementation(() => {
-      throw new Error('JSON parse error')
-    })
-    mockAiGenerate.mockResolvedValue('raw prose text')
-    const { writeSceneStructured } = useStoryWriter()
-    const result = await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
-    expect(result.prose).toBe('raw prose text')
-    expect(result.structured).toBeNull()
-  })
-
-  it('re-throws non-JSON errors', async () => {
+  it('re-throws when the prose call fails and nothing was produced', async () => {
     mockAiGenerate.mockRejectedValue(new Error('API error'))
     const { writeSceneStructured, writeError } = useStoryWriter()
     await expect(
@@ -266,11 +286,10 @@ describe('writeSceneStructured', () => {
     expect(writeError.value).toBe('API error')
   })
 
-  it('uses streaming when onChunk provided', async () => {
-    mockFinalizeStream.mockReturnValue(structuredOutput)
-    mockAiStream.mockImplementationOnce(async (user, system, onChunk, _opts) => {
-      onChunk('{"prose": "chunk1', '{"prose": "chunk1')
-      onChunk('chunk2', '{"prose": "chunk1chunk2')
+  it('streams prose chunks straight through — no JSON extraction machine', async () => {
+    mockAiStream.mockImplementationOnce(async (user, system, onChunk) => {
+      onChunk('Once upon ', 'Once upon ')
+      onChunk('a time.', 'a time.')
     })
     const { writeSceneStructured } = useStoryWriter()
     const onChunk = vi.fn()
@@ -280,6 +299,7 @@ describe('writeSceneStructured', () => {
       onChunk
     })
     expect(onChunk).toHaveBeenCalledTimes(2)
-    expect(result.prose).toBe('Once upon a time...')
+    expect(result.prose).toBe('Once upon a time.')
+    expect(mockAiStream.mock.calls[0][3].feature).toBeDefined()
   })
 })
