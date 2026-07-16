@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mockFetch = vi.fn()
 
 vi.mock('@/config/ollama', () => ({
-  getOllamaEndpoint: vi.fn(() => 'http://localhost:11434')
+  getOllamaEndpoint: vi.fn(() => 'http://localhost:11434'),
+  getOllamaNumCtx: vi.fn(() => 16384)
 }))
 
 let ollama
@@ -24,6 +25,92 @@ describe('ollama generate', () => {
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ response: 'Hello world' }) })
     const result = await ollama.generate('prompt', 'system', 'llama3')
     expect(result).toBe('Hello world')
+  })
+
+  it('sends num_ctx so Ollama does not silently fall back to its 4096 default', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ models: [{ name: 'llama3' }] })
+      })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ response: 'ok' }) })
+
+    await ollama.generate('prompt', 'system', 'llama3')
+
+    // The generate call is the second fetch; the first is /api/tags.
+    const body = JSON.parse(mockFetch.mock.calls[1][1].body)
+    expect(body.options.num_ctx).toBe(16384)
+  })
+
+  it('lets an explicit numCtx override the configured default', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ models: [{ name: 'llama3' }] })
+      })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ response: 'ok' }) })
+
+    await ollama.generate('prompt', 'system', 'llama3', { numCtx: 8192 })
+
+    const body = JSON.parse(mockFetch.mock.calls[1][1].body)
+    expect(body.options.num_ctx).toBe(8192)
+  })
+
+  it('omits num_ctx when numCtx is 0, deferring to the server default', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ models: [{ name: 'llama3' }] })
+      })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ response: 'ok' }) })
+
+    await ollama.generate('prompt', 'system', 'llama3', { numCtx: 0 })
+
+    const body = JSON.parse(mockFetch.mock.calls[1][1].body)
+    expect(body.options?.num_ctx).toBeUndefined()
+  })
+
+  it('surfaces the real error when a signal is present, not a ReferenceError', async () => {
+    // Regression: onAbort was declared inside the try block. ES modules are
+    // strict mode, so the catch could not see it — `removeEventListener('abort',
+    // onAbort)` threw ReferenceError and MASKED the underlying failure. Only
+    // reachable when options.signal is set, which is why it stayed latent.
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ models: [{ name: 'llama3' }] })
+      })
+      .mockRejectedValueOnce(new Error('connection reset by peer'))
+
+    const controller = new AbortController()
+    await expect(
+      ollama.generate('prompt', 'system', 'llama3', { signal: controller.signal })
+    ).rejects.toThrow(/connection reset by peer/)
+  })
+
+  it('stream surfaces the real error when a signal is present', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ models: [{ name: 'llama3' }] })
+      })
+      .mockRejectedValueOnce(new Error('connection reset by peer'))
+
+    const controller = new AbortController()
+    await expect(
+      ollama.stream('prompt', 'system', 'llama3', vi.fn(), { signal: controller.signal })
+    ).rejects.toThrow(/connection reset by peer/)
+  })
+
+  it('surfaces a model-not-found error rather than masking it, with a signal', async () => {
+    // ensureModelAvailable throws inside the try while a signal is live — the
+    // exact path the original bug corrupted.
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ models: [] }) })
+
+    const controller = new AbortController()
+    await expect(
+      ollama.generate('prompt', 'system', 'llama3', { signal: controller.signal })
+    ).rejects.toThrow(/not found in Ollama/)
   })
 
   it('throws timeout error when request is aborted', async () => {

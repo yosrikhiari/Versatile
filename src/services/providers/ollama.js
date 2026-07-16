@@ -1,4 +1,4 @@
-import { getOllamaEndpoint } from '../../config/ollama'
+import { getOllamaEndpoint, getOllamaNumCtx } from '../../config/ollama'
 
 function decorateOllamaError(message, original) {
   const lower = message.toLowerCase()
@@ -49,6 +49,11 @@ function buildOllamaOptions(options = {}) {
   if (options.maxTokens) opts.num_predict = options.maxTokens
   if (options.temperature != null) opts.temperature = options.temperature
   if (Array.isArray(options.stop) && options.stop.length) opts.stop = options.stop
+  // Always send num_ctx. Omitting it means Ollama picks 4096 on any machine with
+  // <24 GiB VRAM, which silently caps every prompt we send. Pass numCtx: 0 to
+  // deliberately defer to the server's own default.
+  const numCtx = options.numCtx ?? getOllamaNumCtx()
+  if (numCtx > 0) opts.num_ctx = numCtx
   return Object.keys(opts).length ? { options: opts } : {}
 }
 
@@ -74,19 +79,22 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
   const timeoutMs = options.timeout || 1200000
   let timeout
   const externalSignal = options.signal
+  const controller = new AbortController()
+  // Declared at function scope, NOT inside the try. ES modules are strict mode,
+  // so a function declaration inside a block is block-scoped — the catch below
+  // could not see it, and referencing it there threw a ReferenceError that
+  // masked the real error. Only reachable when a signal is passed, which is why
+  // it stayed latent while nothing plumbed one through.
+  const onAbort = () => controller.abort(externalSignal.reason)
 
   try {
     await ensureModelAvailable(model)
 
-    const controller = new AbortController()
     timeout = setTimeout(
       () =>
         controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')),
       timeoutMs
     )
-    function onAbort() {
-      controller.abort(externalSignal.reason)
-    }
     if (externalSignal) {
       if (externalSignal.aborted) {
         controller.abort(externalSignal.reason)
@@ -142,19 +150,18 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
   const timeoutMs = options.timeout || 1200000
   let timeout
   const externalSignal = options.signal
+  const controller = new AbortController()
+  // Function scope, not block scope — see the note in generate() above.
+  const onAbort = () => controller.abort(externalSignal.reason)
 
   try {
     await ensureModelAvailable(model)
 
-    const controller = new AbortController()
     timeout = setTimeout(
       () =>
         controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')),
       timeoutMs
     )
-    function onAbort() {
-      controller.abort(externalSignal.reason)
-    }
     if (externalSignal) {
       if (externalSignal.aborted) {
         controller.abort(externalSignal.reason)

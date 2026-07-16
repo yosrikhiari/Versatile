@@ -4,13 +4,21 @@ import { encrypt, decrypt } from '../services/ollamaService'
 import { getAuthHeaders } from '../services/api'
 import { PROVIDERS, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS } from '../config/ai'
 import { aiTestConnection } from '../services/aiService'
-import { setOllamaEndpoint as setOllamaConfigEndpoint } from '../config/ollama'
+import {
+  setOllamaEndpoint as setOllamaConfigEndpoint,
+  DEFAULT_MODEL as DEFAULT_OLLAMA_MODEL
+} from '../config/ollama'
 import { STORAGE_KEYS, getApiKeyStorageKey } from '../config/storageKeys'
 import { useLocalStorage } from '../composables/useLocalStorage'
 
 const DEFAULT_SETTINGS = {
   ollamaEndpoint: '/ollama',
-  ollamaModel: 'dolphin-mistral:7b',
+  // Single source of truth with config/ollama.js. These had drifted apart:
+  // generation used dolphin-mistral:7b while the startup banner checked
+  // qwen3:8b, so a user who pulled the model the banner named still failed to
+  // generate. qwen3 is also on Ollama's Flash-Attention allowlist, so it can
+  // take KV-cache quantization; mistral-arch models silently cannot.
+  ollamaModel: DEFAULT_OLLAMA_MODEL,
   openaiApiKey: '',
   autoSaveInterval: 5,
   aiProvider: PROVIDER_DEFAULT,

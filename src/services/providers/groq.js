@@ -8,6 +8,11 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
   let timeout
   const controller = new AbortController()
   const externalSignal = options.signal
+  // Declared at function scope, NOT inside the try. ES modules are strict mode,
+  // so a function declaration inside a block is block-scoped — the catch below
+  // could not see it, and referencing it there threw a ReferenceError that
+  // masked the real error.
+  const onAbort = () => controller.abort(externalSignal.reason)
 
   try {
     timeout = setTimeout(
@@ -17,9 +22,6 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
         ),
       timeoutMs
     )
-    function onAbort() {
-      controller.abort(externalSignal.reason)
-    }
     if (externalSignal) {
       if (externalSignal.aborted) {
         controller.abort(externalSignal.reason)
@@ -74,6 +76,8 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
   let timeout
   const controller = new AbortController()
   const externalSignal = options.signal
+  // Function scope, not block scope — see the note in generate() above.
+  const onAbort = () => controller.abort(externalSignal.reason)
 
   try {
     timeout = setTimeout(
@@ -83,9 +87,6 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
         ),
       timeoutMs
     )
-    function onAbort() {
-      controller.abort(externalSignal.reason)
-    }
     if (externalSignal) {
       if (externalSignal.aborted) {
         controller.abort(externalSignal.reason)

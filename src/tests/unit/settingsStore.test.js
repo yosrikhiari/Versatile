@@ -20,7 +20,10 @@ vi.mock('@/config/ai', () => ({
 }))
 
 vi.mock('@/services/aiService', () => ({ aiTestConnection: vi.fn() }))
-vi.mock('@/config/ollama', () => ({ setOllamaEndpoint: vi.fn() }))
+vi.mock('@/config/ollama', () => ({
+  setOllamaEndpoint: vi.fn(),
+  DEFAULT_MODEL: 'qwen3:8b'
+}))
 vi.mock('@/config/storageKeys', () => ({
   STORAGE_KEYS: { FEATURE_MODELS: 'FEATURE_MODELS' },
   getApiKeyStorageKey: vi.fn((p) => `versatile_api_key_${p}`)

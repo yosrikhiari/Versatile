@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   // API & Providers
   OLLAMA_ENDPOINT: 'versatile_ollama_endpoint',
   OLLAMA_MODEL: 'versatile_ollama_model',
+  OLLAMA_NUM_CTX: 'versatile_ollama_num_ctx',
   OPENAI_KEY: 'versatile_openai_key',
   OPENAI_FALLBACK_PROMPTED: 'versatile_openai_fallback_prompted',
   EMBEDDING_MODEL: 'versatile_embedding_model',
