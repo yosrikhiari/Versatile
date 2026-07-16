@@ -4,7 +4,7 @@
  */
 import { aiGenerate } from '../../composables/useAiService'
 import { FEATURES } from '../../config/ai'
-import { retryWithBackoff, sanitizeJsonResponse } from '../ai/aiHelpers'
+import { sanitizeJsonResponse } from '../ai/aiHelpers'
 
 export async function detectEntities(manuscriptText) {
   const DETECT_SYSTEM_PROMPT = `You are a fiction analysis assistant. Analyze the given manuscript text and extract:
@@ -32,9 +32,9 @@ If no entities of a type are found, return an empty array for that key.
 Be concise and only extract what is clearly present in the text.`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, DETECT_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
-    )
+    const response = await aiGenerate(userPrompt, DETECT_SYSTEM_PROMPT, {
+      feature: FEATURES.WORLDBUILDING
+    })
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
       throw new Error('Invalid JSON')

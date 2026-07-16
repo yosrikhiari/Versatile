@@ -4,7 +4,7 @@
  */
 import { aiGenerate, aiStream } from '../../composables/useAiService'
 import { FEATURES } from '../../config/ai'
-import { retryWithBackoff, sanitizeJsonResponse } from '../ai/aiHelpers'
+import { sanitizeJsonResponse } from '../ai/aiHelpers'
 
 /**
  * @typedef {Object} SparkBlueprint
@@ -205,9 +205,7 @@ ${characterNames.length > 0 ? 'Characters: ' + characterNames.join(', ') : ''}
 Scene idea: ${idea}${projectContext}${contextInstruction}`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, systemPrompt, { feature: FEATURES.CONTENT })
-    )
+    const response = await aiGenerate(userPrompt, systemPrompt, { feature: FEATURES.CONTENT })
     return { text: response, error: null }
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')
@@ -263,9 +261,9 @@ ${characterNames.length > 0 ? 'Characters: ' + characterNames.join(', ') : ''}
 Scene idea: ${idea}${projectContext}${contextInstruction}`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiStream(userPrompt, systemPrompt, onProgress, { feature: FEATURES.CONTENT })
-    )
+    const response = await aiStream(userPrompt, systemPrompt, onProgress, {
+      feature: FEATURES.CONTENT
+    })
     return { text: response, error: null }
   } catch (error) {
     const isApiError = error.message?.includes('Ollama error') || error.message?.includes('Model')

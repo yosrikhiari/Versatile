@@ -5,7 +5,6 @@
 import { aiGenerate } from '../../composables/useAiService'
 import { FEATURES } from '../../config/ai'
 import {
-  retryWithBackoff,
   sanitizeJsonResponse,
   getProjectContext,
   getExistingEntitiesContext,
@@ -120,11 +119,9 @@ CRITICAL GOAL DIFFERENTIATION:
 All values must be strings. No markdown.`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative character designer.', {
-        feature: FEATURES.WORLDBUILDING
-      })
-    )
+    const response = await aiGenerate(userPrompt, 'You are a creative character designer.', {
+      feature: FEATURES.WORLDBUILDING
+    })
 
     const parsed = sanitizeJsonResponse(response)
 
@@ -193,11 +190,9 @@ Respond ONLY with a valid JSON object with these exact keys:
 No markdown, no explanation, no preamble. JSON only.`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative character designer.', {
-        feature: FEATURES.WORLDBUILDING
-      })
-    )
+    const response = await aiGenerate(userPrompt, 'You are a creative character designer.', {
+      feature: FEATURES.WORLDBUILDING
+    })
 
     const parsed = sanitizeJsonResponse(response)
 
@@ -337,11 +332,9 @@ Return as JSON: { "${fieldName}": "your generated value" }
 Single string value, no markdown.`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative writing assistant.', {
-        feature: FEATURES.WORLDBUILDING
-      })
-    )
+    const response = await aiGenerate(userPrompt, 'You are a creative writing assistant.', {
+      feature: FEATURES.WORLDBUILDING
+    })
 
     const parsed = sanitizeJsonResponse(response)
 
@@ -447,11 +440,9 @@ ${
 All values must be strings. No markdown.`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative location designer.', {
-        feature: FEATURES.WORLDBUILDING
-      })
-    )
+    const response = await aiGenerate(userPrompt, 'You are a creative location designer.', {
+      feature: FEATURES.WORLDBUILDING
+    })
 
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
@@ -546,11 +537,9 @@ Example format:
 All values must be strings or arrays. No markdown.`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, 'You are a creative plot designer.', {
-        feature: FEATURES.WORLDBUILDING
-      })
-    )
+    const response = await aiGenerate(userPrompt, 'You are a creative plot designer.', {
+      feature: FEATURES.WORLDBUILDING
+    })
 
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
@@ -655,11 +644,9 @@ ${contextInstruction}
 Return as JSON: { "traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "trait6", "trait7", "trait8"] }`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, `You suggest fitting traits for a ${label}.`, {
-        feature: FEATURES.WORLDBUILDING
-      })
-    )
+    const response = await aiGenerate(userPrompt, `You suggest fitting traits for a ${label}.`, {
+      feature: FEATURES.WORLDBUILDING
+    })
 
     let cleaned = response.trim()
     cleaned = cleaned.replace(/^```json\s*/i, '')

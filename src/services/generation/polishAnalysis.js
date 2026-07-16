@@ -4,7 +4,7 @@
  */
 import { aiGenerate } from '../../composables/useAiService'
 import { FEATURES } from '../../config/ai'
-import { retryWithBackoff, sanitizeJsonResponse } from '../ai/aiHelpers'
+import { sanitizeJsonResponse } from '../ai/aiHelpers'
 
 const POLISH_SYSTEM_PROMPT = `You are a fiction editor. You do not check grammar or punctuation.
 You analyze prose craft only. You always respond in valid JSON only.
@@ -49,9 +49,9 @@ Return this exact JSON structure:
 If no issues are found, return: { "issues": [], "overallNote": "..." }`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, POLISH_SYSTEM_PROMPT, { feature: FEATURES.POLISH })
-    )
+    const response = await aiGenerate(userPrompt, POLISH_SYSTEM_PROMPT, {
+      feature: FEATURES.POLISH
+    })
     const parsed = sanitizeJsonResponse(response)
     if (!parsed) {
       throw new Error('Invalid JSON')

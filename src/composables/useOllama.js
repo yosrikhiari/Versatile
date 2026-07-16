@@ -10,7 +10,6 @@
 
 // --- AI helpers ---
 export {
-  retryWithBackoff,
   sanitizeJsonResponse,
   getProjectContext,
   FIELD_LENGTH_CONSTRAINTS
@@ -55,7 +54,6 @@ import {
   setStoredOpenAIKey,
   setPromptedForOpenAI
 } from '../services/ollamaService'
-import { retryWithBackoff } from '../services/ai/aiHelpers'
 
 const TEST_PROMPT = `Respond with 'OK' only. No other text.`
 
@@ -65,9 +63,9 @@ export async function testOllamaConnection() {
   }
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(TEST_PROMPT, 'You are a helpful assistant.', { feature: FEATURES.CONTENT })
-    )
+    const response = await aiGenerate(TEST_PROMPT, 'You are a helpful assistant.', {
+      feature: FEATURES.CONTENT
+    })
     const trimmed = response.trim().toUpperCase()
     return { success: trimmed === 'OK', message: trimmed }
   } catch {

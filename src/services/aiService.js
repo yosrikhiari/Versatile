@@ -67,6 +67,77 @@ const PROVIDER_MAP = {
   [PROVIDERS.GROQ]: groqProvider
 }
 
+/**
+ * In-flight request budget, per provider.
+ *
+ * A local Ollama runs one model on one machine: two concurrent generations do
+ * not finish twice as fast, they contend for the same weights and KV cache — and
+ * with OLLAMA_NUM_PARALLEL > 1 Ollama MULTIPLIES its context allocation, so
+ * concurrency costs RAM as well as speed. Cloud providers are the opposite:
+ * latency-bound, so parallelism is the entire point.
+ */
+const PROVIDER_CONCURRENCY = {
+  [PROVIDERS.OLLAMA]: 1,
+  default: 4
+}
+
+/**
+ * A counting semaphore.
+ *
+ * This exists because the codebase had FIVE places deciding how many calls the
+ * backend could take (useStoryDirector:190, spine.js:14, useStoryCritic:290,
+ * generation/utils.js:48, AgentMemory.js:87), three of which did not know
+ * whether the provider was local — and, more importantly, because a limit at the
+ * task layer CANNOT bound the transport layer. `parallelWithLimit(tasks, 1)` on
+ * Ollama still issued two concurrent generations, because each task then fanned
+ * out with `Promise.all` internally (useVolumeStoryGenerator.js:862). A limit
+ * placed above a fan-out cannot bound what happens below it.
+ *
+ * Here — below every fan-out, at the one point all requests funnel through — is
+ * the only place that can. The task-level limits above are left in place as
+ * scheduling hints; they are now harmless, because this is what actually holds.
+ */
+function createSemaphore(limit) {
+  let active = 0
+  const waiting = []
+
+  const pump = () => {
+    if (active >= limit || waiting.length === 0) return
+    active++
+    waiting.shift()()
+  }
+
+  return async function withSlot(fn) {
+    await new Promise((resolve) => {
+      waiting.push(resolve)
+      pump()
+    })
+    try {
+      return await fn()
+    } finally {
+      active--
+      pump()
+    }
+  }
+}
+
+const semaphores = new Map()
+
+function slotFor(provider) {
+  if (!semaphores.has(provider)) {
+    const limit = PROVIDER_CONCURRENCY[provider] ?? PROVIDER_CONCURRENCY.default
+    semaphores.set(provider, createSemaphore(limit))
+  }
+  return semaphores.get(provider)
+}
+
+/** Test seam: drop all semaphores so limits can be re-read between cases. */
+export function __resetSemaphores() {
+  semaphores.clear()
+}
+
+export { createSemaphore, PROVIDER_CONCURRENCY }
+
 async function getApiKey(provider) {
   if (provider === PROVIDERS.OLLAMA) return null
   const storageKey = getApiKeyStorageKey(provider)
@@ -144,8 +215,14 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
   }
 
   try {
+    // The slot is taken INSIDE withRetry, per attempt — not around the whole
+    // loop. Otherwise a request would hold the only Ollama slot while sleeping
+    // through its exponential backoff, stalling every other caller for seconds.
     return await withRetry(
-      () => providerModule.generate(prompt, systemPrompt, model, providerOptions),
+      () =>
+        slotFor(provider)(() =>
+          providerModule.generate(prompt, systemPrompt, model, providerOptions)
+        ),
       isRetryable,
       { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
     )
@@ -160,13 +237,15 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
           // sent `model: null` in the request body and made every fallback fail.
           const fallbackModel = defaultModelForProvider(store.aiProviderFallback)
           try {
-            return await fallbackModule.generate(prompt, systemPrompt, fallbackModel, {
-              apiKey: fallbackKey || undefined,
-              signal: options.signal,
-              temperature: options.temperature,
-              maxTokens: options.maxTokens,
-              timeout: options.timeout
-            })
+            return await slotFor(store.aiProviderFallback)(() =>
+              fallbackModule.generate(prompt, systemPrompt, fallbackModel, {
+                apiKey: fallbackKey || undefined,
+                signal: options.signal,
+                temperature: options.temperature,
+                maxTokens: options.maxTokens,
+                timeout: options.timeout
+              })
+            )
           } catch (fallbackError) {
             // Preserve the original failure as the cause so the root error
             // isn't masked by a secondary fallback error.
@@ -218,8 +297,13 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
   const shouldRetry = (error) => !emittedAny && isRetryable(error)
 
   try {
+    // A stream holds its slot for the whole response, which is deliberate: two
+    // concurrent streams against one local model is exactly what we are stopping.
     return await withRetry(
-      () => providerModule.stream(prompt, systemPrompt, model, trackedOnChunk, providerOptions),
+      () =>
+        slotFor(provider)(() =>
+          providerModule.stream(prompt, systemPrompt, model, trackedOnChunk, providerOptions)
+        ),
       shouldRetry,
       { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
     )
@@ -233,18 +317,14 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
         if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
           const fallbackModel = defaultModelForProvider(store.aiProviderFallback)
           try {
-            return await fallbackModule.stream(
-              prompt,
-              systemPrompt,
-              fallbackModel,
-              trackedOnChunk,
-              {
+            return await slotFor(store.aiProviderFallback)(() =>
+              fallbackModule.stream(prompt, systemPrompt, fallbackModel, trackedOnChunk, {
                 apiKey: fallbackKey || undefined,
                 signal: options.signal,
                 temperature: options.temperature,
                 maxTokens: options.maxTokens,
                 timeout: options.timeout
-              }
+              })
             )
           } catch (fallbackError) {
             fallbackError.cause = error
@@ -286,14 +366,16 @@ export async function aiGenerateStructured(prompt, systemPrompt, options = {}) {
     try {
       const result = await withRetry(
         () =>
-          providerModule.generateStructured(prompt, systemPrompt, model, schema, {
-            apiKey: apiKey || undefined,
-            signal: options.signal,
-            temperature: options.temperature,
-            maxTokens: options.maxTokens,
-            timeout: options.timeout,
-            schemaName: options.schemaName
-          }),
+          slotFor(provider)(() =>
+            providerModule.generateStructured(prompt, systemPrompt, model, schema, {
+              apiKey: apiKey || undefined,
+              signal: options.signal,
+              temperature: options.temperature,
+              maxTokens: options.maxTokens,
+              timeout: options.timeout,
+              schemaName: options.schemaName
+            })
+          ),
         isRetryable,
         { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
       )

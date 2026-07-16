@@ -8,7 +8,6 @@ import { useGraphContext } from '../../composables/useGraphContext'
 import { useNetworkSuggestions } from '../../composables/useNetworkSuggestions'
 import { getEmbedding, cosineSimilarity } from '../ollamaService'
 import {
-  retryWithBackoff,
   sanitizeJsonResponse,
   getProjectContext,
   getExistingEntitiesContext
@@ -184,9 +183,9 @@ Example outputs:
 - Idea: "The loyal friend who betrays for money" \u2192 name: "Cal Blackwood", role: "best friend", goal: "get the money to save his dying daughter", voice: "warm, reassuring, slight guilt in tone", notes: "secretly gambled away the inheritance"`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, IDEA_CHARACTER_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
-    )
+    const response = await aiGenerate(userPrompt, IDEA_CHARACTER_SYSTEM_PROMPT, {
+      feature: FEATURES.WORLDBUILDING
+    })
     return parseCharacterResponse(response)
   } catch (error) {
     handleGenerationError(error)
@@ -242,9 +241,9 @@ IMPORTANT for each character:
 Do NOT generate name, role, goal identical to any existing character. Be creative and distinct.`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, IDEA_CHARACTER_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
-    )
+    const response = await aiGenerate(userPrompt, IDEA_CHARACTER_SYSTEM_PROMPT, {
+      feature: FEATURES.WORLDBUILDING
+    })
     return parseCharacterArrayResponse(response)
   } catch (error) {
     handleGenerationError(error)
@@ -291,9 +290,9 @@ IMPORTANT for each location:
 Do NOT generate name identical to any existing location. Be creative and distinct.`
 
   try {
-    const response = await retryWithBackoff(() =>
-      aiGenerate(userPrompt, LOCATION_SYSTEM_PROMPT, { feature: FEATURES.WORLDBUILDING })
-    )
+    const response = await aiGenerate(userPrompt, LOCATION_SYSTEM_PROMPT, {
+      feature: FEATURES.WORLDBUILDING
+    })
 
     let parsed = sanitizeJsonResponse(response)
     if (!parsed) {
