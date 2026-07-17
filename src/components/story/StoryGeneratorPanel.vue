@@ -964,7 +964,7 @@ function getPhaseLabel(phase) {
                 >{{ getPhaseLabel(volumeGenerator.phase.value) }} — Scene
                 {{ volumeCurrentScene }} of {{ volumeTotalScenes }}</span
               >
-              <span
+              <span class="tabular-nums"
                 >{{
                   volumeTotalScenes > 0
                     ? Math.round((volumeCurrentScene / volumeTotalScenes) * 100)
@@ -974,7 +974,7 @@ function getPhaseLabel(phase) {
             </div>
             <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
               <div
-                class="h-full bg-accent rounded-full transition-all duration-300 ease-out"
+                class="h-full bg-accent rounded-full transition-[width] duration-300 ease-out"
                 :style="{
                   width:
                     volumeTotalScenes > 0
@@ -1005,12 +1005,23 @@ function getPhaseLabel(phase) {
             </div>
           </div>
 
-          <button
-            class="w-full py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="handleVolumeReset"
-          >
-            Cancel
-          </button>
+          <div class="space-y-1.5">
+            <button
+              class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60 disabled:pointer-events-none"
+              :disabled="volumeGenerator.isCancelling.value"
+              @click="handleVolumeReset"
+            >
+              <span
+                v-if="volumeGenerator.isCancelling.value"
+                class="inline-flex items-center gap-2"
+              >
+                <BaseIcon name="loader-2" :size="14" class="animate-spin" />
+                Stopping…
+              </span>
+              <span v-else>Stop generation</span>
+            </button>
+            <p class="text-11px text-text-hint font-ui text-center">Finished scenes are kept.</p>
+          </div>
         </div>
 
         <!-- SYNC PREVIEW STATE -->

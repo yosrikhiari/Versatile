@@ -29,6 +29,8 @@ export function useAppInitialization() {
   const modelNotFound = ref(false)
   const showModelBanner = ref(false)
   const adoptedModel = ref('')
+  /** Name of the configured embedding model when it is not installed, else ''. */
+  const embeddingModelMissing = ref('')
   const hasLoaded = ref(false)
   const onboardingStatus = useLocalStorage(STORAGE_KEYS.ONBOARDING_V2, '')
 
@@ -38,12 +40,40 @@ export function useAppInitialization() {
   // nomic-embed-text as the writer.
   const EMBEDDING_MODEL_NAME = /embed/i
 
+  /**
+   * Tag-tolerant match. /api/tags reports fully-qualified names
+   * ("nomic-embed-text:latest") while config stores the bare name
+   * ("nomic-embed-text"), so an exact compare reports an installed model as
+   * missing.
+   */
+  function isInstalled(names, wanted) {
+    if (!wanted) return true
+    return names.some((n) => n === wanted || n.split(':')[0] === wanted.split(':')[0])
+  }
+
   async function checkModelAvailability() {
     try {
       const response = await fetch(`${getOllamaEndpoint()}/api/tags`)
       if (!response.ok) return
       const data = await response.json()
       const modelNames = data.models?.map((m) => m.name) || []
+
+      // Check the EMBEDDING model before the generation model's early return.
+      //
+      // These fail differently, which is why the check has to be separate. A
+      // missing generation model breaks loudly — every call errors. A missing
+      // embedding model breaks SILENTLY: embeddings fail, semantic retrieval
+      // returns nothing, scenes are written without their retrieved context, and
+      // the prose is merely worse. Nothing surfaces. ollamaService has exported
+      // checkEmbeddingModelAvailable() for exactly this since it was written,
+      // and nothing ever called it.
+      const wantedEmbed = settingsStore.embeddingModel || EMBEDDING_DEFAULTS.model
+      embeddingModelMissing.value = isInstalled(modelNames, wantedEmbed) ? '' : wantedEmbed
+      if (embeddingModelMissing.value) {
+        console.warn(
+          `[useAppInitialization] Embedding model "${wantedEmbed}" is not installed. Semantic search and research retrieval will return nothing until it is pulled: ollama pull ${wantedEmbed}`
+        )
+      }
 
       // Check the model generation actually calls (settingsStore.ollamaModel, via
       // resolveFeatureConfig). config/ollama.js's getOllamaModel() reads a
@@ -175,6 +205,7 @@ export function useAppInitialization() {
     modelNotFound,
     showModelBanner,
     adoptedModel,
+    embeddingModelMissing,
     hasLoaded,
     checkModelAvailability,
     initializeApp,

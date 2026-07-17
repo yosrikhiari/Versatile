@@ -51,6 +51,7 @@ const flowEditorRef = ref(null)
 const appShell = ref(null)
 const showSearchOverlay = ref(false)
 const focusMode = ref(false)
+const embeddingBannerDismissed = ref(false)
 const consistencyNavigateTarget = ref(null)
 
 provide('insertAtCursor', (text) => {
@@ -115,6 +116,8 @@ const {
   ollamaAvailable,
   modelNotFound,
   showModelBanner,
+  adoptedModel,
+  embeddingModelMissing,
   hasLoaded,
   initializeApp,
   checkModelAvailability,
@@ -280,12 +283,60 @@ function handleOnboardingSkipWrapper() {
       container to enable them.
     </div>
 
+    <!-- Two distinct situations, two tones. If the app adopted an installed
+         model, that is information (it fixed itself); only when nothing usable
+         exists is it a warning. Collapsing both into one alarming banner made
+         the self-healing path look broken. -->
     <div
-      v-if="showModelBanner && modelNotFound"
+      v-if="showModelBanner && modelNotFound && adoptedModel"
+      class="bg-bg-tertiary border-b border-border-subtle px-4 py-2 text-sm text-text-secondary flex items-center justify-between"
+    >
+      <span
+        >Default model isn't installed — using
+        <span class="font-mono text-text-primary">{{ adoptedModel }}</span> instead. You can change
+        this in Settings.</span
+      >
+      <button
+        class="text-text-hint hover:text-text-primary p-2 -m-2 transition-colors"
+        aria-label="Dismiss"
+        @click="showModelBanner = false"
+      >
+        <BaseIcon name="x" :size="16" />
+      </button>
+    </div>
+    <div
+      v-else-if="showModelBanner && modelNotFound"
       class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200 flex items-center justify-between"
     >
       <span>AI model not found. Responses may fail — check your Ollama setup in Settings.</span>
-      <button class="text-amber-200 hover:text-white" @click="showModelBanner = false">
+      <button
+        class="text-amber-200 hover:text-white p-2 -m-2 transition-colors"
+        aria-label="Dismiss"
+        @click="showModelBanner = false"
+      >
+        <BaseIcon name="x" :size="16" />
+      </button>
+    </div>
+
+    <!-- A missing embedding model fails silently: writing still works, but
+         semantic retrieval returns nothing and scenes are written without their
+         research context. The only symptom is worse prose, which the user would
+         reasonably blame on the model. Say it out loud. -->
+    <div
+      v-if="embeddingModelMissing && !embeddingBannerDismissed"
+      class="bg-bg-tertiary border-b border-border-subtle px-4 py-2 text-sm text-text-secondary flex items-center justify-between"
+    >
+      <span>
+        Embedding model
+        <span class="font-mono text-text-primary">{{ embeddingModelMissing }}</span> isn't installed
+        — semantic search and research retrieval are off. Writing still works.
+        <span class="font-mono text-text-hint">ollama pull {{ embeddingModelMissing }}</span>
+      </span>
+      <button
+        class="text-text-hint hover:text-text-primary p-2 -m-2 transition-colors"
+        aria-label="Dismiss"
+        @click="embeddingBannerDismissed = true"
+      >
         <BaseIcon name="x" :size="16" />
       </button>
     </div>

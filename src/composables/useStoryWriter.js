@@ -180,7 +180,13 @@ Extract:
       {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.2,
-        maxTokens: 800,
+        // Generous on purpose. The JSON itself needs ~300 tokens, but thinking
+        // models (qwen3 et al.) spend output budget on reasoning BEFORE the
+        // JSON; an 800 cap truncated qwen3's response mid-object and the
+        // grammar path died with "Unexpected end of JSON input" (seen live in
+        // sweep-writer). num_predict is a ceiling, not a target — non-thinking
+        // models stop early and pay nothing for the headroom.
+        maxTokens: 2500,
         schema: SCENE_METADATA_SCHEMA,
         schemaName: 'scene_metadata',
         signal
