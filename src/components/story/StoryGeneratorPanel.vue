@@ -12,6 +12,7 @@ import SparkPanel from '../spark/SparkPanel.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import GenerationSyncPreview from './GenerationSyncPreview.vue'
 import GenerationLoadingScreen from './GenerationLoadingScreen.vue'
+import GenerationStages from './GenerationStages.vue'
 import PreviousGenerationsList from './PreviousGenerationsList.vue'
 import VolumeReadModal from './VolumeReadModal.vue'
 import StoryContextModal from './StoryContextModal.vue'
@@ -153,6 +154,16 @@ const autoRun = computed({
     volumeGenerator.autoMode.value = val
   }
 })
+// Phases where a run is in flight and the stage list should be visible. Derived
+// as "not one of the resting states" rather than an allow-list of active ones,
+// so a phase added to the delegator's ROUTING_TABLE shows progress by default
+// instead of silently rendering nothing (which is how spine-generation ended up
+// with a blank panel).
+const GENERATION_RESTING_PHASES = ['idle', 'complete', 'error']
+const isGenerationActive = computed(
+  () => !GENERATION_RESTING_PHASES.includes(volumeGenerator.phase.value)
+)
+
 const previewScenes = computed(() =>
   volumePlanEdits.value.length > 0 ? volumePlanEdits.value : volumeGenerator.scenePlan.value
 )
@@ -928,6 +939,21 @@ function getPhaseLabel(phase) {
           </div>
         </div>
 
+        <!-- PIPELINE PROGRESS — spans every active phase.
+             Two reasons this sits above the per-phase blocks rather than inside
+             one of them. (1) Some phases had no block at all: spine-generation
+             is ~10 LLM calls and rendered an empty panel, which reads as a hang.
+             (2) A run is minutes long and multi-stage, so "where am I in the
+             whole thing" is the question a per-phase view can never answer. -->
+        <div v-if="isGenerationActive" class="px-4 pt-4">
+          <GenerationStages
+            :phase="volumeGenerator.phase.value"
+            :current-scene="volumeCurrentScene"
+            :total-scenes="volumeTotalScenes"
+            :status-text="volumeGenerator.progress.statusText"
+          />
+        </div>
+
         <!-- BOOTSTRAPPING / PLANNING -->
         <div
           v-if="
@@ -958,37 +984,19 @@ function getPhaseLabel(phase) {
 
         <!-- WRITING STATE -->
         <div v-if="volumeGenerator.phase.value === 'writing'" class="p-4 space-y-4">
-          <div class="space-y-2">
-            <div class="flex items-center justify-between text-xs text-text-hint font-ui">
-              <span
-                >{{ getPhaseLabel(volumeGenerator.phase.value) }} — Scene
-                {{ volumeCurrentScene }} of {{ volumeTotalScenes }}</span
-              >
-              <span class="tabular-nums"
-                >{{
-                  volumeTotalScenes > 0
-                    ? Math.round((volumeCurrentScene / volumeTotalScenes) * 100)
-                    : 0
-                }}%</span
-              >
-            </div>
-            <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-              <div
-                class="h-full bg-accent rounded-full transition-[width] duration-300 ease-out"
-                :style="{
-                  width:
-                    volumeTotalScenes > 0
-                      ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%'
-                      : '0%'
-                }"
-              ></div>
-            </div>
+          <!-- Scenes-done / scenes-planned is a real ratio, so this bar is
+               honest and stays. The stage list above now carries the phase
+               label and status text, so they are not repeated here. -->
+          <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
             <div
-              v-if="volumeGenerator.progress.statusText"
-              class="text-11px text-text-hint font-ui text-center italic mt-1.5"
-            >
-              {{ volumeGenerator.progress.statusText }}
-            </div>
+              class="h-full bg-accent rounded-full transition-[width] duration-300 ease-out"
+              :style="{
+                width:
+                  volumeTotalScenes > 0
+                    ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%'
+                    : '0%'
+              }"
+            ></div>
           </div>
 
           <div
