@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OpenAI.Chat;
 using Versatile.Application.Services;
 using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Data;
@@ -13,17 +15,27 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        services.AddScoped<TenantSessionInterceptor>();
+
+        services.AddDbContext<ApplicationDbContext>((sp, options) =>
+        {
+            var interceptor = sp.GetRequiredService<TenantSessionInterceptor>();
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                   .AddInterceptors(interceptor);
+        }, ServiceLifetime.Scoped, ServiceLifetime.Scoped);
 
         services.AddScoped<DbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped(typeof(IUserOwnedRepository<>), typeof(UserOwnedRepository<>));
+        services.AddScoped(typeof(IOrganizationOwnedRepository<>), typeof(OrganizationOwnedRepository<>));
+        services.AddScoped<IOrganizationContext>(_ => new OrganizationContext());
 
         RegisterServicesByConvention(services);
 
+        var openAiKey = configuration["Ai:OpenAi:ApiKey"] ?? "sk-placeholder";
+        services.AddScoped(_ => new ChatClient("gpt-4o-mini", openAiKey));
         services.AddScoped<IChatStreamer, ChatClientStreamer>();
         services.AddScoped<KeyManagementService>();
 

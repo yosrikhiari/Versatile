@@ -8,21 +8,21 @@ public class StoryElementService : IStoryElementService
     private readonly ApplicationDbContext _db;
     public StoryElementService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<StoryElementDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<StoryElementDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         return await _db.StoryElements.Where(e => e.StoryId == storyId).Select(e => ToDto(e)).ToListAsync();
     }
 
-    public async Task<StoryElementDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<StoryElementDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId)
     {
-        var element = await _db.StoryElements.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var element = await _db.StoryElements.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (organizationId == null || e.Story!.OrganizationId == organizationId));
         return element is null ? throw new KeyNotFoundException("StoryElement not found") : ToDto(element);
     }
 
-    public async Task<StoryElementDto> CreateAsync(Guid storyId, CreateStoryElementRequest request, Guid userId)
+    public async Task<StoryElementDto> CreateAsync(Guid storyId, CreateStoryElementRequest request, Guid userId, Guid? organizationId)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         var element = new StoryElement
         {
             StoryId = storyId,
@@ -39,9 +39,9 @@ public class StoryElementService : IStoryElementService
         return ToDto(element);
     }
 
-    public async Task<StoryElementDto> UpdateAsync(Guid id, UpdateStoryElementRequest request, Guid userId)
+    public async Task<StoryElementDto> UpdateAsync(Guid id, UpdateStoryElementRequest request, Guid userId, Guid? organizationId)
     {
-        var element = await _db.StoryElements.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var element = await _db.StoryElements.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (organizationId == null || e.Story!.OrganizationId == organizationId));
         if (element is null) throw new KeyNotFoundException("StoryElement not found");
         if (request.Type is not null) element.Type = request.Type;
         if (request.Title is not null) element.Title = request.Title;
@@ -54,17 +54,17 @@ public class StoryElementService : IStoryElementService
         return ToDto(element);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId)
     {
-        var element = await _db.StoryElements.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var element = await _db.StoryElements.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (organizationId == null || e.Story!.OrganizationId == organizationId));
         if (element is null) throw new KeyNotFoundException("StoryElement not found");
         _db.StoryElements.Remove(element);
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureStoryAccess(Guid storyId, Guid userId)
+    private async Task EnsureStoryAccess(Guid storyId, Guid userId, Guid? organizationId)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId)))
             throw new KeyNotFoundException("Story not found");
     }
 

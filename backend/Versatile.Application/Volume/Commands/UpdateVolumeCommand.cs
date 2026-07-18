@@ -1,6 +1,7 @@
 using MediatR;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.Volume.Commands;
 
-public record UpdateVolumeCommand(Guid Id, string? Title, string? Description, string? Color, int? SortOrder, string? ChapterIds, Guid UserId) : IRequest<VolumeDto>;
+public record UpdateVolumeCommand(Guid Id, string? Title, string? Description, string? Color, int? SortOrder, string? ChapterIds, Guid? OrganizationId, Guid UserId) : IRequest<VolumeDto>, IRequiresOrganization;

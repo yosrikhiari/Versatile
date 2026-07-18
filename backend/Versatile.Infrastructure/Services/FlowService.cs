@@ -11,17 +11,17 @@ public class FlowService : IFlowService
 
     public FlowService(ApplicationDbContext db) => _db = db;
 
-    public async Task<FlowDto> GetAsync(Guid storyId, Guid userId)
+    public async Task<FlowDto> GetAsync(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureAccess(storyId, userId);
+        await EnsureAccess(storyId, userId, organizationId);
 
         var flow = await _db.Flows.FirstOrDefaultAsync(f => f.StoryId == storyId);
         return flow is null ? throw new KeyNotFoundException("Flow not found for this story") : ToDto(flow);
     }
 
-    public async Task<FlowDto> UpsertAsync(Guid storyId, UpdateFlowRequest request, Guid userId)
+    public async Task<FlowDto> UpsertAsync(Guid storyId, UpdateFlowRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureAccess(storyId, userId);
+        await EnsureAccess(storyId, userId, organizationId);
 
         var flow = await _db.Flows.FirstOrDefaultAsync(f => f.StoryId == storyId);
         if (flow is null)
@@ -39,9 +39,9 @@ public class FlowService : IFlowService
         return ToDto(flow);
     }
 
-    private async Task EnsureAccess(Guid storyId, Guid userId)
+    private async Task EnsureAccess(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (!organizationId.HasValue || s.OrganizationId == organizationId.Value)))
             throw new KeyNotFoundException("Story not found");
     }
 

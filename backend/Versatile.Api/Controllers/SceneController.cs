@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
 using Versatile.Application.Scenes.Commands;
 using Versatile.Application.Scenes.Queries;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Api.Controllers;
 
@@ -13,7 +14,7 @@ public class SceneController : ApiControllerBase
 {
     private readonly IMediator _mediator;
 
-    public SceneController(IMediator mediator) => _mediator = mediator;
+    public SceneController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
 
     [HttpGet]
@@ -21,7 +22,7 @@ public class SceneController : ApiControllerBase
     {
         try
         {
-            return Ok(await _mediator.Send(new GetScenesQuery(chapterId, UserId)));
+            return Ok(await _mediator.Send(new GetScenesQuery(chapterId, OrganizationId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -34,7 +35,7 @@ public class SceneController : ApiControllerBase
     {
         try
         {
-            return Ok(await _mediator.Send(new GetSceneByIdQuery(id, UserId)));
+            return Ok(await _mediator.Send(new GetSceneByIdQuery(id, OrganizationId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -47,7 +48,7 @@ public class SceneController : ApiControllerBase
     {
         try
         {
-            var scene = await _mediator.Send(command with { ChapterId = chapterId, UserId = UserId });
+            var scene = await _mediator.Send(command with { ChapterId = chapterId, UserId = UserId, OrganizationId = OrganizationId });
             return CreatedAtAction(nameof(GetById), new { id = scene.Id }, scene);
         }
         catch (KeyNotFoundException ex)
@@ -61,7 +62,7 @@ public class SceneController : ApiControllerBase
     {
         try
         {
-            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId }));
+            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId, OrganizationId = OrganizationId }));
         }
         catch (KeyNotFoundException ex)
         {
@@ -74,7 +75,7 @@ public class SceneController : ApiControllerBase
     {
         try
         {
-            await _mediator.Send(new DeleteSceneCommand(id, UserId));
+            await _mediator.Send(new DeleteSceneCommand(id, OrganizationId, UserId));
             return NoContent();
         }
         catch (KeyNotFoundException ex)

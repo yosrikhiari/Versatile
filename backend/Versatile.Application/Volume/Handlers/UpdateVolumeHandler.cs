@@ -16,7 +16,7 @@ public class UpdateVolumeHandler : IRequestHandler<UpdateVolumeCommand, VolumeDt
     {
         var volume = await _db.Set<Entity>()
             .Include(v => v.Story)
-            .FirstOrDefaultAsync(v => v.Id == request.Id && v.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(v => v.Id == request.Id && v.Story!.UserId == request.UserId && v.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Volume not found");
 
         if (request.Title is not null) volume.Title = request.Title;

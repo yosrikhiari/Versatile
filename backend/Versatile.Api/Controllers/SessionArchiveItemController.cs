@@ -1,17 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
 [ApiController]
-[Route("api/story/{storyId}/session-archive"), Authorize]
+[Route("api/session-archive-item"), Authorize]
 public class SessionArchiveItemController : ApiControllerBase
 {
     private readonly ISessionArchiveItemService _service;
 
-    public SessionArchiveItemController(ISessionArchiveItemService service) => _service = service;
+    public SessionArchiveItemController(ISessionArchiveItemService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
 
 
     [HttpGet]

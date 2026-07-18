@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson: Backend Controller Patterns — Versatile</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="lesson">
+
+<h1>Backend Controller Patterns</h1>
+<p class="subtitle">How Versatile's API layer works — and the 5 inconsistencies we found.</p>
+
+<div class="meta">
+  <span>Lesson 5</span>
+  <span>&middot;</span>
+  <span>20 min</span>
+  <span>&middot;</span>
+  <span><a href="../MISSION.md">MISSION.md</a></span>
+</div>
+
+<div class="callout callout--info">
+  <strong>Prerequisites:</strong> Lesson 4 (Multi-Tenancy Fundamentals). You should be comfortable opening files in <span class="file">backend/Versatile.Api/Controllers/</span>.
+</div>
+
+<p>
+  We just analyzed every backend controller in Versatile. We found 5 controllers, all following MediatR CQRS — plus 5 inconsistencies that need attention before multi-tenancy lands.
+</p>
+
+<p>
+  This lesson teaches you what each layer in the backend does, how a request flows through them, and why the inconsistencies matter.
+</p>
+
+<!-- ============================================================ -->
+<!-- The Five Layers -->
+<!-- ============================================================ -->
+<h2>1. The Five Layers of Clean Architecture</h2>
+
+<p>Versatile's backend follows the <strong>Jason Taylor Clean Architecture template</strong>. Open <span class="file">backend/Versatile.sln</span> in your head — these are the projects:</p>
+
+<table>
+  <tr><th>Layer</th><th>Project</th><th>Job</th></tr>
+  <tr>
+    <td><strong>Domain</strong></td>
+    <td><span class="file">Versatile.Domain/</span></td>
+    <td>Entities, enums, value objects. Zero dependencies. The "what."</td>
+  </tr>
+  <tr>
+    <td><strong>Application</strong></td>
+    <td><span class="file">Versatile.Application/</span></td>
+    <td>CQRS commands, queries, handlers, validation. The "orchestration." Depends only on Domain.</td>
+  </tr>
+  <tr>
+    <td><strong>Infrastructure</strong></td>
+    <td><span class="file">Versatile.Infrastructure/</span></td>
+    <td>EF Core DbContext, repositories, JWT auth, email, AI services. The "how." Depends on Application.</td>
+  </tr>
+  <tr>
+    <td><strong>API</strong></td>
+    <td><span class="file">Versatile.Api/</span></td>
+    <td>Controllers, middleware, SignalR hubs, DI configuration. The "entry point." Depends on Infrastructure and Application.</td>
+  </tr>
+  <tr>
+    <td><strong>Shared</strong></td>
+    <td><span class="file">Versatile.Shared/</span></td>
+    <td>DTOs, constants, extension methods used across layers.</td>
+  </tr>
+</table>
+
+<div class="card card--info">
+  <h3>The Dependency Rule</h3>
+  <p>Dependencies point <strong>inward</strong>. Domain knows nothing about Infrastructure. API knows about Infrastructure <em>through interfaces defined in Application</em>. This is what makes the architecture testable — you can swap PostgreSQL for SQLite by changing one project.</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- Request Flow -->
+<!-- ============================================================ -->
+<h2>2. How a Request Flows Through</h2>
+
+<p>Let's trace a Chapter create from HTTP to database and back. Open the files as we go.</p>
+
+<h3>Step 1: Controller</h3>
+<p>Open <span class="file">backend/Versatile.Api/Controllers/ChapterController.cs</span>:</p>
+
+<pre><code>[ApiController]
+[Route("api/stories/{storyId}/chapters")]
+[Authorize]
+public class ChapterController : ControllerBase
+{
+    private readonly IMediator _mediator;
+
+    public ChapterController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    [HttpPost]
+    public async Task&lt;IActionResult&gt; Create(
+        Guid storyId,
+        [FromBody] CreateChapterCommand command)
+    {
+        command.StoryId = storyId;
+        var result = await _mediator.Send(command);
+        return Ok(result);
+    }
+}</code></pre>
+
+<p>The controller's job is minimal: extract HTTP data, send a command to MediatR, return the response. It doesn't validate, doesn't talk to the database, doesn't know about infrastructure.</p>
+
+<h3>Step 2: MediatR Pipeline</h3>
+
+<p>MediatR isn't just "send and forget." Versatile has a pipeline wrapped around every command:</p>
+
+<pre><code>// Pseudocode — what MediatR runs in order:
+1. ValidationBehavior&lt;TRequest, TResponse&gt;  — FluentValidation
+2. LoggingBehavior&lt;TRequest, TResponse&gt;     — Serilog
+3. PerformanceBehavior&lt;TRequest, TResponse&gt; — timing & slow-call warnings
+4. The handler itself                         — your business logic</code></pre>
+
+<p>This <strong>pipeline behavior</strong> pattern is why cross-cutting concerns (validation, logging, timing) don't pollute your handler code. Each behavior is a separate class, registered once in DI, applied to every command automatically.</p>
+
+<h3>Step 3: Handler</h3>
+<p>Open <span class="file">backend/Versatile.Application/Chapters/Commands/CreateChapter/CreateChapterHandler.cs</span>:</p>
+
+<pre><code>public class CreateChapterHandler : IRequestHandler&lt;CreateChapterCommand, ChapterDto&gt;
+{
+    private readonly IOrganizationContext _context;
+    private readonly IMapper _mapper;
+
+    public async Task&lt;ChapterDto&gt; Handle(
+        CreateChapterCommand request,
+        CancellationToken cancellationToken)
+    {
+        var chapter = new Chapter
+        {
+            StoryId = request.StoryId,
+            Title = request.Title,
+            SortOrder = request.SortOrder
+        };
+
+        _context.Chapters.Add(chapter);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return _mapper.Map&lt;ChapterDto&gt;(chapter);
+    }
+}</code></pre>
+
+<p>The handler: creates a domain entity, saves it via DbContext, maps to a DTO. That's it. No attribute routing, no serialization concerns, no HTTP context.</p>
+
+<h3>Step 4: Infrastructure</h3>
+<p>The <code>IOrganizationContext</code> interface lives in Application (the contract) but is implemented by <code>OrganizationContext</code> in <span class="file">backend/Versatile.Infrastructure/Data/OrganizationContext.cs</span> — that's the actual EF Core DbContext with all 36 DbSets.</p>
+
+<h3>Step 5: Back through the pipeline</h3>
+<p>The response travels back through the same pipeline behaviors in reverse order, then the controller wraps it in <code>Ok(result)</code> (HTTP 200).</p>
+
+<div class="card card--accent">
+  <span class="tag tag--arch">Pattern</span>
+  <h3>Why MediatR instead of calling a service directly?</h3>
+  <p>Direct calls would still work. But MediatR gives you:</p>
+  <ul>
+    <li><strong>Pipeline behaviors</strong> — validation, logging, timing, and (soon) tenant-context injection all wrapped around every command without touching the handler</li>
+    <li><strong>Single responsibility</strong> — a handler does one thing. A service class tends to grow</li>
+    <li><strong>Testability</strong> — handlers are easy to unit-test. The pipeline is easy to integration-test</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<!-- The 5 Issues -->
+<!-- ============================================================ -->
+<h2>3. The 5 Issues We Found</h2>
+
+<p>During the analysis, we identified 5 things that need standardization before multi-tenancy. Let's walk through each one.</p>
+
+<h3>Issue 1: Dual Error Middleware</h3>
+
+<p>Versatile has <strong>two</strong> global error handlers:</p>
+
+<ul>
+  <li><span class="file">backend/Versatile.Api/Middleware/ExceptionMiddleware.cs</span> — classic <code>RequestDelegate</code> middleware. Catches exceptions in the pipeline.</li>
+  <li><span class="file">backend/Versatile.Api/Middleware/ExceptionHandler.cs</span> — minimal API pattern <code>IExceptionHandler</code>. Same job, different mechanism.</li>
+</ul>
+
+<p>Both are registered in <span class="file">Program.cs</span>. Which one runs first? Depends on the pipeline order. Which one handles which exception? Unclear. When you add tenant-context middleware later, you need to know exactly where errors get caught — otherwise a tenant resolution failure might get swallowed by the wrong handler.</p>
+
+<div class="exercise">
+  <h3>Trace it: Open both files</h3>
+  <ol>
+    <li>Open <span class="file">ExceptionMiddleware.cs</span> and <span class="file">ExceptionHandler.cs</span></li>
+    <li>Note the exception types each handles</li>
+    <li>Open <span class="file">Program.cs</span> and find both registrations</li>
+    <li>Question: <strong>if a <code>ValidationException</code> is thrown in a handler, which catches it first?</strong></li>
+  </ol>
+</div>
+
+<h3>Issue 2: Auth Inconsistency in SceneController</h3>
+
+<p>Most controllers are pure MediatR dispatchers. But open <span class="file">backend/Versatile.Api/Controllers/SceneController.cs</span> — it also injects <code>IOrganizationContext</code> directly:</p>
+
+<pre><code>public SceneController(IMediator mediator, IOrganizationContext context)
+{
+    _mediator = mediator;
+    _context = context;  // Direct DbContext in the API layer
+}</pre>
+
+<p>This breaks the Clean Architecture dependency rule. The API layer should depend on Application interfaces, not Infrastructure directly. For multi-tenancy, this matters because tenant-context injection happens in the MediatR pipeline — bypassing MediatR means bypassing tenant filtering.</p>
+
+<h3>Issue 3: Split DI Registration</h3>
+
+<p>Dependencies are registered in two places:</p>
+<ul>
+  <li><strong>Convention scanning:</strong> <code>HandlersRegistration</code>, <code>ValidatorsRegistration</code>, <code>DbContextRegistration</code> — these automatically find and register all MediatR handlers, FluentValidation validators, and EF configurations</li>
+  <li><strong>Manual registrations:</strong> Everything in <span class="file">Program.cs</span> after each <code>services.Add*()</code> call</li>
+</ul>
+
+<p>This is fine structurally, but the <code>IOrganizationContext</code> singleton workaround in Program.cs is a red flag — it was needed because some code path needed the context outside a scoped request. For multi-tenancy, every resolution path must go through the scoped tenant context.</p>
+
+<h3>Issue 4: No Repository Abstraction</h3>
+
+<p>Handlers use <code>IOrganizationContext</code> (the EF DbContext) directly. No repository layer between them and the database.</p>
+
+<p>This is a deliberate trade-off in the Jason Taylor template — for simple CRUD, a repository layer adds indirection without benefit. But for multi-tenancy, you need to consider: <strong>does every handler correctly filter by tenant, or does a repository guarantee it?</strong></p>
+
+<p>PostgreSQL Row-Level Security (RLS) can enforce this at the database level, making a repository layer less critical. But if you skip RLS, every handler is responsible for its own <code>WHERE tenant_id = @current</code> — and that means every handler is a potential data leak.</p>
+
+<h3>Issue 5: Missing OpenAPI Metadata</h3>
+
+<pre><code>public async Task&lt;IActionResult&gt; Create(...)  // IActionResult — Swagger can't infer the shape</code></pre>
+
+<p>All controllers return <code>IActionResult</code> instead of <code>ActionResult&lt;T&gt;</code>. Swagger generates documentation from return types — <code>IActionResult</code> tells Swagger nothing. The fix is <code>[ProducesResponseType]</code> attributes or switching to <code>ActionResult&lt;ChapterDto&gt;</code>.</p>
+
+<p>This matters for multi-tenancy because you'll want clear API documentation when third-party developers or frontend clients integrate with the org endpoints.</p>
+
+<!-- ============================================================ -->
+<!-- Summary -->
+<!-- ============================================================ -->
+<h2>Putting It Together</h2>
+
+<p>The backend is well-structured — MediatR CQRS, pipeline behaviors, Clean Architecture layers. The 5 issues are <strong>accumulated debt from single-user development</strong>, not fundamental design flaws. Each one becomes a liability when scaling to multi-tenancy:</p>
+
+<table>
+  <tr><th>Issue</th><th>Multi-Tenancy Risk</th><th>Fix Priority</th></tr>
+  <tr><td>Dual error middleware</td><td>Tenant resolution errors get swallowed by the wrong handler</td><td>Before Phase 2</td></tr>
+  <tr><td>Auth inconsistency</td><td>SceneController bypasses MediatR pipeline (and future tenant context injection)</td><td>Before Phase 1</td></tr>
+  <tr><td>Split DI registration</td><td>Non-scoped tenant context could leak across requests</td><td>During Phase 2</td></tr>
+  <tr><td>No repository abstraction</td><td>Every handler must remember to filter by tenant_id</td><td>Mitigate with RLS (Phase 2), not a repository</td></tr>
+  <tr><td>Missing OpenAPI metadata</td><td>Unclear API contracts for org-scoped endpoints</td><td>Low — cosmetic but useful</td></tr>
+</table>
+
+<div class="card card--info">
+  <h3>The advice</h3>
+  <p><strong>Fix Issue 2 (SceneController) before starting Phase 1.</strong> Move the direct <code>IOrganizationContext</code> lookup into a MediatR query handler. That way when tenant context gets injected into the pipeline, SceneController gets it automatically.</p>
+  <p><strong>Fix Issue 1 (error middleware) before Phase 2.</strong> Pick one pattern (<code>IExceptionHandler</code> is the modern choice) and remove the other. Then tenant-context middleware errors flow through a single, predictable path.</p>
+</div>
+
+<div class="callout callout--info">
+  <strong>Next step:</strong> Want to walk through one of these fixes together? The SceneController fix is small — extract the direct <code>IOrganizationContext</code> call into a MediatR query. Or we can go deeper into how the middleware pipeline is ordered and where tenant resolution would slot in.
+</div>
+
+<p class="footer">
+  <a href="../MISSION.md">MISSION.md</a> &middot;
+  <a href="0001-five-patterns-of-scalability.html">Lesson 1: Five Patterns</a> &middot;
+  <a href="0002-carving-monoliths.html">Lesson 2: Carving Monoliths</a> &middot;
+  <a href="0003-idempotency-keys.html">Lesson 3: Idempotency Keys</a> &middot;
+  <a href="0004-multi-tenancy-fundamentals.html">Lesson 4: Multi-Tenancy</a>
+  <br><br>
+  <strong>Ask follow-up questions.</strong> Which issue do you want to fix first, or which layer do you want to go deeper on?
+</p>
+
+</div>
+</body>
+</html>

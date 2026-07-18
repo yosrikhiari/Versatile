@@ -11,9 +11,9 @@ public class EntityService : IEntityService
 
     public EntityService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<EntityDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<EntityDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId)
     {
-        await EnsureAccess(storyId, userId);
+        await EnsureAccess(storyId, userId, organizationId);
 
         return await _db.Entities
             .Where(e => e.StoryId == storyId)
@@ -22,18 +22,18 @@ public class EntityService : IEntityService
             .ToListAsync();
     }
 
-    public async Task<EntityDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<EntityDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId)
     {
         var entity = await _db.Entities
             .Include(e => e.Story)
-            .FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+            .FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (organizationId == null || e.Story!.OrganizationId == organizationId));
 
         return entity is null ? throw new KeyNotFoundException("Entity not found") : ToDto(entity);
     }
 
-    public async Task<EntityDto> CreateAsync(Guid storyId, CreateEntityRequest request, Guid userId)
+    public async Task<EntityDto> CreateAsync(Guid storyId, CreateEntityRequest request, Guid userId, Guid? organizationId)
     {
-        await EnsureAccess(storyId, userId);
+        await EnsureAccess(storyId, userId, organizationId);
 
         var entity = new Entity
         {
@@ -49,11 +49,11 @@ public class EntityService : IEntityService
         return ToDto(entity);
     }
 
-    public async Task<EntityDto> UpdateAsync(Guid id, UpdateEntityRequest request, Guid userId)
+    public async Task<EntityDto> UpdateAsync(Guid id, UpdateEntityRequest request, Guid userId, Guid? organizationId)
     {
         var entity = await _db.Entities
             .Include(e => e.Story)
-            .FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+            .FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (organizationId == null || e.Story!.OrganizationId == organizationId));
 
         if (entity is null) throw new KeyNotFoundException("Entity not found");
 
@@ -67,11 +67,11 @@ public class EntityService : IEntityService
         return ToDto(entity);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId)
     {
         var entity = await _db.Entities
             .Include(e => e.Story)
-            .FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+            .FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (organizationId == null || e.Story!.OrganizationId == organizationId));
 
         if (entity is null) throw new KeyNotFoundException("Entity not found");
 
@@ -79,9 +79,9 @@ public class EntityService : IEntityService
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureAccess(Guid storyId, Guid userId)
+    private async Task EnsureAccess(Guid storyId, Guid userId, Guid? organizationId)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId)))
             throw new KeyNotFoundException("Story not found");
     }
 

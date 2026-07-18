@@ -18,7 +18,7 @@ const emit = defineEmits(['insert', 'regenerate'])
     </p>
     <div class="flex gap-2 mt-4">
       <button
-        class="flex-1 py-1.5 bg-accent text-accent-foreground text-sm rounded-md hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        class="flex-1 py-1.5 btn-primary text-sm rounded-md font-ui focus:outline-none focus:ring-2 focus:ring-accent"
         @click="emit('insert', prompt)"
       >
         Insert into Flow

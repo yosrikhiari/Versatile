@@ -8,21 +8,21 @@ public class AnnotationService : IAnnotationService
     private readonly ApplicationDbContext _db;
     public AnnotationService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<AnnotationDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<AnnotationDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         return await _db.Annotations.Where(a => a.StoryId == storyId).OrderBy(a => a.ParagraphIndex).Select(a => ToDto(a)).ToListAsync();
     }
 
-    public async Task<AnnotationDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<AnnotationDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId)
     {
-        var annotation = await _db.Annotations.Include(a => a.Story).FirstOrDefaultAsync(a => a.Id == id && a.Story!.UserId == userId);
+        var annotation = await _db.Annotations.Include(a => a.Story).FirstOrDefaultAsync(a => a.Id == id && a.Story!.UserId == userId && (organizationId == null || a.Story!.OrganizationId == organizationId));
         return annotation is null ? throw new KeyNotFoundException("Annotation not found") : ToDto(annotation);
     }
 
-    public async Task<AnnotationDto> CreateAsync(Guid storyId, CreateAnnotationRequest request, Guid userId)
+    public async Task<AnnotationDto> CreateAsync(Guid storyId, CreateAnnotationRequest request, Guid userId, Guid? organizationId)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         var annotation = new Annotation
         {
             StoryId = storyId,
@@ -39,9 +39,9 @@ public class AnnotationService : IAnnotationService
         return ToDto(annotation);
     }
 
-    public async Task<AnnotationDto> UpdateAsync(Guid id, UpdateAnnotationRequest request, Guid userId)
+    public async Task<AnnotationDto> UpdateAsync(Guid id, UpdateAnnotationRequest request, Guid userId, Guid? organizationId)
     {
-        var annotation = await _db.Annotations.Include(a => a.Story).FirstOrDefaultAsync(a => a.Id == id && a.Story!.UserId == userId);
+        var annotation = await _db.Annotations.Include(a => a.Story).FirstOrDefaultAsync(a => a.Id == id && a.Story!.UserId == userId && (organizationId == null || a.Story!.OrganizationId == organizationId));
         if (annotation is null) throw new KeyNotFoundException("Annotation not found");
         if (request.ParagraphIndex.HasValue) annotation.ParagraphIndex = request.ParagraphIndex.Value;
         if (request.ParagraphId is not null) annotation.ParagraphId = request.ParagraphId;
@@ -54,17 +54,17 @@ public class AnnotationService : IAnnotationService
         return ToDto(annotation);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId)
     {
-        var annotation = await _db.Annotations.Include(a => a.Story).FirstOrDefaultAsync(a => a.Id == id && a.Story!.UserId == userId);
+        var annotation = await _db.Annotations.Include(a => a.Story).FirstOrDefaultAsync(a => a.Id == id && a.Story!.UserId == userId && (organizationId == null || a.Story!.OrganizationId == organizationId));
         if (annotation is null) throw new KeyNotFoundException("Annotation not found");
         _db.Annotations.Remove(annotation);
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureStoryAccess(Guid storyId, Guid userId)
+    private async Task EnsureStoryAccess(Guid storyId, Guid userId, Guid? organizationId)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId)))
             throw new KeyNotFoundException("Story not found");
     }
 

@@ -3,11 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class StoryStateSnapshot
+public class StoryStateSnapshot : UserOwnedEntity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
     [Required]
     public Guid StoryId { get; set; }
 

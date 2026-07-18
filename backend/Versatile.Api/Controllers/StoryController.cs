@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
 using Versatile.Application.Stories.Commands;
 using Versatile.Application.Stories.Queries;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Api.Controllers;
 
@@ -13,19 +14,18 @@ public class StoryController : ApiControllerBase
 {
     private readonly IMediator _mediator;
 
-    public StoryController(IMediator mediator) => _mediator = mediator;
-
+    public StoryController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
     [HttpGet]
     public async Task<ActionResult<List<StoryDto>>> GetAll() =>
-        Ok(await _mediator.Send(new GetStoriesQuery(UserId)));
+        Ok(await _mediator.Send(new GetStoriesQuery(OrganizationId, UserId)));
 
     [HttpGet("{id}")]
     public async Task<ActionResult<StoryDto>> GetById(Guid id)
     {
         try
         {
-            return Ok(await _mediator.Send(new GetStoryByIdQuery(id, UserId)));
+            return Ok(await _mediator.Send(new GetStoryByIdQuery(id, OrganizationId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -36,7 +36,7 @@ public class StoryController : ApiControllerBase
     [HttpPost]
     public async Task<ActionResult<StoryDto>> Create(CreateStoryCommand command)
     {
-        var story = await _mediator.Send(command with { UserId = UserId });
+        var story = await _mediator.Send(command with { UserId = UserId, OrganizationId = OrganizationId });
         return CreatedAtAction(nameof(GetById), new { id = story.Id }, story);
     }
 
@@ -45,7 +45,7 @@ public class StoryController : ApiControllerBase
     {
         try
         {
-            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId }));
+            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId, OrganizationId = OrganizationId }));
         }
         catch (KeyNotFoundException ex)
         {
@@ -58,7 +58,7 @@ public class StoryController : ApiControllerBase
     {
         try
         {
-            await _mediator.Send(new DeleteStoryCommand(id, UserId));
+            await _mediator.Send(new DeleteStoryCommand(id, OrganizationId, UserId));
             return NoContent();
         }
         catch (KeyNotFoundException ex)

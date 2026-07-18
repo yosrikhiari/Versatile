@@ -53,7 +53,7 @@ defineProps({
         :class="[
           'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
           genre === g
-            ? 'bg-accent text-accent-foreground'
+            ? 'bg-surface-hover text-accent'
             : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
         ]"
         @click="genre = genre === g ? '' : g"
@@ -72,7 +72,7 @@ defineProps({
         :class="[
           'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
           tone === t
-            ? 'bg-accent text-accent-foreground'
+            ? 'bg-surface-hover text-accent'
             : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
         ]"
         @click="tone = tone === t ? '' : t"

@@ -600,7 +600,7 @@ defineExpose({ refresh })
     <div class="h-full flex flex-col overflow-hidden">
       <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
         <div class="flex items-center justify-between mb-3">
-          <span class="font-ui text-accent tracking-wide">{{
+          <span class="font-ui font-medium text-text-primary tracking-wide">{{
             projectStore.terminology.bible
           }}</span>
         </div>
@@ -627,7 +627,7 @@ defineExpose({ refresh })
             @click="activeTab = 'characters'"
           >
             {{ projectStore.terminology.characters }}
-            <span class="text-2xs opacity-60">{{ filteredCharacters.length }}</span>
+            <span class="text-xs opacity-60">{{ filteredCharacters.length }}</span>
           </button>
           <button
             :class="[
@@ -640,7 +640,7 @@ defineExpose({ refresh })
             @click="activeTab = 'plotThreads'"
           >
             {{ projectStore.terminology.plotThreads }}
-            <span class="text-2xs opacity-60">{{ filteredPlotThreads.length }}</span>
+            <span class="text-xs opacity-60">{{ filteredPlotThreads.length }}</span>
           </button>
           <button
             :class="[
@@ -653,7 +653,7 @@ defineExpose({ refresh })
             @click="activeTab = 'locations'"
           >
             {{ projectStore.terminology.locations }}
-            <span class="text-2xs opacity-60">{{ filteredLocations.length }}</span>
+            <span class="text-xs opacity-60">{{ filteredLocations.length }}</span>
           </button>
           <button
             :class="[
@@ -791,7 +791,7 @@ defineExpose({ refresh })
                     title="Save"
                     @click="saveEdit(character.id, 'character')"
                   >
-                    <BaseIcon name="check" :size="14" class="text-green-400" />
+                    <BaseIcon name="check" :size="14" class="text-success" />
                   </button>
                   <button
                     v-if="editingId === character.id"
@@ -807,7 +807,7 @@ defineExpose({ refresh })
                     title="Delete"
                     @click="deleteCharacter(character.id)"
                   >
-                    <BaseIcon name="trash-2" :size="14" class="text-red-400" />
+                    <BaseIcon name="trash-2" :size="14" class="text-danger" />
                   </button>
                 </div>
               </div>
@@ -830,7 +830,7 @@ defineExpose({ refresh })
                 <span
                   v-for="trait in character.traits"
                   :key="trait"
-                  class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full"
+                  class="text-xs px-2 py-0.5 bg-bg-secondary text-accent rounded"
                   >{{ trait }}</span
                 >
               </div>
@@ -918,7 +918,7 @@ defineExpose({ refresh })
               </div>
             </div>
             <button
-              class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
+              class="w-full py-2 border border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
               @click="addCharacter"
             >
               + Add {{ projectStore.terminology.characters.toLowerCase() }}
@@ -979,10 +979,8 @@ defineExpose({ refresh })
                 <div class="flex items-center gap-1">
                   <span
                     :class="[
-                      'text-xs px-2 py-0.5 rounded',
-                      thread.status === 'open'
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-gray-500/20 text-gray-400'
+                      'text-xs px-2 py-0.5 rounded bg-bg-secondary',
+                      thread.status === 'open' ? 'text-success' : 'text-text-hint'
                     ]"
                   >
                     {{ thread.status }}
@@ -1001,7 +999,7 @@ defineExpose({ refresh })
                     title="Save"
                     @click="saveEdit(thread.id, 'plotThread')"
                   >
-                    <BaseIcon name="check" :size="14" class="text-green-400" />
+                    <BaseIcon name="check" :size="14" class="text-success" />
                   </button>
                   <button
                     v-if="editingId === thread.id"
@@ -1017,7 +1015,7 @@ defineExpose({ refresh })
                     title="Delete"
                     @click="deletePlotThread(thread.id)"
                   >
-                    <BaseIcon name="trash-2" :size="14" class="text-red-400" />
+                    <BaseIcon name="trash-2" :size="14" class="text-danger" />
                   </button>
                 </div>
               </div>
@@ -1034,7 +1032,7 @@ defineExpose({ refresh })
                 <span
                   v-for="trait in thread.traits"
                   :key="trait"
-                  class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full"
+                  class="text-xs px-2 py-0.5 bg-bg-secondary text-accent rounded"
                   >{{ trait }}</span
                 >
               </div>
@@ -1103,7 +1101,7 @@ defineExpose({ refresh })
               </div>
             </div>
             <button
-              class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
+              class="w-full py-2 border border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
               @click="addPlotThread"
             >
               + Add {{ projectStore.terminology.plotThreads.toLowerCase() }}
@@ -1176,7 +1174,7 @@ defineExpose({ refresh })
                     title="Save"
                     @click="saveEdit(location.id, 'location')"
                   >
-                    <BaseIcon name="check" :size="14" class="text-green-400" />
+                    <BaseIcon name="check" :size="14" class="text-success" />
                   </button>
                   <button
                     v-if="editingId === location.id"
@@ -1192,7 +1190,7 @@ defineExpose({ refresh })
                     title="Delete"
                     @click="deleteLocation(location.id)"
                   >
-                    <BaseIcon name="trash-2" :size="14" class="text-red-400" />
+                    <BaseIcon name="trash-2" :size="14" class="text-danger" />
                   </button>
                 </div>
               </div>
@@ -1209,7 +1207,7 @@ defineExpose({ refresh })
                 <span
                   v-for="trait in location.traits"
                   :key="trait"
-                  class="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full"
+                  class="text-xs px-2 py-0.5 bg-bg-secondary text-accent rounded"
                   >{{ trait }}</span
                 >
               </div>
@@ -1218,18 +1216,6 @@ defineExpose({ refresh })
                   v-model="editData.notes"
                   placeholder="Notes"
                   rows="2"
-                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
-                />
-                <textarea
-                  v-model="editData.notes"
-                  placeholder="Notes"
-                  rows="2"
-                  class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
-                />
-                <textarea
-                  v-model="editData.sampleDialogue"
-                  placeholder='Sample dialogue — "A line this character would actually say."'
-                  rows="1"
                   class="w-full bg-bg-secondary px-2 py-1 text-sm text-text-primary rounded placeholder:text-text-hint resize-none"
                 />
                 <div class="flex items-center gap-1">
@@ -1281,7 +1267,7 @@ defineExpose({ refresh })
               </div>
             </div>
             <button
-              class="w-full py-2 border-2 border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
+              class="w-full py-2 border border-dashed border-border-subtle text-text-secondary text-sm rounded-lg hover:border-accent hover:text-accent transition-colors"
               @click="addLocation"
             >
               + Add {{ projectStore.terminology.locations.toLowerCase() }}
@@ -1294,9 +1280,9 @@ defineExpose({ refresh })
                 v-for="dt in documentTypes"
                 :key="dt.key"
                 :class="[
-                  'px-2.5 py-1 text-11px font-medium rounded-lg font-ui transition-colors',
+                  'px-2.5 py-1 text-xs font-medium rounded-lg font-ui transition-colors',
                   selectedDocType === dt.key
-                    ? 'bg-accent text-accent-foreground'
+                    ? 'bg-surface-hover text-accent'
                     : 'bg-bg-secondary text-text-secondary hover:bg-surface-hover'
                 ]"
                 @click="selectedDocType = dt.key"
@@ -1307,7 +1293,7 @@ defineExpose({ refresh })
 
             <div class="flex items-center gap-2 mb-3 flex-wrap">
               <button
-                class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-accent text-accent-foreground disabled:opacity-40"
+                class="btn-primary px-3 py-1.5 text-xs rounded-lg disabled:opacity-40"
                 :disabled="!hasUnsavedChanges"
                 @click="saveDocument"
               >
@@ -1338,22 +1324,22 @@ defineExpose({ refresh })
                 class="hidden"
                 @change="uploadDocument"
               />
-              <span v-if="hasUnsavedChanges" class="text-xs text-amber-400 ml-auto"
+              <span v-if="hasUnsavedChanges" class="text-xs text-warning ml-auto"
                 >Unsaved changes</span
               >
             </div>
 
             <div
               v-if="isLargeContent"
-              class="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20"
+              class="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-xs bg-bg-elevated text-warning border border-border-subtle"
             >
               <span>Large file — {{ documentContent.length.toLocaleString() }} characters.</span>
-              <span v-if="contentReadonly" class="ml-1 text-amber-400/70"
+              <span v-if="contentReadonly" class="ml-1 text-warning/70"
                 >Displayed as read-only to prevent slowdowns.</span
               >
               <button
                 v-if="contentReadonly"
-                class="ml-auto px-2 py-0.5 rounded text-11px font-medium bg-amber-500/20 hover:bg-amber-500/30 transition-colors"
+                class="ml-auto px-2 py-0.5 rounded text-xs font-medium bg-bg-secondary hover:bg-surface-hover text-warning transition-colors"
                 @click="contentReadonly = false"
               >
                 Enable Editing

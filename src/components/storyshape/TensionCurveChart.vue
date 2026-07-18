@@ -14,7 +14,7 @@ const props = defineProps({
   data: { type: Array, default: () => [] },
   width: { type: Number, default: 400 },
   height: { type: Number, default: 160 },
-  color: { type: String, default: '#c8922a' },
+  color: { type: String, default: '#6e8bb5' },
   hoverIndex: { type: Number, default: null }
 })
 
@@ -148,6 +148,6 @@ const labels = computed(() => {
 }
 
 .tension-line {
-  filter: drop-shadow(0 0 6px v-bind(shadowColor));
+  filter: none;
 }
 </style>

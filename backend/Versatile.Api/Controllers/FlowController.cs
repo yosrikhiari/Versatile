@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
@@ -11,7 +12,7 @@ public class FlowController : ApiControllerBase
 {
     private readonly IFlowService _flow;
 
-    public FlowController(IFlowService flow) => _flow = flow;
+    public FlowController(IFlowService flow, IOrganizationContext orgContext) : base(orgContext) => _flow = flow;
 
 
     [HttpGet]
@@ -19,7 +20,7 @@ public class FlowController : ApiControllerBase
     {
         try
         {
-            return Ok(await _flow.GetAsync(storyId, UserId));
+            return Ok(await _flow.GetAsync(storyId, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -32,7 +33,7 @@ public class FlowController : ApiControllerBase
     {
         try
         {
-            return Ok(await _flow.UpsertAsync(storyId, request, UserId));
+            return Ok(await _flow.UpsertAsync(storyId, request, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {

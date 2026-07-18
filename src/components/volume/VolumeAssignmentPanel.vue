@@ -107,7 +107,7 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
         :key="volume.id"
         class="flex items-center gap-2 p-2 rounded cursor-pointer transition-colors"
         :class="{
-          'bg-accent/10 border border-accent/30': assignedVolumeIds.includes(volume.id),
+          'bg-surface-hover border border-accent': assignedVolumeIds.includes(volume.id),
           'hover:bg-surface-hover': !loading
         }"
         @click="!loading && toggleVolume(volume.id)"
@@ -135,13 +135,13 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
       <div class="flex gap-1">
         <button
           :disabled="loading || assignedVolumeIds.length === 0"
-          class="text-xs px-2 py-1 text-danger hover:bg-danger/10 rounded disabled:opacity-50"
+          class="text-xs px-2 py-1 text-danger hover:bg-surface-hover rounded disabled:opacity-50"
           @click="removeFromAllVolumes"
         >
           Remove from all
         </button>
         <button
-          class="text-xs px-2 py-1 bg-accent text-accent-foreground rounded"
+          class="text-xs px-2 py-1 btn-primary rounded"
           @click="$emit('close')"
         >
           Done

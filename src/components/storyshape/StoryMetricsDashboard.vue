@@ -34,10 +34,10 @@ const characterInvolvement = computed(() => {
 
 const pacingRating = computed(() => {
   const g = props.pacingGradient
-  if (g < 0.8) return { label: 'Steady', color: 'var(--vers-text-hint)' }
+  if (g < 0.8) return { label: 'Steady', color: 'var(--vers-text-muted)' }
   if (g < 1.5) return { label: 'Moderate', color: 'var(--vers-accent-primary)' }
-  if (g < 2.5) return { label: 'Dynamic', color: '#facc15' }
-  return { label: 'Volatile', color: '#ef4444' }
+  if (g < 2.5) return { label: 'Dynamic', color: '#d4a74a' }
+  return { label: 'Volatile', color: '#d07070' }
 })
 </script>
 

@@ -187,7 +187,7 @@ function handleOverlayClick(event) {
               Cancel
             </button>
             <button
-              class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors"
+              class="btn-primary px-4 py-2 rounded-lg"
               @click="handleGenerate"
             >
               Generate

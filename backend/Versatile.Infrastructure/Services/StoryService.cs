@@ -11,22 +11,22 @@ public class StoryService : IStoryService
 
     public StoryService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<StoryDto>> GetAllAsync(Guid userId)
+    public async Task<List<StoryDto>> GetAllAsync(Guid userId, Guid? organizationId = null)
     {
         return await _db.Stories
-            .Where(s => s.UserId == userId)
+            .Where(s => s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId))
             .OrderByDescending(s => s.UpdatedAt)
             .Select(s => ToDto(s))
             .ToListAsync();
     }
 
-    public async Task<StoryDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<StoryDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var story = await _db.Stories.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var story = await _db.Stories.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId));
         return story is null ? throw new KeyNotFoundException("Story not found") : ToDto(story);
     }
 
-    public async Task<StoryDto> CreateAsync(CreateStoryRequest request, Guid userId)
+    public async Task<StoryDto> CreateAsync(CreateStoryRequest request, Guid userId, Guid? organizationId = null)
     {
         var story = new Story
         {
@@ -36,7 +36,8 @@ public class StoryService : IStoryService
             Tone = request.Tone,
             WritingStyle = request.WritingStyle,
             TargetAudience = request.TargetAudience,
-            UserId = userId
+            UserId = userId,
+            OrganizationId = organizationId
         };
 
         _db.Stories.Add(story);
@@ -44,9 +45,9 @@ public class StoryService : IStoryService
         return ToDto(story);
     }
 
-    public async Task<StoryDto> UpdateAsync(Guid id, UpdateStoryRequest request, Guid userId)
+    public async Task<StoryDto> UpdateAsync(Guid id, UpdateStoryRequest request, Guid userId, Guid? organizationId = null)
     {
-        var story = await _db.Stories.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var story = await _db.Stories.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId));
         if (story is null) throw new KeyNotFoundException("Story not found");
 
         if (request.Title is not null) story.Title = request.Title;
@@ -61,9 +62,9 @@ public class StoryService : IStoryService
         return ToDto(story);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var story = await _db.Stories.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var story = await _db.Stories.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId));
         if (story is null) throw new KeyNotFoundException("Story not found");
 
         _db.Stories.Remove(story);

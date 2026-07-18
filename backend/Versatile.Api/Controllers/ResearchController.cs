@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
@@ -12,7 +13,7 @@ public class ResearchController : ApiControllerBase
 {
     private readonly IResearchService _research;
 
-    public ResearchController(IResearchService research) => _research = research;
+    public ResearchController(IResearchService research, IOrganizationContext orgContext) : base(orgContext) => _research = research;
 
 
     [HttpGet]
@@ -20,7 +21,7 @@ public class ResearchController : ApiControllerBase
     {
         try
         {
-            return Ok(await _research.GetAllAsync(storyId, UserId));
+            return Ok(await _research.GetAllAsync(storyId, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -33,7 +34,7 @@ public class ResearchController : ApiControllerBase
     {
         try
         {
-            return Ok(await _research.GetByIdAsync(id, UserId));
+            return Ok(await _research.GetByIdAsync(id, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -46,7 +47,7 @@ public class ResearchController : ApiControllerBase
     {
         try
         {
-            var note = await _research.CreateAsync(storyId, request, UserId);
+            var note = await _research.CreateAsync(storyId, request, UserId, organizationId: OrganizationId);
             return CreatedAtAction(nameof(GetById), new { id = note.Id }, note);
         }
         catch (KeyNotFoundException ex)
@@ -60,7 +61,7 @@ public class ResearchController : ApiControllerBase
     {
         try
         {
-            return Ok(await _research.UpdateAsync(id, request, UserId));
+            return Ok(await _research.UpdateAsync(id, request, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -73,7 +74,7 @@ public class ResearchController : ApiControllerBase
     {
         try
         {
-            await _research.DeleteAsync(id, UserId);
+            await _research.DeleteAsync(id, UserId, organizationId: OrganizationId);
             return NoContent();
         }
         catch (KeyNotFoundException ex)

@@ -74,7 +74,7 @@ onUnmounted(() => {
   <Transition name="toast-slide">
     <div v-if="log.toastsVisible.value && currentToastTask" class="fixed bottom-24 right-6 z-[100]">
       <button
-        class="flex items-center gap-3 px-4 py-2.5 rounded-xl shadow-lg border border-border-subtle bg-bg-tertiary/95 backdrop-blur-sm text-sm font-ui text-text-primary hover:bg-bg-tertiary transition-all cursor-pointer group relative"
+        class="flex items-center gap-3 px-4 py-2.5 rounded-xl shadow-lg border border-border-subtle bg-bg-tertiary text-sm font-ui text-text-primary hover:bg-surface-hover transition-all cursor-pointer group relative"
         @click="openDrawer"
       >
         <!-- Spinner for running tasks -->
@@ -97,7 +97,7 @@ onUnmounted(() => {
         <!-- Badge for multi-tasks -->
         <span
           v-if="badgeCount > 0"
-          class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-2xs font-bold"
+          class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-surface-hover text-accent text-2xs font-bold"
           >{{ badgeCount }}</span
         >
 

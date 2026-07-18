@@ -17,7 +17,7 @@ defineProps({
       <div
         v-for="(gen, i) in generations"
         :key="gen.id || i"
-        class="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-tertiary/30 border border-border-subtle text-xs"
+        class="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-tertiary border border-border-subtle text-xs"
       >
         <BaseIcon name="file-text" :size="14" class="text-text-hint shrink-0" />
         <div class="flex-1 min-w-0">

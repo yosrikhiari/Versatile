@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
@@ -12,7 +13,7 @@ public class ResearchDocumentController : ApiControllerBase
 {
     private readonly IResearchDocumentService _service;
 
-    public ResearchDocumentController(IResearchDocumentService service) => _service = service;
+    public ResearchDocumentController(IResearchDocumentService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
 
 
     [HttpGet]

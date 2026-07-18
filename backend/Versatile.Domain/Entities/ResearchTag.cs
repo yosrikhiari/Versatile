@@ -3,11 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class ResearchTag
+public class ResearchTag : UserOwnedEntity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
     [MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 

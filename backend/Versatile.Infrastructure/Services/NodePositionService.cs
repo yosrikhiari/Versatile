@@ -8,21 +8,21 @@ public class NodePositionService : INodePositionService
     private readonly ApplicationDbContext _db;
     public NodePositionService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<NodePositionDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<NodePositionDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         return await _db.NodePositions.Where(e => e.StoryId == storyId).Select(e => ToDto(e)).ToListAsync();
     }
 
-    public async Task<NodePositionDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<NodePositionDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.NodePositions.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.NodePositions.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         return entity is null ? throw new KeyNotFoundException("NodePosition not found") : ToDto(entity);
     }
 
-    public async Task<NodePositionDto> CreateAsync(Guid storyId, CreateNodePositionRequest request, Guid userId)
+    public async Task<NodePositionDto> CreateAsync(Guid storyId, CreateNodePositionRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         var entity = new NodePosition
         {
             StoryId = storyId,
@@ -36,9 +36,9 @@ public class NodePositionService : INodePositionService
         return ToDto(entity);
     }
 
-    public async Task<NodePositionDto> UpdateAsync(Guid id, UpdateNodePositionRequest request, Guid userId)
+    public async Task<NodePositionDto> UpdateAsync(Guid id, UpdateNodePositionRequest request, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.NodePositions.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.NodePositions.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         if (entity is null) throw new KeyNotFoundException("NodePosition not found");
         if (request.NodeId is not null) entity.NodeId = request.NodeId;
         if (request.NodeType is not null) entity.NodeType = request.NodeType;
@@ -48,17 +48,17 @@ public class NodePositionService : INodePositionService
         return ToDto(entity);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.NodePositions.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.NodePositions.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         if (entity is null) throw new KeyNotFoundException("NodePosition not found");
         _db.NodePositions.Remove(entity);
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureStoryAccess(Guid storyId, Guid userId)
+    private async Task EnsureStoryAccess(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (!organizationId.HasValue || s.OrganizationId == organizationId.Value)))
             throw new KeyNotFoundException("Story not found");
     }
 

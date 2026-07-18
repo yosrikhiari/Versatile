@@ -12,7 +12,7 @@ const emit = defineEmits(['close'])
 <template>
   <div
     v-if="scenes.length > 0"
-    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
+    class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in"
     @click.self="emit('close')"
   >
     <div
@@ -22,7 +22,7 @@ const emit = defineEmits(['close'])
         <div class="flex items-center gap-2">
           <h2 class="text-lg font-semibold text-text-primary font-ui">Generated Story</h2>
           <span
-            class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-medium whitespace-nowrap"
+            class="text-[10px] px-1.5 py-0.5 rounded-full bg-bg-secondary text-warning font-medium whitespace-nowrap"
             >Unsaved Preview</span
           >
         </div>

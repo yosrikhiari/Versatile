@@ -115,7 +115,7 @@ onMounted(() => {
             :class="[
               'px-2 py-1 text-xs rounded font-ui',
               viewMode === mode.value
-                ? 'bg-accent/10 text-accent'
+                ? 'bg-surface-hover text-accent'
                 : 'text-text-hint hover:text-text-secondary'
             ]"
             @click="viewMode = mode.value"
@@ -130,7 +130,7 @@ onMounted(() => {
           v-model="searchQuery"
           type="text"
           placeholder="Search subsections..."
-          class="flex-1 px-3 py-1.5 text-xs border border-border-subtle rounded bg-bg-tertiary text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent/50"
+          class="flex-1 px-3 py-1.5 text-xs border border-border-subtle rounded bg-bg-tertiary text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
         />
         <select
           v-model="filterStatus"
@@ -196,7 +196,7 @@ onMounted(() => {
           <div v-if="selectedSectionId === section.id" class="border-t border-border-subtle">
             <div class="p-2 bg-surface-hover flex justify-end">
               <button
-                class="px-2 py-1 text-xs text-accent hover:bg-accent/10 rounded font-ui"
+                class="px-2 py-1 text-xs text-accent hover:bg-surface-hover rounded font-ui"
                 @click="openAddSubsection(section.id)"
               >
                 + Add Subsection
@@ -212,7 +212,7 @@ onMounted(() => {
             >
               <template #item="{ element: subsection }">
                 <div
-                  class="bg-bg-secondary rounded p-2 border border-border-subtle cursor-grab hover:border-accent/50 transition-colors group"
+                  class="bg-bg-secondary rounded p-2 border border-border-subtle cursor-grab hover:border-accent transition-colors group"
                 >
                   <div class="flex items-start justify-between">
                     <div class="flex-1">
@@ -254,7 +254,7 @@ onMounted(() => {
                         Edit
                       </button>
                       <button
-                        class="px-2 py-1 text-xs text-danger hover:bg-danger/10 font-ui"
+                        class="px-2 py-1 text-xs text-danger hover:bg-surface-hover font-ui"
                         title="Delete subsection"
                         @click="deleteSubsection(subsection)"
                       >
@@ -282,7 +282,7 @@ onMounted(() => {
         <div
           v-for="subsection in allSubsections"
           :key="subsection.id"
-          class="bg-bg-tertiary rounded p-3 border border-border-subtle hover:border-accent/50 transition-colors cursor-pointer"
+          class="bg-bg-tertiary rounded p-3 border border-border-subtle hover:border-accent transition-colors cursor-pointer"
           @click="openEditSubsection(subsection)"
         >
           <div class="flex items-center justify-between mb-1">
@@ -324,7 +324,7 @@ onMounted(() => {
             v-model="newSubsection.title"
             type="text"
             placeholder="What happens in this subsection?"
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
 
@@ -334,7 +334,7 @@ onMounted(() => {
             v-model="newSubsection.summary"
             rows="4"
             placeholder="Key beats and moments in this subsection..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
 
@@ -344,13 +344,13 @@ onMounted(() => {
             v-model="newSubsection.content"
             rows="8"
             placeholder="Write the subsection here..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
 
         <div class="flex gap-2">
           <button
-            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
+            class="flex-1 py-2 btn-primary rounded-lg font-ui"
             @click="saveSubsection"
           >
             {{ editingSubsection ? 'Save' : 'Add' }}

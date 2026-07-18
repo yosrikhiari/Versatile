@@ -154,7 +154,7 @@ defineExpose({
           :class="[
             'px-2 py-1 text-xs rounded-full transition-colors font-ui relative focus:outline-none focus:ring-2 focus:ring-accent',
             polishStore.activeLenses[lens.key]
-              ? 'bg-accent text-accent-foreground'
+              ? 'bg-surface-hover text-accent'
               : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
           ]"
           @click="toggleLens(lens.key)"
@@ -177,7 +177,7 @@ defineExpose({
         <button
           v-if="polishStore.selectedParagraphIndex !== null"
           :disabled="polishStore.isAnalyzing"
-          class="px-2 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="px-2 py-1 text-xs btn-primary rounded disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           title="Analyze selected paragraph"
           @click="analyzeNow"
         >
@@ -193,14 +193,14 @@ defineExpose({
         </button>
         <button
           v-if="compactIsCompacting"
-          class="px-2 py-1 text-2xs bg-bg-tertiary text-text-hint rounded font-ui"
+          class="px-2 py-1 text-xs bg-bg-tertiary text-text-hint rounded font-ui"
           disabled
         >
           Compact...
         </button>
         <button
           v-else
-          class="text-text-hint hover:text-text-secondary text-2xs font-ui px-1"
+          class="text-text-hint hover:text-text-secondary text-xs font-ui px-1"
           title="Compact conversation"
           @click="handleCompactPolish"
         >
@@ -247,7 +247,7 @@ defineExpose({
 
         <div
           v-else-if="polishStore.error"
-          class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui"
+          class="p-3 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-danger font-ui"
         >
           {{ polishStore.error }}
         </div>
@@ -255,7 +255,7 @@ defineExpose({
         <div v-else class="space-y-4">
           <div
             v-if="overallNote"
-            class="bg-accent-muted/30 border-l-2 border-accent rounded-r-lg p-3 text-sm text-text-secondary italic"
+            class="bg-bg-secondary border-l-2 border-accent rounded-r-lg p-3 text-sm text-text-secondary italic"
           >
             {{ overallNote }}
           </div>

@@ -15,7 +15,7 @@ public class DeleteVolumeHandler : IRequestHandler<DeleteVolumeCommand, Unit>
     {
         var volume = await _db.Set<Entity>()
             .Include(v => v.Story)
-            .FirstOrDefaultAsync(v => v.Id == request.Id && v.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(v => v.Id == request.Id && v.Story!.UserId == request.UserId && v.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Volume not found");
         _db.Set<Entity>().Remove(volume);
         await _db.SaveChangesAsync(ct);

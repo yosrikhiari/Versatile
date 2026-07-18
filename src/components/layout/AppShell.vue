@@ -290,11 +290,11 @@ onMounted(async () => {
           <Transition name="spring-scale">
             <div
               v-if="showProjectDropdown"
-              class="absolute left-0 top-full mt-1 liquid-glass rounded-lg shadow-warm-md py-1 z-50 min-w-[220px]"
+              class="absolute left-0 top-full mt-1 bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-md py-1 z-50 min-w-[220px]"
               @click.stop
             >
               <button
-                class="w-full text-left px-3 py-2 text-sm text-accent hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
+                class="w-full text-left px-3 py-2 text-sm text-accent hover:bg-surface-hover flex items-center gap-2 transition-colors duration-150"
                 @click="handleCreateProjectClick"
               >
                 <BaseIcon name="plus" :size="14" />
@@ -304,7 +304,7 @@ onMounted(async () => {
                 v-for="project in projects"
                 :key="project.id"
                 :class="[
-                  'w-full text-left px-3 py-2 text-sm hover:bg-accent-glass transition-colors duration-150',
+                  'w-full text-left px-3 py-2 text-sm hover:bg-surface-hover transition-colors duration-150',
                   project.id === projectStore.currentProjectId
                     ? 'text-accent font-medium'
                     : 'text-text-secondary'
@@ -313,10 +313,10 @@ onMounted(async () => {
               >
                 {{ project.name }}
               </button>
-              <hr class="my-1 border-border-subtle/30 mx-2" />
+              <hr class="my-1 border-border-subtle mx-2" />
               <!-- prettier-ignore -->
               <button
-                class="w-full text-left px-3 py-2 text-sm text-text-hint hover:bg-accent-glass flex items-center gap-2 transition-colors duration-150"
+                class="w-full text-left px-3 py-2 text-sm text-text-hint hover:bg-surface-hover flex items-center gap-2 transition-colors duration-150"
                 @click="closeProjectDropdownAndOpen('settings')"
               >
                 <BaseIcon name="settings" :size="14" />
@@ -326,13 +326,13 @@ onMounted(async () => {
           </Transition>
         </div>
 
-        <div class="hidden sm:flex items-center gap-3 text-2xs text-text-hint/70">
+        <div class="hidden sm:flex items-center gap-3 text-2xs text-text-hint">
           <span class="tabular-nums font-ui">{{ wordCount.toLocaleString() }} words</span>
           <span
             v-if="projectStore.currentStreak > 0"
-            class="text-orange-400/80 flex items-center gap-1"
+            class="text-warning flex items-center gap-1"
           >
-            <BaseIcon name="flame" :size="11" class="text-orange-400" />
+            <BaseIcon name="flame" :size="11" class="text-warning" />
             {{ projectStore.currentStreak }}
           </span>
         </div>
@@ -342,9 +342,9 @@ onMounted(async () => {
         <ContextStatusIndicator />
         <span
           v-if="projectStore.lastSaved"
-          class="text-2xs text-text-hint/60 flex items-center gap-1 mr-1"
+          class="text-2xs text-text-hint flex items-center gap-1 mr-1"
         >
-          <BaseIcon name="check" :size="9" class="text-success/70" />
+          <BaseIcon name="check" :size="9" class="text-success" />
           Saved
         </span>
         <GoalProgressBar

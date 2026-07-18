@@ -99,7 +99,7 @@ function handleResultAction(action) {
 <style scoped>
 .consistency-panel {
   padding: 12px;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Geist Variable', Geist, system-ui, sans-serif;
   color: var(--vers-text-primary);
 }
 
@@ -191,18 +191,18 @@ function handleResultAction(action) {
 }
 
 .summary-badge--error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
+  background: rgba(208, 112, 112, 0.12);
+  color: #d07070;
 }
 
 .summary-badge--warning {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
+  background: rgba(212, 167, 74, 0.12);
+  color: #d4a74a;
 }
 
 .summary-badge--info {
-  background: rgba(59, 130, 246, 0.12);
-  color: #3b82f6;
+  background: rgba(91, 140, 184, 0.12);
+  color: #5b8cb8;
 }
 
 .results-list {
@@ -230,15 +230,15 @@ function handleResultAction(action) {
 }
 
 .group-label--error {
-  color: #ef4444;
+  color: #d07070;
 }
 
 .group-label--warning {
-  color: #f59e0b;
+  color: #d4a74a;
 }
 
 .group-label--info {
-  color: #3b82f6;
+  color: #5b8cb8;
 }
 
 .empty-state {
@@ -255,7 +255,7 @@ function handleResultAction(action) {
 }
 
 .empty-check {
-  color: #22c55e;
+  color: #6a9e7a;
 }
 
 .empty-text {

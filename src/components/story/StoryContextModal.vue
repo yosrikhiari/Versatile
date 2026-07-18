@@ -122,7 +122,7 @@ watch(
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4"
+    class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in p-4"
     @click.self="emit('close')"
   >
     <div
@@ -181,15 +181,15 @@ watch(
           >
             {{ checking ? 'Checking…' : 'Check for orphaned links' }}
           </button>
-          <span v-if="cleanedCount !== null" class="text-emerald-400"
+          <span v-if="cleanedCount !== null" class="text-success"
             >Removed {{ cleanedCount }}.</span
           >
         </template>
         <template v-else-if="orphanCount === 0">
-          <span class="text-emerald-400 flex-1">No orphaned links found.</span>
+          <span class="text-success flex-1">No orphaned links found.</span>
         </template>
         <template v-else>
-          <span class="text-amber-400 flex-1"
+          <span class="text-warning flex-1"
             >{{ orphanCount }} orphaned link{{ orphanCount === 1 ? '' : 's' }} — remove
             permanently?</span
           >
@@ -200,7 +200,7 @@ watch(
             Cancel
           </button>
           <button
-            class="py-1 px-2.5 bg-red-500/90 text-white rounded-md font-medium hover:bg-red-500 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50"
+            class="py-1 px-2.5 bg-danger text-bg-primary rounded-md font-medium hover:bg-danger focus:outline-none focus:ring-1 focus:ring-danger disabled:opacity-50"
             :disabled="cleaning"
             @click="confirmClean"
           >
@@ -213,7 +213,7 @@ watch(
       <div class="flex items-center justify-between gap-3 p-4 border-t border-border-subtle">
         <span class="text-[11px] text-text-hint font-ui">
           {{ wordCount }} words
-          <span v-if="dirty" class="text-amber-400"> · unsaved changes</span>
+          <span v-if="dirty" class="text-warning"> · unsaved changes</span>
         </span>
         <div class="flex items-center gap-2">
           <button
@@ -224,7 +224,7 @@ watch(
             {{ rebuilding ? 'Rebuilding…' : 'Rebuild from story' }}
           </button>
           <button
-            class="py-1.5 px-4 text-xs bg-accent text-accent-foreground rounded-md font-medium hover:bg-accent/90 font-ui focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
+            class="py-1.5 px-4 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
             :disabled="!dirty || saving || loading"
             @click="handleSave"
           >

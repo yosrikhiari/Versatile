@@ -100,20 +100,20 @@ function handleSkipSetup() {
     fallback-title="Onboarding Error"
     fallback-description="Failed to load the onboarding flow. Try refreshing the page."
   >
+    <!-- Manuscript Mono · solid scrim, hairline-bordered panel, no glass/glow. -->
     <div
       v-if="show"
-      class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
     >
       <div
-        class="bg-bg-secondary border border-border-subtle rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in"
+        class="bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg max-w-2xl w-full max-h-[90vh] flex flex-col animate-fade-in"
       >
         <div class="p-6 sm:p-8 overflow-y-auto scrollbar-thin">
           <!-- ============ STEP 1: Purpose Selection ============ -->
           <div v-if="currentStep === 1" class="space-y-6">
-            <div class="text-center mb-2">
-              <BaseIcon name="wand-2" :size="32" class="mx-auto mb-3 text-accent" />
-              <h1 class="text-2xl font-bold text-text-primary">Welcome to Versatile</h1>
-              <p class="text-text-secondary text-sm mt-1.5 max-w-md mx-auto">
+            <div>
+              <h1 class="text-xl font-semibold text-text-primary">Welcome to Versatile</h1>
+              <p class="text-text-secondary text-sm mt-1.5">
                 What would you like to create today? Choose a document type to get started.
               </p>
             </div>
@@ -128,10 +128,10 @@ function handleSkipSetup() {
                 <button
                   type="button"
                   :class="[
-                    'w-full flex flex-col items-start gap-1.5 px-3 py-3 rounded-xl border text-left transition-all duration-150 group',
+                    'relative w-full flex flex-col items-start gap-1.5 px-3 py-3 rounded-lg border text-left transition-colors duration-150 group',
                     projectCategory === ws.type
-                      ? 'border-accent bg-accent/10 text-accent ring-1 ring-accent/30 shadow-warm-sm'
-                      : 'border-border-subtle bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:border-border-subtle/80'
+                      ? 'border-accent bg-accent/10 text-text-primary'
+                      : 'border-border-subtle bg-transparent text-text-secondary hover:bg-surface-hover'
                   ]"
                   @click="projectCategory = ws.type"
                 >
@@ -154,7 +154,7 @@ function handleSkipSetup() {
 
             <div
               v-if="projectCategory"
-              class="bg-bg-tertiary/80 border border-border-subtle rounded-xl p-4 space-y-3"
+              class="bg-transparent border border-border-subtle rounded-lg p-4 space-y-3"
             >
               <p class="text-xs text-text-hint leading-relaxed">
                 {{ currentWorkspaceConfig?.description }}
@@ -167,7 +167,7 @@ function handleSkipSetup() {
                 >
                   <label
                     for="input-project-name"
-                    class="block text-xs font-medium text-text-secondary mb-1.5"
+                    class="block font-manuscript text-xs text-text-secondary mb-1.5"
                   >
                     Project name
                   </label>
@@ -177,23 +177,23 @@ function handleSkipSetup() {
                     id="input-project-name"
                     v-model="projectName"
                     type="text"
-                    class="flex-1 px-3.5 py-2.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
+                    class="flex-1 px-3.5 py-2.5 border border-border-subtle bg-bg-primary text-text-primary rounded-md text-sm focus:border-accent placeholder:text-text-hint transition-colors"
                     placeholder="Name your project"
                     @keyup.enter="handleNextStep1"
                   />
                   <button
                     :disabled="!canProceedStep1 || isCreating"
-                    class="px-5 py-2.5 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                    class="btn-primary px-5 py-2.5 rounded-md text-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                     @click="handleNextStep1"
                   >
-                    {{ isCreating ? 'Creating...' : 'Next' }}
+                    {{ isCreating ? 'Creating…' : 'Next' }}
                   </button>
                 </div>
               </div>
 
               <details class="group">
                 <summary
-                  class="text-11px text-text-hint cursor-pointer hover:text-text-secondary transition-colors select-none"
+                  class="text-xs text-text-hint cursor-pointer hover:text-text-secondary transition-colors select-none"
                 >
                   Advanced options
                 </summary>
@@ -203,7 +203,7 @@ function handleSkipSetup() {
                       text="Choose a pre-built structure to scaffold your document. 'Blank Slate' starts from scratch."
                       position="top"
                     >
-                      <label class="block text-xs font-medium text-text-secondary mb-1.5">
+                      <label class="block font-manuscript text-xs text-text-secondary mb-1.5">
                         Template / Scaffold
                       </label>
                     </AppTooltip>
@@ -215,10 +215,10 @@ function handleSkipSetup() {
                         <button
                           type="button"
                           :class="[
-                            'px-2.5 py-1.5 rounded-lg border text-11px transition-all duration-150',
+                            'px-2.5 py-1.5 rounded-md border text-xs transition-colors duration-150',
                             selectedBlueprintId === ''
                               ? 'border-accent bg-accent/10 text-accent font-medium'
-                              : 'border-border-subtle bg-bg-secondary text-text-secondary hover:bg-surface-hover'
+                              : 'border-border-subtle bg-transparent text-text-secondary hover:bg-surface-hover'
                           ]"
                           @click="selectedBlueprintId = ''"
                         >
@@ -234,10 +234,10 @@ function handleSkipSetup() {
                         <button
                           type="button"
                           :class="[
-                            'px-2.5 py-1.5 rounded-lg border text-11px transition-all duration-150',
+                            'px-2.5 py-1.5 rounded-md border text-xs transition-colors duration-150',
                             selectedBlueprintId === blueprint.id
                               ? 'border-accent bg-accent/10 text-accent font-medium'
-                              : 'border-border-subtle bg-bg-secondary text-text-secondary hover:bg-surface-hover'
+                              : 'border-border-subtle bg-transparent text-text-secondary hover:bg-surface-hover'
                           ]"
                           @click="selectedBlueprintId = blueprint.id"
                         >
@@ -254,7 +254,7 @@ function handleSkipSetup() {
                     >
                       <label
                         for="input-synopsis"
-                        class="block text-xs font-medium text-text-secondary mb-1.5"
+                        class="block font-manuscript text-xs text-text-secondary mb-1.5"
                       >
                         Synopsis / Goals <span class="text-text-hint">(optional)</span>
                       </label>
@@ -263,10 +263,10 @@ function handleSkipSetup() {
                       id="input-synopsis"
                       v-model="projectSynopsis"
                       rows="2"
-                      class="w-full px-3.5 py-2 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint resize-none"
-                      placeholder="Describe the purpose, premise, or objectives of this document..."
+                      class="w-full px-3.5 py-2 border border-border-subtle bg-bg-primary text-text-primary rounded-md text-sm focus:border-accent placeholder:text-text-hint resize-none transition-colors"
+                      placeholder="Describe the purpose, premise, or objectives of this document…"
                     ></textarea>
-                    <p class="mt-1 text-2xs text-text-hint">
+                    <p class="mt-1 text-xs text-text-hint">
                       Helps the AI align content generation with your goals.
                     </p>
                   </div>
@@ -291,14 +291,13 @@ function handleSkipSetup() {
 
           <!-- ============ STEP 2: Character Setup (Narrative only) ============ -->
           <div v-if="currentStep === 2" class="space-y-6">
-            <div class="text-center">
-              <BaseIcon name="users" :size="28" class="mx-auto mb-3 text-accent" />
-              <h2 class="text-xl font-semibold text-text-primary">Add your first character</h2>
+            <div>
+              <h2 class="text-lg font-semibold text-text-primary">Add your first character</h2>
               <p class="text-sm text-text-secondary mt-1">
                 Kick off your story bible with a key figure.
               </p>
             </div>
-            <div class="space-y-4 max-w-sm mx-auto">
+            <div class="space-y-4 max-w-sm">
               <div>
                 <AppTooltip
                   text="The name of your main character or protagonist. This adds them to your project's story bible."
@@ -306,7 +305,7 @@ function handleSkipSetup() {
                 >
                   <label
                     for="input-character-name"
-                    class="block text-sm font-medium text-text-secondary mb-2"
+                    class="block font-manuscript text-xs text-text-secondary mb-2"
                   >
                     Character name
                   </label>
@@ -315,7 +314,7 @@ function handleSkipSetup() {
                   id="input-character-name"
                   v-model="characterName"
                   type="text"
-                  class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
+                  class="w-full px-4 py-3 border border-border-subtle bg-bg-primary text-text-primary rounded-md focus:border-accent placeholder:text-text-hint transition-colors"
                   placeholder="Elena"
                   autofocus
                   @keyup.enter="handleNextStep2"
@@ -328,7 +327,7 @@ function handleSkipSetup() {
                 >
                   <label
                     for="input-character-role"
-                    class="block text-sm font-medium text-text-secondary mb-2"
+                    class="block font-manuscript text-xs text-text-secondary mb-2"
                   >
                     Role <span class="text-text-hint font-normal">(optional)</span>
                   </label>
@@ -337,12 +336,12 @@ function handleSkipSetup() {
                   id="input-character-role"
                   v-model="characterRole"
                   type="text"
-                  class="w-full px-4 py-3 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-text-hint"
+                  class="w-full px-4 py-3 border border-border-subtle bg-bg-primary text-text-primary rounded-md focus:border-accent placeholder:text-text-hint transition-colors"
                   placeholder="Protagonist"
                 />
               </div>
             </div>
-            <div class="flex gap-3 max-w-sm mx-auto">
+            <div class="flex gap-3 max-w-sm">
               <button
                 class="flex-1 py-3 text-text-secondary hover:text-text-primary transition-colors text-sm"
                 @click="currentStep = 1"
@@ -351,42 +350,41 @@ function handleSkipSetup() {
               </button>
               <button
                 :disabled="!canProceedStep2 || isCreating"
-                class="flex-1 py-3 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="btn-primary flex-1 py-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handleNextStep2"
               >
-                {{ isCreating ? 'Creating...' : 'Create & Continue' }}
+                {{ isCreating ? 'Creating…' : 'Create & Continue' }}
               </button>
             </div>
           </div>
 
           <!-- ============ STEP 3: Done ============ -->
-          <div v-if="currentStep === 3" class="space-y-6 text-center py-4">
-            <BaseIcon name="sparkles" :size="40" class="mx-auto text-accent" />
+          <div v-if="currentStep === 3" class="space-y-6 py-2">
             <div>
-              <h2 class="text-xl font-bold text-text-primary">You're all set!</h2>
+              <h2 class="text-lg font-semibold text-text-primary">You're all set</h2>
               <p class="text-sm text-text-secondary mt-1.5">Your workspace is ready to go.</p>
             </div>
-            <div class="grid grid-cols-3 gap-3 max-w-xs mx-auto">
-              <div class="p-4 bg-bg-tertiary rounded-xl text-center">
-                <BaseIcon name="pen-tool" :size="24" class="mx-auto mb-2 text-accent" />
+            <div class="grid grid-cols-3 gap-3">
+              <div class="p-4 border border-border-subtle rounded-lg">
+                <BaseIcon name="pen-tool" :size="20" class="mb-2 text-accent" />
                 <div class="text-sm font-medium text-text-primary">Write</div>
-                <div class="text-2xs text-text-hint mt-0.5">Flow editor</div>
+                <div class="text-xs text-text-hint mt-0.5">Flow editor</div>
               </div>
-              <div class="p-4 bg-bg-tertiary rounded-xl text-center">
-                <BaseIcon name="search" :size="24" class="mx-auto mb-2 text-accent" />
+              <div class="p-4 border border-border-subtle rounded-lg">
+                <BaseIcon name="search" :size="20" class="mb-2 text-accent" />
                 <div class="text-sm font-medium text-text-primary">Polish</div>
-                <div class="text-2xs text-text-hint mt-0.5">Refine & edit</div>
+                <div class="text-xs text-text-hint mt-0.5">Refine & edit</div>
               </div>
-              <div class="p-4 bg-bg-tertiary rounded-xl text-center">
-                <BaseIcon name="book-open" :size="24" class="mx-auto mb-2 text-accent" />
+              <div class="p-4 border border-border-subtle rounded-lg">
+                <BaseIcon name="book-open" :size="20" class="mb-2 text-accent" />
                 <div class="text-sm font-medium text-text-primary">Build</div>
-                <div class="text-2xs text-text-hint mt-0.5">
+                <div class="text-xs text-text-hint mt-0.5">
                   {{ projectStore.terminology?.bible || 'Reference' }}
                 </div>
               </div>
             </div>
             <button
-              class="w-full max-w-xs mx-auto py-3 bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent/90 transition-colors"
+              class="btn-primary w-full py-3 rounded-md"
               @click="handleComplete"
             >
               Start Writing

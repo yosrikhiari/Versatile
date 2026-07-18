@@ -11,9 +11,9 @@ public class ResearchService : IResearchService
 
     public ResearchService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<ResearchDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<ResearchDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureAccess(storyId, userId);
+        await EnsureAccess(storyId, userId, organizationId);
 
         return await _db.ResearchNotes
             .Where(r => r.StoryId == storyId)
@@ -22,18 +22,18 @@ public class ResearchService : IResearchService
             .ToListAsync();
     }
 
-    public async Task<ResearchDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<ResearchDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
         var note = await _db.ResearchNotes
             .Include(r => r.Story)
-            .FirstOrDefaultAsync(r => r.Id == id && r.Story!.UserId == userId);
+            .FirstOrDefaultAsync(r => r.Id == id && r.Story!.UserId == userId && (!organizationId.HasValue || r.Story!.OrganizationId == organizationId.Value));
 
         return note is null ? throw new KeyNotFoundException("Research note not found") : ToDto(note);
     }
 
-    public async Task<ResearchDto> CreateAsync(Guid storyId, CreateResearchRequest request, Guid userId)
+    public async Task<ResearchDto> CreateAsync(Guid storyId, CreateResearchRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureAccess(storyId, userId);
+        await EnsureAccess(storyId, userId, organizationId);
 
         var note = new Research
         {
@@ -47,11 +47,11 @@ public class ResearchService : IResearchService
         return ToDto(note);
     }
 
-    public async Task<ResearchDto> UpdateAsync(Guid id, UpdateResearchRequest request, Guid userId)
+    public async Task<ResearchDto> UpdateAsync(Guid id, UpdateResearchRequest request, Guid userId, Guid? organizationId = null)
     {
         var note = await _db.ResearchNotes
             .Include(r => r.Story)
-            .FirstOrDefaultAsync(r => r.Id == id && r.Story!.UserId == userId);
+            .FirstOrDefaultAsync(r => r.Id == id && r.Story!.UserId == userId && (!organizationId.HasValue || r.Story!.OrganizationId == organizationId.Value));
 
         if (note is null) throw new KeyNotFoundException("Research note not found");
 
@@ -63,11 +63,11 @@ public class ResearchService : IResearchService
         return ToDto(note);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
         var note = await _db.ResearchNotes
             .Include(r => r.Story)
-            .FirstOrDefaultAsync(r => r.Id == id && r.Story!.UserId == userId);
+            .FirstOrDefaultAsync(r => r.Id == id && r.Story!.UserId == userId && (!organizationId.HasValue || r.Story!.OrganizationId == organizationId.Value));
 
         if (note is null) throw new KeyNotFoundException("Research note not found");
 
@@ -75,9 +75,9 @@ public class ResearchService : IResearchService
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureAccess(Guid storyId, Guid userId)
+    private async Task EnsureAccess(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (!organizationId.HasValue || s.OrganizationId == organizationId.Value)))
             throw new KeyNotFoundException("Story not found");
     }
 

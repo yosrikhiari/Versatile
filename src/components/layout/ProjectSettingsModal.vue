@@ -236,7 +236,7 @@ function handleOverlayClick(event) {
     <Transition name="modal">
       <div
         v-if="show"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in"
         @click="handleOverlayClick"
       >
         <ErrorBoundary
@@ -247,16 +247,16 @@ function handleOverlayClick(event) {
             class="glass-modal rounded-xl shadow-warm-lg w-full max-w-lg mx-4 overflow-hidden animate-scale-in"
           >
             <div
-              class="flex items-center justify-between px-5 py-4 border-b border-border-subtle/50"
+              class="flex items-center justify-between px-5 py-4 border-b border-border-subtle"
             >
               <div class="flex items-center gap-2">
                 <BaseIcon name="settings" :size="18" class="text-accent" />
-                <h2 class="font-medium text-text-primary font-display tracking-wide">
+                <h2 class="font-medium text-text-primary font-ui tracking-wide">
                   Project Settings
                 </h2>
               </div>
               <button
-                class="p-1.5 text-text-hint/50 hover:text-text-primary rounded-lg hover:bg-accent-glass transition-all duration-150 btn-ghost"
+                class="p-1.5 text-text-hint hover:text-text-primary rounded-lg hover:bg-surface-hover transition-all duration-150 btn-ghost"
                 @click="$emit('close')"
               >
                 <BaseIcon name="x" :size="18" />
@@ -271,7 +271,7 @@ function handleOverlayClick(event) {
                 <input
                   v-model="localName"
                   type="text"
-                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="My novel"
                 />
               </div>
@@ -281,7 +281,7 @@ function handleOverlayClick(event) {
                 <textarea
                   v-model="localGenre"
                   rows="2"
-                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none placeholder:text-text-hint"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent resize-none placeholder:text-text-hint"
                   placeholder="e.g. Fantasy, Adventure, Mystery..."
                 ></textarea>
                 <p class="mt-1 text-xs text-text-hint">Separate multiple genres with commas.</p>
@@ -295,7 +295,7 @@ function handleOverlayClick(event) {
                       :disabled="
                         isGeneratingSynopsis || isEnhancingSynopsis || !localSynopsis?.trim()
                       "
-                      class="flex items-center gap-1.5 px-2 py-1 text-xs bg-accent/10 text-accent rounded hover:bg-accent/20 transition-colors disabled:opacity-50"
+                      class="flex items-center gap-1.5 px-2 py-1 text-xs bg-surface-hover text-accent rounded hover:bg-bg-secondary transition-colors disabled:opacity-50"
                       @click="handleEnhanceSynopsis"
                     >
                       <BaseIcon
@@ -327,7 +327,7 @@ function handleOverlayClick(event) {
                 <textarea
                   v-model="localSynopsis"
                   rows="5"
-                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none placeholder:text-text-hint"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent resize-none placeholder:text-text-hint"
                   placeholder="A brief summary of your story..."
                 ></textarea>
                 <p class="mt-1.5 text-xs text-text-hint">
@@ -337,7 +337,7 @@ function handleOverlayClick(event) {
             </div>
 
             <div
-              class="flex items-center justify-end gap-3 px-5 py-4 bg-bg-tertiary/30 border-t border-border-subtle/30"
+              class="flex items-center justify-end gap-3 px-5 py-4 bg-bg-tertiary border-t border-border-subtle"
             >
               <button
                 class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary font-ui transition-colors"
@@ -347,7 +347,7 @@ function handleOverlayClick(event) {
               </button>
               <button
                 :disabled="!localName.trim() || isSaving"
-                class="px-4 py-2 text-sm bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-4 py-2 text-sm btn-primary rounded-lg font-ui flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handleSave"
               >
                 {{ isSaving ? 'Saving...' : 'Save Changes' }}

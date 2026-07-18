@@ -70,7 +70,7 @@ const stages = [
               v-else-if="getState(stage.id) === 'active'"
               name="loader-2"
               :size="20"
-              class="text-accent animate-spin-slow pulse-glow"
+              class="text-accent animate-spin-slow"
             />
             <BaseIcon v-else name="circle" :size="16" class="text-text-hint opacity-50" />
           </div>
@@ -78,9 +78,9 @@ const stages = [
           <!-- Label State -->
           <span
             :class="[
-              'text-lg font-serif transition-all duration-500',
+              'text-lg font-ui transition-all duration-500',
               getState(stage.id) === 'active'
-                ? 'text-text-primary drop-shadow-glow'
+                ? 'text-text-primary'
                 : getState(stage.id) === 'complete'
                   ? 'text-text-secondary opacity-80'
                   : 'text-text-hint opacity-50'
@@ -99,7 +99,7 @@ const stages = [
             <div
               v-for="(entity, idx) in step2Entities"
               :key="entity.id"
-              class="px-2.5 py-1 text-xs rounded-full bg-bg-secondary border border-border-subtle text-accent/90"
+              class="px-2.5 py-1 text-xs rounded-full bg-bg-secondary border border-border-subtle text-accent"
               :style="{ animationDelay: `${(idx % 10) * 100}ms` }"
             >
               {{ entity.name }}
@@ -122,7 +122,7 @@ const stages = [
             <div
               v-for="(entity, idx) in step3Entities"
               :key="entity.id"
-              class="px-2.5 py-1 text-xs rounded border border-accent/20 bg-accent/5 text-accent"
+              class="px-2.5 py-1 text-xs rounded border border-border-subtle bg-bg-secondary text-accent"
               :style="{ animationDelay: `${idx * 50}ms` }"
             >
               {{ entity.name }}
@@ -147,27 +147,6 @@ const stages = [
 <style scoped>
 .animate-spin-slow {
   animation: spin 3s linear infinite;
-}
-
-.pulse-glow {
-  filter: drop-shadow(0 0 4px rgba(var(--vers-glow-loading-rgb), 0.6));
-  animation:
-    spin 3s linear infinite,
-    pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.drop-shadow-glow {
-  filter: drop-shadow(0 0 8px rgba(var(--vers-glow-loading-rgb), 0.3));
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
 }
 
 .fade-in {

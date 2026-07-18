@@ -35,12 +35,12 @@ const lane = computed(() => {
 })
 
 const BEAT_COLORS = {
-  'Inciting Incident': '#60a5fa',
-  'Rising Action': '#a78bfa',
-  Midpoint: '#fbbf24',
-  'Crisis / Dark Moment': '#f472b6',
-  Climax: '#fb923c',
-  Resolution: '#34d399'
+  'Inciting Incident': '#6e8bb5',
+  'Rising Action': '#6a9e7a',
+  Midpoint: '#d4a74a',
+  'Crisis / Dark Moment': '#a86b6b',
+  Climax: '#7a9aa8',
+  Resolution: '#9a9a5c'
 }
 
 function beatColor(beat) {

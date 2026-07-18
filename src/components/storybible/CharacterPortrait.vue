@@ -61,7 +61,7 @@ async function generate() {
     </div>
     <button
       :disabled="isGenerating"
-      class="text-xs px-3 py-1 rounded bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      class="btn-primary text-xs px-3 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
       @click="generate"
     >
       <span v-if="isGenerating" class="flex items-center gap-1">
@@ -86,7 +86,7 @@ async function generate() {
       <span v-else-if="portrait">Regenerate</span>
       <span v-else>Generate Portrait</span>
     </button>
-    <div v-if="error" class="text-xs text-red-400 mt-1">
+    <div v-if="error" class="text-xs text-danger mt-1">
       {{ error }}
     </div>
   </div>

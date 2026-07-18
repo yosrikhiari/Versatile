@@ -16,7 +16,7 @@ public class GetScenesHandler : IRequestHandler<GetScenesQuery, List<SceneDto>>
     {
         var chapter = await _db.Set<Chapter>()
             .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == request.ChapterId && c.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(c => c.Id == request.ChapterId && c.Story!.UserId == request.UserId && c.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Chapter not found");
 
         return await _db.Set<Scene>()
@@ -37,7 +37,7 @@ public class GetSceneByIdHandler : IRequestHandler<GetSceneByIdQuery, SceneDto>
     {
         var scene = await _db.Set<Scene>()
             .Include(s => s.Chapter).ThenInclude(c => c!.Story)
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Chapter!.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Chapter!.Story!.UserId == request.UserId && s.Chapter!.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Scene not found");
 
         return new SceneDto(scene.Id, scene.ChapterId, scene.Title, scene.Content, scene.Status, scene.WordCount, scene.Order, scene.CreatedAt, scene.UpdatedAt);

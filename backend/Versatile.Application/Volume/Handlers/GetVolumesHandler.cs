@@ -14,7 +14,7 @@ public class GetVolumesHandler : IRequestHandler<GetVolumesQuery, List<VolumeDto
 
     public async Task<List<VolumeDto>> Handle(GetVolumesQuery request, CancellationToken ct)
     {
-        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId, ct))
+        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct))
             throw new KeyNotFoundException("Story not found");
 
         return await _db.Set<Entity>()
@@ -34,7 +34,7 @@ public class GetVolumeByIdHandler : IRequestHandler<GetVolumeByIdQuery, VolumeDt
     {
         var volume = await _db.Set<Entity>()
             .Include(v => v.Story)
-            .FirstOrDefaultAsync(v => v.Id == request.Id && v.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(v => v.Id == request.Id && v.Story!.UserId == request.UserId && v.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Volume not found");
         return new VolumeDto(volume.Id, volume.StoryId, volume.Title, volume.Description, volume.Color, volume.SortOrder, volume.ChapterIds, volume.CreatedAt, volume.UpdatedAt);
     }

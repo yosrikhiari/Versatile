@@ -46,11 +46,11 @@ function formatElapsed(startedAt) {
 function statusBadgeClass(status) {
   switch (status) {
     case 'running':
-      return 'text-accent border-accent/30 bg-accent/10'
+      return 'text-accent border-border-subtle bg-bg-secondary'
     case 'done':
-      return 'text-success border-success/30 bg-success/10'
+      return 'text-success border-border-subtle bg-bg-secondary'
     case 'failed':
-      return 'text-danger border-danger/30 bg-danger/10'
+      return 'text-danger border-border-subtle bg-bg-secondary'
     case 'queued':
       return 'text-text-secondary border-border-subtle bg-bg-secondary'
     default:
@@ -82,7 +82,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
     <div v-if="log.drawerOpen.value" class="fixed inset-0 z-[90]">
       <!-- Backdrop -->
       <div
-        class="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        class="absolute inset-0 bg-black/50"
         @click="log.drawerOpen.value = false"
       />
 
@@ -93,14 +93,14 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
       >
         <!-- Header -->
         <div
-          class="flex items-center justify-between px-5 py-3 border-b border-border-subtle bg-bg-secondary/50"
+          class="flex items-center justify-between px-5 py-3 border-b border-border-subtle bg-bg-secondary"
         >
           <div class="flex items-center gap-2">
             <BaseIcon name="activity" :size="18" class="text-accent" />
-            <h2 class="text-sm font-display text-text-primary font-medium">Activity</h2>
+            <h2 class="text-sm font-ui text-text-primary font-medium">Activity</h2>
             <span
               v-if="hasActive"
-              class="text-xs px-1.5 py-0.5 rounded-full bg-accent/20 text-accent"
+              class="text-xs px-1.5 py-0.5 rounded-full bg-surface-hover text-accent"
               >{{ log.activeTasks.value.length }} active</span
             >
           </div>
@@ -126,7 +126,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
             >
               <!-- Task header -->
               <button
-                class="w-full flex items-center justify-between px-4 py-3 hover:bg-bg-secondary/50 transition-colors text-left"
+                class="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-hover transition-colors text-left"
                 @click="toggleTask(task.id)"
               >
                 <div class="flex items-center gap-3 min-w-0">
@@ -172,7 +172,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                 <div v-for="(phase, pi) in task.phases" :key="pi" class="">
                   <!-- Phase header -->
                   <button
-                    class="w-full flex items-center justify-between px-4 py-2 hover:bg-bg-secondary/30 transition-colors text-left"
+                    class="w-full flex items-center justify-between px-4 py-2 hover:bg-surface-hover transition-colors text-left"
                     @click="togglePhase(`${task.id}-${pi}`)"
                   >
                     <div class="flex items-center gap-2 min-w-0">
@@ -274,10 +274,10 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
             <div
               v-for="task in log.completedTasks.value"
               :key="task.id"
-              class="rounded-xl border border-border-subtle bg-bg-secondary/30 overflow-hidden"
+              class="rounded-xl border border-border-subtle bg-bg-secondary overflow-hidden"
             >
               <button
-                class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-bg-secondary/50 transition-colors text-left"
+                class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-surface-hover transition-colors text-left"
                 @click="toggleTask(task.id)"
               >
                 <div class="flex items-center gap-2 min-w-0">
@@ -301,7 +301,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
               </button>
 
               <div v-if="expandedTasks.has(task.id) && task.error" class="px-4 pb-3">
-                <div class="text-xs text-danger bg-danger/10 rounded-lg p-2">{{ task.error }}</div>
+                <div class="text-xs text-danger bg-bg-secondary rounded-lg p-2">{{ task.error }}</div>
               </div>
             </div>
           </div>

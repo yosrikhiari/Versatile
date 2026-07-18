@@ -71,7 +71,7 @@ const isValid = computed(() => {
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
+    class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in"
     @click.self="emit('close')"
   >
     <div class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-sm w-full animate-scale-in">
@@ -94,7 +94,7 @@ const isValid = computed(() => {
             v-model="username"
             type="text"
             placeholder="your username"
-            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
+            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
             autocomplete="username"
           />
         </div>
@@ -105,7 +105,7 @@ const isValid = computed(() => {
             v-model="email"
             type="email"
             placeholder="you@example.com"
-            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
+            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
             autocomplete="email"
           />
         </div>
@@ -116,26 +116,26 @@ const isValid = computed(() => {
             v-model="password"
             type="password"
             placeholder="your password"
-            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
+            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
             autocomplete="current-password"
           />
         </div>
 
         <div v-if="mode === 'register'">
           <label class="block text-sm font-medium text-text-secondary mb-1">
-            Display Name <span class="text-text-hint/60">(optional)</span>
+            Display Name <span class="text-text-hint">(optional)</span>
           </label>
           <input
             v-model="displayName"
             type="text"
             placeholder="how others see you"
-            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
+            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
           />
         </div>
 
         <div
           v-if="formError"
-          class="text-xs text-red-400 bg-red-950/30 border border-red-800/30 rounded-lg px-3 py-2"
+          class="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2"
         >
           {{ formError }}
         </div>
@@ -143,16 +143,16 @@ const isValid = computed(() => {
         <button
           type="submit"
           :disabled="!isValid || submitting"
-          class="w-full py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 flex items-center justify-center gap-2"
+          class="w-full py-2 btn-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <BaseIcon v-if="submitting" name="loader" :size="16" class="animate-spin" />
           {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
         </button>
       </form>
 
-      <p class="mt-4 text-xs text-text-hint/70 text-center">
+      <p class="mt-4 text-xs text-text-hint text-center">
         {{ mode === 'login' ? "Don't have an account?" : 'Already have an account?' }}
-        <button class="text-accent hover:text-accent/80 underline ml-1" @click="switchMode">
+        <button class="text-accent hover:text-accent-hover underline ml-1" @click="switchMode">
           {{ mode === 'login' ? 'Create one' : 'Sign in' }}
         </button>
       </p>

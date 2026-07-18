@@ -16,7 +16,7 @@ public class UpdateSceneHandler : IRequestHandler<UpdateSceneCommand, SceneDto>
     {
         var scene = await _db.Set<Scene>()
             .Include(s => s.Chapter).ThenInclude(c => c!.Story)
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Chapter!.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Chapter!.Story!.UserId == request.UserId && s.Chapter!.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Scene not found");
 
         if (request.Title is not null) scene.Title = request.Title;

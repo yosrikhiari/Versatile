@@ -74,6 +74,15 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("switch-org"), Authorize]
+    public async Task<ActionResult<AuthResponse>> SwitchOrg(SwitchOrgRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        var result = await _auth.SwitchOrgAsync(userId, request.OrganizationId);
+        SetAuthCookies(result);
+        return Ok(result);
+    }
+
     [HttpPost("logout"), Authorize]
     public async Task<ActionResult> Logout()
     {

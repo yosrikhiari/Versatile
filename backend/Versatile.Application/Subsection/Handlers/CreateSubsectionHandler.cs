@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Versatile.Application.DTOs;
 using Versatile.Application.Subsection.Commands;
 using Entity = Versatile.Domain.Entities.Subsection;
+using SectionEntity = Versatile.Domain.Entities.Section;
 using Story = Versatile.Domain.Entities.Story;
 
 namespace Versatile.Application.Subsection.Handlers;
@@ -14,8 +15,11 @@ public class CreateSubsectionHandler : IRequestHandler<CreateSubsectionCommand, 
 
     public async Task<SubsectionDto> Handle(CreateSubsectionCommand request, CancellationToken ct)
     {
-        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId, ct))
+        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId && (request.OrganizationId == null || s.OrganizationId == request.OrganizationId), ct))
             throw new KeyNotFoundException("Story not found");
+
+        if (!await _db.Set<SectionEntity>().AnyAsync(s => s.Id == request.SectionId && s.StoryId == request.StoryId, ct))
+            throw new KeyNotFoundException("Section not found");
 
         var maxOrder = await _db.Set<Entity>()
             .Where(s => s.StoryId == request.StoryId)

@@ -20,7 +20,7 @@
         <div class="flex gap-4 text-sm text-text-secondary">
           <span>{{ reportData.taskCount }} tests</span>
           <span>{{ reportData.passCount }} passed</span>
-          <span v-if="reportData.failCount > 0" class="text-red-400"
+          <span v-if="reportData.failCount > 0" class="text-danger"
             >{{ reportData.failCount }} failed</span
           >
         </div>
@@ -34,11 +34,11 @@
           <div
             v-for="prov in sortedProviders"
             :key="prov.id"
-            class="flex items-center justify-between py-2 border-b border-border-primary last:border-0"
+            class="flex items-center justify-between py-2 border-b border-border-subtle last:border-0"
           >
             <div class="flex items-center gap-3">
               <div
-                class="w-6 h-6 rounded-full bg-accent-primary/10 flex items-center justify-center text-xs font-bold text-accent-primary"
+                class="w-6 h-6 rounded-full bg-surface-hover flex items-center justify-center text-xs font-bold text-accent"
               >
                 {{ sortedProviders.indexOf(prov) + 1 }}
               </div>
@@ -68,7 +68,7 @@
           <div
             v-for="prov in sortedProvidersByCost"
             :key="prov.id"
-            class="flex items-center justify-between py-2 border-b border-border-primary last:border-0"
+            class="flex items-center justify-between py-2 border-b border-border-subtle last:border-0"
           >
             <div class="flex items-center gap-3 flex-1">
               <span class="text-sm font-medium text-text-primary w-32 truncate">{{
@@ -169,7 +169,7 @@
         <div v-if="testRows.length > 0" class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
-              <tr class="border-b border-border-primary">
+              <tr class="border-b border-border-subtle">
                 <th class="text-left py-2 pr-4 text-text-secondary font-medium">Test</th>
                 <th
                   v-for="prov in sortedProviders"
@@ -184,7 +184,7 @@
               <tr
                 v-for="test in testRows"
                 :key="test.testId"
-                class="border-b border-border-primary/50"
+                class="border-b border-border-subtle"
               >
                 <td class="py-2 pr-4 text-text-primary">{{ test.label }}</td>
                 <td v-for="prov in sortedProviders" :key="prov.id" class="text-center px-2 py-2">
@@ -264,10 +264,10 @@ function costBarWidth(prov) {
 
 function costBarClass(prov) {
   const cost = aggregates[prov.id]?.estimatedTotalCost ?? 0
-  if (cost === 0) return 'h-full rounded-full bg-emerald-500'
-  if (cost / maxCost.value < 0.2) return 'h-full rounded-full bg-emerald-500'
-  if (cost / maxCost.value < 0.5) return 'h-full rounded-full bg-amber-500'
-  return 'h-full rounded-full bg-red-500'
+  if (cost === 0) return 'h-full rounded-full bg-success'
+  if (cost / maxCost.value < 0.2) return 'h-full rounded-full bg-success'
+  if (cost / maxCost.value < 0.5) return 'h-full rounded-full bg-warning'
+  return 'h-full rounded-full bg-danger'
 }
 
 const scoreBuckets = computed(() => {
@@ -305,9 +305,9 @@ function formatPct(v) {
 
 function reliabilityColor(v) {
   if (v == null) return 'text-text-primary'
-  if (v >= 95) return 'text-emerald-400'
-  if (v >= 80) return 'text-amber-400'
-  return 'text-red-400'
+  if (v >= 95) return 'text-success'
+  if (v >= 80) return 'text-warning'
+  return 'text-danger'
 }
 
 function formatDate(ts) {

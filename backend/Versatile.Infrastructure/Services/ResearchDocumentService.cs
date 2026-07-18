@@ -8,21 +8,21 @@ public class ResearchDocumentService : IResearchDocumentService
     private readonly ApplicationDbContext _db;
     public ResearchDocumentService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<ResearchDocumentDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<ResearchDocumentDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         return await _db.ResearchDocuments.Where(e => e.StoryId == storyId).Select(e => ToDto(e)).ToListAsync();
     }
 
-    public async Task<ResearchDocumentDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<ResearchDocumentDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.ResearchDocuments.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.ResearchDocuments.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         return entity is null ? throw new KeyNotFoundException("ResearchDocument not found") : ToDto(entity);
     }
 
-    public async Task<ResearchDocumentDto> CreateAsync(Guid storyId, CreateResearchDocumentRequest request, Guid userId)
+    public async Task<ResearchDocumentDto> CreateAsync(Guid storyId, CreateResearchDocumentRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         var entity = new ResearchDocument
         {
             StoryId = storyId,
@@ -37,9 +37,9 @@ public class ResearchDocumentService : IResearchDocumentService
         return ToDto(entity);
     }
 
-    public async Task<ResearchDocumentDto> UpdateAsync(Guid id, UpdateResearchDocumentRequest request, Guid userId)
+    public async Task<ResearchDocumentDto> UpdateAsync(Guid id, UpdateResearchDocumentRequest request, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.ResearchDocuments.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.ResearchDocuments.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         if (entity is null) throw new KeyNotFoundException("ResearchDocument not found");
         if (request.FileName is not null) entity.FileName = request.FileName;
         if (request.FileType is not null) entity.FileType = request.FileType;
@@ -49,17 +49,17 @@ public class ResearchDocumentService : IResearchDocumentService
         return ToDto(entity);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.ResearchDocuments.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.ResearchDocuments.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         if (entity is null) throw new KeyNotFoundException("ResearchDocument not found");
         _db.ResearchDocuments.Remove(entity);
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureStoryAccess(Guid storyId, Guid userId)
+    private async Task EnsureStoryAccess(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (!organizationId.HasValue || s.OrganizationId == organizationId.Value)))
             throw new KeyNotFoundException("Story not found");
     }
 

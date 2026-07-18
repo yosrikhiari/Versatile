@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson: Multi-Tenancy Fundamentals — Versatile</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="lesson">
+
+<h1>Multi-Tenancy Fundamentals</h1>
+<p class="subtitle">Why sharing one app between customers is harder than it looks.</p>
+
+<div class="meta">
+  <span>Lesson 4</span>
+  <span>&middot;</span>
+  <span>25 min</span>
+  <span>&middot;</span>
+  <span><a href="../MISSION.md">MISSION.md</a></span>
+</div>
+
+<div class="callout callout--info">
+  <strong>Prerequisites:</strong> Lesson 1 (Five Patterns of Scalability) is recommended. You should be comfortable opening files in the <span class="file">backend/Versatile.Domain/</span>, <span class="file">backend/Versatile.Infrastructure/</span>, and <span class="file">src/stores/</span> directories.
+</div>
+
+<p>
+  Right now Versatile is a <strong>single-tenant</strong> app: one user, one database, one cookie jar. All the data belongs to you. There's no concept of an "organization" or "workspace" — just your projects, your stories, your settings.
+</p>
+
+<p>
+  Multi-tenancy is what happens when you want <strong>one running instance of the app to serve many customers</strong> (tenants), with each tenant unable to see anyone else's data. Think Google Drive, Notion, GitHub — you log in and see <em>your</em> stuff, not the whole world's.
+</p>
+
+<p>
+  This sounds simple. It is not. Every layer of the stack needs to be aware of "who" the current tenant is — and if even one layer forgets, data leaks.
+</p>
+
+<!-- ============================================================ -->
+<!-- The Three Models -->
+<!-- ============================================================ -->
+<h2>1. The Three Isolation Models</h2>
+
+<p>There are three approaches to separating tenant data. They differ in cost, complexity, and how hard they are to recover from if something goes wrong.</p>
+
+<table>
+  <tr><th>Model</th><th>How it works</th><th>Security</th><th>Cost</th><th>Operational complexity</th></tr>
+  <tr>
+    <td><strong>Isolated Database</strong></td>
+    <td>Each tenant gets their own PostgreSQL database. App connects to the right one at login.</td>
+    <td>🛡️ Best — data is physically separated</td>
+    <td>💰 Highest — N databases, N connection pools</td>
+    <td>🧠 High — migrations must run N times, connection routing logic needed</td>
+  </tr>
+  <tr>
+    <td><strong>Shared DB, Schemas Per Tenant</strong></td>
+    <td>One database, but each tenant has their own schema (PostgreSQL schemas like <code>tenant_42.tables</code>).</td>
+    <td>🛡️ Strong — schema boundary prevents cross-tenant queries</td>
+    <td>💰 Medium — one database server, N schemas</td>
+    <td>🧠 Medium — <code>SET search_path</code> per connection, migration per schema</td>
+  </tr>
+  <tr>
+    <td><strong>Shared DB, Shared Schema</strong></td>
+    <td>One database, one set of tables. Every row has a <code>tenant_id</code> column. Queries filter by it. (Versatile's future path.)</td>
+    <td>🛡️ Weakest — a missing <code>WHERE tenant_id = @current</code> leaks data</td>
+    <td>💰 Cheapest — one database, one schema, one connection pool</td>
+    <td>🧠 Highest discipline — SQL-level isolation is the hardest to enforce</td>
+  </tr>
+</table>
+
+<div class="card card--accent">
+  <span class="tag tag--arch">Decision</span>
+  <h3>Why Shared Schema for Versatile?</h3>
+  <p><strong>Versatile should use shared DB + shared schema.</strong> Here's why:</p>
+  <ol>
+    <li><strong>36 entity types</strong> — that's a lot of schemas to create per tenant for the schema-per-tenant model. Each migration runs N times.</li>
+    <li><strong>Collaboration</strong> — SignalR hubs need to work across tenants. Shared schema with RLS keeps the messaging layer simpler.</li>
+    <li><strong>Cost at launch</strong> — isolated databases for every customer start-up would multiply database costs before revenue justifies it.</li>
+    <li><strong>RLS is good enough</strong> — PostgreSQL Row-Level Security (RLS) <code>USING (tenant_id = current_setting('app.tenant_id'))</code> is battle-tested by hundreds of SaaS products.</li>
+  </ol>
+</div>
+
+<p>
+  The trade-off: shared schema requires <strong>discipline at every query site</strong>. One missing filter = one data leak. RLS is your safety net, but RLS itself needs to be turned on per table. This is why Phase 2 (middleware) is critical — it automates what would otherwise require human vigilance.
+</p>
+
+<!-- ============================================================ -->
+<!-- Gaps Walkthrough -->
+<!-- ============================================================ -->
+<h2>2. The 7 Gaps: How Versatile Fails Each One</h2>
+
+<p>Let's walk through the codebase and see each gap in the flesh.</p>
+
+<h3>Gap 1: No Organization Entity</h3>
+
+<p>Open <span class="file">backend/Versatile.Domain/Entities/BaseEntity.cs</span>:</p>
+
+<pre><code>public abstract class BaseEntity
+{
+    public Guid Id { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public abstract class UserOwnedEntity : BaseEntity
+{
+    public string UserId { get; set; } = string.Empty;
+}</code></pre>
+
+<p>There it is. <code>UserOwnedEntity</code> — the base class for all 36 content entities. It says "this data belongs to a user." There is no parallel <code>OrganizationOwnedEntity</code>. There is no <code>Organization</code> class anywhere in the Domain project.</p>
+
+<p>Open <span class="file">backend/Versatile.Domain/Entities/Story.cs</span>:</p>
+
+<pre><code>public class Story : UserOwnedEntity
+{
+    public string Title { get; set; }
+    public string? Description { get; set; }
+    // ...
+}</code></pre>
+
+<p>A Story belongs to a user. In multi-tenant Versatile, a Story should belong to an Organization — and the user should belong to that Organization through a membership (which carries a role: owner, editor, viewer).</p>
+
+<h3>Gap 2: All Queries Filter by UserId, Not TenantId</h3>
+
+<p>Open <span class="file">backend/Versatile.Infrastructure/Data/ApplicationDbContext.cs</span> and search for <code>SaveChangesAsync</code> or <code>UserId</code>. You'll find logic like:</p>
+
+<pre><code>// Simplified: sets UserId on entities before save
+foreach (var entry in ChangeTracker.Entries&lt;UserOwnedEntity&gt;())
+{
+    if (entry.State == EntityState.Added)
+        entry.Entity.UserId = _currentUserService.UserId;
+}</code></pre>
+
+<p>This is the automatic ownership assignment — it happens at the DbContext level, before any entity hits the database. For multi-tenancy, you need a parallel mechanism: <code>TenantId</code> set automatically, and all queries filtered by it.</p>
+
+<h3>Gap 3: JWT Has No Org Claims</h3>
+
+<p>Open <span class="file">backend/Versatile.Infrastructure/Services/AuthService.cs</span>. Find where the token is constructed:</p>
+
+<pre><code>var claims = new[]
+{
+    new Claim(ClaimTypes.NameIdentifier, user.Id),
+    new Claim(ClaimTypes.Email, user.Email),
+    new Claim(ClaimTypes.Name, user.DisplayName ?? user.Email),
+    // ...
+};</code></pre>
+
+<p>There's no <code>org_id</code> or <code>org_role</code> claim. After multi-tenancy, a user might belong to 3 orgs, have role "editor" in two and "viewer" in one. The JWT needs to carry the <em>active session's</em> org context: which org they're acting as right now, and what permissions that gives them.</p>
+
+<h3>Gap 4: No Tenant Middleware</h3>
+
+<p>Open <span class="file">backend/Versatile.Api/Program.cs</span>. Look at the middleware pipeline (<code>app.Use...()</code> calls). There's no <code>UseTenantResolution()</code> — nothing that reads the <code>X-Tenant-Id</code> header (or extracts it from the JWT) and stores it in a scoped service that every query can reference.</p>
+
+<p>In a multi-tenant system, the tenant resolution happens <strong>once per request</strong>, at the middleware layer. Every downstream query, every SignalR hub call, every background job — they all need access to <code>CurrentTenant</code> without having to re-derive it themselves.</p>
+
+<h3>Gap 5: SignalR Groups Not Namespaced</h3>
+
+<p>Open <span class="file">backend/Versatile.Api/Hubs/CollaborationHub.cs</span>:</p>
+
+<pre><code>await Groups.AddToGroupAsync(Context.ConnectionId, $"collab_{storyId}");</code></pre>
+
+<p>In a single-tenant app, story IDs are globally unique. In a multi-tenant app, two tenants could both have a story with ID 42. Without <code>tenantId_storyId</code> as the group name, <strong>tenants would receive each other's real-time collaboration events</strong>.</p>
+
+<h3>Gap 6: AI Generation Blocks the Hub</h3>
+
+<p>Open <span class="file">backend/Versatile.Api/Hubs/GenerationHub.cs</span>:</p>
+
+<pre><code>await foreach (var chunk in _generationService.GenerateStreamAsync(...))
+{
+    await Clients.Caller.SendAsync("generationChunk", chunk);
+}</code></pre>
+
+<p>The AI generation runs <strong>inline</strong> in the SignalR hub handler. SignalR hub instances are scoped to a connection — if 10 users are generating AI content simultaneously on different connections, they each occupy a thread. This is fine for a single user. For multi-tenant SaaS, this blocks horizontal scaling: you can't move a generation task to a background worker because it's tied to the WebSocket connection.</p>
+
+<div class="card card--info">
+  <h3>Horizontal Scaling is the Hardest Gap</h3>
+  <p><strong>Gaps 6 and 7 are about infrastructure, not data.</strong> Moving AI generation off the hub requires a distributed job queue (RabbitMQ, Redis Streams, Azure Service Bus). Scaling SignalR across multiple servers requires a backplane (Redis, Azure SignalR Service). These are the last-phase changes because they depend on everything else being stable first.</p>
+</div>
+
+<h3>Gap 7: No Distributed Cache or Queue</h3>
+
+<p>Search for <code>IDistributedCache</code> or <code>Redis</code> in <span class="file">backend/Versatile.Api/Program.cs</span> — you won't find them. There's no distributed cache for session data, rate-limiting counters, or tenant metadata. There's no background job processor for offloading long-running work.</p>
+
+<p>In a single-user app, in-memory everything is fine. In a multi-tenant app with N concurrent users, the app needs to share state across instances — which means a cache that's reachable by all instances, not just one.</p>
+
+<!-- ============================================================ -->
+<!-- Deep Dive: The Organization Entity -->
+<!-- ============================================================ -->
+<h2>3. Deep Dive: The Missing Organization</h2>
+
+<p>Let's model what the Organization entity looks like and trace the ripple effect through the codebase.</p>
+
+<h3>What we need</h3>
+
+<pre><code>// New entity
+public class Organization : BaseEntity
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Slug { get; set; }  // URL-friendly identifier
+    public SubscriptionTier Tier { get; set; }
+}
+
+// New join entity
+public class OrganizationMembership : BaseEntity
+{
+    public Guid OrganizationId { get; set; }
+    public Organization Organization { get; set; }
+    public string UserId { get; set; }
+    public OrganizationRole Role { get; set; }  // Owner, Admin, Editor, Viewer
+}
+
+// Modified entity base
+public abstract class OrganizationOwnedEntity : BaseEntity
+{
+    public Guid OrganizationId { get; set; }
+}
+
+// Membership methods
+public interface IOrganizationService
+{
+    Task&lt;Organization&gt; CreateAsync(string name, string ownerUserId);
+    Task AddMemberAsync(Guid orgId, string userId, OrganizationRole role);
+    Task&lt;IReadOnlyList&lt;Organization&gt;&gt; GetUserOrganizations(string userId);
+}</code></pre>
+
+<h3>The ripple effect</h3>
+
+<p>This one new entity touches every layer:</p>
+
+<table>
+  <tr><th>Layer</th><th>What changes</th></tr>
+  <tr><td>Domain</td><td>Add <code>Organization</code>, <code>OrganizationMembership</code>, <code>OrganizationOwnedEntity</code> base class. Add <code>OrganizationRole</code> enum.</td></tr>
+  <tr><td>Application</td><td>New CQRS handlers: <code>CreateOrganizationCommand</code>, <code>InviteMemberCommand</code>, <code>SwitchOrganizationCommand</code>. Existing Story handlers now need org context.</td></tr>
+  <tr><td>Infrastructure</td><td>New <code>OrganizationConfiguration</code> (EF config), migration for tables. New <code>OrganizationService</code>. DbContext interceptor sets TenantId on saves.</td></tr>
+  <tr><td>API</td><td>New <code>OrganizationsController</code>. JWT now emits <code>org_id</code>, <code>org_role</code>. Tenant resolution middleware.</td></tr>
+  <tr><td>Frontend</td><td>New <code>organizationStore</code> in Pinia. Auth flow now includes org selection. API calls include <code>X-Tenant-Id</code> header. Sidebar shows org name + switch menu.</td></tr>
+</table>
+
+<div class="exercise">
+  <h3>Try it: Trace a Story in the Current Codebase</h3>
+  <p>Open these files in order, tracing how a Story is created today. For each file, note: <em>"Does this reference an organization?"</em></p>
+  <ol>
+    <li><span class="file">src/components/story/StoryCreatePanel.vue</span> — the UI</li>
+    <li><span class="file">src/stores/projectStore.js</span> — the Pinia store</li>
+    <li><span class="file">backend/Versatile.Api/Controllers/StoryController.cs</span> — the API endpoint</li>
+    <li><span class="file">backend/Versatile.Application/Stories/Commands/CreateStory/CreateStoryCommand.cs</span> — the CQRS command</li>
+    <li><span class="file">backend/Versatile.Application/Stories/Commands/CreateStory/CreateStoryHandler.cs</span> — the handler</li>
+    <li><span class="file">backend/Versatile.Infrastructure/Data/Configurations/StoryConfiguration.cs</span> — EF config</li>
+  </ol>
+  <p>Now ask yourself: <strong>if you added an <code>OrganizationId</code> to the Story entity, which of these files would need to change?</strong> The answer reveals the scope of Phase 1.</p>
+</div>
+
+<h3>Why Phase 1 starts here</h3>
+
+<p>The Organization entity is the foundation. Without it:</p>
+
+<ul>
+  <li>You can't add a tenant_id column to tables (what would it reference?)</li>
+  <li>You can't put org claims in the JWT (there's no org to claim)</li>
+  <li>You can't scope SignalR groups by tenant (no tenant ID to prepend)</li>
+  <li>You can't build a workspace switcher UI (nothing to switch between)</li>
+</ul>
+
+<p>This is why Phase 1 in the roadmap is "Data Model & Auth": build the org, wire it into authentication, and lay the foundation for every subsequent phase.</p>
+
+<!-- ============================================================ -->
+<!-- Summary -->
+<!-- ============================================================ -->
+<h2>Putting It Together</h2>
+
+<table>
+  <tr><th>Phase</th><th>What it changes</th><th>Why that order</th></tr>
+  <tr>
+    <td><strong>1. Data Model & Auth</strong></td>
+    <td>Organization entity, membership, JWT org claims</td>
+    <td>Foundation — nothing else can work without the tenant concept existing</td>
+  </tr>
+  <tr>
+    <td><strong>2. Middleware & Tenant Context</strong></td>
+    <td>Tenant resolution middleware, RLS on all tables, scoped <code>CurrentTenantService</code></td>
+    <td>Enforcement — the org exists, now make sure every query uses it</td>
+  </tr>
+  <tr>
+    <td><strong>3. Scalability Infrastructure</strong></td>
+    <td>Redis cache, background job queue, SignalR backplane, async AI generation</td>
+    <td>Scale — once data is isolated, make the app handle N tenants</td>
+  </tr>
+  <tr>
+    <td><strong>4. Frontend Multi-Tenant UX</strong></td>
+    <td>Workspace switcher, org-scoped dashboards, invitation flows</td>
+    <td>Experience — the user-facing part, last because everything else must be stable first</td>
+  </tr>
+</table>
+
+<div class="callout callout--info">
+  <strong>Next step:</strong> We could zoom into any of the 7 gaps. The most common follow-up is — <strong>how does RLS actually work?</strong> Want to dive into that next, or explore a different gap deeper?
+</div>
+
+<p class="footer">
+  <a href="../MISSION.md">MISSION.md</a> &middot;
+  <a href="0001-five-patterns-of-scalability.html">Lesson 1: Five Patterns</a> &middot;
+  <a href="0002-carving-monoliths.html">Lesson 2: Carving Monoliths</a> &middot;
+  <a href="0003-idempotency-keys.html">Lesson 3: Idempotency Keys</a>
+  <br><br>
+  <strong>Ask follow-up questions.</strong> What was unclear? Which gap do you want to go deeper on?
+</p>
+
+</div>
+</body>
+</html>

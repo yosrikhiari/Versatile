@@ -19,9 +19,9 @@ const { toasts, activeConfirm, removeToast } = useNotifications()
           class="px-5 py-2.5 rounded-lg shadow-lg text-sm font-ui bg-bg-tertiary border border-border-subtle max-w-md text-center pointer-events-auto flex items-center justify-between gap-3"
           :class="{
             'text-text-primary': toast.type === 'info',
-            'text-success border-success/30 bg-success/10': toast.type === 'success',
-            'text-danger border-danger/30 bg-danger/10': toast.type === 'danger',
-            'text-accent border-accent/30 bg-accent/10': toast.type === 'warning'
+            'text-success': toast.type === 'success',
+            'text-danger': toast.type === 'danger',
+            'text-warning': toast.type === 'warning'
           }"
         >
           <span>{{ toast.message }}</span>
@@ -39,13 +39,13 @@ const { toasts, activeConfirm, removeToast } = useNotifications()
     <Transition name="fade">
       <div
         v-if="activeConfirm"
-        class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-bg-primary/80 backdrop-blur-sm"
+        class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60"
       >
         <div
           class="bg-bg-tertiary border border-border-subtle rounded-xl shadow-2xl max-w-md w-full p-6"
           @click.stop
         >
-          <h3 class="text-lg font-display text-text-primary mb-2">{{ activeConfirm.title }}</h3>
+          <h3 class="text-lg font-ui text-text-primary mb-2">{{ activeConfirm.title }}</h3>
           <p class="text-text-secondary text-sm font-ui mb-6 whitespace-pre-wrap">
             {{ activeConfirm.message }}
           </p>
@@ -58,10 +58,12 @@ const { toasts, activeConfirm, removeToast } = useNotifications()
               Cancel
             </button>
             <button
-              class="px-4 py-2 text-sm font-ui font-medium rounded-lg text-white shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-bg-tertiary"
+              class="px-4 py-2 text-sm font-ui font-medium rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-bg-tertiary"
               :class="{
-                'bg-danger hover:bg-danger/90 focus:ring-danger': activeConfirm.type === 'danger',
-                'bg-accent hover:bg-accent/90 focus:ring-accent': activeConfirm.type === 'primary'
+                'bg-danger text-white hover:bg-danger focus:ring-danger':
+                  activeConfirm.type === 'danger',
+                'bg-accent text-bg-primary hover:bg-accent-hover focus:ring-accent':
+                  activeConfirm.type === 'primary'
               }"
               @click="activeConfirm.resolve(true)"
             >

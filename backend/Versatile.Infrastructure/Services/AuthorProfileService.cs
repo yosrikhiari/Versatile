@@ -8,21 +8,21 @@ public class AuthorProfileService : IAuthorProfileService
     private readonly ApplicationDbContext _db;
     public AuthorProfileService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<AuthorProfileDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<AuthorProfileDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         return await _db.AuthorProfiles.Where(e => e.StoryId == storyId).Select(e => ToDto(e)).ToListAsync();
     }
 
-    public async Task<AuthorProfileDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<AuthorProfileDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.AuthorProfiles.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.AuthorProfiles.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (organizationId == null || e.Story!.OrganizationId == organizationId));
         return entity is null ? throw new KeyNotFoundException("AuthorProfile not found") : ToDto(entity);
     }
 
-    public async Task<AuthorProfileDto> CreateAsync(Guid storyId, CreateAuthorProfileRequest request, Guid userId)
+    public async Task<AuthorProfileDto> CreateAsync(Guid storyId, CreateAuthorProfileRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         var entity = new AuthorProfile
         {
             StoryId = storyId,
@@ -36,9 +36,9 @@ public class AuthorProfileService : IAuthorProfileService
         return ToDto(entity);
     }
 
-    public async Task<AuthorProfileDto> UpdateAsync(Guid id, UpdateAuthorProfileRequest request, Guid userId)
+    public async Task<AuthorProfileDto> UpdateAsync(Guid id, UpdateAuthorProfileRequest request, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.AuthorProfiles.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.AuthorProfiles.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (organizationId == null || e.Story!.OrganizationId == organizationId));
         if (entity is null) throw new KeyNotFoundException("AuthorProfile not found");
         if (request.DisplayName is not null) entity.DisplayName = request.DisplayName;
         if (request.PenName is not null) entity.PenName = request.PenName;
@@ -49,17 +49,17 @@ public class AuthorProfileService : IAuthorProfileService
         return ToDto(entity);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.AuthorProfiles.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.AuthorProfiles.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (organizationId == null || e.Story!.OrganizationId == organizationId));
         if (entity is null) throw new KeyNotFoundException("AuthorProfile not found");
         _db.AuthorProfiles.Remove(entity);
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureStoryAccess(Guid storyId, Guid userId)
+    private async Task EnsureStoryAccess(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId)))
             throw new KeyNotFoundException("Story not found");
     }
 

@@ -14,7 +14,7 @@ public class GetChaptersHandler : IRequestHandler<GetChaptersQuery, List<Chapter
 
     public async Task<List<ChapterDto>> Handle(GetChaptersQuery request, CancellationToken ct)
     {
-        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId, ct))
+        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct))
             throw new KeyNotFoundException("Story not found");
 
         return await _db.Set<Chapter>()
@@ -35,7 +35,7 @@ public class GetChapterByIdHandler : IRequestHandler<GetChapterByIdQuery, Chapte
     {
         var chapter = await _db.Set<Chapter>()
             .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == request.Id && c.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(c => c.Id == request.Id && c.Story!.UserId == request.UserId && c.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Chapter not found");
 
         return new ChapterDto(chapter.Id, chapter.StoryId, chapter.Title, chapter.Order, chapter.Status, chapter.ArcAssignment, chapter.CreatedAt, chapter.UpdatedAt);

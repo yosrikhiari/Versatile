@@ -91,9 +91,9 @@ onMounted(() => {
                 }"
               ></div>
               <div
-                class="w-full bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden cursor-grab active:cursor-grabbing hover:border-accent/30 transition-colors"
+                class="w-full bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden cursor-grab active:cursor-grabbing hover:border-accent transition-colors"
               >
-                <div class="p-2.5 border-b border-border-subtle/50">
+                <div class="p-2.5 border-b border-border-subtle">
                   <div class="flex items-start gap-1.5">
                     <BaseIcon
                       name="grip-vertical"

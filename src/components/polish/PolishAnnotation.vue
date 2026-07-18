@@ -18,10 +18,10 @@ const hasSuggestion = computed(() => props.annotation.original && props.annotati
 const isIdentical = computed(() => props.annotation.original === props.annotation.suggestion)
 
 const typeColors = {
-  weak_verb: 'bg-orange-500/20 text-orange-400',
-  repetition: 'bg-danger/20 text-danger',
-  pacing: 'bg-blue-500/20 text-blue-400',
-  antecedent: 'bg-purple-500/20 text-purple-400'
+  weak_verb: 'bg-bg-secondary text-warning',
+  repetition: 'bg-bg-secondary text-danger',
+  pacing: 'bg-bg-secondary text-info',
+  antecedent: 'bg-bg-secondary text-text-secondary'
 }
 
 const typeBadge = computed(
@@ -76,7 +76,7 @@ function handleDismiss() {
       class="mb-3 p-2 bg-bg-secondary rounded border border-border-subtle"
     >
       <template v-if="isIdentical">
-        <p class="text-xs text-amber-400 font-ui">Suggestion matches original text</p>
+        <p class="text-xs text-warning font-ui">Suggestion matches original text</p>
         <div class="mt-2">
           <button
             class="py-1 px-3 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent"
@@ -105,7 +105,7 @@ function handleDismiss() {
 
     <div class="flex gap-2 mt-3">
       <button
-        class="flex-1 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        class="flex-1 py-1 text-xs btn-primary rounded font-ui focus:outline-none focus:ring-2 focus:ring-accent"
         @click="handleAccept"
       >
         {{ showDiff ? 'Confirm' : 'Accept' }}

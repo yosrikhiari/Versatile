@@ -2,7 +2,7 @@
   <div class="voice-profile-display">
     <!-- Header -->
     <div class="profile-header">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Writing Voice Profile</h3>
+      <h3 class="text-lg font-semibold text-text-primary">Writing Voice Profile</h3>
       <div class="header-actions">
         <button
           v-if="profile && !isLocked"
@@ -21,7 +21,7 @@
     <!-- Profile Not Extracted -->
     <div v-if="!profile" class="empty-state">
       <div class="empty-icon">📝</div>
-      <p class="text-sm text-gray-600 dark:text-gray-400">
+      <p class="text-sm text-text-secondary">
         Voice profile not extracted yet. Write at least 500 words in your manuscript to generate a
         profile.
       </p>
@@ -35,7 +35,7 @@
         <span class="warning-icon">⚠️</span>
         <div class="warning-text">
           <p class="font-medium text-sm">Profile Size Mismatch</p>
-          <p class="text-xs text-gray-600 dark:text-gray-400">
+          <p class="text-xs text-text-secondary">
             {{ growthWarning }}
           </p>
         </div>
@@ -189,12 +189,12 @@
 
       <!-- Last Updated -->
       <div class="profile-footer">
-        <span class="text-xs text-gray-500 dark:text-gray-400">
+        <span class="text-xs text-text-hint">
           Last updated: {{ formatDate(storyBibleStore.voiceProfile.lastUpdated) }}
         </span>
         <span
           v-if="storyBibleStore.voiceProfile.supplementaryMergeCount"
-          class="text-xs text-gray-500 dark:text-gray-400"
+          class="text-xs text-text-hint"
         >
           • {{ storyBibleStore.voiceProfile.supplementaryMergeCount }} supplementary sample(s)
           merged
@@ -294,15 +294,15 @@ function formatDate(date) {
 }
 
 .btn-primary {
-  @apply bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50;
+  @apply bg-accent text-bg-primary hover:bg-accent-hover disabled:opacity-50;
 }
 
 .btn-secondary {
-  @apply bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50;
+  @apply bg-surface-hover text-text-secondary hover:bg-bg-tertiary disabled:opacity-50;
 }
 
 .empty-state {
-  @apply text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg;
+  @apply text-center py-8 bg-bg-tertiary rounded-lg;
 }
 
 .empty-icon {
@@ -310,7 +310,7 @@ function formatDate(date) {
 }
 
 .growth-warning {
-  @apply flex gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg;
+  @apply flex gap-3 p-3 bg-bg-tertiary border border-border-subtle rounded-lg;
 }
 
 .warning-icon {
@@ -330,27 +330,27 @@ function formatDate(date) {
 }
 
 .metadata-item .label {
-  @apply text-xs font-medium text-gray-600 dark:text-gray-400;
+  @apply text-xs font-medium text-text-secondary;
 }
 
 .metadata-item .value {
-  @apply text-sm font-semibold text-gray-900 dark:text-white;
+  @apply text-sm font-semibold text-text-primary;
 }
 
 .confidence-bar {
-  @apply h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden;
+  @apply h-2 bg-bg-tertiary rounded-full overflow-hidden;
 }
 
 .confidence-fill {
-  @apply h-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-300;
+  @apply h-full bg-success transition-all duration-300;
 }
 
 .metric-card {
-  @apply bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-3;
+  @apply bg-bg-tertiary p-4 rounded-lg space-y-3;
 }
 
 .metric-title {
-  @apply font-semibold text-gray-900 dark:text-white text-sm;
+  @apply font-semibold text-text-primary text-sm;
 }
 
 .metric-grid {
@@ -362,11 +362,11 @@ function formatDate(date) {
 }
 
 .stat .label {
-  @apply text-xs font-medium text-gray-600 dark:text-gray-400;
+  @apply text-xs font-medium text-text-secondary;
 }
 
 .stat .value {
-  @apply text-sm font-semibold text-indigo-600 dark:text-indigo-400;
+  @apply text-sm font-semibold text-accent;
 }
 
 .common-words {
@@ -374,7 +374,7 @@ function formatDate(date) {
 }
 
 .common-words .label {
-  @apply text-xs font-medium text-gray-600 dark:text-gray-400;
+  @apply text-xs font-medium text-text-secondary;
 }
 
 .word-list {
@@ -382,7 +382,7 @@ function formatDate(date) {
 }
 
 .word-tag {
-  @apply inline-block px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 text-xs rounded-full;
+  @apply inline-block px-2 py-1 bg-bg-secondary text-accent text-xs rounded-full;
 }
 
 .distribution {
@@ -390,7 +390,7 @@ function formatDate(date) {
 }
 
 .distribution .label {
-  @apply text-xs font-medium text-gray-600 dark:text-gray-400;
+  @apply text-xs font-medium text-text-secondary;
 }
 
 .dist-bars {
@@ -402,22 +402,22 @@ function formatDate(date) {
 }
 
 .dist-range {
-  @apply w-12 flex-shrink-0 font-medium text-gray-700 dark:text-gray-300;
+  @apply w-12 flex-shrink-0 font-medium text-text-secondary;
 }
 
 .bar-container {
-  @apply flex-1 h-6 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden;
+  @apply flex-1 h-6 bg-bg-tertiary rounded overflow-hidden;
 }
 
 .bar-fill {
-  @apply h-full bg-indigo-500 transition-all duration-300;
+  @apply h-full bg-accent transition-all duration-300;
 }
 
 .dist-pct {
-  @apply w-12 text-right text-gray-600 dark:text-gray-400;
+  @apply w-12 text-right text-text-hint;
 }
 
 .profile-footer {
-  @apply flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700;
+  @apply flex flex-wrap gap-2 text-xs text-text-hint pt-2 border-t border-border-subtle;
 }
 </style>

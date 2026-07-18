@@ -16,7 +16,7 @@ public class UpdateChapterHandler : IRequestHandler<UpdateChapterCommand, Chapte
     {
         var chapter = await _db.Set<Chapter>()
             .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == request.Id && c.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(c => c.Id == request.Id && c.Story!.UserId == request.UserId && c.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Chapter not found");
 
         if (request.Title is not null) chapter.Title = request.Title;

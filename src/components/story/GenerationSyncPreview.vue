@@ -58,7 +58,7 @@ function handleConfirm() {
 
     <div v-if="localChanges.length > 0" class="flex gap-2">
       <button
-        class="flex-1 py-1.5 text-xs bg-accent text-accent-foreground rounded-md font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+        class="flex-1 py-1.5 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent"
         @click="keepAll"
       >
         Keep All
@@ -73,9 +73,9 @@ function handleConfirm() {
 
     <div
       v-if="hasReferencedUnselected"
-      class="rounded-lg bg-yellow-950/10 border border-yellow-800/20 px-3 py-2"
+      class="rounded-lg bg-bg-secondary border border-border-subtle px-3 py-2"
     >
-      <p class="text-xs text-yellow-400 font-ui flex items-center gap-1">
+      <p class="text-xs text-warning font-ui flex items-center gap-1">
         <BaseIcon name="alert-triangle" :size="12" />
         Some referenced entities are deselected — the story may reference entities not in your
         bible.
@@ -179,10 +179,10 @@ function handleConfirm() {
               :class="[
                 'px-1.5 py-0.5 rounded text-2xs font-ui',
                 change.entity.status === 'open'
-                  ? 'text-green-400 bg-green-950/30'
+                  ? 'text-success bg-bg-secondary'
                   : change.entity.status === 'resolved'
-                    ? 'text-gray-400 bg-gray-800/30'
-                    : 'text-yellow-400 bg-yellow-950/30'
+                    ? 'text-text-secondary bg-bg-secondary'
+                    : 'text-warning bg-bg-secondary'
               ]"
               >{{ change.entity.status || 'open' }}</span
             >
@@ -197,7 +197,7 @@ function handleConfirm() {
 
     <button
       v-if="localChanges.length > 0"
-      class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+      class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
       :disabled="loading"
       @click="handleConfirm"
     >

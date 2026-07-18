@@ -2,11 +2,15 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
-import { getAllProjects, createProject } from '../services/db-projects'
+import { getAllProjects, createProject, getManuscript } from '../services/db-projects'
 import BaseIcon from '../components/shared/BaseIcon.vue'
+import OrganizationSwitcher from '../components/org/OrganizationSwitcher.vue'
+import CreateOrganizationDialog from '../components/org/CreateOrganizationDialog.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
+
+const showCreateOrg = ref(false)
 
 const projects = ref([])
 const loading = ref(true)
@@ -17,13 +21,46 @@ const newProjectGenre = ref('')
 const localUser = auth.localUser || { displayName: 'User' }
 
 onMounted(async () => {
-  if (auth.localUser?.id != null) {
-    projects.value = await getAllProjects(auth.localUser.id)
-  } else {
-    projects.value = await getAllProjects()
-  }
+  const raw =
+    auth.localUser?.id != null
+      ? await getAllProjects(auth.localUser.id)
+      : await getAllProjects()
+  // Attach each project's real word count from its manuscript (the app's own
+  // authoritative per-project count — see projectStore).
+  projects.value = await Promise.all(
+    raw.map(async (p) => {
+      const manuscript = await getManuscript(p.id)
+      // "Last edited" = most recent of the project row (metadata edits) and the
+      // manuscript (actual writing). ISO strings sort chronologically.
+      const lastEdited =
+        [p.updatedAt, manuscript?.updatedAt].filter(Boolean).sort().at(-1) || p.updatedAt
+      return { ...p, wordCount: manuscript?.wordCount || 0, updatedAt: lastEdited }
+    })
+  )
   loading.value = false
 })
+
+function formatWords(count) {
+  if (!count) return 'Empty draft'
+  return `${count.toLocaleString()} ${count === 1 ? 'word' : 'words'}`
+}
+
+function editedAgo(iso) {
+  if (!iso) return 'never edited'
+  const diff = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(diff / 60000)
+  if (min < 1) return 'edited just now'
+  if (min < 60) return `edited ${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `edited ${hr}h ago`
+  const day = Math.floor(hr / 24)
+  if (day < 7) return `edited ${day}d ago`
+  const wk = Math.floor(day / 7)
+  if (wk < 5) return `edited ${wk}w ago`
+  const mo = Math.floor(day / 30)
+  if (mo < 12) return `edited ${mo}mo ago`
+  return `edited ${Math.floor(day / 365)}y ago`
+}
 
 function openProject(projectId) {
   router.push(`/editor/${projectId}`)
@@ -50,22 +87,32 @@ async function handleLogout() {
 </script>
 
 <template>
-  <div class="min-h-[100dvh] bg-manuscript ambient-glow grain">
+  <!-- Manuscript Mono · projects as a manuscript index: hairline-ruled rows, no glass/glow. -->
+  <div class="min-h-[100dvh] bg-manuscript text-text-primary overflow-y-auto">
     <header
-      class="h-12 border-b border-border-subtle flex items-center justify-between px-4 lg:px-8 bg-bg-primary/80 backdrop-blur-sm"
+      class="h-14 border-b border-border-subtle flex items-center justify-between px-6 lg:px-8"
     >
-      <div class="flex items-center gap-2.5">
-        <div class="w-7 h-7 rounded-lg liquid-glass flex items-center justify-center">
-          <BaseIcon name="feather" :size="16" class="text-accent" />
+      <div class="flex items-center gap-6">
+        <span class="font-manuscript text-sm uppercase tracking-[0.2em] text-text-primary">
+          Versatile
+        </span>
+        <div v-if="auth.organizations.length > 0" class="hidden sm:block">
+          <OrganizationSwitcher @create-org="showCreateOrg = true" />
         </div>
-        <span class="text-text-primary font-medium text-sm">Versatile</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <span class="text-text-secondary text-xs hidden sm:inline">{{
-          localUser.displayName
-        }}</span>
         <button
-          class="text-text-secondary hover:text-text-primary text-xs transition-colors px-2 py-1 rounded-md hover:liquid-glass focus:outline-none focus:ring-2 focus:ring-accent/50"
+          v-else
+          class="text-xs text-text-secondary hover:text-text-primary transition-colors underline underline-offset-2"
+          @click="showCreateOrg = true"
+        >
+          Create organization
+        </button>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-text-secondary text-xs hidden sm:inline">
+          {{ localUser.displayName }}
+        </span>
+        <button
+          class="text-text-secondary hover:text-text-primary text-xs transition-colors"
           @click="handleLogout"
         >
           Sign out
@@ -73,18 +120,18 @@ async function handleLogout() {
       </div>
     </header>
 
-    <main class="max-w-5xl mx-auto p-6 lg:p-10">
+    <main class="max-w-3xl mx-auto px-6 lg:px-8 py-10 animate-fade-in">
       <div class="flex items-end justify-between mb-8">
-        <div class="spring-enter-active">
-          <h1 class="text-3xl font-semibold text-text-primary">Your Projects</h1>
-          <p class="text-sm text-text-secondary mt-1">Pick up where you left off</p>
+        <div>
+          <h1 class="text-2xl font-semibold text-text-primary">Your projects</h1>
+          <p class="text-sm text-text-secondary mt-1">Pick up where you left off.</p>
         </div>
         <button
-          class="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
+          class="btn-primary flex items-center gap-2 px-4 py-2 rounded-md text-sm shrink-0"
           @click="showCreate = true"
         >
           <BaseIcon name="plus" :size="16" />
-          New Project
+          New
         </button>
       </div>
 
@@ -107,96 +154,102 @@ async function handleLogout() {
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
           />
         </svg>
-        <span class="text-sm">Loading projects...</span>
+        <span class="text-sm">Loading projects…</span>
       </div>
 
       <div
         v-else-if="projects.length === 0"
-        class="flex flex-col items-center justify-center py-20 spring-enter-active"
+        class="border-t border-border-subtle py-20 flex flex-col items-center text-center"
       >
-        <div class="w-20 h-20 rounded-2xl liquid-glass flex items-center justify-center mb-6">
-          <BaseIcon name="book-open" :size="36" class="text-text-tertiary" />
-        </div>
+        <BaseIcon name="book-open" :size="28" class="text-text-hint mb-4" />
         <p class="text-text-primary font-medium mb-1">No projects yet</p>
-        <p class="text-text-secondary text-sm mb-6">Create your first project and begin writing</p>
-        <button class="btn-primary px-5 py-2 rounded-lg text-sm" @click="showCreate = true">
-          Create Project
+        <p class="text-text-secondary text-sm mb-6">Create your first project and begin writing.</p>
+        <button class="btn-primary px-5 py-2 rounded-md text-sm" @click="showCreate = true">
+          Create project
         </button>
       </div>
 
-      <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-        <div
-          v-for="(project, index) in projects"
+      <div v-else class="border-t border-border-subtle">
+        <button
+          v-for="project in projects"
           :key="project.id"
-          class="liquid-glass rounded-xl p-5 cursor-pointer group spring-enter-active"
-          :style="{ transitionDelay: `${index * 60}ms` }"
+          type="button"
+          class="group w-full flex flex-col gap-1 border-b border-border-subtle px-2 py-4 text-left transition-colors hover:bg-surface-hover"
           @click="openProject(project.id)"
         >
-          <div class="flex items-start justify-between mb-4">
-            <div
-              class="w-10 h-10 rounded-lg bg-bg-secondary border border-border-subtle flex items-center justify-center group-hover:border-accent/30 transition-colors"
+          <span class="w-full flex items-baseline justify-between gap-4">
+            <span
+              class="min-w-0 truncate text-base font-medium text-text-primary group-hover:text-accent transition-colors"
             >
-              <BaseIcon name="book-open" :size="20" class="text-accent" />
-            </div>
-            <BaseIcon
-              name="chevron-right"
-              :size="18"
-              class="text-text-tertiary opacity-0 group-hover:opacity-100 transition-all duration-200 -translate-x-1 group-hover:translate-x-0"
-            />
-          </div>
-          <h3 class="text-text-primary font-medium mb-1 truncate text-base">{{ project.name }}</h3>
-          <p v-if="project.genre" class="text-text-tertiary text-xs mb-4">{{ project.genre }}</p>
-          <p v-else class="text-text-tertiary text-xs mb-4 italic">No genre</p>
-          <div class="flex items-center justify-between border-t border-border-subtle pt-3 mt-auto">
-            <span class="text-text-secondary/60 text-xs">
-              Updated
-              {{ project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : 'Never' }}
+              {{ project.name }}
             </span>
-          </div>
-        </div>
+            <span v-if="project.genre" class="shrink-0 text-xs text-text-hint">
+              {{ project.genre }}
+            </span>
+          </span>
+          <span class="text-xs text-text-hint">
+            {{ formatWords(project.wordCount) }}
+            <span aria-hidden="true" class="px-1">·</span>
+            {{ editedAgo(project.updatedAt) }}
+          </span>
+        </button>
       </div>
     </main>
 
     <div
       v-if="showCreate"
-      class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+      class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
       @click.self="showCreate = false"
     >
-      <div class="liquid-glass rounded-xl shadow-warm-lg p-6 w-full max-w-sm spring-enter-active">
-        <h2 class="text-lg font-semibold text-text-primary mb-4">New Project</h2>
+      <div
+        class="bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg p-6 w-full max-w-sm animate-fade-in"
+      >
+        <h2 class="text-lg font-semibold text-text-primary mb-4">New project</h2>
         <form class="space-y-4" @submit.prevent="handleCreate">
           <div>
-            <label class="block text-sm text-text-secondary mb-1">Project Name</label>
+            <label for="wp-name" class="block font-manuscript text-xs text-text-secondary mb-2">
+              Project name
+            </label>
             <input
+              id="wp-name"
               ref="nameInput"
               v-model="newProjectName"
               type="text"
               required
-              class="w-full px-3 py-2.5 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-secondary/40 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+              autofocus
+              class="w-full px-3.5 py-2.5 border border-border-subtle bg-bg-primary text-text-primary rounded-md text-sm focus:border-accent placeholder:text-text-hint transition-colors"
               placeholder="My Novel"
             />
           </div>
           <div>
-            <label class="block text-sm text-text-secondary mb-1">Genre (optional)</label>
+            <label for="wp-genre" class="block font-manuscript text-xs text-text-secondary mb-2">
+              Genre <span class="text-text-hint">(optional)</span>
+            </label>
             <input
+              id="wp-genre"
               v-model="newProjectGenre"
               type="text"
-              class="w-full px-3 py-2.5 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-secondary/40 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-              placeholder="Fantasy, Sci-Fi, ..."
+              class="w-full px-3.5 py-2.5 border border-border-subtle bg-bg-primary text-text-primary rounded-md text-sm focus:border-accent placeholder:text-text-hint transition-colors"
+              placeholder="Fantasy, Sci-Fi, …"
             />
           </div>
           <div class="flex gap-3 pt-2">
             <button
               type="button"
-              class="flex-1 py-2 border border-border-subtle text-text-secondary rounded-lg text-sm hover:bg-surface-hover transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-accent/50"
+              class="flex-1 py-2 border border-border-subtle text-text-secondary rounded-md text-sm hover:bg-surface-hover transition-colors"
               @click="showCreate = false"
             >
               Cancel
             </button>
-            <button type="submit" class="btn-primary flex-1 py-2 rounded-lg text-sm">Create</button>
+            <button type="submit" class="btn-primary flex-1 py-2 rounded-md text-sm">Create</button>
           </div>
         </form>
       </div>
     </div>
+
+    <CreateOrganizationDialog
+      v-if="showCreateOrg"
+      @close="showCreateOrg = false"
+    />
   </div>
 </template>

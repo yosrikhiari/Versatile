@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: var(--vers-accent, #6b7280);
+  background: var(--vers-accent-primary, #6e8bb5);
   color: #fff;
   display: flex;
   align-items: center;
@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
   border-radius: 4px;
 }
 .context-item:hover {
-  background: var(--vers-accent, #6b7280);
+  background: var(--vers-accent-primary, #6e8bb5);
   color: #fff;
 }
 </style>

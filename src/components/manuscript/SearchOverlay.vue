@@ -164,7 +164,7 @@ onMounted(() => {
       />
     </div>
 
-    <div class="flex items-center gap-2 text-xs text-text-muted">
+    <div class="flex items-center gap-2 text-xs text-text-hint">
       <span v-if="matches.length > 0"> {{ currentMatchIndex + 1 }} of {{ matches.length }} </span>
       <span v-else-if="searchQuery">No results</span>
     </div>

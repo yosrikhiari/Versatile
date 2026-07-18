@@ -222,7 +222,7 @@ defineExpose({
   <div class="h-full flex flex-col bg-manuscript relative overflow-hidden">
     <button
       v-if="flow.isRunning.value"
-      class="absolute top-4 right-4 z-10 text-xs text-text-hint/60 hover:text-text-secondary font-ui transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2.5 py-1.5 btn-ghost"
+      class="absolute top-4 right-4 z-10 text-xs text-text-hint hover:text-text-secondary font-ui transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2.5 py-1.5 btn-ghost"
       @click="handleExitFlow"
     >
       Exit Flow
@@ -233,8 +233,8 @@ defineExpose({
       class="flex-shrink-0 px-6 py-2 text-xs font-ui border-b"
       :class="
         contentSizeWarning === 'critical'
-          ? 'bg-red-900/20 text-red-400 border-red-900/30'
-          : 'bg-amber-900/20 text-amber-400 border-amber-900/30'
+          ? 'bg-bg-secondary text-danger border-border-subtle'
+          : 'bg-bg-secondary text-warning border-border-subtle'
       "
     >
       <span class="flex items-center gap-2">
@@ -270,7 +270,7 @@ defineExpose({
 
     <div
       v-if="isSaving"
-      class="absolute bottom-3 right-4 text-2xs text-text-hint/50 font-ui flex items-center gap-1.5"
+      class="absolute bottom-3 right-4 text-2xs text-text-hint font-ui flex items-center gap-1.5"
     >
       <BaseIcon name="loader-2" :size="10" class="animate-spin" />
       <span class="tracking-wide">Saving...</span>
@@ -281,7 +281,7 @@ defineExpose({
     <Transition name="flow-hint">
       <div
         v-if="flowHintVisible"
-        class="absolute top-8 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-lg bg-bg-tertiary/90 backdrop-blur-sm border border-border-subtle text-text-secondary text-xs font-ui shadow-warm-md pointer-events-none"
+        class="absolute top-8 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-lg bg-bg-tertiary border border-border-subtle text-text-secondary text-xs font-ui shadow-warm-md pointer-events-none"
       >
         Flow mode — keep writing forward.
       </div>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
@@ -11,7 +12,7 @@ public class RevisionCommentController : ApiControllerBase
 {
     private readonly IRevisionCommentService _service;
 
-    public RevisionCommentController(IRevisionCommentService service) => _service = service;
+    public RevisionCommentController(IRevisionCommentService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
 
 
     [HttpGet]

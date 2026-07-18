@@ -34,13 +34,25 @@ export function hasToken() {
   return !!getToken()
 }
 
+function getActiveOrgId() {
+  try {
+    const store = window.__PINIA__?.state?.value?.auth
+    return store?.activeOrganization?.id || null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Returns Authorization headers if a token exists in storage.
  * Used by providerRegistry.ts to authenticate backend API key fetch.
  */
 export function getAuthHeaders() {
   const token = getToken()
-  return token ? { Authorization: 'Bearer ' + token } : {}
+  const headers = token ? { Authorization: 'Bearer ' + token } : {}
+  const orgId = getActiveOrgId()
+  if (orgId) headers['X-Organization-Id'] = orgId
+  return headers
 }
 
 async function tryRefresh() {
@@ -89,6 +101,8 @@ export async function api(path, options) {
     var token = getToken()
     if (token) {
       requestHeaders['Authorization'] = 'Bearer ' + token
+      var orgId = getActiveOrgId()
+      if (orgId) requestHeaders['X-Organization-Id'] = orgId
     }
   }
 
@@ -107,6 +121,8 @@ export async function api(path, options) {
     var refreshed = await tryRefresh()
     if (refreshed) {
       requestHeaders['Authorization'] = 'Bearer ' + getToken()
+      var orgId = getActiveOrgId()
+      if (orgId) requestHeaders['X-Organization-Id'] = orgId
       response = await fetch(BASE_URL + path, fetchOptions)
     } else {
       clearAuth()

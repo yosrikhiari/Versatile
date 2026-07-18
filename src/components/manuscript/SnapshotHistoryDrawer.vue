@@ -176,7 +176,7 @@ onUnmounted(() => {
               :class="[
                 'rounded-lg border transition-all cursor-pointer',
                 selectedSnapshot?.id === snapshot.id
-                  ? 'border-accent bg-accent/5'
+                  ? 'border-accent bg-surface-hover'
                   : 'border-border-subtle hover:border-text-hint'
               ]"
               @click="selectSnapshot(snapshot)"
@@ -218,7 +218,7 @@ onUnmounted(() => {
                     }}{{ previewDiff(snapshot).length > 500 ? '...' : '' }}
                   </div>
                   <button
-                    class="mt-2 w-full py-1.5 bg-accent text-accent-foreground text-xs rounded font-ui hover:bg-accent/90"
+                    class="mt-2 w-full py-1.5 btn-primary text-xs rounded font-ui"
                     @click.stop="confirmRestore"
                   >
                     Restore this version
@@ -253,7 +253,7 @@ onUnmounted(() => {
           v-model="newLabel"
           type="text"
           placeholder="e.g. Before adding climax..."
-          class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm mb-4 font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
+          class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm mb-4 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           autofocus
           @keyup.enter="saveWithLabel"
         />
@@ -267,7 +267,7 @@ onUnmounted(() => {
           </button>
           <button
             :disabled="!newLabel.trim()"
-            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui disabled:opacity-50"
+            class="flex-1 py-2 btn-primary rounded-lg font-ui disabled:opacity-50"
             @click="saveWithLabel"
           >
             Save

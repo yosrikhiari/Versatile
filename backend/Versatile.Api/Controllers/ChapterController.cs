@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.Chapters.Commands;
 using Versatile.Application.Chapters.Queries;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Api.Controllers;
 
@@ -13,7 +14,7 @@ public class ChapterController : ApiControllerBase
 {
     private readonly IMediator _mediator;
 
-    public ChapterController(IMediator mediator) => _mediator = mediator;
+    public ChapterController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
 
     [HttpGet]
@@ -21,7 +22,7 @@ public class ChapterController : ApiControllerBase
     {
         try
         {
-            return Ok(await _mediator.Send(new GetChaptersQuery(storyId, UserId)));
+            return Ok(await _mediator.Send(new GetChaptersQuery(storyId, OrganizationId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -34,7 +35,7 @@ public class ChapterController : ApiControllerBase
     {
         try
         {
-            return Ok(await _mediator.Send(new GetChapterByIdQuery(id, UserId)));
+            return Ok(await _mediator.Send(new GetChapterByIdQuery(id, OrganizationId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -47,7 +48,7 @@ public class ChapterController : ApiControllerBase
     {
         try
         {
-            var chapter = await _mediator.Send(command with { StoryId = storyId, UserId = UserId });
+            var chapter = await _mediator.Send(command with { StoryId = storyId, UserId = UserId, OrganizationId = OrganizationId });
             return CreatedAtAction(nameof(GetById), new { id = chapter.Id }, chapter);
         }
         catch (KeyNotFoundException ex)
@@ -61,7 +62,7 @@ public class ChapterController : ApiControllerBase
     {
         try
         {
-            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId }));
+            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId, OrganizationId = OrganizationId }));
         }
         catch (KeyNotFoundException ex)
         {
@@ -74,7 +75,7 @@ public class ChapterController : ApiControllerBase
     {
         try
         {
-            await _mediator.Send(new DeleteChapterCommand(id, UserId));
+            await _mediator.Send(new DeleteChapterCommand(id, OrganizationId, UserId));
             return NoContent();
         }
         catch (KeyNotFoundException ex)

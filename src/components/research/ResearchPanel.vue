@@ -307,7 +307,7 @@ function clearSelectedDoc() {
       >
         <h2 class="text-sm font-semibold text-text-primary tracking-wide">Research Library</h2>
         <button
-          class="p-1.5 rounded-lg bg-accent text-bg-primary hover:bg-accent/90 active:scale-[0.97] transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 disabled:opacity-50"
+          class="p-1.5 rounded-lg btn-primary active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 disabled:opacity-50"
           :disabled="isImporting"
           title="Import documents"
           aria-label="Import documents"
@@ -346,7 +346,7 @@ function clearSelectedDoc() {
             class="w-7 h-7 text-11px font-medium rounded-lg transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
             :class="
               globalSearchMode === 'lexical'
-                ? 'bg-accent text-bg-primary shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                ? 'btn-primary'
                 : 'bg-bg-secondary border border-border-subtle text-text-hint hover:text-text-primary hover:border-border-hover'
             "
             title="Lexical search (keyword matching)"
@@ -361,7 +361,7 @@ function clearSelectedDoc() {
             class="w-7 h-7 text-11px font-medium rounded-lg transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
             :class="
               globalSearchMode === 'semantic'
-                ? 'bg-accent text-bg-primary shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                ? 'btn-primary'
                 : 'bg-bg-secondary border border-border-subtle text-text-hint hover:text-text-primary hover:border-border-hover'
             "
             title="Semantic search (embedding similarity)"
@@ -390,7 +390,7 @@ function clearSelectedDoc() {
       <div
         v-if="globalSearchError"
         role="alert"
-        class="px-3 py-1.5 mx-3 text-xs text-danger bg-danger/10 rounded-lg"
+        class="px-3 py-1.5 mx-3 text-xs text-danger bg-bg-secondary rounded-lg"
       >
         {{ globalSearchError }}
       </div>
@@ -421,7 +421,7 @@ function clearSelectedDoc() {
               Cancel
             </button>
             <button
-              class="px-3 py-1.5 text-xs rounded-lg bg-accent text-bg-primary hover:bg-accent/90 active:scale-[0.97] transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50"
+              class="px-3 py-1.5 text-xs rounded-lg btn-primary active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50"
               :disabled="isImporting"
               @click="handleConfirmImport"
             >
@@ -446,14 +446,14 @@ function clearSelectedDoc() {
 
       <div
         v-if="importError && !isImporting"
-        class="px-4 py-2 mx-3 mt-2 text-xs text-danger bg-danger/10 rounded-lg"
+        class="px-4 py-2 mx-3 mt-2 text-xs text-danger bg-bg-secondary rounded-lg"
       >
         {{ importError }}
       </div>
 
       <div
         v-if="truncationInfo && !isImporting"
-        class="px-4 py-2 mx-3 mt-2 text-xs text-warning bg-warning/10 rounded-lg"
+        class="px-4 py-2 mx-3 mt-2 text-xs text-warning bg-bg-secondary rounded-lg"
       >
         {{ truncationInfo }}
       </div>
@@ -474,9 +474,9 @@ function clearSelectedDoc() {
           <p class="text-11px text-text-secondary leading-relaxed line-clamp-3">
             {{ result.text }}
           </p>
-          <p class="text-3xs text-text-hint/50 mt-1 flex items-center gap-2">
+          <p class="text-2xs text-text-hint/50 mt-1 flex items-center gap-2">
             <span
-              class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-accent/10 text-accent rounded text-3xs"
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-bg-secondary text-accent rounded text-2xs"
               >{{ result.fileName || 'Unknown doc' }}</span
             >
             <span>{{ result._score?.toFixed(3) }}</span>
@@ -515,7 +515,7 @@ function clearSelectedDoc() {
           <div class="flex items-center gap-2 min-w-0">
             <!-- prettier-ignore -->
             <button
-              class="p-1 rounded-lg hover:bg-accent/20 text-text-hint hover:text-accent transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+              class="p-1 rounded-lg hover:bg-surface-hover text-text-hint hover:text-accent transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
               title="Back to library"
               aria-label="Back to library"
               @click="clearSelectedDoc()"
@@ -533,7 +533,7 @@ function clearSelectedDoc() {
             </div>
           </div>
           <button
-            class="p-1 rounded hover:bg-accent/20 text-text-hint hover:text-accent transition-colors shrink-0 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+            class="p-1 rounded hover:bg-surface-hover text-text-hint hover:text-accent transition-colors shrink-0 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
             title="Re-index document"
             aria-label="Re-index document"
             :disabled="isReindexing"
@@ -583,7 +583,7 @@ function clearSelectedDoc() {
                   <p class="text-11px text-text-secondary leading-relaxed line-clamp-3">
                     {{ chunk.text }}
                   </p>
-                  <p class="text-3xs text-text-hint/40 mt-1 flex items-center gap-2">
+                  <p class="text-2xs text-text-hint/40 mt-1 flex items-center gap-2">
                     <span
                       >{{ chunk.tokenEstimate }} tokens · {{ chunk.sentenceCount }} sentences</span
                     >
@@ -604,9 +604,9 @@ function clearSelectedDoc() {
             role="button"
             tabindex="0"
             :class="[
-              'flex items-center gap-2 px-4 py-2 cursor-pointer transition-colors duration-150 hover:bg-accent-glass focus-visible:bg-accent-glass focus-visible:outline-none',
+              'flex items-center gap-2 px-4 py-2 cursor-pointer transition-colors duration-150 hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none',
               selectedDoc?.id === doc.id
-                ? 'bg-accent-glass border-l-2 border-accent'
+                ? 'bg-surface-hover border-l-2 border-accent'
                 : 'border-l-2 border-transparent'
             ]"
             @click="selectDocument(doc)"
@@ -625,7 +625,7 @@ function clearSelectedDoc() {
                   >
                     <span>· {{ mergedProgress[doc.id].failed }} failed</span>
                     <button
-                      class="p-0.5 rounded hover:bg-danger/20 transition-colors disabled:opacity-40"
+                      class="p-0.5 rounded hover:bg-surface-hover transition-colors disabled:opacity-40"
                       title="Retry failed chunks"
                       aria-label="Retry failed chunks"
                       :disabled="isRetrying"
@@ -653,7 +653,7 @@ function clearSelectedDoc() {
               </p>
             </div>
             <button
-              class="p-1 rounded hover:bg-danger/20 text-text-hint hover:text-danger transition-colors shrink-0 disabled:opacity-40"
+              class="p-1 rounded hover:bg-surface-hover text-text-hint hover:text-danger transition-colors shrink-0 disabled:opacity-40"
               title="Re-index (re-chunk and re-embed)"
               aria-label="Re-index document"
               :disabled="isReindexing"
@@ -663,7 +663,7 @@ function clearSelectedDoc() {
               <BaseIcon v-else name="rotate-cw" size="12" />
             </button>
             <button
-              class="p-1 rounded hover:bg-danger/20 text-text-hint hover:text-danger transition-colors shrink-0"
+              class="p-1 rounded hover:bg-surface-hover text-text-hint hover:text-danger transition-colors shrink-0"
               title="Remove"
               aria-label="Remove document"
               @click.stop="handleRemoveDocument(doc.id)"

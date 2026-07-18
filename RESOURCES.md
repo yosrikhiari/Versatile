@@ -9,6 +9,8 @@
 | [Five Patterns of Scalability](lessons/0001-five-patterns-of-scalability.html) | Offline-first, client-side AI, clean architecture, modular frontend, SignalR runway |
 | [Carving Monoliths](lessons/0002-carving-monoliths.html) | Service extraction, finding seams, decomposed composables |
 | [Idempotency Keys](lessons/0003-idempotency-keys.html) | Safe-to-retry API design, atomic claim step, multi-step recovery |
+| [Multi-Tenancy Fundamentals](lessons/0004-multi-tenancy-fundamentals.html) | 3 isolation models, 7 gaps in Versatile, Organization entity ripple effect |
+| [Backend Controller Patterns](lessons/0005-backend-controller-patterns.html) | MediatR CQRS flow, error middleware, DI registrations, Clean Architecture seams |
 
 ## Reference
 

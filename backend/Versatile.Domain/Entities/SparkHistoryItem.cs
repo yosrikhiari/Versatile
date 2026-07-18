@@ -3,11 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class SparkHistoryItem
+public class SparkHistoryItem : UserOwnedEntity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
     [Required]
     public Guid StoryId { get; set; }
 
@@ -22,6 +19,4 @@ public class SparkHistoryItem
     public string? Blueprint { get; set; }
 
     public string? GeneratedContent { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

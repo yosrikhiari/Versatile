@@ -81,7 +81,7 @@ function onPortraitUpdated() {
           </div>
           <div
             v-if="assignedVolumes.length > 3"
-            class="w-4 h-4 rounded text-3xs flex items-center justify-center bg-bg-secondary text-text-hint"
+            class="w-4 h-4 rounded text-2xs flex items-center justify-center bg-bg-secondary text-text-hint"
           >
             +{{ assignedVolumes.length - 3 }}
           </div>
@@ -134,7 +134,7 @@ function onPortraitUpdated() {
         @updated="onPortraitUpdated"
       />
       <div class="flex gap-2">
-        <button class="text-xs text-red-400 hover:text-red-300" @click="$emit('delete', entity.id)">
+        <button class="text-xs text-danger hover:opacity-80" @click="$emit('delete', entity.id)">
           Delete
         </button>
       </div>

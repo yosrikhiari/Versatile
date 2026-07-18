@@ -8,9 +8,9 @@ const props = defineProps({
 const emit = defineEmits(['action'])
 
 const severityConfig = {
-  error: { icon: 'alert-circle', color: 'var(--vers-error, #ef4444)' },
-  warning: { icon: 'alert-triangle', color: 'var(--vers-warning, #f59e0b)' },
-  info: { icon: 'info', color: 'var(--vers-info, #3b82f6)' }
+  error: { icon: 'alert-circle', color: 'var(--vers-status-danger, #d07070)' },
+  warning: { icon: 'alert-triangle', color: 'var(--vers-status-warning, #d4a74a)' },
+  info: { icon: 'info', color: 'var(--vers-status-info, #5b8cb8)' }
 }
 
 function cfg() {

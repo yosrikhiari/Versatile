@@ -73,7 +73,7 @@ function toggleTone(t) {
             class="px-3 py-1.5 text-11px rounded-md border font-ui transition-[color,background-color,transform] duration-150 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             :class="
               isActive(t.value)
-                ? 'border-accent/40 text-accent'
+                ? 'border-accent text-accent'
                 : 'bg-bg-tertiary border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-hover'
             "
             :style="

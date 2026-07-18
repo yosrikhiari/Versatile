@@ -122,7 +122,7 @@ watch(
 <template>
   <div class="flex flex-col h-full bg-bg-primary rounded-lg overflow-hidden">
     <div
-      class="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-bg-tertiary/50"
+      class="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-bg-secondary"
     >
       <h3 class="text-sm font-medium text-text-primary">{{ headerTitle }}</h3>
       <button
@@ -138,7 +138,7 @@ watch(
       v-if="chatStore.activeMessages.length === 0"
       class="flex-1 flex flex-col items-center justify-center text-center px-6"
     >
-      <BaseIcon name="message-square" :size="40" class="text-text-hint/40 mb-3" />
+      <BaseIcon name="message-square" :size="40" class="text-text-hint mb-3" />
       <p class="text-sm text-text-hint max-w-xs">
         Start a conversation with
         {{ characters.length === 1 ? characters[0].name : 'your characters' }}. Ask questions,
@@ -163,7 +163,7 @@ watch(
             :alt="getMessageCharacterName(msg) || 'Character'"
             class="w-7 h-7 rounded-full object-cover"
           />
-          <div v-else class="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center">
+          <div v-else class="w-7 h-7 rounded-full bg-surface-hover flex items-center justify-center">
             <BaseIcon name="user" :size="12" class="text-accent" />
           </div>
         </div>
@@ -172,7 +172,7 @@ watch(
           :class="[
             'max-w-[75%] rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words',
             msg.role === 'user'
-              ? 'bg-accent/15 text-text-primary rounded-br-md'
+              ? 'bg-surface-hover text-text-primary rounded-br-md'
               : 'bg-bg-tertiary border border-border-subtle text-text-primary rounded-bl-md'
           ]"
         >
@@ -208,17 +208,17 @@ watch(
       </div>
 
       <div v-if="chatStore.streamError && !chatStore.isStreaming" class="flex justify-center">
-        <div class="text-xs text-red-400 bg-red-400/10 px-3 py-1.5 rounded-lg">
+        <div class="text-xs text-danger bg-danger/10 px-3 py-1.5 rounded-lg">
           {{ chatStore.streamError }}
         </div>
       </div>
     </div>
 
-    <div class="px-4 py-3 border-t border-border-subtle bg-bg-tertiary/50">
+    <div class="px-4 py-3 border-t border-border-subtle bg-bg-secondary">
       <div class="flex items-center gap-2">
         <textarea
           v-model="inputText"
-          class="flex-1 bg-bg-secondary border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-hint resize-none outline-none focus:ring-1 focus:ring-accent/50 min-h-[38px] max-h-[120px]"
+          class="flex-1 bg-bg-secondary border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-hint resize-none outline-none focus:ring-1 focus:ring-accent min-h-[38px] max-h-[120px]"
           placeholder="Type a message..."
           rows="1"
           :disabled="chatStore.isStreaming"
@@ -226,7 +226,7 @@ watch(
         />
         <button
           v-if="!chatStore.isStreaming"
-          class="p-2 bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+          class="p-2 bg-bg-tertiary text-accent rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
           :disabled="!inputText.trim()"
           title="Send"
           @click="handleSend"
@@ -235,7 +235,7 @@ watch(
         </button>
         <button
           v-else
-          class="p-2 bg-red-400/10 text-red-400 rounded-lg hover:bg-red-400/20 transition-colors flex-shrink-0"
+          class="p-2 bg-bg-tertiary text-danger rounded-lg hover:bg-surface-hover transition-colors flex-shrink-0"
           title="Stop generating"
           @click="handleAbort"
         >

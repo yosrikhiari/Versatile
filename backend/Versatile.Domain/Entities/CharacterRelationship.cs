@@ -3,11 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class CharacterRelationship
+public class CharacterRelationship : UserOwnedEntity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
     [Required]
     public Guid StoryId { get; set; }
 
@@ -24,6 +21,4 @@ public class CharacterRelationship
     public string RelationshipType { get; set; } = string.Empty;
 
     public string? Notes { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

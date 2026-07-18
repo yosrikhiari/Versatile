@@ -15,4 +15,5 @@ public abstract class BaseEntity
 public abstract class UserOwnedEntity : BaseEntity
 {
     public Guid UserId { get; set; }
+    public Guid? OrganizationId { get; set; }
 }

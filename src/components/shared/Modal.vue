@@ -63,7 +63,7 @@ watch(
       <div
         v-if="show"
         :class="[
-          'fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm',
+          'fixed inset-0 flex items-center justify-center z-50 p-4',
           backdropClass
         ]"
         @click.self="handleBackdropClick"

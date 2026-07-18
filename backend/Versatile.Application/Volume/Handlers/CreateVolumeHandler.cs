@@ -14,7 +14,7 @@ public class CreateVolumeHandler : IRequestHandler<CreateVolumeCommand, VolumeDt
 
     public async Task<VolumeDto> Handle(CreateVolumeCommand request, CancellationToken ct)
     {
-        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId, ct))
+        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct))
             throw new KeyNotFoundException("Story not found");
 
         var maxOrder = await _db.Set<Entity>()

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
@@ -11,7 +12,7 @@ public class EntityController : ApiControllerBase
 {
     private readonly IEntityService _entity;
 
-    public EntityController(IEntityService entity) => _entity = entity;
+    public EntityController(IEntityService entity, IOrganizationContext orgContext) : base(orgContext) => _entity = entity;
 
 
     [HttpGet]
@@ -19,7 +20,7 @@ public class EntityController : ApiControllerBase
     {
         try
         {
-            return Ok(await _entity.GetAllAsync(storyId, UserId));
+            return Ok(await _entity.GetAllAsync(storyId, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -32,7 +33,7 @@ public class EntityController : ApiControllerBase
     {
         try
         {
-            return Ok(await _entity.GetByIdAsync(id, UserId));
+            return Ok(await _entity.GetByIdAsync(id, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -45,7 +46,7 @@ public class EntityController : ApiControllerBase
     {
         try
         {
-            var entity = await _entity.CreateAsync(storyId, request, UserId);
+            var entity = await _entity.CreateAsync(storyId, request, UserId, organizationId: OrganizationId);
             return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
         }
         catch (KeyNotFoundException ex)
@@ -59,7 +60,7 @@ public class EntityController : ApiControllerBase
     {
         try
         {
-            return Ok(await _entity.UpdateAsync(id, request, UserId));
+            return Ok(await _entity.UpdateAsync(id, request, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -72,7 +73,7 @@ public class EntityController : ApiControllerBase
     {
         try
         {
-            await _entity.DeleteAsync(id, UserId);
+            await _entity.DeleteAsync(id, UserId, organizationId: OrganizationId);
             return NoContent();
         }
         catch (KeyNotFoundException ex)

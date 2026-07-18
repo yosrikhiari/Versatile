@@ -19,25 +19,25 @@ const progressPercent = computed(() => {
 </script>
 
 <template>
-  <div class="glass border-t border-border-subtle/50 px-6 py-3">
+  <div class="bg-bg-secondary border-t border-border-subtle px-6 py-3">
     <div class="max-w-3xl mx-auto flex items-center gap-4">
       <span class="text-lg font-mono text-accent font-semibold tabular-nums">{{
         formattedTime
       }}</span>
 
-      <div class="flex-1 h-2 bg-bg-tertiary/50 rounded-full overflow-hidden">
+      <div class="flex-1 h-2 bg-bg-tertiary rounded-full overflow-hidden">
         <div
-          class="h-full bg-gradient-to-r from-accent/70 to-accent transition-all duration-500 rounded-full"
+          class="h-full bg-accent transition-all duration-500 rounded-full"
           :style="{ width: `${progressPercent}%` }"
         ></div>
       </div>
 
-      <span class="text-xs text-text-hint/70 font-ui whitespace-nowrap tabular-nums">
+      <span class="text-xs text-text-hint font-ui whitespace-nowrap tabular-nums">
         {{ flow.sessionWordCount.value }} / {{ flow.sessionGoal.value }} words
       </span>
 
       <button
-        class="text-text-hint/50 hover:text-accent text-sm ml-2 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150"
+        class="text-text-hint hover:text-accent text-sm ml-2 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150"
         title="Daily goal settings"
         @click="emit('open-settings')"
       >
@@ -46,16 +46,16 @@ const progressPercent = computed(() => {
     </div>
 
     <div class="max-w-[680px] mx-auto flex items-center gap-4 mt-3">
-      <span class="text-xs text-text-hint/50 font-ui w-12 tracking-wide">Daily</span>
+      <span class="text-xs text-text-hint font-ui w-12 tracking-wide">Daily</span>
 
-      <div class="flex-1 h-1 bg-bg-tertiary/50 rounded-full overflow-hidden">
+      <div class="flex-1 h-1 bg-bg-tertiary rounded-full overflow-hidden">
         <div
-          class="h-full bg-gradient-to-r from-success/70 to-success transition-all duration-500 rounded-full"
+          class="h-full bg-success transition-all duration-500 rounded-full"
           :style="{ width: `${flow.dailyProgress.value}%` }"
         ></div>
       </div>
 
-      <span class="text-xs text-text-hint/70 font-ui whitespace-nowrap tabular-nums">
+      <span class="text-xs text-text-hint font-ui whitespace-nowrap tabular-nums">
         {{ flow.dailyWordCount.value }} / {{ flow.dailyGoal.value }} words
       </span>
     </div>

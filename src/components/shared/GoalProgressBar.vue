@@ -29,24 +29,20 @@ const goalReached = computed(() => {
     <div v-if="goalWords > 0" class="w-20 h-1 bg-bg-tertiary rounded-full overflow-hidden">
       <div
         class="h-full transition-all duration-300 rounded-full"
-        :class="
-          goalReached
-            ? 'bg-gradient-to-r from-success to-green-400 glow-progress'
-            : 'bg-gradient-to-r from-accent/70 to-accent'
-        "
+        :class="goalReached ? 'bg-success' : 'bg-accent'"
         :style="{ width: `${progressPercent}%` }"
       />
     </div>
     <span
       v-if="goalWords > 0"
       class="text-2xs tabular-nums"
-      :class="goalReached ? 'text-green-400/80' : 'text-text-hint/70'"
+      :class="goalReached ? 'text-success' : 'text-text-hint'"
     >
       {{ currentWords.toLocaleString() }} / {{ goalWords.toLocaleString() }}
     </span>
     <button
       v-else
-      class="text-2xs text-text-hint/50 hover:text-accent transition-colors duration-150 btn-ghost"
+      class="text-2xs text-text-hint hover:text-accent transition-colors duration-150 btn-ghost"
       @click="emit('open-settings')"
     >
       Set a goal

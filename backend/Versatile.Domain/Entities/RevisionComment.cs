@@ -3,11 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class RevisionComment
+public class RevisionComment : UserOwnedEntity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
     [Required]
     public Guid StoryId { get; set; }
 
@@ -25,6 +22,4 @@ public class RevisionComment
     public string? Comment { get; set; }
 
     public bool Resolved { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

@@ -7,7 +7,7 @@
 
     <!-- Error state -->
     <div v-else-if="error" class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-6 text-center">
-      <BaseIcon name="alert-triangle" :size="20" class="mx-auto text-red-400 mb-2" />
+      <BaseIcon name="alert-triangle" :size="20" class="mx-auto text-danger mb-2" />
       <p class="text-sm text-text-secondary font-ui">{{ error }}</p>
     </div>
 
@@ -163,9 +163,9 @@ export default {
 
     function costBarClass(prov) {
       const cost = aggregates.value[prov]?.estimatedTotalCost ?? 0
-      if (cost === 0) return 'bg-emerald-500'
-      if (cost < maxCost.value * 0.5) return 'bg-emerald-500'
-      return 'bg-amber-500'
+      if (cost === 0) return 'bg-success'
+      if (cost < maxCost.value * 0.5) return 'bg-success'
+      return 'bg-warning'
     }
 
     const scoreBuckets = computed(() => {
@@ -180,11 +180,11 @@ export default {
       if (!allScores.length) return []
 
       const buckets = [
-        { label: '9-10', min: 9, max: 10, count: 0, barClass: 'bg-emerald-500' },
-        { label: '7-8', min: 7, max: 8.9, count: 0, barClass: 'bg-emerald-400' },
-        { label: '5-6', min: 5, max: 6.9, count: 0, barClass: 'bg-amber-500' },
-        { label: '3-4', min: 3, max: 4.9, count: 0, barClass: 'bg-orange-500' },
-        { label: '1-2', min: 1, max: 2.9, count: 0, barClass: 'bg-red-500' }
+        { label: '9-10', min: 9, max: 10, count: 0, barClass: 'bg-success' },
+        { label: '7-8', min: 7, max: 8.9, count: 0, barClass: 'bg-success' },
+        { label: '5-6', min: 5, max: 6.9, count: 0, barClass: 'bg-warning' },
+        { label: '3-4', min: 3, max: 4.9, count: 0, barClass: 'bg-warning' },
+        { label: '1-2', min: 1, max: 2.9, count: 0, barClass: 'bg-danger' }
       ]
       allScores.forEach((s) => {
         const b = buckets.find((b) => s >= b.min && s <= b.max)
@@ -241,16 +241,16 @@ export default {
 
     function scoreColor(s) {
       if (s == null) return 'text-text-primary'
-      if (s >= 7) return 'text-emerald-400'
-      if (s >= 5) return 'text-amber-400'
-      return 'text-red-400'
+      if (s >= 7) return 'text-success'
+      if (s >= 5) return 'text-warning'
+      return 'text-danger'
     }
 
     function reliabilityColor(v) {
       if (v == null) return 'text-text-primary'
-      if (v >= 0.95) return 'text-emerald-400'
-      if (v >= 0.8) return 'text-amber-400'
-      return 'text-red-400'
+      if (v >= 0.95) return 'text-success'
+      if (v >= 0.8) return 'text-warning'
+      return 'text-danger'
     }
 
     async function loadReport() {

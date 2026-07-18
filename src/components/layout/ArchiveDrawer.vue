@@ -27,14 +27,14 @@ const signalOptions = [
 ]
 
 const typeColors = {
-  spark_prompt: 'text-amber-400',
-  spark_outline: 'text-amber-400',
-  spark_content: 'text-amber-400',
-  polish_analysis: 'text-emerald-400',
-  polish_annotation: 'text-emerald-400',
-  revise_comment: 'text-blue-400',
-  entity_generation: 'text-purple-400',
-  entity_enhance: 'text-purple-400',
+  spark_prompt: 'text-warning',
+  spark_outline: 'text-warning',
+  spark_content: 'text-warning',
+  polish_analysis: 'text-success',
+  polish_annotation: 'text-success',
+  revise_comment: 'text-info',
+  entity_generation: 'text-text-secondary',
+  entity_enhance: 'text-text-secondary',
   session_end: 'text-accent',
   state_snapshot: 'text-accent'
 }
@@ -111,9 +111,9 @@ function signalBadge(signal) {
   return signal === 'accepted'
     ? 'text-accent'
     : signal === 'partial'
-      ? 'text-amber-400'
+      ? 'text-warning'
       : signal === 'rejected'
-        ? 'text-red-400'
+        ? 'text-danger'
         : 'text-text-hint'
 }
 
@@ -161,11 +161,11 @@ function handleSignalClick(opt) {
           <input
             v-model="searchQuery"
             placeholder="Search archive..."
-            class="flex-1 px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent/50 font-ui"
+            class="flex-1 px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent font-ui"
             @keydown.enter="handleSearch"
           />
           <button
-            class="px-2 py-1.5 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui"
+            class="px-2 py-1.5 text-xs btn-primary rounded font-ui"
             @click="handleSearch"
           >
             Go
@@ -251,7 +251,7 @@ function handleSignalClick(opt) {
           </div>
           <div class="flex items-center justify-between mt-0.5">
             <span class="text-2xs text-text-hint font-ui">{{ formatTime(entry.timestamp) }}</span>
-            <span v-if="entry.tags?.length" class="text-3xs text-text-hint font-ui truncate ml-2">{{
+            <span v-if="entry.tags?.length" class="text-2xs text-text-hint font-ui truncate ml-2">{{
               entry.tags.slice(0, 2).join(', ')
             }}</span>
           </div>

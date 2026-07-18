@@ -73,7 +73,7 @@ onUnmounted(() => {
       </span>
       <span v-else-if="projectStore.lastSessionDate && projectStore.lastSessionWords > 0">
         Last session:
-        <span class="text-text-muted">{{ formatDate(projectStore.lastSessionDate) }}</span> — you
+        <span class="text-text-hint">{{ formatDate(projectStore.lastSessionDate) }}</span> — you
         wrote
         <span class="text-accent font-medium"
           >{{ projectStore.lastSessionWords.toLocaleString() }} words</span

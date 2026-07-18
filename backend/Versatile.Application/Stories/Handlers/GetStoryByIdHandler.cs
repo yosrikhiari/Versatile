@@ -15,7 +15,7 @@ public class GetStoryByIdHandler : IRequestHandler<GetStoryByIdQuery, StoryDto>
     public async Task<StoryDto> Handle(GetStoryByIdQuery request, CancellationToken ct)
     {
         var story = await _db.Set<Story>()
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(s => s.Id == request.Id && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Story not found");
 
         return new StoryDto(story.Id, story.Title, story.Premise, story.Genre, story.Tone, story.WritingStyle, story.TargetAudience, story.CreatedAt, story.UpdatedAt);

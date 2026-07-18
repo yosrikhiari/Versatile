@@ -121,7 +121,7 @@ onMounted(() => {
       <span class="font-ui text-accent tracking-wide">Story Canvas</span>
       <div class="flex gap-2">
         <button
-          class="px-3 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui"
+          class="px-3 py-1 text-xs btn-primary rounded font-ui"
           @click="showAddModal = true"
         >
           + Add Element
@@ -137,7 +137,7 @@ onMounted(() => {
           :class="[
             'px-3 py-1 text-xs rounded-full border font-ui',
             newElementType === type.value
-              ? 'border-accent bg-accent/10 text-accent'
+              ? 'border-accent bg-surface-hover text-accent'
               : 'border-border-subtle text-text-hint hover:border-text-hint'
           ]"
           :style="newElementType === type.value ? { borderColor: type.color } : {}"
@@ -165,7 +165,7 @@ onMounted(() => {
         >
           <template #item="{ element }">
             <div
-              class="px-3 py-2 bg-bg-tertiary rounded border border-border-subtle text-sm font-ui cursor-grab hover:border-accent/50"
+              class="px-3 py-2 bg-bg-tertiary rounded border border-border-subtle text-sm font-ui cursor-grab hover:border-accent"
             >
               <BaseIcon name="book-open" :size="14" class="inline mr-1" />{{
                 element.title || `Section ${element.order + 1}`
@@ -190,7 +190,7 @@ onMounted(() => {
               'p-3 rounded-lg border-2 border-l-4 cursor-pointer transition-all',
               selectedElement?.id === element.id
                 ? 'border-accent shadow-lg scale-[1.02]'
-                : 'border-border-subtle hover:border-accent/50'
+                : 'border-border-subtle hover:border-accent'
             ]"
             :style="{ borderLeftColor: getElementColor(element.type) }"
             @click="selectElement(element)"
@@ -235,7 +235,7 @@ onMounted(() => {
           v-model="newElementTitle"
           type="text"
           placeholder="Element title..."
-          class="w-full px-3 py-2 border border-border-subtle rounded-lg mb-4 bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
+          class="w-full px-3 py-2 border border-border-subtle rounded-lg mb-4 bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           @keyup.enter="addNewElement"
         />
         <div class="flex gap-2 mb-4">
@@ -245,7 +245,7 @@ onMounted(() => {
             :class="[
               'flex-1 px-2 py-1 text-xs rounded border font-ui',
               newElementType === type.value
-                ? 'border-accent bg-accent/10 text-accent'
+                ? 'border-accent bg-surface-hover text-accent'
                 : 'border-border-subtle text-text-hint'
             ]"
             @click="newElementType = type.value"
@@ -256,7 +256,7 @@ onMounted(() => {
         <div class="flex gap-2">
           <button
             :disabled="!newElementTitle.trim()"
-            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 font-ui"
+            class="flex-1 py-2 btn-primary rounded-lg disabled:opacity-50 font-ui"
             @click="addNewElement"
           >
             Add

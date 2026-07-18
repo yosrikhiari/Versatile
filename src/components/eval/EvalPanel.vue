@@ -67,9 +67,9 @@ function dimensionDegradation(dimKey) {
 function degradationBadgeClass(dim) {
   const d = dimensionDegradation(dim.key)
   if (!d) return ''
-  if (d.status === 'major_regression') return 'border-danger/40 bg-danger/10'
-  if (d.status === 'regressed') return 'border-warning/40 bg-warning/10'
-  if (d.status === 'improved') return 'border-success/40 bg-success/10'
+  if (d.status === 'major_regression') return 'border-danger bg-bg-secondary'
+  if (d.status === 'regressed') return 'border-warning bg-bg-secondary'
+  if (d.status === 'improved') return 'border-success bg-bg-secondary'
   return ''
 }
 
@@ -225,7 +225,7 @@ function gateColor(pass) {
       <div
         v-for="dim in dimensionScores"
         :key="dim.key"
-        class="bg-gray-900/30 border border-gray-800/50 rounded-lg p-2.5"
+        class="bg-bg-secondary border border-border-subtle rounded-lg p-2.5"
         :class="degradationBadgeClass(dim)"
       >
         <div class="flex items-center justify-between mb-0.5">

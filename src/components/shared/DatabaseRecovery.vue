@@ -19,12 +19,12 @@
               <div class="flex items-center gap-2">
                 <BaseIcon
                   :name="healthCheck.healthy ? 'check-circle' : 'alert-circle'"
-                  :class="healthCheck.healthy ? 'text-green-500' : 'text-red-500'"
+                  :class="healthCheck.healthy ? 'text-success' : 'text-danger'"
                   :size="20"
                 />
                 <span
                   class="text-sm"
-                  :class="healthCheck.healthy ? 'text-green-500' : 'text-red-500'"
+                  :class="healthCheck.healthy ? 'text-success' : 'text-danger'"
                 >
                   {{ healthCheck.healthy ? 'Database is healthy' : 'Database has issues' }}
                 </span>
@@ -36,7 +36,7 @@
                   class="flex justify-between"
                 >
                   <span>{{ store }}:</span>
-                  <span :class="info.status === 'ok' ? 'text-green-500' : 'text-red-500'">
+                  <span :class="info.status === 'ok' ? 'text-success' : 'text-danger'">
                     {{ info.status === 'ok' ? info.count + ' records' : 'Error' }}
                   </span>
                 </div>
@@ -62,7 +62,7 @@
         <div class="space-y-3">
           <button
             :disabled="working"
-            class="w-full py-2 px-4 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+            class="w-full py-2 px-4 btn-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
             @click="checkHealth"
           >
             <BaseIcon v-if="working" name="loader-2" :size="16" class="animate-spin mr-2" />
@@ -71,14 +71,14 @@
 
           <button
             :disabled="working"
-            class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-surface-hover/80 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+            class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
             @click="exportData"
           >
             Export All Data
           </button>
 
           <label
-            class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-surface-hover/80 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 cursor-pointer block text-center"
+            class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 cursor-pointer block text-center"
           >
             Import Backup
             <input
@@ -91,7 +91,7 @@
           </label>
 
           <button
-            class="w-full py-2 px-4 text-danger hover:bg-danger/10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-danger"
+            class="w-full py-2 px-4 text-danger hover:bg-surface-hover rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-danger"
             @click="showResetConfirm = true"
           >
             Reset Database (Destructive)
@@ -101,7 +101,7 @@
         <!-- Reset Confirmation -->
         <div
           v-if="showResetConfirm"
-          class="mt-4 p-4 bg-danger/10 rounded-lg border border-danger/20"
+          class="mt-4 p-4 bg-bg-secondary rounded-lg border border-border-subtle"
         >
           <p class="text-sm text-danger mb-3">
             <BaseIcon name="alert-circle" :size="16" class="mr-1" />
@@ -110,7 +110,7 @@
           <div class="flex gap-2">
             <button
               :disabled="working"
-              class="flex-1 py-2 px-4 bg-danger text-white rounded-lg font-medium hover:bg-danger/90 disabled:opacity-50"
+              class="flex-1 py-2 px-4 bg-danger text-white rounded-lg font-medium hover:bg-danger disabled:opacity-50"
               @click="resetDatabase"
             >
               <BaseIcon v-if="working" name="loader-2" :size="14" class="animate-spin mr-1" />
@@ -132,11 +132,11 @@
           class="mt-4 p-3 rounded-lg"
           :class="
             status.type === 'success'
-              ? 'bg-green-500/10 border border-green-500/20'
-              : 'bg-red-500/10 border border-red-500/20'
+              ? 'bg-bg-secondary border border-border-subtle'
+              : 'bg-bg-secondary border border-border-subtle'
           "
         >
-          <p class="text-sm" :class="status.type === 'success' ? 'text-green-200' : 'text-red-200'">
+          <p class="text-sm" :class="status.type === 'success' ? 'text-success' : 'text-danger'">
             {{ status.message }}
           </p>
         </div>

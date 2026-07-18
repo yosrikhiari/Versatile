@@ -100,18 +100,18 @@ defineEmits(['run-analysis'])
 .drift-status {
   padding: 1rem;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--vers-text-secondary);
 }
 .drift-status.idle {
-  border: 1px dashed var(--border-color);
+  border: 1px dashed var(--vers-border-subtle);
   border-radius: 8px;
 }
 .spinner {
   display: inline-block;
   width: 12px;
   height: 12px;
-  border: 2px solid var(--border-color);
-  border-top-color: var(--accent);
+  border: 2px solid var(--vers-border-subtle);
+  border-top-color: var(--vers-accent-primary);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   margin-right: 0.5rem;
@@ -128,19 +128,19 @@ defineEmits(['run-analysis'])
   font-weight: 500;
 }
 .alert-danger {
-  background: rgba(220, 53, 69, 0.1);
-  border: 1px solid rgba(220, 53, 69, 0.3);
-  color: #e74c5e;
+  background: rgba(208, 112, 112, 0.1);
+  border: 1px solid rgba(208, 112, 112, 0.3);
+  color: #d07070;
 }
 .alert-warning {
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.3);
-  color: #d4a017;
+  background: rgba(212, 167, 74, 0.1);
+  border: 1px solid rgba(212, 167, 74, 0.3);
+  color: #d4a74a;
 }
 .alert-success {
-  background: rgba(40, 167, 69, 0.1);
-  border: 1px solid rgba(40, 167, 69, 0.3);
-  color: #2ecc71;
+  background: rgba(106, 158, 122, 0.1);
+  border: 1px solid rgba(106, 158, 122, 0.3);
+  color: #6a9e7a;
 }
 .drift-section {
   margin-bottom: 0.75rem;
@@ -149,24 +149,24 @@ defineEmits(['run-analysis'])
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-secondary);
+  color: var(--vers-text-secondary);
   margin-bottom: 0.4rem;
 }
 .drift-item {
   padding: 0.5rem 0.75rem;
   margin-bottom: 0.4rem;
   border-radius: 6px;
-  background: var(--surface-secondary);
+  background: var(--vers-bg-panel);
   font-size: 0.85rem;
 }
 .drift-item.regression {
-  border-left: 3px solid #e74c5e;
+  border-left: 3px solid #d07070;
 }
 .drift-item.improvement {
-  border-left: 3px solid #2ecc71;
+  border-left: 3px solid #6a9e7a;
 }
 .drift-item.volatility {
-  border-left: 3px solid #d4a017;
+  border-left: 3px solid #d4a74a;
 }
 .drift-item-header {
   display: flex;
@@ -178,29 +178,29 @@ defineEmits(['run-analysis'])
   font-size: 0.7rem;
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
-  background: var(--surface-tertiary);
-  color: var(--text-secondary);
+  background: var(--vers-bg-hover);
+  color: var(--vers-text-secondary);
   text-transform: uppercase;
 }
 .dimension-badge.high {
-  background: rgba(220, 53, 69, 0.2);
-  color: #e74c5e;
+  background: rgba(208, 112, 112, 0.2);
+  color: #d07070;
 }
 .drift-item-stats {
   display: flex;
   gap: 1rem;
-  color: var(--text-secondary);
+  color: var(--vers-text-secondary);
   font-size: 0.8rem;
   margin-bottom: 0.2rem;
 }
 .drift-item-recommendation {
-  color: var(--text-secondary);
+  color: var(--vers-text-secondary);
   font-size: 0.8rem;
   margin: 0;
 }
 .drift-meta {
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: var(--text-tertiary);
+  color: var(--vers-text-muted);
 }
 </style>

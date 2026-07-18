@@ -11,9 +11,9 @@ public class ChapterService : IChapterService
 
     public ChapterService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<ChapterDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<ChapterDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
 
         return await _db.Chapters
             .Where(c => c.StoryId == storyId)
@@ -22,18 +22,18 @@ public class ChapterService : IChapterService
             .ToListAsync();
     }
 
-    public async Task<ChapterDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<ChapterDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
         var chapter = await _db.Chapters
             .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == id && c.Story!.UserId == userId);
+            .FirstOrDefaultAsync(c => c.Id == id && c.Story!.UserId == userId && (organizationId == null || c.Story!.OrganizationId == organizationId));
 
         return chapter is null ? throw new KeyNotFoundException("Chapter not found") : ToDto(chapter);
     }
 
-    public async Task<ChapterDto> CreateAsync(Guid storyId, CreateChapterRequest request, Guid userId)
+    public async Task<ChapterDto> CreateAsync(Guid storyId, CreateChapterRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
 
         var maxOrder = await _db.Chapters
             .Where(c => c.StoryId == storyId)
@@ -52,11 +52,11 @@ public class ChapterService : IChapterService
         return ToDto(chapter);
     }
 
-    public async Task<ChapterDto> UpdateAsync(Guid id, UpdateChapterRequest request, Guid userId)
+    public async Task<ChapterDto> UpdateAsync(Guid id, UpdateChapterRequest request, Guid userId, Guid? organizationId = null)
     {
         var chapter = await _db.Chapters
             .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == id && c.Story!.UserId == userId);
+            .FirstOrDefaultAsync(c => c.Id == id && c.Story!.UserId == userId && (organizationId == null || c.Story!.OrganizationId == organizationId));
 
         if (chapter is null) throw new KeyNotFoundException("Chapter not found");
 
@@ -70,11 +70,11 @@ public class ChapterService : IChapterService
         return ToDto(chapter);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
         var chapter = await _db.Chapters
             .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == id && c.Story!.UserId == userId);
+            .FirstOrDefaultAsync(c => c.Id == id && c.Story!.UserId == userId && (organizationId == null || c.Story!.OrganizationId == organizationId));
 
         if (chapter is null) throw new KeyNotFoundException("Chapter not found");
 
@@ -82,9 +82,9 @@ public class ChapterService : IChapterService
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureStoryAccess(Guid storyId, Guid userId)
+    private async Task EnsureStoryAccess(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId)))
             throw new KeyNotFoundException("Story not found");
     }
 

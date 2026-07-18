@@ -66,14 +66,14 @@ const chunkLabels = computed(() => {
 })
 
 const CHARACTER_COLORS = [
-  '#c8922a',
-  '#a78bfa',
-  '#f472b6',
-  '#34d399',
-  '#fbbf24',
-  '#60a5fa',
-  '#fb923c',
-  '#a3e635'
+  '#6e8bb5',
+  '#6a9e7a',
+  '#d4a74a',
+  '#a86b6b',
+  '#7a9aa8',
+  '#9a9a5c',
+  '#8a8f98',
+  '#c08552'
 ]
 
 function onMouseMove(e) {
@@ -90,7 +90,7 @@ function cellColor(hits, maxHits) {
   if (hits === 0) return 'rgba(255,255,255,0.03)'
   const t = hits / maxHits
   const alpha = 0.08 + t * 0.6
-  return `rgba(167, 139, 250, ${alpha})`
+  return `rgba(110, 139, 181, ${alpha})`
 }
 
 function charColor(index) {

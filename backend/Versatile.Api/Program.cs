@@ -67,6 +67,7 @@ try
     builder.Services.AddEndpointsApiExplorer();
 
     builder.Services.AddHttpClient();
+    builder.Services.AddHttpContextAccessor();
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
@@ -85,6 +86,7 @@ try
     app.UseCors();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseMiddleware<TenantResolutionMiddleware>();
 
     app.MapControllers();
 

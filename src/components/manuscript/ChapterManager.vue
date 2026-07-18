@@ -347,7 +347,7 @@ function handleSnapshotRestored(content) {
         :class="[
           'px-2 py-0.5 text-xs rounded-full font-ui shrink-0',
           tagFilter.includes(tag)
-            ? 'bg-accent text-accent-foreground'
+            ? 'btn-primary'
             : 'bg-bg-tertiary text-text-hint hover:text-text-secondary'
         ]"
         @click="toggleTagFilter(tag)"
@@ -409,7 +409,7 @@ function handleSnapshotRestored(content) {
             <button
               class="p-1 text-text-hint hover:text-text-secondary rounded"
               title="Assign sections"
-              :class="assignMode && assignVolumeId === volume.id ? 'bg-accent/10 text-accent' : ''"
+              :class="assignMode && assignVolumeId === volume.id ? 'bg-surface-hover text-accent' : ''"
               @click="toggleAssignMode(volume.id)"
             >
               <BaseIcon name="folder-plus" :size="14" />
@@ -473,7 +473,7 @@ function handleSnapshotRestored(content) {
       >
         <p class="text-text-hint font-ui text-sm mb-4">No sections match the selected tags.</p>
         <button
-          class="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui"
+          class="px-4 py-2 btn-primary rounded-lg font-ui"
           @click="tagFilter = []"
         >
           Clear Filters
@@ -484,7 +484,7 @@ function handleSnapshotRestored(content) {
           No sections yet. Start planning your document!
         </p>
         <button
-          class="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui"
+          class="px-4 py-2 btn-primary rounded-lg font-ui"
           @click="openAddSection"
         >
           Add First Section
@@ -509,7 +509,7 @@ function handleSnapshotRestored(content) {
             <div
               :class="[
                 'flex items-center gap-2.5 p-3 bg-bg-primary transition-colors',
-                assignMode ? 'hover:bg-accent/10' : 'hover:bg-surface-hover cursor-pointer',
+                assignMode ? 'hover:bg-surface-hover' : 'hover:bg-surface-hover cursor-pointer',
                 manuscriptStore.activeSectionId === section.id ? 'border-l-2 border-accent' : ''
               ]"
               @click="assignMode ? assignSectionToVolume(section.id) : selectSection(section.id)"
@@ -588,7 +588,7 @@ function handleSnapshotRestored(content) {
                 </div>
                 <!-- Row 2: destructive action, full width -->
                 <button
-                  class="w-full text-xs px-2.5 py-1 bg-bg-primary text-danger border border-border-subtle rounded-md hover:bg-danger/10 text-center"
+                  class="w-full text-xs px-2.5 py-1 bg-bg-primary text-danger border border-border-subtle rounded-md hover:bg-surface-hover text-center"
                   @click="deleteSection(section)"
                 >
                   Delete
@@ -674,7 +674,7 @@ function handleSnapshotRestored(content) {
             v-model="newSection.title"
             type="text"
             placeholder="Section title..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
         <div class="mb-3">
@@ -683,7 +683,7 @@ function handleSnapshotRestored(content) {
             v-model="newSection.summary"
             rows="3"
             placeholder="Brief summary of what happens in this section..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
         <div class="mb-4">
@@ -711,7 +711,7 @@ function handleSnapshotRestored(content) {
         </div>
         <div class="flex gap-2">
           <button
-            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
+            class="flex-1 py-2 btn-primary rounded-lg font-ui"
             @click="saveSection"
           >
             {{ editingSection ? 'Save' : 'Add' }}
@@ -737,7 +737,7 @@ function handleSnapshotRestored(content) {
             v-model="newSubsection.title"
             type="text"
             placeholder="Scene title..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
         <div class="mb-4">
@@ -746,7 +746,7 @@ function handleSnapshotRestored(content) {
             v-model="newSubsection.summary"
             rows="4"
             placeholder="Key moments, beats, or summary of this scene..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
         <div class="mb-4">
@@ -755,7 +755,7 @@ function handleSnapshotRestored(content) {
         </div>
         <div class="flex gap-2">
           <button
-            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
+            class="flex-1 py-2 btn-primary rounded-lg font-ui"
             @click="saveSubsection"
           >
             {{ editingSubsection ? 'Save' : 'Add' }}
@@ -789,7 +789,7 @@ function handleSnapshotRestored(content) {
             v-model="newVolume.title"
             type="text"
             placeholder="e.g. Volume 1: The Awakening"
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent/50"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
         <div class="mb-3">
@@ -798,7 +798,7 @@ function handleSnapshotRestored(content) {
             v-model="newVolume.description"
             rows="2"
             placeholder="What is this volume about?"
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
         <div class="mb-4">
@@ -809,7 +809,7 @@ function handleSnapshotRestored(content) {
               :key="color"
               :class="[
                 'w-6 h-6 rounded-full border-2',
-                newVolume.color === color ? 'border-white scale-110' : 'border-transparent'
+                newVolume.color === color ? 'border-text-primary scale-110' : 'border-transparent'
               ]"
               :style="{ backgroundColor: color }"
               @click="newVolume.color = color"
@@ -818,7 +818,7 @@ function handleSnapshotRestored(content) {
         </div>
         <div class="flex gap-2">
           <button
-            class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 font-ui"
+            class="flex-1 py-2 btn-primary rounded-lg font-ui"
             @click="saveVolume"
           >
             {{ editingVolume ? 'Save' : 'Add' }}

@@ -14,7 +14,7 @@ public class GetSectionsHandler : IRequestHandler<GetSectionsQuery, List<Section
 
     public async Task<List<SectionDto>> Handle(GetSectionsQuery request, CancellationToken ct)
     {
-        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId, ct))
+        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct))
             throw new KeyNotFoundException("Story not found");
 
         return await _db.Set<Entity>()
@@ -34,7 +34,7 @@ public class GetSectionByIdHandler : IRequestHandler<GetSectionByIdQuery, Sectio
     {
         var section = await _db.Set<Entity>()
             .Include(s => s.Story)
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId && s.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Section not found");
         return new SectionDto(section.Id, section.StoryId, section.VolumeId, section.Title, section.Summary, section.Content, section.Order, section.Status, section.Tags, section.CreatedAt, section.UpdatedAt);
     }

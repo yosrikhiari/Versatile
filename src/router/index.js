@@ -14,6 +14,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/org/manage',
+    name: 'org-manage',
+    component: () => import('../views/ManageOrganizationView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/editor/:projectId',
     name: 'editor',
     component: () => import('../views/EditorView.vue'),

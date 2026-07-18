@@ -15,7 +15,7 @@ public class DeleteSubsectionHandler : IRequestHandler<DeleteSubsectionCommand, 
     {
         var subsection = await _db.Set<Entity>()
             .Include(s => s.Story)
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId && (request.OrganizationId == null || s.Story!.OrganizationId == request.OrganizationId), ct)
             ?? throw new KeyNotFoundException("Subsection not found");
         _db.Set<Entity>().Remove(subsection);
         await _db.SaveChangesAsync(ct);

@@ -247,12 +247,7 @@ function selectAllNew() {
               </button>
               <button
                 :disabled="totalNew === 0"
-                class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-                :class="
-                  totalNew > 0
-                    ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-                    : 'bg-bg-tertiary text-text-hint cursor-not-allowed'
-                "
+                class="btn-primary px-4 py-2 text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handleCreate"
               >
                 Create {{ totalNew > 0 ? `${totalNew} New` : '' }}

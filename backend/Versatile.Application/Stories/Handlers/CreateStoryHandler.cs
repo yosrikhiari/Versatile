@@ -27,7 +27,8 @@ public class CreateStoryHandler : IRequestHandler<CreateStoryCommand, StoryDto>
             Tone = request.Tone,
             WritingStyle = request.WritingStyle,
             TargetAudience = request.TargetAudience,
-            UserId = request.UserId
+            UserId = request.UserId,
+            OrganizationId = request.OrganizationId
         };
 
         await _repo.AddAsync(story, ct);

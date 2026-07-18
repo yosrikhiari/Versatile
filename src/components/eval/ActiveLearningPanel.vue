@@ -83,18 +83,18 @@ defineEmits(['run-analysis'])
 .al-status {
   padding: 1rem;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--vers-text-secondary);
 }
 .al-status.idle {
-  border: 1px dashed var(--border-color);
+  border: 1px dashed var(--vers-border-subtle);
   border-radius: 8px;
 }
 .spinner {
   display: inline-block;
   width: 12px;
   height: 12px;
-  border: 2px solid var(--border-color);
-  border-top-color: var(--accent);
+  border: 2px solid var(--vers-border-subtle);
+  border-top-color: var(--vers-accent-primary);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   margin-right: 0.5rem;
@@ -111,9 +111,9 @@ defineEmits(['run-analysis'])
   font-weight: 500;
 }
 .alert-success {
-  background: rgba(40, 167, 69, 0.1);
-  border: 1px solid rgba(40, 167, 69, 0.3);
-  color: #2ecc71;
+  background: rgba(106, 158, 122, 0.1);
+  border: 1px solid rgba(106, 158, 122, 0.3);
+  color: #6a9e7a;
 }
 .al-section {
   margin-bottom: 1rem;
@@ -122,23 +122,23 @@ defineEmits(['run-analysis'])
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-secondary);
+  color: var(--vers-text-secondary);
   margin-bottom: 0.2rem;
 }
 .al-section-desc {
   font-size: 0.8rem;
-  color: var(--text-tertiary);
+  color: var(--vers-text-muted);
   margin-bottom: 0.5rem;
 }
 .al-recommendation {
   padding: 0.6rem 0.75rem;
   margin-bottom: 0.5rem;
   border-radius: 6px;
-  background: var(--surface-secondary);
-  border-left: 3px solid var(--accent);
+  background: var(--vers-bg-panel);
+  border-left: 3px solid var(--vers-accent-primary);
 }
 .al-recommendation.nodata {
-  border-left-color: var(--text-tertiary);
+  border-left-color: var(--vers-text-muted);
   opacity: 0.8;
 }
 .al-rec-header {
@@ -149,11 +149,11 @@ defineEmits(['run-analysis'])
 }
 .al-rec-score {
   font-size: 0.8rem;
-  color: var(--text-secondary);
+  color: var(--vers-text-secondary);
 }
 .al-rec-guidance {
   font-size: 0.85rem;
-  color: var(--text-primary);
+  color: var(--vers-text-primary);
   margin-bottom: 0.3rem;
 }
 .al-rec-keywords {
@@ -166,8 +166,8 @@ defineEmits(['run-analysis'])
   font-size: 0.7rem;
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
-  background: var(--surface-tertiary);
-  color: var(--text-secondary);
+  background: var(--vers-bg-hover);
+  color: var(--vers-text-secondary);
 }
 .al-rec-snippet {
   margin-top: 0.3rem;
@@ -176,15 +176,15 @@ defineEmits(['run-analysis'])
   display: block;
   font-size: 0.78rem;
   padding: 0.4rem 0.5rem;
-  background: var(--surface-primary);
+  background: var(--vers-bg-base);
   border-radius: 4px;
-  color: var(--text-secondary);
+  color: var(--vers-text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
 }
 .al-meta {
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: var(--text-tertiary);
+  color: var(--vers-text-muted);
 }
 </style>

@@ -23,4 +23,6 @@ public class User : BaseEntity
     public string? ApiKeysNonce { get; set; }
 
     public string? Preferences { get; set; }
+
+    public ICollection<OrganizationMembership> OrganizationMemberships { get; set; } = new List<OrganizationMembership>();
 }

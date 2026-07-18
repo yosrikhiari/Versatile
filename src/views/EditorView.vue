@@ -277,7 +277,7 @@ function handleOnboardingSkipWrapper() {
   <div class="h-[100dvh] bg-manuscript relative">
     <div
       v-if="!ollamaAvailable"
-      class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200"
+      class="bg-bg-secondary border-b border-border-subtle px-4 py-2 text-sm text-warning"
     >
       Ollama is not reachable at localhost:11434. AI features are disabled. Start your Ollama
       container to enable them.
@@ -306,11 +306,11 @@ function handleOnboardingSkipWrapper() {
     </div>
     <div
       v-else-if="showModelBanner && modelNotFound"
-      class="bg-amber-950/50 border-b border-amber-800/30 px-4 py-2 text-sm text-amber-200 flex items-center justify-between"
+      class="bg-bg-secondary border-b border-border-subtle px-4 py-2 text-sm text-warning flex items-center justify-between"
     >
       <span>AI model not found. Responses may fail — check your Ollama setup in Settings.</span>
       <button
-        class="text-amber-200 hover:text-white p-2 -m-2 transition-colors"
+        class="text-warning hover:text-text-primary p-2 -m-2 transition-colors"
         aria-label="Dismiss"
         @click="showModelBanner = false"
       >
@@ -452,9 +452,9 @@ function handleOnboardingSkipWrapper() {
     <Transition name="spring-scale">
       <div
         v-if="timer.showSessionEndModal.value"
-        class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+        class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
       >
-        <div class="liquid-glass rounded-lg shadow-warm-lg p-8 max-w-md text-center">
+        <div class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-8 max-w-md text-center">
           <BaseIcon name="waves" :size="48" class="mb-4 mx-auto text-accent" />
           <h2 class="text-xl font-semibold text-text-primary mb-2">Session complete</h2>
           <p class="text-text-secondary mb-6">
@@ -462,7 +462,7 @@ function handleOnboardingSkipWrapper() {
           </p>
           <div class="flex gap-3">
             <button
-              class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
+              class="flex-1 py-2 btn-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               @click="timer.startNewSession(20)"
             >
               Start new session
@@ -481,10 +481,10 @@ function handleOnboardingSkipWrapper() {
     <Transition name="spring-scale">
       <div
         v-if="showImportModal"
-        class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+        class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
         @click.self="showImportModal = false"
       >
-        <div class="liquid-glass rounded-lg shadow-warm-lg p-8 max-w-md text-center relative">
+        <div class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-8 max-w-md text-center relative">
           <button
             class="absolute top-3 right-3 text-text-secondary hover:text-text-primary transition-colors"
             @click="showImportModal = false"
@@ -499,10 +499,10 @@ function handleOnboardingSkipWrapper() {
     <Transition name="spring-scale">
       <div
         v-if="showShortcutsModal"
-        class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
         @click.self="showShortcutsModal = false"
       >
-        <div class="liquid-glass rounded-lg shadow-warm-lg p-6 max-w-lg w-full">
+        <div class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-6 max-w-lg w-full">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-text-primary">Keyboard Shortcuts</h2>
             <button

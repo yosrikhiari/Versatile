@@ -13,8 +13,19 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const error = ref(null)
   const localUser = ref(null)
+  const organizations = ref([])
+  const activeOrganization = ref(null)
 
   const isAuthenticated = computed(() => !!token.value || hasToken() || !!localUser.value)
+
+  function parseOrgs(payload) {
+    if (!payload.orgs) return []
+    try {
+      return typeof payload.orgs === 'string' ? JSON.parse(payload.orgs) : payload.orgs
+    } catch {
+      return []
+    }
+  }
 
   async function hydrate() {
     const stored = localStorage.getItem(LOCAL_USER_KEY)
@@ -35,6 +46,9 @@ export const useAuthStore = defineStore('auth', () => {
           email: payload.email,
           displayName: payload.displayName
         }
+        organizations.value = parseOrgs(payload)
+        const currentOrgId = payload.org_id
+        activeOrganization.value = organizations.value.find(o => o.id === currentOrgId) || organizations.value[0] || null
         const se = getSyncEngine()
         await se.init()
         se.syncNow().catch(() => {})
@@ -45,6 +59,8 @@ export const useAuthStore = defineStore('auth', () => {
   setOnLogout(() => {
     user.value = null
     token.value = null
+    organizations.value = []
+    activeOrganization.value = null
   })
 
   hydrate()
@@ -61,6 +77,9 @@ export const useAuthStore = defineStore('auth', () => {
       setAuth(result.token, result.refreshToken)
       token.value = result.token
       user.value = result.user
+      organizations.value = result.organizations || []
+      const payload = parseJwt(result.token)
+      activeOrganization.value = organizations.value.find(o => o.id === payload?.org_id) || organizations.value[0] || null
       const se = getSyncEngine()
       await se.init()
       se.syncNow().catch(() => {})
@@ -85,9 +104,34 @@ export const useAuthStore = defineStore('auth', () => {
       setAuth(result.token, result.refreshToken)
       token.value = result.token
       user.value = result.user
+      organizations.value = result.organizations || []
+      const payload = parseJwt(result.token)
+      activeOrganization.value = organizations.value.find(o => o.id === payload?.org_id) || organizations.value[0] || null
       const se = getSyncEngine()
       await se.init()
       se.syncNow().catch(() => {})
+      return result
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function switchOrg(orgId) {
+    loading.value = true
+    error.value = null
+    try {
+      const result = await api('/auth/switch-org', {
+        method: 'POST',
+        body: { organizationId: orgId }
+      })
+      setAuth(result.token, result.refreshToken)
+      token.value = result.token
+      organizations.value = result.organizations || []
+      const payload = parseJwt(result.token)
+      activeOrganization.value = organizations.value.find(o => o.id === payload?.org_id) || null
       return result
     } catch (err) {
       error.value = err.message
@@ -164,6 +208,8 @@ export const useAuthStore = defineStore('auth', () => {
     destroySyncEngine()
     user.value = null
     token.value = null
+    organizations.value = []
+    activeOrganization.value = null
   }
 
   return {
@@ -172,11 +218,14 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     error,
     localUser,
+    organizations,
+    activeOrganization,
     isAuthenticated,
     login,
     register,
     localLogin,
     localRegister,
+    switchOrg,
     logout,
     hydrate
   }

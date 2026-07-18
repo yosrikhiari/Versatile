@@ -15,7 +15,7 @@ public class DeleteChapterHandler : IRequestHandler<DeleteChapterCommand, Unit>
     {
         var chapter = await _db.Set<Chapter>()
             .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == request.Id && c.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(c => c.Id == request.Id && c.Story!.UserId == request.UserId && c.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Chapter not found");
 
         _db.Set<Chapter>().Remove(chapter);

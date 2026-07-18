@@ -16,7 +16,7 @@ public class CreateSceneHandler : IRequestHandler<CreateSceneCommand, SceneDto>
     {
         var chapter = await _db.Set<Chapter>()
             .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == request.ChapterId && c.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(c => c.Id == request.ChapterId && c.Story!.UserId == request.UserId && c.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Chapter not found");
 
         var maxOrder = await _db.Set<Scene>()

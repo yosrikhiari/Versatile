@@ -3,11 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class Flow
+public class Flow : UserOwnedEntity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
     [Required]
     public Guid StoryId { get; set; }
 
@@ -21,6 +18,4 @@ public class Flow
     public string Edges { get; set; } = "[]";
 
     public string? Viewport { get; set; }
-
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

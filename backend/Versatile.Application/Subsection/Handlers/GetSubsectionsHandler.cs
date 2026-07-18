@@ -14,7 +14,7 @@ public class GetSubsectionsHandler : IRequestHandler<GetSubsectionsQuery, List<S
 
     public async Task<List<SubsectionDto>> Handle(GetSubsectionsQuery request, CancellationToken ct)
     {
-        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId, ct))
+        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId && (request.OrganizationId == null || s.OrganizationId == request.OrganizationId), ct))
             throw new KeyNotFoundException("Story not found");
 
         return await _db.Set<Entity>()
@@ -34,7 +34,7 @@ public class GetSubsectionByIdHandler : IRequestHandler<GetSubsectionByIdQuery, 
     {
         var subsection = await _db.Set<Entity>()
             .Include(s => s.Story)
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId && (request.OrganizationId == null || s.Story!.OrganizationId == request.OrganizationId), ct)
             ?? throw new KeyNotFoundException("Subsection not found");
         return new SubsectionDto(subsection.Id, subsection.StoryId, subsection.SectionId, subsection.Title, subsection.Summary, subsection.Content, subsection.Order, subsection.Tags, subsection.CreatedAt, subsection.UpdatedAt);
     }

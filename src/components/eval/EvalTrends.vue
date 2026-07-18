@@ -19,7 +19,7 @@
           </option>
         </select>
         <button
-          class="text-2xs text-accent font-ui hover:text-accent/80 transition-colors"
+          class="text-2xs text-accent font-ui hover:text-accent-hover transition-colors"
           @click="$emit('close')"
         >
           Close
@@ -98,16 +98,16 @@ import { getEvalResultsByProject } from '../../services/db-evals'
 
 Chart.register(...registerables)
 
-const LINE_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4']
+const LINE_COLORS = ['#6e8bb5', '#6a9e7a', '#d4a74a', '#a86b6b', '#7a9aa8', '#9a9a5c']
 const DIM_COLORS = {
-  continuity: '#6366f1',
-  voice: '#22c55e',
-  emotional_goal: '#f59e0b',
-  show_tell: '#ef4444',
-  pacing: '#a855f7',
-  clarity: '#06b6d4',
-  ambiguity: '#f97316',
-  liability: '#14b8a6'
+  continuity: '#6e8bb5',
+  voice: '#6a9e7a',
+  emotional_goal: '#d4a74a',
+  show_tell: '#a86b6b',
+  pacing: '#7a9aa8',
+  clarity: '#9a9a5c',
+  ambiguity: '#8a8f98',
+  liability: '#c08552'
 }
 
 export default {
@@ -186,7 +186,7 @@ export default {
               borderWidth: 2,
               pointRadius: 3,
               pointBackgroundColor: overallScores.value.map((s) =>
-                s >= 7 ? '#22c55e' : s >= 5 ? '#f59e0b' : '#ef4444'
+                s >= 7 ? '#6a9e7a' : s >= 5 ? '#d4a74a' : '#d07070'
               ),
               fill: true,
               tension: 0.3
@@ -210,7 +210,7 @@ export default {
             borderWidth: 2,
             pointRadius: 3,
             pointBackgroundColor: dimScores.map((s) =>
-              s >= 7 ? '#22c55e' : s >= 5 ? '#f59e0b' : '#ef4444'
+              s >= 7 ? '#6a9e7a' : s >= 5 ? '#d4a74a' : '#d07070'
             ),
             fill: true,
             tension: 0.3
@@ -231,14 +231,14 @@ export default {
           max: 10,
           ticks: {
             stepSize: 2,
-            color: '#6b7280',
+            color: '#6e6e67',
             font: { size: 10 }
           },
-          grid: { color: '#374151' }
+          grid: { color: 'rgba(255,255,255,0.07)' }
         },
         x: {
           ticks: {
-            color: '#6b7280',
+            color: '#6e6e67',
             font: { size: 10 },
             maxRotation: 45
           },
@@ -254,8 +254,8 @@ export default {
       const firstHalf = scores.slice(0, half).reduce((a, b) => a + b, 0) / half
       const secondHalf = scores.slice(-half).reduce((a, b) => a + b, 0) / half
       const diff = secondHalf - firstHalf
-      if (diff > 0.5) return { label: `Improving (+${diff.toFixed(1)})`, icon: 'trending-up', color: 'text-emerald-400' }
-      if (diff < -0.5) return { label: `Declining (${diff.toFixed(1)})`, icon: 'trending-down', color: 'text-red-400' }
+      if (diff > 0.5) return { label: `Improving (+${diff.toFixed(1)})`, icon: 'trending-up', color: 'text-success' }
+      if (diff < -0.5) return { label: `Declining (${diff.toFixed(1)})`, icon: 'trending-down', color: 'text-danger' }
       return { label: `Stable (${diff.toFixed(1)})`, icon: 'minus', color: 'text-text-hint' }
     })
 

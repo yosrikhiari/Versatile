@@ -28,15 +28,16 @@ public class GenerationHub : Hub
     }
 
     private Guid UserId => Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    private string OrgGroupPrefix => $"{Context.User!.FindFirstValue("org_id")}_";
 
     public async Task JoinStoryGroup(string storyId)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"story_{storyId}");
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"{OrgGroupPrefix}story_{storyId}");
     }
 
     public async Task LeaveStoryGroup(string storyId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"story_{storyId}");
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"{OrgGroupPrefix}story_{storyId}");
     }
 
     public async Task GenerateContinuation(GenerateContinuationRequest request)
@@ -61,12 +62,12 @@ public class GenerationHub : Hub
                 "AI Continuation", content, wordCount, null
             ), UserId);
 
-            await Clients.Group($"story_{storyId}").SendAsync("GenerationComplete", storyId.ToString(), content);
+            await Clients.Group($"{OrgGroupPrefix}story_{storyId}").SendAsync("GenerationComplete", storyId.ToString(), content);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "AI continuation failed for story {StoryId}", storyId);
-            await Clients.Group($"story_{storyId}").SendAsync("GenerationError", storyId.ToString(), ex.Message);
+            await Clients.Group($"{OrgGroupPrefix}story_{storyId}").SendAsync("GenerationError", storyId.ToString(), ex.Message);
         }
     }
 
@@ -92,7 +93,7 @@ public class GenerationHub : Hub
         catch (Exception ex)
         {
             _logger.LogError(ex, "AI suggestion failed for story {StoryId}", storyId);
-            await Clients.Group($"story_{storyId}").SendAsync("GenerationError", storyId.ToString(), ex.Message);
+            await Clients.Group($"{OrgGroupPrefix}story_{storyId}").SendAsync("GenerationError", storyId.ToString(), ex.Message);
         }
     }
 
@@ -118,12 +119,12 @@ public class GenerationHub : Hub
                 $"Character: {request.Name}", content, wordCount, null
             ), UserId);
 
-            await Clients.Group($"story_{storyId}").SendAsync("GenerationComplete", storyId.ToString(), content);
+            await Clients.Group($"{OrgGroupPrefix}story_{storyId}").SendAsync("GenerationComplete", storyId.ToString(), content);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "AI character profile failed for story {StoryId}", storyId);
-            await Clients.Group($"story_{storyId}").SendAsync("GenerationError", storyId.ToString(), ex.Message);
+            await Clients.Group($"{OrgGroupPrefix}story_{storyId}").SendAsync("GenerationError", storyId.ToString(), ex.Message);
         }
     }
 

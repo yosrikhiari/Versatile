@@ -21,7 +21,7 @@ function dismiss() {
         Your words are waiting. Don't edit — just write. You can fix it later.
       </p>
       <button
-        class="px-6 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
+        class="px-6 py-2 btn-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
         @click="dismiss"
       >
         Got it

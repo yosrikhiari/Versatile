@@ -3,11 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class ResearchDocument
+public class ResearchDocument : UserOwnedEntity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
     [Required]
     public Guid StoryId { get; set; }
 
@@ -25,6 +22,4 @@ public class ResearchDocument
     public string? Content { get; set; }
 
     public string? Notes { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

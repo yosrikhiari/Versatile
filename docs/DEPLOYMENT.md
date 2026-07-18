@@ -1,4 +1,3 @@
-<!-- GSD: auto-generated -->
 
 # Deployment
 

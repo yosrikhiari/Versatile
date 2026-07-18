@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class Research : BaseEntity
+public class Research : UserOwnedEntity
 {
     [Required]
     public Guid StoryId { get; set; }

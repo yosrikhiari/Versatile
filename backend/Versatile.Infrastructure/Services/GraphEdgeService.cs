@@ -8,21 +8,21 @@ public class GraphEdgeService : IGraphEdgeService
     private readonly ApplicationDbContext _db;
     public GraphEdgeService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<GraphEdgeDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<GraphEdgeDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         return await _db.GraphEdges.Where(e => e.StoryId == storyId).Select(e => ToDto(e)).ToListAsync();
     }
 
-    public async Task<GraphEdgeDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<GraphEdgeDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.GraphEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.GraphEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         return entity is null ? throw new KeyNotFoundException("GraphEdge not found") : ToDto(entity);
     }
 
-    public async Task<GraphEdgeDto> CreateAsync(Guid storyId, CreateGraphEdgeRequest request, Guid userId)
+    public async Task<GraphEdgeDto> CreateAsync(Guid storyId, CreateGraphEdgeRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         var entity = new GraphEdge
         {
             StoryId = storyId,
@@ -39,9 +39,9 @@ public class GraphEdgeService : IGraphEdgeService
         return ToDto(entity);
     }
 
-    public async Task<GraphEdgeDto> UpdateAsync(Guid id, UpdateGraphEdgeRequest request, Guid userId)
+    public async Task<GraphEdgeDto> UpdateAsync(Guid id, UpdateGraphEdgeRequest request, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.GraphEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.GraphEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         if (entity is null) throw new KeyNotFoundException("GraphEdge not found");
         if (request.SourceId is not null) entity.SourceId = request.SourceId;
         if (request.TargetId is not null) entity.TargetId = request.TargetId;
@@ -54,17 +54,17 @@ public class GraphEdgeService : IGraphEdgeService
         return ToDto(entity);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.GraphEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.GraphEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         if (entity is null) throw new KeyNotFoundException("GraphEdge not found");
         _db.GraphEdges.Remove(entity);
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureStoryAccess(Guid storyId, Guid userId)
+    private async Task EnsureStoryAccess(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (!organizationId.HasValue || s.OrganizationId == organizationId.Value)))
             throw new KeyNotFoundException("Story not found");
     }
 

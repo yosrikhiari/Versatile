@@ -256,7 +256,7 @@ function switchTab(tab) {
                 :class="[
                   'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent',
                   sparkStore.selectedPromptType === type.value
-                    ? 'bg-accent text-accent-foreground'
+                    ? 'bg-accent text-bg-primary'
                     : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
                 ]"
                 @click="sparkStore.selectedPromptType = type.value"
@@ -283,7 +283,7 @@ function switchTab(tab) {
 
           <button
             :disabled="sparkStore.isGenerating"
-            class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="generatePrompt"
             @keydown.enter="generatePrompt"
           >
@@ -361,7 +361,7 @@ function switchTab(tab) {
           <button
             v-if="!sparkStore.currentBlueprint && !sparkStore.isGenerating"
             :disabled="!idea"
-            class="w-full flex items-center justify-center gap-2 py-2.5 bg-accent text-accent-foreground rounded-lg font-medium text-sm font-ui hover:bg-accent-hover active:scale-[0.99] transition-[background-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full flex items-center justify-center gap-2 py-2.5 bg-accent text-bg-primary rounded-lg font-medium text-sm font-ui hover:bg-accent-hover active:scale-[0.99] transition-[background-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent"
             @click="generateOutline"
           >
             <BaseIcon name="wand-2" :size="16" /> Draft blueprint
@@ -401,7 +401,7 @@ function switchTab(tab) {
                 Expand to draft
               </button>
               <button
-                class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium font-ui hover:bg-accent-hover transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
+                class="flex-1 py-2 bg-accent text-bg-primary rounded-lg text-sm font-medium font-ui hover:bg-accent-hover transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
                 @click="emit('useAsContext')"
               >
                 Use as context
@@ -415,7 +415,7 @@ function switchTab(tab) {
             class="space-y-6 pt-6 border-t border-border-subtle"
           >
             <div
-              class="rounded-md p-4 bg-bg-tertiary/50 border border-border-subtle text-sm text-text-primary whitespace-pre-wrap leading-relaxed relative"
+              class="rounded-md p-4 bg-bg-tertiary border border-border-subtle text-sm text-text-primary whitespace-pre-wrap leading-relaxed relative"
             >
               <div
                 v-if="sparkStore.isGenerating"
@@ -434,7 +434,7 @@ function switchTab(tab) {
                 Insert to editor
               </button>
               <button
-                class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium font-ui hover:bg-accent-hover transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
+                class="flex-1 py-2 bg-accent text-bg-primary rounded-lg text-sm font-medium font-ui hover:bg-accent-hover transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
                 @click="emit('useAsContext')"
               >
                 Use as context
@@ -551,7 +551,7 @@ function switchTab(tab) {
           <div class="flex gap-2">
             <button
               :disabled="!openaiKeyInput.trim()"
-              class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 font-ui"
+              class="flex-1 py-2 btn-primary rounded-lg disabled:opacity-50 font-ui"
               @click="saveOpenAIKeyLocal"
             >
               Save Key

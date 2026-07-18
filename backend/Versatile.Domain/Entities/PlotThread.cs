@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class PlotThread : BaseEntity
+public class PlotThread : UserOwnedEntity
 {
     [Required]
     public Guid StoryId { get; set; }

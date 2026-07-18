@@ -1,7 +1,7 @@
 # Versatile — Anchored Summary
 
 ## Goal
-Build an AI-powered fiction writing assistant (single-page app) with offline-first architecture, rich manuscript editing, story bible management, AI-assisted generation (via Ollama), TTS narration, and evaluation/quality gates. Vue 3 + Vite + Pinia + Dexie.js IndexedDB.
+Build an AI-powered fiction writing assistant (single-page app) with offline-first architecture, rich manuscript editing, story bible management, AI-assisted generation (via Ollama), TTS narration, and evaluation/quality gates. Vue 3 + Vite + Pinia + Dexie.js IndexedDB. Backend is ASP.NET Core 8 Clean Architecture with MediatR CQRS, EF Core + PostgreSQL, and Azure OpenAI integration for cloud generation.
 
 ## Constraints & Preferences
 - No backend dependency for core functionality — IndexedDB primary, remote API optional
@@ -9,6 +9,7 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 - Ollama for local AI inference (text generation, brainstorming, evaluation)
 - Vite-only build (no meta-framework)
 - TipTap-based rich text editor
+- Backend follows Clean Architecture (Jason Taylor template) with vertical slice controllers
 
 ## Progress
 
@@ -33,6 +34,12 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 - **DB schema versioning**: Migration support in Dexie schema
 - **Cleanup**: Removed dead `debugSnapshot` service (~350 lines, 100+ calls across 11 files, all to nonexistent endpoint) — 2026-06-19
 - **UX improvements**: ErrorBoundary component, EmptyState component available
+- **Backend controllers**: Chapter, Scene, Section, Subsection, Volume controllers — all follow same MediatR `Send()` pattern with `IActionResult` returns
+- **Backend middleware**: `ExceptionMiddleware` (classic `RequestDelegate`) handling structured `ErrorDetails` responses, `Serilog` request logging, and `CorrelationIdMiddleware`
+- **Global error handler**: `Program.cs` uses `AddExceptionHandler<GlobalExceptionHandler>()` (minimal API pattern) — note: this coexists with `ExceptionMiddleware`, creating dual middleware paths for errors
+- **Backend auth**: JWT bearer token configured in `Program.cs`, endpoint-level with `[Authorize]` attribute; `AccountController` handles login/register/refresh
+- **Backend DI**: Convention-based scanning via `HandlersRegistration`, `ValidatorsRegistration`, `DbContextRegistration` extension methods; plus manual `IOrganizationContext` singleton in `Program.cs`
+- **Cross-org data isolation enforcement**: Analyzed 41 backend controller files, identified 34+ data controllers sharing `ApiControllerBase`. Built `RequireOrganizationAttribute` (IAuthorizationFilter — returns 403 when `IOrganizationContext.OrganizationId` is null, respects `[AllowAnonymous]` and `[AllowOrganizationOptional]`) and `AllowOrganizationOptionalAttribute` (marker attribute for opt-out). Applied `[RequireOrganization]` at class level on `ApiControllerBase` (covers all data controllers), `[AllowOrganizationOptional]` on `OrganizationController`. Build passes (0 errors, 0 warnings), all 28 tests pass
 
 ### In Progress (uncommitted working set)
 - **Delegator Refactoring**: Modular Delegator pattern replacing monolithic `useVolumeStoryGenerator.js` (1599 lines). Centralized shared state (`AgentMemory` with 27 reactive refs + 14 instance slots), event-driven state machine (`Delegator` with routing table + 11 state transitions), narrow agent tool APIs (8 factories), and Vue integration composable (`useDelegatorGeneration`).
@@ -46,12 +53,35 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
   - **Pending**: Construct and wire `SceneInteractionService` (not yet instantiated anywhere)
   - **Pending**: Verify old composable files (`useStorySettings.js`, `useStoryWriter.js`, etc.) for deletion
 
+### Identified Backend Issues
+
+#### Cross-Org Data Isolation
+- **Org context not populated during auth**: `IOrganizationContext.OrganizationId` defaults to null — no middleware sets it from the JWT or request context. AuthController correctly has no org context. Previously, all data controllers operating without it silently returned cross-org data. **Mitigated** by `[RequireOrganization]` on `ApiControllerBase`, but the root cause (no middleware to set `OrganizationId`) persists.
+- **TenantValidationBehavior query bug**: The MediatR pipeline behavior (`ITenantValidation`/`TenantValidationBehavior`) meant to enforce org context queries `OrganizationMemberships` with the wrong FK — compares to `UserId.OrganizationId` instead of the membership table. Effectively a no-op that never blocks any request.
+- **Global query filter null pass-through**: `ApplyTenantFilter` in `OrganizationContext` silently ignores the filter when `OrganizationId` is null, exposing all rows instead of returning an empty set. **Mitigated** by `[RequireOrganization]` at API level, but still a defense-in-depth gap if bypassed.
+- **IOrganizationContext is misnamed**: The interface exposes only `OrganizationId?` and `UserId` — it's a session/user context, not a full organization context. Confusing for new developers.
+
+#### Architecture & Pattern
+- **RegisterCommand handler doesn't exist**: `RegisterCommand` and `RegisterCommandValidator` exist but no handler class registers with MediatR — the `/api/account/register` endpoint would return a 500 error.
+- **Dual error handling**: `ExceptionMiddleware` (custom `RequestDelegate`) and `AddExceptionHandler<GlobalExceptionHandler>()` (minimal API pattern) both active — one or both may be handling the same errors, creating confusion.
+- **DI registration split**: Convention scanning registers MediatR handlers, FluentValidation validators, and DbContext automatically; but `IOrganizationContext` is registered manually. If convention scanning also catches `OrganizationContext`, it would register twice — `AddScoped` is idempotent for same type, but a second `IOrganizationContext` binding could shadow the first.
+- **Auth inconsistency**: `ChapterController` uses `IMediator.Send()` for everything; `SceneController` calls `IMediator.Send()` for commands but accesses `IOrganizationContext` directly for DB lookups before commands — breaks the pattern where the controller should be a pure MediatR dispatcher.
+- **No repository abstraction**: All controllers use `IOrganizationContext` (DbContext) directly — no `IRepository<T>` layer. This means unit testing requires an in-memory database rather than a mock.
+
+#### Documentation & Metadata
+- **Missing XML docs/OpenAPI metadata**: Controllers have no `[ProducesResponseType]` attributes or XML comments — Swagger/Scalar output will lack status code documentation.
+- **Route design**: Chapters use `api/story/{storyId}/chapter/{id?}`, Scenes use `api/story/{storyId}/scene/{id?}` — consistent for Chapter/Scene but Sections use `api/story/{storyId}/section`, Subsections use `api/story/{storyId}/subsection`, Volumes use `api/story/{storyId}/volume` — the hierarchy is RESTful and follows the entity tree but inconsistent about pluralization style.
+
 ### Blocked / Known Issues
 - `FocusMode` component registered as keyboard shortcut but file was never created (dead shortcut)
 - Two `AuthModal.vue` files exist (`src/components/shared/` and `src/components/layout/`) — likely duplicate
 - Sync engine init only wired to remote login/register paths, not local auth — offline users get no sync
 - `PolishDrawer.vue` lives at `src/components/layout/` but import path should be verified
 - `EmptyState` imported in SceneOutline but may not render on empty datasets
+- `RegisterCommand` has no MediatR handler — `POST /api/account/register` returns 500
+- `TenantValidationBehavior` has wrong FK in org membership query — never blocks cross-org access at pipeline level (mitigated by `[RequireOrganization]`)
+- `OrganizationContext.ApplyTenantFilter` silently passes through null org IDs — exposes all rows instead of empty set when bypassed (mitigated by `[RequireOrganization]`)
+- No middleware sets `IOrganizationContext.OrganizationId` from JWT — it always defaults to null; `[RequireOrganization]` blocks access rather than scoping it
 
 ## Key Decisions
 1. **Offline-first**: Dexie IndexedDB as primary store; remote API optional. All core functionality works without network.
@@ -60,6 +90,10 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 4. **Dialogue indexing**: Server-side parsing (browser DOMParser), not regex-on-raw-HTML. 7 quote pair types + em-dash support. Confidence-scored speaker identification with human review flag.
 5. **Structured AI output**: Prompt builder enforces JSON-only responses with escaped dialogue quotes. Used for scene generation with entity tracking.
 6. **Voice profiles as data**: Not templates — each profile includes sensory priorities, forbidden patterns, sentence rhythm, dialogue style. Seeded from config, consumed by prompt builder.
+7. **Backend Clean Architecture**: Jason Taylor template with Application (MediatR), Domain, Infrastructure, Api layers — separates concerns for future multi-tenancy
+8. **Convention-based DI**: Reflection scanning for MediatR handlers, validators, DbContext — keeps registrations auto-synced but can shadow manual registrations
+9. **DbContext as repository**: `IOrganizationContext` / `OrganizationContext` used directly in controllers and handlers — no repository abstraction; lightweight for current scale but harder to unit-test
+10. **Attribute-based org enforcement**: `[RequireOrganization]` as `IAuthorizationFilter` on `ApiControllerBase` — catches all 34+ data controllers without modifying individual handlers. `[AllowOrganizationOptional]` for opt-out (e.g. `OrganizationController`'s self-authorizing methods). API-gate approach chosen over pipeline behavior fix because `TenantValidationBehavior` had deeper bugs and MediatR pipeline behaviors can't return 403 cleanly.
 
 ## Next Steps
 1. **Complete Delegator integration**: Wire Delegator/AgentMemory/useDelegatorGeneration into `useVolumeStoryGenerator.js` replacing inline phase logic with `dispatch()` calls
@@ -69,16 +103,26 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 5. **Integrate Prompt Builder**: Connect `usePromptBuilder` + `sceneContextService` into the generation pipeline for context-aware scene writing
 6. **UX Gap fixes**: Empty states across 10+ panels, route/page transitions, mobile responsiveness (hamburger, touch targets, safe-area), skeleton loaders, toast type visual differentiation
 7. **Auth consolidation**: Unify local/remote auth paths, differentiate in UI, wire sync engine for local auth, add password strength + forgot password
-8. **Evaluation v0.5**: Embedding indexing throughput already investigated/perf-fixed; Research/RAG infrastructure next
-9. **Keyboard shortcuts**: Add `?` overlay, `Ctrl+F` search, `Ctrl+K` command palette
-10. **Tests**: Expand unit test coverage beyond `useSemanticChunking`
+8. **Backend — fix RegisterCommand handler**: Handler class is missing; endpoint returns 500. Create handler implementing `IRequestHandler<RegisterCommand, AuthResult>`.
+9. **Backend — fix TenantValidationBehavior**: Query uses wrong FK for org membership check; make it a no-op-gone-wrong that never actually validates.
+10. **Backend — harden global query filter**: `ApplyTenantFilter` should return empty set (`.Where(_ => false)`) when `OrganizationId` is null, not pass through all rows.
+11. **Backend — rename IOrganizationContext**: To `ISessionContext` or similar, reflecting it's a user+org session accessor, not a full org context.
+12. **Backend — fix dual error middleware**: Decide between `ExceptionMiddleware` and `ExceptionHandler`, remove the other.
+13. **Backend — standardize auth patterns**: All controllers: either all MediatR-only or allow direct service calls — by convention, not per-file discretion.
+14. **Backend — DI audit**: Verify `IOrganizationContext` registrations don't conflict with convention scanning; add registration policy document.
+15. **Backend — add OpenAPI metadata**: `[ProducesResponseType]` attributes and Swagger/Scalar annotations across all controllers.
+16. **Backend — evaluate testability**: Repository abstraction vs in-memory EF Core for unit testing.
+17. **Evaluation v0.5**: Embedding indexing throughput already investigated/perf-fixed; Research/RAG infrastructure next
+18. **Keyboard shortcuts**: Add `?` overlay, `Ctrl+F` search, `Ctrl+K` command palette
+19. **Tests**: Expand unit test coverage beyond `useSemanticChunking`
 
 ## Critical Context
 - **Branch**: `feature/improvements` (diverged from `main` with ~50+ changed files)
-- **Last commit**: Auth, sync engine, eval, and DB versioning overhaul (large)
-- **Phase**: v0.5 — Research/RAG infrastructure phase after completing Phases 1-4 (AI Pipeline Evaluation & Quality Gates)
-- **Recent cleanup**: `debugSnapshot.js` removed — was posting to nonexistent `/__debug/snapshot` endpoint, wasted requests on every generation call
-- **Debt**: TipTap integration still evolving; no automated E2E tests exist; mobile UX incomplete
+- **Last commit**: Cross-org data isolation enforcement — `RequireOrganizationAttribute`, `AllowOrganizationOptionalAttribute`, applied to `ApiControllerBase` + `OrganizationController`
+- **Phase**: v0.5 — Research/RAG infrastructure phase after completing Phases 1-4 (AI Pipeline Evaluation & Quality Gates); backend architectural consistency audit initiated; cross-org data isolation gap identified and fixed at API layer
+- **Recent cleanup**: `debugSnapshot.js` removed (June); backend cross-org enforcement added (July)
+- **Backend status**: ASP.NET Core 8, MediatR 12, EF Core 8 + PostgreSQL, JWT auth, Serilog, GlobalExceptionHandler + ExceptionMiddleware (dual), convention-based DI scanning + manual overrides. 34+ data controllers now protected by `[RequireOrganization]`. However: `OrganizationId` still not set by any middleware, `TenantValidationBehavior` behavior has a wrong-FK bug, global query filter silently passes through null org ids, and `RegisterCommand` handler is missing.
+- **Debt**: TipTap integration still evolving; no automated E2E tests exist; mobile UX incomplete; backend has dual error handling, mixed auth patterns, and several unimplemented handlers
 - **AI dependency**: Ollama must be running locally for generation/eval features to work
 - **CI/CD**: GitHub Actions workflow configured (`.github/workflows/ci.yml`) — lint + test on push/PR
 
@@ -139,6 +183,32 @@ Build an AI-powered fiction writing assistant (single-page app) with offline-fir
 | `src/utils/speakerIdentifier.js` | Speaker identification via tag matching + context proximity |
 | `src/services/db-dialogue.js` | IndexedDB storage for dialogue entries |
 | `src/composables/useDialogueIndexer.js` | Vue composable: index project content → detect → identify → persist |
+
+### Backend — Controllers
+| File | Purpose |
+|------|---------|
+| `backend/Versatile.Api/Controllers/ApiControllerBase.cs` | Abstract base for all data controllers — exposes `UserId` + `OrganizationId` from JWT; decorated with `[RequireOrganization]` |
+| `backend/Versatile.Api/Controllers/RequireOrganizationAttribute.cs` | IAuthorizationFilter — returns 403 when `IOrganizationContext.OrganizationId` is null; respects `[AllowAnonymous]` and `[AllowOrganizationOptional]` |
+| `backend/Versatile.Api/Controllers/AllowOrganizationOptionalAttribute.cs` | Marker attribute to opt out of `[RequireOrganization]` enforcement |
+| `backend/Versatile.Api/Controllers/AuthController.cs` | Auth (login, register, refresh) — inherits `ControllerBase`, not `ApiControllerBase` (no org context) |
+| `backend/Versatile.Api/Controllers/OrganizationController.cs` | Org CRUD + membership management — inherits `ApiControllerBase` with `[AllowOrganizationOptional]` |
+| `backend/Versatile.Api/Controllers/ChapterController.cs` | Chapter CRUD via MediatR under `api/story/{storyId}/chapter` |
+| `backend/Versatile.Api/Controllers/SceneController.cs` | Scene CRUD — MediatR for commands, direct IOrganizationContext for queries |
+| `backend/Versatile.Api/Controllers/SectionController.cs` | Section CRUD via MediatR |
+| `backend/Versatile.Api/Controllers/SubsectionController.cs` | Subsection CRUD via MediatR |
+| `backend/Versatile.Api/Controllers/VolumeController.cs` | Volume CRUD via MediatR |
+| *(~34 additional data controllers follow same `ApiControllerBase` + MediatR pattern)* |
+
+### Backend — Middleware & Config
+| File | Purpose |
+|------|---------|
+| `backend/Versatile.Api/Middleware/ExceptionMiddleware.cs` | Classic RequestDelegate exception handler (may be redundant) |
+| `backend/Versatile.Api/Middleware/CorrelationIdMiddleware.cs` | Request correlation ID |
+| `backend/Versatile.Api/Middleware/ExceptionHandler.cs` | `IExceptionHandler` implementation (minimal API pattern) |
+| `backend/Versatile.Api/Program.cs` | DI registration, middleware pipeline, JWT config, Serilog, CORS |
+| `backend/Versatile.Application/` | MediatR commands/queries, FluentValidation, interfaces |
+| `backend/Versatile.Domain/` | Entity models |
+| `backend/Versatile.Infrastructure/` | DbContext (OrganizationContext), EF config, Identity |
 
 ### Config
 | File | Purpose |

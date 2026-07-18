@@ -418,7 +418,7 @@ function handleSave() {
 
             <div v-if="removableNode" class="mt-6 pt-4 border-t border-border-subtle">
               <button
-                class="w-full py-2 bg-red-600/20 text-red-400 rounded-lg font-medium hover:bg-red-600/30 font-ui"
+                class="w-full py-2 bg-bg-secondary text-danger rounded-lg font-medium hover:bg-surface-hover font-ui"
                 @click="emit('remove-node', removableNode)"
               >
                 Remove from canvas
@@ -433,7 +433,7 @@ function handleSave() {
               </button>
               <button
                 :disabled="!isValid"
-                class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui"
+                class="btn-primary flex-1 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui"
                 @click="handleSave"
               >
                 {{ existingEdge ? 'Save Changes' : 'Add Connection' }}

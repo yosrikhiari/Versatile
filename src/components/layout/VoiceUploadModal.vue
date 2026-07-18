@@ -10,12 +10,12 @@
     >
       <div class="modal-content">
         <div class="modal-header">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Upload Sample Text</h2>
+          <h2 class="text-xl font-bold text-text-primary">Upload Sample Text</h2>
           <button class="close-btn" @click="close">✕</button>
         </div>
 
         <div class="modal-body">
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <p class="text-sm text-text-secondary mb-4">
             Paste additional text samples to refine your voice profile. The profile will merge this
             sample with your existing manuscript analysis.
           </p>
@@ -31,14 +31,14 @@
               rows="8"
               @input="updatePreview"
             ></textarea>
-            <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span class="text-xs text-text-hint mt-1">
               {{ sampleText.split(/\s+/).length }} words
             </span>
           </div>
 
           <!-- Preview Section -->
           <div v-if="mergedProfile" class="preview-section">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            <h3 class="text-sm font-semibold text-text-primary mb-3">
               Merged Profile Preview
             </h3>
 
@@ -195,15 +195,15 @@ async function handleMerge() {
 }
 
 .modal-content {
-  @apply relative bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto;
+  @apply relative bg-bg-secondary border border-border-subtle rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto;
 }
 
 .modal-header {
-  @apply flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700;
+  @apply flex justify-between items-center p-4 border-b border-border-subtle;
 }
 
 .close-btn {
-  @apply text-2xl font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition;
+  @apply text-2xl font-bold text-text-hint hover:text-text-primary transition;
 }
 
 .modal-body {
@@ -215,18 +215,18 @@ async function handleMerge() {
 }
 
 .label {
-  @apply text-sm font-medium text-gray-700 dark:text-gray-300;
+  @apply text-sm font-medium text-text-secondary;
 }
 
 .textarea {
-  @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-    bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-    focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400
+  @apply w-full px-3 py-2 border border-border-subtle rounded-lg
+    bg-bg-tertiary text-text-primary
+    focus:outline-none focus:ring-2 focus:ring-accent
     resize-none font-mono text-sm;
 }
 
 .preview-section {
-  @apply bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 p-3 rounded-lg;
+  @apply bg-bg-tertiary border border-border-subtle p-3 rounded-lg;
 }
 
 .preview-grid {
@@ -238,23 +238,23 @@ async function handleMerge() {
 }
 
 .preview-stat .label {
-  @apply font-medium text-gray-700 dark:text-gray-300;
+  @apply font-medium text-text-secondary;
 }
 
 .preview-stat .old-value {
-  @apply text-gray-600 dark:text-gray-400 line-through;
+  @apply text-text-hint line-through;
 }
 
 .preview-stat .arrow {
-  @apply text-indigo-600 dark:text-indigo-400 font-bold;
+  @apply text-accent font-bold;
 }
 
 .preview-stat .new-value {
-  @apply font-semibold text-indigo-700 dark:text-indigo-300;
+  @apply font-semibold text-accent;
 }
 
 .modal-footer {
-  @apply flex gap-3 p-4 border-t border-gray-200 dark:border-gray-700;
+  @apply flex gap-3 p-4 border-t border-border-subtle;
 }
 
 .btn-primary,
@@ -263,11 +263,10 @@ async function handleMerge() {
 }
 
 .btn-primary {
-  @apply bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-accent text-bg-primary hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .btn-secondary {
-  @apply bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white
-    hover:bg-gray-300 dark:hover:bg-gray-600;
+  @apply bg-surface-hover text-text-secondary hover:bg-bg-tertiary;
 }
 </style>

@@ -46,14 +46,14 @@ const variantClasses = computed(() => {
       return [
         'rounded-full',
         props.active
-          ? 'bg-accent text-accent-foreground'
+          ? 'bg-accent text-bg-primary'
           : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
       ].join(' ')
     case 'segment':
       return [
         'rounded-md',
         props.active
-          ? 'bg-accent text-accent-foreground shadow-sm'
+          ? 'bg-accent text-bg-primary shadow-sm'
           : 'text-text-hint hover:text-text-secondary'
       ].join(' ')
     default:

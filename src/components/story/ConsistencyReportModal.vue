@@ -14,7 +14,7 @@ const emit = defineEmits(['close'])
 <template>
   <div
     v-if="report"
-    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
+    class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in"
     @click.self="emit('close')"
   >
     <div
@@ -37,9 +37,9 @@ const emit = defineEmits(['close'])
         <div
           v-for="(item, i) in report.characterIssues"
           :key="'char-' + i"
-          class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg"
+          class="mb-3 p-3 bg-bg-secondary border border-border-subtle rounded-lg"
         >
-          <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.character }}</p>
+          <p class="text-xs font-semibold text-warning font-ui mb-1">{{ item.character }}</p>
           <div
             v-for="(c, j) in item.contradictions"
             :key="j"
@@ -59,9 +59,9 @@ const emit = defineEmits(['close'])
         <div
           v-for="(item, i) in report.locationIssues"
           :key="'loc-' + i"
-          class="mb-3 p-3 bg-yellow-950/10 border border-yellow-800/20 rounded-lg"
+          class="mb-3 p-3 bg-bg-secondary border border-border-subtle rounded-lg"
         >
-          <p class="text-xs font-semibold text-yellow-400 font-ui mb-1">{{ item.location }}</p>
+          <p class="text-xs font-semibold text-warning font-ui mb-1">{{ item.location }}</p>
           <div
             v-for="(c, j) in item.contradictions"
             :key="j"
@@ -75,8 +75,8 @@ const emit = defineEmits(['close'])
       </div>
 
       <div v-if="totalIssues === 0" class="text-center py-4">
-        <BaseIcon name="check-circle" :size="24" class="mx-auto text-green-400 mb-2" />
-        <p class="text-sm text-green-400 font-ui">No contradictions found</p>
+        <BaseIcon name="check-circle" :size="24" class="mx-auto text-success mb-2" />
+        <p class="text-sm text-success font-ui">No contradictions found</p>
       </div>
     </div>
   </div>

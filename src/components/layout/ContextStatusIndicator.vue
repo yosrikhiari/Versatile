@@ -29,9 +29,9 @@ function signalBadge(signal) {
   return signal === 'accepted'
     ? 'text-accent'
     : signal === 'partial'
-      ? 'text-amber-400'
+      ? 'text-warning'
       : signal === 'rejected'
-        ? 'text-red-400'
+        ? 'text-danger'
         : 'text-text-hint'
 }
 </script>
@@ -42,7 +42,7 @@ function signalBadge(signal) {
       class="flex items-center gap-1 px-2 py-1 text-2xs rounded font-ui transition-colors"
       :class="
         expanded
-          ? 'bg-accent/10 text-accent'
+          ? 'bg-surface-hover text-accent'
           : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
       "
       title="Context status"

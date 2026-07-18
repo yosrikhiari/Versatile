@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
@@ -11,7 +12,7 @@ public class BibleController : ApiControllerBase
 {
     private readonly IBibleService _bible;
 
-    public BibleController(IBibleService bible) => _bible = bible;
+    public BibleController(IBibleService bible, IOrganizationContext orgContext) : base(orgContext) => _bible = bible;
 
 
     [HttpGet]
@@ -19,7 +20,7 @@ public class BibleController : ApiControllerBase
     {
         try
         {
-            return Ok(await _bible.GetAllAsync(storyId, UserId));
+            return Ok(await _bible.GetAllAsync(storyId, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -32,7 +33,7 @@ public class BibleController : ApiControllerBase
     {
         try
         {
-            return Ok(await _bible.GetByIdAsync(id, UserId));
+            return Ok(await _bible.GetByIdAsync(id, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -45,7 +46,7 @@ public class BibleController : ApiControllerBase
     {
         try
         {
-            var entry = await _bible.CreateAsync(storyId, request, UserId);
+            var entry = await _bible.CreateAsync(storyId, request, UserId, organizationId: OrganizationId);
             return CreatedAtAction(nameof(GetById), new { id = entry.Id }, entry);
         }
         catch (KeyNotFoundException ex)
@@ -59,7 +60,7 @@ public class BibleController : ApiControllerBase
     {
         try
         {
-            return Ok(await _bible.UpdateAsync(id, request, UserId));
+            return Ok(await _bible.UpdateAsync(id, request, UserId, organizationId: OrganizationId));
         }
         catch (KeyNotFoundException ex)
         {
@@ -72,7 +73,7 @@ public class BibleController : ApiControllerBase
     {
         try
         {
-            await _bible.DeleteAsync(id, UserId);
+            await _bible.DeleteAsync(id, UserId, organizationId: OrganizationId);
             return NoContent();
         }
         catch (KeyNotFoundException ex)

@@ -15,7 +15,7 @@ public class DeleteSectionHandler : IRequestHandler<DeleteSectionCommand, Unit>
     {
         var section = await _db.Set<Entity>()
             .Include(s => s.Story)
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId && s.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Section not found");
         _db.Set<Entity>().Remove(section);
         await _db.SaveChangesAsync(ct);

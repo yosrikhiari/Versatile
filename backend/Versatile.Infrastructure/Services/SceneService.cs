@@ -11,9 +11,9 @@ public class SceneService : ISceneService
 
     public SceneService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<SceneDto>> GetAllAsync(Guid chapterId, Guid userId)
+    public async Task<List<SceneDto>> GetAllAsync(Guid chapterId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureAccess(chapterId, userId);
+        await EnsureAccess(chapterId, userId, organizationId);
 
         return await _db.Scenes
             .Where(s => s.ChapterId == chapterId)
@@ -22,18 +22,18 @@ public class SceneService : ISceneService
             .ToListAsync();
     }
 
-    public async Task<SceneDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<SceneDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
         var scene = await _db.Scenes
             .Include(s => s.Chapter).ThenInclude(c => c!.Story)
-            .FirstOrDefaultAsync(s => s.Id == id && s.Chapter!.Story!.UserId == userId);
+            .FirstOrDefaultAsync(s => s.Id == id && s.Chapter!.Story!.UserId == userId && (organizationId == null || s.Chapter!.Story!.OrganizationId == organizationId));
 
         return scene is null ? throw new KeyNotFoundException("Scene not found") : ToDto(scene);
     }
 
-    public async Task<SceneDto> CreateAsync(Guid chapterId, CreateSceneRequest request, Guid userId)
+    public async Task<SceneDto> CreateAsync(Guid chapterId, CreateSceneRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureAccess(chapterId, userId);
+        await EnsureAccess(chapterId, userId, organizationId);
 
         var maxOrder = await _db.Scenes
             .Where(s => s.ChapterId == chapterId)
@@ -53,11 +53,11 @@ public class SceneService : ISceneService
         return ToDto(scene);
     }
 
-    public async Task<SceneDto> UpdateAsync(Guid id, UpdateSceneRequest request, Guid userId)
+    public async Task<SceneDto> UpdateAsync(Guid id, UpdateSceneRequest request, Guid userId, Guid? organizationId = null)
     {
         var scene = await _db.Scenes
             .Include(s => s.Chapter).ThenInclude(c => c!.Story)
-            .FirstOrDefaultAsync(s => s.Id == id && s.Chapter!.Story!.UserId == userId);
+            .FirstOrDefaultAsync(s => s.Id == id && s.Chapter!.Story!.UserId == userId && (organizationId == null || s.Chapter!.Story!.OrganizationId == organizationId));
 
         if (scene is null) throw new KeyNotFoundException("Scene not found");
 
@@ -71,11 +71,11 @@ public class SceneService : ISceneService
         return ToDto(scene);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
         var scene = await _db.Scenes
             .Include(s => s.Chapter).ThenInclude(c => c!.Story)
-            .FirstOrDefaultAsync(s => s.Id == id && s.Chapter!.Story!.UserId == userId);
+            .FirstOrDefaultAsync(s => s.Id == id && s.Chapter!.Story!.UserId == userId && (organizationId == null || s.Chapter!.Story!.OrganizationId == organizationId));
 
         if (scene is null) throw new KeyNotFoundException("Scene not found");
 
@@ -83,10 +83,10 @@ public class SceneService : ISceneService
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureAccess(Guid chapterId, Guid userId)
+    private async Task EnsureAccess(Guid chapterId, Guid userId, Guid? organizationId = null)
     {
         var chapter = await _db.Chapters.Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == chapterId && c.Story!.UserId == userId);
+            .FirstOrDefaultAsync(c => c.Id == chapterId && c.Story!.UserId == userId && (organizationId == null || c.Story!.OrganizationId == organizationId));
         if (chapter is null) throw new KeyNotFoundException("Chapter not found");
     }
 

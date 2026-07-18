@@ -16,7 +16,7 @@ public class UpdateSubsectionHandler : IRequestHandler<UpdateSubsectionCommand, 
     {
         var subsection = await _db.Set<Entity>()
             .Include(s => s.Story)
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Story!.UserId == request.UserId && (request.OrganizationId == null || s.Story!.OrganizationId == request.OrganizationId), ct)
             ?? throw new KeyNotFoundException("Subsection not found");
 
         if (request.Title is not null) subsection.Title = request.Title;

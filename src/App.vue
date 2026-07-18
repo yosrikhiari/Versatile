@@ -6,7 +6,7 @@ import ActivityDrawer from './components/shared/ActivityDrawer.vue'
 </script>
 
 <template>
-  <div class="h-[100dvh] bg-manuscript ambient-glow grain">
+  <div class="h-[100dvh] bg-manuscript">
     <RouterView />
     <NotificationHost />
     <ActivityToast />

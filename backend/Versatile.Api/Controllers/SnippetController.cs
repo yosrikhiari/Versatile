@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
@@ -11,7 +12,7 @@ public class SnippetController : ApiControllerBase
 {
     private readonly ISnippetService _service;
 
-    public SnippetController(ISnippetService service) => _service = service;
+    public SnippetController(ISnippetService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
 
 
     [HttpGet]

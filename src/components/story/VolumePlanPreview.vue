@@ -48,7 +48,7 @@
         </div>
 
         <!-- Collapsible narrative pitch -->
-        <div class="rounded-lg bg-bg-tertiary/50 border border-border-subtle">
+        <div class="rounded-lg bg-bg-tertiary border border-border-subtle">
           <button
             class="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-hover hover:text-text-primary transition-colors font-ui focus:outline-none"
             @click="togglePitch(i)"
@@ -282,7 +282,7 @@
 
     <div class="flex gap-2">
       <button
-        class="flex-1 py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        class="flex-1 py-2.5 btn-primary rounded-lg font-ui focus:outline-none focus:ring-2 focus:ring-accent"
         @click="emit('confirm')"
       >
         <span class="flex items-center justify-center gap-2">
@@ -337,30 +337,30 @@ function formatWants(wants) {
 function getTensionBarClass(tension) {
   switch (tension) {
     case 'peak':
-      return 'bg-red-400'
+      return 'bg-danger'
     case 'high':
-      return 'bg-orange-400'
+      return 'bg-warning'
     case 'medium':
-      return 'bg-yellow-400'
+      return 'bg-info'
     case 'low':
-      return 'bg-gray-400'
+      return 'bg-surface-hover'
     default:
-      return 'bg-gray-400'
+      return 'bg-surface-hover'
   }
 }
 
 function getTensionColor(tension) {
   switch (tension) {
     case 'peak':
-      return 'text-red-400 bg-red-950/30'
+      return 'text-danger bg-bg-secondary'
     case 'high':
-      return 'text-orange-400 bg-orange-950/30'
+      return 'text-warning bg-bg-secondary'
     case 'medium':
-      return 'text-yellow-400 bg-yellow-950/30'
+      return 'text-info bg-bg-secondary'
     case 'low':
-      return 'text-gray-400 bg-gray-800/30'
+      return 'text-text-secondary bg-bg-secondary'
     default:
-      return 'text-gray-400 bg-gray-800/30'
+      return 'text-text-secondary bg-bg-secondary'
   }
 }
 </script>

@@ -116,7 +116,7 @@ defineExpose({
       <span class="text-xs text-text-hint">Context:</span>
       <select
         v-model="selectedSelector"
-        class="flex-1 px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent/50"
+        class="flex-1 px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
       >
         <option v-for="opt in options" :key="opt.value" :value="opt.value">
           {{ opt.label }}
@@ -129,7 +129,7 @@ defineExpose({
         v-model="specificSections"
         type="text"
         placeholder="e.g. 3, 5, 8"
-        class="w-full px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent/50"
+        class="w-full px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent"
       />
       <p class="mt-1 text-2xs text-text-hint">Enter section numbers, separated by commas</p>
     </div>
@@ -137,10 +137,10 @@ defineExpose({
     <div v-if="contextPreview" class="pl-16 flex items-center gap-1.5 text-2xs text-text-hint">
       <BaseIcon name="file-text" :size="10" />
       <span>{{ contextPreview.label }}</span>
-      <span class="text-text-muted"
+      <span class="text-text-hint"
         >({{ contextPreview.chars }}/{{ MAX_CONTEXT_CHARS }} chars)</span
       >
-      <span v-if="contextPreview.truncated" class="text-amber-500">truncated</span>
+      <span v-if="contextPreview.truncated" class="text-warning">truncated</span>
     </div>
   </div>
 </template>

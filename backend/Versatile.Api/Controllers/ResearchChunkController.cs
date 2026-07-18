@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
@@ -11,7 +12,7 @@ public class ResearchChunkController : ApiControllerBase
 {
     private readonly IResearchChunkService _service;
 
-    public ResearchChunkController(IResearchChunkService service) => _service = service;
+    public ResearchChunkController(IResearchChunkService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
 
 
     [HttpGet]

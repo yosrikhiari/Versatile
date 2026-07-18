@@ -1,17 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
 [ApiController]
-[Route("api/story/{storyId}/spark-history"), Authorize]
+[Route("api/story/{storyId}/spark-history-item"), Authorize]
 public class SparkHistoryItemController : ApiControllerBase
 {
     private readonly ISparkHistoryItemService _service;
 
-    public SparkHistoryItemController(ISparkHistoryItemService service) => _service = service;
+    public SparkHistoryItemController(ISparkHistoryItemService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
 
 
     [HttpGet]

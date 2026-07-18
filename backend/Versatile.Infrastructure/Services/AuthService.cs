@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -44,7 +45,7 @@ public class AuthService : IAuthService
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
-        return GenerateAuthResponse(user);
+        return await GenerateAuthResponseAsync(user);
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -57,7 +58,7 @@ public class AuthService : IAuthService
         if (result == PasswordVerificationResult.Failed)
             throw new UnauthorizedAccessException("Invalid credentials");
 
-        return GenerateAuthResponse(user);
+        return await GenerateAuthResponseAsync(user);
     }
 
     public async Task<AuthResponse> RefreshTokenAsync(string refreshToken)
@@ -66,7 +67,21 @@ public class AuthService : IAuthService
         if (user == null || user.RefreshTokenExpiresAt < DateTime.UtcNow)
             throw new UnauthorizedAccessException("Invalid or expired refresh token");
 
-        return GenerateAuthResponse(user);
+        return await GenerateAuthResponseAsync(user);
+    }
+
+    public async Task<AuthResponse> SwitchOrgAsync(Guid userId, Guid orgId)
+    {
+        var membership = await _db.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.OrganizationId == orgId);
+
+        if (membership == null)
+            throw new UnauthorizedAccessException("You are not a member of this organization");
+
+        var user = await _db.Users.FindAsync(userId)
+            ?? throw new UnauthorizedAccessException("User not found");
+
+        return await GenerateAuthResponseAsync(user, orgId);
     }
 
     public async Task LogoutAsync(Guid userId)
@@ -80,10 +95,19 @@ public class AuthService : IAuthService
         }
     }
 
-    private AuthResponse GenerateAuthResponse(User user)
+    private async Task<AuthResponse> GenerateAuthResponseAsync(User user, Guid? activeOrgId = null)
     {
+        var orgs = await _db.OrganizationMemberships
+            .Where(m => m.UserId == user.Id)
+            .Select(m => new OrgInfo(m.OrganizationId, m.Organization!.Name, m.Role.ToString()))
+            .ToListAsync();
+
+        var activeOrg = activeOrgId.HasValue
+            ? orgs.FirstOrDefault(o => o.Id == activeOrgId.Value)
+            : orgs.FirstOrDefault();
+
         var expiresAt = DateTime.UtcNow.AddHours(24);
-        var token = GenerateJwtToken(user, expiresAt);
+        var token = GenerateJwtToken(user, expiresAt, orgs, activeOrg);
         var refreshToken = GenerateRefreshToken();
         var refreshExpiresAt = DateTime.UtcNow.AddDays(7);
 
@@ -92,21 +116,33 @@ public class AuthService : IAuthService
         _db.SaveChanges();
 
         return new AuthResponse(token, refreshToken, expiresAt,
-            new UserInfo(user.Id, user.Username, user.Email, user.DisplayName));
+            new UserInfo(user.Id, user.Username, user.Email, user.DisplayName), orgs);
     }
 
-    private string GenerateJwtToken(User user, DateTime expires)
+    private string GenerateJwtToken(User user, DateTime expires, List<OrgInfo> orgs, OrgInfo? activeOrg)
     {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.Email, user.Email ?? "")
+        };
+
+        if (orgs.Count != 0)
+        {
+            var orgsJson = JsonSerializer.Serialize(orgs.Select(o => new { o.Id, o.Name, o.Role }));
+            claims.Add(new Claim("orgs", orgsJson, JsonClaimValueTypes.JsonArray));
+        }
+
+        if (activeOrg != null)
+        {
+            claims.Add(new Claim("org_id", activeOrg.Id.ToString()));
+            claims.Add(new Claim("org_role", activeOrg.Role));
+        }
+
         var jwtSettings = _config.GetSection("Jwt");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.Email, user.Email ?? "")
-        };
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],

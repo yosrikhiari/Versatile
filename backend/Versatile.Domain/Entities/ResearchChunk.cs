@@ -3,11 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
-public class ResearchChunk
+public class ResearchChunk : UserOwnedEntity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
     [Required]
     public Guid DocumentId { get; set; }
 
@@ -25,6 +22,4 @@ public class ResearchChunk
     public string? Content { get; set; }
 
     public string? Embedding { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

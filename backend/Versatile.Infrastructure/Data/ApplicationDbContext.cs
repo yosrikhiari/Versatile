@@ -1,13 +1,24 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Versatile.Domain.Entities;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Infrastructure.Data;
 
 public class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
+    private readonly IOrganizationContext _orgContext;
+    private readonly Guid? _tenantId;
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IOrganizationContext orgContext) : base(options)
+    {
+        _orgContext = orgContext;
+        _tenantId = orgContext.OrganizationId;
+    }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrganizationMembership> OrganizationMemberships => Set<OrganizationMembership>();
     public DbSet<Story> Stories => Set<Story>();
     public DbSet<Chapter> Chapters => Set<Chapter>();
     public DbSet<Scene> Scenes => Set<Scene>();
@@ -45,6 +56,18 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Organization>(e =>
+        {
+            e.HasIndex(o => o.Slug).IsUnique();
+        });
+
+        modelBuilder.Entity<OrganizationMembership>(e =>
+        {
+            e.HasKey(m => new { m.OrganizationId, m.UserId });
+            e.HasOne(m => m.Organization).WithMany(o => o.Memberships).HasForeignKey(m => m.OrganizationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(m => m.User).WithMany(u => u.OrganizationMemberships).HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<User>(e =>
         {
             e.HasIndex(u => u.Username).IsUnique();
@@ -262,5 +285,27 @@ public class ApplicationDbContext : DbContext
             e.HasOne(v => v.Story).WithMany(s => s.VolumeEntities).HasForeignKey(v => v.StoryId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(v => v.Volume).WithMany().HasForeignKey(v => v.VolumeId).OnDelete(DeleteBehavior.Restrict);
         });
+
+        ApplyTenantFilter(modelBuilder);
+    }
+
+    private void ApplyTenantFilter(ModelBuilder modelBuilder)
+    {
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+            .Where(e => typeof(UserOwnedEntity).IsAssignableFrom(e.ClrType)))
+        {
+            modelBuilder.Entity(entityType.ClrType).HasIndex(nameof(UserOwnedEntity.OrganizationId));
+
+            var param = Expression.Parameter(entityType.ClrType, "e");
+            var orgIdProp = Expression.PropertyOrField(param, nameof(UserOwnedEntity.OrganizationId));
+            var tenantField = Expression.Field(Expression.Constant(this), nameof(_tenantId));
+            var nullConst = Expression.Constant(null, typeof(Guid?));
+
+            var isNull = Expression.Equal(tenantField, nullConst);
+            var match = Expression.Equal(orgIdProp, tenantField);
+            var body = Expression.OrElse(isNull, match);
+
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(body, param));
+        }
     }
 }

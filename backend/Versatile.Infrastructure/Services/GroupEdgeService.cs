@@ -8,21 +8,21 @@ public class GroupEdgeService : IGroupEdgeService
     private readonly ApplicationDbContext _db;
     public GroupEdgeService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<GroupEdgeDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<GroupEdgeDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         return await _db.GroupEdges.Where(e => e.StoryId == storyId).Select(e => ToDto(e)).ToListAsync();
     }
 
-    public async Task<GroupEdgeDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<GroupEdgeDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.GroupEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.GroupEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         return entity is null ? throw new KeyNotFoundException("GroupEdge not found") : ToDto(entity);
     }
 
-    public async Task<GroupEdgeDto> CreateAsync(Guid storyId, CreateGroupEdgeRequest request, Guid userId)
+    public async Task<GroupEdgeDto> CreateAsync(Guid storyId, CreateGroupEdgeRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureStoryAccess(storyId, userId);
+        await EnsureStoryAccess(storyId, userId, organizationId);
         var entity = new GroupEdge
         {
             StoryId = storyId,
@@ -35,9 +35,9 @@ public class GroupEdgeService : IGroupEdgeService
         return ToDto(entity);
     }
 
-    public async Task<GroupEdgeDto> UpdateAsync(Guid id, UpdateGroupEdgeRequest request, Guid userId)
+    public async Task<GroupEdgeDto> UpdateAsync(Guid id, UpdateGroupEdgeRequest request, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.GroupEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.GroupEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         if (entity is null) throw new KeyNotFoundException("GroupEdge not found");
         if (request.SourceGroupId is not null) entity.SourceGroupId = request.SourceGroupId;
         if (request.TargetGroupId is not null) entity.TargetGroupId = request.TargetGroupId;
@@ -46,17 +46,17 @@ public class GroupEdgeService : IGroupEdgeService
         return ToDto(entity);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
-        var entity = await _db.GroupEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId);
+        var entity = await _db.GroupEdges.Include(e => e.Story).FirstOrDefaultAsync(e => e.Id == id && e.Story!.UserId == userId && (!organizationId.HasValue || e.Story!.OrganizationId == organizationId.Value));
         if (entity is null) throw new KeyNotFoundException("GroupEdge not found");
         _db.GroupEdges.Remove(entity);
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureStoryAccess(Guid storyId, Guid userId)
+    private async Task EnsureStoryAccess(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (!organizationId.HasValue || s.OrganizationId == organizationId.Value)))
             throw new KeyNotFoundException("Story not found");
     }
 

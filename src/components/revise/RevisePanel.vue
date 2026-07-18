@@ -137,7 +137,7 @@ watch(() => projectStore.currentProjectId, loadComments)
               v-for="comment in para.comments"
               :key="comment.id"
               :class="[
-                'mt-3 p-3 bg-accent-muted/20 border-l-2 border-accent rounded-r-lg text-sm transition-all duration-300',
+                'mt-3 p-3 bg-bg-secondary border-l-2 border-accent rounded-r-lg text-sm transition-all duration-300',
                 justSaved ? 'ring-2 ring-success' : ''
               ]"
             >
@@ -187,7 +187,7 @@ watch(() => projectStore.currentProjectId, loadComments)
           Cancel
         </button>
         <button
-          class="px-3 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="px-3 py-1 text-xs btn-primary rounded font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           @click="saveComment"
         >
           Save

@@ -87,14 +87,14 @@ function statusColor(status) {
       </div>
 
       <div v-if="!compact" class="grid grid-cols-2 gap-2">
-        <div class="bg-gray-900/30 border border-gray-800/50 rounded-lg p-2.5">
+        <div class="bg-bg-secondary border border-border-subtle rounded-lg p-2.5">
           <span class="text-2xs font-ui text-text-hint block mb-0.5">Original</span>
           <span class="text-sm font-bold font-ui text-text-primary">{{
             origWords.toLocaleString()
           }}</span>
           <span class="text-2xs text-text-hint font-ui ml-1">words</span>
         </div>
-        <div class="bg-gray-900/30 border border-gray-800/50 rounded-lg p-2.5">
+        <div class="bg-bg-secondary border border-border-subtle rounded-lg p-2.5">
           <span class="text-2xs font-ui text-text-hint block mb-0.5">Revised</span>
           <span class="text-sm font-bold font-ui text-text-primary">{{
             revWords.toLocaleString()
@@ -136,7 +136,7 @@ function statusColor(status) {
         <div
           v-for="dim in dimensionDeltas"
           :key="dim.key"
-          class="flex items-center justify-between bg-gray-900/30 border border-gray-800/50 rounded px-2.5 py-1.5"
+          class="flex items-center justify-between bg-bg-secondary border border-border-subtle rounded px-2.5 py-1.5"
         >
           <div class="flex items-center gap-1.5">
             <BaseIcon :name="statusIcon(dim.status)" :size="10" :class="statusColor(dim.status)" />

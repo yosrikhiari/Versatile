@@ -48,7 +48,7 @@ const sizeClasses = computed(
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'primary':
-      return 'bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98]'
+      return 'bg-accent text-bg-primary hover:bg-accent-hover active:scale-[0.98]'
     case 'secondary':
       return 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary active:bg-bg-secondary'
     case 'ghost':
@@ -56,9 +56,9 @@ const variantClasses = computed(() => {
     case 'danger':
       return 'bg-danger text-white hover:bg-danger/90 active:scale-[0.98]'
     case 'accent-ghost':
-      return 'bg-accent/10 text-accent hover:bg-accent/20 active:scale-[0.98]'
+      return 'bg-surface-hover text-accent active:scale-[0.98]'
     case 'elevated':
-      return 'bg-accent text-accent-foreground btn-elevated'
+      return 'bg-accent text-bg-primary btn-elevated'
     case 'outline':
       return 'border border-border-subtle text-text-secondary hover:border-accent hover:text-accent active:bg-accent/5'
     default:

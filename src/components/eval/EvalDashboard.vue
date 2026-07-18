@@ -45,10 +45,10 @@
           <BaseIcon
             :name="gate.passing ? 'check-circle' : 'alert-triangle'"
             :size="12"
-            :class="gate.passing ? 'text-emerald-400' : 'text-amber-400'"
+            :class="gate.passing ? 'text-success' : 'text-warning'"
           />
           <span class="font-ui text-text-primary flex-1">{{ gate.label }}</span>
-          <span class="font-ui" :class="gate.passing ? 'text-emerald-400' : 'text-amber-400'">{{
+          <span class="font-ui" :class="gate.passing ? 'text-success' : 'text-warning'">{{
             gate.passing ? 'PASS' : gate.failures + ' fail'
           }}</span>
         </div>
@@ -92,14 +92,14 @@
           :key="dim.name"
           class="flex items-center gap-2 text-xs"
         >
-          <BaseIcon name="trending-down" :size="12" class="text-red-400 shrink-0" />
+          <BaseIcon name="trending-down" :size="12" class="text-danger shrink-0" />
           <span class="font-ui text-text-primary flex-1">{{ dim.label }}</span>
-          <span class="font-ui text-red-400">{{ dim.regressed }}/{{ dim.total }} regressed</span>
+          <span class="font-ui text-danger">{{ dim.regressed }}/{{ dim.total }} regressed</span>
         </div>
       </div>
       <p
         v-if="degradationHotspots.length === 0 && hasDegradationData"
-        class="text-xs text-emerald-400 font-ui text-center py-1"
+        class="text-xs text-success font-ui text-center py-1"
       >
         No degradation hotspots detected
       </p>
@@ -219,23 +219,23 @@ export default {
     const avgScoreClass = computed(() => {
       const v = parseFloat(avgScore.value)
       if (isNaN(v)) return 'text-text-primary'
-      if (v >= 7) return 'text-emerald-400'
-      if (v >= 5) return 'text-amber-400'
-      return 'text-red-400'
+      if (v >= 7) return 'text-success'
+      if (v >= 5) return 'text-warning'
+      return 'text-danger'
     })
 
     const passRateClass = computed(() => {
-      if (passRate.value >= 70) return 'text-emerald-400'
-      if (passRate.value >= 40) return 'text-amber-400'
-      return 'text-red-400'
+      if (passRate.value >= 70) return 'text-success'
+      if (passRate.value >= 40) return 'text-warning'
+      return 'text-danger'
     })
 
     const regressionClass = computed(() => {
-      return regressions.value > 0 ? 'text-amber-400' : 'text-emerald-400'
+      return regressions.value > 0 ? 'text-warning' : 'text-success'
     })
 
     const majorRegressionClass = computed(() => {
-      return majorRegressions.value > 0 ? 'text-red-400' : 'text-emerald-400'
+      return majorRegressions.value > 0 ? 'text-danger' : 'text-success'
     })
 
     const gateHealth = computed(() => {
@@ -276,9 +276,9 @@ export default {
           if (!scores.length) return null
           const avg = scores.reduce((a, b) => a + b, 0) / scores.length
           const barWidth = Math.round((avg / 10) * 100)
-          const barClass = avg >= 7 ? 'bg-emerald-500' : avg >= 5 ? 'bg-amber-500' : 'bg-red-500'
+          const barClass = avg >= 7 ? 'bg-success' : avg >= 5 ? 'bg-warning' : 'bg-danger'
           const scoreClass =
-            avg >= 7 ? 'text-emerald-400' : avg >= 5 ? 'text-amber-400' : 'text-red-400'
+            avg >= 7 ? 'text-success' : avg >= 5 ? 'text-warning' : 'text-danger'
           return {
             name: d.value,
             label: d.label,
@@ -320,11 +320,11 @@ export default {
 
     const scoreDistribution = computed(() => {
       const buckets = [
-        { label: '9-10', min: 9, max: 10, count: 0, barClass: 'bg-emerald-500' },
-        { label: '7-8', min: 7, max: 8.9, count: 0, barClass: 'bg-emerald-400' },
-        { label: '5-6', min: 5, max: 6.9, count: 0, barClass: 'bg-amber-500' },
-        { label: '3-4', min: 3, max: 4.9, count: 0, barClass: 'bg-orange-500' },
-        { label: '1-2', min: 1, max: 2.9, count: 0, barClass: 'bg-red-500' }
+        { label: '9-10', min: 9, max: 10, count: 0, barClass: 'bg-success' },
+        { label: '7-8', min: 7, max: 8.9, count: 0, barClass: 'bg-success' },
+        { label: '5-6', min: 5, max: 6.9, count: 0, barClass: 'bg-warning' },
+        { label: '3-4', min: 3, max: 4.9, count: 0, barClass: 'bg-warning' },
+        { label: '1-2', min: 1, max: 2.9, count: 0, barClass: 'bg-danger' }
       ]
       const scores = Object.values(props.sceneResultsMap)
         .map((s) => s.score)

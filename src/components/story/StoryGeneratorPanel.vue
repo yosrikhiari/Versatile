@@ -607,7 +607,7 @@ function getPhaseLabel(phase) {
           <!-- Generate button -->
           <button
             :disabled="blurbGenerating"
-            class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleGenerateBlurb"
           >
             <span class="flex items-center justify-center gap-2">
@@ -628,9 +628,9 @@ function getPhaseLabel(phase) {
           <!-- Error -->
           <div
             v-if="blurbError && !blurbGenerating"
-            class="rounded-lg bg-red-950/20 border border-red-800/30 p-3 text-center"
+            class="rounded-lg bg-bg-secondary border border-border-subtle p-3 text-center"
           >
-            <p class="text-xs text-red-400 font-ui">{{ blurbError }}</p>
+            <p class="text-xs text-danger font-ui">{{ blurbError }}</p>
           </div>
 
           <!-- Result -->
@@ -687,7 +687,7 @@ function getPhaseLabel(phase) {
                         <BaseIcon name="copy" :size="12" />
                       </button>
                       <button
-                        class="text-text-hint hover:text-red-400 transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                        class="text-text-hint hover:text-danger transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded"
                         title="Delete"
                         @click="handleDeleteBlurb(item.id)"
                       >
@@ -723,7 +723,7 @@ function getPhaseLabel(phase) {
             <!-- Resume an interrupted one-click run -->
             <div
               v-if="resumableRun"
-              class="rounded-lg border border-accent/40 bg-accent/10 p-3 space-y-2"
+              class="rounded-lg border border-accent bg-bg-secondary p-3 space-y-2"
             >
               <p class="text-xs text-text-primary font-ui">
                 Unfinished draft — {{ resumableRun.written }} of {{ resumableRun.total }} scenes
@@ -731,7 +731,7 @@ function getPhaseLabel(phase) {
               </p>
               <div class="flex items-center gap-2">
                 <button
-                  class="flex-1 py-1.5 text-xs bg-accent text-accent-foreground rounded-md font-medium hover:bg-accent/90 font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                  class="flex-1 py-1.5 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                   @click="handleVolumeResume"
                 >
                   Resume
@@ -829,7 +829,7 @@ function getPhaseLabel(phase) {
             <!-- Spark context badge -->
             <div
               v-if="sparkContext"
-              class="rounded-lg bg-accent/10 border border-accent/20 px-3 py-2.5 space-y-1"
+              class="rounded-lg bg-bg-secondary border border-border-subtle px-3 py-2.5 space-y-1"
             >
               <div class="flex items-center gap-2">
                 <BaseIcon name="sparkles" :size="14" class="text-accent shrink-0" />
@@ -892,7 +892,7 @@ function getPhaseLabel(phase) {
 
             <button
               :disabled="!hasSynopsis || volumeGenerator.phase.value !== 'idle'"
-              class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+              class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
               @click="handleVolumeGenerate"
             >
               <span class="flex items-center justify-center gap-2">
@@ -920,12 +920,12 @@ function getPhaseLabel(phase) {
         <!-- ==================== CHAPTER GENERATOR ==================== -->
         <!-- ERROR STATE -->
         <div v-if="volumeGenerator.phase.value === 'error'" class="p-8 text-center space-y-4">
-          <div class="flex items-center justify-center gap-3 text-red-400 py-4">
+          <div class="flex items-center justify-center gap-3 text-danger py-4">
             <BaseIcon name="alert-triangle" :size="32" />
           </div>
           <div class="text-lg font-ui text-text-primary">Conjuration Failed</div>
           <p
-            class="text-sm text-red-300 bg-red-950/20 p-4 rounded-lg border border-red-900/30 max-w-lg mx-auto whitespace-pre-wrap"
+            class="text-sm text-danger bg-bg-secondary p-4 rounded-lg border border-border-subtle max-w-lg mx-auto whitespace-pre-wrap"
           >
             {{ volumeGenerator.error || 'An unknown error occurred.' }}
           </p>
@@ -1096,15 +1096,15 @@ function getPhaseLabel(phase) {
 
         <!-- ERROR STATE -->
         <div v-if="volumeGenerator.phase.value === 'error'" class="p-4 space-y-4">
-          <div class="rounded-lg bg-red-950/20 border border-red-800/30 p-4 text-center space-y-2">
-            <BaseIcon name="alert-triangle" :size="24" class="mx-auto text-red-400" />
-            <p class="text-sm font-medium text-red-400 font-ui">Generation Failed</p>
-            <p class="text-xs text-red-300/70">
+          <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 text-center space-y-2">
+            <BaseIcon name="alert-triangle" :size="24" class="mx-auto text-danger" />
+            <p class="text-sm font-medium text-danger font-ui">Generation Failed</p>
+            <p class="text-xs text-danger">
               {{ volumeGenerator.error.value || 'An unexpected error occurred.' }}
             </p>
           </div>
           <button
-            class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full py-2.5 btn-primary rounded-lg font-ui focus:outline-none focus:ring-2 focus:ring-accent"
             @click="handleVolumeReset"
           >
             Try Again

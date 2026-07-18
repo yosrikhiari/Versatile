@@ -43,31 +43,31 @@ const colorMap = {
     bg: 'bg-accent/15',
     text: 'text-accent',
     activeBg: 'bg-accent',
-    activeText: 'text-accent-foreground'
+    activeText: 'text-bg-primary'
   },
   success: {
     bg: 'bg-success/15',
     text: 'text-success',
     activeBg: 'bg-success',
-    activeText: 'text-white'
+    activeText: 'text-bg-primary'
   },
   danger: {
     bg: 'bg-danger/15',
     text: 'text-danger',
     activeBg: 'bg-danger',
-    activeText: 'text-white'
+    activeText: 'text-bg-primary'
   },
   warning: {
     bg: 'bg-warning/15',
     text: 'text-warning',
     activeBg: 'bg-warning',
-    activeText: 'text-white'
+    activeText: 'text-bg-primary'
   },
   info: {
     bg: 'bg-info/15',
     text: 'text-info',
     activeBg: 'bg-info',
-    activeText: 'text-white'
+    activeText: 'text-bg-primary'
   }
 }
 
@@ -99,7 +99,7 @@ const baseClasses =
     <slot />
     <button
       v-if="variant === 'removable'"
-      class="ml-0.5 rounded-full hover:bg-black/10 p-0.5 transition-colors focus:outline-none"
+      class="ml-0.5 rounded-full hover:bg-surface-hover p-0.5 transition-colors focus:outline-none"
       :disabled="disabled"
       aria-label="Remove"
       @click.stop="emit('remove')"

@@ -102,8 +102,8 @@ function getTypeColor(type) {
 }
 
 function getConfidenceClass(confidence) {
-  if (confidence >= 0.8) return 'bg-green-500/20 text-green-400'
-  if (confidence >= 0.65) return 'bg-accent/20 text-accent'
+  if (confidence >= 0.8) return 'bg-bg-secondary text-success'
+  if (confidence >= 0.65) return 'bg-bg-secondary text-accent'
   return 'bg-bg-tertiary text-text-hint'
 }
 
@@ -175,7 +175,7 @@ function handleApply() {
                       </span>
                       <span class="text-text-primary font-medium">{{ group.name }}</span>
                     </div>
-                    <p v-if="group.rationale" class="text-xs text-text-muted mt-1">
+                    <p v-if="group.rationale" class="text-xs text-text-hint mt-1">
                       {{ group.rationale }}
                     </p>
                     <div v-if="group.members" class="flex items-center gap-1 mt-2 flex-wrap">
@@ -241,7 +241,7 @@ function handleApply() {
                         suggestion.targetLabel
                       }}</span>
                     </div>
-                    <p v-if="suggestion.rationale" class="text-xs text-text-muted mt-1">
+                    <p v-if="suggestion.rationale" class="text-xs text-text-hint mt-1">
                       {{ suggestion.rationale }}
                     </p>
                   </div>
@@ -287,7 +287,7 @@ function handleApply() {
               </button>
               <button
                 :disabled="!canApply"
-                class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="btn-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handleApply"
               >
                 Apply ({{ totalSelected }})

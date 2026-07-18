@@ -25,10 +25,10 @@
     --vers-text-on-accent: #ffffff;
     --vers-glow-loading-rgb: 110, 139, 181;
 
-    /* JS entity type accent colors (graph node fills) */
-    --vers-entity-character: #8b5cf6;
-    --vers-entity-location: #10b981;
-    --vers-entity-plotThread: #f59e0b;
+    /* Graph entity type colors — muted, on-brand (Manuscript Mono, no purple) */
+    --vers-entity-character: #6e8bb5; /* slate — matches brand accent */
+    --vers-entity-location: #6a9e7a; /* muted sage */
+    --vers-entity-plotThread: #d4a74a; /* muted amber */
 
     /* JS edge relationship type colors (graph edge strokes) */
     --vers-edge-appears_in: #4fc3f7;
@@ -366,6 +366,11 @@
     font-size: 18px;
     line-height: 1.75;
     letter-spacing: 0;
+  }
+
+  /* Manuscript face as a utility — same family the editor uses. */
+  .font-manuscript {
+    font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
   }
 }
 

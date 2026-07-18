@@ -11,9 +11,9 @@ public class BibleService : IBibleService
 
     public BibleService(ApplicationDbContext db) => _db = db;
 
-    public async Task<List<BibleEntryDto>> GetAllAsync(Guid storyId, Guid userId)
+    public async Task<List<BibleEntryDto>> GetAllAsync(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        await EnsureAccess(storyId, userId);
+        await EnsureAccess(storyId, userId, organizationId);
 
         return await _db.BibleEntries
             .Where(b => b.StoryId == storyId)
@@ -23,18 +23,18 @@ public class BibleService : IBibleService
             .ToListAsync();
     }
 
-    public async Task<BibleEntryDto> GetByIdAsync(Guid id, Guid userId)
+    public async Task<BibleEntryDto> GetByIdAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
         var entry = await _db.BibleEntries
             .Include(b => b.Story)
-            .FirstOrDefaultAsync(b => b.Id == id && b.Story!.UserId == userId);
+            .FirstOrDefaultAsync(b => b.Id == id && b.Story!.UserId == userId && (organizationId == null || b.Story!.OrganizationId == organizationId));
 
         return entry is null ? throw new KeyNotFoundException("Bible entry not found") : ToDto(entry);
     }
 
-    public async Task<BibleEntryDto> CreateAsync(Guid storyId, CreateBibleEntryRequest request, Guid userId)
+    public async Task<BibleEntryDto> CreateAsync(Guid storyId, CreateBibleEntryRequest request, Guid userId, Guid? organizationId = null)
     {
-        await EnsureAccess(storyId, userId);
+        await EnsureAccess(storyId, userId, organizationId);
 
         var entry = new BibleEntry
         {
@@ -49,11 +49,11 @@ public class BibleService : IBibleService
         return ToDto(entry);
     }
 
-    public async Task<BibleEntryDto> UpdateAsync(Guid id, UpdateBibleEntryRequest request, Guid userId)
+    public async Task<BibleEntryDto> UpdateAsync(Guid id, UpdateBibleEntryRequest request, Guid userId, Guid? organizationId = null)
     {
         var entry = await _db.BibleEntries
             .Include(b => b.Story)
-            .FirstOrDefaultAsync(b => b.Id == id && b.Story!.UserId == userId);
+            .FirstOrDefaultAsync(b => b.Id == id && b.Story!.UserId == userId && (organizationId == null || b.Story!.OrganizationId == organizationId));
 
         if (entry is null) throw new KeyNotFoundException("Bible entry not found");
 
@@ -66,11 +66,11 @@ public class BibleService : IBibleService
         return ToDto(entry);
     }
 
-    public async Task DeleteAsync(Guid id, Guid userId)
+    public async Task DeleteAsync(Guid id, Guid userId, Guid? organizationId = null)
     {
         var entry = await _db.BibleEntries
             .Include(b => b.Story)
-            .FirstOrDefaultAsync(b => b.Id == id && b.Story!.UserId == userId);
+            .FirstOrDefaultAsync(b => b.Id == id && b.Story!.UserId == userId && (organizationId == null || b.Story!.OrganizationId == organizationId));
 
         if (entry is null) throw new KeyNotFoundException("Bible entry not found");
 
@@ -78,9 +78,9 @@ public class BibleService : IBibleService
         await _db.SaveChangesAsync();
     }
 
-    private async Task EnsureAccess(Guid storyId, Guid userId)
+    private async Task EnsureAccess(Guid storyId, Guid userId, Guid? organizationId = null)
     {
-        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId))
+        if (!await _db.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId && (organizationId == null || s.OrganizationId == organizationId)))
             throw new KeyNotFoundException("Story not found");
     }
 

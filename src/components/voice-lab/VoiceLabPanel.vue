@@ -99,18 +99,18 @@ watch(projectId, (id) => {
     <div class="p-4 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold text-text-primary">Voice Lab</h2>
-        <span class="text-2xs tabular-nums text-text-tertiary">
+        <span class="text-2xs tabular-nums text-text-hint">
           {{ dialogueEntries.length }} lines
         </span>
       </div>
 
       <button
         :disabled="indexing || !projectId"
-        class="w-full py-2 px-3 rounded-lg text-xs font-medium transition-all duration-150 flex items-center justify-center gap-2"
+        class="w-full py-2 px-3 rounded-lg text-xs transition-all duration-150 flex items-center justify-center gap-2"
         :class="
           indexing
-            ? 'bg-accent/20 text-accent cursor-wait'
-            : 'bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98]'
+            ? 'bg-surface-hover text-accent cursor-wait'
+            : 'btn-primary active:scale-[0.98]'
         "
         @click="handleIndex"
       >
@@ -129,7 +129,7 @@ watch(projectId, (id) => {
         />
       </div>
 
-      <div v-if="dialogueStats" class="mt-2 flex gap-3 text-2xs text-text-tertiary">
+      <div v-if="dialogueStats" class="mt-2 flex gap-3 text-2xs text-text-hint">
         <span>{{ dialogueStats.sectionsIndexed }} sections</span>
         <span>{{ dialogueStats.totalLines }} dialogue lines</span>
       </div>
@@ -137,7 +137,7 @@ watch(projectId, (id) => {
 
     <div v-if="speakers.length > 0" class="px-4 py-2 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-2xs font-medium text-text-tertiary uppercase tracking-wider"
+        <span class="text-2xs font-medium text-text-hint uppercase tracking-wider"
           >Speakers</span
         >
         <div class="flex gap-1">
@@ -157,8 +157,8 @@ watch(projectId, (id) => {
           :class="[
             'px-2 py-1 rounded-md text-2xs font-medium transition-all duration-150',
             selectedSpeakerId === speaker.id
-              ? 'bg-accent/15 text-accent ring-1 ring-accent/30'
-              : 'bg-bg-tertiary/50 text-text-secondary hover:bg-bg-tertiary'
+              ? 'bg-surface-hover text-accent ring-1 ring-accent'
+              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover'
           ]"
           @click="selectSpeaker(speaker.id)"
         >
@@ -174,8 +174,8 @@ watch(projectId, (id) => {
           :class="[
             'px-2 py-0.5 rounded text-2xs font-medium transition-all',
             filterType === 'unreviewed'
-              ? 'bg-warning/15 text-warning ring-1 ring-warning/30'
-              : 'text-text-tertiary hover:text-text-secondary'
+              ? 'bg-surface-hover text-warning ring-1 ring-warning'
+              : 'text-text-hint hover:text-text-secondary'
           ]"
           @click="filterType = filterType === 'unreviewed' ? 'all' : 'unreviewed'"
         >
@@ -189,7 +189,7 @@ watch(projectId, (id) => {
         <BaseIcon name="loader-2" :size="20" class="mx-auto text-accent animate-spin" />
       </div>
 
-      <div v-else-if="filteredEntries.length === 0" class="p-6 text-center text-text-tertiary">
+      <div v-else-if="filteredEntries.length === 0" class="p-6 text-center text-text-hint">
         <BaseIcon name="message-square" :size="32" class="mx-auto mb-2 opacity-40" />
         <p class="text-xs">
           {{
@@ -207,10 +207,10 @@ watch(projectId, (id) => {
           :class="[
             'group mx-2 my-1 rounded-lg border transition-all duration-100 cursor-pointer',
             selectedEntry?.id === entry.id
-              ? 'border-accent/30 bg-accent/5'
+              ? 'border-accent bg-surface-hover'
               : entry.needsReview
-                ? 'border-warning/20 bg-warning/[0.03] hover:bg-warning/[0.06] hover:border-warning/30'
-                : 'border-transparent hover:bg-bg-tertiary/30 hover:border-border-subtle'
+                ? 'border-border-subtle bg-bg-secondary hover:bg-surface-hover hover:border-border-subtle'
+                : 'border-transparent hover:bg-surface-hover hover:border-border-subtle'
           ]"
           @click="selectEntry(entry)"
         >
@@ -220,15 +220,15 @@ watch(projectId, (id) => {
                 v-if="entry.speakerName"
                 class="shrink-0 px-1.5 py-0.5 rounded text-2xs font-semibold leading-tight"
                 :style="{
-                  backgroundColor: entry.color ? entry.color + '20' : 'var(--color-accent)20',
-                  color: entry.color || 'var(--color-accent)'
+                  backgroundColor: 'var(--vers-bg-hover)',
+                  color: entry.color || 'var(--vers-accent-primary)'
                 }"
               >
                 {{ entry.speakerName }}
               </span>
               <span
                 v-else
-                class="shrink-0 px-1.5 py-0.5 rounded text-2xs font-medium leading-tight bg-bg-tertiary text-text-tertiary"
+                class="shrink-0 px-1.5 py-0.5 rounded text-2xs font-medium leading-tight bg-bg-tertiary text-text-hint"
               >
                 Unknown
               </span>
@@ -237,28 +237,28 @@ watch(projectId, (id) => {
               </p>
             </div>
             <div class="flex items-center gap-2 mt-1.5">
-              <span class="text-2xs text-text-tertiary/50 font-mono">
+              <span class="text-2xs text-text-hint font-mono">
                 §{{ entry.sectionId ? entry.sectionId.slice(0, 6) : '?' }}:{{
                   entry.paragraphIndex
                 }}
               </span>
-              <span v-if="entry.confidence < 1" class="text-2xs text-warning/60">
+              <span v-if="entry.confidence < 1" class="text-2xs text-warning">
                 {{ Math.round(entry.confidence * 100) }}%
               </span>
               <span
                 v-if="entry.dialogueType === 'action'"
-                class="text-2xs px-1 py-0.5 rounded bg-bg-tertiary/60 text-text-tertiary/70 italic leading-none"
+                class="text-2xs px-1 py-0.5 rounded bg-bg-tertiary text-text-hint italic leading-none"
               >
                 action
               </span>
               <span
                 v-if="entry.needsReview"
-                class="text-2xs px-1.5 py-0.5 rounded bg-warning/10 text-warning/80 font-medium leading-none"
+                class="text-2xs px-1.5 py-0.5 rounded bg-bg-secondary text-warning font-medium leading-none"
               >
                 Needs review
               </span>
               <span
-                class="ml-auto text-2xs text-text-tertiary/30 group-hover:text-text-tertiary/60 transition-colors duration-100"
+                class="ml-auto text-2xs text-text-hint group-hover:text-text-secondary transition-colors duration-100"
               >
                 <BaseIcon
                   :name="selectedEntry?.id === entry.id ? 'chevron-down' : 'chevron-right'"
@@ -270,20 +270,20 @@ watch(projectId, (id) => {
 
           <div
             v-if="selectedEntry?.id === entry.id"
-            class="border-t border-border-subtle/40 px-3 py-2 space-y-1.5 bg-bg-tertiary/20"
+            class="border-t border-border-subtle px-3 py-2 space-y-1.5 bg-bg-secondary"
           >
             <p class="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
               {{ entry.textContent }}
             </p>
-            <div v-if="entry.contextBefore" class="pt-1 border-t border-border-subtle/20">
-              <span class="text-2xs text-text-tertiary/50 uppercase tracking-wider font-medium"
+            <div v-if="entry.contextBefore" class="pt-1 border-t border-border-subtle">
+              <span class="text-2xs text-text-hint uppercase tracking-wider font-medium"
                 >Context</span
               >
-              <p class="text-2xs text-text-tertiary/70 mt-0.5 italic leading-relaxed">
+              <p class="text-2xs text-text-hint mt-0.5 italic leading-relaxed">
                 {{ truncate(entry.contextBefore, 200) }}
               </p>
             </div>
-            <div class="flex flex-wrap gap-x-3 gap-y-1 pt-1 text-2xs text-text-tertiary/60">
+            <div class="flex flex-wrap gap-x-3 gap-y-1 pt-1 text-2xs text-text-hint">
               <span>ID: {{ entry.id?.slice(0, 8) || '?' }}</span>
               <span>Type: {{ entry.dialogueType || 'quoted' }}</span>
               <span v-if="entry.tagType">Tag: {{ entry.tagType }}</span>

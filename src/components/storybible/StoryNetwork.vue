@@ -109,18 +109,17 @@ watch(navigateTarget, (target) => {
   fitView({ nodes: [{ id: target }], padding: 0.2, duration: 300 })
 })
 
-/* Palette kept as hex for opacity suffix support (e.g. data.color + '60') */
+/* Desaturated, on-brand group palette (Manuscript Mono — no purple/neon).
+   Kept as hex for opacity-suffix support (e.g. data.color + '60'). */
 const groupColors = [
-  '#f48fb1',
-  '#ef5350',
-  '#ce93d8',
-  '#f06292',
-  '#ba68c8',
-  '#ff7043',
-  '#90a4ae',
-  '#4fc3f7',
-  '#80cbc4',
-  '#aed581'
+  '#6e8bb5', // slate
+  '#6a9e7a', // sage
+  '#d4a74a', // amber
+  '#c08552', // ochre
+  '#a86b6b', // brick
+  '#7a9aa8', // steel
+  '#9a9a5c', // olive
+  '#8a8f98' // stone
 ]
 
 function createGroup(groupData) {
@@ -361,8 +360,22 @@ const edgeColors = {
   neutral: 'var(--vers-edge-neutral)'
 }
 
-function getEdgeColor(relationshipType) {
-  return edgeColors[relationshipType] || 'var(--vers-default-edge)'
+// Option C — edges are neutral hairlines by default and only take the accent on
+// hover / when connected to a hovered node. Relationship is carried by the label,
+// not by colour, so the web stays calm. (edgeColors kept for legacy reference.)
+function getEdgeColor() {
+  return 'var(--vers-text-muted)'
+}
+
+function getEdgeStroke(id, data) {
+  if (hoveredEdgeId.value === id) return 'var(--vers-accent-primary)'
+  if (hoveredNodeId.value) {
+    const e = edges.value.find((x) => x.id === id)
+    if (e && (e.source === hoveredNodeId.value || e.target === hoveredNodeId.value)) {
+      return 'var(--vers-accent-primary)'
+    }
+  }
+  return data?.isGroupEdge ? 'var(--vers-text-secondary)' : 'var(--vers-text-muted)'
 }
 
 const entityIcons = {
@@ -580,11 +593,11 @@ const groupEdges = computed(() => {
       style: {
         strokeDasharray: '6 3',
         strokeWidth: 2.5,
-        stroke: 'var(--vers-default-fallback)'
+        stroke: 'var(--vers-text-secondary)'
       },
       data: {
         edgeData: edge,
-        color: 'var(--vers-default-fallback)',
+        color: 'var(--vers-text-secondary)',
         relationshipType: edge.relationshipType,
         label: edge.relationshipType.replace(/_/g, ' '),
         category: 'group',
@@ -1638,21 +1651,21 @@ async function arrangeExtendedStarLayout() {
       name: 'Unconnected Characters',
       type: 'character',
       prefix: 'char',
-      color: '#8B5CF6'
+      color: '#6e8bb5'
     },
     {
       entities: orphanLocs,
       name: 'Unconnected Locations',
       type: 'location',
       prefix: 'loc',
-      color: '#10B981'
+      color: '#6a9e7a'
     },
     {
       entities: orphanThreads,
       name: 'Unconnected Plot Threads',
       type: 'plotThread',
       prefix: 'thread',
-      color: '#F59E0B'
+      color: '#d4a74a'
     }
   ].filter((d) => d.entities.length > 0)
 
@@ -1773,7 +1786,7 @@ function handleApplySuggestionsModalClose() {
       class="shrink-0 px-4 py-2 h-14 border-b border-border-subtle flex items-center justify-between bg-bg-secondary z-10"
     >
       <div class="flex items-center gap-2">
-        <span class="font-ui text-accent tracking-wide">Story Network</span>
+        <span class="font-ui font-medium text-text-primary tracking-wide">Story Network</span>
       </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-1 border-l border-border-subtle pl-3">
@@ -1787,7 +1800,10 @@ function handleApplySuggestionsModalClose() {
             title="Toggle character relationships"
             @click="showCharEdges = !showCharEdges"
           >
-            <span class="w-2 h-2 rounded-full bg-entity-character"></span>
+            <span
+              class="w-2 h-2 rounded-full"
+              :style="{ backgroundColor: 'var(--vers-entity-character)' }"
+            ></span>
             Characters
           </button>
           <button
@@ -1800,7 +1816,10 @@ function handleApplySuggestionsModalClose() {
             title="Toggle location connections"
             @click="showLocEdges = !showLocEdges"
           >
-            <span class="w-2 h-2 rounded-full bg-entity-location"></span>
+            <span
+              class="w-2 h-2 rounded-full"
+              :style="{ backgroundColor: 'var(--vers-entity-location)' }"
+            ></span>
             Locations
           </button>
           <button
@@ -1813,7 +1832,10 @@ function handleApplySuggestionsModalClose() {
             title="Toggle plot thread connections"
             @click="showThreadEdges = !showThreadEdges"
           >
-            <span class="w-2 h-2 rounded-full bg-entity-thread"></span>
+            <span
+              class="w-2 h-2 rounded-full"
+              :style="{ backgroundColor: 'var(--vers-entity-plotThread)' }"
+            ></span>
             Plot Threads
           </button>
         </div>
@@ -1868,7 +1890,7 @@ function handleApplySuggestionsModalClose() {
           Ideas
         </button>
         <button
-          class="px-3 py-1.5 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui"
+          class="btn-primary px-3 py-1.5 text-xs rounded font-ui"
           @click="openAddConnectionModal"
         >
           + Connection
@@ -1930,7 +1952,7 @@ function handleApplySuggestionsModalClose() {
                   data?.isLongRange
                 )
               "
-              :stroke="data?.color || 'var(--vers-default-edge)'"
+              :stroke="getEdgeStroke(id, data)"
               :stroke-width="
                 data?.category === 'group'
                   ? hoveredEdgeId === id
@@ -2132,7 +2154,7 @@ function handleApplySuggestionsModalClose() {
             <p class="text-xs text-text-hint mb-4">Drag items from the sidebar to add them</p>
             <button
               v-if="!showSidebar"
-              class="px-4 py-2 text-sm bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 font-ui"
+              class="btn-primary px-4 py-2 text-sm rounded-lg font-ui"
               @click="toggleSidebar"
             >
               Show Entities Panel
@@ -2178,7 +2200,7 @@ function handleApplySuggestionsModalClose() {
           </p>
           <div class="flex gap-2">
             <button
-              class="flex-1 py-1.5 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui"
+              class="btn-primary flex-1 py-1.5 text-xs rounded font-ui"
               @click="editConnection(selectedConnection)"
             >
               Edit
@@ -2278,7 +2300,7 @@ function handleApplySuggestionsModalClose() {
                 Cancel
               </button>
               <button
-                class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent/90 font-ui"
+                class="btn-primary flex-1 py-2 rounded-lg text-sm font-ui"
                 @click="confirmCreateGroup"
               >
                 Create

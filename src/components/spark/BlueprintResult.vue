@@ -38,7 +38,7 @@ NOTES: ${b.writingNotes}`
     <div class="flex justify-between items-start">
       <h3 class="font-semibold text-text-primary">{{ blueprint.title }}</h3>
       <button
-        class="px-3 py-1 text-xs bg-accent text-accent-foreground rounded hover:bg-accent/90 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        class="px-3 py-1 text-xs btn-primary rounded font-ui focus:outline-none focus:ring-2 focus:ring-accent"
         @click="formatForWriting"
       >
         Insert as Draft
@@ -72,7 +72,7 @@ NOTES: ${b.writingNotes}`
       </div>
     </div>
 
-    <div class="bg-accent-muted/20 border-l-2 border-accent-muted rounded-r-md p-3 space-y-3">
+    <div class="bg-surface-hover border-l-2 border-accent-muted rounded-r-md p-3 space-y-3">
       <div>
         <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">
           Sensory Anchor

@@ -74,14 +74,14 @@ const totalWordsWritten = computed(() =>
       <div class="flex items-center gap-1.5">
         <div v-if="volumeTotalConsistencyIssues > 0">
           <button
-            class="text-2xs text-yellow-400 font-ui flex items-center gap-1 hover:text-yellow-300 focus:outline-none focus:ring-1 focus:ring-accent rounded"
+            class="text-2xs text-warning font-ui flex items-center gap-1 hover:text-warning focus:outline-none focus:ring-1 focus:ring-accent rounded"
             @click="emit('open-consistency')"
           >
             <BaseIcon name="alert-triangle" :size="10" />
             {{ volumeTotalConsistencyIssues }}
           </button>
         </div>
-        <div v-else class="text-2xs text-green-400/60 font-ui flex items-center gap-1">
+        <div v-else class="text-2xs text-success font-ui flex items-center gap-1">
           <BaseIcon name="check-circle" :size="10" />
           ok
         </div>
@@ -91,7 +91,7 @@ const totalWordsWritten = computed(() =>
     <!-- Quality summary card -->
     <div
       v-if="volumeGenerator.consistencyReport.value"
-      class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border-subtle bg-bg-secondary/50"
+      class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border-subtle bg-bg-secondary"
     >
       <div class="flex items-center gap-2">
         <BaseIcon
@@ -99,10 +99,10 @@ const totalWordsWritten = computed(() =>
           :size="14"
           :class="
             qualityGrade === 'good'
-              ? 'text-green-400'
+              ? 'text-success'
               : qualityGrade === 'fair'
-                ? 'text-yellow-400'
-                : 'text-red-400'
+                ? 'text-warning'
+                : 'text-danger'
           "
         />
         <span class="text-xs font-ui text-text-secondary">
@@ -110,10 +110,10 @@ const totalWordsWritten = computed(() =>
           <span
             :class="
               qualityGrade === 'good'
-                ? 'text-green-400'
+                ? 'text-success'
                 : qualityGrade === 'fair'
-                  ? 'text-yellow-400'
-                  : 'text-red-400'
+                  ? 'text-warning'
+                  : 'text-danger'
             "
             >{{ qualityGrade }}</span
           >
@@ -126,7 +126,7 @@ const totalWordsWritten = computed(() =>
     </div>
 
     <!-- Story-level eval aggregate summary -->
-    <div class="rounded-lg border border-border-subtle bg-bg-secondary/50 px-3 py-2">
+    <div class="rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2">
       <div class="flex items-center justify-between gap-2">
         <span class="text-2xs uppercase tracking-wider text-text-hint font-ui">Evaluations</span>
         <div class="flex items-center gap-2">
@@ -137,19 +137,19 @@ const totalWordsWritten = computed(() =>
             >
             <span
               v-if="sceneEval.aggregateStats.value?.averageScore !== null"
-              class="text-indigo-400"
+              class="text-info"
             >
               Avg: {{ sceneEval.aggregateStats.value?.averageScore }}
             </span>
             <span
               v-if="sceneEval.aggregateStats.value?.totalRegressions > 0"
-              class="text-yellow-400"
+              class="text-warning"
             >
               {{ sceneEval.aggregateStats.value?.totalRegressions }} regressions
             </span>
           </div>
           <button
-            class="text-2xs text-accent font-ui hover:text-accent/80 transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5"
+            class="text-2xs text-accent font-ui hover:text-accent focus:outline-none focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5"
             @click="showDashboard = !showDashboard"
           >
             {{ showDashboard ? 'Hide' : 'Dashboard' }}
@@ -193,14 +193,14 @@ const totalWordsWritten = computed(() =>
     <div v-if="selectedSceneIndex >= 0" class="space-y-2">
       <div class="flex gap-1.5">
         <button
-          class="flex-1 py-1.5 px-2 bg-yellow-600/20 text-yellow-400 rounded-md text-xs font-medium hover:bg-yellow-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+          class="flex-1 py-1.5 px-2 bg-bg-secondary text-warning rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
           @click="emit('regenerate', selectedSceneIndex)"
         >
           <BaseIcon name="refresh-cw" :size="12" /> Re-generate Scene
           {{ selectedSceneIndex + 1 }}
         </button>
         <button
-          class="flex-1 py-1.5 px-2 bg-accent/10 text-accent rounded-md text-xs font-medium hover:bg-accent/20 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+          class="flex-1 py-1.5 px-2 bg-bg-secondary text-accent rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
           :disabled="
             sceneEval.isEvaluating.value ||
             !volumeGenerator.writtenScenes.value?.[selectedSceneIndex]?.prose
@@ -220,7 +220,7 @@ const totalWordsWritten = computed(() =>
 
       <div
         v-if="sceneEval.hasBeenEvaluated.value || sceneEval.isEvaluating.value"
-        class="space-y-2 border border-border-subtle rounded-lg p-3 bg-bg-secondary/50"
+        class="space-y-2 border border-border-subtle rounded-lg p-3 bg-bg-secondary"
       >
         <EvalPanel
           :critique-result="sceneEval.critiqueResult.value"
@@ -236,7 +236,7 @@ const totalWordsWritten = computed(() =>
 
         <div v-if="sceneEval.hasBeenEvaluated.value" class="flex gap-1.5">
           <button
-            class="flex-1 py-1 px-2 bg-indigo-600/20 text-indigo-400 rounded-md text-11px font-medium hover:bg-indigo-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+            class="flex-1 py-1 px-2 bg-bg-secondary text-info rounded-md text-11px font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
             :disabled="sceneEval.isRevising.value || !sceneEval.critiqueResult.value"
             @click="emit('revise', selectedSceneIndex)"
           >
@@ -245,7 +245,7 @@ const totalWordsWritten = computed(() =>
           </button>
           <button
             v-if="sceneEval.revisionResult.value"
-            class="flex-1 py-1 px-2 bg-emerald-600/20 text-emerald-400 rounded-md text-11px font-medium hover:bg-emerald-600/30 transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
+            class="flex-1 py-1 px-2 bg-bg-secondary text-success rounded-md text-11px font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
             @click="emit('accept-revision')"
           >
             <BaseIcon name="check" :size="11" /> Accept Revision
@@ -258,7 +258,7 @@ const totalWordsWritten = computed(() =>
 
     <!-- Primary action -->
     <button
-      class="w-full py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+      class="w-full py-2.5 btn-primary rounded-lg font-ui focus:outline-none focus:ring-2 focus:ring-accent"
       @click="emit('reset')"
     >
       <span class="flex items-center justify-center gap-2"
@@ -286,8 +286,8 @@ const totalWordsWritten = computed(() =>
           class="absolute -top-2 right-0 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
           :class="
             saveStatus.type === 'saving'
-              ? 'bg-accent text-accent-foreground'
-              : 'bg-green-600/20 text-green-400'
+              ? 'bg-accent text-bg-primary'
+              : 'bg-bg-secondary text-success'
           "
           >{{ saveStatus.message }}</span
         >

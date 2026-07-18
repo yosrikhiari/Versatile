@@ -214,25 +214,25 @@ watch(
     <Transition name="modal">
       <div
         v-if="show"
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+        class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
         @click.self="emit('close')"
       >
         <div
           class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-thin"
         >
           <div class="flex items-center justify-between mb-6">
-            <h2 class="text-lg font-display font-semibold text-text-primary tracking-wide">
+            <h2 class="text-lg font-ui font-semibold text-text-primary tracking-wide">
               Settings
             </h2>
             <button
-              class="text-text-hint/50 hover:text-text-primary transition-all duration-150 btn-ghost rounded-lg p-1"
+              class="text-text-hint hover:text-text-primary transition-all duration-150 btn-ghost rounded-lg p-1"
               @click="emit('close')"
             >
               <BaseIcon name="x" :size="20" />
             </button>
           </div>
 
-          <div class="flex gap-1 mb-6 border-b border-border-subtle/50 pb-2">
+          <div class="flex gap-1 mb-6 border-b border-border-subtle pb-2">
             <BaseTab
               v-for="t in tabOptions"
               :key="t.key"
@@ -256,7 +256,7 @@ watch(
                 type="number"
                 min="1"
                 step="50"
-                class="w-full px-4 py-2 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/30"
+                class="w-full px-4 py-2 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
           </div>
@@ -271,7 +271,7 @@ watch(
                 <select
                   id="default-provider"
                   :value="settingsStore.aiProvider"
-                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   @change="settingsStore.setAIProvider($event.target.value)"
                 >
                   <option v-for="p in PROVIDER_LIST" :key="p" :value="p">
@@ -286,7 +286,7 @@ watch(
                 <select
                   id="fallback-provider"
                   :value="settingsStore.aiProviderFallback"
-                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   @change="settingsStore.setAIProviderFallback($event.target.value)"
                 >
                   <option value="none">No fallback</option>
@@ -310,7 +310,7 @@ watch(
                     v-model="ollamaEndpoint"
                     type="text"
                     placeholder="http://localhost:11434"
-                    class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                    class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                   <button
                     :disabled="testingConnection"
@@ -325,8 +325,8 @@ watch(
                   :class="[
                     'mt-1 text-xs px-2 py-1 rounded',
                     connectionStatus.success
-                      ? 'bg-success/20 text-success'
-                      : 'bg-danger/20 text-danger'
+                      ? 'bg-bg-secondary text-success'
+                      : 'bg-bg-secondary text-danger'
                   ]"
                 >
                   {{ connectionStatus.message }}
@@ -339,7 +339,7 @@ watch(
                 <select
                   id="ollama-model"
                   v-model="selectedModel"
-                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 >
                   <option value="">Select a model</option>
                   <option v-for="model in availableModels" :key="model" :value="model">
@@ -351,7 +351,7 @@ watch(
 
             <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
               <h3 class="text-sm font-medium text-text-primary">API Keys</h3>
-              <p class="text-11px text-warning/90 leading-snug">
+              <p class="text-11px text-warning leading-snug">
                 ⚠ Stored locally in your browser. Do not use a high-spend key.
               </p>
               <div v-for="p in NON_OLLAMA_PROVIDERS" :key="p" class="space-y-1">
@@ -364,7 +364,7 @@ watch(
                     v-model="apiKeys[p]"
                     type="password"
                     :placeholder="`${p} API key`"
-                    class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 font-mono text-xs"
+                    class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent font-mono text-xs"
                   />
                   <button
                     :disabled="testingProvider === p || !apiKeys[p]"
@@ -379,8 +379,8 @@ watch(
                   :class="[
                     'mt-1 text-xs px-2 py-1 rounded',
                     providerStatus[p].success
-                      ? 'bg-success/20 text-success'
-                      : 'bg-danger/20 text-danger'
+                      ? 'bg-bg-secondary text-success'
+                      : 'bg-bg-secondary text-danger'
                   ]"
                 >
                   {{ providerStatus[p].message }}
@@ -405,7 +405,7 @@ watch(
                     <select
                       :id="'feature-provider-' + f"
                       v-model="featureProviderSelections[f]"
-                      class="flex-[2] px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
+                      class="flex-[2] px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent"
                       @change="onFeatureProviderChange(f)"
                     >
                       <option value="default">Default</option>
@@ -416,7 +416,7 @@ watch(
                     <select
                       :id="'feature-model-' + f"
                       v-model="featureModelSelections[f]"
-                      class="flex-[3] px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
+                      class="flex-[3] px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent"
                       :disabled="
                         !featureProviderSelections[f] || featureProviderSelections[f] === 'default'
                       "
@@ -444,7 +444,7 @@ watch(
                 <select
                   id="embedding-provider"
                   :value="settingsStore.embeddingProvider"
-                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   @change="settingsStore.setEmbeddingProvider($event.target.value)"
                 >
                   <option v-for="(label, key) in EMBEDDING_PROVIDER_LABELS" :key="key" :value="key">
@@ -459,7 +459,7 @@ watch(
                 <select
                   id="embedding-model"
                   :value="settingsStore.embeddingModel"
-                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   @change="settingsStore.setEmbeddingModel($event.target.value)"
                 >
                   <option value="nomic-embed-text">nomic-embed-text</option>

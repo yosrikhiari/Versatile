@@ -114,7 +114,7 @@ function priorityClass(p) {
                 'metric-value',
                 {
                   'text-accent': currentAnalysis.metrics.overallTensionLevel === 'high',
-                  'text-yellow-400': currentAnalysis.metrics.overallTensionLevel === 'medium'
+                  'text-warning': currentAnalysis.metrics.overallTensionLevel === 'medium'
                 }
               ]"
             >
@@ -361,7 +361,7 @@ function priorityClass(p) {
 <style scoped>
 .story-shape-panel {
   padding: 12px;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Geist Variable', Geist, system-ui, sans-serif;
   color: var(--vers-text-primary);
 }
 
@@ -695,13 +695,13 @@ function priorityClass(p) {
 }
 
 .pacing-badge.pacing-warn {
-  background: rgba(250, 204, 21, 0.12);
-  color: #facc15;
+  background: rgba(212, 167, 74, 0.12);
+  color: #d4a74a;
 }
 
 .pacing-badge.pacing-good {
-  background: rgba(74, 222, 128, 0.12);
-  color: #4ade80;
+  background: rgba(106, 158, 122, 0.12);
+  color: #6a9e7a;
 }
 
 .pacing-list {
@@ -843,11 +843,11 @@ function priorityClass(p) {
 }
 
 .rec-item.priority-high {
-  border-left-color: #ef4444;
+  border-left-color: #d07070;
 }
 
 .rec-item.priority-med {
-  border-left-color: #facc15;
+  border-left-color: #d4a74a;
 }
 
 .rec-item.priority-low {
@@ -872,13 +872,13 @@ function priorityClass(p) {
 }
 
 .rec-priority.priority-high {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  background: rgba(208, 112, 112, 0.15);
+  color: #d07070;
 }
 
 .rec-priority.priority-med {
-  background: rgba(250, 204, 21, 0.15);
-  color: #facc15;
+  background: rgba(212, 167, 74, 0.15);
+  color: #d4a74a;
 }
 
 .rec-priority.priority-low {

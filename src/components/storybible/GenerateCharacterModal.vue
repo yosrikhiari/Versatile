@@ -169,7 +169,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               <BaseIcon name="alert-circle" :size="32" class="mx-auto text-danger mb-4" />
               <p class="text-danger text-sm mb-4">{{ error }}</p>
               <button
-                class="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent/90 font-ui"
+                class="btn-primary px-4 py-2 rounded-lg text-sm font-ui"
                 @click="$emit('generate')"
               >
                 Retry
@@ -179,7 +179,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
 
           <div v-else class="flex-1 overflow-y-auto p-5 space-y-4">
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
                 >Name</label
               >
               <input
@@ -189,7 +189,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
                 >Role</label
               >
               <input
@@ -199,7 +199,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
                 >Goal</label
               >
               <input
@@ -209,7 +209,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
                 >Voice</label
               >
               <input
@@ -219,7 +219,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
                 >Notes</label
               >
               <textarea
@@ -230,7 +230,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
                 >Sample Dialogue</label
               >
               <textarea
@@ -241,7 +241,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
+              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
                 >Traits</label
               >
               <TagInput v-model="character.traits" placeholder="Add a trait, press Enter..." />
@@ -267,7 +267,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
             <button
               v-if="mode === 'generate'"
               :disabled="isGenerating || !character.name"
-              class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui"
+              class="btn-primary flex-1 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui"
               @click="handleCreate"
             >
               Create Character
@@ -275,7 +275,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
             <button
               v-else
               :disabled="isGenerating"
-              class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui"
+              class="btn-primary flex-1 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui"
               @click="handleUpdate"
             >
               Save Changes

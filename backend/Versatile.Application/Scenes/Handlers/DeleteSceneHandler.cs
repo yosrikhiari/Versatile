@@ -15,7 +15,7 @@ public class DeleteSceneHandler : IRequestHandler<DeleteSceneCommand, Unit>
     {
         var scene = await _db.Set<Scene>()
             .Include(s => s.Chapter).ThenInclude(c => c!.Story)
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Chapter!.Story!.UserId == request.UserId, ct)
+            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Chapter!.Story!.UserId == request.UserId && s.Chapter!.Story!.OrganizationId == request.OrganizationId, ct)
             ?? throw new KeyNotFoundException("Scene not found");
 
         _db.Set<Scene>().Remove(scene);

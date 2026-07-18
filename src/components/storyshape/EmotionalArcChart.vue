@@ -106,8 +106,8 @@ const totalIntensity = computed(() => {
     <svg :width="width" :height="height" class="w-full h-full">
       <defs>
         <linearGradient id="intensity-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.12" />
-          <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.02" />
+          <stop offset="0%" stop-color="#6e8bb5" stop-opacity="0.12" />
+          <stop offset="100%" stop-color="#6e8bb5" stop-opacity="0.02" />
         </linearGradient>
       </defs>
 
@@ -127,7 +127,7 @@ const totalIntensity = computed(() => {
         v-if="valencePath"
         :d="valencePath"
         fill="none"
-        stroke="rgba(167,139,250,0.9)"
+        stroke="rgba(110,139,181,0.9)"
         stroke-width="1.5"
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -187,7 +187,7 @@ const totalIntensity = computed(() => {
 }
 
 .valence-line {
-  filter: drop-shadow(0 0 5px rgba(167, 139, 250, 0.35));
+  filter: none;
 }
 
 .emotion-stats {

@@ -8,10 +8,10 @@ namespace Versatile.Application.Stories.Handlers;
 
 public class UpdateStoryHandler : IRequestHandler<UpdateStoryCommand, StoryDto>
 {
-    private readonly IUserOwnedRepository<Story> _repo;
+    private readonly IOrganizationOwnedRepository<Story> _repo;
     private readonly IUnitOfWork _uow;
 
-    public UpdateStoryHandler(IUserOwnedRepository<Story> repo, IUnitOfWork uow)
+    public UpdateStoryHandler(IOrganizationOwnedRepository<Story> repo, IUnitOfWork uow)
     {
         _repo = repo;
         _uow = uow;
@@ -19,8 +19,11 @@ public class UpdateStoryHandler : IRequestHandler<UpdateStoryCommand, StoryDto>
 
     public async Task<StoryDto> Handle(UpdateStoryCommand request, CancellationToken ct)
     {
-        var story = await _repo.GetByIdForUserAsync(request.Id, request.UserId, ct)
-            ?? throw new KeyNotFoundException("Story not found");
+        var story = request.OrganizationId.HasValue
+            ? await _repo.GetByIdForOrganizationAsync(request.Id, request.OrganizationId.Value, ct)
+            : await _repo.GetByIdForUserAsync(request.Id, request.UserId, ct);
+
+        if (story is null) throw new KeyNotFoundException("Story not found");
 
         if (request.Title is not null) story.Title = request.Title;
         if (request.Premise is not null) story.Premise = request.Premise;

@@ -374,7 +374,7 @@ const inNetworkCount = computed(() => props.existingNodeIds.length)
                 <span class="text-2xs text-text-secondary truncate flex-1">{{
                   conn.otherLabel
                 }}</span>
-                <span class="text-3xs text-text-hint capitalize px-1 rounded bg-bg-tertiary">{{
+                <span class="text-2xs text-text-hint capitalize px-1 rounded bg-bg-tertiary">{{
                   conn.relationshipType
                 }}</span>
                 <div

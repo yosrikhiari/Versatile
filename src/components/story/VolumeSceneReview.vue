@@ -54,7 +54,7 @@ function handleRerequest() {
 
     <div v-if="!showReRequestInput" class="flex gap-2">
       <button
-        class="flex-1 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        class="flex-1 py-2 bg-success text-bg-primary rounded-lg font-medium hover:bg-success transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
         @click="emit('approve')"
       >
         <span class="flex items-center justify-center gap-2"
@@ -62,7 +62,7 @@ function handleRerequest() {
         >
       </button>
       <button
-        class="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-500 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        class="flex-1 py-2 bg-danger text-bg-primary rounded-lg font-medium hover:bg-danger transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
         @click="handleReject"
       >
         <span class="flex items-center justify-center gap-2"
@@ -70,7 +70,7 @@ function handleRerequest() {
         >
       </button>
       <button
-        class="flex-1 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-500 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        class="flex-1 py-2 bg-warning text-bg-primary rounded-lg font-medium hover:bg-warning transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
         @click="showReRequestInput = true"
       >
         <span class="flex items-center justify-center gap-2"
@@ -88,7 +88,7 @@ function handleRerequest() {
       />
       <div class="flex gap-2">
         <button
-          class="flex-1 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="flex-1 py-2 btn-primary rounded-lg font-ui focus:outline-none focus:ring-2 focus:ring-accent"
           :disabled="!reRequestEdits.trim()"
           @click="handleRerequest"
         >
