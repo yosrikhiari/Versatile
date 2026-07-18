@@ -48,7 +48,7 @@ import {
 import { parallelWithLimit, computeSummary } from './generation/utils'
 import { CommitService } from './generation/commit'
 import { ConsistencyService } from './generation/consistency'
-import { GenerationLifecycleService } from './generation/lifecycle'
+import { GenerationLifecycleService, createAbortScope, isAbortError } from './generation/lifecycle'
 import { SceneInteractionService } from './generation/interaction'
 import { useDelegatorGeneration } from './generation/delegator'
 
@@ -117,36 +117,8 @@ export function useVolumeStoryGenerator() {
   // before: `onAbort` was block-scoped inside the providers' try blocks, so any
   // error raised while a signal was attached threw a ReferenceError that masked
   // the real one. That is fixed; this is now safe to turn on.)
-  let runController = null
+  const abort = createAbortScope()
   const isCancelling = ref(false)
-
-  function runSignal() {
-    return runController?.signal
-  }
-
-  /** True once the user has asked to stop; loops use it to leave promptly. */
-  function isAborted() {
-    return !!runController?.signal.aborted
-  }
-
-  /**
-   * Bail out of a loop between units of work.
-   *
-   * Cheap and honest: the in-flight request is aborted by the signal, and this
-   * stops the *next* one from starting. A scene is 3-5 calls, so a run stops
-   * within roughly one scene rather than one volume.
-   */
-  function throwIfAborted() {
-    if (isAborted()) {
-      const err = new Error('Generation cancelled')
-      err.name = 'AbortError'
-      throw err
-    }
-  }
-
-  function isAbortError(e) {
-    return e?.name === 'AbortError' || /cancel/i.test(e?.message || '')
-  }
   const runConsecutiveFailures = ref(0)
   const runFailedScenes = ref(0)
   const currentSceneResult = ref(null)
@@ -394,7 +366,7 @@ export function useVolumeStoryGenerator() {
   }) {
     if (phase.value !== 'idle') return
 
-    runController = new AbortController()
+    abort.ensure()
     isCancelling.value = false
 
     // Normalize an explicit volumes/chapters/words request into a structure spec
@@ -754,7 +726,7 @@ export function useVolumeStoryGenerator() {
         spineContext: spineContext.value,
         anchorRole,
         anchorConstraints,
-        signal: runSignal(),
+        signal: abort.signal(),
         onChunk: (_chunk, proseChunk) => {
           fullProse += proseChunk || ''
           emitChunk?.(proseChunk, fullProse)
@@ -1670,10 +1642,9 @@ export function useVolumeStoryGenerator() {
    * @returns {boolean} whether there was anything to stop
    */
   function stop() {
-    if (!runController || runController.signal.aborted) return false
+    if (!abort.cancel()) return false
     isCancelling.value = true
     progress.statusText = 'Stopping…'
-    runController.abort()
     if (currentTaskId) {
       actLog.appendThought(currentTaskId, 0, '\n⏹ Generation stopped by user.\n')
     }
@@ -1685,7 +1656,7 @@ export function useVolumeStoryGenerator() {
     // fetches kept running and their writers kept writing into the store behind
     // it — the state came back, seconds after being wiped.
     stop()
-    runController = null
+    abort.reset()
     isCancelling.value = false
 
     await delegatorApi.dispatch('RESET')

@@ -47,6 +47,9 @@ export default defineConfig({
     chunkSizeWarningLimit: 2500
   },
   server: {
+    watch: {
+      ignored: ['**/backend/**', '**/obj/**', '**/bin/**']
+    },
     port: 5173,
     hmr: {
       port: 5173
@@ -61,6 +64,11 @@ export default defineConfig({
         target: 'http://127.0.0.1:7860',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/sdapi/, '/sdapi')
+      },
+      '/hubs': {
+        target: 'http://localhost:5171',
+        changeOrigin: true,
+        ws: true
       },
       '/api': {
         target: 'http://localhost:5171',

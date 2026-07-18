@@ -1,7 +1,9 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Versatile.Application.Chapters.Commands;
+using Versatile.Application.Chapters.Queries;
 using Versatile.Application.DTOs;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -9,9 +11,9 @@ namespace Versatile.Api.Controllers;
 [Route("api/story/{storyId}/chapter"), Authorize]
 public class ChapterController : ApiControllerBase
 {
-    private readonly IChapterService _chapter;
+    private readonly IMediator _mediator;
 
-    public ChapterController(IChapterService chapter) => _chapter = chapter;
+    public ChapterController(IMediator mediator) => _mediator = mediator;
 
 
     [HttpGet]
@@ -19,7 +21,7 @@ public class ChapterController : ApiControllerBase
     {
         try
         {
-            return Ok(await _chapter.GetAllAsync(storyId, UserId));
+            return Ok(await _mediator.Send(new GetChaptersQuery(storyId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -32,7 +34,7 @@ public class ChapterController : ApiControllerBase
     {
         try
         {
-            return Ok(await _chapter.GetByIdAsync(id, UserId));
+            return Ok(await _mediator.Send(new GetChapterByIdQuery(id, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -41,11 +43,11 @@ public class ChapterController : ApiControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ChapterDto>> Create(Guid storyId, CreateChapterRequest request)
+    public async Task<ActionResult<ChapterDto>> Create(Guid storyId, CreateChapterCommand command)
     {
         try
         {
-            var chapter = await _chapter.CreateAsync(storyId, request, UserId);
+            var chapter = await _mediator.Send(command with { StoryId = storyId, UserId = UserId });
             return CreatedAtAction(nameof(GetById), new { id = chapter.Id }, chapter);
         }
         catch (KeyNotFoundException ex)
@@ -55,11 +57,11 @@ public class ChapterController : ApiControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<ChapterDto>> Update(Guid id, UpdateChapterRequest request)
+    public async Task<ActionResult<ChapterDto>> Update(Guid id, UpdateChapterCommand command)
     {
         try
         {
-            return Ok(await _chapter.UpdateAsync(id, request, UserId));
+            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId }));
         }
         catch (KeyNotFoundException ex)
         {
@@ -72,7 +74,7 @@ public class ChapterController : ApiControllerBase
     {
         try
         {
-            await _chapter.DeleteAsync(id, UserId);
+            await _mediator.Send(new DeleteChapterCommand(id, UserId));
             return NoContent();
         }
         catch (KeyNotFoundException ex)

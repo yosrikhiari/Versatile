@@ -17,13 +17,9 @@ public record UpdatePlotThreadRequest(string? Title, string? Status, string? Not
 
 // Section
 public record SectionDto(Guid Id, Guid StoryId, Guid? VolumeId, string Title, string? Summary, string? Content, int Order, string Status, string? Tags, DateTime CreatedAt, DateTime UpdatedAt);
-public record CreateSectionRequest(string Title, string? Summary, string? Content, string? Status, string? Tags);
-public record UpdateSectionRequest(string? Title, string? Summary, string? Content, int? Order, string? Status, string? Tags);
 
 // Subsection
 public record SubsectionDto(Guid Id, Guid StoryId, Guid SectionId, string Title, string? Summary, string? Content, int Order, string? Tags, DateTime CreatedAt, DateTime UpdatedAt);
-public record CreateSubsectionRequest(Guid SectionId, string Title, string? Summary, string? Content, string? Tags);
-public record UpdateSubsectionRequest(string? Title, string? Summary, string? Content, int? Order, string? Tags);
 
 // SparkHistoryItem
 public record SparkHistoryItemDto(Guid Id, Guid StoryId, string Type, string? Prompt, string? Blueprint, string? GeneratedContent, DateTime CreatedAt);
@@ -87,8 +83,6 @@ public record UpdateStoryStateSnapshotRequest(string? Data);
 
 // Volume
 public record VolumeDto(Guid Id, Guid StoryId, string Title, string? Description, string Color, int SortOrder, string? ChapterIds, DateTime CreatedAt, DateTime UpdatedAt);
-public record CreateVolumeRequest(string Title, string? Description, string? Color, int? SortOrder, string? ChapterIds);
-public record UpdateVolumeRequest(string? Title, string? Description, string? Color, int? SortOrder, string? ChapterIds);
 
 // VolumeEntity
 public record VolumeEntityDto(Guid Id, Guid StoryId, Guid VolumeId, string EntityType, string EntityId, bool IsPrimary);

@@ -121,6 +121,10 @@ async function handleBootstrapping(memory, payload) {
 async function handlePlanGenerated(memory, payload) {
   memory.setProgress('Generating plan...', 15)
 
+  if (!payload.plan && !payload.writerParams) {
+    return
+  }
+
   const plan =
     payload.plan ?? (await memory.instances.director.generateStoryPlan(payload.writerParams))
   memory.scenePlan.value = plan.scenes ?? []

@@ -1,7 +1,9 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
-using Versatile.Infrastructure.Services;
+using Versatile.Application.Scenes.Commands;
+using Versatile.Application.Scenes.Queries;
 
 namespace Versatile.Api.Controllers;
 
@@ -9,9 +11,9 @@ namespace Versatile.Api.Controllers;
 [Route("api/chapter/{chapterId}/scene"), Authorize]
 public class SceneController : ApiControllerBase
 {
-    private readonly ISceneService _scene;
+    private readonly IMediator _mediator;
 
-    public SceneController(ISceneService scene) => _scene = scene;
+    public SceneController(IMediator mediator) => _mediator = mediator;
 
 
     [HttpGet]
@@ -19,7 +21,7 @@ public class SceneController : ApiControllerBase
     {
         try
         {
-            return Ok(await _scene.GetAllAsync(chapterId, UserId));
+            return Ok(await _mediator.Send(new GetScenesQuery(chapterId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -32,7 +34,7 @@ public class SceneController : ApiControllerBase
     {
         try
         {
-            return Ok(await _scene.GetByIdAsync(id, UserId));
+            return Ok(await _mediator.Send(new GetSceneByIdQuery(id, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -41,11 +43,11 @@ public class SceneController : ApiControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<SceneDto>> Create(Guid chapterId, CreateSceneRequest request)
+    public async Task<ActionResult<SceneDto>> Create(Guid chapterId, CreateSceneCommand command)
     {
         try
         {
-            var scene = await _scene.CreateAsync(chapterId, request, UserId);
+            var scene = await _mediator.Send(command with { ChapterId = chapterId, UserId = UserId });
             return CreatedAtAction(nameof(GetById), new { id = scene.Id }, scene);
         }
         catch (KeyNotFoundException ex)
@@ -55,11 +57,11 @@ public class SceneController : ApiControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<SceneDto>> Update(Guid id, UpdateSceneRequest request)
+    public async Task<ActionResult<SceneDto>> Update(Guid id, UpdateSceneCommand command)
     {
         try
         {
-            return Ok(await _scene.UpdateAsync(id, request, UserId));
+            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId }));
         }
         catch (KeyNotFoundException ex)
         {
@@ -72,7 +74,7 @@ public class SceneController : ApiControllerBase
     {
         try
         {
-            await _scene.DeleteAsync(id, UserId);
+            await _mediator.Send(new DeleteSceneCommand(id, UserId));
             return NoContent();
         }
         catch (KeyNotFoundException ex)

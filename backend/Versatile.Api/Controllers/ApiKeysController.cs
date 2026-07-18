@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Versatile.Application.DTOs;
+using Versatile.Application.Services;
 using Versatile.Domain.Entities;
 using Versatile.Infrastructure.Data;
 using Versatile.Infrastructure.Services;
@@ -12,11 +14,45 @@ public class ApiKeysController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly KeyManagementService _keys;
+    private readonly IChatProviderFactory _providerFactory;
 
-    public ApiKeysController(ApplicationDbContext db, KeyManagementService keys)
+    public ApiKeysController(ApplicationDbContext db, KeyManagementService keys, IChatProviderFactory providerFactory)
     {
         _db = db;
         _keys = keys;
+        _providerFactory = providerFactory;
+    }
+
+    [HttpPost("test")]
+    public async Task<ActionResult> TestConnection([FromBody] TestConnectionRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        try
+        {
+            var provider = await _providerFactory.CreateAsync(request.Provider, userId.ToString());
+            var result = await provider.TestConnectionAsync(request.Model);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return Ok(new TestConnectionResult(false, null, ex.Message));
+        }
+    }
+
+    [HttpPost("{provider}/models")]
+    public async Task<ActionResult> ListModels(string provider)
+    {
+        var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        try
+        {
+            var chatProvider = await _providerFactory.CreateAsync(provider, userId.ToString());
+            var result = await chatProvider.ListModelsAsync();
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return Ok(new ListModelsResult(false, [], ex.Message));
+        }
     }
 
     [HttpGet("{provider}")]

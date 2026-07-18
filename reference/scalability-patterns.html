@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference: Scalability Patterns — Versatile</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="lesson">
+
+<h1>Scalability Patterns Reference</h1>
+<p class="subtitle">Quick-reference glossary for the architectural patterns in Versatile.</p>
+
+<div class="meta">
+  <span><a href="../lessons/0001-five-patterns-of-scalability.html">Back to Lesson 1</a></span>
+  <span>&middot;</span>
+  <span><a href="../ARCHITECTURE.md">ARCHITECTURE.md</a></span>
+</div>
+
+<!-- Offline-First -->
+<h2>Offline-First</h2>
+<p>Data is written to IndexedDB (via Dexie.js) before it is synced to the backend. The app is fully functional without a server. The backend is a <em>replica</em>, not the source of truth.</p>
+<table>
+  <tr><th>Key Files</th><td><span class="file">src/services/db-core.js</span> (schema), <span class="file">src/services/sync-engine.js</span> (sync)</td></tr>
+  <tr><th>Status Tracking</th><td><code>syncStatus</code> column per table: <code>pending-create | pending-update | pending-delete | synced | synced-deleted</code></td></tr>
+  <tr><th>Sync Interval</th><td>30 seconds (configurable)</td></tr>
+  <tr><th>Conflict Strategy</th><td>Last-write-wins</td></tr>
+  <tr><th>Strengths</th><td>Zero-infrastructure startup, works offline, backend is optional</td></tr>
+  <tr><th>Trade-offs</th><td>Conflict resolution complexity, potential sync delays, API keys in browser</td></tr>
+</table>
+
+<!-- Client-Side AI -->
+<h2>Client-Side AI</h2>
+<p>The browser calls AI providers (OpenAI, Anthropic, Gemini, Groq, Ollama) directly. The server never handles AI traffic — it's not a bottleneck for the core feature.</p>
+<table>
+  <tr><th>Entry Point</th><td><span class="file">src/services/aiService.js</span></td></tr>
+  <tr><th>Provider Implementations</th><td><span class="file">src/services/providers/{openai,anthropic,gemini,groq,ollama}.js</span></td></tr>
+  <tr><th>Key Feature</th><td>Provider abstraction: all providers export the same 4 functions</td></tr>
+  <tr><th>Concurrency</th><td>Semaphore per provider (1 for Ollama, 4 for cloud providers)</td></tr>
+  <tr><th>Strengths</th><td>Server never bottlenecks on AI, easy to add providers, parallel generation</td></tr>
+  <tr><th>Trade-offs</th><td>API keys in browser storage (encrypted), no server-side usage tracking</td></tr>
+</table>
+
+<!-- Clean Architecture -->
+<h2>Clean Architecture (CQRS)</h2>
+<p>Backend organized in 4 concentric layers. Dependencies point inward — Domain knows nothing, API knows everything.</p>
+<table>
+  <tr><th>Project</th><th>Responsibility</th><th>Dependencies</th></tr>
+  <tr><td><span class="file">Versatile.Domain/</span></td><td>Entities, enums, interfaces</td><td>None</td></tr>
+  <tr><td><span class="file">Versatile.Application/</span></td><td>CQRS commands/queries, handlers, DTOs, validators, AutoMapper profiles</td><td>Domain</td></tr>
+  <tr><td><span class="file">Versatile.Infrastructure/</span></td><td>EF Core DbContext, repositories, middleware, SignalR</td><td>Application + Domain</td></tr>
+  <tr><td><span class="file">Versatile.Api/</span></td><td>Controllers, Hubs, Program.cs, JWT auth config</td><td>All three</td></tr>
+</table>
+
+<!-- CQRS Triad -->
+<h3>CQRS Triad</h3>
+<p>Each CQRS feature has three files:</p>
+<table>
+  <tr><th>File</th><th>Job</th><th>Example</th></tr>
+  <tr><td><code>*Command.cs</code> / <code>*Query.cs</code></td><td>Input contract — what does this operation need?</td><td><span class="file">CreateStoryCommand.cs</span></td></tr>
+  <tr><td><code>*Handler.cs</code></td><td>Business logic — what does this operation do?</td><td><span class="file">CreateStoryHandler.cs</span></td></tr>
+  <tr><td><code>*Validator.cs</code></td><td>Guard — is the input valid?</td><td><span class="file">CreateStoryValidator.cs</span></td></tr>
+</table>
+
+<!-- Modular Frontend -->
+<h2>Modular Frontend (Features + Composables)</h2>
+<p>Frontend code is grouped by feature, not by type. Each feature directory owns its components. Reusable stateful logic lives in composables.</p>
+<table>
+  <tr><th>Layer</th><th>Location</th><th>Job</th></tr>
+  <tr><td>Feature Components</td><td><span class="file">src/components/{feature}/</span></td><td>UI rendering for a feature</td></tr>
+  <tr><td>Composables</td><td><span class="file">src/composables/use{*}.js</span></td><td>Reusable stateful logic (65+)</td></tr>
+  <tr><td>Pinia Stores</td><td><span class="file">src/stores/{*}.js</span></td><td>Global state management (15 stores)</td></tr>
+  <tr><td>DB Services</td><td><span class="file">src/services/db-{*}.js</span></td><td>IndexedDB persistence layer</td></tr>
+  <tr><td>Shared Primitives</td><td><span class="file">src/components/shared/</span></td><td>Reusable UI (Modal, ErrorBoundary, BaseButton)</td></tr>
+</table>
+
+<!-- SignalR -->
+<h2>SignalR Runway</h2>
+<p>Real-time WebSocket hubs are deployed and JWT-authenticated but have no frontend client yet. Architectural runway for future features.</p>
+<table>
+  <tr><th>Hub</th><th>Purpose</th><th>Endpoint</th></tr>
+  <tr><td>CollaborationHub</td><td>Multi-user cursor sync, real-time content changes</td><td><code>/hubs/collaboration</code></td></tr>
+  <tr><td>GenerationHub</td><td>Server-side AI streaming (for when client-side isn't enough)</td><td><code>/hubs/generation</code></td></tr>
+</table>
+
+<!-- Glossary -->
+<h2>Glossary</h2>
+<table>
+  <tr><th>Term</th><th>Definition</th></tr>
+  <tr><td><strong>IndexedDB</strong></td><td>Browser-based NoSQL database. Dexie.js is a wrapper that makes it usable with promises.</td></tr>
+  <tr><td><strong>Dexie.js</strong></td><td>A minimal wrapper around IndexedDB that provides async CRUD, live queries, and change tracking.</td></tr>
+  <tr><td><strong>Pinia</strong></td><td>Vue 3's official state management library. Each store is a singleton holding reactive state for one domain.</td></tr>
+  <tr><td><strong>Composable</strong></td><td>A Vue 3 function that uses the Composition API (<code>ref</code>, <code>computed</code>) to encapsulate reusable logic.</td></tr>
+  <tr><td><strong>CQRS</strong></td><td>Command Query Responsibility Segregation — separate models for writes (commands) and reads (queries).</td></tr>
+  <tr><td><strong>SignalR</strong></td><td>ASP.NET Core's real-time WebSocket library. Provides persistent connections with group-based messaging.</td></tr>
+  <tr><td><strong>AutoMapper</strong></td><td>.NET library for mapping between entity models and DTOs automatically.</td></tr>
+  <tr><td><strong>Semaphore</strong></td><td>Concurrency control primitive — limits how many operations can run simultaneously.</td></tr>
+  <tr><td><strong>Architectural Runway</strong></td><td>Infrastructure built before it's needed, to enable future development velocity.</td></tr>
+</table>
+
+<p class="footer">
+  <a href="../lessons/0001-five-patterns-of-scalability.html">Lesson 1</a> &middot;
+  <a href="../ARCHITECTURE.md">ARCHITECTURE.md</a>
+</p>
+
+</div>
+</body>
+</html>

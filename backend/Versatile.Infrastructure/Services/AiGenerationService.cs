@@ -1,71 +1,64 @@
 using System.Runtime.CompilerServices;
-using OpenAI.Chat;
-using Versatile.Application.Services;
 using Versatile.Application.DTOs;
+using Versatile.Application.Services;
 
 namespace Versatile.Infrastructure.Services;
 
 public class AiGenerationService : IAiGenerationService
 {
-    private readonly IChatStreamer _chat;
+    private readonly IChatProviderFactory _factory;
 
-    public AiGenerationService(IChatStreamer chat)
+    public AiGenerationService(IChatProviderFactory factory)
     {
-        ArgumentNullException.ThrowIfNull(chat);
-        _chat = chat;
+        ArgumentNullException.ThrowIfNull(factory);
+        _factory = factory;
     }
 
-    public async IAsyncEnumerable<string> GenerateStoryContinuationAsync(GenerateContinuationRequest request, [EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<string> GenerateStoryContinuationAsync(GenerateContinuationRequest request, string userId, [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var messages = new List<ChatMessage>
+        var provider = await _factory.CreateAsync(request.Provider, userId);
+        var messages = new List<AiMessage>
         {
-            new SystemChatMessage("You are an expert creative writing assistant. Write compelling, well-paced story continuations that match the established style, genre, and tone."),
-            new UserChatMessage(BuildContinuationPrompt(request)),
+            new("system", "You are an expert creative writing assistant. Write compelling, well-paced story continuations that match the established style, genre, and tone."),
+            new("user", BuildContinuationPrompt(request)),
         };
 
-        await foreach (var update in _chat.CompleteChatStreamingAsync(messages, cancellationToken: ct))
+        await foreach (var chunk in provider.GenerateStreamAsync(messages, request.Model, ct))
         {
-            foreach (var content in update.ContentUpdate)
-            {
-                if (!string.IsNullOrEmpty(content.Text))
-                    yield return content.Text;
-            }
+            if (!string.IsNullOrEmpty(chunk.Text))
+                yield return chunk.Text;
         }
     }
 
-    public async IAsyncEnumerable<string> GenerateSuggestionAsync(GenerateSuggestionRequest request, [EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<string> GenerateSuggestionAsync(GenerateSuggestionRequest request, string userId, [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var messages = new List<ChatMessage>
+        var provider = await _factory.CreateAsync(request.Provider, userId);
+        var messages = new List<AiMessage>
         {
-            new SystemChatMessage("You are a creative writing coach. Provide concise, actionable writing suggestions."),
-            new UserChatMessage(BuildSuggestionPrompt(request)),
+            new("system", "You are a creative writing coach. Provide concise, actionable writing suggestions."),
+            new("user", BuildSuggestionPrompt(request)),
         };
 
-        await foreach (var update in _chat.CompleteChatStreamingAsync(messages, cancellationToken: ct))
+        await foreach (var chunk in provider.GenerateStreamAsync(messages, request.Model, ct))
         {
-            foreach (var content in update.ContentUpdate)
-            {
-                if (!string.IsNullOrEmpty(content.Text))
-                    yield return content.Text;
-            }
+            if (!string.IsNullOrEmpty(chunk.Text))
+                yield return chunk.Text;
         }
     }
 
-    public async IAsyncEnumerable<string> GenerateCharacterProfileAsync(GenerateCharacterProfileRequest request, [EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<string> GenerateCharacterProfileAsync(GenerateCharacterProfileRequest request, string userId, [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var messages = new List<ChatMessage>
+        var provider = await _factory.CreateAsync(request.Provider, userId);
+        var messages = new List<AiMessage>
         {
-            new SystemChatMessage("You are a character development expert. Create detailed, nuanced character profiles with personality, backstory, motivations, and flaws."),
-            new UserChatMessage(BuildCharacterProfilePrompt(request)),
+            new("system", "You are a character development expert. Create detailed, nuanced character profiles with personality, backstory, motivations, and flaws."),
+            new("user", BuildCharacterProfilePrompt(request)),
         };
 
-        await foreach (var update in _chat.CompleteChatStreamingAsync(messages, cancellationToken: ct))
+        await foreach (var chunk in provider.GenerateStreamAsync(messages, request.Model, ct))
         {
-            foreach (var content in update.ContentUpdate)
-            {
-                if (!string.IsNullOrEmpty(content.Text))
-                    yield return content.Text;
-            }
+            if (!string.IsNullOrEmpty(chunk.Text))
+                yield return chunk.Text;
         }
     }
 

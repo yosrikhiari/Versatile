@@ -1,7 +1,9 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
-using Versatile.Infrastructure.Services;
+using Versatile.Application.Volume.Commands;
+using Versatile.Application.Volume.Queries;
 
 namespace Versatile.Api.Controllers;
 
@@ -9,43 +11,42 @@ namespace Versatile.Api.Controllers;
 [Route("api/story/{storyId}/volume"), Authorize]
 public class VolumeController : ApiControllerBase
 {
-    private readonly IVolumeService _service;
+    private readonly IMediator _mediator;
 
-    public VolumeController(IVolumeService service) => _service = service;
-
+    public VolumeController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
     public async Task<ActionResult<List<VolumeDto>>> GetAll(Guid storyId)
     {
-        try { return Ok(await _service.GetAllAsync(storyId, UserId)); }
+        try { return Ok(await _mediator.Send(new GetVolumesQuery(storyId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<VolumeDto>> GetById(Guid id)
     {
-        try { return Ok(await _service.GetByIdAsync(id, UserId)); }
+        try { return Ok(await _mediator.Send(new GetVolumeByIdQuery(id, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpPost]
-    public async Task<ActionResult<VolumeDto>> Create(Guid storyId, CreateVolumeRequest request)
+    public async Task<ActionResult<VolumeDto>> Create(Guid storyId, [FromBody] CreateVolumeCommand command)
     {
-        try { var dto = await _service.CreateAsync(storyId, request, UserId); return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto); }
+        try { var dto = await _mediator.Send(command with { StoryId = storyId, UserId = UserId }); return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<VolumeDto>> Update(Guid id, UpdateVolumeRequest request)
+    public async Task<ActionResult<VolumeDto>> Update(Guid id, [FromBody] UpdateVolumeCommand command)
     {
-        try { return Ok(await _service.UpdateAsync(id, request, UserId)); }
+        try { return Ok(await _mediator.Send(command with { Id = id, UserId = UserId })); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        try { await _service.DeleteAsync(id, UserId); return NoContent(); }
+        try { await _mediator.Send(new DeleteVolumeCommand(id, UserId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 }

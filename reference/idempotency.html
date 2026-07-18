@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Idempotency — Reference</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .sg { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; margin-bottom: 1rem; }
+  .sg dt { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--accent-dark); white-space: nowrap; }
+  .sg dd { color: var(--text-secondary); margin: 0; }
+  .sc { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
+  .sc > code { font-size: 0.8rem; }
+  .flow { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; }
+  .flow .step { display: flex; align-items: flex-start; gap: 0.75rem; }
+  .flow .step-num { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; color: var(--accent); min-width: 1.5rem; }
+  .flow .step-desc { color: var(--text-secondary); font-size: 0.9rem; }
+  .flow .step:not(:last-child)::after { content: '↓'; display: block; color: var(--text-muted); margin-left: 0.375rem; }
+  .method-grid { display: grid; grid-template-columns: 80px 1fr 90px; gap: 0; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .method-grid > div { padding: 0.5rem 0.75rem; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+  .method-grid > div:last-child, .method-grid > div:nth-last-child(-n+3) { border-bottom: none; }
+  .method-grid .header { font-weight: 600; color: var(--text); background: var(--code-bg); }
+  .method-grid .yes { color: var(--green); font-weight: 600; }
+  .method-grid .no { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="lesson">
+
+<h1>Idempotency Reference</h1>
+<p class="subtitle">Key concepts, patterns, and gotchas for safe retry APIs.</p>
+
+<div class="meta">
+  <span><a href="../lessons/0003-idempotency-keys.html">Lesson 3</a></span>
+  <span>&middot;</span>
+  <span>Quick reference</span>
+</div>
+
+<!-- ============================================================ -->
+<h2>Definition</h2>
+<p>
+  An operation is <strong>idempotent</strong> when performing it multiple times produces the same side-effects as performing it once.
+  Not the same <em>response</em> — the same <em>resulting state</em>.
+</p>
+
+<!-- ============================================================ -->
+<h2>HTTP Methods</h2>
+<div class="method-grid">
+  <div class="header">Method</div>
+  <div class="header">Semantics</div>
+  <div class="header">Idempotent?</div>
+  <div><code>GET</code></div>
+  <div>Retrieve a resource</div>
+  <div class="yes">Yes</div>
+  <div><code>PUT</code></div>
+  <div>Replace a resource</div>
+  <div class="yes">Yes</div>
+  <div><code>DELETE</code></div>
+  <div>Remove a resource</div>
+  <div class="yes">Yes</div>
+  <div><code>POST</code></div>
+  <div>Create or trigger</div>
+  <div class="no">No</div>
+  <div><code>PATCH</code></div>
+  <div>Partial update</div>
+  <div class="no">No</div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Idempotency Key Pattern</h2>
+
+<h3>Client Contract</h3>
+<ul>
+  <li>Generate <strong>one key per logical operation</strong> (UUIDv4, generated when user confirms the action).</li>
+  <li>Send it as <code>Idempotency-Key</code> header on every POST / PATCH.</li>
+  <li><strong>Reuse the same key</strong> across all retries of that operation — creating a new key per HTTP attempt defeats the mechanism.</li>
+  <li>Retry on network errors and 5xx; never retry 4xx.</li>
+  <li>Use <strong>exponential backoff + jitter</strong> to avoid thundering herd.</li>
+</ul>
+
+<h3>Server State Machine</h3>
+<div class="flow">
+  <div class="step"><span class="step-num">1</span><span class="step-desc"><strong>Claim</strong> — Atomically insert a row <code>(key, status=in_progress)</code>. Use <code>INSERT ... ON CONFLICT DO NOTHING</code> — exactly one concurrent request wins.</span></div>
+  <div class="step"><span class="step-num">2</span><span class="step-desc"><strong>Check</strong> — If row exists with <code>status=done</code>, compare stored request hash. Match → replay cached response. Mismatch → <code>422 Unprocessable</code>.</span></div>
+  <div class="step"><span class="step-num">3</span><span class="step-desc"><strong>Execute</strong> — Run the real handler, saving response code + body to the key row. Mark <code>status=done</code>.</span></div>
+  <div class="step"><span class="step-num">4</span><span class="step-desc"><strong>Reap</strong> — Purge keys older than TTL (24h is standard). Emit <code>Idempotent-Replayed: true</code> header on cached responses.</span></div>
+</div>
+
+<h3>Storage Schema</h3>
+<pre><code>idempotency_keys (
+  id           UUID PRIMARY KEY,
+  scope        TEXT NOT NULL,          -- e.g. "POST /api/charges"
+  scope_id     TEXT NOT NULL,          -- e.g. user/account ID
+  key          TEXT NOT NULL,          -- client-provided Idempotency-Key
+  request_hash TEXT NOT NULL,          -- SHA-256 of method + path + body
+  status       TEXT NOT NULL DEFAULT 'in_progress',  -- in_progress | done
+  response_code   INTEGER,
+  response_body   JSONB,
+  recovery_point  TEXT,                -- for multi-step workflows
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  locked_at    TIMESTAMPTZ,
+  UNIQUE (scope, scope_id, key)
+)</code></pre>
+
+<!-- ============================================================ -->
+<h2>Pitfalls</h2>
+
+<table>
+  <tr><th>Pitfall</th><th>Fix</th></tr>
+  <tr><td>Check-then-insert race</td><td>Use <code>INSERT ... ON CONFLICT</code> — one atomic statement</td></tr>
+  <tr><td>Global (cross-tenant) keys</td><td>Scope by <code>(endpoint, account_id)</code></td></tr>
+  <tr><td>No request hash</td><td>Store hash; reject mismatches with 422</td></tr>
+  <tr><td>Side effects outside transaction</td><td>Enqueue transactionally; deduplicate in worker</td></tr>
+  <tr><td>Key table grows forever</td><td>TTL purge job (24h), index on <code>created_at</code></td></tr>
+  <tr><td>Caching transient errors</td><td>Only cache 4xx / terminal; let 5xx retry naturally</td></tr>
+  <tr><td>New key per HTTP attempt</td><td>Generate once at UX gesture; reuse on every retry</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>Signals</h2>
+
+<dl class="sg">
+  <dt>200 + <code>Idempotent-Replayed: true</code></dt>
+  <dd>Safe to ignore — means "this is a retry, nothing new happened"</dd>
+  <dt>409 Conflict</dt>
+  <dd>Another request with this key is currently in-progress. Retry after a short delay.</dd>
+  <dt>422 Unprocessable</dt>
+  <dd>Same key used for a <em>different</em> request body — client bug.</dd>
+  <dt>Missing <code>Idempotency-Key</code></dt>
+  <dd>Server rejects critical POSTs that lack the header. This is a feature, not a bug.</dd>
+</dl>
+
+<!-- ============================================================ -->
+<h2>Resources</h2>
+<ul>
+  <li><a href="https://docs.stripe.com/api/idempotent_requests">Stripe: Idempotent Requests</a> — The production reference</li>
+  <li><a href="https://stripe.com/blog/idempotency">Stripe Blog: Designing robust APIs with idempotency</a></li>
+  <li><a href="https://sujeet.pro/articles/stripe-idempotency-reliability">Stripe: Idempotency for Payment Reliability</a> — Deep dive with v1/v2 comparison</li>
+  <li><a href="https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/">IETF Draft: Idempotency-Key HTTP Header</a></li>
+  <li><a href="https://www.matthewswong.com/en/blog/idempotency-keys-api-design/">Idempotency Keys: Designing APIs That Survive Retries</a></li>
+</ul>
+
+</div>
+</body>
+</html>
