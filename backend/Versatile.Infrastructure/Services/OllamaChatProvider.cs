@@ -43,9 +43,10 @@ public sealed class OllamaChatProvider : IChatProvider
         using var stream = await response.Content.ReadAsStreamAsync(ct);
         using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream)
+        while (true)
         {
             var line = await reader.ReadLineAsync(ct);
+            if (line is null) break;
             if (string.IsNullOrEmpty(line)) continue;
 
             var chunk = JsonSerializer.Deserialize<OllamaStreamChunk>(line, JsonOptions);

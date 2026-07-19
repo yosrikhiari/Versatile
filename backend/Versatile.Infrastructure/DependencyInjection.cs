@@ -32,28 +32,50 @@ public static class DependencyInjection
         services.AddScoped(typeof(IOrganizationOwnedRepository<>), typeof(OrganizationOwnedRepository<>));
         services.AddScoped<IOrganizationContext>(_ => new OrganizationContext());
 
-        RegisterServicesByConvention(services);
+        services.AddScoped<IAnnotationService, AnnotationService>();
+        services.AddScoped<IAuthorProfileService, AuthorProfileService>();
+        services.AddScoped<IBibleService, BibleService>();
+        services.AddScoped<IChapterService, ChapterService>();
+        services.AddScoped<ICharacterRelationshipService, CharacterRelationshipService>();
+        services.AddScoped<IDailyGoalService, DailyGoalService>();
+        services.AddScoped<IEntityService, EntityService>();
+        services.AddScoped<IFlowService, FlowService>();
+        services.AddScoped<IGraphEdgeService, GraphEdgeService>();
+        services.AddScoped<IGraphGroupService, GraphGroupService>();
+        services.AddScoped<IGroupEdgeService, GroupEdgeService>();
+        services.AddScoped<IManuscriptService, ManuscriptService>();
+        services.AddScoped<INodePositionService, NodePositionService>();
+        services.AddScoped<IPlotThreadService, PlotThreadService>();
+        services.AddScoped<IResearchChunkService, ResearchChunkService>();
+        services.AddScoped<IResearchDocumentService, ResearchDocumentService>();
+        services.AddScoped<IResearchService, ResearchService>();
+        services.AddScoped<IResearchTagService, ResearchTagService>();
+        services.AddScoped<IRevisionCommentService, RevisionCommentService>();
+        services.AddScoped<ISceneService, SceneService>();
+        services.AddScoped<ISessionArchiveItemService, SessionArchiveItemService>();
+        services.AddScoped<ISnapshotService, SnapshotService>();
+        services.AddScoped<ISnippetService, SnippetService>();
+        services.AddScoped<ISparkHistoryItemService, SparkHistoryItemService>();
+        services.AddScoped<IStoryDocumentService, StoryDocumentService>();
+        services.AddScoped<IStoryElementService, StoryElementService>();
+        services.AddScoped<IStoryService, StoryService>();
+        services.AddScoped<IStoryStateSnapshotService, StoryStateSnapshotService>();
+        services.AddScoped<IVoiceProfileService, VoiceProfileService>();
+        services.AddScoped<IVolumeEntityService, VolumeEntityService>();
 
-        var openAiKey = configuration["Ai:OpenAi:ApiKey"] ?? "sk-placeholder";
+        services.AddMediatR(cfg =>
+            cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
+
+        var openAiKey = configuration["Ai:OpenAi:ApiKey"] ?? "";
+        if (string.IsNullOrEmpty(openAiKey))
+            throw new InvalidOperationException("Ai:OpenAi:ApiKey is not configured. Set Ai__OpenAi__ApiKey env var for production.");
         services.AddScoped(_ => new ChatClient("gpt-4o-mini", openAiKey));
         services.AddScoped<IChatStreamer, ChatClientStreamer>();
         services.AddScoped<KeyManagementService>();
 
         services.AddSingleton<IChatProviderFactory, AiProviderFactory>();
+        services.AddScoped<TokenGenerator>();
 
         return services;
-    }
-
-    private static void RegisterServicesByConvention(IServiceCollection services)
-    {
-        var serviceTypes = typeof(DependencyInjection).Assembly.GetExportedTypes()
-            .Where(t => t is { IsClass: true, IsAbstract: false, Namespace: "Versatile.Infrastructure.Services" });
-
-        foreach (var type in serviceTypes)
-        {
-            var interfaceType = type.GetInterfaces().FirstOrDefault(i => i.Name == "I" + type.Name);
-            if (interfaceType != null)
-                services.AddScoped(interfaceType, type);
-        }
     }
 }

@@ -4,4 +4,6 @@ public interface IOrganizationContext
 {
     Guid? OrganizationId { get; }
     string? OrganizationRole { get; }
+
+    void SetOrganization(Guid? organizationId, string? organizationRole);
 }

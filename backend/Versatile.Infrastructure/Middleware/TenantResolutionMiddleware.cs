@@ -1,8 +1,6 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Infrastructure.Middleware;
 
@@ -19,20 +17,15 @@ public class TenantResolutionMiddleware
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
-            var orgCtx = context.RequestServices.GetRequiredService<IOrganizationContext>() as OrganizationContext;
+            var orgCtx = context.RequestServices.GetRequiredService<IOrganizationContext>();
 
-            if (orgCtx != null)
-            {
-                var orgIdClaim = context.User.FindFirst("org_id")?.Value;
-                if (Guid.TryParse(orgIdClaim, out var orgId))
-                {
-                    orgCtx.OrganizationId = orgId;
-                    context.Items["OrganizationId"] = orgId;
-                }
+            var orgIdClaim = context.User.FindFirst("org_id")?.Value;
+            Guid? orgId = Guid.TryParse(orgIdClaim, out var parsed) ? parsed : null;
 
-                orgCtx.OrganizationRole = context.User.FindFirst("org_role")?.Value;
-                context.Items["OrganizationRole"] = orgCtx.OrganizationRole;
-            }
+            orgCtx.SetOrganization(orgId, context.User.FindFirst("org_role")?.Value);
+
+            if (orgId.HasValue)
+                context.Items["OrganizationId"] = orgId.Value;
         }
 
         await _next(context);

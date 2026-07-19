@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.Auth.Commands;
 using Versatile.Application.Auth.Queries;
 using Versatile.Application.DTOs;
-using Versatile.Application.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -13,12 +12,10 @@ namespace Versatile.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IAuthService _auth;
 
-    public AuthController(IMediator mediator, IAuthService auth)
+    public AuthController(IMediator mediator)
     {
         _mediator = mediator;
-        _auth = auth;
     }
 
     private void SetAuthCookies(AuthResponse result)
@@ -53,7 +50,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginCommand command)
     {
-        var result = await _auth.LoginAsync(new LoginRequest(command.Email, command.Password));
+        var result = await _mediator.Send(command);
         SetAuthCookies(result);
         return Ok(result);
     }
@@ -61,7 +58,7 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     public async Task<ActionResult<AuthResponse>> Refresh(RefreshTokenCommand command)
     {
-        var result = await _auth.RefreshTokenAsync(command.RefreshToken);
+        var result = await _mediator.Send(command);
         SetAuthCookies(result);
         return Ok(result);
     }
@@ -78,7 +75,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> SwitchOrg(SwitchOrgRequest request)
     {
         var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
-        var result = await _auth.SwitchOrgAsync(userId, request.OrganizationId);
+        var result = await _mediator.Send(new SwitchOrgCommand(userId, request.OrganizationId));
         SetAuthCookies(result);
         return Ok(result);
     }
@@ -87,7 +84,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult> Logout()
     {
         var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
-        await _auth.LogoutAsync(userId);
+        await _mediator.Send(new LogoutCommand(userId));
         Response.Cookies.Delete("access_token");
         Response.Cookies.Delete("refresh_token");
         return Ok(new { message = "Logged out" });

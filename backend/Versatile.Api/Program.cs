@@ -2,6 +2,7 @@ using Serilog;
 using Versatile.Application;
 using Versatile.Infrastructure;
 using Versatile.Infrastructure.Middleware;
+using Versatile.Api.Common;
 using Versatile.Api.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -18,6 +19,9 @@ try
     builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration));
 
     var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured");
+    _ = builder.Configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer is not configured");
+    _ = builder.Configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience is not configured");
+    _ = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured");
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -63,7 +67,10 @@ try
         options.MaximumReceiveMessageSize = 128 * 1024;
     });
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<ResponseEnvelopeFilter>();
+    });
     builder.Services.AddEndpointsApiExplorer();
 
     builder.Services.AddHttpClient();
