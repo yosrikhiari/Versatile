@@ -240,6 +240,19 @@ db.version(33).stores({
   evalResults: '++id, projectId, sceneId, timestamp, evalType, score'
 })
 
+// v34: branching support — branches table for forking manuscript content
+// plus branchId on sections/subsections so every structural row knows which
+// branch it belongs to. Existing rows (branchId undefined) are treated as
+// the implicit "main" branch.
+db.version(34)
+  .stores({
+    branches: '++id, projectId, name, sourceBranchId, createdAt, updatedAt',
+    sections:
+      '++id, projectId, title, summary, order, status, *tags, volumeId, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt',
+    subsections:
+      '++id, projectId, sectionId, title, summary, order, content, *tags, contentStatus, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt'
+  })
+
 const recoveryFlag = 'versatile_db_recovery'
 
 let _ready

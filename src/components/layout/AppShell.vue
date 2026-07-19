@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '../../stores/projectStore'
+import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { getAllProjects } from '../../services/dbService'
 import SidebarNav from './SidebarNav.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
@@ -9,9 +10,11 @@ import GoalProgressBar from '../shared/GoalProgressBar.vue'
 import ProjectSettingsModal from './ProjectSettingsModal.vue'
 import RecapBanner from './RecapBanner.vue'
 import ContextStatusIndicator from './ContextStatusIndicator.vue'
+import BranchSwitcher from '../workspace/BranchSwitcher.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
 import { useAuthStore } from '../../stores/authStore'
+import { useBranchStore } from '../../stores/branchStore'
 
 import { CREATIVE_WORKSPACE_TYPES } from '../../config/workspace'
 
@@ -52,6 +55,7 @@ const emit = defineEmits([
 ])
 
 const authStore = useAuthStore()
+const branchStore = useBranchStore()
 const router = useRouter()
 
 const isNarrativeWorkspace = computed(() =>
@@ -99,12 +103,18 @@ function handleAuthClick() {
 async function switchProject(projectId) {
   showProjectDropdown.value = false
   await projectStore.loadProject(projectId)
+  await branchStore.initForProject(projectId)
   await loadProjects()
 }
 
 function handleCreateProjectClick() {
   showProjectDropdown.value = false
   emit('create-project')
+}
+
+function handleBranchSwitch() {
+  const mn = useManuscriptStore()
+  mn.loadManuscript(projectStore.currentProjectId)
 }
 
 function closeAllPanels() {
@@ -252,6 +262,9 @@ defineExpose({
 
 onMounted(async () => {
   await loadProjects()
+  if (projectStore.currentProjectId) {
+    await branchStore.initForProject(projectStore.currentProjectId)
+  }
 })
 </script>
 
@@ -336,6 +349,12 @@ onMounted(async () => {
             {{ projectStore.currentStreak }}
           </span>
         </div>
+
+        <BranchSwitcher
+          v-if="projectStore.currentProjectId"
+          class="ml-2"
+          @switch="handleBranchSwitch"
+        />
       </div>
 
       <div class="flex items-center gap-1.5">

@@ -68,6 +68,14 @@ export {
   getVolumeEdges
 } from './db-volume-entities'
 export {
+  getBranches,
+  getBranch,
+  createBranch,
+  updateBranch,
+  deleteBranch,
+  ensureMainBranch
+} from './db-branches'
+export {
   getSparkHistory,
   addSparkHistory,
   clearSparkHistory,

@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api, hasToken, setAuth, clearAuth, setOnLogout } from '../services/api'
 import { getSyncEngine, destroySyncEngine } from '../services/sync-engine'
+import { disconnect as disconnectGeneration } from '../services/signalrService'
+import { disconnect as disconnectCollaboration } from '../services/collaborationService'
 import { db } from '../services/db-core'
 import { sha256 } from '../utils/hash'
 
@@ -122,6 +124,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function switchOrg(orgId) {
     loading.value = true
     error.value = null
+    disconnectGeneration().catch(() => {})
+    disconnectCollaboration().catch(() => {})
     try {
       const result = await api('/auth/switch-org', {
         method: 'POST',
@@ -199,6 +203,8 @@ export const useAuthStore = defineStore('auth', () => {
       localUser.value = null
       return
     }
+    disconnectGeneration().catch(() => {})
+    disconnectCollaboration().catch(() => {})
     try {
       await api('/auth/logout', { method: 'POST' })
     } catch (err) {

@@ -4,7 +4,10 @@ import { getEmbedding } from './ollamaService'
 
 // ========== SECTIONS ==========
 
-export async function getSections(projectId) {
+export async function getSections(projectId, branchId) {
+  if (branchId) {
+    return db.sections.where({ projectId, branchId }).toArray()
+  }
   return db.sections.where('projectId').equals(projectId).toArray()
 }
 
@@ -31,9 +34,14 @@ export async function reorderSections(sectionIds) {
 
 // ========== SUBSECTIONS ==========
 
-export async function getSubsections(projectId, sectionId = null) {
+export async function getSubsections(projectId, sectionId = null, branchId) {
   if (sectionId) {
-    return db.subsections.where({ projectId, sectionId }).sortBy('order')
+    const filter = { projectId, sectionId }
+    if (branchId) filter.branchId = branchId
+    return db.subsections.where(filter).sortBy('order')
+  }
+  if (branchId) {
+    return db.subsections.where({ projectId, branchId }).toArray()
   }
   return db.subsections.where('projectId').equals(projectId).toArray()
 }
@@ -70,10 +78,12 @@ export async function deleteSubsection(id) {
 
 // Subsections whose prose generation failed (or never ran) — drives the
 // end-of-run repair pass. `failed` first, then any left empty.
-export async function getFailedSubsections(projectId) {
+export async function getFailedSubsections(projectId, branchId) {
   const subs = await db.subsections.where('projectId').equals(projectId).toArray()
   return subs.filter(
-    (s) => s.contentStatus === 'failed' || !(s.content && String(s.content).trim())
+    (s) =>
+      (!branchId || s.branchId === branchId) &&
+      (s.contentStatus === 'failed' || !(s.content && String(s.content).trim()))
   )
 }
 
@@ -85,9 +95,9 @@ export async function reorderSubsections(subsectionIds) {
   })
 }
 
-export async function getSectionWordCounts(projectId) {
-  const sections = await getSections(projectId)
-  const subsections = await getSubsections(projectId)
+export async function getSectionWordCounts(projectId, branchId) {
+  const sections = await getSections(projectId, branchId)
+  const subsections = await getSubsections(projectId, null, branchId)
 
   const sectionCounts = {}
   let totalWords = 0
@@ -152,7 +162,7 @@ export async function removeSectionFromVolume(sectionId) {
   await db.sections.update(sectionId, { volumeId: null })
 }
 
-export async function batchCreatePlanStructure({ projectId, groups }) {
+export async function batchCreatePlanStructure({ projectId, groups, branchId }) {
   return db.transaction('rw', db.sections, db.subsections, async () => {
     const results = []
     const now = new Date().toISOString()
@@ -166,6 +176,7 @@ export async function batchCreatePlanStructure({ projectId, groups }) {
         wordCount: 0,
         order: i,
         status: 'planning',
+        branchId,
         createdAt: now,
         updatedAt: now
       })
@@ -183,6 +194,7 @@ export async function batchCreatePlanStructure({ projectId, groups }) {
           type: 'scene',
           sceneNumber: scene.sceneNumber,
           contentStatus: 'pending',
+          branchId,
           order: j,
           createdAt: now,
           updatedAt: now

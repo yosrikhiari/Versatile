@@ -23,6 +23,7 @@ import {
 import { warmEmbeddingCache } from '../composables/useManuscriptContext'
 import { useStoryDocuments } from '../composables/useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
+import { useBranchStore } from '../stores/branchStore'
 
 const STYLE_GUIDE_DEBOUNCE = 1500
 
@@ -84,8 +85,10 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     isLoading.value = true
     loadError.value = null
     try {
-      sections.value = await getSections(projectId)
-      subsections.value = await getSubsections(projectId)
+      const branchStore = useBranchStore()
+      const branchId = branchStore.activeBranch?.id
+      sections.value = await getSections(projectId, branchId)
+      subsections.value = await getSubsections(projectId, null, branchId)
       storyElements.value = await getStoryElements(projectId)
       relationships.value = await getCharacterRelationships(projectId)
       warmEmbeddingCache(projectId).catch((err) => {
@@ -100,8 +103,10 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   }
 
   async function addSectionData(projectId, data) {
+    const branchStore = useBranchStore()
+    const branchId = branchStore.activeBranch?.id
     const order = sections.value.length
-    const id = await addSection(projectId, { ...data, order, status: 'planning' })
+    const id = await addSection(projectId, { ...data, order, status: 'planning', branchId })
     sections.value.push({ id, projectId, order, status: 'planning', ...data })
     queueStyleGuideRegen()
     return id
@@ -136,9 +141,11 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   }
 
   async function addSubsectionData(projectId, sectionId, data) {
+    const branchStore = useBranchStore()
+    const branchId = branchStore.activeBranch?.id
     const sectionSubsections = subsections.value.filter((s) => s.sectionId === sectionId)
     const order = sectionSubsections.length
-    const id = await addSubsection(projectId, { ...data, sectionId, order })
+    const id = await addSubsection(projectId, { ...data, sectionId, order, branchId })
     subsections.value.push({ id, projectId, sectionId, order, ...data })
     queueStyleGuideRegen()
     return id
