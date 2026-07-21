@@ -11,23 +11,25 @@ public sealed class AiProviderFactory : IChatProviderFactory
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IConfiguration _configuration;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     private const string OpenAiBase = "https://api.openai.com/v1";
     private const string AnthropicBase = "https://api.anthropic.com/v1";
     private const string GeminiBase = "https://generativelanguage.googleapis.com/v1beta/models/";
     private const string GroqBase = "https://api.groq.com/openai/v1";
 
-    public AiProviderFactory(IServiceProvider serviceProvider, IConfiguration configuration)
+    public AiProviderFactory(IServiceProvider serviceProvider, IConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
         _serviceProvider = serviceProvider;
         _configuration = configuration;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<IChatProvider> CreateAsync(string provider, string userId)
     {
         var key = await GetApiKeyAsync(provider, userId);
 
-        var http = new HttpClient();
+        var http = _httpClientFactory.CreateClient("AiProvider");
 
         switch (provider.ToLowerInvariant())
         {

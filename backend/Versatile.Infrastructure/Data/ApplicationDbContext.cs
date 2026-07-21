@@ -53,6 +53,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<VoiceProfile> VoiceProfiles => Set<VoiceProfile>();
     public DbSet<Volume> Volumes => Set<Volume>();
     public DbSet<VolumeEntity> VolumeEntities => Set<VolumeEntity>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<AuditEntry> AuditLog => Set<AuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -284,6 +286,30 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(v => v.VolumeId);
             e.HasOne(v => v.Story).WithMany(s => s.VolumeEntities).HasForeignKey(v => v.StoryId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(v => v.Volume).WithMany().HasForeignKey(v => v.VolumeId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AuditEntry>(e =>
+        {
+            e.ToTable("AuditLog");
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Action).HasMaxLength(50).IsRequired();
+            e.Property(a => a.EntityType).HasMaxLength(200).IsRequired();
+            e.Property(a => a.EntityId).HasMaxLength(100).IsRequired();
+            e.Property(a => a.CreatedAt).IsRequired();
+            e.HasIndex(a => a.CreatedAt);
+            e.HasIndex(a => a.EntityType);
+            e.HasIndex(a => a.UserId);
+            e.HasIndex(a => a.OrganizationId);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(e =>
+        {
+            e.ToTable("OutboxMessages");
+            e.HasKey(o => o.Id);
+            e.Property(o => o.Type).HasMaxLength(500).IsRequired();
+            e.Property(o => o.Content).IsRequired();
+            e.Property(o => o.CreatedAt).IsRequired();
+            e.HasIndex(o => new { o.ProcessedAt, o.RetryCount });
         });
 
         ApplyTenantFilter(modelBuilder);
