@@ -61,13 +61,17 @@ describe('projectStore', () => {
   })
 
   it('should update content and recalculate word count', () => {
+    vi.useFakeTimers()
     const store = useProjectStore()
     const content = '<p>Hello world this is a test</p>'
 
     store.updateContent(content)
 
     expect(store.documentContent).toBe(content)
+
+    vi.advanceTimersByTime(300)
     expect(store.wordCount).toBeGreaterThan(0)
+    vi.useRealTimers()
   })
 
   it('should calculate session progress correctly', () => {

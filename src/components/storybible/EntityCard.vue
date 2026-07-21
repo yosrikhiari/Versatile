@@ -48,9 +48,9 @@ function onPortraitUpdated() {
 </script>
 
 <template>
-  <div class="bg-bg-tertiary border border-border-subtle rounded-lg overflow-hidden">
+  <div class="bg-bg-tertiary border border-border-subtle hover:border-accent-muted rounded-lg overflow-hidden transition-all duration-150">
     <div
-      class="flex items-center justify-between p-3 cursor-pointer hover:bg-surface-hover"
+      class="flex items-center justify-between p-3 cursor-pointer hover:bg-surface-hover hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150"
       @click="expanded = !expanded"
     >
       <div class="flex items-center gap-2">

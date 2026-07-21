@@ -116,9 +116,14 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     }
   }
 
+  let positionSaveTimer = null
+
   async function saveNodePosition(projectId, nodeId, position) {
     nodePositions.value[nodeId] = { x: position.x, y: position.y }
-    await saveNodePositions(projectId, toRaw(nodePositions.value))
+    clearTimeout(positionSaveTimer)
+    positionSaveTimer = setTimeout(async () => {
+      await saveNodePositions(projectId, toRaw(nodePositions.value))
+    }, 500)
   }
 
   async function saveAllNodePositions(projectId, positions) {

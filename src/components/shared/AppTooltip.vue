@@ -82,7 +82,7 @@ const tooltipStyle = computed(() => ({
     <span
       v-if="isActive(tooltipId)"
       :style="tooltipStyle"
-      class="z-50 pointer-events-none w-max max-w-[260px] px-3 py-1.5 rounded-lg bg-bg-tertiary border border-border-subtle text-text-secondary text-11px font-ui leading-relaxed shadow-warm-md whitespace-normal"
+      class="z-50 pointer-events-none w-max max-w-[260px] px-3 py-1.5 rounded-lg bg-bg-tertiary border border-border-subtle text-text-secondary text-xs font-ui leading-relaxed shadow-warm-md whitespace-normal"
     >
       {{ text }}
     </span>

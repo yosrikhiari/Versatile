@@ -10,7 +10,7 @@ const emit = defineEmits(['insert', 'regenerate'])
 </script>
 
 <template>
-  <div class="rounded-lg p-4 bg-bg-tertiary border border-border-subtle">
+  <div class="rounded-lg p-4 bg-bg-tertiary border border-border-subtle hover:border-accent-muted hover:-translate-y-[1px] active:scale-[0.99] transition-all duration-150">
     <p
       class="text-text-secondary text-sm leading-relaxed italic border-l-2 border-accent-muted pl-3"
     >

@@ -400,5 +400,34 @@ export const SYNC_ENTITIES = [
       apiParentField: 'storyId',
       needsTranslation: []
     }
+  },
+
+  {
+    table: 'branches',
+    endpoint: (storyApiId) => `/story/${storyApiId}/branch`,
+    isTopLevel: false,
+    parentField: 'projectId',
+    toApi: (local) => ({
+      name: local.name || '',
+      sourceBranchId: local.sourceBranchId || null,
+      description: local.description || '',
+      status: local.status || 'active'
+    }),
+    fromApi: (api) => ({
+      apiId: api.id,
+      name: api.name || '',
+      sourceBranchId: api.sourceBranchId || null,
+      description: api.description || '',
+      status: api.status || 'active',
+      createdAt: api.createdAt || new Date().toISOString(),
+      updatedAt: api.updatedAt || new Date().toISOString(),
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString()
+    }),
+    idBridge: {
+      localParentField: 'projectId',
+      apiParentField: 'storyId',
+      needsTranslation: ['sourceBranchId']
+    }
   }
 ]

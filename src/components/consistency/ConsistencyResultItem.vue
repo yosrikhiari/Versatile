@@ -64,10 +64,13 @@ function handleAction() {
   padding: 8px 10px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.02);
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.15s;
 }
 .result-item:hover {
   background: rgba(255, 255, 255, 0.04);
+}
+.result-item:active {
+  transform: scale(0.99);
 }
 
 .result-icon {
@@ -129,5 +132,8 @@ function handleAction() {
 .result-action:hover {
   background: rgba(var(--vers-accent-primary-rgb), 0.1);
   border-color: var(--vers-accent-primary);
+}
+.result-action:active {
+  transform: scale(0.97);
 }
 </style>

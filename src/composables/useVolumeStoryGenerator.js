@@ -1,5 +1,6 @@
 import { ref, reactive, computed } from 'vue'
-import { buildFocusInstructions, formatEvalFeedback } from '../services/evalFeedback'
+import { formatEvalFeedback } from '../services/evalFeedback'
+import { autoAdjustPrompt } from '../evaluation/autoPromptAdjuster'
 import { gateDimensionCoverage, gateScoreDistribution } from '../services/evalGates'
 import { useProjectStore } from '../stores/projectStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
@@ -125,6 +126,7 @@ export function useVolumeStoryGenerator() {
   const currentWriteIndex = ref(0)
   const inlineEvalEnabled = ref(false)
   const sceneEvalResults = ref([])
+  const allGivenHints = ref([])
   const actLog = useActivityLog()
   let currentTaskId = null
 
@@ -795,7 +797,9 @@ export function useVolumeStoryGenerator() {
         topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
       }
       attemptFeedback = formatEvalFeedback([evalSnapshot])
-      attemptFocusInstructions = buildFocusInstructions([evalSnapshot])
+      const retryResult = autoAdjustPrompt([evalSnapshot], { pastGivenHints: allGivenHints.value })
+      attemptFocusInstructions = retryResult.focusInstructions
+      allGivenHints.value = [...allGivenHints.value, ...retryResult.givenHints]
     }
 
     return { chosenProse, chosenStructured, chosenEval }
@@ -952,7 +956,9 @@ export function useVolumeStoryGenerator() {
       }
       sceneEvalResults.value = anchorResults
       anchorEvalFeedback = formatEvalFeedback(anchorResults)
-      anchorFocusInstructions = buildFocusInstructions(anchorResults)
+      const anchorResult = autoAdjustPrompt(anchorResults, { pastGivenHints: allGivenHints.value })
+      anchorFocusInstructions = anchorResult.focusInstructions
+      allGivenHints.value = [...allGivenHints.value, ...anchorResult.givenHints]
     }
 
     // Phase 2: Generate middle scenes per chapter
@@ -1212,7 +1218,9 @@ export function useVolumeStoryGenerator() {
           topIssues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         })
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
-        batchFocusInstructions = buildFocusInstructions(sceneEvalResults.value)
+        const batchResult = autoAdjustPrompt(sceneEvalResults.value, { pastGivenHints: allGivenHints.value })
+        batchFocusInstructions = batchResult.focusInstructions
+        allGivenHints.value = [...allGivenHints.value, ...batchResult.givenHints]
 
         // Quality floor: a scene that still fails after all retries counts against
         // the run; too many in a row aborts (work so far is already saved).
@@ -1251,7 +1259,9 @@ export function useVolumeStoryGenerator() {
         }
         sceneEvalResults.value.push(evalEntry)
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
-        batchFocusInstructions = buildFocusInstructions(sceneEvalResults.value)
+        const batchResult2 = autoAdjustPrompt(sceneEvalResults.value, { pastGivenHints: allGivenHints.value })
+        batchFocusInstructions = batchResult2.focusInstructions
+        allGivenHints.value = [...allGivenHints.value, ...batchResult2.givenHints]
       }
 
       // Append to running log after scene completes (avoids full rebuild next iteration)

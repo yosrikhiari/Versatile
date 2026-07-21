@@ -63,7 +63,10 @@ export const useProjectStore = defineStore('project', () => {
   const lastSaved = computed(() => lastSavedAt.value)
 
   async function loadProject(id) {
-    const project = await getProject(id)
+    const [project, manuscript] = await Promise.all([
+      getProject(id),
+      getManuscript(id)
+    ])
     if (!project) return
 
     currentProjectId.value = id
@@ -72,16 +75,17 @@ export const useProjectStore = defineStore('project', () => {
     currentCategory.value = project.category || ''
     lastWrittenAt.value = project.updatedAt
 
-    const manuscript = await getManuscript(id)
     if (manuscript) {
       documentContent.value = manuscript.content || ''
       wordCount.value = manuscript.wordCount || 0
       initialWordCount.value = manuscript.wordCount || 0
     }
 
-    await loadDailyGoal()
-    await loadStreak()
-    await loadLastSession()
+    await Promise.all([
+      loadDailyGoal(),
+      loadStreak(),
+      loadLastSession()
+    ])
   }
 
   async function loadStreak() {
@@ -135,6 +139,18 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  let wordCountTimer = null
+
+  function debouncedUpdateWordCount(newContent, plainText) {
+    clearTimeout(wordCountTimer)
+    wordCountTimer = setTimeout(() => {
+      const text = plainText || stripHtmlTags(newContent)
+      const words = countWords(text)
+      wordCount.value = words
+      sessionWordCount.value = Math.max(0, words - initialWordCount.value)
+    }, 300)
+  }
+
   let snapshotTimer = null
   function autoSnapshot() {
     if (snapshotTimer) clearTimeout(snapshotTimer)
@@ -160,10 +176,7 @@ export const useProjectStore = defineStore('project', () => {
 
   function updateContent(newContent, plainText) {
     documentContent.value = newContent
-    const text = plainText || stripHtmlTags(newContent)
-    const words = countWords(text)
-    wordCount.value = words
-    sessionWordCount.value = Math.max(0, words - initialWordCount.value)
+    debouncedUpdateWordCount(newContent, plainText)
   }
 
   function setSessionGoal(n) {

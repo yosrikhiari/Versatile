@@ -161,6 +161,8 @@ const totalWordsWritten = computed(() =>
         :scene-results-map="sceneEval.sceneResultsMap.value"
         :gate-results="sceneEval.gateResults.value"
         :workspace-type="projectStore.activeWorkspaceType || 'creative'"
+        :focus-instructions="sceneEval.focusInstructions.value"
+        :past-eval-results="sceneEval.pastEvalResults.value"
         class="mt-2 border-t border-border-subtle pt-2"
       />
     </div>

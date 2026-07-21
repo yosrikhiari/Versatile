@@ -199,6 +199,10 @@ function toggleSpark() {
   toggleStoryGenerator()
 }
 
+function toggleWhatIf() {
+  activePanelName.value = activePanelName.value === 'whatif' ? null : 'whatif'
+}
+
 function toggleRevise() {
   activePanelName.value = activePanelName.value === 'revise' ? null : 'revise'
 }
@@ -238,13 +242,15 @@ function handleSidebarNav(name) {
     'voice-lab': toggleVoiceLab,
     'story-shape': toggleStoryShape,
     consistency: toggleConsistency,
-    'beta-reader': toggleBetaReader
+    'beta-reader': toggleBetaReader,
+    whatif: toggleWhatIf
   }
   map[name]?.()
 }
 
 defineExpose({
   toggleSpark,
+  toggleWhatIf,
   toggleRevise,
   toggleStoryGenerator,
   togglePolish,
@@ -478,6 +484,13 @@ onMounted(async () => {
             class="w-[420px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
           >
             <slot name="voice-lab"></slot>
+          </aside>
+          <aside
+            v-else-if="activePanelName === 'whatif' && !flowMode && !focusMode"
+            key="whatif"
+            class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          >
+            <slot name="whatif"></slot>
           </aside>
           <aside
             v-else-if="activePanelName === 'story-shape' && !flowMode && !focusMode"

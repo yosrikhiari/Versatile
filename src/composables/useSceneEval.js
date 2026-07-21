@@ -8,6 +8,7 @@ import {
 } from '../services/evalGates'
 import { computeDegradation } from '../services/degradation'
 import { useEvalPersistence } from './useEvalPersistence'
+import { autoAdjustPrompt } from '../evaluation/autoPromptAdjuster'
 
 export function useSceneEval() {
   const isEvaluating = ref(false)
@@ -21,6 +22,8 @@ export function useSceneEval() {
   })
   const revisionResult = ref(null)
   const sceneResultsMap = ref({})
+  const focusInstructions = ref('')
+  const givenHints = ref([])
 
   const evalPersistence = useEvalPersistence()
 
@@ -60,6 +63,39 @@ export function useSceneEval() {
     }
   })
 
+  const evalHistory = computed(() => {
+    return Object.values(sceneResultsMap.value)
+      .filter((e) => e.critiqueResult?.dimensionScores)
+      .map((e, i) => ({
+        sceneIdx: i,
+        dimensionScores: e.critiqueResult.dimensionScores ?? {},
+        issues: e.critiqueResult.issues ?? [],
+        strengths: e.critiqueResult.strengths ?? []
+      }))
+  })
+
+  const pastEvalResults = computed(() => {
+    const entries = Object.values(sceneResultsMap.value)
+    const evaluated = entries.filter((e) => e.critiqueResult)
+    if (evaluated.length === 0) return ''
+    return evaluated
+      .map(
+        (e, i) =>
+          `Scene ${i + 1}: ${e.critiqueResult.score ?? '?'}/10 \u2014 ${Object.entries(e.critiqueResult.dimensionScores ?? {})
+            .map(([k, v]) => `${k}: ${v}/10`)
+            .join(', ')}`
+      )
+      .join('\n')
+  })
+
+  function refreshPromptAdjustments() {
+    const history = evalHistory.value
+    if (history.length === 0) return
+    const result = autoAdjustPrompt(history)
+    focusInstructions.value = result.focusInstructions
+    givenHints.value = result.givenHints
+  }
+
   function updateSceneEntry(idx, updates) {
     const entry = { ...(sceneResultsMap.value[idx] || {}), ...updates }
     if (entry.critiqueResult) {
@@ -71,10 +107,7 @@ export function useSceneEval() {
       entry.hasMajorRegressions = entry.revisionResult.degradation.hasMajorRegressions
       entry.degradation = entry.revisionResult.degradation.dimensions
     }
-    sceneResultsMap.value = {
-      ...sceneResultsMap.value,
-      [idx]: entry
-    }
+    sceneResultsMap.value[idx] = entry
   }
 
   function buildSceneBrief(scene, scenePlanItem) {
@@ -87,7 +120,7 @@ export function useSceneEval() {
     }
   }
 
-  async function evaluate(scene, workspaceType, scenePlanItem, sceneIdx, projectId) {
+  async function evaluate(scene, workspaceType, scenePlanItem, sceneIdx, projectId, storyBible = '', chapterLog = '') {
     if (!scene?.prose) return
 
     isEvaluating.value = true
@@ -96,8 +129,9 @@ export function useSceneEval() {
       const result = await evaluateScene({
         draft: scene.prose,
         sceneBrief,
-        storyBible: '',
-        chapterLog: ''
+        storyBible,
+        chapterLog,
+        focusInstructions: focusInstructions.value
       })
 
       critiqueResult.value = result
@@ -142,6 +176,8 @@ export function useSceneEval() {
           strengths: result.strengths ?? null
         })
       }
+
+      refreshPromptAdjustments()
     } catch {
       critiqueResult.value = {
         pass: true,
@@ -155,7 +191,7 @@ export function useSceneEval() {
     }
   }
 
-  async function revise(scene, workspaceType, scenePlanItem, sceneIdx, projectId) {
+  async function revise(scene, workspaceType, scenePlanItem, sceneIdx, projectId, storyBible = '', chapterLog = '') {
     if (!critiqueResult.value) return
 
     isRevising.value = true
@@ -165,15 +201,16 @@ export function useSceneEval() {
         draft: scene.prose,
         critiqueResult: critiqueResult.value,
         sceneBrief,
-        storyBible: ''
+        storyBible,
+        focusInstructions: focusInstructions.value
       })
 
       if (revisedDraft && revisedDraft !== scene.prose) {
         const revisedCritique = await evaluateScene({
           draft: revisedDraft,
           sceneBrief,
-          storyBible: '',
-          chapterLog: ''
+          storyBible,
+          chapterLog
         })
 
         const revEff = await gateRevisionEffectiveness(
@@ -229,6 +266,8 @@ export function useSceneEval() {
             hasMajorRegressions: degradation.hasMajorRegressions ?? null
           })
         }
+
+        refreshPromptAdjustments()
       }
     } catch {
       // silently return
@@ -249,6 +288,8 @@ export function useSceneEval() {
     }
     revisionResult.value = null
     sceneResultsMap.value = {}
+    focusInstructions.value = ''
+    givenHints.value = []
   }
 
   return {
@@ -260,6 +301,10 @@ export function useSceneEval() {
     revisionResult,
     sceneResultsMap,
     aggregateStats,
+    evalHistory,
+    pastEvalResults,
+    focusInstructions,
+    givenHints,
     evaluate,
     revise,
     reset,

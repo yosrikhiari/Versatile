@@ -253,6 +253,27 @@ db.version(34)
       '++id, projectId, sectionId, title, summary, order, content, *tags, contentStatus, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt'
   })
 
+// v35: add description and status fields to branches for what-if divergence
+db.version(35)
+  .stores({
+    branches: '++id, projectId, name, sourceBranchId, description, status, createdAt, updatedAt',
+    sections:
+      '++id, projectId, title, summary, order, status, *tags, volumeId, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt',
+    subsections:
+      '++id, projectId, sectionId, title, summary, order, content, *tags, contentStatus, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt'
+  })
+  .upgrade(async (trans) => {
+    const branchStore = trans.objectStore('branches')
+    const cursor = await branchStore.openCursor()
+    while (cursor) {
+      const update = { ...cursor.value }
+      if (update.description === undefined) update.description = ''
+      if (update.status === undefined) update.status = 'active'
+      cursor.update(update)
+      await cursor.continue()
+    }
+  })
+
 const recoveryFlag = 'versatile_db_recovery'
 
 let _ready

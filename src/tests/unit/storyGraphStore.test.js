@@ -111,9 +111,12 @@ describe('storyGraphStore', () => {
   })
 
   describe('nodePositions', () => {
-    it('saveNodePosition saves position and reloads', async () => {
-      await store.saveNodePosition('proj1', 'char1', { x: 100, y: 200 })
+    it('saveNodePosition saves position and reloads', () => {
+      vi.useFakeTimers()
+      store.saveNodePosition('proj1', 'char1', { x: 100, y: 200 })
+      vi.advanceTimersByTime(500)
       expect(mockDb.saveNodePositions).toHaveBeenCalledWith('proj1', { char1: { x: 100, y: 200 } })
+      vi.useRealTimers()
     })
 
     it('loadNodePositions loads and cleans positions', async () => {

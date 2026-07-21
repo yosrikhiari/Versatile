@@ -30,6 +30,7 @@ const navGroups = [
     items: [
       { label: 'Generator', panel: 'story-generator', icon: 'sparkles' },
       { label: 'Polish', panel: 'polish', icon: 'brush' },
+      { label: 'What If', panel: 'whatif', icon: 'shuffle' },
       { label: 'Voice Lab', panel: 'voice-lab', icon: 'message-square' }
     ]
   },

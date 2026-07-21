@@ -124,7 +124,8 @@ describe('useSceneEval', () => {
           charactersPresent: ['Hero', 'Villain']
         }),
         storyBible: '',
-        chapterLog: ''
+        chapterLog: '',
+        focusInstructions: ''
       })
 
       expect(evalComposable.critiqueResult.value).toEqual(critiqueResponse)
@@ -172,7 +173,8 @@ describe('useSceneEval', () => {
           charactersPresent: []
         }),
         storyBible: '',
-        chapterLog: ''
+        chapterLog: '',
+        focusInstructions: ''
       })
     })
 
@@ -197,7 +199,8 @@ describe('useSceneEval', () => {
         draft: mockCreativeScene.prose,
         critiqueResult: critiqueResponse,
         sceneBrief: expect.objectContaining({ title: 'Opening Scene' }),
-        storyBible: ''
+        storyBible: '',
+        focusInstructions: ''
       })
     })
 
@@ -283,6 +286,57 @@ describe('useSceneEval', () => {
     })
   })
 
+  describe('evalHistory and prompt adjustments', () => {
+    it('computes evalHistory from sceneResultsMap after evaluate with sceneIdx', async () => {
+      await evalComposable.evaluate(mockCreativeScene, 'creative', mockPlanItem, 0)
+
+      expect(evalComposable.evalHistory.value).toHaveLength(1)
+      expect(evalComposable.evalHistory.value[0]).toMatchObject({
+        sceneIdx: 0,
+        dimensionScores: critiqueResponse.dimensionScores,
+        issues: critiqueResponse.issues,
+        strengths: critiqueResponse.strengths
+      })
+    })
+
+    it('formats pastEvalResults string after evaluate', async () => {
+      await evalComposable.evaluate(mockCreativeScene, 'creative', mockPlanItem, 0)
+
+      const result = evalComposable.pastEvalResults.value
+      expect(result).toContain('Scene 1:')
+      expect(result).toContain('8/10')
+      expect(result).toContain('show_tell: 6/10')
+    })
+
+    it('populates focusInstructions and givenHints after evaluate with sceneIdx', async () => {
+      await evalComposable.evaluate(mockCreativeScene, 'creative', mockPlanItem, 0)
+
+      expect(evalComposable.focusInstructions.value).toBeTruthy()
+      expect(evalComposable.focusInstructions.value).toContain('FOCUS AREAS')
+      expect(evalComposable.givenHints.value.length).toBeGreaterThan(0)
+    })
+
+    it('passes focusInstructions to evaluateScene on subsequent evaluations', async () => {
+      await evalComposable.evaluate(mockCreativeScene, 'creative', mockPlanItem, 0)
+      expect(evalComposable.focusInstructions.value).toBeTruthy()
+
+      await evalComposable.evaluate(mockCreativeScene, 'creative', mockPlanItem, 1)
+
+      const secondCallArgs = mockEvaluateScene.mock.calls[1][0]
+      expect(secondCallArgs.focusInstructions).toBe(evalComposable.focusInstructions.value)
+    })
+
+    it('passes focusInstructions to reviseScene', async () => {
+      await evalComposable.evaluate(mockCreativeScene, 'creative', mockPlanItem, 0)
+      expect(evalComposable.focusInstructions.value).toBeTruthy()
+
+      await evalComposable.revise(mockCreativeScene, 'creative', mockPlanItem)
+
+      const reviseCallArgs = mockReviseScene.mock.calls[0][0]
+      expect(reviseCallArgs.focusInstructions).toBe(evalComposable.focusInstructions.value)
+    })
+  })
+
   describe('reset', () => {
     it('restores all refs to initial values', async () => {
       await evalComposable.evaluate(mockCreativeScene, 'creative', mockPlanItem)
@@ -300,6 +354,8 @@ describe('useSceneEval', () => {
         revisionEffectiveness: null
       })
       expect(evalComposable.revisionResult.value).toBeNull()
+      expect(evalComposable.focusInstructions.value).toBe('')
+      expect(evalComposable.givenHints.value).toEqual([])
     })
   })
 })

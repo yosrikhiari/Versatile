@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { db } from '../../services/db-core'
 import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
+import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useVolumeStoryGenerator } from '../../composables/useVolumeStoryGenerator'
 import { useStoryExport } from '../../composables/useStoryExport'
@@ -39,6 +40,7 @@ const emit = defineEmits(['openChapters'])
 
 const projectStore = useProjectStore()
 const storyBibleStore = useStoryBibleStore()
+const storyDocuments = useStoryDocuments()
 const manuscriptStore = useManuscriptStore()
 const volumeGenerator = useVolumeStoryGenerator()
 const { exportAsText, exportAsMarkdown } = useStoryExport()
@@ -170,20 +172,28 @@ const previewScenes = computed(() =>
 
 const sceneEval = useSceneEval()
 
-function handleEvaluateScene(idx) {
+async function handleEvaluateScene(idx) {
   const scene = volumeGenerator.writtenScenes.value?.[idx]
   const planItem = volumeGenerator.scenePlan.value?.[idx]
   if (!scene) return
   const ws = projectStore.activeWorkspaceType || 'creative'
-  sceneEval.evaluate(scene, ws, planItem, idx, projectStore.currentProjectId)
+  const storyBible = await storyDocuments.getStoryDocumentContext(projectStore.currentProjectId)
+  const chapterLog = volumeGenerator.writtenScenes.value
+    .filter((_, i) => i < idx)
+    .filter(Boolean)
+    .map((s) => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary || '(written)'}`)
+    .slice(-20)
+    .join('\n')
+  sceneEval.evaluate(scene, ws, planItem, idx, projectStore.currentProjectId, storyBible, chapterLog)
 }
 
-function handleReviseScene(idx) {
+async function handleReviseScene(idx) {
   const scene = volumeGenerator.writtenScenes.value?.[idx]
   const planItem = volumeGenerator.scenePlan.value?.[idx]
   if (!scene || !sceneEval.critiqueResult.value) return
   const ws = projectStore.activeWorkspaceType || 'creative'
-  sceneEval.revise(scene, ws, planItem, idx, projectStore.currentProjectId)
+  const storyBible = await storyDocuments.getStoryDocumentContext(projectStore.currentProjectId)
+  sceneEval.revise(scene, ws, planItem, idx, projectStore.currentProjectId, storyBible)
 }
 
 const genres = [

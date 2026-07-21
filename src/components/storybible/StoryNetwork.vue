@@ -370,7 +370,7 @@ function getEdgeColor() {
 function getEdgeStroke(id, data) {
   if (hoveredEdgeId.value === id) return 'var(--vers-accent-primary)'
   if (hoveredNodeId.value) {
-    const e = edges.value.find((x) => x.id === id)
+    const e = edgeMap.value.get(id)
     if (e && (e.source === hoveredNodeId.value || e.target === hoveredNodeId.value)) {
       return 'var(--vers-accent-primary)'
     }
@@ -607,8 +607,16 @@ const groupEdges = computed(() => {
     }))
 })
 
+const edgeMap = computed(() => {
+  const map = new Map()
+  for (const edge of edges.value) {
+    map.set(edge.id, edge)
+  }
+  return map
+})
+
 function getEdgeOpacity(edgeId) {
-  const edge = edges.value.find((e) => e.id === edgeId)
+  const edge = edgeMap.value.get(edgeId)
   if (!edge) return 0.35
 
   if (hoveredEdgeId.value === edgeId) return 1.0

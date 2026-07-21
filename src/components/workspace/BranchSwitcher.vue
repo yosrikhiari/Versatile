@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useBranchStore } from '../../stores/branchStore'
 import { useProjectStore } from '../../stores/projectStore'
 import BaseIcon from '../shared/BaseIcon.vue'
+import AppTooltip from '../shared/AppTooltip.vue'
 
 const props = defineProps({
   collapsed: {
@@ -109,17 +110,30 @@ async function handleCreate() {
             </template>
             <span v-else class="flex-1 min-w-0 truncate">{{ branch.name }}</span>
             <span
+              v-if="branch.status === 'divergent'"
+              class="text-[0.625rem] text-yellow-500 font-medium ml-1"
+            >what-if</span>
+            <span
               v-if="branch.id === branchStore.activeBranchId"
-              class="text-[0.625rem] text-accent font-medium"
+              class="text-[0.625rem] text-accent font-medium ml-1"
             >active</span>
-            <button
-              v-if="renaming !== branch.id && branch.name !== 'main'"
-              class="opacity-0 group-hover:opacity-100 ml-auto text-text-hint hover:text-text-primary transition-opacity duration-150"
-              title="Rename"
-              @click.stop="startRename(branch)"
+            <AppTooltip
+              v-if="branch.description && renaming !== branch.id"
+              :text="branch.description"
             >
-              <BaseIcon name="pencil" :size="12" />
-            </button>
+              <BaseIcon name="info" :size="12" class="text-text-hint ml-1" />
+            </AppTooltip>
+            <AppTooltip
+              v-if="renaming !== branch.id && branch.name !== 'main'"
+              text="Rename"
+            >
+              <button
+                class="opacity-0 group-hover:opacity-100 ml-auto text-text-hint hover:text-text-primary transition-opacity duration-150"
+                @click.stop="startRename(branch)"
+              >
+                <BaseIcon name="pencil" :size="12" />
+              </button>
+            </AppTooltip>
           </div>
         </div>
         <div class="border-t border-border-subtle px-3 py-2">

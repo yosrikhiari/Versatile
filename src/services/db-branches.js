@@ -8,12 +8,14 @@ export async function getBranch(id) {
   return db.branches.get(id)
 }
 
-export async function createBranch(projectId, name, sourceBranchId = null) {
+export async function createBranch(projectId, name, sourceBranchId = null, opts = {}) {
   const now = new Date().toISOString()
   const id = await db.branches.add({
     projectId,
     name,
     sourceBranchId,
+    description: opts.description ?? '',
+    status: opts.status ?? 'active',
     createdAt: now,
     updatedAt: now
   })

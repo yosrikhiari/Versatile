@@ -50,17 +50,17 @@ const variantClasses = computed(() => {
     case 'primary':
       return 'bg-accent text-bg-primary hover:bg-accent-hover active:scale-[0.98]'
     case 'secondary':
-      return 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary active:bg-bg-secondary'
+      return 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary active:bg-bg-secondary active:scale-[0.98]'
     case 'ghost':
-      return 'text-text-hint hover:text-text-secondary hover:bg-bg-tertiary active:bg-bg-secondary'
+      return 'text-text-hint hover:text-text-secondary hover:bg-bg-tertiary active:bg-bg-secondary active:scale-[0.98]'
     case 'danger':
       return 'bg-danger text-white hover:bg-danger/90 active:scale-[0.98]'
     case 'accent-ghost':
       return 'bg-surface-hover text-accent active:scale-[0.98]'
     case 'elevated':
-      return 'bg-accent text-bg-primary btn-elevated'
+      return 'bg-accent text-bg-primary btn-elevated active:scale-[0.98]'
     case 'outline':
-      return 'border border-border-subtle text-text-secondary hover:border-accent hover:text-accent active:bg-accent/5'
+      return 'border border-border-subtle text-text-secondary hover:border-accent hover:text-accent active:bg-accent/5 active:scale-[0.98]'
     default:
       return ''
   }

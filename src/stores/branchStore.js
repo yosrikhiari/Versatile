@@ -46,8 +46,8 @@ export const useBranchStore = defineStore('branch', () => {
     }
   }
 
-  async function forkBranch(projectId, name, sourceBranchId = null) {
-    const branch = await createBranch(projectId, name, sourceBranchId || activeBranchId.value)
+  async function forkBranch(projectId, name, sourceBranchId = null, opts = {}) {
+    const branch = await createBranch(projectId, name, sourceBranchId || activeBranchId.value, opts)
     branches.value.push(branch)
     return branch
   }

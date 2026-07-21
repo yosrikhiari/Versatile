@@ -78,6 +78,33 @@
       </div>
     </div>
 
+    <!-- Active Focus Areas -->
+    <div
+      v-if="focusInstructions"
+      class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
+    >
+      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
+        Active Focus Areas
+      </h4>
+      <div class="text-xs text-text-primary font-ui whitespace-pre-wrap leading-relaxed">
+        {{ focusInstructions }}
+      </div>
+      <p class="text-2xs text-text-hint/60 mt-1">
+        These focus areas are injected into the next critic/revision cycle to target weak dimensions.
+      </p>
+    </div>
+
+    <!-- Past Evaluation Results -->
+    <div
+      v-if="pastEvalResults"
+      class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
+    >
+      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
+        Evaluation History
+      </h4>
+      <pre class="text-xs text-text-secondary font-ui whitespace-pre-wrap leading-relaxed">{{ pastEvalResults }}</pre>
+    </div>
+
     <!-- Degradation Hotspots -->
     <div
       v-if="degradationHotspots.length > 0"
@@ -158,7 +185,9 @@ export default {
     sceneResultsMap: { type: Object, required: true },
     gateResults: { type: Object, default: () => ({}) },
     workspaceType: { type: String, default: 'creative' },
-    evaluateAll: { type: Function, default: null }
+    evaluateAll: { type: Function, default: null },
+    focusInstructions: { type: String, default: '' },
+    pastEvalResults: { type: String, default: '' }
   },
   setup(props) {
     const dimensionNames = computed(() => {

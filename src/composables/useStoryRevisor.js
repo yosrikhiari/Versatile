@@ -11,7 +11,8 @@ export function useStoryRevisor() {
     critiqueResult,
     sceneBrief,
     storyBible,
-    existingEntitiesJson
+    existingEntitiesJson,
+    focusInstructions
   }) {
     isRevising.value = true
 
@@ -34,7 +35,10 @@ export function useStoryRevisor() {
 ISSUES TO FIX:
 ${issuesToFix.map((i) => `- [${i.severity}] ${i.type}: ${i.description}`).join('\n')}
 
-SCENE BRIEF (for context):
+${focusInstructions ? `IMPROVEMENT GUIDANCE (based on historical patterns, focus extra attention on these areas):
+${focusInstructions}
+
+` : ''}SCENE BRIEF (for context):
 - Title: ${sceneBrief.title}
 - Emotional goal: ${sceneBrief.emotionalGoal}
 - Characters: ${sceneBrief.charactersPresent.join(', ')}

@@ -23,7 +23,7 @@ const props = defineProps({
 })
 
 const baseClasses =
-  'font-ui font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-inset'
+  'font-ui font-medium transition-all duration-150 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-inset'
 
 const sizeClasses = computed(
   () =>

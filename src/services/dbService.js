@@ -132,6 +132,13 @@ export {
 } from './db-goals'
 export { exportProject, importProject, exportToPDF } from './db-export'
 export {
+  getWhatIfBranches,
+  forkWithDivergence,
+  directDivergentSections,
+  deleteWhatIfBranch,
+  acceptDivergence
+} from './db-whatif'
+export {
   getSnapshots,
   addSnapshot,
   getSnapshot,

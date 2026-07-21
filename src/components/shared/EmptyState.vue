@@ -39,7 +39,7 @@ const emit = defineEmits(['action'])
     <slot />
     <button
       v-if="actionLabel"
-      class="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-hover hover:bg-bg-secondary text-accent text-xs font-ui font-medium transition-all duration-200 cursor-pointer"
+      class="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-hover hover:bg-bg-secondary active:scale-[0.97] text-accent text-xs font-ui font-medium transition-all duration-200 cursor-pointer"
       @click="emit('action')"
     >
       <BaseIcon :name="actionIcon" :size="12" />

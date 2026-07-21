@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
+import { useBranchStore } from '../../stores/branchStore'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import AppTooltip from '../shared/AppTooltip.vue'
@@ -11,6 +12,7 @@ import { useAsyncError } from '../../composables/useAsyncError'
 
 const { onAsyncError } = useAsyncError()
 const projectStore = useProjectStore()
+const branchStore = useBranchStore()
 const storyBibleStore = useStoryBibleStore()
 
 defineProps({
@@ -64,6 +66,8 @@ async function handleNextStep2() {
       projectSynopsis.value.trim(),
       selectedBlueprintId.value
     )
+
+    await branchStore.initForProject(projectId)
 
     if (characterName.value.trim()) {
       await storyBibleStore.addCharacterData(projectId, {

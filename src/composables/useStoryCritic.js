@@ -162,7 +162,8 @@ export function useStoryCritic() {
     sceneBrief,
     storyBible,
     chapterLog,
-    existingEntitiesJson
+    existingEntitiesJson,
+    focusInstructions
   }) {
     isEvaluating.value = true
 
@@ -182,7 +183,10 @@ ${dimsList}
 
 You MUST provide a score (1-10) for each dimension in the "dimensionScores" field of your JSON response.
 
-SCENE BRIEF:
+${focusInstructions ? `FOCUS AREAS (pay extra attention to these dimensions based on historical weaknesses):
+${focusInstructions}
+
+` : ''}SCENE BRIEF:
 - Title: ${sceneBrief.title}
 - Emotional goal: ${sceneBrief.emotionalGoal}
 - Characters present: ${sceneBrief.charactersPresent.join(', ')}
