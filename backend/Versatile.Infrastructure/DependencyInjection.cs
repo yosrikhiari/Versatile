@@ -43,7 +43,6 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
         services.AddScoped<IOrganizationContext>(_ => new OrganizationContext());
 
-        services.AddScoped<IAnnotationService, AnnotationService>();
         services.AddScoped<IAuthorProfileService, AuthorProfileService>();
         services.AddScoped<IBibleService, BibleService>();
         services.AddScoped<IChapterService, ChapterService>();
@@ -61,11 +60,9 @@ public static class DependencyInjection
         services.AddScoped<IResearchDocumentService, ResearchDocumentService>();
         services.AddScoped<IResearchService, ResearchService>();
         services.AddScoped<IResearchTagService, ResearchTagService>();
-        services.AddScoped<IRevisionCommentService, RevisionCommentService>();
         services.AddScoped<ISceneService, SceneService>();
         services.AddScoped<ISessionArchiveItemService, SessionArchiveItemService>();
         services.AddScoped<ISnapshotService, SnapshotService>();
-        services.AddScoped<ISnippetService, SnippetService>();
         services.AddScoped<ISparkHistoryItemService, SparkHistoryItemService>();
         services.AddScoped<IStoryDocumentService, StoryDocumentService>();
         services.AddScoped<IStoryElementService, StoryElementService>();

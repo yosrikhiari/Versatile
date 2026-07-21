@@ -1,8 +1,10 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Application.Snippets.Commands;
+using Versatile.Application.Snippets.Queries;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -10,43 +12,46 @@ namespace Versatile.Api.Controllers;
 [Route("api/story/{storyId}/snippet"), Authorize]
 public class SnippetController : ApiControllerBase
 {
-    private readonly ISnippetService _service;
+    private readonly IMediator _mediator;
 
-    public SnippetController(ISnippetService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
-
+    public SnippetController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
     [HttpGet]
     public async Task<ActionResult<List<SnippetDto>>> GetAll(Guid storyId)
     {
-        try { return Ok(await _service.GetAllAsync(storyId, UserId)); }
+        try { return Ok(await _mediator.Send(new GetSnippetsQuery(storyId, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<SnippetDto>> GetById(Guid id)
     {
-        try { return Ok(await _service.GetByIdAsync(id, UserId)); }
+        try { return Ok(await _mediator.Send(new GetSnippetByIdQuery(id, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpPost]
     public async Task<ActionResult<SnippetDto>> Create(Guid storyId, CreateSnippetRequest request)
     {
-        try { var dto = await _service.CreateAsync(storyId, request, UserId); return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto); }
+        try
+        {
+            var dto = await _mediator.Send(new CreateSnippetCommand(storyId, request.Word, request.Count, request.LastSeen, OrganizationId, UserId));
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+        }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult<SnippetDto>> Update(Guid id, UpdateSnippetRequest request)
     {
-        try { return Ok(await _service.UpdateAsync(id, request, UserId)); }
+        try { return Ok(await _mediator.Send(new UpdateSnippetCommand(id, request.Word, request.Count, request.LastSeen, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        try { await _service.DeleteAsync(id, UserId); return NoContent(); }
+        try { await _mediator.Send(new DeleteSnippetCommand(id, OrganizationId, UserId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 }
