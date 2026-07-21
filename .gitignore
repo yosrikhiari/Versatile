@@ -23,6 +23,9 @@ skills/
 
 # Planning & tracking artifacts
 .planning/
+learn/
+docs/
+reference/
 REQUIREMENTS.md
 CONFIGURATION.md
 DEVELOPMENT.md
@@ -72,3 +75,16 @@ backend/**/stderr*.txt
 
 # scratch .NET playground
 backend/TestApi/
+
+# Local lesson / learning artifacts
+lessons/
+
+# Reference docs, planning, status, workflows (local dev artifacts)
+planning/
+reference/
+status/
+workflows/
+AI-ENHANCEMENT-PLAN.md
+AGENTS.md
+database-enhancement-plan.md
+NOTES.md
