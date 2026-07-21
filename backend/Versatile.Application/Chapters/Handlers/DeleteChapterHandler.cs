@@ -1,25 +1,31 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Versatile.Application.Chapters.Commands;
 using Versatile.Domain.Entities;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.Chapters.Handlers;
 
 public class DeleteChapterHandler : IRequestHandler<DeleteChapterCommand, Unit>
 {
-    private readonly DbContext _db;
+    private readonly IOrganizationOwnedRepository<Chapter> _chapters;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public DeleteChapterHandler(DbContext db) => _db = db;
+    public DeleteChapterHandler(
+        IOrganizationOwnedRepository<Chapter> chapters,
+        IUnitOfWork unitOfWork)
+    {
+        _chapters = chapters;
+        _unitOfWork = unitOfWork;
+    }
 
     public async Task<Unit> Handle(DeleteChapterCommand request, CancellationToken ct)
     {
-        var chapter = await _db.Set<Chapter>()
-            .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == request.Id && c.Story!.UserId == request.UserId && c.Story!.OrganizationId == request.OrganizationId, ct)
-            ?? throw new KeyNotFoundException("Chapter not found");
+        var chapter = await _chapters.GetByIdForOrganizationAsync(request.Id, request.OrganizationId.Value, ct);
+        if (chapter is null || chapter.UserId != request.UserId)
+            throw new KeyNotFoundException("Chapter not found");
 
-        _db.Set<Chapter>().Remove(chapter);
-        await _db.SaveChangesAsync(ct);
+        _chapters.Delete(chapter);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return Unit.Value;
     }

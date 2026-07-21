@@ -1,23 +1,29 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Versatile.Application.Chapters.Commands;
 using Versatile.Application.DTOs;
 using Versatile.Domain.Entities;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.Chapters.Handlers;
 
 public class UpdateChapterHandler : IRequestHandler<UpdateChapterCommand, ChapterDto>
 {
-    private readonly DbContext _db;
+    private readonly IOrganizationOwnedRepository<Chapter> _chapters;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateChapterHandler(DbContext db) => _db = db;
+    public UpdateChapterHandler(
+        IOrganizationOwnedRepository<Chapter> chapters,
+        IUnitOfWork unitOfWork)
+    {
+        _chapters = chapters;
+        _unitOfWork = unitOfWork;
+    }
 
     public async Task<ChapterDto> Handle(UpdateChapterCommand request, CancellationToken ct)
     {
-        var chapter = await _db.Set<Chapter>()
-            .Include(c => c.Story)
-            .FirstOrDefaultAsync(c => c.Id == request.Id && c.Story!.UserId == request.UserId && c.Story!.OrganizationId == request.OrganizationId, ct)
-            ?? throw new KeyNotFoundException("Chapter not found");
+        var chapter = await _chapters.GetByIdForOrganizationAsync(request.Id, request.OrganizationId.Value, ct);
+        if (chapter is null || chapter.UserId != request.UserId)
+            throw new KeyNotFoundException("Chapter not found");
 
         if (request.Title is not null) chapter.Title = request.Title;
         if (request.Order.HasValue) chapter.Order = request.Order.Value;
@@ -25,7 +31,7 @@ public class UpdateChapterHandler : IRequestHandler<UpdateChapterCommand, Chapte
         if (request.ArcAssignment is not null) chapter.ArcAssignment = request.ArcAssignment;
         chapter.UpdatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync(ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return new ChapterDto(chapter.Id, chapter.StoryId, chapter.Title, chapter.Order, chapter.Status, chapter.ArcAssignment, chapter.CreatedAt, chapter.UpdatedAt);
     }

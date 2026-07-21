@@ -2,6 +2,7 @@ using MediatR;
 using Versatile.Application.DTOs;
 using Versatile.Application.Stories.Commands;
 using Versatile.Domain.Entities;
+using Versatile.Domain.Events;
 using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.Stories.Handlers;
@@ -32,6 +33,7 @@ public class CreateStoryHandler : IRequestHandler<CreateStoryCommand, StoryDto>
         };
 
         await _repo.AddAsync(story, ct);
+        _uow.AddDomainEvent(new StoryCreatedEvent(story.Id, story.Title, story.UserId));
         await _uow.SaveChangesAsync(ct);
 
         return new StoryDto(story.Id, story.Title, story.Premise, story.Genre, story.Tone, story.WritingStyle, story.TargetAudience, story.CreatedAt, story.UpdatedAt);

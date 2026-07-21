@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Versatile.Domain.Entities;
 using Versatile.Domain.Enums;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Data;
 
 namespace Versatile.Api.Controllers;
 
@@ -13,122 +11,93 @@ namespace Versatile.Api.Controllers;
 [AllowOrganizationOptional]
 public class OrganizationController : ApiControllerBase
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IOrganizationRepository _orgRepo;
 
-    public OrganizationController(ApplicationDbContext db, IOrganizationContext org) : base(org)
+    public OrganizationController(IOrganizationRepository orgRepo, IOrganizationContext org) : base(org)
     {
-        _db = db;
+        _orgRepo = orgRepo;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<Organization>>> GetAll()
     {
-        var orgs = await _db.OrganizationMemberships
-            .Where(m => m.UserId == UserId)
-            .Include(m => m.Organization)
-            .Select(m => m.Organization)
-            .ToListAsync();
+        var orgs = await _orgRepo.GetUserOrganizationsAsync(UserId);
         return Ok(orgs);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Organization>> GetById(Guid id)
     {
-        var membership = await _db.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == id && m.UserId == UserId);
+        var membership = await _orgRepo.GetMembershipAsync(id, UserId);
         if (membership == null)
             return Forbid();
 
-        var org = await _db.Organizations.FindAsync(id);
+        var org = await _orgRepo.GetByIdAsync(id);
         return org == null ? NotFound() : Ok(org);
     }
 
     [HttpPost]
     public async Task<ActionResult<Organization>> Create(string name, string slug)
     {
-        var org = new Organization { Name = name, Slug = slug };
-        _db.Organizations.Add(org);
-        await _db.SaveChangesAsync();
-
-        _db.OrganizationMemberships.Add(new OrganizationMembership
-        {
-            OrganizationId = org.Id,
-            UserId = UserId,
-            Role = OrganizationRole.Admin
-        });
-        await _db.SaveChangesAsync();
-
+        var org = await _orgRepo.CreateAsync(name, slug, UserId);
         return CreatedAtAction(nameof(GetById), new { id = org.Id }, org);
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult<Organization>> Update(Guid id, string name, string slug)
     {
-        var membership = await _db.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == id && m.UserId == UserId && m.Role == OrganizationRole.Admin);
-        if (membership == null)
+        var membership = await _orgRepo.GetMembershipAsync(id, UserId);
+        if (membership == null || membership.Role != OrganizationRole.Admin)
             return Forbid();
 
-        var org = await _db.Organizations.FindAsync(id);
+        var org = await _orgRepo.GetByIdAsync(id);
         if (org == null) return NotFound();
 
         org.Name = name;
         org.Slug = slug;
-        await _db.SaveChangesAsync();
+        await _orgRepo.UpdateAsync(org);
         return Ok(org);
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        var membership = await _db.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == id && m.UserId == UserId && m.Role == OrganizationRole.Admin);
-        if (membership == null)
+        var membership = await _orgRepo.GetMembershipAsync(id, UserId);
+        if (membership == null || membership.Role != OrganizationRole.Admin)
             return Forbid();
 
-        var org = await _db.Organizations.FindAsync(id);
+        var org = await _orgRepo.GetByIdAsync(id);
         if (org == null) return NotFound();
 
-        _db.Organizations.Remove(org);
-        await _db.SaveChangesAsync();
+        await _orgRepo.DeleteAsync(org);
         return NoContent();
     }
 
     [HttpPost("{id}/invite")]
     public async Task<ActionResult> Invite(Guid id, Guid userId, OrganizationRole role = OrganizationRole.Member)
     {
-        var admin = await _db.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == id && m.UserId == UserId && m.Role == OrganizationRole.Admin);
-        if (admin == null)
+        var admin = await _orgRepo.GetMembershipAsync(id, UserId);
+        if (admin == null || admin.Role != OrganizationRole.Admin)
             return Forbid();
 
-        if (await _db.OrganizationMemberships.AnyAsync(m => m.OrganizationId == id && m.UserId == userId))
+        if (await _orgRepo.IsMemberAsync(id, userId))
             return Conflict(new { message = "User is already a member" });
 
-        _db.OrganizationMemberships.Add(new OrganizationMembership
-        {
-            OrganizationId = id,
-            UserId = userId,
-            Role = role
-        });
-        await _db.SaveChangesAsync();
+        await _orgRepo.AddMemberAsync(id, userId, role);
         return Ok(new { message = "User invited" });
     }
 
     [HttpDelete("{id}/members/{userId}")]
     public async Task<ActionResult> RemoveMember(Guid id, Guid userId)
     {
-        var admin = await _db.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == id && m.UserId == UserId && m.Role == OrganizationRole.Admin);
-        if (admin == null)
+        var admin = await _orgRepo.GetMembershipAsync(id, UserId);
+        if (admin == null || admin.Role != OrganizationRole.Admin)
             return Forbid();
 
-        var membership = await _db.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == id && m.UserId == userId);
+        var membership = await _orgRepo.GetMembershipAsync(id, userId);
         if (membership == null) return NotFound();
 
-        _db.OrganizationMemberships.Remove(membership);
-        await _db.SaveChangesAsync();
+        await _orgRepo.RemoveMemberAsync(id, userId);
         return NoContent();
     }
 }

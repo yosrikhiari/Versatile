@@ -143,5 +143,7 @@ public class OrganizationOwnedRepositoryTests
     {
         public Guid? OrganizationId => null;
         public string? OrganizationRole => null;
+
+        public void SetOrganization(Guid? organizationId, string? organizationRole) { }
     }
 }

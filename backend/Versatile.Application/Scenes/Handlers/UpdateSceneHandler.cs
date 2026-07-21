@@ -1,23 +1,36 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Versatile.Application.DTOs;
 using Versatile.Application.Scenes.Commands;
 using Versatile.Domain.Entities;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.Scenes.Handlers;
 
 public class UpdateSceneHandler : IRequestHandler<UpdateSceneCommand, SceneDto>
 {
-    private readonly DbContext _db;
+    private readonly IRepository<Scene> _scenes;
+    private readonly IOrganizationOwnedRepository<Chapter> _chapters;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateSceneHandler(DbContext db) => _db = db;
+    public UpdateSceneHandler(
+        IRepository<Scene> scenes,
+        IOrganizationOwnedRepository<Chapter> chapters,
+        IUnitOfWork unitOfWork)
+    {
+        _scenes = scenes;
+        _chapters = chapters;
+        _unitOfWork = unitOfWork;
+    }
 
     public async Task<SceneDto> Handle(UpdateSceneCommand request, CancellationToken ct)
     {
-        var scene = await _db.Set<Scene>()
-            .Include(s => s.Chapter).ThenInclude(c => c!.Story)
-            .FirstOrDefaultAsync(s => s.Id == request.Id && s.Chapter!.Story!.UserId == request.UserId && s.Chapter!.Story!.OrganizationId == request.OrganizationId, ct)
-            ?? throw new KeyNotFoundException("Scene not found");
+        var scene = await _scenes.GetByIdAsync(request.Id, ct);
+        if (scene is null)
+            throw new KeyNotFoundException("Scene not found");
+
+        var chapter = await _chapters.GetByIdForOrganizationAsync(scene.ChapterId, request.OrganizationId!.Value, ct);
+        if (chapter is null || chapter.UserId != request.UserId)
+            throw new KeyNotFoundException("Scene not found");
 
         if (request.Title is not null) scene.Title = request.Title;
         if (request.Content is not null) { scene.Content = request.Content; scene.WordCount = CountWords(request.Content); }
@@ -25,7 +38,7 @@ public class UpdateSceneHandler : IRequestHandler<UpdateSceneCommand, SceneDto>
         if (request.Order.HasValue) scene.Order = request.Order.Value;
         scene.UpdatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync(ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return ToDto(scene);
     }
