@@ -49,6 +49,7 @@ public class Story : UserOwnedEntity
     public ICollection<Volume> Volumes { get; set; } = new List<Volume>();
     public ICollection<VolumeEntity> VolumeEntities { get; set; } = new List<VolumeEntity>();
     public ICollection<SessionArchiveItem> SessionArchiveItems { get; set; } = new List<SessionArchiveItem>();
+    public ICollection<Branch> Branches { get; set; } = new List<Branch>();
     public ICollection<AuthorProfile> AuthorProfiles { get; set; } = new List<AuthorProfile>();
     public ICollection<StoryDocument> StoryDocuments { get; set; } = new List<StoryDocument>();
     public ICollection<GeneratedStory> GeneratedStories { get; set; } = new List<GeneratedStory>();

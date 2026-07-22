@@ -1,8 +1,11 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Versatile.Application.BibleEntries.Commands;
+using Versatile.Application.BibleEntries.Queries;
+using Versatile.Application.Common;
 using Versatile.Application.DTOs;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -10,17 +13,16 @@ namespace Versatile.Api.Controllers;
 [Route("api/story/{storyId}/bible"), Authorize]
 public class BibleController : ApiControllerBase
 {
-    private readonly IBibleService _bible;
+    private readonly IMediator _mediator;
 
-    public BibleController(IBibleService bible, IOrganizationContext orgContext) : base(orgContext) => _bible = bible;
+    public BibleController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
-
-    [HttpGet]
-    public async Task<ActionResult<List<BibleEntryDto>>> GetAll(Guid storyId)
+    [HttpGet, Cacheable(300)]
+    public async Task<ActionResult<PagedResponse<BibleEntryDto>>> GetAll(Guid storyId, [FromQuery] PagedRequest paged)
     {
         try
         {
-            return Ok(await _bible.GetAllAsync(storyId, UserId, organizationId: OrganizationId));
+            return Ok(await _mediator.Send(new GetBibleEntriesQuery(storyId, OrganizationId, UserId, paged.Page, paged.PageSize)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -28,12 +30,12 @@ public class BibleController : ApiControllerBase
         }
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<BibleEntryDto>> GetById(Guid id)
     {
         try
         {
-            return Ok(await _bible.GetByIdAsync(id, UserId, organizationId: OrganizationId));
+            return Ok(await _mediator.Send(new GetBibleEntryByIdQuery(id, OrganizationId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -42,11 +44,11 @@ public class BibleController : ApiControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<BibleEntryDto>> Create(Guid storyId, CreateBibleEntryRequest request)
+    public async Task<ActionResult<BibleEntryDto>> Create(Guid storyId, CreateBibleEntryCommand command)
     {
         try
         {
-            var entry = await _bible.CreateAsync(storyId, request, UserId, organizationId: OrganizationId);
+            var entry = await _mediator.Send(command with { StoryId = storyId, UserId = UserId, OrganizationId = OrganizationId });
             return CreatedAtAction(nameof(GetById), new { id = entry.Id }, entry);
         }
         catch (KeyNotFoundException ex)
@@ -56,11 +58,11 @@ public class BibleController : ApiControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<BibleEntryDto>> Update(Guid id, UpdateBibleEntryRequest request)
+    public async Task<ActionResult<BibleEntryDto>> Update(Guid id, UpdateBibleEntryCommand command)
     {
         try
         {
-            return Ok(await _bible.UpdateAsync(id, request, UserId, organizationId: OrganizationId));
+            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId, OrganizationId = OrganizationId }));
         }
         catch (KeyNotFoundException ex)
         {
@@ -73,7 +75,7 @@ public class BibleController : ApiControllerBase
     {
         try
         {
-            await _bible.DeleteAsync(id, UserId, organizationId: OrganizationId);
+            await _mediator.Send(new DeleteBibleEntryCommand(id, OrganizationId, UserId));
             return NoContent();
         }
         catch (KeyNotFoundException ex)

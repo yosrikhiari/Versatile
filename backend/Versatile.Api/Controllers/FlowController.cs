@@ -1,8 +1,10 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Application.Flows.Commands;
+using Versatile.Application.Flows.Queries;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -10,17 +12,17 @@ namespace Versatile.Api.Controllers;
 [Route("api/story/{storyId}/flow"), Authorize]
 public class FlowController : ApiControllerBase
 {
-    private readonly IFlowService _flow;
+    private readonly IMediator _mediator;
 
-    public FlowController(IFlowService flow, IOrganizationContext orgContext) : base(orgContext) => _flow = flow;
+    public FlowController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
 
-    [HttpGet]
+    [HttpGet, Cacheable(300)]
     public async Task<ActionResult<FlowDto>> Get(Guid storyId)
     {
         try
         {
-            return Ok(await _flow.GetAsync(storyId, UserId, organizationId: OrganizationId));
+            return Ok(await _mediator.Send(new GetFlowQuery(storyId, OrganizationId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -29,11 +31,11 @@ public class FlowController : ApiControllerBase
     }
 
     [HttpPut]
-    public async Task<ActionResult<FlowDto>> Upsert(Guid storyId, UpdateFlowRequest request)
+    public async Task<ActionResult<FlowDto>> Upsert(Guid storyId, UpdateFlowCommand command)
     {
         try
         {
-            return Ok(await _flow.UpsertAsync(storyId, request, UserId, organizationId: OrganizationId));
+            return Ok(await _mediator.Send(command with { StoryId = storyId, UserId = UserId, OrganizationId = OrganizationId }));
         }
         catch (KeyNotFoundException ex)
         {

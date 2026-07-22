@@ -16,14 +16,14 @@ public class SubsectionController : ApiControllerBase
 
     public SubsectionController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
-    [HttpGet]
+    [HttpGet, Cacheable(60)]
     public async Task<ActionResult<List<SubsectionDto>>> GetAll(Guid storyId)
     {
         try { return Ok(await _mediator.Send(new GetSubsectionsQuery(storyId, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<SubsectionDto>> GetById(Guid id)
     {
         try { return Ok(await _mediator.Send(new GetSubsectionByIdQuery(id, OrganizationId, UserId))); }

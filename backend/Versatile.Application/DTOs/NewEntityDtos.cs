@@ -53,23 +53,15 @@ public record UpdateStoryElementRequest(string? Type, string? Title, double? X, 
 
 // GraphEdge
 public record GraphEdgeDto(Guid Id, Guid StoryId, string SourceId, string TargetId, string SourceType, string TargetType, string RelationshipType, string? Label, Guid? VolumeId);
-public record CreateGraphEdgeRequest(string SourceId, string TargetId, string SourceType, string TargetType, string RelationshipType, string? Label, Guid? VolumeId);
-public record UpdateGraphEdgeRequest(string? SourceId, string? TargetId, string? SourceType, string? TargetType, string? RelationshipType, string? Label, Guid? VolumeId);
 
 // GroupEdge
 public record GroupEdgeDto(Guid Id, Guid StoryId, string SourceGroupId, string TargetGroupId, string RelationshipType);
-public record CreateGroupEdgeRequest(string SourceGroupId, string TargetGroupId, string RelationshipType);
-public record UpdateGroupEdgeRequest(string? SourceGroupId, string? TargetGroupId, string? RelationshipType);
 
 // NodePosition
 public record NodePositionDto(Guid Id, Guid StoryId, string NodeId, string NodeType, double X, double Y);
-public record CreateNodePositionRequest(string NodeId, string NodeType, double X, double Y);
-public record UpdateNodePositionRequest(string? NodeId, string? NodeType, double? X, double? Y);
 
 // GraphGroup
 public record GraphGroupDto(Guid Id, Guid StoryId, string Label, string Color, string? Data);
-public record CreateGraphGroupRequest(string Label, string Color, string? Data);
-public record UpdateGraphGroupRequest(string? Label, string? Color, string? Data);
 
 // Snapshot
 public record SnapshotDto(Guid Id, Guid StoryId, Guid? ChapterId, DateTime Timestamp, string? Label, string? Data);

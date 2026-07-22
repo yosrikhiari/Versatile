@@ -10,6 +10,11 @@ public interface IRepository<T> where T : class
     void Update(T entity);
     void Delete(T entity);
     Task<int> CountAsync(Expression<Func<T, bool>>? filter = null, CancellationToken ct = default);
+    Task<(List<T> Items, int TotalCount)> GetPagedAsync(
+        Expression<Func<T, bool>>? filter = null,
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken ct = default);
 }
 
 public interface IUserOwnedRepository<T> : IRepository<T> where T : class

@@ -1,8 +1,10 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Application.Research.Commands;
+using Versatile.Application.Research.Queries;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -11,35 +13,22 @@ namespace Versatile.Api.Controllers;
 [RequestSizeLimit(100_000_000)]
 public class ResearchController : ApiControllerBase
 {
-    private readonly IResearchService _research;
+    private readonly IMediator _mediator;
 
-    public ResearchController(IResearchService research, IOrganizationContext orgContext) : base(orgContext) => _research = research;
+    public ResearchController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
-
-    [HttpGet]
+    [HttpGet, Cacheable(120)]
     public async Task<ActionResult<List<ResearchDto>>> GetAll(Guid storyId)
     {
-        try
-        {
-            return Ok(await _research.GetAllAsync(storyId, UserId, organizationId: OrganizationId));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        try { return Ok(await _mediator.Send(new GetResearchNotesQuery(storyId, OrganizationId, UserId))); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<ResearchDto>> GetById(Guid id)
     {
-        try
-        {
-            return Ok(await _research.GetByIdAsync(id, UserId, organizationId: OrganizationId));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        try { return Ok(await _mediator.Send(new GetResearchNoteByIdQuery(id, OrganizationId, UserId))); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpPost]
@@ -47,39 +36,23 @@ public class ResearchController : ApiControllerBase
     {
         try
         {
-            var note = await _research.CreateAsync(storyId, request, UserId, organizationId: OrganizationId);
-            return CreatedAtAction(nameof(GetById), new { id = note.Id }, note);
+            var dto = await _mediator.Send(new CreateResearchNoteCommand(storyId, request.Title, request.Content, OrganizationId, UserId));
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
         }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult<ResearchDto>> Update(Guid id, UpdateResearchRequest request)
     {
-        try
-        {
-            return Ok(await _research.UpdateAsync(id, request, UserId, organizationId: OrganizationId));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        try { return Ok(await _mediator.Send(new UpdateResearchNoteCommand(id, request.Title, request.Content, OrganizationId, UserId))); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        try
-        {
-            await _research.DeleteAsync(id, UserId, organizationId: OrganizationId);
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        try { await _mediator.Send(new DeleteResearchNoteCommand(id, OrganizationId, UserId)); return NoContent(); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 }

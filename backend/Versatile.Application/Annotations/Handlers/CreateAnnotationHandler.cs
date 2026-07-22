@@ -1,20 +1,29 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Versatile.Application.Annotations.Commands;
 using Versatile.Application.DTOs;
 using Versatile.Domain.Entities;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.Annotations.Handlers;
 
 public class CreateAnnotationHandler : IRequestHandler<CreateAnnotationCommand, AnnotationDto>
 {
-    private readonly DbContext _db;
-    public CreateAnnotationHandler(DbContext db) => _db = db;
+    private readonly IRepository<Annotation> _repo;
+    private readonly IRepository<Story> _storyRepo;
+    private readonly IUnitOfWork _uow;
+
+    public CreateAnnotationHandler(IRepository<Annotation> repo, IRepository<Story> storyRepo, IUnitOfWork uow)
+    {
+        _repo = repo;
+        _storyRepo = storyRepo;
+        _uow = uow;
+    }
 
     public async Task<AnnotationDto> Handle(CreateAnnotationCommand request, CancellationToken ct)
     {
-        var storyExists = await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct);
-        if (!storyExists) throw new KeyNotFoundException("Story not found");
+        var stories = await _storyRepo.GetAllAsync(
+            s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct);
+        if (stories.Count == 0) throw new KeyNotFoundException("Story not found");
 
         var annotation = new Annotation
         {
@@ -29,8 +38,8 @@ public class CreateAnnotationHandler : IRequestHandler<CreateAnnotationCommand, 
             UserId = request.UserId,
             OrganizationId = request.OrganizationId
         };
-        _db.Set<Annotation>().Add(annotation);
-        await _db.SaveChangesAsync(ct);
+        await _repo.AddAsync(annotation, ct);
+        await _uow.SaveChangesAsync(ct);
         return new AnnotationDto(annotation.Id, annotation.StoryId, annotation.ParagraphIndex, annotation.ParagraphId, annotation.Type, annotation.Original, annotation.Suggestion, annotation.Reason, annotation.Status, annotation.CreatedAt);
     }
 }

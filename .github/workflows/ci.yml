@@ -79,3 +79,24 @@ jobs:
         with:
           files: ./coverage/coverage-final.json
           fail_ci_if_error: false
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore backend/Versatile.slnx
+
+      - name: Build
+        run: dotnet build backend/Versatile.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test backend/Versatile.slnx --configuration Release --no-build

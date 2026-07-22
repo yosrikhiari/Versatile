@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Versatile.Application.Common;
 using Versatile.Application.DTOs;
 using Versatile.Application.Scenes.Commands;
 using Versatile.Application.Scenes.Queries;
@@ -17,12 +18,12 @@ public class SceneController : ApiControllerBase
     public SceneController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
 
-    [HttpGet]
-    public async Task<ActionResult<List<SceneDto>>> GetAll(Guid chapterId)
+    [HttpGet, Cacheable(60)]
+    public async Task<ActionResult<PagedResponse<SceneDto>>> GetAll(Guid chapterId, [FromQuery] PagedRequest paged)
     {
         try
         {
-            return Ok(await _mediator.Send(new GetScenesQuery(chapterId, OrganizationId, UserId)));
+            return Ok(await _mediator.Send(new GetScenesQuery(chapterId, OrganizationId, UserId, paged.Page, paged.PageSize)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -30,7 +31,7 @@ public class SceneController : ApiControllerBase
         }
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<SceneDto>> GetById(Guid id)
     {
         try

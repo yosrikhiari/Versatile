@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using Serilog;
 using Versatile.Application;
 using Versatile.Infrastructure;
+using Versatile.Infrastructure.Data;
 using Versatile.Infrastructure.Middleware;
 using Versatile.Api.Common;
 using Versatile.Api.Hubs;
@@ -9,6 +10,7 @@ using Versatile.Api.Health;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using OpenTelemetry;
@@ -81,6 +83,7 @@ try
     {
         options.Filters.Add<ResponseEnvelopeFilter>();
         options.Filters.Add(new TypeFilterAttribute(typeof(CacheResultFilter)));
+        options.Filters.Add<AutoValidateAntiforgeryTokenAttribute>();
     });
     builder.Services.AddEndpointsApiExplorer();
 
@@ -203,6 +206,14 @@ try
 
     if (app.Environment.IsDevelopment())
     {
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            ApplicationDbContext.EnsureTenantSafety();
+            await db.Database.MigrateAsync();
+            await EnsureSeedDataAsync(db);
+        }
+
         app.UseSwagger();
         app.UseSwaggerUI(options =>
         {
@@ -228,4 +239,19 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+static async Task EnsureSeedDataAsync(ApplicationDbContext db)
+{
+    if (await db.Database.CanConnectAsync() && !await db.Organizations.AnyAsync())
+    {
+        db.Organizations.Add(new()
+        {
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Name = "Default Organization",
+            Slug = "default",
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+    }
 }

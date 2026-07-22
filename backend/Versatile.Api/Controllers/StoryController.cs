@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Versatile.Application.Common;
 using Versatile.Application.DTOs;
 using Versatile.Application.Stories.Commands;
 using Versatile.Application.Stories.Queries;
@@ -16,11 +17,11 @@ public class StoryController : ApiControllerBase
 
     public StoryController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
-    [HttpGet]
-    public async Task<ActionResult<List<StoryDto>>> GetAll() =>
-        Ok(await _mediator.Send(new GetStoriesQuery(OrganizationId, UserId)));
+    [HttpGet, Cacheable(60)]
+    public async Task<ActionResult<PagedResponse<StoryDto>>> GetAll([FromQuery] PagedRequest paged) =>
+        Ok(await _mediator.Send(new GetStoriesQuery(OrganizationId, UserId, paged.Page, paged.PageSize)));
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<StoryDto>> GetById(Guid id)
     {
         try

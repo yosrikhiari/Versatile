@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Versatile.Application.Common;
 using Versatile.Application.DTOs;
 using Versatile.Application.Volume.Commands;
 using Versatile.Application.Volume.Queries;
@@ -16,14 +17,14 @@ public class VolumeController : ApiControllerBase
 
     public VolumeController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
-    [HttpGet]
-    public async Task<ActionResult<List<VolumeDto>>> GetAll(Guid storyId)
+    [HttpGet, Cacheable(60)]
+    public async Task<ActionResult<PagedResponse<VolumeDto>>> GetAll(Guid storyId, [FromQuery] PagedRequest paged)
     {
-        try { return Ok(await _mediator.Send(new GetVolumesQuery(storyId, OrganizationId, UserId))); }
+        try { return Ok(await _mediator.Send(new GetVolumesQuery(storyId, OrganizationId, UserId, paged.Page, paged.PageSize))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<VolumeDto>> GetById(Guid id)
     {
         try { return Ok(await _mediator.Send(new GetVolumeByIdQuery(id, OrganizationId, UserId))); }

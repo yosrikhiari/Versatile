@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
+// Local-only; not synced to server (superseded by Section)
 public class Chapter : UserOwnedEntity
 {
     [Required]

@@ -1,4 +1,5 @@
 using MediatR;
+using Versatile.Application.Common;
 using Versatile.Application.DTOs;
 using Versatile.Application.Scenes.Queries;
 using Versatile.Domain.Entities;
@@ -6,7 +7,7 @@ using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.Scenes.Handlers;
 
-public class GetScenesHandler : IRequestHandler<GetScenesQuery, List<SceneDto>>
+public class GetScenesHandler : IRequestHandler<GetScenesQuery, PagedResponse<SceneDto>>
 {
     private readonly IOrganizationOwnedRepository<Chapter> _chapters;
     private readonly IRepository<Scene> _scenes;
@@ -19,17 +20,18 @@ public class GetScenesHandler : IRequestHandler<GetScenesQuery, List<SceneDto>>
         _scenes = scenes;
     }
 
-    public async Task<List<SceneDto>> Handle(GetScenesQuery request, CancellationToken ct)
+    public async Task<PagedResponse<SceneDto>> Handle(GetScenesQuery request, CancellationToken ct)
     {
         var chapter = await _chapters.GetByIdForOrganizationAsync(request.ChapterId, request.OrganizationId!.Value, ct);
         if (chapter is null || chapter.UserId != request.UserId)
             throw new KeyNotFoundException("Chapter not found");
 
-        var scenes = await _scenes.GetAllAsync(s => s.ChapterId == request.ChapterId, ct);
-        return scenes
+        var (scenes, totalCount) = await _scenes.GetPagedAsync(s => s.ChapterId == request.ChapterId, request.Page, request.PageSize, ct);
+        var items = scenes
             .OrderBy(s => s.Order)
             .Select(s => new SceneDto(s.Id, s.ChapterId, s.Title, s.Content, s.Status, s.WordCount, s.Order, s.CreatedAt, s.UpdatedAt))
             .ToList();
+        return new PagedResponse<SceneDto>(items, totalCount, request.Page, request.PageSize);
     }
 }
 

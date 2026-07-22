@@ -4,4 +4,5 @@
   <Project Path="Versatile.Infrastructure/Versatile.Infrastructure.csproj" />
   <Project Path="Versatile.Api/Versatile.Api.csproj" />
   <Project Path="Versatile.Api.Tests/Versatile.Api.Tests.csproj" />
+  <Project Path="Versatile.Application.Tests/Versatile.Application.Tests.csproj" />
 </Solution>

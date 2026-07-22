@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Versatile.Domain.Entities;
 
+// Local-only; not synced to server (auth identity, sourced from IdP)
 public class User : BaseEntity
 {
     [Required, MaxLength(100)]

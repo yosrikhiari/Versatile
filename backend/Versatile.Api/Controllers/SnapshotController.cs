@@ -1,8 +1,10 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Application.Snapshots.Commands;
+using Versatile.Application.Snapshots.Queries;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -10,43 +12,74 @@ namespace Versatile.Api.Controllers;
 [Route("api/story/{storyId}/snapshot"), Authorize]
 public class SnapshotController : ApiControllerBase
 {
-    private readonly ISnapshotService _service;
+    private readonly IMediator _mediator;
 
-    public SnapshotController(ISnapshotService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
-
+    public SnapshotController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
     [HttpGet]
     public async Task<ActionResult<List<SnapshotDto>>> GetAll(Guid storyId)
     {
-        try { return Ok(await _service.GetAllAsync(storyId, UserId)); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            return Ok(await _mediator.Send(new GetSnapshotsQuery(storyId, OrganizationId, UserId)));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<SnapshotDto>> GetById(Guid id)
     {
-        try { return Ok(await _service.GetByIdAsync(id, UserId)); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            return Ok(await _mediator.Send(new GetSnapshotByIdQuery(id, OrganizationId, UserId)));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpPost]
-    public async Task<ActionResult<SnapshotDto>> Create(Guid storyId, CreateSnapshotRequest request)
+    public async Task<ActionResult<SnapshotDto>> Create(Guid storyId, CreateSnapshotCommand command)
     {
-        try { var dto = await _service.CreateAsync(storyId, request, UserId); return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            var snapshot = await _mediator.Send(command with { StoryId = storyId, UserId = UserId, OrganizationId = OrganizationId });
+            return CreatedAtAction(nameof(GetById), new { id = snapshot.Id }, snapshot);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<SnapshotDto>> Update(Guid id, UpdateSnapshotRequest request)
+    public async Task<ActionResult<SnapshotDto>> Update(Guid id, UpdateSnapshotCommand command)
     {
-        try { return Ok(await _service.UpdateAsync(id, request, UserId)); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId, OrganizationId = OrganizationId }));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        try { await _service.DeleteAsync(id, UserId); return NoContent(); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            await _mediator.Send(new DeleteSnapshotCommand(id, OrganizationId, UserId));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 }

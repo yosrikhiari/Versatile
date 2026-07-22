@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Versatile.Domain.Entities;
 using Versatile.Domain.Interfaces;
@@ -54,6 +55,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Volume> Volumes => Set<Volume>();
     public DbSet<VolumeEntity> VolumeEntities => Set<VolumeEntity>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<AuditEntry> AuditLog => Set<AuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -122,6 +124,14 @@ public class ApplicationDbContext : DbContext
         {
             e.HasIndex(a => a.StoryId);
             e.HasOne(a => a.Story).WithMany(s => s.Annotations).HasForeignKey(a => a.StoryId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Branch>(e =>
+        {
+            e.HasIndex(b => b.StoryId);
+            e.HasIndex(b => b.SourceBranchId);
+            e.HasOne(b => b.Story).WithMany(s => s.Branches).HasForeignKey(b => b.StoryId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(b => b.SourceBranch).WithMany().HasForeignKey(b => b.SourceBranchId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<AuthorProfile>(e =>
@@ -315,6 +325,24 @@ public class ApplicationDbContext : DbContext
         ApplyTenantFilter(modelBuilder);
     }
 
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        PropagateOrganizationId();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void PropagateOrganizationId()
+    {
+        if (_tenantId is null)
+            return;
+
+        foreach (var entry in ChangeTracker.Entries<UserOwnedEntity>())
+        {
+            if (entry.State is EntityState.Added && entry.Entity.OrganizationId is null)
+                entry.Entity.OrganizationId = _tenantId;
+        }
+    }
+
     private void ApplyTenantFilter(ModelBuilder modelBuilder)
     {
         foreach (var entityType in modelBuilder.Model.GetEntityTypes()
@@ -332,6 +360,45 @@ public class ApplicationDbContext : DbContext
             var body = Expression.OrElse(isNull, match);
 
             modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(body, param));
+        }
+    }
+
+    public static void EnsureTenantSafety()
+    {
+        var exemptTypes = new HashSet<string>
+        {
+            "Organization",
+            "OrganizationMembership",
+            "User",
+            "AuditEntry",
+            "OutboxMessage"
+        };
+
+        var dbSetProperties = typeof(ApplicationDbContext)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType.IsGenericType
+                && p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
+            .ToList();
+
+        var violations = new List<string>();
+
+        foreach (var prop in dbSetProperties)
+        {
+            var entityType = prop.PropertyType.GetGenericArguments()[0];
+            if (exemptTypes.Contains(entityType.Name))
+                continue;
+
+            if (!typeof(UserOwnedEntity).IsAssignableFrom(entityType))
+            {
+                violations.Add(
+                    $"DbSet<{entityType.Name}> ({prop.Name}): type does not extend UserOwnedEntity and is not in the tenant-exempt list.");
+            }
+        }
+
+        if (violations.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Tenant safety validation failed:\n{string.Join("\n", violations)}");
         }
     }
 }

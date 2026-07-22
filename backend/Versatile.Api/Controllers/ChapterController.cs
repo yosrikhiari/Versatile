@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.Chapters.Commands;
 using Versatile.Application.Chapters.Queries;
+using Versatile.Application.Common;
 using Versatile.Application.DTOs;
 using Versatile.Domain.Interfaces;
 
@@ -17,12 +18,12 @@ public class ChapterController : ApiControllerBase
     public ChapterController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
 
-    [HttpGet]
-    public async Task<ActionResult<List<ChapterDto>>> GetAll(Guid storyId)
+    [HttpGet, Cacheable(60)]
+    public async Task<ActionResult<PagedResponse<ChapterDto>>> GetAll(Guid storyId, [FromQuery] PagedRequest paged)
     {
         try
         {
-            return Ok(await _mediator.Send(new GetChaptersQuery(storyId, OrganizationId, UserId)));
+            return Ok(await _mediator.Send(new GetChaptersQuery(storyId, OrganizationId, UserId, paged.Page, paged.PageSize)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -30,7 +31,7 @@ public class ChapterController : ApiControllerBase
         }
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<ChapterDto>> GetById(Guid id)
     {
         try

@@ -1,12 +1,13 @@
 using MediatR;
 using Versatile.Application.Chapters.Queries;
+using Versatile.Application.Common;
 using Versatile.Application.DTOs;
 using Versatile.Domain.Entities;
 using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.Chapters.Handlers;
 
-public class GetChaptersHandler : IRequestHandler<GetChaptersQuery, List<ChapterDto>>
+public class GetChaptersHandler : IRequestHandler<GetChaptersQuery, PagedResponse<ChapterDto>>
 {
     private readonly IRepository<Story> _stories;
     private readonly IOrganizationOwnedRepository<Chapter> _chapters;
@@ -19,17 +20,18 @@ public class GetChaptersHandler : IRequestHandler<GetChaptersQuery, List<Chapter
         _chapters = chapters;
     }
 
-    public async Task<List<ChapterDto>> Handle(GetChaptersQuery request, CancellationToken ct)
+    public async Task<PagedResponse<ChapterDto>> Handle(GetChaptersQuery request, CancellationToken ct)
     {
         var story = await _stories.GetByIdAsync(request.StoryId, ct);
         if (story is null || story.UserId != request.UserId || story.OrganizationId != request.OrganizationId)
             throw new KeyNotFoundException("Story not found");
 
-        var chapters = await _chapters.GetAllAsync(c => c.StoryId == request.StoryId, ct);
-        return chapters
+        var (chapters, totalCount) = await _chapters.GetPagedAsync(c => c.StoryId == request.StoryId, request.Page, request.PageSize, ct);
+        var items = chapters
             .OrderBy(c => c.Order)
             .Select(c => new ChapterDto(c.Id, c.StoryId, c.Title, c.Order, c.Status, c.ArcAssignment, c.CreatedAt, c.UpdatedAt))
             .ToList();
+        return new PagedResponse<ChapterDto>(items, totalCount, request.Page, request.PageSize);
     }
 }
 

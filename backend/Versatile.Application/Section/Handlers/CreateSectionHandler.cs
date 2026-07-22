@@ -1,27 +1,35 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Versatile.Application.DTOs;
 using Versatile.Application.Section.Commands;
-using Entity = Versatile.Domain.Entities.Section;
+using Versatile.Domain.Interfaces;
+using SectionEntity = Versatile.Domain.Entities.Section;
 using Story = Versatile.Domain.Entities.Story;
 
 namespace Versatile.Application.Section.Handlers;
 
 public class CreateSectionHandler : IRequestHandler<CreateSectionCommand, SectionDto>
 {
-    private readonly DbContext _db;
-    public CreateSectionHandler(DbContext db) => _db = db;
+    private readonly IRepository<SectionEntity> _sectionRepo;
+    private readonly IOrganizationOwnedRepository<Story> _storyRepo;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateSectionHandler(IRepository<SectionEntity> sectionRepo, IOrganizationOwnedRepository<Story> storyRepo, IUnitOfWork unitOfWork)
+    {
+        _sectionRepo = sectionRepo;
+        _storyRepo = storyRepo;
+        _unitOfWork = unitOfWork;
+    }
 
     public async Task<SectionDto> Handle(CreateSectionCommand request, CancellationToken ct)
     {
-        if (!await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct))
+        var story = await _storyRepo.GetByIdForOrganizationAsync(request.StoryId, request.OrganizationId!.Value, ct);
+        if (story is null || story.UserId != request.UserId)
             throw new KeyNotFoundException("Story not found");
 
-        var maxOrder = await _db.Set<Entity>()
-            .Where(s => s.StoryId == request.StoryId)
-            .MaxAsync(s => (int?)s.Order, ct) ?? 0;
+        var all = await _sectionRepo.GetAllAsync(s => s.StoryId == request.StoryId);
+        var maxOrder = all.Any() ? all.Max(s => s.Order) : 0;
 
-        var section = new Entity
+        var section = new SectionEntity
         {
             StoryId = request.StoryId,
             Title = request.Title,
@@ -29,12 +37,14 @@ public class CreateSectionHandler : IRequestHandler<CreateSectionCommand, Sectio
             Content = request.Content,
             Order = maxOrder + 1,
             Status = request.Status ?? "Draft",
-            Tags = request.Tags
+            Tags = request.Tags,
+            UserId = request.UserId,
+            OrganizationId = request.OrganizationId
         };
-        _db.Set<Entity>().Add(section);
-        await _db.SaveChangesAsync(ct);
+        await _sectionRepo.AddAsync(section);
+        await _unitOfWork.SaveChangesAsync(ct);
         return ToDto(section);
     }
 
-    private static SectionDto ToDto(Entity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt);
+    private static SectionDto ToDto(SectionEntity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt);
 }

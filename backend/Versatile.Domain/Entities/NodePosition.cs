@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Versatile.Domain.Entities;
 
+// Local-only; not synced to server (canvas layout state)
 public class NodePosition : UserOwnedEntity
 {
     [Required]

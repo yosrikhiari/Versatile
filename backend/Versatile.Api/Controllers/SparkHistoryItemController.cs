@@ -1,8 +1,10 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Application.SparkHistoryItems.Commands;
+using Versatile.Application.SparkHistoryItems.Queries;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -10,43 +12,74 @@ namespace Versatile.Api.Controllers;
 [Route("api/story/{storyId}/spark-history-item"), Authorize]
 public class SparkHistoryItemController : ApiControllerBase
 {
-    private readonly ISparkHistoryItemService _service;
+    private readonly IMediator _mediator;
 
-    public SparkHistoryItemController(ISparkHistoryItemService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
-
+    public SparkHistoryItemController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
     [HttpGet]
     public async Task<ActionResult<List<SparkHistoryItemDto>>> GetAll(Guid storyId)
     {
-        try { return Ok(await _service.GetAllAsync(storyId, UserId)); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            return Ok(await _mediator.Send(new GetSparkHistoryItemsQuery(storyId, OrganizationId, UserId)));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<SparkHistoryItemDto>> GetById(Guid id)
     {
-        try { return Ok(await _service.GetByIdAsync(id, UserId)); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            return Ok(await _mediator.Send(new GetSparkHistoryItemByIdQuery(id, OrganizationId, UserId)));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpPost]
-    public async Task<ActionResult<SparkHistoryItemDto>> Create(Guid storyId, CreateSparkHistoryItemRequest request)
+    public async Task<ActionResult<SparkHistoryItemDto>> Create(Guid storyId, CreateSparkHistoryItemCommand command)
     {
-        try { var dto = await _service.CreateAsync(storyId, request, UserId); return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            var item = await _mediator.Send(command with { StoryId = storyId, UserId = UserId, OrganizationId = OrganizationId });
+            return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<SparkHistoryItemDto>> Update(Guid id, UpdateSparkHistoryItemRequest request)
+    public async Task<ActionResult<SparkHistoryItemDto>> Update(Guid id, UpdateSparkHistoryItemCommand command)
     {
-        try { return Ok(await _service.UpdateAsync(id, request, UserId)); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId, OrganizationId = OrganizationId }));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        try { await _service.DeleteAsync(id, UserId); return NoContent(); }
-        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        try
+        {
+            await _mediator.Send(new DeleteSparkHistoryItemCommand(id, OrganizationId, UserId));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 }

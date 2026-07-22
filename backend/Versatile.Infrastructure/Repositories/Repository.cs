@@ -38,4 +38,20 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         filter is null
             ? await DbSet.CountAsync(ct)
             : await DbSet.CountAsync(filter, ct);
+
+    public async Task<(List<T> Items, int TotalCount)> GetPagedAsync(
+        Expression<Func<T, bool>>? filter = null,
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var query = filter is null ? DbSet.AsQueryable() : DbSet.Where(filter);
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(e => e.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+        return (items, totalCount);
+    }
 }

@@ -1,8 +1,10 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Application.Entities.Commands;
+using Versatile.Application.Entities.Queries;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -10,17 +12,16 @@ namespace Versatile.Api.Controllers;
 [Route("api/story/{storyId}/entity"), Authorize]
 public class EntityController : ApiControllerBase
 {
-    private readonly IEntityService _entity;
+    private readonly IMediator _mediator;
 
-    public EntityController(IEntityService entity, IOrganizationContext orgContext) : base(orgContext) => _entity = entity;
+    public EntityController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
-
-    [HttpGet]
+    [HttpGet, Cacheable(120)]
     public async Task<ActionResult<List<EntityDto>>> GetAll(Guid storyId)
     {
         try
         {
-            return Ok(await _entity.GetAllAsync(storyId, UserId, organizationId: OrganizationId));
+            return Ok(await _mediator.Send(new GetEntitiesQuery(storyId, OrganizationId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -28,12 +29,12 @@ public class EntityController : ApiControllerBase
         }
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<EntityDto>> GetById(Guid id)
     {
         try
         {
-            return Ok(await _entity.GetByIdAsync(id, UserId, organizationId: OrganizationId));
+            return Ok(await _mediator.Send(new GetEntityByIdQuery(id, OrganizationId, UserId)));
         }
         catch (KeyNotFoundException ex)
         {
@@ -42,11 +43,11 @@ public class EntityController : ApiControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<EntityDto>> Create(Guid storyId, CreateEntityRequest request)
+    public async Task<ActionResult<EntityDto>> Create(Guid storyId, CreateEntityCommand command)
     {
         try
         {
-            var entity = await _entity.CreateAsync(storyId, request, UserId, organizationId: OrganizationId);
+            var entity = await _mediator.Send(command with { StoryId = storyId, UserId = UserId, OrganizationId = OrganizationId });
             return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
         }
         catch (KeyNotFoundException ex)
@@ -56,11 +57,11 @@ public class EntityController : ApiControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<EntityDto>> Update(Guid id, UpdateEntityRequest request)
+    public async Task<ActionResult<EntityDto>> Update(Guid id, UpdateEntityCommand command)
     {
         try
         {
-            return Ok(await _entity.UpdateAsync(id, request, UserId, organizationId: OrganizationId));
+            return Ok(await _mediator.Send(command with { Id = id, UserId = UserId, OrganizationId = OrganizationId }));
         }
         catch (KeyNotFoundException ex)
         {
@@ -73,7 +74,7 @@ public class EntityController : ApiControllerBase
     {
         try
         {
-            await _entity.DeleteAsync(id, UserId, organizationId: OrganizationId);
+            await _mediator.Send(new DeleteEntityCommand(id, OrganizationId, UserId));
             return NoContent();
         }
         catch (KeyNotFoundException ex)

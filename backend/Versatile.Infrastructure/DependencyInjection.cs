@@ -43,33 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
         services.AddScoped<IOrganizationContext>(_ => new OrganizationContext());
 
-        services.AddScoped<IAuthorProfileService, AuthorProfileService>();
-        services.AddScoped<IBibleService, BibleService>();
-        services.AddScoped<IChapterService, ChapterService>();
-        services.AddScoped<ICharacterRelationshipService, CharacterRelationshipService>();
-        services.AddScoped<IDailyGoalService, DailyGoalService>();
-        services.AddScoped<IEntityService, EntityService>();
-        services.AddScoped<IFlowService, FlowService>();
-        services.AddScoped<IGraphEdgeService, GraphEdgeService>();
-        services.AddScoped<IGraphGroupService, GraphGroupService>();
-        services.AddScoped<IGroupEdgeService, GroupEdgeService>();
-        services.AddScoped<IManuscriptService, ManuscriptService>();
-        services.AddScoped<INodePositionService, NodePositionService>();
-        services.AddScoped<IPlotThreadService, PlotThreadService>();
-        services.AddScoped<IResearchChunkService, ResearchChunkService>();
-        services.AddScoped<IResearchDocumentService, ResearchDocumentService>();
-        services.AddScoped<IResearchService, ResearchService>();
-        services.AddScoped<IResearchTagService, ResearchTagService>();
-        services.AddScoped<ISceneService, SceneService>();
-        services.AddScoped<ISessionArchiveItemService, SessionArchiveItemService>();
-        services.AddScoped<ISnapshotService, SnapshotService>();
-        services.AddScoped<ISparkHistoryItemService, SparkHistoryItemService>();
-        services.AddScoped<IStoryDocumentService, StoryDocumentService>();
-        services.AddScoped<IStoryElementService, StoryElementService>();
-        services.AddScoped<IStoryService, StoryService>();
-        services.AddScoped<IStoryStateSnapshotService, StoryStateSnapshotService>();
-        services.AddScoped<IVoiceProfileService, VoiceProfileService>();
-        services.AddScoped<IVolumeEntityService, VolumeEntityService>();
+        services.AddScoped<IGeneratedStoryService, GeneratedStoryService>();
 
         services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));

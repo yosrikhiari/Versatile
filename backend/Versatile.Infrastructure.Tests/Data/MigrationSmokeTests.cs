@@ -15,15 +15,15 @@ public class MigrationSmokeTests
     {
         var migrationTypes = GetMigrationTypes();
 
-        migrationTypes.Should().HaveCount(3, "expected 3 migrations: InitialCreate, AddOrganizationIdIndexes, AddRowLevelSecurity");
+        migrationTypes.Should().HaveCount(4, "expected 4 migrations: InitialCreate, AddOrganizationIdIndexes, AddRowLevelSecurity, AddAuditLog");
     }
 
     [Fact]
-    public void MigrationCount_IsThree()
+    public void MigrationCount_IsFour()
     {
         var migrationTypes = GetMigrationTypes();
 
-        migrationTypes.Should().HaveCount(3);
+        migrationTypes.Should().HaveCount(4);
     }
 
     [Fact]
@@ -37,6 +37,7 @@ public class MigrationSmokeTests
         migrationTypes.Should().Contain(n => n.Contains("InitialCreate"));
         migrationTypes.Should().Contain(n => n.Contains("AddOrganizationIdIndexes"));
         migrationTypes.Should().Contain(n => n.Contains("AddRowLevelSecurity"));
+        migrationTypes.Should().Contain(n => n.Contains("AddAuditLog"));
     }
 
     [Fact]

@@ -1,20 +1,29 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Versatile.Application.RevisionComments.Commands;
 using Versatile.Application.DTOs;
 using Versatile.Domain.Entities;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.RevisionComments.Handlers;
 
 public class CreateRevisionCommentHandler : IRequestHandler<CreateRevisionCommentCommand, RevisionCommentDto>
 {
-    private readonly DbContext _db;
-    public CreateRevisionCommentHandler(DbContext db) => _db = db;
+    private readonly IRepository<RevisionComment> _repo;
+    private readonly IRepository<Story> _storyRepo;
+    private readonly IUnitOfWork _uow;
+
+    public CreateRevisionCommentHandler(IRepository<RevisionComment> repo, IRepository<Story> storyRepo, IUnitOfWork uow)
+    {
+        _repo = repo;
+        _storyRepo = storyRepo;
+        _uow = uow;
+    }
 
     public async Task<RevisionCommentDto> Handle(CreateRevisionCommentCommand request, CancellationToken ct)
     {
-        var storyExists = await _db.Set<Story>().AnyAsync(s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct);
-        if (!storyExists) throw new KeyNotFoundException("Story not found");
+        var stories = await _storyRepo.GetAllAsync(
+            s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct);
+        if (stories.Count == 0) throw new KeyNotFoundException("Story not found");
 
         var comment = new RevisionComment
         {
@@ -28,8 +37,8 @@ public class CreateRevisionCommentHandler : IRequestHandler<CreateRevisionCommen
             UserId = request.UserId,
             OrganizationId = request.OrganizationId
         };
-        _db.Set<RevisionComment>().Add(comment);
-        await _db.SaveChangesAsync(ct);
+        await _repo.AddAsync(comment, ct);
+        await _uow.SaveChangesAsync(ct);
         return new RevisionCommentDto(comment.Id, comment.StoryId, comment.ParagraphIndex, comment.StartOffset, comment.EndOffset, comment.SelectedText, comment.Comment, comment.Resolved, comment.CreatedAt);
     }
 }

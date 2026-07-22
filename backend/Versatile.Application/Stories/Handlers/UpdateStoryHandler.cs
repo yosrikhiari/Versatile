@@ -23,7 +23,7 @@ public class UpdateStoryHandler : IRequestHandler<UpdateStoryCommand, StoryDto>
             ? await _repo.GetByIdForOrganizationAsync(request.Id, request.OrganizationId.Value, ct)
             : await _repo.GetByIdForUserAsync(request.Id, request.UserId, ct);
 
-        if (story is null) throw new KeyNotFoundException("Story not found");
+        if (story is null || story.UserId != request.UserId) throw new KeyNotFoundException("Story not found");
 
         if (request.Title is not null) story.Title = request.Title;
         if (request.Premise is not null) story.Premise = request.Premise;

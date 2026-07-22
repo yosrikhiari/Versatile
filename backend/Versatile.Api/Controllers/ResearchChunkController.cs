@@ -1,8 +1,10 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Versatile.Application.DTOs;
+using Versatile.Application.ResearchChunks.Commands;
+using Versatile.Application.ResearchChunks.Queries;
 using Versatile.Domain.Interfaces;
-using Versatile.Infrastructure.Services;
 
 namespace Versatile.Api.Controllers;
 
@@ -10,43 +12,46 @@ namespace Versatile.Api.Controllers;
 [Route("api/story/{storyId}/research-chunk"), Authorize]
 public class ResearchChunkController : ApiControllerBase
 {
-    private readonly IResearchChunkService _service;
+    private readonly IMediator _mediator;
 
-    public ResearchChunkController(IResearchChunkService service, IOrganizationContext orgContext) : base(orgContext) => _service = service;
-
+    public ResearchChunkController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
     [HttpGet]
     public async Task<ActionResult<List<ResearchChunkDto>>> GetAll(Guid storyId)
     {
-        try { return Ok(await _service.GetAllAsync(storyId, UserId)); }
+        try { return Ok(await _mediator.Send(new GetResearchChunksQuery(storyId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ResearchChunkDto>> GetById(Guid id)
     {
-        try { return Ok(await _service.GetByIdAsync(id, UserId)); }
+        try { return Ok(await _mediator.Send(new GetResearchChunkByIdQuery(id, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpPost]
     public async Task<ActionResult<ResearchChunkDto>> Create(Guid storyId, CreateResearchChunkRequest request)
     {
-        try { var dto = await _service.CreateAsync(storyId, request, UserId); return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto); }
+        try
+        {
+            var dto = await _mediator.Send(new CreateResearchChunkCommand(request.DocumentId, storyId, request.ChunkIndex, request.Content, request.Embedding, UserId));
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+        }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult<ResearchChunkDto>> Update(Guid id, UpdateResearchChunkRequest request)
     {
-        try { return Ok(await _service.UpdateAsync(id, request, UserId)); }
+        try { return Ok(await _mediator.Send(new UpdateResearchChunkCommand(id, request.ChunkIndex, request.Content, request.Embedding, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        try { await _service.DeleteAsync(id, UserId); return NoContent(); }
+        try { await _mediator.Send(new DeleteResearchChunkCommand(id, UserId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 }

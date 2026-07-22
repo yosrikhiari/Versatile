@@ -18,14 +18,14 @@ public class OrganizationController : ApiControllerBase
         _orgRepo = orgRepo;
     }
 
-    [HttpGet]
+    [HttpGet, Cacheable(120)]
     public async Task<ActionResult<List<Organization>>> GetAll()
     {
         var orgs = await _orgRepo.GetUserOrganizationsAsync(UserId);
         return Ok(orgs);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<Organization>> GetById(Guid id)
     {
         var membership = await _orgRepo.GetMembershipAsync(id, UserId);

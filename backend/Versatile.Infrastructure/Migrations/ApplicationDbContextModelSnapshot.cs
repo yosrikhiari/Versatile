@@ -167,6 +167,54 @@ namespace Versatile.Infrastructure.Migrations
                     b.ToTable("BibleEntries");
                 });
 
+            modelBuilder.Entity("Versatile.Domain.Entities.Branch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceBranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("StoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("SourceBranchId");
+
+                    b.HasIndex("StoryId");
+
+                    b.ToTable("Branches");
+                });
+
             modelBuilder.Entity("Versatile.Domain.Entities.Chapter", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1814,6 +1862,24 @@ namespace Versatile.Infrastructure.Migrations
                     b.Navigation("Story");
                 });
 
+            modelBuilder.Entity("Versatile.Domain.Entities.Branch", b =>
+                {
+                    b.HasOne("Versatile.Domain.Entities.Branch", "SourceBranch")
+                        .WithMany()
+                        .HasForeignKey("SourceBranchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Versatile.Domain.Entities.Story", "Story")
+                        .WithMany("Branches")
+                        .HasForeignKey("StoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SourceBranch");
+
+                    b.Navigation("Story");
+                });
+
             modelBuilder.Entity("Versatile.Domain.Entities.Chapter", b =>
                 {
                     b.HasOne("Versatile.Domain.Entities.Story", "Story")
@@ -2222,6 +2288,8 @@ namespace Versatile.Infrastructure.Migrations
                     b.Navigation("AuthorProfiles");
 
                     b.Navigation("BibleEntries");
+
+                    b.Navigation("Branches");
 
                     b.Navigation("Chapters");
 
