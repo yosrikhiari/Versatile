@@ -3,7 +3,7 @@ import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useProjectStore } from '../stores/projectStore'
-import { db, deepPlain } from '../services/dbService'
+import { db } from '../services/dbService'
 
 const TARGET_TABLES = [
   db.characters,
@@ -154,7 +154,7 @@ export function useChapterGenerationSync() {
       for (const change of uniqueChanges) {
         let entityId = null
         const name = change.entity.name || change.entity.title
-        const preEntityNodeSnapshot = deepPlain(toRaw(graphStore.nodeInstances.value))
+        const preEntityNodeSnapshot = JSON.parse(JSON.stringify(toRaw(graphStore.nodeInstances.value)))
 
         try {
           await db.transaction('rw', TARGET_TABLES, async () => {

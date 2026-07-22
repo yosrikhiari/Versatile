@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "generatedAt": "2025-01-15T00:00:00.000Z",
+    "workspaceType": "creative",
+    "description": "Baseline evaluation scores for standard creative writing scenes used in regression testing"
+  },
+  "scenes": [
+    {
+      "sceneId": "scene-opening",
+      "prompt": "A detective arrives at a crime scene for the first time",
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 8,
+        "pacing": 7
+      }
+    },
+    {
+      "sceneId": "scene-confrontation",
+      "prompt": "Two characters confront each other with conflicting goals",
+      "dimensionScores": {
+        "continuity": 7,
+        "voice": 8,
+        "emotional_goal": 8,
+        "show_tell": 7,
+        "pacing": 7
+      }
+    },
+    {
+      "sceneId": "scene-resolution",
+      "prompt": "The detective pieces together clues and reveals the solution",
+      "dimensionScores": {
+        "continuity": 8,
+        "voice": 7,
+        "emotional_goal": 7,
+        "show_tell": 7,
+        "pacing": 8
+      }
+    }
+  ]
+}

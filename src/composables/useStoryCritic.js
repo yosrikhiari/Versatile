@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
-import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
+
 import { getDimensionNames } from '../config/evalDimensions'
 import { sanitizeJson } from '../services/ai/aiHelpers'
 
@@ -170,7 +170,7 @@ export function useStoryCritic() {
     try {
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
-      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+      const activePrompts = projectStore.getActivePrompts(categoryType)
 
       const characterCount = countCharacters(storyBible)
       const hasFewCharacters = characterCount < 2

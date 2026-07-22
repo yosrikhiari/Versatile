@@ -1,3 +1,4 @@
+
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { summarizeLog } from '../utils/promptUtils'
 
@@ -74,6 +75,8 @@ CRITICAL JSON RULE: The prose field is a JSON string value. ALL double quotes in
  * @param {string|null} [params.focusInstructions]
  * @param {string} [params.profileStyleGuide]
  * @param {string} [params.voiceConstraint]
+ * @param {object} [params.promptOverrides={}]
+ * @param {string} [params.personaBlock]
  * @returns {string}
  */
 function buildSystemPrompt({
@@ -85,21 +88,27 @@ function buildSystemPrompt({
   proseStyleGuide,
   focusInstructions,
   profileStyleGuide,
-  voiceConstraint
+  voiceConstraint,
+  promptOverrides = {},
+  personaBlock
 }) {
-  const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+  const base = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+  const activePrompts = { ...base }
+  for (const role of ['writer', 'critic', 'revisor', 'director']) {
+    if (promptOverrides[role]) activePrompts[role] = promptOverrides[role]
+  }
+
+  const personaSection = personaBlock ? `\n${personaBlock}\n` : ''
 
   if (!proseStyleGuide) {
-    return `${activePrompts.writer}${activeCraftRules || ''}
-
+    return `${activePrompts.writer}${activeCraftRules || ''}${personaSection}
 ${voiceConstraint || ''}${voiceInstruction}
 
 ${antiPatterns ? antiPatterns + '\n' : ''}
 Write ONLY the detailed content for this section. Do not summarize. Start writing immediately.`
   }
 
-  return `${activePrompts.writer}${activeCraftRules || ''}
-
+  return `${activePrompts.writer}${activeCraftRules || ''}${personaSection}
 ${proseStyleGuide}
 ${profileStyleGuide ? `\n${profileStyleGuide}\n` : ''}
 

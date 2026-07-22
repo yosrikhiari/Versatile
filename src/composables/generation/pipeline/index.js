@@ -33,7 +33,13 @@ export async function generateEntity(entityType, extraInstructions = '', options
     extraInstructions
   })
 
-  const result = await executeGeneration({ userPrompt, systemPrompt, schema })
+  const result = await executeGeneration({
+    userPrompt,
+    systemPrompt,
+    schema,
+    complexity: options.complexity,
+    workspaceType: options.workspaceType
+  })
 
   return result
 }

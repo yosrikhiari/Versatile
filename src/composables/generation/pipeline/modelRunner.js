@@ -9,12 +9,14 @@ import { sanitizeJsonResponse, normalizeField } from '../utils'
 // keep a single reparse retry (a fresh generation) for that case alone.
 const MAX_PARSE_RETRIES = 1
 
-export async function executeGeneration({ userPrompt, systemPrompt, schema }) {
+export async function executeGeneration({ userPrompt, systemPrompt, schema, complexity, workspaceType }) {
   for (let attempt = 0; attempt <= MAX_PARSE_RETRIES; attempt++) {
     // Transport/auth errors propagate out of the loop as-is (aiGenerate has
     // already retried + fallen back); we don't re-retry them here.
     const response = await aiGenerate(userPrompt, systemPrompt, {
-      feature: FEATURES.WORLDBUILDING
+      feature: FEATURES.WORLDBUILDING,
+      complexity: complexity || undefined,
+      workspaceType
     })
 
     const parsed = sanitizeJsonResponse(response)

@@ -1,4 +1,5 @@
-import { db, deepPlain } from './db-core'
+import { toRaw } from 'vue'
+import { db } from './db-core'
 
 export async function getBlurbsByProject(projectId) {
   try {
@@ -12,7 +13,7 @@ export async function getBlurbsByProject(projectId) {
 
 export async function saveBlurb(entry) {
   try {
-    const plain = deepPlain(entry)
+    const plain = JSON.parse(JSON.stringify(toRaw(entry)))
     const id = await db.projectBlurbs.add(plain)
     return id
   } catch (err) {

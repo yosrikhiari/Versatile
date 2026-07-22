@@ -63,7 +63,14 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     }
 
     const data = await response.json()
-    return data.content?.[0]?.text || ''
+    const usage = data.usage
+      ? {
+          promptTokens: data.usage.input_tokens,
+          completionTokens: data.usage.output_tokens,
+          totalTokens: data.usage.input_tokens + data.usage.output_tokens
+        }
+      : null
+    return { text: data.content?.[0]?.text || '', usage }
   } catch (error) {
     cleanup()
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -194,7 +201,14 @@ export async function generateStructured(prompt, systemPrompt, model, schema, op
     if (!toolUse || typeof toolUse.input !== 'object') {
       throw new Error('Anthropic returned no structured tool_use output')
     }
-    return toolUse.input
+    const usage = data.usage
+      ? {
+          promptTokens: data.usage.input_tokens,
+          completionTokens: data.usage.output_tokens,
+          totalTokens: data.usage.input_tokens + data.usage.output_tokens
+        }
+      : null
+    return { data: toolUse.input, usage }
   } catch (error) {
     cleanup()
     if (error instanceof DOMException && error.name === 'AbortError') {

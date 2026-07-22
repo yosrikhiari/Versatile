@@ -58,8 +58,7 @@ The original draft is ${wordCount} words. Your revision MUST be between ${minWor
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
-      const { DOCUMENT_PROMPTS } = await import('../config/documentPrompts')
-      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+      const activePrompts = projectStore.getActivePrompts(categoryType)
 
       const response = await aiGenerate(userPrompt, activePrompts.revisor, {
         feature: FEATURES.STORY_GENERATION,

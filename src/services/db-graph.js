@@ -1,4 +1,5 @@
-import { db, deepPlain } from './db-core'
+import { toRaw } from 'vue'
+import { db } from './db-core'
 
 // ========== STORY ELEMENTS ==========
 
@@ -121,7 +122,7 @@ export async function getNodePositions(projectId) {
 }
 
 export async function saveNodePositions(projectId, positions) {
-  const plainPositions = deepPlain(positions)
+  const plainPositions = JSON.parse(JSON.stringify(toRaw(positions)))
   const existing = await db.nodePositions.where('projectId').equals(projectId).first()
   if (existing) {
     return db.nodePositions.update(existing.id, { positions: plainPositions })
@@ -136,7 +137,7 @@ export async function getNodeInstances(projectId) {
 }
 
 export async function saveNodeInstances(projectId, instances) {
-  const plainInstances = deepPlain(instances)
+  const plainInstances = JSON.parse(JSON.stringify(toRaw(instances)))
   const existing = await db.nodePositions.where('projectId').equals(projectId).first()
   if (existing) {
     return db.nodePositions.update(existing.id, { instances: plainInstances })
@@ -153,7 +154,7 @@ export async function getGraphGroups(projectId) {
 }
 
 export async function saveGraphGroups(projectId, groups) {
-  const plainGroups = deepPlain(groups)
+  const plainGroups = JSON.parse(JSON.stringify(toRaw(groups)))
   const existing = await db.graphGroups.where('projectId').equals(projectId).first()
   if (existing) {
     return db.graphGroups.update(existing.id, { groups: plainGroups })
@@ -168,7 +169,7 @@ export async function getNodeParents(projectId) {
 }
 
 export async function saveNodeParents(projectId, nodeParents) {
-  const plainParents = deepPlain(nodeParents)
+  const plainParents = JSON.parse(JSON.stringify(toRaw(nodeParents)))
   const existing = await db.graphGroups.where('projectId').equals(projectId).first()
   if (existing) {
     return db.graphGroups.update(existing.id, { nodeParents: plainParents })

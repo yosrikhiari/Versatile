@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { aiGenerate, aiStream, aiGenerateJson, resolveFeatureConfig } from './useAiService'
 import { FEATURES, PROVIDERS, RESEARCH_CHUNKS_DEFAULT } from '../config/ai'
-import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
+
 import { useProjectStore } from '../stores/projectStore'
 import { getAllChunksForProject } from '../services/researchDb'
 import { getEmbedding } from '../services/embeddingService'
@@ -337,7 +337,7 @@ export function useStoryDirector() {
     try {
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
-      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+      const activePrompts = projectStore.getActivePrompts(categoryType)
 
       const s = goal.structure
       const structureBlock = s

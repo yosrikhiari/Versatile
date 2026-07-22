@@ -135,7 +135,12 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     }
 
     const data = await response.json()
-    return data.response
+    const usage = {
+      promptTokens: data.prompt_eval_count || 0,
+      completionTokens: data.eval_count || 0,
+      totalTokens: (data.prompt_eval_count || 0) + (data.eval_count || 0)
+    }
+    return { text: data.response, usage }
   } catch (error) {
     clearTimeout(timeout)
     if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
@@ -256,7 +261,7 @@ export async function stream(prompt, systemPrompt, model, onChunk, options = {})
 // field, then parse the response. Non-streaming (structured + streaming don't mix).
 export async function generateStructured(prompt, systemPrompt, model, schema, options = {}) {
   const raw = await generate(prompt, systemPrompt, model, { ...options, format: schema })
-  return JSON.parse(raw)
+  return { data: JSON.parse(raw.text), usage: raw.usage }
 }
 
 export async function listModels() {

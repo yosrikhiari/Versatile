@@ -22,7 +22,8 @@ const DEFAULT_SETTINGS = {
   openaiApiKey: '',
   autoSaveInterval: 5,
   aiProvider: PROVIDER_DEFAULT,
-  aiProviderFallback: 'none',
+  aiProviderFallback: '',
+  aiFallbackChain: [],
   embeddingProvider: EMBEDDING_DEFAULTS.provider,
   embeddingModel: EMBEDDING_DEFAULTS.model,
   embeddingThreshold: EMBEDDING_DEFAULTS.threshold
@@ -35,6 +36,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const autoSaveInterval = ref(DEFAULT_SETTINGS.autoSaveInterval)
   const aiProvider = ref(DEFAULT_SETTINGS.aiProvider)
   const aiProviderFallback = ref(DEFAULT_SETTINGS.aiProviderFallback)
+  const aiFallbackChain = ref(DEFAULT_SETTINGS.aiFallbackChain)
   const embeddingProvider = ref(DEFAULT_SETTINGS.embeddingProvider)
   const embeddingModel = ref(DEFAULT_SETTINGS.embeddingModel)
   const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
@@ -73,6 +75,12 @@ export const useSettingsStore = defineStore('settings', () => {
         if (data.autoSaveInterval) autoSaveInterval.value = data.autoSaveInterval
         if (data.aiProvider) aiProvider.value = data.aiProvider
         if (data.aiProviderFallback) aiProviderFallback.value = data.aiProviderFallback
+        // Migrate old single fallback to chain
+        if (data.aiFallbackChain) {
+          aiFallbackChain.value = data.aiFallbackChain
+        } else if (data.aiProviderFallback && data.aiProviderFallback !== 'none') {
+          aiFallbackChain.value = [data.aiProviderFallback]
+        }
         if (data.embeddingProvider) embeddingProvider.value = data.embeddingProvider
         if (data.embeddingModel) embeddingModel.value = data.embeddingModel
         if (data.embeddingThreshold !== undefined)
@@ -109,6 +117,7 @@ export const useSettingsStore = defineStore('settings', () => {
           autoSaveInterval: autoSaveInterval.value,
           aiProvider: aiProvider.value,
           aiProviderFallback: aiProviderFallback.value,
+          aiFallbackChain: aiFallbackChain.value,
           embeddingProvider: embeddingProvider.value,
           embeddingModel: embeddingModel.value,
           embeddingThreshold: embeddingThreshold.value
@@ -152,6 +161,11 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setAIProviderFallback(fallback) {
     aiProviderFallback.value = fallback
+    saveSettings()
+  }
+
+  function setAIFallbackChain(chain) {
+    aiFallbackChain.value = chain
     saveSettings()
   }
 
@@ -240,6 +254,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autoSaveInterval.value = DEFAULT_SETTINGS.autoSaveInterval
     aiProvider.value = DEFAULT_SETTINGS.aiProvider
     aiProviderFallback.value = DEFAULT_SETTINGS.aiProviderFallback
+    aiFallbackChain.value = DEFAULT_SETTINGS.aiFallbackChain
     embeddingProvider.value = DEFAULT_SETTINGS.embeddingProvider
     embeddingModel.value = DEFAULT_SETTINGS.embeddingModel
     embeddingThreshold.value = DEFAULT_SETTINGS.embeddingThreshold
@@ -289,6 +304,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autoSaveInterval,
     aiProvider,
     aiProviderFallback,
+    aiFallbackChain,
     embeddingProvider,
     embeddingModel,
     embeddingThreshold,
@@ -303,6 +319,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setAutoSaveInterval,
     setAIProvider,
     setAIProviderFallback,
+    setAIFallbackChain,
     setFeatureModel,
     getStoredApiKey,
     setStoredApiKey,

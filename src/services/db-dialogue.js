@@ -1,4 +1,5 @@
-import { db, deepPlain } from './db-core'
+import { toRaw } from 'vue'
+import { db } from './db-core'
 
 export async function getDialogueByProject(projectId) {
   try {
@@ -25,7 +26,7 @@ export async function getDialogueBySpeaker(projectId, speakerId) {
 
 export async function saveDialogueEntry(entry) {
   try {
-    const plain = deepPlain(entry)
+    const plain = JSON.parse(JSON.stringify(toRaw(entry)))
     const id = await db.dialogueIndex.add(plain)
     return id
   } catch (err) {
@@ -37,7 +38,7 @@ export async function saveDialogueEntry(entry) {
 export async function saveDialogueBatch(entries) {
   if (!Array.isArray(entries) || entries.length === 0) return []
   try {
-    const plain = entries.map((e) => deepPlain(e))
+    const plain = entries.map((e) => JSON.parse(JSON.stringify(toRaw(e))))
     const ids = await db.dialogueIndex.bulkAdd(plain, { allKeys: true })
     return ids
   } catch (err) {
@@ -71,7 +72,7 @@ export async function reindexSection(sectionId, projectId, dialogueEntries) {
     await db.dialogueIndex.where({ sectionId }).delete()
 
     if (dialogueEntries.length > 0) {
-      const plain = dialogueEntries.map((e) => deepPlain(e))
+      const plain = dialogueEntries.map((e) => JSON.parse(JSON.stringify(toRaw(e))))
       await db.dialogueIndex.bulkAdd(plain)
     }
   } catch (err) {

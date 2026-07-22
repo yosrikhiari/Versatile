@@ -7,7 +7,12 @@ import {
   deleteChatSession as removePersistedSession,
   deleteChatSessionsByCharacter as removeSessionsByCharacter
 } from '../services/db-chats'
+import { syncQueue } from '../services/sync-queue'
 import { FEATURES } from '../config/ai'
+
+syncQueue.register('chatSessions', async (_id, session) => {
+  await persistSession(session)
+})
 
 let messageIdCounter = 0
 let sessionIdCounter = 0
@@ -36,17 +41,9 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
     return Object.values(sessions.value).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
   })
 
-  let saveTimeout = null
   function scheduleSave() {
     if (!activeSession.value) return
-    if (saveTimeout) clearTimeout(saveTimeout)
-    saveTimeout = setTimeout(async () => {
-      try {
-        await persistSession(activeSession.value)
-      } catch (err) {
-        console.error('Auto-save chat session failed:', err)
-      }
-    }, 2000)
+    syncQueue.push('chatSessions', activeSession.value.id, activeSession.value)
   }
 
   async function loadSessions(projectId) {
@@ -182,22 +179,16 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
   }
 
   async function clearSession() {
-    if (saveTimeout) {
-      clearTimeout(saveTimeout)
-      saveTimeout = null
-    }
     if (activeSession.value) {
-      try {
-        await persistSession(activeSession.value)
-      } catch (err) {
-        console.warn('[characterChatStore] Failed to persist session:', err)
-      }
+      syncQueue.push('chatSessions', activeSession.value.id, activeSession.value)
+      await syncQueue.flushNow()
     }
     activeSessionId.value = null
     streamError.value = null
   }
 
   async function removeSession(sessionId) {
+    syncQueue.cancel('chatSessions', sessionId)
     const session = sessions.value[sessionId]
     if (session) {
       delete sessions.value[sessionId]

@@ -74,7 +74,14 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     }
 
     const data = await response.json()
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const usage = data.usageMetadata
+      ? {
+          promptTokens: data.usageMetadata.promptTokenCount,
+          completionTokens: data.usageMetadata.candidatesTokenCount,
+          totalTokens: data.usageMetadata.totalTokenCount
+        }
+      : null
+    return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', usage }
   } catch (error) {
     cleanup()
     if (error instanceof DOMException && error.name === 'AbortError') {

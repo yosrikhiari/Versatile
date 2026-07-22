@@ -1,4 +1,5 @@
 import { PROVIDERS, FEATURES, PROVIDER_MODELS } from '../config/ai'
+import { resolveOptimalModel, getModelMetadata } from '../config/modelRouting'
 import { getApiKeyStorageKey } from '../config/storageKeys'
 import { useSettingsStore } from '../stores/settingsStore'
 import { decrypt } from './ollamaService'
@@ -8,6 +9,9 @@ import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
 import * as geminiProvider from './providers/gemini'
 import * as groqProvider from './providers/groq'
+import { useCostTrackingStore } from '../stores/costTrackingStore'
+import { computeCost } from '../config/modelPricing'
+import { providerBudget } from './aiProviderBudget'
 
 const RETRYABLE_ERROR_PATTERNS = [
   /timeout/i,
@@ -191,9 +195,61 @@ export function getConfiguredProvider(feature) {
   return config.provider
 }
 
+export function resolveOptimalConfig(feature, options = {}) {
+  if (options.complexity) {
+    return resolveOptimalModel(feature, {
+      complexity: options.complexity,
+      workspaceType: options.workspaceType
+    })
+  }
+  return resolveFeatureConfig(feature)
+}
+
+/**
+ * Resolve the fallback chain: [primary, ...fallbacks] with duplicates removed
+ * and `none` / empty entries filtered out.
+ */
+function getFallbackChain(primary) {
+  const store = useSettingsStore()
+  const chain = [primary]
+  for (const fb of (store.aiFallbackChain || [])) {
+    if (fb && fb !== 'none' && fb !== primary && !chain.includes(fb)) {
+      chain.push(fb)
+    }
+  }
+  return chain
+}
+
+/**
+ * Try a method against each provider in the fallback chain, in order.
+ * Each call to executeOnProvider receives the current provider string.
+ * Stops on first success; re-throws the last error if all fail.
+ */
+async function withFallback(executeOnProvider, primary) {
+  const chain = getFallbackChain(primary)
+  const errors = []
+
+  for (const fbProvider of chain) {
+    try {
+      return await executeOnProvider(fbProvider)
+    } catch (error) {
+      errors.push({ provider: fbProvider, error })
+      if (fbProvider !== chain[chain.length - 1]) {
+        console.warn(`[aiService] ${fbProvider} failed, trying next:`, error?.message)
+      }
+    }
+  }
+
+  const last = errors[errors.length - 1]
+  if (errors.length > 1) {
+    last.error.cause = errors[0].error
+  }
+  throw last.error
+}
+
 export async function aiGenerate(prompt, systemPrompt, options = {}) {
   const feature = options.feature || FEATURES.CONTENT
-  const config = resolveFeatureConfig(feature)
+  const config = resolveOptimalConfig(feature, options)
   const provider = options.provider || config.provider
   const model = options.model || config.model
 
@@ -214,54 +270,54 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
     timeout: options.timeout
   }
 
-  try {
-    // The slot is taken INSIDE withRetry, per attempt — not around the whole
-    // loop. Otherwise a request would hold the only Ollama slot while sleeping
-    // through its exponential backoff, stalling every other caller for seconds.
-    return await withRetry(
+  async function trackGenerate(providerName, model, opts) {
+    providerBudget.check(providerName)
+    const pm = providerName === provider ? providerModule : PROVIDER_MAP[providerName]
+    const result = await withRetry(
       () =>
-        slotFor(provider)(() =>
-          providerModule.generate(prompt, systemPrompt, model, providerOptions)
+        slotFor(providerName)(() =>
+          pm.generate(prompt, systemPrompt, model, opts)
         ),
       isRetryable,
       { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
     )
-  } catch (error) {
-    const store = useSettingsStore()
-    if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
-      const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
-      if (fallbackModule) {
-        const fallbackKey = await getApiKey(store.aiProviderFallback)
-        if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
-          // Resolve the fallback provider's default model — passing null here
-          // sent `model: null` in the request body and made every fallback fail.
-          const fallbackModel = defaultModelForProvider(store.aiProviderFallback)
-          try {
-            return await slotFor(store.aiProviderFallback)(() =>
-              fallbackModule.generate(prompt, systemPrompt, fallbackModel, {
-                apiKey: fallbackKey || undefined,
-                signal: options.signal,
-                temperature: options.temperature,
-                maxTokens: options.maxTokens,
-                timeout: options.timeout
-              })
-            )
-          } catch (fallbackError) {
-            // Preserve the original failure as the cause so the root error
-            // isn't masked by a secondary fallback error.
-            fallbackError.cause = error
-            throw fallbackError
-          }
-        }
-      }
+    const { text, usage } = result
+    if (usage) {
+      const cost = computeCost(model, usage)
+      useCostTrackingStore().logCost({
+        model,
+        provider: providerName,
+        feature,
+        usage,
+        cost
+      })
+      providerBudget.record(providerName, usage.promptTokens + usage.completionTokens, cost)
     }
-    throw error
+    return text
   }
+
+  return await withFallback(async (fbProvider) => {
+    if (fbProvider === provider) {
+      return await trackGenerate(provider, model, providerOptions)
+    }
+    const fbKey = await getApiKey(fbProvider)
+    if (fbProvider !== PROVIDERS.OLLAMA && !fbKey) {
+      throw new Error(`${fbProvider} API key not configured`)
+    }
+    const fbModel = defaultModelForProvider(fbProvider)
+    return await trackGenerate(fbProvider, fbModel, {
+      apiKey: fbKey || undefined,
+      signal: options.signal,
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      timeout: options.timeout
+    })
+  }, provider)
 }
 
 export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
   const feature = options.feature || FEATURES.CONTENT
-  const config = resolveFeatureConfig(feature)
+  const config = resolveOptimalConfig(feature, options)
   const provider = options.provider || config.provider
   const model = options.model || config.model
 
@@ -297,6 +353,7 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
   const shouldRetry = (error) => !emittedAny && isRetryable(error)
 
   try {
+    providerBudget.check(provider)
     // A stream holds its slot for the whole response, which is deliberate: two
     // concurrent streams against one local model is exactly what we are stopping.
     return await withRetry(
@@ -309,31 +366,24 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
     )
   } catch (error) {
     if (emittedAny) throw error
-    const store = useSettingsStore()
-    if (store.aiProviderFallback && store.aiProviderFallback !== 'none') {
-      const fallbackModule = PROVIDER_MAP[store.aiProviderFallback]
-      if (fallbackModule) {
-        const fallbackKey = await getApiKey(store.aiProviderFallback)
-        if (store.aiProviderFallback === PROVIDERS.OLLAMA || fallbackKey) {
-          const fallbackModel = defaultModelForProvider(store.aiProviderFallback)
-          try {
-            return await slotFor(store.aiProviderFallback)(() =>
-              fallbackModule.stream(prompt, systemPrompt, fallbackModel, trackedOnChunk, {
-                apiKey: fallbackKey || undefined,
-                signal: options.signal,
-                temperature: options.temperature,
-                maxTokens: options.maxTokens,
-                timeout: options.timeout
-              })
-            )
-          } catch (fallbackError) {
-            fallbackError.cause = error
-            throw fallbackError
-          }
-        }
+    return await withFallback(async (fbProvider) => {
+      if (fbProvider === provider) throw error
+      providerBudget.check(fbProvider)
+      const fbKey = await getApiKey(fbProvider)
+      if (fbProvider !== PROVIDERS.OLLAMA && !fbKey) {
+        throw new Error(`${fbProvider} API key not configured`)
       }
-    }
-    throw error
+      const fbModel = defaultModelForProvider(fbProvider)
+      return await slotFor(fbProvider)(() =>
+        PROVIDER_MAP[fbProvider].stream(prompt, systemPrompt, fbModel, trackedOnChunk, {
+          apiKey: fbKey || undefined,
+          signal: options.signal,
+          temperature: options.temperature,
+          maxTokens: options.maxTokens,
+          timeout: options.timeout
+        })
+      )
+    }, provider)
   }
 }
 
@@ -350,7 +400,7 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
  */
 export async function aiGenerateStructured(prompt, systemPrompt, options = {}) {
   const feature = options.feature || FEATURES.CONTENT
-  const config = resolveFeatureConfig(feature)
+  const config = resolveOptimalConfig(feature, options)
   const provider = options.provider || config.provider
   const model = options.model || config.model
   const schema = options.schema
@@ -364,6 +414,7 @@ export async function aiGenerateStructured(prompt, systemPrompt, options = {}) {
   // 1) Native structured output when supported and we have a key.
   if (schema && hasKey && typeof providerModule.generateStructured === 'function') {
     try {
+      providerBudget.check(provider)
       const result = await withRetry(
         () =>
           slotFor(provider)(() =>
@@ -379,7 +430,21 @@ export async function aiGenerateStructured(prompt, systemPrompt, options = {}) {
         isRetryable,
         { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
       )
-      if (result && typeof result === 'object') return result
+      if (result && typeof result === 'object') {
+        const { data, usage } = result
+        if (usage) {
+          const cost = computeCost(model, usage)
+          useCostTrackingStore().logCost({
+            model,
+            provider,
+            feature,
+            usage,
+            cost
+          })
+          providerBudget.record(provider, usage.promptTokens + usage.completionTokens, cost)
+        }
+        return data
+      }
     } catch (err) {
       // Native path failed (unsupported model, strict-schema rejection, …) —
       // fall through to the text + sanitizeJson path below.

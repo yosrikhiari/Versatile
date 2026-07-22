@@ -1,4 +1,5 @@
-import { db, deepPlain } from './db-core'
+import { toRaw } from 'vue'
+import { db } from './db-core'
 
 export async function getChatSessions(projectId) {
   try {
@@ -20,7 +21,7 @@ export async function getChatSession(id) {
 
 export async function saveChatSession(session) {
   try {
-    const plain = deepPlain(session)
+    const plain = JSON.parse(JSON.stringify(toRaw(session)))
     const data = {
       projectId: plain.projectId,
       characterIds: plain.characterIds || [],

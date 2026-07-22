@@ -8,7 +8,7 @@ import {
 } from '../services/evalGates'
 import { computeDegradation } from '../services/degradation'
 import { useEvalPersistence } from './useEvalPersistence'
-import { autoAdjustPrompt } from '../evaluation/autoPromptAdjuster'
+import { useAutoPromptAdjuster } from './useAutoPromptAdjuster'
 
 export function useSceneEval() {
   const isEvaluating = ref(false)
@@ -22,10 +22,9 @@ export function useSceneEval() {
   })
   const revisionResult = ref(null)
   const sceneResultsMap = ref({})
-  const focusInstructions = ref('')
-  const givenHints = ref([])
 
   const evalPersistence = useEvalPersistence()
+  const promptAdjuster = useAutoPromptAdjuster()
 
   const { evaluateScene } = useStoryCritic()
   const { reviseScene } = useStoryRevisor()
@@ -89,11 +88,7 @@ export function useSceneEval() {
   })
 
   function refreshPromptAdjustments() {
-    const history = evalHistory.value
-    if (history.length === 0) return
-    const result = autoAdjustPrompt(history)
-    focusInstructions.value = result.focusInstructions
-    givenHints.value = result.givenHints
+    promptAdjuster.updateAdjustments(evalHistory.value)
   }
 
   function updateSceneEntry(idx, updates) {
@@ -120,18 +115,24 @@ export function useSceneEval() {
     }
   }
 
-  async function evaluate(scene, workspaceType, scenePlanItem, sceneIdx, projectId, storyBible = '', chapterLog = '') {
+  async function evaluate(scene, workspaceType, scenePlanItem, sceneIdx, projectId, storyBible = '', chapterLog = '', extraFocusInstructions) {
     if (!scene?.prose) return
 
     isEvaluating.value = true
     try {
       const sceneBrief = buildSceneBrief(scene, scenePlanItem)
+      const baseFocus = promptAdjuster.focusInstructions.value
+      const mergedFocus = extraFocusInstructions
+        ? baseFocus
+          ? `${baseFocus}\n\n${extraFocusInstructions}`
+          : extraFocusInstructions
+        : baseFocus
       const result = await evaluateScene({
         draft: scene.prose,
         sceneBrief,
         storyBible,
         chapterLog,
-        focusInstructions: focusInstructions.value
+        focusInstructions: mergedFocus
       })
 
       critiqueResult.value = result
@@ -202,7 +203,7 @@ export function useSceneEval() {
         critiqueResult: critiqueResult.value,
         sceneBrief,
         storyBible,
-        focusInstructions: focusInstructions.value
+        focusInstructions: promptAdjuster.focusInstructions.value
       })
 
       if (revisedDraft && revisedDraft !== scene.prose) {
@@ -288,8 +289,7 @@ export function useSceneEval() {
     }
     revisionResult.value = null
     sceneResultsMap.value = {}
-    focusInstructions.value = ''
-    givenHints.value = []
+    promptAdjuster.reset()
   }
 
   return {
@@ -303,8 +303,8 @@ export function useSceneEval() {
     aggregateStats,
     evalHistory,
     pastEvalResults,
-    focusInstructions,
-    givenHints,
+    focusInstructions: promptAdjuster.focusInstructions,
+    givenHints: promptAdjuster.givenHints,
     evaluate,
     revise,
     reset,

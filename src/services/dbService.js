@@ -1,5 +1,5 @@
 // Re-export everything from modular db service files
-export { db, deepPlain } from './db-core'
+export { db } from './db-core'
 export {
   createProject,
   updateProject,

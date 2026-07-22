@@ -1,6 +1,6 @@
 import { ref, reactive, computed } from 'vue'
 import { formatEvalFeedback } from '../services/evalFeedback'
-import { autoAdjustPrompt } from '../evaluation/autoPromptAdjuster'
+import { useAutoPromptAdjuster } from './useAutoPromptAdjuster'
 import { gateDimensionCoverage, gateScoreDistribution } from '../services/evalGates'
 import { useProjectStore } from '../stores/projectStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
@@ -71,6 +71,7 @@ function sectionIndexForScene(sections, sceneIndex) {
 
 const MAX_REJECTED_PATTERNS = 5
 const SYNC_BATCH_SIZE = 3
+const PARALLEL_SCENE_LIMIT = 2
 // One-click quality guardrails: rewrite a scene that fails critique up to this
 // many times, and abort the whole run if this many scenes fail back-to-back
 // (signals a broken model/critic rather than letting it churn out garbage).
@@ -82,6 +83,63 @@ function attemptScore(ev) {
 }
 function isCleanPass(ev) {
   return !!(ev && !ev.evalUnavailable && ev.pass)
+}
+
+function detectSceneConflicts(results) {
+  if (results.length < 2) return []
+  const allFacts = []
+  for (const r of results) {
+    if (!r.success) continue
+    for (const f of (r.keyFacts || [])) {
+      allFacts.push({ fact: f, sceneIndex: r.sceneIndex })
+    }
+  }
+  const conflicts = []
+  for (let i = 0; i < allFacts.length; i++) {
+    for (let j = i + 1; j < allFacts.length; j++) {
+      const af = allFacts[i], bf = allFacts[j]
+      if (af.sceneIndex === bf.sceneIndex) continue
+      const normA = af.fact.toLowerCase().replace(/[^\w\s]/g, '').trim()
+      const normB = bf.fact.toLowerCase().replace(/[^\w\s]/g, '').trim()
+      if (normA === normB) continue
+      const wordsA = normA.split(/\s+/).filter((w) => w.length > 3)
+      const wordsB = normB.split(/\s+/).filter((w) => w.length > 3)
+      if (wordsA.length < 2 || wordsB.length < 2) continue
+      const overlap = wordsA.filter((w) => wordsB.includes(w)).length
+      const ratio = overlap / Math.min(wordsA.length, wordsB.length)
+      if (ratio >= 0.5) {
+        conflicts.push({ sceneA: af.sceneIndex, sceneB: bf.sceneIndex, factA: af.fact, factB: bf.fact })
+      }
+    }
+  }
+  return conflicts
+}
+
+async function resolveSceneConflicts(conflicts, results) {
+  let changed = false
+  for (const c of conflicts) {
+    const resultA = results.find((r) => r.sceneIndex === c.sceneA)
+    const resultB = results.find((r) => r.sceneIndex === c.sceneB)
+    if (!resultA?.success || !resultB?.success) continue
+
+    const scoreA = resultA.eval?.score ?? 0
+    const scoreB = resultB.eval?.score ?? 0
+
+    if (scoreA >= scoreB) {
+      const idx = resultB.keyFacts.indexOf(c.factB)
+      if (idx !== -1) {
+        resultB.keyFacts.splice(idx, 1)
+        changed = true
+      }
+    } else {
+      const idx = resultA.keyFacts.indexOf(c.factA)
+      if (idx !== -1) {
+        resultA.keyFacts.splice(idx, 1)
+        changed = true
+      }
+    }
+  }
+  return changed
 }
 
 export function useVolumeStoryGenerator() {
@@ -126,7 +184,7 @@ export function useVolumeStoryGenerator() {
   const currentWriteIndex = ref(0)
   const inlineEvalEnabled = ref(false)
   const sceneEvalResults = ref([])
-  const allGivenHints = ref([])
+  const promptAdjuster = useAutoPromptAdjuster()
   const actLog = useActivityLog()
   let currentTaskId = null
 
@@ -797,9 +855,8 @@ export function useVolumeStoryGenerator() {
         topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
       }
       attemptFeedback = formatEvalFeedback([evalSnapshot])
-      const retryResult = autoAdjustPrompt([evalSnapshot], { pastGivenHints: allGivenHints.value })
-      attemptFocusInstructions = retryResult.focusInstructions
-      allGivenHints.value = [...allGivenHints.value, ...retryResult.givenHints]
+        const retryResult = promptAdjuster.updateAdjustments([evalSnapshot])
+        attemptFocusInstructions = retryResult.focusInstructions
     }
 
     return { chosenProse, chosenStructured, chosenEval }
@@ -956,13 +1013,17 @@ export function useVolumeStoryGenerator() {
       }
       sceneEvalResults.value = anchorResults
       anchorEvalFeedback = formatEvalFeedback(anchorResults)
-      const anchorResult = autoAdjustPrompt(anchorResults, { pastGivenHints: allGivenHints.value })
+      const anchorResult = promptAdjuster.updateAdjustments(anchorResults)
       anchorFocusInstructions = anchorResult.focusInstructions
-      allGivenHints.value = [...allGivenHints.value, ...anchorResult.givenHints]
     }
 
-    // Phase 2: Generate middle scenes per chapter
-    progress.statusText = 'Phase 2: Generating chapter middle scenes...'
+    // Phase 2: Per-chapter wave-based parallel scene generation.
+    // Within each chapter, scenes are grouped into waves of PARALLEL_SCENE_LIMIT.
+    // Scenes within a wave run concurrently, then conflict detection scans the
+    // wave's key facts for contradictions. If conflicts are found, a resolution
+    // pass corrects them before any scene is committed — so later waves (and
+    // readers) never see inconsistent state.
+    progress.statusText = 'Phase 2: Generating chapter scenes in parallel waves...'
 
     async function generateMiddleScene(scene, sceneIndex, chapterMeta) {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
@@ -998,56 +1059,95 @@ export function useVolumeStoryGenerator() {
         const fullProse = chosenProse
 
         progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
-        // The writer already returned a summary in its structured output; this
-        // only falls back to a separate LLM call if it didn't.
         const summary = await computeSummary(fullProse, chosenStructured)
         const wordCount = fullProse.split(/\s+/).length
 
-        if (scene.subsectionId) {
-          await manuscriptStore.updateSubsectionData(
-            scene.subsectionId,
-            { content: fullProse, wordCount, contentStatus: 'generated' },
-            projectId
-          )
-        }
-
-        writtenScenes.value[sceneIndex] = {
-          title: scene.title || `Scene ${scene.sceneNumber}`,
+        actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
+        return {
+          success: true,
+          sceneIndex,
+          scene,
           prose: fullProse,
           summary,
+          wordCount,
           characters: scene.characters || scene.charactersPresent || [],
           location: scene.location || '',
           sceneNumber: scene.sceneNumber,
           subsectionId: scene.subsectionId,
           chapterId: chapterMeta.chapterNumber,
-          keyFacts: Array.isArray(chosenStructured?.keyFacts) ? chosenStructured.keyFacts : []
+          keyFacts: Array.isArray(chosenStructured?.keyFacts) ? chosenStructured.keyFacts : [],
+          structured: chosenStructured,
+          eval: chosenEval
         }
-
-        actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
-        return { success: true, sceneIndex, structured: chosenStructured, eval: chosenEval }
       } catch (err) {
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
         return { success: false, sceneIndex, error: err.message }
       }
     }
 
-    const middleTasks = []
-    for (let chapterIndex = 0; chapterIndex < chaptersWithScenes.length; chapterIndex++) {
-      const { chapterMeta, scenes, startIndex } = chaptersWithScenes[chapterIndex]
-      for (let j = 0; j < scenes.length; j++) {
-        const sceneIndex = startIndex + j
-        // Skip already-written scenes (anchors completed successfully)
-        if (writtenScenes.value[sceneIndex] !== null) continue
-        const scene = scenes[j]
-        middleTasks.push(() => generateMiddleScene(scene, sceneIndex, chapterMeta))
+    async function commitSceneResult(result) {
+      if (!result.success) return
+      if (result.subsectionId) {
+        await manuscriptStore.updateSubsectionData(
+          result.subsectionId,
+          { content: result.prose, wordCount: result.wordCount, contentStatus: 'generated' },
+          projectId
+        )
+      }
+      writtenScenes.value[result.sceneIndex] = {
+        title: result.title || `Scene ${result.sceneNumber}`,
+        prose: result.prose,
+        summary: result.summary,
+        characters: result.characters,
+        location: result.location,
+        sceneNumber: result.sceneNumber,
+        subsectionId: result.subsectionId,
+        chapterId: result.chapterId,
+        keyFacts: result.keyFacts
       }
     }
 
+
+
     let middleOutcomes = []
-    if (middleTasks.length > 0) {
-      throwIfAborted()
-      middleOutcomes = await parallelWithLimit(middleTasks, limit)
-      throwIfAborted()
+    for (let chapterIndex = 0; chapterIndex < chaptersWithScenes.length; chapterIndex++) {
+      const { chapterMeta, scenes, startIndex } = chaptersWithScenes[chapterIndex]
+      const unwritten = []
+      for (let j = 0; j < scenes.length; j++) {
+        const sceneIndex = startIndex + j
+        if (writtenScenes.value[sceneIndex] !== null) continue
+        unwritten.push({ scene: scenes[j], sceneIndex })
+      }
+      if (unwritten.length === 0) continue
+
+      for (let waveStart = 0; waveStart < unwritten.length; waveStart += PARALLEL_SCENE_LIMIT) {
+        const waveEnd = Math.min(waveStart + PARALLEL_SCENE_LIMIT, unwritten.length)
+        const wave = unwritten.slice(waveStart, waveEnd)
+
+        throwIfAborted()
+
+        const waveResults = await Promise.all(
+          wave.map(({ scene, sceneIndex }) =>
+            generateMiddleScene(scene, sceneIndex, chapterMeta)
+          )
+        )
+
+        const conflicts = detectSceneConflicts(waveResults)
+        if (conflicts.length > 0) {
+            const changed = await resolveSceneConflicts(conflicts, waveResults)
+            if (changed) {
+              progress.statusText = `Reconciled ${conflicts.length} fact conflict(s) in parallel wave`
+            }
+        }
+
+        for (let wi = 0; wi < wave.length; wi++) {
+          const result = waveResults[wi]
+          if (result.success) {
+            await commitSceneResult(result)
+            middleOutcomes.push(result)
+          }
+        }
+      }
     }
 
     if (inlineEvalEnabled.value) {
@@ -1218,9 +1318,8 @@ export function useVolumeStoryGenerator() {
           topIssues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         })
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
-        const batchResult = autoAdjustPrompt(sceneEvalResults.value, { pastGivenHints: allGivenHints.value })
+        const batchResult = promptAdjuster.updateAdjustments(sceneEvalResults.value)
         batchFocusInstructions = batchResult.focusInstructions
-        allGivenHints.value = [...allGivenHints.value, ...batchResult.givenHints]
 
         // Quality floor: a scene that still fails after all retries counts against
         // the run; too many in a row aborts (work so far is already saved).
@@ -1259,9 +1358,8 @@ export function useVolumeStoryGenerator() {
         }
         sceneEvalResults.value.push(evalEntry)
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
-        const batchResult2 = autoAdjustPrompt(sceneEvalResults.value, { pastGivenHints: allGivenHints.value })
+        const batchResult2 = promptAdjuster.updateAdjustments(sceneEvalResults.value)
         batchFocusInstructions = batchResult2.focusInstructions
-        allGivenHints.value = [...allGivenHints.value, ...batchResult2.givenHints]
       }
 
       // Append to running log after scene completes (avoids full rebuild next iteration)
@@ -1692,6 +1790,7 @@ export function useVolumeStoryGenerator() {
     evalUnavailableCount.value = 0
     currentSceneResult.value = null
     currentWriteIndex.value = 0
+    promptAdjuster.reset()
   }
 
   return {
@@ -1744,5 +1843,7 @@ export {
   buildSceneEntitiesBlob,
   parallelWithLimit,
   generateSpine,
-  fallbackSpineEntry
+  fallbackSpineEntry,
+  detectSceneConflicts,
+  resolveSceneConflicts
 }

@@ -57,7 +57,14 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     }
 
     const data = await response.json()
-    return data.choices[0]?.message?.content || ''
+    const usage = data.usage
+      ? {
+          promptTokens: data.usage.prompt_tokens,
+          completionTokens: data.usage.completion_tokens,
+          totalTokens: data.usage.total_tokens
+        }
+      : null
+    return { text: data.choices[0]?.message?.content || '', usage }
   } catch (error) {
     clearTimeout(timeout)
     if (externalSignal) externalSignal.removeEventListener('abort', onAbort)

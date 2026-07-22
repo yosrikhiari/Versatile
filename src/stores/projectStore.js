@@ -19,6 +19,7 @@ import { WORKSPACE_TYPES, WORKSPACE_TERMINOLOGY } from '../config/workspace'
 import { STORAGE_KEYS } from '../config/storageKeys'
 import { useLocalStorage } from '../composables/useLocalStorage'
 import { getSyncEngine } from '../services/sync-engine'
+import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 
 export const useProjectStore = defineStore('project', () => {
   const currentProjectId = ref(null)
@@ -41,6 +42,33 @@ export const useProjectStore = defineStore('project', () => {
   const lastSessionWords = ref(0)
   const authorVoiceProfile = ref(null)
   const lastSessionRecap = ref(null)
+  const promptOverrides = ref({})
+
+  function getActivePrompts(categoryType) {
+    const base = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+    const overrides = promptOverrides.value
+    const result = { ...base }
+    for (const role of ['writer', 'critic', 'revisor', 'director']) {
+      if (overrides[role]) {
+        result[role] = overrides[role]
+      }
+    }
+    return result
+  }
+
+  async function loadPromptOverrides() {
+    if (!currentProjectId.value) return
+    const project = await getProject(currentProjectId.value)
+    if (project?.promptOverrides) {
+      promptOverrides.value = { ...project.promptOverrides }
+    }
+  }
+
+  async function savePromptOverrides(overrides) {
+    if (!currentProjectId.value) return
+    promptOverrides.value = { ...overrides }
+    await updateProject(currentProjectId.value, { promptOverrides: overrides })
+  }
 
   const activeWorkspaceType = computed(() => {
     const val = (currentCategory.value || '').toLowerCase().trim()
@@ -84,7 +112,8 @@ export const useProjectStore = defineStore('project', () => {
     await Promise.all([
       loadDailyGoal(),
       loadStreak(),
-      loadLastSession()
+      loadLastSession(),
+      loadPromptOverrides()
     ])
   }
 
@@ -306,6 +335,10 @@ export const useProjectStore = defineStore('project', () => {
     lastSessionWords,
     authorVoiceProfile,
     lastSessionRecap,
+    promptOverrides,
+    getActivePrompts,
+    loadPromptOverrides,
+    savePromptOverrides,
     loadProject,
     saveDocumentDebounced,
     updateContent,

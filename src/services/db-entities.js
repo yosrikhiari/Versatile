@@ -1,4 +1,5 @@
-import { db, deepPlain } from './db-core'
+import { toRaw } from 'vue'
+import { db } from './db-core'
 
 // ========== CHARACTERS ==========
 
@@ -32,7 +33,7 @@ export async function updateCharacter(id, data) {
   try {
     return await db.characters.update(
       id,
-      deepPlain({ ...data, updatedAt: new Date().toISOString(), lastEditedAt: Date.now() })
+      JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString(), lastEditedAt: Date.now() })))
     )
   } catch (error) {
     console.error('Failed to update character:', error)
@@ -89,7 +90,7 @@ export async function addLocation(projectId, data) {
 }
 
 export async function updateLocation(id, data) {
-  return db.locations.update(id, deepPlain({ ...data, updatedAt: new Date().toISOString() }))
+  return db.locations.update(id, JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() }))))
 }
 
 export async function deleteLocation(id) {
@@ -130,7 +131,7 @@ export async function addPlotThread(projectId, data) {
 }
 
 export async function updatePlotThread(id, data) {
-  return db.plotThreads.update(id, deepPlain({ ...data, updatedAt: new Date().toISOString() }))
+  return db.plotThreads.update(id, JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() }))))
 }
 
 export async function deletePlotThread(id) {

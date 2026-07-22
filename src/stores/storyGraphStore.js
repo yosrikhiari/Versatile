@@ -10,18 +10,25 @@ import {
   saveNodePositions,
   getNodeInstances,
   saveNodeInstances as dbSaveNodeInstances,
-  getCharacterRelationships,
-  deleteCharacterRelationship,
   getGraphGroups,
   saveGraphGroups,
   getNodeParents as dbGetNodeParents,
   saveNodeParents as dbSaveNodeParents,
   getGroupEdges,
   addGroupEdge,
+} from '../services/db-graph'
+import {
   updateGroupEdge,
-  deleteGroupEdge
+  deleteGroupEdge,
+  getCharacterRelationships,
+  deleteCharacterRelationship,
 } from '../services/dbService'
+import { syncQueue } from '../services/sync-queue'
 import { useStoryBibleStore } from './storyBibleStore'
+
+syncQueue.register('nodePositions', async (_projectId, positions) => {
+  await saveNodePositions(_projectId, positions)
+})
 
 function typeFromKey(key) {
   if (key.startsWith('char')) return 'character'
@@ -116,14 +123,9 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     }
   }
 
-  let positionSaveTimer = null
-
-  async function saveNodePosition(projectId, nodeId, position) {
+  function saveNodePosition(projectId, nodeId, position) {
     nodePositions.value[nodeId] = { x: position.x, y: position.y }
-    clearTimeout(positionSaveTimer)
-    positionSaveTimer = setTimeout(async () => {
-      await saveNodePositions(projectId, toRaw(nodePositions.value))
-    }, 500)
+    syncQueue.push('nodePositions', projectId, nodePositions.value)
   }
 
   async function saveAllNodePositions(projectId, positions) {

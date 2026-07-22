@@ -2,9 +2,11 @@ import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate, aiStream, aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
-import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
+
 import { formatEvalFeedback } from '../services/evalFeedback'
 import { getVoiceProfile } from '../config/voiceProfiles'
+import { buildPersonaBlock } from '../config/writerPersonas'
+import { computeComplexityLevel } from '../config/modelRouting'
 import { buildSceneContext } from '../services/sceneContextService'
 import { usePromptBuilder } from './usePromptBuilder'
 import { summarizeLog } from '../utils/promptUtils'
@@ -241,7 +243,8 @@ export function useStoryWriter() {
           ? buildSceneContext({
               completedScenes,
               characters: characters || [],
-              currentSceneIndex: sceneBrief.sceneNumber || 0
+              currentSceneIndex: sceneBrief.sceneNumber || 0,
+              currentSceneBrief: sceneBrief
             })
           : embeddingContext || ''
 
@@ -261,7 +264,7 @@ export function useStoryWriter() {
 
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
-      const activePrompts = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
+      const activePrompts = projectStore.getActivePrompts(categoryType)
       const activeCraftRules =
         categoryType === 'creative' || categoryType === 'novel' ? `\n\n${CRAFT_RULES}` : ''
 
@@ -269,7 +272,14 @@ export function useStoryWriter() {
         ? `IMPORTANT: Apply the following voice guidance within the craft constraints above. The craft constraints are hard rules and take priority.\n\n`
         : ''
 
-      const systemPrompt = `${activePrompts.writer}${activeCraftRules}
+      const personaBlock = buildPersonaBlock({
+        genre: storyArc?.genre,
+        pov: sceneBrief.pov,
+        tone: storyArc?.tone
+      })
+      const personaSection = personaBlock ? `\n${personaBlock}\n` : ''
+
+      const systemPrompt = `${activePrompts.writer}${activeCraftRules}${personaSection}
 
 ${PROSE_STYLE_GUIDE}
 ${profileStyleGuide ? `\n${profileStyleGuide}\n` : ''}
@@ -338,6 +348,12 @@ Target word count: approximately ${sceneBrief.estimatedWords || 800} words.
 
 Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
 
+      const complexity = computeComplexityLevel({
+        feature: FEATURES.STORY_GENERATION,
+        sceneBrief,
+        storyArc
+      })
+
       let fullText = ''
 
       if (onChunk) {
@@ -348,11 +364,12 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
             fullText += chunk
             onChunk(chunk, fullText)
           },
-          { feature: FEATURES.STORY_GENERATION }
+          { feature: FEATURES.STORY_GENERATION, complexity }
         )
       } else {
         fullText = await aiGenerate(userPrompt, systemPrompt, {
-          feature: FEATURES.STORY_GENERATION
+          feature: FEATURES.STORY_GENERATION,
+          complexity
         })
       }
 
@@ -412,7 +429,8 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
           ? buildSceneContext({
               completedScenes,
               characters: characters || [],
-              currentSceneIndex: sceneBrief.sceneNumber || 0
+              currentSceneIndex: sceneBrief.sceneNumber || 0,
+              currentSceneBrief: sceneBrief
             })
           : embeddingContext || ''
 
@@ -439,6 +457,11 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
         ? `IMPORTANT: Apply the following voice guidance within the craft constraints above. The craft constraints are hard rules and take priority.\n\n`
         : ''
 
+      const personaBlock = buildPersonaBlock({
+        genre: storyArc?.genre,
+        pov: sceneBrief.pov,
+        tone: storyArc?.tone
+      })
       const { buildSystemPrompt } = usePromptBuilder()
       const systemPrompt = buildSystemPrompt({
         categoryType,
@@ -449,7 +472,9 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
         proseStyleGuide: PROSE_STYLE_GUIDE,
         focusInstructions,
         profileStyleGuide,
-        voiceConstraint
+        voiceConstraint,
+        promptOverrides: projectStore.promptOverrides,
+        personaBlock
       })
 
       const logSummary = summarizeLog(chapterLog)
@@ -557,6 +582,12 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
       const estimatedWords = sceneBrief.estimatedWords || 800
       const maxTokens = Math.max(2000, Math.min(4500, Math.ceil(estimatedWords * 1.8) + 800))
 
+      const complexity = computeComplexityLevel({
+        feature: FEATURES.STORY_GENERATION,
+        sceneBrief,
+        storyArc
+      })
+
       // CALL 1 — prose. Plain text, not wrapped in a JSON envelope, because that
       // envelope suppresses prose length ~44x on a small local model (verified,
       // see extractSceneMetadata). Every streamed token IS prose now, so the old
@@ -570,13 +601,14 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
             if (onRawChunk) onRawChunk(chunk)
             onChunk(chunk, chunk)
           },
-          { feature: FEATURES.STORY_GENERATION, maxTokens, signal }
+          { feature: FEATURES.STORY_GENERATION, maxTokens, signal, complexity }
         )
       } else {
         accumulated = await aiGenerate(userPrompt, systemPrompt, {
           feature: FEATURES.STORY_GENERATION,
           maxTokens,
-          signal
+          signal,
+          complexity
         })
       }
 

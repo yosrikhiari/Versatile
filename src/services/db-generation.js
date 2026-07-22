@@ -1,4 +1,5 @@
-import { db, deepPlain } from './db-core'
+import { toRaw } from 'vue'
+import { db } from './db-core'
 
 // Ordered list of pipeline stages. `currentStage` points at the first stage that
 // is not yet `done`, so a resumed run re-enters here instead of restarting.
@@ -42,7 +43,7 @@ export async function updateGenRunStage(projectId, stageName, patch = {}) {
 export async function saveGenRun(projectId, state) {
   if (!projectId) return null
   try {
-    const plainState = deepPlain(state)
+    const plainState = JSON.parse(JSON.stringify(toRaw(state)))
     const existing = await db.genRuns.where('projectId').equals(projectId).first()
     if (existing) {
       await db.genRuns.update(existing.id, { updatedAt: Date.now(), state: plainState })

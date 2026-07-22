@@ -403,6 +403,69 @@ export const SYNC_ENTITIES = [
   },
 
   {
+    table: 'researchChunks',
+    endpoint: (storyApiId) => `/story/${storyApiId}/research-chunk`,
+    isTopLevel: false,
+    parentField: 'projectId',
+    toApi: async (local) => {
+      const docApiId = local.documentId
+        ? await lookupApiId('researchDocuments', local.documentId)
+        : null
+      return {
+        documentId: docApiId || '00000000-0000-0000-0000-000000000000',
+        chunkIndex: local.chunkIndex ?? 0,
+        content: local.text || local.content || '',
+        embedding: local.embedding
+          ? JSON.stringify(Array.from(local.embedding))
+          : null
+      }
+    },
+    fromApi: async (api) => {
+      const docLocalId = api.documentId
+        ? await lookupLocalId('researchDocuments', api.documentId)
+        : null
+      return {
+        apiId: api.id,
+        documentId: docLocalId,
+        chunkIndex: api.chunkIndex ?? 0,
+        text: api.content || '',
+        embedding: api.embedding ? JSON.parse(api.embedding) : null,
+        embeddingStatus: api.embedding ? 'READY' : 'PENDING',
+        syncStatus: 'synced',
+        lastSyncedAt: new Date().toISOString()
+      }
+    },
+    idBridge: {
+      localParentField: 'projectId',
+      apiParentField: 'storyId',
+      needsTranslation: ['documentId']
+    }
+  },
+
+  {
+    table: 'researchTags',
+    endpoint: (storyApiId) => `/story/${storyApiId}/research-tag`,
+    isTopLevel: false,
+    parentField: 'projectId',
+    toApi: (local) => ({
+      name: local.name || '',
+      color: local.color || null
+    }),
+    fromApi: (api) => ({
+      apiId: api.id,
+      name: api.name || '',
+      color: api.color || '',
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString()
+    }),
+    idBridge: {
+      localParentField: 'projectId',
+      apiParentField: 'storyId',
+      needsTranslation: []
+    }
+  },
+
+  {
     table: 'branches',
     endpoint: (storyApiId) => `/story/${storyApiId}/branch`,
     isTopLevel: false,

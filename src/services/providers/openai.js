@@ -63,7 +63,14 @@ export async function generate(prompt, systemPrompt, model, options = {}) {
     }
 
     const data = await response.json()
-    return data.choices[0]?.message?.content || ''
+    const usage = data.usage
+      ? {
+          promptTokens: data.usage.prompt_tokens,
+          completionTokens: data.usage.completion_tokens,
+          totalTokens: data.usage.total_tokens
+        }
+      : null
+    return { text: data.choices[0]?.message?.content || '', usage }
   } catch (error) {
     cleanup()
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -187,7 +194,14 @@ export async function generateStructured(prompt, systemPrompt, model, schema, op
 
     const data = await response.json()
     const content = data.choices[0]?.message?.content || ''
-    return JSON.parse(content)
+    const usage = data.usage
+      ? {
+          promptTokens: data.usage.prompt_tokens,
+          completionTokens: data.usage.completion_tokens,
+          totalTokens: data.usage.total_tokens
+        }
+      : null
+    return { data: JSON.parse(content), usage }
   } catch (error) {
     cleanup()
     if (error instanceof DOMException && error.name === 'AbortError') {

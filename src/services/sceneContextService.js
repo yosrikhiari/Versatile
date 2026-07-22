@@ -59,9 +59,45 @@ function buildCharacterStates(completedScenes, characters) {
   return `CHARACTER STATES:\n${states.join('\n')}`
 }
 
-function buildSceneMemory(completedScenes, memoryLimit) {
-  const recent = completedScenes.slice(-memoryLimit)
-  const entries = recent.map((s) => {
+function scoreSceneRelevance(pastScene, currentSceneBrief) {
+  let score = 0
+
+  const pastChars = pastScene.brief?.charactersPresent || []
+  const currentChars = currentSceneBrief.charactersPresent || []
+
+  const sharedChars = pastChars.filter((c) => currentChars.includes(c))
+  score += sharedChars.length * 3
+
+  if (pastScene.brief?.location && currentSceneBrief.location &&
+      pastScene.brief.location === currentSceneBrief.location) {
+    score += 2
+  }
+
+  if (pastScene.brief?.arcPosition && currentSceneBrief.arcPosition &&
+      pastScene.brief.arcPosition === currentSceneBrief.arcPosition) {
+    score += 2
+  }
+
+  if (pastScene.number === currentSceneBrief.sceneNumber - 1) {
+    score += 5
+  }
+
+  return score
+}
+
+function buildSceneMemory(completedScenes, memoryLimit, currentSceneBrief) {
+  let selected = completedScenes
+
+  if (currentSceneBrief) {
+    const scored = completedScenes
+      .map((s) => ({ scene: s, score: scoreSceneRelevance(s, currentSceneBrief) }))
+      .sort((a, b) => b.score - a.score || b.scene.number - a.scene.number)
+    selected = scored.slice(0, memoryLimit).map((s) => s.scene).sort((a, b) => a.number - b.number)
+  } else {
+    selected = completedScenes.slice(-memoryLimit)
+  }
+
+  const entries = selected.map((s) => {
     const title = s.brief?.title || `Scene ${s.number}`
     const whatChanged = s.brief?.whatChanges || 'unknown'
     const emotionalGoal = s.brief?.emotionalGoal || 'unknown'
@@ -76,12 +112,14 @@ function buildSceneMemory(completedScenes, memoryLimit) {
  * @param {Array<{number: number, brief: Object, prose: string, critiqueResult: Object}>} options.completedScenes - Completed scenes with their data
  * @param {Array<{name: string, role: string, description: string, traits?: string[]}>} [options.characters] - Character registry from story bible
  * @param {number} [options.currentSceneIndex] - Index of scene being written (0-based)
+ * @param {Object} [options.currentSceneBrief] - Brief of the scene being written (for relevance scoring)
  * @param {Object} [options.options]
  * @param {number} [options.options.proseWindow=500] - Words of previous scene prose to include
  * @param {number} [options.options.memoryLimit=8] - Max scene memories to include
  * @returns {string} Formatted context string, or empty string if no completed scenes
  */
-export function buildSceneContext({ completedScenes, characters, currentSceneIndex, options }) {
+export { scoreSceneRelevance, buildSceneMemory }
+export function buildSceneContext({ completedScenes, characters, currentSceneIndex, currentSceneBrief, options }) {
   if (!completedScenes || completedScenes.length === 0) return ''
 
   const opts = options || {}
@@ -96,7 +134,7 @@ export function buildSceneContext({ completedScenes, characters, currentSceneInd
   const charStates = buildCharacterStates(completedScenes, characters)
   if (charStates) sections.push(charStates)
 
-  const sceneMemory = buildSceneMemory(completedScenes, memoryLimit)
+  const sceneMemory = buildSceneMemory(completedScenes, memoryLimit, currentSceneBrief)
   if (sceneMemory) sections.push(sceneMemory)
 
   return sections.join('\n\n---\n\n')
