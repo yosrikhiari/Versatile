@@ -3,7 +3,11 @@ import { setActivePinia, createPinia } from 'pinia'
 
 const mockAiGenerate = vi.fn()
 const mockProjectStore = {
-  activeWorkspaceType: 'creative'
+  activeWorkspaceType: 'creative',
+  getActivePrompts: vi.fn(() => ({
+    director: 'You are a story architect planning a narrative arc. Keep JSON output only.'
+  })),
+  promptOverrides: { writer: '', critic: '', revisor: '', director: '' }
 }
 const mockAiStream = vi.fn(async (user, system, onChunk, opts) => {
   try {

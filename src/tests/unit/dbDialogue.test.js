@@ -11,8 +11,7 @@ const mockDb = {
 }
 
 vi.mock('@/services/db-core', () => ({
-  db: mockDb,
-  deepPlain: vi.fn((obj) => JSON.parse(JSON.stringify(obj)))
+  db: mockDb
 }))
 
 let dbDialogue

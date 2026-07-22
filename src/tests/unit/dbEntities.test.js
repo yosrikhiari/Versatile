@@ -15,8 +15,7 @@ const mockDb = {
 }
 
 vi.mock('@/services/db-core', () => ({
-  db: mockDb,
-  deepPlain: vi.fn((obj) => JSON.parse(JSON.stringify(obj)))
+  db: mockDb
 }))
 
 let dbEntities
@@ -28,7 +27,7 @@ beforeEach(async () => {
 
 describe('db-entities', () => {
   describe('updateCharacter', () => {
-    it('wraps data with deepPlain and updates character', async () => {
+    it('deep clones data and updates character', async () => {
       mockDb.characters.update.mockResolvedValue(1)
       await dbEntities.updateCharacter('char1', { name: 'John', role: 'Hero' })
       expect(mockDb.characters.update).toHaveBeenCalledWith(
@@ -46,7 +45,7 @@ describe('db-entities', () => {
   })
 
   describe('updateLocation', () => {
-    it('wraps data with deepPlain and updates location', async () => {
+    it('deep clones data and updates location', async () => {
       mockDb.locations.update.mockResolvedValue(1)
       await dbEntities.updateLocation('loc1', { name: 'Forest' })
       expect(mockDb.locations.update).toHaveBeenCalledWith(
@@ -57,7 +56,7 @@ describe('db-entities', () => {
   })
 
   describe('updatePlotThread', () => {
-    it('wraps data with deepPlain and updates plot thread', async () => {
+    it('deep clones data and updates plot thread', async () => {
       mockDb.plotThreads.update.mockResolvedValue(1)
       await dbEntities.updatePlotThread('pt1', { title: 'Mystery' })
       expect(mockDb.plotThreads.update).toHaveBeenCalledWith(

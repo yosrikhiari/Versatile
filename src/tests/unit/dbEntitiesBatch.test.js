@@ -11,8 +11,7 @@ vi.mock('@/services/db-core', () => {
       plotThreads: makeTable(),
       // Run the transaction body immediately, like Dexie would for a committed tx.
       transaction: vi.fn(async (_mode, _table, cb) => cb())
-    },
-    deepPlain: (x) => x
+    }
   }
 })
 

@@ -18,9 +18,11 @@ const projectStore = useProjectStore()
 const localName = ref('')
 const localGenre = ref('')
 const localSynopsis = ref('')
+const localPromptOverrides = ref({ writer: '', critic: '', revisor: '', director: '' })
 const isSaving = ref(false)
 const isGeneratingSynopsis = ref(false)
 const isEnhancingSynopsis = ref(false)
+const activeTab = ref('general')
 
 watch(
   () => props.show,
@@ -29,6 +31,8 @@ watch(
       localName.value = projectStore.currentProjectName
       localGenre.value = projectStore.currentCategory
       localSynopsis.value = projectStore.currentDescription
+      localPromptOverrides.value = { ...projectStore.promptOverrides }
+      activeTab.value = 'general'
     }
   }
 )
@@ -215,6 +219,7 @@ async function handleSave() {
       category: localGenre.value,
       description: localSynopsis.value.trim()
     })
+    await projectStore.savePromptOverrides(localPromptOverrides.value)
     emit('close')
   } catch (e) {
     console.error('Failed to save project settings:', e)
@@ -263,7 +268,24 @@ function handleOverlayClick(event) {
               </button>
             </div>
 
-            <div class="p-5 space-y-5">
+            <div class="flex border-b border-border-subtle px-5">
+              <button
+                class="px-4 py-3 text-sm font-ui border-b-2 transition-colors"
+                :class="activeTab === 'general' ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text-primary'"
+                @click="activeTab = 'general'"
+              >
+                General
+              </button>
+              <button
+                class="px-4 py-3 text-sm font-ui border-b-2 transition-colors"
+                :class="activeTab === 'prompts' ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text-primary'"
+                @click="activeTab = 'prompts'"
+              >
+                Prompts
+              </button>
+            </div>
+
+            <div v-if="activeTab === 'general'" class="p-5 space-y-5">
               <div>
                 <label class="block text-sm font-medium text-text-primary mb-2">
                   Project Name
@@ -334,6 +356,33 @@ function handleOverlayClick(event) {
                   This helps AI understand your story's context for suggestions.
                 </p>
               </div>
+            </div>
+
+            <div v-else class="p-5 space-y-5">
+              <div
+                v-for="role in ['writer', 'critic', 'revisor', 'director']"
+                :key="role"
+              >
+                <label class="block text-sm font-medium text-text-primary mb-2 capitalize">
+                  {{ role }} Prompt
+                  <button
+                    class="ml-2 text-xs text-text-hint hover:text-accent transition-colors"
+                    @click="localPromptOverrides[role] = ''"
+                    title="Reset to default"
+                  >
+                    (reset)
+                  </button>
+                </label>
+                <textarea
+                  v-model="localPromptOverrides[role]"
+                  rows="6"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm font-mono text-text-primary focus:outline-none focus:ring-2 focus:ring-accent resize-none placeholder:text-text-hint"
+                  placeholder="Leave empty to use the workspace default prompt for this role."
+                ></textarea>
+              </div>
+              <p class="text-xs text-text-hint">
+                Custom prompts override the default system prompt for each AI role. Leave a field empty to use the workspace-type default.
+              </p>
             </div>
 
             <div

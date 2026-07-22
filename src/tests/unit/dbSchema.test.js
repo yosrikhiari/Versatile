@@ -6,9 +6,12 @@ import { db } from '@/services/db-core'
 // index changes and, in particular, proves that compacting the version chain
 // leaves the effective schema byte-identical. If you intentionally change the
 // schema, bump the version and update the expected map below.
+// See docs/database-schema-changelog.md for per-version documentation.
 const EXPECTED = {
   annotations: '++id | original, paragraphIndex, projectId, reason, status, suggestion, type',
   authorProfile: '++id | projectId',
+  branches:
+    '++id | createdAt, description, name, projectId, sourceBranchId, status, updatedAt',
   chapters: '++id | *tags, order, projectId, status, summary, title, volumeId',
   characterRelationships:
     '++id | apiId, fromCharacterId, lastSyncedAt, notes, projectId, syncStatus, toCharacterId, type',
@@ -43,7 +46,7 @@ const EXPECTED = {
     '++id | comment, createdAt, endOffset, paragraphIndex, projectId, selectedText, startOffset',
   scenes: '++id | *tags, chapterId, content, order, projectId, summary, title',
   sections:
-    '++id | *tags, apiId, lastSyncedAt, order, projectId, status, summary, syncStatus, title, volumeId',
+    '++id | *tags, [projectId+branchId], apiId, branchId, lastSyncedAt, order, projectId, status, summary, syncStatus, title, volumeId',
   sessionArchive: '++id | projectId, signal, timestamp, type',
   snapshots: '++id | chapterId, label, projectId, timestamp',
   snippets: '++id | count, lastSeen, projectId, word',
@@ -54,7 +57,7 @@ const EXPECTED = {
     '++id | [projectId+sceneId], [projectId+version], analyzedAt, projectId, sceneId, version',
   storyStateSnapshots: '++id | projectId, timestamp',
   subsections:
-    '++id | *tags, apiId, content, contentStatus, lastSyncedAt, order, projectId, sectionId, summary, syncStatus, title',
+    '++id | *tags, [projectId+branchId], apiId, branchId, content, contentStatus, lastSyncedAt, order, projectId, sectionId, summary, syncStatus, title',
   users: '++id | &username, createdAt, displayName, passwordHash',
   voiceProfiles: '++id | createdAt, projectId, updatedAt',
   volumeEntities:
@@ -77,7 +80,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(33)
+    expect(verno).toBe(35)
   })
 
   it('has exactly the expected set of tables', () => {

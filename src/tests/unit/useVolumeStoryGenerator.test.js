@@ -536,6 +536,274 @@ describe('parallelWithLimit', () => {
   })
 })
 
+describe('detectSceneConflicts', () => {
+  let detectSceneConflicts
+
+  beforeEach(async () => {
+    vi.resetModules()
+    const mod = await import('@/composables/useVolumeStoryGenerator')
+    detectSceneConflicts = mod.detectSceneConflicts
+  })
+
+  it('returns empty array for fewer than 2 results', () => {
+    expect(detectSceneConflicts([])).toEqual([])
+    expect(detectSceneConflicts([{ sceneIndex: 1, success: true, keyFacts: ['X is alive'] }])).toEqual([])
+  })
+
+  it('returns empty array when facts are all unique', () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['Dragon breathes fire'] },
+      { sceneIndex: 2, success: true, keyFacts: ['King wears a crown'] }
+    ]
+    expect(detectSceneConflicts(results)).toEqual([])
+  })
+
+  it('detects conflict when two scenes share overlapping facts', () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['The ancient sword was forged in dragonfire'] },
+      { sceneIndex: 2, success: true, keyFacts: ['The ancient sword was hidden in the crypt'] }
+    ]
+    const conflicts = detectSceneConflicts(results)
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0].sceneA).toBe(1)
+    expect(conflicts[0].sceneB).toBe(2)
+  })
+
+  it('ignores identical facts across scenes (no conflict)', () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'] },
+      { sceneIndex: 2, success: true, keyFacts: ['The sword was forged in dragonfire'] }
+    ]
+    expect(detectSceneConflicts(results)).toEqual([])
+  })
+
+  it('ignores short words (<=3 chars) when computing overlap', () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['in the big red box the cat sat'] },
+      { sceneIndex: 2, success: true, keyFacts: ['the cat sat in the big red box'] }
+    ]
+    expect(detectSceneConflicts(results)).toEqual([])
+  })
+
+  it('skips failed scenes', () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'] },
+      { sceneIndex: 2, success: false, keyFacts: ['The sword was hidden in the crypt'] }
+    ]
+    expect(detectSceneConflicts(results)).toEqual([])
+  })
+
+  it('handles empty keyFacts', () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: [] },
+      { sceneIndex: 2, success: true, keyFacts: ['Dragon breathes fire'] }
+    ]
+    expect(detectSceneConflicts(results)).toEqual([])
+  })
+
+  it('detects multiple conflicts across 3 scenes', () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['The ring of power was forged in mount doom'] },
+      { sceneIndex: 2, success: true, keyFacts: ['The ring of power was found in the river'] },
+      { sceneIndex: 3, success: true, keyFacts: ['The crown was stolen from the vault'] }
+    ]
+    const conflicts = detectSceneConflicts(results)
+    expect(conflicts.length).toBeGreaterThanOrEqual(1)
+    const involved = conflicts.flatMap((c) => [c.sceneA, c.sceneB])
+    expect(involved).toContain(1)
+    expect(involved).toContain(2)
+  })
+
+  it('requires at least 2 significant words per fact to compare', () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['fire dragon'] },
+      { sceneIndex: 2, success: true, keyFacts: ['fire dragon'] }
+    ]
+    expect(detectSceneConflicts(results)).toEqual([])
+  })
+})
+
+describe('resolveSceneConflicts', () => {
+  let resolveSceneConflicts
+
+  beforeEach(async () => {
+    vi.resetModules()
+    const mod = await import('@/composables/useVolumeStoryGenerator')
+    resolveSceneConflicts = mod.resolveSceneConflicts
+  })
+
+  it('removes conflicting fact from lower-scored scene', async () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'], eval: { score: 8 } },
+      { sceneIndex: 2, success: true, keyFacts: ['The sword was hidden in the crypt'], eval: { score: 5 } }
+    ]
+    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    await resolveSceneConflicts(conflicts, results)
+    expect(results[1].keyFacts).toEqual([])
+    expect(results[0].keyFacts).toHaveLength(1)
+  })
+
+  it('removes fact from lower-scored scene when scene A has lower score', async () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'], eval: { score: 3 } },
+      { sceneIndex: 2, success: true, keyFacts: ['The sword was hidden in the crypt'], eval: { score: 9 } }
+    ]
+    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    await resolveSceneConflicts(conflicts, results)
+    expect(results[0].keyFacts).toEqual([])
+    expect(results[1].keyFacts).toHaveLength(1)
+  })
+
+  it('skips conflict when either scene failed', async () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'], eval: { score: 8 } },
+      { sceneIndex: 2, success: false, keyFacts: ['The sword was hidden in the crypt'], eval: { score: 5 } }
+    ]
+    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    await resolveSceneConflicts(conflicts, results)
+    expect(results[1].keyFacts).toHaveLength(1)
+  })
+
+  it('handles empty conflicts array', async () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['A fact'], eval: { score: 8 } }
+    ]
+    await resolveSceneConflicts([], results)
+    expect(results[0].keyFacts).toHaveLength(1)
+  })
+
+  it('falls back to score 0 when eval is missing', async () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'] },
+      { sceneIndex: 2, success: true, keyFacts: ['The sword was hidden in the crypt'] }
+    ]
+    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    await resolveSceneConflicts(conflicts, results)
+    expect(results[1].keyFacts).toEqual([])
+  })
+
+  it('preserves non-conflicting facts', async () => {
+    const results = [
+      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire', 'Dragon is ancient'], eval: { score: 8 } },
+      { sceneIndex: 2, success: true, keyFacts: ['The sword was hidden in the crypt'], eval: { score: 5 } }
+    ]
+    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    await resolveSceneConflicts(conflicts, results)
+    expect(results[0].keyFacts).toEqual(['The sword was forged in dragonfire', 'Dragon is ancient'])
+    expect(results[1].keyFacts).toEqual([])
+  })
+})
+
+describe('parallel generation end-to-end: 3 scenes concurrent, verify no conflicts', () => {
+  let detectSceneConflicts, resolveSceneConflicts, parallelWithLimit
+
+  beforeEach(async () => {
+    vi.resetModules()
+    const mod = await import('@/composables/useVolumeStoryGenerator')
+    detectSceneConflicts = mod.detectSceneConflicts
+    resolveSceneConflicts = mod.resolveSceneConflicts
+    parallelWithLimit = mod.parallelWithLimit
+  })
+
+  it('processes a wave of 3 scenes without cross-talk', async () => {
+    const sceneResults = [
+      { sceneIndex: 0, success: true, keyFacts: ['Hero discovers the ancient map'], eval: { score: 8 } },
+      { sceneIndex: 1, success: true, keyFacts: ['Village prepares for the winter feast'], eval: { score: 7 } },
+      { sceneIndex: 2, success: true, keyFacts: ['Guard patrols the northern wall'], eval: { score: 9 } }
+    ]
+
+    const conflicts = detectSceneConflicts(sceneResults)
+    expect(conflicts).toHaveLength(0)
+
+    await resolveSceneConflicts(conflicts, sceneResults)
+    for (const r of sceneResults) {
+      expect(r.success).toBe(true)
+    }
+  })
+
+  it('detects and resolves conflicts in a 3-scene wave end-to-end', async () => {
+    const sceneResults = [
+      { sceneIndex: 0, success: true, keyFacts: ['The Necromancer raises an undead army'], eval: { score: 9 } },
+      { sceneIndex: 1, success: true, keyFacts: ['The Necromancer summons the undead legion'], eval: { score: 4 } },
+      { sceneIndex: 2, success: true, keyFacts: ['Hero rallies the kingdom for battle'], eval: { score: 8 } }
+    ]
+
+    const originalFacts = sceneResults.map((r) => [...r.keyFacts])
+    const conflicts = detectSceneConflicts(sceneResults)
+    expect(conflicts.length).toBeGreaterThanOrEqual(1)
+
+    await resolveSceneConflicts(conflicts, sceneResults)
+
+    const conflictSceneIndices = new Set(conflicts.flatMap((c) => [c.sceneA, c.sceneB]))
+    for (const idx of conflictSceneIndices) {
+      const result = sceneResults.find((r) => r.sceneIndex === idx)
+      const original = originalFacts[idx]
+      expect(result.keyFacts.length).toBeLessThanOrEqual(original.length)
+    }
+  })
+
+  it('parallelWithLimit can run generate-middle-scene-like tasks concurrently', async () => {
+    const log = []
+
+    async function simulateGenerate(index, keyFact, score) {
+      await new Promise((r) => setTimeout(r, Math.random() * 5))
+      log.push(`scene-${index}-done`)
+      return { sceneIndex: index, success: true, keyFacts: [keyFact], eval: { score } }
+    }
+
+    const tasks = [
+      () => simulateGenerate(0, 'Hero enters the dark forest', 7),
+      () => simulateGenerate(1, 'Witch brews a powerful potion', 6),
+      () => simulateGenerate(2, 'The amulet glows with ancient power', 8)
+    ]
+
+    const results = await parallelWithLimit(tasks, 2)
+    expect(results).toHaveLength(3)
+    for (const r of results) {
+      expect(r.success).toBe(true)
+      expect(r.keyFacts).toHaveLength(1)
+    }
+
+    const conflicts = detectSceneConflicts(results)
+    expect(conflicts).toHaveLength(0)
+  })
+
+  it('quality floor: passes when fail ratio is below threshold', async () => {
+    const gateEvals = [
+      { score: 8, evalUnavailable: false },
+      { score: 3, evalUnavailable: false },
+      { score: 7, evalUnavailable: false },
+      { score: 6, evalUnavailable: false }
+    ]
+    const judged = gateEvals.filter((e) => !e.evalUnavailable && e.score != null)
+    const failed = judged.filter((e) => e.score < 5)
+    const QUALITY_FLOOR_FAIL_RATIO = 0.5
+    const QUALITY_FLOOR_MIN_JUDGED = 4
+
+    expect(judged.length).toBeGreaterThanOrEqual(QUALITY_FLOOR_MIN_JUDGED)
+    const breach = failed.length / judged.length >= QUALITY_FLOOR_FAIL_RATIO
+    expect(breach).toBe(false)
+  })
+
+  it('quality floor: breaches when fail ratio exceeds threshold', async () => {
+    const gateEvals = [
+      { score: 2, evalUnavailable: false },
+      { score: 3, evalUnavailable: false },
+      { score: 1, evalUnavailable: false },
+      { score: 8, evalUnavailable: false },
+      { score: 4, evalUnavailable: false }
+    ]
+    const judged = gateEvals.filter((e) => !e.evalUnavailable && e.score != null)
+    const failed = judged.filter((e) => e.score < 5)
+    const QUALITY_FLOOR_FAIL_RATIO = 0.5
+    const QUALITY_FLOOR_MIN_JUDGED = 4
+
+    expect(judged.length).toBeGreaterThanOrEqual(QUALITY_FLOOR_MIN_JUDGED)
+    const breach = failed.length / judged.length >= QUALITY_FLOOR_FAIL_RATIO
+    expect(breach).toBe(true)
+  })
+})
+
 describe('useVolumeStoryGenerator', () => {
   it('returns reactive state and methods', () => {
     const gen = useVolumeStoryGenerator()

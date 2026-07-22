@@ -18,7 +18,7 @@ describe('Gemini provider', () => {
     })
     const { generate } = await import('../../services/providers/gemini')
     const result = await generate('test', 'sys', 'gemini-pro', { apiKey: 'gk-test' })
-    expect(result).toBe('Hello')
+    expect(result).toEqual({ text: 'Hello', usage: null })
   })
 
   it('generate throws on API error', async () => {

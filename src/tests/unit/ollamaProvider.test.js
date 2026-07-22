@@ -24,7 +24,10 @@ describe('ollama generate', () => {
       })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ response: 'Hello world' }) })
     const result = await ollama.generate('prompt', 'system', 'llama3')
-    expect(result).toBe('Hello world')
+    expect(result).toEqual({
+      text: 'Hello world',
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+    })
   })
 
   it('sends num_ctx so Ollama does not silently fall back to its 4096 default', async () => {

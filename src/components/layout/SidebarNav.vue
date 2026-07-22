@@ -56,6 +56,7 @@ const navGroups = [
 ]
 
 const systemItems = [
+  { label: 'Costs', panel: 'cost-dashboard', icon: 'dollar-sign' },
   { label: 'Research', panel: 'research', icon: 'search' },
   { label: 'Archive', panel: 'archive', icon: 'archive' },
   { label: 'Settings', panel: 'settings', icon: 'settings' }

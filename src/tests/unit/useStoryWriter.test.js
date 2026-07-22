@@ -5,7 +5,11 @@ const mockAiGenerate = vi.fn()
 const mockAiStream = vi.fn()
 const mockAiGenerateJson = vi.fn()
 const mockProjectStore = {
-  activeWorkspaceType: 'creative'
+  activeWorkspaceType: 'creative',
+  getActivePrompts: vi.fn(() => ({
+    writer: 'You are a creative writer. Write vivid prose.'
+  })),
+  promptOverrides: { writer: '', critic: '', revisor: '', director: '' }
 }
 
 // The writer talks to the composable wrapper, not the raw service. Mocking it
@@ -170,6 +174,32 @@ describe('writeScene', () => {
     await writeScene({ sceneBrief: baseSceneBrief, storyArc: defaultArc, chapterLog: [] })
     const userPrompt = mockAiGenerate.mock.calls[0][0]
     expect(userPrompt).toContain('first scene')
+  })
+
+  it('passes complexity to aiGenerate options', async () => {
+    mockAiGenerate.mockResolvedValue('prose')
+    const { writeScene } = useStoryWriter()
+    await writeScene({
+      sceneBrief: baseSceneBrief,
+      storyArc: defaultArc
+    })
+    const opts = mockAiGenerate.mock.calls[0][2]
+    expect(opts).toHaveProperty('complexity')
+  })
+
+  it('passes complexity to aiStream options', async () => {
+    mockAiStream.mockImplementationOnce(async (user, system, onChunk, opts) => {
+      onChunk('prose', 'prose')
+    })
+    const { writeScene } = useStoryWriter()
+    const onChunk = vi.fn()
+    await writeScene({
+      sceneBrief: baseSceneBrief,
+      storyArc: defaultArc,
+      onChunk
+    })
+    const opts = mockAiStream.mock.calls[0][3]
+    expect(opts).toHaveProperty('complexity')
   })
 })
 

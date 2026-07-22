@@ -16,11 +16,17 @@ describe('OpenAI provider', () => {
   it('generate returns content on success', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ choices: [{ message: { content: 'Hello' } }] })
+      json: () => Promise.resolve({
+        choices: [{ message: { content: 'Hello' } }],
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }
+      })
     })
     const { generate } = await import('../../services/providers/openai')
     const result = await generate('test', 'sys', 'gpt-4', { apiKey: 'sk-test' })
-    expect(result).toBe('Hello')
+    expect(result).toEqual({
+      text: 'Hello',
+      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 }
+    })
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 

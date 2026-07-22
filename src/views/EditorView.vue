@@ -28,6 +28,7 @@ import StoryShapePanel from '../components/storyshape/StoryShapePanel.vue'
 import ConsistencyPanel from '../components/consistency/ConsistencyPanel.vue'
 import BetaReaderPanel from '../components/betareader/BetaReaderPanel.vue'
 import WhatIfPanel from '../components/whatif/WhatIfPanel.vue'
+import CostDashboard from '../components/cost/CostDashboard.vue'
 import ActivityToast from '../components/shared/ActivityToast.vue'
 import ActivityDrawer from '../components/shared/ActivityDrawer.vue'
 import AuthModal from '../components/auth/AuthModal.vue'
@@ -440,6 +441,9 @@ function handleOnboardingSkipWrapper() {
         <div v-else class="p-4 text-center text-text-secondary">
           AI features disabled — Ollama unavailable
         </div>
+      </template>
+      <template #cost-dashboard>
+        <CostDashboard />
       </template>
     </AppShell>
 

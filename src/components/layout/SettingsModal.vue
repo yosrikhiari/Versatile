@@ -28,6 +28,8 @@ import { STORAGE_KEYS } from '../../config/storageKeys'
 import { useLocalStorage } from '../../composables/useLocalStorage'
 import VoiceProfileDisplay from '../shared/VoiceProfileDisplay.vue'
 import VoiceUploadModal from './VoiceUploadModal.vue'
+import ActiveLearningPanel from '../eval/ActiveLearningPanel.vue'
+import { useActiveLearning } from '../../composables/useActiveLearning.js'
 
 const props = defineProps({
   show: Boolean
@@ -43,7 +45,10 @@ const selectedModel = useLocalStorage(STORAGE_KEYS.OLLAMA_MODEL, '')
 const openAIKey = ref('')
 const activeTab = ref('goals')
 const ollamaEndpoint = ref('')
+const newFallback = ref('')
 const testingConnection = ref(false)
+
+const activeLearning = useActiveLearning()
 const connectionStatus = ref(null)
 const showVoiceUpload = ref(false)
 
@@ -52,6 +57,7 @@ const tabOptions = [
   { key: 'ai', label: 'AI Providers' },
   { key: 'embedding', label: 'Embeddings' },
   { key: 'features', label: 'Features' },
+  { key: 'eval', label: 'Evaluation' },
   { key: 'voice', label: 'Voice' }
 ]
 
@@ -191,6 +197,36 @@ async function saveAllSettings() {
   emit('close')
 }
 
+const availableFallbacks = computed(() => {
+  const primary = settingsStore.aiProvider
+  const chain = settingsStore.aiFallbackChain
+  return PROVIDER_LIST.filter((p) => p !== primary && !chain.includes(p))
+})
+
+function addFallback() {
+  if (!newFallback.value) return
+  const chain = [...settingsStore.aiFallbackChain, newFallback.value]
+  settingsStore.setAIFallbackChain(chain)
+  newFallback.value = ''
+}
+
+function removeFallbackAt(index) {
+  const chain = settingsStore.aiFallbackChain.filter((_, i) => i !== index)
+  settingsStore.setAIFallbackChain(chain)
+}
+
+function updateFallbackAt(index, value) {
+  const chain = [...settingsStore.aiFallbackChain]
+  chain[index] = value
+  settingsStore.setAIFallbackChain(chain)
+}
+
+async function runActiveLearning() {
+  const pid = projectStore.currentProjectId
+  if (!pid) return
+  await activeLearning.analyze(pid)
+}
+
 watch(
   () => props.show,
   async (newVal) => {
@@ -280,21 +316,55 @@ watch(
                 </select>
               </div>
               <div>
-                <label for="fallback-provider" class="block text-xs text-text-secondary mb-1"
-                  >Fallback Provider</label
+                <label class="block text-xs text-text-secondary mb-1"
+                  >Fallback Chain</label
                 >
-                <select
-                  id="fallback-provider"
-                  :value="settingsStore.aiProviderFallback"
-                  class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                  @change="settingsStore.setAIProviderFallback($event.target.value)"
-                >
-                  <option value="none">No fallback</option>
-                  <option v-for="p in PROVIDER_LIST" :key="p" :value="p">
-                    {{ PROVIDER_LABELS[p] }}
-                  </option>
-                </select>
-                <p class="mt-1 text-2xs text-text-hint">Used when the primary provider fails.</p>
+                <div class="space-y-1.5">
+                  <div
+                    v-for="(fb, i) in settingsStore.aiFallbackChain"
+                    :key="i"
+                    class="flex gap-1.5 items-center"
+                  >
+                    <span class="text-2xs text-text-hint w-4 shrink-0">{{ i + 1 }}.</span>
+                    <select
+                      :value="fb"
+                      class="flex-1 px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+                      @change="updateFallbackAt(i, $event.target.value)"
+                    >
+                      <option v-for="p in PROVIDER_LIST" :key="p" :value="p">
+                        {{ PROVIDER_LABELS[p] }}
+                      </option>
+                    </select>
+                    <button
+                      class="text-text-hint hover:text-danger text-xs leading-none p-0.5"
+                      title="Remove"
+                      @click="removeFallbackAt(i)"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                </div>
+                <div class="mt-1.5 flex gap-1.5">
+                  <select
+                    v-model="newFallback"
+                    class="flex-1 px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+                  >
+                    <option value="" disabled>Select provider</option>
+                    <option v-for="p in availableFallbacks" :key="p" :value="p">
+                      {{ PROVIDER_LABELS[p] }}
+                    </option>
+                  </select>
+                  <button
+                    class="px-2 py-1 bg-accent text-white rounded text-xs hover:bg-accent-hover disabled:opacity-40"
+                    :disabled="!newFallback"
+                    @click="addFallback"
+                  >
+                    Add
+                  </button>
+                </div>
+                <p class="mt-1 text-2xs text-text-hint">
+                  Tried in order when the primary provider fails.
+                </p>
               </div>
             </div>
 
@@ -501,6 +571,26 @@ watch(
                 Uses Ollama locally. No API key needed.
               </div>
             </div>
+          </div>
+
+          <div v-if="activeTab === 'eval'" class="space-y-4">
+            <ActiveLearningPanel
+              :analysis-report="activeLearning.analysisReport.value"
+              :analysis-error="activeLearning.analysisError.value"
+              :is-analyzing="activeLearning.isAnalyzing.value"
+              :recommendations="activeLearning.recommendations.value"
+              :below-threshold-recs="activeLearning.belowThresholdRecs.value"
+              :no-data-recs="activeLearning.noDataRecs.value"
+              :has-actionable-items="activeLearning.hasActionableItems.value"
+              :calibration="activeLearning.calibration.value"
+              :get-custom-threshold="activeLearning.getCustomThreshold"
+              :set-custom-threshold="activeLearning.setCustomThreshold"
+              :get-calibration-example="activeLearning.getCalibrationExample"
+              :set-calibration-example="activeLearning.setCalibrationExample"
+              :reset-thresholds="activeLearning.resetThresholds"
+              :reset-all-for-workspace="activeLearning.resetAllForWorkspace"
+              @run-analysis="runActiveLearning"
+            />
           </div>
 
           <div v-if="activeTab === 'voice'" class="space-y-5">

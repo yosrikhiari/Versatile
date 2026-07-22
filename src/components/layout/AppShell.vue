@@ -195,6 +195,10 @@ function toggleBetaReader() {
   activePanelName.value = activePanelName.value === 'beta-reader' ? null : 'beta-reader'
 }
 
+function toggleCostDashboard() {
+  activePanelName.value = activePanelName.value === 'cost-dashboard' ? null : 'cost-dashboard'
+}
+
 function toggleSpark() {
   toggleStoryGenerator()
 }
@@ -243,7 +247,8 @@ function handleSidebarNav(name) {
     'story-shape': toggleStoryShape,
     consistency: toggleConsistency,
     'beta-reader': toggleBetaReader,
-    whatif: toggleWhatIf
+    whatif: toggleWhatIf,
+    'cost-dashboard': toggleCostDashboard
   }
   map[name]?.()
 }
@@ -263,7 +268,8 @@ defineExpose({
   toggleVoiceLab,
   toggleStoryShape,
   toggleConsistency,
-  toggleBetaReader
+  toggleBetaReader,
+  toggleCostDashboard
 })
 
 onMounted(async () => {
@@ -512,6 +518,13 @@ onMounted(async () => {
             class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
           >
             <slot name="beta-reader"></slot>
+          </aside>
+          <aside
+            v-else-if="activePanelName === 'cost-dashboard' && !flowMode && !focusMode"
+            key="cost-dashboard"
+            class="w-[380px] max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          >
+            <slot name="cost-dashboard"></slot>
           </aside>
         </Transition>
 

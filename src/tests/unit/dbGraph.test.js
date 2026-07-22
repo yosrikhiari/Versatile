@@ -9,8 +9,7 @@ vi.mock('./db-core', () => ({
     nodeParents: {},
     graphGroups: {},
     groupEdges: {}
-  },
-  deepPlain: vi.fn()
+  }
 }))
 
 let getNodePrefix

@@ -18,7 +18,7 @@ describe('Anthropic provider', () => {
     })
     const { generate } = await import('../../services/providers/anthropic')
     const result = await generate('test', 'sys', 'claude-3', { apiKey: 'sk-test' })
-    expect(result).toBe('Hello')
+    expect(result).toEqual({ text: 'Hello', usage: null })
   })
 
   it('generate throws on API error', async () => {

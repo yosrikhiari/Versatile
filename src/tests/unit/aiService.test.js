@@ -57,6 +57,13 @@ vi.mock('@/services/providers/groq', () => ({
   testConnection: vi.fn()
 }))
 
+vi.mock('@/services/aiProviderBudget', () => ({
+  providerBudget: { check: vi.fn(() => ({ allowed: true })), record: vi.fn() },
+  BudgetExceededError: class BudgetExceededError extends Error {
+    constructor(provider, reason) { super(reason); this.provider = provider }
+  }
+}))
+
 let aiService
 beforeEach(async () => {
   setActivePinia(createPinia())

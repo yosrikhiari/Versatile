@@ -44,7 +44,7 @@ describe('groq generate', () => {
       json: () => Promise.resolve({ choices: [{ message: { content: 'Hello world' } }] })
     })
     const result = await groq.generate('prompt', 'system', 'mixtral', { apiKey: 'key' })
-    expect(result).toBe('Hello world')
+    expect(result).toEqual({ text: 'Hello world', usage: null })
   })
 
   it('throws on non-ok response', async () => {
@@ -92,7 +92,7 @@ describe('groq generate', () => {
       json: () => Promise.resolve({ choices: [{ message: {} }] })
     })
     const result = await groq.generate('prompt', 'system', 'mixtral', { apiKey: 'key' })
-    expect(result).toBe('')
+    expect(result).toEqual({ text: '', usage: null })
   })
 })
 
