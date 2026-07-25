@@ -1,8 +1,9 @@
 import { EVAL_GATE_CONFIG } from '../config/evalGateConfig'
+import { DEFINITION_OF_MASTERPIECE } from '../config/definitionOfMasterpiece'
 import { getDimensionNames } from '../config/evalDimensions'
 import { useStoryCritic } from '../composables/useStoryCritic'
 
-function countWords(text) {
+export function countWords(text) {
   if (!text) return 0
   return text.trim().split(/\s+/).filter(Boolean).length
 }
@@ -114,4 +115,55 @@ export async function gateRevisionEffectiveness(
     regressions.push(`Score decreased by ${Math.abs(delta)} points after revision`)
   }
   return { pass: regressions.length === 0, failOn: cfg.failOn || 'block', delta, regressions }
+}
+
+export function gateProseQuality(critiqueResult, baselineWordCount, currentWordCount) {
+  const cfg = EVAL_GATE_CONFIG.proseQuality
+  if (!cfg.enabled) return { pass: true, failOn: 'none', flags: [] }
+
+  const flags = []
+  const dimScores = critiqueResult?.dimensionScores
+  if (dimScores) {
+    const values = Object.values(dimScores).filter((v) => typeof v === 'number')
+    if (values.length > 0) {
+      const avg = values.reduce((a, b) => a + b, 0) / values.length
+      const threshold = DEFINITION_OF_MASTERPIECE.proseQuality.minAvgDimensionScore
+      if (avg < threshold) {
+        flags.push(`Average dimension score ${avg.toFixed(1)} below threshold ${threshold}`)
+      }
+    }
+  }
+
+  const domBaseline = DEFINITION_OF_MASTERPIECE.proseBaseline
+  if (domBaseline && currentWordCount > 0) {
+    if (currentWordCount < domBaseline.minWordCount) {
+      flags.push(
+        `Prose length ${currentWordCount} words below absolute minimum ${domBaseline.minWordCount}`
+      )
+    } else if (currentWordCount > domBaseline.maxWordCount) {
+      flags.push(
+        `Prose length ${currentWordCount} words exceeds absolute maximum ${domBaseline.maxWordCount}`
+      )
+    }
+  }
+
+  if (baselineWordCount > 0 && currentWordCount > 0 && baselineWordCount !== currentWordCount) {
+    const ratio = currentWordCount / baselineWordCount
+    const { min, max } = DEFINITION_OF_MASTERPIECE.proseQuality.lengthRatio
+    if (ratio < min) {
+      flags.push(
+        `Word count ratio ${ratio.toFixed(2)} below minimum ${min} — prose may be truncated`
+      )
+    } else if (ratio > max) {
+      flags.push(
+        `Word count ratio ${ratio.toFixed(2)} exceeds maximum ${max} — prose may be bloated`
+      )
+    }
+  }
+
+  return {
+    pass: flags.length === 0,
+    failOn: cfg.failOn || 'block',
+    flags
+  }
 }

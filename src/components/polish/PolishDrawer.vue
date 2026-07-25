@@ -5,9 +5,9 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useCompactConversation } from '../../composables/useOllama'
 import { PROVIDER_LABELS, FEATURES } from '../../config/ai'
-import PolishAnnotation from './PolishAnnotation.vue'
+import PolishAnalysisArea from './PolishAnalysisArea.vue'
+import PolishLensBar from './PolishLensBar.vue'
 import SnippetsDrawer from './SnippetsDrawer.vue'
-import BaseIcon from '../shared/BaseIcon.vue'
 
 const polishStore = usePolishStore()
 const projectStore = useProjectStore()
@@ -45,49 +45,21 @@ onUnmounted(() => {
   polishStore.destroy()
 })
 
-const lensOptions = [
-  { key: 'weakVerbs', label: 'Weak Verbs' },
-  { key: 'repetition', label: 'Repetition' },
-  { key: 'pacing', label: 'Pacing' },
-  { key: 'clarity', label: 'Clarity Issues' }
-]
-
-const currentAnnotations = computed(() => {
-  if (polishStore.selectedParagraphIndex === null) return []
-  return polishStore.annotations.filter(
-    (a) => a.paragraphIndex === polishStore.selectedParagraphIndex && a.status === 'pending'
-  )
-})
-
 const lensIssueCounts = computed(() => {
+  const typeMap = {
+    weakVerbs: 'weak_verb',
+    repetition: 'repetition',
+    pacing: 'pacing',
+    clarity: 'unclear_references'
+  }
   const counts = {}
-  for (const lens of lensOptions) {
-    const typeMap = {
-      weakVerbs: 'weak_verb',
-      repetition: 'repetition',
-      pacing: 'pacing',
-      clarity: 'unclear_references'
-    }
-    const type = typeMap[lens.key]
-    counts[lens.key] = polishStore.annotations.filter(
+  for (const [key, type] of Object.entries(typeMap)) {
+    counts[key] = polishStore.annotations.filter(
       (a) => a.type === type && a.status === 'pending'
     ).length
   }
   return counts
 })
-
-const overallNote = computed(() => {
-  if (currentAnnotations.value.length > 0) {
-    return currentAnnotations.value[0].overallNote
-  }
-  return null
-})
-
-function toggleLens(key) {
-  const lenses = { ...polishStore.activeLenses }
-  lenses[key] = !lenses[key]
-  polishStore.setActiveLenses(lenses)
-}
 
 function handleParagraphClick(text, index) {
   polishStore.selectParagraph(text, index)
@@ -116,24 +88,6 @@ async function analyzeNow() {
   }
 }
 
-async function acceptAnnotation(id) {
-  if (projectStore.currentProjectId) {
-    await polishStore.acceptAnnotation(id, projectStore.currentProjectId, projectStore)
-  }
-}
-
-async function rejectAnnotation(id) {
-  if (projectStore.currentProjectId) {
-    await polishStore.rejectAnnotation(id, projectStore.currentProjectId)
-  }
-}
-
-async function flagAnnotation(id) {
-  if (projectStore.currentProjectId) {
-    await polishStore.flagForLater(id, projectStore.currentProjectId)
-  }
-}
-
 defineExpose({
   handleParagraphClick
 })
@@ -147,27 +101,17 @@ defineExpose({
     ]"
   >
     <div class="flex items-center justify-between px-4 py-2 border-b border-border-subtle">
-      <div class="flex gap-2">
-        <button
-          v-for="lens in lensOptions"
-          :key="lens.key"
-          :class="[
-            'px-2 py-1 text-xs rounded-full transition-colors font-ui relative focus:outline-none focus:ring-2 focus:ring-accent',
-            polishStore.activeLenses[lens.key]
-              ? 'bg-surface-hover text-accent'
-              : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-          ]"
-          @click="toggleLens(lens.key)"
-        >
-          {{ lens.label }}
-          <span
-            v-if="lensIssueCounts[lens.key] > 0 && polishStore.activeLenses[lens.key]"
-            class="ml-1 opacity-75"
-          >
-            {{ lensIssueCounts[lens.key] }}
-          </span>
-        </button>
-      </div>
+      <PolishLensBar
+        :active-lenses="polishStore.activeLenses"
+        :lens-issue-counts="lensIssueCounts"
+        @toggle="
+          (key) =>
+            polishStore.setActiveLenses({
+              ...polishStore.activeLenses,
+              [key]: !polishStore.activeLenses[key]
+            })
+        "
+      />
       <div class="flex items-center gap-2">
         <span
           class="text-2xs text-text-hint font-ui truncate max-w-[140px]"
@@ -208,6 +152,8 @@ defineExpose({
         </button>
         <button
           class="text-text-hint hover:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent rounded px-1"
+          :aria-expanded="expanded"
+          aria-label="Toggle compact view"
           @click="expanded = !expanded"
         >
           {{ expanded ? '▼' : '▲' }}
@@ -216,62 +162,18 @@ defineExpose({
     </div>
 
     <div class="flex-1 flex overflow-hidden">
-      <div class="flex-[3] p-4 overflow-y-auto border-r border-border-subtle">
-        <div v-if="polishStore.selectedParagraphIndex === null" class="text-center py-8">
-          <p class="text-sm italic text-text-hint">
-            Click any paragraph in the editor to analyze it
-          </p>
-        </div>
-
-        <div
-          v-else-if="polishStore.isAnalyzing"
-          class="flex flex-col items-center justify-center py-8 gap-4"
-        >
-          <div class="flex items-center gap-2 text-text-secondary">
-            <BaseIcon name="loader-2" :size="16" class="animate-spin" />
-            <span>Analyzing...</span>
-          </div>
-          <div class="w-full max-w-sm space-y-2">
-            <div class="h-3 bg-surface-hover rounded w-3/4 animate-pulse"></div>
-            <div class="h-3 bg-surface-hover rounded w-full animate-pulse"></div>
-            <div class="h-3 bg-surface-hover rounded w-5/6 animate-pulse"></div>
-          </div>
-        </div>
-
-        <div
-          v-else-if="currentAnnotations.length === 0 && !polishStore.error"
-          class="text-center py-8"
-        >
-          <p class="text-sm italic text-text-hint">No issues found — this paragraph looks clean</p>
-        </div>
-
-        <div
-          v-else-if="polishStore.error"
-          class="p-3 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-danger font-ui"
-        >
-          {{ polishStore.error }}
-        </div>
-
-        <div v-else class="space-y-4">
-          <div
-            v-if="overallNote"
-            class="bg-bg-secondary border-l-2 border-accent rounded-r-lg p-3 text-sm text-text-secondary italic"
-          >
-            {{ overallNote }}
-          </div>
-
-          <TransitionGroup name="fade-stagger" tag="div" class="space-y-4">
-            <PolishAnnotation
-              v-for="annotation in currentAnnotations"
-              :key="annotation.id"
-              :annotation="annotation"
-              @accept="acceptAnnotation"
-              @reject="rejectAnnotation"
-              @flag="flagAnnotation"
-            />
-          </TransitionGroup>
-        </div>
-      </div>
+      <PolishAnalysisArea
+        :is-analyzing="polishStore.isAnalyzing"
+        :selected-paragraph-index="polishStore.selectedParagraphIndex"
+        :annotations="polishStore.annotations"
+        :error="polishStore.error"
+        :project-id="projectStore.currentProjectId"
+        @accept="
+          (id) => polishStore.acceptAnnotation(id, projectStore.currentProjectId, projectStore)
+        "
+        @reject="(id) => polishStore.rejectAnnotation(id, projectStore.currentProjectId)"
+        @flag="(id) => polishStore.flagForLater(id, projectStore.currentProjectId)"
+      />
 
       <div class="flex-[2] p-4 overflow-y-auto">
         <SnippetsDrawer :snippets="polishStore.snippets" />
@@ -279,30 +181,3 @@ defineExpose({
     </div>
   </div>
 </template>
-
-<style scoped>
-.fade-stagger-enter-active {
-  animation: fadeIn 0.4s ease-out both;
-}
-
-.fade-stagger-leave-active {
-  transition: all 0.3s;
-}
-
-.fade-stagger-enter-from,
-.fade-stagger-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

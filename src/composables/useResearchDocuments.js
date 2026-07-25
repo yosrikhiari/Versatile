@@ -10,8 +10,10 @@ import {
   getAllChunksForProject
 } from '../services/researchDb'
 import { extractFileText } from '../services/pdfExtractorService'
+import { fetchUrlText } from '../services/webScraperService'
 import { chunkDocument } from '../services/documentChunker'
 import { useEmbeddingIndexer } from './useEmbeddingIndexer'
+import { useResearchEntityExtractor } from './useResearchEntityExtractor'
 
 const WARN_SIZE = 500000
 const FAST_MODE_THRESHOLD = 500000
@@ -56,6 +58,14 @@ export function useResearchDocuments(projectId) {
   const pendingImportInfo = ref({ files: [], totalChars: 0 })
   const truncationInfo = ref(null)
   const { enqueueChunks, clearDocumentProgress } = useEmbeddingIndexer()
+  const {
+    isExtracting,
+    extractionError: entityExtractionError,
+    lastResult: entityExtractionResult,
+    extractFromDocument,
+    acceptExtraction: acceptEntityExtraction,
+    clearResult: clearEntityExtraction
+  } = useResearchEntityExtractor(projectId)
 
   function confirmImport() {
     showSizeWarning.value = false
@@ -222,6 +232,108 @@ export function useResearchDocuments(projectId) {
     await loadDocuments()
   }
 
+  async function importFromUrl(url) {
+    importError.value = null
+    truncationInfo.value = null
+    isImporting.value = true
+    try {
+      importPercent.value = 5
+      importProgress.value = 'Fetching URL...'
+      await yieldToMain()
+
+      const { text, title } = await fetchUrlText(url, projectId.value)
+
+      if (!text.trim()) {
+        importError.value = 'No readable text could be extracted from this URL.'
+        return
+      }
+
+      let textContent = text
+      let wasTruncated = false
+      if (text.length > MAX_SIZE) {
+        textContent = truncateText(text)
+        wasTruncated = true
+      }
+
+      const sourceName = title || url.replace(/https?:\/\//, '').split('/')[0]
+      const sourceUrl = url
+
+      importPercent.value = 15
+      importProgress.value = `Processing "${sourceName}"...`
+      await yieldToMain()
+
+      const docId = await addResearchDocument({
+        projectId: projectId.value,
+        fileName: sourceName,
+        fileType: 'url',
+        text: textContent,
+        charCount: textContent.length,
+        importedAt: Date.now(),
+        sourceUrl
+      })
+
+      const segments = splitText(textContent)
+      const fastMode = textContent.length > FAST_MODE_THRESHOLD
+      const allDocTags = new Set()
+      let chunkIndex = 0
+      let totalChunks = 0
+
+      for (let s = 0; s < segments.length; s++) {
+        const basePct = Math.round((s / segments.length) * 75) + 15
+        importPercent.value = basePct
+        const modeLabel = fastMode ? ' [Fast Mode]' : ''
+        importProgress.value = `Chunking ${sourceName}${modeLabel} (segment ${s + 1}/${segments.length})...`
+        const segment = segments[s]
+        const chunks = await chunkDocument(segment, {
+          fastMode,
+          onProgress: (pct, msg) => {
+            importPercent.value = basePct + Math.round((pct / 100) * (75 / segments.length))
+            importProgress.value = `${sourceName}${modeLabel}: ${msg}`
+          }
+        })
+        const docTags = chunks.documentTags || []
+        for (const t of docTags) allDocTags.add(t)
+
+        const chunkRows = chunks.map((c, i) => ({
+          documentId: docId,
+          projectId: projectId.value,
+          text: c.text,
+          chunkIndex: chunkIndex + i,
+          heading: c.heading,
+          sentenceCount: c.sentenceCount,
+          charCount: c.charCount,
+          tokenEstimate: c.tokenEstimate,
+          tags: c.tags || []
+        }))
+
+        const ids = await addResearchChunks(chunkRows)
+        const idTextPairs = ids.map((id, i) => ({ id, text: chunks[i].text }))
+        enqueueChunks(docId, idTextPairs)
+
+        chunkIndex += chunks.length
+        totalChunks += chunks.length
+        await yieldToMain()
+      }
+
+      await db.researchDocuments.update(docId, { tags: [...allDocTags].slice(0, 20) })
+      importPercent.value = 98
+      importProgress.value = `Indexing ${sourceName} (${totalChunks} chunks)...`
+
+      if (wasTruncated) {
+        const mb = (text.length / 1000000).toFixed(1)
+        truncationInfo.value = `${sourceName} was ${mb}MB — truncated to ${(MAX_SIZE / 1000000).toFixed(0)}MB.`
+      }
+
+      importPercent.value = 100
+      importProgress.value = ''
+      await loadDocuments()
+    } catch (err) {
+      importError.value = err.message || 'URL import failed'
+    } finally {
+      isImporting.value = false
+    }
+  }
+
   async function getDocumentChunks(documentId) {
     return getChunksForDocument(documentId)
   }
@@ -324,6 +436,10 @@ export function useResearchDocuments(projectId) {
     await loadDocuments()
   }
 
+  async function extractEntities(documentId) {
+    return extractFromDocument(documentId)
+  }
+
   return {
     documents,
     isImporting,
@@ -335,12 +451,19 @@ export function useResearchDocuments(projectId) {
     truncationInfo,
     loadDocuments,
     importFiles,
+    importFromUrl,
     checkFileSizes,
     confirmImport,
     cancelImport,
     removeDocument,
     getDocumentChunks,
     getAllChunks,
-    reindexDocument
+    reindexDocument,
+    isExtracting,
+    entityExtractionError,
+    entityExtractionResult,
+    extractEntities,
+    acceptEntityExtraction,
+    clearEntityExtraction
   }
 }

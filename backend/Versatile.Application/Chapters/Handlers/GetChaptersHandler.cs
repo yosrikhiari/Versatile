@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using MediatR;
 using Versatile.Application.Chapters.Queries;
 using Versatile.Application.Common;
@@ -26,12 +27,19 @@ public class GetChaptersHandler : IRequestHandler<GetChaptersQuery, PagedRespons
         if (story is null || story.UserId != request.UserId || story.OrganizationId != request.OrganizationId)
             throw new KeyNotFoundException("Story not found");
 
-        var (chapters, totalCount) = await _chapters.GetPagedAsync(c => c.StoryId == request.StoryId, request.Page, request.PageSize, ct);
-        var items = chapters
-            .OrderBy(c => c.Order)
-            .Select(c => new ChapterDto(c.Id, c.StoryId, c.Title, c.Order, c.Status, c.ArcAssignment, c.CreatedAt, c.UpdatedAt))
-            .ToList();
-        return new PagedResponse<ChapterDto>(items, totalCount, request.Page, request.PageSize);
+        Expression<Func<Chapter, bool>> filter = c => c.StoryId == request.StoryId;
+
+        if (request.AfterId.HasValue)
+        {
+            var (chapters, hasNextPage) = await _chapters.GetPagedKeysetAsync(filter, request.PageSize, request.AfterId,
+                q => q.OrderBy(c => c.Order), ct);
+            var items = chapters.Select(c => new ChapterDto(c.Id, c.StoryId, c.Title, c.Order, c.Status, c.ArcAssignment, c.CreatedAt, c.UpdatedAt)).ToList();
+            return new PagedResponse<ChapterDto>(items, 0, 0, request.PageSize, hasNextPage ? items.Last().Id : null);
+        }
+
+        var (chaptersPaged, totalCount) = await _chapters.GetPagedAsync(filter, request.Page, request.PageSize, q => q.OrderBy(c => c.Order), ct);
+        var itemsPaged = chaptersPaged.Select(c => new ChapterDto(c.Id, c.StoryId, c.Title, c.Order, c.Status, c.ArcAssignment, c.CreatedAt, c.UpdatedAt)).ToList();
+        return new PagedResponse<ChapterDto>(itemsPaged, totalCount, request.Page, request.PageSize);
     }
 }
 

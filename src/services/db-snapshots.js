@@ -1,12 +1,18 @@
 import { db } from './db-core'
 
 export async function getSnapshots(projectId, chapterId = null) {
-  let query = db.snapshots.where('projectId').equals(projectId)
-  let results = await query.toArray()
   if (chapterId !== null) {
-    results = results.filter((s) => s.chapterId === chapterId)
+    return db.snapshots
+      .where('[projectId+chapterId]')
+      .equals([projectId, chapterId])
+      .toArray()
+      .then((arr) => arr.sort((a, b) => b.timestamp.localeCompare(a.timestamp)))
   }
-  return results.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+  return db.snapshots
+    .where('projectId')
+    .equals(projectId)
+    .toArray()
+    .then((arr) => arr.sort((a, b) => b.timestamp.localeCompare(a.timestamp)))
 }
 
 export async function addSnapshot(projectId, chapterId, content, label = '') {
@@ -29,9 +35,8 @@ export async function deleteSnapshot(id) {
 
 export async function getSceneSnapshots(projectId, chapterId) {
   return db.snapshots
-    .where('projectId')
-    .equals(projectId)
-    .filter((s) => s.chapterId === chapterId)
+    .where('[projectId+chapterId]')
+    .equals([projectId, chapterId])
     .toArray()
     .then((arr) => arr.sort((a, b) => b.timestamp.localeCompare(a.timestamp)))
 }

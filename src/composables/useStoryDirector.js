@@ -6,7 +6,7 @@ import { useProjectStore } from '../stores/projectStore'
 import { getAllChunksForProject } from '../services/researchDb'
 import { getEmbedding } from '../services/embeddingService'
 import { cosineSimilarity } from '../services/ollamaService'
-import { useLocalStorage } from './useLocalStorage'
+import { useLocalStorage } from '../utils/useLocalStorage'
 import { RESEARCH_KEYS } from '../config/researchKeys'
 import { sanitizeJson } from '../services/ai/aiHelpers'
 

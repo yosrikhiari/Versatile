@@ -2,7 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { useManuscriptContext } from '../../composables/useManuscriptContext'
 import { STORAGE_KEYS } from '../../config/storageKeys'
-import { useLocalStorage } from '../../composables/useLocalStorage'
+import { useLocalStorage } from '../../utils/useLocalStorage'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 defineProps({
@@ -137,9 +137,7 @@ defineExpose({
     <div v-if="contextPreview" class="pl-16 flex items-center gap-1.5 text-2xs text-text-hint">
       <BaseIcon name="file-text" :size="10" />
       <span>{{ contextPreview.label }}</span>
-      <span class="text-text-hint"
-        >({{ contextPreview.chars }}/{{ MAX_CONTEXT_CHARS }} chars)</span
-      >
+      <span class="text-text-hint">({{ contextPreview.chars }}/{{ MAX_CONTEXT_CHARS }} chars)</span>
       <span v-if="contextPreview.truncated" class="text-warning">truncated</span>
     </div>
   </div>

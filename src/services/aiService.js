@@ -12,9 +12,52 @@ import * as groqProvider from './providers/groq'
 import { useCostTrackingStore } from '../stores/costTrackingStore'
 import { computeCost } from '../config/modelPricing'
 import { providerBudget } from './aiProviderBudget'
+import { latencyBudget } from './latencyBudget'
+import { langfuseService } from './langfuseService'
+import * as aiResponseCache from './aiResponseCache'
+import { trackError } from '../composables/useErrorTracker'
+
+function makeLangfuseTrace(name, feature, provider, model) {
+  if (!langfuseService.isConfigured) return null
+  const traceId = crypto.randomUUID()
+  const generationId = crypto.randomUUID()
+  langfuseService.createTrace(traceId, {
+    name,
+    metadata: { feature, provider, model, timestamp: Date.now() }
+  })
+  langfuseService.createGeneration(traceId, generationId, {
+    name: `gen:${feature}`,
+    model,
+    provider,
+    input: name
+  })
+  return { traceId, generationId }
+}
+
+function endLangfuseGen(trace, output, usage, model, durationMs) {
+  if (!trace) return
+  const body = { output, model, metadata: { latencyMs: durationMs, status: 'success' } }
+  if (usage) {
+    body.usage = {
+      input: usage.promptTokens,
+      output: usage.completionTokens,
+      total: usage.totalTokens,
+      unit: 'TOKENS'
+    }
+  }
+  langfuseService.endGeneration(trace.generationId, body)
+}
+
+function failLangfuseGen(trace, error, durationMs) {
+  if (!trace) return
+  langfuseService.endGeneration(trace.generationId, {
+    error: error?.message || String(error),
+    metadata: { latencyMs: durationMs, status: 'error' }
+  })
+}
 
 const RETRYABLE_ERROR_PATTERNS = [
-  /timeout/i,
+  /(?:timeout|timed\s*out)/i,
   /rate limit/i,
   /429/i,
   /5\d{2}/i,
@@ -135,6 +178,65 @@ function slotFor(provider) {
   return semaphores.get(provider)
 }
 
+/**
+ * Idempotency tracker — deduplicates in-flight requests so identical calls
+ * that arrive before the first one completes share a single provider round-trip.
+ *
+ * Uses an LRU-ish Map keyed by SHA-256 hash of (provider, model, temperature,
+ * feature, systemPrompt, prompt). Entries are removed on settle (resolve or
+ * reject) so the Map stays small.
+ */
+const IDEMPOTENCY_TTL_MS = 60_000
+
+class IdempotencyTracker {
+  constructor() {
+    this._inFlight = new Map()
+  }
+
+  _hashKey(provider, model, temperature, feature, systemPrompt, prompt) {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(
+      JSON.stringify({ provider, model, temperature, feature, systemPrompt, prompt })
+    )
+    return crypto.subtle.digest('SHA-256', data).then((hashBuffer) => {
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+    })
+  }
+
+  async dedup(provider, model, temperature, feature, systemPrompt, prompt, factory) {
+    const key = await this._hashKey(provider, model, temperature, feature, systemPrompt, prompt)
+
+    const existing = this._inFlight.get(key)
+    if (existing) {
+      console.debug(`[aiService] idempotency hit for ${feature} on ${provider}/${model}`)
+      return existing.promise
+    }
+
+    const entry = { createdAt: Date.now() }
+    entry.promise = factory().finally(() => {
+      this._inFlight.delete(key)
+    })
+    this._inFlight.set(key, entry)
+
+    return entry.promise
+  }
+
+  _cleanup() {
+    const cutoff = Date.now() - IDEMPOTENCY_TTL_MS
+    for (const [key, entry] of this._inFlight) {
+      if (entry.createdAt < cutoff) this._inFlight.delete(key)
+    }
+  }
+
+  get size() {
+    return this._inFlight.size
+  }
+}
+
+export { IdempotencyTracker }
+export const idempotencyTracker = new IdempotencyTracker()
+
 /** Test seam: drop all semaphores so limits can be re-read between cases. */
 export function __resetSemaphores() {
   semaphores.clear()
@@ -212,7 +314,7 @@ export function resolveOptimalConfig(feature, options = {}) {
 function getFallbackChain(primary) {
   const store = useSettingsStore()
   const chain = [primary]
-  for (const fb of (store.aiFallbackChain || [])) {
+  for (const fb of store.aiFallbackChain || []) {
     if (fb && fb !== 'none' && fb !== primary && !chain.includes(fb)) {
       chain.push(fb)
     }
@@ -256,63 +358,98 @@ export async function aiGenerate(prompt, systemPrompt, options = {}) {
   const providerModule = PROVIDER_MAP[provider]
   if (!providerModule) throw new Error(`Unknown provider: ${provider}`)
 
-  const apiKey = await getApiKey(provider)
-  if (provider !== PROVIDERS.OLLAMA && !apiKey) {
-    throw new Error(`${provider} API key not configured. Please add it in Settings > AI Providers.`)
-  }
+  const cacheHit = await aiResponseCache.lookup(
+    provider,
+    model,
+    options.temperature,
+    feature,
+    systemPrompt,
+    prompt
+  )
+  if (cacheHit) return cacheHit
 
-  const providerOptions = {
-    apiKey: apiKey || undefined,
-    signal: options.signal,
-    temperature: options.temperature,
-    maxTokens: options.maxTokens,
-    stop: options.stop,
-    timeout: options.timeout
-  }
+  // Idempotency — dedup identical in-flight requests after the cache miss
+  return await idempotencyTracker.dedup(
+    provider,
+    model,
+    options.temperature,
+    feature,
+    systemPrompt,
+    prompt,
+    async () => {
+      const apiKey = await getApiKey(provider)
+      if (provider !== PROVIDERS.OLLAMA && !apiKey) {
+        throw new Error(
+          `${provider} API key not configured. Please add it in Settings > AI Providers.`
+        )
+      }
 
-  async function trackGenerate(providerName, model, opts) {
-    providerBudget.check(providerName)
-    const pm = providerName === provider ? providerModule : PROVIDER_MAP[providerName]
-    const result = await withRetry(
-      () =>
-        slotFor(providerName)(() =>
-          pm.generate(prompt, systemPrompt, model, opts)
-        ),
-      isRetryable,
-      { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
-    )
-    const { text, usage } = result
-    if (usage) {
-      const cost = computeCost(model, usage)
-      useCostTrackingStore().logCost({
-        model,
-        provider: providerName,
-        feature,
-        usage,
-        cost
-      })
-      providerBudget.record(providerName, usage.promptTokens + usage.completionTokens, cost)
-    }
-    return text
-  }
+      const providerOptions = {
+        apiKey: apiKey || undefined,
+        signal: options.signal,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        stop: options.stop,
+        timeout: options.timeout
+      }
 
-  return await withFallback(async (fbProvider) => {
-    if (fbProvider === provider) {
-      return await trackGenerate(provider, model, providerOptions)
+      async function trackGenerate(providerName, model, opts) {
+        providerBudget.check(providerName)
+        const pm = providerName === provider ? providerModule : PROVIDER_MAP[providerName]
+        const trace = makeLangfuseTrace('ai-generate', feature, providerName, model)
+        const start = performance.now()
+        try {
+          const result = await withRetry(
+            () =>
+              slotFor(providerName)(() =>
+                latencyBudget.wrap(feature, () => pm.generate(prompt, systemPrompt, model, opts))()
+              ),
+            isRetryable,
+            { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
+          )
+          const { text, usage } = result
+          const durationMs = performance.now() - start
+          endLangfuseGen(trace, text, usage, model, durationMs)
+          if (usage) {
+            const cost = computeCost(model, usage)
+            useCostTrackingStore().logCost({
+              model,
+              provider: providerName,
+              feature,
+              usage,
+              cost
+            })
+            providerBudget.record(providerName, usage.promptTokens + usage.completionTokens, cost)
+          }
+          aiResponseCache
+            .store(providerName, model, opts.temperature, feature, systemPrompt, prompt, text)
+            .catch(() => {})
+          return text
+        } catch (error) {
+          failLangfuseGen(trace, error, performance.now() - start)
+          throw error
+        }
+      }
+
+      return await withFallback(async (fbProvider) => {
+        if (fbProvider === provider) {
+          return await trackGenerate(provider, model, providerOptions)
+        }
+        const fbKey = await getApiKey(fbProvider)
+        if (fbProvider !== PROVIDERS.OLLAMA && !fbKey) {
+          throw new Error(`${fbProvider} API key not configured`)
+        }
+        const fbModel = defaultModelForProvider(fbProvider)
+        return await trackGenerate(fbProvider, fbModel, {
+          apiKey: fbKey || undefined,
+          signal: options.signal,
+          temperature: options.temperature,
+          maxTokens: options.maxTokens,
+          timeout: options.timeout
+        })
+      }, provider)
     }
-    const fbKey = await getApiKey(fbProvider)
-    if (fbProvider !== PROVIDERS.OLLAMA && !fbKey) {
-      throw new Error(`${fbProvider} API key not configured`)
-    }
-    const fbModel = defaultModelForProvider(fbProvider)
-    return await trackGenerate(fbProvider, fbModel, {
-      apiKey: fbKey || undefined,
-      signal: options.signal,
-      temperature: options.temperature,
-      maxTokens: options.maxTokens,
-      timeout: options.timeout
-    })
-  }, provider)
+  )
 }
 
 export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
@@ -352,21 +489,40 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
     : undefined
   const shouldRetry = (error) => !emittedAny && isRetryable(error)
 
+  const trace = makeLangfuseTrace('ai-stream', feature, provider, model)
+  const start = performance.now()
+  const endStreamTrace = (text, err) => {
+    if (!trace) return
+    if (err) {
+      failLangfuseGen(trace, err, performance.now() - start)
+    } else {
+      endLangfuseGen(trace, text, null, model, performance.now() - start)
+    }
+  }
+
   try {
     providerBudget.check(provider)
-    // A stream holds its slot for the whole response, which is deliberate: two
-    // concurrent streams against one local model is exactly what we are stopping.
-    return await withRetry(
+    const text = await withRetry(
       () =>
         slotFor(provider)(() =>
-          providerModule.stream(prompt, systemPrompt, model, trackedOnChunk, providerOptions)
+          latencyBudget.wrap(feature, () =>
+            providerModule.stream(prompt, systemPrompt, model, trackedOnChunk, providerOptions)
+          )()
         ),
       shouldRetry,
       { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
     )
+    endStreamTrace(text)
+    return text
   } catch (error) {
     if (emittedAny) throw error
-    return await withFallback(async (fbProvider) => {
+    // Primary provider failed before emitting anything — record it, then try fallback.
+    trackError(error, {
+      source: 'ai',
+      severity: 'warning',
+      context: { provider, feature, phase: 'primary-stream' }
+    })
+    const fbResult = await withFallback(async (fbProvider) => {
       if (fbProvider === provider) throw error
       providerBudget.check(fbProvider)
       const fbKey = await getApiKey(fbProvider)
@@ -375,15 +531,19 @@ export async function aiStream(prompt, systemPrompt, onChunk, options = {}) {
       }
       const fbModel = defaultModelForProvider(fbProvider)
       return await slotFor(fbProvider)(() =>
-        PROVIDER_MAP[fbProvider].stream(prompt, systemPrompt, fbModel, trackedOnChunk, {
-          apiKey: fbKey || undefined,
-          signal: options.signal,
-          temperature: options.temperature,
-          maxTokens: options.maxTokens,
-          timeout: options.timeout
-        })
+        latencyBudget.wrap(feature, () =>
+          PROVIDER_MAP[fbProvider].stream(prompt, systemPrompt, fbModel, trackedOnChunk, {
+            apiKey: fbKey || undefined,
+            signal: options.signal,
+            temperature: options.temperature,
+            maxTokens: options.maxTokens,
+            timeout: options.timeout
+          })
+        )()
       )
     }, provider)
+    endStreamTrace(fbResult)
+    return fbResult
   }
 }
 
@@ -408,30 +568,46 @@ export async function aiGenerateStructured(prompt, systemPrompt, options = {}) {
   const providerModule = PROVIDER_MAP[provider]
   if (!providerModule) throw new Error(`Unknown provider: ${provider}`)
 
+  const cacheHit = await aiResponseCache.lookup(
+    provider,
+    model,
+    options.temperature,
+    feature,
+    systemPrompt,
+    prompt
+  )
+  if (cacheHit) return cacheHit
+
   const apiKey = await getApiKey(provider)
   const hasKey = provider === PROVIDERS.OLLAMA || !!apiKey
 
   // 1) Native structured output when supported and we have a key.
   if (schema && hasKey && typeof providerModule.generateStructured === 'function') {
+    const trace = makeLangfuseTrace('ai-generate-structured', feature, provider, model)
+    const start = performance.now()
     try {
       providerBudget.check(provider)
       const result = await withRetry(
         () =>
           slotFor(provider)(() =>
-            providerModule.generateStructured(prompt, systemPrompt, model, schema, {
-              apiKey: apiKey || undefined,
-              signal: options.signal,
-              temperature: options.temperature,
-              maxTokens: options.maxTokens,
-              timeout: options.timeout,
-              schemaName: options.schemaName
-            })
+            latencyBudget.wrap(feature, () =>
+              providerModule.generateStructured(prompt, systemPrompt, model, schema, {
+                apiKey: apiKey || undefined,
+                signal: options.signal,
+                temperature: options.temperature,
+                maxTokens: options.maxTokens,
+                timeout: options.timeout,
+                schemaName: options.schemaName
+              })
+            )()
           ),
         isRetryable,
         { maxRetries: options.maxRetries, retryDelay: options.retryDelay }
       )
       if (result && typeof result === 'object') {
         const { data, usage } = result
+        const durationMs = performance.now() - start
+        endLangfuseGen(trace, JSON.stringify(data), usage, model, durationMs)
         if (usage) {
           const cost = computeCost(model, usage)
           useCostTrackingStore().logCost({
@@ -443,11 +619,15 @@ export async function aiGenerateStructured(prompt, systemPrompt, options = {}) {
           })
           providerBudget.record(provider, usage.promptTokens + usage.completionTokens, cost)
         }
+        const output = typeof data === 'string' ? data : JSON.stringify(data)
+        aiResponseCache
+          .store(provider, model, options.temperature, feature, systemPrompt, prompt, output)
+          .catch(() => {})
         return data
       }
     } catch (err) {
-      // Native path failed (unsupported model, strict-schema rejection, …) —
-      // fall through to the text + sanitizeJson path below.
+      failLangfuseGen(trace, err, performance.now() - start)
+      // Native path failed — fall through to the text + sanitizeJson path below.
       console.warn('[aiGenerateStructured] native structured output failed, falling back:', err)
     }
   }
@@ -477,4 +657,4 @@ export async function aiListModels() {
   return await ollamaProvider.listModels()
 }
 
-export { ollamaProvider }
+export { ollamaProvider, isRetryable }

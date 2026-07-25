@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { analyzePolish } from '../composables/useOllama'
+import { analyzePolish } from '../services/generation/polishAnalysis'
 import { LENS_MAP } from '../config/statuses'
 import {
   getAnnotations,
@@ -11,7 +11,7 @@ import {
   deleteSnippet,
   incrementSnippetWord
 } from '../services/dbService'
-import { useLocalStorage } from '../composables/useLocalStorage'
+import { useLocalStorage } from '../utils/useLocalStorage'
 import { STORAGE_KEYS } from '../config/storageKeys'
 
 export const usePolishStore = defineStore('polish', () => {

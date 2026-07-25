@@ -5,8 +5,6 @@ export const TABLES = {
   CHARACTER_RELATIONSHIPS: 'characterRelationships',
   LOCATIONS: 'locations',
   PLOT_THREADS: 'plotThreads',
-  CHAPTERS: 'chapters',
-  SCENES: 'scenes',
   SPARK_HISTORY: 'sparkHistory',
   ANNOTATIONS: 'annotations',
   SNIPPETS: 'snippets',
@@ -15,8 +13,7 @@ export const TABLES = {
   STORY_ELEMENTS: 'storyElements',
   GRAPH_EDGES: 'graphEdges',
   GROUP_EDGES: 'groupEdges',
-  NODE_POSITIONS: 'nodePositions',
-  GRAPH_GROUPS: 'graphGroups',
+
   SNAPSHOTS: 'snapshots',
   VOLUMES: 'volumes',
   VOLUME_ENTITIES: 'volumeEntities',
@@ -40,7 +37,11 @@ export const TABLES = {
   GEN_RUNS: 'genRuns',
   PROJECT_BLURBS: 'projectBlurbs',
   EVAL_RESULTS: 'evalResults',
-  BRANCHES: 'branches'
+  BRANCHES: 'branches',
+  GRAPH_NODE_POSITIONS: 'graphNodePositions',
+  GRAPH_GROUPS_V2: 'graphGroupsV2',
+  GRAPH_NODE_PARENTS: 'graphNodeParents',
+  GRAPH_NODE_INSTANCES: 'graphNodeInstances'
 }
 
 export const SYNC_FIELDS = 'apiId, syncStatus, lastSyncedAt'

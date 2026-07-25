@@ -16,7 +16,7 @@ public class CreateEntityHandler : IRequestHandler<CreateEntityCommand, EntityDt
     {
         var story = await _stories.GetByIdForOrganizationAsync(request.StoryId, request.OrganizationId!.Value, ct);
         if (story is null || story.UserId != request.UserId) throw new KeyNotFoundException("Story not found");
-        var entity = new Entity { StoryId = request.StoryId, Name = request.Name, Type = request.Type, Description = request.Description, Metadata = request.Metadata, UserId = request.UserId, OrganizationId = request.OrganizationId };
+        var entity = new Entity { StoryId = request.StoryId, Name = request.Name, Type = request.Type, Description = request.Description ?? string.Empty, Metadata = request.Metadata, UserId = request.UserId, OrganizationId = request.OrganizationId };
         await _entities.AddAsync(entity, ct);
         await _unitOfWork.SaveChangesAsync(ct);
         return ToDto(entity);

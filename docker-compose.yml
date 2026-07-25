@@ -16,5 +16,16 @@ services:
       timeout: 5s
       retries: 5
 
+  # Optional static frontend (nginx). Enable with:  docker compose --profile frontend up
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: versatile-frontend
+    profiles: ['frontend']
+    ports:
+      - '8080:80'
+    restart: unless-stopped
+
 volumes:
   pgdata:

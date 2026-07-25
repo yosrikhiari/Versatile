@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { visualizer } from 'rollup-plugin-visualizer'
+import viteCompression from 'vite-plugin-compression'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -37,14 +39,55 @@ function debugSnapshotPlugin() {
 }
 
 export default defineConfig({
-  plugins: [vue(), debugSnapshotPlugin()],
+  plugins: [
+    vue(),
+    debugSnapshotPlugin(),
+    // Pre-compress build output so a CDN/nginx can serve .br/.gz via content negotiation.
+    // Only assets >1 KB are compressed; originals are kept for clients without br/gzip.
+    viteCompression({
+      algorithm: 'brotliCompress',
+      ext: '.br',
+      threshold: 1024,
+      deleteOriginFile: false
+    }),
+    viteCompression({ algorithm: 'gzip', ext: '.gz', threshold: 1024, deleteOriginFile: false }),
+    process.env.ANALYZE === 'true' &&
+      visualizer({
+        open: true,
+        filename: 'debug/bundle-stats.html',
+        gzipSize: true,
+        brotliSize: true
+      })
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
     }
   },
   build: {
-    chunkSizeWarningLimit: 2500
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/vue') ||
+            id.includes('node_modules/pinia') ||
+            id.includes('node_modules/vue-router') ||
+            id.includes('node_modules/vueuse') ||
+            id.includes('node_modules/vuedraggable') ||
+            id.includes('node_modules/focus-trap')
+          )
+            return 'vendor-vue'
+          if (id.includes('node_modules/@tiptap')) return 'vendor-tiptap'
+          if (id.includes('node_modules/@vue-flow')) return 'vendor-flow'
+          if (id.includes('node_modules/dexie')) return 'vendor-dexie'
+          if (id.includes('node_modules/jspdf') || id.includes('node_modules/pdfjs'))
+            return 'vendor-pdf'
+          if (id.includes('node_modules/lucide-vue')) return 'vendor-lucide'
+          if (id.includes('node_modules')) return 'vendor-misc'
+        }
+      }
+    }
   },
   server: {
     watch: {

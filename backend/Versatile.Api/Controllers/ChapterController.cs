@@ -19,11 +19,11 @@ public class ChapterController : ApiControllerBase
 
 
     [HttpGet, Cacheable(60)]
-    public async Task<ActionResult<PagedResponse<ChapterDto>>> GetAll(Guid storyId, [FromQuery] PagedRequest paged)
+    public async Task<ActionResult<PagedResponse<ChapterDto>>> GetAll(Guid storyId, [FromQuery] PagedRequest paged, [FromQuery] Guid? afterId = null)
     {
         try
         {
-            return Ok(await _mediator.Send(new GetChaptersQuery(storyId, OrganizationId, UserId, paged.Page, paged.PageSize)));
+            return Ok(await _mediator.Send(new GetChaptersQuery(storyId, OrganizationId, UserId, paged.Page, paged.PageSize, afterId)));
         }
         catch (KeyNotFoundException ex)
         {

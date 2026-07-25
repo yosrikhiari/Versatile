@@ -14,7 +14,7 @@ public class GetResearchChunksHandler : IRequestHandler<GetResearchChunksQuery, 
     public async Task<List<ResearchChunkDto>> Handle(GetResearchChunksQuery request, CancellationToken ct)
     {
         var chunks = await _repo.GetAllAsync(
-            c => c.StoryId == request.StoryId && c.UserId == request.UserId, ct);
+            c => c.StoryId == request.StoryId && c.UserId == request.UserId && c.OrganizationId == request.OrganizationId, ct);
         return chunks.OrderBy(c => c.ChunkIndex)
             .Select(c => new ResearchChunkDto(c.Id, c.StoryId, c.DocumentId, c.ChunkIndex, c.Content, c.Embedding!, c.CreatedAt))
             .ToList();

@@ -9,7 +9,6 @@ public class CreateResearchChunkValidator : AbstractValidator<CreateResearchChun
     {
         RuleFor(v => v.DocumentId).NotEmpty();
         RuleFor(v => v.StoryId).NotEmpty();
-        RuleFor(v => v.Content).NotEmpty();
     }
 }
 

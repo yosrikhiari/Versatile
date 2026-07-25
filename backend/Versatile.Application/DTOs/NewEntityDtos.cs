@@ -120,3 +120,7 @@ public record UpdateResearchChunkRequest(int? ChunkIndex, string? Content, strin
 public record ResearchTagDto(Guid Id, Guid StoryId, string Name, string Color);
 public record CreateResearchTagRequest(string Name, string? Color);
 public record UpdateResearchTagRequest(string? Name, string? Color);
+
+// FetchUrl
+public record FetchUrlRequest(string Url);
+public record FetchUrlResponse(string Title, string Html, int StatusCode);

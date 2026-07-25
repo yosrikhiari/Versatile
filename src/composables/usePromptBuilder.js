@@ -1,4 +1,3 @@
-
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 import { summarizeLog } from '../utils/promptUtils'
 
@@ -31,6 +30,11 @@ function buildBriefSection(sceneBrief) {
 
   if (sceneBrief.emotionalGoal !== undefined && sceneBrief.arcPosition) {
     lines.push(`- Arc position: ${sceneBrief.arcPosition}`)
+  }
+
+  if (sceneBrief.sectionRole) {
+    lines.push(`- Section role: ${sceneBrief.sectionRole}`)
+    lines.push(`- This is section ${sceneBrief.sectionIndex} of ${sceneBrief.totalSections}`)
   }
 
   return lines.join('\n')

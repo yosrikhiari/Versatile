@@ -13,27 +13,24 @@ export async function getEvalResultsByProject(projectId) {
 
 export async function getEvalResultsByScene(projectId, sceneId) {
   return db.evalResults
-    .where('projectId')
-    .equals(projectId)
-    .filter((r) => r.sceneId === sceneId)
+    .where('[projectId+sceneId]')
+    .equals([projectId, sceneId])
     .reverse()
     .toArray()
 }
 
 export async function getEvalResultsByType(projectId, evalType) {
   return db.evalResults
-    .where('projectId')
-    .equals(projectId)
-    .filter((r) => r.evalType === evalType)
+    .where('[projectId+evalType]')
+    .equals([projectId, evalType])
     .reverse()
     .sortBy('timestamp')
 }
 
 export async function getLatestEvalResult(projectId, sceneId, evalType) {
   const results = await db.evalResults
-    .where('projectId')
-    .equals(projectId)
-    .filter((r) => r.sceneId === sceneId && r.evalType === evalType)
+    .where('[projectId+sceneId+evalType]')
+    .equals([projectId, sceneId, evalType])
     .reverse()
     .toArray()
   return results.length > 0 ? results[results.length - 1] : null
@@ -41,9 +38,8 @@ export async function getLatestEvalResult(projectId, sceneId, evalType) {
 
 export async function getEvalScoreHistory(projectId, evalType, limit = 50) {
   const results = await db.evalResults
-    .where('projectId')
-    .equals(projectId)
-    .filter((r) => r.evalType === evalType)
+    .where('[projectId+evalType]')
+    .equals([projectId, evalType])
     .reverse()
     .sortBy('timestamp')
   return results.slice(-limit)
@@ -51,9 +47,8 @@ export async function getEvalScoreHistory(projectId, evalType, limit = 50) {
 
 export async function getAggregateStats(projectId) {
   const all = await db.evalResults
-    .where('projectId')
-    .equals(projectId)
-    .filter((r) => r.evalType === 'critique')
+    .where('[projectId+evalType]')
+    .equals([projectId, 'critique'])
     .toArray()
 
   if (all.length === 0) return null

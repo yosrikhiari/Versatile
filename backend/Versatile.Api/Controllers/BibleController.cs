@@ -18,11 +18,11 @@ public class BibleController : ApiControllerBase
     public BibleController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
     [HttpGet, Cacheable(300)]
-    public async Task<ActionResult<PagedResponse<BibleEntryDto>>> GetAll(Guid storyId, [FromQuery] PagedRequest paged)
+    public async Task<ActionResult<PagedResponse<BibleEntryDto>>> GetAll(Guid storyId, [FromQuery] PagedRequest paged, [FromQuery] Guid? afterId = null)
     {
         try
         {
-            return Ok(await _mediator.Send(new GetBibleEntriesQuery(storyId, OrganizationId, UserId, paged.Page, paged.PageSize)));
+            return Ok(await _mediator.Send(new GetBibleEntriesQuery(storyId, OrganizationId, UserId, paged.Page, paged.PageSize, afterId)));
         }
         catch (KeyNotFoundException ex)
         {

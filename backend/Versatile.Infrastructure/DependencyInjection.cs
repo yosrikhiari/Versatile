@@ -16,23 +16,32 @@ namespace Versatile.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, bool useNpgsql = true)
     {
         services.AddScoped<TenantSessionInterceptor>();
         services.AddScoped<AuditSaveChangesInterceptor>();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured");
-
-        services.AddDbContext<ApplicationDbContext>((sp, options) =>
+        if (useNpgsql)
         {
-            var tenantInterceptor = sp.GetRequiredService<TenantSessionInterceptor>();
-            var auditInterceptor = sp.GetRequiredService<AuditSaveChangesInterceptor>();
-            options.UseNpgsql(connectionString, npgsql =>
-                    npgsql.EnableRetryOnFailure(3, TimeSpan.FromSeconds(2), null)
-                           .MigrationsAssembly(typeof(DependencyInjection).Assembly.FullName))
-                   .AddInterceptors(tenantInterceptor, auditInterceptor);
-        }, ServiceLifetime.Scoped, ServiceLifetime.Scoped);
+            var connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured");
+
+            services.AddDbContext<ApplicationDbContext>((sp, options) =>
+            {
+                var tenantInterceptor = sp.GetRequiredService<TenantSessionInterceptor>();
+                var auditInterceptor = sp.GetRequiredService<AuditSaveChangesInterceptor>();
+                options.UseNpgsql(connectionString, npgsql =>
+                        npgsql.EnableRetryOnFailure(3, TimeSpan.FromSeconds(2), null)
+                               .MigrationsAssembly(typeof(DependencyInjection).Assembly.FullName))
+                       .AddInterceptors(tenantInterceptor, auditInterceptor);
+            }, ServiceLifetime.Scoped, ServiceLifetime.Scoped);
+        }
+        else
+        {
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseInMemoryDatabase("Versatile_Test"),
+                ServiceLifetime.Scoped, ServiceLifetime.Scoped);
+        }
 
         services.AddScoped<DbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork, UnitOfWork>();

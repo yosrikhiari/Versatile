@@ -46,35 +46,11 @@ export { analyzePolish } from '../services/generation/polishAnalysis'
 // --- Entity detection ---
 export { detectEntities } from '../services/generation/entityDetection'
 
-import { aiGenerate } from './useAiService'
-import { FEATURES } from '../config/ai'
-import {
-  hasOpenAIKey,
-  hasPromptedForOpenAI,
-  setStoredOpenAIKey,
-  setPromptedForOpenAI
-} from '../services/ollamaService'
+import { hasOpenAIKey, setStoredOpenAIKey, setPromptedForOpenAI } from '../services/ollamaService'
 
-const TEST_PROMPT = `Respond with 'OK' only. No other text.`
-
-export async function testOllamaConnection() {
-  if (await hasOpenAIKey()) {
-    return { success: true, message: 'Using OpenAI' }
-  }
-
-  try {
-    const response = await aiGenerate(TEST_PROMPT, 'You are a helpful assistant.', {
-      feature: FEATURES.CONTENT
-    })
-    const trimmed = response.trim().toUpperCase()
-    return { success: trimmed === 'OK', message: trimmed }
-  } catch {
-    if (hasPromptedForOpenAI()) {
-      return { success: false, message: 'Ollama unavailable. OpenAI not configured.' }
-    }
-    return { success: false, message: 'Connection failed' }
-  }
-}
+// testOllamaConnection now lives in services/ollamaService (M-7.4); re-exported
+// here so existing composable-path importers keep working.
+export { testOllamaConnection } from '../services/ollamaService'
 
 export async function saveOpenAIKey(key) {
   await setStoredOpenAIKey(key)

@@ -23,13 +23,15 @@
       <div v-else-if="hasDrift" class="alert alert-warning">
         Drift detected — review changes below
       </div>
-      <div v-else class="alert alert-success">
-        No significant drift detected
-      </div>
+      <div v-else class="alert alert-success">No significant drift detected</div>
 
       <div v-if="flaggedRegressions.length > 0" class="drift-section">
         <h4 class="drift-section-title">Regressions</h4>
-        <div v-for="r in flaggedRegressions" :key="`reg-${r.workspaceType}-${r.dimension}`" class="drift-item regression">
+        <div
+          v-for="r in flaggedRegressions"
+          :key="`reg-${r.workspaceType}-${r.dimension}`"
+          class="drift-item regression"
+        >
           <div class="drift-item-header">
             <span class="dimension-badge" :class="r.severity">{{ r.severity }}</span>
             <strong>{{ r.workspaceType }}</strong> / {{ r.dimension }}
@@ -44,7 +46,11 @@
 
       <div v-if="flaggedImprovements.length > 0" class="drift-section">
         <h4 class="drift-section-title">Improvements</h4>
-        <div v-for="r in flaggedImprovements" :key="`imp-${r.workspaceType}-${r.dimension}`" class="drift-item improvement">
+        <div
+          v-for="r in flaggedImprovements"
+          :key="`imp-${r.workspaceType}-${r.dimension}`"
+          class="drift-item improvement"
+        >
           <div class="drift-item-header">
             <span class="dimension-badge">improvement</span>
             <strong>{{ r.workspaceType }}</strong> / {{ r.dimension }}
@@ -58,7 +64,11 @@
 
       <div v-if="flaggedVolatility.length > 0" class="drift-section">
         <h4 class="drift-section-title">Volatility Increases</h4>
-        <div v-for="r in flaggedVolatility" :key="`vol-${r.workspaceType}-${r.dimension}`" class="drift-item volatility">
+        <div
+          v-for="r in flaggedVolatility"
+          :key="`vol-${r.workspaceType}-${r.dimension}`"
+          class="drift-item volatility"
+        >
           <div class="drift-item-header">
             <span class="dimension-badge">volatility</span>
             <strong>{{ r.workspaceType }}</strong> / {{ r.dimension }}
@@ -71,8 +81,9 @@
       </div>
 
       <p v-if="driftReport" class="drift-meta">
-        {{ driftReport.summary.totalEvals }} evals across {{ driftReport.summary.workspacesAnalyzed }} workspaces
-        &middot; {{ driftReport.generatedAt }}
+        {{ driftReport.summary.totalEvals }} evals across
+        {{ driftReport.summary.workspacesAnalyzed }} workspaces &middot;
+        {{ driftReport.generatedAt }}
       </p>
     </template>
   </div>
@@ -118,7 +129,9 @@ defineEmits(['run-analysis'])
   vertical-align: middle;
 }
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .alert {
   padding: 0.75rem 1rem;
@@ -128,19 +141,19 @@ defineEmits(['run-analysis'])
   font-weight: 500;
 }
 .alert-danger {
-  background: rgba(208, 112, 112, 0.1);
-  border: 1px solid rgba(208, 112, 112, 0.3);
-  color: #d07070;
+  background: color-mix(in srgb, var(--vers-status-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vers-status-danger) 30%, transparent);
+  color: var(--vers-status-danger);
 }
 .alert-warning {
-  background: rgba(212, 167, 74, 0.1);
-  border: 1px solid rgba(212, 167, 74, 0.3);
-  color: #d4a74a;
+  background: color-mix(in srgb, var(--vers-status-warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vers-status-warning) 30%, transparent);
+  color: var(--vers-status-warning);
 }
 .alert-success {
-  background: rgba(106, 158, 122, 0.1);
-  border: 1px solid rgba(106, 158, 122, 0.3);
-  color: #6a9e7a;
+  background: color-mix(in srgb, var(--vers-status-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vers-status-success) 30%, transparent);
+  color: var(--vers-status-success);
 }
 .drift-section {
   margin-bottom: 0.75rem;
@@ -160,13 +173,13 @@ defineEmits(['run-analysis'])
   font-size: 0.85rem;
 }
 .drift-item.regression {
-  border-left: 3px solid #d07070;
+  border-left: 3px solid var(--vers-status-danger);
 }
 .drift-item.improvement {
-  border-left: 3px solid #6a9e7a;
+  border-left: 3px solid var(--vers-status-success);
 }
 .drift-item.volatility {
-  border-left: 3px solid #d4a74a;
+  border-left: 3px solid var(--vers-status-warning);
 }
 .drift-item-header {
   display: flex;
@@ -183,8 +196,8 @@ defineEmits(['run-analysis'])
   text-transform: uppercase;
 }
 .dimension-badge.high {
-  background: rgba(208, 112, 112, 0.2);
-  color: #d07070;
+  background: color-mix(in srgb, var(--vers-status-danger) 20%, transparent);
+  color: var(--vers-status-danger);
 }
 .drift-item-stats {
   display: flex;

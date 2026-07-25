@@ -5,10 +5,16 @@ module.exports = {
     es2020: true,
     node: true
   },
-  extends: ['plugin:vue/vue3-recommended', 'prettier'],
+  extends: ['plugin:vue/vue3-recommended', 'prettier', 'plugin:storybook/recommended'],
   parserOptions: {
     ecmaVersion: 'latest',
-    sourceType: 'module'
+    sourceType: 'module',
+    // Let vue-eslint-parser delegate `<script lang="ts">` blocks to the TS parser
+    // while keeping plain-JS `<script>` on the default parser (M-6.3).
+    parser: {
+      ts: '@typescript-eslint/parser',
+      '<template>': 'espree'
+    }
   },
   rules: {
     'vue/multi-word-component-names': 'off',
@@ -17,6 +23,23 @@ module.exports = {
   },
   ignorePatterns: ['dist', 'node_modules', '*.config.js', '*.config.cjs'],
   overrides: [
+    {
+      // TypeScript sources: parse with @typescript-eslint so `.ts` files lint
+      // instead of hard-erroring on `interface` / type annotations (M-6.3).
+      files: ['**/*.ts'],
+      parser: '@typescript-eslint/parser',
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module'
+      },
+      plugins: ['@typescript-eslint'],
+      extends: ['plugin:@typescript-eslint/recommended', 'prettier'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+        'no-unused-vars': 'off'
+      }
+    },
     {
       files: ['src/services/**/*.{js,ts}'],
       rules: {

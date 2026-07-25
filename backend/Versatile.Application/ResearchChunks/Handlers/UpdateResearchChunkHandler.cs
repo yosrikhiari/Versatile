@@ -20,7 +20,7 @@ public class UpdateResearchChunkHandler : IRequestHandler<UpdateResearchChunkCom
     public async Task<ResearchChunkDto> Handle(UpdateResearchChunkCommand request, CancellationToken ct)
     {
         var chunks = await _repo.GetAllAsync(
-            c => c.Id == request.Id && c.UserId == request.UserId, ct);
+            c => c.Id == request.Id && c.UserId == request.UserId && c.OrganizationId == request.OrganizationId, ct);
         var chunk = chunks.FirstOrDefault() ?? throw new KeyNotFoundException("Research chunk not found");
 
         if (request.ChunkIndex.HasValue) chunk.ChunkIndex = request.ChunkIndex.Value;

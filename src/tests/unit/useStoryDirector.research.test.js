@@ -3,7 +3,14 @@ import { setActivePinia, createPinia } from 'pinia'
 
 const mockAiGenerate = vi.fn()
 const mockGetAllChunks = vi.fn()
-const mockProjectStore = { activeWorkspaceType: 'creative', currentProjectId: 'proj-1' }
+const mockProjectStore = {
+  activeWorkspaceType: 'creative',
+  currentProjectId: 'proj-1',
+  getActivePrompts: () => ({
+    director: 'You are a story director.',
+    critic: 'You are a story critic.'
+  })
+}
 
 const mockAiStream = vi.fn(async (user, system, onChunk, opts) => {
   const res = await mockAiGenerate(user, system, opts)

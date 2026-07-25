@@ -120,6 +120,28 @@ export function hasPromptedForOpenAI() {
   return localStorage.getItem(STORAGE_KEYS.OPENAI_FALLBACK_PROMPTED) === 'true'
 }
 
+const CONNECTION_TEST_PROMPT = `Respond with 'OK' only. No other text.`
+
+// Moved here from useOllama.js so stores can test connectivity without importing
+// a composable (M-7.4). useOllama re-exports it for backward compatibility.
+export async function testOllamaConnection() {
+  if (await hasOpenAIKey()) {
+    return { success: true, message: 'Using OpenAI' }
+  }
+  try {
+    const response = await aiGenerate(CONNECTION_TEST_PROMPT, 'You are a helpful assistant.', {
+      feature: FEATURES.CONTENT
+    })
+    const trimmed = response.trim().toUpperCase()
+    return { success: trimmed === 'OK', message: trimmed }
+  } catch {
+    if (hasPromptedForOpenAI()) {
+      return { success: false, message: 'Ollama unavailable. OpenAI not configured.' }
+    }
+    return { success: false, message: 'Connection failed' }
+  }
+}
+
 export function setPromptedForOpenAI() {
   // STORAGE_KEYS ref
   localStorage.setItem(STORAGE_KEYS.OPENAI_FALLBACK_PROMPTED, 'true')

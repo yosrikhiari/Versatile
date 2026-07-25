@@ -4,7 +4,13 @@ import path from 'path'
 
 const mockAiGenerate = vi.fn()
 const { mockStore } = vi.hoisted(() => ({
-  mockStore: { activeWorkspaceType: 'creative' }
+  mockStore: {
+    activeWorkspaceType: 'creative',
+    getActivePrompts: () => ({
+      critic: 'You are a story critic.',
+      director: 'You are a story director.'
+    })
+  }
 }))
 
 vi.mock('../../services/aiService', () => ({

@@ -14,7 +14,7 @@ public class GetResearchDocumentByIdHandler : IRequestHandler<GetResearchDocumen
     public async Task<ResearchDocumentDto> Handle(GetResearchDocumentByIdQuery request, CancellationToken ct)
     {
         var docs = await _repo.GetAllAsync(
-            d => d.Id == request.Id && d.UserId == request.UserId, ct);
+            d => d.Id == request.Id && d.UserId == request.UserId && d.OrganizationId == request.OrganizationId, ct);
         var doc = docs.FirstOrDefault() ?? throw new KeyNotFoundException("Research document not found");
         return new ResearchDocumentDto(doc.Id, doc.StoryId, doc.FileName, doc.FileType, doc.ImportedAt, doc.Content!, doc.Notes!, doc.CreatedAt);
     }

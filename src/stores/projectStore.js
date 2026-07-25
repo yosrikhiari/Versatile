@@ -17,7 +17,7 @@ import {
 import { countWords, stripHtmlTags } from '../utils/textUtils'
 import { WORKSPACE_TYPES, WORKSPACE_TERMINOLOGY } from '../config/workspace'
 import { STORAGE_KEYS } from '../config/storageKeys'
-import { useLocalStorage } from '../composables/useLocalStorage'
+import { useLocalStorage } from '../utils/useLocalStorage'
 import { getSyncEngine } from '../services/sync-engine'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 
@@ -91,10 +91,7 @@ export const useProjectStore = defineStore('project', () => {
   const lastSaved = computed(() => lastSavedAt.value)
 
   async function loadProject(id) {
-    const [project, manuscript] = await Promise.all([
-      getProject(id),
-      getManuscript(id)
-    ])
+    const [project, manuscript] = await Promise.all([getProject(id), getManuscript(id)])
     if (!project) return
 
     currentProjectId.value = id
@@ -109,12 +106,7 @@ export const useProjectStore = defineStore('project', () => {
       initialWordCount.value = manuscript.wordCount || 0
     }
 
-    await Promise.all([
-      loadDailyGoal(),
-      loadStreak(),
-      loadLastSession(),
-      loadPromptOverrides()
-    ])
+    await Promise.all([loadDailyGoal(), loadStreak(), loadLastSession(), loadPromptOverrides()])
   }
 
   async function loadStreak() {

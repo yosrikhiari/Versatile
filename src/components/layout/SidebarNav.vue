@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import BaseIcon from '../shared/BaseIcon.vue'
-import { useLocalStorage } from '../../composables/useLocalStorage'
+import { useLocalStorage } from '../../utils/useLocalStorage'
 
 const props = defineProps({
   activePanel: {
@@ -121,6 +121,7 @@ function toggleCollapse() {
           <button
             class="ml-auto hidden md:grid place-items-center w-8 h-8 rounded-md text-text-hint hover:text-text-primary hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150"
             title="Collapse sidebar"
+            :aria-expanded="!effectiveCollapsed"
             @click="toggleCollapse"
           >
             <BaseIcon name="panel-left-close" :size="18" />
@@ -137,6 +138,7 @@ function toggleCollapse() {
           v-else
           class="grid place-items-center w-9 h-9 rounded-md text-text-hint hover:text-text-primary hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150"
           title="Expand sidebar"
+          :aria-expanded="!effectiveCollapsed"
           @click="toggleCollapse"
         >
           <BaseIcon name="panel-left-open" :size="18" />
@@ -149,7 +151,7 @@ function toggleCollapse() {
           <div
             v-if="!effectiveCollapsed"
             class="px-2 pt-3 pb-1 text-[0.6875rem] font-medium uppercase tracking-[0.08em]"
-            style="color: #8c8c84"
+            style="color: var(--vers-text-muted)"
           >
             {{ group.label }}
           </div>

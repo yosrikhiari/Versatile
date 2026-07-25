@@ -100,7 +100,7 @@ export function buildFocusInstructions(
   if (weakDims.length === 0) return ''
 
   const lines = weakDims.map((d) => {
-    const dimConfig = dims[d.dim]
+    const dimConfig = (dims as Record<string, { focusInstruction?: string; label?: string }>)[d.dim]
     const instruction = dimConfig?.focusInstruction
     const label = dimConfig?.label || d.dim.replace(/_/g, ' ')
     if (instruction) {

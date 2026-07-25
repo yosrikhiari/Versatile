@@ -64,10 +64,6 @@ export async function deleteGraphEdgesByEntity(projectId, entityType, entityId) 
   return edges.length
 }
 
-async function getNodePositionsRecord(projectId) {
-  return db.nodePositions.where('projectId').equals(projectId).first()
-}
-
 function getNodePrefix(entityType) {
   if (entityType === 'character') return 'char'
   if (entityType === 'location') return 'loc'
@@ -77,32 +73,19 @@ function getNodePrefix(entityType) {
 export async function removeEntityFromNodeInstances(projectId, entityType, entityId) {
   const prefix = getNodePrefix(entityType)
   const nodeId = `${prefix}-${entityId}`
-  const record = await getNodePositionsRecord(projectId)
-  if (!record) return
-  if (record.instances?.[nodeId] !== undefined) {
-    delete record.instances[nodeId]
-    await db.nodePositions.update(record.id, { instances: record.instances })
-  }
+  await db.graphNodeInstances.delete([projectId, nodeId])
 }
 
 export async function removeEntityFromNodePositions(projectId, entityType, entityId) {
   const prefix = getNodePrefix(entityType)
   const nodeId = `${prefix}-${entityId}`
-  const record = await getNodePositionsRecord(projectId)
-  if (!record) return
-  if (record.positions?.[nodeId] !== undefined) {
-    delete record.positions[nodeId]
-    await db.nodePositions.update(record.id, { positions: record.positions })
-  }
+  await db.graphNodePositions.delete([projectId, nodeId])
 }
 
 export async function removeEntityFromNodeParents(projectId, entityType, entityId) {
   const prefix = getNodePrefix(entityType)
   const nodeId = `${prefix}-${entityId}`
-  const record = await db.graphGroups.where('projectId').equals(projectId).first()
-  if (!record || !record.nodeParents || record.nodeParents[nodeId] === undefined) return
-  delete record.nodeParents[nodeId]
-  await db.graphGroups.update(record.id, { nodeParents: record.nodeParents })
+  await db.graphNodeParents.delete([projectId, nodeId])
 }
 
 export async function clearAllGraphEdges(projectId) {
@@ -117,65 +100,125 @@ export async function clearAllGraphEdges(projectId) {
 // ========== NODE POSITIONS ==========
 
 export async function getNodePositions(projectId) {
-  const result = await db.nodePositions.where('projectId').equals(projectId).first()
-  return result?.positions || {}
+  const rows = await db.graphNodePositions.where('projectId').equals(projectId).toArray()
+  const result = {}
+  for (const row of rows) {
+    result[row.nodeId] = { x: row.x, y: row.y }
+  }
+  return result
 }
 
 export async function saveNodePositions(projectId, positions) {
   const plainPositions = JSON.parse(JSON.stringify(toRaw(positions)))
-  const existing = await db.nodePositions.where('projectId').equals(projectId).first()
-  if (existing) {
-    return db.nodePositions.update(existing.id, { positions: plainPositions })
-  } else {
-    return db.nodePositions.add({ projectId, positions: plainPositions })
-  }
+  const rows = Object.entries(plainPositions).map(([nodeId, pos]) => ({
+    projectId,
+    nodeId,
+    nodeType: nodeId.startsWith('char-')
+      ? 'character'
+      : nodeId.startsWith('loc-')
+        ? 'location'
+        : 'plotThread',
+    x: pos.x ?? 0,
+    y: pos.y ?? 0
+  }))
+  await db.transaction('rw', db.graphNodePositions, async () => {
+    await db.graphNodePositions.where('projectId').equals(projectId).delete()
+    if (rows.length > 0) {
+      await db.graphNodePositions.bulkAdd(rows)
+    }
+  })
 }
 
 export async function getNodeInstances(projectId) {
-  const result = await db.nodePositions.where('projectId').equals(projectId).first()
-  return result?.instances || {}
+  const rows = await db.graphNodeInstances.where('projectId').equals(projectId).toArray()
+  const result = {}
+  for (const row of rows) {
+    result[row.nodeId] = true
+  }
+  return result
 }
 
 export async function saveNodeInstances(projectId, instances) {
   const plainInstances = JSON.parse(JSON.stringify(toRaw(instances)))
-  const existing = await db.nodePositions.where('projectId').equals(projectId).first()
-  if (existing) {
-    return db.nodePositions.update(existing.id, { instances: plainInstances })
-  } else {
-    return db.nodePositions.add({ projectId, instances: plainInstances })
-  }
+  const rows = Object.keys(plainInstances).map((nodeId) => ({
+    projectId,
+    nodeId
+  }))
+  await db.transaction('rw', db.graphNodeInstances, async () => {
+    await db.graphNodeInstances.where('projectId').equals(projectId).delete()
+    if (rows.length > 0) {
+      await db.graphNodeInstances.bulkAdd(rows)
+    }
+  })
 }
 
 // ========== GRAPH GROUPS ==========
 
 export async function getGraphGroups(projectId) {
-  const result = await db.graphGroups.where('projectId').equals(projectId).first()
-  return result?.groups || []
+  const rows = await db.graphGroupsV2.where('projectId').equals(projectId).toArray()
+  return rows
+    .sort((a, b) => a.groupOrder - b.groupOrder)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      color: r.color,
+      x: r.x,
+      y: r.y,
+      width: r.width,
+      height: r.height
+    }))
 }
 
 export async function saveGraphGroups(projectId, groups) {
   const plainGroups = JSON.parse(JSON.stringify(toRaw(groups)))
-  const existing = await db.graphGroups.where('projectId').equals(projectId).first()
-  if (existing) {
-    return db.graphGroups.update(existing.id, { groups: plainGroups })
-  } else {
-    return db.graphGroups.add({ projectId, groups: plainGroups })
-  }
+  const rows = plainGroups.map((g, i) => ({
+    id: g.id,
+    projectId,
+    name: g.name || '',
+    color: g.color || '#6e8bb5',
+    x: g.x ?? 100,
+    y: g.y ?? 100,
+    width: g.width ?? 300,
+    height: g.height ?? 200,
+    groupOrder: i
+  }))
+  await db.transaction('rw', db.graphGroupsV2, async () => {
+    await db.graphGroupsV2.where('projectId').equals(projectId).delete()
+    if (rows.length > 0) {
+      await db.graphGroupsV2.bulkAdd(rows)
+    }
+  })
 }
 
 export async function getNodeParents(projectId) {
-  const result = await db.graphGroups.where('projectId').equals(projectId).first()
-  return result?.nodeParents || {}
+  const rows = await db.graphNodeParents.where('projectId').equals(projectId).toArray()
+  const result = {}
+  for (const row of rows) {
+    result[row.nodeId] = row.groupId
+  }
+  return result
 }
 
 export async function saveNodeParents(projectId, nodeParents) {
   const plainParents = JSON.parse(JSON.stringify(toRaw(nodeParents)))
-  const existing = await db.graphGroups.where('projectId').equals(projectId).first()
-  if (existing) {
-    return db.graphGroups.update(existing.id, { nodeParents: plainParents })
-  } else {
-    return db.graphGroups.add({ projectId, groups: [], nodeParents: plainParents })
-  }
+  const rows = Object.entries(plainParents)
+    .filter(([, groupId]) => groupId != null)
+    .map(([nodeId, groupId]) => ({
+      projectId,
+      nodeId,
+      nodeType: nodeId.startsWith('char-')
+        ? 'character'
+        : nodeId.startsWith('loc-')
+          ? 'location'
+          : 'plotThread',
+      groupId: String(groupId)
+    }))
+  await db.transaction('rw', db.graphNodeParents, async () => {
+    await db.graphNodeParents.where('projectId').equals(projectId).delete()
+    if (rows.length > 0) {
+      await db.graphNodeParents.bulkAdd(rows)
+    }
+  })
 }
 
 // ========== GROUP EDGES ==========

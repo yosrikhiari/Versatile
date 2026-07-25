@@ -14,7 +14,7 @@ public class GetResearchChunkByIdHandler : IRequestHandler<GetResearchChunkByIdQ
     public async Task<ResearchChunkDto> Handle(GetResearchChunkByIdQuery request, CancellationToken ct)
     {
         var chunks = await _repo.GetAllAsync(
-            c => c.Id == request.Id && c.UserId == request.UserId, ct);
+            c => c.Id == request.Id && c.UserId == request.UserId && c.OrganizationId == request.OrganizationId, ct);
         var chunk = chunks.FirstOrDefault() ?? throw new KeyNotFoundException("Research chunk not found");
         return new ResearchChunkDto(chunk.Id, chunk.StoryId, chunk.DocumentId, chunk.ChunkIndex, chunk.Content, chunk.Embedding!, chunk.CreatedAt);
     }

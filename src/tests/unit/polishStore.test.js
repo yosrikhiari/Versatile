@@ -29,7 +29,7 @@ vi.mock('@/services/dbService', () => ({
   incrementSnippetWord: (...args) => mockDb.incrementSnippetWord(...args)
 }))
 
-vi.mock('@/composables/useOllama', () => ({
+vi.mock('@/services/generation/polishAnalysis', () => ({
   analyzePolish: (...args) => mockAnalyzePolish(...args)
 }))
 

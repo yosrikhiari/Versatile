@@ -18,23 +18,6 @@ export const mockDb = {
     equals: vi.fn().mockReturnThis(),
     first: vi.fn()
   },
-  chapters: {
-    where: vi.fn().mockReturnThis(),
-    equals: vi.fn().mockReturnThis(),
-    toArray: vi.fn(),
-    add: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn()
-  },
-  scenes: {
-    where: vi.fn().mockReturnThis(),
-    equals: vi.fn().mockReturnThis(),
-    toArray: vi.fn(),
-    add: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn()
-  },
   characters: {
     toArray: vi.fn(),
     add: vi.fn(),

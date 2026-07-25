@@ -1,8 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getWhatIfBranches, deleteWhatIfBranch, acceptDivergence, updateBranch } from '../services/dbService'
+import {
+  getWhatIfBranches,
+  deleteWhatIfBranch,
+  acceptDivergence,
+  updateBranch
+} from '../services/dbService'
 import { useBranchStore } from './branchStore'
-import { createAbortScope } from '../composables/generation/lifecycle/abort'
+import { createAbortScope } from '../utils/abortScope'
 
 export const useWhatIfStore = defineStore('whatIf', () => {
   const abortScope = createAbortScope()
@@ -125,9 +130,7 @@ export const useWhatIfStore = defineStore('whatIf', () => {
     for (const branch of stale) {
       await updateBranch(branch.id, { status: 'failed' })
     }
-    branches.value = all.map((b) =>
-      b.status === 'generating' ? { ...b, status: 'failed' } : b
-    )
+    branches.value = all.map((b) => (b.status === 'generating' ? { ...b, status: 'failed' } : b))
     return stale.length
   }
 

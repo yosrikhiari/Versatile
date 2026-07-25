@@ -46,6 +46,8 @@ function signalBadge(signal) {
           : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
       "
       title="Context status"
+      :aria-expanded="expanded"
+      aria-haspopup="true"
       @click="toggle"
     >
       <BaseIcon name="layers" :size="12" />

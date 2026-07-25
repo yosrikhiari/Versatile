@@ -48,10 +48,17 @@ function onPortraitUpdated() {
 </script>
 
 <template>
-  <div class="bg-bg-tertiary border border-border-subtle hover:border-accent-muted rounded-lg overflow-hidden transition-all duration-150">
+  <div
+    class="bg-bg-tertiary border border-border-subtle hover:border-accent-muted rounded-lg overflow-hidden transition-all duration-150"
+  >
     <div
       class="flex items-center justify-between p-3 cursor-pointer hover:bg-surface-hover hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150"
+      role="button"
+      tabindex="0"
+      :aria-expanded="expanded"
       @click="expanded = !expanded"
+      @keydown.enter.prevent="expanded = !expanded"
+      @keydown.space.prevent="expanded = !expanded"
     >
       <div class="flex items-center gap-2">
         <div v-if="entityType === 'character'" class="flex-shrink-0">
@@ -97,6 +104,7 @@ function onPortraitUpdated() {
         <button
           class="p-0.5 hover:bg-surface-hover rounded transition-colors"
           title="Assign to volumes"
+          :aria-expanded="showVolumeAssignment"
           @click.stop="showVolumeAssignment = !showVolumeAssignment"
         >
           <BaseIcon name="layers" :size="14" class="text-text-hint" />

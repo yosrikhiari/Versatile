@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using MediatR;
 using Versatile.Application.Common;
 using Versatile.Application.DTOs;
@@ -25,9 +26,19 @@ public class GetVolumesHandler : IRequestHandler<GetVolumesQuery, PagedResponse<
         if (story is null || story.UserId != request.UserId)
             throw new KeyNotFoundException("Story not found");
 
-        var (volumes, totalCount) = await _volumeRepo.GetPagedAsync(v => v.StoryId == request.StoryId, request.Page, request.PageSize, ct);
-        var items = volumes.OrderBy(v => v.SortOrder).Select(ToDto).ToList();
-        return new PagedResponse<VolumeDto>(items, totalCount, request.Page, request.PageSize);
+        Expression<Func<VolumeEntity, bool>> filter = v => v.StoryId == request.StoryId;
+
+        if (request.AfterId.HasValue)
+        {
+            var (volumes, hasNextPage) = await _volumeRepo.GetPagedKeysetAsync(filter, request.PageSize, request.AfterId,
+                q => q.OrderBy(v => v.SortOrder), ct);
+            var items = volumes.Select(ToDto).ToList();
+            return new PagedResponse<VolumeDto>(items, 0, 0, request.PageSize, hasNextPage ? items.Last().Id : null);
+        }
+
+        var (volumesPaged, totalCount) = await _volumeRepo.GetPagedAsync(filter, request.Page, request.PageSize, q => q.OrderBy(v => v.SortOrder), ct);
+        var itemsPaged = volumesPaged.Select(ToDto).ToList();
+        return new PagedResponse<VolumeDto>(itemsPaged, totalCount, request.Page, request.PageSize);
     }
 
     private static VolumeDto ToDto(VolumeEntity v) => new(v.Id, v.StoryId, v.Title, v.Description, v.Color, v.SortOrder, v.ChapterIds, v.CreatedAt, v.UpdatedAt);

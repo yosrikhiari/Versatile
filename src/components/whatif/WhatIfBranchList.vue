@@ -64,6 +64,7 @@ onMounted(loadDiverged)
   <div v-if="!collapsed && hasWhatIfBranches" class="mt-2 border-t border-border-subtle pt-2">
     <button
       class="flex items-center gap-2 w-full px-3 h-8 rounded-md text-[0.75rem] text-text-secondary hover:bg-surface-hover transition-colors duration-150"
+      :aria-expanded="open"
       @click="open = !open"
     >
       <BaseIcon name="shuffle" :size="14" class="text-yellow-500 shrink-0" />
@@ -86,6 +87,7 @@ onMounted(loadDiverged)
         >
           <button
             class="flex items-center gap-2 w-full px-3 py-2 text-[0.8125rem] hover:bg-surface-hover transition-colors"
+            :aria-expanded="expandedBranches.has(branch.id)"
             @click="toggleBranch(branch.id)"
           >
             <BaseIcon name="git-branch" :size="14" class="text-yellow-500 shrink-0" />
@@ -95,11 +97,19 @@ onMounted(loadDiverged)
 
           <Transition name="fade">
             <div v-if="expandedBranches.has(branch.id)" class="border-t border-border-subtle">
-              <div v-for="section in sections" :key="section.id" class="px-3 py-2 border-b border-border-subtle last:border-b-0">
+              <div
+                v-for="section in sections"
+                :key="section.id"
+                class="px-3 py-2 border-b border-border-subtle last:border-b-0"
+              >
                 <div class="flex items-center gap-2">
                   <BaseIcon name="file-text" :size="12" class="text-text-hint shrink-0" />
-                  <span class="text-[0.75rem] text-text-primary truncate flex-1">{{ section.title }}</span>
-                  <span class="text-[0.625rem] text-text-hint">{{ section.subsections?.length || 0 }} subs</span>
+                  <span class="text-[0.75rem] text-text-primary truncate flex-1">{{
+                    section.title
+                  }}</span>
+                  <span class="text-[0.625rem] text-text-hint"
+                    >{{ section.subsections?.length || 0 }} subs</span
+                  >
                 </div>
                 <div v-if="section.subsections?.length" class="mt-1 ml-5 space-y-1">
                   <div
@@ -111,11 +121,14 @@ onMounted(loadDiverged)
                       class="w-1.5 h-1.5 rounded-full shrink-0"
                       :class="sub.contentStatus === 'generated' ? 'bg-green-500' : 'bg-yellow-400'"
                     />
-                    <span class="text-[0.6875rem] text-text-secondary truncate">{{ sub.title || 'Untitled' }}</span>
+                    <span class="text-[0.6875rem] text-text-secondary truncate">{{
+                      sub.title || 'Untitled'
+                    }}</span>
                     <span
                       v-if="sub.contentStatus === 'divergent'"
                       class="text-[0.625rem] text-yellow-500 ml-auto"
-                    >pending</span>
+                      >pending</span
+                    >
                   </div>
                 </div>
               </div>

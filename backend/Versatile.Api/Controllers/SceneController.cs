@@ -19,11 +19,11 @@ public class SceneController : ApiControllerBase
 
 
     [HttpGet, Cacheable(60)]
-    public async Task<ActionResult<PagedResponse<SceneDto>>> GetAll(Guid chapterId, [FromQuery] PagedRequest paged)
+    public async Task<ActionResult<PagedResponse<SceneDto>>> GetAll(Guid chapterId, [FromQuery] PagedRequest paged, [FromQuery] Guid? afterId = null)
     {
         try
         {
-            return Ok(await _mediator.Send(new GetScenesQuery(chapterId, OrganizationId, UserId, paged.Page, paged.PageSize)));
+            return Ok(await _mediator.Send(new GetScenesQuery(chapterId, OrganizationId, UserId, paged.Page, paged.PageSize, afterId)));
         }
         catch (KeyNotFoundException ex)
         {

@@ -4,10 +4,8 @@ vi.mock('./db-core', () => ({
   db: {
     storyElements: {},
     graphEdges: {},
-    nodePositions: {},
-    nodeInstances: {},
+    graphNodeInstances: {},
     nodeParents: {},
-    graphGroups: {},
     groupEdges: {}
   }
 }))

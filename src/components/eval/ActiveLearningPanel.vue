@@ -10,7 +10,10 @@
     </div>
 
     <div v-else-if="!analysisReport" class="al-status idle">
-      <p>Run active learning to find improvement opportunities in your prompts or adjust calibration thresholds below.</p>
+      <p>
+        Run active learning to find improvement opportunities in your prompts or adjust calibration
+        thresholds below.
+      </p>
       <button class="btn btn-sm btn-outline" @click="$emit('run-analysis')">
         Run Active Learning
       </button>
@@ -24,7 +27,8 @@
       <div v-if="belowThresholdRecs.length > 0" class="al-section">
         <h4 class="al-section-title">Below-Threshold Dimensions</h4>
         <p class="al-section-desc">
-          These dimension averages are below the threshold — consider adjusting writer prompts or calibration below.
+          These dimension averages are below the threshold — consider adjusting writer prompts or
+          calibration below.
         </p>
         <div v-for="rec in belowThresholdRecs" :key="rec.dimension" class="al-recommendation">
           <div class="al-rec-header">
@@ -49,7 +53,11 @@
       <div v-if="noDataRecs.length > 0" class="al-section">
         <h4 class="al-section-title">Insufficient Data</h4>
         <p class="al-section-desc">These dimensions have no eval data yet.</p>
-        <div v-for="rec in noDataRecs" :key="`nodata-${rec.dimension}`" class="al-recommendation nodata">
+        <div
+          v-for="rec in noDataRecs"
+          :key="`nodata-${rec.dimension}`"
+          class="al-recommendation nodata"
+        >
           <div class="al-rec-header">
             <strong>{{ rec.dimension }}</strong>
             <span class="al-rec-score">No data</span>
@@ -59,8 +67,9 @@
       </div>
 
       <p v-if="analysisReport" class="al-meta">
-        {{ analysisReport.summary.totalEvals }} evals across {{ analysisReport.summary.workspacesAnalyzed }} workspaces
-        &middot; {{ analysisReport.generatedAt }}
+        {{ analysisReport.summary.totalEvals }} evals across
+        {{ analysisReport.summary.workspacesAnalyzed }} workspaces &middot;
+        {{ analysisReport.generatedAt }}
       </p>
     </template>
 
@@ -69,8 +78,9 @@
     <div class="al-calibration">
       <h4 class="al-section-title">Calibration Thresholds</h4>
       <p class="al-section-desc">
-        Adjust per-dimension scoring thresholds (1-10). Dimensions below their threshold trigger recommendations.
-        Use calibration examples to guide what good output looks like for each dimension.
+        Adjust per-dimension scoring thresholds (1-10). Dimensions below their threshold trigger
+        recommendations. Use calibration examples to guide what good output looks like for each
+        dimension.
       </p>
 
       <div v-for="wt in allWorkspaceTypes" :key="wt" class="al-cal-workspace">
@@ -79,7 +89,9 @@
           <strong class="al-cal-ws-name">{{ wt }}</strong>
           <span class="al-cal-ws-count">
             {{ workspaceDimensionCount(wt) }} dimensions
-            <template v-if="workspaceHasCustom(wt)"> &middot; <span class="badge badge-custom">Customized</span></template>
+            <template v-if="workspaceHasCustom(wt)">
+              &middot; <span class="badge badge-custom">Customized</span></template
+            >
           </span>
         </div>
 
@@ -224,7 +236,9 @@ function toggleWorkspace(wt) {
   vertical-align: middle;
 }
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .alert {
   padding: 0.75rem 1rem;
@@ -234,9 +248,9 @@ function toggleWorkspace(wt) {
   font-weight: 500;
 }
 .alert-success {
-  background: rgba(106, 158, 122, 0.1);
-  border: 1px solid rgba(106, 158, 122, 0.3);
-  color: #6a9e7a;
+  background: color-mix(in srgb, var(--vers-status-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vers-status-success) 30%, transparent);
+  color: var(--vers-status-success);
 }
 .al-section {
   margin-bottom: 1rem;
@@ -324,12 +338,12 @@ function toggleWorkspace(wt) {
   vertical-align: middle;
 }
 .badge-custom {
-  background: rgba(106, 158, 200, 0.15);
-  color: #6a9ec8;
-  border: 1px solid rgba(106, 158, 200, 0.3);
+  background: color-mix(in srgb, var(--vers-status-info) 15%, transparent);
+  color: var(--vers-status-info);
+  border: 1px solid color-mix(in srgb, var(--vers-status-info) 30%, transparent);
 }
 .badge-default {
-  background: rgba(128, 128, 128, 0.1);
+  background: color-mix(in srgb, var(--vers-text-muted) 10%, transparent);
   color: var(--vers-text-muted);
 }
 .al-divider {

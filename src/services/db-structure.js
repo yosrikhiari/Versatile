@@ -79,11 +79,11 @@ export async function deleteSubsection(id) {
 // Subsections whose prose generation failed (or never ran) — drives the
 // end-of-run repair pass. `failed` first, then any left empty.
 export async function getFailedSubsections(projectId, branchId) {
-  const subs = await db.subsections.where('projectId').equals(projectId).toArray()
+  const subs = branchId
+    ? await db.subsections.where('[projectId+branchId]').equals([projectId, branchId]).toArray()
+    : await db.subsections.where('projectId').equals(projectId).toArray()
   return subs.filter(
-    (s) =>
-      (!branchId || s.branchId === branchId) &&
-      (s.contentStatus === 'failed' || !(s.content && String(s.content).trim()))
+    (s) => s.contentStatus === 'failed' || !(s.content && String(s.content).trim())
   )
 }
 

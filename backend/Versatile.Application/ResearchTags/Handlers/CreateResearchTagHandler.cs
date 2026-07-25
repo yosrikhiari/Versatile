@@ -22,15 +22,16 @@ public class CreateResearchTagHandler : IRequestHandler<CreateResearchTagCommand
     public async Task<ResearchTagDto> Handle(CreateResearchTagCommand request, CancellationToken ct)
     {
         var stories = await _storyRepo.GetAllAsync(
-            s => s.Id == request.StoryId && s.UserId == request.UserId, ct);
+            s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct);
         if (stories.Count == 0) throw new KeyNotFoundException("Story not found");
 
         var tag = new ResearchTag
         {
             Name = request.Name,
             StoryId = request.StoryId,
-            Color = request.Color,
-            UserId = request.UserId
+            Color = request.Color ?? string.Empty,
+            UserId = request.UserId,
+            OrganizationId = request.OrganizationId
         };
         await _repo.AddAsync(tag, ct);
         await _uow.SaveChangesAsync(ct);

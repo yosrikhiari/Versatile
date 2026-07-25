@@ -4,7 +4,8 @@ import { useStoryRevisor } from './useStoryRevisor'
 import {
   gateDimensionCoverage,
   gateScoreDistribution,
-  gateRevisionEffectiveness
+  gateRevisionEffectiveness,
+  gateProseQuality
 } from '../services/evalGates'
 import { computeDegradation } from '../services/degradation'
 import { useEvalPersistence } from './useEvalPersistence'
@@ -18,6 +19,7 @@ export function useSceneEval() {
   const gateResults = ref({
     dimensionCoverage: null,
     scoreDistribution: null,
+    proseQuality: null,
     revisionEffectiveness: null
   })
   const revisionResult = ref(null)
@@ -80,7 +82,9 @@ export function useSceneEval() {
     return evaluated
       .map(
         (e, i) =>
-          `Scene ${i + 1}: ${e.critiqueResult.score ?? '?'}/10 \u2014 ${Object.entries(e.critiqueResult.dimensionScores ?? {})
+          `Scene ${i + 1}: ${e.critiqueResult.score ?? '?'}/10 \u2014 ${Object.entries(
+            e.critiqueResult.dimensionScores ?? {}
+          )
             .map(([k, v]) => `${k}: ${v}/10`)
             .join(', ')}`
       )
@@ -115,7 +119,16 @@ export function useSceneEval() {
     }
   }
 
-  async function evaluate(scene, workspaceType, scenePlanItem, sceneIdx, projectId, storyBible = '', chapterLog = '', extraFocusInstructions) {
+  async function evaluate(
+    scene,
+    workspaceType,
+    scenePlanItem,
+    sceneIdx,
+    projectId,
+    storyBible = '',
+    chapterLog = '',
+    extraFocusInstructions
+  ) {
     if (!scene?.prose) return
 
     isEvaluating.value = true
@@ -138,10 +151,12 @@ export function useSceneEval() {
       critiqueResult.value = result
       const dimCov = gateDimensionCoverage(result, workspaceType)
       const scoreDist = gateScoreDistribution(result)
+      const proseQ = gateProseQuality(result, 0, 0)
 
       gateResults.value = {
         dimensionCoverage: dimCov,
         scoreDistribution: scoreDist,
+        proseQuality: proseQ,
         revisionEffectiveness: null
       }
       hasBeenEvaluated.value = true
@@ -152,6 +167,7 @@ export function useSceneEval() {
           gateResults: {
             dimensionCoverage: dimCov,
             scoreDistribution: scoreDist,
+            proseQuality: proseQ,
             revisionEffectiveness: null
           },
           hasBeenEvaluated: true
@@ -169,7 +185,8 @@ export function useSceneEval() {
             critiqueResult: result,
             gateResults: {
               dimensionCoverage: dimCov,
-              scoreDistribution: scoreDist
+              scoreDistribution: scoreDist,
+              proseQuality: proseQ
             }
           },
           dimensionScores: result.dimensionScores ?? null,
@@ -192,7 +209,15 @@ export function useSceneEval() {
     }
   }
 
-  async function revise(scene, workspaceType, scenePlanItem, sceneIdx, projectId, storyBible = '', chapterLog = '') {
+  async function revise(
+    scene,
+    workspaceType,
+    scenePlanItem,
+    sceneIdx,
+    projectId,
+    storyBible = '',
+    chapterLog = ''
+  ) {
     if (!critiqueResult.value) return
 
     isRevising.value = true
@@ -285,6 +310,7 @@ export function useSceneEval() {
     gateResults.value = {
       dimensionCoverage: null,
       scoreDistribution: null,
+      proseQuality: null,
       revisionEffectiveness: null
     }
     revisionResult.value = null

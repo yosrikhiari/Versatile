@@ -2,6 +2,7 @@
 // Use this if your IndexedDB data becomes corrupted or inaccessible
 
 import { db } from './dbService'
+import { trackError } from '../composables/useErrorTracker'
 
 /**
  * Check database integrity and connection
@@ -15,8 +16,6 @@ export async function checkDatabaseHealth() {
       'characters',
       'locations',
       'plotThreads',
-      'chapters',
-      'scenes',
       'sparkHistory',
       'annotations',
       'snippets',
@@ -26,8 +25,7 @@ export async function checkDatabaseHealth() {
       'storyElements',
       'graphEdges',
       'groupEdges',
-      'nodePositions',
-      'graphGroups',
+      'graphNodeInstances',
       'snapshots',
       'volumes',
       'volumeEntities'
@@ -57,8 +55,7 @@ export async function clearAllData() {
     'volumeEntities',
     'graphEdges',
     'groupEdges',
-    'nodePositions',
-    'graphGroups',
+    'graphNodeInstances',
     'snapshots',
     'revisions',
     'annotations',
@@ -66,8 +63,6 @@ export async function clearAllData() {
     'dailyGoals',
     'characterRelationships',
     'storyElements',
-    'scenes',
-    'chapters',
     'plotThreads',
     'locations',
     'characters',
@@ -97,8 +92,6 @@ export async function exportAllData() {
     'characters',
     'locations',
     'plotThreads',
-    'chapters',
-    'scenes',
     'sparkHistory',
     'annotations',
     'snippets',
@@ -108,8 +101,7 @@ export async function exportAllData() {
     'storyElements',
     'graphEdges',
     'groupEdges',
-    'nodePositions',
-    'graphGroups',
+    'graphNodeInstances',
     'snapshots',
     'volumes',
     'volumeEntities'
@@ -144,8 +136,6 @@ export async function importData(backupData) {
     'characters',
     'locations',
     'plotThreads',
-    'chapters',
-    'scenes',
     'sparkHistory',
     'annotations',
     'snippets',
@@ -155,8 +145,7 @@ export async function importData(backupData) {
     'storyElements',
     'graphEdges',
     'groupEdges',
-    'nodePositions',
-    'graphGroups',
+    'graphNodeInstances',
     'snapshots',
     'volumes',
     'volumeEntities'
@@ -196,7 +185,7 @@ export async function resetDatabaseVersion() {
       }
     })
   } catch (err) {
-    console.error('Failed to reset database:', err)
+    trackError(err, { source: 'db', severity: 'critical', context: { op: 'reset-database' } })
     throw err
   }
 }
@@ -212,8 +201,6 @@ export async function getDatabaseSize() {
       'characters',
       'locations',
       'plotThreads',
-      'chapters',
-      'scenes',
       'sparkHistory',
       'annotations',
       'snippets',
@@ -223,8 +210,7 @@ export async function getDatabaseSize() {
       'storyElements',
       'graphEdges',
       'groupEdges',
-      'nodePositions',
-      'graphGroups',
+      'graphNodeInstances',
       'snapshots',
       'volumes',
       'volumeEntities'

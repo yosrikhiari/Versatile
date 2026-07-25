@@ -14,7 +14,7 @@ public class GetResearchTagsHandler : IRequestHandler<GetResearchTagsQuery, List
     public async Task<List<ResearchTagDto>> Handle(GetResearchTagsQuery request, CancellationToken ct)
     {
         var tags = await _repo.GetAllAsync(
-            t => t.StoryId == request.StoryId && t.UserId == request.UserId, ct);
+            t => t.StoryId == request.StoryId && t.UserId == request.UserId && t.OrganizationId == request.OrganizationId, ct);
         return tags.OrderBy(t => t.Name)
             .Select(t => new ResearchTagDto(t.Id, t.StoryId, t.Name, t.Color!))
             .ToList();

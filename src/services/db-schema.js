@@ -10,8 +10,6 @@ export const SCHEMA_VERSIONS = [
       characterRelationships: '++id, projectId, fromCharacterId, toCharacterId, type, notes',
       locations: '++id, projectId, name, description, notes',
       plotThreads: '++id, projectId, title, status, notes',
-      chapters: '++id, projectId, title, summary, order, status, *tags, volumeId',
-      scenes: '++id, projectId, chapterId, title, summary, order, content, *tags',
       sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt',
       annotations: '++id, projectId, paragraphIndex, type, original, suggestion, reason, status',
       snippets: '++id, projectId, word, count, lastSeen',
@@ -22,8 +20,6 @@ export const SCHEMA_VERSIONS = [
       graphEdges:
         '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId',
       groupEdges: '++id, projectId, sourceGroupId, targetGroupId, relationshipType',
-      nodePositions: '++id, projectId',
-      graphGroups: '++id, projectId',
       snapshots: '++id, projectId, chapterId, timestamp, label',
       volumes: '++id, projectId, title, description, color, chapterIds',
       volumeEntities:
@@ -107,8 +103,10 @@ export const SCHEMA_VERSIONS = [
   {
     version: 22,
     stores: {
-      projects: '++id, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
-      manuscripts: '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
+      projects:
+        '++id, name, createdAt, updatedAt, genre, synopsis, apiId, syncStatus, lastSyncedAt',
+      manuscripts:
+        '++id, projectId, content, wordCount, updatedAt, apiId, syncStatus, lastSyncedAt',
       characters:
         '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, apiId, syncStatus, lastSyncedAt',
       characterRelationships:
@@ -232,6 +230,46 @@ export const SCHEMA_VERSIONS = [
         '++id, projectId, title, summary, order, status, *tags, volumeId, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt',
       subsections:
         '++id, projectId, sectionId, title, summary, order, content, *tags, contentStatus, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt'
+    }
+  },
+  // v36: Normalized graph tables — graphNodePositions, graphGroupsV2, graphNodeParents.
+  {
+    version: 36,
+    stores: {
+      graphNodePositions: '[projectId+nodeId], projectId, nodeId, nodeType, x, y',
+      graphGroupsV2: '&id, projectId, name, color, x, y, width, height, groupOrder',
+      graphNodeParents: '[projectId+nodeId], projectId, nodeId, nodeType, groupId'
+    }
+  },
+  // v37: Compound indexes on query hotspots — evalResults, optimizationSessions, sparkHistory
+  //      Removes JS .filter() scans by adding [projectId+sceneId], [projectId+evalType],
+  //      [projectId+sceneId+evalType], and [projectId+sceneId] on optimizationSessions.
+  //      Also adds [projectId+type] on sparkHistory for future type-filtered lookups.
+  {
+    version: 37,
+    stores: {
+      evalResults:
+        '++id, projectId, sceneId, timestamp, evalType, score, [projectId+sceneId], [projectId+evalType], [projectId+sceneId+evalType]',
+      optimizationSessions: '++id, projectId, sceneId, timestamp, [projectId+sceneId]',
+      snapshots: '++id, projectId, chapterId, timestamp, label, [projectId+chapterId]',
+      sparkHistory: '++id, projectId, type, prompt, blueprint, createdAt, [projectId+type]'
+    }
+  },
+  // v38: +aiResponseCache — semantic AI response cache for writer/critic features.
+  //      &hash is the primary key (SHA-256 of the canonical cache key).
+  //      [provider+model+temperature+feature] compound index for semantic fallback queries.
+  {
+    version: 38,
+    stores: {
+      aiResponseCache: '&hash, createdAt, [provider+model+temperature+feature]'
+    }
+  },
+  // v39: +graphNodeInstances, drops nodePositions (migrates instances data).
+  //      Compound key [projectId+nodeId] replaces the old nodePositions.instances map.
+  {
+    version: 39,
+    stores: {
+      graphNodeInstances: '[projectId+nodeId], projectId, nodeId'
     }
   }
 ]

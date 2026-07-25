@@ -228,6 +228,186 @@ public sealed class PaginationIntegrationTests
         result.Items.Select(s => s.Title).Should().Equal("A", "B", "C");
     }
 
+    [Fact]
+    public async Task GetChaptersQuery_KeysetFirstPage_ReturnsWithNextCursor()
+    {
+        var db = CreateDbContext();
+        var story = SeedStoryWithChapters(db, chapterCount: 5);
+
+        var handler = new GetChaptersHandler(
+            new Repository<Story>(db),
+            new OrganizationOwnedRepository<Chapter>(db)
+        );
+        var query = new GetChaptersQuery(story.Id, OrgId, UserId, PageSize: 2, AfterId: null);
+
+        var result = await handler.Handle(query, default);
+
+        result.Items.Should().HaveCount(2);
+        result.NextCursor.Should().NotBeNull();
+        result.HasNextPage.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetChaptersQuery_KeysetWithAfterId_ReturnsNextPage()
+    {
+        var db = CreateDbContext();
+        var story = SeedStoryWithChapters(db, chapterCount: 5);
+
+        var handler = new GetChaptersHandler(
+            new Repository<Story>(db),
+            new OrganizationOwnedRepository<Chapter>(db)
+        );
+        var first = new GetChaptersQuery(story.Id, OrgId, UserId, PageSize: 2, AfterId: null);
+        var firstResult = await handler.Handle(first, default);
+        var cursor = firstResult.NextCursor!.Value;
+
+        var second = new GetChaptersQuery(story.Id, OrgId, UserId, AfterId: cursor, PageSize: 2);
+        var result = await handler.Handle(second, default);
+
+        result.Items.Should().HaveCount(2);
+        result.NextCursor.Should().NotBeNull();
+        result.HasNextPage.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetChaptersQuery_KeysetLastPage_NoNextCursor()
+    {
+        var db = CreateDbContext();
+        var story = SeedStoryWithChapters(db, chapterCount: 3);
+
+        var handler = new GetChaptersHandler(
+            new Repository<Story>(db),
+            new OrganizationOwnedRepository<Chapter>(db)
+        );
+
+        var result = await handler.Handle(
+            new GetChaptersQuery(story.Id, OrgId, UserId, PageSize: 10, AfterId: null), default);
+
+        result.Items.Should().HaveCount(3);
+        result.NextCursor.Should().BeNull();
+        result.HasNextPage.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetChaptersQuery_KeysetEmpty_ReturnsEmptyNoCursor()
+    {
+        var db = CreateDbContext();
+        var story = SeedStory(db);
+
+        var handler = new GetChaptersHandler(
+            new Repository<Story>(db),
+            new OrganizationOwnedRepository<Chapter>(db)
+        );
+
+        var result = await handler.Handle(
+            new GetChaptersQuery(story.Id, OrgId, UserId, AfterId: Guid.NewGuid()), default);
+
+        result.Items.Should().BeEmpty();
+        result.NextCursor.Should().BeNull();
+        result.HasNextPage.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetScenesQuery_KeysetFirstPage_ReturnsWithNextCursor()
+    {
+        var db = CreateDbContext();
+        var chapter = SeedChapterWithScenes(db, sceneCount: 5);
+
+        var handler = new GetScenesHandler(
+            new OrganizationOwnedRepository<Chapter>(db),
+            new Repository<Scene>(db)
+        );
+        var query = new GetScenesQuery(chapter.Id, OrgId, UserId, PageSize: 2, AfterId: null);
+
+        var result = await handler.Handle(query, default);
+
+        result.Items.Should().HaveCount(2);
+        result.NextCursor.Should().NotBeNull();
+        result.HasNextPage.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetScenesQuery_KeysetWithAfterId_ReturnsNextPage()
+    {
+        var db = CreateDbContext();
+        var chapter = SeedChapterWithScenes(db, sceneCount: 5);
+
+        var handler = new GetScenesHandler(
+            new OrganizationOwnedRepository<Chapter>(db),
+            new Repository<Scene>(db)
+        );
+        var first = new GetScenesQuery(chapter.Id, OrgId, UserId, PageSize: 2, AfterId: null);
+        var firstResult = await handler.Handle(first, default);
+        var cursor = firstResult.NextCursor!.Value;
+
+        var second = new GetScenesQuery(chapter.Id, OrgId, UserId, AfterId: cursor, PageSize: 2);
+        var result = await handler.Handle(second, default);
+
+        result.Items.Should().HaveCount(2);
+        result.NextCursor.Should().NotBeNull();
+        result.HasNextPage.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetScenesQuery_KeysetLastPage_NoNextCursor()
+    {
+        var db = CreateDbContext();
+        var chapter = SeedChapterWithScenes(db, sceneCount: 3);
+
+        var handler = new GetScenesHandler(
+            new OrganizationOwnedRepository<Chapter>(db),
+            new Repository<Scene>(db)
+        );
+
+        var result = await handler.Handle(
+            new GetScenesQuery(chapter.Id, OrgId, UserId, PageSize: 10, AfterId: null), default);
+
+        result.Items.Should().HaveCount(3);
+        result.NextCursor.Should().BeNull();
+        result.HasNextPage.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetScenesQuery_KeysetEmpty_ReturnsEmptyNoCursor()
+    {
+        var db = CreateDbContext();
+        var chapter = SeedChapter(db);
+
+        var handler = new GetScenesHandler(
+            new OrganizationOwnedRepository<Chapter>(db),
+            new Repository<Scene>(db)
+        );
+
+        var result = await handler.Handle(
+            new GetScenesQuery(chapter.Id, OrgId, UserId, AfterId: Guid.NewGuid()), default);
+
+        result.Items.Should().BeEmpty();
+        result.NextCursor.Should().BeNull();
+        result.HasNextPage.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task OffsetPagination_WithoutAfterId_StillWorksAsBefore()
+    {
+        var db = CreateDbContext();
+        var story = SeedStoryWithChapters(db, chapterCount: 5);
+
+        var handler = new GetChaptersHandler(
+            new Repository<Story>(db),
+            new OrganizationOwnedRepository<Chapter>(db)
+        );
+        var query = new GetChaptersQuery(story.Id, OrgId, UserId, Page: 2, PageSize: 2);
+
+        var result = await handler.Handle(query, default);
+
+        result.Items.Should().HaveCount(2);
+        result.TotalCount.Should().Be(5);
+        result.Page.Should().Be(2);
+        result.HasPreviousPage.Should().BeTrue();
+        result.HasNextPage.Should().BeTrue();
+        result.NextCursor.Should().BeNull();
+    }
+
     private static ApplicationDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()

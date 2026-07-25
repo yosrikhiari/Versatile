@@ -2,11 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { EVAL_GATE_CONFIG } from '../config/evalGateConfig'
 
 describe('evalGateConfig', () => {
-  it('exports EVAL_GATE_CONFIG with 3 gates', () => {
+  it('exports EVAL_GATE_CONFIG with 4 gates', () => {
     expect(EVAL_GATE_CONFIG).toHaveProperty('dimensionCoverage')
     expect(EVAL_GATE_CONFIG).toHaveProperty('scoreDistribution')
     expect(EVAL_GATE_CONFIG).toHaveProperty('revisionEffectiveness')
-    expect(Object.keys(EVAL_GATE_CONFIG).length).toBe(3)
+    expect(EVAL_GATE_CONFIG).toHaveProperty('proseQuality')
+    expect(Object.keys(EVAL_GATE_CONFIG).length).toBe(4)
   })
 
   it('dimensionCoverage gate has correct structure', () => {

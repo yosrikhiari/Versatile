@@ -18,8 +18,8 @@ public class StoryController : ApiControllerBase
     public StoryController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
     [HttpGet, Cacheable(60)]
-    public async Task<ActionResult<PagedResponse<StoryDto>>> GetAll([FromQuery] PagedRequest paged) =>
-        Ok(await _mediator.Send(new GetStoriesQuery(OrganizationId, UserId, paged.Page, paged.PageSize)));
+    public async Task<ActionResult<PagedResponse<StoryDto>>> GetAll([FromQuery] PagedRequest paged, [FromQuery] Guid? afterId = null) =>
+        Ok(await _mediator.Send(new GetStoriesQuery(OrganizationId, UserId, paged.Page, paged.PageSize, afterId)));
 
     [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<StoryDto>> GetById(Guid id)

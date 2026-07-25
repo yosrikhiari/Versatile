@@ -99,7 +99,8 @@ describe('useSceneEval', () => {
       expect(evalComposable.gateResults.value).toEqual({
         dimensionCoverage: null,
         scoreDistribution: null,
-        revisionEffectiveness: null
+        revisionEffectiveness: null,
+        proseQuality: null
       })
       expect(evalComposable.revisionResult.value).toBeNull()
     })
@@ -351,7 +352,8 @@ describe('useSceneEval', () => {
       expect(evalComposable.gateResults.value).toEqual({
         dimensionCoverage: null,
         scoreDistribution: null,
-        revisionEffectiveness: null
+        revisionEffectiveness: null,
+        proseQuality: null
       })
       expect(evalComposable.revisionResult.value).toBeNull()
       expect(evalComposable.focusInstructions.value).toBe('')

@@ -1,18 +1,24 @@
 <template>
   <div class="space-y-3">
     <!-- Loading state -->
-    <div v-if="loading" class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-6 text-center">
-      <p class="text-sm text-text-secondary font-ui">Loading benchmark report...</p>
+    <div v-if="loading" class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-4">
+      <Skeleton variant="panel" :count="3" label="Loading benchmark report…" />
     </div>
 
     <!-- Error state -->
-    <div v-else-if="error" class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-6 text-center">
+    <div
+      v-else-if="error"
+      class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-6 text-center"
+    >
       <BaseIcon name="alert-triangle" :size="20" class="mx-auto text-danger mb-2" />
       <p class="text-sm text-text-secondary font-ui">{{ error }}</p>
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="!reportData" class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-6 text-center">
+    <div
+      v-else-if="!reportData"
+      class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-6 text-center"
+    >
       <BaseIcon name="bar-chart" :size="24" class="mx-auto text-text-hint mb-2" />
       <p class="text-sm text-text-secondary font-ui">No benchmark data available</p>
       <p class="text-xs text-text-hint mt-1">Run the model benchmarking pipeline to see results.</p>
@@ -26,24 +32,44 @@
 
       <!-- Provider Summary Cards -->
       <div class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3">
-        <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">Provider Summary</h4>
+        <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
+          Provider Summary
+        </h4>
         <div class="grid grid-cols-1 gap-2">
-          <div v-for="prov in sortedProviders" :key="prov" class="rounded-lg bg-bg-secondary/40 border border-border-subtle p-2.5">
+          <div
+            v-for="prov in sortedProviders"
+            :key="prov"
+            class="rounded-lg bg-bg-secondary/40 border border-border-subtle p-2.5"
+          >
             <div class="flex items-center justify-between mb-2">
               <span class="text-xs font-bold text-text-primary font-ui capitalize">{{ prov }}</span>
-              <span class="text-2xs text-text-hint font-ui">{{ formatCost(aggregates[prov]?.estimatedTotalCost) }}</span>
+              <span class="text-2xs text-text-hint font-ui">{{
+                formatCost(aggregates[prov]?.estimatedTotalCost)
+              }}</span>
             </div>
             <div class="grid grid-cols-3 gap-2 text-center">
               <div>
-                <p class="text-sm font-bold text-text-primary font-ui">{{ formatLatency(aggregates[prov]?.avgLatencyMs) }}</p>
+                <p class="text-sm font-bold text-text-primary font-ui">
+                  {{ formatLatency(aggregates[prov]?.avgLatencyMs) }}
+                </p>
                 <p class="text-2xs text-text-hint font-ui">Latency</p>
               </div>
               <div>
-                <p class="text-sm font-bold font-ui" :class="scoreColor(aggregates[prov]?.avgScore)">{{ formatScore(aggregates[prov]?.avgScore) }}</p>
+                <p
+                  class="text-sm font-bold font-ui"
+                  :class="scoreColor(aggregates[prov]?.avgScore)"
+                >
+                  {{ formatScore(aggregates[prov]?.avgScore) }}
+                </p>
                 <p class="text-2xs text-text-hint font-ui">Score</p>
               </div>
               <div>
-                <p class="text-sm font-bold font-ui" :class="reliabilityColor(aggregates[prov]?.reliability)">{{ formatPct(aggregates[prov]?.reliability) }}</p>
+                <p
+                  class="text-sm font-bold font-ui"
+                  :class="reliabilityColor(aggregates[prov]?.reliability)"
+                >
+                  {{ formatPct(aggregates[prov]?.reliability) }}
+                </p>
                 <p class="text-2xs text-text-hint font-ui">Reliability</p>
               </div>
             </div>
@@ -52,11 +78,22 @@
       </div>
 
       <!-- Cost Breakdown -->
-      <div v-if="hasMultiProvider" class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3">
-        <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">Cost Comparison</h4>
+      <div
+        v-if="hasMultiProvider"
+        class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
+      >
+        <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
+          Cost Comparison
+        </h4>
         <div class="space-y-1.5">
-          <div v-for="prov in sortedProvidersByCost" :key="prov" class="flex items-center gap-2 text-xs">
-            <span class="font-ui text-text-primary w-20 truncate shrink-0 capitalize">{{ prov }}</span>
+          <div
+            v-for="prov in sortedProvidersByCost"
+            :key="prov"
+            class="flex items-center gap-2 text-xs"
+          >
+            <span class="font-ui text-text-primary w-20 truncate shrink-0 capitalize">{{
+              prov
+            }}</span>
             <div class="flex-1 h-2.5 rounded-full bg-bg-tertiary overflow-hidden">
               <div
                 class="h-full rounded-full"
@@ -64,16 +101,24 @@
                 :style="{ width: costBarWidth(prov) + '%' }"
               ></div>
             </div>
-            <span class="font-ui text-text-secondary w-16 text-right">{{ formatCost(aggregates[prov]?.estimatedTotalCost) }}</span>
+            <span class="font-ui text-text-secondary w-16 text-right">{{
+              formatCost(aggregates[prov]?.estimatedTotalCost)
+            }}</span>
           </div>
         </div>
       </div>
 
       <!-- Score Distribution -->
       <div class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3">
-        <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">Score Distribution</h4>
+        <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
+          Score Distribution
+        </h4>
         <div v-if="scoreBuckets.length > 0" class="space-y-1">
-          <div v-for="bucket in scoreBuckets" :key="bucket.label" class="flex items-center gap-2 text-xs">
+          <div
+            v-for="bucket in scoreBuckets"
+            :key="bucket.label"
+            class="flex items-center gap-2 text-xs"
+          >
             <span class="font-ui text-text-hint w-16 shrink-0">{{ bucket.label }}</span>
             <div class="flex-1 h-3 rounded-full bg-bg-tertiary overflow-hidden">
               <div
@@ -92,14 +137,28 @@
       <div class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3">
         <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">Test Results</h4>
         <div class="space-y-2">
-          <div v-for="test in testRows" :key="test.testId" class="rounded-lg bg-bg-secondary/40 border border-border-subtle p-2.5">
+          <div
+            v-for="test in testRows"
+            :key="test.testId"
+            class="rounded-lg bg-bg-secondary/40 border border-border-subtle p-2.5"
+          >
             <div class="text-xs font-bold text-text-primary font-ui mb-1.5">{{ test.label }}</div>
             <div class="space-y-1">
-              <div v-for="(result, prov) in test.providers" :key="prov" class="flex items-center gap-2 text-2xs">
+              <div
+                v-for="(result, prov) in test.providers"
+                :key="prov"
+                class="flex items-center gap-2 text-2xs"
+              >
                 <span class="font-ui text-text-hint w-16 shrink-0 capitalize">{{ prov }}</span>
-                <span class="font-ui text-text-primary w-12 text-right">{{ result.latencyMs ? (result.latencyMs / 1000).toFixed(1) + 's' : '—' }}</span>
-                <span class="font-ui w-10 text-right" :class="scoreColor(result.score)">{{ result.score != null ? result.score.toFixed(1) : '—' }}</span>
-                <span class="font-ui text-text-secondary w-14 text-right">{{ result.wordCount ?? '—' }}w</span>
+                <span class="font-ui text-text-primary w-12 text-right">{{
+                  result.latencyMs ? (result.latencyMs / 1000).toFixed(1) + 's' : '—'
+                }}</span>
+                <span class="font-ui w-10 text-right" :class="scoreColor(result.score)">{{
+                  result.score != null ? result.score.toFixed(1) : '—'
+                }}</span>
+                <span class="font-ui text-text-secondary w-14 text-right"
+                  >{{ result.wordCount ?? '—' }}w</span
+                >
               </div>
             </div>
           </div>
@@ -112,10 +171,11 @@
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import Skeleton from '../shared/Skeleton.vue'
 
 export default {
   name: 'BenchmarkDashboard',
-  components: { BaseIcon },
+  components: { BaseIcon, Skeleton },
   props: {
     report: { type: Object, default: null },
     reportUrl: { type: String, default: '' }
@@ -214,8 +274,11 @@ export default {
       if (!ts) return ''
       const d = new Date(ts)
       return d.toLocaleDateString(undefined, {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       })
     }
 
@@ -271,9 +334,12 @@ export default {
 
     onMounted(loadReport)
 
-    watch(() => props.reportUrl, () => {
-      if (!props.report) loadReport()
-    })
+    watch(
+      () => props.reportUrl,
+      () => {
+        if (!props.report) loadReport()
+      }
+    )
 
     return {
       loading,

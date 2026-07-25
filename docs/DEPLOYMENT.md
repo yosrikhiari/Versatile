@@ -330,3 +330,48 @@ After deploying, run through the following checks:
 - [ ] Application logs are captured and searchable
 - [ ] Health check endpoint (if added) returns 200 OK
 - [ ] Error reporting is configured (if using Sentry, Application Insights, etc.)
+
+---
+
+## Frontend: compression & CDN readiness (M-5.3 / M-9.1)
+
+### Pre-compressed assets
+
+The Vite build pre-compresses every asset over 1 KB to both Brotli (`.br`) and
+gzip (`.gz`) via `vite-plugin-compression` (see `vite.config.js`). The original
+uncompressed files are kept alongside them for clients that advertise neither
+encoding.
+
+```
+dist/assets/index-abc123.js       # original
+dist/assets/index-abc123.js.br    # brotli
+dist/assets/index-abc123.js.gz    # gzip
+```
+
+### Serving with content negotiation
+
+A CDN or origin server should pick the best encoding from the client's
+`Accept-Encoding` header and set `Content-Encoding` + `Vary: Accept-Encoding`
+accordingly — **without re-compressing on the fly**.
+
+- **nginx** — `gzip_static on;` serves the `.gz` sibling automatically (already
+  set in `nginx.conf`). Brotli static (`brotli_static on;`) needs the
+  `ngx_brotli` module compiled in; add it when your image ships the module.
+- **Cloudflare / Fastly / CloudFront** — enable "serve pre-compressed" /
+  compression at the edge and forward `Accept-Encoding`.
+
+### Cache headers
+
+- Fingerprinted files under `/assets/` are immutable — `Cache-Control: public, max-age=31536000, immutable`.
+- `index.html` must be `no-cache` so a new deploy's asset manifest is always picked up.
+
+Both rules are encoded in `nginx.conf`.
+
+### Docker
+
+The frontend ships as a multi-stage image (`Dockerfile`: Vite build → nginx).
+Run it standalone or via the optional compose profile:
+
+```bash
+docker compose --profile frontend up --build   # serves on http://localhost:8080
+```

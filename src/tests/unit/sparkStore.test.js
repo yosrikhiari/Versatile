@@ -2,12 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useSparkStore } from '@/stores/sparkStore'
 
-// We need to mock the composable and service modules
-vi.mock('@/composables/useOllama', () => ({
+// Spark generation moved to services/generation/sparkGeneration and the
+// connection test to services/ollamaService (M-7.4).
+vi.mock('@/services/generation/sparkGeneration', () => ({
   generateSparkPrompt: vi.fn().mockResolvedValue('Test prompt'),
   generateOutline: vi.fn().mockResolvedValue({ outline: 'Test outline' }),
   generateContent: vi.fn().mockResolvedValue({ text: 'Test content' }),
-  generateContentStreaming: vi.fn().mockResolvedValue(undefined),
+  generateContentStreaming: vi.fn().mockResolvedValue(undefined)
+}))
+
+vi.mock('@/services/ollamaService', () => ({
   testOllamaConnection: vi.fn().mockResolvedValue({ success: true })
 }))
 

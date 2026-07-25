@@ -1,0 +1,14 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
+import { use{{pascalCase name}}Store } from '../../stores/{{camelCase name}}Store'
+
+describe('{{camelCase name}}Store', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('initializes with empty items', () => {
+    const store = use{{pascalCase name}}Store()
+    expect(store.items).toEqual([])
+  })
+})

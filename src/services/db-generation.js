@@ -5,6 +5,64 @@ import { db } from './db-core'
 // is not yet `done`, so a resumed run re-enters here instead of restarting.
 export const PIPELINE_STAGES = ['bible', 'network', 'structure', 'spine', 'prose', 'consistency']
 
+/** Per-stage timeout in ms. If a stage exceeds its budget the run marks it
+ *  `timeout` and continues to the next stage — partial results are preserved. */
+export const STAGE_TIMEOUT_MS = {
+  bible: 5 * 60 * 1000,
+  network: 3 * 60 * 1000,
+  structure: 10 * 60 * 1000,
+  spine: 5 * 60 * 1000,
+  prose: 30 * 60 * 1000,
+  consistency: 5 * 60 * 1000
+}
+
+/**
+ * Runs `fn` with a timeout. If the function does not settle within `timeoutMs`
+ * the returned promise rejects with a descriptive error. Does NOT manage stage
+ * status — that is left to the caller.
+ */
+export async function withTimeout(fn, timeoutMs, label = '') {
+  const ms = timeoutMs || 5 * 60 * 1000
+  return Promise.race([
+    fn(),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
+    )
+  ])
+}
+
+/**
+ * Wraps a stage's work function with a timeout. The stage is marked `running`
+ * before the work begins. On normal completion → status `done`. On timeout →
+ * status `timeout` (partial results preserved). On other errors → status
+ * `failed`. The error is always re-thrown so the caller can decide whether to
+ * abort or continue.
+ */
+export async function runStageWithTimeout(projectId, stageName, workFn, timeoutMs) {
+  const ms = timeoutMs || STAGE_TIMEOUT_MS[stageName] || 5 * 60 * 1000
+  await updateGenRunStage(projectId, stageName, { status: 'running' })
+  try {
+    const result = await Promise.race([
+      workFn(),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`Stage "${stageName}" timed out after ${ms / 1000}s`)),
+          ms
+        )
+      )
+    ])
+    await updateGenRunStage(projectId, stageName, { status: 'done' })
+    return result
+  } catch (err) {
+    const isTimeout = /timed out/i.test(err.message)
+    await updateGenRunStage(projectId, stageName, {
+      status: isTimeout ? 'timeout' : 'failed',
+      error: err.message
+    })
+    throw err
+  }
+}
+
 // Fresh stage-structured checkpoint (state.version 2). The generator merges its
 // writing-resume fields (scenePlan, chapterPlan, writtenMeta, ...) into this.
 export function makeInitialGenState(extra = {}) {

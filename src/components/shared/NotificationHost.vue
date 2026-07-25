@@ -1,22 +1,36 @@
 <script setup>
+import { computed } from 'vue'
 import { useNotifications } from '../../composables/useNotifications'
 import BaseIcon from '../shared/BaseIcon.vue'
 
-const { toasts, activeConfirm, removeToast } = useNotifications()
+const { toasts, activeConfirm, toastPosition, removeToast, dismissAllToasts, runToastAction } =
+  useNotifications()
+
+// Map the configured stack position to fixed-position utility classes.
+const positionClass = computed(
+  () =>
+    ({
+      'bottom-center': 'bottom-6 left-1/2 -translate-x-1/2 flex-col',
+      'bottom-right': 'bottom-6 right-6 flex-col items-end',
+      'top-center': 'top-6 left-1/2 -translate-x-1/2 flex-col',
+      'top-right': 'top-6 right-6 flex-col items-end'
+    })[toastPosition] || 'bottom-6 left-1/2 -translate-x-1/2 flex-col'
+)
 </script>
 
 <template>
   <div>
     <!-- Toasts -->
     <div
-      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none"
+      class="fixed z-[100] flex gap-2 pointer-events-none"
+      :class="positionClass"
       aria-live="polite"
     >
       <TransitionGroup name="toast">
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="px-5 py-2.5 rounded-lg shadow-lg text-sm font-ui bg-bg-tertiary border border-border-subtle max-w-md text-center pointer-events-auto flex items-center justify-between gap-3"
+          class="px-5 py-2.5 rounded-lg shadow-lg text-sm font-ui bg-bg-tertiary border border-border-subtle max-w-md pointer-events-auto flex items-center justify-between gap-3"
           :class="{
             'text-text-primary': toast.type === 'info',
             'text-success': toast.type === 'success',
@@ -24,14 +38,30 @@ const { toasts, activeConfirm, removeToast } = useNotifications()
             'text-warning': toast.type === 'warning'
           }"
         >
-          <span>{{ toast.message }}</span>
+          <span class="flex-1">{{ toast.message }}</span>
           <button
-            class="opacity-50 hover:opacity-100 transition-opacity"
+            v-if="toast.action"
+            class="shrink-0 text-xs font-semibold text-accent hover:text-accent-hover transition-colors focus:outline-none focus:ring-2 focus:ring-accent rounded px-1"
+            @click="runToastAction(toast)"
+          >
+            {{ toast.action.label }}
+          </button>
+          <button
+            class="shrink-0 opacity-50 hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent rounded"
+            aria-label="Dismiss notification"
             @click="removeToast(toast.id)"
           >
             <BaseIcon name="x" :size="14" />
           </button>
         </div>
+        <button
+          v-if="toasts.length > 1"
+          key="dismiss-all"
+          class="self-center text-2xs font-ui text-text-hint hover:text-text-primary transition-colors pointer-events-auto focus:outline-none focus:ring-2 focus:ring-accent rounded px-2 py-0.5"
+          @click="dismissAllToasts"
+        >
+          Dismiss all
+        </button>
       </TransitionGroup>
     </div>
 

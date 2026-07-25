@@ -28,6 +28,8 @@ function manage() {
   <div class="relative">
     <button
       class="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-text-secondary hover:text-text-primary transition-colors"
+      :aria-expanded="open"
+      aria-haspopup="true"
       @click="open = !open"
     >
       <BaseIcon name="building-2" :size="14" />
@@ -37,11 +39,7 @@ function manage() {
       <BaseIcon name="chevron-down" :size="12" />
     </button>
 
-    <div
-      v-if="open"
-      class="fixed inset-0 z-40"
-      @click="open = false"
-    />
+    <div v-if="open" class="fixed inset-0 z-40" @click="open = false" />
 
     <Transition name="fade">
       <div

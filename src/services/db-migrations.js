@@ -8,7 +8,7 @@ export const MIGRATIONS = {
   },
 
   13: async (trans) => {
-    const chapters = await trans.chapters.toArray()
+    const chapters = (await trans.chapters?.toArray()) ?? []
     for (const ch of chapters) {
       await trans.sections.add({
         ...ch,
@@ -22,7 +22,7 @@ export const MIGRATIONS = {
       })
     }
 
-    const scenes = await trans.scenes.toArray()
+    const scenes = (await trans.scenes?.toArray()) ?? []
     for (const sc of scenes) {
       await trans.subsections.add({
         ...sc,
@@ -83,5 +83,94 @@ export const MIGRATIONS = {
       if (branch.description === undefined) branch.description = ''
       if (branch.status === undefined) branch.status = 'active'
     })
+  },
+
+  38: async () => {
+    // New table only — no data transform needed.
+  },
+
+  39: async (trans) => {
+    // Migrate nodePositions.instances map into individual graphNodeInstances rows.
+    // nodePositions table is dropped in v39 (not declared in v39 stores).
+    const oldRecords = (await trans.nodePositions?.toArray()) ?? []
+    for (const record of oldRecords) {
+      if (record.instances) {
+        const rows = Object.keys(record.instances).map((nodeId) => ({
+          projectId: record.projectId,
+          nodeId
+        }))
+        if (rows.length > 0) {
+          await trans.graphNodeInstances.bulkAdd(rows)
+        }
+      }
+    }
+  },
+
+  36: async (trans) => {
+    const oldPositions = (await trans.nodePositions?.toArray()) ?? []
+    for (const record of oldPositions) {
+      if (record.positions) {
+        const rows = Object.entries(record.positions).map(([nodeId, pos]) => ({
+          projectId: record.projectId,
+          nodeId,
+          nodeType: nodeId.startsWith('char-')
+            ? 'character'
+            : nodeId.startsWith('loc-')
+              ? 'location'
+              : 'plotThread',
+          x: pos.x ?? 0,
+          y: pos.y ?? 0
+        }))
+        if (rows.length > 0) {
+          await trans.graphNodePositions.bulkAdd(rows)
+        }
+      }
+    }
+
+    // graphGroups no longer declared in schema (removed from stores).
+    // This migration reads from it; for fresh DBs the table won't exist, so guard.
+    /** @type {Array<{ projectId: string; groups: Array<{id?: string; name?: string; label?: string; color?: string; x?: number; y?: number; width?: number; height?: number}>; nodeParents?: Record<string, string> }>} */
+    let oldGroups
+    try {
+      oldGroups = await trans.graphGroups.toArray()
+    } catch {
+      oldGroups = []
+    }
+    for (const record of oldGroups) {
+      if (Array.isArray(record.groups)) {
+        const rows = record.groups.map((g, i) => ({
+          id: g.id || `group-migrated-${record.projectId}-${i}`,
+          projectId: record.projectId,
+          name: g.name || g.label || '',
+          color: g.color || '#6e8bb5',
+          x: g.x ?? 100,
+          y: g.y ?? 100,
+          width: g.width ?? 300,
+          height: g.height ?? 200,
+          groupOrder: i
+        }))
+        if (rows.length > 0) {
+          await trans.graphGroupsV2.bulkAdd(rows)
+        }
+      }
+
+      if (record.nodeParents) {
+        const parentRows = Object.entries(record.nodeParents)
+          .filter(([, groupId]) => groupId != null)
+          .map(([nodeId, groupId]) => ({
+            projectId: record.projectId,
+            nodeId,
+            nodeType: nodeId.startsWith('char-')
+              ? 'character'
+              : nodeId.startsWith('loc-')
+                ? 'location'
+                : 'plotThread',
+            groupId: String(groupId)
+          }))
+        if (parentRows.length > 0) {
+          await trans.graphNodeParents.bulkAdd(parentRows)
+        }
+      }
+    }
   }
 }

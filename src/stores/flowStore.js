@@ -2,8 +2,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useProjectStore } from './projectStore'
 import { useArchiveStore } from './archiveStore'
-import { useAuthorModel } from '../composables/useAuthorModel'
-import { useStateSummarizer } from '../composables/useStateSummarizer'
 
 export const useFlowStore = defineStore('flow', () => {
   const projectStore = useProjectStore()
@@ -115,23 +113,31 @@ export const useFlowStore = defineStore('flow', () => {
 
     const projectId = projectStore.currentProjectId
     if (projectId) {
-      const archiveStore = useArchiveStore()
-      const { summarize, snapshotToRecap } = useStateSummarizer()
-      const { buildProfileFromSession } = useAuthorModel()
+      // useStateSummarizer / useAuthorModel orchestrate stores, so they're loaded
+      // lazily (M-7.4). endSession stays sync; this end-of-session bookkeeping
+      // runs after the modal is already shown.
+      Promise.all([
+        import('../composables/useStateSummarizer'),
+        import('../composables/useAuthorModel')
+      ]).then(([{ useStateSummarizer }, { useAuthorModel }]) => {
+        const archiveStore = useArchiveStore()
+        const { summarize, snapshotToRecap } = useStateSummarizer()
+        const { buildProfileFromSession } = useAuthorModel()
 
-      const state = summarize()
-      if (state) {
-        archiveStore.saveEndOfSessionState(projectId, Date.now().toString(), state).then(() => {
-          projectStore.lastSessionRecap = snapshotToRecap(state)
-        })
-      }
+        const state = summarize()
+        if (state) {
+          archiveStore.saveEndOfSessionState(projectId, Date.now().toString(), state).then(() => {
+            projectStore.lastSessionRecap = snapshotToRecap(state)
+          })
+        }
 
-      const sessionData = {
-        wordCountDelta: projectStore.sessionWordCount,
-        genre: projectStore.currentCategory
-      }
-      const updatedProfile = buildProfileFromSession(sessionData)
-      projectStore.updateAuthorVoiceProfile({ data: updatedProfile })
+        const sessionData = {
+          wordCountDelta: projectStore.sessionWordCount,
+          genre: projectStore.currentCategory
+        }
+        const updatedProfile = buildProfileFromSession(sessionData)
+        projectStore.updateAuthorVoiceProfile({ data: updatedProfile })
+      })
     }
   }
 

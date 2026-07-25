@@ -27,7 +27,7 @@ public class GetSessionArchiveItemsHandler : IRequestHandler<GetSessionArchiveIt
 
         var items = await _items.GetAllAsync(i => i.StoryId == request.StoryId, ct);
         return items
-            .OrderBy(i => i.Timestamp)
+            .OrderByDescending(i => i.Timestamp)
             .Select(i => new SessionArchiveItemDto(i.Id, i.StoryId, i.Signal, i.Type, i.Timestamp, i.Data))
             .ToList();
     }

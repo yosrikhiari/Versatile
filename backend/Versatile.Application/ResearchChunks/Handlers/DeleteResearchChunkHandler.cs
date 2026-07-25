@@ -19,7 +19,7 @@ public class DeleteResearchChunkHandler : IRequestHandler<DeleteResearchChunkCom
     public async Task<Unit> Handle(DeleteResearchChunkCommand request, CancellationToken ct)
     {
         var chunks = await _repo.GetAllAsync(
-            c => c.Id == request.Id && c.UserId == request.UserId, ct);
+            c => c.Id == request.Id && c.UserId == request.UserId && c.OrganizationId == request.OrganizationId, ct);
         var chunk = chunks.FirstOrDefault() ?? throw new KeyNotFoundException("Research chunk not found");
 
         _repo.Delete(chunk);

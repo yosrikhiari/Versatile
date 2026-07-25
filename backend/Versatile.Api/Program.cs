@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Serilog;
 using Versatile.Application;
@@ -81,9 +82,16 @@ try
     builder.Services.AddScoped<CacheResultFilter>();
     builder.Services.AddControllers(options =>
     {
+        options.Filters.Add<RouteValuesPreservationFilter>();
         options.Filters.Add<ResponseEnvelopeFilter>();
-        options.Filters.Add(new TypeFilterAttribute(typeof(CacheResultFilter)));
-        options.Filters.Add<AutoValidateAntiforgeryTokenAttribute>();
+        if (!builder.Environment.IsEnvironment("Testing"))
+        {
+            options.Filters.Add(new TypeFilterAttribute(typeof(CacheResultFilter)));
+            options.Filters.Add<AutoValidateAntiforgeryTokenAttribute>();
+        }
+    }).AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
     builder.Services.AddEndpointsApiExplorer();
 
@@ -91,7 +99,15 @@ try
     builder.Services.AddHttpContextAccessor();
 
     builder.Services.AddApplication();
-    builder.Services.AddInfrastructure(builder.Configuration);
+
+    if (builder.Environment.IsEnvironment("Testing"))
+    {
+        builder.Services.AddInfrastructure(builder.Configuration, useNpgsql: false);
+    }
+    else
+    {
+        builder.Services.AddInfrastructure(builder.Configuration);
+    }
 
 #pragma warning disable CS0618
     builder.Services.AddHangfire(config => config
@@ -106,7 +122,7 @@ try
         options.HeaderName = "X-CSRF-TOKEN";
         options.Cookie.Name = "X-CSRF-TOKEN";
         options.Cookie.HttpOnly = true;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SecurePolicy = builder.Environment.IsEnvironment("Testing") ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
         options.Cookie.SameSite = SameSiteMode.Strict;
     });
 
@@ -255,3 +271,5 @@ static async Task EnsureSeedDataAsync(ApplicationDbContext db)
         await db.SaveChangesAsync();
     }
 }
+
+public partial class Program { }

@@ -14,7 +14,7 @@ function uniqueDbName() {
  * Helper: create a Dexie at a target version range, run the upgrade handler,
  * and call verify() after the upgrade completes.
  */
-async function withMigration({ version, beforeSchemas, seed }) {
+async function withMigration({ version, beforeSchemas, migrationSchemas, seed }) {
   const dbName = uniqueDbName()
 
   // Phase 1: Open at old version, seed data, close
@@ -28,9 +28,11 @@ async function withMigration({ version, beforeSchemas, seed }) {
   }
   oldDb.close()
 
-  // Phase 2: Open with full schemas up to `version`, triggering upgrade
+  // Phase 2: Open with schemas up to `version`, triggering upgrade
+  // migrationSchemas overrides SCHEMA_VERSIONS when the migration needs
+  // to access stores (e.g. chapters/scenes) that were removed from later versions.
   const newDb = new Dexie(dbName)
-  const allVersions = SCHEMA_VERSIONS.filter((v) => v.version <= version)
+  const allVersions = migrationSchemas ?? SCHEMA_VERSIONS.filter((v) => v.version <= version)
   for (const v of allVersions) {
     let dv = newDb.version(v.version).stores(v.stores)
     const upgrade = MIGRATIONS[v.version]
@@ -86,12 +88,48 @@ describe('v13 migration (chapters → sections, scenes → subsections)', () => 
   it('copies all chapters into sections and scenes into subsections', async () => {
     const seed = async (db) => {
       await db.chapters.bulkAdd([
-        { id: 1, projectId: 'p1', title: 'Ch1', summary: 'Sum1', order: 0, status: 'active', tags: ['a'], volumeId: 'v1' },
-        { id: 2, projectId: 'p1', title: 'Ch2', summary: 'Sum2', order: 1, status: 'draft', tags: ['b'], volumeId: null }
+        {
+          id: 1,
+          projectId: 'p1',
+          title: 'Ch1',
+          summary: 'Sum1',
+          order: 0,
+          status: 'active',
+          tags: ['a'],
+          volumeId: 'v1'
+        },
+        {
+          id: 2,
+          projectId: 'p1',
+          title: 'Ch2',
+          summary: 'Sum2',
+          order: 1,
+          status: 'draft',
+          tags: ['b'],
+          volumeId: null
+        }
       ])
       await db.scenes.bulkAdd([
-        { id: 10, projectId: 'p1', chapterId: 1, title: 'Sc1', summary: 'Ssum1', order: 0, content: 'Hello', tags: ['x'] },
-        { id: 11, projectId: 'p1', chapterId: 1, title: 'Sc2', summary: 'Ssum2', order: 1, content: 'World', tags: ['y'] }
+        {
+          id: 10,
+          projectId: 'p1',
+          chapterId: 1,
+          title: 'Sc1',
+          summary: 'Ssum1',
+          order: 0,
+          content: 'Hello',
+          tags: ['x']
+        },
+        {
+          id: 11,
+          projectId: 'p1',
+          chapterId: 1,
+          title: 'Sc2',
+          summary: 'Ssum2',
+          order: 1,
+          content: 'World',
+          tags: ['y']
+        }
       ])
     }
 
@@ -111,11 +149,31 @@ describe('v13 migration (chapters → sections, scenes → subsections)', () => 
       expect(sc1.content).toBe('Hello')
     }
 
-    const beforeVersion13 = SCHEMA_VERSIONS.filter(
-      (v) => v.version <= 12 && v.version !== 13
+    const beforeVersion13 = SCHEMA_VERSIONS.filter((v) => v.version <= 12 && v.version !== 13).map(
+      (v) => {
+        if (v.version === 11) {
+          return {
+            ...v,
+            stores: {
+              ...v.stores,
+              chapters: '++id, projectId, title, summary, order, status, *tags, volumeId',
+              scenes: '++id, projectId, chapterId, title, summary, order, content, *tags'
+            }
+          }
+        }
+        return v
+      }
     )
 
-    const db = await withMigration({ version: 13, beforeSchemas: beforeVersion13, seed })
+    const migrationVersion13 = SCHEMA_VERSIONS.find((v) => v.version === 13)
+    const migrationSchemas13 = [...beforeVersion13, migrationVersion13]
+
+    const db = await withMigration({
+      version: 13,
+      beforeSchemas: beforeVersion13,
+      migrationSchemas: migrationSchemas13,
+      seed
+    })
     await verify(db)
     db.close()
     await db.delete()
@@ -124,9 +182,7 @@ describe('v13 migration (chapters → sections, scenes → subsections)', () => 
 
 describe('v26 migration (DEV_MODE=false, no-op)', () => {
   it('does nothing when DEV_MODE is false', async () => {
-    const beforeVersion26 = SCHEMA_VERSIONS.filter(
-      (v) => v.version <= 25
-    )
+    const beforeVersion26 = SCHEMA_VERSIONS.filter((v) => v.version <= 25)
     const db = await withMigration({ version: 26, beforeSchemas: beforeVersion26, seed: undefined })
     // v26 handler checks DEV_MODE (false) and returns early — no crash expected
     const userCount = await db.users.count()
@@ -181,9 +237,7 @@ describe('v31 migration (generation/content statuses)', () => {
       }
     }
 
-    const beforeVersion31 = SCHEMA_VERSIONS.filter(
-      (v) => v.version <= 30
-    )
+    const beforeVersion31 = SCHEMA_VERSIONS.filter((v) => v.version <= 30)
     const db = await withMigration({ version: 31, beforeSchemas: beforeVersion31, seed })
     await verify(db)
     db.close()
@@ -195,8 +249,24 @@ describe('v35 migration (branches description/status)', () => {
   it('backfills description and status on branches', async () => {
     const seed = async (db) => {
       await db.branches.bulkAdd([
-        { id: 1, projectId: 'p1', name: 'main', description: 'Main branch', status: 'active', sourceBranchId: null, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-        { id: 2, projectId: 'p1', name: 'feature-x', sourceBranchId: 'main', createdAt: '2024-01-02', updatedAt: '2024-01-02' }
+        {
+          id: 1,
+          projectId: 'p1',
+          name: 'main',
+          description: 'Main branch',
+          status: 'active',
+          sourceBranchId: null,
+          createdAt: '2024-01-01',
+          updatedAt: '2024-01-01'
+        },
+        {
+          id: 2,
+          projectId: 'p1',
+          name: 'feature-x',
+          sourceBranchId: 'main',
+          createdAt: '2024-01-02',
+          updatedAt: '2024-01-02'
+        }
       ])
     }
 
@@ -210,9 +280,7 @@ describe('v35 migration (branches description/status)', () => {
       expect(feat.status).toBe('active')
     }
 
-    const beforeVersion35 = SCHEMA_VERSIONS.filter(
-      (v) => v.version <= 34
-    )
+    const beforeVersion35 = SCHEMA_VERSIONS.filter((v) => v.version <= 34)
     const db = await withMigration({ version: 35, beforeSchemas: beforeVersion35, seed })
     await verify(db)
     db.close()

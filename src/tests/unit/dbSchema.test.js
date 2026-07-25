@@ -8,11 +8,10 @@ import { db } from '@/services/db-core'
 // schema, bump the version and update the expected map below.
 // See docs/database-schema-changelog.md for per-version documentation.
 const EXPECTED = {
+  aiResponseCache: 'hash | [provider+model+temperature+feature], createdAt',
   annotations: '++id | original, paragraphIndex, projectId, reason, status, suggestion, type',
   authorProfile: '++id | projectId',
-  branches:
-    '++id | createdAt, description, name, projectId, sourceBranchId, status, updatedAt',
-  chapters: '++id | *tags, order, projectId, status, summary, title, volumeId',
+  branches: '++id | createdAt, description, name, projectId, sourceBranchId, status, updatedAt',
   characterRelationships:
     '++id | apiId, fromCharacterId, lastSyncedAt, notes, projectId, syncStatus, toCharacterId, type',
   characters:
@@ -21,17 +20,21 @@ const EXPECTED = {
   dailyGoals: '++id | [projectId+date], date, projectId',
   dialogueIndex: '++id | [projectId+speakerId], paragraphIndex, projectId, sectionId, speakerId',
   embeddingCache: 'hash | createdAt',
-  evalResults: '++id | evalType, projectId, sceneId, score, timestamp',
+  evalResults:
+    '++id | [projectId+evalType], [projectId+sceneId+evalType], [projectId+sceneId], evalType, projectId, sceneId, score, timestamp',
   genRuns: '++id | &projectId, updatedAt',
   generatedStories: '++id | generatedAt, projectId, qualityScore, title, totalWords',
   graphEdges:
     '++id | projectId, relationshipType, sourceId, sourceType, targetId, targetType, volumeId',
-  graphGroups: '++id | projectId',
+  graphGroupsV2: 'id | color, groupOrder, height, name, projectId, width, x, y',
+  graphNodeParents: '[projectId+nodeId] | groupId, nodeId, nodeType, projectId',
+  graphNodePositions: '[projectId+nodeId] | nodeId, nodeType, projectId, x, y',
   groupEdges: '++id | projectId, relationshipType, sourceGroupId, targetGroupId',
   locations:
     '++id | apiId, description, generationStatus, lastSyncedAt, name, notes, projectId, syncStatus',
   manuscripts: '++id | apiId, content, lastSyncedAt, projectId, syncStatus, updatedAt, wordCount',
-  nodePositions: '++id | projectId',
+  graphNodeInstances: '[projectId+nodeId] | nodeId, projectId',
+  optimizationSessions: '++id | [projectId+sceneId], projectId, sceneId, timestamp',
   pendingDeletions: '++id | apiId, deletedAt, table',
   plotThreads:
     '++id | apiId, generationStatus, lastSyncedAt, notes, projectId, status, syncStatus, title',
@@ -44,13 +47,12 @@ const EXPECTED = {
   researchTags: '++id | [projectId+name], name, projectId',
   revisionComments:
     '++id | comment, createdAt, endOffset, paragraphIndex, projectId, selectedText, startOffset',
-  scenes: '++id | *tags, chapterId, content, order, projectId, summary, title',
   sections:
     '++id | *tags, [projectId+branchId], apiId, branchId, lastSyncedAt, order, projectId, status, summary, syncStatus, title, volumeId',
   sessionArchive: '++id | projectId, signal, timestamp, type',
-  snapshots: '++id | chapterId, label, projectId, timestamp',
+  snapshots: '++id | [projectId+chapterId], chapterId, label, projectId, timestamp',
   snippets: '++id | count, lastSeen, projectId, word',
-  sparkHistory: '++id | blueprint, createdAt, projectId, prompt, type',
+  sparkHistory: '++id | [projectId+type], blueprint, createdAt, projectId, prompt, type',
   storyDocuments: '++id | [projectId+docType], content, docType, projectId, updatedAt',
   storyElements: '++id | data, height, projectId, title, type, width, x, y',
   storyShapeAnalysis:
@@ -80,7 +82,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(35)
+    expect(verno).toBe(39)
   })
 
   it('has exactly the expected set of tables', () => {

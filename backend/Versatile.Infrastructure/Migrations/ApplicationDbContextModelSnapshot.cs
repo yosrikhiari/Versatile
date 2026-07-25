@@ -818,45 +818,6 @@ namespace Versatile.Infrastructure.Migrations
                     b.ToTable("PlotThreads");
                 });
 
-            modelBuilder.Entity("Versatile.Domain.Entities.Research", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("OrganizationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("StoryId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.HasIndex("StoryId");
-
-                    b.ToTable("ResearchNotes");
-                });
-
             modelBuilder.Entity("Versatile.Domain.Entities.ResearchChunk", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2031,17 +1992,6 @@ namespace Versatile.Infrastructure.Migrations
                     b.Navigation("Story");
                 });
 
-            modelBuilder.Entity("Versatile.Domain.Entities.Research", b =>
-                {
-                    b.HasOne("Versatile.Domain.Entities.Story", "Story")
-                        .WithMany("ResearchNotes")
-                        .HasForeignKey("StoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Story");
-                });
-
             modelBuilder.Entity("Versatile.Domain.Entities.ResearchChunk", b =>
                 {
                     b.HasOne("Versatile.Domain.Entities.ResearchDocument", "ResearchDocument")
@@ -2316,8 +2266,6 @@ namespace Versatile.Infrastructure.Migrations
                     b.Navigation("ResearchChunks");
 
                     b.Navigation("ResearchDocuments");
-
-                    b.Navigation("ResearchNotes");
 
                     b.Navigation("ResearchTags");
 

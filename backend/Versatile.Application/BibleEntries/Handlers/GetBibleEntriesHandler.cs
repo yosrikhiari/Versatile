@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using MediatR;
 using Versatile.Application.BibleEntries.Queries;
 using Versatile.Application.Common;
@@ -14,8 +15,18 @@ public class GetBibleEntriesHandler : IRequestHandler<GetBibleEntriesQuery, Page
     {
         var story = await _stories.GetByIdForOrganizationAsync(request.StoryId, request.OrganizationId!.Value, ct);
         if (story is null || story.UserId != request.UserId) throw new KeyNotFoundException("Story not found");
-        var (items, totalCount) = await _entities.GetPagedAsync(e => e.StoryId == request.StoryId, request.Page, request.PageSize, ct);
-        return new PagedResponse<BibleEntryDto>(items.Select(e => ToDto(e)).ToList(), totalCount, request.Page, request.PageSize);
+
+        Expression<Func<BibleEntry, bool>> filter = e => e.StoryId == request.StoryId;
+
+        if (request.AfterId.HasValue)
+        {
+            var (items, hasNextPage) = await _entities.GetPagedKeysetAsync(filter, request.PageSize, request.AfterId, q => q.OrderByDescending(e => e.UpdatedAt), ct);
+            var dtos = items.Select(ToDto).ToList();
+            return new PagedResponse<BibleEntryDto>(dtos, 0, 0, request.PageSize, hasNextPage ? dtos.Last().Id : null);
+        }
+
+        var (itemsPaged, totalCount) = await _entities.GetPagedAsync(filter, request.Page, request.PageSize, q => q.OrderByDescending(e => e.UpdatedAt), ct);
+        return new PagedResponse<BibleEntryDto>(itemsPaged.Select(ToDto).ToList(), totalCount, request.Page, request.PageSize);
     }
     private static BibleEntryDto ToDto(BibleEntry e) => new(e.Id, e.StoryId, e.Title, e.Content, e.Category, e.CreatedAt, e.UpdatedAt);
 }

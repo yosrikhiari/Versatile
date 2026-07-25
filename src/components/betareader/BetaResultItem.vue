@@ -50,11 +50,11 @@ function handleAction() {
   gap: 8px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--vers-bg-hover);
   transition: background 0.15s;
 }
 .result-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--vers-bg-elevated);
 }
 
 .result-icon {
@@ -105,7 +105,7 @@ function handleAction() {
   line-height: 1.3;
   margin-top: 2px;
   padding: 4px 6px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--vers-bg-base);
   border-radius: 4px;
 }
 

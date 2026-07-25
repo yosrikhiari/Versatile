@@ -24,18 +24,6 @@ const mockDb = {
     update: vi.fn(),
     delete: vi.fn()
   },
-  chapters: {
-    where: vi.fn(() => makeWhereChain([])),
-    add: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn()
-  },
-  scenes: {
-    where: vi.fn(() => makeWhereChain([])),
-    add: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn()
-  },
   volumes: {
     where: vi.fn(() => makeWhereChain([])),
     add: vi.fn(),

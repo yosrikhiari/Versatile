@@ -20,8 +20,9 @@ import {
   updateCharacterRelationship,
   deleteCharacterRelationship
 } from '../services/dbService'
-import { warmEmbeddingCache } from '../composables/useManuscriptContext'
-import { useStoryDocuments } from '../composables/useStoryDocuments'
+// useStoryDocuments / useManuscriptContext orchestrate stores, so they're loaded
+// lazily at call time (M-7.4) — a static import would couple the store to a
+// composable and create a load-time cycle.
 import { useProjectStore } from '../stores/projectStore'
 import { useBranchStore } from '../stores/branchStore'
 
@@ -46,6 +47,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
       const projectStore = useProjectStore()
       const projectId = projectStore.currentProjectId
       if (!projectId) return
+      const { useStoryDocuments } = await import('../composables/useStoryDocuments')
       const storyDocs = useStoryDocuments()
       try {
         await storyDocs.regenerateDocument(projectId, 'style_guide')
@@ -91,9 +93,11 @@ export const useManuscriptStore = defineStore('manuscript', () => {
       subsections.value = await getSubsections(projectId, null, branchId)
       storyElements.value = await getStoryElements(projectId)
       relationships.value = await getCharacterRelationships(projectId)
-      warmEmbeddingCache(projectId).catch((err) => {
-        console.error('Failed to warm embedding cache:', err)
-      })
+      import('../composables/useManuscriptContext')
+        .then(({ warmEmbeddingCache }) => warmEmbeddingCache(projectId))
+        .catch((err) => {
+          console.error('Failed to warm embedding cache:', err)
+        })
     } catch (e) {
       loadError.value = e.message
       console.error('[manuscriptStore] loadManuscript failed:', e)

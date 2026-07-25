@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using MediatR;
 using Versatile.Application.Common;
 using Versatile.Application.DTOs;
@@ -26,12 +27,19 @@ public class GetScenesHandler : IRequestHandler<GetScenesQuery, PagedResponse<Sc
         if (chapter is null || chapter.UserId != request.UserId)
             throw new KeyNotFoundException("Chapter not found");
 
-        var (scenes, totalCount) = await _scenes.GetPagedAsync(s => s.ChapterId == request.ChapterId, request.Page, request.PageSize, ct);
-        var items = scenes
-            .OrderBy(s => s.Order)
-            .Select(s => new SceneDto(s.Id, s.ChapterId, s.Title, s.Content, s.Status, s.WordCount, s.Order, s.CreatedAt, s.UpdatedAt))
-            .ToList();
-        return new PagedResponse<SceneDto>(items, totalCount, request.Page, request.PageSize);
+        Expression<Func<Scene, bool>> filter = s => s.ChapterId == request.ChapterId;
+
+        if (request.AfterId.HasValue)
+        {
+            var (scenes, hasNextPage) = await _scenes.GetPagedKeysetAsync(filter, request.PageSize, request.AfterId,
+                q => q.OrderBy(s => s.Order), ct);
+            var items = scenes.Select(s => new SceneDto(s.Id, s.ChapterId, s.Title, s.Content, s.Status, s.WordCount, s.Order, s.CreatedAt, s.UpdatedAt)).ToList();
+            return new PagedResponse<SceneDto>(items, 0, 0, request.PageSize, hasNextPage ? items.Last().Id : null);
+        }
+
+        var (scenesPaged, totalCount) = await _scenes.GetPagedAsync(filter, request.Page, request.PageSize, q => q.OrderBy(s => s.Order), ct);
+        var itemsPaged = scenesPaged.Select(s => new SceneDto(s.Id, s.ChapterId, s.Title, s.Content, s.Status, s.WordCount, s.Order, s.CreatedAt, s.UpdatedAt)).ToList();
+        return new PagedResponse<SceneDto>(itemsPaged, totalCount, request.Page, request.PageSize);
     }
 }
 

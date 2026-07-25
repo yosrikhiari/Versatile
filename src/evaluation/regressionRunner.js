@@ -1,4 +1,4 @@
-import { computeDegradation } from '../services/degradation.js'
+import { computeDegradation } from '../services/degradation'
 
 /**
  * Runs a regression check comparing current eval results against a stored baseline.
@@ -71,10 +71,18 @@ export function runRegressionCheck(currentResults, baseline, options = {}) {
     totalImprovements += sceneImprovements
 
     const summary = {
-      unchanged: Object.entries(dims).filter(([, v]) => v.status === 'unchanged').map(([k]) => k),
-      improved: Object.entries(dims).filter(([, v]) => v.status === 'improved').map(([k]) => k),
-      regressed: Object.entries(dims).filter(([, v]) => v.status === 'regressed').map(([k]) => k),
-      majorRegressions: Object.entries(dims).filter(([, v]) => v.status === 'major_regression').map(([k]) => k)
+      unchanged: Object.entries(dims)
+        .filter(([, v]) => v.status === 'unchanged')
+        .map(([k]) => k),
+      improved: Object.entries(dims)
+        .filter(([, v]) => v.status === 'improved')
+        .map(([k]) => k),
+      regressed: Object.entries(dims)
+        .filter(([, v]) => v.status === 'regressed')
+        .map(([k]) => k),
+      majorRegressions: Object.entries(dims)
+        .filter(([, v]) => v.status === 'major_regression')
+        .map(([k]) => k)
     }
 
     let status = 'stable'
@@ -94,7 +102,7 @@ export function runRegressionCheck(currentResults, baseline, options = {}) {
   }
 
   for (const scene of baseline.scenes) {
-    if (!currentResults.find(c => c.sceneId === scene.sceneId)) {
+    if (!currentResults.find((c) => c.sceneId === scene.sceneId)) {
       missingScenes.push(scene.sceneId)
     }
   }
@@ -109,8 +117,8 @@ export function runRegressionCheck(currentResults, baseline, options = {}) {
     config: { regressionThreshold: threshold, workspaceType },
     summary: {
       totalScenes: currentResults.length,
-      scenesCompared: sceneResults.filter(s => s.degradation).length,
-      newScenes: sceneResults.filter(s => s.status === 'new').length,
+      scenesCompared: sceneResults.filter((s) => s.degradation).length,
+      newScenes: sceneResults.filter((s) => s.status === 'new').length,
       missingBaselineScenes: missingScenes.length,
       dimensionsWithRegression: totalRegressions,
       dimensionsWithMajorRegression: totalMajorRegressions,

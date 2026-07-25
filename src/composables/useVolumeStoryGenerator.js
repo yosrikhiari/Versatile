@@ -1,7 +1,12 @@
 import { ref, reactive, computed } from 'vue'
 import { formatEvalFeedback } from '../services/evalFeedback'
 import { useAutoPromptAdjuster } from './useAutoPromptAdjuster'
-import { gateDimensionCoverage, gateScoreDistribution } from '../services/evalGates'
+import {
+  gateDimensionCoverage,
+  gateScoreDistribution,
+  gateProseQuality,
+  countWords
+} from '../services/evalGates'
 import { useProjectStore } from '../stores/projectStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
@@ -14,13 +19,18 @@ import { useStoryCritic } from './useStoryCritic'
 import { useChapterGenerationSync } from './useChapterGenerationSync'
 import { useStoryDocuments } from './useStoryDocuments'
 import { useActivityLog } from './useActivityLog'
+import { useEvalPersistence } from './useEvalPersistence'
+import { langfuseService } from '../services/langfuseService'
 import { generateRelationships } from './generation/generators/relationships'
+import { shouldChunkScene, splitSceneIntoChunks, mergeChunkProse } from './generation/sceneChunker'
 import { getFailedSubsections, batchCreatePlanStructure } from '../services/db-structure'
 import {
   saveGenRun,
   clearGenRun,
   getGenRun,
   updateGenRunStage,
+  runStageWithTimeout,
+  withTimeout,
   makeInitialGenState
 } from '../services/db-generation'
 import { aiGenerate, aiGenerateJson, resolveFeatureConfig } from './useAiService'
@@ -51,7 +61,10 @@ import { CommitService } from './generation/commit'
 import { ConsistencyService } from './generation/consistency'
 import { GenerationLifecycleService, createAbortScope, isAbortError } from './generation/lifecycle'
 import { SceneInteractionService } from './generation/interaction'
+import { SceneSpeculativeCache } from '../services/speculativeGenManager'
 import { useDelegatorGeneration } from './generation/delegator'
+import { useDriftTriggeredEval } from './useDriftTriggeredEval'
+import { ActiveLearningBridge } from './generation/activeLearning'
 
 import { getResumableRun } from './generation/checkpoint'
 import { buildPreliminaryEdges } from './generation/graph'
@@ -90,17 +103,24 @@ function detectSceneConflicts(results) {
   const allFacts = []
   for (const r of results) {
     if (!r.success) continue
-    for (const f of (r.keyFacts || [])) {
+    for (const f of r.keyFacts || []) {
       allFacts.push({ fact: f, sceneIndex: r.sceneIndex })
     }
   }
   const conflicts = []
   for (let i = 0; i < allFacts.length; i++) {
     for (let j = i + 1; j < allFacts.length; j++) {
-      const af = allFacts[i], bf = allFacts[j]
+      const af = allFacts[i],
+        bf = allFacts[j]
       if (af.sceneIndex === bf.sceneIndex) continue
-      const normA = af.fact.toLowerCase().replace(/[^\w\s]/g, '').trim()
-      const normB = bf.fact.toLowerCase().replace(/[^\w\s]/g, '').trim()
+      const normA = af.fact
+        .toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .trim()
+      const normB = bf.fact
+        .toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .trim()
       if (normA === normB) continue
       const wordsA = normA.split(/\s+/).filter((w) => w.length > 3)
       const wordsB = normB.split(/\s+/).filter((w) => w.length > 3)
@@ -108,7 +128,12 @@ function detectSceneConflicts(results) {
       const overlap = wordsA.filter((w) => wordsB.includes(w)).length
       const ratio = overlap / Math.min(wordsA.length, wordsB.length)
       if (ratio >= 0.5) {
-        conflicts.push({ sceneA: af.sceneIndex, sceneB: bf.sceneIndex, factA: af.fact, factB: bf.fact })
+        conflicts.push({
+          sceneA: af.sceneIndex,
+          sceneB: bf.sceneIndex,
+          factA: af.fact,
+          factB: bf.fact
+        })
       }
     }
   }
@@ -164,6 +189,25 @@ export function useVolumeStoryGenerator() {
   // How many scenes were accepted without the quality gate actually running.
   // Non-zero means the run's quality signal is partly fiction.
   const evalUnavailableCount = ref(0)
+  const evalPersistence = useEvalPersistence()
+
+  async function persistCritiqueEval(entry, pid, sceneTitle) {
+    if (!pid || !entry || entry.score == null) return
+    try {
+      await evalPersistence.saveRecord({
+        projectId: pid,
+        sceneId: String(entry.sceneIndex),
+        evalType: 'critique',
+        score: entry.score,
+        dimensionScores: entry.dimensionScores || null,
+        issues: entry.topIssues || null,
+        workspaceType: workspaceType.value,
+        sceneTitle: sceneTitle || null
+      })
+    } catch (err) {
+      console.warn('[evalPersistence] save failed:', err)
+    }
+  }
 
   // Run-level cancellation.
   //
@@ -185,7 +229,40 @@ export function useVolumeStoryGenerator() {
   const inlineEvalEnabled = ref(false)
   const sceneEvalResults = ref([])
   const promptAdjuster = useAutoPromptAdjuster()
+  const driftSceneEval = {
+    evaluate: async (
+      scene,
+      _workspaceType,
+      _scenePlanItem,
+      _index,
+      _projectId,
+      _storyBible,
+      _chapterLog,
+      extraFocus
+    ) => {
+      if (!scene?.prose) return null
+      return critic.evaluateScene({
+        draft: scene.prose,
+        sceneBrief: scene,
+        storyBible: _storyBible,
+        chapterLog: _chapterLog,
+        focusInstructions: extraFocus
+      })
+    }
+  }
+  const driftTriggeredEval = useDriftTriggeredEval(driftSceneEval)
+  // Declared here (not further down) because ActiveLearningBridge needs
+  // workspaceType at construction — a later `const` would hit the TDZ.
+  const projectStore = useProjectStore()
+  const workspaceType = computed(() => projectStore.activeWorkspaceType)
+  const activeLearningBridge = new ActiveLearningBridge({
+    sceneEvalResults,
+    promptAdjuster,
+    workspaceType
+  })
   const actLog = useActivityLog()
+  const generationTraceId = ref(null)
+  const generationSpanIds = {}
   let currentTaskId = null
 
   const director = useStoryDirector()
@@ -198,8 +275,6 @@ export function useVolumeStoryGenerator() {
   const manuscriptStore = useManuscriptStore()
   const storyGraphStore = useStoryGraphStore()
   const storyDocuments = useStoryDocuments()
-  const projectStore = useProjectStore()
-  const workspaceType = computed(() => projectStore.activeWorkspaceType)
 
   const delegatorApi = useDelegatorGeneration()
   const phase = delegatorApi.memory.phase
@@ -269,6 +344,10 @@ export function useVolumeStoryGenerator() {
   sceneInteractionService.onWriteNextBatch = (i) => writeNextBatch(i)
   sceneInteractionService.onCompleteGeneration = (pid) => completeGeneration(pid)
 
+  // Speculative generation cache: best-effort prefetch of next scene while the
+  // user reviews the current one in scene-review mode.
+  const speculativeCache = new SceneSpeculativeCache()
+
   // Wire locally-constructed services into Delegator memory so tool wrappers
   // (commitTool, consistencyTool, sceneTool) can reach them via memory.instances.*
   const { memory } = delegatorApi
@@ -292,6 +371,7 @@ export function useVolumeStoryGenerator() {
   // ever fill scenes that are still empty and never overwrite written prose.
   async function resumeGeneration({ projectId, onChunk, onPhaseChange }) {
     if (phase.value !== 'idle') return { resumed: false, reason: 'busy' }
+    speculativeCache.flush()
     const run = await getGenRun(projectId)
     if (!run || !run.state) return { resumed: false, reason: 'no-checkpoint' }
 
@@ -452,6 +532,15 @@ export function useVolumeStoryGenerator() {
     scenePlan.value = []
     rejectedPatterns.value = []
 
+    generationTraceId.value = `vol-gen-${projectId}-${Date.now()}`
+    langfuseService.createTrace(generationTraceId.value, {
+      name: 'volume-generation',
+      projectId,
+      genre,
+      tone,
+      wordTarget
+    })
+
     // One-click mode: run every phase to completion with no human gates
     autoMode.value = !!auto
     if (auto) sceneReviewMode.value = false
@@ -510,14 +599,16 @@ export function useVolumeStoryGenerator() {
       progress.current = 2
       progress.statusText = 'Conjuring Characters & World...'
       activeStage = 'bible'
-      await updateGenRunStage(projectId, 'bible', { status: 'running' })
-      await bootstrapper.bootstrapEntities({
-        synopsis: enhancedSynopsis,
-        projectId,
-        volumeId: vId,
-        onPartialData
+      await runStageWithTimeout(projectId, 'bible', () =>
+        bootstrapper.bootstrapEntities({
+          synopsis: enhancedSynopsis,
+          projectId,
+          volumeId: vId,
+          onPartialData
+        })
+      ).catch((err) => {
+        console.warn('[useVolumeStoryGenerator] bible stage failed or timed out:', err)
       })
-      await updateGenRunStage(projectId, 'bible', { status: 'done' })
       activeStage = null
       actLog.updatePhase(currentTaskId, bpPhase, { status: 'done' })
       bpPhase = -1
@@ -527,7 +618,6 @@ export function useVolumeStoryGenerator() {
       // planning, so scenes and views can build on a populated network. Best-effort.
       progress.statusText = 'Weaving the Story Network (relationships)...'
       const networkPhase = actLog.addPhase(currentTaskId, 'Story Network')
-      await updateGenRunStage(projectId, 'network', { status: 'running' })
       actLog.appendThought(
         currentTaskId,
         networkPhase,
@@ -535,15 +625,17 @@ export function useVolumeStoryGenerator() {
           `${storyBibleStore.locations.length} locations, ${storyBibleStore.plotThreads.length} plot threads...\n`
       )
       try {
-        const netResult = await generateRelationships({
-          projectId,
-          characters: storyBibleStore.characters,
-          locations: storyBibleStore.locations,
-          plotThreads: storyBibleStore.plotThreads,
-          synopsis: enhancedSynopsis,
-          genre,
-          tone
-        })
+        const netResult = await runStageWithTimeout(projectId, 'network', () =>
+          generateRelationships({
+            projectId,
+            characters: storyBibleStore.characters,
+            locations: storyBibleStore.locations,
+            plotThreads: storyBibleStore.plotThreads,
+            synopsis: enhancedSynopsis,
+            genre,
+            tone
+          })
+        )
         const REASON_MESSAGES = {
           ai_empty: 'The model found no relationships to map for this cast.',
           ai_failed: 'The relationship model call failed after retry (see console).',
@@ -572,11 +664,9 @@ export function useVolumeStoryGenerator() {
           )
         }
         actLog.updatePhase(currentTaskId, networkPhase, { status: 'done', detail })
-        await updateGenRunStage(projectId, 'network', { status: 'done' })
       } catch (err) {
         console.warn('[useVolumeStoryGenerator] Story Network generation failed:', err)
         actLog.updatePhase(currentTaskId, networkPhase, { status: 'failed' })
-        await updateGenRunStage(projectId, 'network', { status: 'failed', error: err.message })
       }
 
       // Reload story context so the newly generated entities are included in evidence
@@ -599,28 +689,33 @@ export function useVolumeStoryGenerator() {
       await updateGenRunStage(projectId, 'structure', { status: 'running' })
       actLog.appendThought(currentTaskId, planPhase, 'Outlining chapters and scenes...\n')
 
-      const directorResult = await director.generateStoryPlan({
-        goal: {
-          premise: enhancedSynopsis,
-          genre,
-          tone,
-          wordTarget: effectiveWordTarget,
-          horizon: 'long_term',
-          structure: structureSpec
-        },
-        evidence: updatedEvidence,
-        research,
-        // Mirror planning progress into the Planning phase so the Activity drawer
-        // shows what's being outlined, then forward to the caller's handler.
-        onPartialData: (type, name) => {
-          try {
-            actLog.appendThought(currentTaskId, planPhase, `• ${name}\n`)
-          } catch {
-            // Best-effort progress callback; a throwing consumer must not break the run.
-          }
-          onPartialData?.(type, name)
-        }
-      })
+      const directorResult = await withTimeout(
+        () =>
+          director.generateStoryPlan({
+            goal: {
+              premise: enhancedSynopsis,
+              genre,
+              tone,
+              wordTarget: effectiveWordTarget,
+              horizon: 'long_term',
+              structure: structureSpec
+            },
+            evidence: updatedEvidence,
+            research,
+            // Mirror planning progress into the Planning phase so the Activity drawer
+            // shows what's being outlined, then forward to the caller's handler.
+            onPartialData: (type, name) => {
+              try {
+                actLog.appendThought(currentTaskId, planPhase, `• ${name}\n`)
+              } catch {
+                // Best-effort progress callback; a throwing consumer must not break the run.
+              }
+              onPartialData?.(type, name)
+            }
+          }),
+        undefined,
+        'Structure stage'
+      )
 
       const scenes = directorResult.scenes
       const storyArc = directorResult.storyArc
@@ -735,6 +830,67 @@ export function useVolumeStoryGenerator() {
     }
   }
 
+  // Splits an extra-long scene into sections, generates each in parallel
+  // through the full writer-critic-eval gate, then merges the prose.
+  // Each section gets its own sectionRole directive in the brief so the model
+  // knows which narrative beat to focus on.
+  async function writeSceneChunked({
+    scene,
+    sceneIndex,
+    storyArc,
+    chapterLog = '',
+    storyBible,
+    storyContract,
+    existingEntitiesJson,
+    embeddingContext = '',
+    extraRejected,
+    pastEvalResults,
+    focusInstructions,
+    anchorRole,
+    anchorConstraints,
+    emitChunk
+  }) {
+    const sections = splitSceneIntoChunks(scene)
+    const sectionPromises = sections.map((sectionBrief, i) => {
+      const phaseName = `Section ${i + 1}: ${scene.title || `Scene ${scene.sceneNumber}`}`
+      const sectionPhase = actLog.addPhase(currentTaskId, phaseName)
+      return writeSceneWithGate({
+        scene: sectionBrief,
+        sceneIndex,
+        scenePhase: sectionPhase,
+        storyArc,
+        chapterLog,
+        storyBible,
+        storyContract,
+        existingEntitiesJson,
+        embeddingContext,
+        extraRejected,
+        pastEvalResults,
+        focusInstructions,
+        anchorRole,
+        anchorConstraints,
+        emitChunk: null
+      })
+    })
+
+    const results = await Promise.allSettled(sectionPromises)
+    const proseSections = results.map((r) => (r.status === 'fulfilled' ? r.value.chosenProse : ''))
+    const chosenProse = mergeChunkProse(proseSections)
+
+    const best = results
+      .filter((r) => r.status === 'fulfilled')
+      .sort((a, b) => (b.value.chosenEval?.score || 0) - (a.value.chosenEval?.score || 0))
+    const bestResult = best[0]
+
+    emitChunk?.(chosenProse, chosenProse)
+
+    return {
+      chosenProse,
+      chosenStructured: bestResult?.value?.chosenStructured || null,
+      chosenEval: bestResult?.value?.chosenEval || null
+    }
+  }
+
   // Shared per-scene writer with the one-click quality gate. In autoMode it
   // writes up to SCENE_MAX_ATTEMPTS times, critiques each attempt, keeps the
   // best, applies a continuity floor, and feeds each attempt's critique into
@@ -775,6 +931,26 @@ export function useVolumeStoryGenerator() {
         plotThreads: storyBibleStore.plotThreads
       }) || existingEntitiesJson
 
+    if (shouldChunkScene(scene)) {
+      return writeSceneChunked({
+        scene,
+        sceneIndex,
+        storyArc,
+        chapterLog,
+        storyBible,
+        storyContract,
+        existingEntitiesJson: sceneEntitiesJson,
+        embeddingContext,
+        extraRejected,
+        pastEvalResults,
+        focusInstructions,
+        anchorRole,
+        anchorConstraints,
+        emitChunk
+      })
+    }
+
+    let baselineWordCount = 0
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       throwIfAborted()
       let fullProse = ''
@@ -800,6 +976,9 @@ export function useVolumeStoryGenerator() {
         focusInstructions: attemptFocusInstructions || undefined
       })
       const proseText = result.prose
+      if (attempt === 0) {
+        baselineWordCount = countWords(proseText)
+      }
 
       if (!retryGate) {
         chosenProse = proseText
@@ -828,6 +1007,11 @@ export function useVolumeStoryGenerator() {
         console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
       }
 
+      const proseQ = gateProseQuality(criticResult, baselineWordCount, countWords(proseText))
+      if (!proseQ.pass && proseQ.flags.length > 0) {
+        console.warn('[evalGate] proseQuality:', proseQ.flags.join('; '))
+      }
+
       // A critic that cannot parse its own output makes the run look healthier
       // and cheaper than it is: the gate exits, the draft is accepted, and
       // nothing in the UI says the quality gate never ran. Retrying the writer
@@ -843,7 +1027,11 @@ export function useVolumeStoryGenerator() {
       }
 
       const continuityOk = (criticResult.dimensionScores?.continuity ?? 10) >= 6
-      if (!criticResult || criticResult.evalUnavailable || (criticResult.pass && continuityOk)) {
+      if (
+        !criticResult ||
+        criticResult.evalUnavailable ||
+        (criticResult.pass && continuityOk && proseQ.pass)
+      ) {
         break
       }
 
@@ -855,8 +1043,8 @@ export function useVolumeStoryGenerator() {
         topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
       }
       attemptFeedback = formatEvalFeedback([evalSnapshot])
-        const retryResult = promptAdjuster.updateAdjustments([evalSnapshot])
-        attemptFocusInstructions = retryResult.focusInstructions
+      const retryResult = promptAdjuster.updateAdjustments([evalSnapshot])
+      attemptFocusInstructions = retryResult.focusInstructions
     }
 
     return { chosenProse, chosenStructured, chosenEval }
@@ -864,6 +1052,11 @@ export function useVolumeStoryGenerator() {
 
   async function runParallelGeneration(writeParamsVal) {
     if (!writeParamsVal) return
+    const parallelSpanId = crypto.randomUUID()
+    generationSpanIds.parallel = parallelSpanId
+    langfuseService.span(generationTraceId.value, parallelSpanId, 'parallel-writing', {
+      projectId: writeParamsVal.projectId
+    })
     const { storyArc, storyBibleDocs, storyContract, projectId, onChunk } = writeParamsVal
 
     const existingEntitiesJson = buildExistingEntitiesBlob(
@@ -1012,6 +1205,10 @@ export function useVolumeStoryGenerator() {
         })
       }
       sceneEvalResults.value = anchorResults
+      for (const ae of anchorResults) {
+        const sb = scenePlan.value.find((sp) => sp.sceneNumber === ae.sceneIndex)
+        persistCritiqueEval(ae, projectId, sb?.title)
+      }
       anchorEvalFeedback = formatEvalFeedback(anchorResults)
       const anchorResult = promptAdjuster.updateAdjustments(anchorResults)
       anchorFocusInstructions = anchorResult.focusInstructions
@@ -1107,8 +1304,6 @@ export function useVolumeStoryGenerator() {
       }
     }
 
-
-
     let middleOutcomes = []
     for (let chapterIndex = 0; chapterIndex < chaptersWithScenes.length; chapterIndex++) {
       const { chapterMeta, scenes, startIndex } = chaptersWithScenes[chapterIndex]
@@ -1127,17 +1322,15 @@ export function useVolumeStoryGenerator() {
         throwIfAborted()
 
         const waveResults = await Promise.all(
-          wave.map(({ scene, sceneIndex }) =>
-            generateMiddleScene(scene, sceneIndex, chapterMeta)
-          )
+          wave.map(({ scene, sceneIndex }) => generateMiddleScene(scene, sceneIndex, chapterMeta))
         )
 
         const conflicts = detectSceneConflicts(waveResults)
         if (conflicts.length > 0) {
-            const changed = await resolveSceneConflicts(conflicts, waveResults)
-            if (changed) {
-              progress.statusText = `Reconciled ${conflicts.length} fact conflict(s) in parallel wave`
-            }
+          const changed = await resolveSceneConflicts(conflicts, waveResults)
+          if (changed) {
+            progress.statusText = `Reconciled ${conflicts.length} fact conflict(s) in parallel wave`
+          }
         }
 
         for (let wi = 0; wi < wave.length; wi++) {
@@ -1172,6 +1365,10 @@ export function useVolumeStoryGenerator() {
         })
       }
       sceneEvalResults.value = [...sceneEvalResults.value, ...middleResults]
+      for (const me of middleResults) {
+        const sb = scenePlan.value.find((sp) => sp.sceneNumber === me.sceneIndex)
+        persistCritiqueEval(me, projectId, sb?.title)
+      }
     }
 
     // Parallel-safe quality floor. The sequential path aborts on N *consecutive*
@@ -1198,7 +1395,45 @@ export function useVolumeStoryGenerator() {
       }
     }
 
+    langfuseService.endSpan(parallelSpanId)
     await completeGeneration(projectId)
+  }
+
+  /**
+   * Best-effort speculative prefetch of a single scene.
+   * Fails silently — the cache is an optimisation, never a correctness requirement.
+   */
+  async function prefetchNextScene(index) {
+    if (speculativeCache.has(index)) return
+    if (!writeParams.value) return
+    const { projectId, storyArc, storyContract, onChunk, storyBibleDocs, sections } =
+      writeParams.value
+    const scene = scenePlan.value[index]
+    if (!scene) return
+
+    speculativeCache.reserve(index)
+
+    try {
+      const chapterLog = ''
+      const existingEntitiesJson = buildExistingEntitiesBlob(
+        writtenScenes.value.filter((s) => s && s.summary)
+      )
+      const scenePhase = null
+      const result = await writeSceneWithGate({
+        scene,
+        sceneIndex: index,
+        scenePhase,
+        storyArc,
+        chapterLog,
+        storyBible: storyBibleDocs,
+        storyContract,
+        existingEntitiesJson,
+        emitChunk: () => {}
+      })
+      speculativeCache.set(index, result)
+    } catch {
+      speculativeCache.flush()
+    }
   }
 
   async function writeNextBatch(startIndex) {
@@ -1254,31 +1489,39 @@ export function useVolumeStoryGenerator() {
 
       // Route through the shared per-scene quality gate (retry + critique +
       // best-attempt selection) — identical logic to the parallel path.
-      const retryGate = autoMode.value
-      const maxAttempts = retryGate ? SCENE_MAX_ATTEMPTS : 1
-      const { chosenProse, chosenStructured, chosenEval } = await writeSceneWithGate({
-        scene,
-        sceneIndex: i,
-        scenePhase,
-        storyArc,
-        chapterLog,
-        storyBible: storyBibleDocs,
-        storyContract: effectiveStoryContract,
-        existingEntitiesJson,
-        embeddingContext,
-        extraRejected,
-        pastEvalResults: batchEvalFeedback,
-        focusInstructions: batchFocusInstructions,
-        emitChunk: (proseChunk, fullProse) => {
-          onChunk?.({
-            sceneIndex: i + 1,
-            total: scenePlan.value.length,
-            chunk: proseChunk,
-            fullProse,
-            scene
-          })
-        }
-      })
+      // First check the speculative cache: if the user reviewed the previous
+      // scene quickly enough, we may already have this scene pre-generated.
+      let written
+      if (speculativeCache.has(i)) {
+        written = speculativeCache.consume(i)
+      } else {
+        const retryGate = autoMode.value
+        const maxAttempts = retryGate ? SCENE_MAX_ATTEMPTS : 1
+        written = await writeSceneWithGate({
+          scene,
+          sceneIndex: i,
+          scenePhase,
+          storyArc,
+          chapterLog,
+          storyBible: storyBibleDocs,
+          storyContract: effectiveStoryContract,
+          existingEntitiesJson,
+          embeddingContext,
+          extraRejected,
+          pastEvalResults: batchEvalFeedback,
+          focusInstructions: batchFocusInstructions,
+          emitChunk: (proseChunk, fullProse) => {
+            onChunk?.({
+              sceneIndex: i + 1,
+              total: scenePlan.value.length,
+              chunk: proseChunk,
+              fullProse,
+              scene
+            })
+          }
+        })
+      }
+      const { chosenProse, chosenStructured, chosenEval } = written
       actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
 
       const fullProse = chosenProse
@@ -1296,6 +1539,7 @@ export function useVolumeStoryGenerator() {
           sceneResult: currentSceneResult.value,
           sceneIndex: i
         })
+        void prefetchNextScene(i + 1)
         return
       }
 
@@ -1310,13 +1554,15 @@ export function useVolumeStoryGenerator() {
       commitService.persistCheckpoint(projectId)
 
       if (retryGate && chosenEval) {
-        sceneEvalResults.value.push({
+        const retryEntry = {
           sceneIndex: i + 1,
           passed: chosenEval.pass,
           score: chosenEval.score,
           dimensionScores: chosenEval.dimensionScores || null,
           topIssues: (chosenEval.issues || []).slice(0, 3).map((iss) => iss.text || iss)
-        })
+        }
+        sceneEvalResults.value.push(retryEntry)
+        persistCritiqueEval(retryEntry, projectId, scene.title)
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
         const batchResult = promptAdjuster.updateAdjustments(sceneEvalResults.value)
         batchFocusInstructions = batchResult.focusInstructions
@@ -1357,6 +1603,7 @@ export function useVolumeStoryGenerator() {
           topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         }
         sceneEvalResults.value.push(evalEntry)
+        persistCritiqueEval(evalEntry, projectId, scene.title)
         batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
         const batchResult2 = promptAdjuster.updateAdjustments(sceneEvalResults.value)
         batchFocusInstructions = batchResult2.focusInstructions
@@ -1368,6 +1615,31 @@ export function useVolumeStoryGenerator() {
         `Scene ${scene.sceneNumber} ("${scene.title || `Scene ${scene.sceneNumber}`}"): ${latestScene?.summary || '(written)'}`
       )
     }
+
+    // Drift-triggered re-evaluation: check for regressions across the whole project
+    // and append any regressed dimensions to the next batch's focus instructions.
+    const batchScenes = writtenScenes.value.slice(startIndex)
+    const driftResult = await driftTriggeredEval.check({
+      projectId,
+      scenes: batchScenes,
+      workspaceType: workspaceType.value,
+      scenePlanItems: scenePlan.value.slice(startIndex),
+      storyBible: storyBibleDocs,
+      chapterLog: ''
+    })
+    if (driftResult.triggered) {
+      const regressed = driftResult.action.regressedDims
+      if (regressed.length > 0) {
+        const driftFocus = `Quality regressions detected in: ${regressed.join(', ')}. Focus on improving these dimensions in the next batch.`
+        batchFocusInstructions = batchFocusInstructions
+          ? `${driftFocus}\n\n${batchFocusInstructions}`
+          : driftFocus
+      }
+    }
+
+    // Active learning bridge: periodic deep analysis feeds recommendations
+    // into the prompt adjuster's hint history.
+    activeLearningBridge.afterBatchEval(sceneEvalResults.value)
 
     // Early continuity audit at chapter boundaries (detection only).
     await consistencyService.maybeRunIncrementalConsistency(endIndex)
@@ -1539,25 +1811,27 @@ export function useVolumeStoryGenerator() {
       inlineEval: inlineEvalEnabled.value
     })
     const spinePhase = actLog.addPhase(currentTaskId, 'Spine Generation')
-    await updateGenRunStage(projectId, 'spine', { status: 'running' })
-
+    const spineSpanId = crypto.randomUUID()
+    generationSpanIds.spine = spineSpanId
+    langfuseService.span(generationTraceId.value, spineSpanId, 'spine-generation', { projectId })
     try {
-      spineArray.value = await generateSpine(chapterPlan.value, storyArc, (done, total) => {
-        progress.statusText = `Generating narrative spine (${done}/${total} chapters)...`
-        actLog.updatePhase(currentTaskId, spinePhase, {
-          detail: `${done}/${total} chapter spine entries`
+      spineArray.value = await runStageWithTimeout(projectId, 'spine', () =>
+        generateSpine(chapterPlan.value, storyArc, (done, total) => {
+          progress.statusText = `Generating narrative spine (${done}/${total} chapters)...`
+          actLog.updatePhase(currentTaskId, spinePhase, {
+            detail: `${done}/${total} chapter spine entries`
+          })
         })
-      })
+      )
       spineContext.value = compressSpine(spineArray.value)
       actLog.updatePhase(currentTaskId, spinePhase, { status: 'done' })
-      await updateGenRunStage(projectId, 'spine', { status: 'done' })
+      langfuseService.endSpan(spineSpanId, { output: { chapters: spineArray.value?.length } })
     } catch (err) {
       error.value = err.message || 'Fatal: Spine generation failed'
       await delegatorApi.dispatch('ERROR', {
         error: err,
         message: err.message || 'Fatal: Spine generation failed'
       })
-      await updateGenRunStage(projectId, 'spine', { status: 'failed', error: err.message })
       throw err
     }
 
@@ -1589,21 +1863,30 @@ export function useVolumeStoryGenerator() {
       storyBibleDocs
     }
 
-    await runParallelGeneration(writeParams.value)
+    await withTimeout(() => runParallelGeneration(writeParams.value), undefined, 'Prose stage')
   }
 
   // End-of-run repair: regenerate any scene whose subsection was left empty (a
   // failed prose attempt in the parallel path). Isolated, best-effort, one extra
   // attempt each — a single bad scene never leaves a hole in the finished draft.
   async function repairFailedScenes(projectId) {
+    const repairSpanId = crypto.randomUUID()
+    generationSpanIds.repair = repairSpanId
+    langfuseService.span(generationTraceId.value, repairSpanId, 'scene-repair', { projectId })
     const scenesBySub = new Map()
     scenePlan.value.forEach((s, i) => {
       if (s.subsectionId) scenesBySub.set(s.subsectionId, { scene: s, index: i })
     })
-    if (scenesBySub.size === 0) return
+    if (scenesBySub.size === 0) {
+      langfuseService.endSpan(repairSpanId)
+      return
+    }
 
     const failed = (await getFailedSubsections(projectId)).filter((sub) => scenesBySub.has(sub.id))
-    if (failed.length === 0) return
+    if (failed.length === 0) {
+      langfuseService.endSpan(repairSpanId)
+      return
+    }
 
     progress.statusText = `Repairing ${failed.length} unwritten scene(s)...`
     const repairPhase = actLog.addPhase(currentTaskId, `Repairing ${failed.length} scene(s)`)
@@ -1668,6 +1951,7 @@ export function useVolumeStoryGenerator() {
       }
     }
     actLog.updatePhase(currentTaskId, repairPhase, { status: 'done' })
+    langfuseService.endSpan(repairSpanId)
   }
 
   async function completeGeneration(projectId) {
@@ -1713,6 +1997,12 @@ export function useVolumeStoryGenerator() {
     } catch {
       // Non-critical: generatedStories save
     }
+    langfuseService.score(
+      generationTraceId.value,
+      'volume-generation',
+      error.value ? 0 : 1,
+      error.value ? `Failed: ${error.value}` : 'Completed'
+    )
   }
 
   async function confirmSync(opts) {
@@ -1720,6 +2010,7 @@ export function useVolumeStoryGenerator() {
   }
 
   async function regenerateScene(projectId, sceneIndex) {
+    speculativeCache.flush()
     await sceneInteractionService.regenerateScene(projectId, sceneIndex)
   }
 
@@ -1728,10 +2019,12 @@ export function useVolumeStoryGenerator() {
   }
 
   async function rejectScene() {
+    speculativeCache.flush()
     await sceneInteractionService.rejectScene()
   }
 
   async function rerequestScene(edits) {
+    speculativeCache.flush()
     await sceneInteractionService.rerequestScene(edits)
   }
 
@@ -1766,6 +2059,7 @@ export function useVolumeStoryGenerator() {
     stop()
     abort.reset()
     isCancelling.value = false
+    speculativeCache.flush()
 
     await delegatorApi.dispatch('RESET')
     progress.current = 0

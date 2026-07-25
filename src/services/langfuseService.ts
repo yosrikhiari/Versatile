@@ -61,6 +61,24 @@ class LangfuseService {
     })
   }
 
+  span(traceId: string, spanId: string, name: string, body: Record<string, unknown> = {}) {
+    this.enqueue({
+      id: crypto.randomUUID(),
+      type: 'span-create',
+      timestamp: new Date().toISOString(),
+      body: { id: spanId, traceId, name, startTime: new Date().toISOString(), ...body }
+    })
+  }
+
+  endSpan(spanId: string, body: Record<string, unknown> = {}) {
+    this.enqueue({
+      id: crypto.randomUUID(),
+      type: 'span-update',
+      timestamp: new Date().toISOString(),
+      body: { id: spanId, endTime: new Date().toISOString(), ...body }
+    })
+  }
+
   score(traceId: string, name: string, value: number, comment?: string) {
     this.enqueue({
       id: crypto.randomUUID(),

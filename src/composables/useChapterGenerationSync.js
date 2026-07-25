@@ -9,7 +9,7 @@ const TARGET_TABLES = [
   db.characters,
   db.locations,
   db.plotThreads,
-  db.nodePositions,
+  db.graphNodeInstances,
   db.volumeEntities
 ]
 
@@ -154,7 +154,9 @@ export function useChapterGenerationSync() {
       for (const change of uniqueChanges) {
         let entityId = null
         const name = change.entity.name || change.entity.title
-        const preEntityNodeSnapshot = JSON.parse(JSON.stringify(toRaw(graphStore.nodeInstances.value)))
+        const preEntityNodeSnapshot = JSON.parse(
+          JSON.stringify(toRaw(graphStore.nodeInstances.value))
+        )
 
         try {
           await db.transaction('rw', TARGET_TABLES, async () => {

@@ -9,7 +9,7 @@ import {
   DEFAULT_MODEL as DEFAULT_OLLAMA_MODEL
 } from '../config/ollama'
 import { STORAGE_KEYS, getApiKeyStorageKey } from '../config/storageKeys'
-import { useLocalStorage } from '../composables/useLocalStorage'
+import { useLocalStorage } from '../utils/useLocalStorage'
 
 const DEFAULT_SETTINGS = {
   ollamaEndpoint: '/ollama',

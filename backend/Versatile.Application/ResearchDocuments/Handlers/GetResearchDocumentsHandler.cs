@@ -14,8 +14,8 @@ public class GetResearchDocumentsHandler : IRequestHandler<GetResearchDocumentsQ
     public async Task<List<ResearchDocumentDto>> Handle(GetResearchDocumentsQuery request, CancellationToken ct)
     {
         var docs = await _repo.GetAllAsync(
-            d => d.StoryId == request.StoryId && d.UserId == request.UserId, ct);
-        return docs.OrderByDescending(d => d.ImportedAt)
+            d => d.StoryId == request.StoryId && d.UserId == request.UserId && d.OrganizationId == request.OrganizationId, ct);
+        return docs.OrderByDescending(d => d.ImportedAt).ThenByDescending(d => d.Id)
             .Select(d => new ResearchDocumentDto(d.Id, d.StoryId, d.FileName, d.FileType, d.ImportedAt, d.Content!, d.Notes!, d.CreatedAt))
             .ToList();
     }

@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useDialogueIndexer } from '../../composables/useDialogueIndexer'
 import BaseIcon from '../shared/BaseIcon.vue'
+import Skeleton from '../shared/Skeleton.vue'
 
 const projectStore = useProjectStore()
 const { indexing, progress, dialogueStats, indexProjectContent, loadDialogueForProject } =
@@ -108,9 +109,7 @@ watch(projectId, (id) => {
         :disabled="indexing || !projectId"
         class="w-full py-2 px-3 rounded-lg text-xs transition-all duration-150 flex items-center justify-center gap-2"
         :class="
-          indexing
-            ? 'bg-surface-hover text-accent cursor-wait'
-            : 'btn-primary active:scale-[0.98]'
+          indexing ? 'bg-surface-hover text-accent cursor-wait' : 'btn-primary active:scale-[0.98]'
         "
         @click="handleIndex"
       >
@@ -137,9 +136,7 @@ watch(projectId, (id) => {
 
     <div v-if="speakers.length > 0" class="px-4 py-2 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-2xs font-medium text-text-hint uppercase tracking-wider"
-          >Speakers</span
-        >
+        <span class="text-2xs font-medium text-text-hint uppercase tracking-wider">Speakers</span>
         <div class="flex gap-1">
           <button
             v-if="selectedSpeakerId || filterType === 'unreviewed'"
@@ -185,8 +182,8 @@ watch(projectId, (id) => {
     </div>
 
     <div class="flex-1 overflow-y-auto scrollbar-thin">
-      <div v-if="loadingEntries" class="p-4 text-center">
-        <BaseIcon name="loader-2" :size="20" class="mx-auto text-accent animate-spin" />
+      <div v-if="loadingEntries" class="p-4">
+        <Skeleton variant="list" :count="4" size="1.75rem" label="Loading voice entries…" />
       </div>
 
       <div v-else-if="filteredEntries.length === 0" class="p-6 text-center text-text-hint">

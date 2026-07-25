@@ -25,7 +25,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<Scene> Scenes => Set<Scene>();
     public DbSet<Entity> Entities => Set<Entity>();
     public DbSet<Flow> Flows => Set<Flow>();
-    public DbSet<Research> ResearchNotes => Set<Research>();
     public DbSet<BibleEntry> BibleEntries => Set<BibleEntry>();
     public DbSet<Annotation> Annotations => Set<Annotation>();
     public DbSet<AuthorProfile> AuthorProfiles => Set<AuthorProfile>();
@@ -106,12 +105,6 @@ public class ApplicationDbContext : DbContext
         {
             e.HasIndex(f => f.StoryId).IsUnique();
             e.HasOne(f => f.Story).WithMany().HasForeignKey(f => f.StoryId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<Research>(e =>
-        {
-            e.HasIndex(r => r.StoryId);
-            e.HasOne(r => r.Story).WithMany(s => s.ResearchNotes).HasForeignKey(r => r.StoryId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<BibleEntry>(e =>

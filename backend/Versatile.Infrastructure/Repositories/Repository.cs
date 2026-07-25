@@ -43,15 +43,37 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         Expression<Func<T, bool>>? filter = null,
         int page = 1,
         int pageSize = 20,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
         CancellationToken ct = default)
     {
         var query = filter is null ? DbSet.AsQueryable() : DbSet.Where(filter);
         var totalCount = await query.CountAsync(ct);
-        var items = await query
-            .OrderBy(e => e.Id)
+        var ordered = orderBy is not null ? orderBy(query) : query.OrderBy(e => e.Id);
+        var items = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
         return (items, totalCount);
+    }
+
+    public async Task<(List<T> Items, bool HasNextPage)> GetPagedKeysetAsync(
+        Expression<Func<T, bool>>? filter = null,
+        int limit = 20,
+        Guid? afterId = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        CancellationToken ct = default)
+    {
+        var query = filter is null ? DbSet.AsQueryable() : DbSet.Where(filter);
+
+        if (afterId.HasValue)
+            query = query.Where(e => e.Id.CompareTo(afterId.Value) > 0);
+
+        var ordered = orderBy is not null ? orderBy(query) : query.OrderBy(e => e.Id);
+        var itemsPlusOne = await ordered.Take(limit + 1).ToListAsync(ct);
+
+        var hasNextPage = itemsPlusOne.Count > limit;
+        var items = hasNextPage ? itemsPlusOne.Take(limit).ToList() : itemsPlusOne;
+
+        return (items, hasNextPage);
     }
 }

@@ -1,5 +1,6 @@
 using MediatR;
+using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.ResearchTags.Commands;
 
-public record DeleteResearchTagCommand(Guid Id, Guid UserId) : IRequest<Unit>;
+public record DeleteResearchTagCommand(Guid Id, Guid? OrganizationId, Guid UserId) : IRequest<Unit>, IRequiresOrganization;

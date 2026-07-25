@@ -7,7 +7,7 @@ import {
   deleteSnapshot,
   updateSubsection
 } from '../services/dbService'
-import { useLoading } from '../composables/useLoading'
+import { useLoading } from '../utils/useLoading'
 
 export const useSnapshotStore = defineStore('snapshot', () => {
   const {

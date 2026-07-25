@@ -282,6 +282,7 @@ const inNetworkCount = computed(() => props.existingNodeIds.length)
       >
         <button
           class="w-full px-3 py-2 flex items-center justify-between hover:bg-surface-hover transition-colors"
+          :aria-expanded="expandedSections[section.key]"
           @click="toggleSection(section.key)"
         >
           <div class="flex items-center gap-2">
@@ -317,6 +318,7 @@ const inNetworkCount = computed(() => props.existingNodeIds.length)
             <div class="flex items-center justify-between">
               <button
                 class="flex items-center gap-2 min-w-0 flex-1 text-left"
+                :aria-expanded="!!expandedEntities[entity.id]"
                 @click.stop="toggleEntity(entity.id)"
               >
                 <BaseIcon

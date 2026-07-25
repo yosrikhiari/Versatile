@@ -311,7 +311,13 @@ Write ONLY the detailed content for this section. Do not summarize. Start writin
               `- Payoff to deliver: ${sceneBrief.payoff || 'none'}`,
               `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
               `- Tension: ${sceneBrief.tension || 'medium'}`,
-              `- Pacing: ${sceneBrief.pacing || 'medium'}`
+              `- Pacing: ${sceneBrief.pacing || 'medium'}`,
+              ...(sceneBrief.sectionRole
+                ? [
+                    `- Section role: ${sceneBrief.sectionRole}`,
+                    `- This is section ${sceneBrief.sectionIndex} of ${sceneBrief.totalSections}`
+                  ]
+                : [])
             ]
           : [
               `- Goal: ${sceneBrief.goal || ''}`,
@@ -319,7 +325,13 @@ Write ONLY the detailed content for this section. Do not summarize. Start writin
               `- Characters: ${(sceneBrief.characters || []).join(', ')}`,
               `- Location: ${sceneBrief.location || ''}`,
               `- What changes: ${sceneBrief.change || ''}`,
-              `- Tone note: ${sceneBrief.toneNote || ''}`
+              `- Tone note: ${sceneBrief.toneNote || ''}`,
+              ...(sceneBrief.sectionRole
+                ? [
+                    `- Section role: ${sceneBrief.sectionRole}`,
+                    `- This is section ${sceneBrief.sectionIndex} of ${sceneBrief.totalSections}`
+                  ]
+                : [])
             ]
 
       const briefSection = briefLines.join('\n')
@@ -530,7 +542,13 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
               `- Sensory anchor: ${sceneBrief.sensoryAnchor || ''}`,
               `- Tension: ${sceneBrief.tension || 'medium'}`,
               `- Pacing: ${sceneBrief.pacing || 'medium'}`,
-              `- Arc position: ${sceneBrief.arcPosition || ''}`
+              `- Arc position: ${sceneBrief.arcPosition || ''}`,
+              ...(sceneBrief.sectionRole
+                ? [
+                    `- Section role: ${sceneBrief.sectionRole}`,
+                    `- This is section ${sceneBrief.sectionIndex} of ${sceneBrief.totalSections} — write only the content belonging to this section`
+                  ]
+                : [])
             ]
           : [
               `- Goal: ${sceneBrief.goal || ''}`,
@@ -538,7 +556,13 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
               `- Characters: ${(sceneBrief.characters || []).join(', ')}`,
               `- Location: ${sceneBrief.location || ''}`,
               `- What changes: ${sceneBrief.change || ''}`,
-              `- Tone note: ${sceneBrief.toneNote || ''}`
+              `- Tone note: ${sceneBrief.toneNote || ''}`,
+              ...(sceneBrief.sectionRole
+                ? [
+                    `- Section role: ${sceneBrief.sectionRole}`,
+                    `- This is section ${sceneBrief.sectionIndex} of ${sceneBrief.totalSections} — write only the content belonging to this section`
+                  ]
+                : [])
             ]
 
       const briefSection = briefLines.join('\n')

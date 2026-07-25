@@ -1,5 +1,6 @@
 import { getEmbedding } from './embeddingService'
 import { semanticSearch, searchLexical, getAllResearchDocuments } from './researchDb'
+import { rerankChunks } from './rerankingService'
 
 const MAX_CHUNKS_PER_SOURCE = 5
 const MAX_TOTAL_CHARS = 4000
@@ -10,7 +11,12 @@ const LEXICAL_MIN_SCORE = 0.15
 // top rank dominate.
 const RRF_K = 60
 
-export async function multiHopRetrieval({ queries, projectId, topK = MAX_CHUNKS_PER_SOURCE }) {
+export async function multiHopRetrieval({
+  queries,
+  projectId,
+  topK = MAX_CHUNKS_PER_SOURCE,
+  rerank = false
+}) {
   if (!projectId) return []
   if (!queries || queries.length === 0) return []
 
@@ -50,10 +56,18 @@ export async function multiHopRetrieval({ queries, projectId, topK = MAX_CHUNKS_
     }
   }
 
-  const fused = [...fusion.values()]
+  let fused = [...fusion.values()]
     .sort((a, b) => b.score - a.score)
     .slice(0, topK)
     .map(({ chunk, score }) => ({ ...chunk, _score: score }))
+
+  if (rerank && fused.length > 0) {
+    fused = await rerankChunks({
+      chunks: fused,
+      query: queryTexts.join(' '),
+      topN: topK
+    })
+  }
 
   let totalChars = 0
   const deduped = []

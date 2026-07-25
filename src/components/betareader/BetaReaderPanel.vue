@@ -190,7 +190,7 @@ function handleResultAction(action) {
   width: 120px;
   height: 4px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--vers-border-subtle);
   overflow: hidden;
 }
 
@@ -237,18 +237,18 @@ function handleResultAction(action) {
 }
 
 .summary-badge--error {
-  background: rgba(208, 112, 112, 0.12);
-  color: #d07070;
+  background: color-mix(in srgb, var(--vers-status-danger) 12%, transparent);
+  color: var(--vers-status-danger);
 }
 
 .summary-badge--warning {
-  background: rgba(212, 167, 74, 0.12);
-  color: #d4a74a;
+  background: color-mix(in srgb, var(--vers-status-warning) 12%, transparent);
+  color: var(--vers-status-warning);
 }
 
 .summary-badge--info {
-  background: rgba(91, 140, 184, 0.12);
-  color: #5b8cb8;
+  background: color-mix(in srgb, var(--vers-status-info) 12%, transparent);
+  color: var(--vers-status-info);
 }
 
 .results-list {
@@ -276,13 +276,13 @@ function handleResultAction(action) {
 }
 
 .group-label--error {
-  color: #d07070;
+  color: var(--vers-status-danger);
 }
 .group-label--warning {
-  color: #d4a74a;
+  color: var(--vers-status-warning);
 }
 .group-label--info {
-  color: #5b8cb8;
+  color: var(--vers-status-info);
 }
 
 .empty-state {
@@ -299,7 +299,7 @@ function handleResultAction(action) {
 }
 
 .empty-check {
-  color: #6a9e7a;
+  color: var(--vers-status-success);
 }
 
 .empty-text {

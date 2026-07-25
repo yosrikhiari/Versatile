@@ -22,10 +22,7 @@
                   :class="healthCheck.healthy ? 'text-success' : 'text-danger'"
                   :size="20"
                 />
-                <span
-                  class="text-sm"
-                  :class="healthCheck.healthy ? 'text-success' : 'text-danger'"
-                >
+                <span class="text-sm" :class="healthCheck.healthy ? 'text-success' : 'text-danger'">
                   {{ healthCheck.healthy ? 'Database is healthy' : 'Database has issues' }}
                 </span>
               </div>
@@ -146,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import {
   checkDatabaseHealth,
   exportAllData,
@@ -159,6 +156,13 @@ import BaseIcon from './BaseIcon.vue'
 
 defineEmits(['close'])
 
+const props = defineProps({
+  simulatedState: {
+    type: Object,
+    default: null
+  }
+})
+
 const { showConfirm } = useNotifications()
 
 const working = ref(false)
@@ -166,6 +170,20 @@ const healthCheck = ref(null)
 const dbSize = ref(null)
 const status = ref(null)
 const showResetConfirm = ref(false)
+
+watch(
+  () => props.simulatedState,
+  (state) => {
+    if (state) {
+      healthCheck.value = state.healthCheck ?? null
+      dbSize.value = state.dbSize ?? null
+      status.value = state.status ?? null
+      showResetConfirm.value = state.showResetConfirm ?? false
+      working.value = state.working ?? false
+    }
+  },
+  { immediate: true }
+)
 
 async function checkHealth() {
   working.value = true

@@ -19,14 +19,14 @@ public class ResearchTagController : ApiControllerBase
     [HttpGet, Cacheable(300)]
     public async Task<ActionResult<List<ResearchTagDto>>> GetAll(Guid storyId)
     {
-        try { return Ok(await _mediator.Send(new GetResearchTagsQuery(storyId, UserId))); }
+        try { return Ok(await _mediator.Send(new GetResearchTagsQuery(storyId, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpGet("{id}"), Cacheable(300)]
     public async Task<ActionResult<ResearchTagDto>> GetById(Guid id)
     {
-        try { return Ok(await _mediator.Send(new GetResearchTagByIdQuery(id, UserId))); }
+        try { return Ok(await _mediator.Send(new GetResearchTagByIdQuery(id, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
@@ -35,7 +35,7 @@ public class ResearchTagController : ApiControllerBase
     {
         try
         {
-            var dto = await _mediator.Send(new CreateResearchTagCommand(request.Name, storyId, request.Color, UserId));
+            var dto = await _mediator.Send(new CreateResearchTagCommand(request.Name, storyId, request.Color, OrganizationId, UserId));
             return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
@@ -44,14 +44,14 @@ public class ResearchTagController : ApiControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<ResearchTagDto>> Update(Guid id, UpdateResearchTagRequest request)
     {
-        try { return Ok(await _mediator.Send(new UpdateResearchTagCommand(id, request.Name, request.Color, UserId))); }
+        try { return Ok(await _mediator.Send(new UpdateResearchTagCommand(id, request.Name, request.Color, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        try { await _mediator.Send(new DeleteResearchTagCommand(id, UserId)); return NoContent(); }
+        try { await _mediator.Send(new DeleteResearchTagCommand(id, OrganizationId, UserId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 }

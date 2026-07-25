@@ -123,8 +123,12 @@ export const EMBEDDING_PROVIDER_CAPABILITIES = {
   }
 }
 
-export function getEmbeddingCapabilities(provider) {
-  return EMBEDDING_PROVIDER_CAPABILITIES[provider] || null
+export function getEmbeddingCapabilities(
+  provider: keyof typeof EMBEDDING_PROVIDER_CAPABILITIES | string
+) {
+  return (
+    EMBEDDING_PROVIDER_CAPABILITIES[provider as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES] || null
+  )
 }
 
 export const EMBEDDING_DEFAULTS = {
@@ -139,3 +143,18 @@ export const RESEARCH_CHUNKS_DEFAULT = 3
 export const EMBEDDING_THRESHOLD_MIN = 0.4
 export const EMBEDDING_THRESHOLD_MAX = 0.98
 export const EMBEDDING_THRESHOLD_STEP = 0.01
+
+export const RERANKING_DEFAULTS = {
+  provider: EMBEDDING_PROVIDERS.OLLAMA,
+  model: 'jina/jina-reranker-v2-base-multilingual',
+  topN: 10,
+  minScore: 0.3
+}
+
+export const RERANKING_MODELS = {
+  [EMBEDDING_PROVIDERS.OLLAMA]: [
+    'jina/jina-reranker-v2-base-multilingual',
+    'jina/jina-reranker-v2-base-multilingual-v2',
+    'snowflake-arctic-embed2'
+  ]
+}

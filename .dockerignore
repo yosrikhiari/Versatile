@@ -1,0 +1,17 @@
+node_modules
+dist
+debug
+.git
+.github
+backend
+planning
+docs
+.storybook
+storybook-static
+*.log
+.env
+.env.*
+!.env.example
+coverage
+.vscode
+.idea

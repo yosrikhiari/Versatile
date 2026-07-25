@@ -18,9 +18,9 @@ public class VolumeController : ApiControllerBase
     public VolumeController(IMediator mediator, IOrganizationContext orgContext) : base(orgContext) => _mediator = mediator;
 
     [HttpGet, Cacheable(60)]
-    public async Task<ActionResult<PagedResponse<VolumeDto>>> GetAll(Guid storyId, [FromQuery] PagedRequest paged)
+    public async Task<ActionResult<PagedResponse<VolumeDto>>> GetAll(Guid storyId, [FromQuery] PagedRequest paged, [FromQuery] Guid? afterId = null)
     {
-        try { return Ok(await _mediator.Send(new GetVolumesQuery(storyId, OrganizationId, UserId, paged.Page, paged.PageSize))); }
+        try { return Ok(await _mediator.Send(new GetVolumesQuery(storyId, OrganizationId, UserId, paged.Page, paged.PageSize, afterId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 

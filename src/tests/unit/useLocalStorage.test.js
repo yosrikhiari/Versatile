@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useLocalStorage } from '../../composables/useLocalStorage'
+import { useLocalStorage } from '../../utils/useLocalStorage'
 
 describe('useLocalStorage', () => {
   beforeEach(() => {

@@ -27,7 +27,6 @@ public class Story : UserOwnedEntity
 
     public ICollection<Chapter> Chapters { get; set; } = new List<Chapter>();
     public ICollection<Entity> Entities { get; set; } = new List<Entity>();
-    public ICollection<Research> ResearchNotes { get; set; } = new List<Research>();
     public ICollection<BibleEntry> BibleEntries { get; set; } = new List<BibleEntry>();
     public ICollection<Manuscript> Manuscripts { get; set; } = new List<Manuscript>();
     public ICollection<CharacterRelationship> CharacterRelationships { get; set; } = new List<CharacterRelationship>();

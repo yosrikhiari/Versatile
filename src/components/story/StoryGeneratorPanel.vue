@@ -28,6 +28,7 @@ import {
 } from '../../constants/generationModes'
 import { useStoryBlurb } from '../../composables/useStoryBlurb'
 import { useSceneEval } from '../../composables/useSceneEval'
+import { useDriftTriggeredEval } from '../../composables/useDriftTriggeredEval'
 import { useResearchScope } from '../../composables/useResearchScope'
 import { useGenerationHistory } from '../../composables/useGenerationHistory'
 import { useSparkContext } from '../../composables/useSparkContext'
@@ -171,6 +172,7 @@ const previewScenes = computed(() =>
 )
 
 const sceneEval = useSceneEval()
+const driftTriggeredEval = useDriftTriggeredEval(sceneEval)
 
 async function handleEvaluateScene(idx) {
   const scene = volumeGenerator.writtenScenes.value?.[idx]
@@ -184,7 +186,40 @@ async function handleEvaluateScene(idx) {
     .map((s) => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary || '(written)'}`)
     .slice(-20)
     .join('\n')
-  sceneEval.evaluate(scene, ws, planItem, idx, projectStore.currentProjectId, storyBible, chapterLog)
+  sceneEval.evaluate(
+    scene,
+    ws,
+    planItem,
+    idx,
+    projectStore.currentProjectId,
+    storyBible,
+    chapterLog
+  )
+  checkDriftAfterEval()
+}
+
+async function checkDriftAfterEval() {
+  const pid = projectStore.currentProjectId
+  if (!pid || volumeGenerator.writtenScenes.value.length === 0) return
+  const ws = projectStore.activeWorkspaceType || 'creative'
+  const storyBible = await storyDocuments.getStoryDocumentContext(pid)
+  const chapterLog = volumeGenerator.writtenScenes.value
+    .filter(Boolean)
+    .map((s) => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary || '(written)'}`)
+    .slice(-20)
+    .join('\n')
+  await driftTriggeredEval.check({
+    projectId: pid,
+    scenes: volumeGenerator.writtenScenes.value,
+    workspaceType: ws,
+    scenePlanItems: volumeGenerator.scenePlan.value,
+    storyBible,
+    chapterLog
+  })
+}
+
+async function runDriftCheck() {
+  await checkDriftAfterEval()
 }
 
 async function handleReviseScene(idx) {
@@ -1104,9 +1139,70 @@ function getPhaseLabel(phase) {
           @open-read="showVolumeReadModal = true"
         />
 
+        <!-- DRIFT TRIGGER -->
+        <div
+          v-if="volumeGenerator.phase.value === 'complete'"
+          class="mt-1 px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-subtle"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+              <BaseIcon name="activity" :size="14" class="text-text-tertiary shrink-0" />
+              <span class="text-xs text-text-tertiary font-ui">Consistency Monitor</span>
+            </div>
+            <button
+              class="text-xs font-ui text-accent hover:text-accent-hover disabled:opacity-40"
+              :disabled="driftTriggeredEval.isChecking.value"
+              @click="runDriftCheck"
+            >
+              <template v-if="driftTriggeredEval.isChecking.value">Checking…</template>
+              <template v-else>Check for Drift</template>
+            </button>
+          </div>
+
+          <div
+            v-if="driftTriggeredEval.lastCheckResult.value"
+            class="mt-1.5 text-xs font-ui leading-relaxed"
+          >
+            <template v-if="driftTriggeredEval.lastCheckResult.value.triggered">
+              <span class="text-accent">
+                Drift detected —
+                {{ driftTriggeredEval.lastCheckResult.value.action.regressedDims.length }}
+                dimension(s) regressed,
+                {{ driftTriggeredEval.lastCheckResult.value.action.reEvaluatedScenes }}
+                scene(s) re-evaluated
+              </span>
+              <button
+                class="ml-2 text-danger hover:text-danger-hover"
+                @click="driftTriggeredEval.clearTriggers()"
+              >
+                Clear
+              </button>
+            </template>
+            <template v-else>
+              <span class="text-text-tertiary">
+                {{ driftTriggeredEval.lastCheckResult.value.reason }}
+              </span>
+            </template>
+          </div>
+
+          <div
+            v-if="
+              driftTriggeredEval.hasRecentTriggers.value &&
+              !driftTriggeredEval.lastCheckResult.value?.triggered
+            "
+            class="mt-1"
+          >
+            <span class="text-xs text-accent font-ui">
+              {{ driftTriggeredEval.triggeredActions.value.length }} prior drift trigger(s)
+            </span>
+          </div>
+        </div>
+
         <!-- ERROR STATE -->
         <div v-if="volumeGenerator.phase.value === 'error'" class="p-4 space-y-4">
-          <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 text-center space-y-2">
+          <div
+            class="rounded-lg bg-bg-secondary border border-border-subtle p-4 text-center space-y-2"
+          >
             <BaseIcon name="alert-triangle" :size="24" class="mx-auto text-danger" />
             <p class="text-sm font-medium text-danger font-ui">Generation Failed</p>
             <p class="text-xs text-danger">

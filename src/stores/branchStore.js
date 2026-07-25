@@ -8,7 +8,7 @@ import {
   deleteBranch,
   ensureMainBranch
 } from '../services/dbService'
-import { useLoading } from '../composables/useLoading'
+import { useLoading } from '../utils/useLoading'
 import { useProjectStore } from './projectStore'
 
 export const useBranchStore = defineStore('branch', () => {

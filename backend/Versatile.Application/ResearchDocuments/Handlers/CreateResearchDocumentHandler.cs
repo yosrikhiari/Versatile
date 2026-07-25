@@ -22,7 +22,7 @@ public class CreateResearchDocumentHandler : IRequestHandler<CreateResearchDocum
     public async Task<ResearchDocumentDto> Handle(CreateResearchDocumentCommand request, CancellationToken ct)
     {
         var stories = await _storyRepo.GetAllAsync(
-            s => s.Id == request.StoryId && s.UserId == request.UserId, ct);
+            s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct);
         if (stories.Count == 0) throw new KeyNotFoundException("Story not found");
 
         var doc = new ResearchDocument
@@ -32,7 +32,9 @@ public class CreateResearchDocumentHandler : IRequestHandler<CreateResearchDocum
             FileType = request.FileType,
             Content = request.Content,
             Notes = request.Notes,
-            UserId = request.UserId
+            UserId = request.UserId,
+            OrganizationId = request.OrganizationId,
+            ImportedAt = DateTime.UtcNow
         };
         await _repo.AddAsync(doc, ct);
         await _uow.SaveChangesAsync(ct);

@@ -1,11 +1,9 @@
 <script setup>
-import { ref, computed, watch, onBeforeUnmount, onDeactivated } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
-import { useSnapshotStore } from '../../stores/snapshotStore'
 import { useFlowSession } from '../../composables/useFlowSession'
-import { useDialogueIndexer } from '../../composables/useDialogueIndexer'
-import { useDebounceFn } from '@vueuse/core'
+import { useFlowSave } from '../../composables/useFlowSave'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
@@ -13,12 +11,12 @@ import { AutoDialogue } from '../../extensions/AutoDialogue.js'
 import FlowTimer from './FlowTimer.vue'
 import FlowNudge from './FlowNudge.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import EmptyState from '../shared/EmptyState.vue'
 
 const CONTENT_WARN_THRESHOLD = 50_000
 const CONTENT_CRITICAL_THRESHOLD = 200_000
 
 const flow = useFlowSession()
-const dialogueIndexer = useDialogueIndexer()
 
 const emit = defineEmits(['paragraph-click', 'open-settings', 'exit-flow'])
 
@@ -28,87 +26,9 @@ function handleExitFlow() {
 
 const projectStore = useProjectStore()
 const manuscriptStore = useManuscriptStore()
-const snapshotStore = useSnapshotStore()
-const isSaving = ref(false)
-const contentSize = ref(0)
-const contentSizeWarning = computed(() => {
-  const size = contentSize.value
-  if (size >= CONTENT_CRITICAL_THRESHOLD) return 'critical'
-  if (size >= CONTENT_WARN_THRESHOLD) return 'warn'
-  return 'ok'
-})
-
-const activeContent = computed(() => {
-  if (manuscriptStore.activeSubsectionId) {
-    return manuscriptStore.activeSubsection?.content || ''
-  }
-  if (manuscriptStore.activeSectionId) {
-    return manuscriptStore.activeSection?.content || ''
-  }
-  return projectStore.documentContent
-})
-
-let _flushResolver = null
-
-const debouncedSave = useDebounceFn(async () => {
-  if (projectStore.currentProjectId) {
-    isSaving.value = true
-    const content = editor.value?.getHTML() || ''
-    const saveSubId = _pendingSubsectionId
-    const saveSecId = _pendingSectionId
-    _pendingSubsectionId = null
-    _pendingSectionId = null
-
-    if (saveSubId) {
-      await manuscriptStore.updateSubsectionData(
-        saveSubId,
-        { content },
-        projectStore.currentProjectId
-      )
-      const sub = manuscriptStore.subsections.find((s) => s.id === saveSubId)
-      if (sub) {
-        dialogueIndexer
-          .reindexSubsection(sub)
-          .catch((err) => console.error('[FlowEditor] dialogue reindex failed:', err))
-      }
-    } else if (saveSecId) {
-      await manuscriptStore.updateSectionData(saveSecId, { content }, projectStore.currentProjectId)
-    } else {
-      projectStore.saveDocumentDebounced()
-    }
-
-    if (_flushResolver) {
-      _flushResolver()
-      _flushResolver = null
-    }
-
-    await snapshotStore.saveNewSnapshot(
-      projectStore.currentProjectId,
-      saveSubId || saveSecId || null,
-      content,
-      'manuscript auto-save'
-    )
-    setTimeout(() => {
-      isSaving.value = false
-    }, 1500)
-  }
-}, 10000)
-
-let _pendingSubsectionId = null
-let _pendingSectionId = null
-
-function scheduleSave() {
-  const content = editor.value?.getHTML() || ''
-  if (manuscriptStore.activeSubsectionId) {
-    _pendingSubsectionId = manuscriptStore.activeSubsectionId
-  } else if (manuscriptStore.activeSectionId) {
-    _pendingSectionId = manuscriptStore.activeSectionId
-  }
-  debouncedSave()
-}
 
 const editor = useEditor({
-  content: activeContent.value || '',
+  content: '',
   extensions: [
     StarterKit.configure({
       heading: false,
@@ -130,16 +50,49 @@ const editor = useEditor({
   },
   onUpdate: ({ editor }) => {
     const textContent = editor.state.doc.textContent
-    const textLen = textContent.length
-    contentSize.value = textLen
-
+    contentSize.value = textContent.length
     scheduleSave()
     flow.handleKeystroke()
   },
-  onSelectionUpdate: ({ editor: _editor }) => {
+  onSelectionUpdate: () => {
     flow.handleKeystroke()
   }
 })
+
+const { isSaving, scheduleSave, flushSave } = useFlowSave(editor)
+
+const activeContent = computed(() => {
+  if (manuscriptStore.activeSubsectionId) {
+    return manuscriptStore.activeSubsection?.content || ''
+  }
+  if (manuscriptStore.activeSectionId) {
+    return manuscriptStore.activeSection?.content || ''
+  }
+  return projectStore.documentContent
+})
+
+const contentSize = ref(0)
+const contentSizeWarning = computed(() => {
+  const size = contentSize.value
+  if (size >= CONTENT_CRITICAL_THRESHOLD) return 'critical'
+  if (size >= CONTENT_WARN_THRESHOLD) return 'warn'
+  return 'ok'
+})
+
+const dismissEmptyState = ref(false)
+const isEmptyContent = computed(() => {
+  if (dismissEmptyState.value) return false
+  if (manuscriptStore.activeSubsectionId || manuscriptStore.activeSectionId) return false
+  const content = projectStore.documentContent
+  return !content || content === '<p></p>' || content.trim() === ''
+})
+
+function handleStartWriting() {
+  dismissEmptyState.value = true
+  nextTick(() => {
+    editor.value?.commands.focus()
+  })
+}
 
 const hasShownFlowHint = ref(false)
 const flowHintVisible = ref(false)
@@ -200,7 +153,7 @@ watch(activeContent, (newContent) => {
 })
 
 onBeforeUnmount(() => {
-  debouncedSave.flush()
+  flushSave()
   if (editor.value) {
     editor.value.destroy()
   }
@@ -257,7 +210,16 @@ defineExpose({
       ref="scrollContainer"
       :class="['flex-1 overflow-y-auto scrollbar-thin', flow.isDesaturated ? 'desaturated' : '']"
     >
+      <EmptyState
+        v-if="isEmptyContent"
+        icon="edit-3"
+        title="Start writing"
+        description="Create a chapter from the sidebar, or jump right in."
+        action-label="Start writing"
+        @action="handleStartWriting"
+      />
       <div
+        v-else
         class="editor-wrapper max-w-[760px] mx-auto px-8 py-16 relative z-1"
         @keydown="handleKeydown"
         @click="handleClick"

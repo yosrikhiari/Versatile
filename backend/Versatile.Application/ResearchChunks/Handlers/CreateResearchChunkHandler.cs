@@ -22,7 +22,7 @@ public class CreateResearchChunkHandler : IRequestHandler<CreateResearchChunkCom
     public async Task<ResearchChunkDto> Handle(CreateResearchChunkCommand request, CancellationToken ct)
     {
         var docs = await _docRepo.GetAllAsync(
-            d => d.Id == request.DocumentId && d.UserId == request.UserId, ct);
+            d => d.Id == request.DocumentId && d.UserId == request.UserId && d.OrganizationId == request.OrganizationId, ct);
         if (docs.Count == 0) throw new KeyNotFoundException("Research document not found");
 
         var chunk = new ResearchChunk
@@ -32,7 +32,8 @@ public class CreateResearchChunkHandler : IRequestHandler<CreateResearchChunkCom
             ChunkIndex = request.ChunkIndex,
             Content = request.Content,
             Embedding = request.Embedding,
-            UserId = request.UserId
+            UserId = request.UserId,
+            OrganizationId = request.OrganizationId
         };
         await _repo.AddAsync(chunk, ct);
         await _uow.SaveChangesAsync(ct);

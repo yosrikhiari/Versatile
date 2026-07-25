@@ -20,7 +20,7 @@ public class UpdateResearchDocumentHandler : IRequestHandler<UpdateResearchDocum
     public async Task<ResearchDocumentDto> Handle(UpdateResearchDocumentCommand request, CancellationToken ct)
     {
         var docs = await _repo.GetAllAsync(
-            d => d.Id == request.Id && d.UserId == request.UserId, ct);
+            d => d.Id == request.Id && d.UserId == request.UserId && d.OrganizationId == request.OrganizationId, ct);
         var doc = docs.FirstOrDefault() ?? throw new KeyNotFoundException("Research document not found");
 
         if (request.FileName is not null) doc.FileName = request.FileName;

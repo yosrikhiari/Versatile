@@ -122,43 +122,43 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
     y = doc.lastAutoTable.finalY + 10
   }
 
-  if (data.chapters && data.chapters.length > 0) {
-    for (const chapter of data.chapters) {
+  if (data.sections && data.sections.length > 0) {
+    for (const section of data.sections) {
       addNewPage()
       checkPageBreak(20)
 
       doc.setFontSize(18)
       doc.setFont('helvetica', 'bold')
-      doc.text(`Chapter ${chapter.order + 1}: ${chapter.title || 'Untitled'}`, margin, y)
+      doc.text(`Chapter ${section.order + 1}: ${section.title || 'Untitled'}`, margin, y)
       y += 10
 
-      if (chapter.summary) {
+      if (section.summary) {
         doc.setFontSize(11)
         doc.setFont('helvetica', 'italic')
-        doc.text(chapter.summary, margin, y)
+        doc.text(section.summary, margin, y)
         y += 8
       }
 
       y += 5
 
-      const chapterScenes = data.scenes?.filter((s) => s.chapterId === chapter.id) || []
-      if (chapterScenes.length > 0) {
+      const sectionSubsections = data.subsections?.filter((s) => s.sectionId === section.id) || []
+      if (sectionSubsections.length > 0) {
         doc.setFontSize(12)
         doc.setFont('helvetica', 'bold')
         doc.text('Scenes:', margin, y)
         y += 7
 
-        for (const scene of chapterScenes) {
+        for (const sub of sectionSubsections) {
           checkPageBreak(15)
           doc.setFontSize(11)
           doc.setFont('helvetica', 'normal')
-          doc.text(`• ${scene.title || 'Untitled Scene'}`, margin + 5, y)
+          doc.text(`• ${sub.title || 'Untitled Scene'}`, margin + 5, y)
           y += 5
 
-          if (scene.summary) {
+          if (sub.summary) {
             doc.setFontSize(10)
             doc.setFont('helvetica', 'italic')
-            doc.text(`  ${scene.summary}`, margin + 10, y)
+            doc.text(`  ${sub.summary}`, margin + 10, y)
             y += 5
           }
           y += 2
@@ -166,7 +166,7 @@ export async function exportManuscriptToPDF(projectId, projectName = 'Manuscript
         y += 5
       }
 
-      if (chapter.status === 'writing' && data.manuscript?.content) {
+      if (section.status === 'writing' && data.manuscript?.content) {
         checkPageBreak(10)
         doc.setFontSize(12)
         doc.setFont('helvetica', 'bold')

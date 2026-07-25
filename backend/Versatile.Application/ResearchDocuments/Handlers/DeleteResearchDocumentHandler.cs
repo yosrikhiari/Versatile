@@ -19,7 +19,7 @@ public class DeleteResearchDocumentHandler : IRequestHandler<DeleteResearchDocum
     public async Task<Unit> Handle(DeleteResearchDocumentCommand request, CancellationToken ct)
     {
         var docs = await _repo.GetAllAsync(
-            d => d.Id == request.Id && d.UserId == request.UserId, ct);
+            d => d.Id == request.Id && d.UserId == request.UserId && d.OrganizationId == request.OrganizationId, ct);
         var doc = docs.FirstOrDefault() ?? throw new KeyNotFoundException("Research document not found");
 
         _repo.Delete(doc);

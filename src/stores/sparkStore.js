@@ -4,12 +4,12 @@ import {
   generateSparkPrompt,
   generateOutline,
   generateContent,
-  generateContentStreaming,
-  testOllamaConnection
-} from '../composables/useOllama'
+  generateContentStreaming
+} from '../services/generation/sparkGeneration'
+import { testOllamaConnection } from '../services/ollamaService'
 import { addSparkHistory, getSparkHistory, clearSparkHistory } from '../services/dbService'
 import { STORAGE_KEYS } from '../config/storageKeys'
-import { useLocalStorage } from '../composables/useLocalStorage'
+import { useLocalStorage } from '../utils/useLocalStorage'
 
 export const useSparkStore = defineStore('spark', () => {
   const history = ref([])

@@ -13,9 +13,8 @@ export async function getOptimizationSessionsByProject(projectId) {
 
 export async function getOptimizationSessionsByScene(projectId, sceneId) {
   return db.optimizationSessions
-    .where('projectId')
-    .equals(projectId)
-    .filter((s) => s.sceneId === sceneId)
+    .where('[projectId+sceneId]')
+    .equals([projectId, sceneId])
     .reverse()
     .toArray()
 }

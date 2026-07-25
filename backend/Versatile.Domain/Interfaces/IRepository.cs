@@ -14,6 +14,14 @@ public interface IRepository<T> where T : class
         Expression<Func<T, bool>>? filter = null,
         int page = 1,
         int pageSize = 20,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        CancellationToken ct = default);
+
+    Task<(List<T> Items, bool HasNextPage)> GetPagedKeysetAsync(
+        Expression<Func<T, bool>>? filter = null,
+        int limit = 20,
+        Guid? afterId = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
         CancellationToken ct = default);
 }
 

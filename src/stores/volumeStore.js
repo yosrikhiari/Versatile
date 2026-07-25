@@ -8,7 +8,7 @@ import {
   removeSectionFromVolume,
   getVolumeEntityCount
 } from '../services/dbService'
-import { useLoading } from '../composables/useLoading'
+import { useLoading } from '../utils/useLoading'
 
 const VOLUME_COLORS = [
   '#6366f1',

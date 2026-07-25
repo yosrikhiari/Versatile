@@ -476,7 +476,7 @@ function priorityClass(p) {
   gap: 1px;
   padding: 6px 4px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--vers-bg-hover);
 }
 
 .metric-value {
@@ -505,7 +505,7 @@ function priorityClass(p) {
   align-items: center;
   padding: 4px 8px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--vers-bg-hover);
 }
 
 .rhythm-label {
@@ -549,7 +549,7 @@ function priorityClass(p) {
 .emotion-track {
   height: 4px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--vers-bg-hover);
   overflow: hidden;
 }
 
@@ -577,7 +577,7 @@ function priorityClass(p) {
   gap: 6px;
   padding: 6px 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--vers-bg-hover);
   transition: background 0.15s;
 }
 
@@ -655,7 +655,7 @@ function priorityClass(p) {
 .arc-block {
   padding: 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--vers-bg-hover);
 }
 
 .arc-type {
@@ -680,7 +680,7 @@ function priorityClass(p) {
 .pacing-block {
   padding: 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--vers-bg-hover);
 }
 
 .pacing-badge {
@@ -690,18 +690,18 @@ function priorityClass(p) {
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: capitalize;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--vers-bg-hover);
   color: var(--vers-text-primary);
 }
 
 .pacing-badge.pacing-warn {
-  background: rgba(212, 167, 74, 0.12);
-  color: #d4a74a;
+  background: color-mix(in srgb, var(--vers-status-warning) 12%, transparent);
+  color: var(--vers-status-warning);
 }
 
 .pacing-badge.pacing-good {
-  background: rgba(106, 158, 122, 0.12);
-  color: #6a9e7a;
+  background: color-mix(in srgb, var(--vers-status-success) 12%, transparent);
+  color: var(--vers-status-success);
 }
 
 .pacing-list {
@@ -737,7 +737,7 @@ function priorityClass(p) {
 .theme-item {
   padding: 6px 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--vers-bg-hover);
 }
 
 .theme-header {
@@ -762,7 +762,7 @@ function priorityClass(p) {
 .theme-track {
   height: 3px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--vers-bg-hover);
   overflow: hidden;
 }
 
@@ -809,7 +809,7 @@ function priorityClass(p) {
   flex: 1;
   height: 4px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--vers-bg-hover);
   overflow: hidden;
 }
 
@@ -838,20 +838,20 @@ function priorityClass(p) {
 .rec-item {
   padding: 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--vers-bg-hover);
   border-left: 2px solid transparent;
 }
 
 .rec-item.priority-high {
-  border-left-color: #d07070;
+  border-left-color: var(--vers-status-danger);
 }
 
 .rec-item.priority-med {
-  border-left-color: #d4a74a;
+  border-left-color: var(--vers-status-warning);
 }
 
 .rec-item.priority-low {
-  border-left-color: rgba(255, 255, 255, 0.15);
+  border-left-color: var(--vers-border);
 }
 
 .rec-header {
@@ -872,17 +872,17 @@ function priorityClass(p) {
 }
 
 .rec-priority.priority-high {
-  background: rgba(208, 112, 112, 0.15);
-  color: #d07070;
+  background: color-mix(in srgb, var(--vers-status-danger) 15%, transparent);
+  color: var(--vers-status-danger);
 }
 
 .rec-priority.priority-med {
-  background: rgba(212, 167, 74, 0.15);
-  color: #d4a74a;
+  background: color-mix(in srgb, var(--vers-status-warning) 15%, transparent);
+  color: var(--vers-status-warning);
 }
 
 .rec-priority.priority-low {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--vers-bg-hover);
   color: var(--vers-text-hint);
 }
 

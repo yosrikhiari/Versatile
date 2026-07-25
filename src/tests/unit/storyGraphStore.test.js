@@ -31,7 +31,8 @@ const mockStoryBibleStore = {
   plotThreads: []
 }
 
-vi.mock('@/services/dbService', () => ({
+// Graph CRUD moved to services/db-graph; group/relationship helpers stay in dbService.
+vi.mock('@/services/db-graph', () => ({
   getGraphEdges: (...args) => mockDb.getGraphEdges(...args),
   addGraphEdge: (...args) => mockDb.addGraphEdge(...args),
   updateGraphEdge: (...args) => mockDb.updateGraphEdge(...args),
@@ -41,16 +42,19 @@ vi.mock('@/services/dbService', () => ({
   saveNodePositions: (...args) => mockDb.saveNodePositions(...args),
   getNodeInstances: (...args) => mockDb.getNodeInstances(...args),
   saveNodeInstances: (...args) => mockDb.dbSaveNodeInstances(...args),
-  getCharacterRelationships: (...args) => mockDb.getCharacterRelationships(...args),
-  deleteCharacterRelationship: (...args) => mockDb.deleteCharacterRelationship(...args),
   getGraphGroups: (...args) => mockDb.getGraphGroups(...args),
   saveGraphGroups: (...args) => mockDb.saveGraphGroups(...args),
   getNodeParents: (...args) => mockDb.dbGetNodeParents(...args),
   saveNodeParents: (...args) => mockDb.dbSaveNodeParents(...args),
   getGroupEdges: (...args) => mockDb.getGroupEdges(...args),
-  addGroupEdge: (...args) => mockDb.addGroupEdge(...args),
+  addGroupEdge: (...args) => mockDb.addGroupEdge(...args)
+}))
+
+vi.mock('@/services/dbService', () => ({
   updateGroupEdge: (...args) => mockDb.updateGroupEdge(...args),
-  deleteGroupEdge: (...args) => mockDb.deleteGroupEdge(...args)
+  deleteGroupEdge: (...args) => mockDb.deleteGroupEdge(...args),
+  getCharacterRelationships: (...args) => mockDb.getCharacterRelationships(...args),
+  deleteCharacterRelationship: (...args) => mockDb.deleteCharacterRelationship(...args)
 }))
 
 vi.mock('@/stores/storyBibleStore', () => ({

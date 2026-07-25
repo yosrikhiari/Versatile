@@ -19,7 +19,7 @@ public class DeleteResearchTagHandler : IRequestHandler<DeleteResearchTagCommand
     public async Task<Unit> Handle(DeleteResearchTagCommand request, CancellationToken ct)
     {
         var tags = await _repo.GetAllAsync(
-            t => t.Id == request.Id && t.UserId == request.UserId, ct);
+            t => t.Id == request.Id && t.UserId == request.UserId && t.OrganizationId == request.OrganizationId, ct);
         var tag = tags.FirstOrDefault() ?? throw new KeyNotFoundException("Research tag not found");
 
         _repo.Delete(tag);

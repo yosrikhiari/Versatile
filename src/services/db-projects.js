@@ -4,19 +4,22 @@ import { countWords } from '../utils/textUtils'
 export async function createProject(name, genre = '', synopsis = '', userId = null) {
   try {
     const now = new Date().toISOString()
-    const projectId = await db.projects.add({
-      name,
-      genre,
-      synopsis,
-      userId,
-      createdAt: now,
-      updatedAt: now
-    })
-    await db.manuscripts.add({
-      projectId,
-      content: '',
-      wordCount: 0,
-      updatedAt: now
+    const projectId = await db.transaction('rw', db.projects, db.manuscripts, async () => {
+      const id = await db.projects.add({
+        name,
+        genre,
+        synopsis,
+        userId,
+        createdAt: now,
+        updatedAt: now
+      })
+      await db.manuscripts.add({
+        projectId: id,
+        content: '',
+        wordCount: 0,
+        updatedAt: now
+      })
+      return id
     })
     return projectId
   } catch (error) {

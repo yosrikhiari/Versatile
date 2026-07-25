@@ -133,9 +133,12 @@ describe('flowStore', () => {
       expect(store.sessionWordCountEnd).toBe(42)
     })
 
-    it('calls archive and author model services', () => {
+    it('calls archive and author model services', async () => {
       store.startSession(5)
       store.endSession()
+      // End-of-session bookkeeping is deferred via lazy import (M-7.4), so flush
+      // pending microtasks/timers before asserting the mocks were called.
+      await vi.runAllTimersAsync()
       expect(mockArchiveStore.saveEndOfSessionState).toHaveBeenCalled()
       expect(mockAuthorModel.buildProfileFromSession).toHaveBeenCalledWith({
         wordCountDelta: 42,

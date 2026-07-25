@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,700&display=swap');
+/* Google Fonts are loaded via <link rel="preconnect"> + non-blocking <link> in index.html
+   (see M-5.2). Kept out of CSS to avoid a render-blocking @import. */
 
 @tailwind base;
 @tailwind components;
@@ -15,13 +16,14 @@
     --vers-bg-elevated: #26262b; /* dropdowns, modals */
     --vers-border-subtle: rgba(255, 255, 255, 0.07); /* hairline, not solid */
     --vers-border-focus: #6e8bb5;
+    --vers-border: rgba(255, 255, 255, 0.12);
     --vers-accent-primary: #6e8bb5; /* cool slate-blue, used rarely */
     --vers-accent-primary-rgb: 110, 139, 181;
     --vers-accent-secondary: #4f6e96;
     --vers-text-primary: #e6e6e2;
     --vers-text-secondary: #a2a29b;
-    --vers-text-muted: #6e6e67;
-    --vers-text-faint: #44443e;
+    --vers-text-muted: #82827a; /* WCAG AA: 4.83:1 on bg-base (was #6e6e67 @ 3.64) */
+    --vers-text-faint: #44443e; /* decorative only — never used for body text */
     --vers-text-on-accent: #ffffff;
     --vers-glow-loading-rgb: 110, 139, 181;
 
@@ -55,6 +57,7 @@
     --vers-status-success: #6a9e7a;
     --vers-status-danger: #d07070;
     --vers-status-warning: #d4a74a;
+    --vers-status-info: #5b8cb8;
 
     /* JS canvas element type accent colors (element cards) */
     --vers-element-section: #6366f1;
@@ -67,6 +70,81 @@
     --vers-default-fallback: #6366f1;
     --vers-default-edge: #888888;
     --vers-default-other: #9ca3af;
+  }
+
+  /* Light theme — warm cream/paper palette */
+  [data-theme='light'] {
+    --vers-bg-base: #f7f5f0;
+    --vers-bg-panel: #efede5;
+    --vers-bg-canvas: #faf8f4;
+    --vers-bg-hover: #e6e3db;
+    --vers-bg-elevated: #ffffff;
+    --vers-border-subtle: rgba(0, 0, 0, 0.07);
+    --vers-border-focus: #6e8bb5;
+    --vers-border: rgba(0, 0, 0, 0.12);
+    --vers-accent-primary: #6e8bb5;
+    --vers-accent-primary-rgb: 110, 139, 181;
+    --vers-accent-secondary: #5a7a9e;
+    --vers-text-primary: #1c1c1a;
+    --vers-text-secondary: #5a5a55;
+    --vers-text-muted: #70706a; /* WCAG AA: 4.57:1 on light bg-base (was #8a8a82 @ 3.19) */
+    --vers-text-faint: #bbbbb0; /* decorative only — never used for body text */
+    --vers-text-on-accent: #ffffff;
+    --vers-glow-loading-rgb: 110, 139, 181;
+
+    --vers-entity-character: #5a7a9e;
+    --vers-entity-location: #4d7d5d;
+    --vers-entity-plotThread: #b89230;
+
+    --vers-edge-appears_in: #1a9ed6;
+    --vers-edge-involved_in: #a868c0;
+    --vers-edge-located_at: #4aae9e;
+    --vers-edge-intersects_with: #4aae9e;
+    --vers-edge-features: #a868c0;
+    --vers-edge-connects_to: #666666;
+    --vers-edge-ally: #d4688a;
+    --vers-edge-enemy: #c04040;
+    --vers-edge-family: #a868c0;
+    --vers-edge-romantic: #d0406a;
+    --vers-edge-mentor: #9840a8;
+    --vers-edge-rival: #d84820;
+    --vers-edge-neutral: #6a7a84;
+
+    --vers-status-open: #16a34a;
+    --vers-status-in_progress: #2563eb;
+    --vers-status-resolved: #52525b;
+    --vers-status-closed: #3f3f46;
+    --vers-status-success: #4a8a5a;
+    --vers-status-danger: #c05050;
+    --vers-status-warning: #b89230;
+    --vers-status-info: #42729c; /* WCAG AA: 4.68:1 on light bg (was #5b8cb8 @ 3.27) */
+
+    --vers-element-section: #4f46e5;
+    --vers-element-character: #db2777;
+    --vers-element-location: #059669;
+    --vers-element-plotpoint: #d97706;
+    --vers-element-note: #7c3aed;
+
+    --vers-default-fallback: #4f46e5;
+    --vers-default-edge: #666666;
+    --vers-default-other: #6b7280;
+  }
+
+  /* High-contrast preference: lift the dim tiers toward the primary text color
+     so muted/faint/border text clears AA comfortably (M-2.3). */
+  @media (prefers-contrast: more) {
+    :root {
+      --vers-text-muted: #a2a29b;
+      --vers-text-faint: #82827a;
+      --vers-border-subtle: rgba(255, 255, 255, 0.18);
+      --vers-border: rgba(255, 255, 255, 0.28);
+    }
+    [data-theme='light'] {
+      --vers-text-muted: #5a5a55;
+      --vers-text-faint: #70706a;
+      --vers-border-subtle: rgba(0, 0, 0, 0.2);
+      --vers-border: rgba(0, 0, 0, 0.32);
+    }
   }
 
   html,
@@ -360,10 +438,143 @@
     }
   }
 
+  /* ── Unified animation presets (useAnimations composable) ── */
+  .anim-fade-enter-active,
+  .anim-fade-up-enter-active,
+  .anim-fade-down-enter-active,
+  .anim-scale-enter-active,
+  .anim-slide-left-enter-active,
+  .anim-slide-right-enter-active {
+    transition:
+      opacity 0.22s cubic-bezier(0.19, 1, 0.22, 1),
+      transform 0.22s cubic-bezier(0.19, 1, 0.22, 1);
+  }
+  .anim-fade-leave-active,
+  .anim-fade-up-leave-active,
+  .anim-fade-down-leave-active,
+  .anim-scale-leave-active,
+  .anim-slide-left-leave-active,
+  .anim-slide-right-leave-active {
+    transition:
+      opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .anim-fade-enter-from,
+  .anim-fade-leave-to {
+    opacity: 0;
+  }
+  .anim-fade-up-enter-from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .anim-fade-up-leave-to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  .anim-fade-down-enter-from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  .anim-fade-down-leave-to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  .anim-scale-enter-from,
+  .anim-scale-leave-to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  .anim-slide-left-enter-from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  .anim-slide-left-leave-to {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  .anim-slide-right-enter-from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  .anim-slide-right-leave-to {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .anim-fade-enter-active,
+    .anim-fade-up-enter-active,
+    .anim-fade-down-enter-active,
+    .anim-scale-enter-active,
+    .anim-slide-left-enter-active,
+    .anim-slide-right-enter-active,
+    .anim-fade-leave-active,
+    .anim-fade-up-leave-active,
+    .anim-fade-down-leave-active,
+    .anim-scale-leave-active,
+    .anim-slide-left-leave-active,
+    .anim-slide-right-leave-active {
+      transition-duration: 0.01ms !important;
+    }
+    .anim-fade-up-enter-from,
+    .anim-fade-up-leave-to,
+    .anim-fade-down-enter-from,
+    .anim-fade-down-leave-to,
+    .anim-scale-enter-from,
+    .anim-scale-leave-to,
+    .anim-slide-left-enter-from,
+    .anim-slide-left-leave-to,
+    .anim-slide-right-enter-from,
+    .anim-slide-right-leave-to {
+      transform: none;
+    }
+  }
+
+  /* ── Drag & drop polish (M-3.4) ──
+     Global baseline for SortableJS/vuedraggable classes wired via DRAG_OPTIONS
+     (ghostClass: 'ghost', dragClass: 'drag'). Components may still refine these
+     with scoped overrides. */
+  .ghost {
+    opacity: 0.6;
+    border: 1px dashed var(--vers-accent-primary) !important;
+    background: rgba(var(--vers-accent-primary-rgb), 0.1) !important;
+    border-radius: 8px;
+  }
+  .ghost > * {
+    visibility: hidden;
+  }
+  .drag {
+    opacity: 0.95;
+    transform: scale(1.02) rotate(-0.4deg);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    cursor: grabbing;
+  }
+  /* SortableJS also stamps the picked-up source item. */
+  .sortable-chosen {
+    cursor: grabbing;
+  }
+  /* Container advertising it can accept a drop. Add `.drop-active` on dragenter. */
+  .drop-active {
+    outline: 2px dashed rgba(var(--vers-accent-primary-rgb), 0.5);
+    outline-offset: 3px;
+    background: rgba(var(--vers-accent-primary-rgb), 0.04);
+    border-radius: 8px;
+    transition:
+      background 0.15s ease,
+      outline-color 0.15s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drag {
+      transform: none;
+    }
+  }
+
   /* ── Editor Content ── */
   .editor-content {
     font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
-    font-size: 18px;
+    /* Fluid manuscript type (M-4.2): a touch smaller on phones, 18px from ~720px up. */
+    font-size: clamp(16px, 1rem + 0.4vw, 18px);
     line-height: 1.75;
     letter-spacing: 0;
   }
@@ -377,7 +588,7 @@
 /* ── TipTap Editor ── */
 .tiptap-editor .ProseMirror {
   font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
-  font-size: 18px;
+  font-size: clamp(16px, 1rem + 0.4vw, 18px);
   line-height: 1.75;
   color: var(--vers-text-primary);
   background-color: transparent;
@@ -474,5 +685,18 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Touch targets (M-4.2) ──
+   On coarse-pointer (touch) devices, ensure primary navigation/header controls
+   meet the 44×44 CSS-px minimum, without inflating dense desktop UI. */
+@media (pointer: coarse) {
+  .btn-ghost,
+  header button,
+  nav button,
+  [role='navigation'] button {
+    min-width: 44px;
+    min-height: 44px;
   }
 }

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { getAllProjects, createProject, getManuscript } from '../services/db-projects'
 import BaseIcon from '../components/shared/BaseIcon.vue'
+import EmptyState from '../components/shared/EmptyState.vue'
 import OrganizationSwitcher from '../components/org/OrganizationSwitcher.vue'
 import CreateOrganizationDialog from '../components/org/CreateOrganizationDialog.vue'
 
@@ -22,9 +23,7 @@ const localUser = auth.localUser || { displayName: 'User' }
 
 onMounted(async () => {
   const raw =
-    auth.localUser?.id != null
-      ? await getAllProjects(auth.localUser.id)
-      : await getAllProjects()
+    auth.localUser?.id != null ? await getAllProjects(auth.localUser.id) : await getAllProjects()
   // Attach each project's real word count from its manuscript (the app's own
   // authoritative per-project count — see projectStore).
   projects.value = await Promise.all(
@@ -157,17 +156,15 @@ async function handleLogout() {
         <span class="text-sm">Loading projects…</span>
       </div>
 
-      <div
+      <EmptyState
         v-else-if="projects.length === 0"
-        class="border-t border-border-subtle py-20 flex flex-col items-center text-center"
-      >
-        <BaseIcon name="book-open" :size="28" class="text-text-hint mb-4" />
-        <p class="text-text-primary font-medium mb-1">No projects yet</p>
-        <p class="text-text-secondary text-sm mb-6">Create your first project and begin writing.</p>
-        <button class="btn-primary px-5 py-2 rounded-md text-sm" @click="showCreate = true">
-          Create project
-        </button>
-      </div>
+        icon="book-open"
+        title="No projects yet"
+        description="Create your first project and begin writing."
+        action-label="Create project"
+        class="border-t border-border-subtle"
+        @action="showCreate = true"
+      />
 
       <div v-else class="border-t border-border-subtle">
         <button
@@ -247,9 +244,6 @@ async function handleLogout() {
       </div>
     </div>
 
-    <CreateOrganizationDialog
-      v-if="showCreateOrg"
-      @close="showCreateOrg = false"
-    />
+    <CreateOrganizationDialog v-if="showCreateOrg" @close="showCreateOrg = false" />
   </div>
 </template>

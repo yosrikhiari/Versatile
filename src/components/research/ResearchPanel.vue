@@ -8,6 +8,7 @@ import { useNotifications } from '../../composables/useNotifications'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import VirtualScrollList from '../shared/VirtualScrollList.vue'
+import Skeleton from '../shared/Skeleton.vue'
 import { getDocumentStatusCounts, searchLexical, semanticSearch } from '../../services/researchDb'
 import { getEmbeddings } from '../../services/embeddingService'
 import { resume as resumeEmbeddingQueue } from '../../services/embeddingQueue'
@@ -27,12 +28,19 @@ const {
   truncationInfo,
   loadDocuments,
   importFiles,
+  importFromUrl,
   checkFileSizes,
   confirmImport,
   cancelImport,
   removeDocument,
   getDocumentChunks,
-  reindexDocument
+  reindexDocument,
+  isExtracting,
+  entityExtractionError,
+  entityExtractionResult,
+  extractEntities,
+  acceptEntityExtraction,
+  clearEntityExtraction
 } = useResearchDocuments(projectId)
 
 const { indexProgress, retryFailedChunks } = useEmbeddingIndexer()
@@ -43,6 +51,9 @@ const isRetrying = ref(false)
 const isReindexing = ref(false)
 
 const fileInput = ref(null)
+const showUrlInput = ref(false)
+const urlInput = ref(null)
+const urlToImport = ref('')
 const selectedDoc = ref(null)
 const selectedChunks = ref([])
 const loadingChunks = ref(false)
@@ -215,6 +226,23 @@ async function handleFileChange(event) {
   event.target.value = ''
 }
 
+function toggleUrlInput() {
+  showUrlInput.value = !showUrlInput.value
+  if (showUrlInput.value) {
+    urlToImport.value = ''
+    setTimeout(() => urlInput.value?.focus(), 100)
+  }
+}
+
+async function handleUrlImport() {
+  const url = urlToImport.value.trim()
+  if (!url) return
+  showUrlInput.value = false
+  await importFromUrl(url)
+  await refreshDbStatusCounts()
+  if (!importError.value) addToast('URL imported.', 'success')
+}
+
 async function handleConfirmImport() {
   const files = pendingImportInfo.value.files
   confirmImport()
@@ -294,6 +322,24 @@ function clearSelectedDoc() {
   selectedDoc.value = null
   selectedChunks.value = []
 }
+
+async function handleExtractEntities() {
+  if (!selectedDoc.value?.id) return
+  await extractEntities(selectedDoc.value.id)
+  if (!entityExtractionError.value) {
+    addToast('Entity extraction complete', 'success')
+  }
+}
+
+function handleAcceptExtraction() {
+  if (!entityExtractionResult.value) return
+  acceptEntityExtraction(entityExtractionResult.value)
+  addToast('Entities added to Story Bible', 'success')
+}
+
+function handleClearExtraction() {
+  clearEntityExtraction()
+}
 </script>
 
 <template>
@@ -306,15 +352,29 @@ function clearSelectedDoc() {
         class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0"
       >
         <h2 class="text-sm font-semibold text-text-primary tracking-wide">Research Library</h2>
-        <button
-          class="p-1.5 rounded-lg btn-primary active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 disabled:opacity-50"
-          :disabled="isImporting"
-          title="Import documents"
-          aria-label="Import documents"
-          @click="triggerFileInput"
-        >
-          <BaseIcon name="upload" size="16" />
-        </button>
+        <div class="flex items-center gap-1">
+          <!-- prettier-ignore -->
+          <button
+            class="p-1.5 rounded-lg transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 disabled:opacity-50"
+            :class="showUrlInput ? 'btn-primary' : 'bg-bg-secondary border border-border-subtle text-text-hint hover:text-text-primary hover:border-border-hover'"
+            :disabled="isImporting"
+            title="Import from URL"
+            aria-label="Import from URL"
+            @click="toggleUrlInput"
+          >
+            <BaseIcon name="link" size="14" />
+          </button>
+          <!-- prettier-ignore -->
+          <button
+            class="p-1.5 rounded-lg btn-primary active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 disabled:opacity-50"
+            :disabled="isImporting"
+            title="Import files"
+            aria-label="Import files"
+            @click="triggerFileInput"
+          >
+            <BaseIcon name="upload" size="16" />
+          </button>
+        </div>
         <input
           ref="fileInput"
           type="file"
@@ -385,6 +445,43 @@ function clearSelectedDoc() {
             class="w-full pl-8 pr-3 py-2 text-xs bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/40 transition-colors"
           />
         </div>
+      </div>
+
+      <div v-if="showUrlInput" class="px-3 py-2 border-b border-border-subtle/20">
+        <form class="flex items-center gap-1.5" @submit.prevent="handleUrlImport">
+          <div class="relative flex-1">
+            <BaseIcon
+              name="link"
+              size="12"
+              class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-hint pointer-events-none"
+            />
+            <input
+              ref="urlInput"
+              v-model="urlToImport"
+              type="url"
+              placeholder="Paste a URL to import..."
+              class="w-full pl-7 pr-3 py-1.5 text-xs bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/40 transition-colors"
+              autocomplete="url"
+            />
+          </div>
+          <!-- prettier-ignore -->
+          <button
+            type="submit"
+            class="px-2.5 py-1.5 text-xs rounded-lg btn-primary active:scale-[0.97] disabled:opacity-50 shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50"
+            :disabled="isImporting || !urlToImport.trim()"
+          >
+            Import
+          </button>
+          <!-- prettier-ignore -->
+          <button
+            type="button"
+            class="p-1.5 rounded-lg bg-bg-secondary border border-border-subtle text-text-hint hover:text-text-primary hover:border-border-hover transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+            :disabled="isImporting"
+            @click="showUrlInput = false"
+          >
+            <BaseIcon name="x" size="12" />
+          </button>
+        </form>
       </div>
 
       <div
@@ -542,10 +639,112 @@ function clearSelectedDoc() {
             <BaseIcon v-if="isReindexing" name="rotate-cw" size="12" class="animate-spin" />
             <BaseIcon v-else name="rotate-cw" size="12" />
           </button>
+          <button
+            class="p-1 rounded hover:bg-surface-hover text-text-hint hover:text-accent transition-colors shrink-0 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+            title="Extract entities from document"
+            aria-label="Extract entities from document"
+            :disabled="isExtracting"
+            @click.stop="handleExtractEntities"
+          >
+            <BaseIcon v-if="isExtracting" name="rotate-cw" size="12" class="animate-spin" />
+            <BaseIcon v-else name="bot" size="12" />
+          </button>
         </div>
 
-        <div v-if="loadingChunks" class="flex-1 flex items-center justify-center">
-          <p class="text-xs text-text-hint/50 animate-pulse">Loading chunks...</p>
+        <div
+          v-if="entityExtractionError"
+          class="px-4 py-2 bg-red-500/10 border-b border-red-500/20"
+        >
+          <p class="text-2xs text-red-400">{{ entityExtractionError }}</p>
+        </div>
+        <div
+          v-if="entityExtractionResult"
+          class="border-b border-border-subtle bg-surface-secondary/30"
+        >
+          <div class="px-4 py-2 flex items-center justify-between">
+            <div class="flex items-center gap-3 text-2xs text-text-secondary">
+              <span
+                >{{
+                  entityExtractionResult.proposed.characters.length +
+                  entityExtractionResult.proposed.locations.length
+                }}
+                proposed</span
+              >
+              <span
+                v-if="
+                  entityExtractionResult.conflicts.characters.length +
+                    entityExtractionResult.conflicts.locations.length >
+                  0
+                "
+                class="text-amber-400"
+              >
+                {{
+                  entityExtractionResult.conflicts.characters.length +
+                  entityExtractionResult.conflicts.locations.length
+                }}
+                conflicts
+              </span>
+              <span>{{ entityExtractionResult.relationships.length }} relationships</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button
+                class="px-2 py-1 rounded text-2xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                @click="handleAcceptExtraction"
+              >
+                Accept to Bible
+              </button>
+              <button
+                class="px-2 py-1 rounded text-2xs text-text-hint hover:text-text-primary transition-colors"
+                @click="handleClearExtraction"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+          <div
+            v-if="
+              entityExtractionResult.proposed.characters.length > 0 ||
+              entityExtractionResult.proposed.locations.length > 0 ||
+              entityExtractionResult.conflicts.characters.length > 0 ||
+              entityExtractionResult.conflicts.locations.length > 0
+            "
+            class="px-4 pb-2 flex flex-wrap gap-1.5"
+          >
+            <span
+              v-for="char in entityExtractionResult.proposed.characters"
+              :key="'p-char-' + char.name"
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs bg-blue-500/10 text-blue-400"
+            >
+              <BaseIcon name="users" size="10" />{{ char.name }}
+            </span>
+            <span
+              v-for="loc in entityExtractionResult.proposed.locations"
+              :key="'p-loc-' + loc.name"
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs bg-green-500/10 text-green-400"
+            >
+              <BaseIcon name="map-pin" size="10" />{{ loc.name }}
+            </span>
+            <span
+              v-for="conf in entityExtractionResult.conflicts.characters"
+              :key="'c-char-' + conf.name"
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs bg-amber-500/10 text-amber-400"
+              :title="'Potential duplicate of: ' + conf.existing.map((e) => e.name).join(', ')"
+            >
+              <BaseIcon name="octagon-alert" size="10" />{{ conf.name }}
+            </span>
+            <span
+              v-for="conf in entityExtractionResult.conflicts.locations"
+              :key="'c-loc-' + conf.name"
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs bg-amber-500/10 text-amber-400"
+              :title="'Potential duplicate of: ' + conf.existing.map((e) => e.name).join(', ')"
+            >
+              <BaseIcon name="octagon-alert" size="10" />{{ conf.name }}
+            </span>
+          </div>
+        </div>
+
+        <div v-if="loadingChunks" class="flex-1 px-3 py-3 overflow-hidden">
+          <Skeleton variant="list" :count="5" size="1.75rem" label="Loading chunks…" />
         </div>
         <div v-else-if="!selectedChunks.length" class="flex-1 flex items-center justify-center">
           <p class="text-xs text-text-hint/40">No chunks available</p>

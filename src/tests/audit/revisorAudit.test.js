@@ -10,7 +10,11 @@ vi.mock('../../services/aiService', () => ({
 
 vi.mock('../../stores/projectStore', () => ({
   useProjectStore: vi.fn(() => ({
-    activeWorkspaceType: 'creative'
+    activeWorkspaceType: 'creative',
+    getActivePrompts: vi.fn(() => ({
+      critic: 'You are a story critic.',
+      revisor: 'You are a story revisor.'
+    }))
   }))
 }))
 

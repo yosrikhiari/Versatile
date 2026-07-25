@@ -24,7 +24,6 @@ import {
   removeEntityFromNodePositions,
   removeEntityFromNodeParents
 } from '../services/db-graph'
-import { useStoryDocuments } from '../composables/useStoryDocuments'
 import { useProjectStore } from '../stores/projectStore'
 import { saveVoiceProfile, loadVoiceProfile } from '../services/db-entities'
 
@@ -56,6 +55,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
       const projectStore = useProjectStore()
       const projectId = projectStore.currentProjectId
       if (!projectId) return
+      const { useStoryDocuments } = await import('../composables/useStoryDocuments')
       const storyDocs = useStoryDocuments()
       await Promise.all(
         docTypes.map((dt) =>
@@ -75,6 +75,7 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
       locations.value = await getLocations(projectId)
       plotThreads.value = await getPlotThreads(projectId)
 
+      const { useStoryDocuments } = await import('../composables/useStoryDocuments')
       const storyDocs = useStoryDocuments()
       await storyDocs.regenerateAllDocuments(projectId)
       storyBibleReady.value = true

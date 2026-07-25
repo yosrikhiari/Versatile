@@ -31,7 +31,9 @@ vi.mock('../config/ai', async (importOriginal) => {
 
 vi.mock('../stores/projectStore', () => ({
   useProjectStore: vi.fn(() => ({
-    activeWorkspaceType: 'creative'
+    activeWorkspaceType: 'creative',
+    // evaluateScene reads activePrompts.critic — supply a minimal stub.
+    getActivePrompts: vi.fn(() => ({ critic: 'You are a story critic.' }))
   }))
 }))
 
@@ -166,7 +168,10 @@ describe('useStoryCritic — dimensionScores extraction', () => {
     const legalDims = ['legal_accuracy', 'clarity', 'compliance', 'argument_strength']
     vi.mocked(evalDimensions.getDimensionNames).mockReturnValue(legalDims)
     const { useProjectStore } = await import('../stores/projectStore')
-    vi.mocked(useProjectStore).mockReturnValue({ activeWorkspaceType: 'legal' })
+    vi.mocked(useProjectStore).mockReturnValue({
+      activeWorkspaceType: 'legal',
+      getActivePrompts: vi.fn(() => ({ critic: 'You are a legal critic.' }))
+    })
 
     const aiResponse = JSON.stringify({
       dimensionScores: {

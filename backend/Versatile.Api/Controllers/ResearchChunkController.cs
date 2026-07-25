@@ -19,14 +19,14 @@ public class ResearchChunkController : ApiControllerBase
     [HttpGet]
     public async Task<ActionResult<List<ResearchChunkDto>>> GetAll(Guid storyId)
     {
-        try { return Ok(await _mediator.Send(new GetResearchChunksQuery(storyId, UserId))); }
+        try { return Ok(await _mediator.Send(new GetResearchChunksQuery(storyId, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ResearchChunkDto>> GetById(Guid id)
     {
-        try { return Ok(await _mediator.Send(new GetResearchChunkByIdQuery(id, UserId))); }
+        try { return Ok(await _mediator.Send(new GetResearchChunkByIdQuery(id, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
@@ -35,7 +35,7 @@ public class ResearchChunkController : ApiControllerBase
     {
         try
         {
-            var dto = await _mediator.Send(new CreateResearchChunkCommand(request.DocumentId, storyId, request.ChunkIndex, request.Content, request.Embedding, UserId));
+            var dto = await _mediator.Send(new CreateResearchChunkCommand(request.DocumentId, storyId, request.ChunkIndex, request.Content, request.Embedding, OrganizationId, UserId));
             return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
@@ -44,14 +44,14 @@ public class ResearchChunkController : ApiControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<ResearchChunkDto>> Update(Guid id, UpdateResearchChunkRequest request)
     {
-        try { return Ok(await _mediator.Send(new UpdateResearchChunkCommand(id, request.ChunkIndex, request.Content, request.Embedding, UserId))); }
+        try { return Ok(await _mediator.Send(new UpdateResearchChunkCommand(id, request.ChunkIndex, request.Content, request.Embedding, OrganizationId, UserId))); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        try { await _mediator.Send(new DeleteResearchChunkCommand(id, UserId)); return NoContent(); }
+        try { await _mediator.Send(new DeleteResearchChunkCommand(id, OrganizationId, UserId)); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 }

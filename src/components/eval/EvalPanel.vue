@@ -33,7 +33,7 @@ const minorIssues = computed(() => issues.value.filter((i) => i.severity === 'mi
 
 const hasGateResults = computed(() => {
   const g = props.gateResults
-  return g?.dimensionCoverage || g?.scoreDistribution || g?.revisionEffectiveness
+  return g?.dimensionCoverage || g?.scoreDistribution || g?.revisionEffectiveness || g?.proseQuality
 })
 
 const gateSummary = computed(() => {
@@ -217,6 +217,33 @@ function gateColor(pass) {
         >
           No revision needed
         </p>
+      </div>
+
+      <!-- Prose Quality -->
+      <div
+        v-if="props.gateResults.proseQuality"
+        class="bg-bg-secondary border border-border-subtle rounded-lg p-3"
+      >
+        <div class="flex items-center justify-between mb-1">
+          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
+            Prose Quality
+          </h4>
+          <BaseIcon
+            :name="gateIcon(props.gateResults.proseQuality.pass)"
+            :size="14"
+            :class="gateColor(props.gateResults.proseQuality.pass)"
+          />
+        </div>
+        <div v-if="props.gateResults.proseQuality.flags?.length" class="space-y-0.5">
+          <p
+            v-for="(f, i) in props.gateResults.proseQuality.flags"
+            :key="i"
+            class="text-xs text-warning font-ui"
+          >
+            {{ f }}
+          </p>
+        </div>
+        <p v-else class="text-xs text-text-hint font-ui">Prose quality nominal</p>
       </div>
     </div>
 
