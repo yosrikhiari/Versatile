@@ -75,7 +75,7 @@
     "@storybook/vue3-vite": "^10.5.4",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "@vitejs/plugin-vue": "^5.0.0",
+    "@vitejs/plugin-vue": "^6.0.8",
     "@vitest/coverage-v8": "^1.0.0",
     "@vue/test-utils": "^2.4.0",
     "@vue/tsconfig": "^0.9.1",
