@@ -26,7 +26,7 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<Story>(db),
             new UnitOfWork(db));
 
-        var result = await handler.Handle(new CreateResearchTagCommand("Important", story.Id, "#ff0000", UserId), default);
+        var result = await handler.Handle(new CreateResearchTagCommand("Important", story.Id, "#ff0000", null, UserId), default);
 
         result.Should().NotBeNull();
         result.Name.Should().Be("Important");
@@ -45,7 +45,7 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<Story>(db),
             new UnitOfWork(db));
 
-        var result = await handler.Handle(new CreateResearchTagCommand("NoColor", story.Id, null, UserId), default);
+        var result = await handler.Handle(new CreateResearchTagCommand("NoColor", story.Id, null, null, UserId), default);
 
         result.Name.Should().Be("NoColor");
         result.Color.Should().BeEmpty();
@@ -61,7 +61,7 @@ public sealed class ResearchTagCrudIntegrationTests
             new UnitOfWork(db));
 
         await FluentActions
-            .Awaiting(() => handler.Handle(new CreateResearchTagCommand("Orphan", Guid.NewGuid(), null, UserId), default))
+            .Awaiting(() => handler.Handle(new CreateResearchTagCommand("Orphan", Guid.NewGuid(), null, null, UserId), default))
             .Should().ThrowAsync<KeyNotFoundException>();
     }
 
@@ -74,12 +74,12 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<ResearchTag>(db),
             new Repository<Story>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchTagCommand("Old", story.Id, "#000", UserId), default);
+        var created = await createHandler.Handle(new CreateResearchTagCommand("Old", story.Id, "#000", null, UserId), default);
 
         var updateHandler = new UpdateResearchTagHandler(
             new Repository<ResearchTag>(db),
             new UnitOfWork(db));
-        var result = await updateHandler.Handle(new UpdateResearchTagCommand(created.Id, "New", "#fff", UserId), default);
+        var result = await updateHandler.Handle(new UpdateResearchTagCommand(created.Id, "New", "#fff", null, UserId), default);
 
         result.Name.Should().Be("New");
         result.Color.Should().Be("#fff");
@@ -94,12 +94,12 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<ResearchTag>(db),
             new Repository<Story>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchTagCommand("Original", story.Id, "#abc", UserId), default);
+        var created = await createHandler.Handle(new CreateResearchTagCommand("Original", story.Id, "#abc", null, UserId), default);
 
         var updateHandler = new UpdateResearchTagHandler(
             new Repository<ResearchTag>(db),
             new UnitOfWork(db));
-        var result = await updateHandler.Handle(new UpdateResearchTagCommand(created.Id, Name: "Renamed", null, UserId), default);
+        var result = await updateHandler.Handle(new UpdateResearchTagCommand(created.Id, Name: "Renamed", null, null, UserId), default);
 
         result.Name.Should().Be("Renamed");
         result.Color.Should().Be("#abc");
@@ -114,12 +114,12 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<ResearchTag>(db),
             new Repository<Story>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchTagCommand("To Delete", story.Id, null, UserId), default);
+        var created = await createHandler.Handle(new CreateResearchTagCommand("To Delete", story.Id, null, null, UserId), default);
 
         var deleteHandler = new DeleteResearchTagHandler(
             new Repository<ResearchTag>(db),
             new UnitOfWork(db));
-        await deleteHandler.Handle(new DeleteResearchTagCommand(created.Id, UserId), default);
+        await deleteHandler.Handle(new DeleteResearchTagCommand(created.Id, null, UserId), default);
 
         var repo = new Repository<ResearchTag>(db);
         var entity = await repo.GetByIdAsync(created.Id);
@@ -135,7 +135,7 @@ public sealed class ResearchTagCrudIntegrationTests
             new UnitOfWork(db));
 
         await FluentActions
-            .Awaiting(() => deleteHandler.Handle(new DeleteResearchTagCommand(Guid.NewGuid(), UserId), default))
+            .Awaiting(() => deleteHandler.Handle(new DeleteResearchTagCommand(Guid.NewGuid(), null, UserId), default))
             .Should().ThrowAsync<KeyNotFoundException>();
     }
 
@@ -148,12 +148,12 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<ResearchTag>(db),
             new Repository<Story>(db),
             new UnitOfWork(db));
-        var first = await createHandler.Handle(new CreateResearchTagCommand("B", story.Id, null, UserId), default);
-        var second = await createHandler.Handle(new CreateResearchTagCommand("A", story.Id, null, UserId), default);
+        var first = await createHandler.Handle(new CreateResearchTagCommand("B", story.Id, null, null, UserId), default);
+        var second = await createHandler.Handle(new CreateResearchTagCommand("A", story.Id, null, null, UserId), default);
 
         var queryHandler = new GetResearchTagsHandler(
             new Repository<ResearchTag>(db));
-        var result = await queryHandler.Handle(new GetResearchTagsQuery(story.Id, UserId), default);
+        var result = await queryHandler.Handle(new GetResearchTagsQuery(story.Id, null, UserId), default);
 
         result.Select(e => e.Id).Should().Equal(second.Id, first.Id);
     }
@@ -167,11 +167,11 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<ResearchTag>(db),
             new Repository<Story>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchTagCommand("Find Me", story.Id, null, UserId), default);
+        var created = await createHandler.Handle(new CreateResearchTagCommand("Find Me", story.Id, null, null, UserId), default);
 
         var queryHandler = new GetResearchTagByIdHandler(
             new Repository<ResearchTag>(db));
-        var result = await queryHandler.Handle(new GetResearchTagByIdQuery(created.Id, UserId), default);
+        var result = await queryHandler.Handle(new GetResearchTagByIdQuery(created.Id, null, UserId), default);
 
         result.Name.Should().Be("Find Me");
     }
@@ -184,7 +184,7 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<ResearchTag>(db));
 
         await FluentActions
-            .Awaiting(() => queryHandler.Handle(new GetResearchTagByIdQuery(Guid.NewGuid(), UserId), default))
+            .Awaiting(() => queryHandler.Handle(new GetResearchTagByIdQuery(Guid.NewGuid(), null, UserId), default))
             .Should().ThrowAsync<KeyNotFoundException>();
     }
 
@@ -197,14 +197,14 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<ResearchTag>(db),
             new Repository<Story>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchTagCommand("Title", story.Id, null, UserId), default);
+        var created = await createHandler.Handle(new CreateResearchTagCommand("Title", story.Id, null, null, UserId), default);
 
         var handler = new UpdateResearchTagHandler(
             new Repository<ResearchTag>(db),
             new UnitOfWork(db));
 
         await FluentActions
-            .Awaiting(() => handler.Handle(new UpdateResearchTagCommand(created.Id, "Hacked", null, Guid.NewGuid()), default))
+            .Awaiting(() => handler.Handle(new UpdateResearchTagCommand(created.Id, "Hacked", null, null, Guid.NewGuid()), default))
             .Should().ThrowAsync<KeyNotFoundException>();
     }
 
@@ -217,14 +217,14 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<ResearchTag>(db),
             new Repository<Story>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchTagCommand("Title", story.Id, null, UserId), default);
+        var created = await createHandler.Handle(new CreateResearchTagCommand("Title", story.Id, null, null, UserId), default);
 
         var handler = new DeleteResearchTagHandler(
             new Repository<ResearchTag>(db),
             new UnitOfWork(db));
 
         await FluentActions
-            .Awaiting(() => handler.Handle(new DeleteResearchTagCommand(created.Id, Guid.NewGuid()), default))
+            .Awaiting(() => handler.Handle(new DeleteResearchTagCommand(created.Id, null, Guid.NewGuid()), default))
             .Should().ThrowAsync<KeyNotFoundException>();
     }
 
@@ -237,13 +237,13 @@ public sealed class ResearchTagCrudIntegrationTests
             new Repository<ResearchTag>(db),
             new Repository<Story>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchTagCommand("Title", story.Id, null, UserId), default);
+        var created = await createHandler.Handle(new CreateResearchTagCommand("Title", story.Id, null, null, UserId), default);
 
         var handler = new GetResearchTagByIdHandler(
             new Repository<ResearchTag>(db));
 
         await FluentActions
-            .Awaiting(() => handler.Handle(new GetResearchTagByIdQuery(created.Id, Guid.NewGuid()), default))
+            .Awaiting(() => handler.Handle(new GetResearchTagByIdQuery(created.Id, null, Guid.NewGuid()), default))
             .Should().ThrowAsync<KeyNotFoundException>();
     }
 

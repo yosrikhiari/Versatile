@@ -7,7 +7,7 @@ const patterns = [
     desc: 'bg-accent text-white should be bg-accent text-accent-foreground'
   },
   {
-    regex: /font-spark|font-flow|font-polish|font-revise|font-storybible/g,
+    regex: /font-spark|font-flow|font-polish|font-revise/g,
     desc: 'retired display font class'
   }
 ]

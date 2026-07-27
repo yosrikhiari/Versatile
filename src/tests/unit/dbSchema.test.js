@@ -41,10 +41,11 @@ const EXPECTED = {
   projectBlurbs: '++id | generatedAt, projectId',
   projects:
     '++id | apiId, createdAt, genre, lastSyncedAt, name, syncStatus, synopsis, updatedAt, userId',
-  researchChunks: '++id | chunkIndex, documentId, embeddingStatus, projectId',
+  researchChunks:
+    '++id | chunkIndex, documentId, embeddingStatus, lastSyncedAt, projectId, syncStatus',
   researchDocuments:
     '++id | apiId, fileName, fileType, importedAt, lastSyncedAt, projectId, syncStatus',
-  researchTags: '++id | [projectId+name], name, projectId',
+  researchTags: '++id | [projectId+name], lastSyncedAt, name, projectId, syncStatus',
   revisionComments:
     '++id | comment, createdAt, endOffset, paragraphIndex, projectId, selectedText, startOffset',
   sections:
@@ -82,7 +83,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(39)
+    expect(verno).toBe(41)
   })
 
   it('has exactly the expected set of tables', () => {

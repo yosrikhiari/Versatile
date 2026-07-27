@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 defineOptions({ inheritAttrs: false })
@@ -75,20 +75,24 @@ const iconSize = computed(
     })[props.size]
 )
 
+const attrs = useAttrs()
+
 const ariaAttrs = computed(() => {
   const attrs = {}
   if (props.loading) attrs['aria-label'] = 'Loading...'
   if (props.disabled) attrs['aria-disabled'] = 'true'
   return attrs
 })
+
+const mergedAttrs = computed(() => ({ ...attrs, ...ariaAttrs.value }))
 </script>
 
 <template>
   <button
+    v-bind="mergedAttrs"
     :type="type"
     :class="[baseClasses, sizeClasses, variantClasses, customClass]"
     :disabled="disabled || loading"
-    v-bind="ariaAttrs"
   >
     <BaseIcon v-if="loading" name="loader-2" :size="iconSize" class="animate-spin shrink-0" />
     <BaseIcon

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, toRef } from 'vue'
+import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
@@ -104,9 +105,9 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
                   {{ suggestions.length }} suggestions found. Select which to apply.
                 </p>
               </div>
-              <button class="text-text-hint hover:text-text-primary" @click="emit('close')">
+              <BaseButton variant="ghost" size="sm" @click="emit('close')">
                 <BaseIcon name="x" :size="20" />
-              </button>
+              </BaseButton>
             </div>
           </div>
 
@@ -227,19 +228,17 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
           </div>
 
           <div class="p-4 border-t border-border-subtle flex gap-3">
-            <button
-              class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
-              @click="emit('close')"
-            >
+            <BaseButton variant="secondary" custom-class="flex-1" @click="emit('close')">
               Cancel
-            </button>
-            <button
+            </BaseButton>
+            <BaseButton
+              variant="primary"
+              custom-class="flex-1"
               :disabled="!canApply"
-              class="btn-primary flex-1 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui"
               @click="emit('apply', Array.from(selectedSuggestions))"
             >
               Apply Selected ({{ selectedSuggestions.size }})
-            </button>
+            </BaseButton>
           </div>
         </div>
       </div>

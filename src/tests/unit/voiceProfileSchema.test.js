@@ -10,7 +10,9 @@ describe('createEmptyVoiceProfile', () => {
     const profile = createEmptyVoiceProfile()
     expect(profile.vocabulary.totalWords).toBe(0)
     expect(profile.sentenceStructure.sentences).toEqual([])
-    expect(profile.punctuation.ellipsisFrequency).toBe('0')
+    // Numbers are canonical (see fd45f18) — the analyzer emits numbers and
+    // VoiceProfileDisplay does arithmetic on this field.
+    expect(profile.punctuation.ellipsisFrequency).toBe(0)
     expect(profile.pacing.averageParagraphLength).toBe(0)
     expect(profile.metadata.confidence).toBe(0)
   })

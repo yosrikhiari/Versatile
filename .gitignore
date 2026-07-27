@@ -88,3 +88,7 @@ AI-ENHANCEMENT-PLAN.md
 AGENTS.md
 database-enhancement-plan.md
 NOTES.md
+.impeccable/
+.codex/
+.github/hooks/
+DESIGN.md

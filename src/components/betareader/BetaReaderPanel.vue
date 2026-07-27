@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useBetaReader } from '../../composables/betareader/useBetaReader'
 import BetaResultItem from './BetaResultItem.vue'
+import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const emit = defineEmits(['navigate'])
@@ -39,16 +40,9 @@ function handleResultAction(action) {
   <div class="beta-panel">
     <div class="panel-header">
       <h3 class="panel-title">Beta Reader</h3>
-      <button class="scan-btn" :disabled="isScanning" @click="handleReScan">
-        <template v-if="isScanning">
-          <span class="scanning-spinner" />
-          Scanning…
-        </template>
-        <template v-else>
-          <BaseIcon name="refresh-cw" :size="12" />
-          {{ results.length > 0 ? 'Recheck' : 'Scan' }}
-        </template>
-      </button>
+      <BaseButton variant="outline" size="sm" :loading="isScanning" @click="handleReScan">
+        {{ results.length > 0 ? 'Recheck' : 'Scan' }}
+      </BaseButton>
     </div>
 
     <div v-if="isScanning" class="scanning-state">
@@ -130,46 +124,6 @@ function handleResultAction(action) {
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--vers-text-primary);
-}
-
-.scan-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--vers-accent-primary);
-  background: transparent;
-  color: var(--vers-accent-primary);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.12s;
-  font-family: inherit;
-}
-
-.scan-btn:hover:not(:disabled) {
-  background: rgba(var(--vers-accent-primary-rgb), 0.1);
-}
-
-.scan-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.scanning-spinner {
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid var(--vers-accent-primary);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .scanning-state {

@@ -27,7 +27,7 @@ public sealed class ResearchChunkCrudIntegrationTests
             new Repository<ResearchDocument>(db),
             new UnitOfWork(db));
 
-        var result = await handler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "Sample content", "vector[]", UserId), default);
+        var result = await handler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "Sample content", "vector[]", null, UserId), default);
 
         result.Should().NotBeNull();
         result.DocumentId.Should().Be(doc.Id);
@@ -49,7 +49,7 @@ public sealed class ResearchChunkCrudIntegrationTests
             new Repository<ResearchDocument>(db),
             new UnitOfWork(db));
 
-        var result = await handler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 1, null, null, UserId), default);
+        var result = await handler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 1, null, null, null, UserId), default);
 
         result.Content.Should().BeNull();
         result.Embedding.Should().BeNull();
@@ -65,7 +65,7 @@ public sealed class ResearchChunkCrudIntegrationTests
             new UnitOfWork(db));
 
         await FluentActions
-            .Awaiting(() => handler.Handle(new CreateResearchChunkCommand(Guid.NewGuid(), Guid.NewGuid(), 0, "content", null, UserId), default))
+            .Awaiting(() => handler.Handle(new CreateResearchChunkCommand(Guid.NewGuid(), Guid.NewGuid(), 0, "content", null, null, UserId), default))
             .Should().ThrowAsync<KeyNotFoundException>();
     }
 
@@ -78,12 +78,12 @@ public sealed class ResearchChunkCrudIntegrationTests
             new Repository<ResearchChunk>(db),
             new Repository<ResearchDocument>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "Original", "old-embed", UserId), default);
+        var created = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "Original", "old-embed", null, UserId), default);
 
         var updateHandler = new UpdateResearchChunkHandler(
             new Repository<ResearchChunk>(db),
             new UnitOfWork(db));
-        var result = await updateHandler.Handle(new UpdateResearchChunkCommand(created.Id, 1, "Updated content", "new-embed", UserId), default);
+        var result = await updateHandler.Handle(new UpdateResearchChunkCommand(created.Id, 1, "Updated content", "new-embed", null, UserId), default);
 
         result.ChunkIndex.Should().Be(1);
         result.Content.Should().Be("Updated content");
@@ -99,12 +99,12 @@ public sealed class ResearchChunkCrudIntegrationTests
             new Repository<ResearchChunk>(db),
             new Repository<ResearchDocument>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "Original content", "orig-embed", UserId), default);
+        var created = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "Original content", "orig-embed", null, UserId), default);
 
         var updateHandler = new UpdateResearchChunkHandler(
             new Repository<ResearchChunk>(db),
             new UnitOfWork(db));
-        var result = await updateHandler.Handle(new UpdateResearchChunkCommand(created.Id, ChunkIndex: null, Content: "Only content changed", Embedding: null, UserId), default);
+        var result = await updateHandler.Handle(new UpdateResearchChunkCommand(created.Id, ChunkIndex: null, Content: "Only content changed", Embedding: null, null, UserId), default);
 
         result.Content.Should().Be("Only content changed");
         result.Embedding.Should().Be("orig-embed");
@@ -120,12 +120,12 @@ public sealed class ResearchChunkCrudIntegrationTests
             new Repository<ResearchChunk>(db),
             new Repository<ResearchDocument>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "To Delete", null, UserId), default);
+        var created = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "To Delete", null, null, UserId), default);
 
         var deleteHandler = new DeleteResearchChunkHandler(
             new Repository<ResearchChunk>(db),
             new UnitOfWork(db));
-        await deleteHandler.Handle(new DeleteResearchChunkCommand(created.Id, UserId), default);
+        await deleteHandler.Handle(new DeleteResearchChunkCommand(created.Id, null, UserId), default);
 
         var repo = new Repository<ResearchChunk>(db);
         var entity = await repo.GetByIdAsync(created.Id);
@@ -141,7 +141,7 @@ public sealed class ResearchChunkCrudIntegrationTests
             new UnitOfWork(db));
 
         await FluentActions
-            .Awaiting(() => deleteHandler.Handle(new DeleteResearchChunkCommand(Guid.NewGuid(), UserId), default))
+            .Awaiting(() => deleteHandler.Handle(new DeleteResearchChunkCommand(Guid.NewGuid(), null, UserId), default))
             .Should().ThrowAsync<KeyNotFoundException>();
     }
 
@@ -154,12 +154,12 @@ public sealed class ResearchChunkCrudIntegrationTests
             new Repository<ResearchChunk>(db),
             new Repository<ResearchDocument>(db),
             new UnitOfWork(db));
-        var first = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "First", null, UserId), default);
-        var second = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 1, "Second", null, UserId), default);
+        var first = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "First", null, null, UserId), default);
+        var second = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 1, "Second", null, null, UserId), default);
 
         var queryHandler = new GetResearchChunksHandler(
             new Repository<ResearchChunk>(db));
-        var result = await queryHandler.Handle(new GetResearchChunksQuery(doc.StoryId, UserId), default);
+        var result = await queryHandler.Handle(new GetResearchChunksQuery(doc.StoryId, null, UserId), default);
 
         result.Select(e => e.Id).Should().Equal(first.Id, second.Id);
     }
@@ -173,11 +173,11 @@ public sealed class ResearchChunkCrudIntegrationTests
             new Repository<ResearchChunk>(db),
             new Repository<ResearchDocument>(db),
             new UnitOfWork(db));
-        var created = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "Find Me", null, UserId), default);
+        var created = await createHandler.Handle(new CreateResearchChunkCommand(doc.Id, doc.StoryId, 0, "Find Me", null, null, UserId), default);
 
         var queryHandler = new GetResearchChunkByIdHandler(
             new Repository<ResearchChunk>(db));
-        var result = await queryHandler.Handle(new GetResearchChunkByIdQuery(created.Id, UserId), default);
+        var result = await queryHandler.Handle(new GetResearchChunkByIdQuery(created.Id, null, UserId), default);
 
         result.Content.Should().Be("Find Me");
     }
@@ -190,7 +190,7 @@ public sealed class ResearchChunkCrudIntegrationTests
             new Repository<ResearchChunk>(db));
 
         await FluentActions
-            .Awaiting(() => queryHandler.Handle(new GetResearchChunkByIdQuery(Guid.NewGuid(), UserId), default))
+            .Awaiting(() => queryHandler.Handle(new GetResearchChunkByIdQuery(Guid.NewGuid(), null, UserId), default))
             .Should().ThrowAsync<KeyNotFoundException>();
     }
 

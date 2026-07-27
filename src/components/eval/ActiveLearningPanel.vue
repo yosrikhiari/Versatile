@@ -14,9 +14,9 @@
         Run active learning to find improvement opportunities in your prompts or adjust calibration
         thresholds below.
       </p>
-      <button class="btn btn-sm btn-outline" @click="$emit('run-analysis')">
+      <BaseButton variant="outline" size="sm" @click="$emit('run-analysis')">
         Run Active Learning
-      </button>
+      </BaseButton>
     </div>
 
     <template v-else>
@@ -121,13 +121,14 @@
                   class="al-cal-number"
                   @change="setCustomThreshold(wt, dim.key, Number($event.target.value))"
                 />
-                <button
+                <BaseButton
                   v-if="getCustomThreshold(wt, dim.key) !== null"
-                  class="btn btn-xs btn-outline"
+                  variant="outline"
+                  size="sm"
                   @click="resetThresholds(wt, dim.key)"
                 >
                   Reset
-                </button>
+                </BaseButton>
               </div>
 
               <div class="al-cal-example-row">
@@ -143,13 +144,15 @@
             </div>
           </div>
 
-          <button
+          <BaseButton
             v-if="workspaceHasCustom(wt)"
-            class="btn btn-xs btn-outline al-cal-reset-all"
+            variant="outline"
+            size="sm"
+            custom-class="al-cal-reset-all"
             @click="resetAllForWorkspace(wt)"
           >
             Reset all to defaults
-          </button>
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -158,7 +161,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { EVAL_DIMENSIONS } from '../../config/evalDimensions.js'
+import { EVAL_DIMENSIONS } from '../../config/evalDimensions'
+import BaseButton from '../ui/BaseButton.vue'
 
 const props = defineProps({
   analysisReport: { type: Object, default: null },

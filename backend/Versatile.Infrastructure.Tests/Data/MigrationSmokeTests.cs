@@ -10,20 +10,35 @@ namespace Versatile.Infrastructure.Tests.Data;
 
 public class MigrationSmokeTests
 {
+    /// <summary>
+    /// The migrations expected to exist, in application order. Add a name here when
+    /// you add a migration — an exact-set assertion catches both an accidentally
+    /// dropped migration and one added without review, and names what changed.
+    /// </summary>
+    private static readonly string[] ExpectedMigrations =
+    [
+        "InitialCreate",
+        "AddOrganizationIdIndexes",
+        "AddRowLevelSecurity",
+        "AddAuditLog",
+        "AddBranchesTable",
+        "RemoveResearchNotes"
+    ];
+
     [Fact]
     public void AllMigrations_AreDiscoverable()
     {
         var migrationTypes = GetMigrationTypes();
 
-        migrationTypes.Should().HaveCount(4, "expected 4 migrations: InitialCreate, AddOrganizationIdIndexes, AddRowLevelSecurity, AddAuditLog");
+        migrationTypes.Should().NotBeEmpty("the assembly must expose its EF migrations");
     }
 
     [Fact]
-    public void MigrationCount_IsFour()
+    public void MigrationSet_MatchesExpected()
     {
-        var migrationTypes = GetMigrationTypes();
+        var actual = GetMigrationTypes().Select(t => t.Name).OrderBy(n => n);
 
-        migrationTypes.Should().HaveCount(4);
+        actual.Should().BeEquivalentTo(ExpectedMigrations.OrderBy(n => n));
     }
 
     [Fact]
@@ -34,10 +49,10 @@ public class MigrationSmokeTests
             .OrderBy(n => n)
             .ToList();
 
-        migrationTypes.Should().Contain(n => n.Contains("InitialCreate"));
-        migrationTypes.Should().Contain(n => n.Contains("AddOrganizationIdIndexes"));
-        migrationTypes.Should().Contain(n => n.Contains("AddRowLevelSecurity"));
-        migrationTypes.Should().Contain(n => n.Contains("AddAuditLog"));
+        foreach (var expected in ExpectedMigrations)
+        {
+            migrationTypes.Should().Contain(n => n.Contains(expected));
+        }
     }
 
     [Fact]

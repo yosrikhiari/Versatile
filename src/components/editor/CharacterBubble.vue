@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useBubbleStore } from '../../stores/bubbleStore'
 import { useProjectStore } from '../../stores/projectStore'
+import BaseButton from '../ui/BaseButton.vue'
 
 const props = defineProps({ bubble: Object, containerWidth: Number, containerHeight: Number })
 const store = useBubbleStore()
@@ -135,9 +136,15 @@ onBeforeUnmount(() => {
         class="bubble-context-menu"
         :style="{ left: menuX + 'px', top: menuY + 'px' }"
       >
-        <button class="context-item" @click="bringToFront">Bring to Front</button>
-        <button class="context-item" @click="dismiss">Dismiss</button>
-        <button class="context-item" @click="chat">Chat with Character</button>
+        <BaseButton variant="ghost" size="sm" custom-class="context-item" @click="bringToFront"
+          >Bring to Front</BaseButton
+        >
+        <BaseButton variant="ghost" size="sm" custom-class="context-item" @click="dismiss"
+          >Dismiss</BaseButton
+        >
+        <BaseButton variant="ghost" size="sm" custom-class="context-item" @click="chat"
+          >Chat with Character</BaseButton
+        >
       </div>
     </Teleport>
   </div>

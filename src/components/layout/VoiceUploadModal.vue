@@ -11,7 +11,13 @@
       <div class="modal-content">
         <div class="modal-header">
           <h2 class="text-xl font-bold text-text-primary">Upload Sample Text</h2>
-          <button class="close-btn" @click="close">✕</button>
+          <BaseButton
+            variant="ghost"
+            size="sm"
+            custom-class="text-2xl font-bold leading-none"
+            @click="close"
+            >✕</BaseButton
+          >
         </div>
 
         <div class="modal-body">
@@ -38,9 +44,7 @@
 
           <!-- Preview Section -->
           <div v-if="mergedProfile" class="preview-section">
-            <h3 class="text-sm font-semibold text-text-primary mb-3">
-              Merged Profile Preview
-            </h3>
+            <h3 class="text-sm font-semibold text-text-primary mb-3">Merged Profile Preview</h3>
 
             <div class="preview-grid">
               <div class="preview-stat">
@@ -96,14 +100,15 @@
 
         <!-- Modal Footer -->
         <div class="modal-footer">
-          <button class="btn-secondary" @click="close">Cancel</button>
-          <button
+          <BaseButton variant="secondary" @click="close">Cancel</BaseButton>
+          <BaseButton
             :disabled="!sampleText.trim() || isProcessing || sampleText.split(/\s+/).length < 50"
-            class="btn-primary"
+            variant="primary"
+            :loading="isProcessing"
             @click="handleMerge"
           >
-            {{ isProcessing ? 'Merging...' : 'Merge with Profile' }}
-          </button>
+            Merge with Profile
+          </BaseButton>
         </div>
       </div>
     </ErrorBoundary>
@@ -113,6 +118,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
+import BaseButton from '../ui/BaseButton.vue'
 import { useAsyncError } from '../../composables/useAsyncError'
 const { onAsyncError } = useAsyncError()
 import { analyzeVoiceProfile } from '@/services/generation/voiceAnalyzer'
@@ -202,10 +208,6 @@ async function handleMerge() {
   @apply flex justify-between items-center p-4 border-b border-border-subtle;
 }
 
-.close-btn {
-  @apply text-2xl font-bold text-text-hint hover:text-text-primary transition;
-}
-
 .modal-body {
   @apply p-4 space-y-4;
 }
@@ -255,18 +257,5 @@ async function handleMerge() {
 
 .modal-footer {
   @apply flex gap-3 p-4 border-t border-border-subtle;
-}
-
-.btn-primary,
-.btn-secondary {
-  @apply px-4 py-2 rounded-lg font-medium transition flex-1;
-}
-
-.btn-primary {
-  @apply bg-accent text-bg-primary hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed;
-}
-
-.btn-secondary {
-  @apply bg-surface-hover text-text-secondary hover:bg-bg-tertiary;
 }
 </style>

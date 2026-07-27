@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useStoryShapeAnalyzer } from '../../composables/useStoryShapeAnalyzer'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
+import BaseButton from '../ui/BaseButton.vue'
 import TensionCurveChart from './TensionCurveChart.vue'
 import EmotionalArcChart from './EmotionalArcChart.vue'
 import CharacterFocusMatrix from './CharacterFocusMatrix.vue'
@@ -69,12 +70,15 @@ function priorityClass(p) {
   <div class="story-shape-panel">
     <div class="panel-header">
       <h3 class="panel-title">Story Shape</h3>
-      <button class="analyze-btn" :disabled="isAnalyzing" @click="handleAnalyze">
-        <span v-if="isAnalyzing" class="analyzing-spinner" />
-        <template v-else>
-          {{ hasAnalysis ? 'Reanalyze' : 'Analyze Manuscript' }}
-        </template>
-      </button>
+      <BaseButton
+        variant="outline"
+        size="sm"
+        custom-class="border-accent text-accent"
+        :loading="isAnalyzing"
+        @click="handleAnalyze"
+      >
+        {{ hasAnalysis ? 'Reanalyze' : 'Analyze Manuscript' }}
+      </BaseButton>
     </div>
 
     <div v-if="isAnalyzing && !isAIAnalyzing" class="analyzing-state">
@@ -376,31 +380,6 @@ function priorityClass(p) {
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--vers-text-primary);
-}
-
-.analyze-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--vers-accent-primary);
-  background: transparent;
-  color: var(--vers-accent-primary);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.12s;
-  font-family: inherit;
-}
-
-.analyze-btn:hover:not(:disabled) {
-  background: rgba(var(--vers-accent-primary-rgb), 0.1);
-}
-
-.analyze-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .analyzing-spinner {

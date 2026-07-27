@@ -11,9 +11,9 @@
 
     <div v-else-if="!driftReport" class="drift-status idle">
       <p>Run drift analysis to detect quality changes over time.</p>
-      <button class="btn btn-sm btn-outline" @click="$emit('run-analysis')">
+      <BaseButton variant="outline" size="sm" @click="$emit('run-analysis')">
         Run Drift Analysis
-      </button>
+      </BaseButton>
     </div>
 
     <template v-else>
@@ -90,6 +90,8 @@
 </template>
 
 <script setup>
+import BaseButton from '../ui/BaseButton.vue'
+
 defineProps({
   driftReport: { type: Object, default: null },
   analysisError: { type: String, default: null },

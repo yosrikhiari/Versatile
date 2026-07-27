@@ -41,6 +41,7 @@ export default {
       fontSize: {
         '3xs': ['0.5625rem', { lineHeight: '0.75rem' }],
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
+        label: ['0.75rem', { lineHeight: '1rem' }],
         '11px': ['0.6875rem', { lineHeight: '0.875rem' }]
       },
       fontFamily: {
@@ -51,7 +52,6 @@ export default {
         flow: ['Lora', 'Georgia', 'serif'],
         polish: ['Libre Baskerville', 'Georgia', 'serif'],
         revise: ['EB Garamond', 'Georgia', 'serif'],
-        storybible: ['Merriweather', 'Georgia', 'serif'],
         display: ['Playfair Display', 'Georgia', 'serif']
       },
       boxShadow: {

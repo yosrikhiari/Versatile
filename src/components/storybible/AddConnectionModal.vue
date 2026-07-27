@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
@@ -287,9 +288,9 @@ function handleSave() {
               <h2 class="text-lg font-semibold text-text-primary">
                 {{ existingEdge ? 'Edit Connection' : 'Add Connection' }}
               </h2>
-              <button class="text-text-hint hover:text-text-primary" @click="emit('close')">
+              <BaseButton variant="ghost" size="sm" @click="emit('close')">
                 <BaseIcon name="x" :size="20" />
-              </button>
+              </BaseButton>
             </div>
 
             <div class="space-y-4">
@@ -417,27 +418,26 @@ function handleSave() {
             </div>
 
             <div v-if="removableNode" class="mt-6 pt-4 border-t border-border-subtle">
-              <button
-                class="w-full py-2 bg-bg-secondary text-danger rounded-lg font-medium hover:bg-surface-hover font-ui"
+              <BaseButton
+                variant="ghost"
+                custom-class="w-full text-danger"
                 @click="emit('remove-node', removableNode)"
               >
                 Remove from canvas
-              </button>
+              </BaseButton>
             </div>
             <div class="flex gap-3 mt-4">
-              <button
-                class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
-                @click="emit('close')"
-              >
+              <BaseButton variant="secondary" custom-class="flex-1" @click="emit('close')">
                 Cancel
-              </button>
-              <button
+              </BaseButton>
+              <BaseButton
+                variant="primary"
+                custom-class="flex-1"
                 :disabled="!isValid"
-                class="btn-primary flex-1 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui"
                 @click="handleSave"
               >
                 {{ existingEdge ? 'Save Changes' : 'Add Connection' }}
-              </button>
+              </BaseButton>
             </div>
           </div>
         </div>

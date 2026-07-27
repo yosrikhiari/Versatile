@@ -1,4 +1,5 @@
 <script setup>
+import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
@@ -37,9 +38,9 @@ function handleAction() {
       <p v-if="result.description" class="result-desc">{{ result.description }}</p>
       <div v-if="result.detail" class="result-detail">{{ result.detail }}</div>
     </div>
-    <button v-if="result.action" class="result-action" @click="handleAction">
+    <BaseButton v-if="result.action" variant="outline" size="sm" @click="handleAction">
       {{ result.action.label }}
-    </button>
+    </BaseButton>
   </div>
 </template>
 
@@ -107,24 +108,5 @@ function handleAction() {
   padding: 4px 6px;
   background: var(--vers-bg-base);
   border-radius: 4px;
-}
-
-.result-action {
-  flex-shrink: 0;
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--vers-border-subtle);
-  background: transparent;
-  color: var(--vers-accent-primary);
-  font-size: 0.625rem;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.12s;
-  white-space: nowrap;
-}
-.result-action:hover {
-  background: rgba(var(--vers-accent-primary-rgb), 0.1);
-  border-color: var(--vers-accent-primary);
 }
 </style>

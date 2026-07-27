@@ -430,6 +430,15 @@ public sealed class PaginationIntegrationTests
         return story;
     }
 
+    private static int _idCounter;
+
+    /// <summary>
+    /// Creates a Guid that sorts consistently by the sequence value,
+    /// so keyset pagination (which filters by Id.CompareTo) aligns with
+    /// ordering by the <see cref="Order"/> field.
+    /// </summary>
+    private static Guid SequentialId(int sequence) => new(sequence, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
     private static Story SeedStoryWithChapters(ApplicationDbContext db, int chapterCount)
     {
         var story = SeedStory(db);
@@ -437,7 +446,7 @@ public sealed class PaginationIntegrationTests
         {
             db.Set<Chapter>().Add(new Chapter
             {
-                Id = Guid.NewGuid(),
+                Id = SequentialId(i),
                 StoryId = story.Id,
                 Title = $"Chapter {i}",
                 Order = i,
@@ -454,7 +463,7 @@ public sealed class PaginationIntegrationTests
         var story = SeedStory(db);
         var chapter = new Chapter
         {
-            Id = Guid.NewGuid(),
+            Id = SequentialId(1),
             StoryId = story.Id,
             Title = "Scene Parent Chapter",
             Order = 1,
@@ -473,7 +482,7 @@ public sealed class PaginationIntegrationTests
         {
             db.Set<Scene>().Add(new Scene
             {
-                Id = Guid.NewGuid(),
+                Id = SequentialId(i),
                 ChapterId = chapter.Id,
                 Title = $"Scene {i}",
                 Content = $"Content for scene {i}",

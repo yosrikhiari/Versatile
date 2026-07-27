@@ -6,9 +6,9 @@
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-text-primary">Database Recovery</h2>
-          <button class="text-text-secondary hover:text-text-primary" @click="$emit('close')">
+          <BaseButton variant="ghost" size="sm" @click="$emit('close')">
             <BaseIcon name="x" :size="20" />
-          </button>
+          </BaseButton>
         </div>
 
         <!-- Database Status -->
@@ -57,22 +57,24 @@
 
         <!-- Actions -->
         <div class="space-y-3">
-          <button
+          <BaseButton
             :disabled="working"
-            class="w-full py-2 px-4 btn-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+            variant="primary"
+            custom-class="w-full"
+            :loading="working"
             @click="checkHealth"
           >
-            <BaseIcon v-if="working" name="loader-2" :size="16" class="animate-spin mr-2" />
             Check Database Health
-          </button>
+          </BaseButton>
 
-          <button
+          <BaseButton
             :disabled="working"
-            class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+            variant="secondary"
+            custom-class="w-full"
             @click="exportData"
           >
             Export All Data
-          </button>
+          </BaseButton>
 
           <label
             class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 cursor-pointer block text-center"
@@ -87,12 +89,13 @@
             />
           </label>
 
-          <button
-            class="w-full py-2 px-4 text-danger hover:bg-surface-hover rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-danger"
+          <BaseButton
+            variant="ghost"
+            custom-class="w-full text-danger"
             @click="showResetConfirm = true"
           >
             Reset Database (Destructive)
-          </button>
+          </BaseButton>
         </div>
 
         <!-- Reset Confirmation -->
@@ -105,21 +108,18 @@
             This will delete ALL data in your database. This cannot be undone.
           </p>
           <div class="flex gap-2">
-            <button
+            <BaseButton
               :disabled="working"
-              class="flex-1 py-2 px-4 bg-danger text-white rounded-lg font-medium hover:bg-danger disabled:opacity-50"
+              variant="danger"
+              custom-class="flex-1"
+              :loading="working"
               @click="resetDatabase"
             >
-              <BaseIcon v-if="working" name="loader-2" :size="14" class="animate-spin mr-1" />
               Yes, Reset Database
-            </button>
-            <button
-              :disabled="working"
-              class="px-4 py-2 bg-surface-hover text-text-primary rounded-lg font-medium"
-              @click="showResetConfirm = false"
-            >
+            </BaseButton>
+            <BaseButton :disabled="working" variant="secondary" @click="showResetConfirm = false">
               Cancel
-            </button>
+            </BaseButton>
           </div>
         </div>
 
@@ -152,6 +152,7 @@ import {
   getDatabaseSize
 } from '../../services/dbRecovery'
 import { useNotifications } from '../../composables/useNotifications'
+import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from './BaseIcon.vue'
 
 defineEmits(['close'])

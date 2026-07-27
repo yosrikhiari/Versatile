@@ -187,7 +187,9 @@ public class StoryHandlerTests
             var repo = new Mock<IRepository<Story>>();
             repo.Setup(r => r.GetPagedAsync(
                     It.IsAny<System.Linq.Expressions.Expression<Func<Story, bool>>>(),
-                    1, 20, default))
+                    1, 20,
+                    It.IsAny<Func<IQueryable<Story>, IOrderedQueryable<Story>>>(),
+                    default))
                 .ReturnsAsync((stories, 2));
             var handler = new GetStoriesHandler(repo.Object);
             var query = new GetStoriesQuery(OrgId, UserId, 1, 20);
@@ -207,7 +209,9 @@ public class StoryHandlerTests
             var repo = new Mock<IRepository<Story>>();
             repo.Setup(r => r.GetPagedAsync(
                     It.IsAny<System.Linq.Expressions.Expression<Func<Story, bool>>>(),
-                    1, 20, default))
+                    1, 20,
+                    It.IsAny<Func<IQueryable<Story>, IOrderedQueryable<Story>>>(),
+                    default))
                 .ReturnsAsync((new List<Story>(), 0));
             var handler = new GetStoriesHandler(repo.Object);
             var query = new GetStoriesQuery(OrgId, UserId, 1, 20);

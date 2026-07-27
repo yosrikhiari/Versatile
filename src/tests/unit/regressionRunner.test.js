@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import baseline from '../fixtures/eval-baselines/creative-baseline.json'
-import { runRegressionCheck, assertNoRegressions } from '../../evaluation/regressionRunner.js'
+import { runRegressionCheck, assertNoRegressions } from '../../evaluation/regressionRunner'
 
 function cloneScores(scores) {
   return Object.fromEntries(Object.entries(scores).map(([k, v]) => [k, v]))
@@ -8,7 +8,7 @@ function cloneScores(scores) {
 
 describe('runRegressionCheck', () => {
   it('passes when current scores match baseline exactly', () => {
-    const current = baseline.scenes.map(s => ({
+    const current = baseline.scenes.map((s) => ({
       sceneId: s.sceneId,
       dimensionScores: cloneScores(s.dimensionScores),
       score: 7
@@ -24,7 +24,7 @@ describe('runRegressionCheck', () => {
   })
 
   it('detects major regressions when scores drop significantly', () => {
-    const current = baseline.scenes.map(s => ({
+    const current = baseline.scenes.map((s) => ({
       sceneId: s.sceneId,
       dimensionScores: Object.fromEntries(
         Object.entries(s.dimensionScores).map(([k, v]) => [k, Math.max(1, v - 3)])
@@ -42,7 +42,7 @@ describe('runRegressionCheck', () => {
   })
 
   it('passes when scores improve', () => {
-    const current = baseline.scenes.map(s => ({
+    const current = baseline.scenes.map((s) => ({
       sceneId: s.sceneId,
       dimensionScores: Object.fromEntries(
         Object.entries(s.dimensionScores).map(([k, v]) => [k, Math.min(10, v + 1)])
@@ -73,7 +73,7 @@ describe('runRegressionCheck', () => {
   })
 
   it('reports missing scenes from baseline', () => {
-    const current = baseline.scenes.slice(0, 1).map(s => ({
+    const current = baseline.scenes.slice(0, 1).map((s) => ({
       sceneId: s.sceneId,
       dimensionScores: cloneScores(s.dimensionScores),
       score: 8
@@ -86,7 +86,7 @@ describe('runRegressionCheck', () => {
   })
 
   it('respects failOnRegression option for minor regressions', () => {
-    const current = baseline.scenes.map(s => ({
+    const current = baseline.scenes.map((s) => ({
       sceneId: s.sceneId,
       dimensionScores: Object.fromEntries(
         Object.entries(s.dimensionScores).map(([k, v]) => [k, Math.max(1, v - 1)])
@@ -113,7 +113,7 @@ describe('runRegressionCheck', () => {
   })
 
   it('produces report with correct structure', () => {
-    const current = baseline.scenes.map(s => ({
+    const current = baseline.scenes.map((s) => ({
       sceneId: s.sceneId,
       dimensionScores: cloneScores(s.dimensionScores),
       score: 7
@@ -137,9 +137,12 @@ describe('runRegressionCheck', () => {
   it('handles mixed scenarios — some stable, some regressed', () => {
     const current = baseline.scenes.map((s, i) => ({
       sceneId: s.sceneId,
-      dimensionScores: i === 1
-        ? Object.fromEntries(Object.entries(s.dimensionScores).map(([k, v]) => [k, Math.max(1, v - 3)]))
-        : cloneScores(s.dimensionScores),
+      dimensionScores:
+        i === 1
+          ? Object.fromEntries(
+              Object.entries(s.dimensionScores).map(([k, v]) => [k, Math.max(1, v - 3)])
+            )
+          : cloneScores(s.dimensionScores),
       score: i === 1 ? 4 : 7
     }))
     const report = runRegressionCheck(current, baseline)

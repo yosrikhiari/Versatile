@@ -1,4 +1,5 @@
 <script setup>
+/* eslint-disable @typescript-eslint/no-this-alias */
 import { ref, onErrorCaptured, provide } from 'vue'
 import BaseIcon from './BaseIcon.vue'
 

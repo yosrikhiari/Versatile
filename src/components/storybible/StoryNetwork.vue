@@ -446,7 +446,8 @@ const nodes = computed(() => {
     }
     if (!entity) continue
 
-    for (const instanceId of instanceIds) {
+    const ids = Array.isArray(instanceIds) ? instanceIds : [instanceIds]
+    for (const instanceId of ids) {
       const parentId = nodeParents.value[instanceId]
       const pos = nodePositions.value[instanceId] ||
         storyGraphStore.nodePositions?.[instanceId] || {

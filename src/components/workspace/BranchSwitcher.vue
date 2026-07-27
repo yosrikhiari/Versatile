@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useBranchStore } from '../../stores/branchStore'
 import { useProjectStore } from '../../stores/projectStore'
 import BaseIcon from '../shared/BaseIcon.vue'
@@ -12,10 +12,23 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['switch'])
+const emit = defineEmits(['switch', 'open-manager'])
 
 const branchStore = useBranchStore()
 const projectStore = useProjectStore()
+
+watch(
+  () => branchStore.branches,
+  (branches) => {
+    console.log(
+      '[DEBUG] branches array changed | names:',
+      branches.map((b) => b.name),
+      '| ids:',
+      branches.map((b) => b.id)
+    )
+  },
+  { deep: true, flush: 'sync' }
+)
 
 const open = ref(false)
 const renaming = ref(null)
@@ -66,9 +79,9 @@ async function handleCreate() {
 </script>
 
 <template>
-  <div class="relative" v-if="!collapsed">
+  <div v-if="!collapsed" class="relative">
     <button
-      class="flex items-center gap-2 w-full px-3 h-9 rounded-md text-[0.8125rem] text-text-primary hover:bg-surface-hover transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      class="flex items-center gap-2 w-full px-3 h-9 rounded-md text-sm text-text-primary hover:bg-surface-hover transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       @click="toggle"
     >
       <BaseIcon name="git-branch" :size="16" class="text-accent shrink-0" />
@@ -84,49 +97,55 @@ async function handleCreate() {
     <Transition name="fade">
       <div
         v-if="open"
-        class="absolute left-0 right-0 top-full mt-1 z-50 bg-bg-primary border border-border-subtle rounded-lg shadow-lg overflow-hidden"
+        class="absolute left-0 right-0 top-full mt-1 z-50 bg-bg-primary border border-border-subtle rounded-lg shadow-warm-lg overflow-hidden min-w-[260px]"
       >
-        <div class="px-3 py-2 text-[0.6875rem] font-medium uppercase tracking-wider text-text-hint">
+        <div class="px-3 py-2 text-xs font-medium uppercase tracking-wider text-text-hint">
           Branches
         </div>
         <div class="max-h-48 overflow-y-auto">
           <div
             v-for="branch in sortedBranches"
             :key="branch.id"
-            class="flex items-center gap-2 px-3 py-2 text-[0.8125rem] cursor-pointer hover:bg-surface-hover transition-colors duration-150 group"
-            :class="branch.id === branchStore.activeBranchId ? 'text-accent bg-accent/5' : 'text-text-primary'"
+            class="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors duration-150 group"
+            :class="
+              branch.id === branchStore.activeBranchId
+                ? 'text-accent bg-accent/5'
+                : 'text-text-primary'
+            "
             @click="select(branch.id)"
           >
-            <BaseIcon name="git-branch" :size="14" class="shrink-0" :class="branch.id === branchStore.activeBranchId ? 'text-accent' : 'text-text-hint'" />
+            <BaseIcon
+              name="git-branch"
+              :size="14"
+              class="shrink-0"
+              :class="branch.id === branchStore.activeBranchId ? 'text-accent' : 'text-text-hint'"
+            />
             <template v-if="renaming === branch.id">
               <input
                 v-model="renameValue"
-                class="flex-1 min-w-0 bg-surface-secondary rounded px-1.5 py-0.5 text-[0.8125rem] outline-none focus:ring-1 focus:ring-accent"
+                class="flex-1 min-w-0 bg-surface-secondary rounded px-1.5 py-0.5 text-sm outline-none focus:ring-1 focus:ring-accent"
+                autofocus
                 @keyup.enter="confirmRename(branch.id)"
                 @keyup.escape="cancelRename"
                 @blur="confirmRename(branch.id)"
-                autofocus
               />
             </template>
             <span v-else class="flex-1 min-w-0 truncate">{{ branch.name }}</span>
-            <span
-              v-if="branch.status === 'divergent'"
-              class="text-[0.625rem] text-yellow-500 font-medium ml-1"
-            >what-if</span>
+            <span v-if="branch.status === 'divergent'" class="text-2xs text-warning font-medium"
+              >what-if</span
+            >
             <span
               v-if="branch.id === branchStore.activeBranchId"
-              class="text-[0.625rem] text-accent font-medium ml-1"
-            >active</span>
+              class="text-2xs text-accent font-medium"
+              >active</span
+            >
             <AppTooltip
               v-if="branch.description && renaming !== branch.id"
               :text="branch.description"
             >
               <BaseIcon name="info" :size="12" class="text-text-hint ml-1" />
             </AppTooltip>
-            <AppTooltip
-              v-if="renaming !== branch.id && branch.name !== 'main'"
-              text="Rename"
-            >
+            <AppTooltip v-if="renaming !== branch.id && branch.name !== 'main'" text="Rename">
               <button
                 class="opacity-0 group-hover:opacity-100 ml-auto text-text-hint hover:text-text-primary transition-opacity duration-150"
                 @click.stop="startRename(branch)"
@@ -136,13 +155,23 @@ async function handleCreate() {
             </AppTooltip>
           </div>
         </div>
-        <div class="border-t border-border-subtle px-3 py-2">
+        <div class="border-t border-border-subtle px-3 py-2 space-y-1">
           <button
-            class="flex items-center gap-2 text-[0.8125rem] text-text-secondary hover:text-text-primary transition-colors duration-150 w-full"
+            class="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors duration-150 w-full"
             @click="handleCreate"
           >
             <BaseIcon name="plus" :size="14" />
             Create branch
+          </button>
+          <button
+            class="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors duration-150 w-full"
+            @click="
+              emit('open-manager')
+              open = false
+            "
+          >
+            <BaseIcon name="list" :size="14" />
+            Branch Manager
           </button>
         </div>
       </div>

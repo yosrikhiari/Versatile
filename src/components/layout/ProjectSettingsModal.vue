@@ -251,9 +251,7 @@ function handleOverlayClick(event) {
           <div
             class="glass-modal rounded-xl shadow-warm-lg w-full max-w-lg mx-4 overflow-hidden animate-scale-in"
           >
-            <div
-              class="flex items-center justify-between px-5 py-4 border-b border-border-subtle"
-            >
+            <div class="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
               <div class="flex items-center gap-2">
                 <BaseIcon name="settings" :size="18" class="text-accent" />
                 <h2 class="font-medium text-text-primary font-ui tracking-wide">
@@ -271,14 +269,22 @@ function handleOverlayClick(event) {
             <div class="flex border-b border-border-subtle px-5">
               <button
                 class="px-4 py-3 text-sm font-ui border-b-2 transition-colors"
-                :class="activeTab === 'general' ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text-primary'"
+                :class="
+                  activeTab === 'general'
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
+                "
                 @click="activeTab = 'general'"
               >
                 General
               </button>
               <button
                 class="px-4 py-3 text-sm font-ui border-b-2 transition-colors"
-                :class="activeTab === 'prompts' ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text-primary'"
+                :class="
+                  activeTab === 'prompts'
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
+                "
                 @click="activeTab = 'prompts'"
               >
                 Prompts
@@ -359,16 +365,13 @@ function handleOverlayClick(event) {
             </div>
 
             <div v-else class="p-5 space-y-5">
-              <div
-                v-for="role in ['writer', 'critic', 'revisor', 'director']"
-                :key="role"
-              >
+              <div v-for="role in ['writer', 'critic', 'revisor', 'director']" :key="role">
                 <label class="block text-sm font-medium text-text-primary mb-2 capitalize">
                   {{ role }} Prompt
                   <button
                     class="ml-2 text-xs text-text-hint hover:text-accent transition-colors"
-                    @click="localPromptOverrides[role] = ''"
                     title="Reset to default"
+                    @click="localPromptOverrides[role] = ''"
                   >
                     (reset)
                   </button>
@@ -381,7 +384,8 @@ function handleOverlayClick(event) {
                 ></textarea>
               </div>
               <p class="text-xs text-text-hint">
-                Custom prompts override the default system prompt for each AI role. Leave a field empty to use the workspace-type default.
+                Custom prompts override the default system prompt for each AI role. Leave a field
+                empty to use the workspace-type default.
               </p>
             </div>
 

@@ -62,10 +62,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    v-if="visible"
-    class="glass border-b border-border-subtle/30 px-4 py-2 flex items-center justify-between animate-fade-in"
-  >
+  <div v-if="visible" class="glass px-4 py-2 flex items-center justify-between animate-fade-in">
     <div class="flex items-center gap-2 text-sm text-text-secondary">
       <BaseIcon name="clock" :size="14" class="text-text-hint" />
       <span v-if="showRecap && projectStore.lastSessionRecap">

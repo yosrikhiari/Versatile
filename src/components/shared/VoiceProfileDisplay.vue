@@ -4,17 +4,18 @@
     <div class="profile-header">
       <h3 class="text-lg font-semibold text-text-primary">Writing Voice Profile</h3>
       <div class="header-actions">
-        <button
+        <BaseButton
           v-if="profile && !isLocked"
-          class="btn-secondary text-sm"
-          :disabled="isRefreshing"
+          variant="secondary"
+          size="sm"
+          :loading="isRefreshing"
           @click="handleRefresh"
         >
-          {{ isRefreshing ? 'Refreshing...' : 'Refresh from Manuscript' }}
-        </button>
-        <button class="btn-secondary text-sm" @click="toggleLock">
+          Refresh from Manuscript
+        </BaseButton>
+        <BaseButton variant="secondary" size="sm" @click="toggleLock">
           {{ isLocked ? '🔒 Locked' : '🔓 Unlocked' }}
-        </button>
+        </BaseButton>
       </div>
     </div>
 
@@ -25,7 +26,14 @@
         Voice profile not extracted yet. Write at least 500 words in your manuscript to generate a
         profile.
       </p>
-      <button class="btn-primary text-sm mt-4" @click="handleExtract">Extract Profile</button>
+      <BaseButton
+        variant="primary"
+        size="sm"
+        custom-class="mt-4"
+        :loading="isRefreshing"
+        @click="handleExtract"
+        >Extract Profile</BaseButton
+      >
     </div>
 
     <!-- Profile Exists -->
@@ -205,6 +213,7 @@
 </template>
 
 <script setup>
+import BaseButton from '../ui/BaseButton.vue'
 import { ref, computed } from 'vue'
 import { useStoryBibleStore } from '@/stores/storyBibleStore'
 import { useVoiceFromManuscript } from '@/composables/useVoiceFromManuscript'
@@ -286,19 +295,6 @@ function formatDate(date) {
 
 .header-actions {
   @apply flex gap-2;
-}
-
-.btn-primary,
-.btn-secondary {
-  @apply px-3 py-2 rounded-lg font-medium transition;
-}
-
-.btn-primary {
-  @apply bg-accent text-bg-primary hover:bg-accent-hover disabled:opacity-50;
-}
-
-.btn-secondary {
-  @apply bg-surface-hover text-text-secondary hover:bg-bg-tertiary disabled:opacity-50;
 }
 
 .empty-state {

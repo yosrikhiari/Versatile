@@ -5,6 +5,7 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useNotifications } from '../../composables/useNotifications'
 import { useDebounceFn } from '@vueuse/core'
+import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import EmptyState from '../shared/EmptyState.vue'
 
@@ -148,16 +149,17 @@ onUnmounted(() => {
         >
           <span class="font-ui text-accent tracking-wide">History</span>
           <div class="flex items-center gap-2">
-            <button
-              class="px-2 py-1 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui"
+            <BaseButton
+              variant="ghost"
+              size="sm"
               title="Save snapshot with label"
               @click="showLabelInput = true"
             >
               <BaseIcon name="save" :size="14" />
-            </button>
-            <button class="text-text-hint hover:text-text-secondary" @click="emit('close')">
+            </BaseButton>
+            <BaseButton variant="ghost" size="sm" @click="emit('close')">
               <BaseIcon name="x" :size="18" />
-            </button>
+            </BaseButton>
           </div>
         </div>
 
@@ -197,13 +199,15 @@ onUnmounted(() => {
                       {{ getWordCount(snapshot.content) }} words
                     </div>
                   </div>
-                  <button
-                    class="text-text-hint hover:text-danger shrink-0 p-1"
+                  <BaseButton
+                    variant="ghost"
+                    size="sm"
+                    custom-class="hover:text-danger"
                     title="Delete snapshot"
                     @click.stop="removeSnapshot(snapshot)"
                   >
                     <BaseIcon name="trash-2" :size="14" />
-                  </button>
+                  </BaseButton>
                 </div>
 
                 <div
@@ -217,12 +221,14 @@ onUnmounted(() => {
                     {{ previewDiff(snapshot).slice(0, 500)
                     }}{{ previewDiff(snapshot).length > 500 ? '...' : '' }}
                   </div>
-                  <button
-                    class="mt-2 w-full py-1.5 btn-primary text-xs rounded font-ui"
+                  <BaseButton
+                    variant="primary"
+                    size="sm"
+                    custom-class="w-full mt-2"
                     @click.stop="confirmRestore"
                   >
                     Restore this version
-                  </button>
+                  </BaseButton>
                 </div>
               </div>
             </div>
@@ -230,12 +236,9 @@ onUnmounted(() => {
         </div>
 
         <div class="px-4 py-3 border-t border-border-subtle shrink-0">
-          <button
-            class="w-full py-2 bg-bg-tertiary text-text-secondary text-sm rounded-lg hover:bg-surface-hover font-ui"
-            @click="autoSaveManual"
-          >
+          <BaseButton variant="secondary" custom-class="w-full" @click="autoSaveManual">
             Save Snapshot Now
-          </button>
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -258,20 +261,17 @@ onUnmounted(() => {
           @keyup.enter="saveWithLabel"
         />
         <div class="flex gap-2">
-          <!-- prettier-ignore -->
-          <button
-            class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
-            @click="cancelLabelInput()"
-          >
+          <BaseButton variant="secondary" custom-class="flex-1" @click="cancelLabelInput()">
             Cancel
-          </button>
-          <button
+          </BaseButton>
+          <BaseButton
             :disabled="!newLabel.trim()"
-            class="flex-1 py-2 btn-primary rounded-lg font-ui disabled:opacity-50"
+            variant="primary"
+            custom-class="flex-1"
             @click="saveWithLabel"
           >
             Save
-          </button>
+          </BaseButton>
         </div>
       </div>
     </div>

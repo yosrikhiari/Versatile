@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
+import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
@@ -170,27 +171,29 @@ onMounted(() => {
     </div>
 
     <div class="flex items-center gap-1">
-      <button
+      <BaseButton
         :disabled="matches.length === 0"
-        class="p-1 hover:bg-bg-tertiary rounded disabled:opacity-50"
+        variant="ghost"
+        size="sm"
         title="Previous (Shift+Enter)"
         @click="handlePrev"
       >
         <BaseIcon name="chevron-up" :size="14" />
-      </button>
-      <button
+      </BaseButton>
+      <BaseButton
         :disabled="matches.length === 0"
-        class="p-1 hover:bg-bg-tertiary rounded disabled:opacity-50"
+        variant="ghost"
+        size="sm"
         title="Next (Enter)"
         @click="handleNext"
       >
         <BaseIcon name="chevron-down" :size="14" />
-      </button>
+      </BaseButton>
     </div>
 
-    <button class="p-1 hover:bg-bg-tertiary rounded" title="Close (Esc)" @click="handleClose">
+    <BaseButton variant="ghost" size="sm" title="Close (Esc)" @click="handleClose">
       <BaseIcon name="x" :size="16" />
-    </button>
+    </BaseButton>
   </div>
 </template>
 

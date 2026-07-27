@@ -9,7 +9,7 @@ import VoiceProfileDisplay from '../shared/VoiceProfileDisplay.vue'
 import VoiceUploadModal from './VoiceUploadModal.vue'
 import AISettingsTab from './AISettingsTab.vue'
 import ActiveLearningPanel from '../eval/ActiveLearningPanel.vue'
-import { useActiveLearning } from '../../composables/useActiveLearning.js'
+import { useActiveLearning } from '../../composables/useActiveLearning'
 
 const props = defineProps({
   show: Boolean

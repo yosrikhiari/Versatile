@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useAuthStore } from '../../stores/authStore'
-import BaseIcon from '../shared/BaseIcon.vue'
+import BaseButton from '../ui/BaseButton.vue'
 
 const props = defineProps({
   show: Boolean
@@ -79,12 +79,7 @@ const isValid = computed(() => {
         <h2 class="text-lg font-semibold text-text-primary">
           {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
         </h2>
-        <button
-          class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
-          @click="emit('close')"
-        >
-          <BaseIcon name="x" :size="20" />
-        </button>
+        <BaseButton variant="ghost" icon="x" @click="emit('close')" />
       </div>
 
       <form class="space-y-4" @submit.prevent="handleSubmit">
@@ -140,21 +135,23 @@ const isValid = computed(() => {
           {{ formError }}
         </div>
 
-        <button
+        <BaseButton
           type="submit"
-          :disabled="!isValid || submitting"
-          class="w-full py-2 btn-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          variant="primary"
+          size="lg"
+          custom-class="w-full"
+          :disabled="!isValid"
+          :loading="submitting"
         >
-          <BaseIcon v-if="submitting" name="loader" :size="16" class="animate-spin" />
           {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
-        </button>
+        </BaseButton>
       </form>
 
       <p class="mt-4 text-xs text-text-hint text-center">
         {{ mode === 'login' ? "Don't have an account?" : 'Already have an account?' }}
-        <button class="text-accent hover:text-accent-hover underline ml-1" @click="switchMode">
+        <BaseButton variant="accent-ghost" custom-class="underline ml-1" @click="switchMode">
           {{ mode === 'login' ? 'Create one' : 'Sign in' }}
-        </button>
+        </BaseButton>
       </p>
     </div>
   </div>

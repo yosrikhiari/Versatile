@@ -39,7 +39,7 @@ function signalBadge(signal) {
 <template>
   <div class="relative">
     <button
-      class="flex items-center gap-1 px-2 py-1 text-2xs rounded font-ui transition-colors"
+      class="flex items-center gap-1 px-2 py-1 text-label rounded font-ui transition-colors"
       :class="
         expanded
           ? 'bg-surface-hover text-accent'
@@ -56,18 +56,18 @@ function signalBadge(signal) {
     </button>
     <div
       v-if="expanded"
-      class="absolute right-0 top-full mt-1 w-80 bg-bg-secondary border border-border-subtle rounded-lg shadow-lg z-50 p-3 max-h-96 overflow-y-auto"
+      class="absolute right-0 top-full mt-1 w-80 bg-bg-secondary border border-border-subtle rounded-lg z-50 p-3 max-h-96 overflow-y-auto"
       @click.stop
     >
-      <div v-if="loading" class="text-xs text-text-hint font-ui">Loading...</div>
+      <div v-if="loading" class="text-label text-text-hint font-ui">Loading...</div>
       <div v-else-if="preview" class="space-y-1.5">
-        <div class="text-2xs uppercase tracking-wider text-text-hint font-ui">
+        <div class="text-label uppercase tracking-wider text-text-hint font-ui">
           {{ preview.sourceDescription }}
         </div>
         <div
           v-for="(line, i) in preview.previewLines"
           :key="i"
-          class="flex items-start gap-1.5 text-xs"
+          class="flex items-start gap-1.5 text-label"
         >
           <span class="text-text-hint shrink-0 mt-0.5">•</span>
           <span class="text-text-secondary">
@@ -76,16 +76,18 @@ function signalBadge(signal) {
           </span>
         </div>
         <details class="mt-1">
-          <summary class="text-2xs text-text-hint cursor-pointer hover:text-text-secondary font-ui">
+          <summary
+            class="text-label text-text-hint cursor-pointer hover:text-text-secondary font-ui"
+          >
             Full context text
           </summary>
           <pre
-            class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-24 overflow-y-auto"
+            class="mt-1 p-2 bg-bg-tertiary rounded text-label text-text-hint whitespace-pre-wrap max-h-24 overflow-y-auto"
             >{{ preview.contextText || '(empty)' }}</pre
           >
         </details>
       </div>
-      <div v-else class="text-xs text-text-hint font-ui">No context available</div>
+      <div v-else class="text-label text-text-hint font-ui">No context available</div>
     </div>
   </div>
 </template>

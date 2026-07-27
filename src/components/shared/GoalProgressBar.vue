@@ -29,14 +29,18 @@ const goalReached = computed(() => {
     <div v-if="goalWords > 0" class="w-20 h-1 bg-bg-tertiary rounded-full overflow-hidden">
       <div
         class="h-full transition-all duration-300 rounded-full"
-        :class="goalReached ? 'bg-success' : 'bg-accent'"
-        :style="{ width: `${progressPercent}%` }"
+        :class="{ 'bg-accent': !goalReached }"
+        :style="{
+          width: `${progressPercent}%`,
+          ...(goalReached ? { backgroundColor: 'var(--vers-status-success)' } : {})
+        }"
       />
     </div>
     <span
       v-if="goalWords > 0"
       class="text-2xs tabular-nums"
-      :class="goalReached ? 'text-success' : 'text-text-hint'"
+      :class="{ 'text-text-hint': !goalReached }"
+      :style="goalReached ? { color: 'var(--vers-status-success)' } : {}"
     >
       {{ currentWords.toLocaleString() }} / {{ goalWords.toLocaleString() }}
     </span>

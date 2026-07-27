@@ -42,7 +42,6 @@ public class DbContextTests
         entityTypes.Should().Contain(typeof(Scene));
         entityTypes.Should().Contain(typeof(Entity));
         entityTypes.Should().Contain(typeof(Flow));
-        entityTypes.Should().Contain(typeof(Research));
         entityTypes.Should().Contain(typeof(BibleEntry));
         entityTypes.Should().Contain(typeof(Versatile.Domain.Entities.Annotation));
         entityTypes.Should().Contain(typeof(AuthorProfile));

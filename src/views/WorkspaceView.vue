@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { getAllProjects, createProject, getManuscript } from '../services/db-projects'
-import BaseIcon from '../components/shared/BaseIcon.vue'
+import BaseButton from '../components/ui/BaseButton.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import OrganizationSwitcher from '../components/org/OrganizationSwitcher.vue'
 import CreateOrganizationDialog from '../components/org/CreateOrganizationDialog.vue'
@@ -98,24 +98,21 @@ async function handleLogout() {
         <div v-if="auth.organizations.length > 0" class="hidden sm:block">
           <OrganizationSwitcher @create-org="showCreateOrg = true" />
         </div>
-        <button
+        <BaseButton
           v-else
-          class="text-xs text-text-secondary hover:text-text-primary transition-colors underline underline-offset-2"
+          variant="ghost"
+          size="sm"
+          custom-class="underline underline-offset-2"
           @click="showCreateOrg = true"
         >
           Create organization
-        </button>
+        </BaseButton>
       </div>
       <div class="flex items-center gap-4">
         <span class="text-text-secondary text-xs hidden sm:inline">
           {{ localUser.displayName }}
         </span>
-        <button
-          class="text-text-secondary hover:text-text-primary text-xs transition-colors"
-          @click="handleLogout"
-        >
-          Sign out
-        </button>
+        <BaseButton variant="ghost" size="sm" @click="handleLogout"> Sign out </BaseButton>
       </div>
     </header>
 
@@ -125,13 +122,9 @@ async function handleLogout() {
           <h1 class="text-2xl font-semibold text-text-primary">Your projects</h1>
           <p class="text-sm text-text-secondary mt-1">Pick up where you left off.</p>
         </div>
-        <button
-          class="btn-primary flex items-center gap-2 px-4 py-2 rounded-md text-sm shrink-0"
-          @click="showCreate = true"
-        >
-          <BaseIcon name="plus" :size="16" />
+        <BaseButton variant="primary" size="lg" icon="plus" @click="showCreate = true">
           New
-        </button>
+        </BaseButton>
       </div>
 
       <div
@@ -167,11 +160,12 @@ async function handleLogout() {
       />
 
       <div v-else class="border-t border-border-subtle">
-        <button
+        <BaseButton
           v-for="project in projects"
           :key="project.id"
-          type="button"
-          class="group w-full flex flex-col gap-1 border-b border-border-subtle px-2 py-4 text-left transition-colors hover:bg-surface-hover"
+          variant="ghost"
+          size="lg"
+          custom-class="group w-full flex flex-col gap-1 border-b border-border-subtle px-2 py-4 text-left"
           @click="openProject(project.id)"
         >
           <span class="w-full flex items-baseline justify-between gap-4">
@@ -189,7 +183,7 @@ async function handleLogout() {
             <span aria-hidden="true" class="px-1">·</span>
             {{ editedAgo(project.updatedAt) }}
           </span>
-        </button>
+        </BaseButton>
       </div>
     </main>
 
@@ -231,14 +225,17 @@ async function handleLogout() {
             />
           </div>
           <div class="flex gap-3 pt-2">
-            <button
-              type="button"
-              class="flex-1 py-2 border border-border-subtle text-text-secondary rounded-md text-sm hover:bg-surface-hover transition-colors"
+            <BaseButton
+              variant="outline"
+              size="lg"
+              custom-class="flex-1"
               @click="showCreate = false"
             >
               Cancel
-            </button>
-            <button type="submit" class="btn-primary flex-1 py-2 rounded-md text-sm">Create</button>
+            </BaseButton>
+            <BaseButton type="submit" variant="primary" size="lg" custom-class="flex-1">
+              Create
+            </BaseButton>
           </div>
         </form>
       </div>

@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { upsertStoryDocument } from '../../services/db-story-documents'
 import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import { useNotifications } from '../../composables/useNotifications'
+import Skeleton from '../shared/Skeleton.vue'
 
 const props = defineProps({
   projectId: {
@@ -22,6 +23,7 @@ const fileInput = ref(null)
 const contentReadonly = ref(false)
 
 const isLargeContent = computed(() => documentContent.value.length > LARGE_CONTENT_THRESHOLD)
+const isLoading = ref(false)
 
 const hasUnsavedChanges = computed(
   () => documentContent.value !== (savedContents.value[selectedDocType.value] ?? '')
@@ -39,11 +41,16 @@ const documentTypes = [
 
 async function loadDocument() {
   if (!props.projectId) return
-  const { getDocument } = useStoryDocuments()
-  const doc = await getDocument(props.projectId, selectedDocType.value)
-  documentContent.value = doc?.content || ''
-  if (!(selectedDocType.value in savedContents.value)) {
-    savedContents.value[selectedDocType.value] = documentContent.value
+  isLoading.value = true
+  try {
+    const { getDocument } = useStoryDocuments()
+    const doc = await getDocument(props.projectId, selectedDocType.value)
+    documentContent.value = doc?.content || ''
+    if (!(selectedDocType.value in savedContents.value)) {
+      savedContents.value[selectedDocType.value] = documentContent.value
+    }
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -154,30 +161,35 @@ watch(selectedDocType, loadDocument, { immediate: true })
       <span v-if="hasUnsavedChanges" class="text-xs text-warning ml-auto">Unsaved changes</span>
     </div>
 
-    <div
-      v-if="isLargeContent"
-      class="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-xs bg-bg-elevated text-warning border border-border-subtle"
-    >
-      <span>Large file — {{ documentContent.length.toLocaleString() }} characters.</span>
-      <span v-if="contentReadonly" class="ml-1 text-warning/70"
-        >Displayed as read-only to prevent slowdowns.</span
-      >
-      <button
-        v-if="contentReadonly"
-        class="ml-auto px-2 py-0.5 rounded text-xs font-medium bg-bg-secondary hover:bg-surface-hover text-warning transition-colors"
-        @click="contentReadonly = false"
-      >
-        Enable Editing
-      </button>
+    <div v-if="isLoading">
+      <Skeleton variant="card" :count="3" label="Loading document…" />
     </div>
+    <template v-else>
+      <div
+        v-if="isLargeContent"
+        class="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-xs bg-bg-elevated text-warning border border-border-subtle"
+      >
+        <span>Large file — {{ documentContent.length.toLocaleString() }} characters.</span>
+        <span v-if="contentReadonly" class="ml-1 text-warning/70"
+          >Displayed as read-only to prevent slowdowns.</span
+        >
+        <button
+          v-if="contentReadonly"
+          class="ml-auto px-2 py-0.5 rounded text-xs font-medium bg-bg-secondary hover:bg-surface-hover text-warning transition-colors"
+          @click="contentReadonly = false"
+        >
+          Enable Editing
+        </button>
+      </div>
 
-    <textarea
-      v-model="documentContent"
-      :readonly="contentReadonly"
-      spellcheck="false"
-      class="w-full p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary font-mono leading-relaxed min-h-[300px] resize-y focus:outline-none focus:ring-1 focus:ring-accent/50"
-      :class="{ 'opacity-70 cursor-default': contentReadonly }"
-      placeholder="No content yet. Add some story elements first."
-    ></textarea>
+      <textarea
+        v-model="documentContent"
+        :readonly="contentReadonly"
+        spellcheck="false"
+        class="w-full p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary font-mono leading-relaxed min-h-[300px] resize-y focus:outline-none focus:ring-1 focus:ring-accent/50"
+        :class="{ 'opacity-70 cursor-default': contentReadonly }"
+        placeholder="No content yet. Add some story elements first."
+      ></textarea>
+    </template>
   </div>
 </template>

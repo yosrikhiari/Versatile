@@ -29,12 +29,19 @@ public class GetScenesHandler : IRequestHandler<GetScenesQuery, PagedResponse<Sc
 
         Expression<Func<Scene, bool>> filter = s => s.ChapterId == request.ChapterId;
 
-        if (request.AfterId.HasValue)
+        if (request.AfterId.HasValue || request.Page <= 1)
         {
             var (scenes, hasNextPage) = await _scenes.GetPagedKeysetAsync(filter, request.PageSize, request.AfterId,
                 q => q.OrderBy(s => s.Order), ct);
             var items = scenes.Select(s => new SceneDto(s.Id, s.ChapterId, s.Title, s.Content, s.Status, s.WordCount, s.Order, s.CreatedAt, s.UpdatedAt)).ToList();
-            return new PagedResponse<SceneDto>(items, 0, 0, request.PageSize, hasNextPage ? items.Last().Id : null);
+            var nextCursor = hasNextPage ? items.LastOrDefault()?.Id : null;
+
+            if (request.AfterId.HasValue)
+                return new PagedResponse<SceneDto>(items, 0, 0, request.PageSize, nextCursor);
+
+            // First page with keyset -- also compute total count for backward compatibility
+            var keysetTotalCount = await _scenes.CountAsync(filter, ct);
+            return new PagedResponse<SceneDto>(items, keysetTotalCount, request.Page, request.PageSize, nextCursor);
         }
 
         var (scenesPaged, totalCount) = await _scenes.GetPagedAsync(filter, request.Page, request.PageSize, q => q.OrderBy(s => s.Order), ct);

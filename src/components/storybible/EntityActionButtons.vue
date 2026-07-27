@@ -1,6 +1,8 @@
 <script setup>
+import BaseIcon from '../shared/BaseIcon.vue'
+
 defineProps({
-  entityId: { type: String, default: '' },
+  entityId: { type: [String, Number], default: '' },
   editingId: { type: String, default: null }
 })
 

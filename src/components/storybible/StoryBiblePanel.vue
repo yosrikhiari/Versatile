@@ -478,6 +478,20 @@ function cancelEdit() {
   }
 }
 
+async function switchTab(tab) {
+  if (editingId.value) {
+    const confirmed = await showConfirm(
+      'Unsaved Changes',
+      'Switch tabs? Your edits will be lost.',
+      'Switch',
+      'warning'
+    )
+    if (!confirmed) return
+  }
+  cancelEdit()
+  activeTab.value = tab
+}
+
 async function saveEdit(id, type) {
   if (type === 'character') {
     await updateCharacter(id, editData.value)
@@ -532,7 +546,7 @@ defineExpose({ refresh })
                 : 'text-text-hint hover:text-text-secondary'
             ]"
             role="tab"
-            @click="activeTab = 'characters'"
+            @click="switchTab('characters')"
           >
             {{ projectStore.terminology.characters }}
             <span class="text-xs opacity-60">{{ filteredCharacters.length }}</span>
@@ -545,7 +559,7 @@ defineExpose({ refresh })
                 : 'text-text-hint hover:text-text-secondary'
             ]"
             role="tab"
-            @click="activeTab = 'plotThreads'"
+            @click="switchTab('plotThreads')"
           >
             {{ projectStore.terminology.plotThreads }}
             <span class="text-xs opacity-60">{{ filteredPlotThreads.length }}</span>
@@ -558,7 +572,7 @@ defineExpose({ refresh })
                 : 'text-text-hint hover:text-text-secondary'
             ]"
             role="tab"
-            @click="activeTab = 'locations'"
+            @click="switchTab('locations')"
           >
             {{ projectStore.terminology.locations }}
             <span class="text-xs opacity-60">{{ filteredLocations.length }}</span>
@@ -571,10 +585,18 @@ defineExpose({ refresh })
                 : 'text-text-hint hover:text-text-secondary'
             ]"
             role="tab"
-            @click="activeTab = 'documents'"
+            @click="switchTab('documents')"
           >
             Documents
           </button>
+        </div>
+
+        <div
+          v-if="storyBibleStore.loadError"
+          class="mx-4 mb-2 px-3 py-2 rounded text-xs text-danger bg-danger/10 border border-danger/30"
+          role="alert"
+        >
+          <p>{{ storyBibleStore.loadError }}</p>
         </div>
 
         <div class="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-thin">
@@ -801,10 +823,10 @@ defineExpose({ refresh })
                 </div>
                 <div class="flex items-center gap-1">
                   <span
-                    :class="[
-                      'text-xs px-2 py-0.5 rounded bg-bg-secondary',
-                      thread.status === 'open' ? 'text-success' : 'text-text-hint'
-                    ]"
+                    :class="['text-xs px-2 py-0.5 rounded bg-bg-secondary', 'text-text-hint']"
+                    :style="{
+                      color: `var(--vers-status-${thread.status})`
+                    }"
                   >
                     {{ thread.status }}
                   </span>
