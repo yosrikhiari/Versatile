@@ -1,0 +1,394 @@
+import { useManuscriptStore } from '../stores/manuscriptStore'
+import {
+  ollamaEmbeddings,
+  getEmbeddingCache,
+  getEmbedding,
+  cosineSimilarity
+} from '../services/ollamaService'
+import { getEmbeddings } from '../services/embeddingService'
+import { computeSemanticChunks } from './useSemanticChunking'
+import { getSubsections } from '../services/dbService'
+import { useSettingsStore } from '../stores/settingsStore'
+import { EMBEDDING_DEFAULTS } from '../config/ai'
+
+const MAX_CONTEXT_CHARS = 3500
+
+/** A manuscript section as this module consumes it (ordering + title only). */
+interface ContextSection {
+  id: string
+  order?: number
+  title?: string
+}
+
+/** Parsed form of a context selector string (`current`, `last:3`, `chapters:1,4`, …). */
+type ParsedSelector =
+  | { type: 'current' }
+  | { type: 'all' }
+  | { type: 'last'; count: number }
+  | { type: 'first'; count: number }
+  | { type: 'chapter'; chapterNum: number }
+  | { type: 'chapters'; chapterNums: number[] }
+
+interface ScoredChunk {
+  text: string
+  score: number
+  sentences: unknown
+}
+
+export async function warmEmbeddingCache(projectId: string) {
+  try {
+    const allSubsections = await getSubsections(projectId)
+    const cache = await getEmbeddingCache()
+    let warmed = 0
+
+    for (const sub of allSubsections) {
+      if (!sub.content) continue
+      const key = `subsection_${sub.id}`
+      if (!cache[key] || cache[key].text !== sub.content) {
+        getEmbedding('subsection', sub.id, sub.content).catch(() =>
+          console.warn(`[useManuscriptContext] Failed to warm embedding for subsection ${sub.id}`)
+        )
+        warmed++
+      }
+    }
+
+    if (warmed > 0) {
+      console.info(`[useManuscriptContext] Warmed ${warmed} scene embeddings`)
+    }
+  } catch (error: any) {
+    console.warn('[useManuscriptContext] Cache warm-up failed:', error.message)
+  }
+}
+
+const GENERATOR_TYPE_QUERIES: Record<string, string> = {
+  character: 'character names, dialogue, relationships',
+  location: 'settings, descriptions, environment',
+  plotThread: 'conflicts, tensions, goals',
+  spark: 'story tensions, unresolved threads',
+  blueprint: 'scene structure, beats, pacing'
+}
+
+export function useManuscriptContext() {
+  const manuscriptStore = useManuscriptStore()
+  const settingsStore = useSettingsStore()
+
+  function parseSelector(selector: string): ParsedSelector | null {
+    if (selector === 'current') {
+      return { type: 'current' }
+    }
+
+    if (selector === 'all') {
+      return { type: 'all' }
+    }
+
+    if (selector.startsWith('last:')) {
+      const count = parseInt(selector.split(':')[1], 10)
+      return { type: 'last', count }
+    }
+
+    if (selector.startsWith('first:')) {
+      const count = parseInt(selector.split(':')[1], 10)
+      return { type: 'first', count }
+    }
+
+    if (selector.startsWith('chapter:')) {
+      const chapterNum = parseInt(selector.split(':')[1], 10)
+      return { type: 'chapter', chapterNum }
+    }
+
+    if (selector.startsWith('chapters:')) {
+      const nums = selector
+        .split(':')[1]
+        .split(',')
+        .map((n: string) => parseInt(n.trim(), 10))
+      return { type: 'chapters', chapterNums: nums }
+    }
+
+    return null
+  }
+
+  function resolveSectionIds(parsed: ParsedSelector, sortedSections: ContextSection[]) {
+    const sections = [...sortedSections].sort((a, b) => (a.order || 0) - (b.order || 0))
+
+    switch (parsed.type) {
+      case 'current': {
+        const activeId = manuscriptStore.activeSectionId
+        if (activeId) {
+          const section = sections.find((s) => s.id === activeId)
+          return section ? [section] : []
+        }
+        return sections.length > 0 ? [sections[sections.length - 1]] : []
+      }
+
+      case 'all':
+        return sections
+
+      case 'last':
+        return sections.slice(-parsed.count)
+
+      case 'first':
+        return sections.slice(0, parsed.count)
+
+      // NOTE: these were previously labelled 'section'/'sections' while parseSelector only
+      // ever emits 'chapter'/'chapters' — so both branches were dead and every `chapter:N` /
+      // `chapters:1,2` selector silently fell through to `default` and returned no context.
+      case 'chapter': {
+        const section = sections.find((s) => s.order === parsed.chapterNum - 1)
+        return section ? [section] : []
+      }
+
+      case 'chapters':
+        return sections.filter((s) => parsed.chapterNums.includes((s.order || 0) + 1))
+
+      default:
+        return []
+    }
+  }
+
+  function getSubsectionContentForSection(sectionId: string) {
+    const subsections = (manuscriptStore.subsectionsBySection[sectionId] || [])
+      .slice()
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+    return subsections.map((s) => s.content || '').join('\n\n')
+  }
+
+  function getFullText(sections: ContextSection[]) {
+    const parts = []
+    for (const section of sections) {
+      const sectionContent = getSubsectionContentForSection(section.id).trim()
+      if (!sectionContent) continue
+      parts.push(`[Section ${(section.order || 0) + 1}: ${section.title || 'Untitled'}]`)
+      parts.push(sectionContent)
+    }
+    return parts.join('\n\n')
+  }
+
+  async function buildContextText(sections: ContextSection[], maxChars: number) {
+    const fullText = getFullText(sections)
+    if (!fullText.trim()) {
+      return { contextText: '', totalChars: 0, truncated: false }
+    }
+
+    const embeddingProvider = settingsStore.embeddingProvider || EMBEDDING_DEFAULTS.provider
+    const embeddingModel = settingsStore.embeddingModel || EMBEDDING_DEFAULTS.model
+    const threshold = settingsStore.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
+
+    try {
+      const chunks = await computeSemanticChunks(fullText, {
+        maxChunkSize: maxChars,
+        embeddingProvider,
+        embeddingModel,
+        threshold
+      })
+
+      const parts = []
+      let totalChars = 0
+      let truncated = false
+
+      for (const chunk of chunks) {
+        if (!chunk.text.trim()) continue
+        const chunkChars = chunk.text.length + 2
+        if (totalChars + chunkChars > maxChars && totalChars > 0) {
+          const remaining = maxChars - totalChars
+          if (remaining > 50) {
+            parts.push(chunk.text.slice(0, remaining))
+            totalChars += remaining
+          }
+          truncated = true
+          break
+        }
+        parts.push(chunk.text, '')
+        totalChars += chunkChars
+      }
+
+      return {
+        contextText: parts.join('\n'),
+        totalChars,
+        truncated
+      }
+    } catch (error: any) {
+      console.warn(
+        '[useManuscriptContext] Semantic chunking failed, falling back to truncation:',
+        error.message
+      )
+      return truncateFallback(sections, maxChars)
+    }
+  }
+
+  function truncateFallback(sections: ContextSection[], maxChars: number) {
+    const parts = []
+    let totalChars = 0
+    let truncated = false
+
+    for (const section of sections) {
+      const sectionContent = getSubsectionContentForSection(section.id).trim()
+      if (!sectionContent) continue
+      const sectionHeader = `[Section ${(section.order || 0) + 1}: ${section.title || 'Untitled'}]\n`
+      const sectionChars = sectionHeader.length + sectionContent.length + 2
+
+      if (totalChars + sectionChars > maxChars && totalChars > 0) {
+        truncated = true
+        const remainingChars = maxChars - totalChars
+        if (remainingChars > 50) {
+          parts.push(sectionHeader)
+          parts.push(sectionContent.slice(0, remainingChars - sectionHeader.length))
+        }
+        totalChars += sectionChars
+        break
+      }
+
+      parts.push(sectionHeader, sectionContent, '')
+      totalChars += sectionChars
+    }
+
+    return { contextText: parts.join('\n'), totalChars, truncated }
+  }
+
+  async function retrieveRelevantChunks(generatorType: string, maxChars: number) {
+    try {
+      const queryText = GENERATOR_TYPE_QUERIES[generatorType] || GENERATOR_TYPE_QUERIES.spark
+      const queryEmbedding = await ollamaEmbeddings(queryText)
+      if (!queryEmbedding) return null
+
+      const embeddingProvider = settingsStore.embeddingProvider || EMBEDDING_DEFAULTS.provider
+      const embeddingModel = settingsStore.embeddingModel || EMBEDDING_DEFAULTS.model
+      const threshold = settingsStore.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
+
+      const sortedSections = manuscriptStore.sortedSections
+      const fullText = getFullText(sortedSections)
+      if (!fullText.trim()) return null
+
+      const chunks = await computeSemanticChunks(fullText, {
+        maxChunkSize: maxChars,
+        embeddingProvider,
+        embeddingModel,
+        threshold
+      })
+
+      const chunkTexts = chunks.map((c) => c.text).filter(Boolean)
+      if (chunkTexts.length === 0) return null
+
+      const { vectors: chunkEmbeddings } = await getEmbeddings(chunkTexts, {
+        provider: embeddingProvider,
+        model: embeddingModel
+      })
+
+      const scored = chunks
+        .map((chunk, i): ScoredChunk | null => {
+          const emb = chunkEmbeddings[i]
+          if (!emb || !chunk.text.trim()) return null
+          const similarity = cosineSimilarity(queryEmbedding as any, emb as any)
+          return {
+            text: chunk.text,
+            score: similarity,
+            sentences: chunk.sentences
+          }
+        })
+        .filter((c): c is ScoredChunk => c !== null)
+
+      scored.sort((a, b) => b.score - a.score)
+
+      const selected = []
+      let totalChars = 0
+
+      for (const item of scored) {
+        const chars = item.text.length + 2
+        if (totalChars + chars > maxChars && totalChars > 0) break
+        selected.push(item.text)
+        totalChars += chars
+      }
+
+      if (selected.length === 0) return null
+
+      return {
+        contextText: selected.join('\n\n'),
+        sectionTitles: [],
+        totalChars,
+        truncated: false
+      }
+    } catch (error: any) {
+      console.warn('[useManuscriptContext] Retrieval failed:', error.message)
+      return null
+    }
+  }
+
+  async function getSectionContext(selector = 'current', generatorType = 'spark') {
+    const sortedSections = manuscriptStore.sortedSections
+
+    if (sortedSections.length === 0) {
+      return {
+        contextText: '',
+        sectionTitles: [],
+        truncated: false,
+        totalChars: 0
+      }
+    }
+
+    const parsed = parseSelector(selector)
+
+    if (!parsed) {
+      return {
+        contextText: '',
+        sectionTitles: [],
+        truncated: false,
+        totalChars: 0
+      }
+    }
+
+    const selectedSections = resolveSectionIds(parsed, sortedSections)
+
+    if (selectedSections.length === 0) {
+      return {
+        contextText: '',
+        sectionTitles: [],
+        truncated: false,
+        totalChars: 0
+      }
+    }
+
+    const sectionTitles = selectedSections.map((s) => s.title || `Section ${(s.order || 0) + 1}`)
+
+    const embeddingResult = await retrieveRelevantChunks(generatorType, MAX_CONTEXT_CHARS)
+
+    if (embeddingResult) {
+      return {
+        contextText: embeddingResult.contextText,
+        sectionTitles: embeddingResult.sectionTitles,
+        truncated: embeddingResult.truncated,
+        totalChars: embeddingResult.totalChars
+      }
+    }
+
+    const { contextText, totalChars, truncated } = await buildContextText(
+      selectedSections,
+      MAX_CONTEXT_CHARS
+    )
+
+    return {
+      contextText,
+      sectionTitles,
+      truncated,
+      totalChars
+    }
+  }
+
+  function getSectionCount() {
+    return manuscriptStore.sortedSections.length
+  }
+
+  function getSectionList() {
+    return manuscriptStore.sortedSections.map((s, i) => ({
+      id: s.id,
+      order: i + 1,
+      title: s.title || `Section ${i + 1}`
+    }))
+  }
+
+  return {
+    getSectionContext,
+    getSectionCount,
+    getSectionList,
+    MAX_CONTEXT_CHARS
+  }
+}
