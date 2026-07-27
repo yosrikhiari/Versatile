@@ -2,8 +2,11 @@ import { getEmbedding } from '../../../services/embeddingService'
 import { cosineSimilarity } from '../../../services/ollamaService'
 import { multiHopRetrieval as multiHopRetrieve } from '../../../services/ragMultiHopRetrieval'
 import { formatCitationContext } from '../../../services/ragCitationInjector'
+import { estimateTokens } from '../../../services/ai/contextBudget'
 
-const EMBEDDING_CONTEXT_MAX_CHARS = 1400
+// Was EMBEDDING_CONTEXT_MAX_CHARS = 1400, i.e. ~350 tokens under the old 4:1
+// guess. Same intent, now measured in the unit the model actually charges in.
+const EMBEDDING_CONTEXT_MAX_TOKENS = 350
 const CONSISTENCY_FIX_ROUNDS = 2
 const CONSISTENCY_FIX_MAX_SCENES = 3
 const PROSE_EXCERPT_MAX_SCENES = 25
@@ -205,7 +208,7 @@ function buildEmbeddingContext(currentScene: any, priorScenes: any) {
   }
 
   const olderScene = priorScenes.at(-2)
-  if (olderScene && context.length < EMBEDDING_CONTEXT_MAX_CHARS) {
+  if (olderScene && estimateTokens(context) < EMBEDDING_CONTEXT_MAX_TOKENS) {
     context += `[Summary of Scene ${olderScene.sceneNumber}: "${olderScene.title}"]\n${olderScene.summary || olderScene.prose.slice(0, 300) + '...'}\n\n`
   }
 
@@ -213,7 +216,7 @@ function buildEmbeddingContext(currentScene: any, priorScenes: any) {
   if (relevant.length) {
     context += `[Earlier related scenes]\n`
     for (const s of relevant) {
-      if (context.length >= EMBEDDING_CONTEXT_MAX_CHARS) break
+      if (estimateTokens(context) >= EMBEDDING_CONTEXT_MAX_TOKENS) break
       context += `- Scene ${s.sceneNumber} ("${s.title}"): ${s.summary || s.prose.slice(0, 200) + '...'}\n`
     }
     context += '\n'
@@ -335,7 +338,7 @@ export {
   buildEmbeddingContext,
   selectRelevantPriorScenes,
   buildRetrievalContext,
-  EMBEDDING_CONTEXT_MAX_CHARS,
+  EMBEDDING_CONTEXT_MAX_TOKENS,
   CONSISTENCY_FIX_ROUNDS,
   CONSISTENCY_FIX_MAX_SCENES,
   PROSE_EXCERPT_MAX_SCENES

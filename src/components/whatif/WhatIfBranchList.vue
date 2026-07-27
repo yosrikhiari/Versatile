@@ -63,13 +63,13 @@ onMounted(loadDiverged)
 <template>
   <div v-if="!collapsed && hasWhatIfBranches" class="mt-2 border-t border-border-subtle pt-2">
     <button
-      class="flex items-center gap-2 w-full px-3 h-8 rounded-md text-[0.75rem] text-text-secondary hover:bg-surface-hover transition-colors duration-150"
+      class="flex items-center gap-2 w-full px-3 h-8 rounded-md text-xs text-text-secondary hover:bg-surface-hover transition-colors duration-150"
       :aria-expanded="open"
       @click="open = !open"
     >
-      <BaseIcon name="shuffle" :size="14" class="text-yellow-500 shrink-0" />
+      <BaseIcon name="shuffle" :size="14" class="text-warning shrink-0" />
       <span class="font-medium">What-If Branches</span>
-      <span class="ml-auto text-[0.625rem] text-text-hint">{{ divergedData.length }}</span>
+      <span class="ml-auto text-2xs text-text-hint">{{ divergedData.length }}</span>
       <BaseIcon
         name="chevron-down"
         :size="12"
@@ -86,13 +86,13 @@ onMounted(loadDiverged)
           class="rounded-md border border-border-subtle overflow-hidden"
         >
           <button
-            class="flex items-center gap-2 w-full px-3 py-2 text-[0.8125rem] hover:bg-surface-hover transition-colors"
+            class="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-surface-hover transition-colors"
             :aria-expanded="expandedBranches.has(branch.id)"
             @click="toggleBranch(branch.id)"
           >
-            <BaseIcon name="git-branch" :size="14" class="text-yellow-500 shrink-0" />
+            <BaseIcon name="git-branch" :size="14" class="text-warning shrink-0" />
             <span class="flex-1 min-w-0 truncate text-left">{{ branch.name }}</span>
-            <span class="text-[0.625rem] text-text-hint">{{ sections.length }} sections</span>
+            <span class="text-2xs text-text-hint">{{ sections.length }} sections</span>
           </button>
 
           <Transition name="fade">
@@ -104,10 +104,8 @@ onMounted(loadDiverged)
               >
                 <div class="flex items-center gap-2">
                   <BaseIcon name="file-text" :size="12" class="text-text-hint shrink-0" />
-                  <span class="text-[0.75rem] text-text-primary truncate flex-1">{{
-                    section.title
-                  }}</span>
-                  <span class="text-[0.625rem] text-text-hint"
+                  <span class="text-xs text-text-primary truncate flex-1">{{ section.title }}</span>
+                  <span class="text-2xs text-text-hint"
                     >{{ section.subsections?.length || 0 }} subs</span
                   >
                 </div>
@@ -121,12 +119,12 @@ onMounted(loadDiverged)
                       class="w-1.5 h-1.5 rounded-full shrink-0"
                       :class="sub.contentStatus === 'generated' ? 'bg-green-500' : 'bg-yellow-400'"
                     />
-                    <span class="text-[0.6875rem] text-text-secondary truncate">{{
+                    <span class="text-11px text-text-secondary truncate">{{
                       sub.title || 'Untitled'
                     }}</span>
                     <span
                       v-if="sub.contentStatus === 'divergent'"
-                      class="text-[0.625rem] text-yellow-500 ml-auto"
+                      class="text-2xs text-warning ml-auto"
                       >pending</span
                     >
                   </div>
@@ -135,13 +133,13 @@ onMounted(loadDiverged)
 
               <div class="flex gap-1 p-2 border-t border-border-subtle bg-bg-secondary/30">
                 <button
-                  class="flex-1 text-[0.6875rem] py-1 rounded bg-green-600/10 text-green-600 hover:bg-green-600/20 transition-colors"
+                  class="flex-1 text-11px py-1 rounded bg-success/10 text-success hover:bg-success/20 transition-colors"
                   @click="handleAccept(branch.id)"
                 >
                   Accept
                 </button>
                 <button
-                  class="flex-1 text-[0.6875rem] py-1 rounded bg-red-600/10 text-red-600 hover:bg-red-600/20 transition-colors"
+                  class="flex-1 text-11px py-1 rounded bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
                   @click="handleDelete(branch.id)"
                 >
                   Delete

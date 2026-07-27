@@ -1,4 +1,5 @@
 import { PROVIDER_BASE_URLS, PROVIDERS } from '../../config/ai'
+import { DEFAULT_MAX_OUTPUT_TOKENS } from '../../config/generationLimits'
 
 interface GeminiOptions {
   apiKey?: string
@@ -45,7 +46,7 @@ function buildBody(prompt: string, systemPrompt: string, options: GeminiOptions)
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: options.temperature ?? 0.7,
-      maxOutputTokens: options.maxTokens || 4096
+      maxOutputTokens: options.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
     }
   }
   if (systemPrompt) {

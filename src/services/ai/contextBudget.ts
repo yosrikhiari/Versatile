@@ -1,20 +1,42 @@
+import { countTokens, type TokenKind } from './tokenizer'
+
 const CHARS_PER_TOKEN: Record<string, number> = {
   prose: 4.0,
   json: 2.6
 }
 
 export function estimateTokens(text: string, kind: string = 'prose'): number {
-  if (!text) return 0
-  const rate = CHARS_PER_TOKEN[kind] || CHARS_PER_TOKEN.prose
-  return Math.ceil(text.length / rate)
+  return countTokens(text, (kind as TokenKind) || 'prose')
 }
 
-function trimToTokens(text: string, maxTokens: number, kind: string): string {
+/**
+ * Cut `text` down to `maxTokens`, preferring a sentence or line boundary.
+ *
+ * The character ratio is used to *place* the cut, then the result is verified
+ * against the real count and re-cut if the ratio under-estimated. Seeking the
+ * exact boundary by re-tokenizing a shrinking prefix would be O(n) tokenizations
+ * per trim; one corrective pass gets within a token or two for a fraction of it.
+ */
+export function trimToTokens(text: string, maxTokens: number, kind: string = 'prose'): string {
   if (maxTokens <= 0) return ''
-  const rate = CHARS_PER_TOKEN[kind] || CHARS_PER_TOKEN.prose
-  const maxChars = Math.floor(maxTokens * rate)
-  if (text.length <= maxChars) return text
+  if (estimateTokens(text, kind) <= maxTokens) return text
 
+  const rate = CHARS_PER_TOKEN[kind] || CHARS_PER_TOKEN.prose
+  let maxChars = Math.floor(maxTokens * rate)
+
+  // Dense text (JSON, non-Latin script, heavy punctuation) tokenizes at fewer
+  // characters per token than the ratio assumes, so the first cut can still be
+  // over. Contract until it fits or the text is too small to matter.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const candidate = cutAtBoundary(text, maxChars)
+    if (estimateTokens(candidate, kind) <= maxTokens || maxChars <= 32) return candidate
+    maxChars = Math.floor(maxChars * 0.8)
+  }
+  return cutAtBoundary(text, maxChars)
+}
+
+function cutAtBoundary(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text
   const cut = text.slice(0, maxChars)
   const boundary = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('\n'))
   return boundary > maxChars * 0.5 ? cut.slice(0, boundary + 1) : cut

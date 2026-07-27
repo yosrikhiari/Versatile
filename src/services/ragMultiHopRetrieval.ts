@@ -1,9 +1,14 @@
 import { getEmbedding } from './embeddingService'
 import { semanticSearch, searchLexical, getAllResearchDocuments } from './researchDb'
 import { rerankChunks } from './rerankingService'
+import { estimateTokens } from './ai/contextBudget'
 
 const MAX_CHUNKS_PER_SOURCE = 5
-const MAX_TOTAL_CHARS = 4000
+// Was MAX_TOTAL_CHARS = 4000, i.e. ~1000 tokens under the old 4:1 guess.
+// Retrieved chunks are the worst case for that guess: research documents carry
+// tables, code, and proper nouns that tokenize far denser than prose, so a
+// character cap silently admitted more context than it claimed to.
+const MAX_TOTAL_TOKENS = 1000
 const SEMANTIC_MIN_SCORE = 0.45
 const LEXICAL_MIN_SCORE = 0.15
 const RRF_K = 60
@@ -88,13 +93,14 @@ export async function multiHopRetrieval({
     })
   }
 
-  let totalChars = 0
+  let totalTokens = 0
   const deduped: BaseChunk[] = []
   for (const r of fused) {
     const text = r.text || r.content || ''
-    if (totalChars + text.length > MAX_TOTAL_CHARS) break
+    const tokens = estimateTokens(text)
+    if (totalTokens + tokens > MAX_TOTAL_TOKENS) break
     deduped.push(r)
-    totalChars += text.length
+    totalTokens += tokens
   }
 
   if (deduped.length > 0) {

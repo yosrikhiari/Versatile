@@ -1,4 +1,5 @@
 import { PROVIDER_BASE_URLS, PROVIDERS } from '../../config/ai'
+import { DEFAULT_MAX_OUTPUT_TOKENS } from '../../config/generationLimits'
 
 interface OpenAIOptions {
   apiKey?: string
@@ -60,7 +61,7 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
           { role: 'user', content: prompt }
         ],
         temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens || 4096
+        max_tokens: options.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
       })
     })
 
@@ -109,7 +110,7 @@ export async function stream(prompt: string, systemPrompt: string, model: string
           { role: 'user', content: prompt }
         ],
         temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens || 4096,
+        max_tokens: options.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
         stream: true
       })
     })
@@ -186,7 +187,7 @@ export async function generateStructured(prompt: string, systemPrompt: string, m
           { role: 'user', content: prompt }
         ],
         temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens || 4096,
+        max_tokens: options.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
         response_format: {
           type: 'json_schema',
           json_schema: { name: options.schemaName || 'result', schema, strict: false }

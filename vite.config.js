@@ -84,6 +84,11 @@ export default defineConfig({
           if (id.includes('node_modules/jspdf') || id.includes('node_modules/pdfjs'))
             return 'vendor-pdf'
           if (id.includes('node_modules/lucide-vue')) return 'vendor-lucide'
+          // The BPE rank tables are ~1.7MB (cl100k) and ~3.6MB (o200k) and are
+          // only reached through the dynamic import in services/ai/tokenizer.ts.
+          // Without this they land in vendor-misc, which is statically imported,
+          // and every page load pays for them. Own chunk keeps them lazy.
+          if (id.includes('node_modules/gpt-tokenizer')) return 'vendor-tokenizer'
           if (id.includes('node_modules')) return 'vendor-misc'
         }
       }

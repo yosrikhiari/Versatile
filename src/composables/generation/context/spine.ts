@@ -1,5 +1,6 @@
 import { aiGenerateJson, resolveFeatureConfig } from '../../useAiService'
 import { FEATURES, PROVIDERS } from '../../../config/ai'
+import { estimateTokens, trimToTokens } from '../../../services/ai/contextBudget'
 import { parallelWithLimit } from '../utils'
 
 function isOllamaProvider() {
@@ -33,6 +34,8 @@ const SPINE_ENTRY_SCHEMA = {
   required: ['emotionalStateAtEnd']
 }
 
+const SPINE_TRUNCATION_MARKER = '\n[spine truncated]'
+
 function compressSpine(spine: any, tokenCap = 800) {
   if (spine.length <= 3) return spine.map(formatFullSpineEntry).join('\n')
   const full = spine.slice(-3)
@@ -41,7 +44,13 @@ function compressSpine(spine: any, tokenCap = 800) {
     .map((s: any) => `Chapter ${s.chapterNumber} (${s.chapterTitle}): ${s.emotionalStateAtEnd}`)
   const combined = [...compressed, ...full.map(formatFullSpineEntry)]
   const text = combined.join('\n')
-  return text.length > tokenCap * 4 ? text.slice(0, tokenCap * 4) + '\n[spine truncated]' : text
+
+  if (estimateTokens(text) <= tokenCap) return text
+  // The marker is part of what gets sent, so it comes out of the cap. The old
+  // `tokenCap * 4` slice inlined the 4:1 guess and then appended the marker on
+  // top, landing over budget by however much the guess was wrong plus the marker.
+  const room = Math.max(1, tokenCap - estimateTokens(SPINE_TRUNCATION_MARKER))
+  return trimToTokens(text, room) + SPINE_TRUNCATION_MARKER
 }
 
 const SPINE_TIMEOUT_MS = 120000

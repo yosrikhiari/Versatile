@@ -1,16 +1,22 @@
-export const DEFAULT_BUDGET_CHARS = 6000
+import { estimateTokens } from '../../../services/ai/contextBudget'
 
-export function applyTokenBudget(bundle: any, budget = DEFAULT_BUDGET_CHARS, systemPrompt = '') {
-  const overheadChars = typeof systemPrompt === 'string' ? systemPrompt.length : 0
-  const effectiveBudget = Math.max(budget - overheadChars, 1000)
+// This module was always called "tokenBudget" but measured characters, so its
+// `budget` argument meant something different from the token budgets everywhere
+// else in the pipeline. Values are the old character counts divided by 4 — the
+// ratio the rest of the code was implicitly assuming — so the effective budget
+// is unchanged and is now stated in the unit the name promises.
+export const DEFAULT_BUDGET_TOKENS = 1500
 
-  let totalChars = Object.entries(bundle)
-    .filter(([key]) => key !== 'totalChars' && key !== 'truncated')
-    .reduce((sum, [, val]) => sum + (typeof val === 'string' ? val.length : 0), 0)
+export function applyTokenBudget(bundle: any, budget = DEFAULT_BUDGET_TOKENS, systemPrompt = '') {
+  const overheadTokens = typeof systemPrompt === 'string' ? estimateTokens(systemPrompt) : 0
+  const effectiveBudget = Math.max(budget - overheadTokens, 250)
 
-  if (totalChars <= effectiveBudget) {
-    const result = { ...bundle, totalChars, truncated: false, systemPromptLength: overheadChars }
-    return result
+  let totalTokens = Object.entries(bundle)
+    .filter(([key]) => key !== 'totalTokens' && key !== 'truncated')
+    .reduce((sum, [, val]) => sum + (typeof val === 'string' ? estimateTokens(val) : 0), 0)
+
+  if (totalTokens <= effectiveBudget) {
+    return { ...bundle, totalTokens, truncated: false, systemPromptTokens: overheadTokens }
   }
 
   const truncated = { ...bundle }
@@ -19,28 +25,32 @@ export function applyTokenBudget(bundle: any, budget = DEFAULT_BUDGET_CHARS, sys
   // actually emits (`charactersBlock`/`locationsBlock`/`plotThreadsBlock`/
   // `relationshipsBlock`), so entity context was never trimmed and the budget
   // was effectively a no-op for real callers.
-  const RESERVED = new Set(['totalChars', 'truncated', 'systemPromptLength'])
+  const RESERVED = new Set(['totalTokens', 'truncated', 'systemPromptTokens'])
   const keys = Object.keys(truncated).filter(
     (k) => !RESERVED.has(k) && typeof truncated[k] === 'string'
   )
 
-  while (totalChars > effectiveBudget && keys.length > 0) {
-    keys.sort((a, b) => (truncated[a] || '').length - (truncated[b] || '').length)
+  // Cheapest correct approach: keep the block sizes we already measured rather
+  // than re-tokenizing every block on every pass of the loop.
+  const sizes = new Map<string, number>(keys.map((k) => [k, estimateTokens(truncated[k] || '')]))
+
+  while (totalTokens > effectiveBudget && keys.length > 0) {
+    keys.sort((a, b) => (sizes.get(a) || 0) - (sizes.get(b) || 0))
     const target = keys.pop() as string
     const current = truncated[target] || ''
     const reduced = truncateToLastSentence(current, Math.floor(current.length * 0.6))
-    const reduction = current.length - reduced.length
-    totalChars -= reduction
+    const reducedTokens = estimateTokens(reduced)
+    totalTokens -= (sizes.get(target) || 0) - reducedTokens
+    sizes.set(target, reducedTokens)
     truncated[target] = reduced
   }
 
-  const result = {
+  return {
     ...truncated,
-    totalChars,
-    truncated: totalChars > effectiveBudget,
-    systemPromptLength: overheadChars
+    totalTokens,
+    truncated: totalTokens > effectiveBudget,
+    systemPromptTokens: overheadTokens
   }
-  return result
 }
 
 function truncateToLastSentence(text: any, maxLength: any) {

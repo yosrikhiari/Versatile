@@ -3,6 +3,7 @@ import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { countWords } from '../utils/textUtils'
+import { estimateTokens } from '../services/ai/contextBudget'
 import {
   DOC_TYPES,
   getAllStoryDocuments,
@@ -29,8 +30,10 @@ const AUTHOR_ZONE_TEMPLATE = `# Story Context
 
 _Add anything the writer must honor: hard world rules, key character facts, tone, or what must NOT happen. This section is never overwritten by Rebuild._`
 
+// Was a local 4:1 character guess. The budgets here were already expressed in
+// tokens, so they only ever worked as well as that guess did.
 function tokenCount(str: any) {
-  return Math.ceil((str || '').length / 4)
+  return estimateTokens(str || '')
 }
 
 function truncateToBudget(content: any, maxTokens: any) {

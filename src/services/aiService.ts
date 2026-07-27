@@ -4,6 +4,10 @@ import { getApiKeyStorageKey } from '../config/storageKeys'
 import { useSettingsStore } from '../stores/settingsStore'
 import { decrypt } from './ollamaService'
 import { sanitizeJson } from './ai/aiHelpers'
+import { estimateTokens } from './ai/contextBudget'
+import { preloadTokenizer } from './ai/tokenizer'
+import { resolveMaxTokens, checkInputBudget } from './ai/modelBudget'
+import { recordObservedUsage } from './ai/tokenCalibration'
 import * as ollamaProvider from './providers/ollama'
 import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
@@ -365,6 +369,44 @@ async function withFallback<T>(executeOnProvider: (provider: string) => Promise<
   throw last.error
 }
 
+interface CallBudget {
+  inputTokens: number
+  maxTokens: number
+}
+
+/**
+ * Loads the exact tokenizer for `model` (once per encoding, then cached),
+ * measures the prompt, and derives max_tokens from the model's context window.
+ *
+ * Every provider used to send a flat `max_tokens: 4096` regardless of model or
+ * prompt size. On an 8K-window model a large prompt plus 4096 requested output
+ * overruns the window and the provider returns a hard 400; on a 200K-window
+ * model that same 4096 leaves most of the window unused.
+ */
+async function prepareCallBudget(
+  model: string,
+  systemPrompt: string,
+  prompt: string,
+  explicitMaxTokens?: number
+): Promise<CallBudget> {
+  // Resolves immediately once the encoding is in memory; never throws — a failed
+  // load just leaves counting on the character heuristic.
+  await preloadTokenizer(model)
+  const inputTokens = estimateTokens(systemPrompt) + estimateTokens(prompt)
+
+  const overflow = checkInputBudget(model, inputTokens)
+  if (overflow) {
+    // Warn rather than trim: only the caller that assembled this context knows
+    // which block is safe to drop. Silent truncation is how context bugs hide.
+    console.warn(
+      `[aiService] ${overflow.model}: input is ${overflow.inputTokens} tokens, ` +
+        `${overflow.overflowTokens} over the ${overflow.budget}-token budget`
+    )
+  }
+
+  return { inputTokens, maxTokens: resolveMaxTokens(model, inputTokens, explicitMaxTokens) }
+}
+
 export async function aiGenerate(prompt: string, systemPrompt: string, options: AiGenerateOptions = {}): Promise<string> {
   const feature = options.feature || FEATURES.CONTENT
   const config = resolveOptimalConfig(feature, options)
@@ -399,16 +441,18 @@ export async function aiGenerate(prompt: string, systemPrompt: string, options: 
         )
       }
 
+      const budget = await prepareCallBudget(model, systemPrompt, prompt, options.maxTokens)
+
       const providerOptions: ProviderOptions = {
         apiKey: apiKey || undefined,
         signal: options.signal,
         temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        maxTokens: budget.maxTokens,
         stop: options.stop,
         timeout: options.timeout
       }
 
-      async function trackGenerate(providerName: string, modelName: string, opts: ProviderOptions): Promise<string> {
+      async function trackGenerate(providerName: string, modelName: string, opts: ProviderOptions, estimatedInputTokens: number): Promise<string> {
         providerBudget.check(providerName)
         const pm = providerName === provider ? providerModule : PROVIDER_MAP[providerName]!
         const trace = makeLangfuseTrace('ai-generate', feature, providerName, modelName)
@@ -426,6 +470,10 @@ export async function aiGenerate(prompt: string, systemPrompt: string, options: 
           const durationMs = performance.now() - start
           endLangfuseGen(trace, text, usage, modelName, durationMs)
           if (usage) {
+            // The provider just told us what our prompt really cost. That closes
+            // the loop on the local estimate for free — no reference corpus, no
+            // calibration job, and it re-converges by itself if the model changes.
+            recordObservedUsage(modelName, estimatedInputTokens, usage.promptTokens)
             const cost = computeCost(modelName, usage)
             // Flattened: the store's token totals read promptTokens/completionTokens
             // off the entry directly, so a nested `usage` object summed to nothing.
@@ -452,20 +500,28 @@ export async function aiGenerate(prompt: string, systemPrompt: string, options: 
 
       return await withFallback(async (fbProvider) => {
         if (fbProvider === provider) {
-          return await trackGenerate(provider, model, providerOptions)
+          return await trackGenerate(provider, model, providerOptions, budget.inputTokens)
         }
         const fbKey = await getApiKey(fbProvider)
         if (fbProvider !== PROVIDERS.OLLAMA && !fbKey) {
           throw new Error(`${fbProvider} API key not configured`)
         }
         const fbModel = defaultModelForProvider(fbProvider)!
-        return await trackGenerate(fbProvider, fbModel, {
-          apiKey: fbKey || undefined,
-          signal: options.signal,
-          temperature: options.temperature,
-          maxTokens: options.maxTokens,
-          timeout: options.timeout
-        })
+        // Re-measured against the fallback model: it has its own context window,
+        // and often its own tokenizer family.
+        const fbBudget = await prepareCallBudget(fbModel, systemPrompt, prompt, options.maxTokens)
+        return await trackGenerate(
+          fbProvider,
+          fbModel,
+          {
+            apiKey: fbKey || undefined,
+            signal: options.signal,
+            temperature: options.temperature,
+            maxTokens: fbBudget.maxTokens,
+            timeout: options.timeout
+          },
+          fbBudget.inputTokens
+        )
       }, provider)
     }
   )
@@ -485,11 +541,13 @@ export async function aiStream(prompt: string, systemPrompt: string, onChunk?: (
     throw new Error(`${provider} API key not configured. Please add it in Settings > AI Providers.`)
   }
 
+  const budget = await prepareCallBudget(model, systemPrompt, prompt, options.maxTokens)
+
   const providerOptions: ProviderOptions = {
     apiKey: apiKey || undefined,
     signal: options.signal,
     temperature: options.temperature,
-    maxTokens: options.maxTokens,
+    maxTokens: budget.maxTokens,
     stop: options.stop,
     timeout: options.timeout
   }
@@ -543,13 +601,14 @@ export async function aiStream(prompt: string, systemPrompt: string, onChunk?: (
         throw new Error(`${fbProvider} API key not configured`)
       }
       const fbModel = defaultModelForProvider(fbProvider)!
+      const fbBudget = await prepareCallBudget(fbModel, systemPrompt, prompt, options.maxTokens)
       return await slotFor(fbProvider)(() =>
         latencyBudget.wrap(feature, () =>
           PROVIDER_MAP[fbProvider]!.stream(prompt, systemPrompt, fbModel, trackedOnChunk, {
             apiKey: fbKey || undefined,
             signal: options.signal,
             temperature: options.temperature,
-            maxTokens: options.maxTokens,
+            maxTokens: fbBudget.maxTokens,
             timeout: options.timeout
           })
         )()
@@ -586,6 +645,7 @@ export async function aiGenerateStructured(prompt: string, systemPrompt: string,
   if (schema && hasKey && typeof providerModule.generateStructured === 'function') {
     const trace = makeLangfuseTrace('ai-generate-structured', feature, provider, model)
     const start = performance.now()
+    const budget = await prepareCallBudget(model, systemPrompt, prompt, options.maxTokens)
     try {
       providerBudget.check(provider)
       const result = await withRetry(
@@ -596,7 +656,7 @@ export async function aiGenerateStructured(prompt: string, systemPrompt: string,
                 apiKey: apiKey || undefined,
                 signal: options.signal,
                 temperature: options.temperature,
-                maxTokens: options.maxTokens,
+                maxTokens: budget.maxTokens,
                 timeout: options.timeout,
                 schemaName: options.schemaName
               })
@@ -610,6 +670,7 @@ export async function aiGenerateStructured(prompt: string, systemPrompt: string,
         const durationMs = performance.now() - start
         endLangfuseGen(trace, JSON.stringify(data), usage, model, durationMs)
         if (usage) {
+          recordObservedUsage(model, budget.inputTokens, usage.promptTokens)
           const cost = computeCost(model, usage)
           useCostTrackingStore().logCost({
             model,

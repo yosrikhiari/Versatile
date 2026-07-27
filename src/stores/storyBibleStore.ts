@@ -165,7 +165,13 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     queueDocumentRegeneration(['world', 'relationships'])
   }
 
-  async function deleteLocationData(id: any, _projectId: any) {
+  async function deleteLocationData(id: any, projectId: any) {
+    await Promise.all([
+      deleteGraphEdgesByEntity(projectId, 'location', id),
+      removeEntityFromNodeInstances(projectId, 'location', id),
+      removeEntityFromNodePositions(projectId, 'location', id),
+      removeEntityFromNodeParents(projectId, 'location', id)
+    ])
     await deleteLocation(id)
     locations.value = locations.value.filter((l: any) => l.id !== id)
     queueDocumentRegeneration(['world', 'relationships'])
@@ -230,7 +236,13 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     queueDocumentRegeneration(['timeline', 'relationships'])
   }
 
-  async function deletePlotThreadData(id: any, _projectId: any) {
+  async function deletePlotThreadData(id: any, projectId: any) {
+    await Promise.all([
+      deleteGraphEdgesByEntity(projectId, 'plotThread', id),
+      removeEntityFromNodeInstances(projectId, 'plotThread', id),
+      removeEntityFromNodePositions(projectId, 'plotThread', id),
+      removeEntityFromNodeParents(projectId, 'plotThread', id)
+    ])
     await deletePlotThread(id)
     plotThreads.value = plotThreads.value.filter((t: any) => t.id !== id)
     queueDocumentRegeneration(['timeline', 'relationships'])

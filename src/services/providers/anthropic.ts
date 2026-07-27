@@ -1,4 +1,5 @@
 import { PROVIDER_BASE_URLS, PROVIDERS } from '../../config/ai'
+import { DEFAULT_MAX_OUTPUT_TOKENS } from '../../config/generationLimits'
 
 interface AnthropicOptions {
   apiKey?: string
@@ -65,7 +66,7 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
         model: model,
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: options.maxTokens || 4096,
+        max_tokens: options.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
         temperature: options.temperature ?? 0.7
       })
     })
@@ -114,7 +115,7 @@ export async function stream(prompt: string, systemPrompt: string, model: string
         model: model,
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: options.maxTokens || 4096,
+        max_tokens: options.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
         temperature: options.temperature ?? 0.7,
         stream: true
       })
@@ -191,7 +192,7 @@ export async function generateStructured(prompt: string, systemPrompt: string, m
         model: model,
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: options.maxTokens || 4096,
+        max_tokens: options.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
         temperature: options.temperature ?? 0.7,
         tools: [
           {

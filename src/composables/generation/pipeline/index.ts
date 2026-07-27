@@ -3,12 +3,14 @@ import { shapeContext } from '../shaping'
 import { buildPrompt } from './promptBuilder'
 import { executeGeneration } from './modelRunner'
 import { entitySchemaRegistry } from '../schemas'
-import { DEFAULT_BUDGET_CHARS } from '../shaping/tokenBudget'
+import { DEFAULT_BUDGET_TOKENS } from '../shaping/tokenBudget'
 
+// Tokens, matching the unit `applyTokenBudget` now works in. Values are the old
+// character budgets (8000/6000/5000) at the 4:1 ratio they were chosen under.
 const ENTITY_BUDGET: Record<string, number> = {
-  character: 8000,
-  location: 6000,
-  plotThread: 5000
+  character: 2000,
+  location: 1500,
+  plotThread: 1250
 }
 
 export interface GenerateEntityOptions {
@@ -31,7 +33,7 @@ export async function generateEntity(
     manuscriptContext: options.manuscriptContext || null
   })
 
-  const tokenBudget = options.tokenBudget ?? ENTITY_BUDGET[entityType] ?? DEFAULT_BUDGET_CHARS
+  const tokenBudget = options.tokenBudget ?? ENTITY_BUDGET[entityType] ?? DEFAULT_BUDGET_TOKENS
 
   const shapedBundle = shapeContext(rawContext, {
     tokenBudget,

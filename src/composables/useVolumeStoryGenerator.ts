@@ -50,7 +50,7 @@ import {
 import {
   buildExistingEntitiesBlob,
   buildSceneEntitiesBlob,
-  EMBEDDING_CONTEXT_MAX_CHARS,
+  EMBEDDING_CONTEXT_MAX_TOKENS,
   PROSE_EXCERPT_MAX_SCENES,
   buildEmbeddingContext,
   selectRelevantPriorScenes,

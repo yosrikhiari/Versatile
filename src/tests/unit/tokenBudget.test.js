@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { applyTokenBudget } from '@/composables/generation/shaping/tokenBudget'
+import {
+  applyTokenBudget,
+  DEFAULT_BUDGET_TOKENS
+} from '@/composables/generation/shaping/tokenBudget'
+
+// These exercise the heuristic path deliberately: no tokenizer is preloaded, so
+// countTokens falls back to the character ratio. That is the behaviour every
+// caller gets before the first generation of a session, and it must stay sane.
 
 describe('applyTokenBudget', () => {
   it('returns bundle unchanged when within budget', () => {
@@ -7,7 +14,8 @@ describe('applyTokenBudget', () => {
     const result = applyTokenBudget(bundle, 1000)
     expect(result.entitiesBlock).toBe('hello')
     expect(result.truncated).toBe(false)
-    expect(result.totalChars).toBe(14)
+    // 2 + 2 + 1 tokens
+    expect(result.totalTokens).toBe(5)
   })
 
   it('truncates blocks when over budget', () => {
@@ -16,10 +24,10 @@ describe('applyTokenBudget', () => {
       relationshipBlock: 'B'.repeat(5000),
       manuscriptBlock: 'C'.repeat(5000)
     }
-    const result = applyTokenBudget(bundle, 8000)
+    const result = applyTokenBudget(bundle, 2000)
     expect(result.truncated).toBe(true)
-    expect(result.totalChars).toBeGreaterThan(0)
-    expect(result.totalChars).toBeLessThan(15000)
+    expect(result.totalTokens).toBeGreaterThan(0)
+    expect(result.totalTokens).toBeLessThan(3750)
   })
 
   it('marks truncated when budget cannot be fully met', () => {
@@ -28,23 +36,32 @@ describe('applyTokenBudget', () => {
       relationshipBlock: 'B'.repeat(5000),
       manuscriptBlock: 'C'.repeat(5000)
     }
-    const result = applyTokenBudget(bundle, 1000)
+    const result = applyTokenBudget(bundle, 250)
     expect(result.truncated).toBe(true)
-    expect(result.totalChars).toBeGreaterThan(1000)
+    expect(result.totalTokens).toBeGreaterThan(250)
   })
 
   it('handles empty blocks', () => {
     const bundle = { entitiesBlock: '', relationshipBlock: '' }
     const result = applyTokenBudget(bundle, 100)
     expect(result.truncated).toBe(false)
-    expect(result.totalChars).toBe(0)
+    expect(result.totalTokens).toBe(0)
   })
 
-  it('ignores totalChars and truncated keys in budget calc', () => {
-    const bundle = { entitiesBlock: 'abc', totalChars: 99999, truncated: true }
+  it('ignores totalTokens and truncated keys in budget calc', () => {
+    const bundle = { entitiesBlock: 'abc', totalTokens: 99999, truncated: true }
     const result = applyTokenBudget(bundle, 100)
-    expect(result.totalChars).toBe(3)
+    expect(result.totalTokens).toBe(1)
     expect(result.truncated).toBe(false)
+  })
+
+  it('charges the system prompt against the same budget', () => {
+    const bundle = { entitiesBlock: 'A'.repeat(4000) }
+    const withoutPrompt = applyTokenBudget(bundle, 1200)
+    const withPrompt = applyTokenBudget(bundle, 1200, 'S'.repeat(4000))
+    expect(withoutPrompt.truncated).toBe(false)
+    expect(withPrompt.truncated).toBe(true)
+    expect(withPrompt.systemPromptTokens).toBe(1000)
   })
 
   it('truncates the real shapeContext bundle keys, not a hardcoded subset', () => {
@@ -59,17 +76,17 @@ describe('applyTokenBudget', () => {
       relationshipsBlock: 'R'.repeat(3000),
       manuscriptBlock: 'M'.repeat(5000)
     }
-    const before = Object.values(bundle).reduce((n, v) => n + v.length, 0)
-    const result = applyTokenBudget(bundle, 8000)
+    const before = Math.ceil(Object.values(bundle).reduce((n, v) => n + v.length, 0) / 4)
+    const result = applyTokenBudget(bundle, 2000)
     expect(result.truncated).toBe(true)
-    expect(result.totalChars).toBeLessThan(before)
-    expect(result.totalChars).toBeLessThan(15000)
+    expect(result.totalTokens).toBeLessThan(before)
   })
 
-  it('uses default budget of 6000', () => {
+  it('defaults to DEFAULT_BUDGET_TOKENS', () => {
+    expect(DEFAULT_BUDGET_TOKENS).toBe(1500)
     const bundle = { entitiesBlock: 'A'.repeat(3000), relationshipBlock: 'B'.repeat(3000) }
     const result = applyTokenBudget(bundle)
     expect(result.truncated).toBe(false)
-    expect(result.totalChars).toBe(6000)
+    expect(result.totalTokens).toBe(1500)
   })
 })

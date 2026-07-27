@@ -214,11 +214,11 @@ function timeAgo(dateStr) {
                 >
                   <button
                     v-if="branch.id !== branchStore.activeBranchId"
-                    class="h-8 px-3 rounded-md text-xs font-medium text-text-secondary border border-border-subtle hover:bg-surface-hover hover:text-text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    class="grid place-items-center w-8 h-8 rounded-md text-text-hint hover:text-accent hover:bg-surface-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     title="Switch to this branch"
                     @click="handleSwitch(branch.id)"
                   >
-                    Switch
+                    <BaseIcon name="arrow-left-right" :size="15" />
                   </button>
                   <button
                     class="grid place-items-center w-8 h-8 rounded-md text-text-hint hover:text-text-primary hover:bg-surface-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
