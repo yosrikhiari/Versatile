@@ -86,7 +86,13 @@ export function sanitizeJson(raw: unknown): Record<string, unknown> | null {
   }
 }
 
-export function sanitizeJsonResponse(response: unknown): Record<string, unknown> | null {
+/**
+ * `T` is the caller's expected parse shape — an assertion about what the model
+ * was asked to emit, not a validated guarantee.
+ */
+export function sanitizeJsonResponse<T = Record<string, unknown>>(
+  response: unknown
+): T | null {
   if (!response || typeof response !== 'string') {
     return null
   }
@@ -135,7 +141,7 @@ export function sanitizeJsonResponse(response: unknown): Record<string, unknown>
       }
     }
 
-    return flattened
+    return flattened as T
   } catch {
     return null
   }

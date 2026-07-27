@@ -4,16 +4,17 @@ export async function fetchUrlText(
   url: string,
   storyId: string
 ): Promise<{ text: string; title: string; statusCode: number }> {
-  const { title, html, statusCode } = await api(`/story/${storyId}/research-document/fetch-url`, {
-    method: 'POST',
-    body: { url }
-  })
+  const result = await api<{ title: string; html: string; statusCode: number }>(
+    `/story/${storyId}/research-document/fetch-url`,
+    { method: 'POST', body: { url } }
+  )
+  const { title, html, statusCode } = result!
 
   if (statusCode >= 400) {
     throw new Error(`Server returned ${statusCode} for ${url}`)
   }
 
-  let text = html
+  const text = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
