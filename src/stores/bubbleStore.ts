@@ -39,6 +39,16 @@ export const useBubbleStore = defineStore('bubble', () => {
       }
     }
     const elementId = await ms.addStoryElementData(projectId, data)
+
+    // That write appended to `storyElements`, and EditorView watches its length
+    // to mirror elements back into bubbles. That watcher can flush while this
+    // await is pending, in which case it has already built the bubble for this
+    // element — pushing here as well produced two bubbles from one drop.
+    const alreadyAdded = bubbles.value.find(
+      (b) => b.elementId === elementId || b.characterId === character.id
+    )
+    if (alreadyAdded) return alreadyAdded.id
+
     const id = nextId++
     bubbles.value.push({
       id,

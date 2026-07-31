@@ -6,6 +6,8 @@ import {
   deleteVolume,
   assignSectionToVolume,
   removeSectionFromVolume,
+  getSectionIdsByVolume,
+  unassignAllSectionsFromVolume,
   getVolumeEntityCount
 } from '../services/dbService'
 import { useLoading } from '../utils/useLoading'
@@ -51,9 +53,13 @@ export const useVolumeStore = defineStore('volume', () => {
     load: loadVolumes
   } = useLoading<Volume, [string]>(async (projectId: string) => {
     const vols: Volume[] = await getVolumes(projectId)
+    // Membership is derived from the sections, which are where it is actually
+    // persisted. Reading the volume row's own `sectionIds` gave an empty list on
+    // every reload, because nothing had ever written it.
+    const byVolume = await getSectionIdsByVolume(projectId)
     vols.forEach((v) => {
-      if (v.chapterIds && !v.sectionIds) v.sectionIds = v.chapterIds
       delete v.chapterIds
+      v.sectionIds = byVolume[v.id] || []
     })
     await Promise.all(
       vols.map(async (vol) => {
@@ -84,12 +90,10 @@ export const useVolumeStore = defineStore('volume', () => {
   }
 
   async function deleteVolumeData(id: string, _projectId: string) {
-    const volume = volumes.value.find((v) => v.id === id)
-    if (volume?.sectionIds) {
-      for (const sectionId of volume.sectionIds) {
-        await removeSectionFromVolume(sectionId)
-      }
-    }
+    // Detach by querying the sections rather than trusting the in-memory list:
+    // on a freshly loaded project that list was empty, and every section was
+    // left carrying a volumeId pointing at a volume that no longer existed.
+    await unassignAllSectionsFromVolume(id)
     await deleteVolume(id)
     volumes.value = volumes.value.filter((v) => v.id !== id)
   }

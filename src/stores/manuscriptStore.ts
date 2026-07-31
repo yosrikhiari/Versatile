@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { toPlain } from '../utils/toPlain'
 import {
   getSections,
   addSection,
@@ -13,6 +14,7 @@ import {
   reorderSections,
   getStoryElements,
   addStoryElement,
+  addStoryElementsBatch,
   updateStoryElement,
   deleteStoryElement,
   getCharacterRelationships,
@@ -91,7 +93,12 @@ export const useManuscriptStore = defineStore('manuscript', () => {
       const branchId = (branchStore as any).activeBranch?.id
       sections.value = await getSections(projectId, branchId)
       subsections.value = await getSubsections(projectId, null, branchId)
-      storyElements.value = await getStoryElements(projectId)
+      // Sorted by the canvas arrangement the author saved. Reading them back in
+      // raw insertion order silently discarded any reordering they had done.
+      // Elements predating `order` sort last but keep their relative order.
+      storyElements.value = (await getStoryElements(projectId)).sort(
+        (a: any, b: any) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
+      )
       relationships.value = await getCharacterRelationships(projectId)
       import('../composables/useManuscriptContext')
         .then(({ warmEmbeddingCache }) => warmEmbeddingCache(projectId))
@@ -110,14 +117,14 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     const branchStore = useBranchStore()
     const branchId = (branchStore as any).activeBranch?.id
     const order = sections.value.length
-    const id = await addSection(projectId, { ...data, order, status: 'planning', branchId })
+    const id = await addSection(projectId, toPlain({ ...data, order, status: 'planning', branchId }))
     sections.value.push({ id, projectId, order, status: 'planning', ...data })
     queueStyleGuideRegen()
     return id
   }
 
   async function updateSectionData(id: any, data: any, _projectId: any) {
-    await updateSection(id, data)
+    await updateSection(id, toPlain(data))
     const index = sections.value.findIndex((c) => c.id === id)
     if (index !== -1) {
       sections.value[index] = { ...sections.value[index], ...data }
@@ -149,14 +156,14 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     const branchId = (branchStore as any).activeBranch?.id
     const sectionSubsections = subsections.value.filter((s) => s.sectionId === sectionId)
     const order = sectionSubsections.length
-    const id = await addSubsection(projectId, { ...data, sectionId, order, branchId })
+    const id = await addSubsection(projectId, toPlain({ ...data, sectionId, order, branchId }))
     subsections.value.push({ id, projectId, sectionId, order, ...data })
     queueStyleGuideRegen()
     return id
   }
 
   async function updateSubsectionData(id: any, data: any, _projectId: any) {
-    await updateSubsection(id, data)
+    await updateSubsection(id, toPlain(data))
     const index = subsections.value.findIndex((s) => s.id === id)
     if (index !== -1) {
       subsections.value[index] = { ...subsections.value[index], ...data }
@@ -182,6 +189,21 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     const id = await addStoryElement(projectId, data)
     storyElements.value.push({ id, projectId, ...data })
     return id
+  }
+
+  /**
+   * Add the canvas elements a generation run produced.
+   *
+   * Additive by construction — `planCanvasElements` has already filtered out
+   * anything already on the canvas, so this never touches the author's layout.
+   */
+  async function addStoryElementsBatchData(projectId: any, dataList: any[]) {
+    if (!Array.isArray(dataList) || dataList.length === 0) return []
+    const ids = await addStoryElementsBatch(projectId, dataList)
+    ids.forEach((id: any, i: any) => {
+      storyElements.value.push({ id, projectId, ...dataList[i] })
+    })
+    return ids
   }
 
   async function updateStoryElementData(id: any, data: any, _projectId?: any) {
@@ -259,6 +281,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     deleteSubsectionData,
     reorderSubsectionsData,
     addStoryElementData,
+    addStoryElementsBatchData,
     updateStoryElementData,
     deleteStoryElementData,
     addRelationshipData,

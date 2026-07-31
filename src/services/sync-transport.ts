@@ -1,3 +1,5 @@
+import { guardSyncPush } from '../guardrails/integration/storageGuardrails'
+
 type ApiFn = (url: string, options?: { method?: string; body?: unknown }) => Promise<unknown>
 type FindSyncConfig = (tableName: string) => SyncEntityConfig | undefined
 
@@ -60,6 +62,11 @@ export class SyncTransport {
       .where('syncStatus')
       .anyOf('pending-create', 'pending-update')
       .toArray()
+
+    // Single choke point for every outbound row. Reports orphaned or malformed
+    // rows to the guardrail feed; never blocks — sync runs on a background
+    // timer, so aborting here would strand local changes with no visible cause.
+    guardSyncPush(tableName, pendings, { entryPoint: `sync-transport.pushTable.${tableName}` })
 
     for (const local of pendings) {
       await this.pushOne(config, local, storyApiId, idMap, db)

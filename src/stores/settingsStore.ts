@@ -24,6 +24,17 @@ const DEFAULT_SETTINGS = {
   aiProvider: PROVIDER_DEFAULT,
   aiProviderFallback: '',
   aiFallbackChain: [],
+  // Keep every model call on this machine.
+  //
+  // Local-first is already the intent (`PROVIDER_DEFAULT` is Ollama), but that
+  // only set the *global* provider — the routing matrix still sent individual
+  // features to hosted models whenever a call passed a complexity, which the
+  // scene writer does every time. That silently made a local-only user's novel
+  // depend on an Anthropic key they never had.
+  //
+  // This is the switch that says so out loud, so nothing has to infer intent
+  // from whether an API key happens to be missing.
+  localOnly: true,
   embeddingProvider: EMBEDDING_DEFAULTS.provider,
   embeddingModel: EMBEDDING_DEFAULTS.model,
   embeddingThreshold: EMBEDDING_DEFAULTS.threshold
@@ -37,6 +48,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const aiProvider = ref(DEFAULT_SETTINGS.aiProvider)
   const aiProviderFallback = ref(DEFAULT_SETTINGS.aiProviderFallback)
   const aiFallbackChain = ref<any[]>(DEFAULT_SETTINGS.aiFallbackChain)
+  const localOnly = ref(DEFAULT_SETTINGS.localOnly)
   const embeddingProvider = ref(DEFAULT_SETTINGS.embeddingProvider)
   const embeddingModel = ref(DEFAULT_SETTINGS.embeddingModel)
   const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
@@ -81,6 +93,9 @@ export const useSettingsStore = defineStore('settings', () => {
         } else if (data.aiProviderFallback && data.aiProviderFallback !== 'none') {
           aiFallbackChain.value = [data.aiProviderFallback]
         }
+        // Explicit `!== undefined`: `false` is a real choice a user made, and
+        // truthiness would silently reset it to the default on every load.
+        if (data.localOnly !== undefined) localOnly.value = !!data.localOnly
         if (data.embeddingProvider) embeddingProvider.value = data.embeddingProvider
         if (data.embeddingModel) embeddingModel.value = data.embeddingModel
         if (data.embeddingThreshold !== undefined)
@@ -118,6 +133,7 @@ export const useSettingsStore = defineStore('settings', () => {
           aiProvider: aiProvider.value,
           aiProviderFallback: aiProviderFallback.value,
           aiFallbackChain: aiFallbackChain.value,
+          localOnly: localOnly.value,
           embeddingProvider: embeddingProvider.value,
           embeddingModel: embeddingModel.value,
           embeddingThreshold: embeddingThreshold.value
@@ -166,6 +182,11 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setAIFallbackChain(chain: any) {
     aiFallbackChain.value = chain
+    saveSettings()
+  }
+
+  function setLocalOnly(value: any) {
+    localOnly.value = !!value
     saveSettings()
   }
 
@@ -255,6 +276,7 @@ export const useSettingsStore = defineStore('settings', () => {
     aiProvider.value = DEFAULT_SETTINGS.aiProvider
     aiProviderFallback.value = DEFAULT_SETTINGS.aiProviderFallback
     aiFallbackChain.value = DEFAULT_SETTINGS.aiFallbackChain
+    localOnly.value = DEFAULT_SETTINGS.localOnly
     embeddingProvider.value = DEFAULT_SETTINGS.embeddingProvider
     embeddingModel.value = DEFAULT_SETTINGS.embeddingModel
     embeddingThreshold.value = DEFAULT_SETTINGS.embeddingThreshold
@@ -305,6 +327,7 @@ export const useSettingsStore = defineStore('settings', () => {
     aiProvider,
     aiProviderFallback,
     aiFallbackChain,
+    localOnly,
     embeddingProvider,
     embeddingModel,
     embeddingThreshold,
@@ -320,6 +343,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setAIProvider,
     setAIProviderFallback,
     setAIFallbackChain,
+    setLocalOnly,
     setFeatureModel,
     getStoredApiKey,
     setStoredApiKey,

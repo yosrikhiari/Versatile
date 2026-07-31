@@ -9,6 +9,10 @@ vi.mock('@/services/dbService', () => ({
   deleteVolume: vi.fn(),
   assignSectionToVolume: vi.fn(),
   removeSectionFromVolume: vi.fn(),
+  // Membership is derived from the sections rather than stored on the volume
+  // row, so loading a volume now consults these.
+  getSectionIdsByVolume: vi.fn().mockResolvedValue({}),
+  unassignAllSectionsFromVolume: vi.fn().mockResolvedValue(0),
   getVolumeEntityCount: vi.fn().mockResolvedValue(0)
 }))
 
@@ -56,12 +60,18 @@ describe('volumeStore', () => {
     expect(mockDb.updateVolume).toHaveBeenCalledWith('v1', { name: 'Updated' })
   })
 
-  it('deletes a volume and removes chapters', async () => {
+  it('deletes a volume and detaches its chapters by querying them', async () => {
+    // Previously this walked the in-memory `sectionIds`. That list is only ever
+    // populated in the session that made the assignment, so on a freshly loaded
+    // project it was empty and the chapters were left holding a volumeId
+    // pointing at a volume that no longer existed. Detaching by query does not
+    // depend on what happens to be in memory — note this test seeds NO
+    // sectionIds, which is what a reload actually looks like.
     const store = useVolumeStore()
-    store.volumes = [{ id: 'v1', name: 'Vol', sectionIds: ['ch1', 'ch2'] }]
+    store.volumes = [{ id: 'v1', name: 'Vol', sectionIds: [] }]
     await store.deleteVolumeData('v1', 'p1')
     expect(store.volumes).toHaveLength(0)
-    expect(mockDb.removeSectionFromVolume).toHaveBeenCalledTimes(2)
+    expect(mockDb.unassignAllSectionsFromVolume).toHaveBeenCalledWith('v1')
     expect(mockDb.deleteVolume).toHaveBeenCalledWith('v1')
   })
 

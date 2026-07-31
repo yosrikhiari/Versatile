@@ -21,6 +21,7 @@ const WORKSPACE_TERMINOLOGY = WORKSPACE_TERMINOLOGY_RAW as Record<string, any>
 import { STORAGE_KEYS } from '../config/storageKeys'
 import { useLocalStorage } from '../utils/useLocalStorage'
 import { getSyncEngine } from '../services/sync-engine'
+import { useAuthStore } from './authStore'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 
 export const useProjectStore = defineStore('project', () => {
@@ -232,7 +233,17 @@ export const useProjectStore = defineStore('project', () => {
 
   async function createNewProject(name: any, category: any = '', description: any = '', blueprintId: any = null) {
     getSyncEngine().clearStoryId()
-    const id = await createProject(name, category, description)
+
+    // Owner must be stamped at creation. `createProject`'s `userId` defaults to
+    // null, and `getAllProjects(userId)` filters on it — so a project made here
+    // (onboarding, "Create new project") was written unowned and then vanished
+    // from the workspace list and the project switcher. It was only reachable
+    // by loading its id directly, which is why the header could name a project
+    // the switcher refused to show.
+    const authStore = useAuthStore()
+    const ownerId = authStore.localUser?.id ?? authStore.user?.id ?? null
+
+    const id = await createProject(name, category, description, ownerId)
     await loadProject(id)
 
     try {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useProjectStore } from '@/stores/projectStore'
+import { useAuthStore } from '@/stores/authStore'
 import * as dbService from '@/services/dbService'
 
 // Mock dbService
@@ -57,7 +58,32 @@ describe('projectStore', () => {
     expect(store.currentProjectId).toBe(mockProjectId)
     expect(store.currentProjectName).toBe('Test Project')
     expect(store.currentCategory).toBe('Fantasy')
-    expect(dbService.createProject).toHaveBeenCalledWith('Test Project', 'Fantasy', 'A test')
+    // The owner id is part of the call. Omitting it wrote the project with a
+    // null userId, and `getAllProjects(userId)` filters on that — so projects
+    // created this way disappeared from the workspace and the switcher.
+    expect(dbService.createProject).toHaveBeenCalledWith('Test Project', 'Fantasy', 'A test', null)
+  })
+
+  it('stamps the signed-in local user as the project owner', async () => {
+    const auth = useAuthStore()
+    auth.localUser = { id: 42, username: 'writer', displayName: 'Writer' }
+
+    const store = useProjectStore()
+    dbService.createProject.mockResolvedValue('p-42')
+    dbService.getProject.mockResolvedValue({
+      id: 'p-42',
+      name: 'Owned',
+      category: '',
+      description: ''
+    })
+    dbService.getManuscript.mockResolvedValue(null)
+    dbService.getDailyGoal.mockResolvedValue(500)
+    dbService.getStreakData.mockResolvedValue({ currentStreak: 0, longestStreak: 0 })
+    dbService.getLastSessionData.mockResolvedValue(null)
+
+    await store.createNewProject('Owned', '', '')
+
+    expect(dbService.createProject).toHaveBeenCalledWith('Owned', '', '', 42)
   })
 
   it('should update content and recalculate word count', () => {

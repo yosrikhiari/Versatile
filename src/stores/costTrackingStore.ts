@@ -11,6 +11,8 @@ interface CostLogEntry {
   provider?: string
   /** Which AI feature incurred the cost (FEATURES.*). */
   feature?: string
+  /** Pipeline phase (e.g. 'story-generation', 'polish-analysis', 'spark'). */
+  phase?: string
   cost: number
   promptTokens?: number
   completionTokens?: number
@@ -96,6 +98,48 @@ export const useCostTrackingStore = defineStore('costTracking', () => {
     return map
   })
 
+  const breakdownByFeature = computed(() => {
+    const map: StringMap<BreakdownEntry> = {}
+    for (const e of sessionLog.value) {
+      const key = e.feature || 'unknown'
+      if (!map[key]) map[key] = { count: 0, totalCost: 0, totalTokens: 0 }
+      map[key].count++
+      map[key].totalCost += e.cost
+      map[key].totalTokens += (e.totalTokens || 0)
+    }
+    return map
+  })
+
+  const breakdownByPhase = computed(() => {
+    const map: StringMap<BreakdownEntry> = {}
+    for (const e of sessionLog.value) {
+      const key = e.phase || 'unknown'
+      if (!map[key]) map[key] = { count: 0, totalCost: 0, totalTokens: 0 }
+      map[key].count++
+      map[key].totalCost += e.cost
+      map[key].totalTokens += (e.totalTokens || 0)
+    }
+    return map
+  })
+
+  function displayCostBreakdown() {
+    console.table({
+      'Total Cost': `$${sessionTotal.value.toFixed(6)}`,
+      'By Model': Object.fromEntries(
+        Object.entries(breakdownByModel.value).map(([k, v]) => [k, `$${v.totalCost.toFixed(6)} (${v.count} calls)`])
+      ),
+      'By Provider': Object.fromEntries(
+        Object.entries(breakdownByProvider.value).map(([k, v]) => [k, `$${v.totalCost.toFixed(6)} (${v.count} calls)`])
+      ),
+      'By Feature': Object.fromEntries(
+        Object.entries(breakdownByFeature.value).map(([k, v]) => [k, `$${v.totalCost.toFixed(6)} (${v.count} calls)`])
+      ),
+      'By Phase': Object.fromEntries(
+        Object.entries(breakdownByPhase.value).map(([k, v]) => [k, `$${v.totalCost.toFixed(6)} (${v.count} calls)`])
+      )
+    })
+  }
+
   function clearSession() {
     sessionLog.value = []
     localStorage.removeItem(STORAGE_KEY)
@@ -110,6 +154,9 @@ export const useCostTrackingStore = defineStore('costTracking', () => {
     totalTokens,
     breakdownByModel,
     breakdownByProvider,
+    breakdownByFeature,
+    breakdownByPhase,
+    displayCostBreakdown,
     clearSession
   }
 })

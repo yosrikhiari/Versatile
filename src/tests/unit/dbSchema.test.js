@@ -11,7 +11,9 @@ const EXPECTED = {
   aiResponseCache: 'hash | [provider+model+temperature+feature], createdAt',
   annotations: '++id | original, paragraphIndex, projectId, reason, status, suggestion, type',
   authorProfile: '++id | projectId',
-  branches: '++id | createdAt, description, name, projectId, sourceBranchId, status, updatedAt',
+  // v42 added syncStatus + lastSyncedAt so branches participate in backend sync.
+  branches:
+    '++id | createdAt, description, lastSyncedAt, name, projectId, sourceBranchId, status, syncStatus, updatedAt',
   characterRelationships:
     '++id | apiId, fromCharacterId, lastSyncedAt, notes, projectId, syncStatus, toCharacterId, type',
   characters:
@@ -20,6 +22,8 @@ const EXPECTED = {
   dailyGoals: '++id | [projectId+date], date, projectId',
   dialogueIndex: '++id | [projectId+speakerId], paragraphIndex, projectId, sectionId, speakerId',
   embeddingCache: 'hash | createdAt',
+  // v43: pairwise draft ranking (see services/db-preferences.ts).
+  evalPreferences: '++id | [projectId+sceneId], loserId, projectId, sceneId, timestamp, winnerId',
   evalResults:
     '++id | [projectId+evalType], [projectId+sceneId+evalType], [projectId+sceneId], evalType, projectId, sceneId, score, timestamp',
   genRuns: '++id | &projectId, updatedAt',
@@ -83,7 +87,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(41)
+    expect(verno).toBe(43)
   })
 
   it('has exactly the expected set of tables', () => {

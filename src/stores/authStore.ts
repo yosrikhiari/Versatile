@@ -6,6 +6,7 @@ import { disconnect as disconnectGeneration } from '../services/signalrService'
 import { disconnect as disconnectCollaboration } from '../services/collaborationService'
 import { db } from '../services/db-core'
 import { sha256 } from '../utils/hash'
+import { clearSessionCryptoKey } from '../services/ollamaService'
 
 const LOCAL_USER_KEY = 'versatile_local_user'
 
@@ -210,6 +211,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.warn('[authStore] Logout request failed; clearing local auth anyway:', err)
     }
+    clearSessionCryptoKey()
     clearAuth()
     destroySyncEngine()
     user.value = null
