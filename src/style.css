@@ -8,140 +8,207 @@
 @layer base {
   :root {
     /* === Versatile Design Tokens v3 — Manuscript Mono === */
-    /* Near-monochrome neutral foundation, single cool slate-blue accent. */
-    --vers-bg-base: #121214; /* canvas / manuscript surface (darkest) */
-    --vers-bg-panel: #1a1a1d; /* sidebar, header, side panels (used sparingly) */
-    --vers-bg-canvas: #121214; /* writing column — same as base, sits on canvas */
-    --vers-bg-hover: #222226; /* hover wells */
-    --vers-bg-elevated: #26262b; /* dropdowns, modals */
+    /* Near-monochrome neutral foundation, single cool slate-blue accent.
+       Every themeable color is authored once as a SPACE-SEPARATED rgb triplet;
+       the named token derives from it. The triplet is what makes Tailwind's
+       `<alpha-value>` work — `bg-accent/15`, `hover:bg-success/20` and friends
+       compile to `rgb(var(--vers-…-rgb) / .15)`. Authoring the hex directly
+       (as this file did before) silently dropped every one of those tints. */
+
+    /* Surfaces */
+    --vers-bg-base-rgb: 18 18 20;
+    --vers-bg-panel-rgb: 26 26 29;
+    --vers-bg-canvas-rgb: 18 18 20;
+    --vers-bg-hover-rgb: 34 34 38;
+    --vers-bg-elevated-rgb: 38 38 43;
+    --vers-bg-base: rgb(var(--vers-bg-base-rgb)); /* canvas / manuscript surface (darkest) */
+    --vers-bg-panel: rgb(var(--vers-bg-panel-rgb)); /* sidebar, header, side panels */
+    --vers-bg-canvas: rgb(var(--vers-bg-canvas-rgb)); /* writing column — sits on canvas */
+    --vers-bg-hover: rgb(var(--vers-bg-hover-rgb)); /* hover wells */
+    --vers-bg-elevated: rgb(var(--vers-bg-elevated-rgb)); /* dropdowns, modals */
+
+    /* Borders — intrinsically alpha, no triplet form */
     --vers-border-subtle: rgba(255, 255, 255, 0.07); /* hairline, not solid */
-    --vers-border-focus: #6e8bb5;
     --vers-border: rgba(255, 255, 255, 0.12);
-    --vers-accent-primary: #6e8bb5; /* cool slate-blue, used rarely */
-    --vers-accent-primary-rgb: 110, 139, 181;
-    --vers-accent-secondary: #4f6e96;
-    --vers-text-primary: #e6e6e2;
-    --vers-text-secondary: #a2a29b;
-    --vers-text-muted: #82827a; /* WCAG AA: 4.83:1 on bg-base (was #6e6e67 @ 3.64) */
-    --vers-text-faint: #44443e; /* decorative only — never used for body text */
-    --vers-text-on-accent: #ffffff;
-    --vers-glow-loading-rgb: 110, 139, 181;
+    --vers-border-focus: rgb(var(--vers-accent-primary-rgb));
+
+    /* Accent */
+    --vers-accent-primary-rgb: 110 139 181; /* cool slate-blue, used rarely */
+    --vers-accent-secondary-rgb: 79 110 150;
+    --vers-accent-hover-rgb: 132 160 200;
+    --vers-accent-primary: rgb(var(--vers-accent-primary-rgb));
+    --vers-accent-secondary: rgb(var(--vers-accent-secondary-rgb));
+    --vers-accent-hover: rgb(var(--vers-accent-hover-rgb));
+
+    /* Text */
+    --vers-text-primary-rgb: 230 230 226;
+    --vers-text-secondary-rgb: 162 162 155;
+    --vers-text-muted-rgb: 130 130 122; /* WCAG AA: 4.83:1 on bg-base */
+    --vers-text-faint-rgb: 68 68 62; /* decorative only — never body text */
+    --vers-text-on-accent-rgb: 18 18 20; /* dark-on-accent clears AA; white does not */
+    --vers-text-primary: rgb(var(--vers-text-primary-rgb));
+    --vers-text-secondary: rgb(var(--vers-text-secondary-rgb));
+    --vers-text-muted: rgb(var(--vers-text-muted-rgb));
+    --vers-text-faint: rgb(var(--vers-text-faint-rgb));
+    --vers-text-on-accent: rgb(var(--vers-text-on-accent-rgb));
 
     /* Graph entity type colors — muted, on-brand (Manuscript Mono, no purple) */
-    --vers-entity-character: #6e8bb5; /* slate — matches brand accent */
-    --vers-entity-location: #6a9e7a; /* muted sage */
-    --vers-entity-plotThread: #d4a74a; /* muted amber */
+    --vers-entity-character-rgb: 110 139 181; /* slate — matches brand accent */
+    --vers-entity-location-rgb: 106 158 122; /* muted sage */
+    --vers-entity-plotThread-rgb: 212 167 74; /* muted amber */
+    --vers-entity-character: rgb(var(--vers-entity-character-rgb));
+    --vers-entity-location: rgb(var(--vers-entity-location-rgb));
+    --vers-entity-plotThread: rgb(var(--vers-entity-plotThread-rgb));
 
-    /* JS edge relationship type colors (graph edge strokes) */
-    --vers-edge-appears_in: #4fc3f7;
-    --vers-edge-involved_in: #ce93d8;
-    --vers-edge-located_at: #80cbc4;
-    --vers-edge-intersects_with: #80cbc4;
-    --vers-edge-features: #ce93d8;
-    --vers-edge-connects_to: #888888;
-    --vers-edge-ally: #f48fb1;
-    --vers-edge-enemy: #ef5350;
-    --vers-edge-family: #ce93d8;
-    --vers-edge-romantic: #f06292;
-    --vers-edge-mentor: #ba68c8;
-    --vers-edge-rival: #ff7043;
-    --vers-edge-neutral: #90a4ae;
+    /* Relationship edge colors (graph strokes, entity-sidebar dots).
+       Drawn from one desaturated on-brand family — slate, sage, amber, ochre,
+       brick, steel, olive, stone. Relationship is carried by the label; these
+       only need to be tellable apart at dot size. */
+    --vers-edge-appears_in: #6e8bb5; /* slate */
+    --vers-edge-involved_in: #7d8a99; /* steel */
+    --vers-edge-located_at: #6a9e7a; /* sage */
+    --vers-edge-intersects_with: #6a9e7a; /* sage */
+    --vers-edge-features: #8a9668; /* olive */
+    --vers-edge-connects_to: #8a8a82; /* stone */
+    --vers-edge-ally: #6a9e7a; /* sage */
+    --vers-edge-enemy: #b06a5c; /* brick */
+    --vers-edge-family: #a08d6f; /* ochre */
+    --vers-edge-romantic: #ad7f88; /* dusty rose */
+    --vers-edge-mentor: #d4a74a; /* amber */
+    --vers-edge-rival: #c08552; /* burnt ochre */
+    --vers-edge-neutral: #8a8a82; /* stone */
 
-    /* JS timeline status colors (thread indicators) */
-    --vers-status-open: #22c55e;
-    --vers-status-in_progress: #3b82f6;
-    --vers-status-resolved: #6b7280;
-    --vers-status-closed: #4b5563;
+    /* Plot-thread lifecycle (timeline, thread boards) — a receding ramp:
+       active reads warmest, closed recedes furthest into the panel. */
+    --vers-status-open-rgb: 106 158 122; /* sage */
+    --vers-status-in_progress-rgb: 110 139 181; /* slate */
+    --vers-status-resolved-rgb: 125 138 153; /* steel */
+    --vers-status-closed-rgb: 92 92 86; /* deep stone */
+    --vers-status-open: rgb(var(--vers-status-open-rgb));
+    --vers-status-in_progress: rgb(var(--vers-status-in_progress-rgb));
+    --vers-status-resolved: rgb(var(--vers-status-resolved-rgb));
+    --vers-status-closed: rgb(var(--vers-status-closed-rgb));
 
-    /* Semantic status colors (eval, feedback) */
-    --vers-status-success: #6a9e7a;
-    --vers-status-danger: #d07070;
-    --vers-status-warning: #d4a74a;
-    --vers-status-info: #5b8cb8;
+    /* Semantic status colors (eval, feedback, alerts) */
+    --vers-status-success-rgb: 106 158 122;
+    --vers-status-danger-rgb: 208 112 112;
+    --vers-status-warning-rgb: 212 167 74;
+    --vers-status-info-rgb: 91 140 184;
+    --vers-status-success: rgb(var(--vers-status-success-rgb));
+    --vers-status-danger: rgb(var(--vers-status-danger-rgb));
+    --vers-status-warning: rgb(var(--vers-status-warning-rgb));
+    --vers-status-info: rgb(var(--vers-status-info-rgb));
 
-    /* JS canvas element type accent colors (element cards) */
-    --vers-element-section: #6366f1;
-    --vers-element-character: #ec4899;
-    --vers-element-location: #10b981;
-    --vers-element-plotpoint: #f59e0b;
-    --vers-element-note: #8b5cf6;
+    /* Writing-activity heatmap — a SEQUENTIAL ramp (magnitude), so one hue with
+       monotone lightness steps, anchored nearest the surface at the low end and
+       running toward the accent. Validated: monotone L, adjacent ΔL ≥ 0.06,
+       low step 2.13:1 on #121214, hue spread 2°. Do not hand-edit a step
+       without re-validating — the ramp only reads as an ordered scale while the
+       lightness gaps hold. `heat-0` is untracked, not zero, and stays neutral so
+       "no data" never impersonates the bottom of the scale. */
+    --vers-heat-0: rgba(255, 255, 255, 0.045);
+    --vers-heat-1: #3a4c62;
+    --vers-heat-2: #4e6683;
+    --vers-heat-3: #6280a3;
+    --vers-heat-4: #7799c4;
+
+    /* Story-canvas element accents — mapped onto the entity palette so a
+       character card and a character graph node read as the same thing. */
+    --vers-element-section: #7d8a99; /* steel — structure */
+    --vers-element-character: #6e8bb5; /* slate */
+    --vers-element-location: #6a9e7a; /* sage */
+    --vers-element-plotpoint: #d4a74a; /* amber */
+    --vers-element-note: #a08d6f; /* ochre */
 
     /* Default fallback colors (JS inline styles) */
-    --vers-default-fallback: #6366f1;
-    --vers-default-edge: #888888;
-    --vers-default-other: #9ca3af;
+    --vers-default-fallback: #7d8a99;
+    --vers-default-edge: #8a8a82;
+    --vers-default-other: #82827a;
   }
 
-  /* Light theme — warm cream/paper palette */
+  /* Light theme — warm cream/paper palette. Same hues, darkened to hold
+     contrast on paper; the triplet-first structure mirrors :root exactly. */
   [data-theme='light'] {
-    --vers-bg-base: #f7f5f0;
-    --vers-bg-panel: #efede5;
-    --vers-bg-canvas: #faf8f4;
-    --vers-bg-hover: #e6e3db;
-    --vers-bg-elevated: #ffffff;
+    --vers-bg-base-rgb: 247 245 240;
+    --vers-bg-panel-rgb: 239 237 229;
+    --vers-bg-canvas-rgb: 250 248 244;
+    --vers-bg-hover-rgb: 230 227 219;
+    --vers-bg-elevated-rgb: 255 255 255;
+
     --vers-border-subtle: rgba(0, 0, 0, 0.07);
-    --vers-border-focus: #6e8bb5;
     --vers-border: rgba(0, 0, 0, 0.12);
-    --vers-accent-primary: #6e8bb5;
-    --vers-accent-primary-rgb: 110, 139, 181;
-    --vers-accent-secondary: #5a7a9e;
-    --vers-text-primary: #1c1c1a;
-    --vers-text-secondary: #5a5a55;
-    --vers-text-muted: #70706a; /* WCAG AA: 4.57:1 on light bg-base (was #8a8a82 @ 3.19) */
-    --vers-text-faint: #bbbbb0; /* decorative only — never used for body text */
-    --vers-text-on-accent: #ffffff;
-    --vers-glow-loading-rgb: 110, 139, 181;
 
-    --vers-entity-character: #5a7a9e;
-    --vers-entity-location: #4d7d5d;
-    --vers-entity-plotThread: #b89230;
+    --vers-accent-primary-rgb: 110 139 181;
+    --vers-accent-secondary-rgb: 90 122 158;
+    --vers-accent-hover-rgb: 90 122 158; /* light hover darkens rather than lifts */
 
-    --vers-edge-appears_in: #1a9ed6;
-    --vers-edge-involved_in: #a868c0;
-    --vers-edge-located_at: #4aae9e;
-    --vers-edge-intersects_with: #4aae9e;
-    --vers-edge-features: #a868c0;
-    --vers-edge-connects_to: #666666;
-    --vers-edge-ally: #d4688a;
-    --vers-edge-enemy: #c04040;
-    --vers-edge-family: #a868c0;
-    --vers-edge-romantic: #d0406a;
-    --vers-edge-mentor: #9840a8;
-    --vers-edge-rival: #d84820;
-    --vers-edge-neutral: #6a7a84;
+    --vers-text-primary-rgb: 28 28 26;
+    --vers-text-secondary-rgb: 90 90 85;
+    --vers-text-muted-rgb: 112 112 106; /* WCAG AA: 4.57:1 on light bg-base */
+    --vers-text-faint-rgb: 187 187 176; /* decorative only — never body text */
+    /* The accent is the same slate in both themes, so its foreground must be
+       too. Cream-on-slate is 3.3:1 and fails AA; this is 5.4:1. */
+    --vers-text-on-accent-rgb: 18 18 20;
 
-    --vers-status-open: #16a34a;
-    --vers-status-in_progress: #2563eb;
-    --vers-status-resolved: #52525b;
-    --vers-status-closed: #3f3f46;
-    --vers-status-success: #4a8a5a;
-    --vers-status-danger: #c05050;
-    --vers-status-warning: #b89230;
-    --vers-status-info: #42729c; /* WCAG AA: 4.68:1 on light bg (was #5b8cb8 @ 3.27) */
+    --vers-entity-character-rgb: 90 122 158;
+    --vers-entity-location-rgb: 77 125 93;
+    --vers-entity-plotThread-rgb: 184 146 48;
 
-    --vers-element-section: #4f46e5;
-    --vers-element-character: #db2777;
-    --vers-element-location: #059669;
-    --vers-element-plotpoint: #d97706;
-    --vers-element-note: #7c3aed;
+    --vers-edge-appears_in: #5a7a9e; /* slate */
+    --vers-edge-involved_in: #5d6a79; /* steel */
+    --vers-edge-located_at: #4d7d5d; /* sage */
+    --vers-edge-intersects_with: #4d7d5d; /* sage */
+    --vers-edge-features: #6b7549; /* olive */
+    --vers-edge-connects_to: #6a6a63; /* stone */
+    --vers-edge-ally: #4d7d5d; /* sage */
+    --vers-edge-enemy: #964f42; /* brick */
+    --vers-edge-family: #85714f; /* ochre */
+    --vers-edge-romantic: #8e6068; /* dusty rose */
+    --vers-edge-mentor: #b89230; /* amber */
+    --vers-edge-rival: #a26837; /* burnt ochre */
+    --vers-edge-neutral: #6a6a63; /* stone */
 
-    --vers-default-fallback: #4f46e5;
-    --vers-default-edge: #666666;
-    --vers-default-other: #6b7280;
+    --vers-status-open-rgb: 77 125 93;
+    --vers-status-in_progress-rgb: 90 122 158;
+    --vers-status-resolved-rgb: 93 106 121;
+    --vers-status-closed-rgb: 106 106 99;
+
+    --vers-status-success-rgb: 74 138 90;
+    --vers-status-danger-rgb: 192 80 80;
+    --vers-status-warning-rgb: 184 146 48;
+    --vers-status-info-rgb: 66 114 156; /* WCAG AA: 4.68:1 on light bg */
+
+    /* Light-mode heat ramp: same hue, re-stepped so the low end still clears
+       2:1 on cream (2.06:1) — a paler step would vanish into the paper. */
+    --vers-heat-0: rgba(0, 0, 0, 0.05);
+    --vers-heat-1: #98afcc;
+    --vers-heat-2: #7c97bd;
+    --vers-heat-3: #6180a7;
+    --vers-heat-4: #476690;
+
+    --vers-element-section: #5d6a79; /* steel */
+    --vers-element-character: #5a7a9e; /* slate */
+    --vers-element-location: #4d7d5d; /* sage */
+    --vers-element-plotpoint: #b89230; /* amber */
+    --vers-element-note: #85714f; /* ochre */
+
+    --vers-default-fallback: #5d6a79;
+    --vers-default-edge: #6a6a63;
+    --vers-default-other: #70706a;
   }
 
   /* High-contrast preference: lift the dim tiers toward the primary text color
      so muted/faint/border text clears AA comfortably (M-2.3). */
   @media (prefers-contrast: more) {
     :root {
-      --vers-text-muted: #a2a29b;
-      --vers-text-faint: #82827a;
+      --vers-text-muted-rgb: 162 162 155;
+      --vers-text-faint-rgb: 130 130 122;
       --vers-border-subtle: rgba(255, 255, 255, 0.18);
       --vers-border: rgba(255, 255, 255, 0.28);
     }
     [data-theme='light'] {
-      --vers-text-muted: #5a5a55;
-      --vers-text-faint: #70706a;
+      --vers-text-muted-rgb: 90 90 85;
+      --vers-text-faint-rgb: 112 112 106;
       --vers-border-subtle: rgba(0, 0, 0, 0.2);
       --vers-border: rgba(0, 0, 0, 0.32);
     }
@@ -175,7 +242,7 @@
   }
 
   ::selection {
-    background: rgba(var(--vers-accent-primary-rgb), 0.3);
+    background: rgb(var(--vers-accent-primary-rgb) / 0.3);
     color: var(--vers-text-primary);
   }
 
@@ -212,74 +279,18 @@
   }
 
   .liquid-glass:hover {
-    border-color: rgba(var(--vers-accent-primary-rgb), 0.3);
+    border-color: rgb(var(--vers-accent-primary-rgb) / 0.3);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 0 0 1px rgba(var(--vers-accent-primary-rgb), 0.08),
+      0 0 0 1px rgb(var(--vers-accent-primary-rgb) / 0.08),
       0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
-  /* ── Spring Transition Easing ── */
-  .spring-enter-active {
-    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .spring-leave-active {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .spring-enter-from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.97);
-  }
-  .spring-leave-to {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-  }
-
-  .spring-left-enter-active {
-    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .spring-left-leave-active {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .spring-left-enter-from {
-    opacity: 0;
-    transform: translateX(-12px);
-  }
-  .spring-left-leave-to {
-    opacity: 0;
-    transform: translateX(-6px);
-  }
-
-  .spring-right-enter-active {
-    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .spring-right-leave-active {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .spring-right-enter-from {
-    opacity: 0;
-    transform: translateX(12px);
-  }
-  .spring-right-leave-to {
-    opacity: 0;
-    transform: translateX(6px);
-  }
-
-  .spring-scale-enter-active {
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .spring-scale-leave-active {
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .spring-scale-enter-from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  .spring-scale-leave-to {
-    opacity: 0;
-    transform: scale(0.96);
-  }
+  /* The `spring-*` transition set lived here: a 1.56 overshoot cubic-bezier on
+     every enter. Three of its four variants were already unused, and the
+     surviving one (`spring-scale`) has been folded into the `anim-*` presets
+     below, which decelerate on an exponential curve. Overshoot reads as a
+     flourish on a dropdown that opens a hundred times a session. */
 
   /* ── Ambient Glow ── */
   .ambient-glow {
@@ -295,12 +306,12 @@
     background:
       radial-gradient(
         ellipse 80% 50% at 50% -10%,
-        rgba(var(--vers-accent-primary-rgb), 0.06) 0%,
+        rgb(var(--vers-accent-primary-rgb) / 0.06) 0%,
         transparent 70%
       ),
       radial-gradient(
         ellipse 60% 40% at 30% 100%,
-        rgba(var(--vers-accent-primary-rgb), 0.03) 0%,
+        rgb(var(--vers-accent-primary-rgb) / 0.03) 0%,
         transparent 60%
       );
   }
@@ -353,7 +364,7 @@
     @apply -translate-y-[1px];
     box-shadow:
       0 4px 12px rgba(0, 0, 0, 0.3),
-      0 0 0 1px rgba(var(--vers-accent-primary-rgb), 0.08);
+      0 0 0 1px rgb(var(--vers-accent-primary-rgb) / 0.08);
   }
 
   .btn-elevated:active {
@@ -363,12 +374,14 @@
   .btn-primary {
     @apply transition-all duration-150 ease-out;
     background: var(--vers-accent-primary);
-    color: var(--vers-bg-base);
+    /* Not `--vers-bg-base`: that is cream in the light theme, which put
+       near-white text on the slate fill at 3.3:1. */
+    color: var(--vers-text-on-accent);
     font-weight: 500;
   }
   .btn-primary:hover {
     opacity: 0.9;
-    box-shadow: 0 1px 4px rgba(var(--vers-accent-primary-rgb), 0.3);
+    box-shadow: 0 1px 4px rgb(var(--vers-accent-primary-rgb) / 0.3);
   }
   .btn-primary:active {
     opacity: 0.8;
@@ -537,7 +550,7 @@
   .ghost {
     opacity: 0.6;
     border: 1px dashed var(--vers-accent-primary) !important;
-    background: rgba(var(--vers-accent-primary-rgb), 0.1) !important;
+    background: rgb(var(--vers-accent-primary-rgb) / 0.1) !important;
     border-radius: 8px;
   }
   .ghost > * {
@@ -553,11 +566,21 @@
   .sortable-chosen {
     cursor: grabbing;
   }
+  /* Images and links are implicitly draggable, so one inside a `draggable="true"`
+     card becomes a competing drag source: press the portrait and the browser
+     drags the image while the card drags itself, giving two things trailing the
+     cursor from a single gesture. Chromium/WebKit honour this rule; Firefox
+     needs the `draggable="false"` attribute, which the portraits also carry. */
+  [draggable='true'] img,
+  [draggable='true'] a {
+    -webkit-user-drag: none;
+  }
+
   /* Container advertising it can accept a drop. Add `.drop-active` on dragenter. */
   .drop-active {
-    outline: 2px dashed rgba(var(--vers-accent-primary-rgb), 0.5);
+    outline: 2px dashed rgb(var(--vers-accent-primary-rgb) / 0.5);
     outline-offset: 3px;
-    background: rgba(var(--vers-accent-primary-rgb), 0.04);
+    background: rgb(var(--vers-accent-primary-rgb) / 0.04);
     border-radius: 8px;
     transition:
       background 0.15s ease,
@@ -582,6 +605,19 @@
   /* Manuscript face as a utility — same family the editor uses. */
   .font-manuscript {
     font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+  }
+
+  /* Micro-label: field labels and panel section headers. Its job is to name a
+     control group without competing with the values inside it, so it runs one
+     step below UI text and leans on tracking rather than weight.
+     Reserved for labels that name something — never as a decorative eyebrow. */
+  .label-micro {
+    font-family: 'Geist Variable', Geist, system-ui, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 }
 
@@ -616,7 +652,7 @@
 }
 
 .tiptap-editor .ProseMirror::selection {
-  background: rgba(var(--vers-accent-primary-rgb), 0.25);
+  background: rgb(var(--vers-accent-primary-rgb) / 0.25);
   color: var(--vers-text-primary);
 }
 
