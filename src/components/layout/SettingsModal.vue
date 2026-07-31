@@ -1,7 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
-import { getDailyGoal, setDailyGoal } from '../../services/dbService'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseTab from '../ui/BaseTab.vue'
 import BaseButton from '../ui/BaseButton.vue'
@@ -18,36 +17,20 @@ const props = defineProps({
 const emit = defineEmits(['close', 'model-changed'])
 
 const projectStore = useProjectStore()
-const goalInput = ref(500)
-const activeTab = ref('goals')
+const activeTab = ref('ai')
 const activeLearning = useActiveLearning()
 const showVoiceUpload = ref(false)
 
+// The daily word goal used to live here as a "Goals" tab holding one number
+// input — which made the modal collapse to almost nothing on open. It is stored
+// per project, so it moved to Project Settings > General, next to the rest of
+// that project's configuration and where the header's goal bar already leads.
 const tabOptions = [
-  { key: 'goals', label: 'Goals' },
   { key: 'ai', label: 'AI Providers' },
   { key: 'eval', label: 'Evaluation' },
   { key: 'voice', label: 'Voice' },
   { key: 'privacy', label: 'Privacy' }
 ]
-
-async function loadGoal() {
-  if (!projectStore.currentProjectId) return
-  const existing = await getDailyGoal(projectStore.currentProjectId)
-  if (existing) {
-    goalInput.value = existing.goalWords
-  }
-}
-
-async function saveGoal() {
-  if (!projectStore.currentProjectId) return
-  const goal = parseInt(goalInput.value, 10)
-  if (goal > 0) {
-    await setDailyGoal(projectStore.currentProjectId, goal)
-    projectStore.setDailyGoal(goal)
-  }
-  emit('close')
-}
 
 async function runActiveLearning() {
   const pid = projectStore.currentProjectId
@@ -57,11 +40,8 @@ async function runActiveLearning() {
 
 watch(
   () => props.show,
-  async (newVal) => {
-    if (newVal) {
-      loadGoal()
-      activeTab.value = 'goals'
-    }
+  (newVal) => {
+    if (newVal) activeTab.value = 'ai'
   }
 )
 </script>
@@ -100,23 +80,16 @@ watch(
             </BaseTab>
           </div>
 
-          <div v-if="activeTab === 'goals'">
-            <div class="mb-4">
-              <label for="goal-input" class="block text-sm font-medium text-text-secondary mb-2">
-                Words per day
-              </label>
-              <input
-                id="goal-input"
-                v-model.number="goalInput"
-                type="number"
-                min="1"
-                step="50"
-                class="w-full px-4 py-2 border border-border-subtle bg-bg-tertiary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-              />
-            </div>
-          </div>
-
-          <AISettingsTab v-if="activeTab === 'ai'" @model-changed="emit('model-changed')" />
+          <!--
+            `@close` was never wired: this tab's own Save button ends in
+            `emit('close')`, so it saved and then sat there looking like nothing
+            had happened.
+          -->
+          <AISettingsTab
+            v-if="activeTab === 'ai'"
+            @model-changed="emit('model-changed')"
+            @close="emit('close')"
+          />
 
           <div v-if="activeTab === 'eval'" class="space-y-4">
             <ActiveLearningPanel
@@ -210,19 +183,13 @@ watch(
             </div>
           </div>
 
-          <div class="flex gap-3 mt-6">
-            <BaseButton variant="secondary" size="md" class="flex-1" @click="emit('close')">
-              Cancel
-            </BaseButton>
-            <BaseButton
-              v-if="activeTab === 'goals'"
-              variant="primary"
-              size="md"
-              class="flex-1"
-              @click="saveGoal"
-            >
-              Save
-            </BaseButton>
+          <!--
+            "Close", not "Cancel". Nothing here is discardable: the AI tab has
+            its own Save, and every other panel writes as you change it. Offering
+            "Cancel" promised a rollback that never existed.
+          -->
+          <div class="flex justify-end mt-6">
+            <BaseButton variant="secondary" size="md" @click="emit('close')"> Close </BaseButton>
           </div>
         </div>
       </div>

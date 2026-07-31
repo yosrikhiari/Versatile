@@ -16,6 +16,12 @@ export default defineConfig({
     // pointed at innocent tests. Bounding the hook generously keeps a genuine
     // hang detectable without making load look like a bug.
     hookTimeout: 60_000,
+    // Same reasoning for the tests themselves: the heavy suites re-import their
+    // module under test per case, so a loaded machine pushes individual tests
+    // past the 5s default. Every one of these suites is CPU-bound and offline —
+    // none of them wait on a network — so a generous bound cannot mask a hang
+    // that matters, it only stops load from being reported as failure.
+    testTimeout: 30_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
