@@ -23,6 +23,11 @@ export const INPUT_BUDGET_RATIO = 0.67
 // cannot push input + max_tokens past the window (a hard 400 from every provider).
 export const OUTPUT_HEADROOM_RATIO = 0.85
 
+// Rough estimate: JSON characters per token for schema envelope overhead.
+// JSON is ~50% more character-dense than prose (keys, quotes, braces, commas),
+// so a tighter ratio than the standard ~4 chars/token matches real-world usage.
+export const SCHEMA_OVERHEAD_ESTIMATE_RATIO = 3
+
 // Smallest window in MODEL_META. Assuming the smallest for an unknown model
 // under-fills; assuming the largest overflows. Under-filling is the safe error.
 export const FALLBACK_CONTEXT_WINDOW = 8192

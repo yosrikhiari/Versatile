@@ -1,6 +1,27 @@
 import { PROVIDERS, FEATURES, FEATURE_DEFAULTS, PROVIDER_MODELS } from './ai'
 import { WORKSPACE_TYPES as WS_TYPES } from './workspace'
 import { useSettingsStore } from '../stores/settingsStore'
+import { usePreferenceStore } from '../stores/preferenceStore'
+import { getApiKeyStorageKey } from './storageKeys'
+
+/**
+ * Whether a provider can actually be called right now.
+ *
+ * Ollama is local and needs no credential. Every hosted provider does, and the
+ * key's presence is readable synchronously — only decrypting it is async — so
+ * routing can consult it without becoming async itself.
+ */
+export function isProviderUsable(provider: string): boolean {
+  if (!provider) return false
+  if (provider === PROVIDERS.OLLAMA) return true
+  try {
+    return !!localStorage.getItem(getApiKeyStorageKey(provider))
+  } catch {
+    // No localStorage (SSR, tests): assume configured rather than routing
+    // everything to a fallback on an environment detail.
+    return true
+  }
+}
 
 const WORKSPACE_TYPES: Record<string, string> = WS_TYPES
 
@@ -45,7 +66,37 @@ export const MODEL_META = {
   'meta-llama/llama-4-scout-17b-16e-instruct': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 262144, capabilityTier: COST_TIERS.BUDGET },
   'mixtral-8x7b-32768': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.MEDIUM, contextWindow: 32768, capabilityTier: COST_TIERS.BUDGET },
   'gemma2-9b-it': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 8192, capabilityTier: COST_TIERS.BUDGET },
-  'allam-2-7b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 8192, capabilityTier: COST_TIERS.BUDGET }
+  'allam-2-7b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 8192, capabilityTier: COST_TIERS.BUDGET },
+
+  // Local Ollama models. Without entries here `getContextWindow` returns null for
+  // every local model, so `maxOutputTokensForModel` fell back to a flat 4,096
+  // regardless of the prompt — which is how a three-scene planning call was
+  // handed the same runway as a hundred-chapter one and simply ran until it was
+  // cut off. Context windows are the models' real ones as reported by /api/tags.
+  'qwen3:8b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.SLOW, contextWindow: 40960, capabilityTier: COST_TIERS.STANDARD },
+  'phi4-mini:3.8b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 131072, capabilityTier: COST_TIERS.BUDGET },
+  'dolphin-mistral:7b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.MEDIUM, contextWindow: 32768, capabilityTier: COST_TIERS.BUDGET }
+}
+
+/**
+ * Learn a local model's real context window at runtime.
+ *
+ * Which models exist is a property of the user's machine, not of this file, so
+ * the static table above can only ever cover the common ones. `/api/tags`
+ * reports `context_length` per model; feeding that in here keeps token budgets
+ * honest for models we have never heard of instead of silently assuming 8K.
+ */
+export function registerLocalModelMeta(
+  model: string,
+  meta: { contextWindow: number; speedTier?: string }
+) {
+  if (!model || !meta?.contextWindow) return
+  ;(MODEL_META as Record<string, unknown>)[model] = {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: meta.speedTier || SPEED_TIERS.MEDIUM,
+    contextWindow: meta.contextWindow,
+    capabilityTier: COST_TIERS.BUDGET
+  }
 }
 
 function matrixEntry(complexity: any, provider: any, model: any) {
@@ -220,6 +271,22 @@ export function resolveOptimalModel(feature: any, options: any = {}) {
     complexity: entry.complexity
   })
 
+  // An explicit per-feature choice outranks the matrix.
+  //
+  // This used to be consulted only AFTER the matrix, and the matrix has an entry
+  // for every feature at every complexity — so the setting was unreachable for
+  // any call that passed a complexity (which is every scene the writer makes).
+  // A user running Ollama-only would have their choice silently discarded and a
+  // cloud provider attempted instead. The matrix is a default; a setting the user
+  // deliberately made is not something to route around.
+  if (override?.provider && override.provider !== 'default') {
+    return {
+      provider: override.provider,
+      model: override.model || defaultModelFor(override.provider),
+      matrixMatch: false
+    }
+  }
+
   if (workspaceType && WORKSPACE_OVERRIDES[workspaceType]) {
     const wsOverrides = WORKSPACE_OVERRIDES[workspaceType]
     if (wsOverrides[feature] && wsOverrides[feature][complexity]) {
@@ -231,20 +298,29 @@ export function resolveOptimalModel(feature: any, options: any = {}) {
     return fullMatch(BASE_MATRIX[feature][complexity])
   }
 
-  if (override?.provider && override.provider !== 'default') {
-    return {
-      provider: override.provider,
-      model: override.model || defaultModelFor(override.provider),
-      matrixMatch: false
-    }
-  }
-
   const config: any = FEATURE_DEFAULTS[feature as keyof typeof FEATURE_DEFAULTS] || {}
   return {
     provider: config.provider || store.aiProvider,
     model: config.model || defaultModelFor(config.provider || store.aiProvider),
     matrixMatch: false
   }
+}
+
+export function resolveOptimalModelWithPreferences(feature: any, options: any = {}) {
+  const base = resolveOptimalModel(feature, options)
+
+  if (options.projectId) {
+    try {
+      const prefStore = usePreferenceStore()
+      const weight = prefStore.getPreferenceWeight(base.provider, base.model)
+      if (weight > 1.1) {
+        return { ...base, preferenceBoost: weight, preferredMatch: true }
+      }
+    } catch {
+    }
+  }
+
+  return { ...base, preferenceBoost: 1, preferredMatch: false }
 }
 
 export function getOptimalModel(feature: any, options: any) {
