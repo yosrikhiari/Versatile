@@ -1,8 +1,11 @@
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useMediaQuery } from '@vueuse/core'
 import BaseIcon from '../shared/BaseIcon.vue'
+import SidebarAccount from './SidebarAccount.vue'
 import { useLocalStorage } from '../../utils/useLocalStorage'
+import { NAV_GROUPS, SYSTEM_ITEMS } from '../../constants/navigation'
 
 const props = defineProps({
   activePanel: {
@@ -17,50 +20,16 @@ const props = defineProps({
 
 const emit = defineEmits(['navigate', 'close'])
 
+const router = useRouter()
 const collapsed = useLocalStorage('versatile:sidebar-collapsed', false)
 const isDesktop = useMediaQuery('(min-width: 768px)')
 
 // Collapse only applies on desktop — the mobile drawer is always full width.
 const effectiveCollapsed = computed(() => isDesktop.value && collapsed.value)
 
-// Panels grouped by what the writer is doing, not by panel type.
-const navGroups = [
-  {
-    label: 'Write',
-    items: [
-      { label: 'Generator', panel: 'story-generator', icon: 'sparkles' },
-      { label: 'Polish', panel: 'polish', icon: 'brush' },
-      { label: 'What If', panel: 'whatif', icon: 'shuffle' },
-      { label: 'Voice Lab', panel: 'voice-lab', icon: 'message-square' }
-    ]
-  },
-  {
-    label: 'Structure',
-    items: [
-      { label: 'Outline', panel: 'outline', icon: 'list' },
-      { label: 'Sections', panel: 'sections', icon: 'book-marked' },
-      { label: 'Canvas', panel: 'canvas', icon: 'palette' },
-      { label: 'Consistency', panel: 'consistency', icon: 'clipboard-check' },
-      { label: 'Beta Reader', panel: 'beta-reader', icon: 'eye' }
-    ]
-  },
-  {
-    label: 'World',
-    items: [
-      { label: 'Story Bible', panel: 'story-bible', icon: 'book-open' },
-      { label: 'Network', panel: 'network', icon: 'network' },
-      { label: 'Timeline', panel: 'timeline', icon: 'clock' },
-      { label: 'Story Shape', panel: 'story-shape', icon: 'activity' }
-    ]
-  }
-]
-
-const systemItems = [
-  { label: 'Costs', panel: 'cost-dashboard', icon: 'dollar-sign' },
-  { label: 'Research', panel: 'research', icon: 'search' },
-  { label: 'Archive', panel: 'archive', icon: 'archive' },
-  { label: 'Settings', panel: 'settings', icon: 'settings' }
-]
+// Shared with the command palette — see src/constants/navigation.ts.
+const navGroups = NAV_GROUPS
+const systemItems = SYSTEM_ITEMS
 
 // Stable per-item delay (ms) for the staggered enter animation.
 const staggerDelays = (() => {
@@ -84,6 +53,11 @@ function onNavClick(panel) {
 
 function toggleCollapse() {
   collapsed.value = !collapsed.value
+}
+
+function goToWorkspace() {
+  if (!isDesktop.value) emit('close')
+  router.push('/workspace')
 }
 </script>
 
@@ -117,7 +91,15 @@ function toggleCollapse() {
       >
         <template v-if="!effectiveCollapsed">
           <span class="w-2 h-2 rounded-full bg-accent shrink-0"></span>
-          <span class="text-[0.9375rem] font-semibold text-text-primary truncate">Versatile</span>
+          <!-- Clicking the wordmark returns to the project index — the first
+               thing most people try when they want out of a document. -->
+          <button
+            class="truncate rounded text-sm font-semibold text-text-primary transition-colors duration-150 hover:text-accent"
+            title="All projects"
+            @click="goToWorkspace"
+          >
+            Versatile
+          </button>
           <button
             class="ml-auto hidden md:grid place-items-center w-8 h-8 rounded-md text-text-hint hover:text-text-primary hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150"
             title="Collapse sidebar"
@@ -148,11 +130,7 @@ function toggleCollapse() {
       <!-- Grouped panels -->
       <nav class="flex-1 overflow-y-auto py-2 scrollbar-thin" aria-label="Panels">
         <div v-for="group in navGroups" :key="group.label" class="px-2">
-          <div
-            v-if="!effectiveCollapsed"
-            class="px-2 pt-3 pb-1 text-[0.6875rem] font-medium uppercase tracking-[0.08em]"
-            style="color: var(--vers-text-muted)"
-          >
+          <div v-if="!effectiveCollapsed" class="label-micro px-2 pt-3 pb-1 text-text-hint">
             {{ group.label }}
           </div>
           <div v-else class="mx-2 my-2 border-t border-border-subtle"></div>
@@ -170,7 +148,7 @@ function toggleCollapse() {
             :style="{
               animationDelay: staggerDelays[item.panel] + 'ms',
               ...(isActive(item.panel)
-                ? { background: 'rgba(var(--vers-accent-primary-rgb),0.12)' }
+                ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.12)' }
                 : {})
             }"
             :title="effectiveCollapsed ? item.label : ''"
@@ -208,7 +186,7 @@ function toggleCollapse() {
               : 'text-text-secondary hover:text-text-primary hover:bg-surface-hover'
           ]"
           :style="
-            isActive(item.panel) ? { background: 'rgba(var(--vers-accent-primary-rgb),0.12)' } : {}
+            isActive(item.panel) ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.12)' } : {}
           "
           :title="effectiveCollapsed ? item.label : ''"
           :aria-current="isActive(item.panel) ? 'page' : undefined"
@@ -230,6 +208,9 @@ function toggleCollapse() {
           <span v-if="!effectiveCollapsed" class="truncate">{{ item.label }}</span>
         </button>
       </div>
+
+      <!-- Signed-in identity, recent work, and the way back out to the index. -->
+      <SidebarAccount :collapsed="effectiveCollapsed" />
     </aside>
   </div>
 </template>

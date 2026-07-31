@@ -1,16 +1,19 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { getAllProjects } from '../../services/dbService'
 import SidebarNav from './SidebarNav.vue'
+import EditorBreadcrumb from './EditorBreadcrumb.vue'
+import CommandPalette from './CommandPalette.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import GoalProgressBar from '../shared/GoalProgressBar.vue'
 import ProjectSettingsModal from './ProjectSettingsModal.vue'
 import BranchManagerModal from './BranchManagerModal.vue'
 import RecapBanner from './RecapBanner.vue'
 import ContextStatusIndicator from './ContextStatusIndicator.vue'
+import GuardrailIndicator from '../../guardrails/reporting/components/GuardrailIndicator.vue'
 import NetworkStatusBadge from '../shared/NetworkStatusBadge.vue'
 import BranchSwitcher from '../workspace/BranchSwitcher.vue'
 import { STORAGE_KEYS } from '../../config/storageKeys'
@@ -77,7 +80,51 @@ const projectName = computed(() => projectStore.currentProjectName)
 
 const { isDark: isThemeDark, initTheme, toggleTheme } = useTheme()
 
+// ── Command palette ────────────────────────────────────────────────────────
+const showCommandPalette = ref(false)
+
+/**
+ * Global actions the palette offers alongside the panels. Panels come from the
+ * shared nav definition; these are the things that have no sidebar entry.
+ */
+const paletteActions = computed(() => [
+  {
+    id: 'toggle-theme',
+    label: isThemeDark.value ? 'Switch to light mode' : 'Switch to dark mode',
+    icon: isThemeDark.value ? 'sun' : 'moon'
+  },
+  { id: 'export', label: 'Export project', icon: 'upload', hint: 'Ctrl+S' },
+  { id: 'export-pdf', label: 'Export to PDF', icon: 'file-text' },
+  { id: 'import', label: 'Import project', icon: 'download', hint: 'Ctrl+I' },
+  { id: 'project-settings', label: 'Project settings', icon: 'settings' },
+  { id: 'all-projects', label: 'All projects', icon: 'layout-grid', keywords: ['workspace'] }
+])
+
+const PALETTE_ACTIONS = {
+  'toggle-theme': () => toggleTheme(),
+  export: () => emit('export'),
+  'export-pdf': () => emit('export-pdf'),
+  import: () => emit('import'),
+  'project-settings': () => {
+    showProjectSettings.value = true
+  },
+  'all-projects': () => router.push('/workspace')
+}
+
+function runPaletteAction(id) {
+  PALETTE_ACTIONS[id]?.()
+}
+
+function onGlobalKeydown(event) {
+  // Ctrl/⌘-K anywhere, including from inside the manuscript.
+  if (event.key?.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault()
+    showCommandPalette.value = !showCommandPalette.value
+  }
+}
+
 onMounted(() => {
+  window.addEventListener('keydown', onGlobalKeydown)
   initTheme()
   if (coreLoopSeen.value.write && coreLoopSeen.value.analyze && coreLoopSeen.value.build) {
     showCoreLoop.value = false
@@ -102,6 +149,24 @@ async function loadProjects() {
   projects.value = await getAllProjects(authStore.localUser?.id || null)
 }
 
+/**
+ * Re-reads the project list every time the menu opens.
+ *
+ * `loadProjects()` otherwise runs only in `onMounted`, so a project created
+ * after this shell mounted — from onboarding, or from the workspace in the same
+ * session — never appeared in the switcher until a full reload.
+ */
+function goToWorkspace() {
+  showProjectDropdown.value = false
+  router.push('/workspace')
+}
+
+async function toggleProjectDropdown() {
+  const opening = !showProjectDropdown.value
+  showProjectDropdown.value = opening
+  if (opening) await loadProjects()
+}
+
 function handleAuthClick() {
   if (authStore.localUser) {
     authStore.logout()
@@ -115,9 +180,13 @@ function handleAuthClick() {
 
 async function switchProject(projectId) {
   showProjectDropdown.value = false
-  await projectStore.loadProject(projectId)
-  await branchStore.initForProject(projectId)
-  await loadProjects()
+  if (projectId === projectStore.currentProjectId) return
+
+  // Navigate rather than loading in place. This used to swap the store's
+  // project while leaving the URL on the previous one, so a refresh silently
+  // took the writer back to the project they had just left. The route change
+  // remounts EditorView, whose `onMounted` does the loading.
+  await router.push(`/editor/${projectId}`)
 }
 
 function handleCreateProjectClick() {
@@ -289,6 +358,10 @@ onMounted(async () => {
   await loadProjects()
 })
 
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onGlobalKeydown)
+})
+
 watch(
   () => projectStore.currentProjectId,
   (pid) => {
@@ -312,7 +385,7 @@ watch(
         <span
           v-if="flowMode"
           class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-semibold text-accent cursor-pointer transition-all duration-150"
-          style="background: rgba(var(--vers-accent-primary-rgb), 0.12)"
+          style="background: rgb(var(--vers-accent-primary-rgb) / 0.12)"
           @click="toggleFlow"
         >
           <BaseIcon name="play" :size="10" />
@@ -323,12 +396,12 @@ watch(
           <button
             class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2 py-1 text-sm flex items-center gap-1.5 transition-all duration-150 btn-ghost"
             title="Switch project"
-            @click="showProjectDropdown = !showProjectDropdown"
+            @click="toggleProjectDropdown"
           >
             {{ projectName || 'Untitled Project' }}
             <BaseIcon name="chevron-down" :size="14" class="opacity-60" />
           </button>
-          <Transition name="spring-scale">
+          <Transition name="anim-scale">
             <div
               v-if="showProjectDropdown"
               class="absolute left-0 top-full mt-1 bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-md py-1 z-50 min-w-[220px]"
@@ -355,6 +428,19 @@ watch(
                 {{ project.name }}
               </button>
               <hr class="my-1 border-border-subtle mx-2" />
+              <!--
+                The only route back to the project index used to be buried in
+                the account popover at the bottom of the sidebar. This menu is
+                where someone already goes when they want a different project,
+                so the way out belongs here.
+              -->
+              <button
+                class="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-surface-hover flex items-center gap-2 transition-colors duration-150"
+                @click="goToWorkspace"
+              >
+                <BaseIcon name="layout-grid" :size="14" />
+                All projects
+              </button>
               <!-- prettier-ignore -->
               <button
                 class="w-full text-left px-3 py-2 text-sm text-text-hint hover:bg-surface-hover flex items-center gap-2 transition-colors duration-150"
@@ -366,6 +452,10 @@ watch(
             </div>
           </Transition>
         </div>
+
+        <!-- The switcher above names the project; this continues the trail into
+             the chapter and scene actually being edited. -->
+        <EditorBreadcrumb :include-project="false" class="hidden md:flex" />
 
         <div class="hidden sm:flex items-center gap-3 text-2xs text-text-hint">
           <span class="tabular-nums font-ui">{{ wordCount.toLocaleString() }} words</span>
@@ -384,8 +474,18 @@ watch(
       </div>
 
       <div class="flex items-center gap-1.5">
+        <!-- The shortcut only helps if something tells you it exists. -->
+        <button
+          class="hidden md:flex items-center gap-1.5 rounded-lg border border-border-subtle px-2 py-1 text-text-hint transition-colors duration-150 hover:border-border-strong hover:text-text-secondary"
+          title="Search panels and actions (Ctrl+K)"
+          @click="showCommandPalette = true"
+        >
+          <BaseIcon name="search" :size="13" />
+          <kbd class="font-ui text-xs">Ctrl K</kbd>
+        </button>
         <NetworkStatusBadge />
         <ContextStatusIndicator />
+        <GuardrailIndicator />
         <button
           class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           :title="isThemeDark ? 'Switch to light mode' : 'Switch to dark mode'"
@@ -595,8 +695,19 @@ watch(
       </div>
     </div>
 
-    <ProjectSettingsModal :show="showProjectSettings" @close="showProjectSettings = false" />
+    <ProjectSettingsModal
+      :show="showProjectSettings"
+      @close="showProjectSettings = false"
+      @open-ai-settings="emit('open-settings')"
+    />
     <BranchManagerModal :show="showBranchManager" @close="showBranchManager = false" />
+
+    <CommandPalette
+      v-model:open="showCommandPalette"
+      :actions="paletteActions"
+      @navigate="handleSidebarNav"
+      @action="runPaletteAction"
+    />
   </div>
 </template>
 
