@@ -14,12 +14,19 @@ export function shapeContext(rawContext: any, options: any = {}) {
   const totalLocations = entities.locations?.length || 0
   const totalPlotThreads = entities.plotThreads?.length || 0
 
-  const sortedCharacters = sortByRelevance(entities.characters, 'character').slice(
+  // Optional semantic ranking. Null (the common case) means the per-type slices
+  // below keep the original recency/timeline ordering.
+  const relevance = options.relevance ?? null
+
+  const sortedCharacters = sortByRelevance(entities.characters, 'character', relevance).slice(
     0,
     MAX_CHARACTERS
   )
-  const sortedLocations = sortByRelevance(entities.locations, 'location').slice(0, MAX_LOCATIONS)
-  const sortedPlotThreads = sortByRelevance(entities.plotThreads, 'plotThread').slice(
+  const sortedLocations = sortByRelevance(entities.locations, 'location', relevance).slice(
+    0,
+    MAX_LOCATIONS
+  )
+  const sortedPlotThreads = sortByRelevance(entities.plotThreads, 'plotThread', relevance).slice(
     0,
     MAX_PLOT_THREADS
   )
