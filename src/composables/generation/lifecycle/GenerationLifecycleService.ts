@@ -1,3 +1,5 @@
+import { useEvalStore } from '../../../stores/evalStore'
+
 export class GenerationLifecycleService {
   volumeStore: any
   manuscriptStore: any
@@ -28,7 +30,6 @@ export class GenerationLifecycleService {
   currentSceneResult: any
   currentWriteIndex: any
   error: any
-  sceneEvalResults: any
   inlineEvalEnabled: any
   structuredResults: any
   volumeId: any
@@ -66,7 +67,6 @@ export class GenerationLifecycleService {
     currentSceneResult,
     currentWriteIndex,
     error,
-    sceneEvalResults,
     inlineEvalEnabled,
     structuredResults,
     volumeId,
@@ -103,7 +103,6 @@ export class GenerationLifecycleService {
     currentSceneResult: any
     currentWriteIndex: any
     error: any
-    sceneEvalResults: any
     inlineEvalEnabled: any
     structuredResults: any
     volumeId: any
@@ -140,7 +139,6 @@ export class GenerationLifecycleService {
     this.currentSceneResult = currentSceneResult
     this.currentWriteIndex = currentWriteIndex
     this.error = error
-    this.sceneEvalResults = sceneEvalResults
     this.inlineEvalEnabled = inlineEvalEnabled
     this.structuredResults = structuredResults
     this.volumeId = volumeId
@@ -326,7 +324,7 @@ export class GenerationLifecycleService {
       let totalWordCount = 0
       const sceneSummary = synced.map((s: any) => {
         totalWordCount += s.wordCount || 0
-        return `${s.title} (${s.wordCount || '?'} words, score: ${this.sceneEvalResults.value.find((e: any) => e.index === s.index)?.score || 'N/A'})`
+        return `${s.title} (${s.wordCount || '?'} words, score: ${useEvalStore().results.find((e: any) => e.index === s.index)?.score || 'N/A'})`
       })
 
       this.actLog.appendThought(
@@ -447,7 +445,6 @@ IMPORTANT: Return JSON with keys: title, content (1500-2500 words), overview, wo
     this.currentSceneResult.value = null
     this.currentWriteIndex.value = 0
     this.error.value = null
-    this.sceneEvalResults.value = []
     this.structuredResults.splice(0)
     this.currentTaskId.value = null
   }

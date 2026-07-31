@@ -10,7 +10,6 @@ export function createAgentMemory() {
   const progress = ref({ statusText: '', percent: 0 } as any)
   const phase = ref('idle')
 
-  const sceneEvalResults = ref([] as any[])
   const inlineEvalEnabled = ref(false)
   const writtenScenes = ref([] as any[])
   const structuredResults = ref([] as any[])
@@ -76,7 +75,8 @@ export function createAgentMemory() {
     consistencyService: null,
     commitService: null,
     sceneInteractionService: null,
-    graphBuilder: null
+    graphBuilder: null,
+    sessionBudget: null
   }
 
   // ── Service Constants ─────────────────────────────────────
@@ -106,6 +106,7 @@ export function createAgentMemory() {
   }
 
   function reset() {
+    instances.sessionBudget?.reset()
     writeParams.value = null
     scenePlan.value = []
     chapterPlan.value = []
@@ -113,7 +114,6 @@ export function createAgentMemory() {
     spineContext.value = ''
     progress.value = { statusText: '', percent: 0 }
     phase.value = 'idle'
-    sceneEvalResults.value = []
     inlineEvalEnabled.value = false
     writtenScenes.value = []
     structuredResults.value = []
@@ -137,7 +137,6 @@ export function createAgentMemory() {
     spineContext,
     progress,
     phase,
-    sceneEvalResults,
     inlineEvalEnabled,
     writtenScenes,
     structuredResults,

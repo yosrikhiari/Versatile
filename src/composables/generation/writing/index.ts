@@ -1,1 +1,1 @@
-// barrel — currently empty after dead-file removal
+export { LiveDraftBridge, proseToHtml, countProseWords } from './liveDraft'

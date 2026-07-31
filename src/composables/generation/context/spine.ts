@@ -54,6 +54,8 @@ function compressSpine(spine: any, tokenCap = 800) {
 }
 
 const SPINE_TIMEOUT_MS = 120000
+// Silence budget between streamed tokens of one spine entry.
+const SPINE_IDLE_TIMEOUT_MS = 90000
 
 function fallbackSpineEntry(chapter: any) {
   return {
@@ -107,9 +109,12 @@ This chapter must pick up from that.
       {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.7,
-        timeout: SPINE_TIMEOUT_MS,
+        // Idle-bounded like the rest of the pipeline: a spine entry that is
+        // still streaming is progress, not a hang.
+        idleTimeout: SPINE_IDLE_TIMEOUT_MS,
         schema: SPINE_ENTRY_SCHEMA,
-        schemaName: 'spine_entry'
+        schemaName: 'spine_entry',
+        role: 'utility'
       }
     ).catch(() => null)
 

@@ -1,5 +1,7 @@
 import { createAgentMemory } from './AgentMemory'
 import { buildGenerationContext } from '../context/index'
+import { SessionBudget, SessionBudgetExceededError } from '../../../services/aiProviderBudget'
+import { useEvalStore } from '../../../stores/evalStore'
 
 /**
  * ROUTING_TABLE[phase][event] = { nextPhase, handler }
@@ -229,10 +231,8 @@ async function handleSceneWritten(memory: any, payload: any) {
  * Scene passed evaluation — write the next scene.
  */
 async function handleSceneApproved(memory: any, payload: any) {
-  memory.sceneEvalResults.value = [
-    ...memory.sceneEvalResults.value,
-    { ...payload, index: memory.currentWriteIndex.value - 1 }
-  ]
+  const evalStore = useEvalStore()
+  evalStore.addResult({ ...payload, index: memory.currentWriteIndex.value - 1 })
 }
 
 /**
@@ -246,10 +246,8 @@ async function handleSceneRejected(memory: any, payload: any) {
   }
   memory.writtenScenes.value[rejectedIdx] = null
   memory.currentWriteIndex.value = rejectedIdx
-  memory.sceneEvalResults.value = [
-    ...memory.sceneEvalResults.value,
-    { ...payload, index: rejectedIdx, verdict: 'rejected' }
-  ]
+  const evalStore = useEvalStore()
+  evalStore.addResult({ ...payload, index: rejectedIdx, verdict: 'rejected' })
   memory.setProgress(`Re-writing scene ${rejectedIdx + 1}...`, 20)
 }
 
@@ -262,10 +260,17 @@ async function handleBatchComplete(memory: any, payload: any) {
   memory.pendingBatchStart.value = payload.batchStart
   memory.lastSyncedResultIndex.value = payload.batchEnd
 
-  const preview = await memory.instances.sync.discoverSync(
-    memory.structuredResults.value.slice(payload.batchStart, payload.batchEnd)
-  )
-  memory.syncPreview.value = preview
+  // The caller has already run discovery over the batch it just wrote, so it
+  // passes the result in. Re-deriving it here used to slice `memory.structuredResults`
+  // — an array the inline pipeline never populates — with batch bounds taken
+  // from a different index space, which produced a wrong preview at best.
+  if (payload.preview) {
+    memory.syncPreview.value = payload.preview
+  } else if (memory.instances.sync?.discoverSync) {
+    memory.syncPreview.value = await memory.instances.sync.discoverSync(
+      memory.structuredResults.value.slice(payload.batchStart, payload.batchEnd)
+    )
+  }
   memory.setProgress('Reviewing batch sync changes...', 75)
 }
 
@@ -358,11 +363,11 @@ async function handleWritingDone(memory: any, _payload: any) {
  * Finalize: build manuscript, checkpoint, sync, persist.
  */
 async function handleCommitted(memory: any, _payload: any) {
-  await memory.instances.commitService.buildManuscript?.(
+  await memory.instances.commitService?.buildManuscript?.(
     memory.scenePlan.value,
     memory.writtenScenes.value
   )
-  await memory.instances.commitService.finalize?.(memory.currentTaskId.value)
+  await memory.instances.commitService?.finalize?.(memory.currentTaskId.value)
   memory.setProgress('Complete', 100)
 }
 
@@ -391,6 +396,7 @@ async function handleError(memory: any, payload: any) {
  * Full reset — calls memory.reset().
  */
 async function handleReset(memory: any, _payload: any) {
+  memory.instances.sessionBudget?.reset()
   memory.reset()
 }
 
@@ -417,6 +423,22 @@ export class Delegator {
     const route = (ROUTING_TABLE as any)[currentPhase]?.[event]
 
     if (!route) {
+      // ERROR and RESET must be reachable from every phase, routed or not.
+      // Throwing here replaced the caller's real failure with a routing error —
+      // the original cause was lost, `error.value` was never set, and the run
+      // reported a state machine complaint instead of what actually went wrong.
+      if (event === 'ERROR') {
+        this.history.push({ from: currentPhase, event, to: 'error', handler: 'handleError' })
+        transitionTo(this.memory, 'error', `${event} (unrouted from ${currentPhase})`)
+        await handleError(this.memory, payload)
+        return { nextPhase: 'error', handler: 'handleError' }
+      }
+      if (event === 'RESET') {
+        this.history.push({ from: currentPhase, event, to: 'idle', handler: 'handleReset' })
+        transitionTo(this.memory, 'idle', `${event} (unrouted from ${currentPhase})`)
+        await handleReset(this.memory, payload)
+        return { nextPhase: 'idle', handler: 'handleReset' }
+      }
       throw new Error(
         `Delegator: no route for event "${event}" in phase "${currentPhase}". ` +
           `Available events: [${Object.keys((ROUTING_TABLE as any)[currentPhase] ?? {}).join(', ')}]`
@@ -432,9 +454,53 @@ export class Delegator {
       transitionTo(this.memory, nextPhase, `${event}→${nextPhase}`)
     }
 
+    // Reporting a failure and tearing a run down must not themselves need
+    // budget. When the budget is what ran out, this check fired *inside* the
+    // caller's catch block and threw a second time — replacing the real error,
+    // leaving `error.value` unset, and letting an exhausted run present itself
+    // as a finished one. Only work-doing transitions are gated.
+    if (event !== 'ERROR' && event !== 'RESET') {
+      const check = this.memory.instances.sessionBudget?.check()
+      if (check && !check.allowed) {
+        throw new SessionBudgetExceededError(check.reason)
+      }
+    }
+
     const result = await handler(this.memory, payload)
 
     return { nextPhase, handler: handlerName, result }
+  }
+
+  /**
+   * Whether `event` has a route out of the current phase.
+   *
+   * The terminal sequence (repair → audit → commit) is driven by the inline
+   * pipeline, which can be entered from several phases depending on how the run
+   * got there. Asking first is how it walks the table instead of guessing and
+   * throwing halfway through.
+   */
+  canDispatch(event: any) {
+    return Boolean((ROUTING_TABLE as any)[this.memory.phase.value]?.[event])
+  }
+
+  /**
+   * Put the machine back into a known phase without replaying the work that
+   * normally leads there.
+   *
+   * Crash recovery is the case this exists for: a resumed run has already been
+   * bootstrapped, planned and spined, so walking the events forward from `idle`
+   * would re-run those handlers' side effects (re-seeding graph edges, rebuilding
+   * context) to reach a state we already know we are in. Resume previously
+   * dispatched SPINE_GENERATED straight out of `idle`, which has no such route —
+   * so it threw and resuming silently did nothing.
+   */
+  restore(phase: any, reason = 'restored') {
+    if (!(ROUTING_TABLE as any)[phase]) {
+      throw new Error(`Delegator: cannot restore unknown phase "${phase}"`)
+    }
+    this.history.push({ from: this.memory.phase.value, event: 'RESTORE', to: phase, handler: null })
+    transitionTo(this.memory, phase, reason)
+    return phase
   }
 
   get phase() {
@@ -447,5 +513,13 @@ export class Delegator {
 
   getHistory() {
     return [...this.history]
+  }
+
+  getBudgetState() {
+    return this.memory.instances.sessionBudget?.asState() ?? null
+  }
+
+  setBudget(budget: SessionBudget | null) {
+    this.memory.instances.sessionBudget = budget
   }
 }

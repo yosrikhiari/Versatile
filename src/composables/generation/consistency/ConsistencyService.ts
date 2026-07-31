@@ -1,5 +1,6 @@
 import { useStoryDocuments } from '../../useStoryDocuments'
 import { computeSummary } from '../utils'
+import { proseToHtml, countProseWords } from '../writing/liveDraft'
 import {
   buildRetrievalContext,
   buildExistingEntitiesBlob,
@@ -120,8 +121,8 @@ export class ConsistencyService {
       await this.manuscriptStore.updateSubsectionData(
         scene.subsectionId,
         {
-          content: fullProse,
-          wordCount: fullProse.split(/\s+/).length,
+          content: proseToHtml(fullProse),
+          wordCount: countProseWords(fullProse),
           contentStatus: 'generated'
         },
         projectId
@@ -168,23 +169,36 @@ export class ConsistencyService {
     }
   }
 
+  /**
+   * Terminal continuity audit + (in auto mode) bounded fix rounds.
+   *
+   * Does NOT set `phase` itself. It used to assign `phase.value = 'consistency-check'`
+   * directly, which moved the delegator into a phase the caller's next event had
+   * no route out of — every clean run ended by throwing a routing error that
+   * surfaced as "Conjuration Failed". The delegator owns phase transitions; this
+   * reports what it found and lets the caller route on it.
+   *
+   * @returns {{ issueCount: number, checked: boolean }}
+   */
   async runTerminalConsistencyAudit(projectId: any, currentTaskId: any) {
     const consistencyPhase = this.actLog.addPhase(currentTaskId, 'Consistency Check')
-    this.phase.value = 'consistency-check'
     await this.updateGenRunStage(projectId, 'consistency', { status: 'running' })
     this.progress.statusText =
       'Auditing written prose against character bio sheets to find narrative contradictions...'
     const characters = this.storyBibleStore.characters
     const locations = this.storyBibleStore.locations
-    const canCheck = characters.length > 1 || locations.length > 1
+    // A scene that failed generation leaves a null hole in the positional array;
+    // the critic must never be handed one.
+    const written = this.writtenScenes.value.filter(Boolean)
+    const canCheck = (characters.length > 1 || locations.length > 1) && written.length > 0
 
     if (canCheck) {
       const report = await this.critic.checkContradictions({
         characters,
         locations,
-        sceneProse: this.writtenScenes.value,
+        sceneProse: written,
         synopsis: '',
-        ledger: buildFactLedger(this.spineArray.value, this.writtenScenes.value)
+        ledger: buildFactLedger(this.spineArray.value, written)
       })
       this.consistencyReport.value = report
     }
@@ -213,12 +227,13 @@ export class ConsistencyService {
             console.warn('[ConsistencyService] Consistency fix failed for scene', sceneIndex, err)
           }
         }
+        const rechecked = this.writtenScenes.value.filter(Boolean)
         const recheck = await this.critic.checkContradictions({
           characters,
           locations,
-          sceneProse: this.writtenScenes.value,
+          sceneProse: rechecked,
           synopsis: '',
-          ledger: buildFactLedger(this.spineArray.value, this.writtenScenes.value)
+          ledger: buildFactLedger(this.spineArray.value, rechecked)
         })
         this.consistencyReport.value = recheck
         if ((recheck.characterIssues?.length || 0) + (recheck.locationIssues?.length || 0) === 0)
@@ -228,5 +243,10 @@ export class ConsistencyService {
 
     this.actLog.updatePhase(currentTaskId, consistencyPhase, { status: 'done' })
     await this.updateGenRunStage(projectId, 'consistency', { status: 'done' })
+
+    const report = this.consistencyReport.value
+    const issueCount =
+      (report?.characterIssues?.length || 0) + (report?.locationIssues?.length || 0)
+    return { issueCount, checked: canCheck }
   }
 }

@@ -1,4 +1,5 @@
 import { computeSummary } from '../utils'
+import { proseToHtml, countProseWords } from '../writing/liveDraft'
 
 export class CommitService {
   writeParams: any
@@ -76,7 +77,8 @@ export class CommitService {
       storyContract: wp.storyContract || '',
       synopsis: wp.synopsis || '',
       autoMode: this.autoMode.value,
-      writtenCount: this.writtenScenes.value.length,
+      // Positional array — length is the plan size, not the number written.
+      writtenCount: this.writtenScenes.value.filter((s: any) => s).length,
       writtenMeta: this.writtenScenes.value
         .filter((s: any) => s)
         .map((s: any) => ({
@@ -93,7 +95,11 @@ export class CommitService {
   }
 
   async persistCheckpoint(projectId: any) {
-    if (!this.autoMode.value || !projectId) return
+    // Previously gated on autoMode, which meant the one-click path — the only
+    // one long enough to need resuming — was also the only one that never wrote
+    // a checkpoint from the parallel writer. A run that stops for any reason is
+    // worth being able to pick back up regardless of how it was started.
+    if (!projectId) return
     try {
       const run = await this.getGenRun(projectId)
       const base = run?.state?.version === 2 ? run.state : this.makeInitialGenState()
@@ -103,7 +109,7 @@ export class CommitService {
         prose: {
           ...(base.stages?.prose || {}),
           status: 'running',
-          written: this.writtenScenes.value.length,
+          written: this.writtenScenes.value.filter((s: any) => s).length,
           total: this.scenePlan.value.length
         }
       }
@@ -119,18 +125,34 @@ export class CommitService {
    *   `summary`, that is used directly instead of spending a whole extra LLM
    *   round-trip asking the model to summarize prose it just wrote. Optional, so
    *   callers without it keep the old behaviour.
+   * @param {number} [sceneIndex] Position of this scene in the plan. `writtenScenes`
+   *   is positional everywhere else (the parallel path allocates it as a fixed-length
+   *   array and assigns by index); appending here instead produced two array shapes
+   *   for the same ref, so every index-based consumer — evaluation, repair, retrieval
+   *   context — could pair prose with the wrong plan entry. Falls back to appending
+   *   when the caller has no index.
    */
-  async commitAndStoreScene(scene: any, fullProse: any, sectionIdx: any, sections: any, projectId: any, structured: any) {
+  async commitAndStoreScene(
+    scene: any,
+    fullProse: any,
+    sectionIdx: any,
+    sections: any,
+    projectId: any,
+    structured: any,
+    sceneIndex?: number
+  ) {
     this.progress.statusText =
       'Compiling prose and generating plot-accurate continuity summaries...'
     const summary = await computeSummary(fullProse, structured)
-    const wordCount = fullProse.split(/\s+/).length
+    const wordCount = countProseWords(fullProse)
 
     if (scene.subsectionId) {
       await this.manuscriptStore.updateSubsectionData(
         scene.subsectionId,
         {
-          content: fullProse,
+          // The editor round-trips this field through Tiptap, so it has to be
+          // HTML. Storing raw model text collapsed every paragraph break.
+          content: proseToHtml(fullProse),
           wordCount,
           contentStatus: 'generated'
         },
@@ -138,17 +160,7 @@ export class CommitService {
       )
     }
 
-    const section = sections[sectionIdx]
-    if (section) {
-      const idSet = new Set(section.subsectionIds || [])
-      const totalWords =
-        this.writtenScenes.value
-          .filter((s: any) => s && idSet.has(s.subsectionId))
-          .reduce((sum: number, s: any) => sum + (s.prose ? s.prose.split(/\s+/).length : 0), 0) + wordCount
-      await this.manuscriptStore.updateSectionData(section.id, { wordCount: totalWords }, projectId)
-    }
-
-    this.writtenScenes.value.push({
+    const entry = {
       title: scene.title || `Scene ${scene.sceneNumber}`,
       prose: fullProse,
       summary,
@@ -156,6 +168,23 @@ export class CommitService {
       location: scene.location || '',
       sceneNumber: scene.sceneNumber,
       subsectionId: scene.subsectionId
-    })
+    }
+
+    if (typeof sceneIndex === 'number' && sceneIndex >= 0) {
+      this.writtenScenes.value[sceneIndex] = entry
+    } else {
+      this.writtenScenes.value.push(entry)
+    }
+
+    // Section total is recomputed from committed scenes (this one included), so
+    // it stays correct on re-commit instead of double-counting a rewrite.
+    const section = sections[sectionIdx]
+    if (section) {
+      const idSet = new Set(section.subsectionIds || [])
+      const totalWords = this.writtenScenes.value
+        .filter((s: any) => s && idSet.has(s.subsectionId))
+        .reduce((sum: number, s: any) => sum + countProseWords(s.prose), 0)
+      await this.manuscriptStore.updateSectionData(section.id, { wordCount: totalWords }, projectId)
+    }
   }
 }

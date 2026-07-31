@@ -1,6 +1,7 @@
 import { buildRetrievalContext } from '../context/sceneContext'
 import { buildExistingEntitiesBlob } from '../context/sceneContext'
 import { computeSummary } from '../utils'
+import { proseToHtml, countProseWords } from '../writing/liveDraft'
 
 export class SceneInteractionService {
   writeParams: any
@@ -22,7 +23,6 @@ export class SceneInteractionService {
   sceneReviewMode: any
   currentSceneResult: any
   currentWriteIndex: any
-  sceneEvalResults: any
   lastSyncedResultIndex: any
   syncPreview: any
   currentTaskId: any
@@ -51,7 +51,6 @@ export class SceneInteractionService {
     this.sceneReviewMode = args.sceneReviewMode
     this.currentSceneResult = args.currentSceneResult
     this.currentWriteIndex = args.currentWriteIndex
-    this.sceneEvalResults = args.sceneEvalResults
     this.lastSyncedResultIndex = args.lastSyncedResultIndex
     this.syncPreview = args.syncPreview
     this.currentTaskId = args.currentTaskId
@@ -83,12 +82,16 @@ export class SceneInteractionService {
       return
     }
 
+    // Leave sync-preview before finishing. The terminal sequence (repair →
+    // continuity → commit) is only reachable from `writing`; staying here meant
+    // a run that ended on a sync batch never reached `complete` at all.
+    this.phase.value = 'writing'
     await this.onCompleteGeneration?.(projectId)
   }
 
   async approveScene() {
     if (!this.currentSceneResult.value || !this.writeParams.value) return
-    const { scene, fullProse, sectionIdx, structured } = this.currentSceneResult.value
+    const { scene, sceneIndex, fullProse, sectionIdx, structured } = this.currentSceneResult.value
     const { projectId, sections } = this.writeParams.value
     this.currentSceneResult.value = null
     this.progress.statusText = 'Approving scene and continuing...'
@@ -98,7 +101,10 @@ export class SceneInteractionService {
       sectionIdx,
       sections,
       projectId,
-      structured
+      structured,
+      // The reviewed scene's own position, so an approval writes into the slot
+      // it was drafted for instead of appending past the scenes after it.
+      typeof sceneIndex === 'number' ? sceneIndex : this.currentWriteIndex.value - 1
     )
     this.phase.value = 'writing'
     await this.onWriteNextBatch?.(this.currentWriteIndex.value)
@@ -198,8 +204,8 @@ export class SceneInteractionService {
       await this.manuscriptStore.updateSubsectionData(
         scene.subsectionId,
         {
-          content: fullProse,
-          wordCount: fullProse.split(/\s+/).length,
+          content: proseToHtml(fullProse),
+          wordCount: countProseWords(fullProse),
           contentStatus: 'generated'
         },
         projectId

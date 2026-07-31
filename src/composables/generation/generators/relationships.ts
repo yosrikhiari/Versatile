@@ -72,15 +72,142 @@ const RELATIONSHIP_SCHEMA = {
   required: ['characterRelationships']
 }
 
+/** Rough output cost of one connection object, measured against the schema above. */
+const TOKENS_PER_CONNECTION = 45
+
+/**
+ * Size the schema to the cast.
+ *
+ * The unbounded version let the grammar satisfy itself with an empty
+ * `characterRelationships` array — which, combined with a prompt that invited
+ * omission, is why the Story Network came back with "no connections" and burned
+ * a retry doing it again. `minItems: 1` makes emptiness structurally
+ * unrepresentable; it is always satisfiable because the caller returns early
+ * below two characters. The `maxItems` caps stop a grammar-constrained model
+ * from enumerating every possible pair until it runs out of budget.
+ */
+function makeRelationshipSchema({
+  characterNames = [],
+  locationNames = [],
+  threadTitles = []
+}: {
+  characterNames?: string[]
+  locationNames?: string[]
+  threadTitles?: string[]
+}) {
+  const characterCount = characterNames.length
+  const locationCount = locationNames.length
+  const threadCount = threadTitles.length
+  const pairs = Math.max(1, Math.floor((characterCount * (characterCount - 1)) / 2))
+  const props: any = RELATIONSHIP_SCHEMA.properties
+
+  // Pin every name field to the committed cast.
+  //
+  // A free-string name field lets the model answer the wrong question in the
+  // right shape. Observed on phi4-mini, which put the RELATIONSHIP into the name
+  // slot: `"location": "Avoids The Pier, frequents Marine Research Facility (not
+  // listed)"` and `"plotThread": "Both: Who moved the boat, The dying reef"`.
+  // Both parsed fine and both were then silently dropped for not matching an
+  // entity. An enum makes the grammar itself reject anything that is not an
+  // exact existing name, so the failure cannot be produced in the first place.
+  const enumOf = (values: string[]) => ({ type: 'string', enum: values })
+
+  const properties: any = {
+    characterRelationships: {
+      ...props.characterRelationships,
+      minItems: 1,
+      maxItems: Math.min(40, pairs),
+      items: {
+        ...props.characterRelationships.items,
+        properties: {
+          ...props.characterRelationships.items.properties,
+          from: enumOf(characterNames),
+          to: enumOf(characterNames)
+        }
+      }
+    }
+  }
+
+  // Arrays whose entity list is empty are omitted entirely: an `enum: []` is
+  // unsatisfiable, and asking for links to things that do not exist is how
+  // invented names get in.
+  if (locationCount) {
+    properties.characterLocations = {
+      ...props.characterLocations,
+      maxItems: Math.min(40, characterCount * locationCount),
+      items: {
+        ...props.characterLocations.items,
+        properties: {
+          ...props.characterLocations.items.properties,
+          character: enumOf(characterNames),
+          location: enumOf(locationNames)
+        }
+      }
+    }
+  }
+
+  if (threadCount) {
+    properties.characterPlotThreads = {
+      ...props.characterPlotThreads,
+      maxItems: Math.min(40, characterCount * threadCount),
+      items: {
+        ...props.characterPlotThreads.items,
+        properties: {
+          ...props.characterPlotThreads.items.properties,
+          character: enumOf(characterNames),
+          plotThread: enumOf(threadTitles)
+        }
+      }
+    }
+  }
+
+  if (threadCount > 1) {
+    properties.plotThreadLinks = {
+      ...props.plotThreadLinks,
+      maxItems: Math.min(20, threadCount * (threadCount - 1)),
+      items: {
+        ...props.plotThreadLinks.items,
+        properties: {
+          ...props.plotThreadLinks.items.properties,
+          from: enumOf(threadTitles),
+          to: enumOf(threadTitles)
+        }
+      }
+    }
+  }
+
+  return { ...RELATIONSHIP_SCHEMA, properties }
+}
+
+export function estimateRelationshipTokens({
+  characterCount,
+  locationCount,
+  threadCount
+}: {
+  characterCount: number
+  locationCount: number
+  threadCount: number
+}) {
+  const pairs = Math.max(1, Math.floor((characterCount * (characterCount - 1)) / 2))
+  const connections =
+    Math.min(40, pairs) +
+    Math.min(40, characterCount * locationCount) +
+    Math.min(40, characterCount * threadCount) +
+    Math.min(20, threadCount * Math.max(0, threadCount - 1))
+  return Math.min(8192, Math.max(1024, connections * TOKENS_PER_CONNECTION))
+}
+
+export { makeRelationshipSchema }
+
 const SYSTEM_PROMPT = `You are a story-structure architect mapping the relationship network of a cast that already exists.
 
-You are given the exact characters, locations, and plot threads. Use ONLY these names — never invent new entities. Produce the meaningful connections between them:
-- characterRelationships: how characters relate to each other (ally, rival, family, mentor, romantic, enemy, colleague, ...). Only pairs with a real dynamic.
+You are given the exact characters, locations, and plot threads. Use ONLY these names — never invent new entities. Produce the connections between them:
+- characterRelationships: how characters relate to each other (ally, rival, family, mentor, romantic, enemy, colleague, ...). EVERY character must appear in at least one relationship. Characters in the same story always relate somehow — if a dynamic is not obvious, infer the most plausible one from their roles and goals.
 - characterLocations: which characters are bound to which locations (home, frequents, avoids, imprisoned, rules, ...).
 - characterPlotThreads: which characters drive, obstruct, or are affected by which plot threads (driver, obstacle, affected, catalyst, ...).
 - plotThreadLinks: how plot threads relate (depends_on, parallels, resolves, complicates, ...).
 
-Return ONLY JSON matching the requested shape. Omit an array if there are no meaningful connections of that kind.`
+Return ONLY JSON matching the requested shape. characterRelationships must never be empty. The other arrays may be omitted only when the story genuinely contains no such entities.`
 
 function normalizeName(name: any) {
   return typeof name === 'string' ? name.trim().toLowerCase() : ''
@@ -242,13 +369,24 @@ export async function generateRelationships({
   // Network isn't silently empty on a transient miss.
   const MAX_ATTEMPTS = 2
   const userPrompt = buildUserPrompt({ characters, locations, plotThreads, synopsis, genre, tone })
+  const characterNames = characters.map((c: any) => c.name).filter(Boolean)
+  const locationNames = (locations || []).map((l: any) => l.name).filter(Boolean)
+  const threadTitles = (plotThreads || []).map((t: any) => t.title).filter(Boolean)
+  const schema = makeRelationshipSchema({ characterNames, locationNames, threadTitles })
+  const maxTokens = estimateRelationshipTokens({
+    characterCount: characterNames.length,
+    locationCount: locationNames.length,
+    threadCount: threadTitles.length
+  })
   let aiResult = null
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     aiResult = await aiGenerateJson(userPrompt, SYSTEM_PROMPT, {
       feature: FEATURES.NETWORK,
       temperature: 0.5,
-      schema: RELATIONSHIP_SCHEMA,
+      schema,
+      maxTokens,
       schemaName: 'story_network',
+      role: 'utility',
       signal
     }).catch((err) => {
       console.warn(`[generateRelationships] attempt ${attempt} failed:`, err as any)

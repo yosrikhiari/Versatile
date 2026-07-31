@@ -1,5 +1,6 @@
 import { createAgentMemory } from './AgentMemory'
 import { Delegator } from './Delegator'
+import { SessionBudget } from '../../../services/aiProviderBudget'
 import { useStoryBibleStore } from '../../../stores/storyBibleStore'
 import { useManuscriptStore } from '../../../stores/manuscriptStore'
 import { useVolumeStore } from '../../../stores/volumeStore'
@@ -73,11 +74,20 @@ export function useDelegatorGeneration() {
     graph: createGraphTool(memory)
   }
 
+  // --- Wire SessionBudget into composable instances ---
+  const _budget = new SessionBudget()
+  memory.instances.sessionBudget = _budget
+  memory.instances.director.sessionBudget = _budget
+  memory.instances.writer.sessionBudget = _budget
+  memory.instances.critic.sessionBudget = _budget
+
   // --- Create the Delegator ---
   const delegator = new Delegator(memory)
 
   // --- Public bridge API ---
   const dispatch = (event: any, payload: any) => delegator.dispatch(event, payload)
+  const canDispatch = (event: any) => delegator.canDispatch(event)
+  const restorePhase = (phase: any, reason?: any) => delegator.restore(phase, reason)
 
   const initializeToolInstances = (toolInstances: any) => {
     Object.assign(memory.instances, toolInstances)
@@ -88,6 +98,8 @@ export function useDelegatorGeneration() {
     tools,
     delegator,
     dispatch,
+    canDispatch,
+    restorePhase,
     getResumableRun: getResumableRunFn,
     initializeToolInstances
   }

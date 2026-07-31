@@ -2,16 +2,14 @@ import { ActiveLearningService } from '../../../evaluation/ActiveLearningService
 
 export class ActiveLearningBridge {
   private service: any
-  private sceneEvalResults: any
   private promptAdjuster: any
   private workspaceType: any
   private batchCount: any
   private lastFullAnalysisBatch: any
   private fullAnalysisInterval: any
 
-  constructor({ sceneEvalResults, promptAdjuster, workspaceType }: any) {
+  constructor({ promptAdjuster, workspaceType }: any) {
     this.service = new ActiveLearningService()
-    this.sceneEvalResults = sceneEvalResults
     this.promptAdjuster = promptAdjuster
     this.workspaceType = workspaceType
     this.batchCount = 0

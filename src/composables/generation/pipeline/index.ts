@@ -1,5 +1,6 @@
 import { buildGenerationContext } from '../context'
 import { shapeContext } from '../shaping'
+import { buildRelevanceIndex } from '../shaping/semanticRelevance'
 import { buildPrompt } from './promptBuilder'
 import { executeGeneration } from './modelRunner'
 import { entitySchemaRegistry } from '../schemas'
@@ -35,9 +36,19 @@ export async function generateEntity(
 
   const tokenBudget = options.tokenBudget ?? ENTITY_BUDGET[entityType] ?? DEFAULT_BUDGET_TOKENS
 
+  // Rank entities by relevance to the scene rather than by recency, so the
+  // per-type caps in `shapeContext` drop the least relevant rather than the
+  // least recently edited. Returns null when embeddings are unavailable or the
+  // scores carry no signal, in which case shaping keeps its heuristic order.
+  const relevance = await buildRelevanceIndex({
+    query: buildRelevanceQuery(rawContext, extraInstructions),
+    entities: rawContext.entities || {}
+  }).catch(() => null)
+
   const shapedBundle = shapeContext(rawContext, {
     tokenBudget,
-    systemPrompt: schema.systemPrompt
+    systemPrompt: schema.systemPrompt,
+    relevance
   })
 
   const { userPrompt, systemPrompt } = buildPrompt({
@@ -55,4 +66,15 @@ export async function generateEntity(
   })
 
   return result
+}
+
+/**
+ * What entity relevance is measured against: the manuscript the entity will
+ * appear in, plus whatever the caller asked for. Both are what actually
+ * determines which characters and locations matter for this generation.
+ */
+function buildRelevanceQuery(rawContext: any, extraInstructions: string): string {
+  return [rawContext?.manuscript, extraInstructions, rawContext?.project?.description]
+    .filter(Boolean)
+    .join('\n\n')
 }
