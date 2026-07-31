@@ -1,0 +1,20 @@
+{
+  "_meta": {
+    "expected": "fail",
+    "minScore": 0,
+    "maxScore": 4,
+    "description": "Tell-heavy scene with contradiction: John is introduced as unflappable but panics immediately. No tension arc, no showing, emotional goal abandoned halfway."
+  },
+  "scene": {
+    "title": "The Briefing",
+    "emotionalGoal": "Suspense and dread — Elena must realize the mission is a trap before it's too late.",
+    "charactersPresent": ["John (detective, tough, unflappable, 45)", "Elena (analyst, brilliant, intuitive, 29)"],
+    "payoff": "Elena discovers the intel was planted by a mole inside the agency, but John is the mole.",
+    "tension": "Elena is running out of time to warn her team before they walk into a coordinated ambush."
+  },
+  "draft": "The briefing room was tense. John was a detective and he was tough. He had seen a lot of things in his career and nothing surprised him anymore. The case file on the table was thick with evidence of a conspiracy that went all the way to the top.\n\n'This is bad,' John said. He was scared. His hands were shaking. 'Really bad.'\n\nElena looked at the evidence. It was clearly planted. She was a brilliant analyst and she could tell immediately that the intel was designed to mislead them. It was too neat, too convenient. Every piece fit together like a puzzle made by someone who wanted it to be solved.\n\n'This intel is planted,' Elena said. 'It's a trap.'\n\nJohn didn't listen. He was too scared. He was panicking now, sweating, unable to think clearly. He was supposed to be a tough unflappable detective but here he was falling apart like a rookie.\n\nThe room was tense. The clock was ticking. Elena knew they had to hurry but John was useless now, completely useless. She would have to do everything herself.\n\nThe conspiracy was deep. The mole was close. Elena realized that John was acting very suspiciously. She realized that he might be the mole. This was a shocking revelation because she had trusted him completely. She was surprised and upset.\n\n'You're the mole,' Elena said.\n\nJohn didn't deny it. He just looked at her with cold eyes and said 'You're too late.'\n\nBut Elena was smart so she had already called for backup. The backup arrived and John was arrested. Elena had saved the day. She was the hero. The mission was a success and everyone was safe thanks to her quick thinking and brilliant analysis.\n\nElena felt proud. She had proven herself. The end.",
+  "storyBible": "John: 45-year-old detective with 20 years on the force. Known for being calm under pressure. He has a dry wit and an unflappable demeanor that has earned him the nickname 'The Iceman' among his peers.\n\nElena: 29-year-old FBI analyst, promoted early for her pattern-recognition skills. She is intuitive to the point of being uncanny, but struggles with interpersonal trust due to a past betrayal.",
+  "existingEntitiesJson": "[{\"name\":\"FBI Field Office\",\"type\":\"location\",\"notes\":\"Where the briefing takes place. Glass walls, whiteboards, fluorescent lights.\"}]",
+  "chapterLog": "The team has been investigating a conspiracy involving a mole inside the agency for three weeks. This is the first briefing where concrete intel has been acquired.",
+  "categoryType": "thriller"
+}
