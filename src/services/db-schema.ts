@@ -286,5 +286,12 @@ export const SCHEMA_VERSIONS = [
     stores: {
       branches: '++id, projectId, name, sourceBranchId, description, status, createdAt, updatedAt, syncStatus, lastSyncedAt'
     }
+  },
+  // v43: +evalPreferences for pairwise draft ranking
+  {
+    version: 43,
+    stores: {
+      evalPreferences: '++id, winnerId, loserId, sceneId, timestamp, projectId, [projectId+sceneId]'
+    }
   }
 ]

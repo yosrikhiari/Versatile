@@ -1,7 +1,14 @@
 import { toRaw } from 'vue'
 import { db as _db } from './db-core'
+import {
+  guardStorageWrite,
+  guardStorageWriteBatch
+} from '../guardrails/integration/storageGuardrails'
 
 const db = _db as any
+
+// Only inserts are guarded. `update()` takes a partial patch, so holding it to
+// the table's required-field contract would flag every legitimate field edit.
 
 // ========== CHARACTERS ==========
 
@@ -16,6 +23,10 @@ export async function getCharacters(projectId: any) {
 
 export async function addCharacter(projectId: any, data: any) {
   try {
+    guardStorageWrite('characters', data, {
+      parentValues: { projectId },
+      entryPoint: 'db-entities.addCharacter'
+    })
     const now = new Date().toISOString()
     return await db.characters.add({
       projectId,
@@ -60,6 +71,10 @@ export async function deleteCharacter(id: any) {
 // half-written character set. Returns the new ids in input order.
 export async function addCharactersBatch(projectId: any, characters: any) {
   if (!Array.isArray(characters) || characters.length === 0) return []
+  guardStorageWriteBatch('characters', characters, {
+    parentValues: { projectId },
+    entryPoint: 'db-entities.addCharactersBatch'
+  })
   const now = new Date().toISOString()
   const rows = characters.map((data) => ({
     projectId,
@@ -81,6 +96,10 @@ export async function getLocations(projectId: any) {
 }
 
 export async function addLocation(projectId: any, data: any) {
+  guardStorageWrite('locations', data, {
+    parentValues: { projectId },
+    entryPoint: 'db-entities.addLocation'
+  })
   const now = new Date().toISOString()
   return db.locations.add({
     projectId,
@@ -102,6 +121,10 @@ export async function deleteLocation(id: any) {
 // Atomic bulk insert for locations (see addCharactersBatch).
 export async function addLocationsBatch(projectId: any, locations: any) {
   if (!Array.isArray(locations) || locations.length === 0) return []
+  guardStorageWriteBatch('locations', locations, {
+    parentValues: { projectId },
+    entryPoint: 'db-entities.addLocationsBatch'
+  })
   const now = new Date().toISOString()
   const rows = locations.map((data) => ({
     projectId,
@@ -122,6 +145,10 @@ export async function getPlotThreads(projectId: any) {
 }
 
 export async function addPlotThread(projectId: any, data: any) {
+  guardStorageWrite('plotThreads', data, {
+    parentValues: { projectId },
+    entryPoint: 'db-entities.addPlotThread'
+  })
   const now = new Date().toISOString()
   return db.plotThreads.add({
     projectId,
@@ -143,6 +170,10 @@ export async function deletePlotThread(id: any) {
 // Atomic bulk insert for plot threads (see addCharactersBatch).
 export async function addPlotThreadsBatch(projectId: any, plotThreads: any) {
   if (!Array.isArray(plotThreads) || plotThreads.length === 0) return []
+  guardStorageWriteBatch('plotThreads', plotThreads, {
+    parentValues: { projectId },
+    entryPoint: 'db-entities.addPlotThreadsBatch'
+  })
   const now = new Date().toISOString()
   const rows = plotThreads.map((data) => ({
     projectId,
@@ -163,12 +194,20 @@ export async function getCharacterRelationships(projectId: any) {
 }
 
 export async function addCharacterRelationship(projectId: any, data: any) {
+  guardStorageWrite('characterRelationships', data, {
+    parentValues: { projectId },
+    entryPoint: 'db-entities.addCharacterRelationship'
+  })
   return db.characterRelationships.add({ projectId, ...data })
 }
 
 // Atomic bulk insert for the Story Network stage.
 export async function addCharacterRelationshipsBatch(projectId: any, relationships: any) {
   if (!Array.isArray(relationships) || relationships.length === 0) return []
+  guardStorageWriteBatch('characterRelationships', relationships, {
+    parentValues: { projectId },
+    entryPoint: 'db-entities.addCharacterRelationshipsBatch'
+  })
   const now = new Date().toISOString()
   const rows = relationships.map((r) => ({ projectId, createdAt: now, ...r }))
   return db.transaction('rw', db.characterRelationships, async () => {
