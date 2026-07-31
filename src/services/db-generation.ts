@@ -5,53 +5,126 @@ const db = _db as any
 
 export const PIPELINE_STAGES = ['bible', 'network', 'structure', 'spine', 'prose', 'consistency']
 
-export const STAGE_TIMEOUT_MS: Record<string, number> = {
+/**
+ * How long a stage may make NO progress before it is declared stuck.
+ *
+ * These were previously total-runtime budgets, and every one of them was smaller
+ * than the work it was supposed to cover: `prose` allowed 30 minutes for a job
+ * that takes ~6 hours on a local model (30 scenes x ~13 min at 5.85 tok/s), so a
+ * healthy 10-chapter run was always killed around chapter 2.
+ *
+ * Bounding idle time instead means the budget no longer has to predict how long
+ * the work takes — only how long silence is tolerable. That is a question with a
+ * stable answer regardless of model speed, chapter count, or hardware.
+ */
+export const STAGE_IDLE_TIMEOUT_MS: Record<string, number> = {
   bible: 5 * 60 * 1000,
   network: 3 * 60 * 1000,
-  structure: 10 * 60 * 1000,
+  structure: 8 * 60 * 1000,
+  // One scene on slow local hardware can legitimately take ~15 minutes, and a
+  // scene is the unit of progress here.
+  prose: 25 * 60 * 1000,
   spine: 5 * 60 * 1000,
-  prose: 30 * 60 * 1000,
   consistency: 5 * 60 * 1000
 }
 
-export async function withTimeout(fn: () => Promise<any>, timeoutMs?: number, label = '') {
-  const ms = timeoutMs || 5 * 60 * 1000
-  return Promise.race([
-    fn(),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
-    )
-  ])
+/** @deprecated Retained for callers still passing an absolute budget. */
+export const STAGE_TIMEOUT_MS = STAGE_IDLE_TIMEOUT_MS
+
+/**
+ * `withTimeout` used to live here and is deliberately gone.
+ *
+ * It raced work against a wall clock and defaulted to five minutes when the
+ * caller passed no budget — which both of its call sites did. That silently
+ * capped the structure and prose stages at five minutes each, far below what
+ * they cost on a local model, and because it was a `Promise.race` the abandoned
+ * generation kept running invisibly after the timeout had already been reported
+ * as a failure.
+ *
+ * Use `runStageWithHeartbeat`: it bounds lack of progress rather than elapsed
+ * time, so slow-but-healthy work survives and a genuine hang is caught sooner.
+ */
+
+export interface StageHeartbeat {
+  /** Report that a unit of work completed; resets the idle timer. */
+  (detail?: string): void
 }
 
-export async function runStageWithTimeout(
+/**
+ * Run a stage under an idle watchdog.
+ *
+ * `workFn` receives a `heartbeat` it must call as each unit of work lands (a
+ * planned chapter, a written scene). While heartbeats keep arriving the stage
+ * runs for as long as it needs; when they stop for the stage's idle budget it
+ * fails immediately. A stage that never calls heartbeat behaves exactly like the
+ * old absolute-timeout version, so untouched call sites keep their old semantics.
+ */
+export async function runStageWithHeartbeat(
   projectId: string,
   stageName: string,
-  workFn: () => Promise<any>,
-  timeoutMs?: number
+  workFn: (heartbeat: StageHeartbeat) => Promise<any>,
+  idleTimeoutMs?: number
 ) {
-  const ms = timeoutMs || STAGE_TIMEOUT_MS[stageName] || 5 * 60 * 1000
+  const ms = idleTimeoutMs || STAGE_IDLE_TIMEOUT_MS[stageName] || 5 * 60 * 1000
   await updateGenRunStage(projectId, stageName, { status: 'running' })
-  try {
-    const result = await Promise.race([
-      workFn(),
-      new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error(`Stage "${stageName}" timed out after ${ms / 1000}s`)),
-          ms
+
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let settled = false
+  let rejectIdle: ((err: Error) => void) | null = null
+  let lastDetail = ''
+
+  const arm = () => {
+    clearTimeout(timer)
+    if (settled) return
+    timer = setTimeout(() => {
+      rejectIdle?.(
+        new Error(
+          `Stage "${stageName}" made no progress for ${Math.round(ms / 1000)}s` +
+            (lastDetail ? ` (last: ${lastDetail})` : '')
         )
       )
-    ])
+    }, ms)
+  }
+
+  const heartbeat: StageHeartbeat = (detail?: string) => {
+    if (detail) lastDetail = detail
+    arm()
+  }
+
+  try {
+    const idleGuard = new Promise((_, reject) => {
+      rejectIdle = reject
+      arm()
+    })
+    const result = await Promise.race([workFn(heartbeat), idleGuard])
+    settled = true
+    clearTimeout(timer)
     await updateGenRunStage(projectId, stageName, { status: 'done' })
     return result
   } catch (err: any) {
-    const isTimeout = /timed out/i.test(err.message)
+    settled = true
+    clearTimeout(timer)
+    const isTimeout = /timed out|no progress/i.test(err.message || '')
     await updateGenRunStage(projectId, stageName, {
       status: isTimeout ? 'timeout' : 'failed',
       error: err.message
     })
     throw err
   }
+}
+
+/**
+ * Absolute-budget variant, kept for stages whose work is a single opaque call
+ * with no intermediate progress to report. Prefer `runStageWithHeartbeat` for
+ * anything that completes in units.
+ */
+export async function runStageWithTimeout(
+  projectId: string,
+  stageName: string,
+  workFn: () => Promise<any>,
+  timeoutMs?: number
+) {
+  return runStageWithHeartbeat(projectId, stageName, () => workFn(), timeoutMs)
 }
 
 export function makeInitialGenState(extra = {}) {

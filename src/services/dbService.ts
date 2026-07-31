@@ -52,6 +52,8 @@ export {
   deleteVolume,
   assignSectionToVolume,
   removeSectionFromVolume,
+  getSectionIdsByVolume,
+  unassignAllSectionsFromVolume,
   batchCreatePlanStructure
 } from './db-structure'
 export {
@@ -97,6 +99,7 @@ export {
   getStoryElements,
   addStoryElement,
   updateStoryElement,
+  addStoryElementsBatch,
   deleteStoryElement,
   getGraphEdges,
   addGraphEdge,
@@ -127,7 +130,8 @@ export {
   setDailyGoal,
   updateDailyWordCount,
   getStreakData,
-  getLastSessionData
+  getLastSessionData,
+  getDailyStatsForProjects
 } from './db-goals'
 export { exportProject, importProject, exportToPDF } from './db-export'
 export {

@@ -1,5 +1,9 @@
 import { toRaw } from 'vue'
 import { db as _db } from './db-core'
+import {
+  guardStorageWrite,
+  guardStorageWriteBatch
+} from '../guardrails/integration/storageGuardrails'
 
 const db = _db as any
 
@@ -11,6 +15,18 @@ export async function getStoryElements(projectId: any) {
 
 export async function addStoryElement(projectId: any, data: any) {
   return db.storyElements.add({ projectId, ...data })
+}
+
+/**
+ * Atomic bulk insert for the canvas sync — one transaction, so a mid-run failure
+ * cannot leave the canvas half-populated.
+ */
+export async function addStoryElementsBatch(projectId: any, elements: any[]) {
+  if (!Array.isArray(elements) || elements.length === 0) return []
+  const rows = elements.map((e) => ({ projectId, ...e }))
+  return db.transaction('rw', db.storyElements, async () => {
+    return db.storyElements.bulkAdd(rows, { allKeys: true })
+  })
 }
 
 export async function updateStoryElement(id: any, data: any) {
@@ -28,6 +44,10 @@ export async function getGraphEdges(projectId: any) {
 }
 
 export async function addGraphEdge(projectId: any, data: any) {
+  guardStorageWrite('graphEdges', data, {
+    parentValues: { projectId },
+    entryPoint: 'db-graph.addGraphEdge'
+  })
   return db.graphEdges.add({ projectId, createdAt: new Date().toISOString(), ...data })
 }
 
@@ -35,6 +55,10 @@ export async function addGraphEdge(projectId: any, data: any) {
 // failure never leaves a half-written edge set.
 export async function addGraphEdgesBatch(projectId: any, edges: any) {
   if (!Array.isArray(edges) || edges.length === 0) return []
+  guardStorageWriteBatch('graphEdges', edges, {
+    parentValues: { projectId },
+    entryPoint: 'db-graph.addGraphEdgesBatch'
+  })
   const now = new Date().toISOString()
   const rows = edges.map((e) => ({ projectId, createdAt: now, ...e }))
   return db.transaction('rw', db.graphEdges, async () => {

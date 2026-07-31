@@ -23,6 +23,7 @@ export interface VersatileTables {
   dailyGoals: VersatileTable
   dialogueIndex: VersatileTable
   embeddingCache: VersatileTable
+  evalPreferences: VersatileTable
   evalResults: VersatileTable
   genRuns: VersatileTable
   generatedStories: VersatileTable

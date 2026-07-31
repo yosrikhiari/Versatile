@@ -1,7 +1,11 @@
 import { db as _db } from './db-core'
+import { guardStorageWrite } from '../guardrails/integration/storageGuardrails'
+
 const db = _db as any
 
 export async function saveEvalResult(record: any) {
+  // A malformed eval row corrupts score aggregation without ever throwing.
+  guardStorageWrite('evalResults', record, { entryPoint: 'db-evals.saveEvalResult' })
   return db.evalResults.add({
     ...record,
     timestamp: record.timestamp || new Date().toISOString()

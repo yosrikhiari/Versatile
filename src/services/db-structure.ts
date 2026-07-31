@@ -1,6 +1,8 @@
 import { db as _db } from './db-core'
 import { countWords } from '../utils/textUtils'
 import { getEmbedding } from './ollamaService'
+import { guardStorageWrite } from '../guardrails/integration/storageGuardrails'
+import { describeSceneBrief } from './sceneBriefText'
 
 const db = _db as any
 
@@ -49,6 +51,10 @@ export async function getSubsections(projectId: string, sectionId: string | null
 }
 
 export async function addSubsection(projectId: string, data: any) {
+  guardStorageWrite('subsections', data, {
+    parentValues: { projectId },
+    entryPoint: 'db-structure.addSubsection'
+  })
   const now = new Date().toISOString()
   const result = await db.subsections.add({
     projectId,
@@ -163,7 +169,53 @@ export async function removeSectionFromVolume(sectionId: string) {
   await db.sections.update(sectionId, { volumeId: null })
 }
 
-export async function batchCreatePlanStructure({ projectId, groups, branchId }: { projectId: string; groups: any[]; branchId?: string }) {
+/**
+ * Volume membership, derived from the sections themselves.
+ *
+ * `section.volumeId` is the persisted fact; `volume.sectionIds` was a parallel
+ * copy that only ever existed in memory, so after a reload it was empty while
+ * the sections still pointed at their volume. Deriving it here removes the
+ * second representation rather than trying to keep two in step.
+ */
+export async function getSectionIdsByVolume(projectId: string): Promise<Record<string, string[]>> {
+  const sections = await db.sections.where('projectId').equals(projectId).toArray()
+  const byVolume: Record<string, string[]> = {}
+  const ordered = sections.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+  for (const section of ordered) {
+    if (!section.volumeId) continue
+    ;(byVolume[section.volumeId] ||= []).push(section.id)
+  }
+  return byVolume
+}
+
+/**
+ * Detach every section belonging to `volumeId`.
+ *
+ * Deleting a volume previously walked the in-memory `sectionIds`, so on a
+ * freshly loaded project that list was empty and the sections were left holding
+ * a volumeId pointing at a volume that no longer existed.
+ *
+ * @returns how many sections were detached.
+ */
+export async function unassignAllSectionsFromVolume(volumeId: string): Promise<number> {
+  const sections = await db.sections.where('volumeId').equals(volumeId).toArray()
+  if (sections.length === 0) return 0
+  await db.transaction('rw', db.sections, async () => {
+    await Promise.all(
+      sections.map((s: any) => db.sections.update(s.id, { volumeId: null }))
+    )
+  })
+  return sections.length
+}
+
+/**
+ * @param startOrder Where these sections begin in the manuscript. A first-pass
+ *   run creates the whole book and starts at 0; a continuation run appends to a
+ *   manuscript that already has chapters, and starting at 0 there would give the
+ *   new chapters the same `order` as the opening ones — interleaving the
+ *   continuation into the middle of the book instead of after it.
+ */
+export async function batchCreatePlanStructure({ projectId, groups, branchId, startOrder = 0 }: { projectId: string; groups: any[]; branchId?: string; startOrder?: number }) {
   return db.transaction('rw', db.sections, db.subsections, async () => {
     const results = []
     const now = new Date().toISOString()
@@ -175,7 +227,7 @@ export async function batchCreatePlanStructure({ projectId, groups, branchId }: 
         title: group.title,
         summary: group.scenes.map((s: any) => s.title || `Scene ${s.sceneNumber}`).join(', '),
         wordCount: 0,
-        order: i,
+        order: startOrder + i,
         status: 'planning',
         branchId,
         createdAt: now,
@@ -189,7 +241,10 @@ export async function batchCreatePlanStructure({ projectId, groups, branchId }: 
           projectId,
           sectionId,
           title: scene.title || `Scene ${scene.sceneNumber}`,
-          description: `Scene ${scene.sceneNumber}`,
+          // The planner's brief, not a placeholder. This is what the outline
+          // displays and what the NEXT run reads back as its account of the
+          // existing manuscript — "Scene 3" told both of them nothing.
+          description: describeSceneBrief(scene),
           content: '',
           wordCount: 0,
           type: 'scene',

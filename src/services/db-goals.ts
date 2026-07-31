@@ -113,3 +113,22 @@ export async function getLastSessionData(projectId: string) {
     wordCount: entries[0].wordCount
   }
 }
+
+/**
+ * Every daily-goal row for the given projects, oldest first.
+ *
+ * `dailyGoals` holds one row per project per day (`{projectId, date, goalWords,
+ * wordCount}`), so it is the only real record of writing history in the app.
+ * Note `wordCount` is the manuscript's TOTAL that day, not words written that
+ * day — callers wanting daily output must diff consecutive rows per project.
+ */
+export async function getDailyStatsForProjects(projectIds: Array<string | number>) {
+  if (!projectIds.length) return []
+
+  const rows = await db.dailyGoals
+    .where('projectId')
+    .anyOf(projectIds)
+    .toArray()
+
+  return rows.sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)))
+}
