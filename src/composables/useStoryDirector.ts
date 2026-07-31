@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { aiGenerate, aiStream, aiGenerateJson, resolveFeatureConfig } from './useAiService'
 import { FEATURES, PROVIDERS, RESEARCH_CHUNKS_DEFAULT } from '../config/ai'
+import { SessionBudget } from '../services/aiProviderBudget'
 
 import { useProjectStore } from '../stores/projectStore'
 import { getAllChunksForProject } from '../services/researchDb'
@@ -8,11 +9,32 @@ import { getEmbedding } from '../services/embeddingService'
 import { cosineSimilarity } from '../services/ollamaService'
 import { useLocalStorage } from '../utils/useLocalStorage'
 import { RESEARCH_KEYS } from '../config/researchKeys'
-import { sanitizeJson } from '../services/ai/aiHelpers'
+import { sanitizeJson, repairTruncatedJson } from '../services/ai/aiHelpers'
+import { guardPlan } from '../guardrails/integration/composableGuardrails'
+import { rethrowIfFatal } from './generation/lifecycle/fatal'
 
-// Bound the planning call (stream + retry) so a stalled model surfaces a clear
-// error in a few minutes instead of hanging on Ollama's 20-minute default.
-const PLAN_TIMEOUT_MS = 240000
+// Planning is bounded by LACK OF PROGRESS, not by elapsed time.
+//
+// The previous 240s wall-clock cap was below what the work costs: an unbounded
+// `num_predict` of ~4,400 tokens takes ~12 minutes on a partially-offloaded
+// local model, so every planning call was killed mid-flight and every retry
+// paid the same 240s again. Measured on a GTX 1650 / qwen3:8b at 5.85 tok/s.
+//
+// Now a call lives as long as tokens keep arriving and dies quickly when they
+// stop, which detects a genuine hang sooner than the old cap did while no
+// longer punishing slow hardware for succeeding.
+const PLAN_IDLE_TIMEOUT_MS = 90_000
+// Prompt evaluation emits nothing; on a large bible + research prompt this is
+// legitimately minutes of silence before the first token.
+const PLAN_FIRST_TOKEN_TIMEOUT_MS = 300_000
+
+// Token budget per planned unit, measured against the schemas below. Left
+// implicit, `resolveMaxTokens` fell back to a flat 4,096 for any model it has no
+// metadata for — which is every local Ollama model — so a 3-scene call was given
+// the same runway as a 100-chapter one and simply ran until it was cut off.
+const TOKENS_PER_CHAPTER_STUB = 170
+const TOKENS_PER_SCENE = 300
+const STORY_ARC_TOKENS = 400
 
 // Hard cap on how many chunks we lexically rank in one planning call. Retrieval
 // only needs the top handful, and scanning an unbounded corpus on the main thread
@@ -178,6 +200,35 @@ const SCENES_SCHEMA = {
   required: ['scenes']
 }
 
+// Built per call so `maxItems` carries the exact count this batch asked for.
+//
+// An unbounded array tells the grammar it may keep emitting chapters forever,
+// and a model handed a large num_predict duly does. The array bound is what lets
+// the call terminate on its own rather than by running out of budget — the
+// difference between a planning step that finishes and one that gets cut off.
+function makeSkeletonSchema(batchCount: number) {
+  return {
+    ...SKELETON_SCHEMA,
+    properties: {
+      ...SKELETON_SCHEMA.properties,
+      chapters: {
+        ...SKELETON_SCHEMA.properties.chapters,
+        minItems: batchCount,
+        maxItems: batchCount
+      }
+    }
+  }
+}
+
+function makeScenesSchema(sceneCount: number) {
+  return {
+    ...SCENES_SCHEMA,
+    properties: {
+      scenes: { ...SCENES_SCHEMA.properties.scenes, minItems: sceneCount, maxItems: sceneCount }
+    }
+  }
+}
+
 // How many chapters to request per skeleton call. A single call emitting 100+
 // chapter objects is what truncates/times out and makes "Forging the Story Graph"
 // hang; batching keeps every call small and reliable.
@@ -220,7 +271,7 @@ async function runWithConcurrency(tasks: any[], limit: number) {
 // scenes with bounded concurrency. Every step degrades to padding rather than
 // throwing, so a long novel always yields a usable plan — that is what keeps the
 // "Forging the Story Graph" stage from hanging or aborting at scale.
-async function planChunked({ goal, systemPrompt, onPartialData }: { goal: any; systemPrompt: any; onPartialData: any }) {
+async function planChunked({ goal, systemPrompt, onPartialData, sessionBudget }: { goal: any; systemPrompt: any; onPartialData: any; sessionBudget?: SessionBudget | null }) {
   const s = goal.structure
   const N = Math.max(1, s.chapters)
   const S = Math.max(1, s.scenesPerChapter || 3)
@@ -248,10 +299,21 @@ Return ONLY JSON, no markdown:
     const skel = await aiGenerateJson(skeletonPrompt, systemPrompt, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
-      timeout: PLAN_TIMEOUT_MS,
-      schema: SKELETON_SCHEMA,
-      schemaName: 'chapter_skeleton'
-    }).catch(() => null)
+      idleTimeout: PLAN_IDLE_TIMEOUT_MS,
+      firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
+      maxTokens: batchCount * TOKENS_PER_CHAPTER_STUB + (needArc ? STORY_ARC_TOKENS : 0),
+      schema: makeSkeletonSchema(batchCount),
+      schemaName: 'chapter_skeleton',
+      role: 'utility',
+      sessionBudget
+    }).catch((err) => {
+      // A spent budget or a user stop fails every remaining call identically.
+      // Padding around those produces a full-length outline of empty chapters
+      // and hides the reason the run is over — so they travel up instead.
+      rethrowIfFatal(err)
+      console.warn(`[StoryDirector] skeleton batch ${batchStart + 1}+ failed:`, err)
+      return null
+    })
 
     if (needArc && skel && skel.storyArc && typeof skel.storyArc === 'object') {
       storyArc = skel.storyArc
@@ -302,10 +364,18 @@ Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
     const parsedScenes = await aiGenerateJson(scenePrompt, systemPrompt, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
-      timeout: PLAN_TIMEOUT_MS,
-      schema: SCENES_SCHEMA,
-      schemaName: 'chapter_scenes'
-    }).catch(() => null)
+      idleTimeout: PLAN_IDLE_TIMEOUT_MS,
+      firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
+      maxTokens: S * TOKENS_PER_SCENE,
+      schema: makeScenesSchema(S),
+      schemaName: 'chapter_scenes',
+      role: 'utility',
+      sessionBudget
+    }).catch((err) => {
+      rethrowIfFatal(err)
+      console.warn(`[StoryDirector] scene plan for chapter ${i + 1} failed:`, err)
+      return null
+    })
     ch.scenes = Array.isArray(parsedScenes?.scenes) ? parsedScenes.scenes : []
     for (const sc of (ch as any).scenes) {
       try {
@@ -323,6 +393,7 @@ Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
 export function useStoryDirector() {
   const isPlanning = ref(false)
   const planError = ref<any>(null)
+  let _sessionBudget: SessionBudget | null = null
 
   // `research` (optional, from the generator UI) scopes which imported research
   // documents inform the plan:
@@ -442,7 +513,7 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
       let parsed: any
       if (goal.structure) {
         // Large structured plan: build it in small, reliable chunks
-        parsed = await planChunked({ goal, systemPrompt: finalSystemPrompt, onPartialData })
+        parsed = await planChunked({ goal, systemPrompt: finalSystemPrompt, onPartialData, sessionBudget: _sessionBudget })
       } else {
         // Small/default plan: one streaming call with a non-streaming retry
         let accumulated = ''
@@ -475,20 +546,26 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
           {
             feature: FEATURES.STORY_GENERATION,
             temperature: 0.7,
-            // Bound planning so a stalled model fails fast instead of hanging for
-            // Ollama's default 20 minutes with no visible progress.
-            timeout: PLAN_TIMEOUT_MS
+            // Bounded by silence, not by elapsed time: a stalled model still
+            // fails fast, but one that is simply slow is allowed to finish.
+            idleTimeout: PLAN_IDLE_TIMEOUT_MS,
+            firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
+            sessionBudget: _sessionBudget
           }
         )
 
-        parsed = sanitizeJson(accumulated)
+        // A stream cut short still holds most of the plan; repair it before
+        // paying for a second full generation.
+        parsed = sanitizeJson(accumulated) || repairTruncatedJson(accumulated)
         if (!parsed) {
           const retryResponse = await aiGenerate(userPrompt, finalSystemPrompt, {
             feature: FEATURES.STORY_GENERATION,
             temperature: 0.5,
-            timeout: PLAN_TIMEOUT_MS
+            idleTimeout: PLAN_IDLE_TIMEOUT_MS,
+            firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
+            sessionBudget: _sessionBudget
           })
-          parsed = sanitizeJson(retryResponse)
+          parsed = sanitizeJson(retryResponse) || repairTruncatedJson(retryResponse)
         }
       }
 
@@ -598,6 +675,10 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
         : validatedChapters
       const flatScenes = finalChapters.flatMap((c: any) => c.scenes)
 
+      // The plan names characters and locations the writer will be held to,
+      // so phantom entities are caught here rather than scene by scene.
+      await guardPlan({ plan: { chapters: finalChapters, scenes: flatScenes } })
+
       return {
         chapters: finalChapters,
         scenes: flatScenes,
@@ -621,7 +702,7 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
     }
   }
 
-  return { generateStoryPlan, isPlanning, planError }
+  return { generateStoryPlan, isPlanning, planError, get sessionBudget() { return _sessionBudget }, set sessionBudget(v: SessionBudget | null) { _sessionBudget = v } }
 }
 
 export { sanitizeJson, enforceStructure }

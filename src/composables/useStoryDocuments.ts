@@ -8,6 +8,7 @@ import {
   DOC_TYPES,
   getAllStoryDocuments,
   upsertStoryDocument,
+  isUserOwned,
   appendRejectedPattern
 } from '../services/db-story-documents'
 
@@ -775,7 +776,9 @@ async function rebuildStoryContextDoc(projectId: any) {
   const existing = await getDocument(projectId, DOC_TYPES.STORY_CONTEXT)
   const { authorZone } = splitAuthorZone(existing?.content || '')
   const doc = await buildStoryContextDoc(projectId, authorZone)
-  await upsertStoryDocument(projectId, DOC_TYPES.STORY_CONTEXT, doc)
+  // 'auto': the author's own prose lives in the author zone, which
+  // buildStoryContextDoc preserves verbatim — only the derived zone is rewritten.
+  await upsertStoryDocument(projectId, DOC_TYPES.STORY_CONTEXT, doc, 'auto')
   return doc
 }
 
@@ -814,25 +817,48 @@ async function regenerateDocument(projectId: any, docType: any) {
       content = generateStyleGuideDoc()
       break
   }
-  await upsertStoryDocument(projectId, docType, content)
+  await upsertStoryDocument(projectId, docType, content, 'auto')
 }
 
-async function regenerateAllDocuments(projectId: any) {
-  if (!projectId) return
+const REGENERABLE_DOC_TYPES = [
+  DOC_TYPES.SYNOPSIS,
+  DOC_TYPES.CHARACTERS,
+  DOC_TYPES.WORLD,
+  DOC_TYPES.TIMELINE,
+  DOC_TYPES.RELATIONSHIPS,
+  DOC_TYPES.REJECTED_PATTERNS,
+  DOC_TYPES.STYLE_GUIDE
+]
+
+/**
+ * Bring the story-bible documents back in line with the story bible.
+ *
+ * By default this only fills in documents that do not exist yet — which meant a
+ * document, once written, was never updated again. After a generation run added
+ * a cast, a relationship network and thirty scenes, the Characters, Timeline,
+ * Relationships and Story-So-Far docs still described the project as it was
+ * before the run, and those same stale docs are what gets fed back to the model
+ * as canon on the next one.
+ *
+ * `force` refreshes existing documents too, skipping any the author has edited
+ * by hand — those are theirs, and a background refresh must not overwrite them.
+ *
+ * @returns the doc types actually rewritten, so callers can report it.
+ */
+async function regenerateAllDocuments(projectId: any, { force = false } = {}) {
+  if (!projectId) return []
   const existing = await getAllStoryDocuments(projectId)
-  const existingTypes = new Set(existing.filter((d: any) => d.content).map((d: any) => d.docType))
-  const allTypes = [
-    DOC_TYPES.SYNOPSIS,
-    DOC_TYPES.CHARACTERS,
-    DOC_TYPES.WORLD,
-    DOC_TYPES.TIMELINE,
-    DOC_TYPES.RELATIONSHIPS,
-    DOC_TYPES.REJECTED_PATTERNS,
-    DOC_TYPES.STYLE_GUIDE
-  ]
-  await Promise.all(
-    allTypes.filter((dt) => !existingTypes.has(dt)).map((dt) => regenerateDocument(projectId, dt))
-  )
+  const byType = new Map(existing.map((d: any) => [d.docType, d]))
+
+  const targets = REGENERABLE_DOC_TYPES.filter((dt) => {
+    const doc: any = byType.get(dt)
+    if (!doc || !doc.content) return true
+    if (!force) return false
+    return !isUserOwned(doc)
+  })
+
+  await Promise.all(targets.map((dt) => regenerateDocument(projectId, dt)))
+  return targets
 }
 
 async function getStoryDocumentContext(projectId: any, budgetTokens = STORY_DOC_BUDGET_TOKENS) {

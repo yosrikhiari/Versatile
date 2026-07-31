@@ -20,9 +20,15 @@ vi.mock('../services/aiService', () => {
   return { aiGenerate, aiGenerateStructured }
 })
 
-vi.mock('../config/evalDimensions', () => ({
-  getDimensionNames: vi.fn()
-}))
+// Only `getDimensionNames` is stubbed — the rest of the module stays real.
+// Replacing the whole module left `getDefaultThreshold` undefined, and
+// evaluateScene calls it right after building dimensionScores: it threw, the
+// outer catch swallowed it, and every case returned the evalUnavailable shape
+// with no dimensionScores at all. The assertions were testing the error path.
+vi.mock('../config/evalDimensions', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, getDimensionNames: vi.fn() }
+})
 
 vi.mock('../config/ai', async (importOriginal) => {
   const actual = await importOriginal()

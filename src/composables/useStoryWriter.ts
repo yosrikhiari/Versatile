@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate, aiStream, aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
+import { SessionBudget } from '../services/aiProviderBudget'
 
 import { formatEvalFeedback } from '../services/evalFeedback'
 import { getVoiceProfile } from '../config/voiceProfiles'
@@ -11,6 +12,7 @@ import { buildSceneContext } from '../services/sceneContextService'
 import { usePromptBuilder } from './usePromptBuilder'
 import { summarizeLog } from '../utils/promptUtils'
 import { fitSceneContext } from '../services/ai/contextBudget'
+import { guardScene } from '../guardrails/integration/composableGuardrails'
 
 // Schema for the metadata-extraction pass (call 2). Extractive, not generative:
 // the prose already exists, so a small local model does this well even though it
@@ -159,7 +161,7 @@ function stripAccidentalWrapping(text: any) {
  *
  * @returns {Promise<object>} the metadata fields, always shaped like EMPTY_METADATA
  */
-async function extractSceneMetadata(prose: any, { entityContext, signal }: { entityContext?: any; signal?: any } = {}) {
+async function extractSceneMetadata(prose: any, { entityContext, signal, sessionBudget }: { entityContext?: any; signal?: any; sessionBudget?: SessionBudget | null } = {}) {
   const excerpt = String(prose || '').slice(0, 6000)
   if (!excerpt.trim()) return { ...EMPTY_METADATA }
 
@@ -191,7 +193,17 @@ Extract:
         maxTokens: 2500,
         schema: SCENE_METADATA_SCHEMA,
         schemaName: 'scene_metadata',
-        signal
+        // Deliberately NOT role:'utility', despite being exactly the kind of
+        // short extractive call the utility lane exists for.
+        //
+        // This call alternates with prose, once per scene. On a GPU too small to
+        // hold both models a switch costs 11-14s of loading each way (measured,
+        // GTX 1650), so routing it away would pay ~25s of swapping to save ~29s
+        // of generation — break-even at best, and 30 swap pairs across a volume.
+        // The utility lane wins where such calls run CONSECUTIVELY (planning,
+        // spine, network): one swap amortised over a dozen calls.
+        signal,
+        sessionBudget
       }
     )
     return { ...EMPTY_METADATA, ...meta }
@@ -204,6 +216,7 @@ Extract:
 export function useStoryWriter() {
   const isWriting = ref(false)
   const writeError = ref<string | null>(null)
+  let _sessionBudget: SessionBudget | null = null
 
   async function writeScene({
     sceneBrief,
@@ -383,12 +396,13 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
             fullText += chunk
             onChunk(chunk, fullText)
           },
-          { feature: FEATURES.STORY_GENERATION, complexity }
+          { feature: FEATURES.STORY_GENERATION, complexity, sessionBudget: _sessionBudget }
         )
       } else {
         fullText = await aiGenerate(userPrompt, systemPrompt, {
           feature: FEATURES.STORY_GENERATION,
-          complexity
+          complexity,
+          sessionBudget: _sessionBudget
         })
       }
 
@@ -641,14 +655,15 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
             if (onRawChunk) onRawChunk(chunk)
             onChunk(chunk, chunk)
           },
-          { feature: FEATURES.STORY_GENERATION, maxTokens, signal, complexity }
+          { feature: FEATURES.STORY_GENERATION, maxTokens, signal, complexity, sessionBudget: _sessionBudget }
         )
       } else {
         accumulated = await aiGenerate(userPrompt, systemPrompt, {
           feature: FEATURES.STORY_GENERATION,
           maxTokens,
           signal,
-          complexity
+          complexity,
+          sessionBudget: _sessionBudget
         })
       }
 
@@ -659,7 +674,16 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
       // per-scene summary call this subsumes was removed in the same series.
       const structured = await extractSceneMetadata(prose, {
         entityContext: existingEntitiesJson,
-        signal
+        signal,
+        sessionBudget: _sessionBudget
+      })
+
+      // Data-commit boundary: entity/relationship/fact/safety checks run over
+      // the finished scene before it is handed back for persistence.
+      await guardScene({
+        prose,
+        structured,
+        sceneId: sceneBrief?.id != null ? String(sceneBrief.id) : undefined
       })
 
       return { prose, structured: { ...structured, prose } }
@@ -679,7 +703,7 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
     }
   }
 
-  return { writeScene, writeSceneStructured, isWriting, writeError }
+  return { writeScene, writeSceneStructured, isWriting, writeError, get sessionBudget() { return _sessionBudget }, set sessionBudget(v: SessionBudget | null) { _sessionBudget = v } }
 }
 
 export { summarizeLog, CRAFT_RULES, PROSE_STYLE_GUIDE, FALLBACK_VOICE }

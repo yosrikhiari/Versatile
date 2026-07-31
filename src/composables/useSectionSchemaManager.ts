@@ -19,11 +19,16 @@ export function useSectionSchemaManager() {
   const newSubsection = ref<any>({ title: '', summary: '', content: '', tags: [] })
 
   function getStatusColor(status: any) {
-    return SECTION_STATUSES.find((s: any) => s.value === status)?.color || '#6b7280'
+    return SECTION_STATUSES.find((s: any) => s.value === status)?.color || 'var(--vers-text-muted)'
   }
 
   function getStatusLabel(status: any) {
     return SECTION_STATUSES.find((s: any) => s.value === status)?.label || status
+  }
+
+  /** Glyph shape, so status survives being read by a colour-blind writer. */
+  function getStatusShape(status: any) {
+    return SECTION_STATUSES.find((s: any) => s.value === status)?.shape || 'solid'
   }
 
   function getSubsectionWordCount(subsection: any) {
@@ -109,6 +114,7 @@ export function useSectionSchemaManager() {
     SECTION_STATUSES,
     getStatusColor,
     getStatusLabel,
+    getStatusShape,
     getSubsectionWordCount,
     getSectionWordCount,
     openAddSubsection,

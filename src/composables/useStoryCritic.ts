@@ -2,9 +2,12 @@ import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
+import { SessionBudget } from '../services/aiProviderBudget'
 
-import { getDimensionNames } from '../config/evalDimensions'
+import { getDefaultThreshold, getDimensionNames } from '../config/evalDimensions'
 import { sanitizeJson } from '../services/ai/aiHelpers'
+import { guardCritique } from '../guardrails/integration/composableGuardrails'
+import { recordQualityForOutput } from '../services/aiResponseCache'
 
 const CRITIC_SCHEMA = {
   type: 'object',
@@ -156,6 +159,7 @@ export function useStoryCritic() {
   const isEvaluating = ref(false)
   const isCheckingConsistency = ref(false)
   const consistencyReport = ref<any>(null)
+  let _sessionBudget: SessionBudget | null = null
 
   async function evaluateScene({
     draft,
@@ -222,7 +226,8 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         temperature: 0.3,
         maxTokens: 1000,
         schema: CRITIC_SCHEMA,
-        schemaName: 'scene_evaluation'
+        schemaName: 'scene_evaluation',
+        sessionBudget: _sessionBudget
       }).catch(() => null)
       if (!parsed) {
         // Don't fabricate a passing 7 — that poisons quality averages and makes
@@ -257,12 +262,20 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         dimensionScores[dim] = typeof val === 'number' && val >= 1 && val <= 10 ? val : null
       }
 
-      const majorIssues = issues.filter((i) => i.severity === 'major')
-      const minorIssues = issues.filter((i) => i.severity === 'minor')
+      const threshold = getDefaultThreshold(categoryType)
+      const pass = score >= threshold
 
-      const pass =
-        (hasFewCharacters && majorIssues.length === 0) ||
-        (majorIssues.length === 0 && minorIssues.length <= 2)
+      // A malformed critique silently corrupts score aggregation downstream,
+      // so shape is verified before the result leaves the composable. Kept as
+      // an inline literal below: binding the return to a const would lose the
+      // object-literal freshness that lets callers read `evalUnavailable` off
+      // the inferred union.
+      await guardCritique({ result: { pass, score, dimensionScores, issues, strengths } })
+
+      // If this draft came from the response cache, attribute the score back to
+      // the entry that produced it, so a badly-scoring response stops being
+      // served as a semantic match. No-ops for freshly generated prose.
+      recordQualityForOutput(draft, score).catch(() => {})
 
       return {
         pass,
@@ -320,7 +333,8 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
             temperature: 0.3,
             maxTokens: 1000,
             schema: CONTRADICTION_SCHEMA,
-            schemaName: 'contradiction_report'
+            schemaName: 'contradiction_report',
+            sessionBudget: _sessionBudget
           }).catch(() => null)
           if (parsed?.contradictions?.length > 0) {
             return { character: char.name, contradictions: parsed.contradictions }
@@ -338,7 +352,8 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
             temperature: 0.3,
             maxTokens: 1000,
             schema: CONTRADICTION_SCHEMA,
-            schemaName: 'contradiction_report'
+            schemaName: 'contradiction_report',
+            sessionBudget: _sessionBudget
           }).catch(() => null)
           if (parsed?.contradictions?.length > 0) {
             return { location: loc.name, contradictions: parsed.contradictions }
@@ -375,7 +390,9 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
     isEvaluating,
     checkContradictions,
     isCheckingConsistency,
-    consistencyReport
+    consistencyReport,
+    get sessionBudget() { return _sessionBudget },
+    set sessionBudget(v: SessionBudget | null) { _sessionBudget = v }
   }
 }
 
