@@ -1,3 +1,25 @@
+/**
+ * # Threat Model — Client-Side Encryption
+ *
+ * API keys are encrypted via AES-GCM with a key that lives in localStorage.
+ * This is client-side **obfuscation**, not server-grade encryption:
+ *
+ * - Any code running in the same origin (including 3rd-party scripts, XSS)
+ *   can read both the persisted crypto key and the ciphertext, and decrypt.
+ * - localStorage is scoped per origin — no other site or extension can
+ *   read it unless they share an origin.
+ * - A user with physical access to the machine can extract keys from
+ *   the browser's profile directory.
+ *
+ * **Recommendation**: Use dedicated API keys with spend limits and
+ * service-scoped permissions. Never paste a full-access admin key.
+ *
+ * For zero-trust key management, supply keys at session start via
+ * environment variables or a secure backend proxy. The session-only
+ * option (`setSessionCryptoKey`) stores the key in memory only —
+ * it is lost on tab close, refresh, or navigation away.
+ */
+
 import { getOllamaEndpoint } from '../config/ollama'
 import { aiGenerate, aiStream } from '../composables/useAiService'
 import { FEATURES } from '../config/ai'
@@ -19,6 +41,16 @@ embeddingDB.version(1).stores({
 
 const CRYPTO_KEY_NAME = 'versatile-crypto-key'
 
+let sessionCryptoKey: CryptoKey | null = null
+
+export function setSessionCryptoKey(key: CryptoKey) {
+  sessionCryptoKey = key
+}
+
+export function clearSessionCryptoKey() {
+  sessionCryptoKey = null
+}
+
 interface EmbeddingRecord {
   key: string
   embedding: number[]
@@ -29,6 +61,7 @@ interface EmbeddingRecord {
 type EmbeddingCacheEntry = Omit<EmbeddingRecord, 'key'>
 
 async function getCryptoKey(): Promise<CryptoKey> {
+  if (sessionCryptoKey) return sessionCryptoKey
   const stored = localStorage.getItem(CRYPTO_KEY_NAME)
   if (stored) {
     const raw = Uint8Array.from(atob(stored), c => c.charCodeAt(0))

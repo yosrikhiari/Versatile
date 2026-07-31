@@ -38,6 +38,28 @@ export function setOllamaModel(model: any) {
   localStorage.setItem(STORAGE_KEYS.OLLAMA_MODEL, model)
 }
 
+/**
+ * Model for utility work — structured planning, metadata extraction, relationship
+ * and spine passes — as opposed to prose.
+ *
+ * These calls emit short JSON and are extractive rather than generative, so they
+ * do not need the prose model's capability, but on a one-model setup they pay its
+ * speed anyway. That matters: a 10-chapter plan is ~11 sequential calls before a
+ * single word of the book is written. Measured on a GTX 1650, phi4-mini:3.8b runs
+ * at 13.5 tok/s against qwen3:8b's 5.85 — it fits entirely in 4 GB of VRAM where
+ * the 8B model does not.
+ *
+ * Unset means "use the prose model", which is exactly the previous behaviour.
+ */
+export function getOllamaUtilityModel(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.OLLAMA_UTILITY_MODEL) || null
+}
+
+export function setOllamaUtilityModel(model: string | null) {
+  if (model) localStorage.setItem(STORAGE_KEYS.OLLAMA_UTILITY_MODEL, model)
+  else localStorage.removeItem(STORAGE_KEYS.OLLAMA_UTILITY_MODEL)
+}
+
 export function getOllamaNumCtx() {
   // STORAGE_KEYS ref
   const raw = localStorage.getItem(STORAGE_KEYS.OLLAMA_NUM_CTX)
