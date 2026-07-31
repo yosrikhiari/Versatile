@@ -329,7 +329,7 @@ function handleSnapshotRestored(content) {
     <div class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
       <span class="font-ui text-accent tracking-wide">Section Manager</span>
       <button
-        class="bg-bg-info text-text-info rounded-md text-xs px-3 py-1 font-medium hover:opacity-90"
+        class="bg-accent/12 text-accent hover:bg-accent/20 rounded-md text-xs px-3 py-1 font-medium transition-colors"
         @click="openAddSection"
       >
         + Add Section
@@ -409,7 +409,9 @@ function handleSnapshotRestored(content) {
             <button
               class="p-1 text-text-hint hover:text-text-secondary rounded"
               title="Assign sections"
-              :class="assignMode && assignVolumeId === volume.id ? 'bg-surface-hover text-accent' : ''"
+              :class="
+                assignMode && assignVolumeId === volume.id ? 'bg-surface-hover text-accent' : ''
+              "
               @click="toggleAssignMode(volume.id)"
             >
               <BaseIcon name="folder-plus" :size="14" />
@@ -472,10 +474,7 @@ function handleSnapshotRestored(content) {
         class="text-center py-8"
       >
         <p class="text-text-hint font-ui text-sm mb-4">No sections match the selected tags.</p>
-        <button
-          class="px-4 py-2 btn-primary rounded-lg font-ui"
-          @click="tagFilter = []"
-        >
+        <button class="px-4 py-2 btn-primary rounded-lg font-ui" @click="tagFilter = []">
           Clear Filters
         </button>
       </div>
@@ -483,10 +482,7 @@ function handleSnapshotRestored(content) {
         <p class="text-text-hint font-ui text-sm mb-4">
           No sections yet. Start planning your document!
         </p>
-        <button
-          class="px-4 py-2 btn-primary rounded-lg font-ui"
-          @click="openAddSection"
-        >
+        <button class="px-4 py-2 btn-primary rounded-lg font-ui" @click="openAddSection">
           Add First Section
         </button>
       </div>
@@ -561,7 +557,7 @@ function handleSnapshotRestored(content) {
                 <!-- Row 1: action buttons -->
                 <div class="flex items-center gap-1">
                   <button
-                    class="text-xs px-2.5 py-1 bg-bg-info text-text-info rounded-md font-medium hover:opacity-90"
+                    class="text-xs px-2.5 py-1 bg-accent/12 text-accent hover:bg-accent/20 rounded-md font-medium transition-colors"
                     @click="openAddSubsection(section.id)"
                   >
                     + Subsection
@@ -710,10 +706,7 @@ function handleSnapshotRestored(content) {
           <TagInput v-model="newSection.tags" placeholder="Add tags, press Enter" />
         </div>
         <div class="flex gap-2">
-          <button
-            class="flex-1 py-2 btn-primary rounded-lg font-ui"
-            @click="saveSection"
-          >
+          <button class="flex-1 py-2 btn-primary rounded-lg font-ui" @click="saveSection">
             {{ editingSection ? 'Save' : 'Add' }}
           </button>
           <button
@@ -754,10 +747,7 @@ function handleSnapshotRestored(content) {
           <TagInput v-model="newSubsection.tags" placeholder="Add tags, press Enter" />
         </div>
         <div class="flex gap-2">
-          <button
-            class="flex-1 py-2 btn-primary rounded-lg font-ui"
-            @click="saveSubsection"
-          >
+          <button class="flex-1 py-2 btn-primary rounded-lg font-ui" @click="saveSubsection">
             {{ editingSubsection ? 'Save' : 'Add' }}
           </button>
           <button
@@ -817,10 +807,7 @@ function handleSnapshotRestored(content) {
           </div>
         </div>
         <div class="flex gap-2">
-          <button
-            class="flex-1 py-2 btn-primary rounded-lg font-ui"
-            @click="saveVolume"
-          >
+          <button class="flex-1 py-2 btn-primary rounded-lg font-ui" @click="saveVolume">
             {{ editingVolume ? 'Save' : 'Add' }}
           </button>
           <button

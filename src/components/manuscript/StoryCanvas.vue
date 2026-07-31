@@ -99,6 +99,49 @@ function addNewElement() {
   showAddModal.value = false
 }
 
+/**
+ * Persist a canvas change made by dragging.
+ *
+ * vuedraggable mutates the bound array in place, and nothing was listening — so
+ * a section dragged onto the canvas, and any reordering, lived only in memory
+ * and was gone on the next load. `added` covers the clone dropped in from
+ * "Quick Add from Document"; `moved` covers rearranging what is already there.
+ */
+async function onCanvasChange(event) {
+  const projectId = projectStore.currentProjectId
+  if (!projectId) return
+
+  if (event.added) {
+    const el = event.added.element
+    // The drag clone carries a synthetic `section-<id>` string id; the row needs
+    // a real one, so insert it and swap the placeholder for the stored record.
+    const index = manuscriptStore.storyElements.indexOf(el)
+    if (index !== -1) manuscriptStore.storyElements.splice(index, 1)
+    await manuscriptStore.addStoryElementData(projectId, {
+      type: el.type || 'section',
+      title: el.title || 'Untitled',
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 100,
+      data: { ...(el.data || {}), sourceType: el.type || 'section', sourceId: el.data?.sectionId }
+    })
+    return
+  }
+
+  if (event.moved) {
+    // Order is the array's own order; persist it as `order` so a reload restores
+    // the arrangement rather than falling back to insertion order.
+    await Promise.all(
+      manuscriptStore.storyElements.map((el, i) =>
+        el.order === i
+          ? Promise.resolve()
+          : manuscriptStore.updateStoryElementData(el.id, { order: i }, projectId)
+      )
+    )
+  }
+}
+
 async function deleteElement(element) {
   if (await showConfirm('Delete Element', 'Delete this element?', 'Delete', 'danger')) {
     manuscriptStore.deleteStoryElementData(element.id, projectStore.currentProjectId)
@@ -120,10 +163,7 @@ onMounted(() => {
     <div class="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
       <span class="font-ui text-accent tracking-wide">Story Canvas</span>
       <div class="flex gap-2">
-        <button
-          class="px-3 py-1 text-xs btn-primary rounded font-ui"
-          @click="showAddModal = true"
-        >
+        <button class="px-3 py-1 text-xs btn-primary rounded font-ui" @click="showAddModal = true">
           + Add Element
         </button>
       </div>
@@ -183,6 +223,7 @@ onMounted(() => {
         v-bind="storyDragOptions"
         :style="gridStyle"
         class="min-h-[200px] gap-3 p-4"
+        @change="onCanvasChange"
       >
         <template #item="{ element }">
           <div

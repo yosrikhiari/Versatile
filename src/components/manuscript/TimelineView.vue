@@ -4,7 +4,9 @@ import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
 import draggable from 'vuedraggable'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseStatusDot from '../ui/BaseStatusDot.vue'
 import EmptyState from '../shared/EmptyState.vue'
+import { threadStatusMeta } from '../../config/statuses'
 
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
@@ -16,19 +18,9 @@ const dragOptions = {
   axis: 'x'
 }
 
-const statusColors = {
-  open: 'var(--vers-status-open)',
-  in_progress: 'var(--vers-status-in_progress)',
-  resolved: 'var(--vers-status-resolved)',
-  closed: 'var(--vers-status-closed)'
-}
-
-const statusLabels = {
-  open: 'Open',
-  in_progress: 'In Progress',
-  resolved: 'Resolved',
-  closed: 'Closed'
-}
+// Shared config rather than local maps: these used the canonical `in_progress`
+// while the board wrote `inprogress`, so a thread moved on the board rendered
+// here with no colour and its raw value as the label.
 
 const sortedThreads = computed(() => {
   return [...storyBibleStore.plotThreads].sort(
@@ -87,7 +79,7 @@ onMounted(() => {
               <div
                 class="w-3 h-3 rounded-full mb-2 z-10 ring-2 ring-bg-secondary"
                 :style="{
-                  backgroundColor: statusColors[thread.status] || 'var(--vers-status-resolved)'
+                  backgroundColor: threadStatusMeta(thread.status).color
                 }"
               ></div>
               <div
@@ -108,15 +100,12 @@ onMounted(() => {
                   </div>
                 </div>
                 <div class="px-2.5 py-1.5 flex items-center gap-1.5">
-                  <span
-                    class="w-1.5 h-1.5 rounded-full shrink-0"
-                    :style="{
-                      backgroundColor: statusColors[thread.status] || 'var(--vers-status-resolved)'
-                    }"
-                  ></span>
-                  <span class="text-2xs text-text-secondary font-ui">{{
-                    statusLabels[thread.status] || thread.status
-                  }}</span>
+                  <BaseStatusDot
+                    :color="threadStatusMeta(thread.status).color"
+                    :shape="threadStatusMeta(thread.status).shape"
+                    :label="threadStatusMeta(thread.status).label"
+                    size="sm"
+                  />
                   <span
                     v-if="thread.notes"
                     class="text-2xs text-text-hint truncate ml-auto max-w-[60px]"

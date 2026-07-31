@@ -6,6 +6,9 @@ import { useSectionSchemaManager } from '../../composables/useSectionSchemaManag
 import { useDraggableList, DRAG_OPTIONS } from '../../composables/useDraggableList'
 import Modal from '../shared/Modal.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseStatusDot from '../ui/BaseStatusDot.vue'
+import BaseSegmented from '../ui/BaseSegmented.vue'
+import BaseChip from '../ui/BaseChip.vue'
 import draggable from 'vuedraggable'
 import EmptyState from '../shared/EmptyState.vue'
 
@@ -18,7 +21,10 @@ const {
   showSubsectionModal,
   activeSectionId,
   newSubsection,
+  SECTION_STATUSES,
   getStatusColor,
+  getStatusLabel,
+  getStatusShape,
   getSubsectionWordCount,
   getSectionWordCount,
   openAddSubsection,
@@ -103,45 +109,50 @@ onMounted(() => {
 <template>
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="px-4 py-3 border-b border-border-subtle">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-3 gap-2">
         <span class="font-ui text-accent tracking-wide">Subsection Outline</span>
-        <div class="flex gap-2">
-          <button
-            v-for="mode in [
-              { value: 'sections', label: 'By Section' },
-              { value: 'list', label: 'List' }
-            ]"
-            :key="mode.value"
-            :class="[
-              'px-2 py-1 text-xs rounded font-ui',
-              viewMode === mode.value
-                ? 'bg-surface-hover text-accent'
-                : 'text-text-hint hover:text-text-secondary'
-            ]"
-            @click="viewMode = mode.value"
-          >
-            {{ mode.label }}
-          </button>
-        </div>
+        <BaseSegmented
+          v-model="viewMode"
+          size="sm"
+          aria-label="Outline view"
+          :options="[
+            { value: 'sections', label: 'By Section' },
+            { value: 'list', label: 'List' }
+          ]"
+        />
       </div>
 
-      <div class="flex gap-2">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search subsections..."
-          class="flex-1 px-3 py-1.5 text-xs border border-border-subtle rounded bg-bg-tertiary text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-        <select
-          v-model="filterStatus"
-          class="px-2 py-1.5 text-xs border border-border-subtle rounded bg-bg-tertiary text-text-primary font-ui"
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Search subsections..."
+        class="w-full px-3 py-1.5 text-xs border border-border-subtle rounded-lg bg-bg-tertiary text-text-primary font-ui focus:outline-none focus:border-accent"
+      />
+
+      <!--
+        The status filter was a <select>, which hid four of its five options and
+        gave no sense of what was being filtered out. Five short, mutually
+        exclusive values are worth showing at rest.
+      -->
+      <div class="mt-2 flex flex-wrap gap-1" role="group" aria-label="Filter sections by status">
+        <BaseChip
+          variant="filter"
+          size="md"
+          :active="filterStatus === 'all'"
+          @click="filterStatus = 'all'"
         >
-          <option value="all">All Status</option>
-          <option value="planning">Planning</option>
-          <option value="drafting">Drafting</option>
-          <option value="review">Under Review</option>
-          <option value="final">Final</option>
-        </select>
+          All
+        </BaseChip>
+        <BaseChip
+          v-for="status in SECTION_STATUSES"
+          :key="status.value"
+          variant="filter"
+          size="md"
+          :active="filterStatus === status.value"
+          @click="filterStatus = status.value"
+        >
+          {{ status.label }}
+        </BaseChip>
       </div>
     </div>
 
@@ -164,26 +175,43 @@ onMounted(() => {
           :key="section.id"
           class="bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden"
         >
+          <!--
+            Active state was `border-l-2 border-accent`, which both nudged the
+            row's contents 2px sideways as it toggled and reached for the chunky
+            coloured rail the rest of the app avoids. Same inset marker the
+            sidebar uses, so selection reads identically in both places.
+          -->
           <div
             :class="[
-              'p-3 cursor-pointer flex items-center justify-between hover:bg-surface-hover transition-colors',
-              manuscriptStore.activeSectionId === section.id ? 'border-l-2 border-accent' : ''
+              'relative p-3 cursor-pointer flex items-center justify-between hover:bg-surface-hover transition-colors',
+              manuscriptStore.activeSectionId === section.id ? 'bg-accent/8' : ''
             ]"
             @click="selectSection(section.id)"
           >
-            <div class="flex items-center gap-3">
-              <span
-                class="w-2 h-8 rounded-full"
-                :style="{ backgroundColor: getStatusColor(section.status) }"
-              ></span>
-              <div>
-                <div class="font-semibold text-text-primary font-ui">
-                  {{ section.title || `Section ${section.order + 1}` }}
-                </div>
-                <div class="text-xs text-text-hint font-ui">
+            <span
+              v-if="manuscriptStore.activeSectionId === section.id"
+              class="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-r-sm bg-accent"
+              aria-hidden="true"
+            />
+            <div class="min-w-0">
+              <div class="font-semibold text-text-primary font-ui truncate">
+                {{ section.title || `Section ${section.order + 1}` }}
+              </div>
+              <!-- Status used to be an 8px colour bar and nothing else, so it
+                   was unreadable to anyone who could not tell the hues apart.
+                   The dot now scans, and the word carries the meaning. -->
+              <div class="flex items-center gap-2 text-xs text-text-hint font-ui">
+                <BaseStatusDot
+                  :color="getStatusColor(section.status)"
+                  :shape="getStatusShape(section.status)"
+                  :label="getStatusLabel(section.status)"
+                  size="sm"
+                />
+                <span aria-hidden="true">·</span>
+                <span>
                   {{ getSectionTotalSubsections(section.id) }} subsections ·
                   {{ getSectionWordCount(section.id) }} words
-                </div>
+                </span>
               </div>
             </div>
             <BaseIcon
@@ -349,10 +377,7 @@ onMounted(() => {
         </div>
 
         <div class="flex gap-2">
-          <button
-            class="flex-1 py-2 btn-primary rounded-lg font-ui"
-            @click="saveSubsection"
-          >
+          <button class="flex-1 py-2 btn-primary rounded-lg font-ui" @click="saveSubsection">
             {{ editingSubsection ? 'Save' : 'Add' }}
           </button>
           <button

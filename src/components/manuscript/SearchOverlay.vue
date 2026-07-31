@@ -199,7 +199,7 @@ onMounted(() => {
 
 <style scoped>
 :deep(.ProseMirror mark) {
-  background-color: rgba(var(--vers-accent-primary-rgb), 0.3);
+  background-color: rgb(var(--vers-accent-primary-rgb) / 0.3);
   padding: 0 2px;
   border-radius: 2px;
 }

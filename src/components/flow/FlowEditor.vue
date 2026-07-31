@@ -12,6 +12,8 @@ import FlowTimer from './FlowTimer.vue'
 import FlowNudge from './FlowNudge.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import EmptyState from '../shared/EmptyState.vue'
+import EditorFormatMenu from '../editor/EditorFormatMenu.vue'
+import BaseAlert from '../ui/BaseAlert.vue'
 
 const CONTENT_WARN_THRESHOLD = 50_000
 const CONTENT_CRITICAL_THRESHOLD = 200_000
@@ -51,6 +53,21 @@ const editor = useEditor({
   onUpdate: ({ editor }) => {
     const textContent = editor.state.doc.textContent
     contentSize.value = textContent.length
+
+    // Push what was typed into the store BEFORE scheduling the save.
+    //
+    // Nothing did this. When no section is open, `useFlowSave` persists via
+    // `projectStore.saveDocumentDebounced()`, which writes `documentContent` —
+    // a ref only Spark and Polish ever updated. So typing in the main document
+    // saved whatever had been loaded, not what was on screen: the editor showed
+    // "Saved", and the text was gone on reload.
+    //
+    // It is also the only thing that recomputes `wordCount`, which is why the
+    // header sat at "0 words" no matter how much was written.
+    if (!manuscriptStore.activeSubsectionId && !manuscriptStore.activeSectionId) {
+      projectStore.updateContent(editor.getHTML(), textContent)
+    }
+
     scheduleSave()
     flow.handleKeystroke()
   },
@@ -78,6 +95,11 @@ const contentSizeWarning = computed(() => {
   if (size >= CONTENT_WARN_THRESHOLD) return 'warn'
   return 'ok'
 })
+
+// The banner used to interpolate `contentSize.value` directly in the template,
+// where the ref is already unwrapped — `.value` on a Number is undefined, so it
+// rendered "NaNK characters" every time the warning fired.
+const contentSizeK = computed(() => Math.round(contentSize.value / 1000))
 
 const dismissEmptyState = ref(false)
 const isEmptyContent = computed(() => {
@@ -153,9 +175,18 @@ watch(activeContent, (newContent) => {
 })
 
 onBeforeUnmount(() => {
-  flushSave()
-  if (editor.value) {
-    editor.value.destroy()
+  // Each step is isolated: a throw here aborts the rest of the teardown, and a
+  // half-unmounted editor left route changes needing a manual refresh.
+  try {
+    flushSave()
+  } catch (err) {
+    console.error('[FlowEditor] flush on unmount failed:', err)
+  }
+
+  try {
+    editor.value?.destroy()
+  } catch (err) {
+    console.error('[FlowEditor] editor teardown failed:', err)
   }
 })
 
@@ -181,30 +212,19 @@ defineExpose({
       Exit Flow
     </button>
 
-    <div
+    <BaseAlert
       v-if="contentSizeWarning !== 'ok'"
-      class="flex-shrink-0 px-6 py-2 text-xs font-ui border-b"
-      :class="
-        contentSizeWarning === 'critical'
-          ? 'bg-bg-secondary text-danger border-border-subtle'
-          : 'bg-bg-secondary text-warning border-border-subtle'
-      "
+      :variant="contentSizeWarning === 'critical' ? 'danger' : 'warning'"
+      flush
+      class="flex-shrink-0"
     >
-      <span class="flex items-center gap-2">
-        <BaseIcon
-          :name="contentSizeWarning === 'critical' ? 'alert-triangle' : 'alert-circle'"
-          :size="14"
-        />
-        <span>
-          This section is <strong>{{ (contentSize.value / 1000).toFixed(0) }}K</strong> characters.
-          {{
-            contentSizeWarning === 'critical'
-              ? 'Editor performance may degrade. Consider splitting into subsections.'
-              : 'Consider splitting into smaller subsections for better performance.'
-          }}
-        </span>
-      </span>
-    </div>
+      This section is <strong>{{ contentSizeK }}K</strong> characters.
+      {{
+        contentSizeWarning === 'critical'
+          ? 'Editor performance may degrade. Consider splitting into subsections.'
+          : 'Consider splitting into smaller subsections for better performance.'
+      }}
+    </BaseAlert>
 
     <div
       ref="scrollContainer"
@@ -227,6 +247,10 @@ defineExpose({
         <EditorContent v-if="editor" :editor="editor" class="tiptap-editor" />
       </div>
     </div>
+
+    <!-- Formatting appears only while a range is selected, so the writing
+         surface keeps its full height the rest of the time. -->
+    <EditorFormatMenu :editor="editor" />
 
     <FlowTimer v-if="flow.isRunning.value" @open-settings="emit('open-settings')" />
 
@@ -254,7 +278,7 @@ defineExpose({
 <style>
 .dialogue-text {
   color: var(--vers-accent-primary);
-  background: rgba(var(--vers-accent-primary-rgb), 0.08);
+  background: rgb(var(--vers-accent-primary-rgb) / 0.08);
   border-radius: 2px;
   padding: 0 1px;
 }

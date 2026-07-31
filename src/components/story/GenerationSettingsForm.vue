@@ -1,19 +1,25 @@
 <script setup>
+import { computed } from 'vue'
 import { MODE_SCENE } from '../../constants/generationModes'
+import BaseChip from '../ui/BaseChip.vue'
+import BaseCheckbox from '../ui/BaseCheckbox.vue'
+import BaseStepper from '../ui/BaseStepper.vue'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { estimateRun, formatDuration, LONG_RUN_WARNING_MS } from '../../services/generationEstimate'
 
 // Settings fields for the story generator: synopsis display, genre, tone, word
 // target, and the precise volumes/chapters/words structure. Extracted from
 // StoryGeneratorPanel; the eight editable settings are two-way bound via
 // defineModel so the panel keeps ownership of the state (its generate handler
 // reads it), while the read-only display data comes in as props.
-const genre = defineModel('genre')
-const tone = defineModel('tone')
-const wordTarget = defineModel('wordTarget')
-const usePreciseStructure = defineModel('usePreciseStructure')
-const volumes = defineModel('volumes')
-const chaptersPerVolume = defineModel('chaptersPerVolume')
-const wordsPerChapter = defineModel('wordsPerChapter')
-const scenesPerChapter = defineModel('scenesPerChapter')
+const genre = defineModel('genre', { type: String, default: '' })
+const tone = defineModel('tone', { type: String, default: '' })
+const wordTarget = defineModel('wordTarget', { type: Number, default: 2000 })
+const usePreciseStructure = defineModel('usePreciseStructure', { type: Boolean, default: false })
+const volumes = defineModel('volumes', { type: Number, default: 1 })
+const chaptersPerVolume = defineModel('chaptersPerVolume', { type: Number, default: 10 })
+const wordsPerChapter = defineModel('wordsPerChapter', { type: Number, default: 2000 })
+const scenesPerChapter = defineModel('scenesPerChapter', { type: Number, default: 3 })
 
 defineProps({
   genres: { type: Array, default: () => [] },
@@ -23,13 +29,41 @@ defineProps({
   hasSynopsis: { type: Boolean, default: false },
   estimatedTotalWords: { type: Number, default: 0 }
 })
+
+// Genre and tone are both single-select-with-clear: tapping the active chip
+// clears it. Written as two functions rather than one that takes the model,
+// because a `defineModel` ref auto-unwraps in the template — passing `genre`
+// from there would hand over the string, not the ref.
+function toggleGenre(value) {
+  genre.value = genre.value === value ? '' : value
+}
+
+function toggleTone(value) {
+  tone.value = tone.value === value ? '' : value
+}
+
+// How long this structure will really take on THIS machine. Without it the form
+// will cheerfully accept a request that takes six hours and give no sign of it
+// until the run is already underway.
+const settingsStore = useSettingsStore()
+
+const runEstimate = computed(() => {
+  const chapters = volumes.value * chaptersPerVolume.value
+  return estimateRun({
+    totalWords: chapters * wordsPerChapter.value,
+    scenes: chapters * scenesPerChapter.value,
+    chapters,
+    model: settingsStore.ollamaModel
+  })
+})
+
+const estimateLabel = computed(() => formatDuration(runEstimate.value.ms))
+const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
 </script>
 
 <template>
   <div>
-    <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2"
-      >Story Synopsis</label
-    >
+    <p class="label-micro text-text-hint mb-2">Story Synopsis</p>
     <div
       v-if="hasSynopsis"
       class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary whitespace-pre-wrap"
@@ -38,132 +72,108 @@ defineProps({
     </div>
     <div
       v-else
-      class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-hint italic flex items-center justify-center"
+      class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-hint italic flex items-center justify-center text-center"
     >
       <span>No synopsis set — open Project Settings to add a category and description</span>
     </div>
   </div>
 
   <div>
-    <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Genre</label>
-    <div class="flex flex-wrap gap-1.5">
-      <button
+    <p id="gen-genre-label" class="label-micro text-text-hint mb-2">Genre</p>
+    <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="gen-genre-label">
+      <BaseChip
         v-for="g in genres"
         :key="g"
-        :class="[
-          'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
-          genre === g
-            ? 'bg-surface-hover text-accent'
-            : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-        ]"
-        @click="genre = genre === g ? '' : g"
+        variant="filter"
+        size="md"
+        :active="genre === g"
+        @click="toggleGenre(g)"
       >
         {{ g }}
-      </button>
+      </BaseChip>
     </div>
   </div>
 
   <div>
-    <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">Tone</label>
-    <div class="flex flex-wrap gap-1.5">
-      <button
+    <p id="gen-tone-label" class="label-micro text-text-hint mb-2">Tone</p>
+    <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="gen-tone-label">
+      <BaseChip
         v-for="t in tones"
         :key="t"
-        :class="[
-          'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent',
-          tone === t
-            ? 'bg-surface-hover text-accent'
-            : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-        ]"
-        @click="tone = tone === t ? '' : t"
+        variant="filter"
+        size="md"
+        :active="tone === t"
+        @click="toggleTone(t)"
       >
         {{ t }}
-      </button>
+      </BaseChip>
     </div>
   </div>
 
   <div v-if="!usePreciseStructure">
-    <label class="block text-xs uppercase tracking-widest text-text-hint font-ui mb-2">{{
-      mode === MODE_SCENE ? 'Words per Scene' : 'Total Word Target'
-    }}</label>
-    <input
-      v-model.number="wordTarget"
-      type="number"
-      min="500"
-      max="10000"
-      step="100"
-      class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+    <BaseStepper
+      v-model="wordTarget"
+      :label="mode === MODE_SCENE ? 'Words per Scene' : 'Total Word Target'"
+      :min="500"
+      :max="10000"
+      :step="100"
+      suffix="words"
     />
   </div>
 
   <!-- Precise structure: exact volumes / chapters / words -->
   <div class="rounded-lg border border-border-subtle p-3 space-y-3">
-    <label
-      class="flex items-center gap-2 text-xs text-text-primary font-ui cursor-pointer select-none"
-    >
-      <input
-        v-model="usePreciseStructure"
-        type="checkbox"
-        class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-      />
-      Precise structure (exact volumes, chapters & length)
-    </label>
+    <BaseCheckbox
+      v-model="usePreciseStructure"
+      label="Precise structure (exact volumes, chapters & length)"
+    />
 
     <div v-if="usePreciseStructure" class="grid grid-cols-2 gap-3">
-      <div>
-        <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
-          >Volumes</label
-        >
-        <input
-          v-model.number="volumes"
-          type="number"
-          min="1"
-          max="20"
-          class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </div>
-      <div>
-        <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
-          >Chapters / volume</label
-        >
-        <input
-          v-model.number="chaptersPerVolume"
-          type="number"
-          min="1"
-          max="60"
-          class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </div>
-      <div>
-        <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
-          >Words / chapter</label
-        >
-        <input
-          v-model.number="wordsPerChapter"
-          type="number"
-          min="300"
-          max="20000"
-          step="100"
-          class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </div>
-      <div>
-        <label class="block text-2xs uppercase tracking-widest text-text-hint font-ui mb-1"
-          >Scenes / chapter</label
-        >
-        <input
-          v-model.number="scenesPerChapter"
-          type="number"
-          min="1"
-          max="12"
-          class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </div>
+      <BaseStepper v-model="volumes" label="Volumes" :min="1" :max="20" size="sm" />
+      <BaseStepper
+        v-model="chaptersPerVolume"
+        label="Chapters / volume"
+        :min="1"
+        :max="60"
+        size="sm"
+      />
+      <BaseStepper
+        v-model="wordsPerChapter"
+        label="Words / chapter"
+        :min="300"
+        :max="20000"
+        :step="100"
+        size="sm"
+      />
+      <BaseStepper
+        v-model="scenesPerChapter"
+        label="Scenes / chapter"
+        :min="1"
+        :max="12"
+        size="sm"
+      />
     </div>
 
-    <p v-if="usePreciseStructure" class="text-2xs text-text-hint font-ui">
+    <p v-if="usePreciseStructure" class="text-xs text-text-hint font-ui leading-relaxed">
       {{ volumes * chaptersPerVolume }} chapters · ~{{ estimatedTotalWords.toLocaleString() }}
       words total. Chapters are linked via hook endings + a shared spine for continuity.
+    </p>
+
+    <p
+      v-if="usePreciseStructure"
+      class="text-xs font-ui leading-relaxed"
+      :class="isLongRun ? 'text-warning' : 'text-text-hint'"
+    >
+      <template v-if="isLongRun">⏳ </template>Estimated generation time:
+      <strong>{{ estimateLabel }}</strong>
+      <template v-if="runEstimate.measured">
+        at {{ runEstimate.tokensPerSecond.toFixed(1) }} tokens/sec measured on this machine.
+      </template>
+      <template v-else> (provisional — refined once a run has been measured here). </template>
+      <template v-if="isLongRun">
+        The run resumes if interrupted, but consider fewer chapters, a shorter chapter length, or a
+        faster model.
+      </template>
     </p>
   </div>
 </template>

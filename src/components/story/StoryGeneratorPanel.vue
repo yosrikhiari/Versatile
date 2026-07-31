@@ -19,6 +19,7 @@ import VolumeReadModal from './VolumeReadModal.vue'
 import StoryContextModal from './StoryContextModal.vue'
 import ConsistencyReportModal from './ConsistencyReportModal.vue'
 import GenerationSettingsForm from './GenerationSettingsForm.vue'
+import ContinueStoryCard from './ContinueStoryCard.vue'
 import {
   MODE_ARC,
   MODE_CHAPTER,
@@ -127,9 +128,37 @@ async function handleDeleteBlurb(id) {
 const showVolumeReadModal = ref(false)
 const showStoryContextModal = ref(false)
 
-const volumeStreamingText = ref('')
+// Live prose, kept per scene rather than in one shared string. Parallel
+// generation has several scenes in flight at once, and a single buffer meant
+// each one overwrote the others mid-sentence — the preview read as one scene
+// glitching rather than several progressing.
+const volumeStreams = ref({})
+const volumeStreamSceneIndex = ref(0)
+const volumeStreamingText = computed(() => volumeStreams.value[volumeStreamSceneIndex.value] || '')
+const volumeActiveStreamCount = computed(
+  () => Object.values(volumeStreams.value).filter((t) => t && t.length > 0).length
+)
 const volumeCurrentScene = ref(0)
 const volumeTotalScenes = ref(0)
+
+/**
+ * Record a streamed chunk. The preview follows the lowest in-flight scene so it
+ * reads in story order, matching what the editor is showing.
+ */
+function handleVolumeChunk({ sceneIndex, total, fullProse }) {
+  if (total) volumeTotalScenes.value = total
+  volumeStreams.value = { ...volumeStreams.value, [sceneIndex]: fullProse }
+  const inFlight = Object.keys(volumeStreams.value).map(Number)
+  volumeStreamSceneIndex.value = inFlight.length ? Math.min(...inFlight) : sceneIndex
+  volumeCurrentScene.value = Math.max(volumeCurrentScene.value, sceneIndex)
+}
+
+function resetVolumeStreams() {
+  volumeStreams.value = {}
+  volumeStreamSceneIndex.value = 0
+  volumeCurrentScene.value = 0
+  volumeTotalScenes.value = 0
+}
 const volumeStoryArc = ref(null)
 const volumeStoryContract = ref('')
 const volumePlanEdits = ref([])
@@ -275,11 +304,12 @@ const totalLocationIssues = computed(
   () => volumeGenerator.consistencyReport.value?.locationIssues?.length || 0
 )
 
+// `writtenScenes` is positional, so a scene that failed every attempt leaves a
+// null hole in it — reading `s.prose` unguarded threw during render.
 const totalWordsWritten = computed(() =>
-  volumeGenerator.writtenScenes.value.reduce(
-    (sum, s) => sum + (s.prose?.split(/\s+/).length || 0),
-    0
-  )
+  volumeGenerator.writtenScenes.value
+    .filter(Boolean)
+    .reduce((sum, s) => sum + (s.prose?.split(/\s+/).filter(Boolean).length || 0), 0)
 )
 
 const {
@@ -309,21 +339,77 @@ onMounted(() => {
   checkResumable()
   loadResearchSources()
   loadBlurbHistory()
+  refreshContinuationSurvey()
 })
+
+// ----- Generating on top of what already exists -----
+//
+// The survey is read from the manuscript, not from a run, so it stays accurate
+// for a project whose generation happened in an earlier session — including one
+// that stopped partway and left planned chapters with no prose in them.
+const continuationSurvey = ref(null)
+
+async function refreshContinuationSurvey() {
+  if (!projectStore.currentProjectId) return
+  try {
+    continuationSurvey.value = await volumeGenerator.surveyContinuation(
+      projectStore.currentProjectId
+    )
+  } catch (err) {
+    console.warn('[StoryGeneratorPanel] continuation survey failed:', err)
+  }
+}
+
+const continuationLabel = computed(() =>
+  volumeGenerator.continuationReport.value
+    ? volumeGenerator.describeContinuation(volumeGenerator.continuationReport.value)
+    : ''
+)
+
+async function handleContinueDrafting({ includeShort }) {
+  if (!projectStore.currentProjectId) return
+  resetVolumeStreams()
+  try {
+    await volumeGenerator.continueDrafting({
+      projectId: projectStore.currentProjectId,
+      includeShort,
+      onChunk: handleVolumeChunk
+    })
+  } catch {
+    // volumeGenerator.error is set internally; the card shows the outcome.
+  } finally {
+    await refreshContinuationSurvey()
+  }
+}
+
+async function handleExtendStory(structure) {
+  if (!projectStore.currentProjectId) return
+  resetVolumeStreams()
+  try {
+    await volumeGenerator.extendStory({
+      projectId: projectStore.currentProjectId,
+      ...structure,
+      synopsis: synopsis.value,
+      genre: genre.value,
+      tone: tone.value,
+      onChunk: handleVolumeChunk
+    })
+  } catch {
+    // volumeGenerator.error is set internally; the card shows the outcome.
+  } finally {
+    await refreshContinuationSurvey()
+  }
+}
 
 async function handleVolumeResume() {
   if (!projectStore.currentProjectId) return
   resumableRun.value = null
-  volumeStreamingText.value = ''
+  resetVolumeStreams()
   try {
     await volumeGenerator.resumeGeneration({
       projectId: projectStore.currentProjectId,
       onPhaseChange: () => {},
-      onChunk: ({ sceneIndex, total, fullProse }) => {
-        volumeCurrentScene.value = sceneIndex
-        volumeTotalScenes.value = total
-        volumeStreamingText.value = fullProse
-      }
+      onChunk: handleVolumeChunk
     })
   } catch {
     /* phase/error set internally */
@@ -334,9 +420,7 @@ async function handleVolumeResume() {
 async function handleVolumeGenerate() {
   if (!hasSynopsis.value || !projectStore.currentProjectId) return
 
-  volumeStreamingText.value = ''
-  volumeCurrentScene.value = 0
-  volumeTotalScenes.value = 0
+  resetVolumeStreams()
   volumeStoryArc.value = null
   volumeStoryContract.value = ''
   volumePlanEdits.value = []
@@ -370,11 +454,7 @@ async function handleVolumeGenerate() {
         })
       },
       // In one-click mode writing runs inside startGeneration, so stream here too
-      onChunk: ({ sceneIndex, total, fullProse }) => {
-        volumeCurrentScene.value = sceneIndex
-        volumeTotalScenes.value = total
-        volumeStreamingText.value = fullProse
-      }
+      onChunk: handleVolumeChunk
     })
 
     if (result) {
@@ -402,11 +482,7 @@ async function handleVolumeConfirmPlan() {
       synopsis: synopsis.value,
       sparkContext: sparkContext.value,
       onPhaseChange: () => {},
-      onChunk: ({ sceneIndex, total, _chunk, fullProse, _scene }) => {
-        volumeCurrentScene.value = sceneIndex
-        volumeTotalScenes.value = total
-        volumeStreamingText.value = fullProse
-      }
+      onChunk: handleVolumeChunk
     })
   } catch {
     // error.value and phase already set internally
@@ -443,9 +519,7 @@ async function handleRerequestScene(edits) {
 function handleVolumeReset() {
   volumeGenerator.reset()
   selectedSceneIndex.value = 0
-  volumeStreamingText.value = ''
-  volumeCurrentScene.value = 0
-  volumeTotalScenes.value = 0
+  resetVolumeStreams()
   volumeStoryArc.value = null
   volumeStoryContract.value = ''
   volumePlanEdits.value = []
@@ -580,7 +654,7 @@ function getPhaseLabel(phase) {
           :key="m.id"
           class="flex-1 py-1.5 text-xs rounded-md font-ui transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-accent"
           :class="tab === m.id ? 'text-accent' : 'text-text-secondary hover:text-text-primary'"
-          :style="tab === m.id ? { background: 'rgba(var(--vers-accent-primary-rgb),0.14)' } : {}"
+          :style="tab === m.id ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.14)' } : {}"
           @click="tab = m.id"
         >
           {{ m.label }}
@@ -614,7 +688,7 @@ function getPhaseLabel(phase) {
                 "
                 :style="
                   blurbTone === opt.id
-                    ? { background: 'rgba(var(--vers-accent-primary-rgb),0.14)' }
+                    ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.14)' }
                     : {}
                 "
                 @click="blurbTone = opt.id"
@@ -639,7 +713,7 @@ function getPhaseLabel(phase) {
                 "
                 :style="
                   blurbLength === opt.id
-                    ? { background: 'rgba(var(--vers-accent-primary-rgb),0.14)' }
+                    ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.14)' }
                     : {}
                 "
                 @click="blurbLength = opt.id"
@@ -762,7 +836,7 @@ function getPhaseLabel(phase) {
             >
               <BaseIcon name="book-open" :size="15" class="text-accent shrink-0" />
               <span class="flex-1 text-left">Story Context</span>
-              <span class="text-[10px] text-text-hint">keeps the writer grounded</span>
+              <span class="text-2xs text-text-hint">keeps the writer grounded</span>
             </button>
 
             <!-- Resume an interrupted one-click run -->
@@ -789,6 +863,17 @@ function getPhaseLabel(phase) {
                 </button>
               </div>
             </div>
+
+            <!-- Add to a manuscript that already has work in it -->
+            <ContinueStoryCard
+              :survey="continuationSurvey"
+              :busy="volumeGenerator.isContinuing.value"
+              :report="volumeGenerator.continuationReport.value"
+              :report-label="continuationLabel"
+              @continue="handleContinueDrafting"
+              @extend="handleExtendStory"
+              @stop="volumeGenerator.stop()"
+            />
 
             <GenerationSettingsForm
               v-model:genre="genre"
@@ -972,7 +1057,7 @@ function getPhaseLabel(phase) {
           <p
             class="text-sm text-danger bg-bg-secondary p-4 rounded-lg border border-border-subtle max-w-lg mx-auto whitespace-pre-wrap"
           >
-            {{ volumeGenerator.error || 'An unknown error occurred.' }}
+            {{ volumeGenerator.error.value || 'An unknown error occurred.' }}
           </p>
           <div class="pt-4">
             <button
@@ -1042,6 +1127,19 @@ function getPhaseLabel(phase) {
                     : '0%'
               }"
             ></div>
+          </div>
+
+          <!-- The full prose streams into the editor itself; this is a shoulder
+               view of the one scene the editor is following. Under parallel
+               writing the others are streaming into their own scenes at the
+               same time, so say so rather than letting the count look wrong. -->
+          <div class="flex items-baseline justify-between gap-2">
+            <span class="text-11px text-text-hint font-ui">
+              Scene {{ volumeStreamSceneIndex }} — also live in the editor
+            </span>
+            <span v-if="volumeActiveStreamCount > 1" class="text-11px text-text-hint font-ui">
+              +{{ volumeActiveStreamCount - 1 }} writing in parallel
+            </span>
           </div>
 
           <div
@@ -1196,25 +1294,6 @@ function getPhaseLabel(phase) {
               {{ driftTriggeredEval.triggeredActions.value.length }} prior drift trigger(s)
             </span>
           </div>
-        </div>
-
-        <!-- ERROR STATE -->
-        <div v-if="volumeGenerator.phase.value === 'error'" class="p-4 space-y-4">
-          <div
-            class="rounded-lg bg-bg-secondary border border-border-subtle p-4 text-center space-y-2"
-          >
-            <BaseIcon name="alert-triangle" :size="24" class="mx-auto text-danger" />
-            <p class="text-sm font-medium text-danger font-ui">Generation Failed</p>
-            <p class="text-xs text-danger">
-              {{ volumeGenerator.error.value || 'An unexpected error occurred.' }}
-            </p>
-          </div>
-          <button
-            class="w-full py-2.5 btn-primary rounded-lg font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="handleVolumeReset"
-          >
-            Try Again
-          </button>
         </div>
       </template>
     </div>
