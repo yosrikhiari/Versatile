@@ -3,6 +3,10 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { getAllProjects, createProject, getManuscript } from '../services/db-projects'
+import { editedAgo } from '../utils/relativeTime'
+import { useWritingStats } from '../composables/useWritingStats'
+import WritingStatsPanel from '../components/workspace/WritingStatsPanel.vue'
+import Sparkline from '../components/workspace/Sparkline.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import OrganizationSwitcher from '../components/org/OrganizationSwitcher.vue'
@@ -21,6 +25,23 @@ const newProjectGenre = ref('')
 
 const localUser = auth.localUser || { displayName: 'User' }
 
+// Destructured so each ref is a top-level binding and auto-unwraps in the
+// template; reaching through `stats.x.value` works but silently renders a ref
+// object the moment a `.value` is forgotten.
+const {
+  load: loadWritingStats,
+  buildGrid,
+  seriesFor,
+  wordsThisWeek,
+  streaks,
+  activeDays,
+  bestDay,
+  bestWeekday,
+  totalWordsWritten
+} = useWritingStats()
+
+const heatmapColumns = ref([])
+
 onMounted(async () => {
   const raw =
     auth.localUser?.id != null ? await getAllProjects(auth.localUser.id) : await getAllProjects()
@@ -36,29 +57,18 @@ onMounted(async () => {
       return { ...p, wordCount: manuscript?.wordCount || 0, updatedAt: lastEdited }
     })
   )
+
+  // Writing history for the activity panel — one query over dailyGoals for all
+  // of this user's projects, after the list is known.
+  await loadWritingStats(projects.value.map((p) => p.id))
+  heatmapColumns.value = buildGrid(26)
+
   loading.value = false
 })
 
 function formatWords(count) {
   if (!count) return 'Empty draft'
   return `${count.toLocaleString()} ${count === 1 ? 'word' : 'words'}`
-}
-
-function editedAgo(iso) {
-  if (!iso) return 'never edited'
-  const diff = Date.now() - new Date(iso).getTime()
-  const min = Math.floor(diff / 60000)
-  if (min < 1) return 'edited just now'
-  if (min < 60) return `edited ${min}m ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `edited ${hr}h ago`
-  const day = Math.floor(hr / 24)
-  if (day < 7) return `edited ${day}d ago`
-  const wk = Math.floor(day / 7)
-  if (wk < 5) return `edited ${wk}w ago`
-  const mo = Math.floor(day / 30)
-  if (mo < 12) return `edited ${mo}mo ago`
-  return `edited ${Math.floor(day / 365)}y ago`
 }
 
 function openProject(projectId) {
@@ -127,6 +137,18 @@ async function handleLogout() {
         </BaseButton>
       </div>
 
+      <WritingStatsPanel
+        v-if="!loading"
+        class="mb-8"
+        :columns="heatmapColumns"
+        :words-this-week="wordsThisWeek"
+        :streaks="streaks"
+        :active-days="activeDays"
+        :best-day="bestDay"
+        :best-weekday="bestWeekday"
+        :total-words-written="totalWordsWritten"
+      />
+
       <div
         v-if="loading"
         class="flex flex-col items-center justify-center py-20 text-text-secondary gap-3"
@@ -178,10 +200,14 @@ async function handleLogout() {
               {{ project.genre }}
             </span>
           </span>
-          <span class="text-xs text-text-hint">
-            {{ formatWords(project.wordCount) }}
-            <span aria-hidden="true" class="px-1">·</span>
-            {{ editedAgo(project.updatedAt) }}
+          <span class="w-full flex items-center justify-between gap-4">
+            <span class="text-xs text-text-hint">
+              {{ formatWords(project.wordCount) }}
+              <span aria-hidden="true" class="px-1">·</span>
+              {{ editedAgo(project.updatedAt) }}
+            </span>
+            <!-- Growth glyph, not a chart: it answers "is this one moving?" -->
+            <Sparkline :points="seriesFor(project.id)" />
           </span>
         </BaseButton>
       </div>

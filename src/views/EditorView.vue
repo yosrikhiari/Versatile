@@ -14,6 +14,7 @@ import PolishDrawer from '../components/polish/PolishDrawer.vue'
 import StoryBiblePanel from '../components/storybible/StoryBiblePanel.vue'
 import RevisePanel from '../components/revise/RevisePanel.vue'
 import BaseIcon from '../components/shared/BaseIcon.vue'
+import BaseAlert from '../components/ui/BaseAlert.vue'
 import StoryCanvas from '../components/manuscript/StoryCanvas.vue'
 import SubsectionOutline from '../components/manuscript/SubsectionOutline.vue'
 import ChapterManager from '../components/manuscript/ChapterManager.vue'
@@ -277,71 +278,52 @@ function handleOnboardingSkipWrapper() {
 
 <template>
   <div class="h-[100dvh] bg-manuscript relative">
-    <div
-      v-if="!ollamaAvailable"
-      class="bg-bg-secondary border-b border-border-subtle px-4 py-2 text-sm text-warning"
-    >
+    <BaseAlert v-if="!ollamaAvailable" variant="warning" flush>
       Ollama is not reachable at localhost:11434. AI features are disabled. Start your Ollama
       container to enable them.
-    </div>
+    </BaseAlert>
 
     <!-- Two distinct situations, two tones. If the app adopted an installed
          model, that is information (it fixed itself); only when nothing usable
          exists is it a warning. Collapsing both into one alarming banner made
          the self-healing path look broken. -->
-    <div
+    <BaseAlert
       v-if="showModelBanner && modelNotFound && adoptedModel"
-      class="bg-bg-tertiary border-b border-border-subtle px-4 py-2 text-sm text-text-secondary flex items-center justify-between"
+      variant="info"
+      flush
+      dismissible
+      @dismiss="showModelBanner = false"
     >
-      <span
-        >Default model isn't installed — using
-        <span class="font-mono text-text-primary">{{ adoptedModel }}</span> instead. You can change
-        this in Settings.</span
-      >
-      <button
-        class="text-text-hint hover:text-text-primary p-2 -m-2 transition-colors"
-        aria-label="Dismiss"
-        @click="showModelBanner = false"
-      >
-        <BaseIcon name="x" :size="16" />
-      </button>
-    </div>
-    <div
+      Default model isn't installed — using
+      <span class="font-mono text-text-primary">{{ adoptedModel }}</span> instead. You can change
+      this in Settings.
+    </BaseAlert>
+    <BaseAlert
       v-else-if="showModelBanner && modelNotFound"
-      class="bg-bg-secondary border-b border-border-subtle px-4 py-2 text-sm text-warning flex items-center justify-between"
+      variant="warning"
+      flush
+      dismissible
+      @dismiss="showModelBanner = false"
     >
-      <span>AI model not found. Responses may fail — check your Ollama setup in Settings.</span>
-      <button
-        class="text-warning hover:text-text-primary p-2 -m-2 transition-colors"
-        aria-label="Dismiss"
-        @click="showModelBanner = false"
-      >
-        <BaseIcon name="x" :size="16" />
-      </button>
-    </div>
+      AI model not found. Responses may fail — check your Ollama setup in Settings.
+    </BaseAlert>
 
     <!-- A missing embedding model fails silently: writing still works, but
          semantic retrieval returns nothing and scenes are written without their
          research context. The only symptom is worse prose, which the user would
          reasonably blame on the model. Say it out loud. -->
-    <div
+    <BaseAlert
       v-if="embeddingModelMissing && !embeddingBannerDismissed"
-      class="bg-bg-tertiary border-b border-border-subtle px-4 py-2 text-sm text-text-secondary flex items-center justify-between"
+      variant="info"
+      flush
+      dismissible
+      @dismiss="embeddingBannerDismissed = true"
     >
-      <span>
-        Embedding model
-        <span class="font-mono text-text-primary">{{ embeddingModelMissing }}</span> isn't installed
-        — semantic search and research retrieval are off. Writing still works.
-        <span class="font-mono text-text-hint">ollama pull {{ embeddingModelMissing }}</span>
-      </span>
-      <button
-        class="text-text-hint hover:text-text-primary p-2 -m-2 transition-colors"
-        aria-label="Dismiss"
-        @click="embeddingBannerDismissed = true"
-      >
-        <BaseIcon name="x" :size="16" />
-      </button>
-    </div>
+      Embedding model
+      <span class="font-mono text-text-primary">{{ embeddingModelMissing }}</span> isn't installed —
+      semantic search and research retrieval are off. Writing still works.
+      <span class="font-mono text-text-hint">ollama pull {{ embeddingModelMissing }}</span>
+    </BaseAlert>
 
     <AppShell
       ref="appShell"
@@ -454,12 +436,14 @@ function handleOnboardingSkipWrapper() {
       @skip="handleOnboardingSkipWrapper"
     />
 
-    <Transition name="spring-scale">
+    <Transition name="anim-scale">
       <div
         v-if="timer.showSessionEndModal.value"
         class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
       >
-        <div class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-8 max-w-md text-center">
+        <div
+          class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-8 max-w-md text-center"
+        >
           <BaseIcon name="waves" :size="48" class="mb-4 mx-auto text-accent" />
           <h2 class="text-xl font-semibold text-text-primary mb-2">Session complete</h2>
           <p class="text-text-secondary mb-6">
@@ -483,13 +467,15 @@ function handleOnboardingSkipWrapper() {
       </div>
     </Transition>
 
-    <Transition name="spring-scale">
+    <Transition name="anim-scale">
       <div
         v-if="showImportModal"
         class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
         @click.self="showImportModal = false"
       >
-        <div class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-8 max-w-md text-center relative">
+        <div
+          class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-8 max-w-md text-center relative"
+        >
           <button
             class="absolute top-3 right-3 text-text-secondary hover:text-text-primary transition-colors"
             @click="showImportModal = false"
@@ -501,13 +487,15 @@ function handleOnboardingSkipWrapper() {
       </div>
     </Transition>
 
-    <Transition name="spring-scale">
+    <Transition name="anim-scale">
       <div
         v-if="showShortcutsModal"
         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
         @click.self="showShortcutsModal = false"
       >
-        <div class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-6 max-w-lg w-full">
+        <div
+          class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-6 max-w-lg w-full"
+        >
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-text-primary">Keyboard Shortcuts</h2>
             <button
