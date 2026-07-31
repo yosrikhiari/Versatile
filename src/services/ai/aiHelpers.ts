@@ -87,6 +87,138 @@ export function sanitizeJson(raw: unknown): Record<string, unknown> | null {
 }
 
 /**
+ * Recover an object from JSON that was cut off mid-emission.
+ *
+ * Grammar-constrained output (Ollama's `format`) is well-formed right up to the
+ * point it runs out of `num_predict`, so a truncated plan is a complete prefix
+ * plus unclosed brackets — nine good chapters and a tenth half-written. Closing
+ * the open structures salvages that, which matters because the alternative is
+ * re-running a generation that costs minutes on local hardware.
+ *
+ * Drops the trailing incomplete element rather than emitting a half-populated
+ * one, so callers never see a chapter with a title and nothing else.
+ *
+ * @returns the parsed object, or null if nothing coherent could be recovered.
+ */
+export function repairTruncatedJson(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'string') return null
+  const balanced = sanitizeJson(raw)
+  if (balanced) return balanced
+
+  let text = String(raw).trim()
+  text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').trim()
+  const start = text.indexOf('{')
+  if (start === -1) return null
+  text = text.slice(start)
+
+  // Close whatever `prefix` left open and try to parse it. Recomputing the stack
+  // per candidate keeps this honest: a cut point is only accepted if the result
+  // actually parses, so no malformed object can escape.
+  const closeAndParse = (prefix: string): Record<string, unknown> | null => {
+    const openers: string[] = []
+    let inStr = false
+    let escaped = false
+    for (let i = 0; i < prefix.length; i++) {
+      const ch = prefix[i]
+      if (inStr) {
+        if (escaped) escaped = false
+        else if (ch === '\\') escaped = true
+        else if (ch === '"') inStr = false
+        continue
+      }
+      if (ch === '"') inStr = true
+      else if (ch === '{' || ch === '[') openers.push(ch)
+      else if (ch === '}' || ch === ']') openers.pop()
+    }
+    let candidate = prefix.replace(/[,\s]+$/, '')
+    // A dangling key with no value ({"a":1,"b") cannot be closed meaningfully.
+    if (/[:,]\s*$/.test(candidate) || inStr) return null
+    while (openers.length) candidate += openers.pop() === '{' ? '}' : ']'
+    try {
+      const parsed = JSON.parse(candidate)
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null
+    } catch {
+      return null
+    }
+  }
+
+  // Scan once, recording every offset that sits immediately after a COMPLETED
+  // value — the only places a document can be truncated without inventing data.
+  // A key string is deliberately not such a place: cutting after `"title"` would
+  // otherwise yield an object with a key and no value.
+  const cuts: number[] = []
+  const frames: Array<{ type: '{' | '['; expectKey: boolean }> = []
+  let inStr = false
+  let escaped = false
+  let strIsKey = false
+  let inLiteral = false
+
+  // Only element boundaries qualify. Cutting after any completed value would
+  // happily stop mid-object and emit a chapter carrying nothing but its number —
+  // structurally valid, semantically junk. A closed container is a whole element;
+  // a direct field of the root object is the one other safe stopping point.
+  const noteElementEnd = (endExclusive: number) => {
+    if (frames.length) cuts.push(endExclusive)
+  }
+  const noteScalarEnd = (endExclusive: number) => {
+    if (frames.length === 1) cuts.push(endExclusive)
+  }
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+
+    if (inStr) {
+      if (escaped) escaped = false
+      else if (ch === '\\') escaped = true
+      else if (ch === '"') {
+        inStr = false
+        if (!strIsKey) noteScalarEnd(i + 1)
+      }
+      continue
+    }
+
+    if (inLiteral && /[,}\]\s]/.test(ch)) {
+      inLiteral = false
+      noteScalarEnd(i)
+    }
+
+    if (ch === '"') {
+      const frame = frames[frames.length - 1]
+      strIsKey = !!frame && frame.type === '{' && frame.expectKey
+      inStr = true
+    } else if (ch === '{' || ch === '[') {
+      frames.push({ type: ch, expectKey: ch === '{' })
+    } else if (ch === '}' || ch === ']') {
+      frames.pop()
+      noteElementEnd(i + 1)
+    } else if (ch === ':') {
+      const frame = frames[frames.length - 1]
+      if (frame) frame.expectKey = false
+    } else if (ch === ',') {
+      const frame = frames[frames.length - 1]
+      if (frame && frame.type === '{') frame.expectKey = true
+    } else if (/[-\d]/.test(ch) || /[a-z]/.test(ch)) {
+      inLiteral = true
+    }
+  }
+  if (inLiteral) noteScalarEnd(text.length)
+
+  // Longest surviving prefix first — that keeps the most completed chapters.
+  // Bounded so a pathological input cannot turn this into a quadratic scan.
+  const MAX_ATTEMPTS = 200
+  const ordered = cuts.slice(-MAX_ATTEMPTS).reverse()
+  for (const cut of ordered) {
+    const repaired = closeAndParse(text.slice(0, cut))
+    if (repaired) return repaired
+  }
+
+  // Nothing was completed (e.g. `{"chapters":[`). Closing the open containers
+  // still yields a valid, empty-but-usable shape, which callers pad rather than
+  // treating as a hard failure.
+  return closeAndParse(text)
+}
+
+/**
  * `T` is the caller's expected parse shape — an assertion about what the model
  * was asked to emit, not a validated guarantee.
  */

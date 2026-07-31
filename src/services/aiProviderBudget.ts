@@ -245,3 +245,183 @@ export const providerBudget = new ProviderBudget()
 export function __resetProviderBudget(): void {
   providerBudget.resetAll()
 }
+
+export interface SessionBudgetConfig {
+  softCapTokens?: number
+  softCapCost?: number
+  softCapCalls?: number
+  hardCapTokens?: number
+  hardCapCost?: number
+  hardCapCalls?: number
+}
+
+export interface SessionCheckResult {
+  allowed: boolean
+  warn?: true
+  reason: string
+}
+
+export interface SessionState {
+  tokens: number
+  cost: number
+  callCount: number
+  downgradeRequested: boolean
+}
+
+export class SessionBudgetExceededError extends Error {
+  reason: string
+
+  constructor(reason: string) {
+    super(`Session budget exceeded: ${reason}`)
+    this.name = 'SessionBudgetExceededError'
+    this.reason = reason
+  }
+}
+
+const DEFAULT_SESSION_CONFIG: Required<SessionBudgetConfig> = {
+  softCapTokens: 50_000,
+  softCapCost: 0.50,
+  softCapCalls: 50,
+  hardCapTokens: 100_000,
+  hardCapCost: 1.00,
+  hardCapCalls: 100
+}
+
+/**
+ * What one run actually costs, per unit of requested work.
+ *
+ * The defaults above describe a single chat exchange, not a book. A generation
+ * run spends, per planned chapter, one share of a skeleton batch call plus a
+ * scene-plan call plus a spine call; and per scene, a writer call, a metadata
+ * extraction, and a critique — each repeated up to SCENE_MAX_ATTEMPTS by the
+ * quality gate, plus repair and consistency passes at the end.
+ *
+ * A 10-volume x 10-chapter x 3-scene request is therefore ~300 planning/spine
+ * calls and ~1,800 prose-side calls. Against a flat 100-call ceiling the budget
+ * was exhausted partway through PLANNING — every call after that threw
+ * `SessionBudgetExceededError` before reaching a model, planning degraded those
+ * chapters to empty stubs, and the run reported success having written nothing.
+ *
+ * These multipliers are deliberately generous. The cap's job is to stop a
+ * runaway loop, not to predict the work — under-guessing here silently truncates
+ * a book, which is far worse than letting a legitimate run finish.
+ */
+const CALLS_PER_CHAPTER = 4
+const CALLS_PER_SCENE = 8
+const TOKENS_PER_CHAPTER = 6_000
+const TOKENS_PER_SCENE = 40_000
+/** Headroom over the estimate before the ceiling bites. */
+const RUNAWAY_FACTOR = 3
+
+export interface RunSize {
+  /** Total chapters to plan across every volume. */
+  chapters: number
+  /** Total scenes to write across every chapter. */
+  scenes: number
+  /**
+   * Whether inference is local and has no marginal cost. A dollar ceiling is
+   * meaningless against Ollama, and enforcing one there only ends runs early.
+   */
+  localProvider?: boolean
+}
+
+/**
+ * Derive session caps from the run the user actually asked for.
+ *
+ * Soft caps sit at the estimate (they only warn, and are the honest signal that
+ * a run is costing more than its shape predicted); hard caps sit at
+ * RUNAWAY_FACTOR times the estimate.
+ */
+export function sessionConfigForRun({ chapters, scenes, localProvider }: RunSize): Required<SessionBudgetConfig> {
+  const safeChapters = Math.max(1, Math.ceil(chapters || 0))
+  const safeScenes = Math.max(1, Math.ceil(scenes || 0))
+
+  const estCalls = safeChapters * CALLS_PER_CHAPTER + safeScenes * CALLS_PER_SCENE
+  const estTokens = safeChapters * TOKENS_PER_CHAPTER + safeScenes * TOKENS_PER_SCENE
+  // Rough per-token blended rate; only ever consulted for paid providers.
+  const estCost = (estTokens / 1_000_000) * 3
+
+  return {
+    softCapCalls: estCalls,
+    softCapTokens: estTokens,
+    // `null` is how check() is told to skip a dimension, and local inference has
+    // no spend to cap. Infinity keeps the type Required<> without ever tripping.
+    softCapCost: localProvider ? Infinity : estCost,
+    hardCapCalls: estCalls * RUNAWAY_FACTOR,
+    hardCapTokens: estTokens * RUNAWAY_FACTOR,
+    hardCapCost: localProvider ? Infinity : estCost * RUNAWAY_FACTOR
+  }
+}
+
+export class SessionBudget {
+  config: SessionBudgetConfig
+  tokens = 0
+  cost = 0
+  callCount = 0
+  downgradeRequested = false
+
+  constructor(config?: SessionBudgetConfig) {
+    this.config = config ?? DEFAULT_SESSION_CONFIG
+  }
+
+  /**
+   * Resize in place and clear the counters.
+   *
+   * The instance is handed to the director, writer and critic by reference when
+   * the generator is created — long before the run's shape is known — so the
+   * budget has to be re-pointed at the real workload here rather than replaced.
+   */
+  configureForRun(size: RunSize): this {
+    this.config = sessionConfigForRun(size)
+    this.reset()
+    return this
+  }
+
+  check(): SessionCheckResult {
+    const c = this.config
+
+    if (c.hardCapTokens != null && this.tokens >= c.hardCapTokens) {
+      return { allowed: false, reason: `Hard token cap (${c.hardCapTokens.toLocaleString()}) reached` }
+    }
+    if (c.hardCapCost != null && this.cost >= c.hardCapCost) {
+      return { allowed: false, reason: `Hard cost cap ($${c.hardCapCost}) reached` }
+    }
+    if (c.hardCapCalls != null && this.callCount >= c.hardCapCalls) {
+      return { allowed: false, reason: `Hard call cap (${c.hardCapCalls}) reached` }
+    }
+
+    if (c.softCapTokens != null && this.tokens >= c.softCapTokens) {
+      return { allowed: true, warn: true, reason: `Soft token cap (${c.softCapTokens.toLocaleString()}) reached` }
+    }
+    if (c.softCapCost != null && this.cost >= c.softCapCost) {
+      return { allowed: true, warn: true, reason: `Soft cost cap ($${c.softCapCost}) reached` }
+    }
+    if (c.softCapCalls != null && this.callCount >= c.softCapCalls) {
+      return { allowed: true, warn: true, reason: `Soft call cap (${c.softCapCalls}) reached` }
+    }
+
+    return { allowed: true, reason: '' }
+  }
+
+  record(provider: string, tokens: number, cost: number): void {
+    this.tokens += tokens || 0
+    this.cost += cost || 0
+    this.callCount++
+  }
+
+  reset(): void {
+    this.tokens = 0
+    this.cost = 0
+    this.callCount = 0
+    this.downgradeRequested = false
+  }
+
+  asState(): SessionState {
+    return {
+      tokens: this.tokens,
+      cost: this.cost,
+      callCount: this.callCount,
+      downgradeRequested: this.downgradeRequested
+    }
+  }
+}

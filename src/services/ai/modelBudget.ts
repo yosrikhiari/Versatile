@@ -7,6 +7,7 @@
 // a hard 400. On a 200K-window model the same 4096 leaves most of the window
 // unused. Deriving it from the window fixes both directions.
 
+import { InputBudgetExceededError } from './tokenLimitError'
 import { MODEL_META } from '../../config/modelRouting'
 import {
   DEFAULT_MAX_OUTPUT_TOKENS,
@@ -14,7 +15,8 @@ import {
   INPUT_BUDGET_RATIO,
   MAX_OUTPUT_TOKENS_CAP,
   MIN_OUTPUT_TOKENS,
-  OUTPUT_HEADROOM_RATIO
+  OUTPUT_HEADROOM_RATIO,
+  SCHEMA_OVERHEAD_ESTIMATE_RATIO
 } from '../../config/generationLimits'
 
 /** Context window in tokens, or null when we have no data for this model. */
@@ -52,15 +54,34 @@ export function maxOutputTokensForModel(model: string, inputTokens: number): num
 }
 
 /**
+ * Rough token cost of the JSON envelope for a structured-output schema.
+ * Based on serialising the schema (keys, types, structural braces) — the
+ * parts that appear in every instance regardless of content length.
+ */
+export function estimateSchemaOverhead(schema: Record<string, unknown> | undefined): number {
+  if (!schema) return 0
+  const json = JSON.stringify(schema)
+  return Math.ceil(json.length / SCHEMA_OVERHEAD_ESTIMATE_RATIO)
+}
+
+/**
  * What a provider call should send. An explicit caller value always wins — call
  * sites that already reason about their own output length (scene generation
  * sizes max_tokens from the target word count) know better than the window math.
+ *
+ * When no explicit value is given, adds `schemaOverhead` to the window-derived
+ * result so structured-output calls get extra headroom for JSON envelope tokens
+ * (keys, braces, quotes) that aren't part of the content the call site estimated.
  */
-export function resolveMaxTokens(model: string, inputTokens: number, explicit?: number): number {
+export function resolveMaxTokens(model: string, inputTokens: number, explicit?: number, schemaOverhead?: number): number {
   if (typeof explicit === 'number' && Number.isFinite(explicit) && explicit > 0) {
     return explicit
   }
-  return maxOutputTokensForModel(model, inputTokens)
+  const base = maxOutputTokensForModel(model, inputTokens)
+  if (schemaOverhead && schemaOverhead > 0) {
+    return Math.min(base + schemaOverhead, MAX_OUTPUT_TOKENS_CAP)
+  }
+  return base
 }
 
 export interface BudgetOverflow {
@@ -71,12 +92,28 @@ export interface BudgetOverflow {
 }
 
 /**
- * Reports whether assembled input exceeds what the model can take. Returns the
- * overflow instead of trimming: only the caller knows which block is safe to
- * drop, and silently truncating prose mid-scene is how context bugs hide.
+ * Throws InputBudgetExceededError when assembled input exceeds what the model
+ * can physically accept (the full context window). The 67 % budget ratio from
+ * inputBudgetForModel is advisory — exceeding it generates a warning returned
+ * here; exceeding the hard context window is a blocking error.
+ *
+ * We do not trim silently: only the caller knows which block is safe to drop,
+ * and truncating prose mid-scene is how context bugs hide.
  */
 export function checkInputBudget(model: string, inputTokens: number): BudgetOverflow | null {
   const budget = inputBudgetForModel(model)
+  const window = getContextWindow(model)
+
+  if (window !== null && inputTokens > window) {
+    throw new InputBudgetExceededError(
+      `[modelBudget] ${model}: input is ${inputTokens} tokens, ` +
+      `exceeds context window of ${window}`,
+      model,
+      inputTokens,
+      window
+    )
+  }
+
   if (inputTokens <= budget) return null
   return { model, budget, inputTokens, overflowTokens: inputTokens - budget }
 }
