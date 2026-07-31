@@ -1,5 +1,6 @@
 import { PROVIDER_BASE_URLS, PROVIDERS } from '../../config/ai'
 import { DEFAULT_MAX_OUTPUT_TOKENS } from '../../config/generationLimits'
+import { TokenLimitError } from '../ai/tokenLimitError'
 
 interface AnthropicOptions {
   apiKey?: string
@@ -75,7 +76,14 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
-      throw new Error(error.error?.message || `Anthropic error: ${response.status}`)
+      const errMsg = error.error?.message || `Anthropic error: ${response.status}`
+      if (
+        error.error?.type === 'invalid_request_error' &&
+        /(?:too_many_tokens|prompt is too long|context_length_exceeded)/i.test(errMsg)
+      ) {
+        throw new TokenLimitError(errMsg, PROVIDERS.ANTHROPIC, model, options.maxTokens)
+      }
+      throw new Error(errMsg)
     }
 
     const data = await response.json()
@@ -125,7 +133,14 @@ export async function stream(prompt: string, systemPrompt: string, model: string
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
-      throw new Error(error.error?.message || `Anthropic error: ${response.status}`)
+      const errMsg = error.error?.message || `Anthropic error: ${response.status}`
+      if (
+        error.error?.type === 'invalid_request_error' &&
+        /(?:too_many_tokens|prompt is too long|context_length_exceeded)/i.test(errMsg)
+      ) {
+        throw new TokenLimitError(errMsg, PROVIDERS.ANTHROPIC, model, options.maxTokens)
+      }
+      throw new Error(errMsg)
     }
 
     const reader = response.body!.getReader()
@@ -209,7 +224,14 @@ export async function generateStructured(prompt: string, systemPrompt: string, m
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
-      throw new Error(error.error?.message || `Anthropic error: ${response.status}`)
+      const errMsg = error.error?.message || `Anthropic error: ${response.status}`
+      if (
+        error.error?.type === 'invalid_request_error' &&
+        /(?:too_many_tokens|prompt is too long|context_length_exceeded)/i.test(errMsg)
+      ) {
+        throw new TokenLimitError(errMsg, PROVIDERS.ANTHROPIC, model, options.maxTokens)
+      }
+      throw new Error(errMsg)
     }
 
     const data = await response.json()

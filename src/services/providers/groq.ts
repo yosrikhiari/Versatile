@@ -1,5 +1,6 @@
 import { PROVIDER_BASE_URLS, PROVIDERS } from '../../config/ai'
 import { DEFAULT_MAX_OUTPUT_TOKENS } from '../../config/generationLimits'
+import { TokenLimitError } from '../ai/tokenLimitError'
 
 interface GroqOptions {
   apiKey?: string
@@ -58,7 +59,11 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
-      throw new Error(error.error?.message || `Groq error: ${response.status}`)
+      const errMsg = error.error?.message || `Groq error: ${response.status}`
+      if (error.error?.code === 'context_length_exceeded' || /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)) {
+        throw new TokenLimitError(errMsg, PROVIDERS.GROQ, model, options.maxTokens)
+      }
+      throw new Error(errMsg)
     }
 
     const data = await response.json()
@@ -130,7 +135,11 @@ export async function stream(prompt: string, systemPrompt: string, model: string
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
-      throw new Error(error.error?.message || `Groq error: ${response.status}`)
+      const errMsg = error.error?.message || `Groq error: ${response.status}`
+      if (error.error?.code === 'context_length_exceeded' || /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)) {
+        throw new TokenLimitError(errMsg, PROVIDERS.GROQ, model, options.maxTokens)
+      }
+      throw new Error(errMsg)
     }
 
     const reader = response.body!.getReader()
