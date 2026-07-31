@@ -19,6 +19,7 @@ import {
   getStoredOpenAIKey,
   setStoredOpenAIKey
 } from '../../services/ollamaService'
+import { getOllamaUtilityModel, setOllamaUtilityModel } from '../../config/ollama'
 
 const emit = defineEmits(['close', 'model-changed'])
 const settingsStore = useSettingsStore()
@@ -28,6 +29,7 @@ const connectionStatus = ref(null)
 const ollamaEndpoint = ref('')
 const selectedModel = ref('')
 const availableModels = ref([])
+const selectedUtilityModel = ref(getOllamaUtilityModel() || '')
 const openAIKey = ref('')
 const apiKeys = ref({})
 const testingProvider = ref(null)
@@ -77,6 +79,10 @@ function saveModel() {
     settingsStore.setOllamaModel(selectedModel.value)
     emit('model-changed')
   }
+}
+
+function saveUtilityModel() {
+  setOllamaUtilityModel(selectedUtilityModel.value || null)
 }
 
 async function saveOpenAIKey() {
@@ -179,6 +185,36 @@ defineExpose({
   <div class="space-y-5">
     <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
       <h3 class="text-sm font-medium text-text-primary">Global Defaults</h3>
+
+      <!--
+        The one switch that decides whether anything leaves this machine.
+        Placed first because it overrides every control below it — showing the
+        provider pickers above it would imply they still apply.
+      -->
+      <label class="flex items-start gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          :checked="settingsStore.localOnly"
+          class="mt-0.5 accent-accent"
+          @change="settingsStore.setLocalOnly($event.target.checked)"
+        />
+        <span class="min-w-0">
+          <span class="block text-xs text-text-primary">Run everything locally</span>
+          <span class="block text-2xs text-text-hint leading-relaxed">
+            Every model call goes to Ollama on this machine. Overrides the provider, fallback chain
+            and per-feature settings below — no request reaches a hosted provider.
+          </span>
+        </span>
+      </label>
+
+      <div
+        v-if="settingsStore.localOnly"
+        class="text-2xs text-text-hint leading-relaxed border-l-2 border-border-subtle pl-2"
+      >
+        The settings below are kept but not used while this is on. Turn it off to route individual
+        features to a hosted model.
+      </div>
+
       <div>
         <label for="default-provider" class="block text-xs text-text-secondary mb-1"
           >Default Provider</label
@@ -232,7 +268,7 @@ defineExpose({
             </option>
           </select>
           <button
-            class="px-2 py-1 bg-accent text-white rounded text-xs hover:bg-accent-hover disabled:opacity-40"
+            class="px-2 py-1 bg-accent text-accent-foreground rounded text-xs hover:bg-accent-hover disabled:opacity-40"
             :disabled="!newFallback"
             @click="addFallback"
           >
@@ -288,12 +324,35 @@ defineExpose({
           </option>
         </select>
       </div>
+      <div>
+        <label for="ollama-utility-model" class="block text-xs text-text-secondary mb-1">
+          Utility model (optional)
+        </label>
+        <select
+          id="ollama-utility-model"
+          v-model="selectedUtilityModel"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          @change="saveUtilityModel"
+        >
+          <option value="">Same as main model</option>
+          <option v-for="model in availableModels" :key="model" :value="model">
+            {{ model }}
+          </option>
+        </select>
+        <p class="text-11px text-text-hint mt-1 leading-snug">
+          Used for planning, metadata, relationships and spine — short structured calls, not prose.
+          A smaller model that fits entirely in VRAM finishes these several times faster, and a
+          10-chapter plan is ~11 of them before any prose is written.
+        </p>
+      </div>
     </div>
 
     <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
       <h3 class="text-sm font-medium text-text-primary">API Keys</h3>
       <p class="text-11px text-warning leading-snug">
-        ⚠ Stored locally in your browser. Do not use a high-spend key.
+        ⚠ Keys are encrypted and stored in localStorage (same-origin). Treat this as obfuscation —
+        any code running on this page can read them. Use session-only keys or restricted API keys
+        with spend limits.
       </p>
       <div v-for="p in NON_OLLAMA_PROVIDERS" :key="p" class="space-y-1">
         <label :for="'api-key-' + p" class="block text-xs text-text-secondary">{{

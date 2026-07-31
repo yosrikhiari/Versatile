@@ -76,6 +76,11 @@ async function handleCreate() {
     await branchStore.forkBranch(projectId, name.trim())
   }
 }
+
+function handleOpenManager() {
+  emit('open-manager')
+  open.value = false
+}
 </script>
 
 <template>
@@ -165,10 +170,7 @@ async function handleCreate() {
           </button>
           <button
             class="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors duration-150 w-full"
-            @click="
-              emit('open-manager')
-              open = false
-            "
+            @click="handleOpenManager"
           >
             <BaseIcon name="list" :size="14" />
             Branch Manager

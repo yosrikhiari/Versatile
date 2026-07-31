@@ -132,7 +132,7 @@ function timeAgo(dateStr) {
               />
               <button
                 type="submit"
-                class="h-9 px-4 text-sm font-medium rounded-lg bg-accent text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-40 transition-all"
+                class="h-9 px-4 text-sm font-medium rounded-lg bg-accent text-accent-foreground hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-40 transition-all"
                 :disabled="!newBranchName.trim()"
               >
                 New branch
