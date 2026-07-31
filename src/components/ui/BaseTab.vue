@@ -63,7 +63,19 @@ const variantClasses = computed(() => {
 </script>
 
 <template>
+  <!--
+    `v-bind="$attrs"` is load-bearing, not tidiness.
+
+    In Vue 3 event listeners arrive as part of `$attrs`. This component declares
+    `inheritAttrs: false` and bound nothing, so every `@click` a parent put on a
+    tab was silently discarded — the tabs rendered, highlighted on hover, and
+    did nothing. That is why the Settings modal could not leave the Goals tab.
+
+    Bound before `:class` so the component's own styling still wins, while a
+    caller's extra classes merge (Vue merges `class` rather than replacing it).
+  -->
   <button
+    v-bind="$attrs"
     role="tab"
     :aria-selected="active ? 'true' : 'false'"
     :disabled="disabled"

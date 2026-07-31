@@ -9,7 +9,16 @@ const props = defineProps({
     type: String,
     default: 'primary',
     validator: (v) =>
-      ['primary', 'secondary', 'ghost', 'danger', 'accent-ghost', 'elevated', 'outline'].includes(v)
+      [
+        'primary',
+        'secondary',
+        'ghost',
+        'soft',
+        'danger',
+        'accent-ghost',
+        'elevated',
+        'outline'
+      ].includes(v)
   },
   size: {
     type: String,
@@ -33,8 +42,14 @@ const props = defineProps({
   }
 })
 
+/**
+ * Focus is left to the global `*:focus-visible` outline rather than a local
+ * ring. The previous ring fired on `:focus`, so it also lit up on mouse click,
+ * and its `ring-offset-bg-base` named a color key that does not exist — the
+ * offset silently fell back to white.
+ */
 const baseClasses =
-  'inline-flex items-center justify-center gap-1.5 font-ui font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-bg-base disabled:opacity-40 disabled:pointer-events-none'
+  'inline-flex items-center justify-center gap-1.5 font-ui font-medium rounded-lg transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none'
 
 const sizeClasses = computed(
   () =>
@@ -54,7 +69,10 @@ const variantClasses = computed(() => {
     case 'ghost':
       return 'text-text-hint hover:text-text-secondary hover:bg-bg-tertiary active:bg-bg-secondary active:scale-[0.98]'
     case 'danger':
-      return 'bg-danger text-white hover:bg-danger/90 active:scale-[0.98]'
+      // Dark-on-danger clears AA (~7:1); white on the same fill sits near 3:1.
+      return 'bg-danger text-bg-primary hover:bg-danger/90 active:scale-[0.98]'
+    case 'soft':
+      return 'bg-accent/12 text-accent hover:bg-accent/20 active:scale-[0.98]'
     case 'accent-ghost':
       return 'bg-surface-hover text-accent active:scale-[0.98]'
     case 'elevated':
