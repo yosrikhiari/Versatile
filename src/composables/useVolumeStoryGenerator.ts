@@ -8,10 +8,12 @@ import {
   countWords
 } from '../services/evalGates'
 import { useProjectStore } from '../stores/projectStore'
+import { useEvalStore } from '../stores/evalStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
+import { useBranchStore } from '../stores/branchStore'
 import { useStoryDirector } from './useStoryDirector'
 import { useEntityBootstrapper } from './useEntityBootstrapper'
 import { useStoryWriter } from './useStoryWriter'
@@ -30,7 +32,7 @@ import {
   getGenRun,
   updateGenRunStage,
   runStageWithTimeout,
-  withTimeout,
+  runStageWithHeartbeat,
   makeInitialGenState
 } from '../services/db-generation'
 import { aiGenerate, aiGenerateJson, resolveFeatureConfig } from './useAiService'
@@ -59,15 +61,34 @@ import {
 import { parallelWithLimit, computeSummary } from './generation/utils'
 import { CommitService } from './generation/commit'
 import { ConsistencyService } from './generation/consistency'
-import { GenerationLifecycleService, createAbortScope, isAbortError } from './generation/lifecycle'
+import {
+  createAbortScope,
+  isAbortError,
+  isFatalRunError,
+  rethrowIfFatal,
+  isConfigurationError
+} from './generation/lifecycle'
+import { LiveDraftBridge, proseToHtml, countProseWords } from './generation/writing'
 import { SceneInteractionService } from './generation/interaction'
 import { SceneSpeculativeCache } from '../services/speculativeGenManager'
+import { SessionBudgetExceededError } from '../services/aiProviderBudget'
+import {
+  surveyManuscript,
+  briefForScene,
+  neighbourContext,
+  emptyReport,
+  describeReport
+} from './generation/continuation'
 import { useDelegatorGeneration } from './generation/delegator'
 import { useDriftTriggeredEval } from './useDriftTriggeredEval'
 import { ActiveLearningBridge } from './generation/activeLearning'
 
 import { getResumableRun } from './generation/checkpoint'
 import { buildPreliminaryEdges } from './generation/graph'
+import {
+  finalizeStoryArtifacts,
+  describeFinalizeReport
+} from '../services/generation/finalizeArtifacts'
 
 // Map a global scene index to its section (chapter) index using each section's
 // actual scene count — replaces the old Math.floor(i / 3) that silently assumed
@@ -90,6 +111,26 @@ const PARALLEL_SCENE_LIMIT = 2
 // (signals a broken model/critic rather than letting it churn out garbage).
 const SCENE_MAX_ATTEMPTS = 2
 const QUALITY_FLOOR_CONSECUTIVE = 3
+// Consecutive scenes that may fail to produce ANY prose before the run gives up.
+// Distinct from the quality floor above: that judges prose the model wrote, this
+// catches a pipeline that is not writing prose at all.
+const WRITE_FAILURE_STREAK_ABORT = 4
+
+/**
+ * A scene with no words is a failed scene, not a finished one.
+ *
+ * Nothing used to assert this. The writer can return an empty string — every
+ * chunked section failing produced exactly that — and the commit path only
+ * checked for a thrown error, so it wrote `content: ''` with
+ * `contentStatus: 'generated'` and reported success. A whole book generated that
+ * way looks, to every downstream check, like a book that was written.
+ */
+function assertProse(prose: any, scene: any) {
+  if (prose && String(prose).trim()) return
+  throw new Error(
+    `Scene "${scene?.title || scene?.sceneNumber || '?'}" returned no prose — treating as failed.`
+  )
+}
 
 function attemptScore(ev: any) {
   return ev && !ev.evalUnavailable && typeof ev.score === 'number' ? ev.score : -1
@@ -188,6 +229,11 @@ export function useVolumeStoryGenerator() {
   const autoMode = ref(false)
   const evalUnavailableCount = ref(0)
   const evalPersistence = useEvalPersistence()
+  // Continuation runs (fill / extend / expand) add to an existing manuscript
+  // rather than owning a pipeline run, so they carry their own busy flag instead
+  // of driving the delegator's phase machine.
+  const isContinuing = ref(false)
+  const continuationReport = ref<any | null>(null)
 
   async   function persistCritiqueEval(entry: any, pid: any, sceneTitle: any) {
     if (!pid || !entry || entry.score == null) return
@@ -226,7 +272,6 @@ export function useVolumeStoryGenerator() {
   const currentSceneResult = ref<any | null>(null)
   const currentWriteIndex = ref(0)
   const inlineEvalEnabled = ref(false)
-  const sceneEvalResults = ref<any[]>([])
   const promptAdjuster = useAutoPromptAdjuster()
   const driftSceneEval = {
     evaluate: async (
@@ -255,8 +300,8 @@ export function useVolumeStoryGenerator() {
   // workspaceType at construction — a later `const` would hit the TDZ.
   const projectStore = useProjectStore()
   const workspaceType = computed(() => projectStore.activeWorkspaceType)
+  const evalStore = useEvalStore()
   const activeLearningBridge = new ActiveLearningBridge({
-    sceneEvalResults,
     promptAdjuster,
     workspaceType
   })
@@ -269,15 +314,100 @@ export function useVolumeStoryGenerator() {
   const bootstrapper = useEntityBootstrapper()
   const writer = useStoryWriter()
   const critic = useStoryCritic()
+
   const sync = useChapterGenerationSync()
   const storyBibleStore = useStoryBibleStore()
   const volumeStore = useVolumeStore()
   const manuscriptStore = useManuscriptStore()
   const storyGraphStore = useStoryGraphStore()
   const storyDocuments = useStoryDocuments()
+  const branchStore = useBranchStore()
 
   const delegatorApi = useDelegatorGeneration()
   const phase = delegatorApi.memory.phase
+
+  /**
+   * Re-point the run's session budget at the work that was actually requested.
+   *
+   * `useDelegatorGeneration` builds one `SessionBudget` per generator, with the
+   * single-exchange defaults, and shares it with the director, writer and critic
+   * by reference. Nothing resized it, so the ceiling that made sense for one
+   * chat turn was also the ceiling for a ten-volume novel.
+   *
+   * @param {{chapters: number, scenes: number}} size Work this run will do.
+   */
+  function sizeSessionBudget(size: { chapters: number; scenes: number }) {
+    const budget = delegatorApi.memory.instances.sessionBudget
+    if (!budget) return null
+    budget.configureForRun({ ...size, localProvider: isOllamaProvider() })
+
+    // Hand it to the instances that actually do the work.
+    //
+    // `useDelegatorGeneration` wires the budget into its OWN director/writer/critic,
+    // but `useStoryWriter()` and friends are factories, not singletons — the
+    // instances this composable calls are different objects that never received
+    // it. Every generation call therefore passed `sessionBudget: null`, so the
+    // budget counted nothing and capped nothing while still being reported as a
+    // limit. A ceiling that cannot fire is worse than no ceiling, because it
+    // reads like protection.
+    ;(director as any).sessionBudget = budget
+    ;(writer as any).sessionBudget = budget
+    ;(critic as any).sessionBudget = budget
+    return budget
+  }
+
+  /** Chapters and scenes implied by a run request, for budgeting. */
+  function runSizeFor(structureSpec: any, singleChapter?: boolean) {
+    if (structureSpec) {
+      return {
+        chapters: structureSpec.chapters,
+        scenes: structureSpec.chapters * structureSpec.scenesPerChapter
+      }
+    }
+    if (singleChapter) return { chapters: 1, scenes: 1 }
+    // Freeform: the director decides the shape, so size for the largest plan it
+    // is allowed to return rather than guessing low and truncating the book.
+    return { chapters: 12, scenes: 36 }
+  }
+
+  /**
+   * Turn a run failure into something the author can act on.
+   *
+   * "An unknown error occurred" was the whole report for a run that had spent
+   * ten hours and written nothing. What matters is how far it got and whether
+   * the work already on disk can be picked back up — a budget stop leaves a
+   * resumable draft, which is a completely different situation from a crash.
+   */
+  function describeRunFailure(err: any) {
+    const written = writtenScenes.value.filter(Boolean).length
+    const total = scenePlan.value.length
+    const progressNote = total ? ` Wrote ${written} of ${total} scene(s).` : ''
+
+    if (isAbortError(err)) return `Generation stopped.${progressNote}`
+    if (isConfigurationError(err)) {
+      // Actionable, and stated once — not three hundred times in the console.
+      return (
+        `${err.message}\n\n` +
+        `Generation stopped immediately, so nothing was wasted.${progressNote} ` +
+        `Either add that key, or point Story Generation at your local model in Settings > AI Providers.`
+      )
+    }
+    if (err?.name === 'SessionBudgetExceededError' || err instanceof SessionBudgetExceededError) {
+      return (
+        `Generation stopped — this run hit its size ceiling (${err.reason || 'budget exceeded'}).` +
+        `${progressNote} Everything written so far is saved; use Continue drafting to finish the rest.`
+      )
+    }
+    return (err?.message || 'Generation failed during initial phases') + progressNote
+  }
+
+  // Streams each scene into its own manuscript subsection as it is written and
+  // keeps the editor pointed at the scene currently being drafted. Without this
+  // the editor showed nothing until the user hunted down the generated scene by
+  // hand — and the only live view was a shared preview buffer that parallel
+  // scenes overwrote at random.
+  const followInEditor = ref(true)
+  const liveDraft = new LiveDraftBridge(manuscriptStore, { enabled: followInEditor.value })
 
   const commitService = new CommitService({
     writeParams,
@@ -334,7 +464,6 @@ export function useVolumeStoryGenerator() {
     sceneReviewMode,
     currentSceneResult,
     currentWriteIndex,
-    sceneEvalResults,
     lastSyncedResultIndex,
     syncPreview,
     currentTaskId,
@@ -372,6 +501,7 @@ export function useVolumeStoryGenerator() {
   async function resumeGeneration({ projectId, onChunk, onPhaseChange }: any) {
     if (phase.value !== 'idle') return { resumed: false, reason: 'busy' }
     speculativeCache.flush()
+    liveDraft.reset()
     const run = await getGenRun(projectId)
     if (!run || !run.state) return { resumed: false, reason: 'no-checkpoint' }
 
@@ -444,6 +574,11 @@ export function useVolumeStoryGenerator() {
       return { resumed: false, reason: 'already-complete' }
     }
 
+    // Size the budget for the work that is actually LEFT. A resumed run starts
+    // with fresh counters, so budgeting it for the whole book would let it
+    // overrun; budgeting it for the remainder is what the run will spend.
+    sizeSessionBudget({ chapters: chapters.length, scenes: plan.length - resumeIndex })
+
     // Restore run state
     scenePlan.value = plan
     chapterPlan.value = chapters
@@ -478,7 +613,11 @@ export function useVolumeStoryGenerator() {
       storyBibleDocs
     }
 
-    await delegatorApi.dispatch('SPINE_GENERATED', undefined)
+    // The plan, structure and spine all survive in the checkpoint, so this run
+    // is genuinely already at `writing`. Dispatching SPINE_GENERATED from `idle`
+    // (as this did) has no route — it threw before the first scene, and the
+    // panel's catch swallowed it, so Resume appeared to do nothing at all.
+    delegatorApi.restorePhase('writing', 'resumed from checkpoint')
     try {
       await writeNextBatch(resumeIndex)
       return { resumed: true, from: resumeIndex, total: plan.length }
@@ -508,6 +647,7 @@ export function useVolumeStoryGenerator() {
 
     abort.ensure()
     isCancelling.value = false
+    liveDraft.reset()
 
     // Normalize an explicit volumes/chapters/words request into a structure spec
     let structureSpec = null
@@ -525,6 +665,16 @@ export function useVolumeStoryGenerator() {
     const effectiveWordTarget = structureSpec
       ? structureSpec.chapters * structureSpec.wordsPerChapter
       : wordTarget
+
+    // Point the session budget at THIS run before the first model call.
+    //
+    // The budget is created once with the generator and defaults to a
+    // single-exchange ceiling (100 calls / 100k tokens). A multi-volume request
+    // blows through that during planning, and because both the planner and the
+    // per-scene writer swallow their failures, the run went on to report success
+    // with a full outline and no prose. Sizing it from the requested structure
+    // is what makes a large book a long run instead of a silent empty one.
+    sizeSessionBudget(runSizeFor(structureSpec, singleChapter))
 
     error.value = null
     consistencyReport.value = null
@@ -600,12 +750,15 @@ export function useVolumeStoryGenerator() {
       progress.current = 2
       progress.statusText = 'Conjuring Characters & World...'
       activeStage = 'bible'
-      await runStageWithTimeout(projectId, 'bible', () =>
+      await runStageWithHeartbeat(projectId, 'bible', (heartbeat) =>
         bootstrapper.bootstrapEntities({
           synopsis: enhancedSynopsis,
           projectId,
           volumeId: vId,
-          onPartialData
+          onPartialData: (type: any, name: any) => {
+            heartbeat(name)
+            onPartialData?.(type, name)
+          }
         })
       ).catch((err) => {
         console.warn('[useVolumeStoryGenerator] bible stage failed or timed out:', err)
@@ -691,8 +844,15 @@ export function useVolumeStoryGenerator() {
       await updateGenRunStage(projectId, 'structure', { status: 'running' })
       actLog.appendThought(currentTaskId, planPhase, 'Outlining chapters and scenes...\n')
 
-      const directorResult = await withTimeout(
-        () =>
+      // Planning is one call per chapter, serial on Ollama. The old wrapper passed
+      // no budget, so it silently took withTimeout's 5-minute default — less time
+      // than a 10-chapter plan needs on any local model, which failed the run
+      // before a single scene was written. The watchdog now bounds silence
+      // between planned chapters instead of total planning time.
+      const directorResult = await runStageWithHeartbeat(
+        projectId,
+        'structure',
+        (heartbeat) =>
           director.generateStoryPlan({
             goal: {
               premise: enhancedSynopsis,
@@ -707,6 +867,7 @@ export function useVolumeStoryGenerator() {
             // Mirror planning progress into the Planning phase so the Activity drawer
             // shows what's being outlined, then forward to the caller's handler.
             onPartialData: (type: any, name: any) => {
+              heartbeat(name)
               try {
                 actLog.appendThought(currentTaskId, planPhase, `• ${name}\n`)
               } catch {
@@ -714,9 +875,7 @@ export function useVolumeStoryGenerator() {
               }
               onPartialData?.(type, name)
             }
-          }),
-        undefined,
-        'Structure stage'
+          })
       )
 
       const scenes = directorResult.scenes
@@ -820,15 +979,68 @@ export function useVolumeStoryGenerator() {
         }
         throw err
       }
-      await delegatorApi.dispatch('ERROR', {
-        error: err,
-        message: err.message || 'Generation failed during initial phases'
-      })
-      error.value = err.message || 'Generation failed during initial phases'
+      // Record the failure BEFORE announcing it. The dispatch below can itself
+      // throw (a spent budget, a phase with no ERROR route), and when it did,
+      // `error.value` was never assigned and the stage was never marked failed —
+      // so a run that died mid-planning surfaced as a finished one with an empty
+      // manuscript. The report has to survive the reporting.
+      error.value = describeRunFailure(err)
       if (activeStage) {
-        await updateGenRunStage(projectId, activeStage, { status: 'failed', error: error.value })
+        await updateGenRunStage(projectId, activeStage, {
+          status: 'failed',
+          error: error.value
+        }).catch(() => {})
       }
+      await delegatorApi
+        .dispatch('ERROR', { error: err, message: error.value })
+        .catch((dispatchErr: any) => {
+          console.warn('[useVolumeStoryGenerator] ERROR dispatch failed:', dispatchErr)
+        })
       throw err
+    }
+  }
+
+  /**
+   * Build the per-scene chunk emitter.
+   *
+   * One place now owns what happens to a streamed token: it goes into the
+   * scene's own manuscript subsection (so the editor renders it live, in the
+   * right scene, without parallel scenes trampling each other) and it goes to
+   * the caller's `onChunk` for the generator panel.
+   *
+   * Returns `{ emitChunk, done }`; `done` must be called when the scene settles
+   * so the bridge flushes the last tokens and hands the editor to the next scene.
+   */
+  function makeSceneStream({ scene, sceneIndex, onChunk }: any) {
+    const subsectionId = scene?.subsectionId ?? null
+    let started = false
+
+    const emitChunk = (proseChunk: any, fullProse: any) => {
+      if (!started) {
+        started = true
+        liveDraft.begin({ sceneIndex, subsectionId })
+      }
+      liveDraft.push(subsectionId, fullProse)
+      onChunk?.({
+        sceneIndex: sceneIndex + 1,
+        total: scenePlan.value.length,
+        chunk: proseChunk,
+        fullProse,
+        subsectionId,
+        scene
+      })
+    }
+
+    return {
+      emitChunk,
+      done(finalProse?: any) {
+        if (!started) return
+        if (finalProse != null) liveDraft.push(subsectionId, finalProse)
+        liveDraft.finish(subsectionId)
+      },
+      abandon() {
+        if (started) liveDraft.abandon(subsectionId)
+      }
     }
   }
 
@@ -853,6 +1065,19 @@ export function useVolumeStoryGenerator() {
     emitChunk
   }: any): Promise<any> {
     const sections = splitSceneIntoChunks(scene)
+
+    // Sections are written concurrently but belong to one scene, so their live
+    // output has to be recomposed in section order before it is emitted.
+    // Previously each section was given `emitChunk: null` and the scene emitted
+    // exactly once, at the end — a long scene showed nothing at all while it was
+    // being written, which is indistinguishable from a stall.
+    const sectionBuffers: string[] = sections.map(() => '')
+    const emitComposed = () => {
+      if (!emitChunk) return
+      const composed = mergeChunkProse(sectionBuffers)
+      emitChunk('', composed)
+    }
+
     const sectionPromises: any[] = sections.map((sectionBrief: any, i: any) => {
       const phaseName = `Section ${i + 1}: ${scene.title || `Scene ${scene.sceneNumber}`}`
       const sectionPhase = actLog.addPhase(currentTaskId, phaseName)
@@ -871,13 +1096,52 @@ export function useVolumeStoryGenerator() {
         focusInstructions,
         anchorRole,
         anchorConstraints,
-        emitChunk: null
+        emitChunk: emitChunk
+          ? (_proseChunk: any, sectionProse: any) => {
+              sectionBuffers[i] = sectionProse || ''
+              emitComposed()
+            }
+          : null
       })
     })
 
     const results: any[] = await Promise.allSettled(sectionPromises)
     const proseSections = results.map((r: any) => (r.status === 'fulfilled' ? r.value.chosenProse : ''))
     const chosenProse = mergeChunkProse(proseSections)
+
+    // `allSettled` never rejects, so before this check a scene whose sections
+    // ALL failed returned `chosenProse: ''` — and the callers, which only looked
+    // for a thrown error, wrote that empty string to the manuscript and marked
+    // the subsection `generated`. Every scene in a long book "succeeded" with
+    // zero words, and the run finished and reported a completed novel.
+    //
+    // Any scene over CHUNK_THRESHOLD words takes this path, so on a 10,000-word
+    // chapter that was every scene in the book.
+    const rejections = results.filter((r: any) => r.status === 'rejected')
+    if (!chosenProse.trim()) {
+      const cause = rejections[0]?.reason
+      // A budget stop or a cancel has to stay recognisable as itself so the run
+      // above can end deliberately instead of treating it as one bad scene.
+      if (cause && isFatalRunError(cause)) throw cause
+      throw new Error(
+        `Scene "${scene.title || scene.sceneNumber}" produced no prose — ` +
+          `all ${sections.length} sections failed` +
+          (cause?.message ? `: ${cause.message}` : '.')
+      )
+    }
+    if (rejections.length > 0) {
+      // Partial is still a scene worth keeping, but it is short by design and
+      // the author should be told rather than left to find the seam.
+      console.warn(
+        `[useVolumeStoryGenerator] scene "${scene.title}": ${rejections.length} of ` +
+          `${sections.length} sections failed; kept the rest`
+      )
+      actLog.appendThought(
+        currentTaskId,
+        0,
+        `\n⚠ "${scene.title}" is incomplete — ${rejections.length} of ${sections.length} sections failed to write.\n`
+      )
+    }
 
     const best: any[] = results
       .filter((r: any) => r.status === 'fulfilled')
@@ -1070,6 +1334,44 @@ export function useVolumeStoryGenerator() {
     )
 
     writtenScenes.value = new Array(scenePlan.value.length).fill(null)
+
+    // Scenes-completed, tracked explicitly. `progress.current` used to be driven
+    // only by whichever scene emitted the last token, so under parallel writing
+    // the bar jumped backwards whenever a lower-numbered scene streamed.
+    progress.total = scenePlan.value.length
+    progress.current = 0
+    const markSceneComplete = () => {
+      progress.current = Math.min(progress.total, progress.current + 1)
+    }
+
+    // Stop a run that is producing nothing.
+    //
+    // Every per-scene failure is caught and recorded, which is right for one
+    // flaky scene and catastrophic in aggregate: a misconfigured model or a
+    // prompt that overflows the context window fails every scene the same way,
+    // and the run walked through all 300 of them, marked the stage done, and
+    // reported a finished novel. Consecutive failures with nothing written is
+    // the signal that this is not bad luck.
+    let consecutiveWriteFailures = 0
+    const noteSceneOutcome = (ok: boolean) => {
+      if (ok) {
+        consecutiveWriteFailures = 0
+        return
+      }
+      runFailedScenes.value++
+      consecutiveWriteFailures++
+      if (
+        consecutiveWriteFailures >= WRITE_FAILURE_STREAK_ABORT &&
+        writtenScenes.value.every((s: any) => !s)
+      ) {
+        throw new Error(
+          `Aborting: the first ${consecutiveWriteFailures} scenes all failed to produce prose. ` +
+            `Check the model and context settings for this project — nothing has been written, ` +
+            `so no work is lost.`
+        )
+      }
+    }
+
     const chaptersWithScenes: any[] = []
     let offset = 0
     for (const c of chapterPlan.value) {
@@ -1083,6 +1385,7 @@ export function useVolumeStoryGenerator() {
     async function generateAnchor(scene: any, role: any, constraints: any, sceneIndex: any, chapterIndex: any) {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
       const scenePhase = actLog.addPhase(currentTaskId, phaseName)
+      const stream = makeSceneStream({ scene, sceneIndex, onChunk })
       try {
         const { chosenProse, chosenStructured, chosenEval } = await writeSceneWithGate({
           scene,
@@ -1095,28 +1398,22 @@ export function useVolumeStoryGenerator() {
           existingEntitiesJson,
           anchorRole: role,
           anchorConstraints: constraints,
-          emitChunk: (proseChunk: any, fullProse: any) => {
-            onChunk?.({
-              sceneIndex: sceneIndex + 1,
-              total: scenePlan.value.length,
-              chunk: proseChunk,
-              fullProse,
-              scene
-            })
-          }
+          emitChunk: stream.emitChunk
         })
         const fullProse = chosenProse
+        assertProse(fullProse, scene)
+        stream.done(fullProse)
 
         progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
         // The writer already returned a summary in its structured output; this
         // only falls back to a separate LLM call if it didn't.
         const summary = await computeSummary(fullProse, chosenStructured)
-        const wordCount = fullProse.split(/\s+/).length
+        const wordCount = countProseWords(fullProse)
 
         if (scene.subsectionId) {
           await manuscriptStore.updateSubsectionData(
             scene.subsectionId,
-            { content: fullProse, wordCount, contentStatus: 'generated' },
+            { content: proseToHtml(fullProse), wordCount, contentStatus: 'generated' },
             projectId
           )
         }
@@ -1133,10 +1430,28 @@ export function useVolumeStoryGenerator() {
           chapterId: chapterNumber,
           keyFacts: Array.isArray(chosenStructured?.keyFacts) ? chosenStructured.keyFacts : []
         }
+        markSceneComplete()
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
+        // Checkpoint per scene. Without this the parallel writer — the path a
+        // one-click volume actually takes — never wrote a resumable checkpoint
+        // at all, so `getResumableRun` always returned null and the "Unfinished
+        // draft" resume control could never appear no matter how far a run got.
+        await commitService.persistCheckpoint(projectId)
+        noteSceneOutcome(true)
         return { success: true, sceneIndex, structured: chosenStructured, eval: chosenEval }
       } catch (err: any) {
+        stream.abandon()
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
+        // A spent budget or a stop is not this scene's failure — every remaining
+        // scene would fail the same way, instantly. Swallowing it here is what
+        // turned an exhausted run into 300 no-ops and a false "complete".
+        rethrowIfFatal(err)
+        if (scene?.subsectionId) {
+          await manuscriptStore
+            .updateSubsectionData(scene.subsectionId, { contentStatus: 'failed' }, projectId)
+            .catch(() => {})
+        }
+        noteSceneOutcome(false)
         return { success: false, sceneIndex, error: err.message }
       }
     }
@@ -1210,7 +1525,7 @@ export function useVolumeStoryGenerator() {
           dimensionScores: criticResult.dimensionScores || null
         })
       }
-      sceneEvalResults.value = anchorResults
+      evalStore.setResults(anchorResults)
       for (const ae of anchorResults) {
         const sb = scenePlan.value.find((sp) => sp.sceneNumber === ae.sceneIndex)
         persistCritiqueEval(ae, projectId, sb?.title)
@@ -1231,6 +1546,7 @@ export function useVolumeStoryGenerator() {
     async function generateMiddleScene(scene: any, sceneIndex: any, chapterMeta: any) {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
       const scenePhase = actLog.addPhase(currentTaskId, phaseName)
+      const stream = makeSceneStream({ scene, sceneIndex, onChunk })
       try {
         // Chapter-scoped log: only scenes from this chapter (Fix #2 — never cross-chapter)
         const logEntries = writtenScenes.value
@@ -1249,23 +1565,19 @@ export function useVolumeStoryGenerator() {
           existingEntitiesJson,
           pastEvalResults: anchorEvalFeedback || undefined,
           focusInstructions: anchorFocusInstructions || undefined,
-          emitChunk: (proseChunk: any, fullProse: any) => {
-            onChunk?.({
-              sceneIndex: sceneIndex + 1,
-              total: scenePlan.value.length,
-              chunk: proseChunk,
-              fullProse,
-              scene
-            })
-          }
+          emitChunk: stream.emitChunk
         })
         const fullProse = chosenProse
+        assertProse(fullProse, scene)
+        stream.done(fullProse)
 
         progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
         const summary = await computeSummary(fullProse, chosenStructured)
-        const wordCount = fullProse.split(/\s+/).length
+        const wordCount = countProseWords(fullProse)
 
+        markSceneComplete()
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
+        noteSceneOutcome(true)
         return {
           success: true,
           sceneIndex,
@@ -1283,7 +1595,15 @@ export function useVolumeStoryGenerator() {
           eval: chosenEval
         }
       } catch (err: any) {
+        stream.abandon()
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
+        rethrowIfFatal(err)
+        if (scene?.subsectionId) {
+          await manuscriptStore
+            .updateSubsectionData(scene.subsectionId, { contentStatus: 'failed' }, projectId)
+            .catch(() => {})
+        }
+        noteSceneOutcome(false)
         return { success: false, sceneIndex, error: err.message }
       }
     }
@@ -1293,12 +1613,16 @@ export function useVolumeStoryGenerator() {
       if (result.subsectionId) {
         await manuscriptStore.updateSubsectionData(
           result.subsectionId,
-          { content: result.prose, wordCount: result.wordCount, contentStatus: 'generated' },
+          {
+            content: proseToHtml(result.prose),
+            wordCount: result.wordCount,
+            contentStatus: 'generated'
+          },
           projectId
         )
       }
       writtenScenes.value[result.sceneIndex] = {
-        title: result.title || `Scene ${result.sceneNumber}`,
+        title: result.title || result.scene?.title || `Scene ${result.sceneNumber}`,
         prose: result.prose,
         summary: result.summary,
         characters: result.characters,
@@ -1346,6 +1670,7 @@ export function useVolumeStoryGenerator() {
             middleOutcomes.push(result)
           }
         }
+        await commitService.persistCheckpoint(projectId)
       }
     }
 
@@ -1354,7 +1679,7 @@ export function useVolumeStoryGenerator() {
       const middleResults = []
       for (let idx = 0; idx < writtenScenes.value.length; idx++) {
         const s = writtenScenes.value[idx]
-        if (!s || sceneEvalResults.value.some((r) => r.sceneIndex === idx + 1)) continue
+        if (!s || evalStore.results.some((r) => r.sceneIndex === idx + 1)) continue
         const sceneBrief = scenePlan.value.find((sp) => sp.sceneNumber === s.sceneNumber) || {}
         const criticResult = await critic.evaluateScene({
           draft: s.prose,
@@ -1372,7 +1697,7 @@ export function useVolumeStoryGenerator() {
           topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
         })
       }
-      sceneEvalResults.value = [...sceneEvalResults.value, ...middleResults]
+      evalStore.setResults([...evalStore.results, ...middleResults])
       for (const me of middleResults) {
         const sb = scenePlan.value.find((sp) => sp.sceneNumber === me.sceneIndex)
         persistCritiqueEval(me, projectId, sb?.title)
@@ -1503,35 +1828,40 @@ export function useVolumeStoryGenerator() {
       let retryGate: any
       let maxAttempts: any
       if (speculativeCache.has(i)) {
+        // Prefetched while the user was reviewing the previous scene — there is
+        // nothing left to stream, so open it in the editor directly.
         written = speculativeCache.consume(i)
+        if (scene.subsectionId) liveDraft.focusSubsection(scene.subsectionId)
       } else {
         retryGate = autoMode.value
         maxAttempts = retryGate ? SCENE_MAX_ATTEMPTS : 1
-        written = await writeSceneWithGate({
-          scene,
-          sceneIndex: i,
-          scenePhase,
-          storyArc,
-          chapterLog,
-          storyBible: storyBibleDocs,
-          storyContract: effectiveStoryContract,
-          existingEntitiesJson,
-          embeddingContext,
-          extraRejected,
-          pastEvalResults: batchEvalFeedback,
-          focusInstructions: batchFocusInstructions,
-          emitChunk: (proseChunk: any, fullProse: any) => {
-            onChunk?.({
-              sceneIndex: i + 1,
-              total: scenePlan.value.length,
-              chunk: proseChunk,
-              fullProse,
-              scene
-            })
-          }
-        })
+        const stream = makeSceneStream({ scene, sceneIndex: i, onChunk })
+        try {
+          written = await writeSceneWithGate({
+            scene,
+            sceneIndex: i,
+            scenePhase,
+            storyArc,
+            chapterLog,
+            storyBible: storyBibleDocs,
+            storyContract: effectiveStoryContract,
+            existingEntitiesJson,
+            embeddingContext,
+            extraRejected,
+            pastEvalResults: batchEvalFeedback,
+            focusInstructions: batchFocusInstructions,
+            emitChunk: stream.emitChunk
+          })
+        } catch (err) {
+          stream.abandon()
+          throw err
+        }
+        stream.done(written?.chosenProse)
       }
       const { chosenProse, chosenStructured, chosenEval } = written
+      // Before the phase is marked done: an empty result reaching this point
+      // committed an empty scene and logged it as a success.
+      assertProse(chosenProse, scene)
       actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
 
       const fullProse = chosenProse
@@ -1540,6 +1870,7 @@ export function useVolumeStoryGenerator() {
       if (sceneReviewMode.value && i < scenePlan.value.length - 1) {
         currentSceneResult.value = {
           scene,
+          sceneIndex: i,
           fullProse,
           structured: chosenStructured,
           sectionIdx: sectionIndexForScene(sections, i)
@@ -1559,7 +1890,8 @@ export function useVolumeStoryGenerator() {
         sectionIndexForScene(sections, i),
         sections,
         projectId,
-        chosenStructured
+        chosenStructured,
+        i
       )
       commitService.persistCheckpoint(projectId)
 
@@ -1571,10 +1903,10 @@ export function useVolumeStoryGenerator() {
           dimensionScores: chosenEval.dimensionScores || null,
           topIssues: (chosenEval.issues || []).slice(0, 3).map((iss: any) => iss.text || iss)
         }
-        sceneEvalResults.value.push(retryEntry)
+        evalStore.addResult(retryEntry)
         persistCritiqueEval(retryEntry, projectId, scene.title)
-        batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
-        const batchResult = promptAdjuster.updateAdjustments(sceneEvalResults.value)
+        batchEvalFeedback = formatEvalFeedback(evalStore.results)
+        const batchResult = promptAdjuster.updateAdjustments(evalStore.results)
         batchFocusInstructions = batchResult.focusInstructions
 
         // Quality floor: a scene that still fails after all retries counts against
@@ -1588,7 +1920,7 @@ export function useVolumeStoryGenerator() {
             fullProse.slice(0, 200)
           )
           if (runConsecutiveFailures.value >= QUALITY_FLOOR_CONSECUTIVE) {
-            error.value = `Quality floor breached: ${runConsecutiveFailures.value} scenes in a row failed critique after retries. The writer or critic model is likely misconfigured. ${writtenScenes.value.length} scene(s) written and saved.`
+            error.value = `Quality floor breached: ${runConsecutiveFailures.value} scenes in a row failed critique after retries. The writer or critic model is likely misconfigured. ${writtenScenes.value.filter(Boolean).length} scene(s) written and saved.`
             commitService.persistCheckpoint(projectId)
             await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
             await delegatorApi.dispatch('ERROR', { error: error.value, message: error.value })
@@ -1614,15 +1946,17 @@ export function useVolumeStoryGenerator() {
           dimensionScores: criticResult.dimensionScores || null,
           topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         }
-        sceneEvalResults.value.push(evalEntry)
+        evalStore.addResult(evalEntry)
         persistCritiqueEval(evalEntry, projectId, scene.title)
-        batchEvalFeedback = formatEvalFeedback(sceneEvalResults.value)
-        const batchResult2 = promptAdjuster.updateAdjustments(sceneEvalResults.value)
+        batchEvalFeedback = formatEvalFeedback(evalStore.results)
+        const batchResult2 = promptAdjuster.updateAdjustments(evalStore.results)
         batchFocusInstructions = batchResult2.focusInstructions
       }
 
-      // Append to running log after scene completes (avoids full rebuild next iteration)
-      const latestScene = writtenScenes.value.at(-1)
+      // Append to running log after scene completes (avoids full rebuild next
+      // iteration). Indexed by scene position — `at(-1)` read the last *slot*,
+      // which on the positional array is a later, still-unwritten scene.
+      const latestScene = writtenScenes.value[i]
       runningChapterLog.push(
         `Scene ${scene.sceneNumber} ("${scene.title || `Scene ${scene.sceneNumber}`}"): ${latestScene?.summary || '(written)'}`
       )
@@ -1630,7 +1964,7 @@ export function useVolumeStoryGenerator() {
 
     // Drift-triggered re-evaluation: check for regressions across the whole project
     // and append any regressed dimensions to the next batch's focus instructions.
-    const batchScenes = writtenScenes.value.slice(startIndex)
+    const batchScenes = writtenScenes.value.slice(startIndex).filter(Boolean)
     const driftResult = await driftTriggeredEval.check({
       projectId,
       scenes: batchScenes,
@@ -1651,7 +1985,7 @@ export function useVolumeStoryGenerator() {
 
     // Active learning bridge: periodic deep analysis feeds recommendations
     // into the prompt adjuster's hint history.
-    activeLearningBridge.afterBatchEval(sceneEvalResults.value)
+    activeLearningBridge.afterBatchEval(evalStore.results)
 
     // Early continuity audit at chapter boundaries (detection only).
     await consistencyService.maybeRunIncrementalConsistency(endIndex)
@@ -1675,7 +2009,8 @@ export function useVolumeStoryGenerator() {
         syncPreview.value = batchChanges
         await delegatorApi.dispatch('BATCH_COMPLETE', {
           batchStart: pendingBatchStart.value,
-          batchEnd: writtenScenes.value.length
+          batchEnd: endIndex,
+          preview: batchChanges
         })
         // One-click mode: accept every discovered entity and keep writing
         if (autoMode.value) {
@@ -1692,7 +2027,8 @@ export function useVolumeStoryGenerator() {
       syncPreview.value = batchChanges
       await delegatorApi.dispatch('BATCH_COMPLETE', {
         batchStart: pendingBatchStart.value,
-        batchEnd: writtenScenes.value.length
+        batchEnd: endIndex,
+        preview: batchChanges
       })
       if (autoMode.value) {
         await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
@@ -1769,14 +2105,22 @@ export function useVolumeStoryGenerator() {
       }
     }
 
-    // Batch-create all sections + subsections + volume assignments atomically
-    const batchResults = await batchCreatePlanStructure({ projectId, groups })
+    // Batch-create all sections + subsections + volume assignments atomically.
+    //
+    // The branch id is not optional here. `loadManuscript` reads sections and
+    // subsections through the `[projectId+branchId]` compound index, so rows
+    // written without one are not in that index at all: the generated chapters
+    // showed up in memory for the rest of the session and then vanished on the
+    // next load, which is the "my generated chapters aren't in the editor" bug.
+    const branchId = (branchStore as any).activeBranch?.id
+    const batchResults = await batchCreatePlanStructure({ projectId, groups, branchId })
 
     // Update Pinia reactive state
     for (const sec of batchResults) {
       ;(manuscriptStore.sections as any[]).push({
         id: sec.id,
         projectId,
+        branchId,
         order: (manuscriptStore.sections as any[]).length,
         status: 'planning',
         title: sec.title,
@@ -1788,6 +2132,7 @@ export function useVolumeStoryGenerator() {
         ;(manuscriptStore.subsections as any[]).push({
           id: sec.subsectionIds[j],
           projectId,
+          branchId,
           sectionId: sec.id,
           title: scene.title || `Scene ${scene.sceneNumber}`,
           description: `Scene ${scene.sceneNumber}`,
@@ -1827,8 +2172,11 @@ export function useVolumeStoryGenerator() {
     generationSpanIds.spine = spineSpanId
     langfuseService.span(generationTraceId.value!, spineSpanId, 'spine-generation', { projectId })
     try {
-      spineArray.value = await runStageWithTimeout(projectId, 'spine', () =>
+      // One model call per chapter, so a long book legitimately exceeds any fixed
+      // budget; the per-chapter callback is the progress signal to bound instead.
+      spineArray.value = await runStageWithHeartbeat(projectId, 'spine', (heartbeat) =>
         generateSpine(chapterPlan.value, storyArc, (done: any, total: any) => {
+          heartbeat(`spine ${done}/${total}`)
           progress.statusText = `Generating narrative spine (${done}/${total} chapters)...`
           actLog.updatePhase(currentTaskId, spinePhase, {
             detail: `${done}/${total} chapter spine entries`
@@ -1839,11 +2187,11 @@ export function useVolumeStoryGenerator() {
       actLog.updatePhase(currentTaskId, spinePhase, { status: 'done' })
       langfuseService.endSpan(spineSpanId, { output: { chapters: spineArray.value?.length } })
     } catch (err: any) {
-      error.value = err.message || 'Fatal: Spine generation failed'
-      await delegatorApi.dispatch('ERROR', {
-        error: err,
-        message: err.message || 'Fatal: Spine generation failed'
-      })
+      error.value = describeRunFailure(err)
+      actLog.updatePhase(currentTaskId, spinePhase, { status: 'failed' })
+      await delegatorApi
+        .dispatch('ERROR', { error: err, message: error.value })
+        .catch(() => {})
       throw err
     }
 
@@ -1875,7 +2223,34 @@ export function useVolumeStoryGenerator() {
       storyBibleDocs
     }
 
-    await withTimeout(() => runParallelGeneration(writeParams.value), undefined, 'Prose stage')
+    // Drafting a full volume on local hardware is measured in hours — 30 scenes
+    // at ~13 minutes each. The old wrapper passed no budget and so inherited
+    // withTimeout's 5-minute default, which is why a 10-chapter run reliably died
+    // around chapter 2 with most of its scenes never attempted.
+    //
+    // The watchdog beats on every streamed token, so the run survives for as long
+    // as prose is actually arriving and fails promptly when it is not — and,
+    // unlike the Promise.race it replaces, it does not leave the generation
+    // running invisibly in the background after it has given up on it.
+    try {
+      await runStageWithHeartbeat(projectId, 'prose', (heartbeat) =>
+        runParallelGeneration({
+          ...writeParams.value,
+          onChunk: (payload: any) => {
+            heartbeat(payload?.scene?.title || `scene ${payload?.sceneIndex ?? ''}`)
+            onChunk?.(payload)
+          }
+        })
+      )
+    } catch (err: any) {
+      // Prose already committed stays committed, and the checkpoint written per
+      // scene is what lets the author pick this back up — so the report says how
+      // far it got rather than presenting a part-written book as a total loss.
+      error.value = describeRunFailure(err)
+      await commitService.persistCheckpoint(projectId)
+      await delegatorApi.dispatch('ERROR', { error: err, message: error.value }).catch(() => {})
+      throw err
+    }
   }
 
   // End-of-run repair: regenerate any scene whose subsection was left empty (a
@@ -1935,8 +2310,8 @@ export function useVolumeStoryGenerator() {
           await manuscriptStore.updateSubsectionData(
             sub.id,
             {
-              content: fullProse,
-              wordCount: fullProse.split(/\s+/).length,
+              content: proseToHtml(fullProse),
+              wordCount: countProseWords(fullProse),
               contentStatus: 'generated'
             },
             projectId
@@ -1950,8 +2325,10 @@ export function useVolumeStoryGenerator() {
             sceneNumber: scene.sceneNumber,
             subsectionId: sub.id
           }
-          if (index < writtenScenes.value.length) writtenScenes.value[index] = rebuilt
-          else writtenScenes.value.push(rebuilt)
+          // Positional, always: the old length-check appended a repaired scene to
+          // the end whenever the array was shorter than its index, silently
+          // reordering the draft.
+          writtenScenes.value[index] = rebuilt
         } else {
           await manuscriptStore.updateSubsectionData(sub.id, { contentStatus: 'failed' }, projectId)
         }
@@ -1960,14 +2337,43 @@ export function useVolumeStoryGenerator() {
         await manuscriptStore
           .updateSubsectionData(sub.id, { contentStatus: 'failed' }, projectId)
           .catch(() => {})
+        // Repair is best-effort per scene, but there is nothing to repair with
+        // once the budget is gone — stop rather than mark every hole as failed.
+        rethrowIfFatal(err)
       }
     }
     actLog.updatePhase(currentTaskId, repairPhase, { status: 'done' })
     langfuseService.endSpan(repairSpanId)
   }
 
+  /**
+   * Dispatch only when the delegator has a route for it out of the current
+   * phase. The terminal sequence can be entered from `writing`, `sync-preview`
+   * or `scene-review` depending on how the run got here, so it steps through the
+   * table rather than assuming a fixed starting phase.
+   */
+  async function advance(event: any, payload?: any) {
+    if (!delegatorApi.canDispatch(event)) return false
+    await delegatorApi.dispatch(event, payload)
+    return true
+  }
+
+  /**
+   * Finish a run: repair → continuity audit → commit → complete.
+   *
+   * This walks the delegator's real phase sequence. It used to jump straight
+   * from `writing` to `complete` with a single WRITING_DONE, while the repair
+   * and audit work ran unannounced underneath — so the "Checking continuity"
+   * and "Saving" steps never lit up, and the audit's own phase assignment left
+   * the machine in a phase WRITING_DONE had no route out of, which threw and
+   * surfaced as a failed run at the end of every clean generation.
+   */
   async function completeGeneration(projectId: any) {
-    // Repair any holes left by failed scene generations before the final audit.
+    const written = () => writtenScenes.value.filter(Boolean)
+    const holes = () => writtenScenes.value.filter((s) => !s)
+
+    // ── Repair: fill any holes left by failed scene generations ──
+    await advance('ALL_WRITTEN', { failedScenes: holes() })
     try {
       await repairFailedScenes(projectId)
     } catch (err: any) {
@@ -1976,22 +2382,88 @@ export function useVolumeStoryGenerator() {
 
     await updateGenRunStage(projectId, 'prose', {
       status: 'done',
-      written: writtenScenes.value.length,
-      total: writtenScenes.value.length
+      written: written().length,
+      total: scenePlan.value.length || written().length
     })
 
-    await consistencyService.runTerminalConsistencyAudit(projectId, currentTaskId)
+    // ── Continuity audit (and, in auto mode, bounded fix rounds) ──
+    // Reports what repair could NOT fill, so the activity log says how many
+    // scenes are actually still missing rather than always saying zero.
+    await advance('REPAIRED', { failedScenes: holes() })
+    let auditIssues = 0
+    try {
+      const audit = await consistencyService.runTerminalConsistencyAudit(projectId, currentTaskId)
+      auditIssues = audit?.issueCount || 0
+    } catch (err: any) {
+      console.warn('[useVolumeStoryGenerator] consistency audit failed:', err)
+    }
 
+    // The service already ran its fix rounds internally, so any issues left here
+    // are ones it could not resolve. Report them, then proceed to commit — the
+    // prose is written either way and the report is surfaced in the UI.
+    if (auditIssues > 0) {
+      const routed = await advance('HAS_ISSUES', {
+        issues: consistencyReport.value ? [consistencyReport.value] : []
+      })
+      if (routed) await advance('MAX_ROUNDS', { round: 1, remaining: auditIssues })
+    } else {
+      await advance('NO_ISSUES')
+    }
+
+    // ── Populate every derived editor surface ──
+    //
+    // The run has committed the primary data — chapters, scenes, entities, graph
+    // edges — but the surfaces built on top of it are not all self-updating. The
+    // Story Canvas was only ever written by hand, and the story-bible documents
+    // were created when missing but never refreshed, so a finished volume left
+    // the canvas empty and the documents describing the project as it stood
+    // BEFORE the run. Those same documents are the canon fed back to the model
+    // next time, so staleness compounds.
+    //
+    // Additive and author-safe: an arranged canvas and hand-edited documents are
+    // left alone. Never throws — these are derived from data already committed.
+    progress.statusText = 'Populating canvas, timeline and story bible documents...'
+    const artifactsPhase = actLog.addPhase(currentTaskId, 'Story Bible & Canvas')
+    try {
+      const report = await finalizeStoryArtifacts({
+        projectId,
+        manuscriptStore,
+        storyBibleStore,
+        storyDocs: useStoryDocuments()
+      })
+      actLog.appendThought(currentTaskId, artifactsPhase, describeFinalizeReport(report) + '\n')
+      actLog.updatePhase(currentTaskId, artifactsPhase, {
+        status: report.errors.length ? 'failed' : 'done',
+        detail: `${report.canvasElements} canvas · ${report.documents.length} docs`
+      })
+    } catch (err: any) {
+      console.warn('[useVolumeStoryGenerator] artifact finalization failed:', err)
+      actLog.updatePhase(currentTaskId, artifactsPhase, { status: 'failed' })
+    }
+
+    // ── Commit + finalize ──
+    await advance('COMMITTED')
     actLog.completeTask(currentTaskId)
 
     // Run finished cleanly — drop the crash-recovery checkpoint
     await clearGenRun(projectId)
 
-    await delegatorApi.dispatch('WRITING_DONE', undefined)
-    progress.statusText = 'Volume generation complete!'
+    // Fallback for entry paths that skipped the sequence above (e.g. a
+    // single-scene regeneration): make sure the run still lands on `complete`.
+    if (phase.value !== 'complete') await advance('WRITING_DONE')
 
-    // Compute total words once (Fix #10 — was computed twice in quick succession)
-    const totalWords = writtenScenes.value.reduce((sum, s) => sum + s.prose.split(/\s+/).length, 0)
+    progress.statusText = 'Volume generation complete!'
+    progress.current = written().length
+    progress.total = scenePlan.value.length || written().length
+
+    // Leave the user looking at real prose. Without this the editor still shows
+    // whatever was open before the run started.
+    const firstWritten = written()[0]
+    if (firstWritten?.subsectionId) liveDraft.focusSubsection(firstWritten.subsectionId)
+
+    // A scene that failed every attempt leaves a null hole in the positional
+    // array; reducing over it unguarded threw *after* the run had succeeded.
+    const totalWords = written().reduce((sum, s) => sum + countProseWords(s.prose), 0)
 
     try {
       const { db } = await import('../services/db-core')
@@ -2001,8 +2473,8 @@ export function useVolumeStoryGenerator() {
         generatedAt: new Date().toISOString(),
         totalWords,
         qualityScore: consistencyReport.value
-          ? (consistencyReport.value.characterIssues.length +
-              consistencyReport.value.locationIssues.length) *
+          ? ((consistencyReport.value.characterIssues?.length || 0) +
+              (consistencyReport.value.locationIssues?.length || 0)) *
             -1
           : 0
       })
@@ -2064,6 +2536,417 @@ export function useVolumeStoryGenerator() {
     return true
   }
 
+  // ─── Generating on top of an existing manuscript ──────────────────────────
+  //
+  // Everything above assumes a run owns the book: it plans, it writes, it
+  // finishes. That is the only mode there was, which is why a run that stopped
+  // partway left the author with no way forward except starting over and
+  // throwing away what had been written.
+  //
+  // These three operations work the other direction — they read the manuscript
+  // as it stands and add to it:
+  //
+  //   fill    — write the scenes that were planned but never drafted
+  //   extend  — plan and write new chapters that continue the existing story
+  //   expand  — rewrite one thin scene at length, in place
+  //
+  // All three go through `writeSceneWithGate`, so continuation prose gets the
+  // same quality gate, scene chunking, entity scoping and live streaming as a
+  // first-pass draft rather than a second, weaker writing path.
+
+  /** Read the project's current state without generating anything. */
+  async function surveyContinuation(projectId: any) {
+    if (!projectId) return null
+    if ((manuscriptStore.sections as any[]).length === 0) {
+      await manuscriptStore.loadManuscript(projectId)
+    }
+    return surveyManuscript(
+      manuscriptStore.sections as any[],
+      manuscriptStore.subsections as any[]
+    )
+  }
+
+  /**
+   * Write a set of already-materialized scenes into their subsections.
+   *
+   * Serial, deliberately. The parallel writer exists to fill an empty book fast;
+   * here every scene is being fitted between prose that already exists, and the
+   * scene before is part of the context for the scene after. Writing them out of
+   * order would be faster and worse.
+   */
+  async function writeScenesInto(
+    targets: any[],
+    { projectId, survey, checkpointPlan, targetWords, storyBibleDocs, storyArc, storyContract, instructions, onChunk }: any
+  ) {
+    const report = emptyReport()
+    report.remaining = targets.length
+    let consecutiveFailures = 0
+
+    const existingEntitiesJson = buildExistingEntitiesBlob(
+      storyBibleStore.characters,
+      storyBibleStore.locations,
+      storyBibleStore.plotThreads
+    )
+
+    for (const target of targets) {
+      throwIfAborted()
+
+      const scene = {
+        ...briefForScene(target, checkpointPlan, targetWords),
+        subsectionId: target.subsectionId
+      }
+      const phaseLabel = `Continuing: "${target.title}"`
+      const scenePhase = actLog.addPhase(currentTaskId, phaseLabel)
+      const stream = makeSceneStream({ scene, sceneIndex: target.index, onChunk })
+
+      progress.statusText = `Writing "${target.title}" (${report.written + report.failed + 1} of ${targets.length})...`
+      progress.sceneLabel = target.title
+
+      try {
+        const { chosenProse, chosenStructured } = await writeSceneWithGate({
+          scene,
+          sceneIndex: target.index,
+          scenePhase,
+          storyArc,
+          chapterLog: target.chapterSummary
+            ? `This scene belongs to "${target.chapterTitle}": ${target.chapterSummary}`
+            : '',
+          storyBible: storyBibleDocs,
+          storyContract,
+          existingEntitiesJson,
+          // The prose on either side of this scene, so the new text joins the
+          // book instead of restarting it.
+          embeddingContext: [neighbourContext(survey, target.index), instructions || '']
+            .filter(Boolean)
+            .join('\n\n'),
+          emitChunk: stream.emitChunk
+        })
+
+        const prose = chosenProse
+        if (!prose || !prose.trim()) {
+          // An empty result is a failure, not a success with no words. Recording
+          // it as `generated` is what let a run of empty scenes look finished.
+          stream.abandon()
+          actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
+          await manuscriptStore.updateSubsectionData(
+            target.subsectionId,
+            { contentStatus: 'failed' },
+            projectId
+          )
+          report.failed++
+          report.remaining--
+          continue
+        }
+
+        stream.done(prose)
+        const wordCount = countProseWords(prose)
+        await manuscriptStore.updateSubsectionData(
+          target.subsectionId,
+          { content: proseToHtml(prose), wordCount, contentStatus: 'generated' },
+          projectId
+        )
+
+        // Keep the survey current: the scene just written is context for the next.
+        target.prose = prose
+        target.wordCount = wordCount
+
+        writtenScenes.value[target.index] = {
+          title: target.title,
+          prose,
+          summary: await computeSummary(prose, chosenStructured),
+          characters: scene.charactersPresent || scene.characters || [],
+          location: scene.location || '',
+          sceneNumber: target.sceneNumber,
+          subsectionId: target.subsectionId,
+          keyFacts: Array.isArray(chosenStructured?.keyFacts) ? chosenStructured.keyFacts : []
+        }
+
+        report.written++
+        report.words += wordCount
+        report.remaining--
+        consecutiveFailures = 0
+        progress.current = report.written
+        actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
+      } catch (err: any) {
+        stream.abandon()
+        actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
+        if (isFatalRunError(err)) {
+          // Budget spent or user stopped: every remaining scene would fail the
+          // same way. Report where it got to instead of grinding through them.
+          report.stoppedBy = describeRunFailure(err)
+          return report
+        }
+        console.warn('[useVolumeStoryGenerator] continuation scene failed:', target.title, err)
+        report.failed++
+        report.remaining--
+        consecutiveFailures++
+
+        // Same reasoning as the drafting path: a run producing nothing is not
+        // unlucky, it is broken. Without this the continuation walked every
+        // remaining scene and logged an identical failure for each one.
+        if (consecutiveFailures >= WRITE_FAILURE_STREAK_ABORT && report.written === 0) {
+          report.stoppedBy =
+            `the first ${consecutiveFailures} scenes all failed to produce prose ` +
+            `(${err.message || 'unknown error'}). Nothing was written, so no work is lost.`
+          return report
+        }
+      }
+    }
+
+    return report
+  }
+
+  /** Shared setup for every continuation run. */
+  async function beginContinuation(projectId: any, label: string, sceneCount: number) {
+    abort.ensure()
+    isCancelling.value = false
+    liveDraft.reset()
+    error.value = null
+    continuationReport.value = null
+    isContinuing.value = true
+    // Continuation reuses the one-click quality gate — an author asking for more
+    // prose wants it held to the same bar as the first pass.
+    autoMode.value = true
+    currentTaskId = actLog.addTask({ name: label, type: 'generation' })
+    progress.current = 0
+    progress.total = sceneCount
+    sizeSessionBudget({ chapters: Math.max(1, Math.ceil(sceneCount / 3)), scenes: sceneCount })
+    return useStoryDocuments().getStoryDocumentContext(projectId)
+  }
+
+  function endContinuation(report: any) {
+    continuationReport.value = report
+    isContinuing.value = false
+    isCancelling.value = false
+    progress.statusText = report?.stoppedBy
+      ? `Stopped — ${describeReport(report)}`
+      : `Done — ${describeReport(report)}`
+    if (currentTaskId) actLog.completeTask(currentTaskId)
+    return report
+  }
+
+  /**
+   * Write every planned-but-unwritten scene in the project.
+   *
+   * This is the direct answer to a run that planned a hundred chapters and
+   * drafted none of them: the structure is already correct and already on disk,
+   * so there is nothing to re-plan — only prose to write into it.
+   *
+   * @param {boolean} [includeShort] Also redraft scenes that came out as stubs.
+   */
+  async function continueDrafting({ projectId, includeShort, targetWords, onChunk }: any) {
+    if (isContinuing.value) return null
+    const survey = await surveyContinuation(projectId)
+    if (!survey) return null
+
+    const targets = includeShort
+      ? [...survey.unwritten, ...survey.short].sort((a, b) => a.index - b.index)
+      : survey.unwritten
+    if (targets.length === 0) {
+      return endContinuation({ ...emptyReport(), skipped: survey.scenes.length })
+    }
+
+    const run = await getGenRun(projectId)
+    const checkpointPlan = Array.isArray(run?.state?.scenePlan) ? run.state.scenePlan : null
+    const storyBibleDocs = await beginContinuation(
+      projectId,
+      'Continue drafting',
+      targets.length
+    )
+
+    try {
+      const report = await writeScenesInto(targets, {
+        projectId,
+        survey,
+        checkpointPlan,
+        targetWords: targetWords || 1200,
+        storyBibleDocs,
+        storyArc: run?.state?.storyArc || null,
+        storyContract: run?.state?.storyContract || '',
+        onChunk
+      })
+      return endContinuation(report)
+    } catch (err: any) {
+      error.value = describeRunFailure(err)
+      isContinuing.value = false
+      throw err
+    }
+  }
+
+  /**
+   * Plan and write new chapters that continue the existing story.
+   *
+   * The existing draft is passed to the director as evidence and to the writer
+   * as canon, so the new chapters pick up from where the book actually ends
+   * rather than restarting the premise — which is what happens if you simply run
+   * the generator again on the same project.
+   */
+  async function extendStory({
+    projectId,
+    volumes = 1,
+    chaptersPerVolume = 1,
+    scenesPerChapter = 3,
+    wordsPerChapter = 3000,
+    synopsis,
+    genre,
+    tone,
+    onChunk
+  }: any) {
+    if (isContinuing.value) return null
+    const survey = await surveyContinuation(projectId)
+    if (!survey) return null
+
+    const chapters = Math.max(1, volumes * chaptersPerVolume)
+    const newScenes = chapters * Math.max(1, scenesPerChapter)
+    const storyBibleDocs = await beginContinuation(projectId, 'Extend story', newScenes)
+
+    try {
+      progress.statusText = `Planning ${chapters} new chapter(s) from the existing draft...`
+
+      // What the story has actually become, in its own words. Titles alone are
+      // not enough — the director has to know where the book currently ends to
+      // write a chapter that follows it.
+      const tail = survey.written.slice(-6)
+      const storySoFar = tail.length
+        ? '# The story so far (already written — continue from here)\n' +
+          tail
+            .map((s) => {
+              const text = String(s.prose).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+              return `- ${s.chapterTitle} / "${s.title}": ${text.slice(0, 400)}…`
+            })
+            .join('\n')
+        : ''
+      const lastScene = survey.written[survey.written.length - 1]
+      const endsOn = lastScene
+        ? `\n\nThe manuscript currently ENDS on "${lastScene.title}" (in "${lastScene.chapterTitle}"). Chapter 1 of this continuation must follow directly from that moment.`
+        : ''
+
+      const evidence = [storyBibleDocs, storySoFar].filter(Boolean).join('\n\n') + endsOn
+
+      const directorResult = await runStageWithHeartbeat(
+        projectId,
+        'structure',
+        (heartbeat) =>
+          director.generateStoryPlan({
+            goal: {
+              premise: synopsis || survey.scenes[0]?.chapterSummary || 'Continue the existing story',
+              genre,
+              tone,
+              wordTarget: chapters * wordsPerChapter,
+              horizon: 'long_term',
+              structure: { volumes, chaptersPerVolume, chapters, scenesPerChapter, wordsPerChapter }
+            },
+            evidence,
+            research: null,
+            onPartialData: (_t: any, name: any) => {
+              heartbeat(name)
+              actLog.appendThought(currentTaskId, 0, `• ${name}\n`)
+            }
+          })
+      )
+
+      const newChapters = directorResult.chapters || []
+      if (newChapters.length === 0) throw new Error('The planner returned no new chapters')
+
+      // Materialize the new chapters AFTER the existing ones. `order` continues
+      // from the current section count so the additions read as a continuation
+      // rather than being interleaved into the existing book.
+      progress.statusText = 'Adding new chapters to the manuscript...'
+      const branchId = (branchStore as any).activeBranch?.id
+      const targetVolumeId =
+        (manuscriptStore.sections as any[]).slice(-1)[0]?.volumeId || volumeId.value || null
+
+      const groups = newChapters
+        .filter((c: any) => Array.isArray(c.scenes) && c.scenes.length > 0)
+        .map((c: any, i: number) => ({
+          title: c.title || `Chapter ${survey.chapters + i + 1}`,
+          scenes: c.scenes.map((s: any, j: number) => ({
+            ...s,
+            sceneNumber: survey.scenes.length + i * scenesPerChapter + j + 1,
+            estimatedWords: Math.round(wordsPerChapter / Math.max(1, scenesPerChapter))
+          })),
+          volumeId: targetVolumeId,
+          chapterMeta: c
+        }))
+
+      const created = await batchCreatePlanStructure({ projectId, groups, branchId, startOrder: survey.chapters })
+      await manuscriptStore.loadManuscript(projectId)
+
+      const extended = surveyManuscript(
+        manuscriptStore.sections as any[],
+        manuscriptStore.subsections as any[]
+      )
+      const newIds = new Set(created.flatMap((s: any) => s.subsectionIds))
+      const targets = extended.scenes.filter((s) => newIds.has(s.subsectionId))
+      const plannedBriefs = created.flatMap((s: any) => s.scenes)
+
+      progress.total = targets.length
+      const report = await writeScenesInto(targets, {
+        projectId,
+        survey: extended,
+        checkpointPlan: plannedBriefs,
+        targetWords: Math.round(wordsPerChapter / Math.max(1, scenesPerChapter)),
+        storyBibleDocs,
+        storyArc: directorResult.storyArc,
+        storyContract: '',
+        onChunk
+      })
+      return endContinuation(report)
+    } catch (err: any) {
+      error.value = describeRunFailure(err)
+      isContinuing.value = false
+      throw err
+    }
+  }
+
+  /**
+   * Redraft one scene at length, keeping its place in the book.
+   *
+   * The existing prose is handed back as the thing being rewritten, not as
+   * context to continue from — otherwise the model appends a second scene to the
+   * first instead of replacing it.
+   */
+  async function expandScene({ projectId, subsectionId, targetWords = 1500, instructions, onChunk }: any) {
+    if (isContinuing.value) return null
+    const survey = await surveyContinuation(projectId)
+    if (!survey) return null
+
+    const target = survey.scenes.find((s) => s.subsectionId === subsectionId)
+    if (!target) return null
+
+    const existing = String(target.prose).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    const rewriteBrief = [
+      existing
+        ? `EXISTING DRAFT OF THIS SCENE (rewrite it at greater length — keep every event, character and outcome; add depth, sensory detail and interiority rather than new plot):\n${existing}`
+        : '',
+      instructions ? `AUTHOR'S INSTRUCTIONS: ${instructions}` : ''
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+
+    const run = await getGenRun(projectId)
+    const storyBibleDocs = await beginContinuation(projectId, `Expand "${target.title}"`, 1)
+
+    try {
+      const report = await writeScenesInto([target], {
+        projectId,
+        survey,
+        checkpointPlan: Array.isArray(run?.state?.scenePlan) ? run.state.scenePlan : null,
+        targetWords,
+        storyBibleDocs,
+        storyArc: run?.state?.storyArc || null,
+        storyContract: run?.state?.storyContract || '',
+        instructions: rewriteBrief,
+        onChunk
+      })
+      return endContinuation(report)
+    } catch (err: any) {
+      error.value = describeRunFailure(err)
+      isContinuing.value = false
+      throw err
+    }
+  }
+
   async function reset() {
     // Abort before clearing. Previously reset() cleared the refs while in-flight
     // fetches kept running and their writers kept writing into the store behind
@@ -2072,6 +2955,7 @@ export function useVolumeStoryGenerator() {
     abort.reset()
     isCancelling.value = false
     speculativeCache.flush()
+    liveDraft.reset()
 
     await delegatorApi.dispatch('RESET', undefined)
     progress.current = 0
@@ -2115,6 +2999,14 @@ export function useVolumeStoryGenerator() {
     isWriting: writer.isWriting,
     isCheckingConsistency: critic.isCheckingConsistency,
     startGeneration,
+    // Generating on top of an existing manuscript
+    isContinuing,
+    continuationReport,
+    surveyContinuation,
+    continueDrafting,
+    extendStory,
+    expandScene,
+    describeContinuation: describeReport,
     confirmPlan,
     confirmSync,
     syncPreview,
@@ -2127,6 +3019,11 @@ export function useVolumeStoryGenerator() {
     sceneReviewMode,
     autoMode,
     inlineEvalEnabled,
+    followInEditor,
+    setFollowInEditor(value: boolean) {
+      followInEditor.value = !!value
+      liveDraft.setEnabled(followInEditor.value)
+    },
     currentSceneResult,
     currentWriteIndex,
     approveScene,
@@ -2151,5 +3048,6 @@ export {
   generateSpine,
   fallbackSpineEntry,
   detectSceneConflicts,
-  resolveSceneConflicts
+  resolveSceneConflicts,
+  assertProse
 }
