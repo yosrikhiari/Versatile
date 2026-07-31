@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useDialogueIndexer } from '../../composables/useDialogueIndexer'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BasePanelHeader from '../ui/BasePanelHeader.vue'
 import Skeleton from '../shared/Skeleton.vue'
 
 const projectStore = useProjectStore()
@@ -97,14 +98,13 @@ watch(projectId, (id) => {
 
 <template>
   <div class="voice-lab-panel flex flex-col h-full">
-    <div class="p-4 border-b border-border-subtle">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold text-text-primary">Voice Lab</h2>
-        <span class="text-2xs tabular-nums text-text-hint">
-          {{ dialogueEntries.length }} lines
-        </span>
-      </div>
+    <BasePanelHeader
+      title="Voice Lab"
+      icon="message-square"
+      :meta="`${dialogueEntries.length} lines`"
+    />
 
+    <div class="p-4 border-b border-border-subtle">
       <button
         :disabled="indexing || !projectId"
         class="w-full py-2 px-3 rounded-lg text-xs transition-all duration-150 flex items-center justify-center gap-2"

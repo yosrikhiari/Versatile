@@ -7,6 +7,7 @@ import { analyzeArc } from './arcAnalyzer'
 import { detectRepetitions } from './repetitionDetector'
 import { buildBetaReport } from './betaReport'
 import { useEvalPersistence } from '../useEvalPersistence'
+import { guardAnalysis } from '../../guardrails/integration/composableGuardrails'
 
 const PASSES = [
   { key: 'factLedger', label: 'Extracting fact ledger…' },
@@ -71,6 +72,11 @@ export function useBetaReader() {
       }
 
       const report = buildBetaReport(passResults)
+
+      // Validated before it reaches db.evalResults — a malformed report breaks
+      // aggregation silently rather than loudly.
+      await guardAnalysis({ result: report })
+
       results.value = report.allResults
       counts.value = report.counts
       resultsBySeverity.value = report.resultsBySeverity

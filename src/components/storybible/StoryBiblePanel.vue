@@ -629,10 +629,17 @@ defineExpose({ refresh })
               />
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
+                  <!--
+                    An <img> is implicitly draggable, so grabbing the portrait
+                    started the browser's own image drag *alongside* the card's
+                    drag — two things following the cursor from one gesture.
+                    The card owns the drag; the portrait must not compete.
+                  -->
                   <img
                     v-if="character.portrait && editingId !== character.id"
                     :src="character.portrait"
                     :alt="character.name"
+                    draggable="false"
                     class="w-8 h-8 rounded-full object-cover flex-shrink-0"
                   />
                   <BaseIcon v-else name="user" :size="18" class="text-text-hint" />

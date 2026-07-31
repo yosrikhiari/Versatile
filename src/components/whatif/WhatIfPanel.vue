@@ -3,6 +3,7 @@ import { ref, computed, inject } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useWhatIf } from '../../composables/useWhatIf'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BasePanelHeader from '../ui/BasePanelHeader.vue'
 import WhatIfTimeline from './WhatIfTimeline.vue'
 
 const manuscriptStore = useManuscriptStore()
@@ -83,37 +84,27 @@ function handleChangePoint() {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center justify-between p-3 border-b border-border-subtle">
-      <div class="flex items-center gap-1.5 min-w-0">
-        <BaseIcon
-          v-if="mode === 'timeline'"
-          name="git-branch-plus"
-          :size="14"
-          class="text-text-hint shrink-0"
-        />
-        <BaseIcon v-else name="shuffle" :size="14" class="text-text-hint shrink-0" />
-        <h2 class="text-sm font-medium text-text-primary truncate">
-          {{ mode === 'timeline' ? 'Divergence Point' : 'What If?' }}
-        </h2>
-      </div>
-
-      <div class="flex items-center gap-1 shrink-0">
+    <BasePanelHeader
+      :title="mode === 'timeline' ? 'Divergence Point' : 'What If?'"
+      :icon="mode === 'timeline' ? 'git-branch-plus' : 'shuffle'"
+    >
+      <template #actions>
         <button
           v-if="mode === 'alternatives'"
-          class="text-xs text-text-hint hover:text-text-secondary transition-colors"
+          class="rounded px-1.5 py-0.5 font-ui text-xs text-text-hint transition-colors hover:bg-surface-hover hover:text-text-secondary"
           @click="mode = 'timeline'"
         >
           Divergence
         </button>
         <button
           v-if="alternatives.length"
-          class="text-xs text-text-hint hover:text-text-secondary transition-colors"
+          class="rounded px-1.5 py-0.5 font-ui text-xs text-text-hint transition-colors hover:bg-surface-hover hover:text-text-secondary"
           @click="handleClear"
         >
           Clear
         </button>
-      </div>
-    </div>
+      </template>
+    </BasePanelHeader>
 
     <WhatIfTimeline
       v-if="mode === 'timeline'"
@@ -148,11 +139,7 @@ function handleChangePoint() {
 
         <button
           class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-          :class="
-            isGenerating
-              ? 'bg-accent/10 text-accent cursor-wait'
-              : 'bg-accent text-white hover:bg-accent-dark active:bg-accent-darker'
-          "
+          :class="isGenerating ? 'bg-accent/10 text-accent cursor-wait' : 'btn-primary'"
           :disabled="isGenerating"
           @click="handleGenerate"
         >
@@ -166,7 +153,7 @@ function handleChangePoint() {
 
         <div
           v-if="error"
-          class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-3 text-xs text-red-700 dark:text-red-300"
+          class="rounded-lg border border-danger/25 bg-danger/10 p-3 text-xs text-danger"
         >
           {{ error }}
         </div>
@@ -182,7 +169,7 @@ function handleChangePoint() {
             <span class="text-xs font-semibold text-text-primary truncate flex-1">
               {{ alt.title }}
             </span>
-            <span v-if="alt.styleNote" class="text-[10px] text-text-hint ml-2 whitespace-nowrap">
+            <span v-if="alt.styleNote" class="text-2xs text-text-hint ml-2 whitespace-nowrap">
               {{ alt.styleNote }}
             </span>
           </div>
@@ -228,11 +215,7 @@ function handleChangePoint() {
         <template v-else>
           <button
             class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-            :class="
-              isGenerating
-                ? 'bg-accent/10 text-accent cursor-wait'
-                : 'bg-accent text-white hover:bg-accent-dark active:bg-accent-darker'
-            "
+            :class="isGenerating ? 'bg-accent/10 text-accent cursor-wait' : 'btn-primary'"
             :disabled="isGenerating"
             @click="handleGenerate"
           >
@@ -246,7 +229,7 @@ function handleChangePoint() {
 
           <div
             v-if="error"
-            class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-3 text-xs text-red-700 dark:text-red-300"
+            class="rounded-lg border border-danger/25 bg-danger/10 p-3 text-xs text-danger"
           >
             {{ error }}
           </div>
@@ -262,7 +245,7 @@ function handleChangePoint() {
               <span class="text-xs font-semibold text-text-primary truncate flex-1">
                 {{ alt.title }}
               </span>
-              <span v-if="alt.styleNote" class="text-[10px] text-text-hint ml-2 whitespace-nowrap">
+              <span v-if="alt.styleNote" class="text-2xs text-text-hint ml-2 whitespace-nowrap">
                 {{ alt.styleNote }}
               </span>
             </div>

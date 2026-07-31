@@ -122,7 +122,7 @@ function handleResultAction(action) {
   align-items: center;
   gap: 8px;
   padding: 32px 0;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   font-size: 0.75rem;
 }
 
@@ -220,7 +220,7 @@ function handleResultAction(action) {
 
 .empty-text {
   font-size: 0.75rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   line-height: 1.4;
   max-width: 220px;
 }

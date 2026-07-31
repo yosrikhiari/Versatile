@@ -91,7 +91,7 @@ const pacingRating = computed(() => {
 
 .tile-label {
   font-size: 0.5625rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }

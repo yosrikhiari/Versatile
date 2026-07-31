@@ -82,7 +82,7 @@ function handleAction() {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   opacity: 0.7;
 }
 
@@ -102,7 +102,7 @@ function handleAction() {
 
 .result-detail {
   font-size: 0.625rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   line-height: 1.3;
   margin-top: 2px;
   padding: 4px 6px;

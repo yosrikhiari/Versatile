@@ -55,6 +55,7 @@ async function generate() {
         v-if="portrait"
         :src="portrait"
         :alt="character.name"
+        draggable="false"
         class="w-full h-full object-cover"
       />
       <BaseIcon v-else name="user" :size="32" class="text-text-hint" />

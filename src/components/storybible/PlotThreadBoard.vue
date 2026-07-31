@@ -7,6 +7,8 @@ import { useManuscriptContext } from '../../composables/useManuscriptContext'
 import { useNotifications } from '../../composables/useNotifications'
 import draggable from 'vuedraggable'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseStatusDot from '../ui/BaseStatusDot.vue'
+import { THREAD_STATUSES, normalizeThreadStatus } from '../../config/statuses'
 const props = defineProps({
   threads: {
     type: Array,
@@ -28,11 +30,9 @@ const showExtractionDialog = ref(false)
 const extractedEntities = ref({ characters: [], locations: [] })
 const enhanceError = ref('')
 
-const columns = [
-  { status: 'open', label: 'Open' },
-  { status: 'inprogress', label: 'In Progress' },
-  { status: 'resolved', label: 'Resolved' }
-]
+// Column identity comes from the shared thread-status config, so the board, the
+// timeline and the entity sidebar cannot drift into three different vocabularies.
+const columns = THREAD_STATUSES.filter((s) => s.value !== 'closed')
 
 const openThreads = ref([])
 const inprogressThreads = ref([])
@@ -41,16 +41,21 @@ const resolvedThreads = ref([])
 watch(
   () => props.threads,
   (newThreads) => {
-    openThreads.value = newThreads.filter((t) => t.status === 'open')
-    inprogressThreads.value = newThreads.filter((t) => t.status === 'inprogress')
-    resolvedThreads.value = newThreads.filter((t) => t.status === 'resolved')
+    // Normalized, so threads stored under the legacy `inprogress` spelling
+    // still land in their column instead of vanishing off the board.
+    const byStatus = (target) =>
+      newThreads.filter((t) => normalizeThreadStatus(t.status) === target)
+
+    openThreads.value = byStatus('open')
+    inprogressThreads.value = byStatus('in_progress')
+    resolvedThreads.value = byStatus('resolved')
   },
   { immediate: true, deep: true }
 )
 
 const threadsByColumn = {
   open: openThreads,
-  inprogress: inprogressThreads,
+  in_progress: inprogressThreads,
   resolved: resolvedThreads
 }
 
@@ -98,23 +103,20 @@ async function syncStatusChanges() {
 
   const updates = []
 
-  for (const thread of openThreads.value) {
-    if (thread.status !== 'open') {
-      updates.push({ id: thread.id, status: 'open' })
+  // Compare against the normalized value but persist the canonical one, so a
+  // legacy `inprogress` row is rewritten to `in_progress` the first time it is
+  // dragged — the data migrates itself without a schema step.
+  const collect = (list, canonical) => {
+    for (const thread of list) {
+      if (thread.status !== canonical) {
+        updates.push({ id: thread.id, status: canonical })
+      }
     }
   }
 
-  for (const thread of inprogressThreads.value) {
-    if (thread.status !== 'inprogress') {
-      updates.push({ id: thread.id, status: 'inprogress' })
-    }
-  }
-
-  for (const thread of resolvedThreads.value) {
-    if (thread.status !== 'resolved') {
-      updates.push({ id: thread.id, status: 'resolved' })
-    }
-  }
+  collect(openThreads.value, 'open')
+  collect(inprogressThreads.value, 'in_progress')
+  collect(resolvedThreads.value, 'resolved')
 
   for (const update of updates) {
     await storyBibleStore.updatePlotThreadData(
@@ -307,25 +309,32 @@ function scanForEntities() {
 
 <template>
   <div class="space-y-4">
+    <!--
+      Each column used to be washed in its own tint (`bg-accent-muted/20`,
+      `bg-success/10`), which spent a large surface on colour and left the three
+      lanes reading as three different products. The stage now lives in the
+      header glyph — whose shape, not just hue, distinguishes it — and the lane
+      itself is a plain hairline-ruled well.
+    -->
     <div
       v-for="column in columns"
-      :key="column.status"
-      class="rounded-lg p-3"
-      :class="
-        column.status === 'open'
-          ? 'bg-bg-tertiary'
-          : column.status === 'inprogress'
-            ? 'bg-accent-muted/20'
-            : 'bg-success/10'
-      "
+      :key="column.value"
+      class="rounded-lg border border-border-subtle bg-bg-tertiary p-3"
     >
-      <div class="text-xs font-medium text-text-secondary mb-2 flex items-center justify-between">
-        <span>{{ column.label }}</span>
-        <span class="text-text-hint">({{ getColumnThreads(column.status).length }})</span>
+      <div class="mb-2 flex items-center gap-2">
+        <BaseStatusDot
+          :color="column.color"
+          :shape="column.shape"
+          :label="column.label"
+          size="sm"
+        />
+        <span class="font-ui text-xs tabular-nums text-text-hint">
+          {{ getColumnThreads(column.value).length }}
+        </span>
       </div>
 
       <draggable
-        :list="threadsByColumn[column.status].value"
+        :list="threadsByColumn[column.value].value"
         item-key="id"
         v-bind="dragOptions"
         class="space-y-2 min-h-[80px] rounded"
@@ -480,7 +489,7 @@ function scanForEntities() {
 
         <template #footer>
           <div
-            v-if="getColumnThreads(column.status).length === 0"
+            v-if="getColumnThreads(column.value).length === 0"
             class="border-2 border-dashed border-border-subtle rounded-lg p-4 text-center text-xs text-text-hint"
           >
             Drop threads here

@@ -175,7 +175,7 @@ function charColor(index) {
 .empty-hint {
   text-align: center;
   font-size: 0.625rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   padding: 8px 0;
 }
 </style>

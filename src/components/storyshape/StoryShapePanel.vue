@@ -403,7 +403,7 @@ function priorityClass(p) {
   align-items: center;
   gap: 8px;
   padding: 24px 0;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   font-size: 0.75rem;
 }
 
@@ -420,7 +420,7 @@ function priorityClass(p) {
   display: inline-flex;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(var(--vers-accent-primary-rgb), 0.1);
+  background: rgb(var(--vers-accent-primary-rgb) / 0.1);
   color: var(--vers-accent-primary);
   font-size: 0.625rem;
   font-weight: 600;
@@ -437,7 +437,7 @@ function priorityClass(p) {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   margin-bottom: 6px;
 }
 
@@ -467,7 +467,7 @@ function priorityClass(p) {
 
 .metric-label {
   font-size: 0.625rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -521,7 +521,7 @@ function priorityClass(p) {
 .emotion-score {
   font-size: 0.625rem;
   font-weight: 600;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -561,7 +561,7 @@ function priorityClass(p) {
 }
 
 .beat-item.beat-detected {
-  background: rgba(var(--vers-accent-primary-rgb), 0.06);
+  background: rgb(var(--vers-accent-primary-rgb) / 0.06);
 }
 
 .beat-indicator {
@@ -590,7 +590,7 @@ function priorityClass(p) {
 
 .beat-confidence {
   font-size: 0.5625rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -609,7 +609,7 @@ function priorityClass(p) {
 
 .empty-text {
   font-size: 0.75rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   line-height: 1.4;
   max-width: 200px;
 }
@@ -622,7 +622,7 @@ function priorityClass(p) {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   font-size: 0.6875rem;
 }
 
@@ -645,7 +645,7 @@ function priorityClass(p) {
 
 .arc-conf {
   font-size: 0.625rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   margin-top: 1px;
 }
 
@@ -690,7 +690,7 @@ function priorityClass(p) {
 .pacing-list-label {
   font-size: 0.625rem;
   font-weight: 600;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -734,7 +734,7 @@ function priorityClass(p) {
 
 .theme-relevance {
   font-size: 0.625rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -754,7 +754,7 @@ function priorityClass(p) {
 
 .theme-evidence {
   font-size: 0.625rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   margin: 3px 0 0;
   line-height: 1.3;
   font-style: italic;
@@ -802,7 +802,7 @@ function priorityClass(p) {
 .quality-value {
   font-size: 0.625rem;
   font-weight: 600;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   min-width: 24px;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -862,7 +862,7 @@ function priorityClass(p) {
 
 .rec-priority.priority-low {
   background: var(--vers-bg-hover);
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
 }
 
 .rec-area {

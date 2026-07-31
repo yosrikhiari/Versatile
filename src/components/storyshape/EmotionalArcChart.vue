@@ -199,7 +199,7 @@ const totalIntensity = computed(() => {
 
 .stat {
   font-size: 0.625rem;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   font-variant-numeric: tabular-nums;
 }
 

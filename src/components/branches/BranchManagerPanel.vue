@@ -62,9 +62,9 @@ function statusColor(status) {
   const map = {
     active: 'var(--vers-status-success)',
     merged: 'var(--vers-status-info)',
-    archived: 'var(--vers-text-hint)'
+    archived: 'var(--vers-text-muted)'
   }
-  return map[status] || 'var(--vers-text-hint)'
+  return map[status] || 'var(--vers-text-muted)'
 }
 </script>
 
@@ -88,7 +88,7 @@ function statusColor(status) {
           />
           <button
             type="submit"
-            class="h-8 px-3 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-40 transition-opacity"
+            class="h-8 px-3 text-xs font-medium rounded-md bg-accent text-accent-foreground hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-40 transition-opacity"
             :disabled="!newBranchName.trim()"
           >
             Create

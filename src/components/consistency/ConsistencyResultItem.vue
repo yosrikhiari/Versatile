@@ -100,7 +100,7 @@ function handleAction() {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--vers-text-hint);
+  color: var(--vers-text-muted);
   opacity: 0.7;
 }
 

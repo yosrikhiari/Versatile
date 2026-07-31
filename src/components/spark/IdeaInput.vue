@@ -77,7 +77,7 @@ function toggleTone(t) {
                 : 'bg-bg-tertiary border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-hover'
             "
             :style="
-              isActive(t.value) ? { background: 'rgba(var(--vers-accent-primary-rgb),0.14)' } : {}
+              isActive(t.value) ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.14)' } : {}
             "
             @click="toggleTone(t.value)"
           >
@@ -105,7 +105,7 @@ function toggleTone(t) {
             "
             :style="
               targetLength === len.value
-                ? { background: 'rgba(var(--vers-accent-primary-rgb),0.16)' }
+                ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.16)' }
                 : {}
             "
             @click="emit('update:targetLength', len.value)"
