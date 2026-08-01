@@ -113,7 +113,12 @@ export const EMBEDDING_PROVIDER_CAPABILITIES = {
     maxBatchSize: 128,
     supportsBatching: true,
     maxInputTokens: 8192,
-    maxConcurrentRequests: 4
+    // One. Ollama is a single local process, so parallel embed requests do not
+    // overlap usefully — they contend for the same GPU and, when a chat model is
+    // also loaded, force it in and out of VRAM between batches. Four workers
+    // here turned ~2s batches into ~270s ones. They also stack four deep in
+    // front of any generation call sharing the provider semaphore.
+    maxConcurrentRequests: 1
   },
   [EMBEDDING_PROVIDERS.MISTRAL]: {
     maxBatchSize: 16,

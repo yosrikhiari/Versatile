@@ -203,6 +203,10 @@ describe('writeScene', () => {
   })
 })
 
+// Comfortably past baseSceneBrief's 500-word target, so the length-continuation
+// pass stays out of the way of tests that are about something else.
+const longEnoughProse = Array.from({ length: 520 }, (_, i) => `word${i}`).join(' ')
+
 describe('writeSceneStructured (prose-first, two calls)', () => {
   // The metadata a healthy second-pass extraction returns.
   const metadata = {
@@ -240,7 +244,11 @@ describe('writeSceneStructured (prose-first, two calls)', () => {
     expect(prosePrompt).not.toContain('"usedEntities"')
   })
 
-  it('makes exactly two model calls per scene (net-neutral vs the old summary call)', async () => {
+  it('makes exactly two model calls for a scene that meets its target', async () => {
+    // Net-neutral vs the old summary call. A scene that comes back short costs
+    // extra calls to top up — see the length-target block below — but that is
+    // the exception, not the per-scene baseline.
+    mockAiGenerate.mockResolvedValue(longEnoughProse)
     const { writeSceneStructured } = useStoryWriter()
     await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
 
@@ -285,6 +293,136 @@ describe('writeSceneStructured (prose-first, two calls)', () => {
     const { writeSceneStructured } = useStoryWriter()
     const result = await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
     expect(result.prose).toBe('The real scene text.')
+  })
+
+  describe('word-count target', () => {
+    // A scene that comes back at 1095 words against a 1200-word target used to
+    // be persisted as-is: the prompt's "MUST be at least N words" was the only
+    // lever, and nothing downstream checked it. These cover the top-up pass.
+
+    it('leaves a scene that meets its target alone', async () => {
+      mockAiGenerate.mockResolvedValue(longEnoughProse)
+      const { writeSceneStructured } = useStoryWriter()
+      const result = await writeSceneStructured({
+        sceneBrief: baseSceneBrief,
+        storyArc: defaultArc
+      })
+
+      expect(mockAiGenerate).toHaveBeenCalledTimes(1)
+      expect(result.prose).toBe(longEnoughProse)
+    })
+
+    it('leaves a scene inside the 85% tolerance alone', async () => {
+      // Forcing an exact hit produces padding, which is worse than being short.
+      const nearlyThere = Array.from({ length: 450 }, (_, i) => `word${i}`).join(' ')
+      mockAiGenerate.mockResolvedValue(nearlyThere)
+      const { writeSceneStructured } = useStoryWriter()
+      const result = await writeSceneStructured({
+        sceneBrief: baseSceneBrief,
+        storyArc: defaultArc
+      })
+
+      expect(mockAiGenerate).toHaveBeenCalledTimes(1)
+      expect(result.prose).toBe(nearlyThere)
+    })
+
+    it('continues a short scene up to its target', async () => {
+      const opening = Array.from({ length: 100 }, (_, i) => `alpha${i}`).join(' ')
+      const rest = Array.from({ length: 420 }, (_, i) => `beta${i}`).join(' ')
+      mockAiGenerate.mockResolvedValueOnce(opening).mockResolvedValueOnce(rest)
+
+      const { writeSceneStructured } = useStoryWriter()
+      const result = await writeSceneStructured({
+        sceneBrief: baseSceneBrief,
+        storyArc: defaultArc
+      })
+
+      expect(mockAiGenerate).toHaveBeenCalledTimes(2)
+      expect(result.prose).toContain(opening)
+      expect(result.prose).toContain(rest)
+    })
+
+    it('asks the continuation to carry on rather than restart', async () => {
+      const opening = Array.from({ length: 100 }, (_, i) => `alpha${i}`).join(' ')
+      mockAiGenerate
+        .mockResolvedValueOnce(opening)
+        .mockResolvedValue(Array.from({ length: 420 }, (_, i) => `beta${i}`).join(' '))
+
+      const { writeSceneStructured } = useStoryWriter()
+      await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+
+      const continuationPrompt = mockAiGenerate.mock.calls[1][0]
+      expect(continuationPrompt).toContain('CONTINUATION PASS')
+      expect(continuationPrompt).toContain('Do not restart the scene')
+      // It needs the tail to know where to pick up.
+      expect(continuationPrompt).toContain('THE SCENE SO FAR ENDS WITH')
+      expect(continuationPrompt).toContain('alpha99')
+    })
+
+    it('discards a continuation that just repeats the scene', async () => {
+      // "Continue" is an instruction a model can satisfy by restarting. Hitting
+      // the target with a duplicate is worse than staying short.
+      const opening = Array.from({ length: 100 }, (_, i) => `alpha${i}`).join(' ')
+      mockAiGenerate.mockResolvedValue(opening)
+
+      const { writeSceneStructured } = useStoryWriter()
+      const result = await writeSceneStructured({
+        sceneBrief: baseSceneBrief,
+        storyArc: defaultArc
+      })
+
+      expect(result.prose).toBe(opening)
+    })
+
+    it('stops after two continuation passes', async () => {
+      // A model that has not reached the target after two asks has said what it
+      // has to say; a third buys repetition, not length.
+      mockAiGenerate
+        .mockResolvedValueOnce(Array.from({ length: 40 }, (_, i) => `a${i}`).join(' '))
+        .mockResolvedValueOnce(Array.from({ length: 40 }, (_, i) => `b${i}`).join(' '))
+        .mockResolvedValueOnce(Array.from({ length: 40 }, (_, i) => `c${i}`).join(' '))
+        .mockResolvedValue(Array.from({ length: 40 }, (_, i) => `d${i}`).join(' '))
+
+      const { writeSceneStructured } = useStoryWriter()
+      await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+
+      expect(mockAiGenerate).toHaveBeenCalledTimes(3) // prose + 2 passes
+    })
+
+    it('keeps the short scene when the continuation call fails', async () => {
+      // The scene itself succeeded; a failed top-up must not turn a short scene
+      // into no scene.
+      const opening = Array.from({ length: 100 }, (_, i) => `alpha${i}`).join(' ')
+      mockAiGenerate.mockResolvedValueOnce(opening).mockRejectedValue(new Error('ollama fell over'))
+
+      const { writeSceneStructured } = useStoryWriter()
+      const result = await writeSceneStructured({
+        sceneBrief: baseSceneBrief,
+        storyArc: defaultArc
+      })
+
+      expect(result.prose).toBe(opening)
+    })
+
+    it('falls back to the 800-word default when the brief sets no target', async () => {
+      // `estimatedWords || 800` is the writer's existing default and already
+      // drives the prompt and the token cap; the length pass reads the same
+      // number rather than inventing a second notion of "long enough".
+      const justUnder = Array.from({ length: 600 }, (_, i) => `word${i}`).join(' ')
+      const topUp = Array.from({ length: 300 }, (_, i) => `extra${i}`).join(' ')
+      mockAiGenerate.mockResolvedValueOnce(justUnder).mockResolvedValueOnce(topUp)
+
+      const { writeSceneStructured } = useStoryWriter()
+      const result = await writeSceneStructured({
+        sceneBrief: { ...baseSceneBrief, estimatedWords: 0 },
+        storyArc: defaultArc
+      })
+
+      // 600 is under 680 (85% of 800), so one pass runs.
+      expect(mockAiGenerate).toHaveBeenCalledTimes(2)
+      expect(mockAiGenerate.mock.calls[1][0]).toContain('800-word target')
+      expect(result.prose).toContain(topUp)
+    })
   })
 
   it('forwards the cancellation signal to both calls', async () => {

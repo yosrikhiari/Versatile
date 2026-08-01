@@ -268,3 +268,47 @@ describe('gateRevisionEffectiveness', () => {
     expect(result.regressions.some((r) => r.includes('Word count') && r.includes('95%'))).toBe(true)
   })
 })
+
+describe('gateProseQuality — word target', () => {
+  let gateProseQuality
+
+  beforeAll(async () => {
+    const mod = await import('../../services/evalGates')
+    gateProseQuality = mod.gateProseQuality
+  })
+
+  const goodCritique = {
+    score: 8,
+    dimensionScores: { prose: 8, pacing: 8, continuity: 8 },
+    issues: [],
+    pass: true
+  }
+
+  it('flags prose that lands well under the scene target', () => {
+    // The regression this exists for: 700 words against a 1200-word target used
+    // to pass, because it is inside the global range and there was nothing to
+    // compare it to.
+    const result = gateProseQuality(goodCritique, 0, 700, 1200)
+    expect(result.pass).toBe(false)
+    expect(result.flags.some((f) => f.includes('1200-word target'))).toBe(true)
+  })
+
+  it('accepts prose inside the 85% tolerance', () => {
+    // 1095/1200 is short but not padded-short; forcing an exact hit produces
+    // filler, which is worse than the shortfall.
+    const result = gateProseQuality(goodCritique, 0, 1095, 1200)
+    expect(result.pass).toBe(true)
+  })
+
+  it('accepts prose that overshoots the target', () => {
+    const result = gateProseQuality(goodCritique, 0, 1400, 1200)
+    expect(result.flags.some((f) => f.includes('target'))).toBe(false)
+  })
+
+  it('skips the target check when no target is supplied', () => {
+    // Callers that have no scene target (the standalone evaluator) must not
+    // start failing scenes for missing a number nobody set.
+    const result = gateProseQuality(goodCritique, 0, 200)
+    expect(result.flags.some((f) => f.includes('target'))).toBe(false)
+  })
+})

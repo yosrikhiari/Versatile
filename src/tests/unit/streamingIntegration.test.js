@@ -85,7 +85,9 @@ describe('writeSceneStructured — streaming contract', () => {
 
     const writer = useStoryWriter()
     const result = await writer.writeSceneStructured({
-      sceneBrief: baseBrief,
+      // Target sized to the fixture so the length top-up pass stays out of a
+      // test about the streaming contract.
+      sceneBrief: { ...baseBrief, estimatedWords: 5 },
       storyArc: defaultArc,
       onChunk: (chunk, full) => emitted.push({ chunk, full })
     })
@@ -123,7 +125,9 @@ describe('writeSceneStructured — streaming contract', () => {
 
     const writer = useStoryWriter()
     const result = await writer.writeSceneStructured({
-      sceneBrief: baseBrief,
+      // As above: sized to the fixture, so this stays a test of the non-streaming
+      // path rather than of the length top-up.
+      sceneBrief: { ...baseBrief, estimatedWords: 3 },
       storyArc: defaultArc
     })
 

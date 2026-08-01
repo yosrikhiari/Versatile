@@ -117,7 +117,15 @@ export async function gateRevisionEffectiveness(
   return { pass: regressions.length === 0, failOn: cfg.failOn || 'block', delta, regressions }
 }
 
-export function gateProseQuality(critiqueResult: any, baselineWordCount: number, currentWordCount: number) {
+/**
+ * @param targetWordCount The scene's own word target. Optional, and the reason
+ *   this parameter exists: the gate used to judge length only against a global
+ *   absolute range and against the *first attempt's* own word count. Both can
+ *   pass while the scene sits far below what the author actually asked for —
+ *   1095 words against a 1200-word target raised nothing, because 1095 is inside
+ *   the global range and attempt 2 was not shorter than attempt 1.
+ */
+export function gateProseQuality(critiqueResult: any, baselineWordCount: number, currentWordCount: number, targetWordCount = 0) {
   const cfg = EVAL_GATE_CONFIG.proseQuality
   if (!cfg.enabled) return { pass: true, failOn: 'none', flags: [] }
 
@@ -143,6 +151,19 @@ export function gateProseQuality(critiqueResult: any, baselineWordCount: number,
     } else if (currentWordCount > domBaseline.maxWordCount) {
       flags.push(
         `Prose length ${currentWordCount} words exceeds absolute maximum ${domBaseline.maxWordCount}`
+      )
+    }
+  }
+
+  // Same tolerance the writer's continuation pass uses, so the gate and the
+  // fixer agree on what "short" means. Reaching here means continuation ran and
+  // still could not close the gap — worth surfacing rather than silently
+  // accepting.
+  if (targetWordCount > 0 && currentWordCount > 0) {
+    const floor = Math.floor(targetWordCount * 0.85)
+    if (currentWordCount < floor) {
+      flags.push(
+        `Prose length ${currentWordCount} words is below ${floor} (85% of the ${targetWordCount}-word target)`
       )
     }
   }

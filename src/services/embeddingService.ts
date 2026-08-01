@@ -5,6 +5,7 @@ import {
   EMBEDDING_PROVIDER_CAPABILITIES
 } from '../config/ai'
 import { getBulkCachedEmbeddings, setEmbeddingCacheEntry } from './researchDb'
+import { slotFor } from './providerGate'
 
 const BACKEND_API_BASE = '/api'
 const MISTRAL_API_URL = `${BACKEND_API_BASE}/embedding/mistral`
@@ -167,45 +168,54 @@ async function embedBatchInternal(inputs: string[], model: string | null, provid
     }
     case EMBEDDING_PROVIDERS.OLLAMA:
     default: {
-      const controller = new AbortController()
-      const timeout = setTimeout(
-        () =>
-          controller.abort(
-            new DOMException('Embedding request timed out after 300000ms', 'AbortError')
-          ),
-        300000
-      )
-      try {
-        const response = await fetch(`${getOllamaEndpoint()}/api/embed`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: model || 'nomic-embed-text',
-            input: uncachedInputs,
-            keep_alive: '5m'
-          }),
-          signal: controller.signal
-        })
-        clearTimeout(timeout)
-        if (!response.ok) {
-          let detail = ''
-          try {
-            const errBody = await response.json()
-            detail = errBody.error || JSON.stringify(errBody)
-          } catch {
-            // Error body wasn't JSON; throw with status only (below).
+      // Takes a slot from the same per-provider semaphore as generation. Without
+      // this an embed batch runs *alongside* a story stream on the same Ollama
+      // server; the two evict each other's model and both slow to a crawl.
+      //
+      // The timeout is armed *inside* the slot, not around the wait for it.
+      // Queueing behind a 40-minute scene is expected and healthy; only the
+      // request's own time is the request's own fault.
+      apiResults = await slotFor(EMBEDDING_PROVIDERS.OLLAMA)(async () => {
+        const controller = new AbortController()
+        const timeout = setTimeout(
+          () =>
+            controller.abort(
+              new DOMException('Embedding request timed out after 300000ms', 'AbortError')
+            ),
+          300000
+        )
+        try {
+          const response = await fetch(`${getOllamaEndpoint()}/api/embed`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: model || 'nomic-embed-text',
+              input: uncachedInputs,
+              keep_alive: '5m'
+            }),
+            signal: controller.signal
+          })
+          if (!response.ok) {
+            let detail = ''
+            try {
+              const errBody = await response.json()
+              detail = errBody.error || JSON.stringify(errBody)
+            } catch {
+              // Error body wasn't JSON; throw with status only (below).
+            }
+            throw new Error(`Ollama embeddings error (${response.status}): ${detail}`.trim())
           }
-          throw new Error(`Ollama embeddings error (${response.status}): ${detail}`.trim())
+          const data: { embeddings: number[][] } = await response.json()
+          return data.embeddings
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            throw new Error('Embedding request timed out after 300000ms')
+          }
+          throw error
+        } finally {
+          clearTimeout(timeout)
         }
-        const data: { embeddings: number[][] } = await response.json()
-        apiResults = data.embeddings
-      } catch (error) {
-        clearTimeout(timeout)
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          throw new Error('Embedding request timed out after 300000ms')
-        }
-        throw error
-      }
+      })
       break
     }
   }

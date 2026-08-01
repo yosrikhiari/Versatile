@@ -13,6 +13,7 @@ import {
   EMBEDDING_VERSION,
   EMBEDDING_PROVIDER_CAPABILITIES
 } from '../config/ai'
+import { awaitForegroundIdle } from './providerGate'
 
 interface QueueEntry {
   chunkId: string
@@ -128,6 +129,12 @@ async function processQueue(): Promise<void> {
 
     async function worker(): Promise<void> {
       while (queue.length > 0) {
+        // Yield to generation on the provider we are about to hit. Indexing is
+        // background work with no deadline; the scene the author is watching
+        // stream is not. Checked per batch rather than per run so a queue that
+        // outlives a generation start gets out of its way mid-flight, and
+        // resumes on its own afterwards — no cancel/restart, no lost progress.
+        await awaitForegroundIdle(EMBEDDING_DEFAULTS.provider)
         const items = queue.splice(0, size)
         if (items.length === 0) break
         await processSingleBatch(items)

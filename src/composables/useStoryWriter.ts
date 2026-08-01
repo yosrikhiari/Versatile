@@ -13,6 +13,7 @@ import { usePromptBuilder } from './usePromptBuilder'
 import { summarizeLog } from '../utils/promptUtils'
 import { fitSceneContext } from '../services/ai/contextBudget'
 import { guardScene } from '../guardrails/integration/composableGuardrails'
+import { countProseWords } from './generation/writing/liveDraft'
 
 // Schema for the metadata-extraction pass (call 2). Extractive, not generative:
 // the prose already exists, so a small local model does this well even though it
@@ -144,6 +145,145 @@ function stripAccidentalWrapping(text: any) {
     }
   }
   return out
+}
+
+/**
+ * A scene is allowed to come in this far under its target before we do anything
+ * about it. Prose is not poured to a line — asking a model to hit 1200 exactly
+ * produces padding, which is worse than being short. But 1095 against 1200 is
+ * within tolerance and 700 is not, and previously nothing told them apart.
+ */
+const LENGTH_TOLERANCE_RATIO = 0.85
+
+/**
+ * Two passes, then stop. If the model has not reached the target after being
+ * asked twice to keep going, it has said what it has to say about this scene;
+ * a third ask buys repetition, not length.
+ */
+const MAX_EXTENSION_PASSES = 2
+
+/**
+ * Does this continuation just restate prose the scene already has?
+ *
+ * Compares on a normalised opening rather than the whole text, because a model
+ * that restarts reproduces the beginning closely and then drifts — by the end
+ * the two differ enough that a whole-text comparison sees new writing.
+ */
+function isRepeatOf(candidate: string, existing: string): boolean {
+  const normalise = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+  const haystack = normalise(existing)
+  // 120 characters is long enough that real prose effectively never collides,
+  // and a candidate shorter than that is compared whole. Short candidates are
+  // judged strictly on purpose: they cannot close a meaningful word gap, so
+  // discarding one on suspicion costs nothing and keeps repetition out.
+  const probe = normalise(candidate).slice(0, 120)
+  if (!probe) return true
+  return haystack.includes(probe)
+}
+
+/**
+ * Bring a short scene up to its word target by continuing it.
+ *
+ * Returns the prose unchanged when it is already long enough, when no target was
+ * set, or when the model stops producing new text — in every case the caller
+ * gets usable prose, because a scene that is shorter than requested is still a
+ * scene and must never be lost to this.
+ */
+async function extendToTarget(
+  prose: string,
+  {
+    targetWords,
+    userPrompt,
+    systemPrompt,
+    complexity,
+    signal,
+    sessionBudget,
+    onChunk,
+    onRawChunk
+  }: any
+): Promise<string> {
+  const target = Number(targetWords) || 0
+  if (!target) return prose
+
+  let current = prose
+  for (let pass = 0; pass < MAX_EXTENSION_PASSES; pass++) {
+    const words = countProseWords(current)
+    if (words >= Math.floor(target * LENGTH_TOLERANCE_RATIO)) return current
+
+    const needed = target - words
+    // The tail, not the whole scene: the model needs to know where it stopped so
+    // it can pick the sentence up, and re-sending the full scene would both cost
+    // context and invite it to rewrite what is already there.
+    const tail = current.slice(-2000)
+    const continuationPrompt = `${userPrompt}
+
+---
+CONTINUATION PASS. The scene above has already been written up to ${words} words, short of its ${target}-word target.
+
+Continue it from exactly where it stops. Do not restart the scene. Do not summarise or repeat what has already happened. Do not reuse any sentence from the text below. Write approximately ${needed} more words and carry the scene to its proper close.
+
+THE SCENE SO FAR ENDS WITH:
+${tail}
+
+Write the continuation now as prose. Output ONLY the new text — no headings, no preamble, no notes.`
+
+    const maxTokens = Math.max(600, Math.min(3000, Math.ceil(needed * 1.8) + 400))
+    let added = ''
+    const opts = {
+      feature: FEATURES.STORY_GENERATION,
+      maxTokens,
+      signal,
+      complexity,
+      sessionBudget
+    }
+
+    try {
+      if (onChunk) {
+        await aiStream(
+          continuationPrompt,
+          systemPrompt,
+          (chunk: any) => {
+            added += chunk
+            if (onRawChunk) onRawChunk(chunk)
+            onChunk(chunk, chunk)
+          },
+          opts
+        )
+      } else {
+        added = await aiGenerate(continuationPrompt, systemPrompt, opts)
+      }
+    } catch (err: any) {
+      // The scene itself succeeded; only the top-up failed. Hand back what we
+      // have rather than turning a short scene into no scene.
+      console.warn(
+        `[useStoryWriter] length continuation failed at ${words}/${target} words:`,
+        err?.message || err
+      )
+      return current
+    }
+
+    const cleaned = stripAccidentalWrapping(added).trim()
+    if (!cleaned) return current
+
+    // "Continue" is an instruction a model can satisfy by restarting. Appending
+    // a repeat would hit the word target while making the scene strictly worse,
+    // which is the one outcome worth more than being short — so a continuation
+    // that opens on text we already have is discarded, not merged.
+    if (isRepeatOf(cleaned, current)) {
+      console.warn(
+        `[useStoryWriter] length continuation repeated existing prose at ${words}/${target} words; kept the shorter original`
+      )
+      return current
+    }
+
+    const merged = `${current.trim()}\n\n${cleaned}`
+    // A pass that adds nothing means the model is refusing. Looping again would
+    // burn another full generation to learn the same thing.
+    if (countProseWords(merged) <= words) return current
+    current = merged
+  }
+
+  return current
 }
 
 /**
@@ -667,7 +807,35 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
         })
       }
 
-      const prose = stripAccidentalWrapping(accumulated)
+      let prose = stripAccidentalWrapping(accumulated)
+
+      // Make the word target mean something.
+      //
+      // "The scene MUST be at least N words" is the only lever the prompt has,
+      // and on a small local model it is a weak one — scenes came back at 1095
+      // against a 1200 target, or 1848, with nothing downstream objecting. The
+      // quality gate did not catch it because it compares a draft against the
+      // *first attempt's* length, never against the target the author set.
+      //
+      // Continue rather than regenerate. The prose that exists is fine; there is
+      // just not enough of it, and rewriting from scratch throws away good work
+      // to re-roll the same dice. Asking the model to keep going from where it
+      // stopped is both cheaper and far more reliable than asking it again to
+      // please be longer this time.
+      prose = await extendToTarget(prose, {
+        targetWords: estimatedWords,
+        userPrompt,
+        systemPrompt,
+        complexity,
+        signal,
+        sessionBudget: _sessionBudget,
+        onChunk,
+        onRawChunk
+      })
+      // The salvage path in `catch` hands back `accumulated`, so the extension
+      // has to land there too — otherwise a failure in a later step would
+      // silently return the short version of a scene we had already fixed.
+      accumulated = prose
 
       // CALL 2 — metadata. Extractive over the finished prose; never throws, so a
       // metadata failure still yields the scene. Net-neutral on call count: the

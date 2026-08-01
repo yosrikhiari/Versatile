@@ -227,3 +227,80 @@ describe('embeddingQueue', () => {
     })
   })
 })
+
+describe('foreground priority', () => {
+  async function importFreshPair() {
+    vi.resetModules()
+    // Same module registry, so the queue and the gate are the same instance.
+    const gate = await import('../../services/providerGate')
+    const queue = await import('../../services/embeddingQueue')
+    return { gate, queue }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUnindexedChunks.mockResolvedValue([])
+    mockResetChunksStatus.mockResolvedValue([])
+  })
+
+  it('does not embed while a generation run holds the foreground', async () => {
+    // The whole failure: a background re-index kept hitting Ollama during a
+    // story stream, and both collapsed to ~100x slower.
+    getEmbeddings.mockResolvedValue({
+      vectors: [new Float32Array([1])],
+      provider: 'ollama',
+      model: 'nomic-embed-text'
+    })
+
+    const { gate, queue } = await importFreshPair()
+    const release = gate.beginForegroundWork()
+
+    queue.enqueue('doc-1', [{ id: 'chunk-1', text: 'hello' }])
+
+    // Give the worker every chance to run anyway.
+    await new Promise((r) => setTimeout(r, 50))
+    expect(getEmbeddings).not.toHaveBeenCalled()
+
+    release()
+    await vi.waitFor(() => {
+      expect(getEmbeddings).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('resumes on its own once the foreground clears, without a re-enqueue', async () => {
+    // Pausing must not mean losing the queue — the chunks were already claimed.
+    getEmbeddings.mockResolvedValue({
+      vectors: [new Float32Array([1])],
+      provider: 'ollama',
+      model: 'nomic-embed-text'
+    })
+
+    const { gate, queue } = await importFreshPair()
+    const release = gate.beginForegroundWork()
+
+    queue.enqueue('doc-2', [{ id: 'chunk-a', text: 'a' }])
+    await new Promise((r) => setTimeout(r, 20))
+    expect(getEmbeddings).not.toHaveBeenCalled()
+
+    release()
+    await vi.waitFor(() => {
+      expect(queue.isQueueProcessing()).toBe(false)
+    })
+    expect(getEmbeddings).toHaveBeenCalledTimes(1)
+  })
+
+  it('embeds immediately when nothing holds the foreground', async () => {
+    getEmbeddings.mockResolvedValue({
+      vectors: [new Float32Array([1])],
+      provider: 'ollama',
+      model: 'nomic-embed-text'
+    })
+
+    const { queue } = await importFreshPair()
+    queue.enqueue('doc-3', [{ id: 'chunk-b', text: 'b' }])
+
+    await vi.waitFor(() => {
+      expect(getEmbeddings).toHaveBeenCalledTimes(1)
+    })
+  })
+})

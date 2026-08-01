@@ -69,7 +69,17 @@ const IDLE_TIMEOUT_MS = 90_000
  * output at all. This is the one phase where silence is expected.
  */
 const FIRST_TOKEN_TIMEOUT_MS = 300_000
-const ABSOLUTE_CEILING_MS = 3_600_000
+/**
+ * Fifteen minutes, not an hour.
+ *
+ * The ceiling only ever fires on a call that is streaming steadily but far too
+ * slowly — a healthy call finishes long before it, and a wedged one is caught by
+ * the idle timer in 90s. Its single job is to cut losses, and at an hour it did
+ * that job badly: a contended run spent 3600s per scene producing prose that was
+ * then thrown away, so an author waited an hour per scene to be told it failed.
+ * No legitimate single scene on working hardware approaches this.
+ */
+const ABSOLUTE_CEILING_MS = 900_000
 
 export class OllamaStalledError extends Error {
   /** Tokens received before the stall — non-empty output may still be salvageable. */

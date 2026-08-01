@@ -1275,7 +1275,12 @@ export function useVolumeStoryGenerator() {
         console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
       }
 
-      const proseQ = gateProseQuality(criticResult, baselineWordCount, countWords(proseText))
+      const proseQ = gateProseQuality(
+        criticResult,
+        baselineWordCount,
+        countWords(proseText),
+        Number(scene?.estimatedWords) || 0
+      )
       if (!proseQ.pass && proseQ.flags.length > 0) {
         console.warn('[evalGate] proseQuality:', proseQ.flags.join('; '))
       }

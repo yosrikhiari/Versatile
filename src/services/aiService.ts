@@ -25,6 +25,12 @@ import { useCostTrackingStore } from '../stores/costTrackingStore'
 import { computeCost } from '../config/modelPricing'
 import { providerBudget, SessionBudget, SessionBudgetExceededError } from './aiProviderBudget'
 import { latencyBudget } from './latencyBudget'
+import {
+  createSemaphore,
+  foregroundSlot,
+  resetSemaphores,
+  PROVIDER_CONCURRENCY
+} from './providerGate'
 import { langfuseService } from './langfuseService'
 import * as aiResponseCache from './aiResponseCache'
 import { trackError } from '../composables/useErrorTracker'
@@ -217,48 +223,6 @@ const PROVIDER_MAP: Record<string, ProviderModule> = {
   [PROVIDERS.GROQ]: groqProvider as unknown as ProviderModule
 }
 
-const PROVIDER_CONCURRENCY: Record<string, number> = {
-  [PROVIDERS.OLLAMA]: 1,
-  default: 4
-}
-
-type SemaphoreFn = <T>(fn: () => Promise<T>) => Promise<T>
-
-function createSemaphore(limit: number): SemaphoreFn {
-  let active = 0
-  const waiting: Array<() => void> = []
-
-  const pump = (): void => {
-    if (active >= limit || waiting.length === 0) return
-    active++
-    const next = waiting.shift()
-    next?.()
-  }
-
-  return async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
-    await new Promise<void>((resolve) => {
-      waiting.push(resolve)
-      pump()
-    })
-    try {
-      return await fn()
-    } finally {
-      active--
-      pump()
-    }
-  }
-}
-
-const semaphores = new Map<string, SemaphoreFn>()
-
-function slotFor(provider: string): SemaphoreFn {
-  if (!semaphores.has(provider)) {
-    const limit = PROVIDER_CONCURRENCY[provider] ?? PROVIDER_CONCURRENCY.default
-    semaphores.set(provider, createSemaphore(limit))
-  }
-  return semaphores.get(provider)!
-}
-
 const IDEMPOTENCY_TTL_MS = 60_000
 
 interface IdempotencyEntry {
@@ -310,11 +274,12 @@ export class IdempotencyTracker {
 
 export const idempotencyTracker = new IdempotencyTracker()
 
-export function __resetSemaphores(): void {
-  semaphores.clear()
-}
-
-export { createSemaphore, PROVIDER_CONCURRENCY }
+// The semaphore itself moved to `providerGate` so the embedding path can take
+// slots from the same pool — while it lived here it only ever covered
+// generation traffic, and `/api/embed` sailed straight past it. Re-exported
+// unchanged because this module's public surface is what callers and tests
+// already import.
+export { createSemaphore, PROVIDER_CONCURRENCY, resetSemaphores as __resetSemaphores }
 
 async function getApiKey(provider: string): Promise<string | null> {
   if (provider === PROVIDERS.OLLAMA) return null
@@ -647,7 +612,7 @@ export async function aiGenerate(prompt: string, systemPrompt: string, options: 
           const result = await withRetry(
             () => {
               const generate = () =>
-                slotFor(providerName)(() =>
+                foregroundSlot(providerName)(() =>
                   latencyBudget.wrap(feature, () => pm.generate(prompt, systemPrompt, modelName, opts))()
                 )
               return generate().catch((err) => {
@@ -787,7 +752,7 @@ export async function aiStream(prompt: string, systemPrompt: string, onChunk?: (
     const text = await withRetry(
       () => {
         const stream = () =>
-          slotFor(provider)(() =>
+          foregroundSlot(provider)(() =>
             latencyBudget.wrap(feature, () =>
               providerModule.stream(prompt, systemPrompt, model, trackedOnChunk, providerOptions)
             )()
@@ -831,7 +796,7 @@ export async function aiStream(prompt: string, systemPrompt: string, onChunk?: (
       }
       const fbModel = defaultModelForProvider(fbProvider)!
       const fbBudget = await prepareCallBudget(fbModel, systemPrompt, prompt, options.maxTokens)
-      return await slotFor(fbProvider)(() =>
+      return await foregroundSlot(fbProvider)(() =>
         latencyBudget.wrap(feature, () =>
           PROVIDER_MAP[fbProvider]!.stream(prompt, systemPrompt, fbModel, trackedOnChunk, {
             apiKey: fbKey || undefined,
@@ -907,7 +872,7 @@ export async function aiGenerateStructured(prompt: string, systemPrompt: string,
       const result = await withRetry(
         () => {
           const generate = () =>
-            slotFor(provider)(() =>
+            foregroundSlot(provider)(() =>
               latencyBudget.wrap(feature, () =>
                 providerModule.generateStructured!(prompt, systemPrompt, model, schema, structOpts)
               )()
