@@ -121,11 +121,48 @@ describe('Writer → Critic → Quality Gates pipeline', () => {
       focusInstructions: ''
     })
 
-    expect(critique.pass).toBe(true)
+    // `pass` is derived from the dimension scores now, not from `score`. This
+    // fixture reports score 8 (above the threshold of 7) but `show_tell: 6`,
+    // and one badly weak dimension fails the scene — which is the entire point:
+    // the recorded corpus showed good-pass, borderline, and a deliberately
+    // broken clear-fail ALL scoring 8/10, so a verdict taken from `score` could
+    // not tell them apart. See services/criticVerdict.ts.
+    expect(critique.pass).toBe(false)
+    expect(critique.verdictReason).toMatch(/show_tell scored 6/)
+    expect(critique.weakestDimension).toEqual({ name: 'show_tell', score: 6 })
+    // The self-reported score is still recorded, just no longer authoritative.
     expect(critique.score).toBe(8)
     expect(critique.dimensionScores.continuity).toBe(8)
     expect(critique.issues).toHaveLength(1)
     expect(critique.strengths).toHaveLength(2)
+  })
+
+  it('passes a scene whose weakest dimension clears the bar', async () => {
+    mockAiGenerate.mockResolvedValue('Once upon a time, John embarked on his journey.')
+    mockAiGenerateJson.mockResolvedValueOnce(mockMetadata).mockResolvedValueOnce({
+      ...mockCritique,
+      dimensionScores: { continuity: 8, voice: 7, pacing: 9, show_tell: 7, emotional_goal: 8 }
+    })
+
+    const { useStoryCritic } = await import('@/composables/useStoryCritic')
+    const { useStoryWriter } = await import('@/composables/useStoryWriter')
+    const writer = useStoryWriter()
+    const writerResult = await writer.writeSceneStructured({
+      sceneBrief: baseBrief,
+      storyArc: defaultArc
+    })
+
+    const critique = await useStoryCritic().evaluateScene({
+      draft: writerResult.prose,
+      sceneBrief: baseBrief,
+      storyBible: JSON.stringify({ characters: [{ name: 'John' }] }),
+      chapterLog: '',
+      existingEntitiesJson: '',
+      focusInstructions: ''
+    })
+
+    expect(critique.pass).toBe(true)
+    expect(critique.weakestDimension.score).toBeGreaterThanOrEqual(7)
   })
 
   it('writer uses real context fitting and returns structured prose', async () => {

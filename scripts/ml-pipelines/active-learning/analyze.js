@@ -2,10 +2,10 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { EVAL_DIMENSIONS } from '../../../src/config/evalDimensions.js'
+import dimensionPromptMap from '../../../src/evaluation/dimensionPromptMap.json'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPORTS_DIR = resolve(__dirname, '..', '..', '..', 'reports')
-const DIMENSION_MAP_PATH = resolve(__dirname, 'dimension-prompt-map.json')
 
 function die(message) {
   console.error(`[active-learning] ERROR: ${message}`)
@@ -44,7 +44,7 @@ function loadEvalHistory(flags) {
 }
 
 function loadDimensionMap() {
-  return JSON.parse(readFileSync(DIMENSION_MAP_PATH, 'utf-8'))
+  return dimensionPromptMap
 }
 
 function loadDimensionsForWorkspace(workspaceType) {

@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 
 import { createHash } from 'crypto'
 import { join, dirname, isAbsolute } from 'path'
 import { fileURLToPath } from 'url'
+import { deriveVerdict } from '../../src/services/criticVerdict.ts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = join(__dirname, '..', '..')
@@ -162,10 +163,78 @@ export function readFixture(name) {
 
 export let lastApiError = null
 
+/**
+ * Which backend records the baseline.
+ *
+ * This used to be OpenAI, unconditionally. In a product whose primary inference
+ * path is a local Ollama, that made the critic's own regression gate the one
+ * thing that could not run without a cloud key — and it is very likely why
+ * `corpus/__snapshots__/` sat empty and `--check-all` had no baseline to fail
+ * against for as long as it existed.
+ *
+ * Defaults to whatever is actually available: OpenAI when a key is present,
+ * Ollama otherwise. `SNAPSHOT_PROVIDER` forces either.
+ */
+export function resolveSnapshotProvider() {
+  const explicit = (process.env.SNAPSHOT_PROVIDER || '').toLowerCase()
+  if (explicit === 'ollama' || explicit === 'openai') return explicit
+  return process.env.OPENAI_API_KEY ? 'openai' : 'ollama'
+}
+
+const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434'
+
+async function callOllama(systemPrompt, userPrompt) {
+  const model = process.env.SNAPSHOT_MODEL || 'qwen3:8b'
+  const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      system: systemPrompt,
+      prompt: userPrompt,
+      stream: false,
+      // Reasoning models spend output budget on thinking before the JSON, and
+      // the critique object itself is small — hence the generous ceiling.
+      think: false,
+      format: 'json',
+      options: { temperature: 0.3, num_predict: 2000, num_ctx: 16384 }
+    })
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    lastApiError = { status: response.status, body }
+    throw new Error(`Ollama error ${response.status}: ${body}`)
+  }
+
+  const data = await response.json()
+  const content = data.response
+  if (!content) {
+    lastApiError = { status: response.status, data }
+    throw new Error(`Empty response from Ollama: ${JSON.stringify(data).slice(0, 300)}`)
+  }
+
+  let parsed
+  try {
+    parsed = JSON.parse(content)
+  } catch {
+    lastApiError = { status: response.status, content }
+    throw new Error(`Invalid JSON from Ollama: ${String(content).slice(0, 300)}`)
+  }
+
+  return { parsed, model: `ollama/${model}`, rawContent: content }
+}
+
 export async function callAI(systemPrompt, userPrompt) {
+  if (resolveSnapshotProvider() === 'ollama') {
+    return callOllama(systemPrompt, userPrompt)
+  }
+
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not set. Required for --take mode.')
+    throw new Error(
+      'OPENAI_API_KEY is not set. Either set it, or set SNAPSHOT_PROVIDER=ollama to record the baseline locally.'
+    )
   }
   const model = process.env.SNAPSHOT_MODEL || 'gpt-4o-mini'
 
@@ -239,6 +308,19 @@ export async function runCritic(fixtureName) {
   const { systemPrompt, userPrompt, promptHash, dimensionNames, threshold } = buildPrompt(fixture)
   const { parsed, model } = await callAI(systemPrompt, userPrompt)
 
+  // Derived, not taken from `parsed.pass`.
+  //
+  // This tool used to record the model's OWN pass/fail boolean verbatim — not
+  // even a threshold comparison. So the regression gate for the critic was the
+  // critic marking its own homework, and it duly passed a deliberately
+  // contradictory fixture. Using the app's `deriveVerdict` means the harness and
+  // the pipeline cannot drift apart, the same reason sweep-writer.js now imports
+  // the real `gateProseQuality` instead of reimplementing it.
+  const dimensionScores = parsed.dimensionScores || {}
+  const issues = Array.isArray(parsed.issues) ? parsed.issues : []
+  const score = typeof parsed.score === 'number' ? parsed.score : null
+  const verdict = deriveVerdict({ score, dimensionScores, issues }, threshold)
+
   return {
     sceneId: fixture.sceneId,
     fixtureName: fixtureName.replace(/\.json$/, ''),
@@ -247,10 +329,13 @@ export async function runCritic(fixtureName) {
     promptHash,
     dimensionNames,
     threshold,
-    score: typeof parsed.score === 'number' ? parsed.score : null,
-    pass: typeof parsed.pass === 'boolean' ? parsed.pass : null,
-    dimensionScores: parsed.dimensionScores || {},
-    issues: Array.isArray(parsed.issues) ? parsed.issues : [],
+    score,
+    pass: verdict.pass,
+    verdictReason: verdict.reason,
+    /** What the model claimed, kept so drift between the two stays visible. */
+    selfReportedPass: typeof parsed.pass === 'boolean' ? parsed.pass : null,
+    dimensionScores,
+    issues,
     strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
     raw: parsed
   }
@@ -300,6 +385,15 @@ export function takeSnapshot(fixtureName) {
       mkdirSync(SNAPSHOT_DIR, { recursive: true })
     }
 
+    const verdict = deriveVerdict(
+      {
+        score: typeof parsed.score === 'number' ? parsed.score : null,
+        dimensionScores: parsed.dimensionScores || {},
+        issues: Array.isArray(parsed.issues) ? parsed.issues : []
+      },
+      threshold
+    )
+
     const snapshot = {
       $schema: 'critic-snapshot-1',
       takenAt: new Date().toISOString(),
@@ -315,7 +409,18 @@ export function takeSnapshot(fixtureName) {
       dimensionNames,
       threshold,
       hasFewCharacters,
-      result: parsed
+      // `result: parsed` recorded the model's raw JSON, including its own
+      // `pass` boolean — so the critic's regression baseline was the critic
+      // marking its own homework, and it duly passed a fixture declared
+      // `expected: "fail"`. The verdict is now derived from the dimension
+      // scores by the same function the app uses.
+      result: {
+        ...parsed,
+        pass: verdict.pass,
+        verdictReason: verdict.reason,
+        /** What the model claimed, kept so drift between the two stays visible. */
+        selfReportedPass: typeof parsed.pass === 'boolean' ? parsed.pass : null
+      }
     }
 
     const path = snapshotPath(fixtureName)
@@ -345,7 +450,10 @@ export function checkSnapshot(fixtureName) {
     errors.push(`PROMPT MISMATCH: snapshot hash ${snapshot.promptHash} differs from current ${promptHash}. The prompt construction has changed. Run --take again.`)
   }
 
-  const currentModel = process.env.SNAPSHOT_MODEL || 'gpt-4o-mini'
+  const currentModel =
+    resolveSnapshotProvider() === 'ollama'
+      ? `ollama/${process.env.SNAPSHOT_MODEL || 'qwen3:8b'}`
+      : process.env.SNAPSHOT_MODEL || 'gpt-4o-mini'
   if (snapshot.model !== currentModel) {
     warnings.push(`MODEL DIFFERS: snapshot was taken with ${snapshot.model}, current config uses ${currentModel}. Outputs may vary.`)
   }
@@ -373,7 +481,16 @@ export function checkSnapshot(fixtureName) {
   } else if (meta.expected) {
     const expectedPass = meta.expected === 'pass'
     if (r.pass !== expectedPass) {
-      warnings.push(`PASS STATUS MISMATCH: snapshot says ${r.pass ? 'pass' : 'fail'}, _meta expects ${meta.expected}.`)
+      // An ERROR, not a warning. `_meta.expected` is the fixture's whole reason
+      // for existing: `clear-fail` is a deliberately contradictory, tell-heavy
+      // scene declared as `expected: "fail", maxScore: 4`. A critic that passes
+      // it at 8/10 is not drifting — it is not discriminating, and the pipeline
+      // gate built on it cannot reject anything. Warning-only meant the suite
+      // reported "3 passed, 0 failed" while stating that exact contradiction
+      // two lines above.
+      errors.push(
+        `PASS STATUS MISMATCH: snapshot says ${r.pass ? 'pass' : 'fail'}, _meta expects ${meta.expected}. The critic is not discriminating between good and bad prose.`
+      )
     }
   }
 

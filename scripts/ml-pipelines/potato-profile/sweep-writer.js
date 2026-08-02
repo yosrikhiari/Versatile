@@ -13,6 +13,12 @@
  */
 
 import 'fake-indexeddb/auto'
+import {
+  gateProseQuality,
+  countWords,
+  countUniqueWords,
+  duplicateRatio
+} from '../../../src/services/evalGates.ts'
 import { writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -43,19 +49,59 @@ const say = (s = '') => console.log(s)
 
 const BIBLE = {
   characters: [
-    { name: 'Mira Vance', role: 'harbormaster', description: 'Weathered, terse, keeps the tide ledger.', traits: ['guarded'] },
-    { name: 'Ilan Roth', role: 'debt collector', description: 'Polite in a way that reads as a threat.', traits: ['patient'] },
-    { name: 'Sable Quist', role: 'smuggler captain', description: 'Runs the night boats; owes Mira a favor.', traits: ['loyal'] },
-    { name: 'Father Bren', role: 'dock chaplain', description: 'Hears every rumor twice.', traits: ['talkative'] },
-    { name: 'Odila Marsh', role: 'fishwife and fixer', description: 'Settles disputes the law will not touch.', traits: ['blunt'] }
+    {
+      name: 'Mira Vance',
+      role: 'harbormaster',
+      description: 'Weathered, terse, keeps the tide ledger.',
+      traits: ['guarded']
+    },
+    {
+      name: 'Ilan Roth',
+      role: 'debt collector',
+      description: 'Polite in a way that reads as a threat.',
+      traits: ['patient']
+    },
+    {
+      name: 'Sable Quist',
+      role: 'smuggler captain',
+      description: 'Runs the night boats; owes Mira a favor.',
+      traits: ['loyal']
+    },
+    {
+      name: 'Father Bren',
+      role: 'dock chaplain',
+      description: 'Hears every rumor twice.',
+      traits: ['talkative']
+    },
+    {
+      name: 'Odila Marsh',
+      role: 'fishwife and fixer',
+      description: 'Settles disputes the law will not touch.',
+      traits: ['blunt']
+    }
   ],
   locations: [
-    { name: 'The Tide Office', description: 'One room over the dock, a stove that never quite works.', notes: '', traits: [] },
+    {
+      name: 'The Tide Office',
+      description: 'One room over the dock, a stove that never quite works.',
+      notes: '',
+      traits: []
+    },
     { name: 'The Long Pier', description: 'Half condemned, half working.', notes: '', traits: [] },
-    { name: 'The Net Hall', description: 'Where the fleet drinks and argues.', notes: '', traits: [] }
+    {
+      name: 'The Net Hall',
+      description: 'Where the fleet drinks and argues.',
+      notes: '',
+      traits: []
+    }
   ],
   plotThreads: [
-    { title: "Teodor's debt", status: 'open', notes: 'Ilan has come to collect from Mira.', traits: [] }
+    {
+      title: "Teodor's debt",
+      status: 'open',
+      notes: 'Ilan has come to collect from Mira.',
+      traits: []
+    }
   ]
 }
 
@@ -107,7 +153,11 @@ const BRIEFS = [
   },
   {
     key: 'quiet-comedy',
-    arc: { genre: 'gentle comedy', tone: 'warm, wry', centralConflict: 'a town that cannot mind its own business' },
+    arc: {
+      genre: 'gentle comedy',
+      tone: 'warm, wry',
+      centralConflict: 'a town that cannot mind its own business'
+    },
     brief: {
       sceneNumber: 2,
       title: 'The Wrong Casserole',
@@ -165,9 +215,8 @@ async function main() {
   settings.aiProvider = 'ollama'
   settings.aiProviderFallback = 'none'
 
-  const { buildSceneEntitiesBlob } = await import(
-    '../../../src/composables/generation/context/sceneContext.js'
-  )
+  const { buildSceneEntitiesBlob } =
+    await import('../../../src/composables/generation/context/sceneContext.js')
   const { useStoryWriter } = await import('../../../src/composables/useStoryWriter.js')
   const { writeSceneStructured } = useStoryWriter()
 
@@ -190,18 +239,40 @@ async function main() {
           completedScenes: [],
           characters: BIBLE.characters
         })
-        const words = result.prose.split(/\s+/).filter(Boolean).length
+        const words = countWords(result.prose)
+        // Unique words, and the gate the APP actually applies. The old check was
+        // `words >= TARGET_WORDS * 0.6` — a floor with no ceiling — so 1,692
+        // words against a 300-word target recorded `hitTarget: true`, a 5.6x
+        // overshoot scored as success. Meanwhile production `gateProseQuality`
+        // uses an 0.85 floor plus an absolute maximum, so the harness was
+        // generous in exactly the direction the gate is strict. One definition
+        // now, imported rather than reimplemented.
+        const uniqueWords = countUniqueWords(result.prose)
+        const gate = gateProseQuality(
+          { dimensionScores: null },
+          0,
+          words,
+          TARGET_WORDS,
+          result.prose
+        )
         const s = result.structured || {}
         row = {
           model,
           brief: key,
           seconds: Math.round((Date.now() - started) / 1000),
           words,
-          hitTarget: words >= TARGET_WORDS * 0.6,
+          uniqueWords,
+          // Ratio, not a boolean: overshoot and undershoot are different
+          // failures and a pass/fail flag erases which one happened.
+          targetRatio: TARGET_WORDS ? Number((uniqueWords / TARGET_WORDS).toFixed(2)) : null,
+          duplicateRatio: Number(duplicateRatio(result.prose).toFixed(3)),
+          hitTarget: gate.pass,
+          gateFlags: gate.flags,
           isJsonLeak: result.prose.trim().startsWith('{'),
           summary: typeof s.summary === 'string' && s.summary.trim().length > 0,
           keyFacts: Array.isArray(s.keyFacts),
           usedEntities: !!s.usedEntities,
+          metadataStatus: s.metadataStatus || 'unknown',
           summaryText: s.summary || ''
         }
       } catch (e) {
@@ -210,7 +281,7 @@ async function main() {
       rows.push(row)
       const status = row.error
         ? `ERROR ${row.error}`
-        : `${String(row.words).padStart(4)} words  ${row.seconds}s  summary:${row.summary ? 'y' : 'N'} facts:${row.keyFacts ? 'y' : 'N'}${row.isJsonLeak ? '  JSON-LEAK' : ''}`
+        : `${String(row.words).padStart(4)}w (${String(row.uniqueWords).padStart(4)} uniq, ${(row.targetRatio ?? 0).toFixed(2)}x target, ${Math.round(row.duplicateRatio * 100)}% dup)  ${row.seconds}s  summary:${row.summary ? 'y' : 'N'} facts:${row.keyFacts ? 'y' : 'N'} meta:${row.metadataStatus}${row.isJsonLeak ? '  JSON-LEAK' : ''}${row.hitTarget ? '' : '  GATE-FAIL'}`
       say(`  ${model.padEnd(20)} ${key.padEnd(18)} ${status}`)
     }
     await unload(model)
@@ -221,13 +292,30 @@ async function main() {
   say('='.repeat(78))
   const good = rows.filter((r) => !r.error && r.hitTarget && r.summary && !r.isJsonLeak)
   say(`  ${good.length}/${rows.length} runs produced full-length prose with metadata.`)
-  const short = rows.filter((r) => !r.error && !r.hitTarget)
+
+  const looping = rows.filter((r) => !r.error && r.duplicateRatio > 0.15)
+  if (looping.length) {
+    say(
+      `  LOOPING (>15% duplicate sentences): ${looping.map((r) => `${r.model}/${r.brief} (${Math.round(r.duplicateRatio * 100)}%)`).join(', ')}`
+    )
+  }
+  const short = rows.filter((r) => !r.error && r.targetRatio != null && r.targetRatio < 0.85)
   if (short.length) {
-    say(`  SHORT (<60% of target): ${short.map((r) => `${r.model}/${r.brief} (${r.words}w)`).join(', ')}`)
+    say(
+      `  SHORT (<85% of target, unique words): ${short.map((r) => `${r.model}/${r.brief} (${r.uniqueWords}w, ${r.targetRatio}x)`).join(', ')}`
+    )
+  }
+  const long = rows.filter((r) => !r.error && r.targetRatio != null && r.targetRatio > 1.5)
+  if (long.length) {
+    say(
+      `  OVERSHOOT (>1.5x target): ${long.map((r) => `${r.model}/${r.brief} (${r.uniqueWords}w, ${r.targetRatio}x)`).join(', ')}`
+    )
   }
   const noMeta = rows.filter((r) => !r.error && !r.summary)
   if (noMeta.length) {
-    say(`  NO SUMMARY (falls back to extra call): ${noMeta.map((r) => `${r.model}/${r.brief}`).join(', ')}`)
+    say(
+      `  NO SUMMARY (falls back to extra call): ${noMeta.map((r) => `${r.model}/${r.brief}`).join(', ')}`
+    )
   }
   const errors = rows.filter((r) => r.error)
   if (errors.length) {
@@ -237,7 +325,11 @@ async function main() {
   if (!existsSync(REPORTS_DIR)) mkdirSync(REPORTS_DIR, { recursive: true })
   writeFileSync(
     resolve(REPORTS_DIR, 'writer-sweep.json'),
-    JSON.stringify({ generatedBy: 'sweep-writer', ollamaVersion: version, targetWords: TARGET_WORDS, rows }, null, 2)
+    JSON.stringify(
+      { generatedBy: 'sweep-writer', ollamaVersion: version, targetWords: TARGET_WORDS, rows },
+      null,
+      2
+    )
   )
   say()
   say('Wrote reports/writer-sweep.json')
