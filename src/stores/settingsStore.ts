@@ -37,7 +37,12 @@ const DEFAULT_SETTINGS = {
   localOnly: true,
   embeddingProvider: EMBEDDING_DEFAULTS.provider,
   embeddingModel: EMBEDDING_DEFAULTS.model,
-  embeddingThreshold: EMBEDDING_DEFAULTS.threshold
+  embeddingThreshold: EMBEDDING_DEFAULTS.threshold,
+  // Analysis tier controls whether and when manuscript analysis escalates to cloud.
+  // 'local' (default) — all analysis runs locally, never leaves device
+  // 'cloud-on-demand' — user explicitly triggers cloud audit per operation
+  // 'cloud-audit' — background cloud audits enabled (opt-in, per-book)
+  analysisTier: 'local'
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -52,6 +57,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const embeddingProvider = ref(DEFAULT_SETTINGS.embeddingProvider)
   const embeddingModel = ref(DEFAULT_SETTINGS.embeddingModel)
   const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
+  const analysisTier = ref(DEFAULT_SETTINGS.analysisTier)
 
   const featureModels = useLocalStorage<Record<string, any>>(STORAGE_KEYS.FEATURE_MODELS, {})
 
@@ -100,6 +106,7 @@ export const useSettingsStore = defineStore('settings', () => {
         if (data.embeddingModel) embeddingModel.value = data.embeddingModel
         if (data.embeddingThreshold !== undefined)
           embeddingThreshold.value = data.embeddingThreshold
+        if (data.analysisTier) analysisTier.value = data.analysisTier
       }
 
       // STORAGE_KEYS ref
@@ -136,7 +143,8 @@ export const useSettingsStore = defineStore('settings', () => {
           localOnly: localOnly.value,
           embeddingProvider: embeddingProvider.value,
           embeddingModel: embeddingModel.value,
-          embeddingThreshold: embeddingThreshold.value
+          embeddingThreshold: embeddingThreshold.value,
+          analysisTier: analysisTier.value
         })
       )
     } catch (e) {
@@ -267,6 +275,13 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
+  function setAnalysisTier(tier: string) {
+    if (['local', 'cloud-on-demand', 'cloud-audit'].includes(tier)) {
+      analysisTier.value = tier
+      saveSettings()
+    }
+  }
+
   function resetToDefaults() {
     ollamaEndpoint.value = DEFAULT_SETTINGS.ollamaEndpoint
     setOllamaConfigEndpoint(DEFAULT_SETTINGS.ollamaEndpoint)
@@ -280,6 +295,7 @@ export const useSettingsStore = defineStore('settings', () => {
     embeddingProvider.value = DEFAULT_SETTINGS.embeddingProvider
     embeddingModel.value = DEFAULT_SETTINGS.embeddingModel
     embeddingThreshold.value = DEFAULT_SETTINGS.embeddingThreshold
+    analysisTier.value = DEFAULT_SETTINGS.analysisTier
     featureModels.value = {}
     saveSettings()
   }
@@ -350,6 +366,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setEmbeddingProvider,
     setEmbeddingModel,
     setEmbeddingThreshold,
+    setAnalysisTier,
     resetToDefaults,
     testOllamaConnection,
     testProviderConnection

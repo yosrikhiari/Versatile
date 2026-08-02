@@ -111,6 +111,44 @@ describe('volumeStore', () => {
   it('gets next available color', () => {
     const store = useVolumeStore()
     store.volumes = []
-    expect(store.getNextColor()).toBe('#6366f1')
+    expect(store.getNextColor()).toBe(store.VOLUME_COLORS[0])
+  })
+
+  it('skips colors already in use', () => {
+    // The generator creates volumes in a loop and used to hardcode
+    // VOLUME_COLORS[0] for every one of them, so a five-volume story produced
+    // five identically-coloured volumes. It now calls getNextColor(), which
+    // only helps if this property holds.
+    //
+    // Asserted against the palette rather than against literal hexes: the
+    // property under test is "returns the first UNUSED entry", not "returns
+    // #8b5cf6". Pinning the hex would turn any future palette change into a
+    // failing test that says nothing about the behaviour.
+    const store = useVolumeStore()
+    store.volumes = [{ id: 'v1', color: store.VOLUME_COLORS[0] }]
+    expect(store.getNextColor()).toBe(store.VOLUME_COLORS[1])
+
+    store.volumes.push({ id: 'v2', color: store.VOLUME_COLORS[1] })
+    expect(store.getNextColor()).toBe(store.VOLUME_COLORS[2])
+  })
+
+  it('assigns distinct colors across a sequence of volumes', () => {
+    const store = useVolumeStore()
+    store.volumes = []
+    const assigned = []
+    for (let i = 0; i < 5; i++) {
+      const color = store.getNextColor()
+      assigned.push(color)
+      // Mirrors createVolume, which pushes to volumes.value before returning —
+      // the property the generator's loop depends on.
+      store.volumes.push({ id: `v${i}`, color })
+    }
+    expect(new Set(assigned).size).toBe(5)
+  })
+
+  it('cycles rather than returning undefined once the palette is exhausted', () => {
+    const store = useVolumeStore()
+    store.volumes = store.VOLUME_COLORS.map((color, i) => ({ id: `v${i}`, color }))
+    expect(store.VOLUME_COLORS).toContain(store.getNextColor())
   })
 })

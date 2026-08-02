@@ -11,19 +11,9 @@ import {
   getVolumeEntityCount
 } from '../services/dbService'
 import { useLoading } from '../utils/useLoading'
+// Shared with the db layer, which cannot import a store. See config/volumeColors.ts.
+import { VOLUME_COLORS, nextVolumeColor } from '../config/volumeColors'
 
-const VOLUME_COLORS = [
-  '#6366f1',
-  '#8b5cf6',
-  '#ec4899',
-  '#f43f5e',
-  '#f97316',
-  '#eab308',
-  '#22c55e',
-  '#14b8a6',
-  '#06b6d4',
-  '#3b82f6'
-]
 
 const volumeColors = () => VOLUME_COLORS
 
@@ -127,9 +117,7 @@ export const useVolumeStore = defineStore('volume', () => {
   }
 
   function getNextColor() {
-    const usedColors = volumes.value.map((v) => v.color)
-    const available = VOLUME_COLORS.filter((c) => !usedColors.includes(c))
-    return available[0] || VOLUME_COLORS[volumes.value.length % VOLUME_COLORS.length]
+    return nextVolumeColor(volumes.value.map((v) => v.color))
   }
 
   return {
