@@ -1,5 +1,7 @@
 import { computeSummary } from '../utils'
 import { proseToHtml, countProseWords } from '../writing/liveDraft'
+import { buildSceneDigest } from '../../../services/generation/sceneDigest'
+import { putSceneDigest } from '../../../services/db-digests'
 
 export class CommitService {
   writeParams: any
@@ -16,6 +18,7 @@ export class CommitService {
   getGenRun: any
   saveGenRun: any
   makeInitialGenState: any
+  runCreatedSectionIds: any
 
   constructor({
     writeParams,
@@ -31,7 +34,8 @@ export class CommitService {
     manuscriptStore,
     getGenRun,
     saveGenRun,
-    makeInitialGenState
+    makeInitialGenState,
+    runCreatedSectionIds
   }: {
     writeParams: any
     volumeId: any
@@ -47,6 +51,7 @@ export class CommitService {
     getGenRun: any
     saveGenRun: any
     makeInitialGenState: any
+    runCreatedSectionIds?: any
   }) {
     this.writeParams = writeParams
     this.volumeId = volumeId
@@ -62,6 +67,7 @@ export class CommitService {
     this.getGenRun = getGenRun
     this.saveGenRun = saveGenRun
     this.makeInitialGenState = makeInitialGenState
+    this.runCreatedSectionIds = runCreatedSectionIds || new Set()
   }
 
   buildCheckpointState() {
@@ -160,6 +166,31 @@ export class CommitService {
       )
     }
 
+    // Derived-artifact layer. Written here because this is the one moment the
+    // finished prose AND its structured metadata are both in hand — computing a
+    // digest later means re-reading the prose and re-deriving what the writer
+    // already produced. No LLM call: everything in it is either lifted from
+    // `structured` or counted statistically.
+    //
+    // Best-effort by design. A digest is an optimisation for later analysis, so
+    // it must never be the thing that loses a committed scene — but the failure
+    // is returned to the caller's health ledger rather than swallowed.
+    if (scene.subsectionId && projectId) {
+      try {
+        await putSceneDigest(
+          buildSceneDigest({
+            projectId,
+            subsectionId: scene.subsectionId,
+            prose: fullProse,
+            structured: { ...structured, summary },
+            scene
+          })
+        )
+      } catch (err: any) {
+        console.warn('[CommitService] scene digest not written:', err?.message || err)
+      }
+    }
+
     const entry = {
       title: scene.title || `Scene ${scene.sceneNumber}`,
       prose: fullProse,
@@ -186,5 +217,66 @@ export class CommitService {
         .reduce((sum: number, s: any) => sum + countProseWords(s.prose), 0)
       await this.manuscriptStore.updateSectionData(section.id, { wordCount: totalWords }, projectId)
     }
+  }
+
+  /**
+   * Build the manuscript by aggregating scene content into chapter (section) content.
+   *
+   * Called from Delegator.handleCommitted via the COMMITTED phase transition.
+   * Joins each section's subsections' HTML content (ordered by `order`, skipping
+   * empties), separated by `<hr>`. Updates section `content`, `wordCount` (sum of
+   * subsection counts), and `status: 'generated'`.
+   *
+   * Scope guard: only aggregates sections created in THIS run (tracked via
+   * `runCreatedSectionIds`), so hand-written/edited chapters are never clobbered.
+   */
+  async buildManuscript(_scenePlan: any, _writtenScenes: any) {
+    const sections = this.manuscriptStore.sections
+    const subsectionsBySection = this.manuscriptStore.subsectionsBySection
+    const runCreatedIds = this.runCreatedSectionIds.value instanceof Set
+      ? this.runCreatedSectionIds.value
+      : new Set(this.runCreatedSectionIds.value)
+
+    for (const section of sections) {
+      // Only aggregate sections created in this run
+      if (!runCreatedIds.has(section.id)) continue
+
+      // Record<string, any[]>, not a Map (manuscriptStore.ts:74). `.get()` read
+      // a property that does not exist, so this loop skipped every section and
+      // chapter-level content was never aggregated. Untyped here because
+      // `this.manuscriptStore` is `any`, which is why the typechecker stayed
+      // quiet about it.
+      const subs = [...(subsectionsBySection[section.id] || [])].sort(
+        (a: any, b: any) => (a.order || 0) - (b.order || 0)
+      )
+      if (subs.length === 0) continue
+
+      const htmlParts = subs.map((s: any) => s.content).filter(Boolean)
+      if (htmlParts.length === 0) continue
+
+      const joinedHtml = htmlParts.join('<hr>')
+      const totalWords = subs.reduce(
+        (sum: number, s: any) => sum + (s.wordCount || 0),
+        0
+      )
+
+      await this.manuscriptStore.updateSectionData(section.id, {
+        content: joinedHtml,
+        wordCount: totalWords,
+        status: 'generated'
+      })
+    }
+  }
+
+  /**
+   * Finalize the generation run.
+   *
+   * Called from Delegator.handleCommitted after buildManuscript.
+   * Currently a no-op placeholder for future finalization steps
+   * (e.g., clearing temporary state, emitting completion events).
+   */
+  async finalize(_taskId: any) {
+    // Placeholder for future finalization logic
+    // Could clear caches, emit events, etc.
   }
 }

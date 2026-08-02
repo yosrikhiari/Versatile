@@ -20,7 +20,7 @@ export class ActiveLearningBridge {
   afterBatchEval(evalHistory: any) {
     this.batchCount++
 
-    const { focusInstructions, givenHints } = this.promptAdjuster.updateAdjustments(evalHistory)
+    const { focusInstructions, givenHints } = this.promptAdjuster.updateAdjustments(evalHistory, { workspaceType: this.workspaceType?.value })
 
     const batchesSinceLastFull = this.batchCount - this.lastFullAnalysisBatch
     let analysis = null
