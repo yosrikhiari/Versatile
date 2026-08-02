@@ -10,8 +10,14 @@ import { computeSemanticChunks } from './useSemanticChunking'
 import { getSubsections } from '../services/dbService'
 import { useSettingsStore } from '../stores/settingsStore'
 import { EMBEDDING_DEFAULTS } from '../config/ai'
+import { inputBudgetForModel, resolveMaxTokens } from '../services/ai/modelBudget'
+import { getConfiguredModel, getConfiguredProvider } from '../services/aiService'
 
-const MAX_CONTEXT_CHARS = 3500
+function getManuscriptBudget(model?: string): number {
+  const provider = getConfiguredProvider('manuscript_context')
+  const usedModel = model || getConfiguredModel('manuscript_context')
+  return inputBudgetForModel(usedModel || 'unknown')
+}
 
 /** A manuscript section as this module consumes it (ordering + title only). */
 interface ContextSection {
@@ -349,7 +355,11 @@ export function useManuscriptContext() {
 
     const sectionTitles = selectedSections.map((s) => s.title || `Section ${(s.order || 0) + 1}`)
 
-    const embeddingResult = await retrieveRelevantChunks(generatorType, MAX_CONTEXT_CHARS)
+    const budgetTokens = getManuscriptBudget()
+    // Convert tokens to approximate chars (1 token ≈ 4 chars)
+    const budgetChars = budgetTokens * 4
+
+    const embeddingResult = await retrieveRelevantChunks(generatorType, budgetChars)
 
     if (embeddingResult) {
       return {
@@ -362,7 +372,7 @@ export function useManuscriptContext() {
 
     const { contextText, totalChars, truncated } = await buildContextText(
       selectedSections,
-      MAX_CONTEXT_CHARS
+      budgetChars
     )
 
     return {
@@ -388,7 +398,6 @@ export function useManuscriptContext() {
   return {
     getSectionContext,
     getSectionCount,
-    getSectionList,
-    MAX_CONTEXT_CHARS
+    getSectionList
   }
 }

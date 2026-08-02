@@ -1,13 +1,18 @@
 import { ref, reactive, computed } from 'vue'
 import { formatEvalFeedback } from '../services/evalFeedback'
 import { useAutoPromptAdjuster } from './useAutoPromptAdjuster'
+import { autoAdjustPrompt } from '../evaluation/autoPromptAdjuster'
+import { deriveVerdict } from '../services/criticVerdict'
+import { getDefaultThreshold } from '../config/evalDimensions'
 import {
   gateDimensionCoverage,
   gateScoreDistribution,
   gateProseQuality,
-  countWords
+  countWords,
+  duplicateRatio
 } from '../services/evalGates'
 import { useProjectStore } from '../stores/projectStore'
+import { useSettingsStore } from '../stores/settingsStore'
 import { useEvalStore } from '../stores/evalStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
@@ -16,7 +21,7 @@ import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useBranchStore } from '../stores/branchStore'
 import { useStoryDirector } from './useStoryDirector'
 import { useEntityBootstrapper } from './useEntityBootstrapper'
-import { useStoryWriter } from './useStoryWriter'
+import { useStoryWriter, isUnsalvageableProse } from './useStoryWriter'
 import { useStoryCritic } from './useStoryCritic'
 import { useChapterGenerationSync } from './useChapterGenerationSync'
 import { useStoryDocuments } from './useStoryDocuments'
@@ -82,6 +87,7 @@ import {
 import { useDelegatorGeneration } from './generation/delegator'
 import { useDriftTriggeredEval } from './useDriftTriggeredEval'
 import { ActiveLearningBridge } from './generation/activeLearning'
+import { buildCloudDisclosure, canUseCloudEscalation, requestCloudEscalation } from '../services/cloudEscalation'
 
 import { getResumableRun } from './generation/checkpoint'
 import { buildPreliminaryEdges } from './generation/graph'
@@ -89,6 +95,13 @@ import {
   finalizeStoryArtifacts,
   describeFinalizeReport
 } from '../services/generation/finalizeArtifacts'
+import { RunHealth, describeRunHealth } from '../services/generation/runHealth'
+import {
+  snapshotBeforeRun,
+  saveRunStateSnapshot,
+  archiveRun
+} from '../services/generation/runArtifacts'
+import { useStateSummarizer } from './useStateSummarizer'
 
 // Map a global scene index to its section (chapter) index using each section's
 // actual scene count — replaces the old Math.floor(i / 3) that silently assumed
@@ -208,7 +221,93 @@ async function resolveSceneConflicts(conflicts: any[], results: any[]) {
   return changed
 }
 
+/**
+ * Load evaluation history for a project and seed the prompt adjuster with
+ * cumulative focus instructions. This enables cross-run learning by
+ * feeding past evaluation data into the adjuster at run start.
+ */
+async function seedPromptAdjusterFromHistory(projectId: string, workspaceType: string, promptAdjuster: any) {
+  if (!projectId) return
+  try {
+    const evalPersistence = (await import('./useEvalPersistence')).useEvalPersistence()
+    const evalHistory = await evalPersistence.loadHistory(projectId)
+    if (evalHistory && evalHistory.length > 0) {
+      const result = autoAdjustPrompt(evalHistory, {
+        workspaceType,
+        pastGivenHints: promptAdjuster.allGivenHints.value
+      })
+      promptAdjuster.focusInstructions.value = result.focusInstructions
+      promptAdjuster.givenHints.value = result.givenHints
+      promptAdjuster.allGivenHints.value = [...promptAdjuster.allGivenHints.value, ...result.givenHints]
+    }
+  } catch (err) {
+    console.warn('[useVolumeStoryGenerator] Failed to seed prompt adjuster from history:', err)
+  }
+}
+
+/**
+ * Rehydrate the prompt adjuster from persisted history instead of clearing.
+ * Used when resetting the generator to preserve cross-run hint history.
+ */
+async function rehydratePromptAdjuster(projectId: string, workspaceType: string, promptAdjuster: any) {
+  if (!projectId) {
+    promptAdjuster.reset()
+    return
+  }
+  try {
+    const evalPersistence = (await import('./useEvalPersistence')).useEvalPersistence()
+    const evalHistory = await evalPersistence.loadHistory(projectId)
+    promptAdjuster.allGivenHints.value = []
+    promptAdjuster.focusInstructions.value = ''
+    promptAdjuster.givenHints.value = []
+    if (evalHistory && evalHistory.length > 0) {
+      const result = autoAdjustPrompt(evalHistory, {
+        workspaceType,
+        pastGivenHints: []
+      })
+      promptAdjuster.focusInstructions.value = result.focusInstructions
+      promptAdjuster.givenHints.value = result.givenHints
+      promptAdjuster.allGivenHints.value = result.givenHints
+    }
+  } catch (err) {
+    console.warn('[useVolumeStoryGenerator] Failed to rehydrate prompt adjuster:', err)
+    promptAdjuster.reset()
+  }
+}
+
+/**
+ * Clear the evalStore and seed it from persisted history for the current project.
+ * This scopes evalStore by project and prevents cross-project contamination.
+ */
+async function clearAndSeedEvalStore(projectId: string, evalStore: any) {
+  if (!projectId) {
+    evalStore.clearResults()
+    return
+  }
+  try {
+    const evalPersistence = (await import('./useEvalPersistence')).useEvalPersistence()
+    const evalHistory = await evalPersistence.loadHistory(projectId)
+    evalStore.clearResults()
+    if (evalHistory && evalHistory.length > 0) {
+      // Convert persisted eval results to the format expected by evalStore
+      // The evalStore expects entries with sceneIndex, score, dimensionScores, etc.
+      evalStore.setResults(evalHistory.map((e: any) => ({
+        sceneIndex: e.sceneId,
+        passed: e.score != null && e.score >= 7,
+        score: e.score,
+        dimensionScores: e.dimensionScores,
+        topIssues: e.issues || [],
+        workspaceType: e.workspaceType
+      })))
+    }
+  } catch (err) {
+    console.warn('[useVolumeStoryGenerator] Failed to seed evalStore from history:', err)
+    evalStore.clearResults()
+  }
+}
+
 export function useVolumeStoryGenerator() {
+  const settings = useSettingsStore()
   const progress = reactive({ current: 0, total: 0, sceneLabel: '', statusText: '' })
   const error = ref<string | null>(null)
   const volumeId = ref<string | null>(null)
@@ -217,6 +316,7 @@ export function useVolumeStoryGenerator() {
   const spineArray = ref<any[]>([])
   const spineContext = ref('')
   const writtenScenes = ref<any[]>([])
+  const runCreatedSectionIds = ref<Set<string>>(new Set())
   const consistencyReport = ref<any | null>(null)
   const rejectedPatterns = ref<any[]>([])
   const syncPreview = ref<any[]>([])
@@ -235,12 +335,12 @@ export function useVolumeStoryGenerator() {
   const isContinuing = ref(false)
   const continuationReport = ref<any | null>(null)
 
-  async   function persistCritiqueEval(entry: any, pid: any, sceneTitle: any) {
+  async   function persistCritiqueEval(entry: any, pid: any, sceneTitle: any, subsectionId?: string) {
     if (!pid || !entry || entry.score == null) return
     try {
       await evalPersistence.saveRecord({
         projectId: pid,
-        sceneId: String(entry.sceneIndex),
+        sceneId: subsectionId || String(entry.sceneIndex),
         evalType: 'critique',
         score: entry.score,
         dimensionScores: entry.dimensionScores || null,
@@ -477,6 +577,21 @@ export function useVolumeStoryGenerator() {
   // user reviews the current one in scene-review mode.
   const speculativeCache = new SceneSpeculativeCache()
 
+  // Observability for the above. A silent best-effort cache is indistinguishable
+  // from a broken one — this one threw on every call for as long as it existed.
+  const prefetchStats = reactive({ hits: 0, misses: 0, lastError: '' as string })
+
+  // Whether this run is actually delivering. Every stage below degrades to a
+  // valid-looking empty value rather than failing, which is deliberate and
+  // mostly correct — but it left nothing able to observe that a run wrote
+  // thirteen scenes of 45%-duplicate prose against a story bible that never
+  // changed. See services/generation/runHealth.ts.
+  const runHealth = new RunHealth()
+  const runHealthViolations = ref<any[]>([])
+  const stateSummarizer = useStateSummarizer()
+  /** Bible changes discovered across the run — an invariant input, not a stat. */
+  const bibleChangesDiscovered = ref(0)
+
   // Wire locally-constructed services into Delegator memory so tool wrappers
   // (commitTool, consistencyTool, sceneTool) can reach them via memory.instances.*
   const { memory } = delegatorApi
@@ -500,6 +615,10 @@ export function useVolumeStoryGenerator() {
   // ever fill scenes that are still empty and never overwrite written prose.
   async function resumeGeneration({ projectId, onChunk, onPhaseChange }: any) {
     if (phase.value !== 'idle') return { resumed: false, reason: 'busy' }
+
+    // Clear and seed evalStore from persisted history for project-scoped eval tracking
+    await clearAndSeedEvalStore(projectId, evalStore)
+
     speculativeCache.flush()
     liveDraft.reset()
     const run = await getGenRun(projectId)
@@ -613,6 +732,9 @@ export function useVolumeStoryGenerator() {
       storyBibleDocs
     }
 
+    // Seed prompt adjuster from persisted eval history for cross-run learning
+    await seedPromptAdjusterFromHistory(projectId, workspaceType.value, promptAdjuster)
+
     // The plan, structure and spine all survive in the checkpoint, so this run
     // is genuinely already at `writing`. Dispatching SPINE_GENERATED from `idle`
     // (as this did) has no route — it threw before the first scene, and the
@@ -644,6 +766,9 @@ export function useVolumeStoryGenerator() {
     onChunk
   }: any) {
     if (phase.value !== 'idle') return
+
+    // Clear and seed evalStore from persisted history for project-scoped eval tracking
+    await clearAndSeedEvalStore(projectId, evalStore)
 
     abort.ensure()
     isCancelling.value = false
@@ -707,13 +832,29 @@ export function useVolumeStoryGenerator() {
     let activeStage: any = null
     try {
       progress.total = 4
+
+      // Restore point BEFORE anything is written. A run rewrites every chapter
+      // it touches, and the `snapshots` table was empty after a live 13-scene
+      // run — there was no way back at all. Taken first, so it exists even if
+      // the run fails during bootstrapping.
+      const snapResult = await snapshotBeforeRun(projectId, manuscriptStore.sortedSections)
+      if (!snapResult.ok) {
+        runHealth.record('artifact_failed', { stage: 'pre-run snapshot', detail: snapResult.detail })
+      }
+      actLog.appendThought(currentTaskId, bpPhase, `${snapResult.detail}\n`)
+
       // Phase 0: Create volume first (so bootstrapping has a real volume ID)
       progress.current = 1
       progress.statusText = 'Creating volume...'
       const vId = await volumeStore.createVolume(projectId, {
         title: `${enhancedSynopsis.slice(0, 60)}...`,
         description: `Generated story — ${genre}, ${tone}`,
-        color: '#6366f1',
+        // `getNextColor()` picks the first colour not already in use, from the
+        // store's palette. Hardcoding `#6366f1` — which is simply VOLUME_COLORS[0]
+        // — meant a generated volume always collided with whatever already held
+        // that colour, and the swatch is rendered directly as the volume's
+        // background in ChapterManager.
+        color: volumeStore.getNextColor(),
         sectionIds: []
       })
       volumeId.value = vId
@@ -1220,27 +1361,51 @@ export function useVolumeStoryGenerator() {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       throwIfAborted()
       let fullProse = ''
-      const result = await (writer.writeSceneStructured as any)({
-        sceneBrief: scene,
-        storyArc,
-        chapterLog,
-        storyBible,
-        spineContext: spineContext.value,
-        anchorRole,
-        anchorConstraints,
-        signal: abort.signal(),
-        onChunk: (_chunk: any, proseChunk: any) => {
-          fullProse += proseChunk || ''
-          emitChunk?.(proseChunk, fullProse)
-        },
-        onRawChunk: (chunk: any) => actLog.appendThought(currentTaskId, scenePhase, chunk),
-        embeddingContext,
-        storyContract,
-        rejectedPatterns: extraRejected,
-        existingEntitiesJson: sceneEntitiesJson,
-        pastEvalResults: attemptFeedback || undefined,
-        focusInstructions: attemptFocusInstructions || undefined
-      })
+      let result: any
+      try {
+        result = await (writer.writeSceneStructured as any)({
+          sceneBrief: scene,
+          storyArc,
+          chapterLog,
+          storyBible,
+          spineContext: spineContext.value,
+          anchorRole,
+          anchorConstraints,
+          signal: abort.signal(),
+          onChunk: (_chunk: any, proseChunk: any) => {
+            fullProse += proseChunk || ''
+            emitChunk?.(proseChunk, fullProse)
+          },
+          onRawChunk: (chunk: any) => actLog.appendThought(currentTaskId, scenePhase, chunk),
+          embeddingContext,
+          storyContract,
+          rejectedPatterns: extraRejected,
+          existingEntitiesJson: sceneEntitiesJson,
+          pastEvalResults: attemptFeedback || undefined,
+          focusInstructions: attemptFocusInstructions || undefined
+        })
+      } catch (err: any) {
+        // Repetition rejection is a failed ATTEMPT, not a failed scene. The
+        // writer refuses to hand back looping prose now, so re-roll — that is
+        // the response the retry loop already exists for. Anything else is a
+        // real error and propagates.
+        if (!isUnsalvageableProse(err)) throw err
+
+        runHealth.record('prose_rejected', {
+          stage: 'writer',
+          sceneIndex,
+          detail: err?.message || 'repetitive output'
+        })
+        actLog.appendThought(
+          currentTaskId,
+          scenePhase,
+          `\n⚠ Attempt ${attempt + 1} produced repetitive output and was rejected. Retrying.\n`
+        )
+        // Out of attempts: let the caller treat the scene as failed rather than
+        // committing prose the guard rejected.
+        if (attempt === maxAttempts - 1) throw err
+        continue
+      }
       const proseText = result.prose
       if (attempt === 0) {
         baselineWordCount = countWords(proseText)
@@ -1279,10 +1444,25 @@ export function useVolumeStoryGenerator() {
         criticResult,
         baselineWordCount,
         countWords(proseText),
-        Number(scene?.estimatedWords) || 0
+        Number(scene?.estimatedWords) || 0,
+        proseText
       )
       if (!proseQ.pass && proseQ.flags.length > 0) {
         console.warn('[evalGate] proseQuality:', proseQ.flags.join('; '))
+        runHealth.record('gate_failed', {
+          stage: 'proseQuality',
+          sceneIndex,
+          detail: proseQ.flags.join('; ')
+        })
+      }
+
+      // Metadata status, recorded from the value the writer already returns.
+      // This is the signal whose silent absence froze the story bible: a scene
+      // that skipped extraction contributed no entities, no keyFacts, and so no
+      // context for the scene after it.
+      const metaStatus = chosenStructured?.metadataStatus ?? result?.structured?.metadataStatus
+      if (metaStatus === 'failed' || metaStatus === 'skipped') {
+        runHealth.record(`metadata_${metaStatus}` as any, { stage: 'writer', sceneIndex })
       }
 
       // A critic that cannot parse its own output makes the run look healthier
@@ -1292,14 +1472,51 @@ export function useVolumeStoryGenerator() {
       // loudly, where the user is actually looking.
       if (criticResult?.evalUnavailable) {
         evalUnavailableCount.value += 1
+        // `evalUnavailableCount` was incremented, reset, and exposed on the
+        // return object — with no consumer anywhere in the codebase. Routing it
+        // through the ledger gives it one: enough of these in a row and the run
+        // stops rather than writing another ten scenes unchecked.
+        runHealth.record('eval_unavailable', { stage: 'critic', sceneIndex })
         actLog.appendThought(
           currentTaskId,
           scenePhase,
           "\n⚠ Quality gate did not run for this scene — the critic's output could not be parsed. The draft was accepted unchecked.\n"
         )
       }
+const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >= 6
 
-      const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >= 6
+      // Cloud escalation check: if eval is unavailable or has suspect scores and
+      // user has cloud escalation enabled, offer to escalate this scene's
+      // evaluation to a cloud provider for a second opinion.
+      if (canUseCloudEscalation()) {
+        const needsEscalation = criticResult?.evalUnavailable ||
+          (criticResult?.score != null && (criticResult.score < 3 || criticResult.score > 9)) ||
+          (criticResult?.issues?.length === 0 && criticResult?.score != null && criticResult.score >= 7)
+
+        if (needsEscalation) {
+          const disclosure = await buildCloudDisclosure({
+            projectId: writeParamsVal?.projectId || '',
+            operation: 'escalation-on-failure',
+            text: proseText,
+            systemPrompt: 'You are an expert fiction editor. Evaluate this scene for quality, continuity, voice, and adherence to the story bible. Provide a score 1-10, dimension scores, issues, and strengths.',
+            provider: settings.aiProvider,
+            model: settings.ollamaModel
+          })
+
+          // Store the disclosure for the UI to present to the user
+          // This is a non-blocking offer - the user can choose to escalate or continue
+          actLog.appendThought(
+            currentTaskId,
+            scenePhase,
+            `\n☁ Cloud escalation available: ${disclosure.warning}\n` +
+            `Operation: ${disclosure.operation}\n` +
+            `Estimated tokens: ${disclosure.estimatedTokens}\n` +
+            `Estimated cost: $${disclosure.estimatedCostUsd.toFixed(4)}\n` +
+            `Provider: ${disclosure.provider} (${disclosure.model})\n`
+          )
+        }
+      }
+
       if (
         !criticResult ||
         criticResult.evalUnavailable ||
@@ -1316,12 +1533,39 @@ export function useVolumeStoryGenerator() {
         topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
       }
       attemptFeedback = formatEvalFeedback([evalSnapshot])
-      const retryResult = promptAdjuster.updateAdjustments([evalSnapshot])
+      const retryResult = promptAdjuster.updateAdjustments([evalSnapshot], { workspaceType: workspaceType.value })
       attemptFocusInstructions = retryResult.focusInstructions
     }
 
-    return { chosenProse, chosenStructured, chosenEval }
+  // After all retries exhausted, if we're in autoMode and the final eval still fails, throw.
+  // This ensures callers (writeNextBatch, writeScenesInto) treat it as a failed scene.
+  if (retryGate && chosenEval && !chosenEval.evalUnavailable && !isCleanPass(chosenEval)) {
+    // Feed the verdict's weakest dimension into the adjuster so a rejected scene
+    // produces a matching focus area (reconciles the two "weak dimension" rules).
+    const verdict = deriveVerdict(chosenEval, getDefaultThreshold(workspaceType.value))
+    if (verdict.weakestDimension) {
+      promptAdjuster.updateAdjustments([{ dimensionScores: { [verdict.weakestDimension.name]: verdict.weakestDimension.score } }], { workspaceType: workspaceType.value })
+    }
+
+    const reason = chosenEval.issues?.find((i: any) => i.type === 'repetition')
+      ? `Repetition detected: ${chosenEval.issues.find((i: any) => i.type === 'repetition').description}`
+      // `verdictReason` names the dimension that actually failed ("voice scored
+      // 6"), which is the actionable part. The score alone says nothing now that
+      // the verdict is no longer derived from it.
+      : `Quality gate failed after ${maxAttempts} attempt(s): ${chosenEval.verdictReason || `score ${chosenEval.score}`}${chosenEval.issues?.length ? ` — issues: ${chosenEval.issues.map((i: any) => i.description).join('; ')}` : ''}`
+    throw new Error(reason)
   }
+
+  // A scene that came through with usable metadata and no gate failure clears
+  // every streak. The budget measures CONSECUTIVE failure — without this reset,
+  // three failures spread across fifty healthy scenes would halt a run that is
+  // fundamentally fine.
+  if (chosenProse && chosenStructured?.metadataStatus === 'ok') {
+    runHealth.recordSuccess()
+  }
+
+  return { chosenProse, chosenStructured, chosenEval }
+}
 
   async function runParallelGeneration(writeParamsVal: any) {
     if (!writeParamsVal) return
@@ -1505,6 +1749,18 @@ export function useVolumeStoryGenerator() {
     const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
     throwIfAborted()
 
+    // Same damping term the batch path has. The anchor phase writes every
+    // chapter opener before any bridge scene exists, so a model looping here
+    // poisons the context of everything that follows it — this is the worst
+    // possible place to keep going.
+    if (runHealth.shouldAbort()) {
+      await haltRun(
+        writeParamsVal.projectId,
+        runHealth.getAbortReason() || 'run health budget exceeded'
+      )
+      return
+    }
+
     let anchorEvalFeedback = ''
     let anchorFocusInstructions = ''
     if (inlineEvalEnabled.value) {
@@ -1533,10 +1789,10 @@ export function useVolumeStoryGenerator() {
       evalStore.setResults(anchorResults)
       for (const ae of anchorResults) {
         const sb = scenePlan.value.find((sp) => sp.sceneNumber === ae.sceneIndex)
-        persistCritiqueEval(ae, projectId, sb?.title)
+        persistCritiqueEval(ae, projectId, sb?.title, sb?.subsectionId)
       }
       anchorEvalFeedback = formatEvalFeedback(anchorResults)
-      const anchorResult = promptAdjuster.updateAdjustments(anchorResults)
+      const anchorResult = promptAdjuster.updateAdjustments(anchorResults, { workspaceType: workspaceType.value })
       anchorFocusInstructions = anchorResult.focusInstructions
     }
 
@@ -1705,7 +1961,7 @@ export function useVolumeStoryGenerator() {
       evalStore.setResults([...evalStore.results, ...middleResults])
       for (const me of middleResults) {
         const sb = scenePlan.value.find((sp) => sp.sceneNumber === me.sceneIndex)
-        persistCritiqueEval(me, projectId, sb?.title)
+        persistCritiqueEval(me, projectId, sb?.title, sb?.subsectionId)
       }
     }
 
@@ -1752,9 +2008,23 @@ export function useVolumeStoryGenerator() {
     speculativeCache.reserve(index)
 
     try {
-      const chapterLog = ''
-      const existingEntitiesJson = (buildExistingEntitiesBlob as any)(
-        writtenScenes.value.filter((s) => s && s.summary)
+      // Running chapter log, same shape the batch path builds. Previously '',
+      // which meant a prefetched scene was written with no knowledge of the
+      // scenes before it — a cache hit would have been worse than a miss.
+      const chapterLog = writtenScenes.value
+        .filter(Boolean)
+        .map((ws: any) => `Scene ${ws.sceneNumber} ("${ws.title}"): ${ws.summary || '(written)'}`)
+        .join('\n')
+
+      // Was called with one argument — the written scenes — against a signature
+      // of (characterList, locationList, plotThreadList), and `as any` hid it
+      // from the typechecker. `locationList.map` threw on every single call, the
+      // bare catch below swallowed it AND flushed the cache, so speculative
+      // prefetch never once produced a hit.
+      const existingEntitiesJson = buildExistingEntitiesBlob(
+        storyBibleStore.characters,
+        storyBibleStore.locations,
+        storyBibleStore.plotThreads
       )
       const scenePhase = null
       const result = await writeSceneWithGate({
@@ -1769,12 +2039,20 @@ export function useVolumeStoryGenerator() {
         emitChunk: () => {}
       })
       speculativeCache.set(index, result)
-    } catch {
+      prefetchStats.hits++
+    } catch (err: any) {
+      // Still non-fatal — the cache is an optimisation, never a correctness
+      // requirement — but no longer invisible. A permanently-dead cache used to
+      // look identical to a cache that was simply never warm.
+      prefetchStats.misses++
+      prefetchStats.lastError = err?.message || String(err)
+      runHealth.record('prefetch_failed', { stage: 'prefetch', sceneIndex: index })
+      console.debug('[useVolumeStoryGenerator] speculative prefetch failed:', err)
       speculativeCache.flush()
     }
   }
 
-  async function writeNextBatch(startIndex: any) {
+  async function writeNextBatch(startIndex: any, incomingFocusInstructions = '') {
     if (!writeParams.value) return
 
     const { projectId, storyArc, storyContract, onChunk, storyBibleDocs, sections } =
@@ -1794,7 +2072,7 @@ export function useVolumeStoryGenerator() {
     )
 
     let batchEvalFeedback = ''
-    let batchFocusInstructions = ''
+    let batchFocusInstructions = incomingFocusInstructions
 
     for (let i = startIndex; i < endIndex; i++) {
       throwIfAborted()
@@ -1909,9 +2187,9 @@ export function useVolumeStoryGenerator() {
           topIssues: (chosenEval.issues || []).slice(0, 3).map((iss: any) => iss.text || iss)
         }
         evalStore.addResult(retryEntry)
-        persistCritiqueEval(retryEntry, projectId, scene.title)
+        persistCritiqueEval(retryEntry, projectId, scene.title, scene.subsectionId)
         batchEvalFeedback = formatEvalFeedback(evalStore.results)
-        const batchResult = promptAdjuster.updateAdjustments(evalStore.results)
+        const batchResult = promptAdjuster.updateAdjustments(evalStore.results, { workspaceType: workspaceType.value })
         batchFocusInstructions = batchResult.focusInstructions
 
         // Quality floor: a scene that still fails after all retries counts against
@@ -1952,9 +2230,9 @@ export function useVolumeStoryGenerator() {
           topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
         }
         evalStore.addResult(evalEntry)
-        persistCritiqueEval(evalEntry, projectId, scene.title)
+        persistCritiqueEval(evalEntry, projectId, scene.title, scene.subsectionId)
         batchEvalFeedback = formatEvalFeedback(evalStore.results)
-        const batchResult2 = promptAdjuster.updateAdjustments(evalStore.results)
+        const batchResult2 = promptAdjuster.updateAdjustments(evalStore.results, { workspaceType: workspaceType.value })
         batchFocusInstructions = batchResult2.focusInstructions
       }
 
@@ -1988,9 +2266,17 @@ export function useVolumeStoryGenerator() {
       }
     }
 
-    // Active learning bridge: periodic deep analysis feeds recommendations
-    // into the prompt adjuster's hint history.
-    activeLearningBridge.afterBatchEval(evalStore.results)
+    // Active learning bridge: periodic deep analysis (every 3 batches, once ≥5 evals)
+    // merges its focus instructions and hint history into the prompt adjuster.
+    const bridgeResult = activeLearningBridge.afterBatchEval(evalStore.results)
+    if (bridgeResult?.focusInstructions) {
+      batchFocusInstructions = batchFocusInstructions
+        ? `${bridgeResult.focusInstructions}\n\n${batchFocusInstructions}`
+        : bridgeResult.focusInstructions
+    }
+    if (bridgeResult?.givenHints?.length) {
+      promptAdjuster.allGivenHints.value.push(...bridgeResult.givenHints)
+    }
 
     // Early continuity audit at chapter boundaries (detection only).
     await consistencyService.maybeRunIncrementalConsistency(endIndex)
@@ -2004,8 +2290,17 @@ export function useVolumeStoryGenerator() {
       if (sr.structured) {
         const sceneChanges = sync.discoverSync(sr.structured)
         batchChanges.push(...sceneChanges)
+        // A scene whose metadata extraction SUCCEEDED and still yielded nothing
+        // for the bible is the signature of the frozen-bible failure. Recorded
+        // separately from a metadata failure so the two are distinguishable:
+        // "the extractor found nothing" and "the extractor never ran" produced
+        // identical downstream state before `metadataStatus` existed.
+        if (sceneChanges.length === 0 && sr.structured.metadataStatus === 'ok') {
+          runHealth.record('sync_empty', { stage: 'sync' })
+        }
       }
     }
+    bibleChangesDiscovered.value += batchChanges.length
 
     if (endIndex < scenePlan.value.length) {
       if (batchChanges.length > 0) {
@@ -2023,8 +2318,16 @@ export function useVolumeStoryGenerator() {
         }
         return
       }
+      // The damping term. Without it the feedback loop has none: a degraded
+      // scene degrades the next scene's context, so continuing past a run of
+      // failures manufactures more of them. Stopping here costs the author the
+      // scenes in the budget; not stopping cost them a whole volume.
+      if (runHealth.shouldAbort()) {
+        await haltRun(projectId, runHealth.getAbortReason() || 'run health budget exceeded')
+        return
+      }
       // Note: recursive — max depth = ceil(totalScenes / SYNC_BATCH_SIZE). Not a stack risk for typical volumes (<100 scenes) but consider a while-loop refactor if volumes scale significantly.
-      await writeNextBatch(endIndex)
+      await writeNextBatch(endIndex, batchFocusInstructions)
       return
     }
 
@@ -2056,6 +2359,9 @@ export function useVolumeStoryGenerator() {
   }: any) {
     if (phase.value !== 'plan-preview') return
 
+    // Clear and seed evalStore from persisted history for project-scoped eval tracking
+    await clearAndSeedEvalStore(projectId, evalStore)
+
     scenePlan.value = editedPlan
     progress.total = editedPlan.length
     progress.statusText =
@@ -2072,7 +2378,12 @@ export function useVolumeStoryGenerator() {
       const vid = await volumeStore.createVolume(projectId, {
         title: `Volume ${v}`,
         description: `Volume ${v}`,
-        color: '#6366f1',
+        // This is a LOOP over volumes 2..N. With the colour hardcoded, a
+        // five-volume story produced five identically-coloured volumes — the
+        // exact thing `getNextColor()` exists to prevent. It reads
+        // `volumes.value`, which `createVolume` has already updated by the next
+        // iteration, so each volume here gets a distinct colour.
+        color: volumeStore.getNextColor(),
         sectionIds: []
       })
       volumeIdByIndex[v] = vid
@@ -2228,6 +2539,9 @@ export function useVolumeStoryGenerator() {
       storyBibleDocs
     }
 
+    // Seed prompt adjuster from persisted eval history for cross-run learning
+    await seedPromptAdjusterFromHistory(projectId, workspaceType.value, promptAdjuster)
+
     // Drafting a full volume on local hardware is measured in hours — 30 scenes
     // at ~13 minutes each. The old wrapper passed no budget and so inherited
     // withTimeout's 5-minute default, which is why a 10-chapter run reliably died
@@ -2373,6 +2687,116 @@ export function useVolumeStoryGenerator() {
    * the machine in a phase WRITING_DONE had no route out of, which threw and
    * surfaced as a failed run at the end of every clean generation.
    */
+  /**
+   * Stop a run that is manufacturing damage, and say why.
+   *
+   * Deliberately not a silent return: the entire class of bug this exists to
+   * prevent is a run that ends without anyone learning it went wrong.
+   */
+  async function haltRun(projectId: any, reason: string) {
+    error.value = reason
+    // Invariants evaluated here too, so the halt report says what the run failed
+    // to deliver, not only which budget tripped.
+    assertRunDelivered()
+    actLog.appendThought(
+      currentTaskId,
+      null,
+      `\n■ Generation halted — ${reason}\n${describeRunHealth(runHealth, runHealthViolations.value)}\n`
+    )
+    try {
+      await updateGenRunStage(projectId, 'prose', { status: 'failed', error: reason })
+    } catch {
+      // Checkpoint bookkeeping must not mask the halt itself.
+    }
+
+    // A halted run keeps the scenes it did write, so its derived surfaces are
+    // just as stale as a completed run's — and its outcome matters MORE to the
+    // next session. `finalizeStoryArtifacts` previously ran only on the
+    // completion path, so a stopped or errored run left every derived surface
+    // untouched with no partial-progress recovery.
+    try {
+      const report = await finalizeStoryArtifacts({
+        projectId,
+        manuscriptStore,
+        storyBibleStore,
+        storyDocs: useStoryDocuments()
+      })
+      for (const e of report.errors) {
+        runHealth.record('artifact_failed', { stage: 'finalize', detail: e })
+      }
+    } catch (err: any) {
+      runHealth.record('artifact_failed', { stage: 'finalize', detail: err?.message || String(err) })
+    }
+    await persistRunArtifacts(projectId, { halted: true })
+
+    await delegatorApi.dispatch('ERROR', { error: reason, message: reason })
+  }
+
+  /**
+   * Did the run deliver what it claimed? Runs at the end of every generation,
+   * on the values the pipeline already tracks.
+   */
+  function assertRunDelivered(): void {
+    const written = writtenScenes.value.filter(Boolean)
+    const withMetadata = written.filter(
+      (s: any) => s?.structured?.metadataStatus === 'ok' || s?.summary
+    ).length
+    const proseText = written.map((s: any) => s.prose || '').join('\n\n')
+
+    runHealthViolations.value = runHealth.checkInvariants({
+      scenesWritten: written.length,
+      scenesWithMetadata: withMetadata,
+      bibleChangesCommitted: bibleChangesDiscovered.value,
+      duplicateRatio: proseText ? duplicateRatio(proseText) : undefined
+    })
+
+    const report = describeRunHealth(runHealth, runHealthViolations.value)
+    if (runHealthViolations.value.length > 0 || runHealth.getEvents().length > 0) {
+      actLog.appendThought(currentTaskId, null, `\n${report}\n`)
+    }
+    const blocking = runHealthViolations.value.filter((v: any) => v.severity === 'block')
+    if (blocking.length > 0) {
+      // Surfaced, not thrown. The prose exists and the author should keep it —
+      // but they must be told it did not meet the run's own claims, which is
+      // precisely what thirteen scenes of duplicate text against a frozen bible
+      // never told anyone.
+      console.warn('[runHealth] run did not deliver:', blocking.map((v: any) => v.message).join(' | '))
+    }
+  }
+
+  /**
+   * Write the run-level artifacts: end-of-run story state and a session-archive
+   * entry. Runs on BOTH the completion and halt paths — a halted run is exactly
+   * the one whose outcome the next session most needs to know about.
+   */
+  async function persistRunArtifacts(projectId: any, { halted }: { halted: boolean }) {
+    const written = writtenScenes.value.filter(Boolean)
+    const wordCount = written.reduce((sum: number, s: any) => sum + countProseWords(s.prose), 0)
+
+    const state = stateSummarizer.summarize()
+    const stateResult = await saveRunStateSnapshot(projectId, state)
+    if (!stateResult.ok) {
+      runHealth.record('artifact_failed', { stage: 'state snapshot', detail: stateResult.detail })
+    }
+
+    const archiveResult = await archiveRun(projectId, {
+      scenesWritten: written.length,
+      wordCount,
+      degradationSummary: runHealth.summary(),
+      violations: runHealthViolations.value,
+      halted
+    })
+    if (!archiveResult.ok) {
+      runHealth.record('artifact_failed', { stage: 'session archive', detail: archiveResult.detail })
+    }
+
+    actLog.appendThought(
+      currentTaskId,
+      null,
+      `${stateResult.detail} · ${archiveResult.detail}\n`
+    )
+  }
+
   async function completeGeneration(projectId: any) {
     const written = () => writtenScenes.value.filter(Boolean)
     const holes = () => writtenScenes.value.filter((s) => !s)
@@ -2427,7 +2851,12 @@ export function useVolumeStoryGenerator() {
     //
     // Additive and author-safe: an arranged canvas and hand-edited documents are
     // left alone. Never throws — these are derived from data already committed.
-    progress.statusText = 'Populating canvas, timeline and story bible documents...'
+    // Status text says what this actually does. It used to promise "Populating
+    // canvas, timeline and story bible documents" — but `finalizeStoryArtifacts`
+    // only REFRESHES surfaces derived from the bible and touches nothing to do
+    // with the timeline, which is a projection of `plotThreads`. With an empty
+    // bible it produced an empty canvas while claiming to have populated one.
+    progress.statusText = 'Refreshing canvas and story bible documents...'
     const artifactsPhase = actLog.addPhase(currentTaskId, 'Story Bible & Canvas')
     try {
       const report = await finalizeStoryArtifacts({
@@ -2441,10 +2870,24 @@ export function useVolumeStoryGenerator() {
         status: report.errors.length ? 'failed' : 'done',
         detail: `${report.canvasElements} canvas · ${report.documents.length} docs`
       })
+      // `report.errors` was collected by three separate failure paths and then
+      // used only as a log label. Now it reaches the ledger.
+      for (const e of report.errors) {
+        runHealth.record('artifact_failed', { stage: 'finalize', detail: e })
+      }
     } catch (err: any) {
       console.warn('[useVolumeStoryGenerator] artifact finalization failed:', err)
+      runHealth.record('artifact_failed', { stage: 'finalize', detail: err?.message || String(err) })
       actLog.updatePhase(currentTaskId, artifactsPhase, { status: 'failed' })
     }
+
+    // Did this run deliver? Asserted before the run is declared complete.
+    assertRunDelivered()
+
+    // ── What the run leaves behind for the NEXT one ──
+    // These three tables were empty after a real 13-scene run because nothing in
+    // the pipeline ever wrote them. Group B in DERIVED-SURFACES-AUDIT.md.
+    await persistRunArtifacts(projectId, { halted: false })
 
     // ── Commit + finalize ──
     await advance('COMMITTED')
@@ -2492,6 +2935,55 @@ export function useVolumeStoryGenerator() {
       error.value ? 0 : 1,
       error.value ? `Failed: ${error.value}` : 'Completed'
     )
+  }
+
+  /**
+   * Aggregate generated scene content into chapter (section) content.
+   *
+   * Joins each section's subsections' HTML content (ordered by `order`, skipping
+   * empties), separated by `<hr>`. Updates section `content`, `wordCount` (sum of
+   * subsection counts), and `status: 'generated'`.
+   *
+   * Scope guard: only aggregates sections created in THIS run (tracked via
+   * `runCreatedSectionIds`), so hand-written/edited chapters are never clobbered.
+   */
+  async function aggregateChapterContent() {
+    const sections = manuscriptStore.sections
+    const subsectionsBySection = manuscriptStore.subsectionsBySection
+
+    for (const section of sections) {
+      // Only aggregate sections created in this run
+      if (!runCreatedSectionIds.value.has(section.id)) continue
+
+      // `subsectionsBySection` is a computed Record<string, any[]>, not a Map
+      // (manuscriptStore.ts:74). `.get(id)` therefore read the property named
+      // "get", got undefined, and `|| []` turned that into an empty array — so
+      // every section hit `subs.length === 0` and chapter aggregation silently
+      // did nothing at all.
+      const subs = [...(subsectionsBySection[section.id] || [])].sort(
+        (a: any, b: any) => (a.order || 0) - (b.order || 0)
+      )
+      if (subs.length === 0) continue
+
+      const htmlParts = subs.map((s: any) => s.content).filter(Boolean)
+      if (htmlParts.length === 0) continue
+
+      const joinedHtml = htmlParts.join('<hr>')
+      const totalWords = subs.reduce(
+        (sum: number, s: any) => sum + (s.wordCount || 0),
+        0
+      )
+
+      await manuscriptStore.updateSectionData(
+        section.id,
+        {
+          content: joinedHtml,
+          wordCount: totalWords,
+          status: 'generated'
+        },
+        projectStore.currentProjectId
+      )
+    }
   }
 
   async function confirmSync(opts: any) {
@@ -2985,7 +3477,16 @@ export function useVolumeStoryGenerator() {
     evalUnavailableCount.value = 0
     currentSceneResult.value = null
     currentWriteIndex.value = 0
-    promptAdjuster.reset()
+    runHealth.reset()
+    runHealthViolations.value = []
+    bibleChangesDiscovered.value = 0
+    // Rehydrate prompt adjuster from persisted history instead of clearing
+    // This preserves cross-run hint history and repeat-dampening
+    await rehydratePromptAdjuster(
+      projectStore.currentProjectId,
+      workspaceType.value,
+      promptAdjuster
+    )
   }
 
   return {
@@ -3015,6 +3516,10 @@ export function useVolumeStoryGenerator() {
     confirmPlan,
     confirmSync,
     syncPreview,
+    prefetchStats,
+    runHealth,
+    runHealthViolations,
+    bibleChangesDiscovered,
     hasPendingBatches,
     pendingBatchStart,
     logRejectedPattern,
@@ -3038,7 +3543,9 @@ export function useVolumeStoryGenerator() {
     reset,
     delegator: delegatorApi.delegator,
     memory: delegatorApi.memory,
-    dispatch: delegatorApi.dispatch
+    dispatch: delegatorApi.dispatch,
+    runCreatedSectionIds,
+    aggregateChapterContent
   }
 }
 

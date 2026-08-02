@@ -51,7 +51,31 @@ const EMPTY_METADATA = {
   usedEntities: { characterNames: [], locationNames: [], plotThreadTitles: [] },
   newEntities: { characters: [], locations: [], plotThreads: [] },
   networkEvents: [],
-  keyFacts: []
+  keyFacts: [],
+  // Distinguishes "the extractor ran and the scene genuinely established nothing"
+  // from "the extractor never ran". Downstream, `discoverSync` finding zero
+  // changes is ambiguous without this: an empty bible update looked identical to
+  // a scene that never reached extraction at all, which is how a generation run
+  // wrote thirteen scenes and not one character, location, or graph edge.
+  metadataStatus: 'skipped' as 'ok' | 'failed' | 'skipped'
+}
+
+/**
+ * Prose that must not be salvaged.
+ *
+ * The catch in `writeSceneStructured` exists so a failure *after* generation —
+ * metadata extraction, a guardrail, a downstream write — does not throw away a
+ * scene the model already wrote. That is right for those cases and wrong for
+ * one: when the prose ITSELF is what failed validation, handing it back is not
+ * salvage, it is laundering the rejection. The repetition guard threw, and the
+ * catch returned the identical text one line later, so the guard had never once
+ * rejected anything.
+ */
+class UnsalvageableProseError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnsalvageableProseError'
+  }
 }
 
 const FALLBACK_VOICE = `Write in third person limited. Past tense. Favor specific concrete nouns over category nouns. Show emotional states through physical sensation and action, not direct statement. Vary sentence length — short during tension, longer during reflection.`
@@ -126,9 +150,76 @@ function extractDoc(docString: any, heading: any) {
 }
 
 /**
+ * Detect excessive repetition in prose.
+ * Returns { hasRepetition: boolean, details: string } if repetition found.
+ * Checks for:
+ * - Repeated n-grams (sequences of N words) appearing too many times
+ * - Repeated paragraphs (by sentence clusters)
+ * - Excessive character/word repetition ratios
+ */
+function detectRepetition(prose: string, options: {
+  minNgramWords?: number
+  maxNgramOccurrences?: number
+  minParagraphWords?: number
+  maxParagraphOccurrences?: number
+} = {}): { hasRepetition: boolean; details: string } {
+  const {
+    minNgramWords = 6,
+    maxNgramOccurrences = 3,
+    minParagraphWords = 15,
+    maxParagraphOccurrences = 2
+  } = options
+
+  if (!prose || prose.length < 100) return { hasRepetition: false, details: '' }
+
+  const sentences = prose.split(/[.!?]+/).map(s => s.trim()).filter(Boolean)
+  if (sentences.length < 4) return { hasRepetition: false, details: '' }
+
+  // Check for repeated n-grams (word sequences)
+  const words = prose.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length >= minNgramWords * 2) {
+    const ngramCounts = new Map<string, number>()
+    for (let i = 0; i <= words.length - minNgramWords; i++) {
+      const ngram = words.slice(i, i + minNgramWords).join(' ')
+      ngramCounts.set(ngram, (ngramCounts.get(ngram) || 0) + 1)
+    }
+    for (const [ngram, count] of ngramCounts) {
+      if (count > maxNgramOccurrences && ngram.length > 20) {
+        return {
+          hasRepetition: true,
+          details: `Repeated ${minNgramWords}-gram (${count}x): "${ngram.slice(0, 80)}..."`
+        }
+      }
+    }
+  }
+
+  // Check for repeated paragraph-like segments (sentence clusters)
+  const paragraphSegments = []
+  for (let i = 0; i < sentences.length - 1; i++) {
+    const segment = sentences.slice(i, i + 2).join(' ')
+    const wordCount = segment.split(/\s+/).filter(Boolean).length
+    if (wordCount >= minParagraphWords) {
+      paragraphSegments.push(segment.toLowerCase())
+    }
+  }
+  const segmentCounts = new Map<string, number>()
+  for (const seg of paragraphSegments) {
+    segmentCounts.set(seg, (segmentCounts.get(seg) || 0) + 1)
+  }
+  for (const [seg, count] of segmentCounts) {
+    if (count > maxParagraphOccurrences) {
+      return {
+        hasRepetition: true,
+        details: `Repeated paragraph segment (${count}x): "${seg.slice(0, 100)}..."`
+      }
+    }
+  }
+
+  return { hasRepetition: false, details: '' }
+}
+
+/**
  * Undo wrapping a model sometimes adds despite being told to emit plain prose:
- * a markdown code fence, or a leftover {"prose": "..."} envelope. Best-effort and
- * cheap — if nothing matches, the text is returned unchanged.
  */
 function stripAccidentalWrapping(text: any) {
   let out = String(text || '').trim()
@@ -299,12 +390,122 @@ Write the continuation now as prose. Output ONLY the new text — no headings, n
  * Never throws — metadata is enrichment, not the deliverable. A failed
  * extraction returns empty structures so the scene's prose still lands.
  *
+ * Chunked rather than truncated. This used to `slice(0, 6000)`, which on the
+ * 1,700-1,900 word scenes this pipeline actually produces (~9,500-10,500 chars)
+ * left roughly 40% of every scene structurally invisible: any fact, entity, or
+ * relationship established in a scene's final third could never be recorded, on
+ * the success path, silently.
+ *
  * @returns {Promise<object>} the metadata fields, always shaped like EMPTY_METADATA
  */
-async function extractSceneMetadata(prose: any, { entityContext, signal, sessionBudget }: { entityContext?: any; signal?: any; sessionBudget?: SessionBudget | null } = {}) {
-  const excerpt = String(prose || '').slice(0, 6000)
-  if (!excerpt.trim()) return { ...EMPTY_METADATA }
+const METADATA_CHUNK_CHARS = 6000
 
+/** Split on paragraph boundaries so no chunk starts mid-sentence. */
+function chunkProseForMetadata(prose: string, limit = METADATA_CHUNK_CHARS): string[] {
+  if (prose.length <= limit) return [prose]
+  const paragraphs = prose.split(/\n\s*\n/)
+  const chunks: string[] = []
+  let current = ''
+  for (const para of paragraphs) {
+    // A single paragraph longer than the limit still has to be cut, but that is
+    // the rare case rather than every scene.
+    if (para.length > limit) {
+      if (current) { chunks.push(current); current = '' }
+      for (let i = 0; i < para.length; i += limit) chunks.push(para.slice(i, i + limit))
+      continue
+    }
+    if (current && current.length + para.length + 2 > limit) {
+      chunks.push(current)
+      current = para
+    } else {
+      current = current ? `${current}\n\n${para}` : para
+    }
+  }
+  if (current) chunks.push(current)
+  return chunks
+}
+
+function dedupeByName(items: any[]): any[] {
+  const seen = new Set<string>()
+  const out: any[] = []
+  for (const item of items) {
+    const key = String(item?.name || item?.title || '').toLowerCase().trim()
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    out.push(item)
+  }
+  return out
+}
+
+function uniqueStrings(values: any[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const v of values) {
+    const s = String(v || '').trim()
+    if (!s || seen.has(s.toLowerCase())) continue
+    seen.add(s.toLowerCase())
+    out.push(s)
+  }
+  return out
+}
+
+/** Union the per-chunk extractions into one scene-level metadata object. */
+function mergeSceneMetadata(parts: any[]) {
+  const ok = parts.filter(Boolean)
+  if (ok.length === 0) return { ...EMPTY_METADATA, metadataStatus: 'failed' as const }
+  return {
+    // The first chunk covers the scene's opening, which is what a one-sentence
+    // "what happens" summary should describe.
+    summary: ok.find((p) => p.summary)?.summary || '',
+    usedEntities: {
+      characterNames: uniqueStrings(ok.flatMap((p) => p.usedEntities?.characterNames || [])),
+      locationNames: uniqueStrings(ok.flatMap((p) => p.usedEntities?.locationNames || [])),
+      plotThreadTitles: uniqueStrings(ok.flatMap((p) => p.usedEntities?.plotThreadTitles || []))
+    },
+    newEntities: {
+      characters: dedupeByName(ok.flatMap((p) => p.newEntities?.characters || [])),
+      locations: dedupeByName(ok.flatMap((p) => p.newEntities?.locations || [])),
+      plotThreads: dedupeByName(ok.flatMap((p) => p.newEntities?.plotThreads || []))
+    },
+    // Deduped, not concatenated. Two chunks that both witness "Kaelen confronts
+    // the Guardian" describe one relationship, and `commitSync` turns each event
+    // into a graph edge — so concatenating would draw the same edge twice.
+    networkEvents: dedupeEvents(ok.flatMap((p) => p.networkEvents || [])),
+    keyFacts: uniqueStrings(ok.flatMap((p) => p.keyFacts || [])),
+    metadataStatus: 'ok' as const
+  }
+}
+
+function dedupeEvents(events: any[]): any[] {
+  const seen = new Set<string>()
+  const out: any[] = []
+  for (const e of events) {
+    const key = [e?.type, e?.from, e?.to, e?.label]
+      .map((v) => String(v || '').toLowerCase().trim())
+      .join('|')
+    if (key === '|||' || seen.has(key)) continue
+    seen.add(key)
+    out.push(e)
+  }
+  return out
+}
+
+async function extractSceneMetadata(prose: any, { entityContext, signal, sessionBudget }: { entityContext?: any; signal?: any; sessionBudget?: SessionBudget | null } = {}) {
+  const full = String(prose || '')
+  if (!full.trim()) return { ...EMPTY_METADATA, metadataStatus: 'skipped' as const }
+
+  const chunks = chunkProseForMetadata(full)
+  const parts: any[] = []
+  for (const chunk of chunks) {
+    // Sequential on purpose: `providerGate` allows one in-flight Ollama request,
+    // so firing these concurrently would only queue them behind each other while
+    // holding the foreground slot away from the next scene's prose.
+    parts.push(await extractMetadataChunk(chunk, { entityContext, signal, sessionBudget }))
+  }
+  return mergeSceneMetadata(parts)
+}
+
+async function extractMetadataChunk(excerpt: string, { entityContext, signal, sessionBudget }: { entityContext?: any; signal?: any; sessionBudget?: SessionBudget | null } = {}) {
   const prompt = `Read this scene and extract structured metadata about it. Do not rewrite or summarize the prose beyond the one-sentence summary field.
 
 ${entityContext ? `KNOWN ENTITIES (already established — classify references to these as "used", anything genuinely new as "new"):\n${entityContext}\n\n` : ''}SCENE:
@@ -346,10 +547,10 @@ Extract:
         sessionBudget
       }
     )
-    return { ...EMPTY_METADATA, ...meta }
+    return { ...EMPTY_METADATA, ...meta, metadataStatus: 'ok' as const }
   } catch (err: any) {
     console.warn('[useStoryWriter] metadata extraction failed; prose kept, metadata empty:', err)
-    return { ...EMPTY_METADATA }
+    return null
   }
 }
 
@@ -809,6 +1010,17 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
 
       let prose = stripAccidentalWrapping(accumulated)
 
+      // Check for excessive repetition in generated prose — model looping is a
+      // known failure mode that the quality gate won't catch if it only sees
+      // the first 4000 chars. Catch it here and treat as a failed attempt.
+      const repCheck = detectRepetition(prose)
+      if (repCheck.hasRepetition) {
+        console.warn('[useStoryWriter] Repetition detected in generated prose:', repCheck.details)
+        throw new UnsalvageableProseError(
+          `Generation produced repetitive output: ${repCheck.details}`
+        )
+      }
+
       // Make the word target mean something.
       //
       // "The scene MUST be at least N words" is the only lever the prompt has,
@@ -837,6 +1049,21 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
       // silently return the short version of a scene we had already fixed.
       accumulated = prose
 
+      // Re-check after extension. The first check ran on the pre-extension draft,
+      // and `extendToTarget` exists precisely to make scenes longer — looping is
+      // the cheapest way for a model to produce more tokens, so the step most
+      // likely to introduce repetition was the one step never examined for it.
+      const extendedRepCheck = detectRepetition(prose)
+      if (extendedRepCheck.hasRepetition) {
+        console.warn(
+          '[useStoryWriter] Repetition detected after extension:',
+          extendedRepCheck.details
+        )
+        throw new UnsalvageableProseError(
+          `Extension produced repetitive output: ${extendedRepCheck.details}`
+        )
+      }
+
       // CALL 2 — metadata. Extractive over the finished prose; never throws, so a
       // metadata failure still yields the scene. Net-neutral on call count: the
       // per-scene summary call this subsumes was removed in the same series.
@@ -856,13 +1083,25 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
 
       return { prose, structured: { ...structured, prose } }
     } catch (err: any) {
-      if (accumulated.trim()) {
+      // Prose that failed its OWN validation is not salvageable — returning it
+      // here is what silently cancelled the repetition guard.
+      if (accumulated.trim() && !(err instanceof UnsalvageableProseError)) {
         // Prose was produced before something downstream failed. Prose is the
         // deliverable, so return it rather than lose a written scene.
-        return {
-          prose: stripAccidentalWrapping(accumulated),
-          structured: { ...EMPTY_METADATA }
-        }
+        //
+        // But extract its metadata too. A salvaged scene with empty metadata
+        // contributes nothing to the bible, the graph, or the chapter ledger,
+        // so the NEXT scene is written against the same context as the last —
+        // which is how a run produces thirteen scenes and zero story-bible
+        // changes. `extractSceneMetadata` never throws by contract, so this
+        // cannot make the salvage path less reliable than it was.
+        const prose = stripAccidentalWrapping(accumulated)
+        const structured = await extractSceneMetadata(prose, {
+          entityContext: existingEntitiesJson,
+          signal,
+          sessionBudget: _sessionBudget
+        }).catch(() => ({ ...EMPTY_METADATA, metadataStatus: 'failed' as const }))
+        return { prose, structured: { ...structured, prose } }
       }
       writeError.value = err.message || 'Scene writing failed'
       throw err
@@ -874,4 +1113,26 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
   return { writeScene, writeSceneStructured, isWriting, writeError, get sessionBudget() { return _sessionBudget }, set sessionBudget(v: SessionBudget | null) { _sessionBudget = v } }
 }
 
-export { summarizeLog, CRAFT_RULES, PROSE_STYLE_GUIDE, FALLBACK_VOICE }
+export {
+  summarizeLog,
+  CRAFT_RULES,
+  PROSE_STYLE_GUIDE,
+  FALLBACK_VOICE,
+  UnsalvageableProseError
+}
+
+/**
+ * Name-based check rather than `instanceof`.
+ *
+ * The generator and the writer can end up holding two copies of this module
+ * (Vite dev vs. build, test module resets), and `instanceof` silently returns
+ * false across copies — which would send rejected prose straight back down the
+ * salvage path this error exists to prevent. Failing open here is exactly the
+ * bug being fixed, so identity is checked the one way that survives.
+ */
+export function isUnsalvageableProse(err: unknown): boolean {
+  return (
+    err instanceof UnsalvageableProseError ||
+    (typeof err === 'object' && err !== null && (err as any).name === 'UnsalvageableProseError')
+  )
+}

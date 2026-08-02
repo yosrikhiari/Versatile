@@ -2,24 +2,47 @@ import { getAuthorProfile, getLatestStateSnapshot, getSessionArchive } from '../
 import { useAuthorModel } from './useAuthorModel'
 import { useStateSummarizer } from './useStateSummarizer'
 import { CONTEXT_SOURCES, ARCHIVE_TYPES, createDryRunPreview } from '../config/archive'
-
-const MAX_CONTEXT_CHARS = 2000
+import { useSettingsStore } from '../stores/settingsStore'
+import { fitToBudget, type Block } from '../services/ai/contextBudget'
+import { inputBudgetForModel, resolveMaxTokens } from '../services/ai/modelBudget'
+import { getConfiguredModel, getConfiguredProvider } from '../services/aiService'
 
 export function useContextRetrieval() {
+  const settingsStore = useSettingsStore()
+
+  function getContextBudget(model?: string): number {
+    const provider = getConfiguredProvider('context_retrieval')
+    const usedModel = model || getConfiguredModel('context_retrieval')
+    return inputBudgetForModel(usedModel || 'unknown')
+  }
+
+  function fitContext(blocks: Block[], budgetTokens: number) {
+    const result = fitToBudget(blocks, budgetTokens)
+    return {
+      text: result.text,
+      usedTokens: result.usedTokens,
+      budgetTokens: result.budgetTokens,
+      fits: result.fits
+    }
+  }
+
   async function getContextPackage(projectId: any) {
     if (!projectId) return null
 
     const previewLines = []
-    let contextText = ''
-    let totalChars = 0
+    const contextBlocks: { name: string; text: string; priority: number; required?: boolean; minTokens?: number }[] = []
 
     const authorProfile = await getAuthorProfile(projectId)
     if (authorProfile) {
       const { profileToContextString: toStr } = useAuthorModel()
       const profileStr = toStr(authorProfile)
       if (profileStr) {
-        contextText += profileStr + '\n\n'
-        totalChars += profileStr.length + 2
+        contextBlocks.push({
+          name: 'authorProfile',
+          text: profileStr,
+          priority: 100,
+          required: true
+        })
         previewLines.push({
           source: 'Author Profile',
           type: CONTEXT_SOURCES.AUTHOR_PROFILE,
@@ -34,10 +57,12 @@ export function useContextRetrieval() {
       const { snapshotToContextString: toStr } = useStateSummarizer()
       const stateStr = toStr(latestState.state)
       if (stateStr) {
-        const remaining = MAX_CONTEXT_CHARS - totalChars
-        const truncated = stateStr.length > remaining ? stateStr.slice(0, remaining) : stateStr
-        contextText += truncated + '\n\n'
-        totalChars += truncated.length + 2
+        contextBlocks.push({
+          name: 'latestState',
+          text: stateStr,
+          priority: 80,
+          minTokens: 200
+        })
         previewLines.push({
           source: 'Latest State Snapshot',
           type: CONTEXT_SOURCES.STATE_SNAPSHOT,
@@ -59,14 +84,13 @@ export function useContextRetrieval() {
     })
 
     for (const entry of archiveEntries) {
-      const remaining = MAX_CONTEXT_CHARS - totalChars
-      if (remaining < 100) break
-
       const entryStr = typeof entry.data === 'string' ? entry.data : JSON.stringify(entry.data)
-      const truncated = entryStr.length > remaining ? entryStr.slice(0, remaining) : entryStr
-      contextText += `[Archived: ${entry.type} / ${entry.signal}]\n${truncated}\n\n`
-      totalChars += truncated.length + entry.type.length + entry.signal.length + 20
-
+      contextBlocks.push({
+        name: `archive:${entry.type}`,
+        text: entryStr,
+        priority: 30,
+        minTokens: 50
+      })
       previewLines.push({
         source: `Archive: ${entry.type}`,
         type: CONTEXT_SOURCES.ARCHIVE_ENTRY,
@@ -75,13 +99,20 @@ export function useContextRetrieval() {
       })
     }
 
+    // Use the actual model's token budget instead of hard char limit
+    const budgetTokens = getContextBudget()
+    const fitted = fitContext(contextBlocks, budgetTokens)
+
     const sourceCount = previewLines.length
     const typeLabels = previewLines.map((p) => p.type).join(' + ')
 
     return {
-      contextText: contextText.trim(),
+      contextText: fitted.text.trim(),
       sourceDescription: `${sourceCount} source(s): ${typeLabels}`,
-      previewLines
+      previewLines,
+      usedTokens: fitted.usedTokens,
+      budgetTokens: fitted.budgetTokens,
+      fits: fitted.fits
     }
   }
 

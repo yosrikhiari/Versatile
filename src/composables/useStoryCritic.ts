@@ -5,9 +5,67 @@ import { FEATURES } from '../config/ai'
 import { SessionBudget } from '../services/aiProviderBudget'
 
 import { getDefaultThreshold, getDimensionNames } from '../config/evalDimensions'
+import { deriveVerdict } from '../services/criticVerdict'
 import { sanitizeJson } from '../services/ai/aiHelpers'
 import { guardCritique } from '../guardrails/integration/composableGuardrails'
 import { recordQualityForOutput } from '../services/aiResponseCache'
+
+/**
+ * Detect excessive repetition in prose.
+ * Returns { hasRepetition: boolean, details: string } if repetition found.
+ */
+function detectRepetition(prose: string): { hasRepetition: boolean; details: string } {
+  if (!prose || prose.length < 100) return { hasRepetition: false, details: '' }
+
+  const sentences = prose.split(/[.!?]+/).map(s => s.trim()).filter(Boolean)
+  if (sentences.length < 4) return { hasRepetition: false, details: '' }
+
+  // Check for repeated n-grams (word sequences)
+  const minNgramWords = 6
+  const maxNgramOccurrences = 3
+  const words = prose.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length >= minNgramWords * 2) {
+    const ngramCounts = new Map<string, number>()
+    for (let i = 0; i <= words.length - minNgramWords; i++) {
+      const ngram = words.slice(i, i + minNgramWords).join(' ')
+      ngramCounts.set(ngram, (ngramCounts.get(ngram) || 0) + 1)
+    }
+    for (const [ngram, count] of ngramCounts) {
+      if (count > maxNgramOccurrences && ngram.length > 20) {
+        return {
+          hasRepetition: true,
+          details: `Repeated ${minNgramWords}-gram (${count}x): "${ngram.slice(0, 80)}..."`
+        }
+      }
+    }
+  }
+
+  // Check for repeated paragraph-like segments (sentence clusters)
+  const minParagraphWords = 15
+  const maxParagraphOccurrences = 2
+  const paragraphSegments = []
+  for (let i = 0; i < sentences.length - 1; i++) {
+    const segment = sentences.slice(i, i + 2).join(' ')
+    const wordCount = segment.split(/\s+/).filter(Boolean).length
+    if (wordCount >= minParagraphWords) {
+      paragraphSegments.push(segment.toLowerCase())
+    }
+  }
+  const segmentCounts = new Map<string, number>()
+  for (const seg of paragraphSegments) {
+    segmentCounts.set(seg, (segmentCounts.get(seg) || 0) + 1)
+  }
+  for (const [seg, count] of segmentCounts) {
+    if (count > maxParagraphOccurrences) {
+      return {
+        hasRepetition: true,
+        details: `Repeated paragraph segment (${count}x): "${seg.slice(0, 100)}..."`
+      }
+    }
+  }
+
+  return { hasRepetition: false, details: '' }
+}
 
 const CRITIC_SCHEMA = {
   type: 'object',
@@ -180,6 +238,25 @@ export function useStoryCritic() {
     isEvaluating.value = true
 
     try {
+      // Quick local check for excessive repetition before calling the critic.
+      // If the model looped the same text, we can fail fast without an LLM call.
+      const repCheck = detectRepetition(draft)
+      if (repCheck.hasRepetition) {
+        console.warn('[useStoryCritic] Repetition detected in draft:', repCheck.details)
+        return {
+          pass: false,
+          score: 1,
+          evalUnavailable: false,
+          issues: [{
+            severity: 'critical',
+            type: 'repetition',
+            description: `Excessive repetition detected: ${repCheck.details}`
+          }],
+          strengths: [],
+          dimensionScores: {}
+        }
+      }
+
       const projectStore = useProjectStore()
       const categoryType = projectStore.activeWorkspaceType || 'creative'
       const activePrompts = projectStore.getActivePrompts(categoryType)
@@ -263,7 +340,14 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
       }
 
       const threshold = getDefaultThreshold(categoryType)
-      const pass = score >= threshold
+
+      // Derived from the dimension scores and issue severity, NOT from `score`.
+      // Measured against the snapshot corpus, `score` is saturated: good-pass,
+      // borderline, and a deliberately contradictory clear-fail all came back at
+      // 8/10, so `score >= threshold` passed every one of them and the pipeline
+      // gate could not reject anything. See services/criticVerdict.ts.
+      const verdict = deriveVerdict({ score, dimensionScores, issues }, threshold)
+      const pass = verdict.pass
 
       // A malformed critique silently corrupts score aggregation downstream,
       // so shape is verified before the result leaves the composable. Kept as
@@ -282,7 +366,13 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         score,
         dimensionScores,
         issues,
-        strengths
+        strengths,
+        // Why the verdict went the way it did. Without this a failed gate says
+        // only "rejected", and the author cannot see that it was voice at 6 —
+        // which is the actionable part.
+        verdictReason: verdict.reason,
+        weakestDimension: verdict.weakestDimension,
+        dimensionMean: verdict.dimensionMean
       }
     } catch {
       return {

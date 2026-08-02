@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { generateEntity } from './generation/pipeline'
-import { createOptimizationSession } from '../services/db-optimizations'
+import { createOptimizationSession, updateOptimizationSession } from '../services/db-optimizations'
 import dimensionPromptMap from '../evaluation/dimensionPromptMap.json'
 
 interface Improvement {
@@ -111,14 +111,14 @@ export function usePromptOptimizer() {
   async function acceptPatch(session: { chosen: string | null; id?: any }) {
     session.chosen = 'patched'
     if (session.id) {
-      await createOptimizationSession({ ...session, status: 'patched-accepted' })
+      await updateOptimizationSession(session.id, { chosen: 'patched', status: 'patched-accepted' })
     }
   }
 
   async function rejectPatch(session: { chosen: string | null; id?: any }) {
     session.chosen = 'original'
     if (session.id) {
-      await createOptimizationSession({ ...session, status: 'original-kept' })
+      await updateOptimizationSession(session.id, { chosen: 'original', status: 'original-kept' })
     }
   }
 

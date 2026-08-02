@@ -1,8 +1,139 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ref, computed } from 'vue'
+
+// Top-level mock data for aggregateChapterContent tests
+const aggMockSections = ref([
+  { id: 'sec-1', title: 'Chapter 1', wordCount: 0, status: 'planning', content: '' },
+  { id: 'sec-2', title: 'Chapter 2', wordCount: 0, status: 'planning', content: '' },
+  {
+    id: 'sec-3',
+    title: 'Chapter 3 (hand-written)',
+    wordCount: 500,
+    status: 'generated',
+    content: '<p>Hand written content</p>'
+  }
+])
+const aggMockSubsections = ref([
+  {
+    id: 'sub-1',
+    sectionId: 'sec-1',
+    title: 'Scene 1',
+    content: '<p>Scene 1 prose</p>',
+    wordCount: 100,
+    order: 0,
+    contentStatus: 'generated'
+  },
+  {
+    id: 'sub-2',
+    sectionId: 'sec-1',
+    title: 'Scene 2',
+    content: '<p>Scene 2 prose</p>',
+    wordCount: 150,
+    order: 1,
+    contentStatus: 'generated'
+  },
+  {
+    id: 'sub-3',
+    sectionId: 'sec-1',
+    title: 'Scene 3 (empty)',
+    content: '',
+    wordCount: 0,
+    order: 2,
+    contentStatus: 'pending'
+  },
+  {
+    id: 'sub-4',
+    sectionId: 'sec-2',
+    title: 'Scene 1',
+    content: '<p>Only scene in Ch2</p>',
+    wordCount: 200,
+    order: 0,
+    contentStatus: 'generated'
+  }
+])
+const aggMockSubsectionsBySection = computed(() => {
+  const grouped = {}
+  for (const sub of aggMockSubsections.value) {
+    if (!grouped[sub.sectionId]) grouped[sub.sectionId] = []
+    grouped[sub.sectionId].push(sub)
+  }
+  for (const key in grouped) {
+    grouped[key].sort((a, b) => (a.order || 0) - (b.order || 0))
+  }
+  return grouped
+})
+let aggMockUpdateSectionData
+
+vi.mock('@/stores/manuscriptStore', () => ({
+  useManuscriptStore: () => ({
+    get sections() {
+      return aggMockSections.value
+    },
+    get subsections() {
+      return aggMockSubsections.value
+    },
+    get subsectionsBySection() {
+      const grouped = {}
+      for (const sub of aggMockSubsections.value) {
+        if (!grouped[sub.sectionId]) grouped[sub.sectionId] = []
+        grouped[sub.sectionId].push(sub)
+      }
+      for (const key in grouped) {
+        grouped[key].sort((a, b) => (a.order || 0) - (b.order || 0))
+      }
+      // Add .get() method for compatibility with aggregateChapterContent
+      return {
+        ...grouped,
+        get: (key) => grouped[key]
+      }
+    },
+    updateSectionData: vi.fn((id, data) => {
+      const idx = aggMockSections.value.findIndex((s) => s.id === id)
+      if (idx !== -1) {
+        aggMockSections.value[idx] = { ...aggMockSections.value[idx], ...data }
+      }
+    }),
+    triggerStyleGuideRegen: vi.fn(),
+    get sortedSections() {
+      return [...aggMockSections.value].sort((a, b) => (a.order || 0) - (b.order || 0))
+    },
+    get activeSection() {
+      return aggMockSections.value.find((c) => c.id === aggMockActiveSectionId?.value)
+    },
+    get activeSubsection() {
+      return aggMockSubsections.value.find((s) => s.id === aggMockActiveSubsectionId?.value)
+    },
+    storyElements: ref([]),
+    relationships: ref([]),
+    activeSectionId: ref(null),
+    activeSubsectionId: ref(null),
+    isLoading: ref(false),
+    loadError: ref(null),
+    loadManuscript: vi.fn(),
+    addSectionData: vi.fn(),
+    deleteSectionData: vi.fn(),
+    reorderSectionsData: vi.fn(),
+    addSubsectionData: vi.fn(),
+    updateSubsectionData: vi.fn(),
+    deleteSubsectionData: vi.fn(),
+    reorderSubsectionsData: vi.fn(),
+    addStoryElementData: vi.fn(),
+    addStoryElementsBatchData: vi.fn(),
+    updateStoryElementData: vi.fn(),
+    deleteStoryElementData: vi.fn(),
+    addRelationshipData: vi.fn(),
+    updateRelationshipData: vi.fn(),
+    deleteRelationshipData: vi.fn(),
+    setActiveSection: vi.fn(),
+    setActiveSubsection: vi.fn(),
+    setManuscriptContent: vi.fn(),
+    getFullText: vi.fn(),
+    clearManuscript: vi.fn()
+  })
+}))
 
 vi.mock('../stores/storyBibleStore', () => ({ useStoryBibleStore: vi.fn() }))
 vi.mock('../stores/volumeStore', () => ({ useVolumeStore: vi.fn() }))
-vi.mock('../stores/manuscriptStore', () => ({ useManuscriptStore: vi.fn() }))
 vi.mock('../stores/storyGraphStore', () => ({ useStoryGraphStore: vi.fn() }))
 vi.mock('./useStoryDirector', () => ({ useStoryDirector: vi.fn() }))
 vi.mock('./useEntityBootstrapper', () => ({ useEntityBootstrapper: vi.fn() }))
@@ -13,6 +144,9 @@ vi.mock('./useStoryDocuments', () => ({ useStoryDocuments: vi.fn() }))
 vi.mock('./useActivityLog', () => ({ useActivityLog: vi.fn() }))
 vi.mock('../services/aiService', () => ({ aiGenerate: vi.fn() }))
 vi.mock('../config/ai', () => ({ FEATURES: {}, PROVIDERS: { OLLAMA: 'ollama', OPENAI: 'openai' } }))
+
+const aggMockActiveSectionId = ref(null)
+const aggMockActiveSubsectionId = ref(null)
 
 let buildEmbeddingContext,
   formatFullSpineEntry,
@@ -547,7 +681,9 @@ describe('detectSceneConflicts', () => {
 
   it('returns empty array for fewer than 2 results', () => {
     expect(detectSceneConflicts([])).toEqual([])
-    expect(detectSceneConflicts([{ sceneIndex: 1, success: true, keyFacts: ['X is alive'] }])).toEqual([])
+    expect(
+      detectSceneConflicts([{ sceneIndex: 1, success: true, keyFacts: ['X is alive'] }])
+    ).toEqual([])
   })
 
   it('returns empty array when facts are all unique', () => {
@@ -634,10 +770,27 @@ describe('resolveSceneConflicts', () => {
 
   it('removes conflicting fact from lower-scored scene', async () => {
     const results = [
-      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'], eval: { score: 8 } },
-      { sceneIndex: 2, success: true, keyFacts: ['The sword was hidden in the crypt'], eval: { score: 5 } }
+      {
+        sceneIndex: 1,
+        success: true,
+        keyFacts: ['The sword was forged in dragonfire'],
+        eval: { score: 8 }
+      },
+      {
+        sceneIndex: 2,
+        success: true,
+        keyFacts: ['The sword was hidden in the crypt'],
+        eval: { score: 5 }
+      }
     ]
-    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    const conflicts = [
+      {
+        sceneA: 1,
+        sceneB: 2,
+        factA: 'The sword was forged in dragonfire',
+        factB: 'The sword was hidden in the crypt'
+      }
+    ]
     await resolveSceneConflicts(conflicts, results)
     expect(results[1].keyFacts).toEqual([])
     expect(results[0].keyFacts).toHaveLength(1)
@@ -645,10 +798,27 @@ describe('resolveSceneConflicts', () => {
 
   it('removes fact from lower-scored scene when scene A has lower score', async () => {
     const results = [
-      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'], eval: { score: 3 } },
-      { sceneIndex: 2, success: true, keyFacts: ['The sword was hidden in the crypt'], eval: { score: 9 } }
+      {
+        sceneIndex: 1,
+        success: true,
+        keyFacts: ['The sword was forged in dragonfire'],
+        eval: { score: 3 }
+      },
+      {
+        sceneIndex: 2,
+        success: true,
+        keyFacts: ['The sword was hidden in the crypt'],
+        eval: { score: 9 }
+      }
     ]
-    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    const conflicts = [
+      {
+        sceneA: 1,
+        sceneB: 2,
+        factA: 'The sword was forged in dragonfire',
+        factB: 'The sword was hidden in the crypt'
+      }
+    ]
     await resolveSceneConflicts(conflicts, results)
     expect(results[0].keyFacts).toEqual([])
     expect(results[1].keyFacts).toHaveLength(1)
@@ -656,18 +826,33 @@ describe('resolveSceneConflicts', () => {
 
   it('skips conflict when either scene failed', async () => {
     const results = [
-      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'], eval: { score: 8 } },
-      { sceneIndex: 2, success: false, keyFacts: ['The sword was hidden in the crypt'], eval: { score: 5 } }
+      {
+        sceneIndex: 1,
+        success: true,
+        keyFacts: ['The sword was forged in dragonfire'],
+        eval: { score: 8 }
+      },
+      {
+        sceneIndex: 2,
+        success: false,
+        keyFacts: ['The sword was hidden in the crypt'],
+        eval: { score: 5 }
+      }
     ]
-    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    const conflicts = [
+      {
+        sceneA: 1,
+        sceneB: 2,
+        factA: 'The sword was forged in dragonfire',
+        factB: 'The sword was hidden in the crypt'
+      }
+    ]
     await resolveSceneConflicts(conflicts, results)
     expect(results[1].keyFacts).toHaveLength(1)
   })
 
   it('handles empty conflicts array', async () => {
-    const results = [
-      { sceneIndex: 1, success: true, keyFacts: ['A fact'], eval: { score: 8 } }
-    ]
+    const results = [{ sceneIndex: 1, success: true, keyFacts: ['A fact'], eval: { score: 8 } }]
     await resolveSceneConflicts([], results)
     expect(results[0].keyFacts).toHaveLength(1)
   })
@@ -677,17 +862,41 @@ describe('resolveSceneConflicts', () => {
       { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire'] },
       { sceneIndex: 2, success: true, keyFacts: ['The sword was hidden in the crypt'] }
     ]
-    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    const conflicts = [
+      {
+        sceneA: 1,
+        sceneB: 2,
+        factA: 'The sword was forged in dragonfire',
+        factB: 'The sword was hidden in the crypt'
+      }
+    ]
     await resolveSceneConflicts(conflicts, results)
     expect(results[1].keyFacts).toEqual([])
   })
 
   it('preserves non-conflicting facts', async () => {
     const results = [
-      { sceneIndex: 1, success: true, keyFacts: ['The sword was forged in dragonfire', 'Dragon is ancient'], eval: { score: 8 } },
-      { sceneIndex: 2, success: true, keyFacts: ['The sword was hidden in the crypt'], eval: { score: 5 } }
+      {
+        sceneIndex: 1,
+        success: true,
+        keyFacts: ['The sword was forged in dragonfire', 'Dragon is ancient'],
+        eval: { score: 8 }
+      },
+      {
+        sceneIndex: 2,
+        success: true,
+        keyFacts: ['The sword was hidden in the crypt'],
+        eval: { score: 5 }
+      }
     ]
-    const conflicts = [{ sceneA: 1, sceneB: 2, factA: 'The sword was forged in dragonfire', factB: 'The sword was hidden in the crypt' }]
+    const conflicts = [
+      {
+        sceneA: 1,
+        sceneB: 2,
+        factA: 'The sword was forged in dragonfire',
+        factB: 'The sword was hidden in the crypt'
+      }
+    ]
     await resolveSceneConflicts(conflicts, results)
     expect(results[0].keyFacts).toEqual(['The sword was forged in dragonfire', 'Dragon is ancient'])
     expect(results[1].keyFacts).toEqual([])
@@ -707,9 +916,24 @@ describe('parallel generation end-to-end: 3 scenes concurrent, verify no conflic
 
   it('processes a wave of 3 scenes without cross-talk', async () => {
     const sceneResults = [
-      { sceneIndex: 0, success: true, keyFacts: ['Hero discovers the ancient map'], eval: { score: 8 } },
-      { sceneIndex: 1, success: true, keyFacts: ['Village prepares for the winter feast'], eval: { score: 7 } },
-      { sceneIndex: 2, success: true, keyFacts: ['Guard patrols the northern wall'], eval: { score: 9 } }
+      {
+        sceneIndex: 0,
+        success: true,
+        keyFacts: ['Hero discovers the ancient map'],
+        eval: { score: 8 }
+      },
+      {
+        sceneIndex: 1,
+        success: true,
+        keyFacts: ['Village prepares for the winter feast'],
+        eval: { score: 7 }
+      },
+      {
+        sceneIndex: 2,
+        success: true,
+        keyFacts: ['Guard patrols the northern wall'],
+        eval: { score: 9 }
+      }
     ]
 
     const conflicts = detectSceneConflicts(sceneResults)
@@ -723,9 +947,24 @@ describe('parallel generation end-to-end: 3 scenes concurrent, verify no conflic
 
   it('detects and resolves conflicts in a 3-scene wave end-to-end', async () => {
     const sceneResults = [
-      { sceneIndex: 0, success: true, keyFacts: ['The Necromancer raises an undead army'], eval: { score: 9 } },
-      { sceneIndex: 1, success: true, keyFacts: ['The Necromancer summons the undead legion'], eval: { score: 4 } },
-      { sceneIndex: 2, success: true, keyFacts: ['Hero rallies the kingdom for battle'], eval: { score: 8 } }
+      {
+        sceneIndex: 0,
+        success: true,
+        keyFacts: ['The Necromancer raises an undead army'],
+        eval: { score: 9 }
+      },
+      {
+        sceneIndex: 1,
+        success: true,
+        keyFacts: ['The Necromancer summons the undead legion'],
+        eval: { score: 4 }
+      },
+      {
+        sceneIndex: 2,
+        success: true,
+        keyFacts: ['Hero rallies the kingdom for battle'],
+        eval: { score: 8 }
+      }
     ]
 
     const originalFacts = sceneResults.map((r) => [...r.keyFacts])
@@ -858,5 +1097,82 @@ describe('useVolumeStoryGenerator', () => {
     expect(gen.rejectedPatterns.value).toHaveLength(5)
     expect(gen.rejectedPatterns.value[0].context).toBe('context-2')
     expect(gen.rejectedPatterns.value[4].context).toBe('context-6')
+  })
+})
+
+describe('aggregateChapterContent', () => {
+  it('joins subsection HTML with <hr> and sums wordCount', async () => {
+    const gen = useVolumeStoryGenerator()
+    gen.runCreatedSectionIds.value = new Set(['sec-1', 'sec-2'])
+
+    await gen.aggregateChapterContent()
+
+    // Check sec-1: 2 scenes with content, joined by <hr>
+    expect(aggMockSections.value.find((s) => s.id === 'sec-1')).toMatchObject({
+      content: '<p>Scene 1 prose</p><hr><p>Scene 2 prose</p>',
+      wordCount: 250, // 100 + 150
+      status: 'generated'
+    })
+
+    // Check sec-2: 1 scene with content
+    expect(aggMockSections.value.find((s) => s.id === 'sec-2')).toMatchObject({
+      content: '<p>Only scene in Ch2</p>',
+      wordCount: 200,
+      status: 'generated'
+    })
+  })
+
+  it('skips hand-written chapters not in runCreatedSectionIds', async () => {
+    const gen = useVolumeStoryGenerator()
+    gen.runCreatedSectionIds.value = new Set(['sec-1', 'sec-2']) // sec-3 NOT included
+
+    // Reset sec-3 to original state
+    const sec3 = aggMockSections.value.find((s) => s.id === 'sec-3')
+    sec3.content = '<p>Hand written content</p>'
+    sec3.wordCount = 500
+    sec3.status = 'generated'
+
+    await gen.aggregateChapterContent()
+
+    // sec-3 should not be updated (hand-written, not in this run)
+    expect(aggMockSections.value.find((s) => s.id === 'sec-3')).toMatchObject({
+      content: '<p>Hand written content</p>',
+      wordCount: 500,
+      status: 'generated'
+    })
+  })
+
+  it('skips sections with no subsections', async () => {
+    const gen = useVolumeStoryGenerator()
+    gen.runCreatedSectionIds.value = new Set(['sec-3']) // sec-3 has no subsections
+
+    // Reset sec-3 to original state
+    const sec3 = aggMockSections.value.find((s) => s.id === 'sec-3')
+    sec3.content = '<p>Hand written content</p>'
+    sec3.wordCount = 500
+    sec3.status = 'generated'
+
+    await gen.aggregateChapterContent()
+
+    // sec-3 should not be updated (no subsections)
+    expect(aggMockSections.value.find((s) => s.id === 'sec-3')).toMatchObject({
+      content: '<p>Hand written content</p>',
+      wordCount: 500,
+      status: 'generated'
+    })
+  })
+
+  it('skips subsections with empty content', async () => {
+    const gen = useVolumeStoryGenerator()
+    gen.runCreatedSectionIds.value = new Set(['sec-1'])
+
+    await gen.aggregateChapterContent()
+
+    // Should only include sub-1 and sub-2, not sub-3 (empty)
+    expect(aggMockSections.value.find((s) => s.id === 'sec-1')).toMatchObject({
+      content: '<p>Scene 1 prose</p><hr><p>Scene 2 prose</p>',
+      wordCount: 250,
+      status: 'generated'
+    })
   })
 })
