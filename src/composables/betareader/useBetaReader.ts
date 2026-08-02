@@ -56,8 +56,10 @@ export function useBetaReader() {
         activePass.value = i
         currentPhase.value = pass.label
 
+        // How much of the ledger came from committed digests rather than fresh
+        // model calls — the difference between seconds and hours at scale.
         if (pass.key === 'factLedger') {
-          passResults.factLedger = await extractAllFacts(scenes, aiOptions)
+          passResults.factLedger = await extractAllFacts(scenes, aiOptions, projectId)
         } else if (pass.key === 'contradictions') {
           passResults.contradictions = await detectContradictions(
             passResults.factLedger,
