@@ -16,7 +16,6 @@ perm_check.txt
 perm_result.txt
 
 # Agent / skill directories
-.opencode/
 .agents/
 .claude/
 skills/
