@@ -1,0 +1,46 @@
+{
+  "$schema": "critic-snapshot-1",
+  "takenAt": "2026-08-02T08:24:24.736Z",
+  "fixtureName": "good-pass",
+  "sceneId": "good-pass",
+  "categoryType": "creative",
+  "model": "ollama/qwen3:8b",
+  "promptHash": "a4eb07621f8bd8fbf21a3bc2b5952bc402a95acbd4f2d46a7134bcc95e196db1",
+  "systemPrompt": "You are an expert story editor and literary critic. Evaluate if the scene matches its emotional goals, character wants, and tension. Ensure smooth pacing and no filler. Pass score threshold is 7/10. Return JSON: { \"pass\": boolean, \"score\": number, \"dimensionScores\": { \"continuity\": number, \"voice\": number, \"emotional_goal\": number, \"show_tell\": number, \"pacing\": number }, \"issues\": [{ \"type\": \"continuity\"|\"voice\"|\"emotional_goal\"|\"show_tell\"|\"pacing\", \"description\": \"string\", \"severity\": \"minor\"|\"major\" }], \"strengths\": [\"string\"] }",
+  "userPrompt": "Evaluate this scene draft across ALL of the following dimensions:\n  - continuity\n  - voice\n  - emotional_goal\n  - show_tell\n  - pacing\n\nYou MUST provide a score (1-10) for each dimension in the \"dimensionScores\" field of your JSON response.\n\nSCENE BRIEF:\n- Title: The Last Letter\n- Emotional goal: Hope mingled with grief — Clara must accept that closure isn't about answers, it's about letting go.\n- Characters present: Clara (protagonist, 34, archivist, grieving sister), Margaret (elderly neighbor, ward of the deceased)\n- Payoff: Clara realizes her brother's final letter was never about explaining his death — it was about asking her to live fully in his absence.\n- Tension: Clara is terrified of reading the letter because she believes it will confirm her worst fear — that she failed him. Margaret's presence forces her to confront it.\n\nCHAPTER LOG (previous events):\nClara has just arrived back in her hometown after receiving word that Margaret found a letter from Tom. She has spent three years avoiding the question of why he did it, burying herself in work and routine. This is the first time she has gone to Margaret's house since the funeral.\n\nEXISTING ENTITIES CONTEXT:\n[{\"name\":\"Sycamore Street\",\"type\":\"location\",\"notes\":\"The street where Tom lived and where Margaret still lives. Old trees, quiet neighborhood, porch swings.\"},{\"name\":\"The Treehouse\",\"type\":\"memory\",\"notes\":\"Built in the backyard of Clara and Tom's childhood home. Still standing, now used by the current owner's children.\"},{\"name\":\"Berlin\",\"type\":\"location\",\"notes\":\"Where Clara has been living. Represents her escape and her guilt in equal measure.\"}]\n\nSTORY BIBLE (character descriptions for voice check):\nClara: 34-year-old archivist, meticulous but emotionally avoidant. Has spent her adult life building a career in Berlin to escape the weight of her family's expectations. Her brother Tom's suicide three years ago brought her back to her hometown, where she has been frozen in grief. She is organized, competent, and deeply afraid of vulnerability.\n\nTom: Deceased at 37. A carpenter and woodworker, creative and sensitive, struggled with depression for most of his adult life. Was always the one who protected Clara from their parents' fighting. His humor was dry, self-deprecating, and often masked his pain.\n\nMargaret: 82-year-old widow, Tom's landlord for the last five years of his life. Sharp, observant, not sentimental but deeply kind. Has a gift for saying exactly what people need to hear without coddling them.\n\nNOTE: Fewer than 2 characters defined. Skip continuity and voice checks.\n\nDRAFT TEXT:\nThe envelope sat on Margaret's coffee table for twenty minutes before either of them spoke.\n\nClara stared at it. The paper had the faint yellowing of age, but the ink was still sharp — her brother's handwriting, unmistakable even after three years. The slant of the 'g', the way he looped his 'y's. She had memorized the shape of his letters when they were children, passing notes across the dinner table while their mother pretended not to notice.\n\n'I found it in the back of his closet,' Margaret said. Her voice had the careful neutrality of someone who had delivered bad news before. She was eighty-two and had outlived two husbands, three siblings, and now a tenant she had grown fond of. 'Behind the loose board he always used to hide things.'\n\nClara's throat tightened. 'He never told me about a loose board.'\n\n'No.' Margaret's eyes were soft, pitying in a way that made Clara want to look away. 'He wouldn't have, would he? That was never his way.'\n\nThe accusation wasn't intended — Clara knew that. But it landed anyway, settling into the space beneath her ribs where guilt had made its permanent home. She had been in Berlin when he died. Three time zones away, building a career while her brother was dismantling his life piece by piece. The phone calls she hadn't returned. The visits she had postponed. The I-love-you's she had assumed there would always be time for.\n\n'I'm not sure I can read it.'\n\nMargaret didn't answer. She simply picked up her tea and waited, the way old women learn to wait — with infinite patience and no expectation. The clock on the mantelpiece ticked. A car passed on the street outside, its engine a low hum that faded into the afternoon.\n\nClara picked up the envelope. It was lighter than she expected. No weight at all for something that had haunted her for three years.\n\nShe slid her finger under the seal. The paper gave way easily, as if it had been waiting for her. Inside was a single page, folded twice. She unfolded it.\n\nThe words were his: messy, rushed, the letters crammed together like they were in a hurry to be written. No greeting. No preamble.\n\n'Remember the summer we built the treehouse? You were nine and I was twelve and Dad said we'd never get it straight. But we did. We used your idea for the cross-brace — the one you drew with a crayon on a napkin. You always had the good ideas, Clarie. You always knew how to hold things together.\n\nI'm sorry I stopped letting you hold things together for me. I'm sorry I made you feel like it was your job. It wasn't. None of it was your fault.\n\nI'm tired. Not the kind of tired that sleep fixes. The kind that lives in your bones and tells you the world would be quieter without you in it. I know you'll blame yourself. Please don't. This is my choice, my peace.\n\nBut here's what I need you to do: live. Not survive. Live. Travel to that place in Japan you always talked about. Learn to cook something complicated and fail at it and laugh. Fall in love with someone who makes you forget to check your phone.\n\nBe the person who holds things together — but only the things worth holding. Let the rest go.\n\nI love you. I always have.\n\nTom'\n\nClara read it twice. The first time she couldn't breathe. The second time, she could.\n\nWhen she looked up, Margaret was watching her with those steady old eyes. 'Well?'\n\n'He wasn't angry.' Clara's voice cracked on the last word. 'He wasn't blaming me.'\n\n'No,' Margaret said. 'I didn't think he would be. He wasn't that kind of man.'\n\nClara folded the letter and placed it back in the envelope. The guilt was still there — three years of it didn't vanish in a single reading. But something had shifted. A crack in the wall she had built around herself. Enough to let the light in.\n\n'Thank you,' she said. And meant it.\n\nThe afternoon sun streamed through Margaret's lace curtains, casting patterns on the carpet that looked like constellations. Clara sat with the letter in her lap and, for the first time in three years, breathed.\n\nReturn JSON evaluation with dimensionScores covering all listed dimensions.",
+  "dimensionNames": [
+    "continuity",
+    "voice",
+    "emotional_goal",
+    "show_tell",
+    "pacing"
+  ],
+  "threshold": 7,
+  "hasFewCharacters": true,
+  "result": {
+    "pass": true,
+    "score": 8,
+    "dimensionScores": {
+      "continuity": 9,
+      "voice": 9,
+      "emotional_goal": 10,
+      "show_tell": 8,
+      "pacing": 9
+    },
+    "issues": [
+      {
+        "type": "show_tell",
+        "description": "A few instances of telling (e.g., 'The guilt was still there — three years of it didn't vanish in a single reading.') could be more subtly shown through physical or emotional reactions.",
+        "severity": "minor"
+      }
+    ],
+    "strengths": [
+      "The emotional goal is fully realized through the letter and Clara's transformation.",
+      "Voice is consistent with Clara's emotional avoidance and meticulous nature.",
+      "Pacing is smooth and builds tension effectively.",
+      "The letter itself is a powerful, emotionally resonant payoff."
+    ],
+    "verdictReason": "all dimensions at or above 7 (weakest: show_tell 8)",
+    "selfReportedPass": true
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "critic-snapshot-1",
+  "takenAt": "2026-08-02T08:23:39.565Z",
+  "fixtureName": "clear-fail",
+  "sceneId": "clear-fail",
+  "categoryType": "thriller",
+  "model": "ollama/qwen3:8b",
+  "promptHash": "0741a7c3022e0b5f21be739dfe4cef8cb3beba71ae8c03f3419b92e193f6b2e9",
+  "systemPrompt": "You are an expert story editor and literary critic. Evaluate if the scene matches its emotional goals, character wants, and tension. Ensure smooth pacing and no filler. Pass score threshold is 7/10. Return JSON: { \"pass\": boolean, \"score\": number, \"dimensionScores\": { \"continuity\": number, \"voice\": number, \"emotional_goal\": number, \"show_tell\": number, \"pacing\": number }, \"issues\": [{ \"type\": \"continuity\"|\"voice\"|\"emotional_goal\"|\"show_tell\"|\"pacing\", \"description\": \"string\", \"severity\": \"minor\"|\"major\" }], \"strengths\": [\"string\"] }",
+  "userPrompt": "Evaluate this scene draft across ALL of the following dimensions:\n  - continuity\n  - voice\n  - emotional_goal\n  - show_tell\n  - pacing\n\nYou MUST provide a score (1-10) for each dimension in the \"dimensionScores\" field of your JSON response.\n\nSCENE BRIEF:\n- Title: The Briefing\n- Emotional goal: Suspense and dread — Elena must realize the mission is a trap before it's too late.\n- Characters present: John (detective, tough, unflappable, 45), Elena (analyst, brilliant, intuitive, 29)\n- Payoff: Elena discovers the intel was planted by a mole inside the agency, but John is the mole.\n- Tension: Elena is running out of time to warn her team before they walk into a coordinated ambush.\n\nCHAPTER LOG (previous events):\nThe team has been investigating a conspiracy involving a mole inside the agency for three weeks. This is the first briefing where concrete intel has been acquired.\n\nEXISTING ENTITIES CONTEXT:\n[{\"name\":\"FBI Field Office\",\"type\":\"location\",\"notes\":\"Where the briefing takes place. Glass walls, whiteboards, fluorescent lights.\"}]\n\nSTORY BIBLE (character descriptions for voice check):\nJohn: 45-year-old detective with 20 years on the force. Known for being calm under pressure. He has a dry wit and an unflappable demeanor that has earned him the nickname 'The Iceman' among his peers.\n\nElena: 29-year-old FBI analyst, promoted early for her pattern-recognition skills. She is intuitive to the point of being uncanny, but struggles with interpersonal trust due to a past betrayal.\n\nNOTE: Fewer than 2 characters defined. Skip continuity and voice checks.\n\nDRAFT TEXT:\nThe briefing room was tense. John was a detective and he was tough. He had seen a lot of things in his career and nothing surprised him anymore. The case file on the table was thick with evidence of a conspiracy that went all the way to the top.\n\n'This is bad,' John said. He was scared. His hands were shaking. 'Really bad.'\n\nElena looked at the evidence. It was clearly planted. She was a brilliant analyst and she could tell immediately that the intel was designed to mislead them. It was too neat, too convenient. Every piece fit together like a puzzle made by someone who wanted it to be solved.\n\n'This intel is planted,' Elena said. 'It's a trap.'\n\nJohn didn't listen. He was too scared. He was panicking now, sweating, unable to think clearly. He was supposed to be a tough unflappable detective but here he was falling apart like a rookie.\n\nThe room was tense. The clock was ticking. Elena knew they had to hurry but John was useless now, completely useless. She would have to do everything herself.\n\nThe conspiracy was deep. The mole was close. Elena realized that John was acting very suspiciously. She realized that he might be the mole. This was a shocking revelation because she had trusted him completely. She was surprised and upset.\n\n'You're the mole,' Elena said.\n\nJohn didn't deny it. He just looked at her with cold eyes and said 'You're too late.'\n\nBut Elena was smart so she had already called for backup. The backup arrived and John was arrested. Elena had saved the day. She was the hero. The mission was a success and everyone was safe thanks to her quick thinking and brilliant analysis.\n\nElena felt proud. She had proven herself. The end.\n\nReturn JSON evaluation with dimensionScores covering all listed dimensions.",
+  "dimensionNames": [
+    "continuity",
+    "voice",
+    "emotional_goal",
+    "show_tell",
+    "pacing"
+  ],
+  "threshold": 7,
+  "hasFewCharacters": true,
+  "result": {
+    "pass": false,
+    "score": 8,
+    "dimensionScores": {
+      "continuity": 7,
+      "voice": 6,
+      "emotional_goal": 9,
+      "show_tell": 7,
+      "pacing": 8
+    },
+    "issues": [
+      {
+        "type": "continuity",
+        "description": "The scene jumps from the briefing to the resolution without clear setup for the backup arrival and arrest. This could confuse the reader about how Elena called for backup and how quickly it happened.",
+        "severity": "minor"
+      },
+      {
+        "type": "voice",
+        "description": "The dialogue and internal monologue don't fully match the established voices for John and Elena. John's 'scared' and 'panicking' moments feel inconsistent with his 'unflappable' character, and Elena's internal thoughts are not as nuanced as her analytical nature.",
+        "severity": "minor"
+      },
+      {
+        "type": "show_tell",
+        "description": "There is some 'telling' in the scene, such as 'Elena realized that John was acting very suspiciously,' which could be shown more through action or subtle cues.",
+        "severity": "minor"
+      }
+    ],
+    "strengths": [
+      "The emotional goal of suspense and dread is well executed, especially in the buildup to Elena's realization and the confrontation with John.",
+      "The pacing is tight and builds tension effectively, especially in the middle of the scene where Elena is trying to warn the team.",
+      "The payoff of the mole being John is impactful and aligns with the emotional goal of the scene."
+    ],
+    "verdictReason": "voice scored 6, below the minimum 7",
+    "selfReportedPass": true
+  }
+}

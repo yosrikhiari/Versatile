@@ -1,0 +1,46 @@
+{
+  "$schema": "critic-snapshot-1",
+  "takenAt": "2026-08-02T08:22:28.390Z",
+  "fixtureName": "borderline",
+  "sceneId": "borderline",
+  "categoryType": "creative",
+  "model": "ollama/qwen3:8b",
+  "promptHash": "3a2f9fc3897a24f5df70f704200ae3cd708e57673f0e0897764d96de578abf72",
+  "systemPrompt": "You are an expert story editor and literary critic. Evaluate if the scene matches its emotional goals, character wants, and tension. Ensure smooth pacing and no filler. Pass score threshold is 7/10. Return JSON: { \"pass\": boolean, \"score\": number, \"dimensionScores\": { \"continuity\": number, \"voice\": number, \"emotional_goal\": number, \"show_tell\": number, \"pacing\": number }, \"issues\": [{ \"type\": \"continuity\"|\"voice\"|\"emotional_goal\"|\"show_tell\"|\"pacing\", \"description\": \"string\", \"severity\": \"minor\"|\"major\" }], \"strengths\": [\"string\"] }",
+  "userPrompt": "Evaluate this scene draft across ALL of the following dimensions:\n  - continuity\n  - voice\n  - emotional_goal\n  - show_tell\n  - pacing\n\nYou MUST provide a score (1-10) for each dimension in the \"dimensionScores\" field of your JSON response.\n\nSCENE BRIEF:\n- Title: The Coast Road\n- Emotional goal: Bittersweet reconciliation — father and daughter must find a way to bridge a decade of silence without erasing the hurt.\n- Characters present: Nina (protagonist, 32, graphic designer, guarded), Leo (her father, 68, retired fisherman, stubborn)\n- Payoff: They don't fully reconcile — but Nina agrees to stay for the weekend instead of fleeing, which is more than either expected.\n- Tension: Nina hasn't spoken to her father since she came out at nineteen. He didn't disown her — he just never called. Now she's back because her mother asked her to help clear out the house.\n\nCHAPTER LOG (previous events):\nNina hasn't been home in ten years. Her mother called last week to say they're selling the house and need help sorting through the attic. Nina agreed to come for the weekend. She hasn't told them she's only planning to stay one night.\n\nEXISTING ENTITIES CONTEXT:\n[{\"name\":\"Coast Road\",\"type\":\"location\",\"notes\":\"Highway along the Oregon coast. Emotional landmark for Nina.\"},{\"name\":\"The Diner\",\"type\":\"location\",\"notes\":\"Coast Road Diner. Still open after forty years. Nina worked there one summer.\"},{\"name\":\"Portland\",\"type\":\"location\",\"notes\":\"Where Nina lives now. Represents the life she built away from home.\"}]\n\nSTORY BIBLE (character descriptions for voice check):\nNina: 32-year-old graphic designer living in Portland. Came out as a lesbian at nineteen. Her father's silent rejection (no disowning, just withdrawal) sent her into a decade of self-sufficiency. She is guarded, self-reliant, and has built a life that requires no one's approval.\n\nLeo: 68-year-old retired fisherman. A man of few words and deep feelings he cannot articulate. His love for Nina never wavered, but his religious upbringing gave him no framework for understanding her truth. He chose silence over conflict and has regretted it every day.\n\nMargaret (mother): 65, a retired schoolteacher. The bridge between them. Has spent ten years mediating a war that neither side will admit exists.\n\nNOTE: Fewer than 2 characters defined. Skip continuity and voice checks.\n\nDRAFT TEXT:\nThe rental car smelled of artificial pine and old coffee. Nina drove with both hands on the wheel, knuckles white, watching the GPS count down the miles to a town she had spent ten years trying to forget.\n\nThe coast road curved along the edge of the cliff, the ocean a gray sheet on her left, the sky the color of unwashed sheets. She had driven this road a thousand times as a teenager — to school, to the mall, to Sarah's house, where she had first kissed a girl and understood something fundamental about herself. The road looked smaller now. Or maybe she was larger. She wasn't sure which.\n\nHer phone buzzed. Her mother: 'He's nervous. Please be patient.'\n\nNina set the phone face-down on the passenger seat and kept driving.\n\nThe house looked the same. That was the first surprise. Same peeling white paint on the porch railing, same wind chime that had been there since before she was born, same rusty anchor decoration beside the front door. Her father had always been a man of static things — he did not remodel, did not redecorate, did not change. The sameness of the house was him, distilled.\n\nShe parked, killed the engine, and sat for a long moment. The wind off the ocean rattled the car's frame.\n\nLeo opened the door before she could knock. He was smaller than she remembered. Not frail — still broad-shouldered from a lifetime of hauling fishing nets — but diminished somehow. His hair was white now, his face more lined. He looked at her the way you look at a photograph of someone you used to know.\n\n'Nina.'\n\n'Dad.'\n\nThe silence stretched. It was not comfortable.\n\n'Your mother's at the store,' he said. 'She'll be back in an hour.'\n\nHe stepped aside and she walked into the house.\n\nThe next hour was the longest of her life. They sat in the living room surrounded by boxes her mother had started packing, and they talked about the weather, about the road, about whether the old Coast Road diner was still open (it was). They did not talk about the ten years. They did not talk about why she left or why he never called. The absence of those conversations was a third person in the room, a silent witness that made every exchange stilted and hollow.\n\nWhen her mother returned, Nina felt relief so acute it was almost painful. Her mother hugged her without hesitation, the way she had always hugged her, and for a moment Nina let herself be small again.\n\nThey ordered pizza — her father's concession to having a guest — and ate in the kitchen that had been repainted a shade of yellow that clashed with everything. Nina told them about her job in Portland, her apartment with the leaky faucet, the cat she had adopted named Miso. She talked and talked because talking filled the space where the important things were supposed to go.\n\nAnd her father listened. He didn't interrupt. He didn't offer advice. He just listened, and something in his eyes — something she couldn't name — made her think he was trying to learn her all over again.\n\nNina felt that she had handled the conversation well. She was proud of how mature she was being. She had clearly grown as a person and was managing her emotions in a healthy way.\n\nThe meal ended. Her father stood up, hesitated, then said: 'Your room is the same. If you want to stay.'\n\nIt wasn't an apology. It wasn't an explanation. It was barely an invitation. But it was something.\n\nNina looked at him — at his stubborn jaw, his weathered hands, his inability to say the words that mattered — and for the first time all day, she didn't feel angry. She felt sad. And sad was more honest.\n\n'I'll stay,' she said.\n\nReturn JSON evaluation with dimensionScores covering all listed dimensions.",
+  "dimensionNames": [
+    "continuity",
+    "voice",
+    "emotional_goal",
+    "show_tell",
+    "pacing"
+  ],
+  "threshold": 7,
+  "hasFewCharacters": true,
+  "result": {
+    "pass": true,
+    "score": 8,
+    "dimensionScores": {
+      "continuity": 8,
+      "voice": 9,
+      "emotional_goal": 9,
+      "show_tell": 8,
+      "pacing": 8
+    },
+    "issues": [
+      {
+        "type": "show_tell",
+        "description": "The final line 'I'll stay' is a bit direct and could have been shown through more subtle action or dialogue.",
+        "severity": "minor"
+      }
+    ],
+    "strengths": [
+      "The emotional goal of bittersweet reconciliation is clearly and subtly achieved without overt resolution.",
+      "The voice of both characters is consistent with their established traits — Nina's guardedness and Leo's quiet strength.",
+      "Pacing is smooth and deliberate, allowing the tension and emotional weight to build naturally.",
+      "The setting and symbolic elements (Coast Road, the house, the diner) are used effectively to reinforce the emotional landscape."
+    ],
+    "verdictReason": "all dimensions at or above 7 (weakest: continuity 8)",
+    "selfReportedPass": true
+  }
+}
