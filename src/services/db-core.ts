@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie'
 import { SCHEMA_VERSIONS } from './db-schema'
 import { MIGRATIONS } from './db-migrations'
+import { DEFAULT_VOLUME_COLOR } from '../config/volumeColors'
 
 const DEV_MODE = false
 
@@ -38,6 +39,7 @@ export interface VersatileTables {
   optimizationSessions: VersatileTable
   pendingDeletions: VersatileTable
   plotThreads: VersatileTable
+  sceneDigests: VersatileTable
   projectBlurbs: VersatileTable
   projects: VersatileTable
   researchChunks: VersatileTable
@@ -113,7 +115,9 @@ db.on('ready', async () => {
     await db.volumes.add({
       title: 'Default',
       description: 'Default volume for all content',
-      color: '#6366f1',
+      // First volume on a fresh database, so there is nothing to rotate away
+      // from — the palette's first entry is exactly right here.
+      color: DEFAULT_VOLUME_COLOR,
       sectionIds: []
     })
   }

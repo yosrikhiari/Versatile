@@ -1,5 +1,6 @@
 // aliased: the lookup helpers below take a parameter named `table`
 import { table as dbTable } from './db-core'
+import { DEFAULT_VOLUME_COLOR } from '../config/volumeColors'
 
 interface SyncEntityConfig {
   table: string
@@ -313,7 +314,7 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
     toApi: (local: Record<string, unknown>) => ({
       title: (local.title || '') as string,
       description: (local.description || null) as string | null,
-      color: (local.color || '#6366f1') as string,
+      color: (local.color || DEFAULT_VOLUME_COLOR) as string,
       sortOrder: (local.sortOrder ?? 0) as number,
       sectionIds: Array.isArray(local.sectionIds)
         ? JSON.stringify(local.sectionIds)
@@ -323,7 +324,7 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       apiId: api.id,
       title: (api.title || '') as string,
       description: (api.description || '') as string,
-      color: (api.color || '#6366f1') as string,
+      color: (api.color || DEFAULT_VOLUME_COLOR) as string,
       sortOrder: (api.sortOrder ?? 0) as number,
       sectionIds: api.sectionIds || null,
       createdAt: (api.createdAt || new Date().toISOString()) as string,

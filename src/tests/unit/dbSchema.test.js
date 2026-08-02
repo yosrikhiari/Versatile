@@ -9,6 +9,8 @@ import { db } from '@/services/db-core'
 // See docs/database-schema-changelog.md for per-version documentation.
 const EXPECTED = {
   aiResponseCache: 'hash | [provider+model+temperature+feature], createdAt',
+  analysisQueue:
+    '++id | [projectId+status], createdAt, payload, projectId, status, taskType, updatedAt',
   annotations: '++id | original, paragraphIndex, projectId, reason, status, suggestion, type',
   authorProfile: '++id | projectId',
   // v42 added syncStatus + lastSyncedAt so branches participate in backend sync.
@@ -43,6 +45,18 @@ const EXPECTED = {
   plotThreads:
     '++id | apiId, generationStatus, lastSyncedAt, notes, projectId, status, syncStatus, title',
   projectBlurbs: '++id | generatedAt, projectId',
+  // v44: the derived-artifact layer. `&[projectId+subsectionId]` is unique —
+  // one live digest per scene, replaced rather than accumulated.
+  sceneDigests: '++id | &[projectId+subsectionId], contentHash, projectId, subsectionId, updatedAt',
+  // v45: hierarchical digest rollup + entity-state timeline for contradiction detection.
+  chapterDigests:
+    '++id | &[projectId+chapterNumber], chapterNumber, contentHash, projectId, updatedAt, volumeId',
+  volumeDigests: '++id | &[projectId+volumeId], contentHash, projectId, updatedAt, volumeId',
+  entityStates:
+    '++id | &[projectId+entityType+entityId+sceneId], entityId, entityType, projectId, sceneId, stateHash, updatedAt',
+  // v46: +analysisQueue — persistent idle-priority work queue for analysis tasks.
+  analysisQueue:
+    '++id | [projectId+status], createdAt, payload, projectId, status, taskType, updatedAt',
   projects:
     '++id | apiId, createdAt, genre, lastSyncedAt, name, syncStatus, synopsis, updatedAt, userId',
   researchChunks:
@@ -70,7 +84,8 @@ const EXPECTED = {
   volumeEntities:
     '++id | &[volumeId+entityType+entityId], apiId, assignedAt, entityId, entityType, isPrimary, lastSyncedAt, syncStatus, volumeId',
   volumes:
-    '++id | apiId, chapterIds, color, description, lastSyncedAt, projectId, syncStatus, title'
+    '++id | apiId, chapterIds, color, description, lastSyncedAt, projectId, syncStatus, title',
+  volumeDigests: '++id | &[projectId+volumeId], contentHash, projectId, updatedAt, volumeId'
 }
 
 describe('resolved Dexie schema', () => {
@@ -87,7 +102,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(43)
+    expect(verno).toBe(46)
   })
 
   it('has exactly the expected set of tables', () => {

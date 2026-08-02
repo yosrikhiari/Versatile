@@ -293,5 +293,65 @@ export const SCHEMA_VERSIONS = [
     stores: {
       evalPreferences: '++id, winnerId, loserId, sceneId, timestamp, projectId, [projectId+sceneId]'
     }
+  },
+  /**
+   * v44: +sceneDigests — the derived-artifact layer.
+   *
+   * Whole-manuscript analysis currently re-reads raw prose every time: the beta
+   * reader runs one sequential LLM call per scene to build a fact ledger, which
+   * on a 300-chapter manuscript is hours, and then concatenates the entire
+   * ledger into a single prompt. A digest computed ONCE per scene, at commit
+   * time, from data the writer already produced turns every O(n) pass into
+   * O(dirty).
+   *
+   * `contentHash` is the invalidation key — a scene whose prose has not changed
+   * does not need recomputing. `[projectId+subsectionId]` is unique: one live
+   * digest per scene, replaced rather than accumulated.
+   */
+  {
+    version: 44,
+    stores: {
+      sceneDigests:
+        '++id, projectId, subsectionId, contentHash, updatedAt, &[projectId+subsectionId]'
+    }
+  },
+  /**
+   * v45: +chapterDigests, volumeDigests, entityStates — hierarchical rollup and
+   * entity-state timeline for contradiction candidate generation.
+   *
+   * Phase 2 of the offline-first architecture: instead of a flat O(n²) scan
+   * over all scenes, we now have:
+   * - scene digest → chapter digest → volume digest → book digest hierarchy
+   * - entityStates table keyed by entity ID for O(n·k) candidate filtering
+   * - deterministic contradiction rules that run before any LLM call
+   */
+  {
+    version: 45,
+    stores: {
+      chapterDigests:
+        '++id, projectId, chapterNumber, volumeId, contentHash, updatedAt, &[projectId+chapterNumber]',
+      volumeDigests:
+        '++id, projectId, volumeId, contentHash, updatedAt, &[projectId+volumeId]',
+      entityStates:
+        '++id, projectId, entityType, entityId, sceneId, stateHash, updatedAt, &[projectId+entityType+entityId+sceneId]'
+    }
+  },
+  /**
+   * v46: +analysisQueue — persistent idle-priority work queue for analysis tasks.
+   *
+   * Phase 3 of the offline-first architecture: the digest layer and hierarchy
+   * exist, but the backfill still runs in-memory and loses progress on tab close.
+   * This queue persists work items so analysis can resume after tab close/crash,
+   * surfaces progress, and runs at idle priority via `awaitForegroundIdle`.
+   *
+   * Each queue item represents a unit of work (e.g., "build scene digest for X").
+   * Items are processed at idle priority and can be resumed after crash/close.
+   */
+  {
+    version: 46,
+    stores: {
+      analysisQueue:
+        '++id, projectId, taskType, payload, status, createdAt, updatedAt, [projectId+status]'
+    }
   }
 ]

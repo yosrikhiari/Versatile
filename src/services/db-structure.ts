@@ -3,6 +3,7 @@ import { countWords } from '../utils/textUtils'
 import { getEmbedding } from './ollamaService'
 import { guardStorageWrite } from '../guardrails/integration/storageGuardrails'
 import { describeSceneBrief } from './sceneBriefText'
+import { DEFAULT_VOLUME_COLOR } from '../config/volumeColors'
 
 const db = _db as any
 
@@ -142,7 +143,7 @@ export async function addVolume(projectId: string, data: any) {
     projectId,
     title: data.title || 'Untitled Volume',
     description: data.description || '',
-    color: data.color || '#6366f1',
+    color: data.color || DEFAULT_VOLUME_COLOR,
     sectionIds: [],
     ...data
   })

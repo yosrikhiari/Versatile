@@ -1,4 +1,5 @@
 import { db as _db } from './db-core'
+import { VectorIndex } from './vectorIndex'
 
 const db = _db as any
 
@@ -14,8 +15,13 @@ const CHUNK_SCALE_WARN_AT = 1500
 const warnedScaleProjects = new Set()
 const MAX_CACHED_PROJECTS = 3
 
+// Vector index cache for each project
+const vectorIndexCache = new Map<string, { index: any; version: number; dim: number }>()
+const VECTOR_INDEX_VERSION = 1
+
 function invalidateChunkCache() {
   chunkCacheVersion++
+  vectorIndexCache.clear()
 }
 
 const warnedDimProjects = new Set()
@@ -320,13 +326,40 @@ export async function semanticSearch(projectId: any, queryEmbedding: any, limit 
   const q = toNormalizedF32(queryEmbedding)
   if (!q) return []
 
-  const scored = []
+  // Check for dimension mismatches and warn (before vector index optimization)
   let dimMismatches = 0
   for (const c of allChunks) {
     const v = c.embedding
     if (!v) continue
     if (v.length !== q.length) {
       dimMismatches++
+    }
+  }
+  if (dimMismatches > 0) {
+    warnDimMismatch(projectId, dimMismatches, allChunks.length, q.length)
+  }
+
+  // Try to use vector index for faster search
+  const indexData = await getOrBuildVectorIndex(projectId, allChunks, q.length)
+  if (indexData?.index) {
+    try {
+      const results = await indexData.index.search(q, limit)
+      return results.map((r: any) => ({
+        id: r.id,
+        _score: r.score,
+        ...r.metadata
+      })).filter((r: any) => r._score > 0.1)
+    } catch (e) {
+      console.warn('[researchDb] Vector index search failed, falling back to brute-force:', e)
+    }
+  }
+
+  // Fallback: brute-force
+  const scored = []
+  for (const c of allChunks) {
+    const v = c.embedding
+    if (!v) continue
+    if (v.length !== q.length) {
       continue
     }
     let dot = 0
@@ -334,10 +367,39 @@ export async function semanticSearch(projectId: any, queryEmbedding: any, limit 
     if (dot > 0.1) scored.push({ ...c, _score: dot })
   }
 
-  if (dimMismatches > 0) {
-    warnDimMismatch(projectId, dimMismatches, allChunks.length, q.length)
-  }
   return scored.sort((a, b) => b._score - a._score).slice(0, limit)
+}
+
+async function getOrBuildVectorIndex(projectId: any, chunks: any[], queryDim: number) {
+  const cached = vectorIndexCache.get(projectId)
+  if (!queryDim) return { index: null, version: 0, dim: 0 }
+
+  if (cached && cached.version === VECTOR_INDEX_VERSION && cached.dim === queryDim) {
+    return cached
+  }
+
+  // Build new index using queryDim to filter chunks
+  const items = chunks
+    .filter(c => c.embedding && c.embedding.length === queryDim)
+    .map(c => ({
+      id: c.id,
+      vector: toNormalizedF32(c.embedding)!,
+      metadata: {
+        documentId: c.documentId,
+        chunkIndex: c.chunkIndex,
+        text: c.text
+      }
+    }))
+
+  if (items.length === 0) return { index: null, version: 0, dim: 0 }
+
+  const { VectorIndex } = await import('./vectorIndex')
+  const index = new VectorIndex({ dim: queryDim, nClusters: Math.max(1, Math.floor(Math.sqrt(items.length))) })
+  await index.build(items)
+
+  const entry = { index, version: VECTOR_INDEX_VERSION, dim: queryDim }
+  vectorIndexCache.set(projectId, entry)
+  return entry
 }
 
 export async function getEmbeddingCacheEntry(hash: any) {
