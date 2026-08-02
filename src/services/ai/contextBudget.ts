@@ -42,7 +42,7 @@ function cutAtBoundary(text: string, maxChars: number): string {
   return boundary > maxChars * 0.5 ? cut.slice(0, boundary + 1) : cut
 }
 
-interface Block {
+export interface Block {
   name: string
   text: string
   priority: number

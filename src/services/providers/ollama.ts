@@ -1,4 +1,11 @@
-import { getOllamaEndpoint, getOllamaNumCtx } from '../../config/ollama'
+import {
+  getOllamaEndpoint,
+  getOllamaNumCtx,
+  getOllamaRepeatPenalty,
+  getOllamaRepeatLastN,
+  getOllamaTopP,
+  getOllamaMinP
+} from '../../config/ollama'
 import { PROVIDERS } from '../../config/ai'
 import { TokenLimitError } from '../ai/tokenLimitError'
 import { recordThroughput } from '../generationEstimate'
@@ -11,6 +18,10 @@ interface OllamaOptions {
   temperature?: number
   stop?: string[]
   numCtx?: number
+  repeatPenalty?: number
+  repeatLastN?: number
+  topP?: number
+  minP?: number
   /** Max ms between two streamed tokens before the call is considered stalled. */
   idleTimeout?: number
   /** Max ms to wait for the FIRST token (covers prompt evaluation). */
@@ -148,6 +159,23 @@ function buildOllamaOptions(options: OllamaOptions = {}) {
   if (Array.isArray(options.stop) && options.stop.length) opts.stop = options.stop
   const numCtx = options.numCtx ?? getOllamaNumCtx()
   if (numCtx > 0) opts.num_ctx = numCtx
+
+  // Always sent. An unset Ollama sampling option is not "no opinion" — it is the
+  // server's default silently applying, and the defaults here (repeat_last_n=64)
+  // are tuned for chat turns, not for multi-thousand-token prose. See the note in
+  // config/ollama.ts.
+  const repeatPenalty = options.repeatPenalty ?? getOllamaRepeatPenalty()
+  if (repeatPenalty > 0) opts.repeat_penalty = repeatPenalty
+
+  const repeatLastN = options.repeatLastN ?? getOllamaRepeatLastN()
+  if (repeatLastN > 0 || repeatLastN === -1) opts.repeat_last_n = repeatLastN
+
+  const topP = options.topP ?? getOllamaTopP()
+  if (topP > 0 && topP <= 1) opts.top_p = topP
+
+  const minP = options.minP ?? getOllamaMinP()
+  if (minP > 0 && minP <= 1) opts.min_p = minP
+
   return Object.keys(opts).length ? { options: opts } : {}
 }
 

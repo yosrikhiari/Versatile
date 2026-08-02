@@ -14,17 +14,37 @@ export class LatencyExceededError extends Error {
   }
 }
 
+/**
+ * Thresholds calibrated against measured local-model latency, not guessed.
+ *
+ * Long-form prose on a consumer GPU is genuinely slow, and the previous
+ * story-generation warn of 60s fired on EVERY scene: `reports/smoke-writer.json`
+ * records 393 words in 225s on dolphin-mistral:7b, and `reports/writer-sweep.json`
+ * records 177-271s per scene on phi4-mini:3.8b. A warning that fires every time
+ * is not a warning — it trains you to ignore the log, which is how a 609s
+ * director stage (`reports/director-spike-v2.json`, scene 3, ~9x its neighbours
+ * and returning nothing) sat there unremarked.
+ *
+ * 300s therefore flags the outlier and stays quiet for the normal case.
+ *
+ * NOTE on `block`: `check()` throws past it, but nothing in production calls
+ * `check()` — only `wrap()`, which warns. The block values are effectively
+ * inert. That is deliberate for now: the old 180s story-generation block would
+ * have thrown on ordinary local scenes had anything enforced it.
+ */
 export const DEFAULT_LATENCY_BUDGETS: Record<string, { warn: number; block: number }> = {
   [FEATURES.SPARK]: { warn: 15_000, block: 45_000 },
   [FEATURES.POLISH]: { warn: 20_000, block: 60_000 },
   [FEATURES.CONTENT]: { warn: 30_000, block: 90_000 },
   [FEATURES.WORLDBUILDING]: { warn: 20_000, block: 60_000 },
   [FEATURES.COMPACTION]: { warn: 15_000, block: 45_000 },
-  [FEATURES.STORY_GENERATION]: { warn: 60_000, block: 180_000 },
+  [FEATURES.STORY_GENERATION]: { warn: 300_000, block: 900_000 },
   [FEATURES.NETWORK]: { warn: 10_000, block: 30_000 },
   [FEATURES.TAGGING]: { warn: 10_000, block: 30_000 },
   [FEATURES.CHARACTER_CHAT]: { warn: 15_000, block: 45_000 },
-  [FEATURES.POV_WRITING]: { warn: 30_000, block: 90_000 },
+  // Also long-form prose, so it lives on the same measured scale as
+  // STORY_GENERATION rather than the short-call scale above.
+  [FEATURES.POV_WRITING]: { warn: 300_000, block: 900_000 },
   [FEATURES.SHAPE_ANALYSIS]: { warn: 20_000, block: 60_000 },
   [FEATURES.BLURB]: { warn: 20_000, block: 60_000 }
 }

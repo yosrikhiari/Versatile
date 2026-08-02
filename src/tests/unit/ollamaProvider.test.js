@@ -4,7 +4,14 @@ const mockFetch = vi.fn()
 
 vi.mock('@/config/ollama', () => ({
   getOllamaEndpoint: vi.fn(() => 'http://localhost:11434'),
-  getOllamaNumCtx: vi.fn(() => 16384)
+  getOllamaNumCtx: vi.fn(() => 16384),
+  // Repetition/sampling controls. `buildOllamaOptions` now always sends these —
+  // an unset Ollama option is the server's default silently applying, and the
+  // default `repeat_last_n: 64` is what let a scene loop 131 times.
+  getOllamaRepeatPenalty: vi.fn(() => 1.15),
+  getOllamaRepeatLastN: vi.fn(() => 512),
+  getOllamaTopP: vi.fn(() => 0.9),
+  getOllamaMinP: vi.fn(() => 0.05)
 }))
 
 let ollama
@@ -98,6 +105,39 @@ describe('ollama generate', () => {
 
     const body = JSON.parse(mockFetch.mock.calls[1][1].body)
     expect(body.options.num_ctx).toBe(8192)
+  })
+
+  it('sends repetition controls so the 64-token default window never applies', async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockTags())
+      .mockResolvedValueOnce(makeStreamResponse(['{"response":"ok"}\n']))
+
+    await ollama.generate('prompt', 'system', 'llama3')
+
+    const body = JSON.parse(mockFetch.mock.calls[1][1].body)
+    // Ollama's default repeat_last_n is 64 TOKENS — roughly six copies of a
+    // short sentence — so it cannot perceive a paragraph-scale loop at all.
+    // A live run produced one sentence 131 times under that default.
+    expect(body.options.repeat_last_n).toBe(512)
+    expect(body.options.repeat_penalty).toBe(1.15)
+    expect(body.options.top_p).toBe(0.9)
+    expect(body.options.min_p).toBe(0.05)
+  })
+
+  it('lets a caller override the repetition controls', async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockTags())
+      .mockResolvedValueOnce(makeStreamResponse(['{"response":"ok"}\n']))
+
+    await ollama.generate('prompt', 'system', 'llama3', {
+      repeatPenalty: 1.3,
+      repeatLastN: -1
+    })
+
+    const body = JSON.parse(mockFetch.mock.calls[1][1].body)
+    expect(body.options.repeat_penalty).toBe(1.3)
+    // -1 means "the whole context" and must survive the positive-only guard.
+    expect(body.options.repeat_last_n).toBe(-1)
   })
 
   it('omits num_ctx when numCtx is 0, deferring to the server default', async () => {

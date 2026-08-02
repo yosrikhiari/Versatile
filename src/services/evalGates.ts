@@ -8,6 +8,49 @@ export function countWords(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
+/**
+ * Words remaining after duplicate sentences are removed.
+ *
+ * A model stuck in a loop produces MORE words, not fewer, so a raw word-count
+ * gate rewards the worst failure it can see. Measured on a live run: a scene
+ * whose closing sentence repeated 131 times counted 1,866 words against a 1,200
+ * target and passed comfortably, while its genuine content was 575 words — 52%
+ * of target. The healthiest scene in the same run was the one closest to being
+ * flagged as too short. Counting unique content instead of tokens makes the gate
+ * measure what the author actually receives.
+ */
+export function countUniqueWords(text: string) {
+  if (!text) return 0
+  const seen = new Set<string>()
+  const kept: string[] = []
+  for (const raw of text.split(/(?<=[.!?])\s+/)) {
+    const sentence = raw.trim()
+    if (!sentence) continue
+    const key = sentence.toLowerCase().replace(/\s+/g, ' ')
+    // Very short fragments ("Yes.", "He ran.") legitimately recur in dialogue,
+    // so they are never treated as padding.
+    if (key.split(' ').length >= 5) {
+      if (seen.has(key)) continue
+      seen.add(key)
+    }
+    kept.push(sentence)
+  }
+  return countWords(kept.join(' '))
+}
+
+/** Share of the text that is duplicated sentences, 0..1. */
+export function duplicateRatio(text: string) {
+  const total = countWords(text)
+  if (total === 0) return 0
+  return Math.max(0, 1 - countUniqueWords(text) / total)
+}
+
+/**
+ * Above this, the prose is padded rather than written. Deliberate refrain and
+ * repeated dialogue beats live comfortably below it; a decoding loop does not.
+ */
+export const MAX_DUPLICATE_RATIO = 0.15
+
 export function gateDimensionCoverage(critiqueResult: any, workspaceType: string) {
   const cfg = EVAL_GATE_CONFIG.dimensionCoverage
   if (!cfg.enabled) return { pass: true, failOn: 'none', missing: [], warnings: [] }
@@ -35,10 +78,28 @@ export function gateScoreDistribution(critiqueResult: any) {
   const cfg = EVAL_GATE_CONFIG.scoreDistribution
   if (!cfg.enabled) return { pass: true, failOn: 'none', flags: [] }
 
-  if (!critiqueResult) return { pass: true, flags: [] }
+  if (!critiqueResult) return { pass: true, failOn: cfg.failOn || 'warn', flags: [] as string[] }
 
-  const score = critiqueResult?.score ?? -1
+  // Skip score distribution check if evaluation was unavailable
+  if (critiqueResult.evalUnavailable)
+    return { pass: true, failOn: cfg.failOn || 'warn', flags: [] as string[] }
+
   const flags: string[] = []
+
+  // A missing score is a missing score, not a score of -1. The old `?? -1`
+  // sentinel was reported to the user as "Score -1 is outside expected range
+  // [1-10]", which reads like the critic judged the prose catastrophically bad
+  // when in fact it never produced a number at all — and -1 then propagated into
+  // dimension averaging.
+  if (critiqueResult.score == null) {
+    return {
+      pass: false,
+      failOn: cfg.failOn || 'warn',
+      flags: ['Critic returned no score — evaluation did not produce a usable verdict']
+    }
+  }
+
+  const score = critiqueResult.score
 
   const [min, max] = cfg.suspectScoreRange || [1, 10]
   if (score < min || score > max) {
@@ -54,8 +115,14 @@ export function gateScoreDistribution(critiqueResult: any) {
   if (score >= 9 && majorIssues.length > 2) {
     flags.push(`High score (${score}) with ${majorIssues.length} major issues — possible mismatch`)
   }
-  if (score >= cfg.suspectScore && majorIssues.length === 0 && issues.length === 0) {
-    flags.push(`Passing score (${score}) with zero issues — possible degenerate evaluation`)
+  // Zero issues is the signal; the score is not. This used to require
+  // `score >= cfg.suspectScore` (7), so a critic returning 6.8 with no issues on
+  // every fixture in the suite — six of six, which is what a non-discriminating
+  // critic looks like — slipped under the one check written to catch it.
+  if (issues.length === 0) {
+    flags.push(
+      `Score ${score} with zero issues — possible degenerate evaluation (the critic found nothing at all)`
+    )
   }
 
   return {
@@ -125,11 +192,33 @@ export async function gateRevisionEffectiveness(
  *   1095 words against a 1200-word target raised nothing, because 1095 is inside
  *   the global range and attempt 2 was not shorter than attempt 1.
  */
-export function gateProseQuality(critiqueResult: any, baselineWordCount: number, currentWordCount: number, targetWordCount = 0) {
+export function gateProseQuality(
+  critiqueResult: any,
+  baselineWordCount: number,
+  currentWordCount: number,
+  targetWordCount = 0,
+  proseText = ''
+) {
   const cfg = EVAL_GATE_CONFIG.proseQuality
-  if (!cfg.enabled) return { pass: true, failOn: 'none', flags: [] }
+  if (!cfg.enabled) return { pass: true, failOn: 'none', flags: [] as string[] }
+
+  // Skip prose quality check if evaluation was unavailable
+  if (critiqueResult?.evalUnavailable)
+    return { pass: true, failOn: cfg.failOn || 'block', flags: [] as string[] }
 
   const flags: string[] = []
+
+  // Every length comparison below runs against unique content when the caller
+  // supplies the text. Without this the gate can be satisfied by repetition.
+  if (proseText) {
+    const dupRatio = duplicateRatio(proseText)
+    if (dupRatio > MAX_DUPLICATE_RATIO) {
+      flags.push(
+        `${Math.round(dupRatio * 100)}% of the prose is duplicate sentences (max ${Math.round(MAX_DUPLICATE_RATIO * 100)}%) — the model is likely looping`
+      )
+    }
+    currentWordCount = countUniqueWords(proseText)
+  }
   const dimScores = critiqueResult?.dimensionScores
   if (dimScores) {
     const values = Object.values(dimScores).filter((v) => typeof v === 'number') as number[]
