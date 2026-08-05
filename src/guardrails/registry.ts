@@ -28,6 +28,7 @@ const DEFAULT_META: Record<GuardrailKind, GuardMeta> = {
   input: { category: 'structural', cost: 'O(n)', layers: ['ai_input'] },
   circuit_breaker: { category: 'operational', cost: 'O(1)', layers: ['ai_input', 'ai_output'] },
   integrity: { category: 'operational', cost: 'O(1)', layers: ['storage_write', 'sync'] },
+  character_name: { category: 'structural', cost: 'O(1)', layers: ['ai_output'] },
 }
 
 const DEFAULT_LLM_BUDGET = 25

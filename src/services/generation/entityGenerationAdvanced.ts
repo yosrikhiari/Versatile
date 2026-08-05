@@ -142,7 +142,9 @@ async function getIdeaRelationshipContext(
 
 // --- System prompts ---
 
-const IDEA_CHARACTER_SYSTEM_PROMPT = `You are a creative character designer. Given a character idea or description, you expand it into a full character profile that stays true to the user's intent while adding depth and detail.`
+const IDEA_CHARACTER_SYSTEM_PROMPT = `You are a creative character designer. Given a character idea or description, you expand it into a full character profile that stays true to the user's intent while adding depth and detail.
+
+CRITICAL NAMING RULE: The "name" field MUST be a proper personal name (e.g., "Marcus Vane", "Elara Thorne", "Kaito Sato"). NEVER use role titles, archetypes, or descriptions as names (e.g., NOT "The Betrayer", "The Mentor", "A Cynical Detective", "Betrayer", "Antagonist"). The character's narrative function goes in the "role" field (e.g., "betrayer", "mentor", "detective", "antagonist").`
 
 const LOCATION_SYSTEM_PROMPT = `You generate diverse, unique fictional locations. Vary: genre, time period, culture, environment type (urban, rural, underwater, airborne, underground, cosmic). Avoid generic fantasy tropes.`
 
@@ -168,6 +170,8 @@ CHARACTER IDEA: "${characterIdea}"
 
 Create a complete character as JSON with these keys: name, role, goal, voice, notes, sampleDialogue.
 All values must be strings. No markdown.
+
+CRITICAL NAMING RULE: The "name" field MUST be a proper personal name (e.g., "Marcus Vane", "Elara Thorne"). NEVER use role titles or descriptions as names (e.g., NOT "The Betrayer", "Betrayer", "The Mentor", "Antagonist", "A Cynical Detective"). The narrative function goes in "role" (e.g., "betrayer", "mentor", "antagonist", "detective").
 
 IMPORTANT:
 - Stay true to the user's description - keep the core essence
@@ -221,6 +225,8 @@ Each character must have a unique name, role, goal, voice, notes, and sampleDial
 
 Return JSON array with ${count} character objects:
 [{"name": "...", "role": "...", "goal": "...", "voice": "...", "notes": "...", "sampleDialogue": "..."}]
+
+CRITICAL NAMING RULE: The "name" field MUST be a proper personal name (e.g., "Marcus Vane", "Elara Thorne"). NEVER use role titles or descriptions as names (e.g., NOT "The Betrayer", "Betrayer", "The Mentor", "Antagonist", "A Cynical Detective"). The narrative function goes in "role" (e.g., "betrayer", "mentor", "antagonist", "detective").
 
 IMPORTANT for each character:
 - Character goals should connect to or influence the plot thread

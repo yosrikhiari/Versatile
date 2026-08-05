@@ -11,6 +11,7 @@ export type GuardrailKind =
   | 'quality'
   | 'circuit_breaker'
   | 'integrity'
+  | 'character_name'
 
 export type GuardrailCategory = 'structural' | 'semantic' | 'operational'
 

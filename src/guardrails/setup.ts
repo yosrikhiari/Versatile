@@ -3,6 +3,7 @@ import { GroundingService } from './ontology/grounding'
 import { buildOntologySnapshot, emptySnapshot } from './ontology/instantiate'
 import type { OntologySnapshot } from './ontology/types'
 import { createEntityGuard } from './guards/entityGuard'
+import { createCharacterNameGuard } from './guards/characterNameGuard'
 import { createRelationshipGuard } from './guards/relationshipGuard'
 import { createSchemaGuard } from './guards/schemaGuard'
 import { createFactCanonGuard } from './guards/factCanonGuard'
@@ -50,6 +51,7 @@ export function installGuardrails(options: GuardrailSetupOptions = {}): Groundin
   const register = GuardrailRegistry.register.bind(GuardrailRegistry)
 
   if (wanted('entity')) register('entity', createEntityGuard(grounding))
+  if (wanted('character_name')) register('character_name', createCharacterNameGuard())
   if (wanted('relationship')) register('relationship', createRelationshipGuard(grounding))
   if (wanted('schema_conformance')) register('schema_conformance', createSchemaGuard())
   if (wanted('fact_canon')) register('fact_canon', createFactCanonGuard(grounding, { getFactLedger }))
