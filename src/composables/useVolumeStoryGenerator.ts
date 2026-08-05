@@ -29,6 +29,14 @@ import { useActivityLog } from './useActivityLog'
 import { useEvalPersistence } from './useEvalPersistence'
 import { langfuseService } from '../services/langfuseService'
 import { generateRelationships } from './generation/generators/relationships'
+import { groupNetworkByVolume } from './useVolumeGrouping'
+import { scopeBibleToVolume } from '../services/volumeScope'
+import { rollupProjectDigests, buildEarlierChaptersBlock } from '../services/generation/digestContext'
+
+// How many recent scenes stay in the writer's log at full detail. Chapters that
+// fall entirely outside this window are carried by their digests instead — the
+// boundary has to be one number, or the two blocks overlap or leave a gap.
+const RECENT_SCENE_LOG_LIMIT = 20
 import { shouldChunkScene, splitSceneIntoChunks, mergeChunkProse } from './generation/sceneChunker'
 import { getFailedSubsections, batchCreatePlanStructure } from '../services/db-structure'
 import {
@@ -38,7 +46,8 @@ import {
   updateGenRunStage,
   runStageWithTimeout,
   runStageWithHeartbeat,
-  makeInitialGenState
+  makeInitialGenState,
+  STAGE_IDLE_TIMEOUT_MS
 } from '../services/db-generation'
 import { aiGenerate, aiGenerateJson, resolveFeatureConfig } from './useAiService'
 import { FEATURES, PROVIDERS } from '../config/ai'
@@ -61,8 +70,10 @@ import {
   PROSE_EXCERPT_MAX_SCENES,
   buildEmbeddingContext,
   selectRelevantPriorScenes,
-  buildRetrievalContext
+  buildRetrievalContext,
+  buildResearchContext
 } from './generation/context/sceneContext'
+import { buildRagOptions } from '../services/researchScope'
 import { parallelWithLimit, computeSummary } from './generation/utils'
 import { CommitService } from './generation/commit'
 import { ConsistencyService } from './generation/consistency'
@@ -325,6 +336,28 @@ export function useVolumeStoryGenerator() {
   const pendingBatchStart = ref(0)
   const lastSyncedResultIndex = ref(0)
   const writeParams = ref<any | null>(null)
+
+  // The run's research scope, held here rather than only on writeParams because
+  // the plan-preview flow returns control to the user between startGeneration
+  // and confirmPlan — writeParams does not exist yet at that point.
+  const activeResearchScope = ref<any>(null)
+
+  // The research sources this run should retrieve from, in the shape
+  // buildRetrievalContext wants. Returns undefined when research is off or there
+  // is no project, which is exactly the "continuity context only" path.
+  function researchRagOptions() {
+    const params = writeParams.value
+    if (!params) return undefined
+    return buildRagOptions(params.projectId, params.research)
+  }
+
+  // Research citations only, for paths that already have their own continuity
+  // context (the continuation writer works from the prose on either side of the
+  // gap, not from a retrieval pass).
+  function researchCitationsFor(scene: any, projectId: any) {
+    return buildResearchContext(scene, buildRagOptions(projectId, writeParams.value?.research))
+  }
+
   const sceneReviewMode = ref(false)
   const autoMode = ref(false)
   const evalUnavailableCount = ref(0)
@@ -425,6 +458,54 @@ export function useVolumeStoryGenerator() {
 
   const delegatorApi = useDelegatorGeneration()
   const phase = delegatorApi.memory.phase
+
+  /** Every entity the plan names, so scoping can never hide someone a scene must cast. */
+  function plannedEntityNames(): string[] {
+    const names = new Set<string>()
+    for (const s of (scenePlan.value as any[]) || []) {
+      for (const n of s?.characters || []) if (n) names.add(String(n))
+      if (s?.location) names.add(String(s.location))
+    }
+    return [...names]
+  }
+
+  /**
+   * The entity blob handed to the writer, narrowed to the volume being written.
+   *
+   * This is rebuilt on every scene from `storyBibleStore`, which holds the whole
+   * project — so writing volume 5 used to ship volume 1's entire cast with it.
+   * The narrowing reads the same `volumeEntities` rows the Story Network groups
+   * by, so what the volume box shows is what the model is told about.
+   *
+   * Falls back to the full cast whenever scoping cannot be trusted: one volume,
+   * no assignments, or a filter that would leave the writer with nobody.
+   */
+  async function scopedEntitiesBlob(projectId: any) {
+    try {
+      const scoped = await scopeBibleToVolume({
+        projectId,
+        volumeId: volumeId.value,
+        characters: storyBibleStore.characters as any[],
+        locations: storyBibleStore.locations as any[],
+        plotThreads: storyBibleStore.plotThreads as any[],
+        alwaysInclude: plannedEntityNames()
+      })
+      if (scoped.scoped) {
+        console.info(
+          `[useVolumeStoryGenerator] entity context scoped to volume ${volumeId.value}: ` +
+            `${scoped.omitted} entit${scoped.omitted === 1 ? 'y' : 'ies'} from other volumes withheld`
+        )
+      }
+      return buildExistingEntitiesBlob(scoped.characters, scoped.locations, scoped.plotThreads)
+    } catch (err) {
+      console.warn('[useVolumeStoryGenerator] volume scoping failed; using full cast:', err)
+      return buildExistingEntitiesBlob(
+        storyBibleStore.characters,
+        storyBibleStore.locations,
+        storyBibleStore.plotThreads
+      )
+    }
+  }
 
   /**
    * Re-point the run's session budget at the work that was actually requested.
@@ -729,8 +810,13 @@ export function useVolumeStoryGenerator() {
       synopsis: state.synopsis || '',
       onChunk,
       sections,
-      storyBibleDocs
+      storyBibleDocs,
+      // Restored from the checkpoint so a resumed run keeps drawing on the same
+      // sources. Checkpoints written before this field existed have none, and
+      // fall back to the global preference rather than losing research entirely.
+      research: state.research ?? null
     }
+    activeResearchScope.value = writeParams.value.research
 
     // Seed prompt adjuster from persisted eval history for cross-run learning
     await seedPromptAdjusterFromHistory(projectId, workspaceType.value, promptAdjuster)
@@ -766,6 +852,10 @@ export function useVolumeStoryGenerator() {
     onChunk
   }: any) {
     if (phase.value !== 'idle') return
+
+    // Pinned before the first model call so the plan and every scene that
+    // follows retrieve from the same sources, even across a plan-preview pause.
+    activeResearchScope.value = research ?? null
 
     // Clear and seed evalStore from persisted history for project-scoped eval tracking
     await clearAndSeedEvalStore(projectId, evalStore)
@@ -864,9 +954,8 @@ export function useVolumeStoryGenerator() {
       // Load story bible context and existing manuscript as evidence for the Director
       progress.statusText = 'Loading story context for planning...'
       const storyDocs = useStoryDocuments()
-      const bibleContext = await storyDocs.getStoryDocumentContext(projectId)
 
-      const sceneSummaries = []
+      const sceneSummaries: string[] = []
       for (const section of (manuscriptStore.sortedSections as any[])) {
         const allSubs: any[] = manuscriptStore.subsections as any[]
         const sectionSubs = allSubs
@@ -882,11 +971,25 @@ export function useVolumeStoryGenerator() {
         }
       }
 
-      const evidenceParts = []
-      if (bibleContext) evidenceParts.push(bibleContext)
-      if (sceneSummaries.length > 0) {
-        evidenceParts.push('# Existing Manuscript Scenes\n' + sceneSummaries.slice(-20).join('\n'))
+      // Evidence is re-read, not cached: entities are committed at several points
+      // in this run (bible, network, cast expansion) and each consumer needs the
+      // bible as it stands when *it* runs.
+      const buildEvidence = async () => {
+        const parts = []
+        const bible = await storyDocs.getStoryDocumentContext(projectId)
+        if (bible) parts.push(bible)
+        if (sceneSummaries.length > 0) {
+          parts.push('# Existing Manuscript Scenes\n' + sceneSummaries.slice(-20).join('\n'))
+        }
+        return parts.join('\n\n')
       }
+
+      // How big a cast this story warrants. Falls back to the word target when no
+      // explicit structure was requested, so freeform runs still scale.
+      const castScope = structureSpec || {
+        chapters: Math.round((effectiveWordTarget || 0) / 3000)
+      }
+
       // Phase 1 (Stage A — Story Bible): Bootstrap entities
       progress.current = 2
       progress.statusText = 'Conjuring Characters & World...'
@@ -896,6 +999,7 @@ export function useVolumeStoryGenerator() {
           synopsis: enhancedSynopsis,
           projectId,
           volumeId: vId,
+          scope: castScope,
           onPartialData: (type: any, name: any) => {
             heartbeat(name)
             onPartialData?.(type, name)
@@ -966,15 +1070,7 @@ export function useVolumeStoryGenerator() {
       }
 
       // Reload story context so the newly generated entities are included in evidence
-      const updatedBibleContext = await storyDocs.getStoryDocumentContext(projectId)
-      const updatedEvidenceParts = []
-      if (updatedBibleContext) updatedEvidenceParts.push(updatedBibleContext)
-      if (sceneSummaries.length > 0) {
-        updatedEvidenceParts.push(
-          '# Existing Manuscript Scenes\n' + sceneSummaries.slice(-20).join('\n')
-        )
-      }
-      const updatedEvidence = updatedEvidenceParts.join('\n\n')
+      const updatedEvidence = await buildEvidence()
 
       // Phase 2: Generate story plan using the updated context
       progress.current = 3
@@ -984,6 +1080,9 @@ export function useVolumeStoryGenerator() {
       activeStage = 'structure'
       await updateGenRunStage(projectId, 'structure', { status: 'running' })
       actLog.appendThought(currentTaskId, planPhase, 'Outlining chapters and scenes...\n')
+
+      // Set by the cast-expansion hook below; drives the second network weave.
+      let castGrew = false
 
       // Planning is one call per chapter, serial on Ollama. The old wrapper passed
       // no budget, so it silently took withTimeout's 5-minute default — less time
@@ -1015,6 +1114,45 @@ export function useVolumeStoryGenerator() {
                 // Best-effort progress callback; a throwing consumer must not break the run.
               }
               onPartialData?.(type, name)
+            },
+            // The arc now exists but no scene has been cast yet — the one moment
+            // where a new antagonist or subplot can still be written INTO the
+            // plan rather than smuggled in by the prose writer later.
+            onSkeletonReady: async ({ chapters: skeleton, storyArc: arc }: any) => {
+              heartbeat('Casting the arc')
+              actLog.appendThought(
+                currentTaskId,
+                planPhase,
+                'Checking which characters, places and threads this arc still needs...\n'
+              )
+              const expansion = await bootstrapper
+                .expandCast({
+                  synopsis: enhancedSynopsis,
+                  projectId,
+                  volumeId: vId,
+                  chapters: skeleton,
+                  storyArc: arc,
+                  scope: castScope,
+                  onPartialData: (type: any, name: any) => {
+                    heartbeat(name)
+                    try {
+                      actLog.appendThought(currentTaskId, planPhase, `+ ${type}: ${name}\n`)
+                    } catch {
+                      // Best-effort progress callback; a throwing consumer must not break the run.
+                    }
+                    onPartialData?.(type, name)
+                  }
+                })
+                .catch((err: any) => {
+                  console.warn('[useVolumeStoryGenerator] cast expansion failed:', err)
+                  return null
+                })
+              heartbeat('Cast ready')
+              if (!expansion?.added) return null
+              castGrew = true
+              // Re-read the bible so scene planning can cast the new entities by
+              // name instead of the writer inventing them mid-prose.
+              return await buildEvidence()
             }
           })
       )
@@ -1024,6 +1162,43 @@ export function useVolumeStoryGenerator() {
 
       if (!Array.isArray(scenes) || scenes.length < 3) {
         throw new Error('Director returned insufficient scenes (need at least 3)')
+      }
+
+      // The first weave ran against the opening cast only, so anyone added for
+      // the arc would sit in the bible with no edges at all. Re-weave under the
+      // network stage's own budget rather than inside the planner's — a slow
+      // relationship pass must not be able to kill a plan that already succeeded.
+      if (castGrew) {
+        const reweavePhase = actLog.addPhase(currentTaskId, 'Story Network')
+        try {
+          // Deliberately NOT the 'network' stage key: `updateGenRunStage` derives
+          // `currentStage` from the first unfinished pipeline stage, so reusing
+          // it here would rewind a resumed run back past 'structure'. An off-
+          // pipeline key gets the same idle watchdog with no checkpoint effect.
+          const reweave = await runStageWithTimeout(
+            projectId,
+            'network_reweave',
+            () =>
+              generateRelationships({
+                projectId,
+                characters: storyBibleStore.characters as any[],
+                locations: storyBibleStore.locations as any[],
+                plotThreads: storyBibleStore.plotThreads as any[],
+                synopsis: enhancedSynopsis,
+                genre,
+                tone,
+                signal: abort.signal()
+              }),
+            STAGE_IDLE_TIMEOUT_MS.network
+          )
+          actLog.updatePhase(currentTaskId, reweavePhase, {
+            status: 'done',
+            detail: `${reweave.characterRelationships} relationships, ${reweave.graphEdges} edges`
+          })
+        } catch (err: any) {
+          console.warn('[useVolumeStoryGenerator] Story Network re-weave failed:', err)
+          actLog.updatePhase(currentTaskId, reweavePhase, { status: 'failed' })
+        }
       }
 
       // Cap to 1 scene for single-chapter mode (ignored when an explicit structure is requested)
@@ -1118,6 +1293,7 @@ export function useVolumeStoryGenerator() {
         if (activeStage) {
           await updateGenRunStage(projectId, activeStage, { status: 'cancelled' })
         }
+        if (currentTaskId) actLog.failTask(currentTaskId, 'Stopped')
         throw err
       }
       // Record the failure BEFORE announcing it. The dispatch below can itself
@@ -1132,6 +1308,13 @@ export function useVolumeStoryGenerator() {
           error: error.value
         }).catch(() => {})
       }
+      // Close the Activity task too, or the drawer keeps counting.
+      //
+      // `failTask` marks the task AND every still-running phase failed — it was
+      // written for exactly this and had no callers anywhere, so a run that died
+      // mid-planning left "Planning · RUNNING" ticking next to a panel that
+      // already said the run had failed. Nothing ever reconciled the two.
+      if (currentTaskId) actLog.failTask(currentTaskId, error.value)
       await delegatorApi
         .dispatch('ERROR', { error: err, message: error.value })
         .catch((dispatchErr: any) => {
@@ -1495,7 +1678,11 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
 
         if (needsEscalation) {
           const disclosure = await buildCloudDisclosure({
-            projectId: writeParamsVal?.projectId || '',
+            // `writeParamsVal` is runParallelGeneration's local — it does not
+            // exist in this scope, so this threw a ReferenceError (optional
+            // chaining does not shield an undeclared identifier) every time a
+            // scene qualified for cloud escalation.
+            projectId: writeParams.value?.projectId || '',
             operation: 'escalation-on-failure',
             text: proseText,
             systemPrompt: 'You are an expert fiction editor. Evaluate this scene for quality, continuity, voice, and adherence to the story bible. Provide a score 1-10, dimension scores, issues, and strengths.',
@@ -1576,11 +1763,12 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     })
     const { storyArc, storyBibleDocs, storyContract, projectId, onChunk } = writeParamsVal
 
-    const existingEntitiesJson = buildExistingEntitiesBlob(
-      storyBibleStore.characters,
-      storyBibleStore.locations,
-      storyBibleStore.plotThreads
-    )
+    // Research scope for this run. The parallel path — the one a one-click volume
+    // actually takes — passed no retrieval context at all, so every scene in a
+    // full-book run was written with the story bible and nothing retrieved.
+    const ragOptions = buildRagOptions(projectId, writeParamsVal.research)
+
+    const existingEntitiesJson = await scopedEntitiesBlob(projectId)
 
     writtenScenes.value = new Array(scenePlan.value.length).fill(null)
 
@@ -1636,6 +1824,12 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       const scenePhase = actLog.addPhase(currentTaskId, phaseName)
       const stream = makeSceneStream({ scene, sceneIndex, onChunk })
       try {
+        const embeddingContext = await buildRetrievalContext(
+          scene,
+          writtenScenes.value.filter(Boolean),
+          5,
+          ragOptions
+        )
         const { chosenProse, chosenStructured, chosenEval } = await writeSceneWithGate({
           scene,
           sceneIndex,
@@ -1645,6 +1839,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
           storyBible: storyBibleDocs,
           storyContract,
           existingEntitiesJson,
+          embeddingContext,
           anchorRole: role,
           anchorConstraints: constraints,
           emitChunk: stream.emitChunk
@@ -1815,6 +2010,13 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
           .map((s) => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}`)
         const chapterLog = logEntries.join('\n')
 
+        const embeddingContext = await buildRetrievalContext(
+          scene,
+          writtenScenes.value.filter(Boolean),
+          5,
+          ragOptions
+        )
+
         const { chosenProse, chosenStructured, chosenEval } = await writeSceneWithGate({
           scene,
           sceneIndex,
@@ -1824,6 +2026,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
           storyBible: storyBibleDocs,
           storyContract,
           existingEntitiesJson,
+          embeddingContext,
           pastEvalResults: anchorEvalFeedback || undefined,
           focusInstructions: anchorFocusInstructions || undefined,
           emitChunk: stream.emitChunk
@@ -2021,11 +2224,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       // from the typechecker. `locationList.map` threw on every single call, the
       // bare catch below swallowed it AND flushed the cache, so speculative
       // prefetch never once produced a hit.
-      const existingEntitiesJson = buildExistingEntitiesBlob(
-        storyBibleStore.characters,
-        storyBibleStore.locations,
-        storyBibleStore.plotThreads
-      )
+      const existingEntitiesJson = await scopedEntitiesBlob(projectId)
       const scenePhase = null
       const result = await writeSceneWithGate({
         scene,
@@ -2065,11 +2264,17 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       .map((ws) => `Scene ${ws.sceneNumber} ("${ws.title}"): ${ws.summary || '(written)'}`)
 
     // Build entities JSON once per batch (Fix #3 — entities don't change within a batch)
-    const existingEntitiesJson = buildExistingEntitiesBlob(
-      storyBibleStore.characters,
-      storyBibleStore.locations,
-      storyBibleStore.plotThreads
-    )
+    const existingEntitiesJson = await scopedEntitiesBlob(projectId)
+
+    // Everything older than the last 20 scenes used to leave the writer's view
+    // entirely. Roll the committed scene digests up into chapter digests and
+    // hand back the chapters that window no longer reaches. Pure aggregation —
+    // no model call — so it is cheap enough to redo each batch.
+    await rollupProjectDigests({ projectId, volumeId: volumeId.value })
+    const earlierChapters = await buildEarlierChaptersBlock({
+      projectId,
+      recentSceneCount: RECENT_SCENE_LOG_LIMIT
+    })
 
     let batchEvalFeedback = ''
     let batchFocusInstructions = incomingFocusInstructions
@@ -2084,11 +2289,20 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       progress.statusText = `Drafting scene details, building continuity context, and streaming prose...`
 
       // Retrieve continuity context — prose excerpts for short drafts, semantic
-      // retrieval once the story grows past the prose-excerpt ceiling.
-      const embeddingContext = await buildRetrievalContext(scene, writtenScenes.value, 5, undefined)
+      // retrieval once the story grows past the prose-excerpt ceiling — plus the
+      // research chunks this scene is about.
+      const embeddingContext = await buildRetrievalContext(
+        scene,
+        writtenScenes.value,
+        5,
+        researchRagOptions()
+      )
 
-      // Build chapter log from running array (O(1) slice instead of O(n) rebuild)
-      const chapterLog = runningChapterLog.slice(-20).join('\n')
+      // Build chapter log from running array (O(1) slice instead of O(n) rebuild),
+      // preceded by the summarised chapters that fall outside that window.
+      const chapterLog = [earlierChapters, runningChapterLog.slice(-RECENT_SCENE_LOG_LIMIT).join('\n')]
+        .filter(Boolean)
+        .join('\n\n')
 
       // Retrieve rejected patterns for Writer
       const extraRejected = rejectedPatterns.value.length > 0 ? rejectedPatterns.value : undefined
@@ -2505,6 +2719,9 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     } catch (err: any) {
       error.value = describeRunFailure(err)
       actLog.updatePhase(currentTaskId, spinePhase, { status: 'failed' })
+      // This catch rethrows past the prose handler below rather than into it, so
+      // it has to close the task itself.
+      if (currentTaskId) actLog.failTask(currentTaskId, error.value)
       await delegatorApi
         .dispatch('ERROR', { error: err, message: error.value })
         .catch(() => {})
@@ -2536,7 +2753,10 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       synopsis: enhancedSynopsis,
       onChunk,
       sections,
-      storyBibleDocs
+      storyBibleDocs,
+      // Carried for the whole run so every scene retrieves from the same sources
+      // the plan was built from.
+      research: activeResearchScope.value
     }
 
     // Seed prompt adjuster from persisted eval history for cross-run learning
@@ -2567,6 +2787,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       // far it got rather than presenting a part-written book as a total loss.
       error.value = describeRunFailure(err)
       await commitService.persistCheckpoint(projectId)
+      if (currentTaskId) actLog.failTask(currentTaskId, error.value)
       await delegatorApi.dispatch('ERROR', { error: err, message: error.value }).catch(() => {})
       throw err
     }
@@ -2602,11 +2823,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       writeParams.value?.storyBibleDocs || (await storyDocuments.getStoryDocumentContext(projectId))
     const storyArc = writeParams.value?.storyArc || null
     const storyContract = writeParams.value?.storyContract || ''
-    const existingEntitiesJson = buildExistingEntitiesBlob(
-      storyBibleStore.characters,
-      storyBibleStore.locations,
-      storyBibleStore.plotThreads
-    )
+    const existingEntitiesJson = await scopedEntitiesBlob(projectId)
 
     for (const sub of failed) {
       const { scene, index } = scenesBySub.get(sub.id)
@@ -2614,7 +2831,12 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
         const priorScenes = writtenScenes.value
           .filter(Boolean)
           .filter((s) => s.subsectionId !== sub.id)
-        const embeddingContext = await buildRetrievalContext(scene, priorScenes, 5, undefined)
+        const embeddingContext = await buildRetrievalContext(
+          scene,
+          priorScenes,
+          5,
+          researchRagOptions()
+        )
         const result = await (writer.writeSceneStructured as any)({
           sceneBrief: scene,
           storyArc,
@@ -2889,6 +3111,32 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     // the pipeline ever wrote them. Group B in DERIVED-SURFACES-AUDIT.md.
     await persistRunArtifacts(projectId, { halted: false })
 
+    // Final rollup: the last batch's scenes were committed after the in-run
+    // rollup that preceded them, so without this the closing chapters would have
+    // no digest and the NEXT run would start blind to how this one ended.
+    try {
+      await rollupProjectDigests({ projectId, volumeId: volumeId.value })
+    } catch (err) {
+      console.warn('[useVolumeStoryGenerator] final digest rollup failed:', err)
+    }
+
+    // Arrange the network into one box per volume. The grouping already existed
+    // but only ever fired from the toolbar button, so a finished run left every
+    // generated entity loose on the canvas and the feature read as missing.
+    // Non-destructive: each volume's group is reused, manual groups survive.
+    try {
+      const { placed, grouped } = await groupNetworkByVolume({ projectId })
+      if (placed > 0) {
+        actLog.appendThought(
+          currentTaskId,
+          artifactsPhase,
+          `Grouped ${placed} network node${placed === 1 ? '' : 's'} into ${grouped} volume${grouped === 1 ? '' : 's'}.\n`
+        )
+      }
+    } catch (err) {
+      console.warn('[useVolumeStoryGenerator] group-by-volume after run failed:', err)
+    }
+
     // ── Commit + finalize ──
     await advance('COMMITTED')
     actLog.completeTask(currentTaskId)
@@ -3079,11 +3327,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     report.remaining = targets.length
     let consecutiveFailures = 0
 
-    const existingEntitiesJson = buildExistingEntitiesBlob(
-      storyBibleStore.characters,
-      storyBibleStore.locations,
-      storyBibleStore.plotThreads
-    )
+    const existingEntitiesJson = await scopedEntitiesBlob(projectId)
 
     for (const target of targets) {
       throwIfAborted()
@@ -3112,8 +3356,12 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
           storyContract,
           existingEntitiesJson,
           // The prose on either side of this scene, so the new text joins the
-          // book instead of restarting it.
-          embeddingContext: [neighbourContext(survey, target.index), instructions || '']
+          // book instead of restarting it — plus the research it draws on.
+          embeddingContext: [
+            neighbourContext(survey, target.index),
+            instructions || '',
+            await researchCitationsFor(scene, projectId)
+          ]
             .filter(Boolean)
             .join('\n\n'),
           emitChunk: stream.emitChunk

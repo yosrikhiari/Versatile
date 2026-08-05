@@ -246,28 +246,56 @@ function selectRelevantPriorScenes(currentScene: any, candidates: any, limit: an
   return scored.slice(0, limit).map((x) => x.s)
 }
 
-async function buildRetrievalContext(currentScene: any, priorScenes: any, k = 5, ragOptions: any) {
+/**
+ * Continuity context for one scene, plus the research the scene is about.
+ *
+ * `ragOptions` is what turns the second half on:
+ *   { projectId, enabled?: boolean, documentIds?: (string|number)[] }
+ * Omit it — as every caller in this repo used to, passing a literal `undefined`
+ * — and the writer gets prior-scene continuity only. Imported research then
+ * reached the story director's plan and nothing else, so a book "grounded in"
+ * a research library was written from a plan that had seen it and prose that
+ * never had.
+ */
+async function buildRetrievalContext(currentScene: any, priorScenes: any, k = 5, ragOptions?: any) {
   const baseContext = await buildBaseRetrievalContext(currentScene, priorScenes, k)
-  if (!ragOptions || !ragOptions.projectId) return baseContext
+  const citations = await buildResearchContext(currentScene, ragOptions)
+  return [baseContext, citations].filter(Boolean).join('\n\n')
+}
+
+/**
+ * Just the research half: labelled excerpts from the project's imported
+ * documents that match this scene. Separate from `buildRetrievalContext` because
+ * the continuation path already has its own continuity context (the prose on
+ * either side of the gap) and only needs the research appended.
+ *
+ * Best-effort by design — retrieval failing is a reason to write the scene
+ * without citations, never a reason to fail the scene.
+ */
+async function buildResearchContext(currentScene: any, ragOptions?: any): Promise<string> {
+  if (!ragOptions || !ragOptions.projectId) return ''
+  if (ragOptions.enabled === false) return ''
   try {
     const queryText = [
       currentScene.title,
       currentScene.goal || currentScene.emotionalGoal,
+      currentScene.whatChanges,
       (currentScene.charactersPresent || currentScene.characters || []).join(' '),
       currentScene.location
     ]
       .filter(Boolean)
       .join(' ')
-    if (queryText.trim().length < 10) return baseContext
+    if (queryText.trim().length < 10) return ''
     const chunks = await multiHopRetrieve({
       queries: [queryText],
-      projectId: ragOptions.projectId
+      projectId: ragOptions.projectId,
+      documentIds: ragOptions.documentIds,
+      topK: ragOptions.topK
     })
-    if (!chunks || chunks.length === 0) return baseContext
-    const citations = formatCitationContext(chunks)
-    return [baseContext, citations].filter(Boolean).join('\n\n')
+    if (!chunks || chunks.length === 0) return ''
+    return formatCitationContext(chunks)
   } catch {
-    return baseContext
+    return ''
   }
 }
 
@@ -338,6 +366,7 @@ export {
   buildEmbeddingContext,
   selectRelevantPriorScenes,
   buildRetrievalContext,
+  buildResearchContext,
   EMBEDDING_CONTEXT_MAX_TOKENS,
   CONSISTENCY_FIX_ROUNDS,
   CONSISTENCY_FIX_MAX_SCENES,
