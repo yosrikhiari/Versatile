@@ -44,7 +44,6 @@ import {
   clearGenRun,
   getGenRun,
   updateGenRunStage,
-  runStageWithTimeout,
   runStageWithHeartbeat,
   makeInitialGenState,
   STAGE_IDLE_TIMEOUT_MS
@@ -1024,17 +1023,27 @@ export function useVolumeStoryGenerator() {
           `${storyBibleStore.locations.length} locations, ${storyBibleStore.plotThreads.length} plot threads...\n`
       )
       try {
-        const netResult = await runStageWithTimeout(projectId, 'network', () =>
-          generateRelationships({
-            projectId,
-            characters: storyBibleStore.characters as any[],
-            locations: storyBibleStore.locations as any[],
-            plotThreads: storyBibleStore.plotThreads as any[],
-            synopsis: enhancedSynopsis,
-            genre,
-            tone,
-            signal: abort.signal()
-          })
+        // Heartbeat on tokens, not on a wall clock. The weave is a single
+        // structured call, so the only honest evidence it is alive is the stream
+        // underneath it; the stage budget then only has to cover prompt
+        // evaluation rather than the whole generation.
+        const netResult = await runStageWithHeartbeat(
+          projectId,
+          'network',
+          (heartbeat, stageSignal) =>
+            generateRelationships({
+              projectId,
+              characters: storyBibleStore.characters as any[],
+              locations: storyBibleStore.locations as any[],
+              plotThreads: storyBibleStore.plotThreads as any[],
+              synopsis: enhancedSynopsis,
+              genre,
+              tone,
+              signal: stageSignal,
+              onProgress: () => heartbeat()
+            }),
+          undefined,
+          abort.signal()
         )
         const REASON_MESSAGES = {
           ai_empty: 'The model found no relationships to map for this cast.',
@@ -1175,10 +1184,10 @@ export function useVolumeStoryGenerator() {
           // `currentStage` from the first unfinished pipeline stage, so reusing
           // it here would rewind a resumed run back past 'structure'. An off-
           // pipeline key gets the same idle watchdog with no checkpoint effect.
-          const reweave = await runStageWithTimeout(
+          const reweave = await runStageWithHeartbeat(
             projectId,
             'network_reweave',
-            () =>
+            (heartbeat, stageSignal) =>
               generateRelationships({
                 projectId,
                 characters: storyBibleStore.characters as any[],
@@ -1187,9 +1196,11 @@ export function useVolumeStoryGenerator() {
                 synopsis: enhancedSynopsis,
                 genre,
                 tone,
-                signal: abort.signal()
+                signal: stageSignal,
+                onProgress: () => heartbeat()
               }),
-            STAGE_IDLE_TIMEOUT_MS.network
+            STAGE_IDLE_TIMEOUT_MS.network,
+            abort.signal()
           )
           actLog.updatePhase(currentTaskId, reweavePhase, {
             status: 'done',

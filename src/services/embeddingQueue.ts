@@ -13,6 +13,7 @@ import {
   EMBEDDING_VERSION,
   EMBEDDING_PROVIDER_CAPABILITIES
 } from '../config/ai'
+import { resolveEmbeddingConfig } from './embeddingConfig'
 import { awaitForegroundIdle } from './providerGate'
 
 interface QueueEntry {
@@ -37,9 +38,13 @@ let retryDelayMs = 1000
 const progress: Record<string, ProgressInfo> = {}
 const subscribers = new Set<Subscriber>()
 
+function activeProvider(): string {
+  return resolveEmbeddingConfig().provider
+}
+
 function resolveBatchSize(): number {
   if (batchSizeOverride !== null) return batchSizeOverride
-  const caps = EMBEDDING_PROVIDER_CAPABILITIES[EMBEDDING_DEFAULTS.provider as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES]
+  const caps = EMBEDDING_PROVIDER_CAPABILITIES[activeProvider() as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES]
   return caps ? caps.maxBatchSize : EMBEDDING_DEFAULTS.batchSize
 }
 
@@ -124,7 +129,8 @@ async function processQueue(): Promise<void> {
   try {
     isProcessing = true
     const size = resolveBatchSize()
-    const caps = EMBEDDING_PROVIDER_CAPABILITIES[EMBEDDING_DEFAULTS.provider as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES]
+    const provider = activeProvider()
+    const caps = EMBEDDING_PROVIDER_CAPABILITIES[provider as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES]
     const maxConcurrent = caps ? caps.maxConcurrentRequests : 1
 
     async function worker(): Promise<void> {
@@ -134,7 +140,7 @@ async function processQueue(): Promise<void> {
         // stream is not. Checked per batch rather than per run so a queue that
         // outlives a generation start gets out of its way mid-flight, and
         // resumes on its own afterwards — no cancel/restart, no lost progress.
-        await awaitForegroundIdle(EMBEDDING_DEFAULTS.provider)
+        await awaitForegroundIdle(provider)
         const items = queue.splice(0, size)
         if (items.length === 0) break
         await processSingleBatch(items)

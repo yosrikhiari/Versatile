@@ -16,16 +16,25 @@ export const PIPELINE_STAGES = ['bible', 'network', 'structure', 'spine', 'prose
  * Bounding idle time instead means the budget no longer has to predict how long
  * the work takes — only how long silence is tolerable. That is a question with a
  * stable answer regardless of model speed, chapter count, or hardware.
+ *
+ * FLOOR: every budget here must exceed the provider's own first-token allowance
+ * (`FIRST_TOKEN_TIMEOUT_MS`, 300s in `providers/ollama.ts`). Prompt evaluation is
+ * the one phase where silence is expected, and the provider is the layer that
+ * knows the difference between "still evaluating the prompt" and "wedged". A
+ * stage budget below that floor always fires first and reports the useless
+ * version of the story — which is exactly what `network` did at 180s: it could
+ * not outlast a single legitimate structured call, so the Story Network stage
+ * failed on every run that had to evaluate a real prompt.
  */
 export const STAGE_IDLE_TIMEOUT_MS: Record<string, number> = {
-  bible: 5 * 60 * 1000,
-  network: 3 * 60 * 1000,
+  bible: 6 * 60 * 1000,
+  network: 6 * 60 * 1000,
   structure: 8 * 60 * 1000,
   // One scene on slow local hardware can legitimately take ~15 minutes, and a
   // scene is the unit of progress here.
   prose: 25 * 60 * 1000,
-  spine: 5 * 60 * 1000,
-  consistency: 5 * 60 * 1000
+  spine: 6 * 60 * 1000,
+  consistency: 6 * 60 * 1000
 }
 
 /** @deprecated Retained for callers still passing an absolute budget. */
@@ -58,12 +67,23 @@ export interface StageHeartbeat {
  * runs for as long as it needs; when they stop for the stage's idle budget it
  * fails immediately. A stage that never calls heartbeat behaves exactly like the
  * old absolute-timeout version, so untouched call sites keep their old semantics.
+ *
+ * `workFn` also receives a signal that is aborted when the watchdog fires, and
+ * it must be forwarded to whatever issues the provider call. Reporting the stage
+ * failed does not stop the work: the race abandons the promise, but the request
+ * behind it keeps streaming and keeps the single Ollama slot (`foregroundSlot`,
+ * limit 1) that the *next* stage needs. That is how a Story Network stage
+ * declared dead at 180s went on to hold the GPU while Planning sat in the queue
+ * behind it, burning its own budget waiting for a call nobody was listening to.
+ * `externalSignal` (the run-level stop) is chained into the same controller so
+ * cancelling the run cancels the request too.
  */
 export async function runStageWithHeartbeat(
   projectId: string,
   stageName: string,
-  workFn: (heartbeat: StageHeartbeat) => Promise<any>,
-  idleTimeoutMs?: number
+  workFn: (heartbeat: StageHeartbeat, signal: AbortSignal) => Promise<any>,
+  idleTimeoutMs?: number,
+  externalSignal?: AbortSignal
 ) {
   const ms = idleTimeoutMs || STAGE_IDLE_TIMEOUT_MS[stageName] || 5 * 60 * 1000
   await updateGenRunStage(projectId, stageName, { status: 'running' })
@@ -73,16 +93,25 @@ export async function runStageWithHeartbeat(
   let rejectIdle: ((err: Error) => void) | null = null
   let lastDetail = ''
 
+  const controller = new AbortController()
+  const forwardAbort = () => controller.abort(externalSignal?.reason)
+  if (externalSignal) {
+    if (externalSignal.aborted) forwardAbort()
+    else externalSignal.addEventListener('abort', forwardAbort, { once: true })
+  }
+
   const arm = () => {
     clearTimeout(timer)
     if (settled) return
     timer = setTimeout(() => {
-      rejectIdle?.(
-        new Error(
-          `Stage "${stageName}" made no progress for ${Math.round(ms / 1000)}s` +
-            (lastDetail ? ` (last: ${lastDetail})` : '')
-        )
+      const err = new Error(
+        `Stage "${stageName}" made no progress for ${Math.round(ms / 1000)}s` +
+          (lastDetail ? ` (last: ${lastDetail})` : '')
       )
+      // Cancel before rejecting, so the provider slot is released as the caller
+      // learns the stage is dead rather than minutes later.
+      controller.abort(err)
+      rejectIdle?.(err)
     }, ms)
   }
 
@@ -96,7 +125,7 @@ export async function runStageWithHeartbeat(
       rejectIdle = reject
       arm()
     })
-    const result = await Promise.race([workFn(heartbeat), idleGuard])
+    const result = await Promise.race([workFn(heartbeat, controller.signal), idleGuard])
     settled = true
     clearTimeout(timer)
     await updateGenRunStage(projectId, stageName, { status: 'done' })
@@ -110,6 +139,8 @@ export async function runStageWithHeartbeat(
       error: err.message
     })
     throw err
+  } finally {
+    externalSignal?.removeEventListener('abort', forwardAbort)
   }
 }
 
@@ -121,10 +152,17 @@ export async function runStageWithHeartbeat(
 export async function runStageWithTimeout(
   projectId: string,
   stageName: string,
-  workFn: () => Promise<any>,
-  timeoutMs?: number
+  workFn: (signal: AbortSignal) => Promise<any>,
+  timeoutMs?: number,
+  externalSignal?: AbortSignal
 ) {
-  return runStageWithHeartbeat(projectId, stageName, () => workFn(), timeoutMs)
+  return runStageWithHeartbeat(
+    projectId,
+    stageName,
+    (_heartbeat, signal) => workFn(signal),
+    timeoutMs,
+    externalSignal
+  )
 }
 
 export function makeInitialGenState(extra = {}) {

@@ -94,6 +94,33 @@ describe('generateRelationships — robustness & diagnosability', () => {
     expect(mockAiGenerateJson).toHaveBeenCalledTimes(1)
   })
 
+  // The stage watchdog cancels by aborting the signal. Treating that abort as
+  // "the model came back empty" fired a second request at a provider the stage
+  // no longer owned — and then wrote its result to a stage already marked failed.
+  it('stops instead of retrying once the caller aborts', async () => {
+    const controller = new AbortController()
+    mockAiGenerateJson.mockImplementation(async () => {
+      controller.abort()
+      throw new Error('Aborted')
+    })
+
+    const err = await generateRelationships({ ...cast, signal: controller.signal }).catch((e) => e)
+
+    expect(mockAiGenerateJson).toHaveBeenCalledTimes(1)
+    expect(err.name).toBe('AbortError')
+    expect(mockAddRels).not.toHaveBeenCalled()
+    expect(mockAddEdges).not.toHaveBeenCalled()
+  })
+
+  it('forwards a progress hook so the stage can heartbeat on tokens', async () => {
+    mockAiGenerateJson.mockResolvedValue({
+      characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }]
+    })
+    const onProgress = vi.fn()
+    await generateRelationships({ ...cast, onProgress })
+    expect(mockAiGenerateJson.mock.calls[0][2].onToken).toBe(onProgress)
+  })
+
   it('persists and reports ok on a good result', async () => {
     mockAiGenerateJson.mockResolvedValue({
       characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }],

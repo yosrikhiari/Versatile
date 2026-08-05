@@ -1,6 +1,7 @@
 import { aiGenerate } from '../../useAiService'
 import { FEATURES } from '../../../config/ai'
 import { sanitizeJsonResponse, normalizeField } from '../utils'
+import { useEntityGuardrails } from '@/guardrails/hooks/useEntityGuardrails'
 
 // aiGenerate already owns transport retries + provider fallback, so we do NOT
 // re-wrap it in retryWithBackoff here — that stacked up to ~15 sequential calls
@@ -21,7 +22,21 @@ export async function executeGeneration({ userPrompt, systemPrompt, schema, comp
 
     const parsed = sanitizeJsonResponse(response)
     if (parsed && isValid(parsed, schema)) {
-      return buildEntity(parsed, schema)
+      const entity = buildEntity(parsed, schema)
+
+      if (schema.type === 'character') {
+        const { validateProfile } = useEntityGuardrails()
+        const result = await validateProfile({
+          data: entity,
+          layer: 'ai_output',
+          entryPoint: 'generateEntity:character',
+        })
+        if (!result.passed && result.blocking.length > 0) {
+          throw new Error(`Character name guard failed: ${result.blocking.map(r => r.message).join('; ')}`)
+        }
+      }
+
+      return entity
     }
   }
 

@@ -68,6 +68,14 @@ export interface AiGenerateOptions {
   idleTimeout?: number
   /** Max ms to wait for the first token; covers prompt evaluation, where silence is expected. */
   firstTokenTimeout?: number
+  /**
+   * Progress hook for structured calls, which return one parsed object but are
+   * streamed underneath. A caller under a stage watchdog needs evidence the call
+   * is alive before the result exists; without it a multi-minute schema-bound
+   * call is indistinguishable from a hang. Ignored by providers that do not
+   * stream structured output.
+   */
+  onToken?: (chunk: string, full: string) => void
   maxRetries?: number
   retryDelay?: number
   complexity?: string
@@ -100,6 +108,7 @@ interface ProviderOptions {
   timeout?: number
   idleTimeout?: number
   firstTokenTimeout?: number
+  onToken?: (chunk: string, full: string) => void
 }
 
 interface LangfuseTrace {
@@ -867,6 +876,7 @@ export async function aiGenerateStructured(prompt: string, systemPrompt: string,
         timeout: options.timeout,
         idleTimeout: options.idleTimeout,
         firstTokenTimeout: options.firstTokenTimeout,
+        onToken: options.onToken,
         schemaName: options.schemaName
       }
       const result = await withRetry(

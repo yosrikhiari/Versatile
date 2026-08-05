@@ -69,8 +69,9 @@ export const useProjectStore = defineStore('project', () => {
 
   async function savePromptOverrides(overrides: any) {
     if (!currentProjectId.value) return
-    promptOverrides.value = { ...overrides }
-    await updateProject(currentProjectId.value, { promptOverrides: overrides })
+    const cleanOverrides = JSON.parse(JSON.stringify(overrides))
+    promptOverrides.value = { ...cleanOverrides }
+    await updateProject(currentProjectId.value, { promptOverrides: cleanOverrides })
   }
 
   const activeWorkspaceType = computed(() => {

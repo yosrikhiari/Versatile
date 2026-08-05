@@ -52,10 +52,10 @@ describe('formatCitationContext', () => {
     expect(result).toContain('[source:d1]')
   })
 
-  it('falls back to source inconnu when no title or id', () => {
+  it('falls back to a generic source label when no title or id', () => {
     const chunks = [{ text: 'Content without source' }]
     const result = formatCitationContext(chunks)
-    expect(result).toContain('[source:source inconnu]')
+    expect(result).toContain('[source:unknown source]')
   })
 })
 

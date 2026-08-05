@@ -348,7 +348,8 @@ export async function generateRelationships({
   synopsis,
   genre,
   tone,
-  signal
+  signal,
+  onProgress
 }: {
   projectId: any
   characters: any
@@ -358,6 +359,13 @@ export async function generateRelationships({
   genre: any
   tone: any
   signal: any
+  /**
+   * Called as tokens arrive. This stage is one long structured call with no
+   * intermediate units of work, so the token stream is the only progress a stage
+   * watchdog can observe — without it the caller has to guess a wall-clock budget
+   * for the whole call, and every guess so far has been shorter than the call.
+   */
+  onProgress?: () => void
 }) {
   if (!projectId) throw new Error('generateRelationships requires a projectId')
   if (!characters || characters.length < 2) {
@@ -387,15 +395,26 @@ export async function generateRelationships({
       maxTokens,
       schemaName: 'story_network',
       role: 'utility',
-      signal
+      signal,
+      onToken: onProgress
     }).catch((err) => {
       console.warn(`[generateRelationships] attempt ${attempt} failed:`, err as any)
       return null
     })
     if (countAiConnections(aiResult) > 0) break
+    // The retry exists for a model that came back empty, not for a caller that
+    // has given up. Swallowing the abort here and firing a second call is how a
+    // cancelled stage went on issuing requests to a provider it no longer owned.
+    if (signal?.aborted) break
     if (attempt < MAX_ATTEMPTS) {
       console.warn(`[generateRelationships] attempt ${attempt} returned no connections; retrying.`)
     }
+  }
+
+  if (signal?.aborted) {
+    const err = new Error('Story Network generation cancelled')
+    err.name = 'AbortError'
+    throw err
   }
 
   if (!aiResult)

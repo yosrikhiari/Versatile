@@ -9,6 +9,7 @@ import {
   CONSISTENCY_FIX_ROUNDS,
   CONSISTENCY_FIX_MAX_SCENES
 } from '../context/sceneContext'
+import { buildRagOptions } from '../../../services/researchScope'
 
 export class ConsistencyService {
   writeParams: any
@@ -82,7 +83,14 @@ export class ConsistencyService {
     if (!scene || !this.writeParams.value) return
     const { storyArc, storyContract } = this.writeParams.value
     const priorScenes = this.writtenScenes.value.filter((_: any, i: any) => i !== sceneIndex)
-    const embeddingContext = await buildRetrievalContext(scene, priorScenes, 5, undefined)
+    // Same research the run was written from — a continuity fix that loses the
+    // source material can "fix" a fact back into being wrong.
+    const embeddingContext = await buildRetrievalContext(
+      scene,
+      priorScenes,
+      5,
+      buildRagOptions(projectId, this.writeParams.value?.research)
+    )
     const chapterLog = priorScenes
       .map((ws: any, idx: any) => `Scene ${idx + 1} ("${ws.title}"): ${ws.summary || '(written)'}`)
       .slice(-20)

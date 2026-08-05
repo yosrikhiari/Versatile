@@ -1,5 +1,6 @@
 import { buildRetrievalContext } from '../context/sceneContext'
 import { buildExistingEntitiesBlob } from '../context/sceneContext'
+import { buildRagOptions } from '../../../services/researchScope'
 import { computeSummary } from '../utils'
 import { proseToHtml, countProseWords } from '../writing/liveDraft'
 
@@ -146,7 +147,12 @@ export class SceneInteractionService {
 
     const priorScenes = this.writtenScenes.value.filter((_: any, i: any) => i !== sceneIndex)
     const scene = this.scenePlan.value[sceneIndex]
-    const embeddingContext = await buildRetrievalContext(scene, priorScenes, undefined, undefined)
+    const embeddingContext = await buildRetrievalContext(
+      scene,
+      priorScenes,
+      undefined,
+      buildRagOptions(projectId, this.writeParams.value?.research)
+    )
 
     const rawLog = priorScenes.map(
       (ws: any, idx: any) => `Scene ${idx + 1} ("${ws.title}"): ${ws.summary || '(written)'}`

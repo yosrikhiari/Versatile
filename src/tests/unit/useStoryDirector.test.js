@@ -329,6 +329,116 @@ describe('useStoryDirector', () => {
       expect(result.chapters[3].title).toBe('Chapter 4') // padded
     })
 
+    describe('onSkeletonReady (arc-driven cast expansion)', () => {
+      const skeleton = JSON.stringify({
+        storyArc: { premise: 'P', genre: 'Fantasy', tone: 'Dark', centralConflict: 'c' },
+        chapters: [
+          { chapterNumber: 1, title: 'Ch1', goal: 'g1', hookEnding: 'h1' },
+          { chapterNumber: 2, title: 'Ch2', goal: 'g2', hookEnding: 'h2' }
+        ]
+      })
+      const sceneJson = JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }] })
+      const structuredGoal = () => ({
+        ...goal,
+        horizon: 'long_term',
+        structure: {
+          chapters: 2,
+          scenesPerChapter: 1,
+          wordsPerChapter: 800,
+          chaptersPerVolume: 2,
+          volumes: 1
+        }
+      })
+
+      beforeEach(() => {
+        mockAiGenerate.mockImplementation((prompt) =>
+          /chapter skeleton/i.test(prompt) ? skeleton : sceneJson
+        )
+      })
+
+      // The whole point of the hook: entities must be committable at a moment when
+      // the arc is known but nothing has been cast yet. One call too late and the
+      // scenes are already written against the old cast.
+      it('fires after the skeleton and before any scene is planned', async () => {
+        let callsWhenFired = null
+        let sawChapters = null
+        let sawArc = null
+
+        const { generateStoryPlan } = useStoryDirector()
+        await generateStoryPlan({
+          goal: structuredGoal(),
+          evidence: 'ORIGINAL_EVIDENCE',
+          onSkeletonReady: async ({ chapters, storyArc }) => {
+            callsWhenFired = mockAiGenerate.mock.calls.length
+            sawChapters = chapters.map((c) => c.title)
+            sawArc = storyArc
+            return null
+          }
+        })
+
+        expect(callsWhenFired).toBe(1) // skeleton done, zero scene calls made
+        expect(sawChapters).toEqual(['Ch1', 'Ch2'])
+        expect(sawArc.centralConflict).toBe('c')
+      })
+
+      it('routes refreshed evidence into scene planning only', async () => {
+        const { generateStoryPlan } = useStoryDirector()
+        await generateStoryPlan({
+          goal: structuredGoal(),
+          evidence: 'ORIGINAL_EVIDENCE',
+          onSkeletonReady: async () => 'REFRESHED_EVIDENCE'
+        })
+
+        const systemPrompts = mockAiGenerate.mock.calls.map((c) => c[1])
+        expect(systemPrompts).toHaveLength(3) // 1 skeleton + 2 chapters
+        expect(systemPrompts[0]).toContain('ORIGINAL_EVIDENCE')
+        for (const scenePrompt of systemPrompts.slice(1)) {
+          expect(scenePrompt).toContain('REFRESHED_EVIDENCE')
+          expect(scenePrompt).not.toContain('ORIGINAL_EVIDENCE')
+        }
+        // The director prompt must survive the swap — evidence is only the tail.
+        expect(systemPrompts[1]).toContain('You are a story architect')
+      })
+
+      it('keeps the original evidence when the hook adds nothing', async () => {
+        const { generateStoryPlan } = useStoryDirector()
+        await generateStoryPlan({
+          goal: structuredGoal(),
+          evidence: 'ORIGINAL_EVIDENCE',
+          onSkeletonReady: async () => null
+        })
+        const systemPrompts = mockAiGenerate.mock.calls.map((c) => c[1])
+        expect(systemPrompts.every((p) => p.includes('ORIGINAL_EVIDENCE'))).toBe(true)
+      })
+
+      // Advisory by contract: losing the new cast must not cost the user a plan
+      // that otherwise succeeded.
+      it('still returns a complete plan when the hook throws', async () => {
+        const { generateStoryPlan } = useStoryDirector()
+        const result = await generateStoryPlan({
+          goal: structuredGoal(),
+          evidence: 'ORIGINAL_EVIDENCE',
+          onSkeletonReady: async () => {
+            throw new Error('expansion exploded')
+          }
+        })
+        expect(result.chapters).toHaveLength(2)
+        expect(result.scenes).toHaveLength(2)
+        const systemPrompts = mockAiGenerate.mock.calls.map((c) => c[1])
+        expect(systemPrompts.every((p) => p.includes('ORIGINAL_EVIDENCE'))).toBe(true)
+      })
+
+      it('plans exactly as before when no hook is supplied', async () => {
+        const { generateStoryPlan } = useStoryDirector()
+        const result = await generateStoryPlan({
+          goal: structuredGoal(),
+          evidence: 'ORIGINAL_EVIDENCE'
+        })
+        expect(result.chapters).toHaveLength(2)
+        expect(mockAiGenerate).toHaveBeenCalledTimes(3)
+      })
+    })
+
     it('sets isPlanning ref correctly', async () => {
       mockAiGenerate.mockResolvedValue(makeValidResponse())
       const { generateStoryPlan, isPlanning } = useStoryDirector()

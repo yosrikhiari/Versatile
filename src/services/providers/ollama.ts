@@ -28,6 +28,12 @@ interface OllamaOptions {
   firstTokenTimeout?: number
   /** @deprecated alias for `idleTimeout`, kept so existing callers keep working. */
   chunkTimeout?: number
+  /**
+   * Progress hook for calls that return one blob (`generateStructured`). The
+   * tokens are still streamed — this exposes them so a caller can prove the call
+   * is alive without waiting for the parsed result.
+   */
+  onToken?: (chunk: string, full: string) => void
   format?: Record<string, unknown> | string
   /**
    * Let a reasoning-capable model emit chain-of-thought. Off by default — see
@@ -410,7 +416,10 @@ export async function stream(prompt: string, systemPrompt: string, model: string
  * possible for the planning calls that need it most.
  */
 export async function generateStructured(prompt: string, systemPrompt: string, model: string, schema: Record<string, unknown>, options: OllamaOptions = {}) {
-  const raw = await runStream(prompt, systemPrompt, model, null, { ...options, format: schema })
+  const raw = await runStream(prompt, systemPrompt, model, options.onToken ?? null, {
+    ...options,
+    format: schema
+  })
   try {
     return { data: JSON.parse(raw.text), usage: raw.usage }
   } catch (err) {

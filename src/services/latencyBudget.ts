@@ -39,7 +39,11 @@ export const DEFAULT_LATENCY_BUDGETS: Record<string, { warn: number; block: numb
   [FEATURES.WORLDBUILDING]: { warn: 20_000, block: 60_000 },
   [FEATURES.COMPACTION]: { warn: 15_000, block: 45_000 },
   [FEATURES.STORY_GENERATION]: { warn: 300_000, block: 900_000 },
-  [FEATURES.NETWORK]: { warn: 10_000, block: 30_000 },
+  // Not a short call. The Story Network is one grammar-constrained pass over the
+  // whole cast — ~1,900 output tokens for a 5-character bible, which is minutes
+  // at local speeds. At 10s this warned on every single run, the failure mode
+  // this file's header describes.
+  [FEATURES.NETWORK]: { warn: 120_000, block: 600_000 },
   [FEATURES.TAGGING]: { warn: 10_000, block: 30_000 },
   [FEATURES.CHARACTER_CHAT]: { warn: 15_000, block: 45_000 },
   // Also long-form prose, so it lives on the same measured scale as

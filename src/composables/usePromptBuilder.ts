@@ -200,7 +200,7 @@ Write scene ${sceneId}: "${sceneTitle}"
 CHAPTER LOG (what has happened before this scene):
 ${logText}
 
-${embeddingContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${embeddingContext}\n` : ''}SCENE BRIEF:
+${embeddingContext ? `ESTABLISHED CONTEXT (prior scenes, and research this project imported):\n${embeddingContext}\n` : ''}SCENE BRIEF:
 ${briefSection}
 
 ${existingEntitiesJson ? `EXISTING ENTITIES (already established in the story — maintain these):\n${existingEntitiesJson}\n` : ''}STORY ARC (for tonal reference):
@@ -229,7 +229,7 @@ Write scene ${sceneId}: "${sceneTitle}"
 CHAPTER LOG (what has happened before this scene):
 ${logText}
 
-${embeddingContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${embeddingContext}\n` : ''}SCENE BRIEF:
+${embeddingContext ? `ESTABLISHED CONTEXT (prior scenes, and research this project imported):\n${embeddingContext}\n` : ''}SCENE BRIEF:
 ${briefSection}
 
 STORY ARC (for tonal reference):

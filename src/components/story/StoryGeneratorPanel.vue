@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { db } from '../../services/db-core'
 import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
@@ -342,6 +342,13 @@ onMounted(() => {
   refreshContinuationSurvey()
 })
 
+// The panel usually outlives several trips to the Research library, so the
+// source list has to be re-read rather than captured once at mount.
+watch(
+  () => projectStore.currentProjectId,
+  () => loadResearchSources()
+)
+
 // ----- Generating on top of what already exists -----
 //
 // The survey is read from the manuscript, not from a run, so it stays accurate
@@ -425,6 +432,11 @@ async function handleVolumeGenerate() {
   volumeStoryContract.value = ''
   volumePlanEdits.value = []
   liveEntities.value = []
+
+  // Re-read the library at the moment it matters. Anything imported since this
+  // panel mounted would otherwise be missing from the scope, and a project whose
+  // first import happened after mount would generate with no research at all.
+  await loadResearchSources()
 
   try {
     const result = await volumeGenerator.startGeneration({

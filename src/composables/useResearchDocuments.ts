@@ -201,7 +201,14 @@ export function useResearchDocuments(projectId: any) {
           await yieldToMain()
         }
 
-        await db.researchDocuments.update(docId, { tags: [...allDocTags].slice(0, 20) })
+        // chunkCount is persisted because the library row falls back to it when
+        // no live/DB indexing progress is known for a document (an import from a
+        // previous session, say). Nothing wrote it, so that fallback never fired
+        // and those rows showed a char count and nothing else.
+        await db.researchDocuments.update(docId, {
+          tags: [...allDocTags].slice(0, 20),
+          chunkCount: totalChunks
+        })
         importPercent.value = 90 + Math.round((processed / files.length) * 8)
         importProgress.value = `Indexing ${file.name} (${totalChunks} chunks)...`
 
@@ -316,7 +323,10 @@ export function useResearchDocuments(projectId: any) {
         await yieldToMain()
       }
 
-      await db.researchDocuments.update(docId, { tags: [...allDocTags].slice(0, 20) })
+      await db.researchDocuments.update(docId, {
+        tags: [...allDocTags].slice(0, 20),
+        chunkCount: totalChunks
+      })
       importPercent.value = 98
       importProgress.value = `Indexing ${sourceName} (${totalChunks} chunks)...`
 
@@ -420,7 +430,10 @@ export function useResearchDocuments(projectId: any) {
       }
     }
 
-    await db.researchDocuments.update(documentId, { tags: [...allDocTags].slice(0, 20) })
+    await db.researchDocuments.update(documentId, {
+      tags: [...allDocTags].slice(0, 20),
+      chunkCount: allChunks.length
+    })
 
     const ids = await addResearchChunks(chunkRows)
 

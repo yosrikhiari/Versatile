@@ -1,0 +1,18 @@
+fix(research): persist scope across runs, reconcile index progress, over-fetch when scoped
+
+- `CommitService` now saves `research` in checkpoints so a resumed run keeps
+  the same scope instead of silently widening to "every document"
+
+- `useResearchScope` reloads on project change and preserves user selections
+  across reloads (new docs auto-selected, kept docs stay selected)
+
+- ResearchPanel: `mergedProgress` reconciles DB totals with live queue counts
+  so a 900/1000 document doesn't flip to "Indexing 0/100" on resume; settle
+  timer re-reads DB when queue goes quiet
+
+- `multiHopRetrieval`: over-fetches (`topK * 5`) when document-scoped, then
+  filters — otherwise one selected source out of ten retrieves nothing
+
+- `buildRagCitations`: English header ("RESEARCH...") replaces French
+  ("Références:") since this text is now injected into the scene writer's
+  English prompt and local models echo stray French into prose

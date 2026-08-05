@@ -191,7 +191,16 @@ export async function getGraphGroups(projectId: any) {
       x: r.x,
       y: r.y,
       width: r.width,
-      height: r.height
+      height: r.height,
+      // Neither of these survived a round-trip before, and both are structural.
+      // `volumeId` is how `computeVolumeGroups` recognises a volume's existing
+      // group — without it, regrouping after a reload built a SECOND group with
+      // the same `group-vol-N` id and the bulkAdd blew up on the duplicate key.
+      // `parentGroupId` is what makes a group nested; dropping it silently
+      // flattened the hierarchy every time the project was reopened.
+      volumeId: r.volumeId ?? null,
+      parentVolumeId: r.parentVolumeId ?? null,
+      parentGroupId: r.parentGroupId ?? null
     }))
 }
 
@@ -206,6 +215,9 @@ export async function saveGraphGroups(projectId: any, groups: any) {
     y: g.y ?? 100,
     width: g.width ?? 300,
     height: g.height ?? 200,
+    volumeId: g.volumeId ?? null,
+    parentVolumeId: g.parentVolumeId ?? null,
+    parentGroupId: g.parentGroupId ?? null,
     groupOrder: i
   }))
   await db.transaction('rw', db.graphGroupsV2, async () => {

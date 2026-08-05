@@ -15,6 +15,7 @@ import { STORAGE_KEYS } from '../config/storageKeys'
 import { useLocalStorage } from '../utils/useLocalStorage'
 import { resume as resumeEmbeddingQueue } from '../services/embeddingQueue'
 import { markStale, pruneEmbeddingCache } from '../services/researchDb'
+import { resolveEmbeddingConfig } from '../services/embeddingConfig'
 import { EMBEDDING_DEFAULTS, EMBEDDING_VERSION } from '../config/ai'
 
 export function useAppInitialization() {
@@ -154,10 +155,15 @@ export function useAppInitialization() {
 
     const { regenerateAllDocuments } = useStoryDocuments()
     await regenerateAllDocuments(projectStore.currentProjectId)
+    // Compared against the model the indexer will actually use, not the shipped
+    // default. Comparing to the default meant switching embedding models never
+    // marked anything stale, so the corpus kept its old vectors while new
+    // queries were embedded with the new model — retrieval quietly went blind.
+    const activeEmbedding = resolveEmbeddingConfig()
     const stale = await markStale(
       projectStore.currentProjectId,
-      EMBEDDING_DEFAULTS.provider,
-      EMBEDDING_DEFAULTS.model,
+      activeEmbedding.provider,
+      activeEmbedding.model,
       EMBEDDING_VERSION
     )
     if (stale > 0) {

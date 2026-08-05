@@ -33,8 +33,9 @@ export async function createProject(name: any, genre: any = '', synopsis: any = 
 export async function updateProject(id: any, data: any) {
   try {
     const now = new Date().toISOString()
+    const cleanData = JSON.parse(JSON.stringify(data))
     await db.projects.update(id, {
-      ...data,
+      ...cleanData,
       updatedAt: now
     })
   } catch (error) {
@@ -84,5 +85,6 @@ export async function saveManuscript(projectId: any, content: any) {
 }
 
 export async function updateProjectMeta(projectId: any, data: any) {
-  return db.projects.update(projectId, data)
+  const cleanData = JSON.parse(JSON.stringify(data))
+  return db.projects.update(projectId, cleanData)
 }

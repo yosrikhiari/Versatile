@@ -10,7 +10,7 @@ const CHAT_KINDS: GuardrailKind[] = [
 ]
 
 /** A generated entity profile that will be written to the store. */
-const PROFILE_KINDS: GuardrailKind[] = ['entity', 'schema_conformance']
+const PROFILE_KINDS: GuardrailKind[] = ['entity', 'schema_conformance', 'character_name']
 
 /** A scene plan — names entities and asserts edges between them. */
 const PLAN_KINDS: GuardrailKind[] = ['entity', 'relationship', 'schema_conformance']

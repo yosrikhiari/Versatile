@@ -1,6 +1,6 @@
 import { EMBEDDING_DEFAULTS } from '../config/ai'
 import { getEmbeddings } from './embeddingService'
-import { useSettingsStore } from '../stores/settingsStore'
+import { resolveEmbeddingConfig } from './embeddingConfig'
 
 const MAX_SAFE_CHUNK_SIZE = 300000
 
@@ -150,11 +150,16 @@ function addChunkOverlap(chunks: ChunkResult[], overlap = CHUNK_OVERLAP_SENTENCE
 }
 
 export async function computeSemanticChunks(text: string, options: ComputeSemanticOptions = {}): Promise<ChunkResult[]> {
-  const store = useSettingsStore()
-  const threshold = options.threshold ?? store.embeddingThreshold ?? EMBEDDING_DEFAULTS.threshold
+  // Resolved from saved settings rather than the Pinia store: chunking is also
+  // driven from the background import path, which has no component context.
+  const settings = resolveEmbeddingConfig({
+    provider: options.embeddingProvider,
+    model: options.embeddingModel
+  })
+  const threshold = options.threshold ?? settings.threshold ?? EMBEDDING_DEFAULTS.threshold
   const maxChunkSize = options.maxChunkSize ?? 3500
-  const embeddingProvider = options.embeddingProvider || store.embeddingProvider
-  const embeddingModel = options.embeddingModel || store.embeddingModel || EMBEDDING_DEFAULTS.model
+  const embeddingProvider = settings.provider
+  const embeddingModel = settings.model
   const onProgress = options.onProgress || (() => {})
   const skipEmbeddings = options.skipEmbeddings === true
 
@@ -337,7 +342,11 @@ export async function chunkDocument(text: string, options: ChunkDocumentOptions 
   onProgress(2, 'Detected headings')
 
   const chunks = await computeSemanticChunks(normalized, {
-    threshold: options.threshold ?? EMBEDDING_DEFAULTS.threshold,
+    // Left undefined when the caller didn't ask for one, so computeSemanticChunks
+    // can fall back to the user's configured threshold. Defaulting it here made
+    // that setting dead for every research import — the value was always
+    // "specified", so `?? store.embeddingThreshold` never fired.
+    threshold: options.threshold,
     maxChunkSize: options.maxChunkSize ?? 1500,
     skipEmbeddings: options.fastMode === true,
     onProgress: (pct: number, msg = '') => {

@@ -1,9 +1,6 @@
 import { getOllamaEndpoint } from '../config/ollama'
-import {
-  EMBEDDING_PROVIDERS,
-  EMBEDDING_DEFAULTS,
-  EMBEDDING_PROVIDER_CAPABILITIES
-} from '../config/ai'
+import { EMBEDDING_PROVIDERS, EMBEDDING_PROVIDER_CAPABILITIES } from '../config/ai'
+import { resolveEmbeddingConfig } from './embeddingConfig'
 import { getBulkCachedEmbeddings, setEmbeddingCacheEntry } from './researchDb'
 import { slotFor } from './providerGate'
 
@@ -240,8 +237,13 @@ async function embedBatchInternal(inputs: string[], model: string | null, provid
 }
 
 export async function getEmbedding(text: string, options: { provider?: string; model?: string } = {}): Promise<Float32Array | null> {
-  const provider = options.provider || EMBEDDING_PROVIDERS.OLLAMA
-  const model = options.model || null
+  // Resolved from the same place the indexer resolves it. This used to hardcode
+  // ollama + a null model (which embedBatchInternal then turned into
+  // 'nomic-embed-text'), so every retrieval query — the story director's, the
+  // scene writer's multi-hop, the reranker's — was embedded with a model the
+  // corpus may not have been indexed with. Mismatched dimensions are dropped in
+  // silence by semanticSearch, which reads as "research retrieval finds nothing".
+  const { provider, model } = resolveEmbeddingConfig(options)
   const results = await embedBatch([text], model, provider)
   return results[0] || null
 }
@@ -261,8 +263,7 @@ export async function getEmbeddings(texts: string[], options: { provider?: strin
   }
   const uniqueTexts = [...uniqueMap.keys()]
 
-  const provider = options.provider || EMBEDDING_DEFAULTS.provider
-  const model = options.model || EMBEDDING_DEFAULTS.model
+  const { provider, model } = resolveEmbeddingConfig(options)
 
   const t0 = performance.now()
   const vectors = await embedBatch(uniqueTexts, model, provider)

@@ -72,6 +72,82 @@ describe('runStageWithHeartbeat', () => {
     const result = await mod.runStageWithTimeout('p1', 'network', async () => 'ok', 500)
     expect(result).toBe('ok')
   })
+
+  // The Story Network bug: the stage was declared failed at its budget, but the
+  // Ollama request behind it kept streaming and kept the single provider slot, so
+  // the next stage queued behind work nobody was waiting for.
+  it('cancels the work it gave up on instead of leaving it running', async () => {
+    let stageSignal
+    const err = await mod
+      .runStageWithHeartbeat(
+        'p1',
+        'network',
+        (_heartbeat, signal) => {
+          stageSignal = signal
+          return new Promise(() => {})
+        },
+        25
+      )
+      .catch((e) => e)
+
+    expect(err.message).toMatch(/no progress/i)
+    expect(stageSignal.aborted).toBe(true)
+  })
+
+  it('does not cancel work that finished on time', async () => {
+    let stageSignal
+    await mod.runStageWithHeartbeat(
+      'p1',
+      'network',
+      async (_heartbeat, signal) => {
+        stageSignal = signal
+        return 'ok'
+      },
+      500
+    )
+    expect(stageSignal.aborted).toBe(false)
+  })
+
+  it('forwards the run-level stop into the stage signal', async () => {
+    const runAbort = new AbortController()
+    let stageSignal
+    let started
+    const startedPromise = new Promise((r) => (started = r))
+    const work = mod.runStageWithHeartbeat(
+      'p1',
+      'network',
+      (_heartbeat, signal) =>
+        new Promise((resolve) => {
+          stageSignal = signal
+          signal.addEventListener('abort', () => resolve('stopped'), { once: true })
+          started()
+        }),
+      5000,
+      runAbort.signal
+    )
+    // The stage awaits a checkpoint write before it calls workFn, so aborting
+    // synchronously here would land before there is anything to cancel.
+    await startedPromise
+    runAbort.abort()
+    expect(await work).toBe('stopped')
+    expect(stageSignal.aborted).toBe(true)
+  })
+})
+
+describe('stage idle budgets', () => {
+  // A stage budget below the provider's own first-token allowance (300s in
+  // providers/ollama.ts) always fires first, during prompt evaluation — the one
+  // phase where silence is expected. `network` sat at 180s and so could not
+  // outlast a single legitimate structured call.
+  const FIRST_TOKEN_TIMEOUT_MS = 300_000
+
+  it('every stage outlasts the provider first-token allowance', () => {
+    for (const [stage, ms] of Object.entries(mod.STAGE_IDLE_TIMEOUT_MS)) {
+      expect(ms, `${stage} budget must exceed prompt-evaluation silence`).toBeGreaterThan(
+        FIRST_TOKEN_TIMEOUT_MS
+      )
+    }
+  })
 })
 
 describe('withTimeout', () => {
