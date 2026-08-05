@@ -4,11 +4,10 @@ import { FEATURES, PROVIDERS, RESEARCH_CHUNKS_DEFAULT } from '../config/ai'
 import { SessionBudget } from '../services/aiProviderBudget'
 
 import { useProjectStore } from '../stores/projectStore'
-import { getAllChunksForProject } from '../services/researchDb'
+import { getAllChunksForProject, getAllResearchDocuments } from '../services/researchDb'
 import { getEmbedding } from '../services/embeddingService'
 import { cosineSimilarity } from '../services/ollamaService'
-import { useLocalStorage } from '../utils/useLocalStorage'
-import { RESEARCH_KEYS } from '../config/researchKeys'
+import { resolveResearchScope } from '../services/researchScope'
 import { sanitizeJson, repairTruncatedJson } from '../services/ai/aiHelpers'
 import { guardPlan } from '../guardrails/integration/composableGuardrails'
 import { rethrowIfFatal } from './generation/lifecycle/fatal'
@@ -271,10 +270,13 @@ async function runWithConcurrency(tasks: any[], limit: number) {
 // scenes with bounded concurrency. Every step degrades to padding rather than
 // throwing, so a long novel always yields a usable plan — that is what keeps the
 // "Forging the Story Graph" stage from hanging or aborting at scale.
-async function planChunked({ goal, systemPrompt, onPartialData, sessionBudget }: { goal: any; systemPrompt: any; onPartialData: any; sessionBudget?: SessionBudget | null }) {
+async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady, sessionBudget }: { goal: any; systemPrompt: any; onPartialData: any; onSkeletonReady?: any; sessionBudget?: SessionBudget | null }) {
   const s = goal.structure
   const N = Math.max(1, s.chapters)
   const S = Math.max(1, s.scenesPerChapter || 3)
+  // Scene planning may run against different evidence than the skeleton did —
+  // see the `onSkeletonReady` hook below.
+  let activeSystemPrompt = systemPrompt
 
   // 1) Chapter skeleton — in batches of SKELETON_BATCH_SIZE
   const chapters: any[] = []
@@ -296,7 +298,7 @@ Return ONLY JSON, no markdown:
 {
   ${needArc ? '"storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },\n  ' : ''}"chapters": [ { "chapterNumber": ${batchStart + 1}, "title": "", "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
 }`
-    const skel = await aiGenerateJson(skeletonPrompt, systemPrompt, {
+    const skel = await aiGenerateJson(skeletonPrompt, activeSystemPrompt, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
       idleTimeout: PLAN_IDLE_TIMEOUT_MS,
@@ -341,6 +343,25 @@ Return ONLY JSON, no markdown:
     }
   }
 
+  // 1.5) The cast an arc needs is only knowable once the arc exists. Give the
+  //      caller a window here — after the skeleton, before any scene is planned —
+  //      to commit new entities and hand back refreshed evidence, so scenes can
+  //      cast them by name. Without this the plan can only ever draw on the cast
+  //      the synopsis alone produced, and nothing downstream adds to it.
+  //
+  //      Advisory: a failure here costs the story its new cast, not its plan.
+  if (onSkeletonReady) {
+    try {
+      const refreshedEvidence = await onSkeletonReady({ chapters, storyArc })
+      if (typeof refreshedEvidence === 'string' && refreshedEvidence.trim()) {
+        activeSystemPrompt = refreshedEvidence
+      }
+    } catch (err) {
+      rethrowIfFatal(err)
+      console.warn('[StoryDirector] cast expansion hook failed; planning scenes as-is:', err)
+    }
+  }
+
   // 2) Scenes per chapter — independent given the skeleton, so plan them with
   //    bounded, provider-aware concurrency. Each chapter is still linked to the
   //    previous chapter's hook for continuity.
@@ -361,7 +382,7 @@ ${prev ? `- The PREVIOUS chapter ended on: "${prev.hookEnding || ''}". Scene 1 m
 
 Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
 { "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium" } ] }`
-    const parsedScenes = await aiGenerateJson(scenePrompt, systemPrompt, {
+    const parsedScenes = await aiGenerateJson(scenePrompt, activeSystemPrompt, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
       idleTimeout: PLAN_IDLE_TIMEOUT_MS,
@@ -401,7 +422,13 @@ export function useStoryDirector() {
   // - enabled omitted → fall back to the global RESEARCH_ENABLED preference
   // - documentIds omitted/empty → use every document in the project (current behavior)
   // - documentIds set → restrict retrieval to exactly those documents
-  async function generateStoryPlan({ goal, evidence, onPartialData, research }: { goal: any; evidence: any; onPartialData: any; research: any }) {
+  // `onSkeletonReady` (optional) is invoked once the chapter skeleton exists and
+  // before scenes are planned, with `{ chapters, storyArc }`. It may commit new
+  // story entities and return a replacement system prompt (evidence) for scene
+  // planning. Structured plans only — the unstructured path is a single call
+  // with no seam to hook, and at its default 4k word target the opening cast is
+  // already sized for the story.
+  async function generateStoryPlan({ goal, evidence, onPartialData, onSkeletonReady, research }: { goal: any; evidence: any; onPartialData: any; onSkeletonReady?: any; research: any }) {
     isPlanning.value = true
     planError.value = null
 
@@ -440,19 +467,17 @@ Return ONLY valid JSON with no markdown, no explanation, no code fences.
 The JSON must have a "chapters" array. Each chapter object must contain a "scenes" array with the scene details.`
       }
 
-      const researchDefault = useLocalStorage(RESEARCH_KEYS.RESEARCH_ENABLED, true)
-      const researchEnabled =
-        research && typeof research.enabled === 'boolean' ? research.enabled : researchDefault.value
-      const selectedDocIds =
-        Array.isArray(research?.documentIds) && research.documentIds.length
-          ? new Set(research.documentIds)
-          : null
+      // Same resolver the scene writer uses, so "which sources inform this run"
+      // means one thing at plan time and write time.
+      const { enabled: researchEnabled, documentIds: scopedDocIds } =
+        resolveResearchScope(research)
+      const selectedDocIds = scopedDocIds.length ? new Set(scopedDocIds.map(String)) : null
       let researchContext = ''
       if (researchEnabled) {
         try {
           let allChunks = await getAllChunksForProject(projectStore.currentProjectId)
           if (selectedDocIds) {
-            allChunks = allChunks.filter((c: any) => selectedDocIds.has(c.documentId))
+            allChunks = allChunks.filter((c: any) => selectedDocIds.has(String(c.documentId)))
           }
           // Bound the working set so ranking can't block the UI on a huge corpus.
           if (allChunks.length > LEXICAL_SCAN_CAP) {
@@ -479,8 +504,19 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
             const semanticRankMap = new Map()
             try {
               const queryEmbedding = await getEmbedding(queryText)
-              if (queryEmbedding && allChunks.some((c: any) => c.embedding)) {
-                const withEmb = allChunks.filter((c: any) => c.embedding)
+              // Only chunks whose vector is finished AND lives in the query's
+              // vector space. A half-indexed corpus (or one left over from a
+              // different embedding model) used to contribute chunks that scored
+              // 0 against every query and still occupied ranking slots.
+              const withEmb = queryEmbedding
+                ? allChunks.filter(
+                    (c: any) =>
+                      c.embedding &&
+                      c.embedding.length === queryEmbedding.length &&
+                      (!c.embeddingStatus || c.embeddingStatus === 'READY')
+                  )
+                : []
+              if (withEmb.length > 0) {
                 const scored = withEmb
                   .map((c: any) => ({ chunk: c, score: cosineSimilarity(queryEmbedding as any, c.embedding as any) }))
                   .sort((a: any, b: any) => b.score - a.score)
@@ -501,7 +537,24 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
               .sort((a: any, b: any) => b.rrf - a.rrf)
               .slice(0, count)
               .map((s: any) => s.chunk)
-            researchContext = selected.map((c: any) => c.text).join('\n\n---\n\n')
+
+            // Label each excerpt with the document it came from. Unlabelled text
+            // dropped into the system prompt reads as the planner's own
+            // assumptions; a named source reads as material to plan *from*, and
+            // it matches the [source:…] form the scene writer now receives.
+            const titles = new Map<string, string>()
+            try {
+              const docs = await getAllResearchDocuments(projectStore.currentProjectId)
+              for (const d of docs) titles.set(String(d.id), d.fileName || d.title || '')
+            } catch {
+              // Titles are a nicety; the excerpts still carry the content.
+            }
+            researchContext = selected
+              .map((c: any) => {
+                const source = titles.get(String(c.documentId)) || c.heading || 'unknown source'
+                return `[source:${source}]\n${c.text}`
+              })
+              .join('\n\n---\n\n')
           }
         } catch {
           researchContext = ''
@@ -513,7 +566,21 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
       let parsed: any
       if (goal.structure) {
         // Large structured plan: build it in small, reliable chunks
-        parsed = await planChunked({ goal, systemPrompt: finalSystemPrompt, onPartialData, sessionBudget: _sessionBudget })
+        parsed = await planChunked({
+          goal,
+          systemPrompt: finalSystemPrompt,
+          onPartialData,
+          // Evidence is everything after the base director prompt, so a refreshed
+          // bible has to be re-wrapped the same way to keep research attached.
+          onSkeletonReady: onSkeletonReady
+            ? async (skeleton: any) => {
+                const refreshed = await onSkeletonReady(skeleton)
+                if (typeof refreshed !== 'string' || !refreshed.trim()) return null
+                return `${baseDirectorPrompt}\n\n${refreshed}${researchContext ? `\n\n## Research Context\n${researchContext}` : ''}`
+              }
+            : undefined,
+          sessionBudget: _sessionBudget
+        })
       } else {
         // Small/default plan: one streaming call with a non-streaming retry
         let accumulated = ''
