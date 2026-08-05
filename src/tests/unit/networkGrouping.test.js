@@ -64,6 +64,114 @@ describe('computeVolumeGroups', () => {
     expect(second.groups.filter((g) => g.id === 'group-vol-1')).toHaveLength(1)
   })
 
+  // The in-memory idempotency above passes because `first.groups` still carries
+  // volumeId. Persisted groups did not: `saveGraphGroups`/`getGraphGroups` only
+  // round-tripped id/name/color/geometry, so after a reload every volume group
+  // came back with volumeId null — matching failed, a SECOND group was built
+  // with the same deterministic `group-vol-N` id, and the bulkAdd that saves
+  // them hit a duplicate primary key. Auto-running this on every generation
+  // would have hit it constantly.
+  it('adopts a persisted volume group that came back without its volumeId', () => {
+    const reloaded = [
+      { id: 'group-vol-1', name: 'Volume I', x: 0, y: 0, width: 300, height: 200 },
+      { id: 'group-vol-2', name: 'Volume II', x: 0, y: 0, width: 300, height: 200 }
+    ]
+    const { groups } = computeVolumeGroups({ volumes, volumeNodeIds, existingGroups: reloaded })
+
+    const ids = groups.map((g) => g.id)
+    expect(new Set(ids).size).toBe(ids.length) // no duplicate primary keys
+    expect(groups.filter((g) => g.id === 'group-vol-1')).toHaveLength(1)
+    // and the orphaned group is re-linked rather than abandoned
+    expect(groups.find((g) => g.id === 'group-vol-1').volumeId).toBe(1)
+    expect(groups.find((g) => g.id === 'group-vol-2').volumeId).toBe(2)
+  })
+
+  it('still matches on volumeId when the id scheme differs', () => {
+    const legacy = [
+      { id: 'group-legacy-xyz', name: 'Old name', volumeId: 1, x: 7, y: 7, width: 300, height: 200 }
+    ]
+    const { groups } = computeVolumeGroups({ volumes, volumeNodeIds, existingGroups: legacy })
+    const v1 = groups.filter((g) => g.volumeId === 1)
+    expect(v1).toHaveLength(1)
+    expect(v1[0].id).toBe('group-legacy-xyz') // reused, not replaced
+    expect(v1[0].name).toBe('Volume I') // renamed to match the volume
+  })
+
+  // Factions are created during planning, tagged with parentVolumeId, before the
+  // volume's box exists. This pass is where the nesting actually resolves.
+  describe('faction sub-groups', () => {
+    const faction = {
+      id: 'group-faction-the-shadow-court',
+      name: 'The Shadow Court',
+      parentVolumeId: 1,
+      parentGroupId: null,
+      x: 0,
+      y: 0,
+      width: 300,
+      height: 200
+    }
+    // char-1 and char-2 are in the faction; loc-10 is loose in the volume.
+    const existingNodeParents = {
+      'char-1': 'group-faction-the-shadow-court',
+      'char-2': 'group-faction-the-shadow-court'
+    }
+
+    it('nests the faction inside its volume box', () => {
+      const { groups } = computeVolumeGroups({
+        volumes,
+        volumeNodeIds,
+        existingGroups: [faction],
+        existingNodeParents
+      })
+      const nested = groups.find((g) => g.id === faction.id)
+      expect(nested.parentGroupId).toBe('group-vol-1')
+    })
+
+    it('leaves faction members with the faction rather than reclaiming them', () => {
+      const { nodeParents } = computeVolumeGroups({
+        volumes,
+        volumeNodeIds,
+        existingGroups: [faction],
+        existingNodeParents
+      })
+      expect(nodeParents['char-1']).toBe(faction.id)
+      expect(nodeParents['char-2']).toBe(faction.id)
+      expect(nodeParents['loc-10']).toBe('group-vol-1') // loose node still claimed
+    })
+
+    it('grows the volume box to contain the faction it holds', () => {
+      const without = computeVolumeGroups({ volumes, volumeNodeIds })
+      const with_ = computeVolumeGroups({
+        volumes,
+        volumeNodeIds,
+        existingGroups: [faction],
+        existingNodeParents
+      })
+      const v1Without = without.groups.find((g) => g.id === 'group-vol-1')
+      const v1With = with_.groups.find((g) => g.id === 'group-vol-1')
+      expect(v1With.height).toBeGreaterThan(v1Without.height)
+
+      // and the faction sits inside its parent's bounds
+      const nested = with_.groups.find((g) => g.id === faction.id)
+      expect(nested.y + nested.height).toBeLessThanOrEqual(v1With.height)
+      expect(nested.width).toBeLessThanOrEqual(v1With.width)
+    })
+
+    it('ignores a faction pointing at a volume that no longer exists', () => {
+      const orphan = { ...faction, parentVolumeId: 99 }
+      const { groups, nodeParents } = computeVolumeGroups({
+        volumes,
+        volumeNodeIds,
+        existingGroups: [orphan],
+        existingNodeParents
+      })
+      // Left top-level rather than parented to a group that isn't there.
+      expect(groups.find((g) => g.id === orphan.id).parentGroupId).toBeNull()
+      // Its members fall back to the volume box so they stay visible.
+      expect(nodeParents['char-1']).toBe('group-vol-1')
+    })
+  })
+
   it('records volumes that ended up empty', () => {
     const { emptyVolumeIds } = computeVolumeGroups({
       volumes,

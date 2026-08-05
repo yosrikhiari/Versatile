@@ -167,6 +167,32 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     await dbSaveNodeInstances(projectId, toRaw(nodeInstances.value))
   }
 
+  /**
+   * Put freshly created entities on the network canvas.
+   *
+   * The canvas renders only what `nodeInstances` lists, and nothing seeds it
+   * outside `initGraph`'s first-run backfill — so an entity written straight to
+   * the story bible (by the bootstrapper or the cast expander) existed
+   * everywhere except the one view meant to show it, and `groupByVolume` skipped
+   * it because it had no instance to place.
+   *
+   * Only ever ADDS. An entity the user removed from the canvas keeps its own
+   * instance list, and re-running this must not resurrect it — which is also why
+   * the `initGraph` backfill stays gated on an empty canvas rather than being
+   * turned into a general repair.
+   */
+  async function ensureNodeInstances(projectId: any, baseIds: string[]) {
+    if (!projectId || !baseIds?.length) return 0
+    let added = 0
+    for (const baseId of baseIds) {
+      if (!baseId || nodeInstances.value[baseId]) continue
+      nodeInstances.value[baseId] = [baseId]
+      added++
+    }
+    if (added > 0) await dbSaveNodeInstances(projectId, toRaw(nodeInstances.value))
+    return added
+  }
+
   async function loadGroups(projectId: any) {
     const groups = await getGraphGroups(projectId)
     return groups || []
@@ -308,6 +334,7 @@ export const useStoryGraphStore = defineStore('storyGraph', () => {
     saveAllNodePositions,
     loadNodeInstances,
     saveNodeInstances,
+    ensureNodeInstances,
     loadGroups,
     saveGroups,
     loadNodeParents,

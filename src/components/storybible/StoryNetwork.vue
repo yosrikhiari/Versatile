@@ -11,15 +11,10 @@ import '@vue-flow/controls/dist/style.css'
 import { useStoryGraphStore } from '../../stores/storyGraphStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useProjectStore } from '../../stores/projectStore'
-import { useVolumeStore } from '../../stores/volumeStore'
-import { getVolumeEntities } from '../../services/dbService'
 import { useNotifications } from '../../composables/useNotifications'
 import { useNetworkSuggestions } from '../../composables/useNetworkSuggestions'
-import {
-  computeVolumeGroups,
-  wouldCreateCycle,
-  sortGroupsParentFirst
-} from '../../utils/networkGrouping'
+import { groupNetworkByVolume } from '../../composables/useVolumeGrouping'
+import { wouldCreateCycle, sortGroupsParentFirst } from '../../utils/networkGrouping'
 import BaseIcon from '../shared/BaseIcon.vue'
 import EntitySidebar from './EntitySidebar.vue'
 import AddConnectionModal from './AddConnectionModal.vue'
@@ -146,62 +141,21 @@ async function groupByVolume() {
   if (!projectId || isGroupingByVolume.value) return
   isGroupingByVolume.value = true
   try {
-    if (!volumeStore.volumes.length) {
-      await volumeStore.loadVolumes(projectId)
-    }
-    const projectVolumes = volumeStore.volumes.filter((v) => v.projectId === projectId)
-    if (projectVolumes.length === 0) {
+    // The arranging itself lives in useVolumeGrouping so the generation pipeline
+    // can run the same pass when a run finishes. This handler owns only the
+    // things a component owns: the busy flag, the toast, and refreshing state.
+    const { placed, grouped, reason } = await groupNetworkByVolume({ projectId })
+
+    if (reason === 'no-volumes') {
       addToast('No volumes to group by yet')
       return
     }
 
-    // Resolve each volume's entities → the graph node instance ids on the canvas,
-    // placing each instance under the first volume that claims it.
-    const assigned = new Set()
-    const volumeNodeIds = {}
-    for (const vol of projectVolumes) {
-      const ids = []
-      for (const type of ['character', 'location', 'plotThread']) {
-        let ents = []
-        try {
-          ents = await getVolumeEntities(projectId, vol.id, type)
-        } catch {
-          ents = []
-        }
-        for (const e of ents) {
-          const baseId = `${ENTITY_TYPE_TO_PREFIX[type]}-${e.id}`
-          const instances = storyGraphStore.nodeInstances[baseId] || []
-          for (const instId of instances) {
-            if (assigned.has(instId)) continue
-            assigned.add(instId)
-            ids.push(instId)
-          }
-        }
-      }
-      volumeNodeIds[vol.id] = ids
-    }
+    manualGroups.value = await storyGraphStore.loadGroups(projectId)
+    nodeParents.value = await storyGraphStore.loadNodeParents(projectId)
+    await storyGraphStore.loadNodePositions(projectId)
+    nodePositions.value = { ...storyGraphStore.nodePositions }
 
-    const {
-      groups,
-      nodeParents: newParents,
-      nodePositions: newPositions,
-      emptyVolumeIds
-    } = computeVolumeGroups({
-      volumes: projectVolumes,
-      volumeNodeIds,
-      existingGroups: manualGroups.value
-    })
-
-    manualGroups.value = groups
-    nodeParents.value = { ...nodeParents.value, ...newParents }
-    nodePositions.value = { ...nodePositions.value, ...newPositions }
-
-    await storyGraphStore.saveGroups(projectId, manualGroups.value)
-    await storyGraphStore.saveNodeParents(projectId, nodeParents.value)
-    await storyGraphStore.saveAllNodePositions(projectId, nodePositions.value)
-
-    const placed = Object.keys(newParents).length
-    const grouped = projectVolumes.length - emptyVolumeIds.length
     addToast(
       placed > 0
         ? `Grouped ${placed} node${placed === 1 ? '' : 's'} into ${grouped} volume${grouped === 1 ? '' : 's'}`
