@@ -10,13 +10,23 @@ export function buildRagCitations(chunks: Chunk[] | null | undefined): string {
   if (!chunks || chunks.length === 0) return ''
 
   const seen = new Set()
-  const lines = ['', '---', 'Références:', '']
+  // English, and explicit about what the model is looking at. These lines used
+  // to say "Références:" / "source inconnu" — harmless while nothing consumed
+  // this function, but it is now prepended to the scene writer's context, and a
+  // stray French header in an otherwise English prompt is exactly the kind of
+  // thing a local model echoes back into the prose.
+  const lines = [
+    '',
+    '---',
+    'RESEARCH (from this project\'s imported sources — treat as factual; do not contradict):',
+    ''
+  ]
 
   for (const chunk of chunks) {
     const text = chunk.text || chunk.content || ''
     if (!text.trim()) continue
 
-    const source = chunk.documentTitle || chunk.heading || chunk.documentId || 'source inconnu'
+    const source = chunk.documentTitle || chunk.heading || chunk.documentId || 'unknown source'
     const key = `${source}::${text.slice(0, 80)}`
     if (seen.has(key)) continue
     seen.add(key)
@@ -35,7 +45,7 @@ export function getCitationSummary(chunks: Chunk[] | null | undefined): string {
   if (!chunks || chunks.length === 0) return ''
   const sources = new Set()
   for (const c of chunks) {
-    const title = c.documentTitle || c.heading || c.documentId || 'source inconnu'
+    const title = c.documentTitle || c.heading || c.documentId || 'unknown source'
     sources.add(title)
   }
   return [...sources].map((s) => `- "${s}"`).join('\n')

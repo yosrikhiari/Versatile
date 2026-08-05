@@ -82,6 +82,10 @@ export class CommitService {
       storyArc: wp.storyArc || null,
       storyContract: wp.storyContract || '',
       synopsis: wp.synopsis || '',
+      // Which research sources this run was told to draw on. Without it a
+      // resumed run silently widens back to "every document", so the second half
+      // of a book is grounded in sources the first half deliberately excluded.
+      research: wp.research ?? null,
       autoMode: this.autoMode.value,
       // Positional array — length is the plan size, not the number written.
       writtenCount: this.writtenScenes.value.filter((s: any) => s).length,

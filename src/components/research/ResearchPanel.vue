@@ -164,7 +164,33 @@ async function refreshDbStatusCounts() {
   dbStatusCounts.value = counts
 }
 
-const mergedProgress = computed(() => ({ ...dbStatusCounts.value, ...indexProgress.value }))
+// The DB is the authority on how much of a document is indexed; the live queue
+// only knows about the chunks *it* was handed this session.
+//
+// A plain `{...db, ...live}` let the live entry replace the DB one, and after a
+// resume that entry covers only the not-yet-embedded remainder — so a document
+// sitting at 900/1000 in Dexie displayed "Indexing 0/100" and then flipped to
+// "Indexed" while 100 chunks were still missing. Reconciling the two keeps the
+// denominator honest and still shows live movement.
+const mergedProgress = computed(() => {
+  const merged = { ...dbStatusCounts.value }
+  for (const [docId, live] of Object.entries(indexProgress.value)) {
+    const db = merged[docId]
+    if (!db) {
+      merged[docId] = { ...live }
+      continue
+    }
+    // `db.total` counts every chunk on disk; `live.total` only this session's
+    // batch. Already-indexed chunks are those the queue never saw.
+    const alreadyIndexed = Math.max(0, db.total - live.total)
+    merged[docId] = {
+      total: Math.max(db.total, live.total),
+      indexed: Math.min(db.total, alreadyIndexed + live.indexed),
+      failed: Math.max(db.failed || 0, live.failed)
+    }
+  }
+  return merged
+})
 
 function mergedIsIndexed(docId) {
   const p = mergedProgress.value[docId]
@@ -174,6 +200,24 @@ function mergedHasFailed(docId) {
   const p = mergedProgress.value[docId]
   return p ? p.failed > 0 : false
 }
+
+// Re-read the DB once the queue goes quiet. Without this the badge only ever
+// reflected the counts taken at mount plus whatever the live subscription
+// happened to see, so a background resume that finished after the panel loaded
+// left a document showing as partially indexed until the next project switch.
+let settleTimer = null
+watch(
+  indexProgress,
+  (progress) => {
+    const inFlight = Object.values(progress).some((p) => p.indexed + p.failed < p.total)
+    if (inFlight) return
+    clearTimeout(settleTimer)
+    settleTimer = setTimeout(() => {
+      if (projectId.value) refreshDbStatusCounts()
+    }, 500)
+  },
+  { deep: true }
+)
 
 watch(showSizeWarning, (val) => {
   if (val) {
@@ -206,6 +250,10 @@ onUnmounted(() => {
   if (searchDebounceTimer) {
     clearTimeout(searchDebounceTimer)
     searchDebounceTimer = null
+  }
+  if (settleTimer) {
+    clearTimeout(settleTimer)
+    settleTimer = null
   }
 })
 

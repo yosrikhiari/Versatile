@@ -39,19 +39,35 @@ interface MultiHopOptions {
   projectId: string
   topK?: number
   rerank?: boolean
+  /**
+   * Restrict retrieval to these research documents. Empty/omitted means "every
+   * document in the project" — the same contract the story director uses, so the
+   * generator's source picker means the same thing at plan time and write time.
+   */
+  documentIds?: (string | number)[]
 }
 
 export async function multiHopRetrieval({
   queries,
   projectId,
   topK = MAX_CHUNKS_PER_SOURCE,
-  rerank = false
+  rerank = false,
+  documentIds
 }: MultiHopOptions): Promise<BaseChunk[]> {
   if (!projectId) return []
   if (!queries || queries.length === 0) return []
 
   const queryTexts = queries.map((q) => (typeof q === 'string' ? q : q.query)).filter(Boolean)
   if (queryTexts.length === 0) return []
+
+  const scopeIds =
+    Array.isArray(documentIds) && documentIds.length ? new Set(documentIds.map(String)) : null
+  // Scoping throws away results *after* the search ranked them, so ask for more
+  // when it is on — otherwise a project with one selected source out of ten
+  // retrieves nothing at all.
+  const searchK = scopeIds ? topK * 5 : topK
+  const inScope = (list: BaseChunk[]): BaseChunk[] =>
+    scopeIds ? list.filter((c) => scopeIds.has(String(c.documentId))) : list
 
   const fusion = new Map<string, FusedEntry>()
   const fuseRanked = (list: BaseChunk[]): void => {
@@ -65,8 +81,8 @@ export async function multiHopRetrieval({
   }
 
   for (const text of queryTexts) {
-    const lexical = await searchLexical(projectId, text, topK)
-    fuseRanked(lexical.filter((c: BaseChunk) => c._score! >= LEXICAL_MIN_SCORE))
+    const lexical = await searchLexical(projectId, text, searchK)
+    fuseRanked(inScope(lexical.filter((c: BaseChunk) => c._score! >= LEXICAL_MIN_SCORE)))
 
     let embedding: Float32Array | null = null
     try {
@@ -75,8 +91,8 @@ export async function multiHopRetrieval({
       embedding = null
     }
     if (embedding) {
-      const semantic = await semanticSearch(projectId, embedding, topK)
-      fuseRanked(semantic.filter((c: BaseChunk) => c._score! >= SEMANTIC_MIN_SCORE))
+      const semantic = await semanticSearch(projectId, embedding, searchK)
+      fuseRanked(inScope(semantic.filter((c: BaseChunk) => c._score! >= SEMANTIC_MIN_SCORE)))
     }
   }
 

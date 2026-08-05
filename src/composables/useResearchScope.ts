@@ -16,6 +16,12 @@ export function useResearchScope(getProjectId: any) {
     return n
   })
 
+  // Reloadable: the panel calls this on mount AND whenever the project changes,
+  // because a document imported after the panel mounted was otherwise invisible
+  // to the generator — the list stayed empty, so buildResearchScope() returned
+  // undefined and the run silently used no research at all.
+  let hasLoadedOnce = false
+
   async function loadResearchSources() {
     const projectId = getProjectId?.()
     if (!projectId) return
@@ -28,13 +34,30 @@ export function useResearchScope(getProjectId: any) {
       ])
       const counts = new Map()
       for (const c of chunks) counts.set(c.documentId, (counts.get(c.documentId) || 0) + 1)
+      const previous = researchDocs.value
+      const previouslySelected = selectedResearchDocIds.value
       researchDocs.value = docs.map((d: any) => ({
         id: d.id,
         fileName: d.fileName || 'Untitled source',
         chunkCount: counts.get(d.id) || 0
       }))
-      // Default: every source selected (narrow, don't opt-in).
-      selectedResearchDocIds.value = new Set(researchDocs.value.map((d) => d.id))
+
+      if (!hasLoadedOnce) {
+        // Default: every source selected (narrow, don't opt-in).
+        selectedResearchDocIds.value = new Set(researchDocs.value.map((d) => d.id))
+        hasLoadedOnce = true
+        return
+      }
+
+      // A reload must not silently discard the user's choices. Keep what they
+      // picked, drop ids that no longer exist, and select anything new — a
+      // document imported mid-session should behave like one that was there.
+      const known = new Set(previous.map((d: any) => d.id))
+      const next = new Set()
+      for (const d of researchDocs.value) {
+        if (!known.has(d.id) || previouslySelected.has(d.id)) next.add(d.id)
+      }
+      selectedResearchDocIds.value = next
     } catch {
       // Research sources are optional context; a load failure just means none.
       researchDocs.value = []
