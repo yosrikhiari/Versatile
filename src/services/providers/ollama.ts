@@ -7,6 +7,7 @@ import {
   getOllamaMinP
 } from '../../config/ollama'
 import { PROVIDERS } from '../../config/ai'
+import { resolveTimeLimit } from '../../config/timeLimits'
 import { TokenLimitError } from '../ai/tokenLimitError'
 import { recordThroughput } from '../generationEstimate'
 
@@ -84,8 +85,13 @@ const IDLE_TIMEOUT_MS = 90_000
  * Prompt evaluation happens before the first token and scales with prompt size;
  * on a partially-offloaded model a 10k-token prompt can take minutes with no
  * output at all. This is the one phase where silence is expected.
+ *
+ * Increased to 8 minutes (480s) to exceed the bible stage's 7-minute idle timeout
+ * (STAGE_IDLE_TIMEOUT_MS.bible = 420_000). The provider's first-token timeout must
+ * be longer than the stage watchdog's timeout, otherwise the provider kills the
+ * call before the stage can observe progress via heartbeat.
  */
-const FIRST_TOKEN_TIMEOUT_MS = 300_000
+const FIRST_TOKEN_TIMEOUT_MS = 480_000
 /**
  * Fifteen minutes, not an hour.
  *
@@ -226,9 +232,18 @@ async function runStream(
   onChunk: ((text: string, full: string) => void) | null | undefined,
   options: OllamaOptions
 ): Promise<StreamRunResult> {
-  const ceilingMs = options.timeout && options.timeout > 0 ? options.timeout : ABSOLUTE_CEILING_MS
-  const idleMs = options.idleTimeout ?? options.chunkTimeout ?? IDLE_TIMEOUT_MS
-  const firstTokenMs = options.firstTokenTimeout ?? Math.max(FIRST_TOKEN_TIMEOUT_MS, idleMs)
+  // Every budget below is resolved through `resolveTimeLimit`, which returns 0
+  // (disabled) while time limits are switched off. Doing it here rather than at
+  // each call site means the explicit budgets callers pass — plan timeouts, the
+  // 480s first-token allowances — are neutralised too.
+  const configuredIdleMs = options.idleTimeout ?? options.chunkTimeout ?? IDLE_TIMEOUT_MS
+  const ceilingMs = resolveTimeLimit(
+    options.timeout && options.timeout > 0 ? options.timeout : ABSOLUTE_CEILING_MS
+  )
+  const idleMs = resolveTimeLimit(configuredIdleMs)
+  const firstTokenMs = resolveTimeLimit(
+    options.firstTokenTimeout ?? Math.max(FIRST_TOKEN_TIMEOUT_MS, configuredIdleMs)
+  )
 
   let ceilingTimer: ReturnType<typeof setTimeout> | undefined
   const externalSignal = options.signal
@@ -237,14 +252,43 @@ async function runStream(
 
   let fullResponse = ''
 
+  /**
+   * The first-token deadline has to cover the `fetch` itself, not just the reads
+   * after it.
+   *
+   * Ollama does not flush response headers until it writes the first token, so
+   * model load and prompt evaluation — the slowest, silent part of a cold local
+   * call — happen entirely inside `await fetch`. Arming the budget only around
+   * `reader.read()` therefore left that phase guarded by nothing but the 900s
+   * ceiling, and every stage watchdog above this layer is shorter than that. The
+   * result: a stage died at its own budget and reported "made no progress",
+   * which is true but useless, while the provider — the layer that can tell
+   * "still evaluating a 16k prompt" from "wedged" — never got to speak. Three
+   * stages in one run each failed at exactly their own budget and never at this
+   * one, which is only possible if this timer was unreachable.
+   */
+  let firstTokenTimer: ReturnType<typeof setTimeout> | undefined
+  let firstTokenExpired = false
+
   try {
     await ensureModelAvailable(model)
 
-    ceilingTimer = setTimeout(
-      () =>
-        controller.abort(new DOMException(`Request timed out after ${ceilingMs}ms`, 'AbortError')),
-      ceilingMs
-    )
+    if (firstTokenMs > 0) {
+      firstTokenTimer = setTimeout(() => {
+        firstTokenExpired = true
+        controller.abort(
+          new DOMException(`No output within ${firstTokenMs}ms`, 'TimeoutError')
+        )
+      }, firstTokenMs)
+    }
+
+    if (ceilingMs > 0) {
+      ceilingTimer = setTimeout(
+        () =>
+          controller.abort(new DOMException(`Request timed out after ${ceilingMs}ms`, 'AbortError')),
+        ceilingMs
+      )
+    }
     if (externalSignal) {
       if (externalSignal.aborted) {
         controller.abort(externalSignal.reason)
@@ -309,26 +353,37 @@ async function runStream(
     try {
       let sawFirstToken = false
       while (true) {
-        const budget = sawFirstToken ? idleMs : firstTokenMs
+        // Before the first token the deadline is the one already running across
+        // the fetch; restarting it here would hand a stalled prompt evaluation a
+        // second full budget.
         let result: ReadableStreamReadResult<Uint8Array>
         try {
-          result = await readWithTimeout(reader, budget)
+          result =
+            sawFirstToken && idleMs > 0 ? await readWithTimeout(reader, idleMs) : await reader.read()
         } catch (err) {
-          if (err instanceof DOMException && err.name === 'TimeoutError') {
-            // No progress for `budget` ms. This is the real hang signal; report
-            // it with whatever was produced so callers can salvage partial work.
+          if (firstTokenExpired) {
             throw new OllamaStalledError(
-              sawFirstToken
-                ? `Ollama stopped producing tokens for ${budget}ms (received ${fullResponse.length} chars)`
-                : `Ollama produced no output within ${budget}ms (prompt evaluation stalled)`,
+              `Ollama produced no output within ${firstTokenMs}ms (prompt evaluation stalled)`,
               fullResponse,
-              budget
+              firstTokenMs
+            )
+          }
+          if (err instanceof DOMException && err.name === 'TimeoutError') {
+            // No progress for `idleMs`. This is the real hang signal; report it
+            // with whatever was produced so callers can salvage partial work.
+            throw new OllamaStalledError(
+              `Ollama stopped producing tokens for ${idleMs}ms (received ${fullResponse.length} chars)`,
+              fullResponse,
+              idleMs
             )
           }
           throw err
         }
         if (result.done) break
-        sawFirstToken = true
+        if (!sawFirstToken) {
+          sawFirstToken = true
+          clearTimeout(firstTokenTimer)
+        }
 
         buffered += decoder.decode(result.value, { stream: true })
         const lines = buffered.split('\n')
@@ -386,6 +441,17 @@ async function runStream(
     return { text: fullResponse, usage }
   } catch (error) {
     if (error instanceof OllamaStalledError) throw error
+    // Reached when the deadline expired inside `fetch` — i.e. Ollama never
+    // flushed a header because it was still loading the model or evaluating the
+    // prompt. The abort surfaces as a generic AbortError, so the flag is what
+    // distinguishes it from the caller pressing Stop.
+    if (firstTokenExpired && !externalSignal?.aborted) {
+      throw new OllamaStalledError(
+        `Ollama produced no output within ${firstTokenMs}ms (prompt evaluation stalled)`,
+        fullResponse,
+        firstTokenMs
+      )
+    }
     if (error instanceof DOMException && error.name === 'AbortError') {
       // An abort the caller asked for is a cancellation, not a timeout — saying
       // "timed out" made every user-pressed Stop look like a failure.
@@ -395,12 +461,13 @@ async function runStream(
     throw decorateOllamaError((error as Error).message || String(error), error)
   } finally {
     clearTimeout(ceilingTimer)
+    clearTimeout(firstTokenTimer)
     if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
   }
 }
 
 export async function generate(prompt: string, systemPrompt: string, model: string, options: OllamaOptions = {}) {
-  const { text, usage } = await runStream(prompt, systemPrompt, model, null, options)
+  const { text, usage } = await runStream(prompt, systemPrompt, model, options.onToken ?? null, options)
   return { text, usage }
 }
 
