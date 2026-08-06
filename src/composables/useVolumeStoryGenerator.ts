@@ -993,17 +993,25 @@ export function useVolumeStoryGenerator() {
       progress.current = 2
       progress.statusText = 'Conjuring Characters & World...'
       activeStage = 'bible'
-      await runStageWithHeartbeat(projectId, 'bible', (heartbeat) =>
-        bootstrapper.bootstrapEntities({
-          synopsis: enhancedSynopsis,
-          projectId,
-          volumeId: vId,
-          scope: castScope,
-          onPartialData: (type: any, name: any) => {
-            heartbeat(name)
-            onPartialData?.(type, name)
-          }
-        })
+      await runStageWithHeartbeat(
+        projectId,
+        'bible',
+        (heartbeat, stageSignal) =>
+          bootstrapper.bootstrapEntities({
+            synopsis: enhancedSynopsis,
+            projectId,
+            volumeId: vId,
+            scope: castScope,
+            // Forwarded, not decorative: the watchdog's abort is the only thing
+            // that frees the Ollama slot the Story Network stage queues for next.
+            signal: stageSignal,
+            onPartialData: (type: any, name: any) => {
+              heartbeat(name)
+              onPartialData?.(type, name)
+            }
+          }),
+        undefined,
+        abort.signal()
       ).catch((err) => {
         console.warn('[useVolumeStoryGenerator] bible stage failed or timed out:', err)
       })
@@ -1101,7 +1109,7 @@ export function useVolumeStoryGenerator() {
       const directorResult = await runStageWithHeartbeat(
         projectId,
         'structure',
-        (heartbeat) =>
+        (heartbeat, stageSignal) =>
           director.generateStoryPlan({
             goal: {
               premise: enhancedSynopsis,
@@ -1113,6 +1121,7 @@ export function useVolumeStoryGenerator() {
             },
             evidence: updatedEvidence,
             research,
+            signal: stageSignal,
             // Mirror planning progress into the Planning phase so the Activity drawer
             // shows what's being outlined, then forward to the caller's handler.
             onPartialData: (type: any, name: any) => {
@@ -1142,6 +1151,7 @@ export function useVolumeStoryGenerator() {
                   chapters: skeleton,
                   storyArc: arc,
                   scope: castScope,
+                  signal: stageSignal,
                   onPartialData: (type: any, name: any) => {
                     heartbeat(name)
                     try {
@@ -1153,6 +1163,10 @@ export function useVolumeStoryGenerator() {
                   }
                 })
                 .catch((err: any) => {
+                  // A cancelled expansion means the whole planning stage is over;
+                  // degrading it to "no new cast" would resume scene planning
+                  // inside a stage that has already been abandoned.
+                  if (isAbortError(err)) throw err
                   console.warn('[useVolumeStoryGenerator] cast expansion failed:', err)
                   return null
                 })
@@ -1163,7 +1177,9 @@ export function useVolumeStoryGenerator() {
               // name instead of the writer inventing them mid-prose.
               return await buildEvidence()
             }
-          })
+          }),
+        undefined,
+        abort.signal()
       )
 
       const scenes = directorResult.scenes
@@ -1171,6 +1187,24 @@ export function useVolumeStoryGenerator() {
 
       if (!Array.isArray(scenes) || scenes.length < 3) {
         throw new Error('Director returned insufficient scenes (need at least 3)')
+      }
+
+      // A plan that had to pad still has the right shape, which is exactly why it
+      // needs saying out loud. Padding is per-batch, so on a long book it arrives
+      // in blocks of twelve chapters — a blank volume the author would otherwise
+      // only discover by reading 6,000 words of prose written from an empty brief.
+      const planDegradation = (directorResult as any).degradation
+      if (planDegradation?.paddedChapters > 0) {
+        runHealth.record('plan_padded', {
+          stage: 'structure',
+          detail: `${planDegradation.paddedChapters} chapter(s) padded — the model returned no outline for them`
+        })
+      }
+      if (planDegradation?.chaptersWithoutScenePlan > 0) {
+        runHealth.record('plan_padded', {
+          stage: 'structure',
+          detail: `${planDegradation.chaptersWithoutScenePlan} chapter(s) got no scene plan — their scene briefs are placeholders`
+        })
       }
 
       // The first weave ran against the opening cast only, so anyone added for
@@ -2715,14 +2749,24 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     try {
       // One model call per chapter, so a long book legitimately exceeds any fixed
       // budget; the per-chapter callback is the progress signal to bound instead.
-      spineArray.value = await runStageWithHeartbeat(projectId, 'spine', (heartbeat) =>
-        generateSpine(chapterPlan.value, storyArc, (done: any, total: any) => {
-          heartbeat(`spine ${done}/${total}`)
-          progress.statusText = `Generating narrative spine (${done}/${total} chapters)...`
-          actLog.updatePhase(currentTaskId, spinePhase, {
-            detail: `${done}/${total} chapter spine entries`
-          })
-        })
+      spineArray.value = await runStageWithHeartbeat(
+        projectId,
+        'spine',
+        (heartbeat, stageSignal) =>
+          generateSpine(
+            chapterPlan.value,
+            storyArc,
+            (done: any, total: any) => {
+              heartbeat(`spine ${done}/${total}`)
+              progress.statusText = `Generating narrative spine (${done}/${total} chapters)...`
+              actLog.updatePhase(currentTaskId, spinePhase, {
+                detail: `${done}/${total} chapter spine entries`
+              })
+            },
+            stageSignal
+          ),
+        undefined,
+        abort.signal()
       )
       spineContext.value = compressSpine(spineArray.value)
       actLog.updatePhase(currentTaskId, spinePhase, { status: 'done' })
@@ -2783,14 +2827,21 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     // unlike the Promise.race it replaces, it does not leave the generation
     // running invisibly in the background after it has given up on it.
     try {
-      await runStageWithHeartbeat(projectId, 'prose', (heartbeat) =>
-        runParallelGeneration({
-          ...writeParams.value,
-          onChunk: (payload: any) => {
-            heartbeat(payload?.scene?.title || `scene ${payload?.sceneIndex ?? ''}`)
-            onChunk?.(payload)
-          }
-        })
+      await runStageWithHeartbeat(
+        projectId,
+        'prose',
+        (heartbeat) =>
+          runParallelGeneration({
+            ...writeParams.value,
+            onChunk: (payload: any) => {
+              heartbeat(payload?.scene?.title || `scene ${payload?.sceneIndex ?? ''}`)
+              onChunk?.(payload)
+            }
+          }),
+        undefined,
+        // The writer already forwards `abort.signal()` per scene; chaining it
+        // here too keeps the stage controller from outliving a stopped run.
+        abort.signal()
       )
     } catch (err: any) {
       // Prose already committed stays committed, and the checkpoint written per
@@ -3582,7 +3633,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       const directorResult = await runStageWithHeartbeat(
         projectId,
         'structure',
-        (heartbeat) =>
+        (heartbeat, stageSignal) =>
           director.generateStoryPlan({
             goal: {
               premise: synopsis || survey.scenes[0]?.chapterSummary || 'Continue the existing story',
@@ -3594,11 +3645,14 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
             },
             evidence,
             research: null,
+            signal: stageSignal,
             onPartialData: (_t: any, name: any) => {
               heartbeat(name)
               actLog.appendThought(currentTaskId, 0, `• ${name}\n`)
             }
-          })
+          }),
+        undefined,
+        abort.signal()
       )
 
       const newChapters = directorResult.chapters || []

@@ -69,11 +69,19 @@ function fallbackSpineEntry(chapter: any) {
   }
 }
 
-async function generateSpine(chapters: any, storyArc: any, onEntryDone: any) {
+// `signal` is the `spine` stage's abort signal. One call per chapter means a
+// cancelled stage that cannot forward it does not stop — it keeps working
+// through the remaining chapters on the provider slot the next stage is queued
+// for, which is what makes an abandoned stage expensive rather than merely wrong.
+async function generateSpine(chapters: any, storyArc: any, onEntryDone: any, signal?: AbortSignal) {
   const spine = new Array(chapters.length)
   let completed = 0
 
   const tasks = chapters.map((chapter: any, i: any) => async () => {
+    if (signal?.aborted) {
+      spine[i] = fallbackSpineEntry(chapter)
+      return
+    }
     const prevChapter = i > 0 ? chapters[i - 1] : null
 
     let prompt = `You are designing a narrative spine for a novel.
@@ -109,12 +117,22 @@ This chapter must pick up from that.
       {
         feature: FEATURES.STORY_GENERATION,
         temperature: 0.7,
-        // Idle-bounded like the rest of the pipeline: a spine entry that is
-        // still streaming is progress, not a hang.
-        idleTimeout: SPINE_IDLE_TIMEOUT_MS,
+        // Match spine stage's 7-min idle timeout (STAGE_IDLE_TIMEOUT_MS.spine = 420_000).
+        // Provider's first-token timeout must exceed stage timeout to avoid premature kill.
+        firstTokenTimeout: 480_000,
+        idleTimeout: 420_000,
         schema: SPINE_ENTRY_SCHEMA,
         schemaName: 'spine_entry',
-        role: 'utility'
+        role: 'utility',
+        signal,
+        // Heartbeat on every token chunk so the stage watchdog knows streaming is alive
+        onToken: (_chunk, _full) => {
+          try {
+            if (onEntryDone) onEntryDone(completed + 1, chapters.length)
+          } catch {
+            // Best-effort heartbeat; a throwing consumer must not break streaming.
+          }
+        }
       }
     ).catch(() => null)
 

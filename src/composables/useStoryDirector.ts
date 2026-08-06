@@ -35,6 +35,18 @@ const TOKENS_PER_CHAPTER_STUB = 170
 const TOKENS_PER_SCENE = 300
 const STORY_ARC_TOKENS = 400
 
+/**
+ * Planning is many calls, not one, and `rethrowIfFatal` already treats an
+ * AbortError as fatal to the run — so the only thing needed to make a cancelled
+ * plan stop issuing work is to raise one at each loop boundary.
+ */
+function throwIfAborted(signal: AbortSignal | undefined, message: string): void {
+  if (!signal?.aborted) return
+  const err = new Error(message)
+  err.name = 'AbortError'
+  throw err
+}
+
 // Hard cap on how many chunks we lexically rank in one planning call. Retrieval
 // only needs the top handful, and scanning an unbounded corpus on the main thread
 // is what froze the "Planning" phase on large research sets.
@@ -270,7 +282,7 @@ async function runWithConcurrency(tasks: any[], limit: number) {
 // scenes with bounded concurrency. Every step degrades to padding rather than
 // throwing, so a long novel always yields a usable plan — that is what keeps the
 // "Forging the Story Graph" stage from hanging or aborting at scale.
-async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady, sessionBudget }: { goal: any; systemPrompt: any; onPartialData: any; onSkeletonReady?: any; sessionBudget?: SessionBudget | null }) {
+async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady, sessionBudget, signal }: { goal: any; systemPrompt: any; onPartialData: any; onSkeletonReady?: any; sessionBudget?: SessionBudget | null; signal?: AbortSignal }) {
   const s = goal.structure
   const N = Math.max(1, s.chapters)
   const S = Math.max(1, s.scenesPerChapter || 3)
@@ -281,7 +293,12 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
   // 1) Chapter skeleton — in batches of SKELETON_BATCH_SIZE
   const chapters: any[] = []
   let storyArc: any = {}
+  // Padding is deliberate (a flaky batch must not cost the book its length) but
+  // it is not free: a padded chapter is a title and nothing else. Counted here
+  // so the caller can put it on the run-health ledger instead of the console.
+  const degradation = { paddedChapters: 0, chaptersWithoutScenePlan: 0 }
   while (chapters.length < N) {
+    throwIfAborted(signal, 'Story planning cancelled')
     const batchStart = chapters.length
     const batchCount = Math.min(SKELETON_BATCH_SIZE, N - batchStart)
     const needArc = batchStart === 0
@@ -307,7 +324,16 @@ Return ONLY JSON, no markdown:
       schema: makeSkeletonSchema(batchCount),
       schemaName: 'chapter_skeleton',
       role: 'utility',
-      sessionBudget
+      sessionBudget,
+      signal,
+      // Heartbeat on every token chunk so the stage watchdog knows streaming is alive
+      onToken: (_chunk, _full) => {
+        try {
+          if (onPartialData) onPartialData('structure', 'streaming')
+        } catch {
+          // Best-effort heartbeat; a throwing consumer must not break streaming.
+        }
+      }
     }).catch((err) => {
       // A spent budget or a user stop fails every remaining call identically.
       // Padding around those produces a full-length outline of empty chapters
@@ -326,6 +352,7 @@ Return ONLY JSON, no markdown:
     // never loses its length to a single flaky/truncated batch.
     for (let k = 0; k < batchCount; k++) {
       const raw = batchChapters[k] || {}
+      if (!raw.title) degradation.paddedChapters++
       const chapterNumber = batchStart + k + 1
       chapters.push({
         chapterNumber,
@@ -366,6 +393,10 @@ Return ONLY JSON, no markdown:
   //    bounded, provider-aware concurrency. Each chapter is still linked to the
   //    previous chapter's hook for continuity.
   const sceneTasks = chapters.map((ch: any, i: number) => async () => {
+    // Checked per task, not once up front: these run with bounded concurrency,
+    // so an abort during chapter 3 must stop chapters 4..N from ever being
+    // issued rather than only the one in flight.
+    throwIfAborted(signal, 'Scene planning cancelled')
     const prev = chapters[i - 1]
     try {
       onPartialData?.('scene', ch.title || `Chapter ${i + 1}`)
@@ -391,13 +422,25 @@ Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
       schema: makeScenesSchema(S),
       schemaName: 'chapter_scenes',
       role: 'utility',
-      sessionBudget
+      sessionBudget,
+      signal,
+      // Heartbeat on every token chunk so the stage watchdog knows streaming is alive
+      onToken: (_chunk, _full) => {
+        try {
+          if (onPartialData) onPartialData('structure', 'streaming')
+        } catch {
+          // Best-effort heartbeat; a throwing consumer must not break streaming.
+        }
+      }
     }).catch((err) => {
       rethrowIfFatal(err)
       console.warn(`[StoryDirector] scene plan for chapter ${i + 1} failed:`, err)
       return null
     })
     ch.scenes = Array.isArray(parsedScenes?.scenes) ? parsedScenes.scenes : []
+    // `enforceStructure` will pad this chapter back to S scenes downstream, so
+    // the plan's shape stays right and the loss is invisible unless counted.
+    if (ch.scenes.length === 0) degradation.chaptersWithoutScenePlan++
     for (const sc of (ch as any).scenes) {
       try {
         onPartialData?.('scene', sc.title)
@@ -408,7 +451,7 @@ Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
   })
   await runWithConcurrency(sceneTasks, planConcurrency())
 
-  return { chapters, storyArc }
+  return { chapters, storyArc, degradation }
 }
 
 export function useStoryDirector() {
@@ -428,7 +471,12 @@ export function useStoryDirector() {
   // planning. Structured plans only — the unstructured path is a single call
   // with no seam to hook, and at its default 4k word target the opening cast is
   // already sized for the story.
-  async function generateStoryPlan({ goal, evidence, onPartialData, onSkeletonReady, research }: { goal: any; evidence: any; onPartialData: any; onSkeletonReady?: any; research: any }) {
+  // `signal` (optional in the type, required in practice) is the `structure`
+  // stage's abort signal. Planning is the longest chain of provider calls in the
+  // run; without it the stage watchdog could declare the stage stuck and then
+  // watch it go on issuing chapter after chapter against a provider slot the
+  // next stage was already queued for.
+  async function generateStoryPlan({ goal, evidence, onPartialData, onSkeletonReady, research, signal }: { goal: any; evidence: any; onPartialData: any; onSkeletonReady?: any; research: any; signal?: AbortSignal }) {
     isPlanning.value = true
     planError.value = null
 
@@ -579,7 +627,8 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
                 return `${baseDirectorPrompt}\n\n${refreshed}${researchContext ? `\n\n## Research Context\n${researchContext}` : ''}`
               }
             : undefined,
-          sessionBudget: _sessionBudget
+          sessionBudget: _sessionBudget,
+          signal
         })
       } else {
         // Small/default plan: one streaming call with a non-streaming retry
@@ -592,6 +641,13 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
           finalSystemPrompt,
           (chunk) => {
             accumulated += chunk
+
+            // Heartbeat on every chunk so the stage watchdog knows streaming is alive
+            try {
+              if (onPartialData) onPartialData('structure', 'streaming')
+            } catch {
+              // Best-effort heartbeat; a throwing consumer must not break streaming.
+            }
 
             const regex = /"title"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
             regex.lastIndex = Math.max(0, scanOffset - 200)
@@ -617,7 +673,8 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
             // fails fast, but one that is simply slow is allowed to finish.
             idleTimeout: PLAN_IDLE_TIMEOUT_MS,
             firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
-            sessionBudget: _sessionBudget
+            sessionBudget: _sessionBudget,
+            signal
           }
         )
 
@@ -625,12 +682,16 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
         // paying for a second full generation.
         parsed = sanitizeJson(accumulated) || repairTruncatedJson(accumulated)
         if (!parsed) {
+          // The repair path is for a truncated stream, not a cancelled one — a
+          // second full-length call is the last thing an abandoned stage should do.
+          throwIfAborted(signal, 'Story planning cancelled')
           const retryResponse = await aiGenerate(userPrompt, finalSystemPrompt, {
             feature: FEATURES.STORY_GENERATION,
             temperature: 0.5,
             idleTimeout: PLAN_IDLE_TIMEOUT_MS,
             firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
-            sessionBudget: _sessionBudget
+            sessionBudget: _sessionBudget,
+            signal
           })
           parsed = sanitizeJson(retryResponse) || repairTruncatedJson(retryResponse)
         }
@@ -749,6 +810,12 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
       return {
         chapters: finalChapters,
         scenes: flatScenes,
+        // What the plan had to invent. Always present, so a consumer can read it
+        // without checking which planning path ran; zeroes mean a clean plan.
+        degradation: {
+          paddedChapters: parsed?.degradation?.paddedChapters || 0,
+          chaptersWithoutScenePlan: parsed?.degradation?.chaptersWithoutScenePlan || 0
+        },
         storyArc: {
           premise: storyArc.premise || goal.premise,
           genre: storyArc.genre || goal.genre || 'Literary',

@@ -388,7 +388,20 @@ export function useEntityBootstrapper() {
   const isBootstrapping = ref(false)
   const bootstrapError = ref(null)
 
-  async function bootstrapEntities({ synopsis, projectId, volumeId, onPartialData, scope }: { synopsis: any; projectId: any; volumeId: any; onPartialData: any; scope?: any }) {
+  /**
+   * `signal` is not optional in practice, whatever the type says.
+   *
+   * This runs as the `bible` stage, under an idle watchdog that aborts a stage
+   * it has declared stuck. Without a signal to forward, that abort reached
+   * nothing: the watchdog reported the stage dead at 360s and the `aiStream`
+   * below kept running to its 900s provider ceiling, holding the single Ollama
+   * slot the whole time. The Story Network stage behind it then sat in the
+   * provider queue emitting no tokens, so its own token-based heartbeat never
+   * fired and it was declared stuck too — for waiting on a request nobody was
+   * listening to. Cancellation has to reach the provider or the watchdog is
+   * only a reporting mechanism.
+   */
+  async function bootstrapEntities({ synopsis, projectId, volumeId, onPartialData, scope, signal }: { synopsis: any; projectId: any; volumeId: any; onPartialData: any; scope?: any; signal?: AbortSignal }) {
     isBootstrapping.value = true
     bootstrapError.value = null
 
@@ -470,11 +483,22 @@ TASK:
       const emittedNames = new Set()
       let scanOffset = 0
 
+      // Signal that prompt evaluation has started so the stage watchdog knows
+      // the call is alive even during the silent first-token phase.
+      onPartialData?.('bootstrap', 'prompt-evaluation-started')
+
       await aiStream(
         userPrompt,
         ENRICH_ENTITIES_PROMPT,
         (chunk) => {
           accumulated += chunk
+
+          // Heartbeat on every chunk so the stage watchdog knows streaming is alive
+          try {
+            if (onPartialData) onPartialData('bootstrap', 'streaming')
+          } catch {
+            // Best-effort heartbeat; a throwing consumer must not break streaming.
+          }
 
           const regex = /"name"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g
           regex.lastIndex = Math.max(0, scanOffset - 200)
@@ -500,7 +524,12 @@ TASK:
         },
         {
           feature: FEATURES.STORY_GENERATION,
-          temperature: 0.7
+          temperature: 0.7,
+          signal,
+          // Match bible stage's 7-min idle timeout (STAGE_IDLE_TIMEOUT_MS.bible = 420_000).
+          // Provider's first-token timeout must exceed stage timeout to avoid premature kill.
+          firstTokenTimeout: 480_000,
+          idleTimeout: 420_000
         }
       )
 
@@ -513,8 +542,17 @@ TASK:
           feature: FEATURES.STORY_GENERATION,
           temperature: 0.7,
           schema: ENTITIES_SCHEMA,
-          schemaName: 'story_entities'
+          schemaName: 'story_entities',
+          signal
         }).catch(() => null)
+      }
+      // The retry above exists for a malformed stream, not for a caller that has
+      // given up. Issuing a second full call after the stage was cancelled is how
+      // an abandoned stage goes on owning the provider.
+      if (signal?.aborted) {
+        const err = new Error('Entity bootstrap cancelled')
+        err.name = 'AbortError'
+        throw err
       }
       if (!parsed) {
         throw new Error('Failed to parse generated entities')
@@ -706,7 +744,8 @@ TASK:
     chapters,
     storyArc,
     scope,
-    onPartialData
+    onPartialData,
+    signal
   }: {
     synopsis: any
     projectId: any
@@ -715,6 +754,8 @@ TASK:
     storyArc?: any
     scope?: any
     onPartialData?: any
+    /** The planner's stage signal — see the note on `bootstrapEntities`. */
+    signal?: AbortSignal
   }) {
     const empty = {
       generatedIds: { characters: [], locations: [], plotThreads: [] },
@@ -767,11 +808,17 @@ TASK: Return AT MOST ${need.characters} new character(s), ${need.locations} new 
         : ''
     }`
 
+    // Signal that prompt evaluation has started so the stage watchdog knows
+    // the call is alive even during the silent first-token phase.
+    onPartialData?.('expandCast', 'prompt-evaluation-started')
+
     const parsed: any = await aiGenerateJson(userPrompt, EXPAND_CAST_PROMPT, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
-      idleTimeout: EXPAND_IDLE_TIMEOUT_MS,
-      firstTokenTimeout: EXPAND_FIRST_TOKEN_TIMEOUT_MS,
+      // Match structure stage's 8-min idle timeout (STAGE_IDLE_TIMEOUT_MS.structure = 480_000).
+      // Provider's first-token timeout must exceed stage timeout to avoid premature kill.
+      firstTokenTimeout: 540_000,
+      idleTimeout: 480_000,
       maxTokens:
         need.characters * TOKENS_PER_NEW_CHARACTER +
         need.locations * TOKENS_PER_NEW_LOCATION +
@@ -780,11 +827,28 @@ TASK: Return AT MOST ${need.characters} new character(s), ${need.locations} new 
         200,
       schema: makeExpansionSchema(need),
       schemaName: 'cast_expansion',
-      role: 'utility'
+      role: 'utility',
+      signal,
+      // Heartbeat on every token chunk so the stage watchdog knows streaming is alive
+      onToken: (_chunk, _full) => {
+        try {
+          if (onPartialData) onPartialData('expandCast', 'streaming')
+        } catch {
+          // Best-effort heartbeat; a throwing consumer must not break streaming.
+        }
+      }
     }).catch((err: any) => {
       console.warn('[useEntityBootstrapper] cast expansion call failed:', err)
       return null
     })
+    // Best-effort by contract — except against cancellation. Degrading a stopped
+    // run into "no new cast" hides the stop and lets scene planning proceed
+    // inside a stage that has already been abandoned.
+    if (signal?.aborted) {
+      const err = new Error('Cast expansion cancelled')
+      err.name = 'AbortError'
+      throw err
+    }
     if (!parsed) return empty
 
     // Two ways an organisation ends up in the wrong bucket, both measured live

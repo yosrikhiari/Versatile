@@ -604,7 +604,13 @@ export async function aiGenerate(prompt: string, systemPrompt: string, options: 
         stop: options.stop,
         timeout: options.timeout,
         idleTimeout: options.idleTimeout,
-        firstTokenTimeout: options.firstTokenTimeout
+        firstTokenTimeout: options.firstTokenTimeout,
+        // Without this the text path is heartbeat-blind. It matters most for the
+        // JSON fallback below `aiGenerateStructured`: a planning call that lost
+        // native structured output would stream fine for eight minutes while the
+        // stage watchdog, hearing nothing, declared "made no progress" and killed
+        // the run.
+        onToken: options.onToken
       }
 
       async function trackGenerate(providerName: string, modelName: string, opts: ProviderOptions, estimatedInputTokens: number): Promise<string> {

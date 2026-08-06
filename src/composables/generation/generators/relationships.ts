@@ -387,6 +387,9 @@ export async function generateRelationships({
     threadCount: threadTitles.length
   })
   let aiResult = null
+  // Signal that prompt evaluation has started so the stage watchdog knows
+  // the call is alive even during the silent first-token phase.
+  onProgress?.()
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     aiResult = await aiGenerateJson(userPrompt, SYSTEM_PROMPT, {
       feature: FEATURES.NETWORK,
@@ -396,7 +399,11 @@ export async function generateRelationships({
       schemaName: 'story_network',
       role: 'utility',
       signal,
-      onToken: onProgress
+      onToken: onProgress,
+      // Match network stage's 7-min idle timeout (STAGE_IDLE_TIMEOUT_MS.network = 420_000).
+      // Provider's first-token timeout must exceed stage timeout to avoid premature kill.
+      firstTokenTimeout: 480_000,
+      idleTimeout: 420_000
     }).catch((err) => {
       console.warn(`[generateRelationships] attempt ${attempt} failed:`, err as any)
       return null
