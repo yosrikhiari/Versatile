@@ -1,6 +1,7 @@
 import { PROVIDER_BASE_URLS, PROVIDERS } from '../../config/ai'
 import { DEFAULT_MAX_OUTPUT_TOKENS } from '../../config/generationLimits'
 import { TokenLimitError } from '../ai/tokenLimitError'
+import { armTimeLimit } from '../../config/timeLimits'
 
 interface OpenAIOptions {
   apiKey?: string
@@ -16,10 +17,8 @@ function timeoutSignal(options: OpenAIOptions) {
   const controller = new AbortController()
   const externalSignal = options.signal
 
-  const timer = setTimeout(
-    () =>
-      controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'AbortError')),
-    timeoutMs
+  const timer = armTimeLimit(timeoutMs, (ms) =>
+    controller.abort(new DOMException(`Request timed out after ${ms}ms`, 'AbortError'))
   )
 
   function onAbort() {

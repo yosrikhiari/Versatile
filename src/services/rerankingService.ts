@@ -1,6 +1,7 @@
 import { getOllamaEndpoint } from '../config/ollama'
 import { RERANKING_DEFAULTS } from '../config/ai'
 import { getEmbedding } from './embeddingService'
+import { armTimeLimit } from '../config/timeLimits'
 
 const DEFAULT_RERANK_MODEL = 'jina/jina-reranker-v2-base-multilingual'
 const FALLBACK_MODEL = 'nomic-embed-text'
@@ -79,9 +80,8 @@ async function rerankWithOllama<T extends RerankChunk>(
   const documents = chunks.map((c) => c.text || c.content || '')
 
   const controller = new AbortController()
-  const timeout = setTimeout(
-    () => controller.abort(new DOMException('Rerank request timed out', 'AbortError')),
-    30000
+  const timeout = armTimeLimit(30000, () =>
+    controller.abort(new DOMException('Rerank request timed out', 'AbortError'))
   )
 
   try {

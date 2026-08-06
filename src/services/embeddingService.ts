@@ -3,6 +3,7 @@ import { EMBEDDING_PROVIDERS, EMBEDDING_PROVIDER_CAPABILITIES } from '../config/
 import { resolveEmbeddingConfig } from './embeddingConfig'
 import { getBulkCachedEmbeddings, setEmbeddingCacheEntry } from './researchDb'
 import { slotFor } from './providerGate'
+import { armTimeLimit } from '../config/timeLimits'
 
 const BACKEND_API_BASE = '/api'
 const MISTRAL_API_URL = `${BACKEND_API_BASE}/embedding/mistral`
@@ -133,12 +134,8 @@ async function embedBatchInternal(inputs: string[], model: string | null, provid
   switch (provider) {
     case EMBEDDING_PROVIDERS.MISTRAL: {
       const controller = new AbortController()
-      const timeout = setTimeout(
-        () =>
-          controller.abort(
-            new DOMException('Embedding request timed out after 300000ms', 'AbortError')
-          ),
-        300000
+      const timeout = armTimeLimit(300000, (ms) =>
+        controller.abort(new DOMException(`Embedding request timed out after ${ms}ms`, 'AbortError'))
       )
       try {
         const response = await fetch(MISTRAL_API_URL, {
@@ -174,12 +171,10 @@ async function embedBatchInternal(inputs: string[], model: string | null, provid
       // request's own time is the request's own fault.
       apiResults = await slotFor(EMBEDDING_PROVIDERS.OLLAMA)(async () => {
         const controller = new AbortController()
-        const timeout = setTimeout(
-          () =>
-            controller.abort(
-              new DOMException('Embedding request timed out after 300000ms', 'AbortError')
-            ),
-          300000
+        const timeout = armTimeLimit(300000, (ms) =>
+          controller.abort(
+            new DOMException(`Embedding request timed out after ${ms}ms`, 'AbortError')
+          )
         )
         try {
           const response = await fetch(`${getOllamaEndpoint()}/api/embed`, {

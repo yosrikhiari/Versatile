@@ -1,4 +1,5 @@
 import { FEATURES } from '../config/ai'
+import { resolveTimeLimit } from '../config/timeLimits'
 
 export class LatencyExceededError extends Error {
   feature: string
@@ -43,7 +44,7 @@ export const DEFAULT_LATENCY_BUDGETS: Record<string, { warn: number; block: numb
   // whole cast — ~1,900 output tokens for a 5-character bible, which is minutes
   // at local speeds. At 10s this warned on every single run, the failure mode
   // this file's header describes.
-  [FEATURES.NETWORK]: { warn: 120_000, block: 600_000 },
+  [FEATURES.NETWORK]: { warn: 420_000, block: 900_000 },
   [FEATURES.TAGGING]: { warn: 10_000, block: 30_000 },
   [FEATURES.CHARACTER_CHAT]: { warn: 15_000, block: 45_000 },
   // Also long-form prose, so it lives on the same measured scale as
@@ -64,7 +65,11 @@ export class LatencyBudget {
     const budget = this.budgets[feature]
     if (!budget) return { exceeded: false, blocked: false, elapsedMs }
 
-    if (budget.block && elapsedMs > budget.block) {
+    // The block is the only throwing path in this file; `wrap()` (what production
+    // actually calls) has always been warn-only. Gated so the switch in
+    // config/timeLimits governs it too, rather than leaving a live wall-clock
+    // abort behind for whoever wires `check()` up later.
+    if (resolveTimeLimit(budget.block) > 0 && elapsedMs > budget.block) {
       throw new LatencyExceededError(feature, elapsedMs, budget.block)
     }
     if (budget.warn && elapsedMs > budget.warn) {

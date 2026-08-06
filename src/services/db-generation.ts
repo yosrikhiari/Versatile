@@ -1,5 +1,6 @@
 import { toRaw } from 'vue'
 import { db as _db } from './db-core'
+import { resolveTimeLimit } from '../config/timeLimits'
 
 const db = _db as any
 
@@ -25,16 +26,22 @@ export const PIPELINE_STAGES = ['bible', 'network', 'structure', 'spine', 'prose
  * version of the story — which is exactly what `network` did at 180s: it could
  * not outlast a single legitimate structured call, so the Story Network stage
  * failed on every run that had to evaluate a real prompt.
+ *
+ * The bible, network, spine, and consistency stages now use 7 minutes (420s) to
+ * provide a 120s buffer over the 300s first-token timeout. This ensures the
+ * stage watchdog never fires before the provider's own timeout, and gives time
+ * for the provider to surface a real stall (idle timeout 90s) rather than the
+ * stage declaring "no progress" during expected prompt evaluation silence.
  */
 export const STAGE_IDLE_TIMEOUT_MS: Record<string, number> = {
-  bible: 6 * 60 * 1000,
-  network: 6 * 60 * 1000,
+  bible: 7 * 60 * 1000,
+  network: 7 * 60 * 1000,
   structure: 8 * 60 * 1000,
   // One scene on slow local hardware can legitimately take ~15 minutes, and a
   // scene is the unit of progress here.
   prose: 25 * 60 * 1000,
-  spine: 6 * 60 * 1000,
-  consistency: 6 * 60 * 1000
+  spine: 7 * 60 * 1000,
+  consistency: 7 * 60 * 1000
 }
 
 /** @deprecated Retained for callers still passing an absolute budget. */
@@ -85,7 +92,9 @@ export async function runStageWithHeartbeat(
   idleTimeoutMs?: number,
   externalSignal?: AbortSignal
 ) {
-  const ms = idleTimeoutMs || STAGE_IDLE_TIMEOUT_MS[stageName] || 5 * 60 * 1000
+  // 0 = watchdog disabled; the stage then runs until it finishes, fails, or the
+  // run-level stop fires. See config/timeLimits.
+  const ms = resolveTimeLimit(idleTimeoutMs || STAGE_IDLE_TIMEOUT_MS[stageName] || 5 * 60 * 1000)
   await updateGenRunStage(projectId, stageName, { status: 'running' })
 
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -102,7 +111,7 @@ export async function runStageWithHeartbeat(
 
   const arm = () => {
     clearTimeout(timer)
-    if (settled) return
+    if (settled || ms <= 0) return
     timer = setTimeout(() => {
       const err = new Error(
         `Stage "${stageName}" made no progress for ${Math.round(ms / 1000)}s` +

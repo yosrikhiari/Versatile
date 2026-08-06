@@ -56,6 +56,17 @@ export type DegradationKind =
   | 'artifact_failed'
   /** Speculative prefetch failed. Cheap, but a permanently-dead cache is a bug. */
   | 'prefetch_failed'
+  /**
+   * The planner filled in chapters or scenes the model never produced.
+   *
+   * `planChunked` pads a failed skeleton batch — up to 12 chapters — and
+   * `enforceStructure` pads missing scenes, both by design: a long book should
+   * not lose its length to one flaky call. But the padding is content-free, and
+   * it was previously reported only to `console.warn`. On a 100-chapter run that
+   * is a full-length outline with a blank volume in it, handed to a writer that
+   * will dutifully generate 6,000 words per chapter against an empty brief.
+   */
+  | 'plan_padded'
 
 export interface DegradationEvent {
   kind: DegradationKind

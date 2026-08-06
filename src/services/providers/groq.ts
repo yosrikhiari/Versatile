@@ -1,6 +1,7 @@
 import { PROVIDER_BASE_URLS, PROVIDERS } from '../../config/ai'
 import { DEFAULT_MAX_OUTPUT_TOKENS } from '../../config/generationLimits'
 import { TokenLimitError } from '../ai/tokenLimitError'
+import { armTimeLimit } from '../../config/timeLimits'
 
 interface GroqOptions {
   apiKey?: string
@@ -21,12 +22,8 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
   const onAbort = () => controller.abort(externalSignal!.reason)
 
   try {
-    timeout = setTimeout(
-      () =>
-        controller.abort(
-          new DOMException(`Groq request timed out after ${timeoutMs}ms`, 'AbortError')
-        ),
-      timeoutMs
+    timeout = armTimeLimit(timeoutMs, (ms) =>
+      controller.abort(new DOMException(`Groq request timed out after ${ms}ms`, 'AbortError'))
     )
     if (externalSignal) {
       if (externalSignal.aborted) {
@@ -96,12 +93,8 @@ export async function stream(prompt: string, systemPrompt: string, model: string
   const onAbort = () => controller.abort(externalSignal!.reason)
 
   try {
-    timeout = setTimeout(
-      () =>
-        controller.abort(
-          new DOMException(`Groq stream timed out after ${timeoutMs}ms`, 'AbortError')
-        ),
-      timeoutMs
+    timeout = armTimeLimit(timeoutMs, (ms) =>
+      controller.abort(new DOMException(`Groq stream timed out after ${ms}ms`, 'AbortError'))
     )
     if (externalSignal) {
       if (externalSignal.aborted) {
