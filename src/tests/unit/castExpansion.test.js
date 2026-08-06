@@ -320,6 +320,7 @@ describe('expandCast', () => {
     await run({ onPartialData: (type, name) => seen.push(`${type}:${name}`) })
 
     expect(seen).toEqual([
+      'expandCast:prompt-evaluation-started',
       'character:Vex Mourn',
       'location:The Sealed Gate',
       'plotThread:The Sealed Power'
@@ -498,5 +499,37 @@ describe('expandCast', () => {
     expect(mockAiGenerateJson).toHaveBeenCalledTimes(1)
     // Capped at 6 per call even though the 40-chapter target is 12 characters.
     expect(mockAiGenerateJson.mock.calls[0][0]).toContain('AT MOST 6 new character(s)')
+  })
+
+  // This runs inside the planner's idle watchdog, and the watchdog's only lever
+  // is an abort signal. A signal that is accepted but not forwarded leaves the
+  // request running on the single Ollama slot long after the stage was declared
+  // dead — which is what starved the stage queued behind it.
+  describe('cancellation', () => {
+    it('forwards the signal to the provider call', async () => {
+      mockAiGenerateJson.mockResolvedValue(expansionResponse)
+      const controller = new AbortController()
+
+      await run({ signal: controller.signal })
+
+      expect(mockAiGenerateJson.mock.calls[0][2].signal).toBe(controller.signal)
+    })
+
+    // Everywhere else here degrades to an empty result on failure, deliberately:
+    // a plan with an unexpanded cast is still a usable plan. Cancellation is the
+    // exception — swallowing it would resume scene planning inside a stage that
+    // has already been abandoned.
+    it('throws instead of degrading to an empty result when cancelled', async () => {
+      const controller = new AbortController()
+      mockAiGenerateJson.mockImplementation(async () => {
+        controller.abort()
+        const err = new Error('aborted')
+        err.name = 'AbortError'
+        throw err
+      })
+
+      await expect(run({ signal: controller.signal })).rejects.toThrow(/cancelled/i)
+      expect(addCharactersBatchData).not.toHaveBeenCalled()
+    })
   })
 })

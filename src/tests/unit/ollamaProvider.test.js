@@ -19,6 +19,13 @@ beforeEach(async () => {
   vi.resetModules()
   vi.clearAllMocks()
   global.fetch = mockFetch
+  // Time-based aborts ship disabled (see config/timeLimits) so a slow local run
+  // is never killed for being slow. The timers below are still the policy this
+  // provider implements, so the suite re-arms them rather than dropping the
+  // coverage. Must precede the provider import: it resolves its budgets through
+  // the same module instance.
+  const timeLimits = await import('@/config/timeLimits')
+  timeLimits.__setTimeLimitsEnabled(true)
   ollama = await import('@/services/providers/ollama')
 })
 
@@ -58,6 +65,24 @@ describe('ollama generate', () => {
       text: 'Hello world',
       usage: { promptTokens: 10, completionTokens: 2, totalTokens: 12 }
     })
+  })
+
+  it('forwards onToken, so a non-streaming caller still reports progress', async () => {
+    // `generate` used to pass `null` as its chunk callback. That made the JSON
+    // fallback under aiGenerateStructured heartbeat-blind: it streamed happily
+    // for eight minutes while the stage watchdog, hearing nothing, declared
+    // "made no progress" and killed the run.
+    mockFetch
+      .mockResolvedValueOnce(mockTags())
+      .mockResolvedValueOnce(
+        makeStreamResponse(['{"response":"Hel"}\n', '{"response":"lo"}\n', '{"done":true}\n'])
+      )
+    const onToken = vi.fn()
+
+    await ollama.generate('prompt', 'system', 'llama3', { onToken })
+
+    expect(onToken.mock.calls.map((c) => c[0])).toEqual(['Hel', 'lo'])
+    expect(onToken.mock.calls.at(-1)[1]).toBe('Hello')
   })
 
   it('streams rather than blocking, so progress is observable', async () => {
@@ -302,6 +327,54 @@ describe('ollama idle timeout', () => {
       firstTokenTimeout: 200
     })
     expect(result.text).toBe('late')
+  })
+
+  it('bounds prompt evaluation that stalls inside fetch, before any header arrives', async () => {
+    // Ollama withholds response headers until it writes the first token, so model
+    // load and prompt evaluation happen inside `await fetch`. When the first-token
+    // budget was armed only around reader.read() this phase was guarded by nothing
+    // but the 900s ceiling, so the stage watchdogs above (360s/480s) always fired
+    // first and reported "made no progress" instead of the real cause.
+    mockFetch.mockResolvedValueOnce(mockTags()).mockImplementationOnce(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError'))
+          )
+        })
+    )
+
+    const err = await ollama
+      .generate('prompt', 'system', 'llama3', { idleTimeout: 10, firstTokenTimeout: 30 })
+      .catch((e) => e)
+
+    expect(err.name).toBe('OllamaStalledError')
+    expect(err.message).toMatch(/prompt evaluation stalled/)
+    expect(err.idleMs).toBe(30)
+  })
+
+  it('still reports a caller-requested stop as a cancellation, not a stall', async () => {
+    const external = new AbortController()
+    mockFetch.mockResolvedValueOnce(mockTags()).mockImplementationOnce(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          const fail = () => reject(new DOMException('Aborted', 'AbortError'))
+          if (init.signal.aborted) fail()
+          else init.signal.addEventListener('abort', fail)
+        })
+    )
+
+    const pending = ollama
+      .generate('prompt', 'system', 'llama3', {
+        idleTimeout: 10,
+        firstTokenTimeout: 5000,
+        signal: external.signal
+      })
+      .catch((e) => e)
+    external.abort()
+
+    const err = await pending
+    expect(err.name).toBe('AbortError')
   })
 })
 

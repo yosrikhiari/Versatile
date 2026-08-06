@@ -17,6 +17,14 @@ vi.mock('@/config/ai', () => ({
   }
 }))
 
+// `check()`'s block threshold is gated on the same switch as every other
+// time-based abort (see config/timeLimits), and ships disabled. Re-armed here so
+// the threshold logic stays covered.
+beforeEach(async () => {
+  const timeLimits = await import('@/config/timeLimits')
+  timeLimits.__setTimeLimitsEnabled(true)
+})
+
 describe('latencyBudget', () => {
   describe('constructor and defaults', () => {
     it('uses DEFAULT_LATENCY_BUDGETS when no custom budgets given', async () => {

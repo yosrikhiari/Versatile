@@ -13,6 +13,11 @@ vi.mock('@/services/db-core', () => ({
 let mod
 beforeEach(async () => {
   vi.resetModules()
+  // The stage watchdog ships disabled (see config/timeLimits): a stage now runs
+  // until it finishes, fails, or the run-level stop fires. Re-armed here so the
+  // watchdog's own behaviour stays covered. Must precede the import under test.
+  const timeLimits = await import('@/config/timeLimits')
+  timeLimits.__setTimeLimitsEnabled(true)
   mod = await import('@/services/db-generation')
 })
 

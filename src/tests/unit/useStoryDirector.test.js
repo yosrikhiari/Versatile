@@ -439,6 +439,114 @@ describe('useStoryDirector', () => {
       })
     })
 
+    // Planning runs as the `structure` stage under an idle watchdog that aborts
+    // a stage it declares stuck. Until this was wired, the abort reached nothing:
+    // the planner kept issuing chapter after chapter on the single Ollama slot
+    // the next stage was already queued for, and the stage behind it was then
+    // declared stuck for waiting on a request nobody was listening to.
+    describe('cancellation', () => {
+      const skeleton = JSON.stringify({
+        storyArc: { premise: 'P' },
+        chapters: [
+          { chapterNumber: 1, title: 'Ch1', hookEnding: 'h1' },
+          { chapterNumber: 2, title: 'Ch2', hookEnding: 'h2' },
+          { chapterNumber: 3, title: 'Ch3', hookEnding: 'h3' },
+          { chapterNumber: 4, title: 'Ch4', hookEnding: 'h4' }
+        ]
+      })
+      const cancellableGoal = () => ({
+        ...goal,
+        horizon: 'long_term',
+        structure: {
+          chapters: 4,
+          scenesPerChapter: 1,
+          wordsPerChapter: 800,
+          chaptersPerVolume: 4,
+          volumes: 1
+        }
+      })
+
+      it('forwards the signal to every planning call', async () => {
+        mockAiGenerate.mockImplementation((prompt) =>
+          /chapter skeleton/i.test(prompt)
+            ? skeleton
+            : JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }] })
+        )
+        const controller = new AbortController()
+        const { generateStoryPlan } = useStoryDirector()
+        await generateStoryPlan({
+          goal: cancellableGoal(),
+          evidence: '',
+          signal: controller.signal
+        })
+        expect(mockAiGenerate.mock.calls.length).toBeGreaterThan(1)
+        for (const call of mockAiGenerate.mock.calls) {
+          expect(call[2].signal).toBe(controller.signal)
+        }
+      })
+
+      it('stops issuing scene calls once the signal aborts', async () => {
+        // The skeleton lands, then the stage is abandoned. Scene planning has
+        // bounded concurrency, so the check has to be per task: without it the
+        // remaining chapters are still handed to the provider one by one.
+        const controller = new AbortController()
+        mockAiGenerate.mockImplementation((prompt) => {
+          if (/chapter skeleton/i.test(prompt)) {
+            controller.abort()
+            return skeleton
+          }
+          return JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }] })
+        })
+        const { generateStoryPlan } = useStoryDirector()
+        await expect(
+          generateStoryPlan({ goal: cancellableGoal(), evidence: '', signal: controller.signal })
+        ).rejects.toThrow(/cancelled/i)
+        // Only the skeleton call — no scene call was ever issued.
+        expect(mockAiGenerate).toHaveBeenCalledTimes(1)
+      })
+
+      it('stops between skeleton batches rather than planning the rest of the arc', async () => {
+        const controller = new AbortController()
+        mockAiGenerate.mockImplementation(() => {
+          controller.abort()
+          return JSON.stringify({
+            storyArc: { premise: 'P' },
+            chapters: [{ chapterNumber: 1, title: 'Ch1', hookEnding: 'h1' }]
+          })
+        })
+        const { generateStoryPlan } = useStoryDirector()
+        await expect(
+          generateStoryPlan({
+            goal: {
+              ...goal,
+              horizon: 'long_term',
+              structure: {
+                chapters: 40,
+                scenesPerChapter: 1,
+                wordsPerChapter: 800,
+                chaptersPerVolume: 40,
+                volumes: 1
+              }
+            },
+            evidence: '',
+            signal: controller.signal
+          })
+        ).rejects.toThrow(/cancelled/i)
+        expect(mockAiGenerate).toHaveBeenCalledTimes(1)
+      })
+
+      it('plans normally when no signal is supplied', async () => {
+        mockAiGenerate.mockImplementation((prompt) =>
+          /chapter skeleton/i.test(prompt)
+            ? skeleton
+            : JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }] })
+        )
+        const { generateStoryPlan } = useStoryDirector()
+        const result = await generateStoryPlan({ goal: cancellableGoal(), evidence: '' })
+        expect(result.chapters).toHaveLength(4)
+      })
+    })
+
     it('sets isPlanning ref correctly', async () => {
       mockAiGenerate.mockResolvedValue(makeValidResponse())
       const { generateStoryPlan, isPlanning } = useStoryDirector()
