@@ -61,7 +61,23 @@ export function useStoryResearcher() {
         finalPlotThreads = filterRelevant(finalPlotThreads, premise, isShortTerm)
       }
 
-      let evidenceText = `## Author Style\n`
+      // Story identity leads the evidence.
+      //
+      // This composable received `goal` all along and read only `premise` from
+      // it, so the bible dump it produced — which becomes the evidence section
+      // of every director system prompt — never stated the genre or tone at all.
+      // Downstream prompts each re-interpolated their own copy, and anything
+      // reading only the evidence (or reading it after truncation) had no idea
+      // what kind of book this was. Stating it once, first, means every consumer
+      // of the evidence inherits it.
+      let evidenceText = ''
+      if (goal?.genre || goal?.tone) {
+        evidenceText += `## Story Identity\n`
+        if (goal.genre) evidenceText += `Genre: ${goal.genre}\n`
+        if (goal.tone) evidenceText += `Tone: ${goal.tone}\n`
+        evidenceText += `These are the author's settings. Where anything below implies a different genre or tone, these take precedence.\n\n`
+      }
+      evidenceText += `## Author Style\n`
       if (authorProfile?.preferences) {
         evidenceText += `Prose Style: ${authorProfile.preferences.proseStyle || 'Standard'}\n`
         evidenceText += `Pacing: ${authorProfile.preferences.pacing || 'Standard'}\n`

@@ -204,6 +204,14 @@ const SCENES_SCHEMA = {
           obstacle: { type: 'string' },
           charactersPresent: { type: 'array', items: { type: 'string' } },
           characterWants: { type: 'object' },
+          // Viewpoint was never actually decided by anything. The schema had no
+          // `pov`, so the director never emitted one, and the only consumer
+          // (useVolumeStoryGenerator) fell through `s.pov || s.povCharacter ||
+          // charactersPresent[0]` — the first two permanently undefined. Every
+          // scene was therefore narrated by whoever the model happened to list
+          // first, and useStoryWriter then enforced that guess as a hard rule
+          // ("do not head-hop"). Naming it here makes it a choice.
+          pov: { type: 'string' },
           location: { type: 'string' },
           setup: { type: 'string' },
           payoff: { type: 'string' },
@@ -485,6 +493,39 @@ only for genuinely continuous action, never to dodge inventing a title.`
 }
 
 /**
+ * The story's identity, rendered for a prompt.
+ *
+ * Called at every director prompt site rather than trusting genre to be present
+ * somewhere in the evidence blob. Scene planning carried no identity at all: it
+ * interpolated the chapter goal and hooks, and genre reached it only if the
+ * bible text happened to mention it — and that text is truncation-bounded
+ * (LEXICAL_SCAN_CAP), so "usually present" was the strongest guarantee on offer.
+ *
+ * The closing line exists because these three can contradict the material around
+ * them. A Style Guide document, retrieved research and the author's genre
+ * setting are separate inputs that nothing previously reconciled, so a bible
+ * written for one register could quietly outvote the setting. The author's
+ * choice is the tiebreak.
+ */
+function buildIdentityBlock({
+  genre,
+  tone,
+  pov
+}: {
+  genre?: string
+  tone?: string
+  pov?: string
+}): string {
+  const lines = [
+    `GENRE: ${genre || 'Standard'}`,
+    `TONE: ${tone || 'Standard'}`,
+    pov ? `POV: ${pov}` : ''
+  ].filter(Boolean)
+  return `${lines.join('\n')}
+These govern every choice below. Where the story bible, the style guide or the research context implies a different genre or tone, THESE take precedence.`
+}
+
+/**
  * The per-batch skeleton prompt.
  *
  * Extracted so scripts/verify-title-variety.mjs drives the real prompt instead
@@ -512,8 +553,7 @@ function buildSkeletonPrompt({
 }): string {
   return `Plan the chapter skeleton for this story.
 PREMISE: "${goal.premise}"
-GENRE: ${goal.genre || 'Standard'}
-TONE: ${goal.tone || 'Standard'}
+${buildIdentityBlock(goal)}
 
 Produce EXACTLY ${batchCount} chapters, numbered ${batchStart + 1} through ${batchStart + batchCount}, forming part of ONE continuous arc across ${N} total chapters. Each chapter's "hookEnding" must set up the next chapter.
 ${prevHook ? `The PREVIOUS chapter (#${batchStart}) ended on: "${prevHook}". Chapter ${batchStart + 1} must follow directly from that.` : 'This batch opens the story.'}
@@ -981,7 +1021,8 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
       // Best-effort progress callback; a throwing consumer must not break planning.
     }
     const scenePrompt = `Plan EXACTLY ${S} scenes for this chapter of the story.
-STORY: "${goal.premise}" (${goal.genre || 'Standard'}, ${goal.tone || 'Standard'})
+STORY: "${goal.premise}"
+${buildIdentityBlock(goal)}
 CHAPTER ${i + 1}: "${ch.title}"
 - Chapter goal: ${ch.goal || ''}
 - Emotional target: ${ch.emotionalTarget || ''}
@@ -989,7 +1030,8 @@ CHAPTER ${i + 1}: "${ch.title}"
 ${prev ? `- The PREVIOUS chapter ended on: "${prev.hookEnding || ''}". Scene 1 must pick up directly from that.` : '- This is the opening chapter.'}
 
 Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
-{ "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium" } ] }`
+{ "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "pov": "", "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium" } ] }
+"pov" is the ONE character whose head this scene is narrated from. It must be a name from that scene's "charactersPresent".`
     const parsedScenes = await aiGenerateJson(scenePrompt, activeSystemPrompt, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
@@ -1347,6 +1389,11 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
             charactersPresent: Array.isArray(s.charactersPresent) ? s.charactersPresent : [],
             characterWants:
               s.characterWants && typeof s.characterWants === 'object' ? s.characterWants : {},
+            // This mapper rebuilds scenes field by field, so anything not named
+            // here is dropped in transit no matter what the schema asked for.
+            // That is how `pov` stayed undefined all the way to the writer even
+            // once the director started emitting it.
+            pov: s.pov || s.povCharacter || '',
             location: s.location || '',
             setup: s.setup || '',
             payoff: s.payoff || 'none',
@@ -1397,8 +1444,17 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
         },
         storyArc: {
           premise: storyArc.premise || goal.premise,
-          genre: storyArc.genre || goal.genre || 'Literary',
-          tone: storyArc.tone || goal.tone || 'Atmospheric',
+          // The AUTHOR'S setting wins; the model may only fill a gap.
+          //
+          // This was the other way round, and the model's echo is what every
+          // downstream prose call reads (useStoryWriter reads storyArc.genre for
+          // both the persona block and the scene prompt). So a model that
+          // compressed "Dark Fantasy / grim, brutal, psychological" to "Fantasy"
+          // silently rewrote the book's identity for every remaining chapter,
+          // with the author's actual choice demoted to a fallback that only
+          // applied if the model omitted the field entirely.
+          genre: goal.genre || storyArc.genre || 'Literary',
+          tone: goal.tone || storyArc.tone || 'Atmospheric',
           emotionalJourney: storyArc.emotionalJourney || '',
           centralConflict: storyArc.centralConflict || '',
           resolution: storyArc.resolution || '',
