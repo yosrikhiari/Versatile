@@ -376,7 +376,37 @@ function overusedShapes(usedTitles: string[]): string[] {
     .map(([shape]) => shape)
 }
 
-function buildTitleVarietyBlock(usedTitles: string[], genre: string, tone: string): string {
+/**
+ * `batchCount` drives the per-batch quotas.
+ *
+ * It defaults to the standard batch size so the block can still be rendered for
+ * inspection without one, but planChunked always passes the real count — a final
+ * batch of 4 must not be told to produce a 12-chapter spread of forms.
+ */
+function buildTitleVarietyBlock(
+  usedTitles: string[],
+  genre: string,
+  tone: string,
+  batchCount: number = SKELETON_BATCH_SIZE
+): string {
+  // Quotas scale with the batch, and floor at values a 4-chapter tail can still
+  // satisfy. Asking for two questions in a batch of three would make the whole
+  // instruction unsatisfiable, and an unsatisfiable rule is one the model learns
+  // to disregard wholesale.
+  const maxTheX = Math.max(1, Math.round(batchCount / 4))
+  const maxConnector = Math.max(1, Math.round(batchCount / 4))
+  // A minimum of zero is not a rule, it is noise: "At least 0 must be a
+  // question" reads as permission to skip and dilutes the ones that do apply.
+  // Sub-minimum quotas are dropped from the list rather than rendered as 0.
+  const quotaLines = [
+    `- At most ${maxTheX} may begin with "The".`,
+    `- At most ${maxConnector} may be "[Noun] of/in/and [Noun]".`,
+    batchCount >= 8 ? '- At least 1 must be a question ending in "?".' : '',
+    batchCount >= 8 ? '- At least 1 must be ONE word.' : '',
+    batchCount >= 6 ? '- At least 1 must be a fragment of something a character says.' : ''
+  ]
+    .filter(Boolean)
+    .join('\n')
   const recent = usedTitles.slice(-TITLE_RECALL_CAP)
   // Shape counting reads real chapter titles only. Seeding the palette examples
   // here instead would spend budget on shapes the story has not actually used —
@@ -402,6 +432,14 @@ The titles you return in THIS batch must also all differ from one another, in
 wording AND in shape. The run that prompted this rule returned "Echoes of
 Betrayal" twice inside a single batch of twelve. Before you answer, re-read the
 titles you have just written and replace any that repeat an earlier one.
+
+QUOTAS for these ${batchCount} titles. These are requirements, not preferences —
+the shape limits above are computed from PREVIOUS batches and cannot see what you
+are writing now, so within a batch these are the only constraint. A run without
+them came back with eleven of twenty-four titles beginning with "The", and not a
+single question, one-word or spoken-fragment title in the whole novel.
+${quotaLines}
+Count them yourself before answering.
 
 Vary the FORM of titles across this batch. Deliberately mix:
 ${PALETTE_LINES}
@@ -552,7 +590,7 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
       batchCount,
       prevHook,
       needArc,
-      titleBlock: buildTitleVarietyBlock(usedTitles, goal.genre, goal.tone)
+      titleBlock: buildTitleVarietyBlock(usedTitles, goal.genre, goal.tone, batchCount)
     })
     const skel = await aiGenerateJson(skeletonPrompt, activeSystemPrompt, {
       feature: FEATURES.STORY_GENERATION,

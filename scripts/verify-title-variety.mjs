@@ -180,7 +180,7 @@ async function runCondition({ label, withTitleBlock }) {
     const prompt = withTitleBlock
       ? buildSkeletonPrompt({
           ...args,
-          titleBlock: buildTitleVarietyBlock(titles, GOAL.genre, GOAL.tone)
+          titleBlock: buildTitleVarietyBlock(titles, GOAL.genre, GOAL.tone, batchCount)
         })
       : legacySkeletonPrompt(args)
     const schema = withTitleBlock
@@ -213,7 +213,14 @@ async function runCondition({ label, withTitleBlock }) {
       titles.push(assembleTitle(raw, batchStart + k + 1))
       if (raw.hookEnding) prevHook = raw.hookEnding
     }
+    // Print each batch as it lands. Buffering everything until the summary made
+    // a 19-minute run indistinguishable from a wedged one, and hid evidence that
+    // already existed: whether batch 1 merely echoed the palette examples is
+    // decided the moment batch 1 returns, not 15 minutes later at the summary.
     process.stdout.write(`  ${label}: ${titles.length}/${TOTAL} chapters\n`)
+    for (let i = batchStart; i < titles.length; i++) {
+      process.stdout.write(`      ${String(i + 1).padStart(3)}. ${titles[i]}\n`)
+    }
   }
 
   return { titles, seconds: Math.round(elapsed / 1000) }
@@ -282,15 +289,26 @@ const check = (name, ok, detail) => {
 
 check('after has no exact duplicate titles', a.duplicateTitles === 0, `${a.duplicateTitles} found`)
 check(
-  'after uses at least as many distinct shapes as before',
-  a.distinctShapes >= b.distinctShapes,
+  'after uses more distinct shapes than before',
+  a.distinctShapes > b.distinctShapes,
   `${b.distinctShapes} -> ${a.distinctShapes}`
 )
+// Was `a.topShare <= 0.5` — an absolute threshold, which passed a run whose
+// concentration went 38% -> 46% while printing that regression beside the word
+// PASS. A before/after harness has to compare the two halves, or it launders
+// exactly the result it exists to catch.
 check(
-  'no single shape dominates after',
-  a.topShare <= 0.5,
+  'after is less concentrated on one shape than before',
+  a.topShare < b.topShare,
   `${Math.round(b.topShare * 100)}% -> ${Math.round(a.topShare * 100)}%`
 )
+// The palette forms are the point of requirement 3. Statistics can improve
+// while every one of them is absent, so check for them by name.
+const WANTED_FORMS = ['question', 'single-word']
+for (const form of WANTED_FORMS) {
+  const n = a.sorted.find(([shape]) => shape === form)?.[1] ?? 0
+  check(`after uses at least one ${form} title`, n > 0, `${n} found`)
+}
 
 // A model can ignore instructions; that is a finding about the model, not a
 // crash. Exit non-zero so CI or a human notices, but print everything first.

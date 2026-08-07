@@ -179,6 +179,27 @@ describe('buildTitleVarietyBlock', () => {
     expect(block).toContain('Unique Title Number 299')
   })
 
+  it('sets per-batch quotas, since the shape ban cannot see the current batch', () => {
+    // Observed without them: eleven of twenty-four titles began with "The", and
+    // the novel contained no question, one-word or spoken-fragment title at all.
+    // The shape ban is computed from PREVIOUS batches, so within a batch these
+    // quotas are the only constraint that exists.
+    const block = buildTitleVarietyBlock([], 'Dark Fantasy', 'Grim', 12)
+    expect(block).toMatch(/at most 3 may begin with "The"/i)
+    expect(block).toMatch(/at least 1 must be a question/i)
+    expect(block).toMatch(/at least 1 must be ONE word/i)
+  })
+
+  it('scales quotas down so a short final batch stays satisfiable', () => {
+    // A 100-chapter novel ends on a batch of 4. Demanding a 12-chapter spread of
+    // forms there is unsatisfiable, and an unsatisfiable rule teaches the model
+    // to disregard the whole instruction.
+    const tail = buildTitleVarietyBlock([], 'Dark Fantasy', 'Grim', 4)
+    expect(tail).toMatch(/at most 1 may begin with "The"/i)
+    expect(tail).not.toMatch(/must be a question/i)
+    expect(tail).not.toMatch(/must be ONE word/i)
+  })
+
   it('explains the multi-part mechanism it expects back', () => {
     const block = buildTitleVarietyBlock([], 'Dark Fantasy', 'Grim')
     expect(block).toContain('partOf')
