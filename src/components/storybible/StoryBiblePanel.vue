@@ -722,10 +722,20 @@ defineExpose({ refresh })
                 Rendering it in the body slot pushed the real description out of
                 the collapsed card, so a described character read as blank.
                 Locations already show `description` here; this matches them.
+
+                It still falls back to the body slot when there is no
+                description: `description` only became a required field for
+                newly generated characters, so anything generated before that
+                has notes and nothing else, and would otherwise render as an
+                empty card.
               -->
               <div
                 v-if="character.notes && editingId !== character.id"
-                class="mt-1 text-xs text-text-hint"
+                :class="
+                  character.description
+                    ? 'mt-1 text-xs text-text-hint'
+                    : 'mt-2 text-sm text-text-secondary'
+                "
               >
                 {{ character.notes }}
               </div>
