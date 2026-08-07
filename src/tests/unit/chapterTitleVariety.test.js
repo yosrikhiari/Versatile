@@ -268,6 +268,51 @@ describe('planTitleRepairs', () => {
     expect(forms.some((f) => f.includes('ONE word'))).toBe(true)
   })
 
+  it('repairs a title that repeats one from an earlier batch', () => {
+    // The regression this closes: AFTER shipped "The Weight of Words" at
+    // chapters 4 and 19 and "The Crownless King" at 8 and 21 — both across
+    // batches, both listed as off-limits in the prompt, both reused anyway.
+    // Duplicates were the last rule left purely advisory.
+    const titles = [
+      'The Weight of Words',
+      'Kneel',
+      'He Stopped Speaking',
+      'Who Did It?',
+      'A Bridge',
+      'Blood Money'
+    ]
+    const prior = ['The Weight of Words', 'Something Else']
+    const repairs = planTitleRepairs(titles, 6, prior)
+    expect(repairs).toHaveLength(1)
+    expect(repairs[0].index).toBe(0)
+    expect(repairs[0].requiredForm).toContain('must not repeat')
+  })
+
+  it('repairs a title that repeats one earlier in the same batch', () => {
+    const titles = [
+      'Kneel',
+      'He Stopped Speaking',
+      'Who Did It?',
+      'A Bridge',
+      'Blood Money',
+      'Kneel'
+    ]
+    const repairs = planTitleRepairs(titles, 6, [])
+    // The first occurrence stands; only the repeat is re-asked.
+    expect(repairs.map((r) => r.index)).toEqual([5])
+  })
+
+  it('does not let a shape rule hijack a duplicate repair', () => {
+    // A duplicate repair must keep its own requirement even when the batch is
+    // also missing a form — otherwise the duplicate silently ships.
+    const titles = Array.from({ length: 12 }, (_, i) =>
+      i === 11 ? 'Repeated Title Here' : `Plain Title ${i}`
+    )
+    const repairs = planTitleRepairs(titles, 12, ['Repeated Title Here'])
+    const dup = repairs.find((r) => r.index === 11)
+    expect(dup.requiredForm).toContain('must not repeat')
+  })
+
   it('asks for nothing when the batch already complies', () => {
     const titles = [
       'The Iron Gate',

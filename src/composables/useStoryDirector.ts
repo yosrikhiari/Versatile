@@ -530,6 +530,11 @@ Return ONLY JSON, no markdown:
  * Single source of truth: the prompt renders these and the post-check enforces
  * them, so the instruction and the audit can never disagree.
  */
+/** The two over-cap requirements, named so the repurposing rule can't drift. */
+const NO_THE = 'must NOT begin with "The"'
+const NO_CONNECTOR = 'must NOT be "[Noun] of/in/and [Noun]"'
+const OVER_CAP_FORMS = [NO_THE, NO_CONNECTOR]
+
 function quotasFor(batchCount: number) {
   return {
     maxTheX: Math.max(1, Math.round(batchCount / 4)),
@@ -551,11 +556,31 @@ function quotasFor(batchCount: number) {
  *
  * Returns [] when the batch complied, which is the common case and costs nothing.
  */
-function planTitleRepairs(titles: string[], batchCount: number) {
+function planTitleRepairs(titles: string[], batchCount: number, priorTitles: string[] = []) {
   const q = quotasFor(batchCount)
   const shapes = titles.map(titleShape)
   const repairs: Array<{ index: number; requiredForm: string }> = []
   const claimed = new Set<number>()
+
+  // Duplicates first, and they outrank every shape rule.
+  //
+  // This is the failure that started the whole investigation, and for one
+  // release it was the only one left purely advisory: the ledger tells a batch
+  // what is taken and a live run reused two of those titles anyway, putting
+  // AFTER (2 duplicates) behind the untouched baseline (1). Steering never
+  // closed it; the repair machinery already existed and simply was not pointed
+  // at it.
+  const seen = new Set(priorTitles.map((t) => t.trim().toLowerCase()))
+  titles.forEach((title, index) => {
+    const key = title.trim().toLowerCase()
+    if (!key) return
+    if (seen.has(key)) {
+      claimed.add(index)
+      repairs.push({ index, requiredForm: `must not repeat the existing title "${title}"` })
+      return
+    }
+    seen.add(key)
+  })
 
   // Over-cap shapes: keep the first `max`, re-ask for the rest. Keeping the
   // earliest is arbitrary but stable, which matters for resumability.
@@ -567,14 +592,17 @@ function planTitleRepairs(titles: string[], batchCount: number) {
       repairs.push({ index, requiredForm: form })
     }
   }
-  overCap((s) => s === 'the-x', q.maxTheX, 'must NOT begin with "The"')
-  overCap((s) => /^x-\w+-y$/.test(s), q.maxConnector, 'must NOT be "[Noun] of/in/and [Noun]"')
+  overCap((s) => s === 'the-x', q.maxTheX, NO_THE)
+  overCap((s) => /^x-\w+-y$/.test(s), q.maxConnector, NO_CONNECTOR)
 
   // Missing forms: convert an already-doomed chapter where possible, otherwise
   // take the last compliant one. Never re-ask for a chapter twice.
   const requireForm = (present: boolean, form: string) => {
     if (present) return
-    const reusable = repairs.find((r) => r.requiredForm.startsWith('must NOT'))
+    // Only an over-cap repair may be repurposed. A duplicate repair must keep
+    // its own requirement — matching on letter case alone would be one careless
+    // rewording away from silently dropping the duplicate rule.
+    const reusable = repairs.find((r) => OVER_CAP_FORMS.includes(r.requiredForm))
     if (reusable) {
       reusable.requiredForm = form
       return
@@ -872,7 +900,8 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
     // the batch call already failed for those, so re-asking buys nothing.
     const repairs = planTitleRepairs(
       assembled.map((a) => a.title),
-      batchCount
+      batchCount,
+      usedTitles
     ).filter((r) => !assembled[r.index].isPadded)
     if (repairs.length) {
       const replacements = await requestTitleRepairs({
