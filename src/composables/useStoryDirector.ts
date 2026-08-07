@@ -325,6 +325,38 @@ function describeShape(shape: string): string {
   return shape
 }
 
+/**
+ * The style palette, as [form description, examples] pairs.
+ *
+ * Split out of the prompt string because the examples have to be reachable from
+ * code. A live run returned them verbatim as chapters 1-10 — "The Iron Collar",
+ * "Who Signed the Order?", "Ashwater Bridge" and the rest, in palette order,
+ * for a story containing none of those things. Shown a list of good titles, a
+ * small model reads it as a menu rather than as a description of form; this is
+ * the same "answered the wrong question in the right shape" failure the
+ * relationship generator hit.
+ *
+ * So the examples are seeded into the used-titles ledger, which makes them
+ * arrive already banned. Removing them instead would cost the palette its
+ * teaching value — the forms are much harder to convey without instances.
+ */
+const TITLE_PALETTE: Array<[string, string[]]> = [
+  ["a character's name, alone or possessive", ['Seraphine', 'What Dain Owed']],
+  ['a concrete object, place or body part', ['The Iron Collar', 'Ashwater Bridge']],
+  ['a fragment of spoken dialogue', ['Tell Me What You Remember']],
+  ['a question', ['Who Signed the Order?']],
+  ['a single striking word', ['Unmade', 'Kneel']],
+  ['an action or verb phrase', ['Burn the Archive', 'She Stops Pretending']],
+  ['a flat statement of what happens', ['The Vote Fails']]
+]
+
+const PALETTE_LINES = TITLE_PALETTE.map(
+  ([form, examples]) => `- ${form} (${examples.map((e) => `"${e}"`).join(', ')})`
+).join('\n')
+
+/** Every example title, so the ledger can pre-ban them. */
+const PALETTE_EXAMPLES = TITLE_PALETTE.flatMap(([, examples]) => examples)
+
 // At most this many chapters in the whole novel may share one shape.
 const SHAPE_BUDGET = 3
 // Titles run ~4 words, so 80 of them is a few hundred input tokens — far cheaper
@@ -346,15 +378,20 @@ function overusedShapes(usedTitles: string[]): string[] {
 
 function buildTitleVarietyBlock(usedTitles: string[], genre: string, tone: string): string {
   const recent = usedTitles.slice(-TITLE_RECALL_CAP)
+  // Shape counting reads real chapter titles only. Seeding the palette examples
+  // here instead would spend budget on shapes the story has not actually used —
+  // one example per form is enough to push several straight toward the limit.
   const banned = overusedShapes(usedTitles)
+  // Pre-banned, because a small model treats the palette as a menu: a live run
+  // returned all seven forms' examples verbatim as chapters 1-10.
+  const offLimits = [...PALETTE_EXAMPLES, ...recent]
   return `
 TITLES — this is the field most likely to come out repetitive. Read this section carefully.
 
-${
-  recent.length
-    ? `ALREADY USED in this novel. Never reuse one of these, and never produce a near-synonym of one:\n${recent.map((t) => `- ${t}`).join('\n')}`
-    : 'No titles used yet.'
-}
+OFF LIMITS. Never use one of these, and never produce a near-synonym of one.${
+    recent.length ? '' : ' None are from this novel yet — they are the example titles below.'
+  }
+${offLimits.map((t) => `- ${t}`).join('\n')}
 ${
   banned.length
     ? `\nSHAPES THAT ARE FULL. At most ${SHAPE_BUDGET} chapters in the whole novel may share a shape, and these already hit that limit. Produce NO further titles in these shapes:\n${banned.map((s) => `- ${describeShape(s)}`).join('\n')}`
@@ -367,14 +404,11 @@ Betrayal" twice inside a single batch of twelve. Before you answer, re-read the
 titles you have just written and replace any that repeat an earlier one.
 
 Vary the FORM of titles across this batch. Deliberately mix:
-- a character's name, alone or possessive ("Seraphine", "What Dain Owed")
-- a concrete object, place or body part ("The Iron Collar", "Ashwater Bridge")
-- a fragment of spoken dialogue ("Tell Me What You Remember")
-- a question ("Who Signed the Order?")
-- a single striking word ("Unmade", "Kneel")
-- an action or verb phrase ("Burn the Archive", "She Stops Pretending")
-- a flat statement of what happens ("The Vote Fails")
+${PALETTE_LINES}
 Abstract-noun pairs ("[Noun] of [Noun]") are permitted but must be the exception.
+
+The bracketed examples above are from an UNRELATED book and exist only to show
+the seven forms. They are on the used list above. Copy the FORM, never the words.
 
 Each title must name what actually happens in THAT chapter, drawn from its own
 goal and hook. A title that could sit on any chapter of any dark fantasy novel
