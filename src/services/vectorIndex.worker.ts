@@ -31,27 +31,32 @@ self.onmessage = async function (e: MessageEvent<VectorIndexWorkerRequest>) {
     switch (method) {
       case 'build': {
         const [items, config] = args as [Array<{ id: string; vector: Float32Array; metadata?: Record<string, unknown> }>, VectorIndexConfig]
-        
-        // Reinitialize index with new config
+
+        // The built index is retained on `index` so later messages can use it.
+        // It used to be built, discarded, and reported as a success — which is
+        // why `search` returned [] and `getStats` returned zeros no matter what
+        // had been indexed, and why module-level `index` was never assigned.
         const idx = new VectorIndex(config)
         await idx.build(items as any)
-        // Store the built index for subsequent operations
-        // Note: We need to persist this index somehow
-        // For now, we'll just build and return success
-        // The actual index would need to be persisted or the worker would need to maintain state
+        index = idx
         result = { success: true }
         break
       }
-      
+
       case 'search': {
-        // Search requires a built index - in a real implementation, the index
-        // would need to be persisted across messages. For now, we return empty.
-        result = []
+        // No build message yet means nothing to search, which is empty rather
+        // than an error: the caller may legitimately query before indexing.
+        if (!index) {
+          result = []
+          break
+        }
+        const [query, limit] = args as [Float32Array, number]
+        result = await index.search(query, limit)
         break
       }
-      
+
       case 'getStats': {
-        result = { nClusters: 0, totalVectors: 0, dim: 0 }
+        result = index ? index.getStats() : { nClusters: 0, totalVectors: 0, dim: 0 }
         break
       }
       

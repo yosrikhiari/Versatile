@@ -26,9 +26,11 @@ export async function executeGeneration({ userPrompt, systemPrompt, schema, comp
 
       if (schema.type === 'character') {
         const { validateProfile } = useEntityGuardrails()
+        // `layer` is deliberately absent: useEntityGuardrails owns it and stamps
+        // 'ai_output' itself, which is why EntityContext omits the field. Passing
+        // it here was a type error that happened to carry the same value.
         const result = await validateProfile({
           data: entity,
-          layer: 'ai_output',
           entryPoint: 'generateEntity:character',
         })
         if (!result.passed && result.blocking.length > 0) {

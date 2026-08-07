@@ -347,6 +347,11 @@ export const useSettingsStore = defineStore('settings', () => {
     embeddingProvider,
     embeddingModel,
     embeddingThreshold,
+    // Exported alongside its setter. Without it `settings.analysisTier` was
+    // undefined at runtime, so canUseCloudEscalation's `!== 'local'` test was
+    // always true: a user who chose the local tier still had cloud escalation
+    // enabled, and getAnalysisTier() returned undefined. Only tsc noticed.
+    analysisTier,
     featureModels,
     resolveFeatureProvider,
     resolveFeatureModel,
