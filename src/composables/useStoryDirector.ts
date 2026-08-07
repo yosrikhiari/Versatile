@@ -305,9 +305,30 @@ function titleShape(title: any): string {
   const connector = words.find((w) => SHAPE_CONNECTORS.has(w))
   if (connector) return `x-${connector}-y`
   if (words.some((w) => w.endsWith("'s"))) return 'possessive'
+  // A title that states something — "He Stopped Speaking", "They Speak Through
+  // My Mouth", "The Mirror Was Broken". Without this they fell into the
+  // word-count buckets, which cap at four, so a whole distinct form was
+  // invisible to the metric: a run that replaced noun-phrase clichés with
+  // sentences scored as no improvement at all.
+  if (SUBJECT_PRONOUNS.has(words[0]) || words.some((w) => COPULA_OR_AUX.has(w))) return 'sentence'
   if (words[0] === 'the') return 'the-x'
   return `plain-${Math.min(words.length, 4)}w`
 }
+
+/**
+ * Signals that a title is a statement rather than a noun phrase.
+ *
+ * Deliberately shallow: a leading subject pronoun, or a copula/auxiliary
+ * anywhere. That is enough to separate "He Stopped Speaking" from "The Mirror
+ * Throne" without pretending to parse English, and both lists are closed
+ * classes, so this cannot drift the way a verb lexicon would.
+ */
+const SUBJECT_PRONOUNS = new Set(['i', 'he', 'she', 'they', 'we', 'you', 'it', 'nobody', 'everyone', 'someone'])
+const COPULA_OR_AUX = new Set([
+  'is', 'was', 'are', 'were', 'am', 'be', 'been',
+  'will', 'did', 'does', 'do', 'has', 'have', 'had',
+  'can', 'cannot', 'must'
+])
 
 const SHAPE_LABELS: Record<string, string> = {
   'single-word': 'a single word',
@@ -393,17 +414,18 @@ function buildTitleVarietyBlock(
   // satisfy. Asking for two questions in a batch of three would make the whole
   // instruction unsatisfiable, and an unsatisfiable rule is one the model learns
   // to disregard wholesale.
-  const maxTheX = Math.max(1, Math.round(batchCount / 4))
-  const maxConnector = Math.max(1, Math.round(batchCount / 4))
+  // Same quotasFor() the post-batch audit uses, so the instruction and the
+  // enforcement can never disagree about what the rule is.
+  const q = quotasFor(batchCount)
   // A minimum of zero is not a rule, it is noise: "At least 0 must be a
   // question" reads as permission to skip and dilutes the ones that do apply.
   // Sub-minimum quotas are dropped from the list rather than rendered as 0.
   const quotaLines = [
-    `- At most ${maxTheX} may begin with "The".`,
-    `- At most ${maxConnector} may be "[Noun] of/in/and [Noun]".`,
-    batchCount >= 8 ? '- At least 1 must be a question ending in "?".' : '',
-    batchCount >= 8 ? '- At least 1 must be ONE word.' : '',
-    batchCount >= 6 ? '- At least 1 must be a fragment of something a character says.' : ''
+    `- At most ${q.maxTheX} may begin with "The".`,
+    `- At most ${q.maxConnector} may be "[Noun] of/in/and [Noun]".`,
+    q.wantQuestion ? '- At least 1 must be a question ending in "?".' : '',
+    q.wantSingleWord ? '- At least 1 must be ONE word.' : '',
+    q.wantSentence ? '- At least 1 must be a full statement, e.g. "He Stopped Speaking".' : ''
   ]
     .filter(Boolean)
     .join('\n')
@@ -503,6 +525,187 @@ Return ONLY JSON, no markdown:
 }
 
 /**
+ * Quota caps and floors for a batch of `batchCount` titles.
+ *
+ * Single source of truth: the prompt renders these and the post-check enforces
+ * them, so the instruction and the audit can never disagree.
+ */
+function quotasFor(batchCount: number) {
+  return {
+    maxTheX: Math.max(1, Math.round(batchCount / 4)),
+    maxConnector: Math.max(1, Math.round(batchCount / 4)),
+    wantQuestion: batchCount >= 8,
+    wantSingleWord: batchCount >= 8,
+    wantSentence: batchCount >= 6
+  }
+}
+
+/**
+ * Which chapters in a returned batch need a different title, and what form each
+ * replacement must take.
+ *
+ * The quotas were advisory for one release and a live 7B run answered 7 where
+ * the instruction said "at most 3", and 0 where it said "at least 1". Prompt
+ * wording does not fix that — a model either follows a numeric constraint or it
+ * does not, and this one does not. So the batch is audited after it returns.
+ *
+ * Returns [] when the batch complied, which is the common case and costs nothing.
+ */
+function planTitleRepairs(titles: string[], batchCount: number) {
+  const q = quotasFor(batchCount)
+  const shapes = titles.map(titleShape)
+  const repairs: Array<{ index: number; requiredForm: string }> = []
+  const claimed = new Set<number>()
+
+  // Over-cap shapes: keep the first `max`, re-ask for the rest. Keeping the
+  // earliest is arbitrary but stable, which matters for resumability.
+  const overCap = (predicate: (s: string) => boolean, max: number, form: string) => {
+    const hits = shapes.map((s, i) => (predicate(s) ? i : -1)).filter((i) => i >= 0)
+    for (const index of hits.slice(max)) {
+      if (claimed.has(index)) continue
+      claimed.add(index)
+      repairs.push({ index, requiredForm: form })
+    }
+  }
+  overCap((s) => s === 'the-x', q.maxTheX, 'must NOT begin with "The"')
+  overCap((s) => /^x-\w+-y$/.test(s), q.maxConnector, 'must NOT be "[Noun] of/in/and [Noun]"')
+
+  // Missing forms: convert an already-doomed chapter where possible, otherwise
+  // take the last compliant one. Never re-ask for a chapter twice.
+  const requireForm = (present: boolean, form: string) => {
+    if (present) return
+    const reusable = repairs.find((r) => r.requiredForm.startsWith('must NOT'))
+    if (reusable) {
+      reusable.requiredForm = form
+      return
+    }
+    for (let i = titles.length - 1; i >= 0; i--) {
+      if (claimed.has(i)) continue
+      claimed.add(i)
+      repairs.push({ index: i, requiredForm: form })
+      return
+    }
+  }
+  requireForm(!q.wantQuestion || shapes.includes('question'), 'must be a question ending in "?"')
+  requireForm(!q.wantSingleWord || shapes.includes('single-word'), 'must be exactly ONE word')
+  requireForm(!q.wantSentence || shapes.includes('sentence'), 'must be a full statement, e.g. "He Stopped Speaking"')
+
+  return repairs
+}
+
+/** Pinned to exactly the number of chapters being repaired, like the others. */
+function makeTitleRepairSchema(count: number) {
+  return {
+    type: 'object',
+    properties: {
+      titles: {
+        type: 'array',
+        minItems: count,
+        maxItems: count,
+        items: {
+          type: 'object',
+          properties: { chapterNumber: { type: 'number' }, title: { type: 'string' } },
+          required: ['chapterNumber', 'title']
+        }
+      }
+    },
+    required: ['titles']
+  }
+}
+
+/**
+ * Re-ask for just the titles that broke quota. Returns index -> new title.
+ *
+ * Small and bounded on purpose: it sends only the offending chapters and their
+ * goals, so an over-quota batch costs a few hundred tokens rather than a second
+ * full skeleton call. Advisory by design at the edges — a replacement is only
+ * accepted if it actually satisfies the form that was demanded and is not
+ * already in use, because a model that ignored the quota once will happily
+ * return the same shape again, and swapping one violation for another while
+ * reporting success is worse than leaving the original.
+ */
+async function requestTitleRepairs({
+  repairs,
+  assembled,
+  usedTitles,
+  systemPrompt,
+  sessionBudget,
+  signal
+}: {
+  repairs: Array<{ index: number; requiredForm: string }>
+  assembled: Array<{ chapterNumber: number; title: string; raw: any }>
+  usedTitles: string[]
+  systemPrompt: any
+  sessionBudget?: SessionBudget | null
+  signal?: AbortSignal
+}): Promise<Map<number, string>> {
+  const applied = new Map<number, string>()
+  const taken = new Set(
+    [...usedTitles, ...assembled.map((a) => a.title)].map((t) => t.trim().toLowerCase())
+  )
+
+  const lines = repairs
+    .map(({ index, requiredForm }) => {
+      const entry = assembled[index]
+      return `Chapter ${entry.chapterNumber} — current title "${entry.title}" — this chapter is about: "${entry.raw.goal || entry.raw.hookEnding || 'see the arc'}"\n  Its replacement ${requiredForm}.`
+    })
+    .join('\n')
+
+  const prompt = `These chapter titles break the variety rules for this novel. Replace ONLY these, one new title each.
+
+${lines}
+
+Each replacement must still name what actually happens in that chapter. Do not reuse any title already used in this novel.
+Return ONLY JSON: { "titles": [ { "chapterNumber": 0, "title": "" } ] }`
+
+  const result = await aiGenerateJson(prompt, systemPrompt, {
+    feature: FEATURES.STORY_GENERATION,
+    temperature: 0.8,
+    maxTokens: repairs.length * 40 + 120,
+    schema: makeTitleRepairSchema(repairs.length),
+    schemaName: 'title_repair',
+    role: 'utility',
+    repeatLastN: -1,
+    topP: 0.95,
+    minP: 0.02,
+    idleTimeout: PLAN_IDLE_TIMEOUT_MS,
+    firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
+    sessionBudget,
+    signal
+  }).catch((err) => {
+    // A failed repair leaves the original title standing, which is a worse
+    // title, not a broken plan. Only a cancelled run travels up.
+    rethrowIfFatal(err)
+    console.warn('[StoryDirector] title repair failed; keeping originals:', err)
+    return null
+  })
+
+  const returned = Array.isArray(result?.titles) ? result.titles : []
+  for (const { index, requiredForm } of repairs) {
+    const entry = assembled[index]
+    const match = returned.find((t: any) => Number(t?.chapterNumber) === entry.chapterNumber)
+    const candidate = String(match?.title || '').trim()
+    if (!candidate) continue
+    if (taken.has(candidate.toLowerCase())) continue
+    if (!satisfiesForm(candidate, requiredForm)) continue
+    applied.set(index, candidate)
+    taken.add(candidate.toLowerCase())
+  }
+  return applied
+}
+
+/** Does a replacement actually meet the form its repair demanded? */
+function satisfiesForm(title: string, requiredForm: string): boolean {
+  const shape = titleShape(title)
+  if (requiredForm.includes('ONE word')) return shape === 'single-word'
+  if (requiredForm.includes('question')) return shape === 'question'
+  if (requiredForm.includes('full statement')) return shape === 'sentence'
+  if (requiredForm.includes('NOT begin with "The"')) return shape !== 'the-x'
+  if (requiredForm.includes('NOT be "[Noun]')) return !/^x-\w+-y$/.test(shape)
+  return true
+}
+
+/**
  * `partOf` + `partNumber` win over `title`, falling back to the padding name.
  * Keeping this in one place is what stops a multi-part chapter from being
  * counted as padding, or from landing on the canvas with an empty title.
@@ -574,7 +777,7 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
   // but none of them can guarantee it: they steer a model, they do not constrain
   // it. Counting survivors puts the failure on the run-health ledger instead of
   // leaving it for the author to notice at chapter 97.
-  const degradation = { paddedChapters: 0, chaptersWithoutScenePlan: 0, duplicateTitles: 0 }
+  const degradation = { paddedChapters: 0, chaptersWithoutScenePlan: 0, duplicateTitles: 0, quotaViolations: 0 }
   const seenTitleKeys = new Set<string>()
   while (chapters.length < N) {
     throwIfAborted(signal, 'Story planning cancelled')
@@ -642,33 +845,70 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
     }
 
     const batchChapters = Array.isArray(skel?.chapters) ? skel.chapters : []
+    // Assemble the batch before committing any of it, so a quota repair can
+    // simply replace a title instead of having to un-push one from the ledger.
     // Fill exactly batchCount chapters, padding any the model omitted so the arc
     // never loses its length to a single flaky/truncated batch.
+    const assembled: Array<{
+      raw: any
+      chapterNumber: number
+      isPadded: boolean
+      title: string
+    }> = []
     for (let k = 0; k < batchCount; k++) {
       const raw = batchChapters[k] || {}
       const chapterNumber = batchStart + k + 1
       // A multi-part chapter carries `partOf` and no `title`; counting that as
       // padding would report a healthy run as degraded.
       const isPadded = !raw.title && !raw.partOf
-      if (isPadded) degradation.paddedChapters++
-      const title = assembleTitle(raw, chapterNumber)
+      assembled.push({ raw, chapterNumber, isPadded, title: assembleTitle(raw, chapterNumber) })
+    }
+
+    // Quotas are enforced after the fact, not merely instructed. A live 7B run
+    // answered 7 where the prompt said "at most 3" and 0 where it said "at least
+    // 1"; a model either honours a numeric constraint or it does not, and firmer
+    // wording does not change which. One bounded repair call per offending batch
+    // is what turns steering into enforcement. Padded chapters are excluded —
+    // the batch call already failed for those, so re-asking buys nothing.
+    const repairs = planTitleRepairs(
+      assembled.map((a) => a.title),
+      batchCount
+    ).filter((r) => !assembled[r.index].isPadded)
+    if (repairs.length) {
+      const replacements = await requestTitleRepairs({
+        repairs,
+        assembled,
+        usedTitles,
+        systemPrompt: activeSystemPrompt,
+        sessionBudget,
+        signal
+      })
+      for (const [index, title] of replacements) assembled[index].title = title
+      // Whatever the repair could not fix is still a violation; record it rather
+      // than let a quiet miss look like compliance.
+      degradation.quotaViolations += repairs.length - replacements.size
+    }
+
+    for (const entry of assembled) {
       // Only real model output enters the ledger. A padded "Chapter 47" is our
       // fallback, not a title the model chose: replaying it as "already used"
       // teaches nothing, and a run with several padded batches would exhaust the
       // plain-two-word budget and ban a shape the model never actually spent.
-      if (!isPadded) {
-        usedTitles.push(title)
-        const key = title.trim().toLowerCase()
+      if (entry.isPadded) {
+        degradation.paddedChapters++
+      } else {
+        usedTitles.push(entry.title)
+        const key = entry.title.trim().toLowerCase()
         if (seenTitleKeys.has(key)) degradation.duplicateTitles++
         seenTitleKeys.add(key)
       }
       chapters.push({
-        chapterNumber,
-        title,
-        goal: raw.goal || '',
-        arcPosition: raw.arcPosition || '',
-        emotionalTarget: raw.emotionalTarget || '',
-        hookEnding: raw.hookEnding || ''
+        chapterNumber: entry.chapterNumber,
+        title: entry.title,
+        goal: entry.raw.goal || '',
+        arcPosition: entry.raw.arcPosition || '',
+        emotionalTarget: entry.raw.emotionalTarget || '',
+        hookEnding: entry.raw.hookEnding || ''
       })
     }
     try {
@@ -1123,7 +1363,8 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
         degradation: {
           paddedChapters: parsed?.degradation?.paddedChapters || 0,
           chaptersWithoutScenePlan: parsed?.degradation?.chaptersWithoutScenePlan || 0,
-          duplicateTitles: parsed?.degradation?.duplicateTitles || 0
+          duplicateTitles: parsed?.degradation?.duplicateTitles || 0,
+          quotaViolations: parsed?.degradation?.quotaViolations || 0
         },
         storyArc: {
           premise: storyArc.premise || goal.premise,
@@ -1154,6 +1395,8 @@ export { sanitizeJson, enforceStructure }
 // than a copy that can drift.
 export {
   titleShape,
+  planTitleRepairs,
+  satisfiesForm,
   overusedShapes,
   buildTitleVarietyBlock,
   buildSkeletonPrompt,

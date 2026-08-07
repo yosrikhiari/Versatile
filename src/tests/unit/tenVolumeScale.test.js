@@ -61,6 +61,11 @@ const mockAiGenerate = vi.fn(async (_user, _system, opts = {}) => {
     }
   }
 
+  // title_repair — the quota audit re-asks for offending titles. Answering with
+  // an empty set is the "model declined to improve them" path, which leaves the
+  // originals standing and keeps these tests focused on batching and padding.
+  if (opts.schemaName === 'title_repair') return { titles: [] }
+
   // chapter_skeleton
   const count = opts.schema?.properties?.chapters?.maxItems ?? 12
   const first = calls.filter((c) => c.schemaName === 'chapter_skeleton').length === 1
@@ -212,6 +217,7 @@ describe('degraded provider at 10-volume scale', () => {
           }))
         }
       }
+      if (opts.schemaName === 'title_repair') return { titles: [] }
       const count = opts.schema.properties.scenes.maxItems
       return {
         scenes: Array.from({ length: count }, (_, j) => ({
