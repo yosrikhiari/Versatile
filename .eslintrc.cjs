@@ -24,6 +24,18 @@ module.exports = {
   ignorePatterns: ['dist', 'node_modules', '*.config.js', '*.config.cjs'],
   overrides: [
     {
+      // `no-undef` is off everywhere else: the base config does not extend
+      // eslint:recommended, and on `.ts` it only produces noise because tsc
+      // already checks this and understands DOM/lib types eslint cannot see.
+      //
+      // Vue SFCs had neither guard. A composable used without its import is a
+      // clean parse and a clean lint, and only fails as a ReferenceError when
+      // the component mounts — which is how `useVolumeStore` shipped into
+      // StoryNetwork and `computed` into ModeButton.
+      files: ['**/*.vue'],
+      rules: { 'no-undef': 'error' }
+    },
+    {
       // TypeScript sources: parse with @typescript-eslint so `.ts` files lint
       // instead of hard-erroring on `interface` / type annotations (M-6.3).
       files: ['**/*.ts'],
