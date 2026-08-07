@@ -271,7 +271,15 @@ const SHAPE_CONNECTORS = new Set([
   'beyond',
   'against',
   'without',
-  'before'
+  'before',
+  // Coordinating conjunctions were the blind spot in the first pass. A live run
+  // came back with "Flesh and Thread", "Blood and Ink" and "Ash and Breath" —
+  // three clones of one structure, the exact failure this budget exists to stop.
+  // Without these they all fell into the catch-all `plain-3w` bucket alongside
+  // unrelated titles, so the shape never registered as repeated and the budget
+  // never fired.
+  'and',
+  'or'
 ])
 
 /**
