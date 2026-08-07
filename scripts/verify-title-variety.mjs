@@ -96,6 +96,73 @@ const GOAL = {
 const SYSTEM_PROMPT = `You are a story architect planning a full-length novel. Keep JSON output only with two fields: "chapters" (array) and "storyArc" (object).
 The novel spans multiple chapters across a three-act or multi-part structure.`
 
+/**
+ * The pre-fix prompt and schema, reproduced verbatim.
+ *
+ * The first run of this harness built its baseline by calling the CURRENT
+ * buildSkeletonPrompt with an empty titleBlock. That is not the old behaviour:
+ * the current prompt and schema carry `partOf`/`partNumber`, so suppressing only
+ * the instructions left the model staring at two unexplained fields. It filled
+ * them mechanically and returned "Act I: The Descent, Part 1" four times running
+ * — a degenerate collapse the real pre-fix code never produced. Measuring
+ * against that inflates the improvement.
+ *
+ * Reproducing removed behaviour necessarily means a local copy; there is no
+ * shipping code left to call. Kept adjacent to the real builder so the two can
+ * be diffed by eye.
+ */
+function legacySkeletonPrompt({ goal, N, batchStart, batchCount, prevHook, needArc }) {
+  return `Plan the chapter skeleton for this story.
+PREMISE: "${goal.premise}"
+GENRE: ${goal.genre || 'Standard'}
+TONE: ${goal.tone || 'Standard'}
+
+Produce EXACTLY ${batchCount} chapters, numbered ${batchStart + 1} through ${batchStart + batchCount}, forming part of ONE continuous arc across ${N} total chapters. Each chapter's "hookEnding" must set up the next chapter.
+${prevHook ? `The PREVIOUS chapter (#${batchStart}) ended on: "${prevHook}". Chapter ${batchStart + 1} must follow directly from that.` : 'This batch opens the story.'}
+Return ONLY JSON, no markdown:
+{
+  ${needArc ? '"storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },\n  ' : ''}"chapters": [ { "chapterNumber": ${batchStart + 1}, "title": "", "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
+}`
+}
+
+/** The pre-fix chapter item: no partOf, no partNumber. */
+function legacySkeletonSchema(batchCount) {
+  return {
+    type: 'object',
+    properties: {
+      storyArc: {
+        type: 'object',
+        properties: {
+          premise: { type: 'string' },
+          genre: { type: 'string' },
+          tone: { type: 'string' },
+          centralConflict: { type: 'string' },
+          emotionalJourney: { type: 'string' },
+          resolution: { type: 'string' }
+        }
+      },
+      chapters: {
+        type: 'array',
+        minItems: batchCount,
+        maxItems: batchCount,
+        items: {
+          type: 'object',
+          properties: {
+            chapterNumber: { type: 'number' },
+            title: { type: 'string' },
+            goal: { type: 'string' },
+            arcPosition: { type: 'string' },
+            emotionalTarget: { type: 'string' },
+            hookEnding: { type: 'string' }
+          },
+          required: ['title']
+        }
+      }
+    },
+    required: ['chapters']
+  }
+}
+
 /** Run every batch of one condition, threading hooks the way planChunked does. */
 async function runCondition({ label, withTitleBlock }) {
   const titles = []
@@ -107,24 +174,25 @@ async function runCondition({ label, withTitleBlock }) {
     const batchCount = Math.min(SKELETON_BATCH_SIZE, TOTAL - batchStart)
     const needArc = batchStart === 0
 
-    const prompt = buildSkeletonPrompt({
-      goal: GOAL,
-      N: TOTAL,
-      batchStart,
-      batchCount,
-      prevHook,
-      needArc,
-      // The baseline passes '' — that IS the old behaviour, not an approximation
-      // of it: before this change no title context reached the prompt at all.
-      titleBlock: withTitleBlock ? buildTitleVarietyBlock(titles, GOAL.genre, GOAL.tone) : ''
-    })
+    // BEFORE runs the genuine pre-fix prompt AND schema; AFTER runs the shipping
+    // ones. Anything less than both makes the comparison a strawman.
+    const args = { goal: GOAL, N: TOTAL, batchStart, batchCount, prevHook, needArc }
+    const prompt = withTitleBlock
+      ? buildSkeletonPrompt({
+          ...args,
+          titleBlock: buildTitleVarietyBlock(titles, GOAL.genre, GOAL.tone)
+        })
+      : legacySkeletonPrompt(args)
+    const schema = withTitleBlock
+      ? makeSkeletonSchema(batchCount)
+      : legacySkeletonSchema(batchCount)
 
     const t0 = Date.now()
     const { data } = await generateStructured(
       prompt,
       SYSTEM_PROMPT,
       MODEL,
-      makeSkeletonSchema(batchCount),
+      schema,
       {
         maxTokens: batchCount * TOKENS_PER_CHAPTER_STUB + (needArc ? STORY_ARC_TOKENS : 0),
         idleTimeout: 420_000,

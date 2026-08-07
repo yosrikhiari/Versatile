@@ -36,6 +36,17 @@ describe('titleShape', () => {
     expect(titleShape('Echoes of Honor')).toBe(shape)
   })
 
+  it('catches conjunction pairs, not just prepositional ones', () => {
+    // From a live AFTER run: "Flesh and Thread", "Blood and Ink", "Ash and
+    // Breath" — three clones of one structure that all fell into the catch-all
+    // `plain-3w` bucket, so the budget never fired on them.
+    const shape = titleShape('Flesh and Thread')
+    expect(titleShape('Blood and Ink')).toBe(shape)
+    expect(titleShape('Ash and Breath')).toBe(shape)
+    expect(shape).not.toBe('plain-3w')
+    expect(overusedShapes(['Flesh and Thread', 'Blood and Ink', 'Ash and Breath'])).toContain(shape)
+  })
+
   it('separates the connectors rather than lumping all prepositions together', () => {
     // "of" and "in" titles are both clichés but distinct ones; merging them
     // would exhaust the budget twice as fast and over-constrain the model.
