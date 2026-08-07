@@ -13,6 +13,7 @@ import { usePromptBuilder } from './usePromptBuilder'
 import { summarizeLog } from '../utils/promptUtils'
 import { fitSceneContext } from '../services/ai/contextBudget'
 import { guardScene } from '../guardrails/integration/composableGuardrails'
+import { REFUSAL_PATTERNS } from '../guardrails/guards/contentSafetyGuard'
 import { countProseWords } from './generation/writing/liveDraft'
 
 // Schema for the metadata-extraction pass (call 2). Extractive, not generative:
@@ -71,6 +72,32 @@ const EMPTY_METADATA = {
  * catch returned the identical text one line later, so the guard had never once
  * rejected anything.
  */
+/**
+ * The refused fragment, or null if the text is genuine prose.
+ *
+ * A refusal *is* the response, so it has to start it. Scanning even the first
+ * few hundred characters is too loose: this genre is full of people refusing
+ * each other, and a scene opening
+ *
+ *     Dain looked at his hands. "I'm sorry, but I can't."
+ *
+ * is prose, not a refusal. Two discriminators keep them apart — the match must
+ * sit at offset 0 of the trimmed text, and text opening with a quotation mark is
+ * dialogue by definition.
+ */
+function detectRefusal(prose: string): string | null {
+  const text = String(prose || '')
+    .replace(/^[\s`]*(?:json|markdown)?\s*/i, '')
+    .trimStart()
+  if (!text) return null
+  if (/^["'“‘«]/.test(text)) return null
+  for (const pattern of REFUSAL_PATTERNS) {
+    const match = text.match(pattern)
+    if (match && match.index === 0) return match[0]
+  }
+  return null
+}
+
 class UnsalvageableProseError extends Error {
   constructor(message: string) {
     super(message)
@@ -713,6 +740,7 @@ STORY ARC (for tonal reference):
 - Genre: ${storyArc?.genre || ''}
 - Tone: ${storyArc?.tone || ''}
 - Central conflict: ${storyArc?.centralConflict || ''}
+- Write this scene at the full intensity its genre and tone imply. Where the beat calls for violence, cruelty, sex, coercion or bodily horror, render it on the page with the same specificity as any other beat. Do not fade out, skip ahead, summarise past the difficult moment, or substitute a milder event than the brief describes. Explicitness is a craft choice governed by the tone above, not a thing to be minimised.
 
 ${storyContextBlock}
 Target word count: approximately ${sceneBrief.estimatedWords || 800} words.
@@ -965,6 +993,7 @@ STORY ARC (for tonal reference):
 - Genre: ${storyArc?.genre || ''}
 - Tone: ${storyArc?.tone || ''}
 - Central conflict: ${storyArc?.centralConflict || ''}
+- Write this scene at the full intensity its genre and tone imply. Where the beat calls for violence, cruelty, sex, coercion or bodily horror, render it on the page with the same specificity as any other beat. Do not fade out, skip ahead, summarise past the difficult moment, or substitute a milder event than the brief describes. Explicitness is a craft choice governed by the tone above, not a thing to be minimised.
 
 ${fitted.storyContextBlock}${existingContext}
 The scene MUST be at least ${sceneBrief.estimatedWords || 800} words. Do not end the scene early. If you are below the word count, continue writing until you reach it.
@@ -1019,6 +1048,21 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
         throw new UnsalvageableProseError(
           `Generation produced repetitive output: ${repCheck.details}`
         )
+      }
+
+      // A refusal is a failed attempt, exactly like repetition.
+      //
+      // contentSafetyGuard already detects refusals and already marks them
+      // blocking, but guardrail enforcement defaults to 'detective', so nothing
+      // threw and the refusal was returned as the scene — persisted, and then
+      // fed forward as context for the next one. On an unattended 100-chapter
+      // run that is how "I'm sorry, but I can't continue this" becomes chapter
+      // 63. Rejecting here routes it into the re-roll the retry loop already
+      // performs for looping prose.
+      const refusal = detectRefusal(prose)
+      if (refusal) {
+        console.warn('[useStoryWriter] Model refused rather than writing prose:', refusal)
+        throw new UnsalvageableProseError(`Generation returned a refusal: "${refusal}"`)
       }
 
       // Make the word target mean something.
