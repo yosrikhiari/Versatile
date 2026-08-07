@@ -711,8 +711,21 @@ defineExpose({ refresh })
                 </div>
               </div>
               <div
-                v-if="character.notes && editingId !== character.id"
+                v-if="character.description && editingId !== character.id"
                 class="mt-2 text-sm text-text-secondary"
+              >
+                {{ character.description }}
+              </div>
+              <!--
+                `notes` carries arc scheduling from the cast expander ("Enters
+                chapter 58, provides critical intel..."), not character prose.
+                Rendering it in the body slot pushed the real description out of
+                the collapsed card, so a described character read as blank.
+                Locations already show `description` here; this matches them.
+              -->
+              <div
+                v-if="character.notes && editingId !== character.id"
+                class="mt-1 text-xs text-text-hint"
               >
                 {{ character.notes }}
               </div>
