@@ -353,6 +353,11 @@ ${
     : ''
 }
 
+The titles you return in THIS batch must also all differ from one another, in
+wording AND in shape. The run that prompted this rule returned "Echoes of
+Betrayal" twice inside a single batch of twelve. Before you answer, re-read the
+titles you have just written and replace any that repeat an earlier one.
+
 Vary the FORM of titles across this batch. Deliberately mix:
 - a character's name, alone or possessive ("Seraphine", "What Dain Owed")
 - a concrete object, place or body part ("The Iron Collar", "Ashwater Bridge")
@@ -484,7 +489,13 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
   // Padding is deliberate (a flaky batch must not cost the book its length) but
   // it is not free: a padded chapter is a title and nothing else. Counted here
   // so the caller can put it on the run-health ledger instead of the console.
-  const degradation = { paddedChapters: 0, chaptersWithoutScenePlan: 0 }
+  // `duplicateTitles` counts titles that exactly repeat an earlier chapter's.
+  // The ledger, the shape budget and the sampling window all reduce repetition
+  // but none of them can guarantee it: they steer a model, they do not constrain
+  // it. Counting survivors puts the failure on the run-health ledger instead of
+  // leaving it for the author to notice at chapter 97.
+  const degradation = { paddedChapters: 0, chaptersWithoutScenePlan: 0, duplicateTitles: 0 }
+  const seenTitleKeys = new Set<string>()
   while (chapters.length < N) {
     throwIfAborted(signal, 'Story planning cancelled')
     const batchStart = chapters.length
@@ -507,6 +518,23 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
       idleTimeout: PLAN_IDLE_TIMEOUT_MS,
       firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
       maxTokens: batchCount * TOKENS_PER_CHAPTER_STUB + (needArc ? STORY_ARC_TOKENS : 0),
+      // Sampling tuned for THIS call's shape. The ledger above stops a batch
+      // repeating an *earlier* batch, but it is built once per batch and so
+      // cannot stop a batch repeating itself — and the reported run did exactly
+      // that, emitting "Echoes of Betrayal" at chapters 5 and 10 of one batch.
+      // The mechanical cause is the window: the global repeat_last_n of 512
+      // covers under three chapters of a ~2,300-token batch, so chapter 1's
+      // title exerts no pressure whatever on chapter 10's.
+      //
+      // -1 spans the whole context, which is what "do not repeat yourself
+      // anywhere in this batch" actually requires. top_p/min_p widen from the
+      // 0.9/0.05 prose defaults because a title is a short, high-variance
+      // choice: the default cutoff prunes exactly the uncommon nouns that make
+      // one title unlike the last. Temperature stays 0.7 — this same call also
+      // emits the structural fields under a pinned schema.
+      repeatLastN: -1,
+      topP: 0.95,
+      minP: 0.02,
       schema: makeSkeletonSchema(batchCount),
       schemaName: 'chapter_skeleton',
       role: 'utility',
@@ -548,7 +576,12 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
       // fallback, not a title the model chose: replaying it as "already used"
       // teaches nothing, and a run with several padded batches would exhaust the
       // plain-two-word budget and ban a shape the model never actually spent.
-      if (!isPadded) usedTitles.push(title)
+      if (!isPadded) {
+        usedTitles.push(title)
+        const key = title.trim().toLowerCase()
+        if (seenTitleKeys.has(key)) degradation.duplicateTitles++
+        seenTitleKeys.add(key)
+      }
       chapters.push({
         chapterNumber,
         title,
@@ -1009,7 +1042,8 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
         // without checking which planning path ran; zeroes mean a clean plan.
         degradation: {
           paddedChapters: parsed?.degradation?.paddedChapters || 0,
-          chaptersWithoutScenePlan: parsed?.degradation?.chaptersWithoutScenePlan || 0
+          chaptersWithoutScenePlan: parsed?.degradation?.chaptersWithoutScenePlan || 0,
+          duplicateTitles: parsed?.degradation?.duplicateTitles || 0
         },
         storyArc: {
           premise: storyArc.premise || goal.premise,

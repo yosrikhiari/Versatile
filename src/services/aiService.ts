@@ -64,6 +64,18 @@ export interface AiGenerateOptions {
    * long runs mid-chapter. Prefer `idleTimeout` to detect a real hang.
    */
   timeout?: number
+  /**
+   * Per-call sampling overrides. Omitted means the global Ollama defaults apply.
+   *
+   * These exist because a call's shape determines what sampling suits it. The
+   * chapter-skeleton call emits ~2,300 tokens of short, deliberately-distinct
+   * titles, and the default `repeat_last_n` of 512 covers under three chapters
+   * of that — so chapter 1's title exerted no repetition pressure on chapter 10's.
+   */
+  repeatPenalty?: number
+  repeatLastN?: number
+  topP?: number
+  minP?: number
   /** Max ms of no progress (no new tokens) before the call is considered stalled. */
   idleTimeout?: number
   /** Max ms to wait for the first token; covers prompt evaluation, where silence is expected. */
@@ -109,6 +121,15 @@ interface ProviderOptions {
   idleTimeout?: number
   firstTokenTimeout?: number
   onToken?: (chunk: string, full: string) => void
+  // Sampling. The Ollama provider already accepts these per call, but they were
+  // never forwarded from here — so every structured call silently took the
+  // global defaults and a caller could not tune sampling for its own shape of
+  // output. That is how a 12-chapter batch ran with repeat_last_n=512, a window
+  // covering under three chapters of its own output.
+  repeatPenalty?: number
+  repeatLastN?: number
+  topP?: number
+  minP?: number
 }
 
 interface LangfuseTrace {
@@ -883,7 +904,11 @@ export async function aiGenerateStructured(prompt: string, systemPrompt: string,
         idleTimeout: options.idleTimeout,
         firstTokenTimeout: options.firstTokenTimeout,
         onToken: options.onToken,
-        schemaName: options.schemaName
+        schemaName: options.schemaName,
+        repeatPenalty: options.repeatPenalty,
+        repeatLastN: options.repeatLastN,
+        topP: options.topP,
+        minP: options.minP
       }
       const result = await withRetry(
         () => {
