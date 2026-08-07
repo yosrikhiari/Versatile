@@ -275,6 +275,156 @@ describe('useStoryDirector', () => {
       expect(volumeCounts).toEqual({ 1: 10, 2: 10, 3: 10 })
     })
 
+    describe('story identity propagation', () => {
+      it("keeps the author's genre when the model paraphrases it back", async () => {
+        // storyArc.genre used to win over goal.genre. useStoryWriter reads
+        // storyArc.genre for both its persona block and its scene prompt, so a
+        // model compressing "Dark Fantasy" into "Fantasy" rewrote the identity
+        // of every remaining chapter — the author's actual choice was demoted
+        // to a fallback that applied only if the model omitted the field.
+        mockAiGenerate.mockImplementation((prompt) =>
+          /chapter skeleton/i.test(prompt)
+            ? JSON.stringify({
+                storyArc: { premise: 'P', genre: 'Fantasy', tone: 'Epic', centralConflict: 'c' },
+                chapters: [{ chapterNumber: 1, title: 'Ch1', goal: 'g', hookEnding: 'h' }]
+              })
+            : JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }] })
+        )
+
+        const { generateStoryPlan } = useStoryDirector()
+        const result = await generateStoryPlan({
+          goal: {
+            ...goal,
+            genre: 'Dark Fantasy',
+            tone: 'Grim, brutal',
+            structure: {
+              chapters: 1,
+              scenesPerChapter: 1,
+              wordsPerChapter: 1000,
+              chaptersPerVolume: 1,
+              volumes: 1
+            }
+          },
+          evidence: ''
+        })
+
+        expect(result.storyArc.genre).toBe('Dark Fantasy')
+        expect(result.storyArc.tone).toBe('Grim, brutal')
+      })
+
+      it("still uses the model's genre when the author set none", async () => {
+        // The model may fill a gap — it just may not overrule a choice.
+        mockAiGenerate.mockImplementation((prompt) =>
+          /chapter skeleton/i.test(prompt)
+            ? JSON.stringify({
+                storyArc: { premise: 'P', genre: 'Fantasy', tone: 'Epic', centralConflict: 'c' },
+                chapters: [{ chapterNumber: 1, title: 'Ch1', goal: 'g', hookEnding: 'h' }]
+              })
+            : JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }] })
+        )
+
+        const { generateStoryPlan } = useStoryDirector()
+        const result = await generateStoryPlan({
+          goal: {
+            ...goal,
+            genre: '',
+            tone: '',
+            structure: {
+              chapters: 1,
+              scenesPerChapter: 1,
+              wordsPerChapter: 1000,
+              chaptersPerVolume: 1,
+              volumes: 1
+            }
+          },
+          evidence: ''
+        })
+
+        expect(result.storyArc.genre).toBe('Fantasy')
+        expect(result.storyArc.tone).toBe('Epic')
+      })
+
+      it('states identity in the scene-planning prompt, not just the skeleton', async () => {
+        // Scene planning carried genre only as a parenthetical on the STORY
+        // line, with no precedence rule and no POV.
+        const prompts = []
+        mockAiGenerate.mockImplementation((prompt) => {
+          prompts.push(prompt)
+          return /chapter skeleton/i.test(prompt)
+            ? JSON.stringify({
+                storyArc: {
+                  premise: 'P',
+                  genre: 'Dark Fantasy',
+                  tone: 'Grim',
+                  centralConflict: 'c'
+                },
+                chapters: [{ chapterNumber: 1, title: 'Ch1', goal: 'g', hookEnding: 'h' }]
+              })
+            : JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }] })
+        })
+
+        const { generateStoryPlan } = useStoryDirector()
+        await generateStoryPlan({
+          goal: {
+            ...goal,
+            genre: 'Dark Fantasy',
+            tone: 'Grim',
+            structure: {
+              chapters: 1,
+              scenesPerChapter: 1,
+              wordsPerChapter: 1000,
+              chaptersPerVolume: 1,
+              volumes: 1
+            }
+          },
+          evidence: ''
+        })
+
+        const scenePrompt = prompts.find((p) => /Plan EXACTLY/i.test(p))
+        expect(scenePrompt).toBeTruthy()
+        expect(scenePrompt).toContain('GENRE: Dark Fantasy')
+        expect(scenePrompt).toContain('TONE: Grim')
+        expect(scenePrompt).toMatch(/take precedence/i)
+      })
+
+      it('asks the scene planner to name a POV character', async () => {
+        // The schema had no `pov`, so the director never emitted one and the
+        // only consumer fell back to charactersPresent[0] — every scene was
+        // narrated by whoever the model happened to list first, and the writer
+        // then enforced that guess as "do not head-hop".
+        const prompts = []
+        mockAiGenerate.mockImplementation((prompt) => {
+          prompts.push(prompt)
+          return /chapter skeleton/i.test(prompt)
+            ? JSON.stringify({
+                storyArc: { premise: 'P', genre: 'F', tone: 'T', centralConflict: 'c' },
+                chapters: [{ chapterNumber: 1, title: 'Ch1', goal: 'g', hookEnding: 'h' }]
+              })
+            : JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1', pov: 'Kaelen' }] })
+        })
+
+        const { generateStoryPlan } = useStoryDirector()
+        const result = await generateStoryPlan({
+          goal: {
+            ...goal,
+            structure: {
+              chapters: 1,
+              scenesPerChapter: 1,
+              wordsPerChapter: 1000,
+              chaptersPerVolume: 1,
+              volumes: 1
+            }
+          },
+          evidence: ''
+        })
+
+        const scenePrompt = prompts.find((p) => /Plan EXACTLY/i.test(p))
+        expect(scenePrompt).toContain('"pov"')
+        // And it must survive assembly rather than being dropped on the way out.
+        expect(result.scenes[0].pov).toBe('Kaelen')
+      })
+    })
+
     describe('chapter title variety across batches', () => {
       // The reported failure: across 100 chapters "Echoes of Betrayal" appeared
       // eight times — roughly once per 12-chapter batch. Each batch was an
