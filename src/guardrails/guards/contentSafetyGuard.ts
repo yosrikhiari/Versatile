@@ -16,8 +16,16 @@ const PROMPT_LEAKAGE = [
   /\b<\/?(system|instruction|context)>/i,
 ]
 
-/** Markers that the model refused rather than produced prose. */
-const REFUSAL = [
+/**
+ * Markers that the model refused rather than produced prose.
+ *
+ * Exported so the writer can reject a refusal at generation time instead of
+ * only reporting it afterwards. Guardrail enforcement defaults to 'detective',
+ * so a refusal was detected, logged, and then returned as the scene — which is
+ * how "I'm sorry, but I can't continue this" ends up persisted as chapter 63 and
+ * fed forward as context for chapter 64.
+ */
+export const REFUSAL_PATTERNS = [
   /\bI'm sorry,? but I (can't|cannot)\b/i,
   /\bI'm (not able|unable) to (help|assist|continue) with\b/i,
 ]
@@ -82,7 +90,7 @@ export function createContentSafetyGuard(
         }
       }
 
-      for (const pattern of REFUSAL) {
+      for (const pattern of REFUSAL_PATTERNS) {
         const match = text.match(pattern)
         if (match) {
           push(`Output is a refusal, not prose: "${truncate(match[0])}"`, { match: match[0] }, 'blocking')

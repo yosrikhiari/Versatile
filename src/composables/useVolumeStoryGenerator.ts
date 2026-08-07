@@ -1613,21 +1613,21 @@ export function useVolumeStoryGenerator() {
           focusInstructions: attemptFocusInstructions || undefined
         })
       } catch (err: any) {
-        // Repetition rejection is a failed ATTEMPT, not a failed scene. The
-        // writer refuses to hand back looping prose now, so re-roll — that is
-        // the response the retry loop already exists for. Anything else is a
-        // real error and propagates.
+        // A rejected attempt is not a failed scene. The writer refuses to hand
+        // back looping prose OR a model refusal ("I'm sorry, but I can't..."),
+        // so re-roll — that is the response this retry loop already exists for.
+        // Anything else is a real error and propagates.
         if (!isUnsalvageableProse(err)) throw err
 
         runHealth.record('prose_rejected', {
           stage: 'writer',
           sceneIndex,
-          detail: err?.message || 'repetitive output'
+          detail: err?.message || 'rejected output'
         })
         actLog.appendThought(
           currentTaskId,
           scenePhase,
-          `\n⚠ Attempt ${attempt + 1} produced repetitive output and was rejected. Retrying.\n`
+          `\n⚠ Attempt ${attempt + 1} was rejected (${err?.message || 'unusable output'}). Retrying.\n`
         )
         // Out of attempts: let the caller treat the scene as failed rather than
         // committing prose the guard rejected.
