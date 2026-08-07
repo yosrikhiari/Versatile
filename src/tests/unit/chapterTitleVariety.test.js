@@ -3,6 +3,8 @@ import {
   titleShape,
   overusedShapes,
   buildTitleVarietyBlock,
+  planTitleRepairs,
+  satisfiesForm,
   assembleTitle,
   SHAPE_BUDGET
 } from '@/composables/useStoryDirector'
@@ -204,6 +206,92 @@ describe('buildTitleVarietyBlock', () => {
     const block = buildTitleVarietyBlock([], 'Dark Fantasy', 'Grim')
     expect(block).toContain('partOf')
     expect(block).toContain('partNumber')
+  })
+})
+
+describe('titleShape — sentences', () => {
+  it('recognises a statement as its own form', () => {
+    // Without this the metric was blind to the very improvement it measured: a
+    // run that replaced noun-phrase clichés with sentences scored 8 -> 8 shapes
+    // because word-count buckets cap at four and swallowed them all.
+    expect(titleShape('He Stopped Speaking')).toBe('sentence')
+    expect(titleShape('They Whispered His Name')).toBe('sentence')
+    expect(titleShape('I Will Not Be Made Again')).toBe('sentence')
+    expect(titleShape('The Mirror Was Broken')).toBe('sentence')
+  })
+
+  it('does not mistake a noun phrase for a statement', () => {
+    expect(titleShape('The Mirror Throne')).toBe('the-x')
+    expect(titleShape('The Blade That Remembers')).toBe('the-x')
+    expect(titleShape('Ashwater Bridge')).toBe('plain-2w')
+  })
+
+  it('still prefers the cliché shapes when both could apply', () => {
+    // "The Court of Lies" is an of-pair first; that is the shape worth budgeting.
+    expect(titleShape('The Court of Lies')).toBe('x-of-y')
+  })
+})
+
+describe('planTitleRepairs', () => {
+  const twelve = (make) => Array.from({ length: 12 }, (_, i) => make(i))
+
+  it('re-asks only for the titles over the "The" cap', () => {
+    // The live failure: a batch of twelve came back with seven "The" titles
+    // against an instruction saying at most three.
+    const titles = twelve((i) => (i < 7 ? `The Thing ${i}` : `Sentence ${i} is here`))
+    const repairs = planTitleRepairs(titles, 12)
+    // Seven present, three allowed — four must change, and they are the later
+    // ones, since the earliest compliant set is kept.
+    expect(repairs.map((r) => r.index)).toEqual([3, 4, 5, 6])
+    // The batch also lacks a question and a one-word title. Those are folded
+    // into chapters that were being re-asked anyway rather than dragging two
+    // more compliant chapters into the repair — a smaller, cheaper repair call.
+    expect(repairs.filter((r) => r.requiredForm.includes('question'))).toHaveLength(1)
+    expect(repairs.filter((r) => r.requiredForm.includes('ONE word'))).toHaveLength(1)
+    expect(repairs.filter((r) => r.requiredForm.includes('NOT begin'))).toHaveLength(2)
+  })
+
+  it('satisfiesForm rejects a replacement that breaks the same rule again', () => {
+    // A model that ignored the quota once will return the same shape again.
+    // Accepting it would swap one violation for another and report success.
+    expect(satisfiesForm('The Other Thing', 'must NOT begin with "The"')).toBe(false)
+    expect(satisfiesForm('Kneel', 'must be exactly ONE word')).toBe(true)
+    expect(satisfiesForm('Two Words', 'must be exactly ONE word')).toBe(false)
+    expect(satisfiesForm('Who Did It?', 'must be a question ending in "?"')).toBe(true)
+    expect(satisfiesForm('He Stopped Speaking', 'must be a full statement, e.g. "x"')).toBe(true)
+  })
+
+  it('demands a missing form back', () => {
+    const titles = twelve((i) => `Plain Title Number ${i}`)
+    const forms = planTitleRepairs(titles, 12).map((r) => r.requiredForm)
+    expect(forms.some((f) => f.includes('question'))).toBe(true)
+    expect(forms.some((f) => f.includes('ONE word'))).toBe(true)
+  })
+
+  it('asks for nothing when the batch already complies', () => {
+    const titles = [
+      'The Iron Gate',
+      'Who Signed It?',
+      'Kneel',
+      'He Stopped Speaking',
+      'Burn It Down Now',
+      'Ashwater Bridge'
+    ]
+    expect(planTitleRepairs(titles, 6)).toEqual([])
+  })
+
+  it('never asks for the same chapter twice', () => {
+    const titles = twelve(() => 'The Same Kind')
+    const repairs = planTitleRepairs(titles, 12)
+    const indices = repairs.map((r) => r.index)
+    expect(new Set(indices).size).toBe(indices.length)
+  })
+
+  it('relaxes for a short final batch', () => {
+    // A 100-chapter novel ends on four chapters; demanding a full spread of
+    // forms there is unsatisfiable.
+    const repairs = planTitleRepairs(['The One', 'The Two', 'The Three', 'The Four'], 4)
+    expect(repairs.every((r) => r.requiredForm.includes('NOT begin'))).toBe(true)
   })
 })
 
