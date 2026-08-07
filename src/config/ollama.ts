@@ -1,6 +1,26 @@
 import { STORAGE_KEYS } from './storageKeys'
 
-const DEFAULT_MODEL = 'qwen3:8b'
+/**
+ * Prose and utility work default to different models, because they fail in
+ * opposite directions.
+ *
+ * Prose for this project is adult dark fantasy. A safety-trained model does not
+ * refuse cleanly — it softens, fades out, or substitutes a milder beat, and when
+ * it does refuse outright the writer now has to throw the attempt away and pay
+ * for a re-roll. dolphin-mistral is uncensored, so it writes the brief it was
+ * given.
+ *
+ * That same model is markedly worse at schema-constrained output, and almost
+ * everything else in this pipeline is structured JSON — chapter skeletons, title
+ * repair, cast expansion, the relationship network. Those run with
+ * `role: 'utility'` and stay on qwen3, which holds a grammar.
+ *
+ * Both are only defaults: an explicit choice in Settings (localStorage) wins,
+ * and a fresh profile needs both models pulled or generation fails at the
+ * provider.
+ */
+const DEFAULT_MODEL = 'dolphin-mistral:7b'
+const DEFAULT_UTILITY_MODEL = 'qwen3:8b'
 const DEFAULT_ENDPOINT = '/ollama'
 
 /**
@@ -80,10 +100,13 @@ export function setOllamaModel(model: any) {
  * at 13.5 tok/s against qwen3:8b's 5.85 — it fits entirely in 4 GB of VRAM where
  * the 8B model does not.
  *
- * Unset means "use the prose model", which is exactly the previous behaviour.
+ * Unset now falls back to DEFAULT_UTILITY_MODEL rather than to the prose model.
+ * The prose default is uncensored and correspondingly weaker at grammar-bound
+ * output, so inheriting it for structured work would put every schema-bound call
+ * in the pipeline on the model least able to satisfy a schema.
  */
 export function getOllamaUtilityModel(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.OLLAMA_UTILITY_MODEL) || null
+  return localStorage.getItem(STORAGE_KEYS.OLLAMA_UTILITY_MODEL) || DEFAULT_UTILITY_MODEL
 }
 
 export function setOllamaUtilityModel(model: string | null) {

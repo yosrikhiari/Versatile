@@ -31,7 +31,10 @@ describe('ollama config', () => {
 
   describe('getOllamaModel', () => {
     it('returns default model when nothing stored', () => {
-      expect(getOllamaModel()).toBe('qwen3:8b')
+      // Prose defaults to the uncensored model: a safety-trained one does not
+      // refuse cleanly on adult dark fantasy, it softens or fades out, and an
+      // outright refusal now costs the writer a re-rolled attempt.
+      expect(getOllamaModel()).toBe('dolphin-mistral:7b')
     })
 
     it('returns stored model', () => {
