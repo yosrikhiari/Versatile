@@ -391,6 +391,58 @@ describe('useStoryDirector', () => {
         expect(result.chapters[2].title).toBe('Standalone 3')
       })
 
+      it('widens the repetition window to span the whole batch', async () => {
+        // The reported run repeated "Echoes of Betrayal" at chapters 5 and 10 of
+        // ONE batch. The ledger cannot catch that — it is built once per batch —
+        // and the global repeat_last_n of 512 covers under three chapters of a
+        // ~2,300-token batch, so chapter 1 exerted no pressure on chapter 10.
+        const { skeletonPrompts } = await runTwoBatches(
+          twelve((i) => ({ title: `T${i + 1}` })),
+          twelve((i) => ({ title: `U${i + 1}` }))
+        )
+        expect(skeletonPrompts).toHaveLength(2)
+
+        const skeletonOpts = mockAiGenerate.mock.calls
+          .filter(([prompt]) => /chapter skeleton/i.test(prompt))
+          .map(([, , opts]) => opts)
+        for (const opts of skeletonOpts) {
+          expect(opts.repeatLastN).toBe(-1)
+          expect(opts.topP).toBeGreaterThan(0.9)
+          expect(opts.minP).toBeLessThan(0.05)
+          // Structural fields ride this same call under a pinned schema.
+          expect(opts.temperature).toBe(0.7)
+        }
+      })
+
+      it('tells the batch not to repeat itself, not just earlier batches', async () => {
+        const { skeletonPrompts } = await runTwoBatches(
+          twelve((i) => ({ title: `T${i + 1}` })),
+          twelve((i) => ({ title: `U${i + 1}` }))
+        )
+        // Batch 1 has no history, so the intra-batch rule is the only guard it has.
+        expect(skeletonPrompts[0]).toMatch(/differ from one another/i)
+      })
+
+      it('counts a surviving duplicate onto the run-health ledger', async () => {
+        // Steering is not constraining: if the model repeats anyway, that must be
+        // visible rather than something the author finds at chapter 97.
+        const { result } = await runTwoBatches(
+          twelve((i) => ({ title: i === 9 ? 'Echoes of Betrayal' : `Unique ${i + 1}` })).map(
+            (t, i) => (i === 4 ? { title: 'Echoes of Betrayal' } : t)
+          ),
+          twelve((i) => ({ title: `Second ${i + 1}` }))
+        )
+        expect(result.degradation.duplicateTitles).toBe(1)
+      })
+
+      it('reports zero duplicates for a clean plan', async () => {
+        const { result } = await runTwoBatches(
+          twelve((i) => ({ title: `Alpha ${i + 1}` })),
+          twelve((i) => ({ title: `Beta ${i + 1}` }))
+        )
+        expect(result.degradation.duplicateTitles).toBe(0)
+      })
+
       it('does not count a multi-part chapter as padding', async () => {
         // `partOf` with an empty `title` is a complete answer, not a gap.
         const { result } = await runTwoBatches(

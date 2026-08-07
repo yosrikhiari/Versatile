@@ -118,7 +118,13 @@ async function runCondition({ label, withTitleBlock }) {
       {
         maxTokens: batchCount * TOKENS_PER_CHAPTER_STUB + (needArc ? STORY_ARC_TOKENS : 0),
         idleTimeout: 420_000,
-        firstTokenTimeout: 480_000
+        firstTokenTimeout: 480_000,
+        // The fix is prompt-side AND sampling-side, so the two halves must
+        // differ in both or the comparison misattributes the result. BEFORE
+        // leaves these unset, which is what the shipped code did: the global
+        // defaults applied (repeat_last_n=512, top_p=0.9, min_p=0.05), and a
+        // 512-token window covers under three chapters of this batch.
+        ...(withTitleBlock ? { repeatLastN: -1, topP: 0.95, minP: 0.02 } : {})
       }
     )
     elapsed += Date.now() - t0
