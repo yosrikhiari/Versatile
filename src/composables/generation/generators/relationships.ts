@@ -134,6 +134,7 @@ function makeRelationshipSchema({
   if (locationCount) {
     properties.characterLocations = {
       ...props.characterLocations,
+      minItems: 1,
       maxItems: Math.min(40, characterCount * locationCount),
       items: {
         ...props.characterLocations.items,
@@ -149,6 +150,7 @@ function makeRelationshipSchema({
   if (threadCount) {
     properties.characterPlotThreads = {
       ...props.characterPlotThreads,
+      minItems: 1,
       maxItems: Math.min(40, characterCount * threadCount),
       items: {
         ...props.characterPlotThreads.items,
@@ -164,6 +166,7 @@ function makeRelationshipSchema({
   if (threadCount > 1) {
     properties.plotThreadLinks = {
       ...props.plotThreadLinks,
+      minItems: 1,
       maxItems: Math.min(20, threadCount * (threadCount - 1)),
       items: {
         ...props.plotThreadLinks.items,
@@ -176,7 +179,23 @@ function makeRelationshipSchema({
     }
   }
 
-  return { ...RELATIONSHIP_SCHEMA, properties }
+  // Every category present in `properties` is required.
+  //
+  // Previously only `characterRelationships` was required, so a model could
+  // satisfy the grammar with character↔character links alone and stop — leaving
+  // every location and plot thread sitting on the canvas with no edges. A
+  // category is added to `properties` above only when its entities actually
+  // exist, so requiring all of them never asks for links to nothing.
+  return { ...RELATIONSHIP_SCHEMA, properties, required: Object.keys(properties) }
+}
+
+// Categories the schema asked for that came back empty. Coverage is checked per
+// category rather than by a single total: a response carrying only
+// character↔character links passes a `countAiConnections > 0` gate while leaving
+// locations and plot threads orphaned.
+export function missingCategories(aiResult: any, expected: string[]) {
+  if (!aiResult) return [...expected]
+  return expected.filter((key) => !(aiResult[key]?.length > 0))
 }
 
 export function estimateRelationshipTokens({
@@ -207,7 +226,7 @@ You are given the exact characters, locations, and plot threads. Use ONLY these 
 - characterPlotThreads: which characters drive, obstruct, or are affected by which plot threads (driver, obstacle, affected, catalyst, ...).
 - plotThreadLinks: how plot threads relate (depends_on, parallels, resolves, complicates, ...).
 
-Return ONLY JSON matching the requested shape. characterRelationships must never be empty. The other arrays may be omitted only when the story genuinely contains no such entities.`
+Return ONLY JSON matching the requested shape. Every array present in the requested shape must be non-empty: you are only asked for a category when the story actually contains those entities, and entities that exist always connect to the story somehow. Every location and every plot thread must appear in at least one connection — if a link is not obvious, infer the most plausible one from the roles, goals, and descriptions you were given.`
 
 function normalizeName(name: any) {
   return typeof name === 'string' ? name.trim().toLowerCase() : ''
@@ -373,8 +392,10 @@ export async function generateRelationships({
   }
 
   // A single structured call on a small local model frequently comes back empty
-  // ("no meaningful connections"). Retry once before giving up so the Story
-  // Network isn't silently empty on a transient miss.
+  // ("no meaningful connections"), or covers only the character↔character
+  // category. Retry once before giving up so the Story Network isn't silently
+  // empty — or silently missing every location and plot thread — on a transient
+  // miss. Capped at 2 because this stage is one long call on a local model.
   const MAX_ATTEMPTS = 2
   const userPrompt = buildUserPrompt({ characters, locations, plotThreads, synopsis, genre, tone })
   const characterNames = characters.map((c: any) => c.name).filter(Boolean)
@@ -386,12 +407,14 @@ export async function generateRelationships({
     locationCount: locationNames.length,
     threadCount: threadTitles.length
   })
+  const expectedCategories = Object.keys((schema as any).properties)
   let aiResult = null
+  let bestMissing: string[] | null = null
   // Signal that prompt evaluation has started so the stage watchdog knows
   // the call is alive even during the silent first-token phase.
   onProgress?.()
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    aiResult = await aiGenerateJson(userPrompt, SYSTEM_PROMPT, {
+    const candidate = await aiGenerateJson(userPrompt, SYSTEM_PROMPT, {
       feature: FEATURES.NETWORK,
       temperature: 0.5,
       schema,
@@ -408,13 +431,22 @@ export async function generateRelationships({
       console.warn(`[generateRelationships] attempt ${attempt} failed:`, err as any)
       return null
     })
-    if (countAiConnections(aiResult) > 0) break
+    const missing = missingCategories(candidate, expectedCategories)
+    // Keep the most complete attempt. A retry that comes back thinner than the
+    // first must not overwrite it.
+    if (candidate && (bestMissing === null || missing.length < bestMissing.length)) {
+      aiResult = candidate
+      bestMissing = missing
+    }
+    if (bestMissing?.length === 0) break
     // The retry exists for a model that came back empty, not for a caller that
     // has given up. Swallowing the abort here and firing a second call is how a
     // cancelled stage went on issuing requests to a provider it no longer owned.
     if (signal?.aborted) break
     if (attempt < MAX_ATTEMPTS) {
-      console.warn(`[generateRelationships] attempt ${attempt} returned no connections; retrying.`)
+      console.warn(
+        `[generateRelationships] attempt ${attempt} returned no ${missing.join(', ')}; retrying.`
+      )
     }
   }
 

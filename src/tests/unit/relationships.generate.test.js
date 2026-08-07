@@ -90,8 +90,42 @@ describe('generateRelationships — robustness & diagnosability', () => {
     expect(res.graphEdges).toBe(0)
     expect(res.dropped).toBe(1)
     expect(res.reason).toBe('all_dropped')
-    // Did not retry — the first attempt had connections.
-    expect(mockAiGenerateJson).toHaveBeenCalledTimes(1)
+    // Retried: the cast has a location and a plot thread and the model returned
+    // links for neither. Coverage per category decides whether to try again — a
+    // bare "total > 0" gate accepted this and left both nodes orphaned.
+    expect(mockAiGenerateJson).toHaveBeenCalledTimes(2)
+  })
+
+  it('retries when the model covers only the character↔character category', async () => {
+    mockAiGenerateJson
+      .mockResolvedValueOnce({
+        characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }]
+      })
+      .mockResolvedValueOnce({
+        characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }],
+        characterLocations: [{ character: 'Alice', location: 'The Keep' }],
+        characterPlotThreads: [{ character: 'Bob', plotThread: 'The Prophecy' }]
+      })
+    const res = await generateRelationships(cast)
+    expect(mockAiGenerateJson).toHaveBeenCalledTimes(2)
+    // The second attempt's location and plot-thread links are what reach the graph.
+    expect(res.graphEdges).toBe(2)
+    expect(res.reason).toBe('ok')
+  })
+
+  it('keeps the fuller first attempt when the retry comes back thinner', async () => {
+    mockAiGenerateJson
+      .mockResolvedValueOnce({
+        characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }],
+        characterLocations: [{ character: 'Alice', location: 'The Keep' }]
+      })
+      .mockResolvedValueOnce({
+        characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }]
+      })
+    const res = await generateRelationships(cast)
+    expect(mockAiGenerateJson).toHaveBeenCalledTimes(2)
+    // Attempt 1's location edge survives; a retry must not erase coverage.
+    expect(res.graphEdges).toBe(1)
   })
 
   // The stage watchdog cancels by aborting the signal. Treating that abort as

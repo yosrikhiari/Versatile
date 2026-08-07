@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   makeRelationshipSchema,
-  estimateRelationshipTokens
+  estimateRelationshipTokens,
+  missingCategories
 } from '@/composables/generation/generators/relationships'
 
 describe('makeRelationshipSchema', () => {
@@ -81,14 +82,95 @@ describe('makeRelationshipSchema', () => {
     expect(schema.properties.plotThreadLinks).toBeUndefined()
   })
 
-  it('preserves the required key and item shape', () => {
+  it('requires every category whose entities exist, not just character links', () => {
+    // The observed failure: locations and plot threads sitting on the canvas
+    // with no edges at all. Only `characterRelationships` was required, so the
+    // grammar was fully satisfied by character↔character links and a small
+    // local model stopped there.
     const schema = makeRelationshipSchema({
       characterNames: ['A', 'B', 'C'],
       locationNames: ['L'],
-      threadTitles: ['T']
+      threadTitles: ['T1', 'T2']
     })
-    expect(schema.required).toEqual(['characterRelationships'])
+    expect(schema.required).toEqual([
+      'characterRelationships',
+      'characterLocations',
+      'characterPlotThreads',
+      'plotThreadLinks'
+    ])
     expect(schema.properties.characterRelationships.items.required).toEqual(['from', 'to', 'type'])
+  })
+
+  it('gives every required category a non-empty floor', () => {
+    const schema = makeRelationshipSchema({
+      characterNames: ['A', 'B', 'C'],
+      locationNames: ['L1', 'L2'],
+      threadTitles: ['T1', 'T2']
+    })
+    for (const key of schema.required) {
+      expect(schema.properties[key].minItems).toBe(1)
+    }
+  })
+
+  it('never requires a category it did not ask for', () => {
+    // `required` naming an absent property is an unsatisfiable schema.
+    const schema = makeRelationshipSchema({ characterNames: ['A', 'B'] })
+    expect(schema.required).toEqual(['characterRelationships'])
+    for (const key of schema.required) {
+      expect(schema.properties[key]).toBeDefined()
+    }
+  })
+
+  it('keeps every floor satisfiable against its own ceiling', () => {
+    // minItems > maxItems is unsatisfiable; the smallest cast is the risky case.
+    const schema = makeRelationshipSchema({
+      characterNames: ['A', 'B'],
+      locationNames: ['L'],
+      threadTitles: ['T1', 'T2']
+    })
+    for (const key of schema.required) {
+      const prop = schema.properties[key]
+      expect(prop.maxItems).toBeGreaterThanOrEqual(prop.minItems)
+    }
+  })
+})
+
+describe('missingCategories', () => {
+  const expected = ['characterRelationships', 'characterLocations', 'characterPlotThreads']
+
+  it('names the categories a partial response left empty', () => {
+    // This is the exact shape that produced orphaned nodes: character links
+    // present, everything else absent. countAiConnections() sums all four and
+    // saw a positive total, so the old gate accepted it as a success.
+    const missing = missingCategories(
+      { characterRelationships: [{ from: 'A', to: 'B', type: 'ally' }] },
+      expected
+    )
+    expect(missing).toEqual(['characterLocations', 'characterPlotThreads'])
+  })
+
+  it('treats a full response as complete', () => {
+    const missing = missingCategories(
+      {
+        characterRelationships: [{ from: 'A', to: 'B', type: 'ally' }],
+        characterLocations: [{ character: 'A', location: 'L' }],
+        characterPlotThreads: [{ character: 'A', plotThread: 'T' }]
+      },
+      expected
+    )
+    expect(missing).toEqual([])
+  })
+
+  it('treats a failed call as missing everything', () => {
+    expect(missingCategories(null, expected)).toEqual(expected)
+  })
+
+  it('counts an explicitly empty array as missing', () => {
+    const missing = missingCategories(
+      { characterRelationships: [], characterLocations: [], characterPlotThreads: [] },
+      expected
+    )
+    expect(missing).toEqual(expected)
   })
 })
 
