@@ -24,6 +24,7 @@
     "verify:planning": "npx vite-node scripts/verify-planning-fix.mjs",
     "verify:network": "npx vite-node scripts/verify-network-fix.mjs",
     "verify:cast": "npx vite-node scripts/verify-cast-expansion.mjs",
+    "verify:titles": "npx vite-node scripts/verify-title-variety.mjs",
     "audit:manuscript": "node scripts/audit-manuscript.mjs",
     "eval:snapshot": "npx vite-node tools/eval-snapshot.mjs",
     "eval:rag": "npx vite-node scripts/evaluate-rag.js",

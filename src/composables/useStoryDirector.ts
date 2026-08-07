@@ -31,7 +31,10 @@ const PLAN_FIRST_TOKEN_TIMEOUT_MS = 300_000
 // implicit, `resolveMaxTokens` fell back to a flat 4,096 for any model it has no
 // metadata for — which is every local Ollama model — so a 3-scene call was given
 // the same runway as a 100-chapter one and simply ran until it was cut off.
-const TOKENS_PER_CHAPTER_STUB = 170
+// Raised from 170: each chapter stub may now also carry `partOf`/`partNumber`.
+// Under-budgeting truncates the batch, and the padding path turns a truncated
+// chapter into "Chapter 47" — the exact failure this budget exists to prevent.
+const TOKENS_PER_CHAPTER_STUB = 190
 const TOKENS_PER_SCENE = 300
 const STORY_ARC_TOKENS = 400
 
@@ -169,6 +172,11 @@ const SKELETON_SCHEMA = {
         properties: {
           chapterNumber: { type: 'number' },
           title: { type: 'string' },
+          // Consecutive chapters covering ONE unbroken event share a base title
+          // and number the parts, instead of the model either repeating a title
+          // or inventing an unrelated one for the second half of a single scene.
+          partOf: { type: 'string' },
+          partNumber: { type: 'number' },
           goal: { type: 'string' },
           arcPosition: { type: 'string' },
           emotionalTarget: { type: 'string' },
@@ -245,6 +253,182 @@ function makeScenesSchema(sceneCount: number) {
 // hang; batching keeps every call small and reliable.
 const SKELETON_BATCH_SIZE = 12
 
+// ---- Chapter title variety -------------------------------------------------
+//
+// Every skeleton batch used to see the premise, the tone and the previous
+// chapter's hook — never the titles already used. Nine independent calls
+// drawing from one distribution is why a 100-chapter run produced "Echoes of
+// Betrayal" eight times, roughly once per batch, alongside dozens of
+// "[Noun] of [Noun]" clones. Nothing ever told batch 5 what batches 1-4 named.
+
+const SHAPE_CONNECTORS = new Set([
+  'of',
+  'in',
+  'from',
+  'beneath',
+  'within',
+  'under',
+  'beyond',
+  'against',
+  'without',
+  'before'
+])
+
+/**
+ * Collapse a title to its structural shape so near-duplicates can be counted.
+ *
+ * "Echoes of Betrayal" and "Whispers of Power" are different strings and the
+ * same title. Only shape-counting catches that, which is what makes this worth
+ * more than an exact-match blocklist.
+ */
+function titleShape(title: any): string {
+  // A non-string is garbage input, not a one-word title — without this guard a
+  // stray number would quietly consume the 'single-word' budget.
+  if (typeof title !== 'string') return 'empty'
+  // Normalise the curly apostrophe first: the run that prompted this shipped
+  // "The Veil’s Reflection" with U+2019, which a straight-quote test misses.
+  const t = title.replace(/[‘’]/g, "'").trim().toLowerCase()
+  if (!t) return 'empty'
+  if (t.endsWith('?')) return 'question'
+  // Apostrophes survive the strip — they are the possessive signal below.
+  const words = t.replace(/[.,;:!"]/g, '').split(/\s+/).filter(Boolean)
+  if (words.length === 0) return 'empty'
+  if (words.length === 1) return 'single-word'
+  const connector = words.find((w) => SHAPE_CONNECTORS.has(w))
+  if (connector) return `x-${connector}-y`
+  if (words.some((w) => w.endsWith("'s"))) return 'possessive'
+  if (words[0] === 'the') return 'the-x'
+  return `plain-${Math.min(words.length, 4)}w`
+}
+
+const SHAPE_LABELS: Record<string, string> = {
+  'single-word': 'a single word',
+  question: 'a question',
+  possessive: 'a possessive ("X\'s Y")',
+  'the-x': '"The [Noun]"'
+}
+
+function describeShape(shape: string): string {
+  if (SHAPE_LABELS[shape]) return SHAPE_LABELS[shape]
+  const connector = shape.match(/^x-(\w+)-y$/)
+  if (connector) return `"[Noun] ${connector[1]} [Noun]"`
+  const plain = shape.match(/^plain-(\d)w$/)
+  if (plain) return `a plain ${plain[1]}-word phrase`
+  return shape
+}
+
+// At most this many chapters in the whole novel may share one shape.
+const SHAPE_BUDGET = 3
+// Titles run ~4 words, so 80 of them is a few hundred input tokens — far cheaper
+// than the batch's own output, and the only thing that kills exact repeats.
+const TITLE_RECALL_CAP = 80
+
+function overusedShapes(usedTitles: string[]): string[] {
+  const counts = new Map<string, number>()
+  for (const t of usedTitles) {
+    const shape = titleShape(t)
+    if (shape === 'empty') continue
+    counts.set(shape, (counts.get(shape) || 0) + 1)
+  }
+  return [...counts.entries()]
+    .filter(([, n]) => n >= SHAPE_BUDGET)
+    .sort((a, b) => b[1] - a[1])
+    .map(([shape]) => shape)
+}
+
+function buildTitleVarietyBlock(usedTitles: string[], genre: string, tone: string): string {
+  const recent = usedTitles.slice(-TITLE_RECALL_CAP)
+  const banned = overusedShapes(usedTitles)
+  return `
+TITLES — this is the field most likely to come out repetitive. Read this section carefully.
+
+${
+  recent.length
+    ? `ALREADY USED in this novel. Never reuse one of these, and never produce a near-synonym of one:\n${recent.map((t) => `- ${t}`).join('\n')}`
+    : 'No titles used yet.'
+}
+${
+  banned.length
+    ? `\nSHAPES THAT ARE FULL. At most ${SHAPE_BUDGET} chapters in the whole novel may share a shape, and these already hit that limit. Produce NO further titles in these shapes:\n${banned.map((s) => `- ${describeShape(s)}`).join('\n')}`
+    : ''
+}
+
+Vary the FORM of titles across this batch. Deliberately mix:
+- a character's name, alone or possessive ("Seraphine", "What Dain Owed")
+- a concrete object, place or body part ("The Iron Collar", "Ashwater Bridge")
+- a fragment of spoken dialogue ("Tell Me What You Remember")
+- a question ("Who Signed the Order?")
+- a single striking word ("Unmade", "Kneel")
+- an action or verb phrase ("Burn the Archive", "She Stops Pretending")
+- a flat statement of what happens ("The Vote Fails")
+Abstract-noun pairs ("[Noun] of [Noun]") are permitted but must be the exception.
+
+Each title must name what actually happens in THAT chapter, drawn from its own
+goal and hook. A title that could sit on any chapter of any dark fantasy novel
+is a failed title.
+
+TONE: this is ${genre || 'dark fantasy'}, tone "${tone || 'dark'}". Titles carry the
+real weight of their events — violence, coercion, betrayal, desire, bodily horror.
+Do not soften, euphemise, or make a title vaguer than the chapter it names.
+
+CONTINUOUS EVENTS: when consecutive chapters cover ONE unbroken event, do not
+invent unrelated names and do not repeat a title. Set "partOf" to a shared base
+title and "partNumber" to 1, 2, 3... on each, leaving "title" empty. Use this
+only for genuinely continuous action, never to dodge inventing a title.`
+}
+
+/**
+ * The per-batch skeleton prompt.
+ *
+ * Extracted so scripts/verify-title-variety.mjs drives the real prompt instead
+ * of a copy — the before/after it reports is only evidence if both halves are
+ * the code that actually ships. `titleBlock` is a parameter rather than an
+ * internal call for the same reason: the probe's baseline passes '' to
+ * reproduce the old behaviour without a test-only branch living in here.
+ */
+function buildSkeletonPrompt({
+  goal,
+  N,
+  batchStart,
+  batchCount,
+  prevHook,
+  needArc,
+  titleBlock
+}: {
+  goal: any
+  N: number
+  batchStart: number
+  batchCount: number
+  prevHook: string
+  needArc: boolean
+  titleBlock: string
+}): string {
+  return `Plan the chapter skeleton for this story.
+PREMISE: "${goal.premise}"
+GENRE: ${goal.genre || 'Standard'}
+TONE: ${goal.tone || 'Standard'}
+
+Produce EXACTLY ${batchCount} chapters, numbered ${batchStart + 1} through ${batchStart + batchCount}, forming part of ONE continuous arc across ${N} total chapters. Each chapter's "hookEnding" must set up the next chapter.
+${prevHook ? `The PREVIOUS chapter (#${batchStart}) ended on: "${prevHook}". Chapter ${batchStart + 1} must follow directly from that.` : 'This batch opens the story.'}
+${titleBlock}
+Return ONLY JSON, no markdown:
+{
+  ${needArc ? '"storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },\n  ' : ''}"chapters": [ { "chapterNumber": ${batchStart + 1}, "title": "", "partOf": "", "partNumber": 0, "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
+}`
+}
+
+/**
+ * `partOf` + `partNumber` win over `title`, falling back to the padding name.
+ * Keeping this in one place is what stops a multi-part chapter from being
+ * counted as padding, or from landing on the canvas with an empty title.
+ */
+function assembleTitle(raw: any, chapterNumber: number): string {
+  const base = String(raw?.partOf || '').trim()
+  const part = Number(raw?.partNumber)
+  if (base && Number.isFinite(part) && part > 0) return `${base}, Part ${part}`
+  return String(raw?.title || '').trim() || `Chapter ${chapterNumber}`
+}
+
 // Provider-aware planning concurrency. Ollama runs one model locally, so parallel
 // calls only queue (no speedup, memory pressure) — keep it serial. Cloud providers
 // plan chapters concurrently, which is the difference between minutes and an hour
@@ -293,6 +477,10 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
   // 1) Chapter skeleton — in batches of SKELETON_BATCH_SIZE
   const chapters: any[] = []
   let storyArc: any = {}
+  // Threaded across batches so batch N can see everything batches 1..N-1 named.
+  // This is the whole fix for cross-batch title repetition; without it each
+  // batch is an independent draw from the same distribution.
+  const usedTitles: string[] = []
   // Padding is deliberate (a flaky batch must not cost the book its length) but
   // it is not free: a padded chapter is a title and nothing else. Counted here
   // so the caller can put it on the run-health ledger instead of the console.
@@ -304,17 +492,15 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
     const needArc = batchStart === 0
     const prevHook = batchStart > 0 ? chapters[batchStart - 1].hookEnding : ''
 
-    const skeletonPrompt = `Plan the chapter skeleton for this story.
-PREMISE: "${goal.premise}"
-GENRE: ${goal.genre || 'Standard'}
-TONE: ${goal.tone || 'Standard'}
-
-Produce EXACTLY ${batchCount} chapters, numbered ${batchStart + 1} through ${batchStart + batchCount}, forming part of ONE continuous arc across ${N} total chapters. Each chapter's "hookEnding" must set up the next chapter.
-${prevHook ? `The PREVIOUS chapter (#${batchStart}) ended on: "${prevHook}". Chapter ${batchStart + 1} must follow directly from that.` : 'This batch opens the story.'}
-Return ONLY JSON, no markdown:
-{
-  ${needArc ? '"storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },\n  ' : ''}"chapters": [ { "chapterNumber": ${batchStart + 1}, "title": "", "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
-}`
+    const skeletonPrompt = buildSkeletonPrompt({
+      goal,
+      N,
+      batchStart,
+      batchCount,
+      prevHook,
+      needArc,
+      titleBlock: buildTitleVarietyBlock(usedTitles, goal.genre, goal.tone)
+    })
     const skel = await aiGenerateJson(skeletonPrompt, activeSystemPrompt, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
@@ -352,11 +538,20 @@ Return ONLY JSON, no markdown:
     // never loses its length to a single flaky/truncated batch.
     for (let k = 0; k < batchCount; k++) {
       const raw = batchChapters[k] || {}
-      if (!raw.title) degradation.paddedChapters++
       const chapterNumber = batchStart + k + 1
+      // A multi-part chapter carries `partOf` and no `title`; counting that as
+      // padding would report a healthy run as degraded.
+      const isPadded = !raw.title && !raw.partOf
+      if (isPadded) degradation.paddedChapters++
+      const title = assembleTitle(raw, chapterNumber)
+      // Only real model output enters the ledger. A padded "Chapter 47" is our
+      // fallback, not a title the model chose: replaying it as "already used"
+      // teaches nothing, and a run with several padded batches would exhaust the
+      // plain-two-word budget and ban a shape the model never actually spent.
+      if (!isPadded) usedTitles.push(title)
       chapters.push({
         chapterNumber,
-        title: raw.title || `Chapter ${chapterNumber}`,
+        title,
         goal: raw.goal || '',
         arcPosition: raw.arcPosition || '',
         emotionalTarget: raw.emotionalTarget || '',
@@ -840,3 +1035,18 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
 }
 
 export { sanitizeJson, enforceStructure }
+// Exported for unit tests and for scripts/verify-title-variety.mjs, so the live
+// probe scores titles with the same shape logic the prompt is built from rather
+// than a copy that can drift.
+export {
+  titleShape,
+  overusedShapes,
+  buildTitleVarietyBlock,
+  buildSkeletonPrompt,
+  assembleTitle,
+  makeSkeletonSchema,
+  SKELETON_BATCH_SIZE,
+  TOKENS_PER_CHAPTER_STUB,
+  STORY_ARC_TOKENS,
+  SHAPE_BUDGET
+}

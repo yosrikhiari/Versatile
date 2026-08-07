@@ -275,6 +275,134 @@ describe('useStoryDirector', () => {
       expect(volumeCounts).toEqual({ 1: 10, 2: 10, 3: 10 })
     })
 
+    describe('chapter title variety across batches', () => {
+      // The reported failure: across 100 chapters "Echoes of Betrayal" appeared
+      // eight times — roughly once per 12-chapter batch. Each batch was an
+      // independent draw because nothing carried earlier titles into the prompt.
+      const scenesJson = JSON.stringify({
+        scenes: [
+          { sceneNumber: 1, title: 'S1' },
+          { sceneNumber: 2, title: 'S2' }
+        ]
+      })
+
+      const skeletonOf = (titles, startAt = 1) =>
+        JSON.stringify({
+          storyArc: { premise: 'P', genre: 'Dark Fantasy', tone: 'Grim', centralConflict: 'c' },
+          chapters: titles.map((t, i) => ({
+            chapterNumber: startAt + i,
+            ...t,
+            goal: `g${startAt + i}`,
+            hookEnding: `h${startAt + i}`
+          }))
+        })
+
+      const twoBatchGoal = {
+        ...goal,
+        horizon: 'long_term',
+        structure: {
+          chapters: 24,
+          scenesPerChapter: 2,
+          wordsPerChapter: 1000,
+          chaptersPerVolume: 12,
+          volumes: 2
+        }
+      }
+
+      /** Drive two skeleton batches and hand back the prompt each one received. */
+      async function runTwoBatches(batch1Titles, batch2Titles) {
+        let skeletonCall = 0
+        const skeletonPrompts = []
+        mockAiGenerate.mockImplementation((prompt) => {
+          if (!/chapter skeleton/i.test(prompt)) return scenesJson
+          skeletonPrompts.push(prompt)
+          skeletonCall++
+          return skeletonCall === 1 ? skeletonOf(batch1Titles, 1) : skeletonOf(batch2Titles, 13)
+        })
+        const { generateStoryPlan } = useStoryDirector()
+        const result = await generateStoryPlan({ goal: twoBatchGoal, evidence: '' })
+        return { skeletonPrompts, result }
+      }
+
+      const twelve = (make) => Array.from({ length: 12 }, (_, i) => make(i))
+
+      it("carries batch 1's titles into batch 2's prompt", async () => {
+        const { skeletonPrompts } = await runTwoBatches(
+          twelve((i) => ({ title: `Distinctive Title ${i + 1}` })),
+          twelve((i) => ({ title: `Second Batch ${i + 1}` }))
+        )
+
+        expect(skeletonPrompts).toHaveLength(2)
+        // Batch 1 has no history to show; batch 2 must see all of batch 1.
+        expect(skeletonPrompts[0]).toContain('No titles used yet')
+        expect(skeletonPrompts[1]).toContain('Distinctive Title 1')
+        expect(skeletonPrompts[1]).toContain('Distinctive Title 12')
+        expect(skeletonPrompts[1]).toContain('Never reuse')
+      })
+
+      it('tells batch 2 which shape batch 1 exhausted', async () => {
+        const { skeletonPrompts } = await runTwoBatches(
+          // Exactly the observed failure mode: twelve "[Noun] of [Noun]" titles.
+          twelve((i) => ({ title: `Echoes of Thing${i + 1}` })),
+          twelve((i) => ({ title: `Second Batch ${i + 1}` }))
+        )
+
+        expect(skeletonPrompts[1]).toContain('SHAPES THAT ARE FULL')
+        expect(skeletonPrompts[1]).toContain('"[Noun] of [Noun]"')
+      })
+
+      it('keeps padded titles out of the ledger', async () => {
+        // Batch 1 fails entirely → twelve "Chapter N" fallbacks. Those are our
+        // padding, not model output: replaying them as "already used" would ban
+        // a shape on the strength of our own fallback.
+        let skeletonCall = 0
+        const skeletonPrompts = []
+        mockAiGenerate.mockImplementation((prompt) => {
+          if (!/chapter skeleton/i.test(prompt)) return scenesJson
+          skeletonPrompts.push(prompt)
+          skeletonCall++
+          return skeletonCall === 1
+            ? 'not json at all'
+            : skeletonOf(
+                twelve((i) => ({ title: `Real Title ${i + 1}` })),
+                13
+              )
+        })
+        const { generateStoryPlan } = useStoryDirector()
+        await generateStoryPlan({ goal: twoBatchGoal, evidence: '' })
+
+        expect(skeletonPrompts[1]).toContain('No titles used yet')
+        expect(skeletonPrompts[1]).not.toContain('Chapter 1')
+        expect(skeletonPrompts[1]).not.toContain('SHAPES THAT ARE FULL')
+      })
+
+      it('assembles multi-part titles from partOf and partNumber', async () => {
+        const { result } = await runTwoBatches(
+          twelve((i) =>
+            i < 2
+              ? { title: '', partOf: 'The Veil Sanctum', partNumber: i + 1 }
+              : { title: `Standalone ${i + 1}` }
+          ),
+          twelve((i) => ({ title: `Second Batch ${i + 1}` }))
+        )
+
+        expect(result.chapters[0].title).toBe('The Veil Sanctum, Part 1')
+        expect(result.chapters[1].title).toBe('The Veil Sanctum, Part 2')
+        expect(result.chapters[2].title).toBe('Standalone 3')
+      })
+
+      it('does not count a multi-part chapter as padding', async () => {
+        // `partOf` with an empty `title` is a complete answer, not a gap.
+        const { result } = await runTwoBatches(
+          twelve((i) => ({ title: '', partOf: 'One Long Siege', partNumber: i + 1 })),
+          twelve((i) => ({ title: `Second Batch ${i + 1}` }))
+        )
+
+        expect(result.chapters[0].title).toBe('One Long Siege, Part 1')
+        expect(result.degradation.paddedChapters).toBe(0)
+      })
+    })
+
     it('degrades to a padded plan instead of throwing when the skeleton model fails', async () => {
       // Model returns unparseable output for everything → planChunked must still
       // produce the requested structure rather than aborting the whole run.
