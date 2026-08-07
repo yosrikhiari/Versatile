@@ -30,15 +30,24 @@ globalThis.localStorage = {
 }
 globalThis.localStorage.setItem('versatile_ollama_endpoint', 'http://localhost:11434')
 
-/** Load the model first; node's fetch has a 300s headers timeout browsers lack. */
-function warmUp(model) {
+/**
+ * Load the model at the SAME num_ctx the real calls use.
+ *
+ * Node's fetch has a 300s headers timeout browsers lack, and warming up without
+ * num_ctx is worse than not warming up at all: Ollama loads the model at its own
+ * small default, then the first real call arrives asking for 16k and Ollama
+ * unloads and reloads to honour it. That reload happens before a single response
+ * header is sent, so undici kills the request mid-load and the harness reports a
+ * fetch failure that has nothing to do with what it is measuring.
+ */
+function warmUp(model, numCtx) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       model,
       prompt: 'hi',
       stream: false,
       think: false,
-      options: { num_predict: 1 }
+      options: { num_predict: 1, num_ctx: numCtx }
     })
     const req = http.request(
       {
@@ -59,6 +68,7 @@ function warmUp(model) {
 }
 
 const { generateStructured } = await import('../src/services/providers/ollama.ts')
+const { getOllamaNumCtx } = await import('../src/config/ollama.ts')
 const {
   buildSkeletonPrompt,
   buildTitleVarietyBlock,
@@ -181,9 +191,10 @@ function report(label, titles, seconds) {
   return s
 }
 
-console.log(`Model: ${MODEL}   Chapters: ${TOTAL}   Batch size: ${SKELETON_BATCH_SIZE}`)
-console.log('Warming up...')
-await warmUp(MODEL)
+const NUM_CTX = getOllamaNumCtx()
+console.log(`Model: ${MODEL}   Chapters: ${TOTAL}   Batch size: ${SKELETON_BATCH_SIZE}   num_ctx: ${NUM_CTX}`)
+console.log('Warming up (at the real num_ctx, so the first real call does not trigger a reload)...')
+await warmUp(MODEL, NUM_CTX)
 
 console.log('\nRunning BEFORE (no title context — the shipped behaviour prior to this fix)...')
 const before = await runCondition({ label: 'before', withTitleBlock: false })
