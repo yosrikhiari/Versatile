@@ -123,7 +123,27 @@ describe('buildTitleVarietyBlock', () => {
     const block = buildTitleVarietyBlock(REAL_RUN_SAMPLE, 'Dark Fantasy', 'Grim')
     expect(block).toContain('Echoes of Betrayal')
     expect(block).toContain('The Hollowed Throne')
-    expect(block).toContain('Never reuse')
+    expect(block).toContain('Never use')
+  })
+
+  it('pre-bans its own example titles', () => {
+    // A live run returned the palette's examples verbatim as chapters 1-10, in
+    // palette order, for a story containing none of them. Shown a list of good
+    // titles a small model reads a menu, not a description of form — so the
+    // examples ship already on the off-limits list.
+    const block = buildTitleVarietyBlock([], 'Dark Fantasy', 'Grim')
+    for (const example of ['The Iron Collar', 'Who Signed the Order?', 'Ashwater Bridge']) {
+      // Present twice: once illustrating its form, once as forbidden.
+      expect(block.split(example).length - 1).toBeGreaterThanOrEqual(2)
+    }
+    expect(block).toMatch(/copy the form, never the words/i)
+  })
+
+  it('does not spend shape budget on its own examples', () => {
+    // The examples cover every form by design. Counting them as used shapes
+    // would push several to the limit before the novel has a single chapter.
+    const block = buildTitleVarietyBlock([], 'Dark Fantasy', 'Grim')
+    expect(block).not.toContain('SHAPES THAT ARE FULL')
   })
 
   it('names the exhausted shape in readable English, not an internal token', () => {
@@ -134,7 +154,7 @@ describe('buildTitleVarietyBlock', () => {
 
   it('says so plainly on the first batch instead of emitting an empty rule', () => {
     const block = buildTitleVarietyBlock([], 'Dark Fantasy', 'Grim')
-    expect(block).toContain('No titles used yet')
+    expect(block).toContain('None are from this novel yet')
     expect(block).not.toContain('SHAPES THAT ARE FULL')
   })
 

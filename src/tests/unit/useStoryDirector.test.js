@@ -334,10 +334,10 @@ describe('useStoryDirector', () => {
 
         expect(skeletonPrompts).toHaveLength(2)
         // Batch 1 has no history to show; batch 2 must see all of batch 1.
-        expect(skeletonPrompts[0]).toContain('No titles used yet')
+        expect(skeletonPrompts[0]).toContain('None are from this novel yet')
         expect(skeletonPrompts[1]).toContain('Distinctive Title 1')
         expect(skeletonPrompts[1]).toContain('Distinctive Title 12')
-        expect(skeletonPrompts[1]).toContain('Never reuse')
+        expect(skeletonPrompts[1]).toContain('Never use')
       })
 
       it('tells batch 2 which shape batch 1 exhausted', async () => {
@@ -371,7 +371,7 @@ describe('useStoryDirector', () => {
         const { generateStoryPlan } = useStoryDirector()
         await generateStoryPlan({ goal: twoBatchGoal, evidence: '' })
 
-        expect(skeletonPrompts[1]).toContain('No titles used yet')
+        expect(skeletonPrompts[1]).toContain('None are from this novel yet')
         expect(skeletonPrompts[1]).not.toContain('Chapter 1')
         expect(skeletonPrompts[1]).not.toContain('SHAPES THAT ARE FULL')
       })
