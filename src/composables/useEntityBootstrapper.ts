@@ -23,9 +23,17 @@ const ENTITIES_SCHEMA = {
           notes: { type: 'string' },
           sampleDialogue: { type: 'string' },
           description: { type: 'string' },
-          traits: { type: 'array', items: { type: 'string' } }
+          traits: { type: 'array', items: { type: 'string' }, minItems: 1 }
         },
-        required: ['name']
+        // The prompt documents an eight-field CHARACTER format but the grammar
+        // used to enforce only `name`, so the same call produced fully-formed
+        // characters alongside ones with nothing but a name and two traits.
+        //
+        // Required is the set the bible card actually renders. `goal`, `voice`
+        // and `sampleDialogue` stay optional deliberately: every required field
+        // is more tokens on a slow local model, and a missing quote degrades the
+        // card far more gracefully than a missing description does.
+        required: ['name', 'role', 'description', 'notes', 'traits']
       }
     },
     locations: {
@@ -121,6 +129,7 @@ RULES:
 - Return ONLY entities that do not already exist. Never repeat, rename, restate or "improve" an existing one.
 - Every entity must earn its place in the arc. In "notes", say which chapter it enters and what it changes.
 - Do not invent entities to fill a quota. Returning fewer than asked for is correct if the arc does not need them.
+- Never echo this instruction's wording back into a field. "role" is the character's function in the story — "Former Warrior", "Court Spymaster", "Rival Heir". It is never "New Character", and never carries a "New Character - " prefix.
 
 CRITICAL — a body of PEOPLE is a group, never a plot thread:
 - An order, court, council, guild, house, cult, faction, brotherhood or company goes in "groups", with its members listed by name.
@@ -369,6 +378,31 @@ function normalizeName(name: any) {
   return name?.trim().toLowerCase() || ''
 }
 
+/**
+ * Strip the prompt's own framing back out of a generated role.
+ *
+ * EXPAND_CAST_PROMPT asks for "NEW characters", and a small local model echoes
+ * that label into the field instead of answering with it — live runs produced
+ * `role: "New Character - Former Warrior"`, which then rendered verbatim in the
+ * bible badge. This is the same failure the relationship generator documented
+ * ("it answered the wrong question in the right shape"); there the fix was an
+ * enum, but roles are open-ended prose, so the value has to be cleaned instead
+ * of constrained.
+ *
+ * It also matters semantically: `char.role === 'background'` gates the orphan
+ * check in useConsistencyChecker, and a prefixed role silently never matches.
+ */
+const META_ROLE_PREFIX = /^\s*(?:an?\s+)?new\s+(?:character|entity|person|figure)\s*[-–—:,]+\s*/i
+const META_ROLE_ONLY = /^\s*(?:an?\s+)?new\s+(?:character|entity|person|figure)\s*$/i
+
+function cleanRole(role: any) {
+  if (typeof role !== 'string') return ''
+  const stripped = role.replace(META_ROLE_PREFIX, '').trim()
+  // A role that was *only* the meta label carries no information about the
+  // character. Empty beats "New Character" sitting in the badge.
+  return META_ROLE_ONLY.test(stripped) ? '' : stripped
+}
+
 function mergeTraits(existingTraits: any, newTraits: any) {
   const set = new Set([...(existingTraits || []), ...(newTraits || [])])
   return Array.from(set)
@@ -587,7 +621,7 @@ TASK:
             if (locked && existing[field]) return
             update[field] = val
           }
-          canSet('role', char.role)
+          canSet('role', cleanRole(char.role))
           canSet('goal', char.goal)
           canSet('voice', char.voice)
           canSet('description', char.description)
@@ -606,7 +640,7 @@ TASK:
         } else {
           newCharacters.push({
             name: char.name,
-            role: char.role || '',
+            role: cleanRole(char.role),
             goal: char.goal || '',
             voice: char.voice || '',
             description: char.description || '',
@@ -905,7 +939,7 @@ TASK: Return AT MOST ${need.characters} new character(s), ${need.locations} new 
       .slice(0, need.characters)
       .map((c: any) => ({
         name: c.name,
-        role: c.role || '',
+        role: cleanRole(c.role),
         goal: c.goal || '',
         voice: c.voice || '',
         description: c.description || '',
@@ -1018,6 +1052,7 @@ TASK: Return AT MOST ${need.characters} new character(s), ${need.locations} new 
 export {
   sanitizeJson,
   normalizeName,
+  cleanRole,
   mergeTraits,
   mergeNotes,
   castTargetsFor,

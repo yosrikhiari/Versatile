@@ -532,4 +532,130 @@ describe('expandCast', () => {
       expect(addCharactersBatchData).not.toHaveBeenCalled()
     })
   })
+
+  describe('role sanitising', () => {
+    // Observed live: the prompt asks for "NEW characters" and the model echoed
+    // that label into the field rather than answering with it, so the bible
+    // badge read "New Character - Former Warrior".
+    it('strips the prompt framing the model echoes into role', async () => {
+      mockAiGenerateJson.mockResolvedValue({
+        characters: [{ name: 'Kaelen', role: 'New Character - Former Warrior' }],
+        locations: [],
+        plotThreads: []
+      })
+
+      await run()
+
+      expect(addCharactersBatchData).toHaveBeenCalledWith('p1', [
+        expect.objectContaining({ name: 'Kaelen', role: 'Former Warrior' })
+      ])
+    })
+
+    it('drops a role that was only the meta label', async () => {
+      mockAiGenerateJson.mockResolvedValue({
+        characters: [{ name: 'Nereus', role: 'New Character' }],
+        locations: [],
+        plotThreads: []
+      })
+
+      await run()
+
+      expect(addCharactersBatchData).toHaveBeenCalledWith('p1', [
+        expect.objectContaining({ name: 'Nereus', role: '' })
+      ])
+    })
+
+    it('leaves a genuine role untouched', async () => {
+      mockAiGenerateJson.mockResolvedValue({
+        characters: [{ name: 'Dain', role: 'Former Advisor' }],
+        locations: [],
+        plotThreads: []
+      })
+
+      await run()
+
+      expect(addCharactersBatchData).toHaveBeenCalledWith('p1', [
+        expect.objectContaining({ name: 'Dain', role: 'Former Advisor' })
+      ])
+    })
+  })
+})
+
+describe('makeExpansionSchema', () => {
+  let makeExpansionSchema
+  beforeEach(async () => {
+    const mod = await import('@/composables/useEntityBootstrapper')
+    makeExpansionSchema = mod.makeExpansionSchema
+  })
+
+  const need = { characters: 3, locations: 2, plotThreads: 1, groups: 1 }
+
+  it('requires the fields the bible card actually renders', () => {
+    // The prompt documents an eight-field CHARACTER format, but the grammar
+    // required only `name` — so one call produced fully-formed characters
+    // beside ones carrying nothing but a name and two traits.
+    const char = makeExpansionSchema(need).properties.characters.items
+    expect(char.required).toEqual(['name', 'role', 'description', 'notes', 'traits'])
+    expect(char.properties.traits.minItems).toBe(1)
+  })
+
+  it('leaves the costly optional fields optional', () => {
+    // Every required field is more tokens on a slow local model, and a missing
+    // quote degrades the card far more gracefully than a missing description.
+    const char = makeExpansionSchema(need).properties.characters.items
+    for (const field of ['goal', 'voice', 'sampleDialogue']) {
+      expect(char.properties[field]).toBeDefined()
+      expect(char.required).not.toContain(field)
+    }
+  })
+
+  it('names only fields it actually defines', () => {
+    const schema = makeExpansionSchema(need)
+    for (const [, def] of Object.entries(schema.properties)) {
+      for (const field of def.items?.required || []) {
+        expect(def.items.properties[field]).toBeDefined()
+      }
+    }
+  })
+
+  it('still caps each array at what the arc asked for', () => {
+    const schema = makeExpansionSchema(need)
+    expect(schema.properties.characters.maxItems).toBe(3)
+    expect(schema.properties.locations.maxItems).toBe(2)
+    expect(schema.properties.plotThreads.maxItems).toBe(1)
+    expect(schema.properties.groups.maxItems).toBe(1)
+  })
+})
+
+describe('cleanRole', () => {
+  let cleanRole
+  beforeEach(async () => {
+    const mod = await import('@/composables/useEntityBootstrapper')
+    cleanRole = mod.cleanRole
+  })
+
+  it('strips the separator variants a model reaches for', () => {
+    expect(cleanRole('New Character - Former Warrior')).toBe('Former Warrior')
+    expect(cleanRole('New Character: Mind Manipulator')).toBe('Mind Manipulator')
+    expect(cleanRole('New Character — Harem Member/Spymaster')).toBe('Harem Member/Spymaster')
+    expect(cleanRole('new entity, Rival Heir')).toBe('Rival Heir')
+  })
+
+  it('returns empty for a label that carries no role', () => {
+    expect(cleanRole('New Character')).toBe('')
+    expect(cleanRole('a new person')).toBe('')
+  })
+
+  it('does not eat real roles that merely start with "new"', () => {
+    // "Newly Appointed Steward" is a role; the guard is anchored to the exact
+    // meta labels plus a separator, not to any word starting with "new".
+    expect(cleanRole('Newly Appointed Steward')).toBe('Newly Appointed Steward')
+    expect(cleanRole('New Order Enforcer')).toBe('New Order Enforcer')
+  })
+
+  it('tolerates a missing or non-string role', () => {
+    expect(cleanRole(undefined)).toBe('')
+    expect(cleanRole(null)).toBe('')
+    expect(cleanRole(42)).toBe('')
+  })
 })
