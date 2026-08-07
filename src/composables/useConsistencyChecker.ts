@@ -132,8 +132,9 @@ export function useConsistencyChecker() {
     const manuscript = useManuscriptStore()
     const graph = useStoryGraphStore()
 
-    const charMap = new Map(bible.characters.map((c) => [c.id, c]))
-    const locMap = new Map(bible.locations.map((l) => [l.id, l]))
+    // Keyed by string id so endpoint lookups never depend on whether the caller
+    // kept the Dexie number or a stringified copy of it.
+    const charMap = new Map(bible.characters.map((c) => [String(c.id), c]))
 
     const charNameLower: Map<string, any> = new Map()
     for (const c of bible.characters) {
@@ -260,14 +261,18 @@ export function useConsistencyChecker() {
 
     // --- 4. Graph–Bible Mismatches (error + info) ---
     {
-      const charIds = new Set(bible.characters.map((c) => c.id))
-      const locIdsSet = new Set(bible.locations.map((l) => l.id))
+      // Compare as strings on both sides. Bible ids are Dexie auto-increment
+      // numbers; graph edges persist their endpoints via String() (see
+      // relationships.ts pushEdge), so `new Set([4]).has("4")` is false and an
+      // uncoerced check reports every single edge as dangling.
+      const charIds = new Set(bible.characters.map((c) => String(c.id)))
+      const locIdsSet = new Set(bible.locations.map((l) => String(l.id)))
 
       for (const edge of graph.edges) {
         if (edge.isLegacy) continue
         for (const side of ['source', 'target']) {
           const type = edge[`${side}Type`]
-          const id = edge[`${side}Id`]
+          const id = String(edge[`${side}Id`])
           if (type === 'character' && !charIds.has(id)) {
             findings.push({
               id: uidNext(),
@@ -321,7 +326,12 @@ export function useConsistencyChecker() {
     {
       for (const thread of bible.plotThreads) {
         const threadId = String(thread.id)
-        const nameLow = thread.name?.toLowerCase()
+        // Plot threads are stored with `title`, not `name` (see db-schema
+        // plotThreads). Reading `.name` left this undefined, which silently
+        // disabled the manuscript half of the check and rendered the finding
+        // as "Plot thread not woven: undefined".
+        const threadTitle = thread.title
+        const nameLow = threadTitle?.toLowerCase()
 
         const hasGraphConnection = graph.edges.some(
           (e) => String(e.sourceId) === threadId || String(e.targetId) === threadId
@@ -338,8 +348,8 @@ export function useConsistencyChecker() {
             id: uidNext(),
             severity: 'warning',
             category: 'plot_thread_gap',
-            title: `Plot thread not woven: ${thread.name}`,
-            description: `${thread.name} has no character connections and no manuscript references.`,
+            title: `Plot thread not woven: ${threadTitle}`,
+            description: `${threadTitle} has no character connections and no manuscript references.`,
             action: { label: 'Open Bible', type: 'open-bible', payload: threadId }
           })
         }
@@ -350,8 +360,8 @@ export function useConsistencyChecker() {
     {
       for (const rel of manuscript.relationships) {
         const missing = []
-        if (!charMap.has(rel.fromCharacterId)) missing.push(`#${rel.fromCharacterId}`)
-        if (!charMap.has(rel.toCharacterId)) missing.push(`#${rel.toCharacterId}`)
+        if (!charMap.has(String(rel.fromCharacterId))) missing.push(`#${rel.fromCharacterId}`)
+        if (!charMap.has(String(rel.toCharacterId))) missing.push(`#${rel.toCharacterId}`)
         if (missing.length > 0) {
           findings.push({
             id: uidNext(),

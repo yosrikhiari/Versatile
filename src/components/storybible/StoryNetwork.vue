@@ -37,7 +37,6 @@ function entityTypeFromPrefix(key) {
 const storyGraphStore = useStoryGraphStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
-const volumeStore = useVolumeStore()
 const networkSuggestions = useNetworkSuggestions()
 
 const {

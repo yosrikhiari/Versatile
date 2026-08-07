@@ -10,9 +10,12 @@ const mockLocations = [
   { id: 1, name: 'Castle' },
   { id: 2, name: 'Forest' }
 ]
+// Plot threads are stored with `title`, not `name` (db-schema: plotThreads).
+// This fixture used to mirror the source's `.name` slip, which is why the gap
+// check's broken title went unnoticed.
 const mockPlotThreads = [
-  { id: 1, name: 'Main Plot' },
-  { id: 2, name: 'Unused Thread' }
+  { id: 1, title: 'Main Plot' },
+  { id: 2, title: 'Unused Thread' }
 ]
 const mockRelationships = [{ id: 1, fromCharacterId: 1, toCharacterId: 2, type: 'friend' }]
 
@@ -234,6 +237,62 @@ describe('useConsistencyChecker', () => {
       expect(aliceInfo).toBeTruthy()
     })
 
+    it('does not flag string-id edges whose entities exist', async () => {
+      // Regression: graph edges persist their endpoints through String() (see
+      // relationships.ts pushEdge) while bible ids are Dexie auto-increment
+      // numbers. The check compared them uncoerced, so `new Set([1]).has("1")`
+      // was false and EVERY real edge reported as dangling — 41 phantom errors
+      // on a project whose entities were all present.
+      mockEdges = [
+        {
+          id: 'e1',
+          sourceType: 'character',
+          sourceId: '1',
+          targetType: 'location',
+          targetId: '2',
+          relationshipType: 'frequents'
+        },
+        {
+          id: 'e2',
+          sourceType: 'character',
+          sourceId: '2',
+          targetType: 'character',
+          targetId: '1',
+          relationshipType: 'ally'
+        }
+      ]
+      mockNodeInstances = {}
+      const c = await useChecked()
+      await c.scan()
+      const mismatches = c.results.value.filter(
+        (r) => r.category === 'graph_mismatch' && r.severity === 'error'
+      )
+      expect(mismatches).toEqual([])
+    })
+
+    it('still flags a string-id edge pointing at an id that is genuinely gone', async () => {
+      // The coercion must not blunt the check it exists to perform.
+      mockEdges = [
+        {
+          id: 'e1',
+          sourceType: 'character',
+          sourceId: '1',
+          targetType: 'location',
+          targetId: '999',
+          relationshipType: 'frequents'
+        }
+      ]
+      mockNodeInstances = {}
+      const c = await useChecked()
+      await c.scan()
+      const mismatches = c.results.value.filter(
+        (r) => r.category === 'graph_mismatch' && r.severity === 'error'
+      )
+      expect(mismatches.length).toBe(1)
+      expect(mismatches[0].title).toContain('missing location')
+      expect(mismatches[0].description).toContain('#999')
+    })
+
     it('skips legacy edges', async () => {
       mockEdges = [
         {
@@ -265,6 +324,37 @@ describe('useConsistencyChecker', () => {
       const unused = gaps.find((r) => r.title.includes('Unused Thread'))
       expect(unused).toBeTruthy()
       expect(unused.severity).toBe('warning')
+    })
+
+    it('names the thread in the finding instead of undefined', async () => {
+      // Regression: the check read `thread.name`, but plot threads are stored
+      // with `title`. The finding rendered as "Plot thread not woven: undefined".
+      const c = await useChecked()
+      await c.scan()
+      const gaps = c.results.value.filter((r) => r.category === 'plot_thread_gap')
+      expect(gaps.length).toBeGreaterThan(0)
+      for (const gap of gaps) {
+        expect(gap.title).not.toContain('undefined')
+        expect(gap.description).not.toContain('undefined')
+      }
+    })
+
+    it('does not flag a thread that the manuscript references by title', async () => {
+      // The undefined title also silently disabled this half of the check:
+      // `nameLow` was undefined, so hasManuscriptRef could never be true and a
+      // thread woven into the prose was still reported as a gap.
+      mockSubsections = [
+        {
+          id: 's1',
+          sectionId: 'sec1',
+          title: 'Chapter 1',
+          content: 'The Unused Thread finally surfaces here.'
+        }
+      ]
+      const c = await useChecked()
+      await c.scan()
+      const gaps = c.results.value.filter((r) => r.category === 'plot_thread_gap')
+      expect(gaps.find((r) => r.title.includes('Unused Thread'))).toBeUndefined()
     })
 
     it('does not flag plot threads with graph connections', async () => {
