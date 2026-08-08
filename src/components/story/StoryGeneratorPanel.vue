@@ -1169,6 +1169,26 @@ function getPhaseLabel(phase) {
           </div>
 
           <div class="space-y-1.5">
+            <!-- Pause holds the loop between scenes and keeps the run in
+                 memory; Stop unwinds it. Two different intentions that used to
+                 share one button. -->
+            <button
+              class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60 disabled:pointer-events-none"
+              :disabled="volumeGenerator.isCancelling.value || !volumeGenerator.canPause.value"
+              @click="volumeGenerator.pause()"
+            >
+              <span
+                v-if="volumeGenerator.pauseRequested.value"
+                class="inline-flex items-center gap-2"
+              >
+                <BaseIcon name="loader-2" :size="14" class="animate-spin" />
+                Pausing after this scene…
+              </span>
+              <span v-else class="inline-flex items-center gap-2">
+                <BaseIcon name="pause" :size="14" />
+                Pause
+              </span>
+            </button>
             <button
               class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60 disabled:pointer-events-none"
               :disabled="volumeGenerator.isCancelling.value"
@@ -1184,6 +1204,49 @@ function getPhaseLabel(phase) {
               <span v-else>Stop generation</span>
             </button>
             <p class="text-11px text-text-hint font-ui text-center">Finished scenes are kept.</p>
+          </div>
+        </div>
+
+        <!-- PAUSED STATE -->
+        <div v-if="volumeGenerator.phase.value === 'paused'" class="p-4 space-y-4">
+          <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+            <div
+              class="h-full bg-accent/50 rounded-full"
+              :style="{
+                width:
+                  volumeTotalScenes > 0
+                    ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%'
+                    : '0%'
+              }"
+            ></div>
+          </div>
+
+          <div class="flex items-center gap-2 text-text-secondary">
+            <BaseIcon name="pause" :size="14" />
+            <span class="text-sm font-ui">
+              Paused after scene {{ volumeCurrentScene }} of {{ volumeTotalScenes }}
+            </span>
+          </div>
+
+          <div class="space-y-1.5">
+            <button
+              class="w-full py-2.5 btn-primary rounded-lg font-medium font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+              @click="volumeGenerator.continueGeneration()"
+            >
+              <span class="inline-flex items-center gap-2">
+                <BaseIcon name="play" :size="14" />
+                Continue
+              </span>
+            </button>
+            <button
+              class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+              @click="handleVolumeReset"
+            >
+              Stop generation
+            </button>
+            <p class="text-11px text-text-hint font-ui text-center">
+              The run is held in memory — continuing picks up exactly where it stopped.
+            </p>
           </div>
         </div>
 

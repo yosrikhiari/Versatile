@@ -83,6 +83,7 @@ import {
   rethrowIfFatal,
   isConfigurationError
 } from './generation/lifecycle'
+import { createPauseGate } from '../utils/pauseGate'
 import { LiveDraftBridge, proseToHtml, countProseWords } from './generation/writing'
 import { SceneInteractionService } from './generation/interaction'
 import { SceneSpeculativeCache } from '../services/speculativeGenManager'
@@ -128,6 +129,12 @@ function sectionIndexForScene(sections: any, sceneIndex: any) {
 
 const MAX_REJECTED_PATTERNS = 5
 const SYNC_BATCH_SIZE = 3
+// Upper bound on a chapter-aligned batch. The bible sync runs at batch *end*,
+// so entities discovered in a chapter's first scene do not reach its last one
+// until the batch closes — an uncapped chapter would write its own tail blind
+// to its own cast. Six covers the common 2–5 scene chapter outright and lets
+// longer ones take an intermediate refresh instead of drifting.
+const MAX_SYNC_BATCH_SIZE = 6
 const PARALLEL_SCENE_LIMIT = 2
 // One-click quality guardrails: rewrite a scene that fails critique up to this
 // many times, and abort the whole run if this many scenes fail back-to-back
@@ -138,6 +145,72 @@ const QUALITY_FLOOR_CONSECUTIVE = 3
 // Distinct from the quality floor above: that judges prose the model wrote, this
 // catches a pipeline that is not writing prose at all.
 const WRITE_FAILURE_STREAK_ABORT = 4
+
+/**
+ * Where the batch starting at `startIndex` ends: the next chapter boundary.
+ *
+ * A batch boundary is where the run stops writing and thinks — digest rollup,
+ * bible sync, drift eval, continuity audit — and every one of those steps is
+ * chapter-shaped. A fixed stride only matched that shape because the stride and
+ * the default `scenesPerChapter` were both 3. At any other setting they drift:
+ * with 4-scene chapters, stride-3 boundaries (3, 6, 9, 12…) and chapter ends
+ * (4, 8, 12…) coincide only every twelve scenes, and
+ * `ConsistencyService.maybeRunIncrementalConsistency` — which returns early
+ * unless the index lands exactly on a chapter end — silently audited a quarter
+ * of the chapters it was supposed to.
+ *
+ * Falls back to the fixed stride when there is no chapter plan to align to, or
+ * when `startIndex` has run past the last planned chapter: `continueStory`
+ * appends scenes beyond the chapters originally planned for them.
+ */
+/**
+ * Where the batch loop goes after a batch, or `null` to stop looping.
+ *
+ * `focusInstructions` is the one piece of state that has to survive the hop:
+ * eval feedback, drift regressions and the active-learning bridge all
+ * accumulate into it during a batch and steer the next one's prompts.
+ */
+type NextBatch = { startIndex: number; focusInstructions: string } | null
+
+/**
+ * Drive a batch function until it reports there is nothing more to do.
+ *
+ * Iteration, not recursion, and that is the entire point: a batch's context —
+ * its chapter log, its rolled-up earlier chapters, its entity blob, all
+ * potentially multi-KB — becomes unreachable the moment it returns. The tail
+ * recursion this replaced held every one of those alive until the run finished,
+ * so a hundred-chapter book carried a hundred copies for no reason.
+ *
+ * Termination rests on `runBatch` returning a strictly greater `startIndex`;
+ * `batchEndIndex` guarantees that, and `batchChapterAlignment.test.js` asserts
+ * it for every chapter shape.
+ */
+async function runBatchLoop(
+  runBatch: (startIndex: number, focusInstructions: string) => Promise<NextBatch>,
+  startIndex: number,
+  focusInstructions: string
+): Promise<void> {
+  let next: NextBatch = { startIndex, focusInstructions }
+  while (next) {
+    next = await runBatch(next.startIndex, next.focusInstructions)
+  }
+}
+
+function batchEndIndex(startIndex: any, chapters: any, totalScenes: any) {
+  const fallback = Math.min(startIndex + SYNC_BATCH_SIZE, totalScenes)
+  if (!Array.isArray(chapters) || chapters.length === 0) return fallback
+
+  let boundary = 0
+  for (const ch of chapters) {
+    boundary += (ch?.scenes && ch.scenes.length) || 0
+    // Strictly greater: on an aligned batch `startIndex` is itself a chapter
+    // end, and stopping there again would write nothing and recurse forever.
+    if (boundary > startIndex) {
+      return Math.min(boundary, startIndex + MAX_SYNC_BATCH_SIZE, totalScenes)
+    }
+  }
+  return fallback
+}
 
 /**
  * A scene with no words is a failed scene, not a finished one.
@@ -399,6 +472,56 @@ export function useVolumeStoryGenerator() {
   const abort = createAbortScope()
   function throwIfAborted() { abort.throwIfAborted() }
   const isCancelling = ref(false)
+
+  // ─── Pause / continue ─────────────────────────────────────────────────────
+  //
+  // Distinct from stop, and deliberately so. Stopping aborts the in-flight
+  // request and unwinds the run: the prose survives in the manuscript, but the
+  // run's in-memory state does not, so picking it back up means a cold
+  // `resumeGeneration` that rebuilds everything from the checkpoint and the DB.
+  //
+  // Pausing holds the writing loop at a scene boundary with all of that state
+  // intact. Nothing is aborted, nothing is torn down, and continuing costs one
+  // resolved promise. A checkpoint is still written at the moment of the pause,
+  // so a pause that outlives the tab degrades to the cold-resume path rather
+  // than losing the run.
+  const pauseGate = createPauseGate()
+  const isPaused = pauseGate.isPaused
+  const pauseRequested = pauseGate.isRequested
+
+  /**
+   * Drop any pause and wake whatever is parked on it.
+   *
+   * Every path that ends or restarts a run calls this. A waiter left behind is
+   * a promise nothing will ever resolve, holding a whole generation loop.
+   */
+  function clearPauseState() {
+    pauseGate.clear()
+  }
+
+  /**
+   * The guard every scene-writing loop passes through.
+   *
+   * The pause is taken before the abort check so that a stop issued while
+   * paused still wins: `stop()` clears the gate, `wait()` returns, and
+   * `throwIfAborted()` immediately below it throws.
+   */
+  async function gate() {
+    await pauseGate.wait(async () => {
+      // `writing` is the only phase with a PAUSED route, which is the point:
+      // a run that has already left the writing loop has nothing to hold.
+      await advance('PAUSED')
+      progress.statusText = 'Paused'
+      // The pause may outlive the tab. Persisting here is what makes the cold
+      // `resumeGeneration` path available as a fallback.
+      const pid = writeParams.value?.projectId
+      if (pid) commitService.persistCheckpoint(pid)
+      if (currentTaskId) {
+        actLog.appendThought(currentTaskId, 0, '\n⏸ Generation paused by user.\n')
+      }
+    })
+    throwIfAborted()
+  }
   const runConsecutiveFailures = ref(0)
   const runFailedScenes = ref(0)
   const currentSceneResult = ref<any | null>(null)
@@ -628,6 +751,10 @@ export function useVolumeStoryGenerator() {
     writeParams,
     scenePlan,
     phase,
+    // Phase changes go through the machine. The service used to assign
+    // `phase.value` directly — same ref, so the transitions were real but
+    // invisible to `delegator.history`, the activity log and the budget gate.
+    dispatch: (event: string, payload?: any) => delegatorApi.dispatch(event, payload),
     progress,
     writer,
     sync,
@@ -699,6 +826,12 @@ export function useVolumeStoryGenerator() {
     // Clear and seed evalStore from persisted history for project-scoped eval tracking
     await clearAndSeedEvalStore(projectId, evalStore)
 
+    // Resume never touched the abort scope at all, so resuming after a stop
+    // inherited the stop: `writeNextBatch` hit its first guard and threw, and
+    // the panel reported a failed resume on a perfectly resumable run.
+    abort.renew()
+    isCancelling.value = false
+    clearPauseState()
     speculativeCache.flush()
     liveDraft.reset()
     const run = await getGenRun(projectId)
@@ -859,8 +992,12 @@ export function useVolumeStoryGenerator() {
     // Clear and seed evalStore from persisted history for project-scoped eval tracking
     await clearAndSeedEvalStore(projectId, evalStore)
 
-    abort.ensure()
+    // A NEW controller, not whatever the last run left behind. `ensure()` keeps
+    // an already-aborted controller, so starting a run after a stop used to
+    // throw at the first guard before writing a word.
+    abort.renew()
     isCancelling.value = false
+    clearPauseState()
     liveDraft.reset()
 
     // Normalize an explicit volumes/chapters/words request into a structure spec
@@ -1984,7 +2121,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       }
     })
 
-    throwIfAborted()
+    await gate()
     const limit = PARALLEL_CHAPTER_LIMIT()
     const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
     throwIfAborted()
@@ -2158,7 +2295,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
         const waveEnd = Math.min(waveStart + PARALLEL_SCENE_LIMIT, unwritten.length)
         const wave = unwritten.slice(waveStart, waveEnd)
 
-        throwIfAborted()
+        await gate()
 
         const waveResults = await Promise.all(
           wave.map(({ scene, sceneIndex }) => generateMiddleScene(scene, sceneIndex, chapterMeta))
@@ -2296,12 +2433,45 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     }
   }
 
+  /**
+   * Write batches until something other than "keep going" happens.
+   *
+   * This used to be tail recursion — each batch awaited the next, so every
+   * caller's frame stayed suspended and reachable, holding its own
+   * `runningChapterLog`, `earlierChapters` and `existingEntitiesJson` (the last
+   * two multi-KB) until the whole run unwound. A hundred-chapter book kept a
+   * hundred copies alive at once, and since `batchEndIndex` can return a
+   * one-scene batch, that count tracked scenes rather than chapters.
+   *
+   * Note this was never a stack-depth problem: an awaited call resumes on a
+   * fresh stack, so the recursion could not overflow. It was a retention
+   * problem, and the fix is that `writeOneBatch` now returns — releasing its
+   * context — before the next batch starts. One batch is live at a time.
+   *
+   * Still callable at an arbitrary index: `confirmSync` re-enters here at
+   * `pendingBatchStart` after the user accepts a sync preview.
+   */
   async function writeNextBatch(startIndex: any, incomingFocusInstructions = '') {
-    if (!writeParams.value) return
+    await runBatchLoop(writeOneBatch, startIndex, incomingFocusInstructions)
+  }
+
+  /**
+   * One batch: write its scenes, evaluate, sync its entity changes.
+   *
+   * @returns where the loop should go next, or `null` when this batch was the
+   * end of the road. Null covers every outcome where something other than the
+   * loop owns the next step — the run finished, the user has a scene or a sync
+   * preview to review, the run was halted, or an error was dispatched.
+   */
+  async function writeOneBatch(
+    startIndex: any,
+    incomingFocusInstructions = ''
+  ): Promise<NextBatch> {
+    if (!writeParams.value) return null
 
     const { projectId, storyArc, storyContract, onChunk, storyBibleDocs, sections } =
       writeParams.value
-    const endIndex = Math.min(startIndex + SYNC_BATCH_SIZE, scenePlan.value.length)
+    const endIndex = batchEndIndex(startIndex, chapterPlan.value, scenePlan.value.length)
 
     // Build running chapter log once from existing scenes (Fix #2 — avoids O(n²) rebuild per scene)
     const runningChapterLog = writtenScenes.value
@@ -2325,7 +2495,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     let batchFocusInstructions = incomingFocusInstructions
 
     for (let i = startIndex; i < endIndex; i++) {
-      throwIfAborted()
+      await gate()
       const scene = scenePlan.value[i]
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
       const scenePhase = actLog.addPhase(currentTaskId, phaseName)
@@ -2422,8 +2592,10 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
           sceneResult: currentSceneResult.value,
           sceneIndex: i
         })
+        // The user owns the next step now — `approveScene`/`rejectScene` re-enter
+        // through `onWriteNextBatch`.
         void prefetchNextScene(i + 1)
-        return
+        return null
       }
 
       await commitService.commitAndStoreScene(
@@ -2467,7 +2639,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
             await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
             await delegatorApi.dispatch('ERROR', { error: error.value, message: error.value })
             actLog.updatePhase(currentTaskId, scenePhase, { status: 'error' })
-            return
+            return null
           }
         } else {
           runConsecutiveFailures.value = 0
@@ -2571,11 +2743,13 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
           batchEnd: endIndex,
           preview: batchChanges
         })
-        // One-click mode: accept every discovered entity and keep writing
+        // One-click mode: accept every discovered entity and keep writing.
+        // `confirmSync` drives the run forward from `pendingBatchStart` by
+        // re-entering `writeNextBatch`, so the loop here is finished either way.
         if (autoMode.value) {
           await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
         }
-        return
+        return null
       }
       // The damping term. Without it the feedback loop has none: a degraded
       // scene degrades the next scene's context, so continuing past a run of
@@ -2583,11 +2757,11 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       // scenes in the budget; not stopping cost them a whole volume.
       if (runHealth.shouldAbort()) {
         await haltRun(projectId, runHealth.getAbortReason() || 'run health budget exceeded')
-        return
+        return null
       }
-      // Note: recursive — max depth = ceil(totalScenes / SYNC_BATCH_SIZE). Not a stack risk for typical volumes (<100 scenes) but consider a while-loop refactor if volumes scale significantly.
-      await writeNextBatch(endIndex, batchFocusInstructions)
-      return
+      // The one path that continues the loop: scenes left, and no entity
+      // changes needing a look first.
+      return { startIndex: endIndex, focusInstructions: batchFocusInstructions }
     }
 
     if (batchChanges.length > 0) {
@@ -2600,10 +2774,11 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       if (autoMode.value) {
         await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
       }
-      return
+      return null
     }
 
     await completeGeneration(projectId)
+    return null
   }
 
   async function confirmPlan({
@@ -3337,9 +3512,61 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     if (!abort.cancel()) return false
     isCancelling.value = true
     progress.statusText = 'Stopping…'
+    // A paused run is parked on a promise no other code will ever resolve.
+    // Without this, stopping while paused aborts the signal and then waits
+    // forever for a gate that never re-checks it.
+    clearPauseState()
     if (currentTaskId) {
       actLog.appendThought(currentTaskId, 0, '\n⏹ Generation stopped by user.\n')
     }
+    return true
+  }
+
+  /**
+   * Ask the run to hold at the next scene boundary.
+   *
+   * Cooperative, not pre-emptive: the scene in flight finishes rather than
+   * being thrown away — it is already paid for. The hold happens in `gate()`,
+   * which is also where the phase moves to `paused`, so the state machine
+   * reflects where the run actually stopped instead of where the click landed.
+   *
+   * @returns {boolean} whether there was a running loop to pause
+   */
+  function pause() {
+    if (phase.value !== 'writing') return false
+    if (abort.isAborted()) return false
+    if (!pauseGate.request()) return false
+    progress.statusText = 'Pausing — finishing the current scene…'
+    return true
+  }
+
+  /**
+   * Release a paused run and let the writing loop carry on.
+   *
+   * The phase returns to `writing` BEFORE the waiters are released: the loop's
+   * next act is to dispatch against that phase, and a `SCENE_WRITTEN` arriving
+   * while the machine still said `paused` would have no route.
+   *
+   * @returns {boolean} whether there was a paused run to continue
+   */
+  async function continueGeneration() {
+    if (!isPaused.value && !pauseRequested.value) return false
+    // Pausing was asked for but the loop never reached a gate — withdraw the
+    // request rather than pausing and immediately continuing.
+    if (!isPaused.value) {
+      pauseGate.release()
+      progress.statusText = 'Writing…'
+      return true
+    }
+    // Phase first, waiters second. The loop's next act is to dispatch against
+    // this phase, and a SCENE_WRITTEN arriving while the machine still said
+    // `paused` would have no route.
+    await advance('RESUMED')
+    progress.statusText = 'Resuming…'
+    if (currentTaskId) {
+      actLog.appendThought(currentTaskId, 0, '\n▶ Generation continued by user.\n')
+    }
+    pauseGate.release()
     return true
   }
 
@@ -3392,7 +3619,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     const existingEntitiesJson = await scopedEntitiesBlob(projectId)
 
     for (const target of targets) {
-      throwIfAborted()
+      await gate()
 
       const scene = {
         ...briefForScene(target, checkpointPlan, targetWords),
@@ -3505,8 +3732,9 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
 
   /** Shared setup for every continuation run. */
   async function beginContinuation(projectId: any, label: string, sceneCount: number) {
-    abort.ensure()
+    abort.renew()
     isCancelling.value = false
+    clearPauseState()
     liveDraft.reset()
     error.value = null
     continuationReport.value = null
@@ -3764,6 +3992,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     stop()
     abort.reset()
     isCancelling.value = false
+    clearPauseState()
     speculativeCache.flush()
     liveDraft.reset()
 
@@ -3814,6 +4043,15 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     evalUnavailableCount,
     stop,
     isCancelling,
+    pause,
+    continueGeneration,
+    isPaused,
+    pauseRequested,
+    // A run is holdable only while the writing loop is live; a run is
+    // continuable the moment a hold has been asked for, so the button can flip
+    // back before the loop has actually reached its gate.
+    canPause: computed(() => phase.value === 'writing' && !isPaused.value && !pauseRequested.value),
+    canContinue: computed(() => isPaused.value || pauseRequested.value),
     isBootstrapping: bootstrapper.isBootstrapping,
     isWriting: writer.isWriting,
     isCheckingConsistency: critic.isCheckingConsistency,
@@ -3874,5 +4112,7 @@ export {
   fallbackSpineEntry,
   detectSceneConflicts,
   resolveSceneConflicts,
-  assertProse
+  assertProse,
+  batchEndIndex,
+  runBatchLoop
 }

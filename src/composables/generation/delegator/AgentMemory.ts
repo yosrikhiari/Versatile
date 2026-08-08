@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, readonly } from 'vue'
 
 export function createAgentMemory() {
   // ── Reactive State ─────────────────────────────────────────
@@ -79,14 +79,15 @@ export function createAgentMemory() {
     sessionBudget: null
   }
 
-  // ── Service Constants ─────────────────────────────────────
-  const constants = {
-    SYNC_BATCH_SIZE: 3,
-    SCENE_MAX_ATTEMPTS: 2,
-    QUALITY_FLOOR_CONSECUTIVE: 3,
-    PARALLEL_CHAPTER_LIMIT: 5,
-    CONSISTENCY_FIX_ROUNDS: 2
-  }
+  // No `constants` block here. It used to carry a second copy of
+  // SYNC_BATCH_SIZE / SCENE_MAX_ATTEMPTS / QUALITY_FLOOR_CONSECUTIVE /
+  // PARALLEL_CHAPTER_LIMIT / CONSISTENCY_FIX_ROUNDS that nothing ever read, and
+  // two of the five had already drifted from the values that actually run:
+  // PARALLEL_CHAPTER_LIMIT said 5 where `context/spine.ts` computes 1 or 3 by
+  // provider, and SYNC_BATCH_SIZE said 3 after batching became chapter-aligned.
+  // The real ones live next to the code that uses them — `useVolumeStoryGenerator`
+  // for the first three, `context/spine.ts` and `context/sceneContext.ts` for the
+  // last two. Import from there rather than restating them.
 
   // ── Convenience Mutators ──────────────────────────────────
   function setPhase(newPhase: any) {
@@ -136,7 +137,12 @@ export function createAgentMemory() {
     spineArray,
     spineContext,
     progress,
-    phase,
+    // Read-only on the way out. `phase` is the state machine's own ref, and
+    // handing it out writable is how six real transitions ended up bypassing
+    // the machine entirely — `SceneInteractionService` simply assigned to it.
+    // Everything outside the Delegator reads this; only `setPhase` (and so only
+    // `transitionTo`, and so only `dispatch`/`restore`) can move it.
+    phase: readonly(phase),
     inlineEvalEnabled,
     writtenScenes,
     structuredResults,
@@ -157,7 +163,6 @@ export function createAgentMemory() {
     projectId,
     phaseFlags,
     derived,
-    constants,
     instances,
     setPhase,
     setProgress,

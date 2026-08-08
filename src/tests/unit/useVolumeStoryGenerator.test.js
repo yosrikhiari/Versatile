@@ -1074,7 +1074,9 @@ describe('useVolumeStoryGenerator', () => {
 
   it('reset restores initial state', async () => {
     const gen = useVolumeStoryGenerator()
-    gen.phase.value = 'writing'
+    // `phase` is not set here: it is the delegator's ref and is now readonly
+    // outside the machine, so only a dispatch can move it. Reset's own
+    // RESET dispatch is what the assertion below checks.
     gen.error.value = 'Something went wrong'
     gen.volumeId.value = 'vol-1'
     gen.scenePlan.value = [{ id: 1 }]

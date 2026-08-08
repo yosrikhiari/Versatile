@@ -12,13 +12,7 @@ import { useEvalStore } from '../../../stores/evalStore'
  */
 const ROUTING_TABLE = {
   idle: {
-    START: { nextPhase: 'volume-creating', handler: handleCreateVolume },
     BOOTSTRAP_START: { nextPhase: 'bootstrapping', handler: handleBootstrapping },
-    RESET: { nextPhase: 'idle', handler: handleReset }
-  },
-  'volume-creating': {
-    VOLUME_CREATED: { nextPhase: 'bootstrapping', handler: handleBootstrapping },
-    ERROR: { nextPhase: 'error', handler: handleError },
     RESET: { nextPhase: 'idle', handler: handleReset }
   },
   bootstrapping: {
@@ -33,7 +27,6 @@ const ROUTING_TABLE = {
   },
   'plan-preview': {
     CONFIRMED: { nextPhase: 'spine-generation', handler: handleConfirmed },
-    REJECTED: { nextPhase: 'planning', handler: handleRejected },
     ERROR: { nextPhase: 'error', handler: handleError },
     RESET: { nextPhase: 'idle', handler: handleReset }
   },
@@ -47,18 +40,28 @@ const ROUTING_TABLE = {
     BATCH_COMPLETE: { nextPhase: 'sync-preview', handler: handleBatchComplete },
     ALL_WRITTEN: { nextPhase: 'repairing', handler: handleAllWritten },
     WRITING_DONE: { nextPhase: 'complete', handler: handleWritingDone },
+    PAUSED: { nextPhase: 'paused', handler: handlePaused },
+    ERROR: { nextPhase: 'error', handler: handleError },
+    RESET: { nextPhase: 'idle', handler: handleReset }
+  },
+  // Held at a scene boundary with the run's state intact. The only ways out are
+  // continuing (RESUMED), a stop that unwinds the loop (ERROR), or a teardown
+  // (RESET) — writing events have no route from here on purpose, so a scene
+  // completing after the hold cannot slip past the pause.
+  paused: {
+    RESUMED: { nextPhase: 'writing', handler: handleResumed },
     ERROR: { nextPhase: 'error', handler: handleError },
     RESET: { nextPhase: 'idle', handler: handleReset }
   },
   'scene-review': {
     APPROVED: { nextPhase: 'writing', handler: handleSceneApproved },
     REJECTED: { nextPhase: 'writing', handler: handleSceneRejected },
+    REREQUESTED: { nextPhase: 'writing', handler: handleSceneRerequested },
     ERROR: { nextPhase: 'error', handler: handleError },
     RESET: { nextPhase: 'idle', handler: handleReset }
   },
   'sync-preview': {
     SYNC_APPROVED: { nextPhase: 'writing', handler: handleSyncApproved },
-    SYNC_REJECTED: { nextPhase: 'writing', handler: handleSyncRejected },
     ERROR: { nextPhase: 'error', handler: handleError },
     RESET: { nextPhase: 'idle', handler: handleReset }
   },
@@ -74,7 +77,6 @@ const ROUTING_TABLE = {
     RESET: { nextPhase: 'idle', handler: handleReset }
   },
   'consistency-fix': {
-    FIXED: { nextPhase: 'consistency-check', handler: handleConsistencyFixed },
     MAX_ROUNDS: { nextPhase: 'committing', handler: handleConsistencyMaxRounds },
     ERROR: { nextPhase: 'error', handler: handleError },
     RESET: { nextPhase: 'idle', handler: handleReset }
@@ -85,10 +87,13 @@ const ROUTING_TABLE = {
     RESET: { nextPhase: 'idle', handler: handleReset }
   },
   complete: {
+    // A finished run is not frozen: the author can send one scene back to the
+    // writer, which re-enters `writing` for exactly that scene and returns
+    // through the normal terminal sequence.
+    REGENERATE: { nextPhase: 'writing', handler: handleRegenerate },
     RESET: { nextPhase: 'idle', handler: handleReset }
   },
   error: {
-    RETRY: { nextPhase: null, handler: handleRetry },
     RESET: { nextPhase: 'idle', handler: handleReset }
   }
 }
@@ -104,7 +109,7 @@ function transitionTo(memory: any, phase: any, reason: any) {
 // ─── Route Handlers ──────────────────────────────────────────
 
 /**
- * VOLUME_CREATING ──VOLUME_CREATED──► BOOTSTRAPPING
+ * IDLE ──BOOTSTRAP_START──► BOOTSTRAPPING
  * Stub — inline code owns entity bootstrapping for now.
  * In the final state this handler would call bootstrapper.bootstrapEntities.
  */
@@ -133,20 +138,6 @@ async function handlePlanGenerated(memory: any, payload: any) {
   memory.chapterPlan.value = plan.chapters ?? []
   memory.spineArray.value = plan.spine ?? []
   memory.instances.actLog?.addEntry?.('plan', { sceneCount: plan.scenes?.length })
-}
-
-/**
- * IDLE ──START──► VOLUME_CREATING
- * Create the volume record and assign it to memory.
- */
-async function handleCreateVolume(memory: any, payload: any) {
-  const { projectId, volumeId, writeParams } = payload
-  memory.projectId.value = projectId
-  memory.volumeId.value = volumeId
-  memory.writeParams.value = writeParams
-  memory.setProgress('Creating volume...', 2)
-
-  memory.instances.actLog?.addEntry?.('volume', { projectId, volumeId })
 }
 
 /**
@@ -200,16 +191,6 @@ async function handleSpineGenerated(memory: any, _payload: any) {
 }
 
 /**
- * PLAN_PREVIEW ──REJECTED──► PLANNING
- * User rejected the plan — re-enter planning.
- */
-async function handleRejected(memory: any, payload: any) {
-  memory.setPhase('planning')
-  memory.setProgress('Re-planning...', 5)
-  memory.instances.actLog?.addEntry?.('reject', { reason: payload.reason })
-}
-
-/**
  * WRITING ──SCENE_WRITTEN──► SCENE_REVIEW
  * One scene was written — route to critic for evaluation.
  */
@@ -228,20 +209,31 @@ async function handleSceneWritten(memory: any, payload: any) {
 
 /**
  * SCENE_REVIEW ──APPROVED──► WRITING
- * Scene passed evaluation — write the next scene.
+ * Scene passed review — write the next scene.
+ *
+ * The caller has already committed the prose; what it cannot do from outside
+ * the machine is record the verdict against the run. `sceneIndex` comes in on
+ * the payload because `currentWriteIndex` has already advanced past the
+ * reviewed scene by the time this runs.
  */
 async function handleSceneApproved(memory: any, payload: any) {
+  const index = payload?.sceneIndex ?? memory.currentWriteIndex.value - 1
   const evalStore = useEvalStore()
-  evalStore.addResult({ ...payload, index: memory.currentWriteIndex.value - 1 })
+  evalStore.addResult({ ...payload, index, verdict: 'approved' })
+  memory.instances.actLog?.addEntry?.('scene-approved', { index })
 }
 
 /**
  * SCENE_REVIEW ──REJECTED──► WRITING
- * Scene failed — queue for rewrite.
+ * Scene failed review — clear it and queue the slot for a rewrite.
+ *
+ * The rejected pattern is recorded HERE rather than by the caller. It used to
+ * be pushed inline while this handler sat unreachable, so the pattern reached
+ * the writer but the rejection never reached the eval history or the run log.
  */
 async function handleSceneRejected(memory: any, payload: any) {
-  const rejectedIdx = memory.currentWriteIndex.value - 1
-  if (payload.pattern) {
+  const rejectedIdx = payload?.sceneIndex ?? memory.currentWriteIndex.value - 1
+  if (payload?.pattern) {
     memory.rejectedPatterns.value = [...memory.rejectedPatterns.value, payload.pattern]
   }
   memory.writtenScenes.value[rejectedIdx] = null
@@ -252,8 +244,33 @@ async function handleSceneRejected(memory: any, payload: any) {
 }
 
 /**
+ * SCENE_REVIEW ──REREQUESTED──► WRITING
+ * Scene sent back with revision notes.
+ *
+ * Distinct from a rejection: the prose was not repudiated, so nothing is nulled
+ * and no rejected pattern is learned from it. The plan entry already carries
+ * the author's instruction; this rewinds the write cursor onto it.
+ */
+async function handleSceneRerequested(memory: any, payload: any) {
+  const index = payload?.sceneIndex ?? memory.currentWriteIndex.value - 1
+  memory.currentWriteIndex.value = index
+  memory.instances.actLog?.addEntry?.('scene-rerequest', { index, edits: payload?.edits })
+  memory.setProgress(`Rewriting scene ${index + 1} with revisions...`, 20)
+}
+
+/**
+ * COMPLETE ──REGENERATE──► WRITING
+ * One scene of a finished run is being written again.
+ */
+async function handleRegenerate(memory: any, payload: any) {
+  memory.instances.actLog?.addEntry?.('scene-regenerate', { index: payload?.sceneIndex })
+  memory.setProgress(`Re-generating scene ${(payload?.sceneIndex ?? 0) + 1}...`, 20)
+}
+
+/**
  * WRITING ──BATCH_COMPLETE──► SYNC_PREVIEW
- * A batch of scenes crossed the SYNC_BATCH_SIZE threshold.
+ * A batch of scenes reached its boundary — the next chapter end, or the
+ * MAX_SYNC_BATCH_SIZE cap on a long chapter. See `batchEndIndex`.
  */
 async function handleBatchComplete(memory: any, payload: any) {
   memory.hasPendingBatches.value = true
@@ -275,6 +292,28 @@ async function handleBatchComplete(memory: any, payload: any) {
 }
 
 /**
+ * WRITING ──PAUSED──► PAUSED
+ * The writing loop reached a scene boundary and is holding there.
+ */
+async function handlePaused(memory: any, payload: any) {
+  memory.setProgress('Paused', payload?.percent ?? 0)
+  memory.instances.actLog?.addEntry?.('pause', {
+    sceneIndex: payload?.sceneIndex ?? memory.currentWriteIndex.value
+  })
+}
+
+/**
+ * PAUSED ──RESUMED──► WRITING
+ * The user released the hold — the same loop carries on from where it stopped.
+ */
+async function handleResumed(memory: any, payload: any) {
+  memory.setProgress('Resuming…', payload?.percent ?? 0)
+  memory.instances.actLog?.addEntry?.('resume', {
+    sceneIndex: payload?.sceneIndex ?? memory.currentWriteIndex.value
+  })
+}
+
+/**
  * WRITING ──ALL_WRITTEN──► REPAIRING
  * Every scene has an initial draft — run post-writing repair.
  */
@@ -284,30 +323,20 @@ async function handleAllWritten(memory: any, _payload: any) {
 
 /**
  * SYNC_PREVIEW ──SYNC_APPROVED──► WRITING
- * User approved the sync preview — commit changes and continue.
+ * The batch's entity changes were accepted — clear the preview and carry on.
+ *
+ * This deliberately does NOT commit. `SceneInteractionService.confirmSync`
+ * holds the structured outputs and the accepted entities and has already
+ * written them by the time it dispatches; committing again here would apply
+ * the batch twice. Same division of labour as `handleBatchComplete`, which
+ * takes the caller's already-computed preview rather than re-deriving one.
  */
 async function handleSyncApproved(memory: any, payload: any) {
-  await memory.instances.sync.commitSync({
-    structuredOutputs: payload.structuredOutputs,
-    acceptedEntities: payload.acceptedEntities,
-    projectId: memory.projectId.value,
-    volumeId: memory.volumeId.value,
-    chapterId: payload.chapterId
+  memory.syncPreview.value = null
+  memory.hasPendingBatches.value = false
+  memory.instances.actLog?.addEntry?.('sync-approved', {
+    accepted: payload?.acceptedCount ?? null
   })
-  memory.syncPreview.value = null
-  memory.hasPendingBatches.value = false
-}
-
-/**
- * SYNC_PREVIEW ──SYNC_REJECTED──► WRITING
- * User rejected sync — continue writing without committing this batch.
- */
-async function handleSyncRejected(memory: any, payload: any) {
-  memory.syncPreview.value = null
-  memory.hasPendingBatches.value = false
-  if (payload.reason) {
-    memory.instances.actLog?.addEntry?.('sync-reject', { reason: payload.reason })
-  }
 }
 
 /**
@@ -325,17 +354,6 @@ async function handleConsistencyIssues(memory: any, payload: any) {
  */
 async function handleConsistencyClean(memory: any, _payload: any) {
   memory.setProgress('Committing...', 95)
-}
-
-/**
- * CONSISTENCY_FIX ──FIXED──► CONSISTENCY_AUDIT
- * A fix round completed — re-audit.
- */
-async function handleConsistencyFixed(memory: any, payload: any) {
-  memory.instances.actLog?.addEntry?.('consistency-fix', {
-    round: payload.round,
-    fixedCount: payload.fixedCount
-  })
 }
 
 /**
@@ -369,17 +387,6 @@ async function handleCommitted(memory: any, _payload: any) {
   )
   await memory.instances.commitService?.finalize?.(memory.currentTaskId.value)
   memory.setProgress('Complete', 100)
-}
-
-/**
- * ERROR ──RETRY──► (previous phase)
- * Resume from the phase stored in payload.resumePhase.
- */
-async function handleRetry(memory: any, payload: any) {
-  const resume = payload.resumePhase ?? 'planning'
-  memory.setPhase(resume)
-  memory.setProgress(`Resuming from ${resume}...`, 0)
-  memory.instances.actLog?.addEntry?.('retry', { resumePhase: resume })
 }
 
 /**

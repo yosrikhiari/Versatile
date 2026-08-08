@@ -6,6 +6,7 @@
  */
 export interface AbortScope {
   ensure(): AbortController
+  renew(): AbortController
   signal(): AbortSignal | undefined
   isAborted(): boolean
   throwIfAborted(): void
@@ -18,6 +19,21 @@ export function createAbortScope(): AbortScope {
 
   function ensure(): AbortController {
     if (!controller) controller = new AbortController()
+    return controller
+  }
+
+  /**
+   * A controller for a NEW run, guaranteed not already aborted.
+   *
+   * `ensure()` cannot do this: it keeps whatever controller exists, and after a
+   * `cancel()` that controller stays aborted for the life of the scope. A run
+   * started after a stop therefore inherited the stop — the first
+   * `throwIfAborted()` guard threw before any work began. Only a full `reset()`
+   * cleared it, which is why stopping used to mean discarding the run state as
+   * well as the run.
+   */
+  function renew(): AbortController {
+    controller = new AbortController()
     return controller
   }
 
@@ -47,7 +63,7 @@ export function createAbortScope(): AbortScope {
     controller = null
   }
 
-  return { signal, isAborted, throwIfAborted, cancel, reset, ensure }
+  return { signal, isAborted, throwIfAborted, cancel, reset, ensure, renew }
 }
 
 export function isAbortError(e: unknown): boolean {

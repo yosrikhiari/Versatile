@@ -1,13 +1,26 @@
+import type { Ref } from 'vue'
 import { buildRetrievalContext } from '../context/sceneContext'
 import { buildExistingEntitiesBlob } from '../context/sceneContext'
 import { buildRagOptions } from '../../../services/researchScope'
 import { computeSummary } from '../utils'
 import { proseToHtml, countProseWords } from '../writing/liveDraft'
 
+/**
+ * The user-driven half of a run: approve, reject, re-request, re-generate, and
+ * accept a batch's entity changes.
+ *
+ * Every one of those moves the run between phases, and every one of them used
+ * to do it by writing `phase.value` directly. `phase` is the delegator's own
+ * ref, so those six assignments were real state transitions that the state
+ * machine never saw: absent from `delegator.history`, absent from the activity
+ * log, and never checked against the session budget. They now dispatch, and
+ * `phase` is typed read-only so the shortcut cannot come back by accident.
+ */
 export class SceneInteractionService {
   writeParams: any
   scenePlan: any
-  phase: any
+  phase: Readonly<Ref<string>>
+  dispatch: (event: string, payload?: any) => Promise<any>
   progress: any
   writer: any
   sync: any
@@ -36,6 +49,7 @@ export class SceneInteractionService {
     this.writeParams = args.writeParams
     this.scenePlan = args.scenePlan
     this.phase = args.phase
+    this.dispatch = args.dispatch
     this.progress = args.progress
     this.writer = args.writer
     this.sync = args.sync
@@ -74,19 +88,22 @@ export class SceneInteractionService {
       chapterId: chapterId || null
     })
 
-    if (this.hasPendingBatches.value) {
-      this.hasPendingBatches.value = false
-      const resumeFrom = this.pendingBatchStart.value
-      this.pendingBatchStart.value = 0
-      this.phase.value = 'writing'
+    const resumeFrom = this.hasPendingBatches.value ? this.pendingBatchStart.value : null
+    if (resumeFrom !== null) this.pendingBatchStart.value = 0
+
+    // Leave sync-preview before doing anything else. The terminal sequence
+    // (repair → continuity → commit) is only reachable from `writing`; staying
+    // here meant a run that ended on a sync batch never reached `complete` at
+    // all. The handler clears `syncPreview`/`hasPendingBatches` — it does not
+    // re-commit, since the commit above already happened.
+    await this.dispatch('SYNC_APPROVED', {
+      acceptedCount: Array.isArray(acceptedEntities) ? acceptedEntities.length : null
+    })
+
+    if (resumeFrom !== null) {
       await this.onWriteNextBatch?.(resumeFrom)
       return
     }
-
-    // Leave sync-preview before finishing. The terminal sequence (repair →
-    // continuity → commit) is only reachable from `writing`; staying here meant
-    // a run that ended on a sync batch never reached `complete` at all.
-    this.phase.value = 'writing'
     await this.onCompleteGeneration?.(projectId)
   }
 
@@ -107,22 +124,28 @@ export class SceneInteractionService {
       // it was drafted for instead of appending past the scenes after it.
       typeof sceneIndex === 'number' ? sceneIndex : this.currentWriteIndex.value - 1
     )
-    this.phase.value = 'writing'
+    await this.dispatch('APPROVED', {
+      sceneIndex: typeof sceneIndex === 'number' ? sceneIndex : this.currentWriteIndex.value - 1
+    })
     await this.onWriteNextBatch?.(this.currentWriteIndex.value)
   }
 
   async rejectScene() {
     if (!this.currentSceneResult.value) return
     const { scene, fullProse } = this.currentSceneResult.value
-    this.rejectedPatterns.value.push({
-      index: this.currentWriteIndex.value,
-      feedback: fullProse.slice(0, 500),
-      title: scene.goal || scene.title
-    })
     this.currentSceneResult.value = null
     this.progress.statusText = 'Rejecting scene, rewriting...'
-    this.phase.value = 'writing'
-    await this.onWriteNextBatch?.(this.currentWriteIndex.value - 1)
+    // The pattern travels on the payload; the handler owns recording it, and
+    // also nulls the scene and rewinds the write cursor to its slot.
+    await this.dispatch('REJECTED', {
+      sceneIndex: this.currentWriteIndex.value - 1,
+      pattern: {
+        index: this.currentWriteIndex.value,
+        feedback: fullProse.slice(0, 500),
+        title: scene.goal || scene.title
+      }
+    })
+    await this.onWriteNextBatch?.(this.currentWriteIndex.value)
   }
 
   async rerequestScene(edits: any) {
@@ -131,7 +154,7 @@ export class SceneInteractionService {
     this.scenePlan.value[i].reRequestInstruction = edits
     this.currentSceneResult.value = null
     this.progress.statusText = 'Rewriting scene with user revisions...'
-    this.phase.value = 'writing'
+    await this.dispatch('REREQUESTED', { sceneIndex: i, edits })
     await this.onWriteNextBatch?.(i)
   }
 
@@ -140,7 +163,7 @@ export class SceneInteractionService {
     if (!this.writeParams.value) return
 
     this.progress.statusText = `Re-generating scene ${sceneIndex + 1}...`
-    this.phase.value = 'writing'
+    await this.dispatch('REGENERATE', { sceneIndex })
 
     const storyDocuments = this.storyBibleStore
     const storyBibleDocs = (await storyDocuments.getStoryDocumentContext?.(projectId)) || ''
