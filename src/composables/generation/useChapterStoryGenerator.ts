@@ -240,7 +240,11 @@ export function useChapterStoryGenerator() {
       langfuseService.endSpan(spanId, {
         output: { passed: report.passed, findings: report.findings.length }
       })
+      // Scored at the trace, not just logged in the span: these are the two
+      // numbers worth trending across runs — did the chapter pass, and did it
+      // land on the length the author asked for.
       langfuseService.score(traceId.value, 'chapter-gate', report.passed ? 1 : 0)
+      langfuseService.score(traceId.value, 'chapter-word-ratio', report.metrics.wordRatio)
     }
 
     return report
