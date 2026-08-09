@@ -13,7 +13,11 @@ const base = {
   scenesPerChapter: 3,
   genres: ['Fantasy', 'Sci-Fi'],
   tones: ['Tense', 'Hopeful'],
-  mode: 'chapter',
+  // Arc, because every structural assertion below is about the precise-structure
+  // grid. Chapter mode generates exactly one chapter and replaces that grid with
+  // a scene-count stepper of its own — covered by
+  // `GenerationSettingsForm.chapter.test.js`.
+  mode: 'arc',
   synopsis: 'A hero rises.',
   hasSynopsis: true,
   estimatedTotalWords: 20000

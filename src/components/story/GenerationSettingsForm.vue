@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { MODE_SCENE } from '../../constants/generationModes'
+import { MODE_SCENE, MODE_CHAPTER } from '../../constants/generationModes'
 import BaseChip from '../ui/BaseChip.vue'
 import BaseCheckbox from '../ui/BaseCheckbox.vue'
 import BaseStepper from '../ui/BaseStepper.vue'
@@ -21,7 +21,7 @@ const chaptersPerVolume = defineModel('chaptersPerVolume', { type: Number, defau
 const wordsPerChapter = defineModel('wordsPerChapter', { type: Number, default: 2000 })
 const scenesPerChapter = defineModel('scenesPerChapter', { type: Number, default: 3 })
 
-defineProps({
+const props = defineProps({
   genres: { type: Array, default: () => [] },
   tones: { type: Array, default: () => [] },
   mode: { type: String, default: '' },
@@ -29,6 +29,14 @@ defineProps({
   hasSynopsis: { type: Boolean, default: false },
   estimatedTotalWords: { type: Number, default: 0 }
 })
+
+/**
+ * Chapter mode generates exactly one chapter, so the volume and chapter-count
+ * steppers describe work it will never do. They are removed from the DOM rather
+ * than hidden: a stepper a screen reader can still reach but the run will
+ * ignore is worse than no stepper at all.
+ */
+const isChapterMode = computed(() => props.mode === MODE_CHAPTER)
 
 // Genre and tone are both single-select-with-clear: tapping the active chip
 // clears it. Written as two functions rather than one that takes the model,
@@ -48,6 +56,17 @@ function toggleTone(value) {
 const settingsStore = useSettingsStore()
 
 const runEstimate = computed(() => {
+  // One chapter, and the word target the author typed is the chapter's own —
+  // multiplying by a volume count the chapter run will never honour is what
+  // made the estimate read ten times too long on this tab.
+  if (isChapterMode.value) {
+    return estimateRun({
+      totalWords: wordTarget.value,
+      scenes: scenesPerChapter.value,
+      chapters: 1,
+      model: settingsStore.ollamaModel
+    })
+  }
   const chapters = volumes.value * chaptersPerVolume.value
   return estimateRun({
     totalWords: chapters * wordsPerChapter.value,
@@ -110,10 +129,16 @@ const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
     </div>
   </div>
 
-  <div v-if="!usePreciseStructure">
+  <div v-if="isChapterMode || !usePreciseStructure" data-test="word-target-stepper">
     <BaseStepper
       v-model="wordTarget"
-      :label="mode === MODE_SCENE ? 'Words per Scene' : 'Total Word Target'"
+      :label="
+        isChapterMode
+          ? 'Chapter Word Target'
+          : mode === MODE_SCENE
+            ? 'Words per Scene'
+            : 'Total Word Target'
+      "
       :min="500"
       :max="10000"
       :step="100"
@@ -121,30 +146,10 @@ const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
     />
   </div>
 
-  <!-- Precise structure: exact volumes / chapters / words -->
-  <div class="rounded-lg border border-border-subtle p-3 space-y-3">
-    <BaseCheckbox
-      v-model="usePreciseStructure"
-      label="Precise structure (exact volumes, chapters & length)"
-    />
-
-    <div v-if="usePreciseStructure" class="grid grid-cols-2 gap-3">
-      <BaseStepper v-model="volumes" label="Volumes" :min="1" :max="20" size="sm" />
-      <BaseStepper
-        v-model="chaptersPerVolume"
-        label="Chapters / volume"
-        :min="1"
-        :max="60"
-        size="sm"
-      />
-      <BaseStepper
-        v-model="wordsPerChapter"
-        label="Words / chapter"
-        :min="300"
-        :max="20000"
-        :step="100"
-        size="sm"
-      />
+  <!-- Chapter mode: one chapter, so the only structural choice is how many
+       scenes it is cut into. -->
+  <div v-if="isChapterMode" class="rounded-lg border border-border-subtle p-3 space-y-3">
+    <div data-test="scenes-per-chapter-stepper" role="group" aria-label="Scenes in this chapter">
       <BaseStepper
         v-model="scenesPerChapter"
         label="Scenes / chapter"
@@ -152,6 +157,65 @@ const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
         :max="12"
         size="sm"
       />
+    </div>
+
+    <p
+      data-test="estimate"
+      role="status"
+      aria-live="polite"
+      class="text-xs font-ui leading-relaxed"
+      :class="isLongRun ? 'text-warning' : 'text-text-hint'"
+    >
+      1 chapter · {{ scenesPerChapter }} scene(s) · ~{{
+        Math.ceil(wordTarget / Math.max(1, scenesPerChapter)).toLocaleString()
+      }}
+      words per scene. Estimated generation time: <strong>{{ estimateLabel }}</strong>
+      <template v-if="runEstimate.measured">
+        at {{ runEstimate.tokensPerSecond.toFixed(1) }} tokens/sec measured on this machine.
+      </template>
+      <template v-else> (provisional — refined once a run has been measured here). </template>
+    </p>
+  </div>
+
+  <!-- Precise structure: exact volumes / chapters / words -->
+  <div v-else class="rounded-lg border border-border-subtle p-3 space-y-3">
+    <BaseCheckbox
+      v-model="usePreciseStructure"
+      label="Precise structure (exact volumes, chapters & length)"
+    />
+
+    <div v-if="usePreciseStructure" class="grid grid-cols-2 gap-3">
+      <div data-test="volumes-stepper" role="group" aria-label="Volumes">
+        <BaseStepper v-model="volumes" label="Volumes" :min="1" :max="20" size="sm" />
+      </div>
+      <div data-test="chapters-per-volume-stepper" role="group" aria-label="Chapters per volume">
+        <BaseStepper
+          v-model="chaptersPerVolume"
+          label="Chapters / volume"
+          :min="1"
+          :max="60"
+          size="sm"
+        />
+      </div>
+      <div data-test="words-per-chapter-stepper" role="group" aria-label="Words per chapter">
+        <BaseStepper
+          v-model="wordsPerChapter"
+          label="Words / chapter"
+          :min="300"
+          :max="20000"
+          :step="100"
+          size="sm"
+        />
+      </div>
+      <div data-test="scenes-per-chapter-stepper" role="group" aria-label="Scenes per chapter">
+        <BaseStepper
+          v-model="scenesPerChapter"
+          label="Scenes / chapter"
+          :min="1"
+          :max="12"
+          size="sm"
+        />
+      </div>
     </div>
 
     <p v-if="usePreciseStructure" class="text-xs text-text-hint font-ui leading-relaxed">
