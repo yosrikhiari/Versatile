@@ -35,9 +35,12 @@ import { useResearchScope } from '../../composables/useResearchScope'
 import { useGenerationHistory } from '../../composables/useGenerationHistory'
 import { useSparkContext } from '../../composables/useSparkContext'
 import { useGenerationSettings } from '../../composables/useGenerationSettings'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { t as tChapter } from '../../composables/useChapterI18n'
 import VolumeCompletePanel from './VolumeCompletePanel.vue'
 import VolumeSceneReview from './VolumeSceneReview.vue'
 import VolumePlanPreview from './VolumePlanPreview.vue'
+import ChapterGateReport from './ChapterGateReport.vue'
 
 const emit = defineEmits(['openChapters'])
 
@@ -54,7 +57,30 @@ const { exportAsText, exportAsMarkdown } = useStoryExport()
 const sparkStore = useSparkStore()
 const { getTurns } = useCompactConversation()
 
+const settingsStore = useSettingsStore()
+
+// Zero-deploy rollback: with the flag off the Chapter tab is gone and the arc
+// path is untouched. A run already in flight is not killed by flipping it —
+// only the way in disappears.
+const chapterTabEnabled = computed(() => settingsStore.enableChapterGeneration !== false)
+
+const tabs = computed(() =>
+  [
+    { id: MODE_BRAINSTORM, label: 'Ideate' },
+    { id: MODE_SCENE, label: 'Scene' },
+    chapterTabEnabled.value ? { id: MODE_CHAPTER, label: 'Chapter' } : null,
+    { id: MODE_ARC, label: 'Arc' },
+    { id: MODE_BLURB, label: 'Blurb' }
+  ].filter(Boolean)
+)
+
 const tab = ref(MODE_BRAINSTORM)
+
+// If the flag is turned off while the chapter tab is open, fall back rather
+// than leaving the panel on a tab that renders nothing.
+watch(chapterTabEnabled, (enabled) => {
+  if (!enabled && tab.value === MODE_CHAPTER) tab.value = MODE_BRAINSTORM
+})
 
 const mode = computed(() =>
   tab.value === MODE_ARC ? MODE_ARC : tab.value === MODE_CHAPTER ? MODE_CHAPTER : MODE_SCENE
@@ -654,18 +680,6 @@ const chapterAutoRun = computed({
   }
 })
 
-// Blocking findings mean "this is not a chapter" — missing prose, metadata that
-// failed everywhere, looping text, contradictions the audit could not resolve.
-// Warnings are worth reading and never worth losing prose over.
-const chapterGateBlocking = computed(
-  () =>
-    chapterGenerator.chapterGateReport.value?.findings.filter((f) => f.severity === 'block') || []
-)
-const chapterGateWarnings = computed(
-  () =>
-    chapterGenerator.chapterGateReport.value?.findings.filter((f) => f.severity === 'warn') || []
-)
-
 async function checkChapterResumable() {
   if (!projectStore.currentProjectId) return
   try {
@@ -1013,14 +1027,9 @@ function getPhaseLabel(phase) {
       <h2 class="text-base font-semibold text-text-primary font-ui mb-3">Story Tools</h2>
       <div class="flex w-full gap-0.5 p-0.5 bg-bg-secondary border border-border-subtle rounded-lg">
         <button
-          v-for="m in [
-            { id: MODE_BRAINSTORM, label: 'Ideate' },
-            { id: MODE_SCENE, label: 'Scene' },
-            { id: MODE_CHAPTER, label: 'Chapter' },
-            { id: MODE_ARC, label: 'Arc' },
-            { id: MODE_BLURB, label: 'Blurb' }
-          ]"
+          v-for="m in tabs"
           :key="m.id"
+          :data-test="`tab-${m.id}`"
           class="flex-1 py-1.5 text-xs rounded-md font-ui transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-accent"
           :class="tab === m.id ? 'text-accent' : 'text-text-secondary hover:text-text-primary'"
           :style="tab === m.id ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.14)' } : {}"
@@ -1220,8 +1229,12 @@ function getPhaseLabel(phase) {
                 class="rounded-lg border border-accent bg-bg-secondary p-3 space-y-2"
               >
                 <p class="text-xs text-text-primary font-ui">
-                  Unfinished chapter — {{ chapterResumableRun.written }} of
-                  {{ chapterResumableRun.total }} scenes written.
+                  {{
+                    tChapter('chapter.unfinished', {
+                      written: chapterResumableRun.written,
+                      total: chapterResumableRun.total
+                    })
+                  }}
                 </p>
                 <div class="flex items-center gap-2">
                   <button
@@ -1229,7 +1242,7 @@ function getPhaseLabel(phase) {
                     class="flex-1 py-1.5 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent"
                     @click="handleChapterResume"
                   >
-                    Resume
+                    {{ tChapter('chapter.resume') }}
                   </button>
                   <button
                     class="py-1.5 px-3 text-xs text-text-hint hover:text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent rounded-md"
@@ -1398,15 +1411,19 @@ function getPhaseLabel(phase) {
               >
                 <span class="flex items-center justify-center gap-2">
                   <BaseIcon name="wand-2" :size="16" />
-                  Generate Chapter{{ sparkContext ? ' with Spark context' : '' }}
+                  {{ tChapter('chapter.generate') }}{{ sparkContext ? ' with Spark context' : '' }}
                 </span>
               </button>
 
               <p class="text-xs text-text-hint text-center font-ui">
-                {{ scenesPerChapter }} scene(s) · ~{{
-                  chapterGenerator.getSceneBudget(wordTarget, scenesPerChapter).toLocaleString()
+                {{
+                  tChapter('chapter.perScene', {
+                    scenes: scenesPerChapter,
+                    words: chapterGenerator
+                      .getSceneBudget(wordTarget, scenesPerChapter)
+                      .toLocaleString()
+                  })
                 }}
-                words per scene
               </p>
             </div>
           </template>
@@ -1420,7 +1437,7 @@ function getPhaseLabel(phase) {
             <div class="flex items-center justify-center gap-3 text-danger py-4">
               <BaseIcon name="alert-triangle" :size="32" />
             </div>
-            <div class="text-lg font-ui text-text-primary">Chapter Generation Failed</div>
+            <div class="text-lg font-ui text-text-primary">{{ tChapter('chapter.failed') }}</div>
             <p
               class="text-sm text-danger bg-bg-secondary p-4 rounded-lg border border-border-subtle max-w-lg mx-auto whitespace-pre-wrap"
             >
@@ -1528,7 +1545,7 @@ function getPhaseLabel(phase) {
                 </span>
                 <span v-else class="inline-flex items-center gap-2">
                   <BaseIcon name="pause" :size="14" />
-                  Pause
+                  {{ tChapter('chapter.pause') }}
                 </span>
               </button>
               <button
@@ -1645,65 +1662,10 @@ function getPhaseLabel(phase) {
                the gate reports rather than deletes: the prose is committed
                either way and the author is told, precisely, what the run could
                not deliver. -->
-          <div
-            v-if="
-              chapterGenerator.phase.value === 'complete' &&
-              chapterGenerator.chapterGateReport.value
-            "
-            data-test="chapter-gate-report"
-            class="mx-4 mt-3 rounded-lg border p-3 space-y-1.5"
-            :class="
-              chapterGenerator.chapterGateReport.value.passed
-                ? 'border-border-subtle bg-bg-secondary'
-                : 'border-danger bg-bg-secondary'
-            "
-          >
-            <div class="flex items-center gap-2">
-              <BaseIcon
-                :name="
-                  chapterGenerator.chapterGateReport.value.passed
-                    ? 'check-circle'
-                    : 'alert-triangle'
-                "
-                :size="14"
-                :class="
-                  chapterGenerator.chapterGateReport.value.passed ? 'text-success' : 'text-danger'
-                "
-              />
-              <span class="text-xs font-semibold font-ui text-text-primary">
-                {{
-                  chapterGenerator.chapterGateReport.value.passed
-                    ? 'Chapter gate passed'
-                    : 'Chapter gate found blocking issues'
-                }}
-              </span>
-            </div>
-            <p class="text-2xs text-text-hint font-ui tabular-nums">
-              {{ chapterGenerator.chapterGateReport.value.metrics.sceneCount }} scene(s) ·
-              {{ chapterGenerator.chapterGateReport.value.metrics.uniqueWords.toLocaleString() }}
-              unique words ·
-              {{ Math.round(chapterGenerator.chapterGateReport.value.metrics.wordRatio * 100) }}% of
-              target
-            </p>
-            <ul v-if="chapterGateBlocking.length" class="space-y-1">
-              <li
-                v-for="f in chapterGateBlocking"
-                :key="f.code"
-                class="text-2xs text-danger font-ui leading-relaxed"
-              >
-                {{ f.message }}
-              </li>
-            </ul>
-            <ul v-if="chapterGateWarnings.length" class="space-y-1">
-              <li
-                v-for="f in chapterGateWarnings"
-                :key="f.code"
-                class="text-2xs text-text-secondary font-ui leading-relaxed"
-              >
-                {{ f.message }}
-              </li>
-            </ul>
-          </div>
+          <ChapterGateReport
+            v-if="chapterGenerator.phase.value === 'complete'"
+            :report="chapterGenerator.chapterGateReport.value"
+          />
 
           <!-- COMPLETE -->
           <VolumeCompletePanel

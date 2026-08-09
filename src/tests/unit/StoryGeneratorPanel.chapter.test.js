@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { useProjectStore } from '../../stores/projectStore'
+import { useSettingsStore } from '../../stores/settingsStore'
 
 function makeGenerator(overrides = {}) {
   return {
@@ -279,6 +280,25 @@ describe('StoryGeneratorPanel — chapter tab', () => {
     await block.find('button').trigger('click')
     expect(chapterGen.reset).toHaveBeenCalled()
     expect(volumeGen.reset).not.toHaveBeenCalled()
+  })
+
+  it('hides the Chapter tab when the feature flag is off', async () => {
+    useSettingsStore().enableChapterGeneration = false
+    const wrapper = await mountPanel()
+    expect(wrapper.find('[data-test="tab-chapter"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="tab-arc"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="chapter-pipeline"]').exists()).toBe(false)
+  })
+
+  it('falls back off the chapter tab if the flag is turned off mid-session', async () => {
+    const wrapper = await mountPanel()
+    await switchTo(wrapper, 'Chapter')
+    expect(wrapper.find('[data-test="chapter-pipeline"]').exists()).toBe(true)
+
+    useSettingsStore().enableChapterGeneration = false
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-test="chapter-pipeline"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="tab-chapter"]').exists()).toBe(false)
   })
 
   it('stops the chapter run when the panel unmounts', async () => {

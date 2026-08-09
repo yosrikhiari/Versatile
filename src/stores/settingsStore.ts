@@ -42,7 +42,11 @@ const DEFAULT_SETTINGS = {
   // 'local' (default) — all analysis runs locally, never leaves device
   // 'cloud-on-demand' — user explicitly triggers cloud audit per operation
   // 'cloud-audit' — background cloud audits enabled (opt-in, per-book)
-  analysisTier: 'local'
+  analysisTier: 'local',
+  // Chapter generation gets its own pipeline, its own delegator and its own
+  // acceptance gate. The flag is the zero-deploy way back: turning it off
+  // hides the Chapter tab and leaves the arc path exactly as it was.
+  enableChapterGeneration: true
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -58,6 +62,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const embeddingModel = ref(DEFAULT_SETTINGS.embeddingModel)
   const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
   const analysisTier = ref(DEFAULT_SETTINGS.analysisTier)
+  const enableChapterGeneration = ref(DEFAULT_SETTINGS.enableChapterGeneration)
 
   const featureModels = useLocalStorage<Record<string, any>>(STORAGE_KEYS.FEATURE_MODELS, {})
 
@@ -107,6 +112,10 @@ export const useSettingsStore = defineStore('settings', () => {
         if (data.embeddingThreshold !== undefined)
           embeddingThreshold.value = data.embeddingThreshold
         if (data.analysisTier) analysisTier.value = data.analysisTier
+        // Explicit `!== undefined` for the same reason as `localOnly`: turning
+        // the flag off is a real choice, and truthiness would undo it on load.
+        if (data.enableChapterGeneration !== undefined)
+          enableChapterGeneration.value = !!data.enableChapterGeneration
       }
 
       // STORAGE_KEYS ref
@@ -144,7 +153,8 @@ export const useSettingsStore = defineStore('settings', () => {
           embeddingProvider: embeddingProvider.value,
           embeddingModel: embeddingModel.value,
           embeddingThreshold: embeddingThreshold.value,
-          analysisTier: analysisTier.value
+          analysisTier: analysisTier.value,
+          enableChapterGeneration: enableChapterGeneration.value
         })
       )
     } catch (e) {
@@ -282,6 +292,11 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  function setEnableChapterGeneration(value: any) {
+    enableChapterGeneration.value = !!value
+    saveSettings()
+  }
+
   function resetToDefaults() {
     ollamaEndpoint.value = DEFAULT_SETTINGS.ollamaEndpoint
     setOllamaConfigEndpoint(DEFAULT_SETTINGS.ollamaEndpoint)
@@ -296,6 +311,7 @@ export const useSettingsStore = defineStore('settings', () => {
     embeddingModel.value = DEFAULT_SETTINGS.embeddingModel
     embeddingThreshold.value = DEFAULT_SETTINGS.embeddingThreshold
     analysisTier.value = DEFAULT_SETTINGS.analysisTier
+    enableChapterGeneration.value = DEFAULT_SETTINGS.enableChapterGeneration
     featureModels.value = {}
     saveSettings()
   }
@@ -352,6 +368,8 @@ export const useSettingsStore = defineStore('settings', () => {
     // always true: a user who chose the local tier still had cloud escalation
     // enabled, and getAnalysisTier() returned undefined. Only tsc noticed.
     analysisTier,
+    enableChapterGeneration,
+    setEnableChapterGeneration,
     featureModels,
     resolveFeatureProvider,
     resolveFeatureModel,
