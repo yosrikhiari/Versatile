@@ -30,8 +30,10 @@ const EXPECTED = {
     '++id | [projectId+evalType], [projectId+sceneId+evalType], [projectId+sceneId], evalType, projectId, sceneId, score, timestamp',
   genRuns: '++id | &projectId, updatedAt',
   generatedStories: '++id | generatedAt, projectId, qualityScore, title, totalWords',
+  // v47: edges carry a validity window in chapter-space, so a relationship that
+  // reverses mid-book is representable instead of being dropped as a duplicate.
   graphEdges:
-    '++id | projectId, relationshipType, sourceId, sourceType, targetId, targetType, volumeId',
+    '++id | [projectId+validFromChapter], projectId, relationshipType, runId, sourceId, sourceType, targetId, targetType, validFromChapter, validUntilChapter, volumeId',
   graphGroupsV2: 'id | color, groupOrder, height, name, projectId, width, x, y',
   graphNodeParents: '[projectId+nodeId] | groupId, nodeId, nodeType, projectId',
   graphNodePositions: '[projectId+nodeId] | nodeId, nodeType, projectId, x, y',
@@ -52,8 +54,12 @@ const EXPECTED = {
   chapterDigests:
     '++id | &[projectId+chapterNumber], chapterNumber, contentHash, projectId, updatedAt, volumeId',
   volumeDigests: '++id | &[projectId+volumeId], contentHash, projectId, updatedAt, volumeId',
+  // v47: +[projectId+sceneId] (replace-per-scene, and the key the previously
+  // unreachable per-scene query needed), +[projectId+chapterNumber] (chapter
+  // slice), +[projectId+entityType+entityId] (which getEntityStatesForEntity
+  // queried without it ever having been declared).
   entityStates:
-    '++id | &[projectId+entityType+entityId+sceneId], entityId, entityType, projectId, sceneId, stateHash, updatedAt',
+    '++id | &[projectId+entityType+entityId+sceneId], [projectId+chapterNumber], [projectId+entityType+entityId], [projectId+sceneId], entityId, entityType, projectId, sceneId, stateHash, updatedAt',
   // v46: +analysisQueue — persistent idle-priority work queue for analysis tasks.
   analysisQueue:
     '++id | [projectId+status], createdAt, payload, projectId, status, taskType, updatedAt',
@@ -102,7 +108,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(46)
+    expect(verno).toBe(47)
   })
 
   it('has exactly the expected set of tables', () => {

@@ -3,7 +3,9 @@ import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStoryNetworkStore } from '../stores/volumeStoryNetworkStore'
 import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useProjectStore } from '../stores/projectStore'
-import { db } from '../services/dbService'
+import { useManuscriptStore } from '../stores/manuscriptStore'
+import { db, getGraphEdges, updateGraphEdge } from '../services/dbService'
+import { planEdgeWrites } from '../services/generation/edgeTimeline'
 
 const TARGET_TABLES = [
   db.characters,
@@ -39,6 +41,28 @@ function buildNameToIdMap(bibleStore: any): NameToIdMap {
 
 function lowerSet(arr: string[] | null | undefined): Set<string> {
   return new Set((arr || []).map((s: string) => s.toLowerCase().trim()))
+}
+
+/**
+ * Which chapter a commit belongs to, as a 1-based position in the manuscript.
+ *
+ * Sections are the chapters, and their order in the manuscript is the chapter
+ * number — the same mapping the Timeline view and the Timeline document use, so
+ * an edge stamped here lands on the row the author sees. An unknown chapter
+ * yields null, which `planEdgeWrites` treats as the story's opening rather than
+ * refusing to write.
+ */
+function resolveChapterNumber(chapterId: any): number | null {
+  if (chapterId == null) return null
+  try {
+    const manuscriptStore = useManuscriptStore()
+    const index = (manuscriptStore.sortedSections as any[]).findIndex(
+      (s: any) => String(s.id) === String(chapterId)
+    )
+    return index >= 0 ? index + 1 : null
+  } catch {
+    return null
+  }
 }
 
 export function useChapterGenerationSync() {
@@ -260,29 +284,56 @@ export function useChapterGenerationSync() {
         }
       }
 
+      // Each chapter is a brick on the base.
+      //
+      // The base is laid once by the Story Network stage, from the synopsis, and
+      // describes the story's starting state. Everything after that is
+      // established by chapters as they are written — which is what these events
+      // are: the writer reporting what the prose just did. Stamping them with the
+      // chapter they happened in is what lets a relationship that develops
+      // supersede the one it replaces instead of being dropped as a duplicate of
+      // it, and what lets the graph be read back as it stood at any chapter.
+      //
+      // Previously each event was written TWICE — once through `createVolumeEdge`
+      // and again through `addEdgeData`, both landing in `graphEdges` — so every
+      // chapter doubled its own contribution to the network.
+      const chapterNumber = resolveChapterNumber(chapterId)
+      const proposedEdges = []
       for (const event of allNetworkEvents) {
         const from = nameToId[event.from]
         const to = nameToId[event.to]
-        if (from && to) {
-          await networkStore.createVolumeEdge(
-            resolvedProjectId,
-            from.type,
-            from.id,
-            to.type,
-            to.id,
-            event.label || 'relates_to',
-            volumeId || null
+        if (!from || !to) continue
+        proposedEdges.push({
+          sourceId: String(from.id),
+          sourceType: from.type,
+          targetId: String(to.id),
+          targetType: to.type,
+          relationshipType: event.label || 'relates_to',
+          description: event.label || '',
+          volumeId: volumeId || null
+        })
+      }
+
+      if (proposedEdges.length) {
+        const existingEdges = await getGraphEdges(resolvedProjectId).catch(() => [])
+        const plan = planEdgeWrites({
+          existing: existingEdges,
+          proposed: proposedEdges,
+          atChapter: chapterNumber,
+          volumeId: volumeId || null
+        })
+
+        for (const s of plan.supersedes) {
+          await updateGraphEdge(s.id, { validUntilChapter: s.validUntilChapter }).catch(
+            (err: any) => console.warn('[commitSync] could not close superseded edge:', err)
           )
-          await graphStore.addEdgeData(resolvedProjectId, {
-            sourceId: String(from.id),
-            sourceType: from.type,
-            targetId: String(to.id),
-            targetType: to.type,
-            relationshipType: event.label || 'relates_to',
-            description: event.label || '',
-            volumeId: volumeId || null
-          })
         }
+        for (const e of plan.inserts) {
+          await graphStore.addEdgeData(resolvedProjectId, e)
+        }
+        // The volume subgraph reads from `graphEdges`, which the inserts above
+        // already populate with the volume stamped on — the second write through
+        // the volume store was what produced the duplicate row.
       }
 
       pendingChanges.value = []

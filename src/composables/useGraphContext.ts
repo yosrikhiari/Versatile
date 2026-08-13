@@ -1,5 +1,6 @@
 import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
+import { sliceEdgesAtChapter } from '../services/generation/edgeTimeline'
 
 export function useGraphContext() {
   const storyGraphStore = useStoryGraphStore()
@@ -83,10 +84,10 @@ export function useGraphContext() {
     return relationshipLabels[relationshipType as keyof typeof relationshipLabels] || relationshipType
   }
 
-  function getNeighbors(nodeId: any) {
+  function getNeighbors(nodeId: any, edges: any[]) {
     const neighbors = []
 
-    for (const edge of storyGraphStore.edges) {
+    for (const edge of edges) {
       const sourceId = buildNodeId(edge.sourceType, edge.sourceId)
       const targetId = buildNodeId(edge.targetType, edge.targetId)
 
@@ -131,11 +132,24 @@ export function useGraphContext() {
     return parts.join(' ')
   }
 
-  async function getRelationshipContext(entityIds: any, depth: any = 2) {
+  /**
+   * `atChapter` restricts the walk to relationships asserted to be true then.
+   *
+   * Without it the walk crosses the whole project graph, so a scene in chapter 3
+   * is described using a betrayal that has not happened yet and an alliance that
+   * ended twenty chapters ago — presented identically, with nothing to separate
+   * them. Omitted, every edge is in scope, which is the previous behaviour.
+   */
+  async function getRelationshipContext(
+    entityIds: any,
+    depth: any = 2,
+    atChapter: number | null = null
+  ) {
     if (!entityIds || entityIds.length === 0) {
       return ''
     }
 
+    const edges = sliceEdgesAtChapter(storyGraphStore.edges as any[], atChapter)
     const startNodeIds = entityIds.map((e: any) => buildNodeId(e.type, e.id))
 
     const visited = new Set(startNodeIds)
@@ -152,7 +166,7 @@ export function useGraphContext() {
 
       if (current.depth >= depth) continue
 
-      const neighbors = getNeighbors(current.nodeId)
+      const neighbors = getNeighbors(current.nodeId, edges)
 
       for (const neighbor of neighbors) {
         if (visited.has(neighbor.nodeId)) continue
@@ -187,8 +201,13 @@ export function useGraphContext() {
     return serializedPaths.join('\n')
   }
 
-  async function getEntityRelationshipContext(entityType: any, entityId: any, depth: any = 2) {
-    return getRelationshipContext([{ type: entityType, id: entityId }], depth)
+  async function getEntityRelationshipContext(
+    entityType: any,
+    entityId: any,
+    depth: any = 2,
+    atChapter: number | null = null
+  ) {
+    return getRelationshipContext([{ type: entityType, id: entityId }], depth, atChapter)
   }
 
   return {

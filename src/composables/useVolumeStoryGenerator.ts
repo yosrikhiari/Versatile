@@ -1161,6 +1161,11 @@ export function useVolumeStoryGenerator() {
       // planning, so scenes and views can build on a populated network. Best-effort.
       progress.statusText = 'Weaving the Story Network (relationships)...'
       const networkPhase = actLog.addPhase(currentTaskId, 'Story Network')
+      // Whether the base was actually laid this run. An expanded cast only needs
+      // weaving into a network that was just built from nothing — in a project
+      // that already had one, the new entities acquire their edges as they turn
+      // up in chapters, which is where those edges belong anyway.
+      let baseWasLaid = false
       actLog.appendThought(
         currentTaskId,
         networkPhase,
@@ -1185,6 +1190,15 @@ export function useVolumeStoryGenerator() {
               genre,
               tone,
               signal: stageSignal,
+              // The opening weave describes the story's starting state — it runs
+              // before a word of prose exists — so its claims open at chapter 1.
+              atChapter: 1,
+              runId: generationTraceId.value || null,
+              volumeId: vId,
+              // Lay the base once. A project that already has a network keeps
+              // it; from here it grows chapter by chapter as scenes commit,
+              // rather than being re-derived from the synopsis every run.
+              seedOnly: true,
               onProgress: () => heartbeat()
             }),
           undefined,
@@ -1196,13 +1210,21 @@ export function useVolumeStoryGenerator() {
           all_dropped:
             "Suggested relationships were dropped — the model's names didn't match the cast.",
           all_duplicate: 'All suggested relationships already existed.',
+          all_unorderable:
+            'Suggested relationships contradicted existing ones that start at the same chapter — nothing could be ordered against them.',
+          already_seeded:
+            'This story already has a network — it grows from the chapters as they are written.',
           too_few_characters: 'Not enough characters yet to form relationships.'
         }
+        baseWasLaid = netResult.reason !== 'already_seeded'
         const rels = netResult.characterRelationships
         const edges = netResult.graphEdges
         const droppedN = netResult.dropped || 0
         let detail = `${rels} relationships, ${edges} edges`
         if (droppedN) detail += ` · ${droppedN} dropped`
+        // A reversal that supersedes an earlier claim is the thing this stage
+        // could not previously express, so it is worth saying when it happens.
+        if (netResult.superseded) detail += ` · ${netResult.superseded} superseded`
         actLog.appendThought(
           currentTaskId,
           networkPhase,
@@ -1348,7 +1370,7 @@ export function useVolumeStoryGenerator() {
       // the arc would sit in the bible with no edges at all. Re-weave under the
       // network stage's own budget rather than inside the planner's — a slow
       // relationship pass must not be able to kill a plan that already succeeded.
-      if (castGrew) {
+      if (castGrew && baseWasLaid) {
         const reweavePhase = actLog.addPhase(currentTaskId, 'Story Network')
         try {
           // Deliberately NOT the 'network' stage key: `updateGenRunStage` derives
@@ -1368,6 +1390,11 @@ export function useVolumeStoryGenerator() {
                 genre,
                 tone,
                 signal: stageSignal,
+                // Still the opening state: the cast grew, but these are the
+                // relationships the story STARTS with, not ones that develop.
+                atChapter: 1,
+                runId: generationTraceId.value || null,
+                volumeId: vId,
                 onProgress: () => heartbeat()
               }),
             STAGE_IDLE_TIMEOUT_MS.network,

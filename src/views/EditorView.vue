@@ -397,7 +397,14 @@ function handleOnboardingSkipWrapper() {
       </template>
 
       <template #timeline>
-        <TimelineView />
+        <!-- A timeline event knows the scene that established it, so clicking one
+             opens that scene — the same navigation the consistency and beta-reader
+             panels use for their findings. -->
+        <TimelineView
+          @open-scene="
+            handleConsistencyNavigate({ type: 'open-section', payload: { subsectionId: $event } })
+          "
+        />
       </template>
 
       <template #archive>

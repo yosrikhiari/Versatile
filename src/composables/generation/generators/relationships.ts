@@ -4,8 +4,11 @@ import {
   addCharacterRelationshipsBatch,
   addGraphEdgesBatch,
   getGraphEdges,
-  getCharacterRelationships
+  getCharacterRelationships,
+  updateCharacterRelationship,
+  updateGraphEdge
 } from '../../../services/dbService'
+import { planEdgeWrites, type TemporalEdge } from '../../../services/generation/edgeTimeline'
 
 // Stage B — the Story Network. After the Story Bible entities are committed (so
 // they have stable IDs), generate the deliberate relationships between them in a
@@ -368,7 +371,11 @@ export async function generateRelationships({
   genre,
   tone,
   signal,
-  onProgress
+  onProgress,
+  atChapter,
+  runId,
+  volumeId,
+  seedOnly = false
 }: {
   projectId: any
   characters: any
@@ -378,6 +385,23 @@ export async function generateRelationships({
   genre: any
   tone: any
   signal: any
+  /**
+   * The chapter these relationships describe. Defaults to 1 — the opening weave
+   * runs before any prose exists, so what it maps is the story's starting state,
+   * not a timeless truth. Later weaves pass the chapter they are reading from,
+   * which is what lets a reversal supersede an earlier claim instead of being
+   * discarded as a duplicate of it.
+   */
+  atChapter?: number | null
+  /** Which generation asserted this, so a bad run can be identified afterwards. */
+  runId?: string | null
+  volumeId?: string | null
+  /**
+   * Lay the base only if there isn't one. With this set, a project that already
+   * has a network is left alone and no model call is made at all — the network
+   * grows from chapters after that, not from re-guessing the synopsis.
+   */
+  seedOnly?: boolean
   /**
    * Called as tokens arrive. This stage is one long structured call with no
    * intermediate units of work, so the token stream is the only progress a stage
@@ -389,6 +413,31 @@ export async function generateRelationships({
   if (!projectId) throw new Error('generateRelationships requires a projectId')
   if (!characters || characters.length < 2) {
     return { characterRelationships: 0, graphEdges: 0, dropped: 0, reason: 'too_few_characters' }
+  }
+
+  // The base is laid once.
+  //
+  // This stage used to re-derive the entire project's network on every run, from
+  // the synopsis, at temperature 0.5, with no memory of what it had decided
+  // before — so a second volume re-answered a question the first had already
+  // answered, differently, and the differences were then discarded by the dedupe
+  // as duplicates. What the story needs from this stage is a starting state; what
+  // happens after that is established by chapters as they are written, which
+  // `commitSync` records against the chapter it happened in.
+  if (seedOnly) {
+    const already = await getGraphEdges(projectId).catch(() => [])
+    const alreadyRels = await getCharacterRelationships(projectId).catch(() => [])
+    if (already.length > 0 || alreadyRels.length > 0) {
+      return {
+        characterRelationships: 0,
+        graphEdges: 0,
+        dropped: 0,
+        superseded: 0,
+        unorderable: 0,
+        atChapter: atChapter ?? 1,
+        reason: 'already_seeded'
+      }
+    }
   }
 
   // A single structured call on a small local model frequently comes back empty
@@ -466,40 +515,95 @@ export async function generateRelationships({
     plotThreads
   })
 
-  // Dedupe against what already exists so re-running the stage doesn't pile up.
+  // Place these claims in time, and reconcile them against what the graph
+  // already asserts. `planEdgeWrites` replaces a dedupe that keyed on the
+  // endpoint pair alone — under which "allies" and "enemies" were the same row,
+  // so the second one was discarded as a duplicate no matter how many chapters
+  // apart they were meant to be true.
   const existingRels = await getCharacterRelationships(projectId)
-  const existingRelKeys = new Set(
-    existingRels.map((r: any) => [r.fromCharacterId, r.toCharacterId].sort((a, b) => a - b).join('|'))
-  )
-  const freshRels = characterRelationships.filter(
-    (r) =>
-      !existingRelKeys.has([r.fromCharacterId, r.toCharacterId].sort((a, b) => a - b).join('|'))
-  )
+  // char↔char lives in its own typed, backend-synced table, so it is planned
+  // separately — but against the same window rules, from the same code.
+  const existingRelEdges: TemporalEdge[] = existingRels.map((r: any) => ({
+    id: r.id,
+    sourceId: String(r.fromCharacterId),
+    sourceType: 'character',
+    targetId: String(r.toCharacterId),
+    targetType: 'character',
+    relationshipType: r.type || 'connected',
+    validFromChapter: r.validFromChapter ?? null,
+    validUntilChapter: r.validUntilChapter ?? null
+  }))
 
-  const existingEdges = await getGraphEdges(projectId)
-  const existingEdgeKeys = new Set(
-    existingEdges.map((e: any) => `${e.sourceType}:${e.sourceId}|${e.targetType}:${e.targetId}`)
-  )
-  const freshEdges = graphEdges.filter(
-    (e) => !existingEdgeKeys.has(`${e.sourceType}:${e.sourceId}|${e.targetType}:${e.targetId}`)
-  )
+  const relPlan = planEdgeWrites({
+    existing: existingRelEdges,
+    proposed: characterRelationships.map((r) => ({
+      ...r,
+      sourceId: String(r.fromCharacterId),
+      sourceType: 'character',
+      targetId: String(r.toCharacterId),
+      targetType: 'character',
+      relationshipType: r.type
+    })),
+    atChapter,
+    runId,
+    volumeId
+  })
+
+  const edgePlan = planEdgeWrites({
+    existing: (await getGraphEdges(projectId)) as TemporalEdge[],
+    proposed: graphEdges,
+    atChapter,
+    runId,
+    volumeId
+  })
+
+  // Close superseded claims BEFORE opening the ones that replace them, so the
+  // graph is never briefly asserting both sides of a reversal at once.
+  for (const s of [...relPlan.supersedes]) {
+    await updateCharacterRelationship(s.id, { validUntilChapter: s.validUntilChapter }).catch(
+      (err: any) => console.warn('[generateRelationships] could not close relationship:', err)
+    )
+  }
+  for (const s of edgePlan.supersedes) {
+    await updateGraphEdge(s.id, { validUntilChapter: s.validUntilChapter }).catch((err: any) =>
+      console.warn('[generateRelationships] could not close edge:', err)
+    )
+  }
+
+  const freshRels = relPlan.inserts.map((r: any) => ({
+    fromCharacterId: r.fromCharacterId,
+    toCharacterId: r.toCharacterId,
+    type: r.type,
+    notes: r.notes,
+    validFromChapter: r.validFromChapter,
+    validUntilChapter: r.validUntilChapter,
+    runId: r.runId
+  }))
 
   if (freshRels.length) await addCharacterRelationshipsBatch(projectId, freshRels)
-  if (freshEdges.length) await addGraphEdgesBatch(projectId, freshEdges)
+  if (edgePlan.inserts.length) await addGraphEdgesBatch(projectId, edgePlan.inserts)
+
+  const superseded = relPlan.supersedes.length + edgePlan.supersedes.length
+  const unorderable = relPlan.unorderable.length + edgePlan.unorderable.length
 
   // Explain a zero result so the UI/console can distinguish "model said nothing",
   // "names didn't match the cast", and "everything already existed".
   let reason = 'ok'
   if (aiTotal === 0) {
     reason = 'ai_empty'
-  } else if (freshRels.length === 0 && freshEdges.length === 0) {
-    reason = dropped.length > 0 ? 'all_dropped' : 'all_duplicate'
+  } else if (freshRels.length === 0 && edgePlan.inserts.length === 0) {
+    if (dropped.length > 0) reason = 'all_dropped'
+    else if (unorderable > 0) reason = 'all_unorderable'
+    else reason = 'all_duplicate'
   }
 
   return {
     characterRelationships: freshRels.length,
-    graphEdges: freshEdges.length,
+    graphEdges: edgePlan.inserts.length,
     dropped: dropped.length,
+    superseded,
+    unorderable,
+    atChapter: atChapter ?? 1,
     reason
   }
 }

@@ -1,7 +1,6 @@
 import { computeSummary } from '../utils'
 import { proseToHtml, countProseWords } from '../writing/liveDraft'
-import { buildSceneDigest } from '../../../services/generation/sceneDigest'
-import { putSceneDigest } from '../../../services/db-digests'
+import { writeSceneAnalysis } from '../../../services/generation/sceneAnalysis'
 
 export class CommitService {
   writeParams: any
@@ -180,18 +179,15 @@ export class CommitService {
     // it must never be the thing that loses a committed scene — but the failure
     // is returned to the caller's health ledger rather than swallowed.
     if (scene.subsectionId && projectId) {
-      try {
-        await putSceneDigest(
-          buildSceneDigest({
-            projectId,
-            subsectionId: scene.subsectionId,
-            prose: fullProse,
-            structured: { ...structured, summary },
-            scene
-          })
-        )
-      } catch (err: any) {
-        console.warn('[CommitService] scene digest not written:', err?.message || err)
+      const analysis = await writeSceneAnalysis({
+        projectId,
+        subsectionId: scene.subsectionId,
+        prose: fullProse,
+        structured: { ...structured, summary },
+        scene
+      })
+      for (const detail of analysis.errors) {
+        console.warn('[CommitService]', detail)
       }
     }
 

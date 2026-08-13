@@ -1,7 +1,8 @@
 import { aiGenerateJson } from '../useAiService'
 import { runDeterministicContradictionChecks, generateContradictionCandidates, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
-import { getProjectDigests } from '../../services/db-digests'
+import { getProjectDigests, getEntityStateTimeline } from '../../services/db-digests'
 import type { SceneDigest } from '../../services/generation/sceneDigest'
+import type { EntityStateRecord } from '../../services/generation/entityStates'
 
 const CONTRADICTION_SCHEMA = {
   type: 'object',
@@ -45,15 +46,28 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
   // 1. Get scene digests for deterministic rule checking
   const projectId = scenes[0]?.projectId
   let sceneDigests: SceneDigest[] = []
+  let entityStates: EntityStateRecord[] = []
   if (projectId) {
     sceneDigests = await getProjectDigests(projectId)
+    // The entity-state timeline is what the deterministic rules actually run on.
+    // Absent (a project analysed before the state layer had a writer) it degrades
+    // to the digest-only rules rather than failing the pass.
+    entityStates = await getEntityStateTimeline(projectId).catch(() => [])
   }
-  
+
   // 2. Run deterministic contradiction rules (zero LLM calls)
-  const deterministicContradictions = await runDeterministicContradictionChecks(sceneDigests, scenes)
-  
+  const deterministicContradictions = await runDeterministicContradictionChecks(
+    sceneDigests,
+    scenes,
+    entityStates
+  )
+
   // 3. Generate candidate pairs for LLM verification
-  const candidates = generateContradictionCandidates(sceneDigests, deterministicContradictions)
+  const candidates = generateContradictionCandidates(
+    sceneDigests,
+    deterministicContradictions,
+    entityStates
+  )
   
   // 5. Targeted LLM verification only for surviving candidates
   // Build a focused fact ledger only for candidate scenes
@@ -63,24 +77,39 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
     candidateSceneIds.add(c.sceneB)
   }
   
+  // Deterministic findings are normalised ONCE, here, and reused on both exits.
+  // Previously only the no-candidates path built `betweenScenes` and `action`,
+  // so as soon as a single candidate pair existed every deterministic finding
+  // lost its scene references and its "Jump to Scene" — exactly the findings
+  // that carry precise scene ids in the first place.
+  const deterministicResults = deterministicContradictions.map((c, i) => ({
+    id: `contradiction-${i}`,
+    severity: c.severity,
+    category: c.type,
+    pass: 'contradictions',
+    title: c.description.split('.')[0],
+    description: c.description,
+    // The facts the rule fired on. A deterministic finding an author can't
+    // trace back to a sentence reads as a false positive whether or not it is.
+    evidence: c.evidence ?? [],
+    betweenScenes: c.sceneIds.map(
+      (sid) => `Scene ${scenes.find((s: any) => s.id === sid)?.sceneNumber ?? '?'}`
+    ),
+    action:
+      c.sceneIds.length > 0
+        ? {
+            label: 'Jump to Scene',
+            type: 'open-section',
+            payload: { subsectionId: c.sceneIds[0] },
+            sceneId: c.sceneIds[0]
+          }
+        : null
+  }))
+
   // 4. If no candidates, return deterministic results only
-  if (candidates.length === 0) {
-    return deterministicContradictions.map((c, i) => ({
-      id: `contradiction-${i}`,
-      severity: c.severity,
-      category: c.type,
-      title: c.description.split('.')[0],
-      description: c.description,
-      betweenScenes: c.sceneIds.map((sid) => `Scene ${scenes.find((s: any) => s.id === sid)?.sceneNumber ?? '?'}`),
-      action: c.sceneIds.length > 0 ? {
-        label: 'Jump to Scene',
-        type: 'open-section',
-        payload: { subsectionId: c.sceneIds[0] },
-        sceneId: c.sceneIds[0]
-      } : null
-    }))
-  }
-  
+  if (candidates.length === 0) return deterministicResults
+
+
   const relevantLedgers = sceneLedgers.filter((l: any) => 
     candidateSceneIds.has(l.sceneId ?? l.id)
   )
@@ -140,16 +169,6 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
     }
   }
   
-  // Combine deterministic + LLM results
-  const allContradictions = [...deterministicContradictions, ...llmContradictions]
-  
-  return allContradictions.map((c, i) => ({
-    id: c.id ?? `contradiction-${i}`,
-    severity: c.severity,
-    category: c.category ?? c.type ?? 'contradiction',
-    title: c.title ?? c.description?.split('.')[0] ?? 'Contradiction',
-    description: c.description,
-    betweenScenes: c.betweenScenes ?? [],
-    action: c.action ?? null
-  }))
+  // Combine deterministic + LLM results. Both are already in display shape.
+  return [...deterministicResults, ...llmContradictions]
 }

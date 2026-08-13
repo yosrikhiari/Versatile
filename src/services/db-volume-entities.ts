@@ -139,9 +139,23 @@ export async function updateVolumeEdgeVolume(edgeId: string, newVolumeId: string
   return db.graphEdges.update(edgeId, { volumeId: newVolumeId })
 }
 
+/**
+ * A volume's edges, optionally including the project-global ones.
+ *
+ * The global half used to be `.or('volumeId').equals(null)`. `null` is not a
+ * valid IndexedDB key: a row with `volumeId: null` is not in the `volumeId`
+ * index at all, and Dexie rejects the key outright — so the include-global call
+ * (the default, and what `loadVolumeEdges` uses) threw rather than returning
+ * anything. It has to be a filter, because the rows it wants are precisely the
+ * ones the index cannot see.
+ *
+ * `== null` deliberately: the Story Network stage wrote edges with no `volumeId`
+ * key at all (undefined), while `buildPreliminaryEdges` wrote an explicit
+ * `null`. Both mean "global", and both must be caught.
+ */
 export async function getVolumeEdges(volumeId: string, includeGlobal = true) {
-  if (includeGlobal) {
-    return db.graphEdges.where('volumeId').equals(volumeId).or('volumeId').equals(null).toArray()
-  }
-  return db.graphEdges.where('volumeId').equals(volumeId).toArray()
+  if (!includeGlobal) return db.graphEdges.where('volumeId').equals(volumeId).toArray()
+  return db.graphEdges
+    .filter((e: any) => e.volumeId === volumeId || e.volumeId == null)
+    .toArray()
 }

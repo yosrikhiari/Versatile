@@ -4,6 +4,7 @@ import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { countWords } from '../utils/textUtils'
 import { estimateTokens } from '../services/ai/contextBudget'
+import { sliceEdgesAtChapter } from '../services/generation/edgeTimeline'
 import {
   DOC_TYPES,
   getAllStoryDocuments,
@@ -235,36 +236,122 @@ function generateWorldDoc() {
   return parts.join('\n---\n')
 }
 
-function generateTimelineDoc() {
+/**
+ * The Timeline document.
+ *
+ * This used to be the plot-thread list sorted by `timelineOrder` — an integer
+ * set by dragging cards in the Timeline view, with no relation to chapters,
+ * scenes or prose. It was handed to the writer under a `# Timeline` heading, so
+ * the model's entire notion of when things happen was the order in which a human
+ * last rearranged some cards.
+ *
+ * It is now the real chapter axis when there is one: what happens in each
+ * chapter, who is in it, and what changed — deaths, revelations, objects
+ * destroyed, relationships reversing. The thread list is kept underneath it,
+ * because a thread's arc is genuinely useful and the drag order is still the
+ * only ordering threads have.
+ */
+async function generateTimelineDoc(projectId?: any) {
   const storyBibleStore = useStoryBibleStore()
   const projectStore = useProjectStore()
   const terms = projectStore.terminology
   const threads = storyBibleStore.plotThreads
 
-  if (threads.length === 0) return ''
-
-  const sorted = [...threads].sort((a, b) => {
-    return (a.timelineOrder ?? 999) - (b.timelineOrder ?? 999)
-  })
+  const chapterBody = projectId ? await buildChapterTimelineBody(projectId) : ''
+  if (threads.length === 0 && !chapterBody) return ''
 
   const parts = [`# ${terms.plotThreads || 'Timeline'}`]
+  if (chapterBody) parts.push(chapterBody)
 
-  for (const t of sorted) {
-    const statusLabel = t.status ? t.status.replace('_', ' ') : 'unknown'
-    const entry = [`## ${t.title} (${statusLabel})`]
-    if (t.notes) entry.push(t.notes)
-    if (t.traits?.length) entry.push(`Traits: ${t.traits.join(', ')}`)
-    parts.push(entry.join('\n'))
+  if (threads.length > 0) {
+    const sorted = [...threads].sort((a, b) => {
+      return (a.timelineOrder ?? 999) - (b.timelineOrder ?? 999)
+    })
+    // Heading only when the chapter axis is above it, so a project with no
+    // chapters yet renders exactly as it always did.
+    if (chapterBody) parts.push('# Plot Threads')
+    for (const t of sorted) {
+      const statusLabel = t.status ? t.status.replace('_', ' ') : 'unknown'
+      const entry = [`## ${t.title} (${statusLabel})`]
+      if (t.notes) entry.push(t.notes)
+      if (t.traits?.length) entry.push(`Traits: ${t.traits.join(', ')}`)
+      parts.push(entry.join('\n'))
+    }
   }
 
   return parts.join('\n---\n')
 }
 
-function generateRelationshipsDoc() {
-  const storyGraphStore = useStoryGraphStore()
-  const edges = storyGraphStore.edges
+/**
+ * Chapter axis for the Timeline doc, or '' when the project has none.
+ *
+ * Best-effort: a document build must not fail because a derived table is
+ * unavailable. Falling back to no chapter section reproduces the old document
+ * exactly, which is the right degradation.
+ */
+async function buildChapterTimelineBody(projectId: any) {
+  try {
+    const [{ getProjectChapterDigests, getEntityStateTimeline }, { buildStoryTimeline, renderTimelineMarkdown }] =
+      await Promise.all([
+        import('../services/db-digests'),
+        import('../services/generation/storyTimeline')
+      ])
+    const storyGraphStore = useStoryGraphStore()
+    const manuscriptStore = useManuscriptStore()
+    const maps = getLookupMaps()
 
-  if (edges.length === 0) return ''
+    const [chapterDigests, entityStates] = await Promise.all([
+      getProjectChapterDigests(projectId).catch(() => []),
+      getEntityStateTimeline(projectId).catch(() => [])
+    ])
+
+    const chapterTitles: Record<number, string> = {}
+    ;(manuscriptStore.sortedSections as any[]).forEach((section: any, i: number) => {
+      chapterTitles[i + 1] = section.title || `Chapter ${i + 1}`
+    })
+
+    const timeline = buildStoryTimeline({
+      chapterDigests,
+      entityStates,
+      edges: storyGraphStore.edges as any[],
+      chapterTitles,
+      resolveName: (type: any, id: any) => resolveEntityName(type, id, maps) || ''
+    })
+    return renderTimelineMarkdown(timeline)
+  } catch (err) {
+    console.warn('[useStoryDocuments] chapter timeline unavailable:', err)
+    return ''
+  }
+}
+
+/**
+ * The Relationships document.
+ *
+ * `atChapter` renders the graph as it stood at that chapter. Without one the doc
+ * renders the CURRENT state — claims that are still open — and lists superseded
+ * ones separately under their windows.
+ *
+ * That separation is the point. Before edges carried a validity window every
+ * claim the project had ever held was dumped into one undifferentiated list, so
+ * an alliance that ended in chapter 12 and the enmity that replaced it read as
+ * two simultaneous facts about the same pair — and the writer was handed both,
+ * for every chapter, with nothing to tell them apart.
+ */
+function generateRelationshipsDoc(atChapter: number | null = null) {
+  const storyGraphStore = useStoryGraphStore()
+  const allEdges = storyGraphStore.edges
+
+  if (allEdges.length === 0) return ''
+
+  const edges =
+    atChapter != null
+      ? sliceEdgesAtChapter(allEdges as any[], atChapter)
+      : (allEdges as any[]).filter((e: any) => e.validUntilChapter == null)
+  // Everything that was true and no longer is — rendered as history, not as fact.
+  const superseded =
+    atChapter != null ? [] : (allEdges as any[]).filter((e: any) => e.validUntilChapter != null)
+
+  if (edges.length === 0 && superseded.length === 0) return ''
 
   const relevantEdges = edges.filter(
     (e) =>
@@ -274,8 +361,6 @@ function generateRelationshipsDoc() {
       (e.sourceType === 'location' && e.targetType === 'character') ||
       (e.sourceType === 'plotThread' && e.targetType === 'character')
   )
-
-  if (relevantEdges.length === 0) return ''
 
   const byCharacter: Record<string, string[]> = {}
   const maps = getLookupMaps()
@@ -301,12 +386,28 @@ function generateRelationshipsDoc() {
     if (!byCharacter[charName].includes(line)) byCharacter[charName].push(line)
   }
 
+  // What used to be true, with the window it was true in. Kept short — this is
+  // context for not re-asserting a dead alliance, not a changelog.
+  const historyLines: string[] = []
+  for (const e of superseded) {
+    const a = resolveEntityName(e.sourceType, e.sourceId, maps)
+    const b = resolveEntityName(e.targetType, e.targetId, maps)
+    if (!a || !b) continue
+    const from = e.validFromChapter ?? 1
+    const label = getRelationshipLabel(e.relationshipType)
+    const line = `- **${a}** ${label} **${b}** — chapters ${from}–${e.validUntilChapter} (no longer true)`
+    if (!historyLines.includes(line)) historyLines.push(line)
+  }
+
   // Every edge may have been dropped as orphaned — don't emit a bare header.
-  if (Object.keys(byCharacter).length === 0) return ''
+  if (Object.keys(byCharacter).length === 0 && historyLines.length === 0) return ''
 
   const parts = ['# Relationships']
   for (const [name, rels] of Object.entries(byCharacter)) {
     parts.push(`## ${name}\n${rels.join('\n')}`)
+  }
+  if (historyLines.length) {
+    parts.push(`## No Longer True\n${historyLines.join('\n')}`)
   }
 
   return parts.join('\n---\n')
@@ -727,7 +828,7 @@ async function buildStoryContextAuto(projectId: any) {
   push(generateSynopsisDoc())
   push(await generateCharactersDoc(projectId))
   push(generateWorldDoc())
-  push(generateTimelineDoc())
+  push(await generateTimelineDoc(projectId))
   push(generateRelationshipsDoc())
   push(generateStorySoFarDoc())
   push(generateStyleGuideDoc())
@@ -805,7 +906,7 @@ async function regenerateDocument(projectId: any, docType: any) {
       content = generateWorldDoc()
       break
     case DOC_TYPES.TIMELINE:
-      content = generateTimelineDoc()
+      content = await generateTimelineDoc(projectId)
       break
     case DOC_TYPES.RELATIONSHIPS:
       content = generateRelationshipsDoc()

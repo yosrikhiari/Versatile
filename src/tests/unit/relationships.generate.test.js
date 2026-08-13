@@ -5,6 +5,8 @@ const mockAddRels = vi.fn(async () => [])
 const mockAddEdges = vi.fn(async () => [])
 const mockGetRels = vi.fn(async () => [])
 const mockGetEdges = vi.fn(async () => [])
+const mockUpdateRel = vi.fn(async () => undefined)
+const mockUpdateEdge = vi.fn(async () => undefined)
 
 vi.mock('@/composables/useAiService', () => ({
   aiGenerateJson: (...args) => mockAiGenerateJson(...args)
@@ -14,7 +16,9 @@ vi.mock('@/services/dbService', () => ({
   addCharacterRelationshipsBatch: (...a) => mockAddRels(...a),
   addGraphEdgesBatch: (...a) => mockAddEdges(...a),
   getCharacterRelationships: (...a) => mockGetRels(...a),
-  getGraphEdges: (...a) => mockGetEdges(...a)
+  getGraphEdges: (...a) => mockGetEdges(...a),
+  updateCharacterRelationship: (...a) => mockUpdateRel(...a),
+  updateGraphEdge: (...a) => mockUpdateEdge(...a)
 }))
 
 let generateRelationships
@@ -166,5 +170,63 @@ describe('generateRelationships — robustness & diagnosability', () => {
     expect(res.graphEdges).toBe(1)
     expect(mockAddRels).toHaveBeenCalledTimes(1)
     expect(mockAddEdges).toHaveBeenCalledTimes(1)
+  })
+})
+
+// The base is laid once, and everything after it is a chapter's contribution.
+// This stage used to re-derive the whole project's network from the synopsis on
+// every run, at temperature 0.5, with no memory of what it decided last time —
+// so a second volume re-answered a question the first had already answered,
+// differently, and the difference was then discarded by the dedupe.
+describe('generateRelationships — seeding', () => {
+  it('makes no model call at all when the network already exists', async () => {
+    mockGetEdges.mockResolvedValue([{ id: 1, sourceId: '1', targetId: '2' }])
+    const res = await generateRelationships({ ...cast, seedOnly: true })
+    expect(res.reason).toBe('already_seeded')
+    expect(mockAiGenerateJson).not.toHaveBeenCalled()
+    expect(mockAddEdges).not.toHaveBeenCalled()
+  })
+
+  it('treats existing character relationships as a network too', async () => {
+    mockGetRels.mockResolvedValue([{ id: 1, fromCharacterId: 1, toCharacterId: 2, type: 'ally' }])
+    const res = await generateRelationships({ ...cast, seedOnly: true })
+    expect(res.reason).toBe('already_seeded')
+    expect(mockAiGenerateJson).not.toHaveBeenCalled()
+  })
+
+  it('lays the base when there is nothing there', async () => {
+    mockAiGenerateJson.mockResolvedValue({
+      characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }]
+    })
+    const res = await generateRelationships({ ...cast, seedOnly: true })
+    expect(res.reason).not.toBe('already_seeded')
+    expect(mockAiGenerateJson).toHaveBeenCalled()
+  })
+
+  it('stamps the opening claims at the chapter it was told', async () => {
+    mockAiGenerateJson.mockResolvedValue({
+      characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'ally' }],
+      characterLocations: [{ character: 'Alice', location: 'The Keep', relationship: 'home' }]
+    })
+    await generateRelationships({ ...cast, atChapter: 1, runId: 'run-7', volumeId: 'v1' })
+    expect(mockAddEdges.mock.calls[0][1][0]).toMatchObject({
+      validFromChapter: 1,
+      validUntilChapter: null,
+      runId: 'run-7',
+      volumeId: 'v1'
+    })
+  })
+
+  it('closes an earlier claim when a later chapter reverses it', async () => {
+    mockGetRels.mockResolvedValue([
+      { id: 5, fromCharacterId: 1, toCharacterId: 2, type: 'ally', validFromChapter: 1 }
+    ])
+    mockAiGenerateJson.mockResolvedValue({
+      characterRelationships: [{ from: 'Alice', to: 'Bob', type: 'enemy' }]
+    })
+    const res = await generateRelationships({ ...cast, atChapter: 13 })
+    expect(mockUpdateRel).toHaveBeenCalledWith(5, { validUntilChapter: 12 })
+    expect(res.superseded).toBe(1)
+    expect(res.characterRelationships).toBe(1)
   })
 })

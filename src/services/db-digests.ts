@@ -7,6 +7,7 @@
  */
 import { db as _db } from './db-core'
 import { isDigestStale, type SceneDigest } from './generation/sceneDigest'
+import type { EntityStateRecord } from './generation/entityStates'
 
 const db = _db as any
 
@@ -100,15 +101,15 @@ export interface VolumeDigest {
   summary: string
 }
 
-/** Entity state timeline — tracks entity state changes per scene for contradiction detection. */
-export interface EntityState {
-  projectId: string
-  entityType: 'character' | 'location' | 'object' | 'plotThread'
-  entityId: string
-  sceneId: string
-  stateHash: string
-  updatedAt: string
-}
+/**
+ * Entity state timeline — what was true of each entity, at each point in the story.
+ *
+ * The row shape lives with the derivation in `generation/entityStates`, which is
+ * the only thing that produces one. This alias keeps the historical import path
+ * working for the contradiction rules.
+ */
+export type { EntityStateRecord }
+export type EntityState = EntityStateRecord
 
 export async function putChapterDigest(digest: ChapterDigest) {
   const existing = await db.chapterDigests
@@ -190,9 +191,53 @@ export async function getEntityStatesForScene(
   projectId: string,
   sceneId: string
 ): Promise<EntityState[]> {
-  return db.entityStates
-    .where('[projectId+entityType+entityId+sceneId]')
-    .equals([projectId, '', '', sceneId]) // workaround for compound index
-    .toArray()
-    .then((rows: any[]) => rows.filter((r: any) => r.sceneId === sceneId))
+  // Was a query against `[projectId, '', '', sceneId]` on the four-part compound
+  // index — a key no row can ever hold, since entityType and entityId are never
+  // empty — followed by a filter over the empty result. It could only ever
+  // return nothing. v47 adds the `[projectId+sceneId]` index this needs.
+  return db.entityStates.where('[projectId+sceneId]').equals([projectId, sceneId]).toArray()
+}
+
+/**
+ * Replace every state row for one scene, in one transaction.
+ *
+ * Replace rather than merge: a scene's states are wholly derived from its prose,
+ * so when the prose changes the old rows are not stale-but-useful, they are
+ * wrong. Leaving them would let a character who was killed in a draft stay dead
+ * in the timeline after the author rewrote the scene — a contradiction reported
+ * against text that no longer exists.
+ */
+export async function replaceSceneEntityStates(
+  projectId: string,
+  sceneId: string,
+  states: EntityState[]
+) {
+  return db.transaction('rw', db.entityStates, async () => {
+    const existing = await db.entityStates
+      .where('[projectId+sceneId]')
+      .equals([projectId, sceneId])
+      .primaryKeys()
+    if (existing.length) await db.entityStates.bulkDelete(existing)
+    if (states.length) await db.entityStates.bulkAdd(states)
+    return states.length
+  })
+}
+
+/** Every state row for a project, in story order (chapter, then scene). */
+export async function getEntityStateTimeline(projectId: string): Promise<EntityState[]> {
+  const rows = await db.entityStates.where('projectId').equals(projectId).toArray()
+  return rows.sort(
+    (a: any, b: any) =>
+      (a.chapterNumber ?? 0) - (b.chapterNumber ?? 0) || (a.sceneNumber ?? 0) - (b.sceneNumber ?? 0)
+  )
+}
+
+/** Drop a scene's states — used when the scene itself is deleted. */
+export async function deleteSceneEntityStates(projectId: string, sceneId: string) {
+  const keys = await db.entityStates
+    .where('[projectId+sceneId]')
+    .equals([projectId, sceneId])
+    .primaryKeys()
+  if (keys.length) await db.entityStates.bulkDelete(keys)
+  return keys.length
 }

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockGetProjectDigests = vi.fn()
 const mockPutSceneDigest = vi.fn()
+const mockReplaceSceneEntityStates = vi.fn()
 const mockAwaitForegroundIdle = vi.fn()
 const mockEnqueueAnalysisTasks = vi.fn()
 const mockClaimNextAnalysisTask = vi.fn()
@@ -12,7 +13,8 @@ const mockGetAnalysisQueueStats = vi.fn()
 
 vi.mock('@/services/db-digests', () => ({
   getProjectDigests: (...a) => mockGetProjectDigests(...a),
-  putSceneDigest: (...a) => mockPutSceneDigest(...a)
+  putSceneDigest: (...a) => mockPutSceneDigest(...a),
+  replaceSceneEntityStates: (...a) => mockReplaceSceneEntityStates(...a)
 }))
 vi.mock('@/services/providerGate', () => ({
   awaitForegroundIdle: (...a) => mockAwaitForegroundIdle(...a)
@@ -32,6 +34,7 @@ beforeEach(async () => {
   vi.clearAllMocks()
   mockGetProjectDigests.mockResolvedValue([])
   mockPutSceneDigest.mockResolvedValue(1)
+  mockReplaceSceneEntityStates.mockImplementation(async (_p, _s, states) => states.length)
   mockAwaitForegroundIdle.mockResolvedValue(undefined)
   mockEnqueueAnalysisTasks.mockResolvedValue([1, 2])
   mockClaimNextAnalysisTask.mockResolvedValue(null)

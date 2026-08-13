@@ -21,8 +21,9 @@
  * tab close/crash and can be resumed.
  */
 import { ref, computed } from 'vue'
-import { getProjectDigests, putSceneDigest } from '../services/db-digests'
-import { buildSceneDigest, isDigestStale } from '../services/generation/sceneDigest'
+import { getProjectDigests } from '../services/db-digests'
+import { isDigestStale } from '../services/generation/sceneDigest'
+import { writeSceneAnalysis } from '../services/generation/sceneAnalysis'
 import { awaitForegroundIdle } from '../services/providerGate'
 import { enqueueAnalysisTasks, claimNextAnalysisTask, completeAnalysisTask, failAnalysisTask, resetStuckAnalysisTasks, getAnalysisQueueStats, getAnalysisQueueItems, type AnalysisQueueItem } from '../services/analysisQueue'
 
@@ -112,15 +113,19 @@ export function useDigestBackfill() {
           const prose = payload.prose
           if (!prose) throw new Error('No prose in task payload')
 
-          await putSceneDigest(
-            buildSceneDigest({
-              projectId,
-              subsectionId: payload.subsectionId,
-              prose,
-              structured: { summary: payload.summary || '', metadataStatus: 'skipped' },
-              scene: payload.scene
-            })
-          )
+          const analysis = await writeSceneAnalysis({
+            projectId,
+            subsectionId: payload.subsectionId,
+            prose,
+            structured: { summary: payload.summary || '', metadataStatus: 'skipped' },
+            scene: payload.scene
+          })
+          // A digest that could not be written is a failed task; states are a
+          // best-effort layer on top and only get logged.
+          if (!analysis.digest) throw new Error(analysis.errors.join('; ') || 'digest not written')
+          for (const detail of analysis.errors) {
+            console.warn('[useDigestBackfill]', detail)
+          }
 
           await completeAnalysisTask(task.id!)
           totalProcessed++

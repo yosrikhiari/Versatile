@@ -324,23 +324,34 @@ describe('document generators', () => {
     })
   })
 
+  // The Timeline doc is now async: with a projectId it reads the chapter axis
+  // (chapter digests + entity states + edge windows) and renders that above the
+  // thread list. Called without one — as these cases do — it degrades to exactly
+  // the thread list it always was, which is what keeps a project with no
+  // analysed chapters rendering the same document as before.
   describe('generateTimelineDoc', () => {
-    it('returns empty when no threads', () => {
-      expect(generateTimelineDoc()).toBe('')
+    it('returns empty when no threads', async () => {
+      expect(await generateTimelineDoc()).toBe('')
     })
 
-    it('renders sorted plot threads', () => {
+    it('renders sorted plot threads', async () => {
       mockBibleStore.plotThreads = [
         { title: 'End', status: 'completed', timelineOrder: 2, notes: 'Finale' },
         { title: 'Start', status: 'open', timelineOrder: 1 }
       ]
-      const result = generateTimelineDoc()
+      const result = await generateTimelineDoc()
       expect(result).toContain('# Timeline')
       expect(result).toContain('Start (open)')
       expect(result).toContain('End (completed)')
       const startIdx = result.indexOf('Start')
       const endIdx = result.indexOf('End')
       expect(startIdx).toBeLessThan(endIdx)
+    })
+
+    it('does not emit a chapter section for a project with no chapter data', async () => {
+      mockBibleStore.plotThreads = [{ title: 'Start', status: 'open', timelineOrder: 1 }]
+      const result = await generateTimelineDoc()
+      expect(result).not.toContain('# Plot Threads')
     })
   })
 

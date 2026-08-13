@@ -353,5 +353,37 @@ export const SCHEMA_VERSIONS = [
       analysisQueue:
         '++id, projectId, taskType, payload, status, createdAt, updatedAt, [projectId+status]'
     }
+  },
+  /**
+   * v47: the story's time axis.
+   *
+   * Two problems, one shape. `entityStates` (v45) was declared with a four-part
+   * compound index and no way to ask the only question the write path needs —
+   * "what rows belong to this scene" — so `getEntityStatesForScene` queried an
+   * unreachable key and always returned nothing; `[projectId+sceneId]` is what
+   * makes replace-per-scene possible. `[projectId+chapterNumber]` is what makes
+   * a chapter slice cheap rather than a full-table scan on every prompt build.
+   *
+   * `graphEdges` gains a validity window. Until now an edge was an eternal
+   * assertion: the dedupe key was the endpoint pair alone, so the FIRST run to
+   * claim a pair owned it forever and a later reversal — allies in chapter 1,
+   * enemies in chapter 30 — was silently dropped as a duplicate. With
+   * `validFromChapter`/`validUntilChapter` the reversal is representable, and
+   * `runId` records which generation asserted it, so a bad run can be identified
+   * instead of being permanently fused into the graph.
+   *
+   * Existing edges have no window, which reads as "always true" — the previous
+   * behaviour exactly, so nothing already in the graph changes meaning.
+   */
+  {
+    version: 47,
+    stores: {
+      entityStates:
+        '++id, projectId, entityType, entityId, sceneId, stateHash, updatedAt, ' +
+        '&[projectId+entityType+entityId+sceneId], [projectId+sceneId], [projectId+chapterNumber], [projectId+entityType+entityId]',
+      graphEdges:
+        '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId, ' +
+        'validFromChapter, validUntilChapter, runId, [projectId+validFromChapter]'
+    }
   }
 ]
