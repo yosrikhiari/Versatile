@@ -86,7 +86,7 @@
     "@vitest/coverage-v8": "^4.1.10",
     "@vue/test-utils": "^2.4.0",
     "@vue/tsconfig": "^0.9.1",
-    "autoprefixer": "^10.4.0",
+    "autoprefixer": "^10.5.4",
     "chromatic": "^18.1.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.2",
