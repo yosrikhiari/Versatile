@@ -61,6 +61,7 @@ const emit = defineEmits([
   'export',
   'import',
   'export-pdf',
+  'export-rtf',
   'open-settings',
   'open-auth',
   'complete-onboarding',
@@ -95,6 +96,12 @@ const paletteActions = computed(() => [
   },
   { id: 'export', label: 'Export project', icon: 'upload', hint: 'Ctrl+S' },
   { id: 'export-pdf', label: 'Export to PDF', icon: 'file-text' },
+  {
+    id: 'export-rtf',
+    label: 'Export manuscript (RTF)',
+    icon: 'file-text',
+    keywords: ['word', 'docx', 'scrivener', 'manuscript']
+  },
   { id: 'import', label: 'Import project', icon: 'download', hint: 'Ctrl+I' },
   { id: 'project-settings', label: 'Project settings', icon: 'settings' },
   { id: 'all-projects', label: 'All projects', icon: 'layout-grid', keywords: ['workspace'] }
@@ -104,6 +111,7 @@ const PALETTE_ACTIONS = {
   'toggle-theme': () => toggleTheme(),
   export: () => emit('export'),
   'export-pdf': () => emit('export-pdf'),
+  'export-rtf': () => emit('export-rtf'),
   import: () => emit('import'),
   'project-settings': () => {
     showProjectSettings.value = true
@@ -519,6 +527,13 @@ watch(
           @click="emit('export-pdf')"
         >
           <BaseIcon name="file-text" :size="16" />
+        </button>
+        <button
+          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          title="Export manuscript (RTF — opens in Word, Docs, Scrivener)"
+          @click="emit('export-rtf')"
+        >
+          <BaseIcon name="book-open" :size="16" />
         </button>
         <button
           class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"

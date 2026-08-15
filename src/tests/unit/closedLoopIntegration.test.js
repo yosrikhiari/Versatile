@@ -12,9 +12,7 @@ function makeCritique(score, dimensionScores) {
     pass: true,
     score,
     dimensionScores,
-    issues: [
-      { type: Object.keys(dimensionScores)[0], severity: 'minor', text: 'issue' }
-    ],
+    issues: [{ type: Object.keys(dimensionScores)[0], severity: 'minor', text: 'issue' }],
     strengths: ['coherent']
   }
 }
@@ -37,8 +35,20 @@ describe('closed-loop generate → eval → adjust → re-eval → verify', () =
     expect(adjustment.givenHints[0].dimension).toBe('continuity')
     expect(adjustment.givenHints[0].avg).toBe(4)
 
-    const originalCritique = makeCritique(6, { continuity: 4, voice: 8, pacing: 7, show_tell: 5, emotional_goal: 9 })
-    const revisedCritique = makeCritique(8, { continuity: 7, voice: 8, pacing: 7, show_tell: 7, emotional_goal: 9 })
+    const originalCritique = makeCritique(6, {
+      continuity: 4,
+      voice: 8,
+      pacing: 7,
+      show_tell: 5,
+      emotional_goal: 9
+    })
+    const revisedCritique = makeCritique(8, {
+      continuity: 7,
+      voice: 8,
+      pacing: 7,
+      show_tell: 7,
+      emotional_goal: 9
+    })
 
     const degradation = computeDegradation(originalCritique, revisedCritique)
     expect(degradation.hasRegressions).toBe(false)
@@ -88,12 +98,7 @@ describe('closed-loop generate → eval → adjust → re-eval → verify', () =
     const originalCritique = makeCritique(5, { continuity: 3 })
     const prose = 'Unchanged draft.'
 
-    const result = await gateRevisionEffectiveness(
-      originalCritique,
-      prose,
-      prose,
-      originalCritique
-    )
+    const result = await gateRevisionEffectiveness(originalCritique, prose, prose, originalCritique)
 
     expect(result.pass).toBe(false)
     expect(result.regressions).toHaveLength(1)
@@ -140,9 +145,7 @@ describe('closed-loop generate → eval → adjust → re-eval → verify', () =
 
   describe('dampening across multiple rounds (simulating iterated closed-loop)', () => {
     it('auto-adjust shifts focus when a weak dimension was already hinted in a prior round', () => {
-      const round1Evals = [
-        { sceneIdx: 0, dimensionScores: { continuity: 3, voice: 9, pacing: 8 } }
-      ]
+      const round1Evals = [{ sceneIdx: 0, dimensionScores: { continuity: 3, voice: 9, pacing: 8 } }]
       const round1 = autoAdjustPrompt(round1Evals, { threshold: 7 })
       expect(round1.givenHints[0].dimension).toBe('continuity')
 
@@ -161,9 +164,7 @@ describe('closed-loop generate → eval → adjust → re-eval → verify', () =
 
     it('cumulative hints array enables downstream tracking across rounds', () => {
       let allHints = []
-      const evalsRound1 = [
-        { sceneIdx: 0, dimensionScores: { continuity: 3, voice: 9, pacing: 8 } }
-      ]
+      const evalsRound1 = [{ sceneIdx: 0, dimensionScores: { continuity: 3, voice: 9, pacing: 8 } }]
       const r1 = autoAdjustPrompt(evalsRound1, { threshold: 7 })
       allHints = [...allHints, ...r1.givenHints]
       expect(allHints).toHaveLength(1)

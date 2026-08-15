@@ -27,6 +27,11 @@ async function importFreshQueue() {
 describe('embeddingQueue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Implementations survive clearAllMocks, call logs do not. A rejecting mock
+    // left behind by one test would otherwise drive the next test's queue into
+    // a retry, and that retry lands inside a third test.
+    getEmbeddings.mockReset()
+    getEmbeddings.mockResolvedValue({ vectors: [], provider: 'test', model: 'm1' })
     mockUnindexedChunks.mockResolvedValue([])
     mockResetChunksStatus.mockResolvedValue([])
   })
@@ -134,6 +139,11 @@ describe('embeddingQueue', () => {
     })
 
     it('should enqueue chunks grouped by document', async () => {
+      getEmbeddings.mockResolvedValue({
+        vectors: [[0.1], [0.2], [0.3]],
+        provider: 'test',
+        model: 'm1'
+      })
       mockUnindexedChunks.mockResolvedValue([
         { id: 'c1', documentId: 'doc-1', text: 'hello' },
         { id: 'c2', documentId: 'doc-1', text: 'world' },
@@ -141,6 +151,7 @@ describe('embeddingQueue', () => {
       ])
 
       const mod = await importFreshQueue()
+      mod.setRetryDelay(0)
 
       const count = await mod.resume('project-1')
       expect(count).toBe(3)
@@ -152,6 +163,13 @@ describe('embeddingQueue', () => {
       const p1 = mod.getProgress('doc-1')
       expect(p1).not.toBeNull()
       expect(p1.total).toBe(2)
+
+      // Drain before the test ends. vi.resetModules() gives the next test a new
+      // module instance but does not stop this one's worker, and both talk to
+      // the same getEmbeddings mock.
+      await vi.waitFor(() => {
+        expect(mod.isQueueProcessing()).toBe(false)
+      })
     })
   })
 
@@ -239,6 +257,11 @@ describe('foreground priority', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Implementations survive clearAllMocks, call logs do not. A rejecting mock
+    // left behind by one test would otherwise drive the next test's queue into
+    // a retry, and that retry lands inside a third test.
+    getEmbeddings.mockReset()
+    getEmbeddings.mockResolvedValue({ vectors: [], provider: 'test', model: 'm1' })
     mockUnindexedChunks.mockResolvedValue([])
     mockResetChunksStatus.mockResolvedValue([])
   })

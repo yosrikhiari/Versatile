@@ -81,10 +81,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
   <Transition name="drawer-slide">
     <div v-if="log.drawerOpen.value" class="fixed inset-0 z-[90]">
       <!-- Backdrop -->
-      <div
-        class="absolute inset-0 bg-black/50"
-        @click="log.drawerOpen.value = false"
-      />
+      <div class="absolute inset-0 bg-black/50" @click="log.drawerOpen.value = false" />
 
       <!-- Drawer panel -->
       <div
@@ -301,7 +298,9 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
               </button>
 
               <div v-if="expandedTasks.has(task.id) && task.error" class="px-4 pb-3">
-                <div class="text-xs text-danger bg-bg-secondary rounded-lg p-2">{{ task.error }}</div>
+                <div class="text-xs text-danger bg-bg-secondary rounded-lg p-2">
+                  {{ task.error }}
+                </div>
               </div>
             </div>
           </div>

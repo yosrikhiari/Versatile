@@ -20,8 +20,8 @@ const inviting = ref(false)
 const inviteError = ref(null)
 const inviteSuccess = ref(null)
 
-const selectedOrg = computed(() =>
-  orgs.value.find(o => o.id === selectedOrgId.value) || orgs.value[0]
+const selectedOrg = computed(
+  () => orgs.value.find((o) => o.id === selectedOrgId.value) || orgs.value[0]
 )
 
 onMounted(async () => {
@@ -101,8 +101,19 @@ const roleLabels = {
     <main class="max-w-3xl mx-auto px-6 lg:px-8 py-10 animate-fade-in">
       <div v-if="loading" class="flex justify-center py-20">
         <svg class="animate-spin h-6 w-6 text-accent" viewBox="0 0 24 24" fill="none">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          />
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
         </svg>
       </div>
 
@@ -114,7 +125,9 @@ const roleLabels = {
         <div class="text-center py-20">
           <BaseIcon name="building-2" :size="28" class="text-text-hint mb-4" />
           <p class="text-text-primary font-medium mb-1">No organizations</p>
-          <p class="text-text-secondary text-sm">Create an organization to collaborate with others.</p>
+          <p class="text-text-secondary text-sm">
+            Create an organization to collaborate with others.
+          </p>
         </div>
       </template>
 
@@ -141,7 +154,9 @@ const roleLabels = {
           <section class="mb-10">
             <h2 class="text-lg font-semibold text-text-primary mb-1">{{ selectedOrg.name }}</h2>
             <p class="text-xs text-text-hint font-mono">/{{ selectedOrg.slug }}</p>
-            <p class="text-xs text-text-hint mt-1">Created {{ formatDate(selectedOrg.createdAt) }}</p>
+            <p class="text-xs text-text-hint mt-1">
+              Created {{ formatDate(selectedOrg.createdAt) }}
+            </p>
 
             <button
               class="mt-3 text-xs text-accent hover:text-accent/80 transition-colors"
@@ -167,9 +182,7 @@ const roleLabels = {
                 />
               </div>
               <div>
-                <label class="block font-manuscript text-xs text-text-secondary mb-1">
-                  Role
-                </label>
+                <label class="block font-manuscript text-xs text-text-secondary mb-1"> Role </label>
                 <select
                   v-model="inviteRole"
                   class="px-3 py-2 border border-border-subtle bg-bg-primary text-text-primary rounded-md text-sm focus:border-accent transition-colors"

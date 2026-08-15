@@ -76,6 +76,12 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage
 
+      # Nothing else in this workflow compiles the app in production mode: the
+      # e2e job serves it through `npm run dev`. A rollup-only failure (chunking,
+      # a dep that resolves differently under build) therefore shipped green.
+      - name: Production build
+        run: npm run build
+
       - name: Upload coverage reports
         if: matrix.node-version == env.NODE_VERSION
         uses: codecov/codecov-action@v4

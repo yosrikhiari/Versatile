@@ -186,10 +186,7 @@ function handleOverlayClick(event) {
             >
               Cancel
             </button>
-            <button
-              class="btn-primary px-4 py-2 rounded-lg"
-              @click="handleGenerate"
-            >
+            <button class="btn-primary px-4 py-2 rounded-lg" @click="handleGenerate">
               Generate
             </button>
           </div>

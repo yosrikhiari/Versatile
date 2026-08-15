@@ -1,12 +1,26 @@
 <script setup>
 import { ref, computed, inject } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
+import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useWhatIf } from '../../composables/useWhatIf'
+import { useWhatIfGenerator } from '../../composables/useWhatIfGenerator'
+import { useProjectStore } from '../../stores/projectStore'
+import { useBranchStore } from '../../stores/branchStore'
+import { renderExtractedVoiceGuide } from '../../composables/useStoryDocuments'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BasePanelHeader from '../ui/BasePanelHeader.vue'
 import WhatIfTimeline from './WhatIfTimeline.vue'
 
 const manuscriptStore = useManuscriptStore()
+const storyBibleStore = useStoryBibleStore()
+const projectStore = useProjectStore()
+const branchStore = useBranchStore()
+const {
+  isGenerating: isForking,
+  progress: forkProgress,
+  generate: forkGenerate
+} = useWhatIfGenerator()
+const forkError = ref(null)
 const { isGenerating, alternatives, error, generateAlternatives, clear } = useWhatIf()
 const insertAtCursor = inject('insertAtCursor', null)
 
@@ -31,7 +45,14 @@ async function handleGenerate() {
   await generateAlternatives({
     sceneProse: sub.content || '',
     sceneBrief: sub.brief || {},
-    chapterLog: getChapterLog()
+    chapterLog: getChapterLog(),
+    // The whole point of the feature. Collected by the textarea below and, until
+    // now, never sent — so the author typed a premise and got alternatives that
+    // ignored it.
+    premise: changeDescription.value,
+    // An alternative is meant to replace this scene, so it has to sound like the
+    // same author. This is the same measured profile the main writer now gets.
+    voiceProfile: renderExtractedVoiceGuide(storyBibleStore.voiceProfile).join('\n')
   })
 }
 
@@ -66,6 +87,20 @@ function handleReplace(index) {
 
 function handleClear() {
   clear()
+}
+
+// Forking rewrites every scene after the divergence point onto a new branch. It
+// is reversible (the original branch is untouched) but it is not cheap, so it is
+// a separate, explicitly-labelled action rather than something "Generate" does.
+async function handleFork() {
+  const projectId = projectStore.currentProjectId
+  if (!projectId || !changeDescription.value.trim() || isForking.value) return
+  forkError.value = null
+  try {
+    await forkGenerate(projectId, branchStore.activeBranchId, changeDescription.value.trim())
+  } catch (e) {
+    forkError.value = typeof e === 'string' ? e : e?.message || 'Branch generation failed'
+  }
 }
 
 function handleSelectDivergence(selection) {
@@ -150,6 +185,44 @@ function handleChangePoint() {
           />
           {{ isGenerating ? 'Generating...' : 'Generate Alternatives' }}
         </button>
+
+        <!-- The heavier sibling: rewrites the rest of the story on a new branch
+             instead of offering replacements for this one scene. -->
+        <button
+          class="w-full py-2 px-4 rounded-lg text-xs font-medium border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="isForking || isGenerating || !changeDescription.trim()"
+          :title="
+            changeDescription.trim()
+              ? 'Fork a new branch and rewrite every scene after this point'
+              : 'Describe the change first'
+          "
+          @click="handleFork"
+        >
+          <BaseIcon
+            :name="isForking ? 'loader-2' : 'git-branch-plus'"
+            :size="13"
+            :class="isForking ? 'animate-spin' : ''"
+          />
+          {{
+            isForking
+              ? forkProgress.label || 'Building branch...'
+              : 'Explore as a branch (rewrites later scenes)'
+          }}
+        </button>
+
+        <div
+          v-if="isForking && forkProgress.total > 0"
+          class="text-2xs text-text-hint text-center tabular-nums"
+        >
+          {{ forkProgress.current }} / {{ forkProgress.total }}
+        </div>
+
+        <div
+          v-if="forkError"
+          class="rounded-lg border border-danger/25 bg-danger/10 p-3 text-xs text-danger"
+        >
+          {{ forkError }}
+        </div>
 
         <div
           v-if="error"

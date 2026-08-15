@@ -56,9 +56,7 @@ describe('generate', () => {
   it('forks branch, generates content for each divergent sub, switches branch', async () => {
     mockFork.mockResolvedValue(mockBranch)
     mockGetSections.mockResolvedValue(mockSections)
-    mockGetSubsections
-      .mockResolvedValueOnce(mockSubsections)
-      .mockResolvedValueOnce([])
+    mockGetSubsections.mockResolvedValueOnce(mockSubsections).mockResolvedValueOnce([])
     mockAiGenerate
       .mockResolvedValueOnce('Generated prose for Scene 1')
       .mockResolvedValueOnce('Generated prose for Scene 2')
@@ -70,8 +68,14 @@ describe('generate', () => {
     expect(mockGetSections).toHaveBeenCalledWith('proj-1', mockBranch.id)
     expect(mockAiGenerate).toHaveBeenCalledTimes(2)
     expect(mockUpdateSubsection).toHaveBeenCalledTimes(2)
-    expect(mockUpdateSubsection).toHaveBeenCalledWith('sub-1', { content: 'Generated prose for Scene 1', contentStatus: 'generated' })
-    expect(mockUpdateSubsection).toHaveBeenCalledWith('sub-2', { content: 'Generated prose for Scene 2', contentStatus: 'generated' })
+    expect(mockUpdateSubsection).toHaveBeenCalledWith('sub-1', {
+      content: 'Generated prose for Scene 1',
+      contentStatus: 'generated'
+    })
+    expect(mockUpdateSubsection).toHaveBeenCalledWith('sub-2', {
+      content: 'Generated prose for Scene 2',
+      contentStatus: 'generated'
+    })
     expect(mockSetActiveBranch).toHaveBeenCalledWith(mockBranch.id)
     expect(result).toEqual(mockBranch)
   })
@@ -92,9 +96,7 @@ describe('generate', () => {
   it('tracks progress during generation', async () => {
     mockFork.mockResolvedValue(mockBranch)
     mockGetSections.mockResolvedValue(mockSections)
-    mockGetSubsections
-      .mockResolvedValueOnce(mockSubsections)
-      .mockResolvedValueOnce([])
+    mockGetSubsections.mockResolvedValueOnce(mockSubsections).mockResolvedValueOnce([])
     mockAiGenerate.mockResolvedValue('Generated prose')
 
     const { generate, progress } = useWhatIfGenerator()

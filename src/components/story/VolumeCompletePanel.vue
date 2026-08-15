@@ -135,16 +135,10 @@ const totalWordsWritten = computed(() =>
               >{{ sceneEval.aggregateStats.value?.evaluatedCount || 0 }} /
               {{ sceneEval.aggregateStats.value?.totalScenes || 0 }} scenes</span
             >
-            <span
-              v-if="sceneEval.aggregateStats.value?.averageScore !== null"
-              class="text-info"
-            >
+            <span v-if="sceneEval.aggregateStats.value?.averageScore !== null" class="text-info">
               Avg: {{ sceneEval.aggregateStats.value?.averageScore }}
             </span>
-            <span
-              v-if="sceneEval.aggregateStats.value?.totalRegressions > 0"
-              class="text-warning"
-            >
+            <span v-if="sceneEval.aggregateStats.value?.totalRegressions > 0" class="text-warning">
               {{ sceneEval.aggregateStats.value?.totalRegressions }} regressions
             </span>
           </div>

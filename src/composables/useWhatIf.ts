@@ -34,7 +34,7 @@ export function useWhatIf() {
   const alternatives = ref<WhatIfAlternative[]>([])
   const error = ref<string | null>(null)
 
-  async function generateAlternatives({ sceneProse, sceneBrief, chapterLog, storyArc, voiceProfile, activeCraftRules }: { sceneProse: any; sceneBrief: any; chapterLog: any; storyArc: any; voiceProfile: any; activeCraftRules: any }) {
+  async function generateAlternatives({ sceneProse, sceneBrief, chapterLog, storyArc, voiceProfile, activeCraftRules, premise }: { sceneProse: any; sceneBrief: any; chapterLog: any; storyArc?: any; voiceProfile?: any; activeCraftRules?: any; premise?: any }) {
     isGenerating.value = true
     error.value = null
     alternatives.value = []
@@ -53,6 +53,28 @@ export function useWhatIf() {
         ? chapterLog.join('\n')
         : '(No prior events — this is early in the story.)'
 
+      // Both of these were already parameters and were dropped on the floor:
+      // destructured at the top, never referenced in either prompt. So every
+      // alternative was written with no voice and no craft rules, which is most
+      // of why they come back sounding like a different author than the scene
+      // they are meant to replace.
+      const voiceText =
+        typeof voiceProfile === 'string'
+          ? voiceProfile.trim()
+          : voiceProfile
+            ? String(voiceProfile.voiceInstruction || voiceProfile.styleGuide || '').trim()
+            : ''
+
+      const craftText = Array.isArray(activeCraftRules)
+        ? activeCraftRules.filter(Boolean).join('\n')
+        : String(activeCraftRules || '').trim()
+
+      // The author's own "what if" — the single thing this feature exists to
+      // answer. The panel collects it in a textarea and, until now, never sent
+      // it: every alternative was a generic divergence that ignored the premise
+      // the author had just typed.
+      const premiseText = String(premise || '').trim()
+
       const userPrompt = `You are helping a writer explore alternative directions for the current scene.
 
 CURRENT SCENE PROSE:
@@ -60,17 +82,22 @@ ${sceneProse || '(No prose written yet)'}
 
 ${briefText ? `SCENE BRIEF:\n${briefText}\n` : ''}
 ${storyArc ? `STORY ARC:\n- Genre: ${storyArc.genre || ''}\n- Tone: ${storyArc.tone || ''}\n- Central conflict: ${storyArc.centralConflict || ''}\n` : ''}
-
+${voiceText ? `AUTHOR VOICE (match this — it is measured from the manuscript):\n${voiceText}\n` : ''}
+${craftText ? `CRAFT RULES (honour these):\n${craftText}\n` : ''}
 CHAPTER LOG (what has happened before this scene):
 ${logText}
-
+${premiseText ? `\nTHE AUTHOR'S "WHAT IF" — every alternative must follow from this:\n${premiseText}\n` : ''}
 Generate 3–4 distinct alternative continuations for this scene. Each alternative should:
-1. Take the scene in a different creative direction
+1. ${premiseText ? 'Take the premise above as given, and explore a DIFFERENT consequence of it' : 'Take the scene in a different creative direction'}
 2. Be written in the same voice and style as the existing prose
 3. Be 2–4 paragraphs of flowing prose
 4. Have a clear title describing the approach
 
-The alternatives can change a character's choice, introduce a complication, or take the scene in a totally different narrative direction.`
+${
+  premiseText
+    ? 'Do not ignore or soften the premise — it is the point of the exercise. Vary how it plays out, not whether it happens.'
+    : 'The alternatives can change a character’s choice, introduce a complication, or take the scene in a totally different narrative direction.'
+}`
 
       const result = await aiGenerateJson(
         userPrompt,

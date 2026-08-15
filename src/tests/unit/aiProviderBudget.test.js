@@ -2,11 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockLocalStorage = {}
 beforeEach(() => {
-  Object.keys(mockLocalStorage).forEach(k => delete mockLocalStorage[k])
+  Object.keys(mockLocalStorage).forEach((k) => delete mockLocalStorage[k])
   vi.stubGlobal('localStorage', {
     getItem: vi.fn((k) => mockLocalStorage[k] ?? null),
-    setItem: vi.fn((k, v) => { mockLocalStorage[k] = v }),
-    removeItem: vi.fn((k) => { delete mockLocalStorage[k] })
+    setItem: vi.fn((k, v) => {
+      mockLocalStorage[k] = v
+    }),
+    removeItem: vi.fn((k) => {
+      delete mockLocalStorage[k]
+    })
   })
 })
 
@@ -25,7 +29,8 @@ const MS_DAY = 24 * 60 * 60 * 1000
 describe('aiProviderBudget', () => {
   describe('constructor and defaults', () => {
     it('uses DEFAULT_PROVIDER_BUDGETS when no custom budgets given', async () => {
-      const { ProviderBudget, DEFAULT_PROVIDER_BUDGETS } = await import('@/services/aiProviderBudget')
+      const { ProviderBudget, DEFAULT_PROVIDER_BUDGETS } =
+        await import('@/services/aiProviderBudget')
       const pb = new ProviderBudget()
       expect(pb.budgets.ollama).toBeNull()
       expect(pb.budgets.openai).toBeDefined()
@@ -53,7 +58,10 @@ describe('aiProviderBudget', () => {
       const { ProviderBudget } = await import('@/services/aiProviderBudget')
       const pb = new ProviderBudget({ openai: { dailyTokens: 1000 } })
       pb.__setState({
-        daily: { periodKey: mockPeriodKey('daily'), providers: { openai: { tokens: 500, cost: 0 } } },
+        daily: {
+          periodKey: mockPeriodKey('daily'),
+          providers: { openai: { tokens: 500, cost: 0 } }
+        },
         monthly: { periodKey: mockPeriodKey('monthly'), providers: {} }
       })
       expect(pb.check('openai')).toEqual({ allowed: true })
@@ -63,7 +71,10 @@ describe('aiProviderBudget', () => {
       const { ProviderBudget, BudgetExceededError } = await import('@/services/aiProviderBudget')
       const pb = new ProviderBudget({ openai: { dailyTokens: 1000 } })
       pb.__setState({
-        daily: { periodKey: mockPeriodKey('daily'), providers: { openai: { tokens: 1000, cost: 0 } } },
+        daily: {
+          periodKey: mockPeriodKey('daily'),
+          providers: { openai: { tokens: 1000, cost: 0 } }
+        },
         monthly: { periodKey: mockPeriodKey('monthly'), providers: {} }
       })
       expect(() => pb.check('openai')).toThrow(BudgetExceededError)
@@ -74,7 +85,10 @@ describe('aiProviderBudget', () => {
       const { ProviderBudget, BudgetExceededError } = await import('@/services/aiProviderBudget')
       const pb = new ProviderBudget({ openai: { dailyCost: 5.0 } })
       pb.__setState({
-        daily: { periodKey: mockPeriodKey('daily'), providers: { openai: { tokens: 0, cost: 5.0 } } },
+        daily: {
+          periodKey: mockPeriodKey('daily'),
+          providers: { openai: { tokens: 0, cost: 5.0 } }
+        },
         monthly: { periodKey: mockPeriodKey('monthly'), providers: {} }
       })
       expect(() => pb.check('openai')).toThrow(BudgetExceededError)
@@ -86,7 +100,10 @@ describe('aiProviderBudget', () => {
       const pb = new ProviderBudget({ openai: { monthlyTokens: 5000 } })
       pb.__setState({
         daily: { periodKey: mockPeriodKey('daily'), providers: {} },
-        monthly: { periodKey: mockPeriodKey('monthly'), providers: { openai: { tokens: 5000, cost: 0 } } }
+        monthly: {
+          periodKey: mockPeriodKey('monthly'),
+          providers: { openai: { tokens: 5000, cost: 0 } }
+        }
       })
       expect(() => pb.check('openai')).toThrow(BudgetExceededError)
       expect(() => pb.check('openai')).toThrow(/Monthly token limit/)
@@ -97,7 +114,10 @@ describe('aiProviderBudget', () => {
       const pb = new ProviderBudget({ openai: { monthlyCost: 50.0 } })
       pb.__setState({
         daily: { periodKey: mockPeriodKey('daily'), providers: {} },
-        monthly: { periodKey: mockPeriodKey('monthly'), providers: { openai: { tokens: 0, cost: 50.0 } } }
+        monthly: {
+          periodKey: mockPeriodKey('monthly'),
+          providers: { openai: { tokens: 0, cost: 50.0 } }
+        }
       })
       expect(() => pb.check('openai')).toThrow(BudgetExceededError)
       expect(() => pb.check('openai')).toThrow(/Monthly cost limit/)

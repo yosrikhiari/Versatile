@@ -41,7 +41,9 @@
           <span class="font-ui text-text-hint w-16 text-right shrink-0 tabular-nums"
             >${{ (m.totalCost || 0).toFixed(4) }}</span
           >
-          <span class="font-ui text-text-hint w-10 text-right shrink-0 tabular-nums">{{ m.count }}</span>
+          <span class="font-ui text-text-hint w-10 text-right shrink-0 tabular-nums">{{
+            m.count
+          }}</span>
         </div>
       </div>
     </div>
@@ -65,7 +67,9 @@
           <span class="font-ui text-text-hint w-16 text-right shrink-0 tabular-nums"
             >${{ (p.totalCost || 0).toFixed(4) }}</span
           >
-          <span class="font-ui text-text-hint w-10 text-right shrink-0 tabular-nums">{{ p.count }}</span>
+          <span class="font-ui text-text-hint w-10 text-right shrink-0 tabular-nums">{{
+            p.count
+          }}</span>
         </div>
       </div>
     </div>
@@ -91,11 +95,15 @@
           :key="entry.id"
           class="flex items-center gap-2 text-2xs font-ui py-1 px-1.5 rounded hover:bg-surface-hover transition-colors"
         >
-          <span class="text-text-hint w-14 shrink-0 tabular-nums">{{ formatTime(entry.timestamp) }}</span>
+          <span class="text-text-hint w-14 shrink-0 tabular-nums">{{
+            formatTime(entry.timestamp)
+          }}</span>
           <span class="text-text-primary w-20 truncate shrink-0">{{ entry.model || '—' }}</span>
           <span class="text-text-hint w-16 truncate shrink-0">{{ entry.provider || '—' }}</span>
           <span class="text-text-secondary flex-1 truncate">{{ entry.label || '' }}</span>
-          <span class="text-text-primary tabular-nums shrink-0">${{ (entry.cost || 0).toFixed(4) }}</span>
+          <span class="text-text-primary tabular-nums shrink-0"
+            >${{ (entry.cost || 0).toFixed(4) }}</span
+          >
         </div>
       </div>
     </div>
@@ -107,9 +115,7 @@
     >
       <BaseIcon name="dollar-sign" :size="24" class="mx-auto text-text-hint mb-2" />
       <p class="text-sm text-text-secondary font-ui">No cost data yet</p>
-      <p class="text-xs text-text-hint mt-1">
-        Cost tracking will appear as AI calls are made.
-      </p>
+      <p class="text-xs text-text-hint mt-1">Cost tracking will appear as AI calls are made.</p>
     </div>
   </div>
 </template>
@@ -138,8 +144,7 @@ export default {
       const max = maxModelCost.value
       return Object.entries(store.breakdownByModel).map(([name, data]) => {
         const pct = max > 0 ? (data.totalCost / max) * 100 : 0
-        const barClass =
-          pct >= 80 ? 'bg-danger' : pct >= 50 ? 'bg-warning' : 'bg-accent'
+        const barClass = pct >= 80 ? 'bg-danger' : pct >= 50 ? 'bg-warning' : 'bg-accent'
         return { name, ...data, barWidth: pct, barClass }
       })
     })
@@ -153,8 +158,7 @@ export default {
       const max = maxProviderCost.value
       return Object.entries(store.breakdownByProvider).map(([name, data]) => {
         const pct = max > 0 ? (data.totalCost / max) * 100 : 0
-        const barClass =
-          pct >= 80 ? 'bg-danger' : pct >= 50 ? 'bg-warning' : 'bg-accent'
+        const barClass = pct >= 80 ? 'bg-danger' : pct >= 50 ? 'bg-warning' : 'bg-accent'
         return { name, ...data, barWidth: pct, barClass }
       })
     })

@@ -5,7 +5,8 @@ import { useStoryGraphStore } from '../../stores/storyGraphStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { getProjectChapterDigests, getEntityStateTimeline } from '../../services/db-digests'
-import { buildStoryTimeline } from '../../services/generation/storyTimeline'
+import { buildStoryTimeline, isChapterEmpty } from '../../services/generation/storyTimeline'
+import { countWords } from '../../utils/textUtils'
 import draggable from 'vuedraggable'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseStatusDot from '../ui/BaseStatusDot.vue'
@@ -61,6 +62,31 @@ const chapterTitles = computed(() => {
   return titles
 })
 
+// sceneId → chapter, by the same section ordering the titles use. A digest built
+// before its scene was placed in a section carries no chapter number, and the
+// states derived from it would otherwise never appear on the axis at all.
+const sceneChapters = computed(() => {
+  const map = {}
+  manuscriptStore.sortedSections.forEach((section, i) => {
+    for (const sub of manuscriptStore.subsectionsBySection[section.id] || []) {
+      map[String(sub.id)] = i + 1
+    }
+  })
+  return map
+})
+
+const chapterWordCounts = computed(() => {
+  const map = {}
+  manuscriptStore.sortedSections.forEach((section, i) => {
+    let words = 0
+    for (const sub of manuscriptStore.subsectionsBySection[section.id] || []) {
+      words += countWords(sub.content || '')
+    }
+    if (words > 0) map[i + 1] = words
+  })
+  return map
+})
+
 function resolveName(type, id) {
   const key = String(id)
   if (type === 'character')
@@ -78,6 +104,8 @@ const timeline = computed(() =>
     entityStates: entityStates.value,
     edges: storyGraphStore.edges || [],
     chapterTitles: chapterTitles.value,
+    sceneChapters: sceneChapters.value,
+    chapterWordCounts: chapterWordCounts.value,
     resolveName
   })
 )
@@ -85,9 +113,7 @@ const timeline = computed(() =>
 // Chapters worth rendering. A chapter with nothing derived is not evidence that
 // nothing happened in it — only that it has not been analysed — so it is left
 // out rather than drawn as an empty row that reads like a gap in the story.
-const chapters = computed(() =>
-  timeline.value.chapters.filter((c) => c.summary || c.events.length || c.charactersPresent.length)
-)
+const chapters = computed(() => timeline.value.chapters.filter((c) => !isChapterEmpty(c)))
 
 const hasAxis = computed(() => chapters.value.length > 0)
 const totalEvents = computed(() => chapters.value.reduce((sum, c) => sum + c.events.length, 0))
@@ -218,7 +244,7 @@ onMounted(async () => {
           </p>
 
           <div
-            v-if="chapter.charactersPresent.length || chapter.locations.length"
+            v-if="chapter.charactersPresent.length || chapter.locations.length || chapter.wordCount"
             class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-2xs text-text-hint"
           >
             <span v-if="chapter.charactersPresent.length">{{
@@ -227,7 +253,20 @@ onMounted(async () => {
             <span v-if="chapter.locations.length" class="italic">{{
               chapter.locations.join(' · ')
             }}</span>
+            <span v-if="chapter.wordCount" class="tabular-nums"
+              >{{ chapter.wordCount.toLocaleString() }} words</span
+            >
           </div>
+
+          <!-- A character's last appearance is only worth flagging while the
+               story continues past it; on the final chapter it means nothing. -->
+          <p
+            v-if="chapter.droppedThreads.length"
+            class="mt-1.5 text-2xs text-text-hint italic"
+            :title="'These characters do not appear again after this chapter'"
+          >
+            Last seen here: {{ chapter.droppedThreads.join(', ') }}
+          </p>
 
           <ul v-if="chapter.events.length" class="mt-2.5 space-y-1">
             <li

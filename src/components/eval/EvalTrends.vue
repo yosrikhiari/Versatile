@@ -1,20 +1,14 @@
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between">
-      <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui">
-        Score Trends
-      </h3>
+      <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui">Score Trends</h3>
       <div class="flex items-center gap-2">
         <select
           v-model="selectedDimension"
           class="text-2xs bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
         >
           <option value="__overall">Overall</option>
-          <option
-            v-for="dim in availableDimensions"
-            :key="dim.value"
-            :value="dim.value"
-          >
+          <option v-for="dim in availableDimensions" :key="dim.value" :value="dim.value">
             {{ dim.label }}
           </option>
         </select>
@@ -27,7 +21,10 @@
       </div>
     </div>
 
-    <div v-if="!hasData" class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-6 text-center">
+    <div
+      v-if="!hasData"
+      class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-6 text-center"
+    >
       <BaseIcon name="bar-chart" :size="24" class="mx-auto text-text-hint mb-2" />
       <p class="text-sm text-text-secondary font-ui">Not enough data for trends</p>
       <p class="text-xs text-text-hint mt-1">
@@ -37,12 +34,7 @@
 
     <div v-else class="space-y-4">
       <div class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3">
-        <Chart
-          :type="chartType"
-          :data="chartData"
-          :options="chartOptions"
-          :height="250"
-        />
+        <Chart :type="chartType" :data="chartData" :options="chartOptions" :height="250" />
       </div>
 
       <div
@@ -52,10 +44,7 @@
         <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
           Trend Analysis
         </h4>
-        <span
-          class="inline-flex items-center gap-1 text-xs font-ui"
-          :class="trendDirection.color"
-        >
+        <span class="inline-flex items-center gap-1 text-xs font-ui" :class="trendDirection.color">
           <BaseIcon :name="trendDirection.icon" :size="12" />
           {{ trendDirection.label }}
         </span>
@@ -75,12 +64,7 @@
             class="bg-bg-secondary/40 rounded p-2"
           >
             <p class="text-2xs text-text-hint font-ui mb-1">{{ dm.label }}</p>
-            <Chart
-              type="line"
-              :data="dm.chartData"
-              :options="dm.chartOptions"
-              :height="80"
-            />
+            <Chart type="line" :data="dm.chartData" :options="dm.chartOptions" :height="80" />
           </div>
         </div>
       </div>
@@ -202,8 +186,9 @@ export default {
         }),
         datasets: [
           {
-            label: availableDimensions.value.find((d) => d.value === selectedDimension.value)
-              ?.label || selectedDimension.value,
+            label:
+              availableDimensions.value.find((d) => d.value === selectedDimension.value)?.label ||
+              selectedDimension.value,
             data: dimScores,
             borderColor: DIM_COLORS[selectedDimension.value] || LINE_COLORS[1],
             backgroundColor: (DIM_COLORS[selectedDimension.value] || LINE_COLORS[1]) + '20',
@@ -254,8 +239,18 @@ export default {
       const firstHalf = scores.slice(0, half).reduce((a, b) => a + b, 0) / half
       const secondHalf = scores.slice(-half).reduce((a, b) => a + b, 0) / half
       const diff = secondHalf - firstHalf
-      if (diff > 0.5) return { label: `Improving (+${diff.toFixed(1)})`, icon: 'trending-up', color: 'text-success' }
-      if (diff < -0.5) return { label: `Declining (${diff.toFixed(1)})`, icon: 'trending-down', color: 'text-danger' }
+      if (diff > 0.5)
+        return {
+          label: `Improving (+${diff.toFixed(1)})`,
+          icon: 'trending-up',
+          color: 'text-success'
+        }
+      if (diff < -0.5)
+        return {
+          label: `Declining (${diff.toFixed(1)})`,
+          icon: 'trending-down',
+          color: 'text-danger'
+        }
       return { label: `Stable (${diff.toFixed(1)})`, icon: 'minus', color: 'text-text-hint' }
     })
 

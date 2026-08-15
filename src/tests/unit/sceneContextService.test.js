@@ -1,7 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { scoreSceneRelevance, buildSceneMemory, buildSceneContext } from '@/services/sceneContextService'
+import {
+  scoreSceneRelevance,
+  buildSceneMemory,
+  buildSceneContext
+} from '@/services/sceneContextService'
 
-function makeScene({ number, charactersPresent, location, arcPosition, title, whatChanges, emotionalGoal, prose }) {
+function makeScene({
+  number,
+  charactersPresent,
+  location,
+  arcPosition,
+  title,
+  whatChanges,
+  emotionalGoal,
+  prose
+}) {
   return {
     number,
     brief: {
@@ -12,7 +25,7 @@ function makeScene({ number, charactersPresent, location, arcPosition, title, wh
       whatChanges: whatChanges || 'something happened',
       emotionalGoal: emotionalGoal || 'tension'
     },
-    prose: prose || `${number}. `.repeat(200),
+    prose: prose || `${number}. `.repeat(200)
   }
 }
 
@@ -40,7 +53,12 @@ describe('scoreSceneRelevance', () => {
   })
 
   it('scores arcPosition match as +2', () => {
-    const past = makeScene({ number: 3, charactersPresent: ['Zara'], location: 'Swamp', arcPosition: 'climax' })
+    const past = makeScene({
+      number: 3,
+      charactersPresent: ['Zara'],
+      location: 'Swamp',
+      arcPosition: 'climax'
+    })
     expect(scoreSceneRelevance(past, currentBrief)).toBe(2)
   })
 
@@ -50,13 +68,23 @@ describe('scoreSceneRelevance', () => {
   })
 
   it('combines all signals for immediate predecessor with shared chars and same location', () => {
-    const past = makeScene({ number: 4, charactersPresent: ['Eldrin', 'Lyra'], location: 'Forest', arcPosition: 'climax' })
+    const past = makeScene({
+      number: 4,
+      charactersPresent: ['Eldrin', 'Lyra'],
+      location: 'Forest',
+      arcPosition: 'climax'
+    })
     // 6 (chars) + 2 (location) + 2 (arc) + 5 (predecessor) = 15
     expect(scoreSceneRelevance(past, currentBrief)).toBe(15)
   })
 
   it('returns 0 for no overlap at all', () => {
-    const past = makeScene({ number: 1, charactersPresent: ['Zara'], location: 'Swamp', arcPosition: 'rising' })
+    const past = makeScene({
+      number: 1,
+      charactersPresent: ['Zara'],
+      location: 'Swamp',
+      arcPosition: 'rising'
+    })
     expect(scoreSceneRelevance(past, currentBrief)).toBe(0)
   })
 
@@ -70,9 +98,24 @@ describe('scoreSceneRelevance', () => {
 describe('buildSceneMemory', () => {
   const scenes = [
     makeScene({ number: 1, charactersPresent: ['Zara'], location: 'Swamp', arcPosition: 'rising' }),
-    makeScene({ number: 2, charactersPresent: ['Eldrin'], location: 'Forest', arcPosition: 'rising' }),
-    makeScene({ number: 3, charactersPresent: ['Eldrin', 'Lyra'], location: 'Forest', arcPosition: 'climax' }),
-    makeScene({ number: 4, charactersPresent: ['Lyra'], location: 'Castle', arcPosition: 'falling' }),
+    makeScene({
+      number: 2,
+      charactersPresent: ['Eldrin'],
+      location: 'Forest',
+      arcPosition: 'rising'
+    }),
+    makeScene({
+      number: 3,
+      charactersPresent: ['Eldrin', 'Lyra'],
+      location: 'Forest',
+      arcPosition: 'climax'
+    }),
+    makeScene({
+      number: 4,
+      charactersPresent: ['Lyra'],
+      location: 'Castle',
+      arcPosition: 'falling'
+    })
   ]
 
   it('returns fallback order when no currentSceneBrief', () => {
@@ -84,27 +127,47 @@ describe('buildSceneMemory', () => {
   })
 
   it('promotes high-relevance scenes when currentSceneBrief is provided', () => {
-    const brief = { sceneNumber: 5, charactersPresent: ['Eldrin'], location: 'Forest', arcPosition: 'climax' }
+    const brief = {
+      sceneNumber: 5,
+      charactersPresent: ['Eldrin'],
+      location: 'Forest',
+      arcPosition: 'climax'
+    }
     const result = buildSceneMemory(scenes, 2, brief)
     expect(result).toMatch(/SCENE 3:/)
   })
 
   it('exceeds memoryLimit and picks most relevant when more scenes than limit', () => {
-    const brief = { sceneNumber: 5, charactersPresent: ['Eldrin', 'Lyra'], location: 'Forest', arcPosition: 'climax' }
+    const brief = {
+      sceneNumber: 5,
+      charactersPresent: ['Eldrin', 'Lyra'],
+      location: 'Forest',
+      arcPosition: 'climax'
+    }
     const result = buildSceneMemory(scenes, 2, brief)
     const matches = [...result.matchAll(/SCENE \d+:/g)]
     expect(matches.length).toBeLessThanOrEqual(2)
   })
 
   it('returns lower-relevance scenes when high-relevance limit is exceeded', () => {
-    const brief = { sceneNumber: 5, charactersPresent: ['Eldrin'], location: 'Forest', arcPosition: 'climax' }
+    const brief = {
+      sceneNumber: 5,
+      charactersPresent: ['Eldrin'],
+      location: 'Forest',
+      arcPosition: 'climax'
+    }
     const result = buildSceneMemory(scenes, 1, brief)
     const matches = [...result.matchAll(/SCENE \d+:/g)]
     expect(matches.length).toBe(1)
   })
 
   it('still outputs proper formatting', () => {
-    const brief = { sceneNumber: 5, charactersPresent: ['Eldrin'], location: 'Forest', arcPosition: 'climax' }
+    const brief = {
+      sceneNumber: 5,
+      charactersPresent: ['Eldrin'],
+      location: 'Forest',
+      arcPosition: 'climax'
+    }
     const result = buildSceneMemory(scenes, 4, brief)
     expect(result).toMatch(/^SCENE MEMORY:/)
     expect(result).toMatch(/SCENE \d:/)
@@ -113,12 +176,28 @@ describe('buildSceneMemory', () => {
 
 describe('buildSceneContext', () => {
   const scenes = [
-    makeScene({ number: 1, charactersPresent: ['Zara'], location: 'Swamp', title: 'Opening', whatChanges: 'intro', emotionalGoal: 'mystery', prose: 'Zara walked through the Swamp. ' }),
-    makeScene({ number: 2, charactersPresent: ['Eldrin'], location: 'Forest', title: 'The Meeting', whatChanges: 'meeting', emotionalGoal: 'hope', prose: 'Eldrin waited in the Forest. ' }),
+    makeScene({
+      number: 1,
+      charactersPresent: ['Zara'],
+      location: 'Swamp',
+      title: 'Opening',
+      whatChanges: 'intro',
+      emotionalGoal: 'mystery',
+      prose: 'Zara walked through the Swamp. '
+    }),
+    makeScene({
+      number: 2,
+      charactersPresent: ['Eldrin'],
+      location: 'Forest',
+      title: 'The Meeting',
+      whatChanges: 'meeting',
+      emotionalGoal: 'hope',
+      prose: 'Eldrin waited in the Forest. '
+    })
   ]
   const characters = [
     { name: 'Zara', role: 'hero', description: 'brave' },
-    { name: 'Eldrin', role: 'mentor', description: 'wise' },
+    { name: 'Eldrin', role: 'mentor', description: 'wise' }
   ]
 
   it('returns empty string for no completed scenes', () => {

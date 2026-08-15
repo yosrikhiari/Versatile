@@ -132,7 +132,7 @@ const {
   showImportModal,
   handleExport,
   handleExportPDF,
-  handleExportEpub,
+  handleExportRtf,
   handleImport
 } = useExportImport()
 
@@ -332,7 +332,7 @@ function handleOnboardingSkipWrapper() {
       @end-flow="handleEndFlow"
       @export="handleExport"
       @export-pdf="handleExportPDF"
-      @export-epub="handleExportEpub"
+      @export-rtf="handleExportRtf"
       @import="handleImport"
       @open-settings="showSettingsModal = true"
       @open-auth="showAuthModal = true"

@@ -181,11 +181,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="test in testRows"
-                :key="test.testId"
-                class="border-b border-border-subtle"
-              >
+              <tr v-for="test in testRows" :key="test.testId" class="border-b border-border-subtle">
                 <td class="py-2 pr-4 text-text-primary">{{ test.label }}</td>
                 <td v-for="prov in sortedProviders" :key="prov.id" class="text-center px-2 py-2">
                   <div v-if="test.providers[prov.id]" class="text-text-primary">

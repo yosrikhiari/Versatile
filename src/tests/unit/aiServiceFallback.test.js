@@ -76,7 +76,10 @@ vi.mock('@/services/providers/groq', () => ({
 vi.mock('@/services/aiProviderBudget', () => ({
   providerBudget: { check: vi.fn(() => ({ allowed: true })), record: vi.fn() },
   BudgetExceededError: class BudgetExceededError extends Error {
-    constructor(provider, reason) { super(reason); this.provider = provider }
+    constructor(provider, reason) {
+      super(reason)
+      this.provider = provider
+    }
   }
 }))
 
@@ -120,9 +123,9 @@ describe('aiGenerate fallback chain', () => {
     ollama.generate.mockRejectedValue(FAILURE)
     openai.generate.mockRejectedValue(new Error('OpenAI down'))
 
-    await expect(
-      aiService.aiGenerate('prompt', 'system', { retryDelay: 1 })
-    ).rejects.toThrow('OpenAI down')
+    await expect(aiService.aiGenerate('prompt', 'system', { retryDelay: 1 })).rejects.toThrow(
+      'OpenAI down'
+    )
   })
 
   it('deduplicates duplicate entries in fallback chain', async () => {
@@ -164,9 +167,9 @@ describe('aiGenerate fallback chain', () => {
   it('no fallback attempted when chain is empty', async () => {
     ollama.generate.mockRejectedValue(FAILURE)
 
-    await expect(
-      aiService.aiGenerate('prompt', 'system', { retryDelay: 1 })
-    ).rejects.toThrow('Provider unavailable')
+    await expect(aiService.aiGenerate('prompt', 'system', { retryDelay: 1 })).rejects.toThrow(
+      'Provider unavailable'
+    )
     expect(openai.generate).not.toHaveBeenCalled()
   })
 

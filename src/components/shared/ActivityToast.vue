@@ -73,42 +73,53 @@ onUnmounted(() => {
 <template>
   <Transition name="toast-slide">
     <div v-if="log.toastsVisible.value && currentToastTask" class="fixed bottom-24 right-6 z-[100]">
-      <button
-        class="flex items-center gap-3 px-4 py-2.5 rounded-xl shadow-lg border border-border-subtle bg-bg-tertiary text-sm font-ui text-text-primary hover:bg-surface-hover transition-all cursor-pointer group relative"
-        @click="openDrawer"
+      <!-- Container is a div, not a button: the dismiss control is itself a
+           button, and the HTML parser hoists a nested button out of its parent
+           rather than nesting it, which broke both the layout and the click
+           targets. Two sibling buttons inside a plain wrapper instead. -->
+      <div
+        class="flex items-center gap-3 px-4 py-2.5 rounded-xl shadow-lg border border-border-subtle bg-bg-tertiary text-sm font-ui text-text-primary hover:bg-surface-hover transition-all group relative"
       >
-        <!-- Spinner for running tasks -->
-        <span class="relative flex-shrink-0">
-          <BaseIcon
-            :name="getTaskIcon(currentToastTask)"
-            :size="16"
-            class="text-accent animate-pulse"
-          />
-        </span>
-
-        <!-- Task info -->
-        <div class="flex flex-col items-start text-left min-w-0">
-          <span class="text-xs text-text-secondary leading-tight">{{ currentToastTask.name }}</span>
-          <span class="text-sm text-text-primary truncate max-w-[200px] leading-tight">{{
-            getStepText(currentToastTask)
-          }}</span>
-        </div>
-
-        <!-- Badge for multi-tasks -->
-        <span
-          v-if="badgeCount > 0"
-          class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-surface-hover text-accent text-2xs font-bold"
-          >{{ badgeCount }}</span
+        <button
+          class="flex flex-1 items-center gap-3 min-w-0 text-left cursor-pointer"
+          @click="openDrawer"
         >
+          <!-- Spinner for running tasks -->
+          <span class="relative flex-shrink-0">
+            <BaseIcon
+              :name="getTaskIcon(currentToastTask)"
+              :size="16"
+              class="text-accent animate-pulse"
+            />
+          </span>
+
+          <!-- Task info -->
+          <div class="flex flex-col items-start text-left min-w-0">
+            <span class="text-xs text-text-secondary leading-tight">{{
+              currentToastTask.name
+            }}</span>
+            <span class="text-sm text-text-primary truncate max-w-[200px] leading-tight">{{
+              getStepText(currentToastTask)
+            }}</span>
+          </div>
+
+          <!-- Badge for multi-tasks -->
+          <span
+            v-if="badgeCount > 0"
+            class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-surface-hover text-accent text-2xs font-bold"
+            >{{ badgeCount }}</span
+          >
+        </button>
 
         <!-- Dismiss -->
         <button
           class="flex-shrink-0 opacity-0 group-hover:opacity-50 hover:opacity-100 transition-opacity ml-1"
+          aria-label="Dismiss activity toast"
           @click.stop="dismiss"
         >
           <BaseIcon name="x" :size="14" />
         </button>
-      </button>
+      </div>
     </div>
   </Transition>
 </template>

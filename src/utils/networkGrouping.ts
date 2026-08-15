@@ -91,14 +91,6 @@ interface SizedVolume {
   height: number
 }
 
-function groupInnerLayout(nodeCount: number, L: Layout): { rows: number; width: number; height: number } {
-  const perRow = Math.max(1, L.nodesPerRow)
-  const rows = Math.max(1, Math.ceil(Math.max(nodeCount, 1) / perRow))
-  const width = L.groupWidth
-  const height = Math.max(L.minHeight, L.headerH + rows * L.nodeH + L.padBottom)
-  return { rows, width, height }
-}
-
 function childPosition(i: number, L: Layout): { x: number; y: number } {
   const perRow = Math.max(1, L.nodesPerRow)
   const col = i % perRow

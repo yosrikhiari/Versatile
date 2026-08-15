@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { exportProject, importProject } from '../services/dbService'
-import { exportManuscriptToPDF, exportToEpub } from '../services/exportService'
+import { exportManuscriptToPDF, exportManuscriptToRtf } from '../services/exportService'
 import { useProjectStore } from '../stores/projectStore'
 import { useNotifications } from './useNotifications'
 
@@ -42,9 +42,10 @@ export function useExportImport() {
     addToast('PDF exported', 'success')
   }
 
-  function handleExportEpub() {
+  async function handleExportRtf() {
     if (!projectStore.currentProjectId) return
-    exportToEpub()
+    await exportManuscriptToRtf(projectStore.currentProjectId, projectStore.currentProjectName)
+    addToast('Manuscript exported', 'success')
   }
 
   async function handleImport() {
@@ -112,7 +113,7 @@ export function useExportImport() {
     exportProgress,
     handleExport,
     handleExportPDF,
-    handleExportEpub,
+    handleExportRtf,
     handleImport
   }
 }

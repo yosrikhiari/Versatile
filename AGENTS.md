@@ -33,8 +33,12 @@ Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL
 - `npm test` — runs Vitest suite
 - `npm run lint` — ESLint
 - `npm run build` — Vite production build
+- `dotnet test backend/Versatile.slnx` — backend suite
 - New features add tests; debounce tests use `vi.useFakeTimers()`
-- Pre-existing test failures (e.g. `dbSchema.test.js`) are unrelated to app code
+- **Both suites are green. A failing test is a regression — never pre-existing.**
+  Suites that call `vi.resetModules()` must drain their module's async work
+  before the test ends: a new module registry does not stop the old instance,
+  and a stray timer firing inside a later test fails whichever test it lands on.
 
 ## Architecture Notes
 

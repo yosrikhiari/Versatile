@@ -251,13 +251,13 @@ function generateWorldDoc() {
  * because a thread's arc is genuinely useful and the drag order is still the
  * only ordering threads have.
  */
-async function generateTimelineDoc(projectId?: any) {
+async function generateTimelineDoc(projectId?: any, atChapter: number | null = null) {
   const storyBibleStore = useStoryBibleStore()
   const projectStore = useProjectStore()
   const terms = projectStore.terminology
   const threads = storyBibleStore.plotThreads
 
-  const chapterBody = projectId ? await buildChapterTimelineBody(projectId) : ''
+  const chapterBody = projectId ? await buildChapterTimelineBody(projectId, atChapter) : ''
   if (threads.length === 0 && !chapterBody) return ''
 
   const parts = [`# ${terms.plotThreads || 'Timeline'}`]
@@ -289,7 +289,7 @@ async function generateTimelineDoc(projectId?: any) {
  * unavailable. Falling back to no chapter section reproduces the old document
  * exactly, which is the right degradation.
  */
-async function buildChapterTimelineBody(projectId: any) {
+async function buildChapterTimelineBody(projectId: any, atChapter: number | null = null) {
   try {
     const [{ getProjectChapterDigests, getEntityStateTimeline }, { buildStoryTimeline, renderTimelineMarkdown }] =
       await Promise.all([
@@ -306,8 +306,18 @@ async function buildChapterTimelineBody(projectId: any) {
     ])
 
     const chapterTitles: Record<number, string> = {}
+    // Same section ordering the Timeline view uses for both maps: what the
+    // author sees and what the writer is told must not drift apart.
+    const sceneChapters: Record<string, number> = {}
+    const chapterWordCounts: Record<number, number> = {}
     ;(manuscriptStore.sortedSections as any[]).forEach((section: any, i: number) => {
       chapterTitles[i + 1] = section.title || `Chapter ${i + 1}`
+      let words = 0
+      for (const sub of (manuscriptStore.subsectionsBySection as any)[section.id] || []) {
+        sceneChapters[String(sub.id)] = i + 1
+        words += countWords(sub.content || '')
+      }
+      if (words > 0) chapterWordCounts[i + 1] = words
     })
 
     const timeline = buildStoryTimeline({
@@ -315,9 +325,22 @@ async function buildChapterTimelineBody(projectId: any) {
       entityStates,
       edges: storyGraphStore.edges as any[],
       chapterTitles,
+      sceneChapters,
+      chapterWordCounts,
       resolveName: (type: any, id: any) => resolveEntityName(type, id, maps) || ''
     })
-    return renderTimelineMarkdown(timeline)
+    // Everything at or before the chapter being written, nothing after it.
+    // Ungated, this hands the writer chapter 30's betrayal while it is drafting
+    // chapter 5 — the exact failure the edge validity window exists to prevent,
+    // and which the Relationships doc beside it already guards against.
+    if (atChapter != null) {
+      timeline.chapters = timeline.chapters.filter((c) => c.chapterNumber <= atChapter)
+    }
+    // ~43 tokens a chapter, against a 3500-token budget for the whole bible.
+    // Thirty keeps the axis under a third of it and leaves room for the cast,
+    // the world and the style guide, which an unbounded timeline was squeezing
+    // out entirely on any book past ~80 chapters.
+    return renderTimelineMarkdown(timeline, { maxChapters: 30 })
   } catch (err) {
     console.warn('[useStoryDocuments] chapter timeline unavailable:', err)
     return ''
@@ -659,13 +682,95 @@ const DOMAIN_LABELS = {
   sound: 'auditory imagery and sound play a strong role'
 }
 
+/**
+ * The Voice Lab profile, rendered as instructions a writer can act on.
+ *
+ * `voiceAnalyzer` measures the author's own manuscript — sentence-length
+ * distribution, dialogue ratio, punctuation habits, paragraph pacing — and the
+ * author can lock it and merge supplementary samples into it. Until now it
+ * reached exactly two display components. The writer inferred its own, far
+ * coarser style below instead, so the profile the author curated influenced not
+ * one generated word. This puts it on the channel the writer already reads.
+ *
+ * Units are the analyzer's, and they are not what the field names suggest:
+ * `percentage` holds a fraction ("0.350"), and the punctuation frequencies are
+ * per sentence, not per 1000 words. Rendering them as-is would state the wrong
+ * numbers to the model with total confidence.
+ */
+export function renderExtractedVoiceGuide(state: any): string[] {
+  const profile = state?.profile
+  if (!state?.isExtracted || !profile) return []
+
+  const num = (v: any) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+  const pct = (v: any) => {
+    const n = num(typeof v === 'string' ? parseFloat(v) : v)
+    return n == null ? null : Math.round(n * 100)
+  }
+
+  const ss = profile.sentenceStructure || {}
+  const punct = profile.punctuation || {}
+  const pacing = profile.pacing || {}
+  const meta = profile.metadata || {}
+  const lines: string[] = []
+
+  const avgSentence = num(ss.averageSentenceLength)
+  if (avgSentence) lines.push(`- Sentence length: ${Math.round(avgSentence)} words on average`)
+
+  const dist = Array.isArray(ss.sentenceLengthDistribution) ? ss.sentenceLengthDistribution : []
+  const spread = dist
+    .map((d: any) => ({ range: d?.range, p: pct(d?.percentage) }))
+    .filter((d: any) => d.range && d.p)
+  if (spread.length) {
+    lines.push(`- Sentence mix: ${spread.map((d: any) => `${d.range} words ${d.p}%`).join(', ')}`)
+  }
+
+  const dialogue = pct(ss.dialogueRatio)
+  if (dialogue != null) lines.push(`- Dialogue: ${dialogue}% of sentences`)
+
+  const avgPara = num(pacing.averageParagraphLength)
+  if (avgPara) lines.push(`- Paragraphs: ${Math.round(avgPara)} words on average`)
+
+  const habits: string[] = []
+  const habit = (v: any, label: string) => {
+    const n = num(v)
+    // Below one in fifty sentences is noise, not a habit worth imitating.
+    if (n && n >= 0.02) habits.push(`${label} in ~1 of every ${Math.round(1 / n)} sentences`)
+  }
+  habit(punct.dashFrequency, 'em-dash')
+  habit(punct.ellipsisFrequency, 'ellipsis')
+  habit(punct.semicolonFrequency, 'semicolon')
+  habit(punct.exclamationFrequency, 'exclamation mark')
+  if (habits.length) lines.push(`- Punctuation habits: ${habits.join('; ')}`)
+
+  if (!lines.length) return []
+
+  // Deliberately no `##` heading of its own. `useStoryWriter.extractDoc` pulls
+  // the writer's voice instruction by slicing from `## Style Guide` to the next
+  // `#`, so a sibling heading here would be cut out of the one place the voice
+  // matters most. These lines live *inside* the Style Guide section instead.
+  const confidence = pct(meta.confidence)
+  const label =
+    confidence != null
+      ? `Measured from the manuscript (${confidence}% confidence):`
+      : 'Measured from the manuscript:'
+  return [label, ...lines, 'Match these habits; they are the author’s, not a target to improve on.']
+}
+
 function generateStyleGuideDoc() {
   const manuscriptStore = useManuscriptStore()
+  const storyBibleStore = useStoryBibleStore()
   const sortedSections = manuscriptStore.sortedSections as any[]
   const subsections = manuscriptStore.subsections as any[]
 
+  // Emitted even when the inference below bails: a measured profile is better
+  // evidence than the inference, and a project can hold one before it has five
+  // sections of prose to infer from.
+  const measured = renderExtractedVoiceGuide(storyBibleStore.voiceProfile)
+
   const recentSections = sortedSections.slice(-5)
-  if (recentSections.length === 0) return ''
+  if (recentSections.length === 0) {
+    return measured.length ? ['## Style Guide', ...measured].join('\n') : ''
+  }
 
   const contentParts = []
   for (const section of recentSections) {
@@ -678,7 +783,9 @@ function generateStyleGuideDoc() {
   }
 
   const fullText = contentParts.join('\n\n')
-  if (countWords(fullText) < 200) return ''
+  if (countWords(fullText) < 200) {
+    return measured.length ? ['## Style Guide', ...measured].join('\n') : ''
+  }
 
   const sentences = fullText.match(/[^.!?\n]+[.!?]/g) || []
   const words = fullText.match(/\b\w+\b/g) || []
@@ -711,8 +818,10 @@ function generateStyleGuideDoc() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([word]) => word)
-
-  const lines = ['## Style Guide (auto-inferred)']
+  // One `## Style Guide` section holding both, because that heading is exactly
+  // what the writer extracts. Measured first: the profile the author curated
+  // outranks the inference, which stays as complementary detail (POV, tense).
+  const lines = ['## Style Guide', ...measured, 'Inferred from recent prose:']
   lines.push(`- POV: ${pov}`)
   lines.push(`- Tense: ${tense}`)
   lines.push(`- Sentence rhythm: ${sentenceRhythm}`)
@@ -819,7 +928,7 @@ function generateStorySoFarDoc() {
 
 // Assembles the auto-generated body of the Story Context doc from the story bible
 // plus the prose written so far. Empty sections are skipped.
-async function buildStoryContextAuto(projectId: any) {
+async function buildStoryContextAuto(projectId: any, atChapter: number | null = null) {
   const blocks: string[] = []
   const push = (v: any) => {
     if (v && v.trim()) blocks.push(v.trim())
@@ -828,8 +937,8 @@ async function buildStoryContextAuto(projectId: any) {
   push(generateSynopsisDoc())
   push(await generateCharactersDoc(projectId))
   push(generateWorldDoc())
-  push(await generateTimelineDoc(projectId))
-  push(generateRelationshipsDoc())
+  push(await generateTimelineDoc(projectId, atChapter))
+  push(generateRelationshipsDoc(atChapter))
   push(generateStorySoFarDoc())
   push(generateStyleGuideDoc())
   push(await generateRejectedPatternsDoc(projectId))
@@ -962,7 +1071,24 @@ async function regenerateAllDocuments(projectId: any, { force = false } = {}) {
   return targets
 }
 
-async function getStoryDocumentContext(projectId: any, budgetTokens = STORY_DOC_BUDGET_TOKENS) {
+/**
+ * Grounding for a generation call.
+ *
+ * `atChapter` gates the chapter-sensitive parts to what is true at that point in
+ * the story. The stored Story Context doc is the *current* state — right for the
+ * author reading it, wrong for a writer drafting chapter 5, which must not be
+ * told what happens in chapter 30. So when a chapter is supplied the auto zone is
+ * rebuilt in memory, gated, while the author's own edits above the sentinel are
+ * preserved verbatim. Nothing is persisted and the doc's caching is untouched:
+ * the stored artifact stays the author's view of now.
+ *
+ * Omitted, this returns the stored doc exactly as before.
+ */
+async function getStoryDocumentContext(
+  projectId: any,
+  budgetTokens = STORY_DOC_BUDGET_TOKENS,
+  atChapter: number | null = null
+) {
   if (!projectId) return ''
 
   const docs = await getAllStoryDocuments(projectId)
@@ -976,7 +1102,21 @@ async function getStoryDocumentContext(projectId: any, budgetTokens = STORY_DOC_
   const contextDoc = docMap[DOC_TYPES.STORY_CONTEXT]
   if (contextDoc && contextDoc.trim()) {
     const budget = Math.max(budgetTokens, STORY_CONTEXT_BUDGET_TOKENS)
+    if (atChapter != null) {
+      const { authorZone } = splitAuthorZone(contextDoc)
+      const gatedAuto = await buildStoryContextAuto(projectId, atChapter)
+      const merged = [authorZone, gatedAuto].filter((s) => s && s.trim()).join('\n\n')
+      return truncateToBudget(merged || contextDoc, budget)
+    }
     return truncateToBudget(contextDoc, budget)
+  }
+
+  // Same gate on the fallback path: the stored Timeline and Relationships docs
+  // are the current state, so regenerate those two when a chapter is in play.
+  // The rest of the bible is not chapter-sensitive and is used as stored.
+  if (atChapter != null) {
+    docMap[DOC_TYPES.TIMELINE] = await generateTimelineDoc(projectId, atChapter)
+    docMap[DOC_TYPES.RELATIONSHIPS] = generateRelationshipsDoc(atChapter)
   }
 
   const parts = []

@@ -2831,6 +2831,16 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     // Create sections using Director-provided chapter boundaries
     const sections = []
 
+    // Captured before this run creates its own sections.
+    //
+    // Chapters that already exist are history the writer is entitled to see;
+    // everything from here on is what this run is about to write. Gating on it
+    // keeps a partially-written span from an aborted earlier run — chapters 11-20
+    // half-drafted, say — from leaking backwards into the scenes now rewriting
+    // them, which is the case where the graph really does hold the future.
+    // One value for the whole run, so the per-run bible cache below still holds.
+    const historyChapter = ((useManuscriptStore().sortedSections as any[]) || []).length || null
+
     // Multi-volume: ensure a volume record exists for each requested volume,
     // so chapters land in the right volume. Volume 1 reuses the primary record.
     const volumeIdByIndex: Record<number, any> = { 1: volumeId.value }
@@ -3001,7 +3011,11 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
 
     // Cache story bible docs for the entire run (Fix #4 — avoids Dexie re-query per batch)
     const storyDocuments = useStoryDocuments()
-    const storyBibleDocs = await storyDocuments.getStoryDocumentContext(projectId)
+    const storyBibleDocs = await storyDocuments.getStoryDocumentContext(
+      projectId,
+      undefined,
+      historyChapter
+    )
 
     writeParams.value = {
       projectId,

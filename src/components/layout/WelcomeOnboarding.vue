@@ -105,10 +105,7 @@ function handleSkipSetup() {
     fallback-description="Failed to load the onboarding flow. Try refreshing the page."
   >
     <!-- Manuscript Mono · solid scrim, hairline-bordered panel, no glass/glow. -->
-    <div
-      v-if="show"
-      class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-    >
+    <div v-if="show" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div
         class="bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg max-w-2xl w-full max-h-[90vh] flex flex-col animate-fade-in"
       >
@@ -387,10 +384,7 @@ function handleSkipSetup() {
                 </div>
               </div>
             </div>
-            <button
-              class="btn-primary w-full py-3 rounded-md"
-              @click="handleComplete"
-            >
+            <button class="btn-primary w-full py-3 rounded-md" @click="handleComplete">
               Start Writing
             </button>
           </div>

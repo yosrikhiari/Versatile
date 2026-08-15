@@ -141,7 +141,9 @@ describe('formatEvalFeedback', () => {
   })
 
   it('handles null dimensionScores gracefully', () => {
-    const result = formatEvalFeedback([{ sceneIndex: 1, passed: true, score: 7, topIssues: [], dimensionScores: null }])
+    const result = formatEvalFeedback([
+      { sceneIndex: 1, passed: true, score: 7, topIssues: [], dimensionScores: null }
+    ])
     expect(result).not.toContain('PER-DIMENSION AVERAGES')
     expect(result).toContain('Scene 1: Pass (7)')
   })

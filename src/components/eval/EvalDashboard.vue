@@ -90,7 +90,8 @@
         {{ focusInstructions }}
       </div>
       <p class="text-2xs text-text-hint/60 mt-1">
-        These focus areas are injected into the next critic/revision cycle to target weak dimensions.
+        These focus areas are injected into the next critic/revision cycle to target weak
+        dimensions.
       </p>
     </div>
 
@@ -102,7 +103,9 @@
       <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
         Evaluation History
       </h4>
-      <pre class="text-xs text-text-secondary font-ui whitespace-pre-wrap leading-relaxed">{{ pastEvalResults }}</pre>
+      <pre class="text-xs text-text-secondary font-ui whitespace-pre-wrap leading-relaxed">{{
+        pastEvalResults
+      }}</pre>
     </div>
 
     <!-- Degradation Hotspots -->
@@ -306,8 +309,7 @@ export default {
           const avg = scores.reduce((a, b) => a + b, 0) / scores.length
           const barWidth = Math.round((avg / 10) * 100)
           const barClass = avg >= 7 ? 'bg-success' : avg >= 5 ? 'bg-warning' : 'bg-danger'
-          const scoreClass =
-            avg >= 7 ? 'text-success' : avg >= 5 ? 'text-warning' : 'text-danger'
+          const scoreClass = avg >= 7 ? 'text-success' : avg >= 5 ? 'text-warning' : 'text-danger'
           return {
             name: d.value,
             label: d.label,

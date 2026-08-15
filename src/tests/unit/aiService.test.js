@@ -60,7 +60,10 @@ vi.mock('@/services/providers/groq', () => ({
 vi.mock('@/services/aiProviderBudget', () => ({
   providerBudget: { check: vi.fn(() => ({ allowed: true })), record: vi.fn() },
   BudgetExceededError: class BudgetExceededError extends Error {
-    constructor(provider, reason) { super(reason); this.provider = provider }
+    constructor(provider, reason) {
+      super(reason)
+      this.provider = provider
+    }
   }
 }))
 

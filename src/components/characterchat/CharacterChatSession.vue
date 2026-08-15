@@ -163,7 +163,10 @@ watch(
             :alt="getMessageCharacterName(msg) || 'Character'"
             class="w-7 h-7 rounded-full object-cover"
           />
-          <div v-else class="w-7 h-7 rounded-full bg-surface-hover flex items-center justify-center">
+          <div
+            v-else
+            class="w-7 h-7 rounded-full bg-surface-hover flex items-center justify-center"
+          >
             <BaseIcon name="user" :size="12" class="text-accent" />
           </div>
         </div>

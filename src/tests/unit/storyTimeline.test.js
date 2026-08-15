@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { buildStoryTimeline, renderTimelineMarkdown } from '@/services/generation/storyTimeline'
+import {
+  buildStoryTimeline,
+  renderTimelineMarkdown,
+  pacingOutliers
+} from '@/services/generation/storyTimeline'
 
 // The one axis the project's four notions of time should always have shared.
 // Both the Timeline view and the Timeline document render this, so what the
@@ -184,6 +188,168 @@ describe('buildStoryTimeline', () => {
     })
     expect(t.chapters[0].charactersPresent).toEqual(['Kael'])
     expect(t.chapters[0].summary).toBe('They reach the gate.')
+  })
+
+  // A digest with no chapter number yields a state with none, which is ordinary
+  // mid-draft. Those states sort ahead of everything (chapterNumber ?? 0) and
+  // cannot be rendered anywhere, so they must not participate in the running
+  // comparison either.
+  describe('states the digest could not place in a chapter', () => {
+    it('does not let an unplaceable death read as a resurrection later', () => {
+      const t = buildStoryTimeline({
+        entityStates: [
+          state({ chapterNumber: null, sceneNumber: 1, state: { status: 'dead' } }),
+          state({ chapterNumber: 5, sceneNumber: 2, state: { status: 'alive' } })
+        ]
+      })
+      const texts = t.chapters.flatMap((c) => c.events.map((e) => e.text))
+      expect(texts).not.toContain('Kael is alive again')
+    })
+
+    it('still reports a topic as learned in the first chapter that can hold it', () => {
+      const t = buildStoryTimeline({
+        entityStates: [
+          state({ chapterNumber: null, sceneNumber: 1, state: { knows: ['the betrayal'] } }),
+          state({ chapterNumber: 4, sceneNumber: 2, state: { knows: ['the betrayal'] } })
+        ]
+      })
+      const ch4 = t.chapters.find((c) => c.chapterNumber === 4)
+      expect(ch4.events.map((e) => e.text)).toContain('Kael learns: the betrayal')
+    })
+
+    it('places a state on the axis when the manuscript knows its scene', () => {
+      const t = buildStoryTimeline({
+        entityStates: [state({ chapterNumber: null, sceneId: 'sc-9', state: { status: 'dead' } })],
+        sceneChapters: { 'sc-9': 3 }
+      })
+      const ch3 = t.chapters.find((c) => c.chapterNumber === 3)
+      expect(ch3.events.map((e) => e.text)).toContain('Kael dies')
+    })
+
+    it('leaves a state unplaced when the manuscript does not know its scene', () => {
+      const t = buildStoryTimeline({
+        entityStates: [
+          state({ chapterNumber: null, sceneId: 'sc-unknown', state: { status: 'dead' } })
+        ],
+        sceneChapters: { 'sc-other': 3 }
+      })
+      expect(t.isEmpty).toBe(true)
+    })
+
+    it('flags a character who never appears again, but not on the last chapter', () => {
+      // A thread dropped mid-story is worth surfacing. On the final chapter
+      // everyone is "last seen", which says nothing at all.
+      const t = buildStoryTimeline({
+        entityStates: [
+          state({ chapterNumber: 1, entityName: 'Mira' }),
+          state({ chapterNumber: 2, entityName: 'Kael' }),
+          state({ chapterNumber: 3, entityName: 'Kael' })
+        ]
+      })
+      expect(t.chapters.find((c) => c.chapterNumber === 1).droppedThreads).toEqual(['Mira'])
+      expect(t.chapters.find((c) => c.chapterNumber === 3).droppedThreads).toEqual([])
+    })
+
+    it('carries chapter word counts and renders them', () => {
+      const t = buildStoryTimeline({
+        entityStates: [state({ chapterNumber: 1 })],
+        chapterWordCounts: { 1: 3200 }
+      })
+      expect(t.chapters[0].wordCount).toBe(3200)
+      expect(renderTimelineMarkdown(t)).toContain('Length: 3,200 words')
+    })
+
+    it('leaves wordCount null when the manuscript has not measured it', () => {
+      const t = buildStoryTimeline({ entityStates: [state({ chapterNumber: 1 })] })
+      expect(t.chapters[0].wordCount).toBeNull()
+      expect(renderTimelineMarkdown(t)).not.toContain('Length:')
+    })
+
+    it('reports a real death normally when it is placed', () => {
+      const t = buildStoryTimeline({
+        entityStates: [
+          state({ chapterNumber: 2, sceneNumber: 1, state: { status: 'dead' } }),
+          state({ chapterNumber: 6, sceneNumber: 2, state: { status: 'alive' } })
+        ]
+      })
+      const texts = t.chapters.flatMap((c) => c.events.map((e) => e.text))
+      expect(texts).toContain('Kael dies')
+      expect(texts).toContain('Kael is alive again')
+    })
+  })
+})
+
+describe('renderTimelineMarkdown at scale', () => {
+  // The doc grows linearly with the manuscript — ~43 tokens a chapter against a
+  // 3500-token budget for the entire bible. Unbounded, an 80-chapter book fills
+  // it and a ten-volume one needs five times it, crowding out the cast and the
+  // world. Nothing downstream caught this: truncateToBudget keeps parts[0]
+  // unconditionally and the whole chapter body lives there.
+  const long = (n) =>
+    buildStoryTimeline({
+      entityStates: Array.from({ length: n }, (_, i) =>
+        state({ chapterNumber: i + 1, sceneNumber: 1 })
+      )
+    })
+
+  it('keeps the most recent chapters, not the earliest', () => {
+    const out = renderTimelineMarkdown(long(100), { maxChapters: 10 })
+    expect(out).toContain('## Chapter 100')
+    expect(out).toContain('## Chapter 91')
+    expect(out).not.toContain('## Chapter 90')
+    expect(out).not.toContain('## Chapter 1\n')
+  })
+
+  it('says which chapters it dropped rather than starting mid-story silently', () => {
+    const out = renderTimelineMarkdown(long(100), { maxChapters: 10 })
+    expect(out).toContain('Chapters 1–90 are earlier history')
+  })
+
+  it('stays roughly flat in size however long the story gets', () => {
+    const short = renderTimelineMarkdown(long(40), { maxChapters: 30 }).length
+    const huge = renderTimelineMarkdown(long(400), { maxChapters: 30 }).length
+    // Only the elision line's digits differ.
+    expect(Math.abs(huge - short)).toBeLessThan(200)
+  })
+
+  it('does not annotate or truncate a story shorter than the cap', () => {
+    const out = renderTimelineMarkdown(long(5), { maxChapters: 30 })
+    expect(out).not.toContain('earlier history')
+    expect(out).toContain('## Chapter 1')
+    expect(out).toContain('## Chapter 5')
+  })
+
+  it('is uncapped when no cap is given, so the author-facing path is unchanged', () => {
+    const out = renderTimelineMarkdown(long(60))
+    expect(out).toContain('## Chapter 1')
+    expect(out).toContain('## Chapter 60')
+    expect(out).not.toContain('earlier history')
+  })
+})
+
+describe('pacingOutliers', () => {
+  const withCounts = (counts) =>
+    buildStoryTimeline({
+      entityStates: Object.keys(counts).map((n) => state({ chapterNumber: Number(n) })),
+      chapterWordCounts: counts
+    })
+
+  it('says nothing until there are enough measured chapters to average', () => {
+    expect(pacingOutliers(withCounts({ 1: 3000, 2: 3000 }))).toEqual([])
+  })
+
+  it('finds the chapter far off this story’s own average', () => {
+    const out = pacingOutliers(withCounts({ 1: 3000, 2: 3100, 3: 2900, 4: 400 }))
+    expect(out.map((o) => o.chapterNumber)).toEqual([4])
+    expect(out[0].ratio).toBeLessThan(0.5)
+  })
+
+  it('treats an evenly paced story as having no outliers', () => {
+    expect(pacingOutliers(withCounts({ 1: 3000, 2: 3100, 3: 2900, 4: 3050 }))).toEqual([])
+  })
+
+  it('ignores chapters the manuscript never measured', () => {
+    expect(pacingOutliers(withCounts({ 1: 3000, 2: 3100 }))).toEqual([])
   })
 })
 

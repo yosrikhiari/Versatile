@@ -181,9 +181,7 @@ watch(
           >
             {{ checking ? 'Checking…' : 'Check for orphaned links' }}
           </button>
-          <span v-if="cleanedCount !== null" class="text-success"
-            >Removed {{ cleanedCount }}.</span
-          >
+          <span v-if="cleanedCount !== null" class="text-success">Removed {{ cleanedCount }}.</span>
         </template>
         <template v-else-if="orphanCount === 0">
           <span class="text-success flex-1">No orphaned links found.</span>

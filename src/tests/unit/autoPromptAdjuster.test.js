@@ -51,10 +51,7 @@ describe('autoAdjustPrompt', () => {
   })
 
   it('averages scores across multiple evals', () => {
-    const evals = [
-      makeEval({ continuity: 4, voice: 9 }),
-      makeEval({ continuity: 6, voice: 8 })
-    ]
+    const evals = [makeEval({ continuity: 4, voice: 9 }), makeEval({ continuity: 6, voice: 8 })]
     const result = autoAdjustPrompt(evals)
     expect(result.focusInstructions).toContain('Continuity')
     expect(result.focusInstructions).toContain('(5.0/10)')

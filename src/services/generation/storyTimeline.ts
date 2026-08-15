@@ -47,6 +47,13 @@ export interface TimelineChapter {
   charactersPresent: string[]
   locations: string[]
   events: TimelineEvent[]
+  /** Prose length, when the manuscript knows it. Null means "not measured". */
+  wordCount: number | null
+  /**
+   * Characters last seen at or before this chapter who do not appear again for
+   * the rest of the timeline — the thread the author dropped without noticing.
+   */
+  droppedThreads: string[]
 }
 
 export interface StoryTimeline {
@@ -93,6 +100,15 @@ function stateEvents(states: EntityStateRecord[]): Map<number, TimelineEvent[]> 
     const knownTopics = new Set<string>()
 
     for (const s of timeline) {
+      // The timeline is chapter-space, and a digest that carried no chapter
+      // number yields a state with none (entityStates.ts). `push` already drops
+      // those, but letting them advance the running comparison first is worse
+      // than ignoring them: an unplaceable death makes the next living state
+      // read as a resurrection, and a topic first learned off-axis is never
+      // reported as learned at all, because `knownTopics` already holds it.
+      // `presenceByChapter` below skips them for the same reason.
+      if (s.chapterNumber == null) continue
+
       if (type === 'character') {
         if (s.state.status !== 'unknown' && s.state.status !== lastStatus) {
           // "alive" is the resting state — only worth an event when it follows
@@ -128,8 +144,14 @@ function stateEvents(states: EntityStateRecord[]): Map<number, TimelineEvent[]> 
           knownTopics.add(topic)
           push(s.chapterNumber, {
             kind: 'knowledge',
+            // `topic` is a comparison key, not prose: entityStates strips a
+            // leading article so "the warrant" and "warrant" dedupe to one
+            // topic. Rendered with "learns " directly in front, that produced
+            // "Kael learns warden betrayed the city". The colon takes the
+            // grammar out of it rather than trying to restore an article the
+            // key no longer carries.
             subject: s.entityName,
-            text: `${s.entityName} learns ${topic}`,
+            text: `${s.entityName} learns: ${topic}`,
             sceneId: s.sceneId,
             evidence: s.sourceFacts
           })
@@ -229,6 +251,68 @@ function relationshipEvents(
   return byChapter
 }
 
+/**
+ * Does this chapter carry nothing derived at all?
+ *
+ * `locations` counts. It is derived the same way `charactersPresent` is, and
+ * leaving it out meant a chapter known only by where it happens was filed as
+ * empty and then skipped by the renderer — the one fact we had about it was
+ * computed and then dropped. Shared by the builder and the renderer so the
+ * coverage report and the document can never disagree about which chapters
+ * are blank.
+ */
+export function isChapterEmpty(c: TimelineChapter): boolean {
+  return !c.summary && !c.events.length && !c.charactersPresent.length && !c.locations.length
+}
+
+/**
+ * Chapters whose prose is far off this story's own average.
+ *
+ * Deliberately relative: there is no correct chapter length, only a length that
+ * is out of step with the book it is in. Needs at least three measured chapters
+ * before an average means anything.
+ */
+export function pacingOutliers(
+  timeline: StoryTimeline,
+  tolerance = 0.5
+): Array<{ chapterNumber: number; wordCount: number; ratio: number }> {
+  const measured = timeline.chapters.filter(
+    (c) => typeof c.wordCount === 'number' && c.wordCount! > 0
+  )
+  if (measured.length < 3) return []
+  const mean = measured.reduce((sum, c) => sum + c.wordCount!, 0) / measured.length
+  if (!Number.isFinite(mean) || mean <= 0) return []
+  return measured
+    .map((c) => ({ chapterNumber: c.chapterNumber, wordCount: c.wordCount!, ratio: c.wordCount! / mean }))
+    .filter((c) => Math.abs(c.ratio - 1) > tolerance)
+}
+
+/**
+ * Give unplaceable states the chapter the manuscript puts them in.
+ *
+ * A state carries whatever chapter its digest carried, and a digest built before
+ * its scene was placed in a section carries none. Those states are invisible to
+ * a chapter-space timeline: the death is recorded and never shown. The
+ * manuscript knows where the scene lives even when the digest did not, so
+ * resolving it here recovers the coverage without re-deriving anything — every
+ * row already written with a null chapter becomes usable as soon as its scene
+ * sits in a section.
+ */
+function placeStates(
+  states: EntityStateRecord[],
+  sceneChapters: Record<string, number>
+): EntityStateRecord[] {
+  let changed = false
+  const placed = states.map((s) => {
+    if (s.chapterNumber != null) return s
+    const n = sceneChapters[String(s.sceneId)]
+    if (typeof n !== 'number' || !Number.isFinite(n)) return s
+    changed = true
+    return { ...s, chapterNumber: n }
+  })
+  return changed ? placed : states
+}
+
 function uniqueStrings(values: any[]): string[] {
   const seen = new Set<string>()
   const out: string[] = []
@@ -254,6 +338,8 @@ export function buildStoryTimeline({
   entityStates = [],
   edges = [],
   chapterTitles = {},
+  sceneChapters = {},
+  chapterWordCounts = {},
   resolveName = () => ''
 }: {
   chapterDigests?: any[]
@@ -261,9 +347,14 @@ export function buildStoryTimeline({
   edges?: TemporalEdge[]
   /** chapterNumber → title, from the manuscript's own sections. */
   chapterTitles?: Record<number, string>
+  /** sceneId → chapterNumber, for states whose digest never carried one. */
+  sceneChapters?: Record<string, number>
+  /** chapterNumber → prose word count, from the manuscript. */
+  chapterWordCounts?: Record<number, number>
   resolveName?: (type: string, id: any) => string
 }): StoryTimeline {
-  const stateEventsByChapter = stateEvents(entityStates)
+  const states = placeStates(entityStates, sceneChapters)
+  const stateEventsByChapter = stateEvents(states)
   const relEventsByChapter = relationshipEvents(edges, resolveName)
 
   const digestByChapter = new Map<number, any>()
@@ -275,7 +366,7 @@ export function buildStoryTimeline({
     ...digestByChapter.keys(),
     ...stateEventsByChapter.keys(),
     ...relEventsByChapter.keys(),
-    ...entityStates.map((s) => s.chapterNumber).filter((n): n is number => n != null),
+    ...states.map((s) => s.chapterNumber).filter((n): n is number => n != null),
     ...Object.keys(chapterTitles).map(Number).filter((n) => Number.isFinite(n))
   ])
 
@@ -286,7 +377,7 @@ export function buildStoryTimeline({
   // Presence and locations come from the states rather than the digest rollup,
   // so a chapter reads correctly before any rollup has run.
   const presenceByChapter = new Map<number, { characters: string[]; locations: string[] }>()
-  for (const s of [...entityStates].sort(compareStatePosition)) {
+  for (const s of [...states].sort(compareStatePosition)) {
     if (s.chapterNumber == null || !s.state.present) continue
     const entry = presenceByChapter.get(s.chapterNumber) || { characters: [], locations: [] }
     if (s.entityType === 'character') entry.characters.push(s.entityName)
@@ -294,6 +385,17 @@ export function buildStoryTimeline({
     presenceByChapter.set(s.chapterNumber, entry)
   }
 
+  // Last chapter each character is present in. A character whose last appearance
+  // is far from the end is a thread the author may have dropped without noticing
+  // — the kind of thing that is obvious in a list and invisible while drafting.
+  const lastSeen = new Map<string, number>()
+  for (const s of states) {
+    if (s.chapterNumber == null || s.entityType !== 'character' || !s.state.present) continue
+    const prev = lastSeen.get(s.entityName)
+    if (prev == null || s.chapterNumber > prev) lastSeen.set(s.entityName, s.chapterNumber)
+  }
+
+  const lastChapter = Math.max(...chapterNumbers)
   const emptyChapters: number[] = []
   const chapters = [...chapterNumbers]
     .sort((a, b) => a - b)
@@ -310,9 +412,23 @@ export function buildStoryTimeline({
         summary: String(digest?.summary || ''),
         charactersPresent: uniqueStrings([...(digest?.charactersPresent || []), ...presence.characters]),
         locations: uniqueStrings([...(digest?.locations || []), ...presence.locations]),
-        events
+        events,
+        wordCount:
+          typeof chapterWordCounts[chapterNumber] === 'number'
+            ? chapterWordCounts[chapterNumber]
+            : null,
+        // Only meaningful once the story runs past this chapter: on the last
+        // chapter every character is "last seen", which says nothing.
+        droppedThreads:
+          chapterNumber < lastChapter
+            ? uniqueStrings(
+                [...lastSeen.entries()]
+                  .filter(([, last]) => last === chapterNumber)
+                  .map(([name]) => name)
+              )
+            : []
       }
-      if (!chapter.summary && !chapter.events.length && !chapter.charactersPresent.length) {
+      if (isChapterEmpty(chapter)) {
         emptyChapters.push(chapterNumber)
       }
       return chapter
@@ -321,20 +437,63 @@ export function buildStoryTimeline({
   return { chapters, emptyChapters, isEmpty: false }
 }
 
-/** The Timeline document body. Empty string when there is no chapter data yet. */
-export function renderTimelineMarkdown(timeline: StoryTimeline): string {
+/**
+ * The Timeline document body. Empty string when there is no chapter data yet.
+ *
+ * `maxChapters` bounds it from the *recent* end, which is the only end that can
+ * be dropped safely. The document grows linearly with the manuscript — measured
+ * at ~43 tokens per chapter, so 80 chapters fills the entire 3500-token bible
+ * budget and 400 (ten volumes, which this project supports) needs five times it.
+ * Nothing downstream was catching that: `truncateToBudget` splits on `\n---\n`
+ * and keeps `parts[0]` unconditionally, and the whole chapter body lives inside
+ * `parts[0]` — so the doc simply ran over budget and crowded out the cast, the
+ * world and the style guide.
+ *
+ * Recent rather than earliest because this document answers "what must I not
+ * contradict *now*". Establishing canon is the story bible's job and is carried
+ * separately; chapter 3 of a 300-chapter book is not what chapter 300 needs.
+ */
+export function renderTimelineMarkdown(
+  timeline: StoryTimeline,
+  { maxChapters }: { maxChapters?: number } = {}
+): string {
   if (timeline.isEmpty) return ''
   const parts: string[] = []
 
-  for (const c of timeline.chapters) {
-    // A chapter with nothing derived would render as a bare heading, which in a
-    // prompt reads as "this chapter is empty" rather than "not analysed yet".
-    if (!c.summary && !c.events.length && !c.charactersPresent.length) continue
+  const rendered = timeline.chapters.filter((c) => !isChapterEmpty(c))
+  const kept =
+    typeof maxChapters === 'number' && maxChapters > 0 && rendered.length > maxChapters
+      ? rendered.slice(-maxChapters)
+      : rendered
 
-    const lines = [`## Chapter ${c.chapterNumber}${c.title ? ` — ${c.title}` : ''}`]
+  if (kept.length < rendered.length) {
+    const firstKept = kept[0]?.chapterNumber
+    // Stated, not silent: a model given a timeline that starts at chapter 271
+    // should know the story did not.
+    parts.push(
+      `_Chapters 1–${(firstKept ?? 1) - 1} are earlier history and are omitted here; the story bible carries their canon._`
+    )
+  }
+
+  // Chapters with nothing derived are already filtered out above: a bare heading
+  // reads in a prompt as "this chapter is empty" rather than "not analysed yet".
+  for (const c of kept) {
+    // `title` falls back to "Chapter N" when the manuscript has no name for it,
+    // which rendered as "## Chapter 5 — Chapter 5" — noise in every prompt for
+    // every unnamed chapter.
+    const named = c.title && c.title !== `Chapter ${c.chapterNumber}`
+    const lines = [`## Chapter ${c.chapterNumber}${named ? ` — ${c.title}` : ''}`]
     if (c.summary) lines.push(c.summary)
     if (c.charactersPresent.length) lines.push(`Present: ${c.charactersPresent.join(', ')}`)
     if (c.locations.length) lines.push(`Where: ${c.locations.join(', ')}`)
+    // Pacing, so the writer can see this chapter's length against its neighbours
+    // rather than inferring it from how much summary happens to be here.
+    // Optional access, not assumed: this is exported, and a caller holding a
+    // timeline built before these fields existed must still render.
+    if (c.wordCount != null) lines.push(`Length: ${c.wordCount.toLocaleString()} words`)
+    if (c.droppedThreads?.length) {
+      lines.push(`Last appearance: ${c.droppedThreads.join(', ')}`)
+    }
     if (c.events.length) {
       lines.push('Changes:')
       for (const e of c.events) lines.push(`- ${e.text}`)

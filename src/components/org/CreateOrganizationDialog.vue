@@ -42,9 +42,7 @@ async function handleSubmit() {
     <div
       class="bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg p-6 w-full max-w-sm animate-fade-in"
     >
-      <h2 class="text-lg font-semibold text-text-primary mb-4">
-        Create organization
-      </h2>
+      <h2 class="text-lg font-semibold text-text-primary mb-4">Create organization</h2>
       <form class="space-y-4" @submit.prevent="handleSubmit">
         <div>
           <label for="org-name" class="block font-manuscript text-xs text-text-secondary mb-2">

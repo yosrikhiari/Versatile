@@ -17,8 +17,6 @@ using System.Text;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
-using Hangfire;
-using Hangfire.PostgreSql;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -28,12 +26,19 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration));
+    // ReadFrom.Configuration builds the logger entirely from a "Serilog" config
+    // section. No appsettings file defines one, so this replaced the bootstrap
+    // logger with a sink-less logger and every line written after Build() — the
+    // fatal startup error included — went nowhere. The console sink is applied
+    // in code as a floor that configuration cannot silently remove. If a
+    // "Serilog" section is ever added with its own Console sink, drop this one
+    // or output doubles.
+    builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console());
 
     var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured");
     _ = builder.Configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer is not configured");
     _ = builder.Configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience is not configured");
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured");
+    _ = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured");
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -109,14 +114,6 @@ try
         builder.Services.AddInfrastructure(builder.Configuration);
     }
 
-#pragma warning disable CS0618
-    builder.Services.AddHangfire(config => config
-        .UseSimpleAssemblyNameTypeSerializer()
-        .UseRecommendedSerializerSettings()
-        .UsePostgreSqlStorage(connectionString));
-#pragma warning restore CS0618
-    builder.Services.AddHangfireServer();
-
     builder.Services.AddAntiforgery(options =>
     {
         options.HeaderName = "X-CSRF-TOKEN";
@@ -185,6 +182,14 @@ try
 
     var app = builder.Build();
 
+    // Deliberately after Build(): a host wrapper (WebApplicationFactory in the
+    // integration tests) contributes both its configuration sources and its
+    // environment name during Build, not before it. Checking against `builder`
+    // reads appsettings.json's placeholders under environment "Production" and
+    // rejects a correctly-configured test host.
+    RequireStrongSecret(app.Configuration, app.Environment, "Jwt:Key");
+    RequireStrongSecret(app.Configuration, app.Environment, "Encryption:MasterKey");
+
     app.UseSerilogRequestLogging();
 
     app.UseExceptionHandler();
@@ -241,20 +246,63 @@ try
     app.MapHub<CollaborationHub>("/hubs/collaboration");
     app.MapHub<GenerationHub>("/hubs/generation");
 
-    app.UseHangfireDashboard("/jobs", new()
-    {
-        Authorization = []
-    });
-
     app.Run();
 }
-catch (Exception ex)
+// Host-control exceptions are not application failures: WebApplicationFactory
+// stops the host mid-build with an internal sentinel, and `dotnet ef` aborts it
+// with HostAbortedException. Swallowing either turns a deliberate stop into a
+// "terminated unexpectedly" log line and hands the caller a host that never
+// started, so let them through.
+catch (Exception ex) when (ex is not HostAbortedException
+                           && ex.GetType().Name != "StopTheHostException")
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+    // Without this the process exits 0 after a fatal startup failure, so Docker,
+    // systemd and Kubernetes all read a crashed boot as a clean shutdown and
+    // neither restart nor alert on it.
+    Environment.ExitCode = 1;
 }
 finally
 {
     Log.CloseAndFlush();
+}
+
+/// <summary>
+/// appsettings.json ships placeholder values for the signing and encryption keys
+/// so that a fresh clone runs without setup. The cost is that a plain null check
+/// can never fire in a real deployment: forget to set Jwt__Key and the app boots
+/// happily, signing tokens with a key that is public in this repository — anyone
+/// can then mint a token for any user or organisation. Outside Development the
+/// placeholders, and anything too short to be a credible HMAC key, are rejected
+/// so a misconfigured deploy fails loudly at startup instead of quietly running
+/// insecure.
+/// </summary>
+static string RequireStrongSecret(IConfiguration configuration, IHostEnvironment environment, string key)
+{
+    var value = configuration[key];
+    if (string.IsNullOrWhiteSpace(value))
+        throw new InvalidOperationException($"{key} is not configured.");
+
+    // Development keeps the convenience of the checked-in placeholders.
+    if (environment.IsDevelopment())
+        return value;
+
+    var envVar = key.Replace(":", "__");
+    if (value.Contains("CHANGE-ME", StringComparison.OrdinalIgnoreCase) ||
+        value.StartsWith("set-via-env-var", StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException(
+            $"{key} is still the placeholder from appsettings.json. Set the {envVar} environment variable.");
+    }
+
+    const int minimumLength = 32;
+    if (value.Length < minimumLength)
+    {
+        throw new InvalidOperationException(
+            $"{key} must be at least {minimumLength} characters outside Development (got {value.Length}). Set the {envVar} environment variable.");
+    }
+
+    return value;
 }
 
 static async Task EnsureSeedDataAsync(ApplicationDbContext db)
