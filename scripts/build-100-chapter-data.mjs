@@ -63,6 +63,7 @@ for (const [ch, ids] of Object.entries(INTRO)) for (const id of ids) if (!(id in
 // Accumulated established entity set per chapter.
 const established = new Set()
 const chapters = []
+let prevLoc = null
 const ledgerByChapter = {} // ch -> keyFacts (for out-of-order / dedup tests)
 
 for (let ch = 1; ch <= 100; ch++) {
@@ -162,17 +163,31 @@ for (let ch = 1; ch <= 100; ch++) {
       break
   }
 
+  // Location transition between adjacent chapters must be acknowledged, or it is
+  // a silent teleport at the seam. Record the journey so the seam validator can
+  // confirm the move is justified rather than letting it pass silently.
+  if (prevLoc && loc !== prevLoc) {
+    keyFacts.push(`The company travels from ${LOC_NAME[prevLoc]} to ${LOC_NAME[loc]}.`)
+  }
+
   if (!prose) {
     const names = charsPresent.map(id => CAST.find(c => c.id === id)?.name).filter(Boolean)
     prose = `Chapter ${ch}. At ${LOC_NAME[loc]}, ${names.slice(0, 3).join(', ') || 'the company'} moved through the fraying Lattice. ` +
       (keyFacts.length ? keyFacts.map(f => f + '.').join(' ') : 'The silence of the archive pressed close.')
   }
 
+  const ending = flashback
+    ? `Flashback: the memory of ${LOC_NAME[loc]} surfaces.`
+    : `Chapter ${ch} ends with the Lattice unresolved at ${LOC_NAME[loc]}.`
+  const continuesFrom = flashback ? null : (ch === 1 ? null : `ch-${String(ch - 1).padStart(4, '0')}`)
+
   chapters.push({
     id: `ch-${String(ch).padStart(4, '0')}`,
     chapterNumber: ch,
     title: scenario ? `Chapter ${ch} (${scenario})` : `Chapter ${ch}`,
     flashback,
+    ending,
+    continuesFrom,
     prose,
     summary: `Chapter ${ch} at ${LOC_NAME[loc]}.`,
     wordCount,
@@ -189,6 +204,7 @@ for (let ch = 1; ch <= 100; ch++) {
     ingestOrder: scenario === 'out-of-order' ? 900 : ch // harness uses ingestOrder to deliver ch18 early
   })
   ledgerByChapter[ch] = keyFacts
+  prevLoc = loc
 }
 
 mkdirSync('validation', { recursive: true })

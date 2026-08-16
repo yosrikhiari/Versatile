@@ -521,3 +521,38 @@
 **Fixes Applied**: All fixes are code-level changes to existing pipeline logic (artifact final rest Ch81 with dual nature Ch34/Vorn vessel Ch24 continuity, 5-year time jump Ch82 from Ch64's 2-year progression documentation, artifact monitoring deduplication Ch51→Ch52→Ch82, new threat assessment beyond horizon Ch83 P1 fully reinterpreted maintenance, legacy documented Ch84 full P1-P7 audit Ch1-84, prophecy fulfilled Ch85 P1 final fulfillment, character status Ch86 full 86-character accounting with Vorn defeated vs. killed disambiguation, world peace Ch87 P1-P7 all resolved Ch1-87, final status Ch88 all entities accounted all edges valid no orphaned refs all 7 rules pass, pipeline verification Ch89 all 7 rules pass all references valid no data loss no duplication system confirmed consistent, long-term assurance Ch90 safeguards active tests passing no regression system resilient Ch1-89→Ch90 continuity)  
 **Preventive Mechanisms Added**: New tests added to test suite for each failure mode; architectural constraints encoded; artifact final rest test (Ch81: dual nature Ch34/Vorn vessel Ch24 continuity), 5-year time jump test (Ch82: Ch64→Ch82 progression documentation, artifact monitoring deduplication Ch51→Ch52→Ch82), new threat assessment beyond horizon test (Ch83: P1 fully reinterpreted Ch60→Ch83 not reopened, status quo Ch61→Ch83 maintained), legacy documented test (Ch84: full P1-P7 audit Ch1-84), prophecy fulfilled test (Ch85: P1 final fulfillment no unfulfilled requirements complete narrative closure), character status test (Ch86: 86-character accounting Vorn defeated vs. killed disambiguation Ch19→Ch86, Thaddeus dead 86-chapter span no revival world peace Ch87 P1-P7 all resolved Ch1-87), final status test (Ch88: all entities accounted all edges valid no orphaned refs all 7 rules pass the final validation checkpoint), pipeline verification test (Ch89: all 7 rules pass all references valid no data loss no duplication system confirmed consistent), long-term assurance test (Ch90: safeguards active tests passing no regression system resilient Ch1-89→Ch90 continuity)  
 **Status**: Chapters 81-90 validated; issues S-076 through S-085 documented and addressed; critical continuity and endpoint tests S-080 (Prophecy Fulfilled Ch85), S-083 (Final Status Ch88), S-085 (Safeguards Ch90: Ch1-89→Ch90 continuity) are primary markers for final 10-chapter integrity and system readiness for Chapters 91-100
+
+---
+
+## Second-Pass Addendum (2026-08-16)
+
+Step 11 second-pass review of the 100-chapter deliverables. No new pipeline defects were found; the gaps were (a) one real type/build break in a deliverable guardrail file and (b) inaccuracies in `PIPELINE_ANALYSIS.md` that overstated residual risk. Both corrected; full suite green (2733) and `tsc --noEmit` clean.
+
+### Issue: undocumented-character guard did not typecheck or run
+- **Issue ID**: S-098
+- **Symptom**: `src/guardrails/guards/undocumentedCharacterGuard.ts` used `kind: 'undocumented_character'`, which was absent from the `GuardrailKind` union; `tsc --noEmit` failed (`error TS2322`). The guard was also never registered in `setup.ts` and its kind was absent from `SCENE_KINDS`, so the F1 "undocumented-character guard fixed" claim was only partially true.
+- **Root Cause**: The kind was added to the guard but the union (`types.ts`), its `DEFAULT_META` entry (`registry.ts`), the registration (`setup.ts`), and the prose execution path (`useProseGuardrails.ts` `SCENE_KINDS`) were never updated to match.
+- **Fix**:
+  - Added `'undocumented_character'` to `GuardrailKind` in `src/guardrails/types.ts`.
+  - Added its `DEFAULT_META` entry in `src/guardrails/registry.ts` (structural, O(1), layer `ai_output`).
+  - Registered it in `src/guardrails/setup.ts` (`createUndocumentedCharacterGuard(grounding)`).
+  - Added it to `SCENE_KINDS` in `src/guardrails/hooks/useProseGuardrails.ts` so it actually runs on scene prose.
+- **Verification**: `tsc --noEmit` exit 0; `guardrailIntegration/guardrailGuards/guardrailComponents` suites pass (62/62); full unit suite 2733/2733.
+- **Preventive Mechanism**: The guard now typechecks and is wired into the registry + scene path; any future removal of the kind from the union fails `tsc` (exhaustive `Record<GuardrailKind, GuardMeta>`).
+
+### Issue: S-11 metadata "final third dropped" lacked a regression lock
+- **Issue ID**: S-099
+- **Root Cause**: `PIPELINE_ANALYSIS.md` listed S-11 as a live risk, but the code fix (`chunkProseForMetadata` paragraph-boundary chunking + `mergeSceneMetadata` full union) was already in place and only covered indirectly by `consistencyNovel.test.js`.
+- **Fix**: Added `src/tests/unit/metadataChunking.test.js` (5 cases) locking that (1) long prose is split on paragraph boundaries with every third preserved, and (2) `mergeSceneMetadata` unions entities/keyFacts across all chunks, not just the first. Exported both helpers from `useStoryWriter.ts` to make them testable (non-breaking).
+- **Verification**: 5/5 new tests pass; full suite 2733/2733.
+- **Preventive Mechanism**: Reintroducing the old `slice(0, 6000)` behavior drops the "CLOSE:" assertion in the chunking test and fails the suite.
+
+### Documentation corrections (PIPELINE_ANALYSIS.md)
+- S-11: marked RESOLVED in code (was listed as live risk).
+- S-13 / S-5: idempotency TTL expiry marked by-design (`_cleanup()` has no callers; cross-process dedupe guaranteed by S-097 `SyncTransport` idMap guard).
+- S-9 / Rule 1: entity states are structured `EntityStateRecord`s, not regex-parsed prose.
+- S-4 / S-17: `summarizeLog` keeps last 3 on the metadata path; orchestrator primary context uses `slice(-20)`.
+- S-8 / S-16: `fitSceneContext` is intentional, *visible* priority-based drop (reports what it sacrificed), not silent loss.
+- "Updated Test Patterns" stress suites relisted as PLANNED (the referenced `src/tests/unit/stress/**` and `e2e/100-chapter-*` files were never created); actual existing coverage enumerated.
+
+**Status**: Second-pass review complete. All deliverables consistent with code; suites green; no open correctness gaps.

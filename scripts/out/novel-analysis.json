@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "model": "qwen3:8b",
+    "generatedAt": "2026-08-15T15:45:19.643Z"
+  },
+  "phases": {
+    "plan": {
+      "title": "The Cartographer of Shifting Streets",
+      "genre": "Literary science-fiction",
+      "characters": 3,
+      "locations": 2,
+      "plotThreads": 2,
+      "scenes": 8
+    },
+    "idempotency": {
+      "sameKeyRetryProviderCalls": 0,
+      "differentKeyProviderCalls": 1,
+      "passed": true,
+      "note": "W8 opt-in idempotencyKey: a lost-response retry (same key) collapses; a fresh key re-invokes."
+    },
+    "relationships": {
+      "weave1": {
+        "characterRelationships": 3,
+        "graphEdges": 11,
+        "dropped": 0,
+        "superseded": 0,
+        "unorderable": 0,
+        "atChapter": 1,
+        "reason": "ok"
+      },
+      "weave2": {
+        "characterRelationships": 0,
+        "graphEdges": 0,
+        "dropped": 0,
+        "superseded": 0,
+        "unorderable": 2,
+        "atChapter": 1,
+        "reason": "all_unorderable"
+      },
+      "w11WarningsCaptured": 1,
+      "w11Sample": [
+        "[generateRelationships] 2 relationship claim(s) dropped as unorderable at chapter 1: they contradict an existing open claim starting at the same chapter, so neither can be ordered. Dropped: [\"character:1 -> location:10 (rules)\",\"character:3 -> location:11 (home)\"]"
+      ],
+      "planEdgeWritesUnorderable": 1
+    },
+    "deterministic": {
+      "entityStatesDerived": 24,
+      "consistentArcErrors": 0,
+      "consistentArcWarnings": 0,
+      "injectedDetectionPassed": true,
+      "injectedTypes": [
+        "knowledge_relearned"
+      ]
+    },
+    "seamContinuity": {
+      "seamsChecked": 7,
+      "linkedSeams": 7,
+      "unlinked": []
+    }
+  },
+  "providerCallsTotal": 14,
+  "verdict": {
+    "w8IdempotencyPassed": true,
+    "w11Surfaced": true,
+    "deterministicConsistent": true,
+    "deterministicDetectsContradiction": true
+  },
+  "manuscriptWords": 1464,
+  "chaptersGenerated": 8
+}

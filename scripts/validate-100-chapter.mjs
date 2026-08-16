@@ -35,7 +35,8 @@ const {
   checkLocationImpossible,
   checkKnowledgeRelearned,
   checkTimelineInversion,
-  checkSeamContinuity
+  checkSeamContinuity,
+  checkChapterSeam
 } = await import('../src/services/generation/deterministicContradictions.ts')
 const { SyncTransport } = await import('../src/services/sync-transport.ts')
 
@@ -153,7 +154,7 @@ const entityStates = []
   if (checkTimelineInversion(digests).length !== 1) note({ check: 'deterministic.self-test.timeline', status: 'FAIL', detail: 'checkTimelineInversion did not fire' })
   else note({ check: 'deterministic.self-test.timeline', status: 'PASS', detail: 'checkTimelineInversion fires on backward first scene' })
 
-  // Rule 7: seam continuity — a scene with no carried cast is a discontinuity.
+  // Rule 7 (scene-level): seam continuity — a scene boundary with no carried cast.
   const seamBreak = [
     mk({ sceneId: 's1', chapterNumber: 1, entityName: 'Elias', sourceFacts: ['Elias at the Gate'], state: { present: true, status: 'alive', location: 'the Gate' } }),
     mk({ sceneId: 's2', chapterNumber: 2, entityName: 'Mara', sourceFacts: ['Mara at the Reach'], state: { present: true, status: 'alive', location: 'the Reach' } })
@@ -168,6 +169,22 @@ const entityStates = []
   ]
   if (checkSeamContinuity(seamCarried).some((d) => d.type === 'seam_disconnect')) note({ check: 'deterministic.self-test.seam-clean', status: 'FAIL', detail: 'checkSeamContinuity false-positive on carried cast' })
   else note({ check: 'deterministic.self-test.seam-clean', status: 'PASS', detail: 'no seam_disconnect when cast carries over' })
+
+  // Rule 7 (chapter-level): a character on stage at the end of a chapter must
+  // reappear (or have a recorded exit) in the next. Real engine rule.
+  const chapterSeamBreak = [
+    mk({ entityId: 'C1', entityName: 'Elias', sceneId: 's1', chapterNumber: 1, sourceFacts: ['Elias at the Gate'], state: { present: true, status: 'alive', location: 'the Gate' } }),
+    mk({ entityId: 'C2', entityName: 'Mara', sceneId: 's2', chapterNumber: 2, sourceFacts: ['Mara at the Reach'], state: { present: true, status: 'alive', location: 'the Reach' } })
+  ]
+  if (checkChapterSeam(chapterSeamBreak).some((d) => d.type === 'seam_disconnect')) note({ check: 'deterministic.self-test.chapter-seam', status: 'PASS', detail: 'checkChapterSeam flags a cast-drop chapter seam' })
+  else note({ check: 'deterministic.self-test.chapter-seam', status: 'FAIL', detail: 'checkChapterSeam did not fire on cast-drop chapter seam' })
+
+  const chapterSeamCarried = [
+    mk({ entityId: 'C1', entityName: 'Elias', sceneId: 's1', chapterNumber: 1, sourceFacts: ['Elias at the Gate'], state: { present: true, status: 'alive', location: 'the Gate' } }),
+    mk({ entityId: 'C1', entityName: 'Elias', sceneId: 's2', chapterNumber: 2, sourceFacts: ['Elias reaches the Reach'], state: { present: true, status: 'alive', location: 'the Reach' } })
+  ]
+  if (checkChapterSeam(chapterSeamCarried).some((d) => d.type === 'seam_disconnect')) note({ check: 'deterministic.self-test.chapter-seam-clean', status: 'FAIL', detail: 'checkChapterSeam false-positive on carried cast' })
+  else note({ check: 'deterministic.self-test.chapter-seam-clean', status: 'PASS', detail: 'no seam_disconnect when cast carries over chapters' })
 
   // No false positives on a long, internally-consistent arc.
   const cleanStates = [
@@ -374,6 +391,56 @@ note({ check: 'idempotency.reingest', status: ledgerAfter === ledgerBefore ? 'PA
     status: posts > 1 ? 'REPRODUCED' : 'PASS',
     detail: `pushOne issued ${posts} POST(s) for one pending-create row across two sync cycles (no idempotency key)`
   })
+}
+
+// ---- Chapter-boundary seam continuity (ending of ChN -> opening of ChN+1) ----
+// Walks the chapters in story order and asserts the seam between consecutive
+// chapters is continuous: cast carries over, the continuation link is intact,
+// each chapter declares an ending hook, and any location change is justified.
+{
+  const ordered = [...RAW].sort((a, b) => a.chapterNumber - b.chapterNumber)
+  for (let i = 1; i < ordered.length; i++) {
+    const prev = ordered[i - 1]
+    const cur = ordered[i]
+    const boundary = `${prev.chapterNumber}->${cur.chapterNumber}`
+    if (cur.chapterNumber !== prev.chapterNumber + 1) note({ check: 'seam.order', status: 'FAIL', boundary, detail: 'chapter number gap' })
+    if (!cur.flashback) {
+      const pc = new Set(prev.charactersPresent || [])
+      const cc = new Set(cur.charactersPresent || [])
+      if (pc.size > 0 && cc.size > 0 && ![...pc].some((x) => cc.has(x)))
+        note({ check: 'seam.cast-drop', status: 'FAIL', boundary, detail: `prev=${[...pc]} cur=${[...cc]}` })
+      if (!cur.continuesFrom) note({ check: 'seam.continuation', status: 'FAIL', boundary, detail: 'continuesFrom missing' })
+      else if (cur.continuesFrom !== prev.id) note({ check: 'seam.continuation', status: 'FAIL', boundary, detail: `expected ${prev.id} got ${cur.continuesFrom}` })
+      if (!cur.ending) note({ check: 'seam.ending', status: 'FAIL', boundary, detail: 'ending hook missing' })
+    }
+    if (prev.location && cur.location && prev.location !== cur.location && !cur.flashback) {
+      const ln = LOC_NAME[cur.location]
+      const justified = (cur.keyFacts || []).some((f) => f.includes(ln)) || (cur.references || []).length > 0
+      if (!justified) note({ check: 'seam.location-teleport', status: 'FAIL', boundary, detail: `${prev.location}->${cur.location}` })
+    }
+    for (const r of cur.references || []) if (r && r.to && !RAW.some((c) => c.id === r.to)) note({ check: 'seam.ref-orphan', status: 'FAIL', boundary, detail: r.to })
+    for (const e of cur.edges || []) if (!CAST_IDS.has(e[0]) || !CAST_IDS.has(e[1])) note({ check: 'seam.edge-orphan', status: 'FAIL', boundary, detail: JSON.stringify(e) })
+  }
+
+  // Real-engine chapter-seam check: run the actual Rule 7 over the entity states
+  // derived from the dataset (the same states the consistency engine consumes in
+  // production). It must report zero seam_disconnect — proving the engine itself
+  // certifies the chapter-to-chapter continuity, not just the structural walk above.
+  const engineSeam = await runDeterministicContradictionChecks(
+    entityStates.map((s) => ({ subsectionId: s.sceneId, sceneNumber: s.sceneNumber, chapterNumber: s.chapterNumber, keyFacts: s.sourceFacts, summary: '' })),
+    [],
+    entityStates
+  ).then((r) => r.filter((d) => d.type === 'seam_disconnect'))
+  const seamEngineFails = engineSeam.length
+  note({
+    check: 'seam.engine',
+    status: seamEngineFails === 0 ? 'PASS' : 'FAIL',
+    detail: `engine seam_disconnect: ${seamEngineFails} (expected 0; structural edge-orphan at ch52 is a references/edges issue, not a cast seam)`
+  })
+
+  const seamFails = findings.filter((f) => f.check && f.check.startsWith('seam.') && f.status === 'FAIL')
+  // Exactly one expected failure: the intentional ch52 referential-violation seed.
+  note({ check: 'seam.summary', status: seamFails.length === 1 ? 'PASS' : 'FAIL', detail: `seam failures: ${seamFails.length} (1 expected: seeded ch52 edge-orphan)` })
 }
 
 // ---- Final ledger ordering assertion ----

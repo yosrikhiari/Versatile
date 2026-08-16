@@ -1,10 +1,10 @@
 {
   "chapters": 100,
   "scenariosProcessed": 22,
-  "factCanonContradictions": 1,
+  "factCanonContradictions": 0,
   "duplicates": 2,
   "undocumentedFalsePositives": 0,
-  "findingsCount": 21,
+  "findingsCount": 25,
   "coverage": [
     {
       "chapter": 3,
@@ -31,7 +31,7 @@
       "chapter": 14,
       "scenario": "conflicting-updates",
       "observed": [
-        "fact_canon:CONTRADICTION"
+        "no-guard-signal"
       ]
     },
     {
@@ -203,6 +203,16 @@
       "detail": "no seam_disconnect when cast carries over"
     },
     {
+      "check": "deterministic.self-test.chapter-seam",
+      "status": "PASS",
+      "detail": "checkChapterSeam flags a cast-drop chapter seam"
+    },
+    {
+      "check": "deterministic.self-test.chapter-seam-clean",
+      "status": "PASS",
+      "detail": "no seam_disconnect when cast carries over chapters"
+    },
+    {
       "check": "deterministic.self-test.clean",
       "status": "PASS",
       "detail": "no false positives on a consistent 6-state arc"
@@ -223,16 +233,9 @@
       "detail": "The Threnody cult secretly plans to reignite the Convergence"
     },
     {
-      "chapter": 14,
-      "scenario": "conflicting-updates",
-      "kind": "fact_canon",
-      "status": "CONTRADICTION",
-      "detail": "Found 1 fact contradiction(s)"
-    },
-    {
       "checkpoint": "11-25",
       "ledgerChapters": 25,
-      "ledgerFacts": 6,
+      "ledgerFacts": 8,
       "deterministicErrors": 0,
       "deterministicWarnings": 0,
       "ledgerChapterOrdered": true
@@ -240,7 +243,7 @@
     {
       "checkpoint": "26-50",
       "ledgerChapters": 50,
-      "ledgerFacts": 8,
+      "ledgerFacts": 12,
       "deterministicErrors": 0,
       "deterministicWarnings": 0,
       "ledgerChapterOrdered": true
@@ -255,7 +258,7 @@
     {
       "checkpoint": "51-75",
       "ledgerChapters": 75,
-      "ledgerFacts": 15,
+      "ledgerFacts": 22,
       "deterministicErrors": 0,
       "deterministicWarnings": 0,
       "ledgerChapterOrdered": true
@@ -270,7 +273,7 @@
     {
       "checkpoint": "76-100",
       "ledgerChapters": 100,
-      "ledgerFacts": 227,
+      "ledgerFacts": 236,
       "deterministicErrors": 0,
       "deterministicWarnings": 0,
       "ledgerChapterOrdered": true
@@ -278,12 +281,28 @@
     {
       "check": "idempotency.reingest",
       "status": "PASS",
-      "detail": "ledger 227 -> 227"
+      "detail": "ledger 236 -> 236"
     },
     {
       "check": "sync.idempotency(W7)",
+      "status": "REPRODUCED",
+      "detail": "pushOne issued 2 POST(s) for one pending-create row across two sync cycles (no idempotency key)"
+    },
+    {
+      "check": "seam.edge-orphan",
+      "status": "FAIL",
+      "boundary": "51->52",
+      "detail": "[\"C1\",\"C99\",\"allied\"]"
+    },
+    {
+      "check": "seam.engine",
       "status": "PASS",
-      "detail": "pushOne issued 1 POST(s) for one pending-create row across two sync cycles (no idempotency key)"
+      "detail": "engine seam_disconnect: 0 (expected 0; structural edge-orphan at ch52 is a references/edges issue, not a cast seam)"
+    },
+    {
+      "check": "seam.summary",
+      "status": "PASS",
+      "detail": "seam failures: 1 (1 expected: seeded ch52 edge-orphan)"
     },
     {
       "check": "final.ledger-order",

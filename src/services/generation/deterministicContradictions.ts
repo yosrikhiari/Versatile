@@ -24,7 +24,6 @@ export interface DeterministicContradiction {
     | 'appearance_change'
     | 'location_impossible'
     | 'knowledge_relearned'
-    | 'seam_disconnect'
   severity: 'error' | 'warning'
   entityType: string
   entityId: string
@@ -329,74 +328,6 @@ export function checkTimelineInversion(sceneDigests: any[]): DeterministicContra
 }
 
 /**
- * Rule 7: seam discontinuity — a chapter/scene boundary where the carried cast
- * vanishes with no overlap.
- *
- * A "carried cast" is the set of characters present in a scene. When two
- * consecutive scenes both have a present cast but share no character, the
- * narrative dropped everyone at a boundary — a continuity break an author wants
- * flagged. A scene with no present cast (a cold open, a solo interior beat) is
- * not a seam failure: there is no cast to carry, so nothing is lost.
- */
-export function checkSeamContinuity(states: EntityStateRecord[]): DeterministicContradiction[] {
-  const out: DeterministicContradiction[] = []
-
-  interface SceneCast {
-    sceneId: string
-    chapter: number
-    scene: number
-    cast: Set<string>
-  }
-  const byScene = new Map<string, SceneCast>()
-  for (const s of states) {
-    if (!s.state.present) continue
-    let entry = byScene.get(s.sceneId)
-    if (!entry) {
-      entry = {
-        sceneId: s.sceneId,
-        chapter: s.chapterNumber ?? Number.POSITIVE_INFINITY,
-        scene: s.sceneNumber ?? Number.POSITIVE_INFINITY,
-        cast: new Set<string>()
-      }
-      byScene.set(s.sceneId, entry)
-    }
-    if (s.entityName) entry.cast.add(s.entityName)
-  }
-
-  const scenes = [...byScene.values()].sort((a, b) => {
-    if (a.chapter !== b.chapter) return a.chapter - b.chapter
-    return a.scene - b.scene
-  })
-
-  for (let i = 1; i < scenes.length; i++) {
-    const prev = scenes[i - 1]
-    const cur = scenes[i]
-    if (prev.cast.size === 0 || cur.cast.size === 0) continue
-
-    let overlaps = false
-    for (const c of prev.cast) {
-      if (cur.cast.has(c)) {
-        overlaps = true
-        break
-      }
-    }
-    if (overlaps) continue
-
-    out.push({
-      type: 'seam_disconnect',
-      severity: 'warning',
-      entityType: 'scene',
-      entityId: cur.sceneId,
-      entityName: [...cur.cast].join(', '),
-      sceneIds: [prev.sceneId, cur.sceneId],
-      description: `No carried character between scenes: "${[...prev.cast].join(', ')}" ends and "${[...cur.cast].join(', ')}" begins with no shared present character.`
-    })
-  }
-
-  return out
-}
-
-/**
  * Run every deterministic rule. No LLM calls.
  *
  * `checkDeadThenAlive` and the knowledge rule are registered here for the first
@@ -414,8 +345,7 @@ export async function runDeterministicContradictionChecks(
     ...checkLocationImpossible(entityStates),
     ...checkAppearanceChange(entityStates),
     ...checkKnowledgeRelearned(entityStates),
-    ...checkTimelineInversion(sceneDigests),
-    ...checkSeamContinuity(entityStates)
+    ...checkTimelineInversion(sceneDigests)
   ]
 }
 

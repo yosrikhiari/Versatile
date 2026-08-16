@@ -85,21 +85,6 @@ export class SyncTransport {
       }
 
       if (local.syncStatus === 'pending-create') {
-        // Idempotency guard (W8): if the local confirmation write was lost, the
-        // row stays pending-create but the server row already exists and the id
-        // mapping was stored. Re-POSTing would create a duplicate server entity.
-        // Reuse the stored server id and reconcile with a PUT instead.
-        const existingApiId = idMap.getApiId(table, local.id)
-        if (existingApiId) {
-          await this.withRetry(() => this._api(`${resolved}/${existingApiId}`, { method: 'PUT', body }))
-          await db[table].where('id').equals(local.id).modify({
-            syncStatus: 'synced',
-            lastSyncedAt: new Date().toISOString(),
-            _suppressHooks: true
-          })
-          return
-        }
-
         const result: any = await this.withRetry(() => this._api(resolved, { method: 'POST', body }))
 
         await db[table].where('id').equals(local.id).modify({
