@@ -1,0 +1,133 @@
+{
+  "premise": "In the forgotten city of Veylthar, where time fractures and shadows breathe, a disgraced scholar discovers an ancient tome that whispers secrets of a celestial event long thought erased from history—a convergence of stars that once birthed a god of decay. As he deciphers its cryptic verses, he uncovers a hidden cult plotting to reignite the cosmic alignment, believing it will resurrect their dying deity and plunge the world into eternal rot. But when the book begins to consume his sanity, he must decide whether to stop them or embrace the darkness within.",
+  "cast": [
+    "Elias Varn",
+    "Morrin Kael",
+    "Lysara"
+  ],
+  "hardConsistency": {
+    "undocumentedCharacters": 0,
+    "missingCast": 0,
+    "factCanonContradictions": 0,
+    "droppedThreads": 0,
+    "namePresenceAll": true
+  },
+  "critic": {
+    "characterIssues": [
+      {
+        "character": "Elias Varn",
+        "contradictions": [
+          {
+            "type": "trait",
+            "description": "Elias is described as paranoid and obsessive in the notes, but in scene 2, he reaches out toward the glowing orb without hesitation, suggesting a lack of paranoia.",
+            "between": [
+              "Scene 1 excerpt",
+              "Scene 2 excerpt"
+            ]
+          },
+          {
+            "type": "timeline",
+            "description": "In scene 3, it's mentioned that Lysara monitors the celestial convergence closely, knowing time is limited, while in scene 1, she is introduced as returning to the Archives seeking hidden truths, implying prior awareness of the alignment which may contradict the timeline of her actions.",
+            "between": [
+              "Scene 1 excerpt",
+              "Scene 3 excerpt"
+            ]
+          }
+        ]
+      },
+      {
+        "character": "Morrin Kael",
+        "contradictions": [
+          {
+            "type": "trait",
+            "description": "Morrin Kael is described as 'mysterious' in traits but appears to have direct knowledge of the celestial alignment and its implications, which contradicts the trait of being enigmatic.",
+            "between": [
+              "Ch1: The tome actively manipulates Elias, leading him toward a fate similar to Morrin Kael, leader of a cult associated with heresy.",
+              "Ch2: Morrin Kael is aware of the impending celestial event and feels conflicted about harnessing its power due to potential dangers."
+            ]
+          },
+          {
+            "type": "timeline",
+            "description": "Scene 3 mentions Morrin Kael having 'firsthand knowledge about the impending celestial event,' while Scene 1 describes him as 'leader of a cult associated with heresy,' suggesting a timeline inconsistency where his awareness of the event predates his role in the cult's activities.",
+            "between": [
+              "Ch1: The tome actively manipulates Elias, leading him toward a fate similar to Morrin Kael, leader of a cult associated with heresy.",
+              "Ch3: Morrin Kael is aware of the impending celestial event and feels conflicted about harnessing its power due to potential dangers."
+            ]
+          }
+        ]
+      },
+      {
+        "character": "Lysara",
+        "contradictions": [
+          {
+            "type": "trait",
+            "description": "Lysara is described as 'betrayal-prone' but in Ch2 she warns Elias about the dangers of the tome, suggesting loyalty rather than betrayal.",
+            "between": [
+              "Ch1: Lysara, former apprentice of Elias, returned to the Archives, hinting she seeks hidden truths.",
+              "Ch2: Morrin Kael is leading a cult seeking to harness the power of 'the alignment', while Lysara warns Elias about its dangers."
+            ]
+          },
+          {
+            "type": "timeline",
+            "description": "In Ch3, Lysara monitors the celestial convergence closely, knowing time is limited, which contradicts Ch1 where she hints at seeking hidden truths without indicating awareness of imminent danger.",
+            "between": [
+              "Ch1: Lysara, former apprentice of Elias, returned to the Archives, hinting she seeks hidden truths.",
+              "Ch3: Lysara monitors the celestial convergence closely, knowing time is limited to prevent catastrophic consequences."
+            ]
+          }
+        ]
+      }
+    ],
+    "locationIssues": [
+      {
+        "location": "The Archives of Veylthar",
+        "contradictions": [
+          {
+            "type": "trait",
+            "description": "Morrrin Kael is aware of the impending celestial event and feels conflicted about harnessing its power due to potential dangers.",
+            "between": [
+              "Ch3: Morrrin Kael is aware of the impending celestial event and feels conflicted about harnessing its power due to potential dangers.",
+              "Ch2: Morrin Kael is leading a cult seeking to harness the power of 'the alignment', while Lysara warns Elias about its dangers."
+            ]
+          },
+          {
+            "type": "timeline",
+            "description": "Lysara monitors the celestial convergence closely, knowing time is limited to prevent catastrophic consequences.",
+            "between": [
+              "Ch3: Lysara monitors the celestial convergence closely, knowing time is limited to prevent catastrophic consequences.",
+              "Ch1: Lysara, former apprentice of Elias, returned to the Archives, hinting she seeks hidden truths."
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "factCanonGuard": [],
+  "namePresence": [
+    {
+      "name": "Elias Varn",
+      "present": [
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "Morrin Kael",
+      "present": [
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "Lysara",
+      "present": [
+        true,
+        true,
+        true
+      ]
+    }
+  ],
+  "droppedThreads": []
+}

@@ -1,0 +1,294 @@
+{
+  "chapters": 100,
+  "scenariosProcessed": 22,
+  "factCanonContradictions": 1,
+  "duplicates": 2,
+  "undocumentedFalsePositives": 0,
+  "findingsCount": 21,
+  "coverage": [
+    {
+      "chapter": 3,
+      "scenario": "missing-data",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 7,
+      "scenario": "invalid-data",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 11,
+      "scenario": "duplicate-data",
+      "observed": [
+        "duplicate:DUPLICATE"
+      ]
+    },
+    {
+      "chapter": 14,
+      "scenario": "conflicting-updates",
+      "observed": [
+        "fact_canon:CONTRADICTION"
+      ]
+    },
+    {
+      "chapter": 18,
+      "scenario": "out-of-order",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 22,
+      "scenario": "long-chain-intro",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 27,
+      "scenario": "retry",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 30,
+      "scenario": "partial-failure",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 33,
+      "scenario": "failed-transaction",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 41,
+      "scenario": "concurrent-update",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 46,
+      "scenario": "stale-data",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 52,
+      "scenario": "referential-violation",
+      "observed": [
+        "referential:ORPHAN_EDGE"
+      ]
+    },
+    {
+      "chapter": 60,
+      "scenario": "consequence",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 63,
+      "scenario": "payoff",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 70,
+      "scenario": "flashback",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 74,
+      "scenario": "boundary",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 81,
+      "scenario": "large-payload",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 88,
+      "scenario": "flashback",
+      "observed": [
+        "duplicate:DUPLICATE"
+      ]
+    },
+    {
+      "chapter": 90,
+      "scenario": "entity-change",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 94,
+      "scenario": "recovery",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 99,
+      "scenario": "idempotency",
+      "observed": [
+        "no-guard-signal"
+      ]
+    },
+    {
+      "chapter": 100,
+      "scenario": "final",
+      "observed": [
+        "no-guard-signal"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "check": "deterministic.self-test",
+      "status": "PASS",
+      "detail": "checkDeadThenAlive fires on dead->unexplained-reappearance"
+    },
+    {
+      "check": "deterministic.self-test.object",
+      "status": "PASS",
+      "detail": "checkObjectDestroyedThenUsed fires on destroyed->intact"
+    },
+    {
+      "check": "deterministic.self-test.appearance",
+      "status": "PASS",
+      "detail": "checkAppearanceChange fires on conflicting attributes"
+    },
+    {
+      "check": "deterministic.self-test.location",
+      "status": "PASS",
+      "detail": "checkLocationImpossible fires on same-chapter teleport"
+    },
+    {
+      "check": "deterministic.self-test.knowledge",
+      "status": "PASS",
+      "detail": "checkKnowledgeRelearned fires on duplicate learning"
+    },
+    {
+      "check": "deterministic.self-test.timeline",
+      "status": "PASS",
+      "detail": "checkTimelineInversion fires on backward first scene"
+    },
+    {
+      "check": "deterministic.self-test.seam",
+      "status": "PASS",
+      "detail": "checkSeamContinuity flags a cast-drop seam"
+    },
+    {
+      "check": "deterministic.self-test.seam-clean",
+      "status": "PASS",
+      "detail": "no seam_disconnect when cast carries over"
+    },
+    {
+      "check": "deterministic.self-test.clean",
+      "status": "PASS",
+      "detail": "no false positives on a consistent 6-state arc"
+    },
+    {
+      "checkpoint": "1-10",
+      "ledgerChapters": 6,
+      "ledgerFacts": 2,
+      "deterministicErrors": 0,
+      "deterministicWarnings": 0,
+      "ledgerChapterOrdered": true
+    },
+    {
+      "chapter": 11,
+      "scenario": "duplicate-data",
+      "kind": "duplicate",
+      "status": "DUPLICATE",
+      "detail": "The Threnody cult secretly plans to reignite the Convergence"
+    },
+    {
+      "chapter": 14,
+      "scenario": "conflicting-updates",
+      "kind": "fact_canon",
+      "status": "CONTRADICTION",
+      "detail": "Found 1 fact contradiction(s)"
+    },
+    {
+      "checkpoint": "11-25",
+      "ledgerChapters": 25,
+      "ledgerFacts": 6,
+      "deterministicErrors": 0,
+      "deterministicWarnings": 0,
+      "ledgerChapterOrdered": true
+    },
+    {
+      "checkpoint": "26-50",
+      "ledgerChapters": 50,
+      "ledgerFacts": 8,
+      "deterministicErrors": 0,
+      "deterministicWarnings": 0,
+      "ledgerChapterOrdered": true
+    },
+    {
+      "chapter": 52,
+      "scenario": "referential-violation",
+      "kind": "referential",
+      "status": "ORPHAN_EDGE",
+      "detail": "C1->C99 (allied) references unknown entity"
+    },
+    {
+      "checkpoint": "51-75",
+      "ledgerChapters": 75,
+      "ledgerFacts": 15,
+      "deterministicErrors": 0,
+      "deterministicWarnings": 0,
+      "ledgerChapterOrdered": true
+    },
+    {
+      "chapter": 88,
+      "scenario": "flashback",
+      "kind": "duplicate",
+      "status": "DUPLICATE",
+      "detail": "Flashback: the First Convergence occurred generations before chapter 1"
+    },
+    {
+      "checkpoint": "76-100",
+      "ledgerChapters": 100,
+      "ledgerFacts": 227,
+      "deterministicErrors": 0,
+      "deterministicWarnings": 0,
+      "ledgerChapterOrdered": true
+    },
+    {
+      "check": "idempotency.reingest",
+      "status": "PASS",
+      "detail": "ledger 227 -> 227"
+    },
+    {
+      "check": "sync.idempotency(W7)",
+      "status": "PASS",
+      "detail": "pushOne issued 1 POST(s) for one pending-create row across two sync cycles (no idempotency key)"
+    },
+    {
+      "check": "final.ledger-order",
+      "status": "PASS",
+      "detail": "chapters present: 100"
+    }
+  ]
+}

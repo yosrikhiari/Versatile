@@ -1,0 +1,62 @@
+[novel] chapters=3 target=3000w prose=dolphin-mistral:7b utility=qwen3:8b
+[novel] premise: In the forgotten city of Veylthar, where time fractures and shadows breathe, a disgraced scholar discovers an ancient tome that whispers secrets of a celestial event long thought erased from history—a convergence of stars that once birthed a god of decay. As he deciphers its cryptic verses, he uncovers a hidden cult plotting to reignite the cosmic alignment, believing it will resurrect their dying deity and plunge the world into eternal rot. But when the book begins to consume his sanity, he must decide whether to stop them or embrace the darkness within.
+
+[novel] ===== PLANNING (S1) =====
+[novel] cast: Elias Varn, Morrin Kael, Lysara
+[novel] locations: The Archives of Veylthar
+[novel] threads: The Celestial Convergence, The Cult's Resurrection Plot, Elias' Sanity Erosion
+
+[novel] ===== CHAPTER 1 =====
+[novel] chapter 1: 3511 words (first draft)
+[novel] ch1 gate[0] clean
+[novel] chapter 1: 3511 words (after gates)
+[novel] ch1 S3 critic (advisory): characterIssues=0 locationIssues=0
+
+[novel] ===== CHAPTER 2 =====
+[novel] chapter 2: 2836 words (first draft)
+[novel] ch2 gate[0] clean
+[novel] chapter 2: 2836 words (after gates)
+[aiService] story_generation: input is 1489 tokens, anomalous (baseline 1470 ± 1, 3 samples)
+[novel] ch2 S3 critic (advisory): characterIssues=3 locationIssues=1
+[novel] S3: [{"character":"Elias Varn","contradictions":[{"type":"timeline","description":"Elias is described as experiencing visions and hallucinations due to the tome's influence in Ch1, yet in Ch2, it is implied that the celestial alignment has already begun and is causing effects, suggesting the timeline ma
+[novel] S6 targets: 1, 0
+[novel] ch2 S3-fix: character Elias Varn: Elias is described as experiencing visions and hallucinations due to the tome's influence in Ch1, yet in Ch2, it is implied that the celestial alignment has already begun and is causing effects, suggesting the timeline may be non-linear or events are occurring simultaneously. | character Elias Varn: Elias is characterized as paranoid and obsessive in the notes, yet his interactions with Lysara suggest a level of trust and collaboration which contradicts his established traits. | character Morrin Kael: Morrin Kael is described as 'fanatic, calculating, mysterious' yet in Ch2, it states Morrin Kael has become consumed by fear and uncertainty due to the alignment's effects, contradicting his established trait of being calculating and steadfast. | character Morrin Kael: In Ch1, it is stated that Morrin Kael’s cult seeks to prevent catastrophe by harnessing celestial energy rather than exploiting it, while in Ch2, Morrin Kael appears as a living entity, suggesting he is alive when previously implied to be dead or at least a historical figure. | character Lysara: Lysara is described as 'betrayal-prone' yet she appears to be seeking hidden truths alongside Elias, which contradicts her established trait of betrayal. | character Lysara: Lysara's presence in the Archives during the celestial alignment is mentioned in Scene 2, but her return to the Archives is hinted at in Scene 1 without establishing when or how she arrived, creating a timeline inconsistency. | location The Archives of Veylthar: Lysara is described as 'former apprentice of Elias' in Ch1, yet appears alongside Elias in Ch2 without any indication of prior relationship or timeline consistency. | location The Archives of Veylthar: Morrin Kael is mentioned as having 'become consumed by fear and uncertainty due to the alignment's effects' in Ch2, contradicting his established role as a leader of a cult associated with heresy in Ch1.
+[novel] ch2 gate[0] flow: missing planned cast Elias Varn, Morrin Kael, Lysara — regen
+[novel] ch2 gate[1] clean
+[novel] ch2 S3 re-check (advisory): characterIssues=2 locationIssues=1
+
+[novel] ===== CHAPTER 3 =====
+[novel] chapter 3: 3576 words (first draft)
+[novel] ch3 gate[0] clean
+[novel] chapter 3: 3576 words (after gates)
+[aiService] story_generation: input is 2055 tokens, anomalous (baseline 1480 ± 32, 8 samples)
+[novel] ch3 S3 critic (advisory): characterIssues=3 locationIssues=1
+[novel] S3: [{"character":"Elias Varn","contradictions":[{"type":"timeline","description":"The book is described as having 'cryptic verses about 'the alignment' and gods erased from history' in Ch2, which contradicts Ch1 where it's stated the tome contains 'secrets of a celestial event long thought erased from 
+[novel] S6 targets: 2, 1, 0
+[novel] ch3 S3-fix: character Elias Varn: The book is described as having 'cryptic verses about 'the alignment' and gods erased from history' in Ch2, which contradicts Ch1 where it's stated the tome contains 'secrets of a celestial event long thought erased from history—a convergence of stars that once birthed a god of decay.' These descriptions are consistent, so no contradiction. | character Elias Varn: Elias is described as paranoid and obsessive in the notes, but in Scene 3, he is portrayed as being 'never one for superstitions,' suggesting a lack of paranoia or obsession, contradicting established traits. | character Morrin Kael: Morrin Kael is described as 'mysterious', yet in Scene 2, he directly addresses Elias and reveals knowledge about the celestial alignment, which contradicts the idea of being mysterious. | character Morrin Kael: Established canon states that some members of Morrin Kael’s cult seek to prevent catastrophe by harnessing celestial energy rather than exploiting it, but in Scene 3, Morrin appears to be actively trying to summon the deity of rot, contradicting this established motivation. | character Lysara: Lysara is described as 'betrayal-prone', yet she warns Elias about the dangers of the celestial convergence, suggesting loyalty rather than betrayal. | character Lysara: Lysara's warning in Scene 3 contradicts her earlier presence in Scene 1 where she is merely hinted at being an apprentice of Elias without any indication of her role or warnings. | location The Archives of Veylthar: Scene 1 mentions Lysara's return to the Archives, implying she has already returned, while Scene 2 describes her absence or not being present during Elias's discovery of the book. | location The Archives of Veylthar: Scene 3 refers to 'the Archives of Veylthar', which is also mentioned in other scenes, but there are no specific details provided about its physical appearance beyond general descriptions, leading to potential inconsistencies in visual representation.
+[novel] ch3 gate[0] clean
+[novel] ch3 S3 re-check (advisory): characterIssues=3 locationIssues=1
+
+[novel] ===== TERMINAL AUDIT =====
+[tokenCalibration] qwen3:8b: factor 1.005 converged to 1.0 with near-zero variance after 20 samples — possible calibration probe
+[novel] terminal round 1: critic=4 guard=0 unknownChapters=0
+[novel] terminal fixing chapters (advisory): 2
+[novel] ch3 gate[0] clean
+[novel] terminal round 2: critic=4 guard=0 unknownChapters=0
+
+[novel] ===== PROGRAMMATIC CHECKS =====
+  Elias Varn: ch1=Y ch2=Y ch3=Y
+  Morrin Kael: ch1=Y ch2=Y ch3=Y
+  Lysara: ch1=Y ch2=Y ch3=Y
+  thread coverage: {"The Celestial Convergence":3,"The Cult's Resurrection Plot":1,"Elias' Sanity Erosion":3}
+  undocumented characters by chapter: [{"ch":1,"undocumented":[]},{"ch":2,"undocumented":[]},{"ch":3,"undocumented":[]}]
+
+[novel] ===== RESULT =====
+  HARD (objective) consistency issues:
+    undocumented characters: 0
+    fact-canon contradictions: 0
+    dropped threads: 0
+    name presence all Y: true
+  ADVISORY (AI critic, model-perceived, may include false positives):
+    critic contradictions: 4
+[novel] DONE. Outputs in generated-novel/

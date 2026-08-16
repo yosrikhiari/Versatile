@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "100-Chapter Novel Dataset",
+  "type": "object",
+  "properties": {
+    "title": {"type": "string"},
+    "genre": {"type": "string"},
+    "tone": {"type": "string"},
+    "logline": {"type": "string"},
+    "author": {"type": "string"},
+    "chapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["chapterNumber", "id", "title", "summary", "prose"],
+        "properties": {
+          "chapterNumber": {"type": "integer", "minimum": 1, "maximum": 100},
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "summary": {"type": "string"},
+          "prose": {"type": "string"},
+          "characterIds": {
+            "type": "array",
+            "items": {"type": "integer"},
+            "description": "References to character IDs defined in the cast"
+          },
+          "locationId": {"type": "integer", "description": "Reference to location ID"},
+          "keyFacts": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Atomic, checkable facts established in this chapter"
+          },
+          "networkEvents": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Relationship assertions: character↔character, character↔location, character↔plotThread, plotThread↔plotThread"
+          },
+          "newEntityIds": {
+            "type": "object",
+            "properties": {
+              "characters": {"type": "array", "items": {"type": "integer"}},
+              "locations": {"type": "array", "items": {"type": "integer"}},
+              "plotThreads": {"type": "array", "items": {"type": "integer"}}
+            },
+            "description": "Entity IDs newly introduced in this chapter"
+          },
+          "previousChapterId": {"type": "string", "description": "ID of the preceding chapter for seam continuity"},
+          "causes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "IDs of chapters whose events directly cause things in this chapter"
+          },
+          "effects": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "IDs of chapters that this chapter directly affects"
+          }
+        }
+      }
+    }
+  },
+  "required": ["title", "genre", "tone", "logline", "author", "chapters"]
+}
