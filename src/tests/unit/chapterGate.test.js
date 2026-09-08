@@ -316,3 +316,66 @@ describe('chapterGate — reporting helpers', () => {
     expect(picked.map((p) => p.index)).toEqual([2, 3])
   })
 })
+
+describe('chapterGate — tense consistency', () => {
+  // A real qwen3:8b sample flipped past tense (scene 1) to present (scene 2)
+  // mid-chapter and every gate passed. Narrative tense is a chapter-level
+  // property no scene gate can see.
+  const pastScene = {
+    title: 'S1',
+    characters: [],
+    prose:
+      'Mara stood at the landing and watched the boat come in. ' +
+      'The wind had risen before dawn and the sea was rough. ' +
+      'She walked the planks slowly because her knees hurt. ' +
+      'June waited by the crates and said nothing at first.'
+  }
+  const presentScene = {
+    title: 'S2',
+    characters: [],
+    prose:
+      'Mara stands at the landing and watches the boat come in. ' +
+      'The wind rises before dawn and the sea is rough. ' +
+      'She walks the planks slowly because her knees hurt. ' +
+      'June waits by the crates and says nothing at first.'
+  }
+
+  it('warns when adjacent scenes switch narrative tense', () => {
+    const report = evaluateChapter({
+      scenes: [pastScene, presentScene],
+      plan: plan(2, 100),
+      targetWords: 200
+    })
+    const finding = report.findings.find((f) => f.code === 'tense_shift')
+    expect(finding).toBeDefined()
+    expect(finding.severity).toBe('warn')
+    expect(finding.sceneIndices).toEqual([1, 2])
+    expect(report.passed).toBe(true)
+  })
+
+  it('stays silent when the whole chapter holds one tense', () => {
+    const report = evaluateChapter({
+      scenes: [pastScene, { ...pastScene, title: 'S2' }],
+      plan: plan(2, 100),
+      targetWords: 200
+    })
+    expect(report.findings.some((f) => f.code === 'tense_shift')).toBe(false)
+  })
+
+  it('ignores tense inside quoted dialogue', () => {
+    const withDialogue = {
+      title: 'S2',
+      characters: [],
+      prose:
+        'Mara stood at the landing and watched the boat come in. ' +
+        '"I am tired and I want answers," she said. ' +
+        'The wind had risen and the crates were stacked high.'
+    }
+    const report = evaluateChapter({
+      scenes: [pastScene, withDialogue],
+      plan: plan(2, 100),
+      targetWords: 200
+    })
+    expect(report.findings.some((f) => f.code === 'tense_shift')).toBe(false)
+  })
+})

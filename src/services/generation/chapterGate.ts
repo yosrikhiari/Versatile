@@ -258,7 +258,80 @@ export function evaluateChapter(input: ChapterGateInput): ChapterGateReport {
     }
   }
 
-  const planTarget = plan.reduce((sum, s) => sum + (Number(s?.estimatedWords) || 0), 0)
+  const PAST_AUX = ['was', 'were', 'had', 'did', 'would', 'could', 'should', 'might']
+const PRESENT_AUX = ['is', 'are', 'has', 'does', 'will', 'can', 'shall']
+const PAST_IRREGULAR = [
+  'stood', 'went', 'came', 'saw', 'took', 'felt', 'knew', 'thought', 'said',
+  'told', 'made', 'found', 'left', 'kept', 'began', 'wrote', 'spoke'
+]
+
+// Quoted speech keeps its own tense legitimately ("he said 'I am tired'"),
+// so dialogue is stripped before scoring narrative tense. Only double-quoted
+// spans: stripping single quotes would eat contractions.
+function stripDialogue(text: string): string {
+  return String(text || '').replace(/[""][^"""]*["""]/g, ' ')
+}
+
+// Expand n't-contractions so "doesn't" scores as present-tense "does" and
+// "wasn't" as past-tense "was" (otherwise the commonest auxiliaries in real
+// prose never match their word lists). Smart quotes normalized first.
+function expandContractions(text: string): string {
+  return String(text || '')
+    .replace(/[’‘]/g, "'")
+    .replace(/\bcan't\b/gi, 'can not')
+    .replace(/\bwon't\b/gi, 'will not')
+    .replace(/n't\b/gi, ' not')
+}
+
+function tenseCounts(text: string): { past: number; present: number } {
+  const words = expandContractions(stripDialogue(text)).toLowerCase().match(/[a-z']+/g) || []
+  let past = 0
+  let present = 0
+  for (const w of words) {
+    if (PAST_AUX.includes(w) || PAST_IRREGULAR.includes(w)) past += 2
+    else if (PRESENT_AUX.includes(w)) present += 2
+    else if (w.length >= 4 && w.endsWith('ed')) past += 1
+    // No apostrophes: possessives ("June's", "the boat's") are nouns, not
+    // present-tense verbs, and they outnumber real -s verbs in family drama.
+    // Bare plurals ("boats", "hands") still leak through — the margin below
+    // absorbs them.
+    else if (w.length >= 4 && w.endsWith('s') && !w.endsWith('ss') && !w.includes("'")) present += 1
+  }
+  return { past, present }
+}
+
+// Dominant narrative tense, or null when the evidence is thin or tied.
+// Deliberately a bare lean (past>present), not a margin: tuning showed real
+// past narration carries so many plural nouns ("boats", "hands") and stray
+// present bits ("The stores are low" inside narration) that any margin high
+// enough to feel safe also acquits genuine flips. Thin scenes (< 8 markers)
+// and ties abstain instead — no evidence, no finding.
+function dominantTense(text: string): 'past' | 'present' | null {
+  const { past, present } = tenseCounts(text)
+  if (past + present < 8) return null
+  if (past === present) return null
+  return past > present ? 'past' : 'present'
+}
+
+  // Narrative-tense consistency. A chapter that flips past to present mid-way
+  // reads as an editing accident — a real model sample did exactly this and
+  // every gate passed, because tense is a chapter-level property no scene
+  // gate can see. Warn only: flashbacks and deliberate tense play are craft.
+  const tenses = written.map((s) => dominantTense(String(s.prose || '')))
+  for (let i = 0; i + 1 < tenses.length; i++) {
+    const left = tenses[i]
+    const right = tenses[i + 1]
+    if (left && right && left !== right) {
+      add(
+        'tense_shift',
+        'warn',
+        `Scenes ${i + 1} and ${i + 2} switch narrative tense (${left} to ${right}).`,
+        [i + 1, i + 2]
+      )
+    }
+  }
+
+const planTarget = plan.reduce((sum, s) => sum + (Number(s?.estimatedWords) || 0), 0)
   const targetWords = Number(input.targetWords) || planTarget
   const uniqueWords = countUniqueWords(joined)
   const wordRatio = targetWords > 0 ? uniqueWords / targetWords : 1
