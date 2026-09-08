@@ -89,7 +89,7 @@
     "autoprefixer": "^10.4.0",
     "chromatic": "^18.1.0",
     "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.2",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-storybook": "^10.5.4",
     "eslint-plugin-vue": "^9.33.0",
     "fake-indexeddb": "^6.2.5",
