@@ -80,11 +80,16 @@ try
 
     builder.Services.AddAuthorization();
 
+    // Same-origin in compose (nginx proxies /api + /hubs), so CORS rarely
+    // triggers in prod — but direct-API and split-host deployments need it.
+    // Override with e.g. Cors__AllowedOrigins__0=https://app.example.com.
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        ?? ["http://localhost:5173"];
     builder.Services.AddCors(options =>
     {
         options.AddDefaultPolicy(policy =>
         {
-            policy.WithOrigins("http://localhost:5173")
+            policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader().AllowAnyMethod().AllowCredentials();
         });
     });
@@ -102,7 +107,15 @@ try
         if (!builder.Environment.IsEnvironment("Testing"))
         {
             options.Filters.Add(new TypeFilterAttribute(typeof(CacheResultFilter)));
-            options.Filters.Add<AutoValidateAntiforgeryTokenAttribute>();
+            // NOTE: no global AutoValidateAntiforgeryToken here. It was registered as
+            // Filters.Add<AutoValidateAntiforgeryTokenAttribute>(), which 500s every
+            // mutating endpoint — the inner AuthorizationFilter isn't in DI. Worse, the
+            // token flow is half-built (X-CSRF-TOKEN cookie is HttpOnly, so the SPA
+            // can't echo a request token; no endpoint issues one), so enabling it
+            // would 400 every SPA mutation. CSRF posture meanwhile: auth cookies are
+            // SameSite=Strict, CORS is locked down, and Bearer headers aren't
+            // auto-sent cross-origin. Follow-up: design the token-issuing endpoint +
+            // SPA wiring first, then re-enable globally.
         }
     }).AddJsonOptions(options =>
     {
@@ -241,16 +254,23 @@ try
         }
     });
 
-    if (app.Environment.IsDevelopment())
+    // Apply EF migrations on startup everywhere except tests, so the compose
+    // `api` image boots against an empty postgres volume with no manual step.
+    // (Single replica in compose — no multi-instance migrate race.)
+    if (!app.Environment.IsEnvironment("Testing"))
     {
         using (var scope = app.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             ApplicationDbContext.EnsureTenantSafety();
             await db.Database.MigrateAsync();
-            await EnsureSeedDataAsync(db);
+            if (app.Environment.IsDevelopment())
+                await EnsureSeedDataAsync(db);
         }
+    }
 
+    if (app.Environment.IsDevelopment())
+    {
         app.UseSwagger();
         app.UseSwaggerUI(options =>
         {

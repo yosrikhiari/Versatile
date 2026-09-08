@@ -12,6 +12,9 @@ public sealed class AnthropicChatProvider : IChatProvider
     private readonly HttpClient _http;
     private readonly string _apiKey;
 
+    // Anthropic requires max_tokens on every request; keep the policy explicit.
+    private const int MaxOutputTokens = 4096;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -37,13 +40,13 @@ public sealed class AnthropicChatProvider : IChatProvider
         var body = new
         {
             model,
-            max_tokens = 4096,
+            max_tokens = MaxOutputTokens,
             system = string.IsNullOrEmpty(system) ? null : system,
             messages = userMessages,
             stream = true,
         };
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "v1/messages")
+        using var req = new HttpRequestMessage(HttpMethod.Post, "messages")
         {
             Content = JsonContent.Create(body, options: JsonOptions),
         };
@@ -80,7 +83,7 @@ public sealed class AnthropicChatProvider : IChatProvider
 
     public async Task<TestConnectionResult> TestConnectionAsync(string model, CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Post, "v1/messages")
+        using var req = new HttpRequestMessage(HttpMethod.Post, "messages")
         {
             Content = JsonContent.Create(new
             {

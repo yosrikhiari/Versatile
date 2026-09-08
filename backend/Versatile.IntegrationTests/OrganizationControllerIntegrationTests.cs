@@ -31,7 +31,7 @@ public class OrganizationControllerIntegrationTests : ControllerTestBase
     [Fact]
     public async Task Post_WithValidData_ReturnsCreated()
     {
-        var response = await PostAsync<object?>($"/api/Organization?name=NewOrg&slug=new-org", null);
+        var response = await PostAsync($"/api/Organization", new { name = "NewOrg", slug = "new-org" });
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var org = await ReadBodyAsync<Organization>(response);
         org.Should().NotBeNull();
@@ -67,7 +67,7 @@ public class OrganizationControllerIntegrationTests : ControllerTestBase
     [Fact]
     public async Task Put_WithValidData_ReturnsUpdatedOrg()
     {
-        var response = await PutAsync($"/api/Organization/{OrgId}?name=UpdatedOrg&slug=updated-org", null as object);
+        var response = await PutAsync($"/api/Organization/{OrgId}", new { name = "UpdatedOrg", slug = "updated-org" });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var org = await ReadBodyAsync<Organization>(response);
         org!.Name.Should().Be("UpdatedOrg");
@@ -91,14 +91,28 @@ public class OrganizationControllerIntegrationTests : ControllerTestBase
     public async Task Invite_NewUser_ReturnsOk()
     {
         var newUserId = Guid.NewGuid();
-        var response = await PostAsync($"/api/Organization/{OrgId}/invite?userId={newUserId}&role=Member", null as object);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.Users.Add(new User { Id = newUserId, Email = "invited@example.com", DisplayName = "Invited" });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await PostAsync($"/api/Organization/{OrgId}/invite", new { userId = newUserId, role = OrganizationRole.Member });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Invite_UnknownUser_ReturnsNotFound()
+    {
+        var response = await PostAsync($"/api/Organization/{OrgId}/invite", new { userId = Guid.NewGuid(), role = OrganizationRole.Member });
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
     public async Task Invite_ExistingMember_ReturnsConflict()
     {
-        var response = await PostAsync($"/api/Organization/{OrgId}/invite?userId={UserId}&role=Member", null as object);
+        var response = await PostAsync($"/api/Organization/{OrgId}/invite", new { userId = UserId, role = OrganizationRole.Member });
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 

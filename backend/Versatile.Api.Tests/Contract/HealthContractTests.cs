@@ -6,11 +6,11 @@ using Versatile.Api.Tests.Infrastructure;
 namespace Versatile.Api.Tests.Contract;
 
 [Trait("Category", "Contract")]
-public sealed class HealthContractTests : IClassFixture<PostgreSqlFixture>
+public sealed class HealthContractTests
 {
     private readonly HttpClient _client;
 
-    public HealthContractTests(PostgreSqlFixture fixture)
+    public HealthContractTests()
     {
         _client = new HttpClient { BaseAddress = new Uri("http://localhost:5000") };
     }

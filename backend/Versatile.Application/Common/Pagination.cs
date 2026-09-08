@@ -1,6 +1,13 @@
 namespace Versatile.Application.Common;
 
-public record PagedRequest(int Page = 1, int PageSize = 20);
+public record PagedRequest(int Page = 1, int PageSize = 20)
+{
+    /// <summary>Upper bound for any list endpoint (DoS guard: unbounded pageSize reaches the query layer).</summary>
+    public const int MaxPageSize = 100;
+
+    public int Page { get; init; } = Math.Max(1, Page);
+    public int PageSize { get; init; } = Math.Clamp(PageSize, 1, MaxPageSize);
+}
 
 public record PagedResponse<T>(IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize, Guid? NextCursor = null)
 {

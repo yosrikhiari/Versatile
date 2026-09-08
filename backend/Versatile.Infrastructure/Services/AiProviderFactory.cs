@@ -13,10 +13,15 @@ public sealed class AiProviderFactory : IChatProviderFactory
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
 
-    private const string OpenAiBase = "https://api.openai.com/v1";
-    private const string AnthropicBase = "https://api.anthropic.com/v1";
+    // URL CONTRACT (do not break): every BaseAddress ends with '/' and every
+    // provider-relative path is a bare suffix (no leading '/', no version prefix).
+    // HttpClient merges them by simple concatenation, so neither side can drift
+    // into a double-/v1/ URL. The Ollama URL is normalized below for the same reason.
+    // Pinned by AiProviderUrlTests — update the tests if you touch these.
+    private const string OpenAiBase = "https://api.openai.com/v1/";
+    private const string AnthropicBase = "https://api.anthropic.com/v1/";
     private const string GeminiBase = "https://generativelanguage.googleapis.com/v1beta/models/";
-    private const string GroqBase = "https://api.groq.com/openai/v1";
+    private const string GroqBase = "https://api.groq.com/openai/v1/";
 
     public AiProviderFactory(IServiceProvider serviceProvider, IConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
@@ -50,7 +55,7 @@ public sealed class AiProviderFactory : IChatProviderFactory
                 return new GroqChatProvider(http, key ?? throw new InvalidOperationException("Groq API key not configured"));
 
             case "ollama":
-                var ollamaUrl = _configuration["Ai:Ollama:BaseUrl"] ?? "http://localhost:11434";
+                var ollamaUrl = (_configuration["Ai:Ollama:BaseUrl"] ?? "http://localhost:11434").TrimEnd('/') + "/";
                 http.BaseAddress = new Uri(ollamaUrl);
                 return new OllamaChatProvider(http);
 

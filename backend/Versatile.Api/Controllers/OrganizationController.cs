@@ -12,10 +12,12 @@ namespace Versatile.Api.Controllers;
 public class OrganizationController : ApiControllerBase
 {
     private readonly IOrganizationRepository _orgRepo;
+    private readonly IRepository<User> _userRepo;
 
-    public OrganizationController(IOrganizationRepository orgRepo, IOrganizationContext org) : base(org)
+    public OrganizationController(IOrganizationRepository orgRepo, IOrganizationContext org, IRepository<User> userRepo) : base(org)
     {
         _orgRepo = orgRepo;
+        _userRepo = userRepo;
     }
 
     [HttpGet, Cacheable(120)]
@@ -37,14 +39,14 @@ public class OrganizationController : ApiControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Organization>> Create(string name, string slug)
+    public async Task<ActionResult<Organization>> Create([FromBody] CreateOrganizationRequest request)
     {
-        var org = await _orgRepo.CreateAsync(name, slug, UserId);
+        var org = await _orgRepo.CreateAsync(request.Name, request.Slug, UserId);
         return CreatedAtAction(nameof(GetById), new { id = org.Id }, org);
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<Organization>> Update(Guid id, string name, string slug)
+    public async Task<ActionResult<Organization>> Update(Guid id, [FromBody] UpdateOrganizationRequest request)
     {
         var membership = await _orgRepo.GetMembershipAsync(id, UserId);
         if (membership == null || membership.Role != OrganizationRole.Admin)
@@ -53,8 +55,8 @@ public class OrganizationController : ApiControllerBase
         var org = await _orgRepo.GetByIdAsync(id);
         if (org == null) return NotFound();
 
-        org.Name = name;
-        org.Slug = slug;
+        org.Name = request.Name;
+        org.Slug = request.Slug;
         await _orgRepo.UpdateAsync(org);
         return Ok(org);
     }
@@ -74,16 +76,21 @@ public class OrganizationController : ApiControllerBase
     }
 
     [HttpPost("{id}/invite")]
-    public async Task<ActionResult> Invite(Guid id, Guid userId, OrganizationRole role = OrganizationRole.Member)
+    public async Task<ActionResult> Invite(Guid id, [FromBody] InviteMemberRequest request)
     {
         var admin = await _orgRepo.GetMembershipAsync(id, UserId);
         if (admin == null || admin.Role != OrganizationRole.Admin)
             return Forbid();
 
-        if (await _orgRepo.IsMemberAsync(id, userId))
+        if (await _orgRepo.IsMemberAsync(id, request.UserId))
             return Conflict(new { message = "User is already a member" });
 
-        await _orgRepo.AddMemberAsync(id, userId, role);
+        // Fail 404 here: without it Postgres throws an FK DbUpdateException (500).
+        // (InMemory tests don't enforce FKs, so this only surfaces against real PG.)
+        if (await _userRepo.GetByIdAsync(request.UserId) is null)
+            return NotFound(new { message = "User not found" });
+
+        await _orgRepo.AddMemberAsync(id, request.UserId, request.Role);
         return Ok(new { message = "User invited" });
     }
 
@@ -101,3 +108,7 @@ public class OrganizationController : ApiControllerBase
         return NoContent();
     }
 }
+
+public record CreateOrganizationRequest(string Name, string Slug);
+public record UpdateOrganizationRequest(string Name, string Slug);
+public record InviteMemberRequest(Guid UserId, OrganizationRole Role = OrganizationRole.Member);

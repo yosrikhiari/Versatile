@@ -9,13 +9,11 @@ export function getOrganization(id: string) {
 }
 
 export function createOrganization(name: string, slug: string) {
-  const qs = `?name=${encodeURIComponent(name)}&slug=${encodeURIComponent(slug)}`
-  return api('/organization' + qs, { method: 'POST' })
+  return api('/organization', { method: 'POST', body: { name, slug } })
 }
 
 export function updateOrganization(id: string, name: string, slug: string) {
-  const qs = `?name=${encodeURIComponent(name)}&slug=${encodeURIComponent(slug)}`
-  return api(`/organization/${id}` + qs, { method: 'PUT' })
+  return api(`/organization/${id}`, { method: 'PUT', body: { name, slug } })
 }
 
 export function deleteOrganization(id: string) {

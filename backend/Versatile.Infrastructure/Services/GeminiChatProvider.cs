@@ -106,7 +106,8 @@ public sealed class GeminiChatProvider : IChatProvider
     {
         try
         {
-            using var response = await _http.GetAsync($"models?key={_apiKey}", ct);
+            // Base ends in 'models/' (see AiProviderFactory contract) — query only.
+            using var response = await _http.GetAsync($"?key={_apiKey}", ct);
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync(ct);

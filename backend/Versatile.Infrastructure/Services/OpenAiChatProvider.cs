@@ -12,6 +12,10 @@ public sealed class OpenAiChatProvider : IChatProvider
     private readonly HttpClient _http;
     private readonly string _apiKey;
 
+    // Explicit generation bounds: unbounded completions are a cost/latency risk.
+    private const int MaxOutputTokens = 4096;
+    private const double Temperature = 0.7;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -31,10 +35,12 @@ public sealed class OpenAiChatProvider : IChatProvider
         {
             model,
             messages = messages.Select(m => new { role = m.Role, content = m.Content }),
+            max_tokens = MaxOutputTokens,
+            temperature = Temperature,
             stream = true,
         };
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "v1/chat/completions")
+        using var req = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
         {
             Content = JsonContent.Create(body, options: JsonOptions),
         };
@@ -71,7 +77,7 @@ public sealed class OpenAiChatProvider : IChatProvider
 
     public async Task<TestConnectionResult> TestConnectionAsync(string model, CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get, "v1/models");
+        using var req = new HttpRequestMessage(HttpMethod.Get, "models");
         req.Headers.Authorization = new("Bearer", _apiKey);
 
         try
@@ -94,7 +100,7 @@ public sealed class OpenAiChatProvider : IChatProvider
 
     public async Task<ListModelsResult> ListModelsAsync(CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get, "v1/models");
+        using var req = new HttpRequestMessage(HttpMethod.Get, "models");
         req.Headers.Authorization = new("Bearer", _apiKey);
 
         try
