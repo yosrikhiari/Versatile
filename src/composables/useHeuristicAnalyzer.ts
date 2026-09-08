@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { stripHtml } from '../utils/html'
+import { stripHtmlTags } from '../utils/textUtils'
 
 const TENSION_KEYWORDS = {
   high: [
@@ -288,7 +288,7 @@ export function useHeuristicAnalyzer() {
   const lastResult = ref<ReturnType<typeof analyzeScene>>(null)
 
   function analyzeScene(text: string) {
-    const cleanText = stripHtml(text || '')
+    const cleanText = stripHtmlTags(text || '')
     if (cleanText.trim().length === 0) return null
 
     const wordCount = cleanText.split(/\s+/).filter((w) => w.length > 0).length

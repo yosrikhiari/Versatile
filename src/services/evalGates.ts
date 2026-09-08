@@ -3,10 +3,11 @@ import { DEFINITION_OF_MASTERPIECE } from '../config/definitionOfMasterpiece'
 import { getDimensionNames } from '../config/evalDimensions'
 import { useStoryCritic } from '../composables/useStoryCritic'
 
-export function countWords(text: string) {
-  if (!text) return 0
-  return text.trim().split(/\s+/).filter(Boolean).length
-}
+// Single home for word counting: utils/textUtils (identical logic, plus null-safety).
+// Imported for internal use and re-exported so existing
+// `from '../services/evalGates'` imports keep working.
+import { countWords } from '../utils/textUtils'
+export { countWords }
 
 /**
  * Words remaining after duplicate sentences are removed.

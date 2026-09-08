@@ -1,8 +1,3 @@
-function countWords(text: any) {
-  if (!text) return 0
-  return text.trim().split(/\s+/).filter(Boolean).length
-}
-
 function extractLastWords(text: any, wordCount: any) {
   if (!text) return ''
   const words = text.trim().split(/\s+/).filter(Boolean)

@@ -5,15 +5,14 @@ import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { aiGenerate, resolveFeatureConfig } from './useAiService'
 import type { AiGenerateOptions } from '../services/aiService'
 import { FEATURES } from '../config/ai'
+import { countWords } from '../utils/textUtils'
 import { saveBlurb, getBlurbsByProject, deleteBlurb } from '../services/db-blurbs'
 
 const MAX_STYLE_WORDS = 5000
 const MAX_SECTIONS_FOR_STYLE = 2
 
-function countWords(text: string) {
-  if (!text) return 0
-  return text.trim().split(/\s+/).length
-}
+// NOTE: was a local dupe returning 1 for whitespace-only input;
+// shared countWords returns 0 there (more correct for budget accumulation).
 
 function collectBibleContext(bibleStore: any) {
   const parts = []

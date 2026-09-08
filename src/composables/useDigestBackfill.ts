@@ -49,7 +49,7 @@ export function useDigestBackfill() {
     const existing = await getProjectDigests(projectId)
     const byId = new Map(existing.map((d: any) => [d.subsectionId, d]))
     return (subsections || []).filter((s) => {
-      const prose = stripHtml(s?.content)
+      const prose = stripHtmlBlock(s?.content)
       if (!prose) return false
       return isDigestStale(byId.get(s.id), prose)
     })
@@ -69,7 +69,7 @@ export function useDigestBackfill() {
       payload: {
         projectId,
         subsectionId: sub.id,
-        prose: stripHtml(sub.content),
+        prose: stripHtmlBlock(sub.content),
         scene: {
           sceneNumber: sub.sceneNumber ?? sub.order ?? null,
           title: sub.title,
@@ -164,7 +164,9 @@ export function useDigestBackfill() {
   }
 }
 
-function stripHtml(html: any): string {
+// Block-aware variant (keeps paragraph breaks, decodes entities) — distinct from
+// utils/textUtils stripHtmlTags, hence the distinct name.
+function stripHtmlBlock(html: any): string {
   return String(html ?? '')
     .replace(/<\/(p|div|h[1-6]|li)>/gi, '\n\n')
     .replace(/<br\s*\/?>/gi, '\n')

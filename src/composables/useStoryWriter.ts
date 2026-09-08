@@ -16,6 +16,11 @@ import { guardScene } from '../guardrails/integration/composableGuardrails'
 import { REFUSAL_PATTERNS } from '../guardrails/guards/contentSafetyGuard'
 import { countProseWords } from './generation/writing/liveDraft'
 
+// Words-to-tokens ratio for maxTokens budgeting below. Deliberately NOT the
+// BPE-backed countTokens(): these formulas size the *request* budget with their
+// own clamps/offsets, and swapping estimators would change generation params.
+const WORDS_TO_TOKENS_RATIO = 1.8
+
 // Schema for the metadata-extraction pass (call 2). Extractive, not generative:
 // the prose already exists, so a small local model does this well even though it
 // cannot write long prose inside a JSON envelope (verified — see the note on
@@ -345,7 +350,7 @@ ${tail}
 
 Write the continuation now as prose. Output ONLY the new text — no headings, no preamble, no notes.`
 
-    const maxTokens = Math.max(600, Math.min(3000, Math.ceil(needed * 1.8) + 400))
+    const maxTokens = Math.max(600, Math.min(3000, Math.ceil(needed * WORDS_TO_TOKENS_RATIO) + 400))
     let added = ''
     const opts = {
       feature: FEATURES.STORY_GENERATION,
@@ -901,7 +906,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       // untouched, so the prompt's shape and wording do not move.
       const outputTokens = Math.max(
         2000,
-        Math.min(4500, Math.ceil((sceneBrief.estimatedWords || 800) * 1.8) + 800)
+        Math.min(4500, Math.ceil((sceneBrief.estimatedWords || 800) * WORDS_TO_TOKENS_RATIO) + 800)
       )
       const fitted = fitSceneContext({
         storyContract,
@@ -1002,7 +1007,7 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
 
       // Compute a tight token cap based on the scene's word target
       const estimatedWords = sceneBrief.estimatedWords || 800
-      const maxTokens = Math.max(2000, Math.min(4500, Math.ceil(estimatedWords * 1.8) + 800))
+      const maxTokens = Math.max(2000, Math.min(4500, Math.ceil(estimatedWords * WORDS_TO_TOKENS_RATIO) + 800))
 
       const complexity = computeComplexityLevel({
         feature: FEATURES.STORY_GENERATION,

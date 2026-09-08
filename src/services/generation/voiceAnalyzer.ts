@@ -1,5 +1,6 @@
 import type { VoiceProfile } from './voiceProfileSchema'
 import { validateVoiceProfile } from './voiceProfileSchema'
+import { countWords } from '../../utils/textUtils'
 
 const MINIMUM_TEXT_LENGTH = 500
 const MINIMUM_SENTENCES = 10
@@ -212,13 +213,6 @@ const tokenizeSentences = (text: string): string[] => {
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
-}
-
-const countWords = (text: string): number => {
-  return text
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word.length > 0).length
 }
 
 const isDialogue = (sentence: string): boolean => {
