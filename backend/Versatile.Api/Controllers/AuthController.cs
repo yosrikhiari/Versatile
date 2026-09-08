@@ -13,18 +13,23 @@ namespace Versatile.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IWebHostEnvironment _env;
 
-    public AuthController(IMediator mediator)
+    public AuthController(IMediator mediator, IWebHostEnvironment env)
     {
         _mediator = mediator;
+        _env = env;
     }
 
     private void SetAuthCookies(AuthResponse result)
     {
+        // Secure cookies require HTTPS: in plain-http local dev they would be
+        // silently dropped, so relax only outside production (prod stays Always).
+        var secure = !_env.IsDevelopment();
         Response.Cookies.Append("access_token", result.Token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = secure,
             SameSite = SameSiteMode.Strict,
             Expires = result.ExpiresAt,
             Path = "/"
@@ -33,7 +38,7 @@ public class AuthController : ControllerBase
         Response.Cookies.Append("refresh_token", result.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = secure,
             SameSite = SameSiteMode.Strict,
             Expires = DateTime.UtcNow.AddDays(7),
             Path = "/api/auth"

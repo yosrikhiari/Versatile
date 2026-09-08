@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
@@ -61,6 +62,11 @@ public class CacheResultFilter : IAsyncActionFilter
 
         if (httpContext.Items.TryGetValue("OrganizationId", out var orgId) && orgId is Guid id)
             parts.Add($"org:{id}");
+
+        // Per-user responses must never be shared org-wide: scope the key.
+        var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrEmpty(userId))
+            parts.Add($"user:{userId}");
 
         var raw = string.Join("|", parts);
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw));

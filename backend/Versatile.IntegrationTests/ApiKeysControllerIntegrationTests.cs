@@ -35,15 +35,18 @@ public class ApiKeysControllerIntegrationTests : ControllerTestBase
     }
 
     [Fact]
-    public async Task StoreAndGetKey_StoresAndRetrievesKey()
+    public async Task StoreAndGetKey_ReturnsMaskedHintOnly()
     {
-        var storeResponse = await PutAsync("/api/ApiKeys/openai", new { key = "sk-test-123" });
+        var storeResponse = await PutAsync("/api/ApiKeys/openai", new { key = "sk-test-1234567890" });
         storeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getResponse = await GetAsync("/api/ApiKeys/openai");
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await getResponse.Content.ReadAsStringAsync();
-        body.Should().Contain("sk-test-123");
+        // Plaintext secret must never leave the server (Phase 0 hardening).
+        body.Should().NotContain("sk-test-1234567890");
+        body.Should().Contain("configured");
+        body.Should().Contain("7890");
     }
 
     [Fact]

@@ -67,9 +67,13 @@ public class ApiKeysController : ControllerBase
 
         var json = _keys.Decrypt(user.ApiKeysEncrypted, user.ApiKeysNonce);
         var keys = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-        return keys?.TryGetValue(provider, out var key) == true
-            ? Ok(new { key })
-            : NotFound(new { message = $"Key for {provider} not found" });
+        if (keys?.TryGetValue(provider, out var key) != true)
+            return NotFound(new { message = $"Key for {provider} not found" });
+
+        // Never return the plaintext secret: presence + masked hint only.
+        // Clients needing the key must go through the server-side proxy path.
+        var hint = key.Length <= 8 ? "****" : $"****{key[^4..]}";
+        return Ok(new { provider, configured = true, hint, length = key.Length });
     }
 
     [HttpPut("{provider}")]

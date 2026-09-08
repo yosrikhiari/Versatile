@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/embedding")]
+[Authorize]
 public class EmbeddingController : ControllerBase
 {
     private readonly HttpClient _http;
@@ -16,6 +19,7 @@ public class EmbeddingController : ControllerBase
     }
 
     [HttpPost("mistral")]
+    [EnableRateLimiting("embedding")]
     public async Task<IActionResult> MistralEmbed([FromBody] MistralEmbedRequest request)
     {
         var apiKey = _config["Ai:MistralKey"];

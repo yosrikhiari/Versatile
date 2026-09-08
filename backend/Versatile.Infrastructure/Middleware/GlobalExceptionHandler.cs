@@ -20,7 +20,8 @@ public class GlobalExceptionHandler : IExceptionHandler
 
         var statusCode = exception switch
         {
-            ArgumentException or KeyNotFoundException => StatusCodes.Status400BadRequest,
+            KeyNotFoundException => StatusCodes.Status404NotFound,
+            ArgumentException => StatusCodes.Status400BadRequest,
             UnauthorizedAccessException => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status500InternalServerError
         };
@@ -28,11 +29,18 @@ public class GlobalExceptionHandler : IExceptionHandler
         httpContext.Response.StatusCode = statusCode;
         httpContext.Response.ContentType = "application/json";
 
+        // Never echo internal details (stack traces, DB messages) to clients.
+        // Client-error messages (400/404) originate from app validation and are safe;
+        // 500s return a generic message — full details stay in server logs above.
+        var detail = statusCode == StatusCodes.Status500InternalServerError
+            ? "An unexpected error occurred."
+            : exception.Message;
+
         var problem = new ProblemDetails
         {
             Status = statusCode,
             Title = "An error occurred",
-            Detail = exception.Message,
+            Detail = detail,
             Instance = httpContext.Request.Path
         };
 

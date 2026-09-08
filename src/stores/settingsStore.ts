@@ -217,7 +217,9 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function getStoredApiKey(provider: any) {
-    // Try backend first
+    // Try backend first (legacy: backend used to return { key }).
+    // Since Phase 0 hardening it returns { configured, hint } only —
+    // the plaintext secret never leaves the server. Fall through to local copy.
     try {
       const headers = getAuthHeaders()
       if (headers.Authorization) {
@@ -225,6 +227,8 @@ export const useSettingsStore = defineStore('settings', () => {
         if (res.ok) {
           const data = await res.json()
           if (data.key) return data.key
+          // New masked shape { configured, hint }: secret stays server-side —
+          // fall through to the local copy for the browser-direct path.
         }
       }
     } catch {

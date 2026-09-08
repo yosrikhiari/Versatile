@@ -58,11 +58,21 @@ try
             {
                 OnMessageReceived = context =>
                 {
-                    var accessToken = context.Request.Query["access_token"];
-                    if (!string.IsNullOrEmpty(accessToken))
-                        context.Token = accessToken;
+                    // Query-string tokens leak into logs/history — only allow them for
+                    // SignalR (/hubs/*), where WebSockets cannot send Authorization headers.
+                    // All other API calls must use header or Secure cookie.
+                    if (context.Request.Path.StartsWithSegments("/hubs"))
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken))
+                            context.Token = accessToken;
+                        else if (context.Request.Cookies.TryGetValue("access_token", out var hubCookieToken))
+                            context.Token = hubCookieToken;
+                    }
                     else if (context.Request.Cookies.TryGetValue("access_token", out var cookieToken))
+                    {
                         context.Token = cookieToken;
+                    }
                     return Task.CompletedTask;
                 }
             };
@@ -168,6 +178,12 @@ try
                     PermitLimit = 100,
                     Window = TimeSpan.FromMinutes(1)
                 }));
+        options.AddFixedWindowLimiter("embedding", opt =>
+        {
+            opt.AutoReplenishment = true;
+            opt.PermitLimit = 20;
+            opt.Window = TimeSpan.FromMinutes(1);
+        });
     });
 
     builder.Services.AddOpenTelemetry()
