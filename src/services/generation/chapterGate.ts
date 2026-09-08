@@ -68,6 +68,7 @@ export interface PlanSceneLike {
   title?: string
   pov?: string
   estimatedWords?: number
+  payoff?: string
 }
 
 /** A critique as `evalStore` records it. */
@@ -327,6 +328,77 @@ function dominantTense(text: string): 'past' | 'present' | null {
         'warn',
         `Scenes ${i + 1} and ${i + 2} switch narrative tense (${left} to ${right}).`,
         [i + 1, i + 2]
+      )
+    }
+  }
+
+// Content words that carry payoff meaning: length 4+ and not structural
+// filler. Deliberately small stopword list — an unlisted filler word only
+// adds one more term to hit, while an overzealous list silently unburies
+// real misses by shrinking the denominator.
+const PAYOFF_STOPWORDS = new Set([
+  'that', 'this', 'with', 'from', 'into', 'over', 'after', 'before',
+  'during', 'between', 'through', 'about', 'there', 'here', 'they', 'them',
+  'their', 'she', 'him', 'his', 'you', 'your', 'our', 'who', 'what',
+  'when', 'where', 'which', 'while', 'will', 'would', 'have', 'has',
+  'been', 'were', 'then', 'than', 'also', 'just', 'even', 'still',
+  'back', 'down', 'only', 'such', 'much', 'many', 'more', 'most',
+  'other', 'some', 'each', 'both', 'until', 'again', 'further', 'once'
+])
+
+function payoffTerms(payoff: string): string[] {
+  return String(payoff || '')
+    .toLowerCase()
+    .split(/[^a-z']+/)
+    .filter((w) => w.length >= 4 && !PAYOFF_STOPWORDS.has(w))
+    .map((w) => w.replace(/'s$/, ''))
+    .filter((w) => w.length >= 4)
+}
+
+// Word-level hit with light inflection tolerance (stay/staying, ask/asked)
+// instead of substring matching, so "ask" never matches "mask". Favors
+// recall: a delivered beat uses the terms or their inflections.
+function payoffTermHit(draftWords: Set<string>, term: string): boolean {
+  if (draftWords.has(term)) return true
+  for (const suffix of ['s', 'es', 'ing', 'ed', 'd']) {
+    if (draftWords.has(term + suffix)) return true
+  }
+  for (const w of draftWords) {
+    if (w.startsWith(term) && w.length - term.length <= 3) return true
+  }
+  return false
+}
+
+function isPlaceholderPayoff(payoff: unknown): boolean {
+  return !payoff || /^\s*(none|n\/a|tbd)?\s*$/i.test(String(payoff))
+}
+
+  // Payoff coverage. The critic sees each scene's payoff and still passes
+  // misses (a real sample dropped "June asks to stay the winter" at 8.6),
+  // so the gate checks independently: do the payoff's distinctive terms show
+  // up in the draft, allowing inflections? Warn-only — paraphrase can beat
+  // lexical matching, and prose is never discarded. Empty/'none' payoffs and
+  // holes/empties (already blocked above) abstain.
+  for (let i = 0; i < sceneCount; i++) {
+    const payoff = plan[i]?.payoff
+    if (isPlaceholderPayoff(payoff)) continue
+    const scene = scenes[i]
+    if (!scene || !String(scene.prose || '').trim()) continue
+    const terms = payoffTerms(payoff as string)
+    if (terms.length === 0) continue
+    const draftWords = new Set(
+      String(scene.prose).toLowerCase().split(/[^a-z']+/).filter(Boolean)
+    )
+    const missing = terms.filter((t) => !payoffTermHit(draftWords, t))
+    const required = Math.max(1, Math.ceil((terms.length * 2) / 3))
+    if (terms.length - missing.length < required) {
+      add(
+        'payoff_missed',
+        'warn',
+        `Scene ${i + 1} misses its planned payoff ` +
+          `(${missing.slice(0, 3).join(', ')} absent — ` +
+          `${terms.length - missing.length} of ${terms.length} key terms present).`,
+        [i + 1]
       )
     }
   }

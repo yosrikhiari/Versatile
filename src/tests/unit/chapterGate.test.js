@@ -317,6 +317,61 @@ describe('chapterGate — reporting helpers', () => {
   })
 })
 
+describe('chapterGate — payoff coverage', () => {
+  // A real sample dropped its planned payoff ("June asks to stay the winter":
+  // nobody asked anything) and the critic still scored 8.6. Lexical coverage
+  // cannot see paraphrase, so the bar is set where the miss lands: the sample
+  // hits 2 of 4 distinctive terms and must warn.
+  function plannedScene(n, payoff) {
+    return { sceneNumber: n, title: `Scene ${n}`, estimatedWords: 200, payoff }
+  }
+
+  const missedDraft =
+    'June nodded and untied the rope from the cleat. ' +
+    'The crates held salted meat and wool against the coming cold. ' +
+    'Mara watched her daughter work without offering to help. ' +
+    'The wind pulled at their coats as the sky darkened over the water.'
+
+  const deliveredDraft =
+    'June set her jaw and asked if she could stay the winter. ' +
+    'Mara stared at her daughter for a long moment before she nodded. ' +
+    'The word hung between them while the wind pulled at their coats. ' +
+    'Nothing was settled, but the question had finally been asked aloud.'
+
+  it('warns when the draft misses most of the payoff terms', () => {
+    const report = evaluateChapter({
+      scenes: [{ title: 'S1', prose: missedDraft, characters: ['June'] }],
+      plan: [plannedScene(1, 'June asks to stay the winter')],
+      targetWords: 200
+    })
+    const finding = report.findings.find((f) => f.code === 'payoff_missed')
+    expect(finding).toBeDefined()
+    expect(finding.severity).toBe('warn')
+    expect(finding.sceneIndices).toEqual([1])
+    expect(report.passed).toBe(true)
+  })
+
+  it('stays silent when the payoff lands', () => {
+    const report = evaluateChapter({
+      scenes: [{ title: 'S1', prose: deliveredDraft, characters: ['June'] }],
+      plan: [plannedScene(1, 'June asks to stay the winter')],
+      targetWords: 200
+    })
+    expect(report.findings.some((f) => f.code === 'payoff_missed')).toBe(false)
+  })
+
+  it('abstains on empty or placeholder payoffs', () => {
+    for (const payoff of [undefined, '', 'none', 'NONE']) {
+      const report = evaluateChapter({
+        scenes: [{ title: 'S1', prose: missedDraft, characters: [] }],
+        plan: [plannedScene(1, payoff)],
+        targetWords: 200
+      })
+      expect(report.findings.some((f) => f.code === 'payoff_missed')).toBe(false)
+    }
+  })
+})
+
 describe('chapterGate — tense consistency', () => {
   // A real qwen3:8b sample flipped past tense (scene 1) to present (scene 2)
   // mid-chapter and every gate passed. Narrative tense is a chapter-level
