@@ -218,6 +218,13 @@ export function gateProseQuality(
         `${Math.round(dupRatio * 100)}% of the prose is duplicate sentences (max ${Math.round(MAX_DUPLICATE_RATIO * 100)}%) — the model is likely looping`
       )
     }
+    // Placeholder leakage (e.g. "???" the model emits instead of words) and
+    // control characters are malformed output, not style — flag, don't score.
+    if (/\?{3,}|[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(proseText)) {
+      flags.push(
+        'Prose contains malformed tokens (placeholder marks like ??? or control characters) — the model left a gap unfilled'
+      )
+    }
     currentWordCount = countUniqueWords(proseText)
   }
   const dimScores = critiqueResult?.dimensionScores

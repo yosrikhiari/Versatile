@@ -312,3 +312,57 @@ describe('gateProseQuality — word target', () => {
     expect(result.flags.some((f) => f.includes('target'))).toBe(false)
   })
 })
+
+describe('gateProseQuality — malformed tokens', () => {
+  let gateProseQuality
+
+  beforeAll(async () => {
+    const mod = await import('../../services/evalGates')
+    gateProseQuality = mod.gateProseQuality
+  })
+
+  const goodCritique = {
+    score: 8,
+    dimensionScores: { prose: 8, pacing: 8, continuity: 8 },
+    issues: [],
+    pass: true
+  }
+
+  it('flags prose leaking placeholder marks like ???', () => {
+    // Found in a real qwen3:8b sample ("She'd spent??? waiting") that scored
+    // 8.6 — the repetition machinery looks for duplicated sentences, not for
+    // malformed tokens, so this class sailed through every gate.
+    const result = gateProseQuality(
+      goodCritique,
+      0,
+      500,
+      500,
+      'Mara watched the boat come in. She had spent??? waiting for this tide.'
+    )
+    expect(result.pass).toBe(false)
+    expect(result.flags.some((f) => /placeholder|malformed|\?\?\?/.test(f))).toBe(true)
+  })
+
+  it('ignores ordinary punctuation and control-free prose', () => {
+    const result = gateProseQuality(
+      goodCritique,
+      0,
+      500,
+      500,
+      'Mara watched the boat come in. "Storm\'s coming?" she asked. It was!\nA new paragraph, honestly clean.'
+    )
+    expect(result.flags.some((f) => /placeholder|malformed/.test(f))).toBe(false)
+  })
+
+  it('flags embedded control characters', () => {
+    const result = gateProseQuality(
+      goodCritique,
+      0,
+      500,
+      500,
+      'Mara watched the boat come in. Clean otherwise.\u0007'
+    )
+    expect(result.pass).toBe(false)
+    expect(result.flags.some((f) => /malformed/.test(f))).toBe(true)
+  })
+})
