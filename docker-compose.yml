@@ -3,18 +3,69 @@ services:
     image: postgres:16-alpine
     container_name: versatile-postgres
     environment:
-      POSTGRES_DB: versatile
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-versatile}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      # Override in production: POSTGRES_PASSWORD=... docker compose up
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
       interval: 5s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: versatile-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: versatile-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Database + cache (service names resolve via compose DNS)
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-versatile};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      ConnectionStrings__Redis: redis:6379
+      # REQUIRED — fail fast with a named error if unset (see .env.example)
+      Jwt__Key: ${JWT_KEY:?set JWT_KEY - see .env.example}
+      Jwt__Issuer: ${JWT_ISSUER:-Versatile.Api}
+      Jwt__Audience: ${JWT_AUDIENCE:-Versatile.App}
+      Encryption__MasterKey: ${ENCRYPTION_MASTER_KEY:?set ENCRYPTION_MASTER_KEY - see .env.example}
+      # Optional — AI features degrade gracefully without them.
+      # NOTE: empty string trips the DI guard (it means "explicitly unset"), so
+      # the default reproduces appsettings.json's inert placeholder (local-dev behavior).
+      Ai__OpenAi__ApiKey: ${OPENAI_API_KEY:-set-via-env-var-Ai__OpenAi__ApiKey}
+      Ai__MistralKey: ${MISTRAL_API_KEY:-}
+      Ai__Ollama__BaseUrl: ${OLLAMA_BASE_URL:-http://ollama:11434}
+    # Published for debugging; production behind nginx needs only the proxy.
+    # Remove this block to keep the API reachable solely via the frontend service.
+    ports:
+      - '5171:8080'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
   # Optional static frontend (nginx). Enable with:  docker compose --profile frontend up
   frontend:
@@ -23,9 +74,26 @@ services:
       dockerfile: Dockerfile
     container_name: versatile-frontend
     profiles: ['frontend']
+    depends_on:
+      api:
+        condition: service_started
     ports:
       - '8080:80'
     restart: unless-stopped
 
+  # Optional local Ollama. Enable with:  docker compose --profile ollama up
+  # The api default Ai__Ollama__BaseUrl (http://ollama:11434) resolves when active.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: versatile-ollama
+    profiles: ['ollama']
+    volumes:
+      - ollamadata:/root/.ollama
+    ports:
+      - '11434:11434'
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  redisdata:
+  ollamadata:

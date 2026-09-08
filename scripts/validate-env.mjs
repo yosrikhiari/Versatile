@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
 
-const REQUIRED_KEYS = ['DATABASE_URL', 'JWT_SECRET']
-const WARN_KEYS = ['VITE_MISTRAL_API_KEY']
+const REQUIRED_KEYS = ['JWT_KEY', 'ENCRYPTION_MASTER_KEY']
+const WARN_KEYS = ['OPENAI_API_KEY', 'MISTRAL_API_KEY']
 const PLACEHOLDER_PATTERNS = [/change-this/i, /your-/i, /set-via-/i]
 
 let hasError = false
