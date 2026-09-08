@@ -29,6 +29,7 @@ import { useProjectStore } from '../stores/projectStore'
 import { useBranchStore } from '../stores/branchStore'
 
 const STYLE_GUIDE_DEBOUNCE = 1500
+const SECTION_WRITE_DEBOUNCE = 500
 
 export const useManuscriptStore = defineStore('manuscript', () => {
   const sections = ref<any[]>([])
@@ -42,6 +43,54 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   const manuscriptContent = ref('')
 
   let styleGuideTimer: any = null
+
+  // Trailing-edge per-entity Dexie coalescing (AGENTS.md: 500ms per-field timers).
+  //
+  // Leading call writes through immediately, so sequential callers touching
+  // different entities (generation loops) pay zero added latency. Rapid
+  // follow-ups to the SAME entity merge into one trailing write instead.
+  // Every caller still awaits actual persistence, so flushSave and the
+  // generation loops keep their ordering guarantees; single calls behave
+  // exactly as the old write-through (write, then reactive update).
+  const pendingWrites = new Map<string, {
+    trailingData: any | null
+    resolvers: Array<() => void>
+    rejecters: Array<(e: any) => void>
+  }>()
+
+  function flushEntityWrite(
+    key: string,
+    write: (merged: any) => Promise<void>
+  ) {
+    const entry = pendingWrites.get(key)
+    pendingWrites.delete(key)
+    if (!entry || !entry.trailingData) return
+    const { trailingData, resolvers, rejecters } = entry
+    write(trailingData).then(
+      () => resolvers.forEach((r) => r()),
+      (e: any) => rejecters.forEach((r) => r(e))
+    )
+  }
+
+  function scheduleEntityWrite(
+    key: string,
+    data: any,
+    write: (merged: any) => Promise<void>
+  ): Promise<void> {
+    const plain = toPlain(data)
+    const pending = pendingWrites.get(key)
+    if (!pending) {
+      const entry = { trailingData: null as any | null, resolvers: [] as Array<() => void>, rejecters: [] as Array<(e: any) => void> }
+      pendingWrites.set(key, entry)
+      setTimeout(() => flushEntityWrite(key, write), SECTION_WRITE_DEBOUNCE)
+      return write(plain)
+    }
+    pending.trailingData = { ...(pending.trailingData ?? {}), ...plain }
+    return new Promise<void>((resolve, reject) => {
+      pending.resolvers.push(resolve)
+      pending.rejecters.push(reject)
+    })
+  }
 
   function queueStyleGuideRegen() {
     if (styleGuideTimer) clearTimeout(styleGuideTimer)
@@ -133,11 +182,13 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   }
 
   async function updateSectionData(id: any, data: any, _projectId: any) {
-    await updateSection(id, toPlain(data))
-    const index = sections.value.findIndex((c) => c.id === id)
-    if (index !== -1) {
-      sections.value[index] = { ...sections.value[index], ...data }
-    }
+    await scheduleEntityWrite(`section:${id}`, data, async (merged: any) => {
+      await updateSection(id, merged)
+      const index = sections.value.findIndex((c) => c.id === id)
+      if (index !== -1) {
+        sections.value[index] = { ...sections.value[index], ...merged }
+      }
+    })
     queueStyleGuideRegen()
   }
 
@@ -172,11 +223,13 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   }
 
   async function updateSubsectionData(id: any, data: any, _projectId: any) {
-    await updateSubsection(id, toPlain(data))
-    const index = subsections.value.findIndex((s) => s.id === id)
-    if (index !== -1) {
-      subsections.value[index] = { ...subsections.value[index], ...data }
-    }
+    await scheduleEntityWrite(`subsection:${id}`, data, async (merged: any) => {
+      await updateSubsection(id, merged)
+      const index = subsections.value.findIndex((s) => s.id === id)
+      if (index !== -1) {
+        subsections.value[index] = { ...subsections.value[index], ...merged }
+      }
+    })
     queueStyleGuideRegen()
   }
 

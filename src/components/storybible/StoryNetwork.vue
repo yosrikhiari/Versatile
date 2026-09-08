@@ -617,12 +617,15 @@ watch(
   { deep: true }
 )
 
+let nodeParentsSaveTimer = null
 watch(
   () => nodeParents.value,
   (parents) => {
-    if (projectStore.currentProjectId) {
+    if (!projectStore.currentProjectId) return
+    clearTimeout(nodeParentsSaveTimer)
+    nodeParentsSaveTimer = setTimeout(() => {
       storyGraphStore.saveNodeParents(projectStore.currentProjectId, toRaw(parents))
-    }
+    }, 500)
   },
   { deep: true }
 )
