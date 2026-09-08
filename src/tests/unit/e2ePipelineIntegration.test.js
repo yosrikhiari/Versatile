@@ -13,7 +13,8 @@ const mockProjectStore = {
   activeWorkspaceType: 'creative',
   getActivePrompts: vi.fn(() => ({
     writer: 'You are a creative writer.',
-    critic: 'You are a story critic.'
+    critic: 'You are a story critic.',
+    director: 'You are a story architect planning a narrative arc. Keep JSON output only.'
   })),
   promptOverrides: { writer: '', critic: '', revisor: '', director: '' }
 }
@@ -294,5 +295,105 @@ describe('Writer → Critic → Quality Gates pipeline', () => {
 
     const distribution = gateScoreDistribution(critique)
     expect(distribution.pass).toBe(true)
+  })
+})
+
+describe('Director → Writer → Critic → Quality Gates pipeline', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  // The plan's first scene brief flows straight into the writer: what the
+  // director promises (cast, payoff, arc) is what the scene is written from.
+  // This is the seam the mocked pipeline exists to guard — a director change
+  // that renames or drops brief fields must break here, not in production.
+  it('plans a chapter, writes its scene, critiques and gates it', async () => {
+    mockAiGenerateJson.mockImplementation((prompt) => {
+      if (/chapter skeleton/i.test(prompt)) {
+        return Promise.resolve({
+          storyArc: {
+            premise: 'Test',
+            genre: 'Fantasy',
+            tone: 'Dark',
+            centralConflict: 'Good vs Evil'
+          },
+          chapters: [{ chapterNumber: 1, title: 'Chapter 1', goal: 'g', hookEnding: 'h' }]
+        })
+      }
+      return Promise.resolve({
+        scenes: [
+          {
+            sceneNumber: 1,
+            title: 'The Beginning',
+            emotionalGoal: 'Hope',
+            whatChanges: 'Hero starts journey',
+            charactersPresent: ['John'],
+            characterWants: { John: 'Find purpose' },
+            setup: 'Establishes world',
+            payoff: 'John finds a reason to go on',
+            sensoryAnchor: 'Dawn light',
+            tension: 'medium',
+            pacing: 'slow',
+            arcPosition: 'setup',
+            obstacle: 'doubt',
+            estimatedWords: 500
+          }
+        ]
+      })
+    })
+    mockAiGenerate.mockResolvedValue('Once upon a time, John embarked on his journey.')
+
+    const { useStoryDirector } = await import('@/composables/useStoryDirector')
+    const plan = await useStoryDirector().generateStoryPlan({
+      goal: {
+        premise: 'Test',
+        genre: 'Fantasy',
+        tone: 'Dark',
+        wordTarget: 1000,
+        horizon: 'short_term',
+        structure: {
+          chapters: 1,
+          scenesPerChapter: 1,
+          wordsPerChapter: 500,
+          chaptersPerVolume: 1,
+          volumes: 1
+        }
+      },
+      evidence: ''
+    })
+
+    expect(plan.chapters).toHaveLength(1)
+    expect(plan.scenes).toHaveLength(1)
+    const brief = plan.scenes[0]
+    expect(brief.payoff).toBe('John finds a reason to go on')
+    expect(brief.charactersPresent).toEqual(['John'])
+
+    const { useStoryWriter } = await import('@/composables/useStoryWriter')
+    const writerResult = await useStoryWriter().writeSceneStructured({
+      sceneBrief: brief,
+      storyArc: plan.storyArc
+    })
+    expect(writerResult.prose).toBeTruthy()
+
+    mockAiGenerateJson.mockResolvedValue({
+      score: 8,
+      pass: true,
+      dimensionScores: { continuity: 8, voice: 8, pacing: 8, show_tell: 7, emotional_goal: 8 },
+      issues: [{ type: 'pacing', severity: 'minor', text: 'Middle sags briefly' }],
+      strengths: ['Clear arc']
+    })
+    const { useStoryCritic } = await import('@/composables/useStoryCritic')
+    const critique = await useStoryCritic().evaluateScene({
+      draft: writerResult.prose,
+      sceneBrief: brief,
+      storyBible: '',
+      chapterLog: '',
+      existingEntitiesJson: '',
+      focusInstructions: ''
+    })
+
+    expect(critique.pass).toBe(true)
+    expect(gateDimensionCoverage(critique).pass).toBe(true)
+    expect(gateScoreDistribution(critique, { min: 5 }).pass).toBe(true)
   })
 })
