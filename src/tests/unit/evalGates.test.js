@@ -329,9 +329,9 @@ describe('gateProseQuality — malformed tokens', () => {
   }
 
   it('flags prose leaking placeholder marks like ???', () => {
-    // Found in a real qwen3:8b sample ("She'd spent??? waiting") that scored
-    // 8.6 — the repetition machinery looks for duplicated sentences, not for
-    // malformed tokens, so this class sailed through every gate.
+    // Defensive: placeholder leakage is the same defect class as the
+    // byte-confirmed CJK leakage below (unfilled model output), caught by the
+    // repetition machinery's blind spot for non-duplicate malformation.
     const result = gateProseQuality(
       goodCritique,
       0,
@@ -364,5 +364,20 @@ describe('gateProseQuality — malformed tokens', () => {
     )
     expect(result.pass).toBe(false)
     expect(result.flags.some((f) => /malformed/.test(f))).toBe(true)
+  })
+
+  it('flags CJK script leakage mid-prose', () => {
+    // Found twice in a real qwen3:8b sample ("spent事协归 waiting", "a glass罩
+    // that glints") — the bilingual model drops Chinese tokens into English
+    // prose, and the critic scored both scenes 8.4+.
+    const result = gateProseQuality(
+      goodCritique,
+      0,
+      500,
+      500,
+      'Mara watched the boat come in. The lamp stands with a glass罩 that glints.'
+    )
+    expect(result.pass).toBe(false)
+    expect(result.flags.some((f) => /malformed|script/.test(f))).toBe(true)
   })
 })

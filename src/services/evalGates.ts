@@ -218,11 +218,28 @@ export function gateProseQuality(
         `${Math.round(dupRatio * 100)}% of the prose is duplicate sentences (max ${Math.round(MAX_DUPLICATE_RATIO * 100)}%) — the model is likely looping`
       )
     }
-    // Placeholder leakage (e.g. "???" the model emits instead of words) and
-    // control characters are malformed output, not style — flag, don't score.
-    if (/\?{3,}|[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(proseText)) {
+    // Placeholder leakage (e.g. "???" the model emits instead of words),
+    // control characters, and unexpected CJK script (bilingual models drop
+    // native tokens into English prose — byte-confirmed twice in a qwen3:8b
+    // sample scoring 8.4+) are malformed output, not style — flag, don't score.
+    // Note: written with char codes and unicode property escapes rather than
+    // hex escapes on purpose (see commit history).
+    const hasPlaceholders = /\?{3,}/.test(proseText)
+    const hasUnexpectedScript =
+      /\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}/u.test(
+        proseText
+      )
+    let hasControlChars = false
+    for (let i = 0; i < proseText.length; i++) {
+      const code = proseText.charCodeAt(i)
+      if (code === 127 || (code < 32 && code !== 9 && code !== 10 && code !== 13)) {
+        hasControlChars = true
+        break
+      }
+    }
+    if (hasPlaceholders || hasUnexpectedScript || hasControlChars) {
       flags.push(
-        'Prose contains malformed tokens (placeholder marks like ??? or control characters) — the model left a gap unfilled'
+        'Prose contains malformed tokens (placeholder marks like ???, control characters, or unexpected non-Latin script) — the model left a gap unfilled or leaked native tokens'
       )
     }
     currentWordCount = countUniqueWords(proseText)

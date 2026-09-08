@@ -152,8 +152,8 @@ const analysis = scenes.map((s, i) => {
     duplicateRatio: Number(duplicateRatio(s.prose).toFixed(3)),
     duplicateLimit: MAX_DUPLICATE_RATIO,
     criticScore: v.score != null ? Number(v.score.toFixed(2)) : null,
-    gateDecision: gate.decision,
-    gateReasons: gate.reasons || []
+    gatePass: gate.pass,
+    gateFlags: gate.flags || []
   }
 })
 const crossOverlap = Number(sentenceOverlap(scenes[0].prose, scenes[1].prose).toFixed(3))
@@ -190,7 +190,7 @@ ${analysis
   .map(
     (a, i) => `## Scene ${i + 1}: ${a.scene}
 - Words: ${a.words} (unique ${a.uniqueWords}) · duplicate ratio ${a.duplicateRatio} (limit ${a.duplicateLimit})
-- Critic: ${a.criticScore ?? 'unavailable'} · prose gate: ${a.gateDecision}${a.gateReasons.length ? ` — ${a.gateReasons.join('; ')}` : ''}`
+- Critic: ${a.criticScore ?? 'unavailable'} · prose gate: ${a.gatePass ? 'pass' : 'FAIL'}${a.gateFlags.length ? ` — ${a.gateFlags.join('; ')}` : ''}`
   )
   .join('\n\n')}
 
