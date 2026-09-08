@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, toRaw, inject } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, inject } from 'vue'
 import { VueFlow, useVueFlow, Position, Handle } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { MiniMap } from '@vue-flow/minimap'
@@ -15,6 +15,7 @@ import { useNotifications } from '../../composables/useNotifications'
 import { useNetworkSuggestions } from '../../composables/useNetworkSuggestions'
 import { groupNetworkByVolume } from '../../composables/useVolumeGrouping'
 import { wouldCreateCycle, sortGroupsParentFirst } from '../../utils/networkGrouping'
+import { useStoryGraphPersistence } from '../../composables/useStoryGraphPersistence'
 import BaseIcon from '../shared/BaseIcon.vue'
 import EntitySidebar from './EntitySidebar.vue'
 import AddConnectionModal from './AddConnectionModal.vue'
@@ -604,30 +605,14 @@ watch(
 
 // forceRefreshKey removed — destroying/recreating VueFlow on every edge change killed perf
 
-let groupSaveTimer = null
-watch(
-  () => manualGroups.value,
-  (groups) => {
-    if (!projectStore.currentProjectId) return
-    clearTimeout(groupSaveTimer)
-    groupSaveTimer = setTimeout(() => {
-      storyGraphStore.saveGroups(projectStore.currentProjectId, toRaw(groups))
-    }, 500)
-  },
-  { deep: true }
-)
-
-let nodeParentsSaveTimer = null
-watch(
-  () => nodeParents.value,
-  (parents) => {
-    if (!projectStore.currentProjectId) return
-    clearTimeout(nodeParentsSaveTimer)
-    nodeParentsSaveTimer = setTimeout(() => {
-      storyGraphStore.saveNodeParents(projectStore.currentProjectId, toRaw(parents))
-    }, 500)
-  },
-  { deep: true }
+// Debounced canvas persistence lives in useStoryGraphPersistence (tested);
+// the explicit saves below (repairs, resets, deletes) stay immediate.
+useStoryGraphPersistence(
+  manualGroups,
+  nodeParents,
+  () => projectStore.currentProjectId,
+  (projectId, groups) => storyGraphStore.saveGroups(projectId, groups),
+  (projectId, parents) => storyGraphStore.saveNodeParents(projectId, parents)
 )
 
 // Absolute canvas position of a group, summing offsets up the parent chain
