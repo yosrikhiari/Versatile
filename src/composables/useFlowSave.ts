@@ -70,7 +70,7 @@ export function useFlowSave(editorRef: any) {
           projectStore.currentProjectId
         )
       } else {
-        projectStore.saveDocumentDebounced()
+        projectStore.saveDocumentNow()
       }
 
       if (_flushResolver) {

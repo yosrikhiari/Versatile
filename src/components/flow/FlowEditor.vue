@@ -57,7 +57,7 @@ const editor = useEditor({
     // Push what was typed into the store BEFORE scheduling the save.
     //
     // Nothing did this. When no section is open, `useFlowSave` persists via
-    // `projectStore.saveDocumentDebounced()`, which writes `documentContent` —
+    // `projectStore.saveDocumentNow()`, which writes `documentContent` —
     // a ref only Spark and Polish ever updated. So typing in the main document
     // saved whatever had been loaded, not what was on screen: the editor showed
     // "Saved", and the text was gone on reload.

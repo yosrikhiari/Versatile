@@ -124,7 +124,7 @@ describe('projectStore', () => {
     store.documentContent = '<p>Content</p>'
     store.wordCount = 2
 
-    await store.saveDocumentDebounced()
+    await store.saveDocumentNow()
 
     expect(dbService.saveManuscript).toHaveBeenCalledWith('test-id', '<p>Content</p>')
   })

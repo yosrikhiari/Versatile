@@ -569,6 +569,16 @@ const edgeMap = computed(() => {
   return map
 })
 
+// O(1) group lookup for the position helpers below (group ids are unique,
+// so Map.get matches Array.find semantics exactly).
+const groupMap = computed(() => {
+  const map = new Map()
+  for (const group of manualGroups.value) {
+    map.set(group.id, group)
+  }
+  return map
+})
+
 function getEdgeOpacity(edgeId) {
   const edge = edgeMap.value.get(edgeId)
   if (!edge) return 0.35
@@ -628,7 +638,7 @@ function getAbsoluteGroupPosition(group) {
     seen.add(cur.id)
     x += cur.x || 0
     y += cur.y || 0
-    cur = cur.parentGroupId ? manualGroups.value.find((g) => g.id === cur.parentGroupId) : null
+    cur = cur.parentGroupId ? groupMap.value.get(cur.parentGroupId) || null : null
   }
   return { x, y }
 }
@@ -636,7 +646,7 @@ function getAbsoluteGroupPosition(group) {
 function getAbsoluteNodePosition(node) {
   const currentParentId = nodeParents.value[node.id]
   if (currentParentId) {
-    const parentGroup = manualGroups.value.find((g) => g.id === currentParentId)
+    const parentGroup = groupMap.value.get(currentParentId)
     if (parentGroup) {
       const abs = getAbsoluteGroupPosition(parentGroup)
       return {
@@ -1326,15 +1336,19 @@ async function initGraph(projectId) {
   if (storyBibleStore.characters.length === 0) {
     await storyBibleStore.loadAll(projectId)
   }
-  await storyGraphStore.loadNodePositions(projectId)
-  await storyGraphStore.loadNodeInstances(projectId)
-  await storyGraphStore.loadEdges(projectId)
-  await storyGraphStore.loadGroupEdges(projectId)
-
-  const [groups, parents] = await Promise.all([
+  // Independent table reads — batch them instead of paying sequential
+  // IndexedDB round trips (the two value-returning loads join the batch;
+  // the rest populate the store, as before).
+  const [, , , , loadedGroups, loadedParents] = await Promise.all([
+    storyGraphStore.loadNodePositions(projectId),
+    storyGraphStore.loadNodeInstances(projectId),
+    storyGraphStore.loadEdges(projectId),
+    storyGraphStore.loadGroupEdges(projectId),
     storyGraphStore.loadGroups(projectId),
     storyGraphStore.loadNodeParents(projectId)
   ])
+  const groups = loadedGroups
+  const parents = loadedParents
   manualGroups.value = groups || []
   nodeParents.value = parents || {}
   nodeInstances.value = storyGraphStore.nodeInstances || {}

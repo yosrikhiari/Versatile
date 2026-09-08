@@ -78,9 +78,16 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     isLoading.value = true
     loadError.value = null
     try {
-      characters.value = await getCharacters(projectId)
-      locations.value = await getLocations(projectId)
-      plotThreads.value = await getPlotThreads(projectId)
+      // Independent reads — batch them instead of paying 3 sequential
+      // IndexedDB round trips (fails fast into the catch below, as before).
+      const [loadedCharacters, loadedLocations, loadedThreads] = await Promise.all([
+        getCharacters(projectId),
+        getLocations(projectId),
+        getPlotThreads(projectId)
+      ])
+      characters.value = loadedCharacters
+      locations.value = loadedLocations
+      plotThreads.value = loadedThreads
 
       const { useStoryDocuments } = await import('../composables/useStoryDocuments')
       const storyDocs = useStoryDocuments()

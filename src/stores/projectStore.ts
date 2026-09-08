@@ -150,7 +150,10 @@ export const useProjectStore = defineStore('project', () => {
     longestStreak.value = data.longestStreak || 0
   }
 
-  async function saveDocumentDebounced() {
+  // Immediate write — the actual debounce lives in useFlowSave's 10s
+  // scheduleSave timer, which calls this. (Previously misnamed
+  // saveDocumentDebounced despite containing no timer.)
+  async function saveDocumentNow() {
     if (!currentProjectId.value) return
     try {
       await saveManuscript(currentProjectId.value, documentContent.value)
@@ -348,7 +351,7 @@ export const useProjectStore = defineStore('project', () => {
     loadPromptOverrides,
     savePromptOverrides,
     loadProject,
-    saveDocumentDebounced,
+    saveDocumentNow,
     updateContent,
     setSessionGoal,
     setDailyGoal,

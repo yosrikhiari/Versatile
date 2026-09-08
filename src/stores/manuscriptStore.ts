@@ -91,15 +91,24 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     try {
       const branchStore = useBranchStore()
       const branchId = (branchStore as any).activeBranch?.id
-      sections.value = await getSections(projectId, branchId)
-      subsections.value = await getSubsections(projectId, null, branchId)
+      // Independent reads — batch them instead of paying 4 sequential
+      // IndexedDB round trips (fails fast into the catch below, as before).
+      const [loadedSections, loadedSubsections, loadedElements, loadedRelationships] =
+        await Promise.all([
+          getSections(projectId, branchId),
+          getSubsections(projectId, null, branchId),
+          getStoryElements(projectId),
+          getCharacterRelationships(projectId)
+        ])
+      sections.value = loadedSections
+      subsections.value = loadedSubsections
       // Sorted by the canvas arrangement the author saved. Reading them back in
       // raw insertion order silently discarded any reordering they had done.
       // Elements predating `order` sort last but keep their relative order.
-      storyElements.value = (await getStoryElements(projectId)).sort(
+      storyElements.value = loadedElements.sort(
         (a: any, b: any) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
       )
-      relationships.value = await getCharacterRelationships(projectId)
+      relationships.value = loadedRelationships
       import('../composables/useManuscriptContext')
         .then(({ warmEmbeddingCache }) => warmEmbeddingCache(projectId))
         .catch((err: any) => {
