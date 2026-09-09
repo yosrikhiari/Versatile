@@ -57,7 +57,7 @@
     "@vue-flow/core": "^1.48.2",
     "@vue-flow/minimap": "^1.5.4",
     "@vueuse/core": "^10.7.0",
-    "dexie": "^3.2.0",
+    "dexie": "^4.4.5",
     "dompurify": "^3.4.15",
     "focus-trap": "^8.2.1",
     "gpt-tokenizer": "^3.4.0",
