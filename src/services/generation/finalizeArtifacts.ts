@@ -1,4 +1,5 @@
 import { planCanvasElements } from '../storyCanvasSync'
+import { analyzeManuscriptShape } from './manuscriptShape'
 
 /**
  * Bring every derived editor surface up to date once a run has produced prose.
@@ -24,6 +25,7 @@ export interface FinalizeReport {
   canvasElements: number
   documents: string[]
   storyContextRebuilt: boolean
+  shapeAnalyzed: boolean
   errors: string[]
 }
 
@@ -42,6 +44,7 @@ export async function finalizeStoryArtifacts({
     canvasElements: 0,
     documents: [],
     storyContextRebuilt: false,
+    shapeAnalyzed: false,
     errors: []
   }
   if (!projectId) return report
@@ -85,6 +88,24 @@ export async function finalizeStoryArtifacts({
     report.errors.push(`story context: ${err?.message || err}`)
   }
 
+  // ── Manuscript shape ──
+  // Heuristic-only analysis of the committed manuscript (never the open
+  // editor document, never a model call), so the shape panel reflects the
+  // run's output. Same independence: a shape failure is reported, not fatal.
+  try {
+    const shape = await analyzeManuscriptShape({
+      projectId,
+      sections: manuscriptStore?.sortedSections || []
+    })
+    if (shape?.ok) {
+      report.shapeAnalyzed = true
+    } else {
+      report.errors.push(`shape: ${shape?.detail || 'analysis failed'}`)
+    }
+  } catch (err: any) {
+    report.errors.push(`shape: ${err?.message || err}`)
+  }
+
   return report
 }
 
@@ -102,6 +123,7 @@ export function describeFinalizeReport(report: FinalizeReport): string {
       : 'no documents needed refreshing'
   )
   if (report.storyContextRebuilt) parts.push('story context rebuilt')
+  if (report.shapeAnalyzed) parts.push('shape refreshed')
   if (report.errors.length) parts.push(`failed: ${report.errors.join('; ')}`)
   return parts.join(' · ')
 }

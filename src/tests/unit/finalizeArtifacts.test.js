@@ -1,8 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
+
+vi.mock('@/services/generation/manuscriptShape', () => ({
+  analyzeManuscriptShape: vi.fn()
+}))
+
 import {
   finalizeStoryArtifacts,
   describeFinalizeReport
 } from '@/services/generation/finalizeArtifacts'
+import { analyzeManuscriptShape } from '@/services/generation/manuscriptShape'
 
 /**
  * The contract a finished generation run must satisfy: every derived editor
@@ -143,6 +149,37 @@ describe('finalizeStoryArtifacts', () => {
     })
     expect(report.canvasElements).toBe(0)
     expect(storyDocs.regenerateAllDocuments).not.toHaveBeenCalled()
+  })
+
+  it('refreshes the manuscript shape record (heuristic-only, never the open doc)', async () => {
+    analyzeManuscriptShape.mockResolvedValue({ ok: true, version: 7, detail: 'shape v7' })
+    const { manuscriptStore, storyBibleStore, storyDocs } = makeStores()
+    const report = await finalizeStoryArtifacts({
+      projectId: 1,
+      manuscriptStore,
+      storyBibleStore,
+      storyDocs
+    })
+    expect(analyzeManuscriptShape).toHaveBeenCalledWith(expect.objectContaining({ projectId: 1 }))
+    expect(report.shapeAnalyzed).toBe(true)
+  })
+
+  it('records shape failure without failing the volume', async () => {
+    analyzeManuscriptShape.mockResolvedValue({
+      ok: false,
+      version: null,
+      detail: 'manuscript is empty'
+    })
+    const { manuscriptStore, storyBibleStore, storyDocs } = makeStores()
+    const report = await finalizeStoryArtifacts({
+      projectId: 1,
+      manuscriptStore,
+      storyBibleStore,
+      storyDocs
+    })
+    expect(report.shapeAnalyzed).toBe(false)
+    expect(report.errors.join(';')).toMatch(/shape/)
+    expect(report.storyContextRebuilt).toBe(true)
   })
 })
 
