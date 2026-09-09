@@ -1,5 +1,5 @@
 import { aiGenerateJson } from '../useAiService'
-import { runDeterministicContradictionChecks, generateContradictionCandidates, buildCandidateLedgerText, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
+import { runDeterministicContradictionChecks, generateContradictionCandidates, buildCandidateLedgerText, DEFAULT_MAX_SCENES_PER_CHAPTER, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
 import { getProjectDigests, getProjectChapterDigests, getEntityStateTimeline } from '../../services/db-digests'
 import type { SceneDigest } from '../../services/generation/sceneDigest'
 import type { EntityStateRecord } from '../../services/generation/entityStates'
@@ -119,13 +119,14 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
   )
 
   // Single home for the format (tested in candidateLedgerText.test.js).
-  // No threshold passed yet, so output is byte-identical to the inline
-  // version this replaces; substitution is a calibrated follow-up.
+  // Calibrated substitution is live: chapters past the cap compress to
+  // their digest summary; everything else renders verbatim as before.
   const ledgerText = buildCandidateLedgerText({
     ledgers: relevantLedgers,
     scenes,
     entityStates,
-    chapterDigests
+    chapterDigests,
+    maxScenesPerChapter: DEFAULT_MAX_SCENES_PER_CHAPTER
   })
 
   const prompt = `Focused fact ledger for specific scene pairs (deterministic rules already checked):\n\n${ledgerText}`

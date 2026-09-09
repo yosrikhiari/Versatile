@@ -526,6 +526,21 @@ export async function runDeterministicContradictionChecks(
 }
 
 /**
+ * Chapters contributing more candidate scenes than this get their ledger
+ * block replaced by the chapter-digest summary in the LLM prompt.
+ *
+ * Calibrated 2026-09-09 on real qwen3:8b sample prose (2 scenes, measured
+ * in the code's exact formats at ~4 chars/token): per-scene ledger ≈ 82
+ * tokens, per-scene summary line ≈ 30, block header ≈ 11. Substitution
+ * wins on tokens at every n, so the threshold is about information, not
+ * cost: at ≤4 scenes verbatim costs ≤ ~330 tokens and keeps exact facts
+ * in front of the verifier; past 4 the chapter compresses (a 10-scene
+ * chapter drops ~820 → ~310). Deterministic findings always travel
+ * verbatim on a separate path — this only compresses the LLM's input.
+ */
+export const DEFAULT_MAX_SCENES_PER_CHAPTER = 4
+
+/**
  * Ledger text for the LLM verification step.
  *
  * Pure and extracted so chapter-digest substitution is testable. SceneId →
