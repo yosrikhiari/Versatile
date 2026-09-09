@@ -3,7 +3,9 @@ import { SCHEMA_VERSIONS } from './db-schema'
 import { MIGRATIONS } from './db-migrations'
 import { DEFAULT_VOLUME_COLOR } from '../config/volumeColors'
 
-const DEV_MODE = false
+// Demo account (test/test123, advertised in LoginView) seeds on empty DB in
+// dev/test only — never in production builds, and never into a non-empty DB.
+const DEV_MODE = import.meta.env.DEV === true
 
 /**
  * Row shapes are not modelled yet — every table is `any`-rowed. What this buys us is

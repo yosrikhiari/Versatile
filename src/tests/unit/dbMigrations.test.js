@@ -180,13 +180,15 @@ describe('v13 migration (chapters → sections, scenes → subsections)', () => 
   })
 })
 
-describe('v26 migration (DEV_MODE=false, no-op)', () => {
-  it('does nothing when DEV_MODE is false', async () => {
+describe('v26 migration (dev-mode demo seed)', () => {
+  it('seeds the demo user on an empty users table in dev/test', async () => {
     const beforeVersion26 = SCHEMA_VERSIONS.filter((v) => v.version <= 25)
     const db = await withMigration({ version: 26, beforeSchemas: beforeVersion26, seed: undefined })
-    // v26 handler checks DEV_MODE (false) and returns early — no crash expected
-    const userCount = await db.users.count()
-    expect(userCount).toBe(0)
+    // DEV_MODE follows import.meta.env.DEV (true under vitest): the demo
+    // account LoginView advertises must exist. Production builds skip it.
+    const testUser = await db.users.where('username').equals('test').first()
+    expect(testUser).toBeTruthy()
+    expect(testUser.displayName).toBe('Test User')
     db.close()
     await db.delete()
   })

@@ -1,4 +1,5 @@
-const DEV_MODE = false
+// Mirrors db-core: demo seed runs in dev/test only, never production builds.
+const DEV_MODE = import.meta.env.DEV === true
 
 export const MIGRATIONS = {
    11: async (trans: any) => {
