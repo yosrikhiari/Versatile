@@ -13,19 +13,35 @@ describe('retryWithBackoff', () => {
   })
 
   it('retries on failure and eventually succeeds', async () => {
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('temporary'))
-      .mockRejectedValueOnce(new Error('temporary'))
-      .mockResolvedValue('ok')
-    await expect(retryWithBackoff(fn, 5)).resolves.toBe('ok')
-    expect(fn).toHaveBeenCalledTimes(3)
+    // Fake timers: the backoff sleeps seconds of real time per attempt.
+    vi.useFakeTimers()
+    try {
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('temporary'))
+        .mockRejectedValueOnce(new Error('temporary'))
+        .mockResolvedValue('ok')
+      const pending = retryWithBackoff(fn, 5)
+      await vi.advanceTimersByTimeAsync(120_000)
+      await expect(pending).resolves.toBe('ok')
+      expect(fn).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('throws after exhausting retries', async () => {
-    const fn = vi.fn().mockRejectedValue(new Error('always fails'))
-    await expect(retryWithBackoff(fn, 3)).rejects.toThrow('always fails')
-    expect(fn).toHaveBeenCalledTimes(3)
+    vi.useFakeTimers()
+    try {
+      const fn = vi.fn().mockRejectedValue(new Error('always fails'))
+      const pending = retryWithBackoff(fn, 3)
+      const assertion = expect(pending).rejects.toThrow('always fails')
+      await vi.advanceTimersByTimeAsync(120_000)
+      await assertion
+      expect(fn).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('throws immediately on permanent error', async () => {

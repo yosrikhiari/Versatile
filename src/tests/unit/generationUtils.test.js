@@ -84,21 +84,36 @@ describe('retryWithBackoff', () => {
   })
 
   it('retries on transient errors then succeeds', async () => {
-    const { retryWithBackoff } = await import('@/composables/generation/utils')
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('timeout'))
-      .mockRejectedValueOnce(new Error('timeout'))
-      .mockResolvedValueOnce('recovered')
-    const result = await retryWithBackoff(fn)
-    expect(result).toBe('recovered')
-    expect(fn).toHaveBeenCalledTimes(3)
+    // Fake timers: the backoff sleeps seconds of real time per attempt.
+    vi.useFakeTimers()
+    try {
+      const { retryWithBackoff } = await import('@/composables/generation/utils')
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('timeout'))
+        .mockRejectedValueOnce(new Error('timeout'))
+        .mockResolvedValueOnce('recovered')
+      const pending = retryWithBackoff(fn)
+      await vi.advanceTimersByTimeAsync(120_000)
+      await expect(pending).resolves.toBe('recovered')
+      expect(fn).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('exhausts retries and throws on persistent failure', async () => {
-    const { retryWithBackoff } = await import('@/composables/generation/utils')
-    const fn = vi.fn().mockRejectedValue(new Error('transient error'))
-    await expect(retryWithBackoff(fn, 3)).rejects.toThrow('transient error')
-    expect(fn).toHaveBeenCalledTimes(3)
+    vi.useFakeTimers()
+    try {
+      const { retryWithBackoff } = await import('@/composables/generation/utils')
+      const fn = vi.fn().mockRejectedValue(new Error('transient error'))
+      const pending = retryWithBackoff(fn, 3)
+      const assertion = expect(pending).rejects.toThrow('transient error')
+      await vi.advanceTimersByTimeAsync(120_000)
+      await assertion
+      expect(fn).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

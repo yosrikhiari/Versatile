@@ -27,7 +27,13 @@ export default defineConfig({
     // past the 5s default. Every one of these suites is CPU-bound and offline —
     // none of them wait on a network — so a generous bound cannot mask a hang
     // that matters, it only stops load from being reported as failure.
-    testTimeout: 30_000,
+    //
+    // Measured 2026-09-09 (vitest JSON report): slowest single test ~4.4s
+    // (retry backoff, since converted to fake timers), next ~2.7s. 15s keeps
+    // 3x headroom over anything observed. hookTimeout stays at 60s: hook and
+    // module-load cost is not attributed per test, and the incident history
+    // above was about hooks, not test bodies.
+    testTimeout: 15_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
