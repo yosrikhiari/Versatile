@@ -137,9 +137,17 @@ describe('consistency pipeline (deterministic)', () => {
   })
 })
 
-// ---- optional AI critic test (only when a local Ollama is reachable) ---------
+// ---- optional AI critic test (explicit opt-in only) ---------------------------
+// Reachability gating was tried: on a machine running Ollama the test executes
+// against live inference, and a real model is nondeterministic — it flakes by
+// timing, load and mood, failing whichever run happens to share the machine.
+// Reachable does not mean reliable, so this runs only with OLLAMA_LIVE_TESTS=1
+// (e.g. a deliberate nightly model check), never as part of the suite.
+
+const OLLAMA_LIVE_TESTS = process.env.OLLAMA_LIVE_TESTS === '1'
 
 async function ollamaReachable() {
+  if (!OLLAMA_LIVE_TESTS) return false
   try {
     const ctrl = new AbortController()
     const t = setTimeout(() => ctrl.abort(), 1500)
@@ -166,31 +174,32 @@ describe('consistency pipeline (AI critic, requires local Ollama)', () => {
     const { useStoryCritic } = await import('../../composables/useStoryCritic')
     critic = useStoryCritic()
   })
-
-  it('checkContradictions finds zero issues for a self-consistent 2-scene draft', async function () {
-    if (!ready) this.skip()
-    const characters = [{ name: 'Elara Voss' }, { name: 'Kaelen Dain' }]
-    const locations = [{ name: 'The Archive' }]
-    const sceneProse = [
-      {
-        characters: ['Elara Voss', 'Kaelen Dain'],
-        location: 'The Archive',
-        prose: 'Elara Voss met Kaelen Dain in the Archive to study the prophecy.'
-      },
-      {
-        characters: ['Elara Voss', 'Kaelen Dain'],
-        location: 'The Archive',
-        prose: 'Elara Voss and Kaelen Dain continued their study of the prophecy in the Archive.'
-      }
-    ]
-    const report = await critic.checkContradictions({
-      characters,
-      locations,
-      sceneProse,
-      synopsis: 'A scholar studies a prophecy.',
-      ledger: ['Ch1: Elara met Kaelen in the Archive']
-    })
-    expect(report.characterIssues || []).toHaveLength(0)
-    expect(report.locationIssues || []).toHaveLength(0)
-  })
+  ;(OLLAMA_LIVE_TESTS ? it : it.skip)(
+    'checkContradictions finds zero issues for a self-consistent 2-scene draft',
+    async () => {
+      const characters = [{ name: 'Elara Voss' }, { name: 'Kaelen Dain' }]
+      const locations = [{ name: 'The Archive' }]
+      const sceneProse = [
+        {
+          characters: ['Elara Voss', 'Kaelen Dain'],
+          location: 'The Archive',
+          prose: 'Elara Voss met Kaelen Dain in the Archive to study the prophecy.'
+        },
+        {
+          characters: ['Elara Voss', 'Kaelen Dain'],
+          location: 'The Archive',
+          prose: 'Elara Voss and Kaelen Dain continued their study of the prophecy in the Archive.'
+        }
+      ]
+      const report = await critic.checkContradictions({
+        characters,
+        locations,
+        sceneProse,
+        synopsis: 'A scholar studies a prophecy.',
+        ledger: ['Ch1: Elara met Kaelen in the Archive']
+      })
+      expect(report.characterIssues || []).toHaveLength(0)
+      expect(report.locationIssues || []).toHaveLength(0)
+    }
+  )
 })
