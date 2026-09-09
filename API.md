@@ -27,8 +27,9 @@ documents the conventions that hold across all controllers.
 Nearly every resource is organization-scoped: requests resolve the active
 organization from the user's claims (invite flow:
 `POST /api/Organization/{id}/invite`, remove:
-`DELETE /api/Organization/{id}/members/{userId}`). Cross-org access
-returns 404, not 403, so membership cannot be probed.
+`DELETE /api/Organization/{id}/members/{userId}`). Reading an org you
+don't belong to returns 403 — the membership check runs before the
+existence check, so it reveals nothing to probe (verified live).
 
 ## Conventions
 
