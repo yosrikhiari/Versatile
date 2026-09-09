@@ -1037,6 +1037,9 @@ export function useVolumeStoryGenerator() {
             evidence: updatedEvidence,
             research,
             signal: stageSignal,
+            // Thread catalog for per-scene threadIds (omitted → director
+            // plans without thread links, as before).
+            plotThreads: storyBibleStore.plotThreads as any[],
             // Mirror planning progress into the Planning phase so the Activity drawer
             // shows what's being outlined, then forward to the caller's handler.
             onPartialData: (type: any, name: any) => {
@@ -3671,6 +3674,8 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
             evidence,
             research: null,
             signal: stageSignal,
+            // Same thread catalog as the main planning path.
+            plotThreads: storyBibleStore.plotThreads as any[],
             onPartialData: (_t: any, name: any) => {
               heartbeat(name)
               actLog.appendThought(currentTaskId, 0, `• ${name}\n`)

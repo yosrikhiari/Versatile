@@ -185,6 +185,55 @@ describe('useStoryDirector', () => {
       expect(result.storyArc.genre).toBe('Fantasy')
     })
 
+    it('carries the director-emitted threadIds through assembly', async () => {
+      // Same transit-drop class as `pov`: the mapper rebuilds scenes field
+      // by field, so an unnamed field never reaches the writer no matter
+      // what the schema asked for.
+      const response = JSON.parse(makeValidResponse())
+      response.chapters[0].scenes[0].threadIds = ['t1', 't2']
+      mockAiGenerate.mockResolvedValue(JSON.stringify(response))
+      const { generateStoryPlan } = useStoryDirector()
+      const result = await generateStoryPlan({ goal, evidence: 'Story bible' })
+      expect(result.scenes[0].threadIds).toEqual(['t1', 't2'])
+    })
+
+    it('gives the scene planner a thread catalog to reference — and stays silent without one', async () => {
+      const prompts = []
+      mockAiGenerate.mockImplementation((prompt) => {
+        prompts.push(prompt)
+        return /chapter skeleton/i.test(prompt)
+          ? JSON.stringify({
+              storyArc: { premise: 'P', genre: 'F', tone: 'T', centralConflict: 'c' },
+              chapters: [{ chapterNumber: 1, title: 'Ch1', goal: 'g', hookEnding: 'h' }]
+            })
+          : JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1' }] })
+      })
+      const threads = [
+        { id: 't1', title: 'The missing lantern' },
+        { id: 't2', title: 'June’s debt' }
+      ]
+      const { generateStoryPlan } = useStoryDirector()
+      const structuredGoal = {
+        ...goal,
+        structure: {
+          chapters: 1,
+          scenesPerChapter: 1,
+          wordsPerChapter: 1000,
+          chaptersPerVolume: 1,
+          volumes: 1
+        }
+      }
+      await generateStoryPlan({ goal: structuredGoal, evidence: '', plotThreads: threads })
+      const scenePrompt = prompts.find((p) => /Plan EXACTLY/i.test(p))
+      expect(scenePrompt).toContain('"threadIds"')
+      expect(scenePrompt).toContain('t1: The missing lantern')
+
+      prompts.length = 0
+      await generateStoryPlan({ goal: structuredGoal, evidence: '' })
+      const barePrompt = prompts.find((p) => /Plan EXACTLY/i.test(p))
+      expect(barePrompt).not.toContain('threadIds')
+    })
+
     it('plans in chunks (skeleton + per-chapter scenes) when a structure is given', async () => {
       const skeleton = JSON.stringify({
         storyArc: { premise: 'P', genre: 'Fantasy', tone: 'Dark', centralConflict: 'c' },

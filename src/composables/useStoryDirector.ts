@@ -203,6 +203,10 @@ const SCENES_SCHEMA = {
           whatChanges: { type: 'string' },
           obstacle: { type: 'string' },
           charactersPresent: { type: 'array', items: { type: 'string' } },
+          // Per-scene plot-thread link: the signal buildSceneEntitiesBlob
+          // scopes the thread dump on. Absent, threads ride whole (see the
+          // `pov` comment below for what happens to unnamed fields).
+          threadIds: { type: 'array', items: { type: 'string' } },
           characterWants: { type: 'object' },
           // Viewpoint was never actually decided by anything. The schema had no
           // `pov`, so the director never emitted one, and the only consumer
@@ -526,6 +530,26 @@ These govern every choice below. Where the story bible, the style guide or the r
 }
 
 /**
+ * Compact plot-thread catalog for scene planning.
+ *
+ * The scene schema asks for `threadIds` per scene, but ids are meaningless
+ * unless the model sees the catalog — an id it never saw is an id it
+ * invents. Empty/missing input yields '' and the scene prompt carries no
+ * thread language at all (today's behaviour, byte-identical).
+ */
+export function buildThreadCatalogBlock(plotThreads?: any[]): string {
+  const threads = (plotThreads || []).filter(
+    (t: any) => t && (t.id !== undefined && t.id !== null)
+  )
+  if (threads.length === 0) return ''
+  const lines = threads.map(
+    (t: any) => `- ${String(t.id)}: ${String(t.title || 'Untitled thread')}`
+  )
+  return `Active plot threads (reference by id in each scene's "threadIds" — scenes advancing no thread use []):
+${lines.join('\n')}`
+}
+
+/**
  * The per-batch skeleton prompt.
  *
  * Extracted so scripts/verify-title-variety.mjs drives the real prompt instead
@@ -822,7 +846,7 @@ async function runWithConcurrency(tasks: any[], limit: number) {
 // scenes with bounded concurrency. Every step degrades to padding rather than
 // throwing, so a long novel always yields a usable plan — that is what keeps the
 // "Forging the Story Graph" stage from hanging or aborting at scale.
-async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady, sessionBudget, signal }: { goal: any; systemPrompt: any; onPartialData: any; onSkeletonReady?: any; sessionBudget?: SessionBudget | null; signal?: AbortSignal }) {
+async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady, sessionBudget, signal, plotThreads }: { goal: any; systemPrompt: any; onPartialData: any; onSkeletonReady?: any; sessionBudget?: SessionBudget | null; signal?: AbortSignal; plotThreads?: any[] }) {
   const s = goal.structure
   const N = Math.max(1, s.chapters)
   const S = Math.max(1, s.scenesPerChapter || 3)
@@ -1020,18 +1044,20 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
     } catch {
       // Best-effort progress callback; a throwing consumer must not break planning.
     }
+    const threadCatalog = buildThreadCatalogBlock(plotThreads)
     const scenePrompt = `Plan EXACTLY ${S} scenes for this chapter of the story.
 STORY: "${goal.premise}"
 ${buildIdentityBlock(goal)}
-CHAPTER ${i + 1}: "${ch.title}"
+${threadCatalog ? `${threadCatalog}\n` : ''}CHAPTER ${i + 1}: "${ch.title}"
 - Chapter goal: ${ch.goal || ''}
 - Emotional target: ${ch.emotionalTarget || ''}
 - This chapter must end on: ${ch.hookEnding || 'a hook into the next chapter'}
 ${prev ? `- The PREVIOUS chapter ended on: "${prev.hookEnding || ''}". Scene 1 must pick up directly from that.` : '- This is the opening chapter.'}
 
 Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
-{ "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "pov": "", "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium" } ] }
-"pov" is the ONE character whose head this scene is narrated from. It must be a name from that scene's "charactersPresent".`
+{ "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "pov": "", "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium"${plotThreads?.length ? `, "threadIds": []` : ''} } ] }
+"pov" is the ONE character whose head this scene is narrated from. It must be a name from that scene's "charactersPresent".${plotThreads?.length ? `
+"threadIds" lists the ids of the Active plot threads this scene advances (from the thread catalog) — [] when it advances none. Name only threads the scene actually moves.` : ''}`
     const parsedScenes = await aiGenerateJson(scenePrompt, activeSystemPrompt, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
@@ -1095,7 +1121,11 @@ export function useStoryDirector() {
   // run; without it the stage watchdog could declare the stage stuck and then
   // watch it go on issuing chapter after chapter against a provider slot the
   // next stage was already queued for.
-  async function generateStoryPlan({ goal, evidence, onPartialData, onSkeletonReady, research, signal }: { goal: any; evidence: any; onPartialData: any; onSkeletonReady?: any; research: any; signal?: AbortSignal }) {
+  // `plotThreads` (optional) is the bible's thread catalog for scene
+  // planning: [{ id, title }]. When present, the scene prompt carries the
+  // catalog and the schema asks for per-scene `threadIds`; absent, neither
+  // appears (today's behaviour). Callers pass storyBibleStore.plotThreads.
+  async function generateStoryPlan({ goal, evidence, onPartialData, onSkeletonReady, research, signal, plotThreads }: { goal: any; evidence: any; onPartialData: any; onSkeletonReady?: any; research: any; signal?: AbortSignal; plotThreads?: any[] }) {
     isPlanning.value = true
     planError.value = null
 
@@ -1235,6 +1265,7 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
         // Large structured plan: build it in small, reliable chunks
         parsed = await planChunked({
           goal,
+          plotThreads,
           systemPrompt: finalSystemPrompt,
           onPartialData,
           // Evidence is everything after the base director prompt, so a refreshed
@@ -1387,6 +1418,9 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
             obstacle: s.obstacle || '',
             sceneFunction: s.sceneFunction || s.arcPosition || 'setup',
             charactersPresent: Array.isArray(s.charactersPresent) ? s.charactersPresent : [],
+            threadIds: Array.isArray(s.threadIds)
+              ? s.threadIds.filter((t: any) => typeof t === 'string')
+              : [],
             characterWants:
               s.characterWants && typeof s.characterWants === 'object' ? s.characterWants : {},
             // This mapper rebuilds scenes field by field, so anything not named

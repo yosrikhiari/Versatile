@@ -90,9 +90,11 @@ function nameKey(v: any) {
  * actually here and give everyone else a name+role index, which preserves the
  * "these people exist, don't reinvent them" signal at a fraction of the tokens.
  *
- * Plot threads are NOT scoped: the scene schema has no per-scene thread link
- * (see useStoryDirector.js:301), so there is no signal to scope on. They stay
- * whole.
+ * Plot threads ARE scoped when the scene names them: `threadIds` (emitted by
+ * the director against the thread catalog) selects the threads the scene
+ * advances; those ride full, the rest collapse to a title-only index like
+ * `otherCharacters`. With no `threadIds` there is no signal to scope on and
+ * every thread rides whole, as before.
  *
  * Returns `null` when the scene names nobody — the director's fallback path
  * leaves `charactersPresent` empty (useStoryDirector.js:93), and scoping on an
@@ -119,8 +121,20 @@ function buildSceneEntitiesBlob(scene: any, { characters = [], locations = [], p
   const otherLocs = locations.filter((l: any) => !isHere(l))
 
   const payload: Record<string, any> = {
-    charactersInScene: cast.map(fullCharacter),
-    plotThreads: plotThreads.map(fullThread)
+    charactersInScene: cast.map(fullCharacter)
+  }
+  const threadIds = new Set(
+    (Array.isArray(scene?.threadIds) ? scene.threadIds : []).map((t: any) => String(t))
+  )
+  if (threadIds.size === 0) {
+    payload.plotThreads = plotThreads.map(fullThread)
+  } else {
+    const inScene = plotThreads.filter((t: any) => threadIds.has(String(t.id)))
+    const others = plotThreads.filter((t: any) => !threadIds.has(String(t.id)))
+    payload.threadsInScene = inScene.map(fullThread)
+    if (others.length) {
+      payload.otherThreads = others.map((t: any) => ({ title: t.title }))
+    }
   }
   // Name-only indexes: enough to know they exist, cheap enough to always send.
   if (elsewhere.length) {
