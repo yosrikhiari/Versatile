@@ -85,6 +85,23 @@ export class SyncTransport {
       }
 
       if (local.syncStatus === 'pending-create') {
+        const knownApiId = idMap.getApiId(table, local.id)
+        if (knownApiId) {
+          // A previous POST already created this server-side, but the local
+          // write recording it was lost (crash between POST and modify), so
+          // the row still reads pending-create. PUT-update the known record
+          // instead of POSTing a duplicate, then mark it synced.
+          await this.withRetry(() => this._api(`${resolved}/${knownApiId}`, { method: 'PUT', body }))
+
+          await db[table].where('id').equals(local.id).modify({
+            apiId: knownApiId,
+            syncStatus: 'synced',
+            lastSyncedAt: new Date().toISOString(),
+            _suppressHooks: true
+          })
+          return
+        }
+
         const result: any = await this.withRetry(() => this._api(resolved, { method: 'POST', body }))
 
         await db[table].where('id').equals(local.id).modify({
