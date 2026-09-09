@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { BubbleMenu } from '@tiptap/vue-3'
+import { BubbleMenu } from '@tiptap/vue-3/menus'
 import BaseIcon from '../shared/BaseIcon.vue'
 import AppTooltip from '../shared/AppTooltip.vue'
 
