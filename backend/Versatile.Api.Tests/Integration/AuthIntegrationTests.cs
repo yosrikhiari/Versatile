@@ -81,6 +81,33 @@ public sealed class AuthIntegrationTests
     }
 
     [Fact]
+    public async Task Login_WithEmail_ReturnsAuthResponse()
+    {
+        var db = CreateDbContext();
+        CreateUserWithPassword(db, "emailuser", "emailuser@test.com", "CorrectPassword1!");
+
+        var result = await CreateLoginHandler(db).Handle(
+            new LoginCommand("emailuser@test.com", "CorrectPassword1!"), default);
+
+        result.Should().NotBeNull();
+        result.Token.Should().NotBeNullOrEmpty();
+        result.User.Username.Should().Be("emailuser");
+    }
+
+    [Fact]
+    public async Task Login_WithEmailWrongPassword_ThrowsUnauthorizedAccessException()
+    {
+        var db = CreateDbContext();
+        CreateUserWithPassword(db, "emailuser2", "emailuser2@test.com", "CorrectPassword1!");
+
+        await FluentActions
+            .Awaiting(() => CreateLoginHandler(db).Handle(
+                new LoginCommand("emailuser2@test.com", "WrongPassword1!"), default))
+            .Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("Invalid credentials");
+    }
+
+    [Fact]
     public async Task Login_WrongPassword_ThrowsUnauthorizedAccessException()
     {
         var db = CreateDbContext();

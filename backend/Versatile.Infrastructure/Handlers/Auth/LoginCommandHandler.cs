@@ -23,7 +23,12 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponse>
 
     public async Task<AuthResponse> Handle(LoginCommand command, CancellationToken ct)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == command.Email, ct);
+        // Identifier-agnostic: LoginCommand carries a single string typed as
+        // Email, but the SPA sends the username in it. Accept either so both
+        // the documented email flow and the shipped client keep working.
+        // (Password check below is the real gate; identifiers only locate.)
+        var user = await _db.Users.FirstOrDefaultAsync(
+            u => u.Email == command.Email || u.Username == command.Email, ct);
         if (user == null)
             throw new UnauthorizedAccessException("Invalid credentials");
 
