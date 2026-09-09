@@ -38,7 +38,17 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.{js,ts,vue}'],
-      exclude: ['src/tests/**', 'src/main.js', 'node_modules/**'],
+      exclude: [
+        'src/tests/**',
+        'src/main.js',
+        'node_modules/**',
+        // The v8 remapper cannot parse these two SFCs (vitest 4 silently
+        // dropped them with the same failure; vitest 5 errors instead), so
+        // exclusion is explicit rather than accidental. Un-exclude if the
+        // provider learns to parse them.
+        'src/components/branches/BranchManagerPanel.vue',
+        'src/components/eval/EvalTrends.vue'
+      ],
       // Set at the measured baseline, not at an aspiration: the point is to stop
       // coverage sliding backwards unnoticed. CI ran `test:coverage` and threw
       // the number away, so a change that deleted tests reported green. Raise
