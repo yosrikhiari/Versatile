@@ -1,5 +1,6 @@
 import { aiGenerateJson } from '../useAiService'
 import { runDeterministicContradictionChecks, generateContradictionCandidates, buildCandidateLedgerText, indexScenesByChapter, DEFAULT_MAX_SCENES_PER_CHAPTER, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
+import { runCrossChapterRuleChecks } from '../../services/generation/crossChapterRules'
 import { getProjectDigests, getProjectChapterDigests, getEntityStateTimeline } from '../../services/db-digests'
 import type { SceneDigest } from '../../services/generation/sceneDigest'
 import type { EntityStateRecord } from '../../services/generation/entityStates'
@@ -59,27 +60,55 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
     chapterDigests = await getProjectChapterDigests(projectId).catch(() => [])
   }
 
-  // 2. Run deterministic contradiction rules (zero LLM calls)
-  const deterministicContradictions = await runDeterministicContradictionChecks(
-    sceneDigests,
-    scenes,
-    entityStates
+  // 2. Pass 1: chapter groups. The shared scene→chapter index first
+  // (states, then scenes array); unresolvable scenes are absent from it.
+  const chapterByScene = indexScenesByChapter(entityStates, scenes)
+  // Rules, candidates and the LLM batch all run per group; the null group
+  // run per group; the null group holds whatever no chapter resolves
+  // (states, digests and ledgers alike) so nothing is ever dropped for
+  // lack of a chapter. Group order is numeric chapters first, null last.
+  const groupOfSceneId = (sid: unknown): number | null =>
+    chapterByScene.get(String(sid)) ?? null
+  const digestsByGroup = new Map<number | null, SceneDigest[]>()
+  for (const d of sceneDigests) {
+    const k = typeof d.chapterNumber === 'number' ? d.chapterNumber : null
+    if (!digestsByGroup.has(k)) digestsByGroup.set(k, [])
+    digestsByGroup.get(k)!.push(d)
+  }
+  const statesByGroup = new Map<number | null, EntityStateRecord[]>()
+  for (const s of entityStates) {
+    const k = groupOfSceneId(s.sceneId)
+    if (!statesByGroup.has(k)) statesByGroup.set(k, [])
+    statesByGroup.get(k)!.push(s)
+  }
+  const groupKeys = [...new Set([...digestsByGroup.keys(), ...statesByGroup.keys()])].sort(
+    (a, b) => (a === null ? 1 : b === null ? -1 : a - b)
   )
 
-  // 3. Generate candidate pairs for LLM verification
-  const candidates = generateContradictionCandidates(
-    sceneDigests,
-    deterministicContradictions,
-    entityStates
-  )
-  
-  // 5. Targeted LLM verification only for surviving candidates
-  // Build a focused fact ledger only for candidate scenes
-  const candidateSceneIds = new Set<string>()
-  for (const c of candidates) {
-    candidateSceneIds.add(c.sceneA)
-    candidateSceneIds.add(c.sceneB)
+  // Deterministic findings across Pass 1 (per group, in group order) and
+  // Pass 2 (whole-timeline cross-chapter rules). Pass 1 is chapter-scoped
+  // so spanning pairs are invisible to it — Pass 2 owns those and skips
+  // same-chapter pairs, so no finding is ever reported twice.
+  const pass1Findings: DeterministicContradiction[] = []
+  const candidatesByGroup = new Map<number | null, Array<{ sceneA: string; sceneB: string; reason: string }>>()
+  for (const g of groupKeys) {
+    const groupDigests = digestsByGroup.get(g) ?? []
+    const groupStates = statesByGroup.get(g) ?? []
+    // One rule run per group: findings and their candidate pairs both come
+    // from this group's own pass, never the merged list.
+    const groupFindings = await runDeterministicContradictionChecks(
+      groupDigests,
+      scenes,
+      groupStates
+    )
+    pass1Findings.push(...groupFindings)
+    candidatesByGroup.set(
+      g,
+      generateContradictionCandidates(groupDigests, groupFindings, groupStates)
+    )
   }
+  const pass2Findings = await runCrossChapterRuleChecks(entityStates)
+  const allDeterministic = [...pass1Findings, ...pass2Findings]
   
   // Deterministic findings are normalised ONCE, here, and reused on both exits.
   // Previously only the no-candidates path built `betweenScenes` and `action`,
@@ -90,25 +119,24 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
   // scene (states first, scenes array second). Ids gain a chapter prefix
   // ONLY when findings genuinely span chapters; single-chapter runs keep
   // the legacy `contradiction-{i}` ids byte-identical.
-  const chapterByScene = indexScenesByChapter(entityStates, scenes)
-  const groupKeyOf = (c: DeterministicContradiction): number | null => {
-    if (!c.sceneIds.length) return null
-    return chapterByScene.get(String(c.sceneIds[0])) ?? null
-  }
+  const distinctChapters = new Set(chapterByScene.values())
   // Prefixing activates when the RUN spans chapters (not merely when
   // findings do): a lone ch1→ch2 finding in a two-chapter book is still
   // addressed to its chapter.
-  const distinctChapters = new Set(chapterByScene.values())
   const multiChapter = distinctChapters.size > 1
   const perChapterIndex = new Map<number, number>()
-  const deterministicResults = deterministicContradictions.map((c, i) => {
-    let id = `contradiction-${i}`
-    const key = groupKeyOf(c)
+  const nextId = (sceneIds: string[], fallback: number): string => {
+    const key = sceneIds.length ? (chapterByScene.get(String(sceneIds[0])) ?? null) : null
     if (multiChapter && key !== null) {
       const n = perChapterIndex.get(key) ?? 0
       perChapterIndex.set(key, n + 1)
-      id = `contradiction-${key}-${n}`
+      return `contradiction-${key}-${n}`
     }
+    return `contradiction-${fallback}`
+  }
+  let detIndex = 0
+  const deterministicResults = allDeterministic.map((c) => {
+    const id = nextId(c.sceneIds, detIndex++)
     return {
       id,
     severity: c.severity,
@@ -134,39 +162,43 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
     }
   })
 
-  // 4. If no candidates, return deterministic results only
-  if (candidates.length === 0) return deterministicResults
-
-
-  const relevantLedgers = sceneLedgers.filter((l: any) =>
-    candidateSceneIds.has(l.sceneId ?? l.id)
-  )
-
-  // Single home for the format (tested in candidateLedgerText.test.js).
-  // Calibrated substitution is live: chapters past the cap compress to
-  // their digest summary; everything else renders verbatim as before.
-  const ledgerText = buildCandidateLedgerText({
-    ledgers: relevantLedgers,
-    scenes,
-    entityStates,
-    chapterDigests,
-    maxScenesPerChapter: DEFAULT_MAX_SCENES_PER_CHAPTER
-  })
-
-  const prompt = `Focused fact ledger for specific scene pairs (deterministic rules already checked):\n\n${ledgerText}`
-  const parsed = await aiGenerateJson(prompt, CONTRADICTION_PROMPT, {
-    ...aiOptions,
-    schema: CONTRADICTION_SCHEMA,
-    schemaName: 'contradiction_detection'
-  }).catch(() => null) as { contradictions?: any[] } | null
-
+  // 3. Per-group candidate pairs and LLM verification. A group with no
+  // candidates skips its model call entirely, as the flat pipeline did.
+  // Ledger substitution counts within the group — the group is the unit
+  // the model actually sees.
   const llmContradictions: any[] = []
-  if (parsed?.contradictions) {
-    const sceneByNumber: Record<number, any> = {}
-    for (const s of scenes as any[]) {
-      sceneByNumber[s.sceneNumber] = s
+  let llmFallback = allDeterministic.length
+  const sceneByNumber: Record<number, any> = {}
+  for (const s of scenes as any[]) {
+    sceneByNumber[s.sceneNumber] = s
+  }
+  for (const g of groupKeys) {
+    const candidates = candidatesByGroup.get(g) ?? []
+    if (candidates.length === 0) continue
+
+    const candidateSceneIds = new Set<string>()
+    for (const c of candidates) {
+      candidateSceneIds.add(c.sceneA)
+      candidateSceneIds.add(c.sceneB)
     }
-    
+    const relevantLedgers = sceneLedgers.filter((l: any) =>
+      candidateSceneIds.has(l.sceneId ?? l.id)
+    )
+    const ledgerText = buildCandidateLedgerText({
+      ledgers: relevantLedgers,
+      scenes,
+      entityStates,
+      chapterDigests,
+      maxScenesPerChapter: DEFAULT_MAX_SCENES_PER_CHAPTER
+    })
+    const prompt = `Focused fact ledger for specific scene pairs (deterministic rules already checked):\n\n${ledgerText}`
+    const parsed = await aiGenerateJson(prompt, CONTRADICTION_PROMPT, {
+      ...aiOptions,
+      schema: CONTRADICTION_SCHEMA,
+      schemaName: 'contradiction_detection'
+    }).catch(() => null) as { contradictions?: any[] } | null
+    if (!parsed?.contradictions) continue
+
     for (const c of parsed.contradictions) {
       const sceneIds = (c.betweenScenes || [])
         .map((num: any) => {
@@ -174,9 +206,9 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
           return match ? sceneByNumber[parseInt(match[0])]?.id : null
         })
         .filter(Boolean)
-      
+
       llmContradictions.push({
-        id: `contradiction-${llmContradictions.length + deterministicContradictions.length}`,
+        id: nextId(sceneIds, llmFallback++),
         severity: c.severity,
         category: c.category || 'contradiction',
         pass: 'contradictions',
@@ -195,7 +227,7 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
       })
     }
   }
-  
-  // Combine deterministic + LLM results. Both are already in display shape.
+
+  // Combine deterministic (Pass 1 groups, then Pass 2) + LLM results.
   return [...deterministicResults, ...llmContradictions]
 }

@@ -39,7 +39,7 @@ export interface DeterministicContradiction {
 const IMPOSSIBLE_TRAVEL_WINDOW = 2
 
 /** Human label for a scene position, preferring chapter/scene over an opaque id. */
-function positionLabel(s: EntityStateRecord): string {
+export function positionLabel(s: EntityStateRecord): string {
   if (s.chapterNumber != null && s.sceneNumber != null) {
     return `chapter ${s.chapterNumber}, scene ${s.sceneNumber}`
   }

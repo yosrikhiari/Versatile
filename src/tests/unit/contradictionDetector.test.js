@@ -74,6 +74,16 @@ describe('detectContradictions chapter grouping', () => {
     expect(out[0].betweenScenes).toEqual(['Scene 1', 'Scene 2'])
   })
 
+  it('reports cross-chapter resurrection as a warning from the rollup level', async () => {
+    // Pass-1 scene rules are chapter-scoped: a death in ch1 with the
+    // reappearance in ch2 is invisible to them. Pass 2 owns the pair and
+    // calls it what it is at that distance — a warning, not an error.
+    const out = await detectContradictions([], scenes, {})
+    expect(out).toHaveLength(1)
+    expect(out[0].severity).toBe('warning')
+    expect(out[0].category).toBe('dead_then_alive')
+  })
+
   it('keeps legacy ids when everything sits in one chapter', async () => {
     getEntityStateTimeline.mockResolvedValue([
       st({ sceneId: 's1', sceneNumber: 1, chapterNumber: 1, state: flags({ status: 'dead' }) }),
@@ -140,10 +150,13 @@ describe('detectContradictions chapter grouping', () => {
     // Other rules (seam, timeline) legitimately fire on a sparse
     // multi-chapter fixture; grouping is asserted on the rule under test.
     const deaths = out.filter((r) => r.category === 'dead_then_alive')
+    // Order is Pass-1 groups first (Mira, ch2-local, still an error)
+    // then Pass 2 (Kael's span and Rin's backfill gap, both warnings).
     expect(deaths.map((r) => r.id)).toEqual([
-      'contradiction-1-0',
       'contradiction-2-0',
-      'contradiction-2'
+      'contradiction-1-0',
+      expect.stringMatching(/^contradiction-\d+$/)
     ])
+    expect(deaths.map((r) => r.severity)).toEqual(['error', 'warning', 'warning'])
   })
 })
