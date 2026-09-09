@@ -12,7 +12,7 @@ defineProps({
   }
 })
 
-const { getSectionContext, getSectionCount, MAX_CONTEXT_CHARS } = useManuscriptContext()
+const { getSectionContext, getSectionCount } = useManuscriptContext()
 
 const selectedSelector = useLocalStorage(STORAGE_KEYS.CHAPTER_CONTEXT, 'current')
 const specificSections = ref('')
@@ -91,6 +91,7 @@ watch(
     contextPreview.value = {
       label: sectionLabel,
       chars: result.totalChars,
+      budgetChars: result.budgetChars,
       truncated: result.truncated
     }
   },
@@ -137,7 +138,9 @@ defineExpose({
     <div v-if="contextPreview" class="pl-16 flex items-center gap-1.5 text-2xs text-text-hint">
       <BaseIcon name="file-text" :size="10" />
       <span>{{ contextPreview.label }}</span>
-      <span class="text-text-hint">({{ contextPreview.chars }}/{{ MAX_CONTEXT_CHARS }} chars)</span>
+      <span class="text-text-hint"
+        >({{ contextPreview.chars }}/{{ contextPreview.budgetChars }} chars)</span
+      >
       <span v-if="contextPreview.truncated" class="text-warning">truncated</span>
     </div>
   </div>

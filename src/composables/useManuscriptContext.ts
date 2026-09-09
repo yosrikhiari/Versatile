@@ -320,6 +320,11 @@ export function useManuscriptContext() {
   }
 
   async function getSectionContext(selector = 'current', generatorType = 'spark') {
+    // The budget the UI renders against — computed up front so every exit,
+    // including empty-manuscript early returns, reports the enforced number.
+    // Convert tokens to approximate chars (1 token ≈ 4 chars).
+    const budgetChars = getManuscriptBudget() * 4
+
     const sortedSections = manuscriptStore.sortedSections
 
     if (sortedSections.length === 0) {
@@ -327,7 +332,8 @@ export function useManuscriptContext() {
         contextText: '',
         sectionTitles: [],
         truncated: false,
-        totalChars: 0
+        totalChars: 0,
+        budgetChars
       }
     }
 
@@ -338,7 +344,8 @@ export function useManuscriptContext() {
         contextText: '',
         sectionTitles: [],
         truncated: false,
-        totalChars: 0
+        totalChars: 0,
+        budgetChars
       }
     }
 
@@ -349,15 +356,12 @@ export function useManuscriptContext() {
         contextText: '',
         sectionTitles: [],
         truncated: false,
-        totalChars: 0
+        totalChars: 0,
+        budgetChars
       }
     }
 
     const sectionTitles = selectedSections.map((s) => s.title || `Section ${(s.order || 0) + 1}`)
-
-    const budgetTokens = getManuscriptBudget()
-    // Convert tokens to approximate chars (1 token ≈ 4 chars)
-    const budgetChars = budgetTokens * 4
 
     const embeddingResult = await retrieveRelevantChunks(generatorType, budgetChars)
 
@@ -366,7 +370,8 @@ export function useManuscriptContext() {
         contextText: embeddingResult.contextText,
         sectionTitles: embeddingResult.sectionTitles,
         truncated: embeddingResult.truncated,
-        totalChars: embeddingResult.totalChars
+        totalChars: embeddingResult.totalChars,
+        budgetChars
       }
     }
 
@@ -379,7 +384,8 @@ export function useManuscriptContext() {
       contextText,
       sectionTitles,
       truncated,
-      totalChars
+      totalChars,
+      budgetChars
     }
   }
 
