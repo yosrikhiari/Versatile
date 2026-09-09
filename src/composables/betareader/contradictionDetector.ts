@@ -1,5 +1,5 @@
 import { aiGenerateJson } from '../useAiService'
-import { runDeterministicContradictionChecks, generateContradictionCandidates, buildCandidateLedgerText, DEFAULT_MAX_SCENES_PER_CHAPTER, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
+import { runDeterministicContradictionChecks, generateContradictionCandidates, buildCandidateLedgerText, indexScenesByChapter, DEFAULT_MAX_SCENES_PER_CHAPTER, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
 import { getProjectDigests, getProjectChapterDigests, getEntityStateTimeline } from '../../services/db-digests'
 import type { SceneDigest } from '../../services/generation/sceneDigest'
 import type { EntityStateRecord } from '../../services/generation/entityStates'
@@ -86,8 +86,31 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
   // so as soon as a single candidate pair existed every deterministic finding
   // lost its scene references and its "Jump to Scene" — exactly the findings
   // that carry precise scene ids in the first place.
-  const deterministicResults = deterministicContradictions.map((c, i) => ({
-    id: `contradiction-${i}`,
+  // Pass-1 grouping: findings are attributed to the chapter of their first
+  // scene (states first, scenes array second). Ids gain a chapter prefix
+  // ONLY when findings genuinely span chapters; single-chapter runs keep
+  // the legacy `contradiction-{i}` ids byte-identical.
+  const chapterByScene = indexScenesByChapter(entityStates, scenes)
+  const groupKeyOf = (c: DeterministicContradiction): number | null => {
+    if (!c.sceneIds.length) return null
+    return chapterByScene.get(String(c.sceneIds[0])) ?? null
+  }
+  // Prefixing activates when the RUN spans chapters (not merely when
+  // findings do): a lone ch1→ch2 finding in a two-chapter book is still
+  // addressed to its chapter.
+  const distinctChapters = new Set(chapterByScene.values())
+  const multiChapter = distinctChapters.size > 1
+  const perChapterIndex = new Map<number, number>()
+  const deterministicResults = deterministicContradictions.map((c, i) => {
+    let id = `contradiction-${i}`
+    const key = groupKeyOf(c)
+    if (multiChapter && key !== null) {
+      const n = perChapterIndex.get(key) ?? 0
+      perChapterIndex.set(key, n + 1)
+      id = `contradiction-${key}-${n}`
+    }
+    return {
+      id,
     severity: c.severity,
     category: c.type,
     pass: 'contradictions',
@@ -108,7 +131,8 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
             sceneId: c.sceneIds[0]
           }
         : null
-  }))
+    }
+  })
 
   // 4. If no candidates, return deterministic results only
   if (candidates.length === 0) return deterministicResults

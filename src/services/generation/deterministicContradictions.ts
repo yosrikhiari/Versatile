@@ -541,6 +541,32 @@ export async function runDeterministicContradictionChecks(
 export const DEFAULT_MAX_SCENES_PER_CHAPTER = 4
 
 /**
+ * sceneId → chapterNumber, states first then the scenes array.
+ *
+ * Shared by ledger grouping and finding attribution so the two can never
+ * disagree about which chapter a scene belongs to. Scenes resolving to no
+ * chapter are absent from the map — callers must render those verbatim.
+ */
+export function indexScenesByChapter(
+  entityStates: Array<{ sceneId?: unknown; chapterNumber?: unknown }> = [],
+  scenes: Array<{ id?: unknown; sceneId?: unknown; chapterNumber?: unknown }> = []
+): Map<string, number> {
+  const chapterByScene = new Map<string, number>()
+  for (const s of entityStates) {
+    if (s?.sceneId != null && typeof s.chapterNumber === 'number') {
+      chapterByScene.set(String(s.sceneId), s.chapterNumber)
+    }
+  }
+  for (const s of scenes) {
+    const id = s?.id ?? s?.sceneId
+    if (id != null && typeof s.chapterNumber === 'number' && !chapterByScene.has(String(id))) {
+      chapterByScene.set(String(id), s.chapterNumber)
+    }
+  }
+  return chapterByScene
+}
+
+/**
  * Ledger text for the LLM verification step.
  *
  * Pure and extracted so chapter-digest substitution is testable. SceneId →
@@ -562,18 +588,7 @@ export function buildCandidateLedgerText({
   chapterDigests?: Array<{ chapterNumber: number; summary: string }>
   maxScenesPerChapter?: number
 }): string {
-  const chapterByScene = new Map<string, number>()
-  for (const s of entityStates) {
-    if (s?.sceneId != null && typeof s.chapterNumber === 'number') {
-      chapterByScene.set(String(s.sceneId), s.chapterNumber)
-    }
-  }
-  for (const s of scenes) {
-    const id = s?.id ?? s?.sceneId
-    if (id != null && typeof s.chapterNumber === 'number' && !chapterByScene.has(String(id))) {
-      chapterByScene.set(String(id), s.chapterNumber)
-    }
-  }
+  const chapterByScene = indexScenesByChapter(entityStates, scenes)
   const digestByChapter = new Map<number, string>()
   for (const d of chapterDigests) {
     if (d && typeof d.chapterNumber === 'number' && !digestByChapter.has(d.chapterNumber)) {
