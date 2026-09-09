@@ -433,7 +433,7 @@ Write the continuation now as prose. Output ONLY the new text — no headings, n
 const METADATA_CHUNK_CHARS = 6000
 
 /** Split on paragraph boundaries so no chunk starts mid-sentence. */
-function chunkProseForMetadata(prose: string, limit = METADATA_CHUNK_CHARS): string[] {
+export function chunkProseForMetadata(prose: string, limit = METADATA_CHUNK_CHARS): string[] {
   if (prose.length <= limit) return [prose]
   const paragraphs = prose.split(/\n\s*\n/)
   const chunks: string[] = []
@@ -482,7 +482,7 @@ function uniqueStrings(values: any[]): string[] {
 }
 
 /** Union the per-chunk extractions into one scene-level metadata object. */
-function mergeSceneMetadata(parts: any[]) {
+export function mergeSceneMetadata(parts: any[]) {
   const ok = parts.filter(Boolean)
   if (ok.length === 0) return { ...EMPTY_METADATA, metadataStatus: 'failed' as const }
   return {
