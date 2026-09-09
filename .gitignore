@@ -79,10 +79,13 @@ backend/TestApi/
 lessons/
 
 # Reference docs, planning, status, workflows (local dev artifacts)
+# NOTE: anchored with a leading slash so it never matches .github/workflows —
+# a bare `workflows/` pattern silently untracked backend-ci.yml, chromatic.yml
+# and eval-regression.yml, meaning backend CI never ran on GitHub.
 planning/
 reference/
 status/
-workflows/
+/workflows/
 AI-ENHANCEMENT-PLAN.md
 AGENTS.md
 database-enhancement-plan.md
