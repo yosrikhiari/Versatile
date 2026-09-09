@@ -1,0 +1,86 @@
+name: Eval Regression
+
+# Guards AI output quality against the snapshot corpus. Runs on changes to the
+# things that move critic scores: prompts, eval dimensions, provider modules,
+# the critic itself, and the corpus.
+on:
+  pull_request:
+    branches: [master, develop]
+    paths:
+      - 'src/prompts/**'
+      - 'src/config/evalDimensions.ts'
+      - 'src/services/providers/**'
+      - 'src/composables/useStoryCritic.ts'
+      - 'src/evaluation/**'
+      - 'corpus/**'
+      - 'tools/eval-snapshot.mjs'
+      - 'tools/libs/**'
+      - '.github/workflows/eval-regression.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  validate:
+    name: Validate snapshots (offline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Free and deterministic: catches prompt-construction drift that would
+      # silently invalidate every stored snapshot. No API key needed.
+      - name: Validate stored snapshots
+        run: npm run eval:snapshot -- --validate-all
+
+      - name: Regression decision unit tests
+        run: npx vitest run src/tests/unit/evalRegressionCheck.test.js
+
+  regress:
+    name: Score regression (live)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: validate
+    # Live checking costs money and needs a key. Forks never see secrets, so
+    # this is skipped there rather than failing.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Check for API key
+        id: key
+        run: echo "present=${{ secrets.OPENAI_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Re-run critic and compare against baseline
+        if: steps.key.outputs.present == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SNAPSHOT_MODEL: ${{ vars.SNAPSHOT_MODEL || 'gpt-4o-mini' }}
+        run: npm run eval:snapshot -- --check-all
+
+      - name: Skip notice
+        if: steps.key.outputs.present != 'true'
+        run: |
+          echo "::notice::OPENAI_API_KEY not configured — live score regression skipped."
+          echo "Add the secret to enable score-drop detection on PRs."

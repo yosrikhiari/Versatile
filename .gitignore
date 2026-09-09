@@ -46,6 +46,7 @@ TECH_DEBT_PIPELINE.md
 ARCHITECTURE.md
 AGENT.md
 Report.md
+Report.html
 learning-records/
 
 # Planning / spec documents (tracked in project management, not code)
@@ -55,10 +56,9 @@ docs/superpowers/specs/
 coverage/
 reports/
 
-# NOTE: src/tests/ is intentionally tracked. Do not re-add a blanket ignore here —
-# vitest runs test files regardless of gitignore, so ignoring them silently drops
-# them from version control while they still pass locally (they did: 33 files).
-src/tests/unit/ollamaService.test.js
+# NOTE: src/tests/ is intentionally tracked. Do not add ignores here —
+# vitest runs test files regardless of gitignore, so ignoring them silently
+# drops them from version control while they still pass locally.
 
 # .NET build artifacts
 backend/**/bin/
@@ -86,6 +86,9 @@ planning/
 reference/
 status/
 /workflows/
+# Chromatic stays untracked until CHROMATIC_PROJECT_TOKEN exists: its workflow
+# has no missing-secret guard and would red-flag every UI PR without it.
+.github/workflows/chromatic.yml
 AI-ENHANCEMENT-PLAN.md
 AGENTS.md
 database-enhancement-plan.md
