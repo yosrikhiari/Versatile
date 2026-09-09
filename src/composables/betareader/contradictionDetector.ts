@@ -1,6 +1,6 @@
 import { aiGenerateJson } from '../useAiService'
-import { runDeterministicContradictionChecks, generateContradictionCandidates, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
-import { getProjectDigests, getEntityStateTimeline } from '../../services/db-digests'
+import { runDeterministicContradictionChecks, generateContradictionCandidates, buildCandidateLedgerText, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
+import { getProjectDigests, getProjectChapterDigests, getEntityStateTimeline } from '../../services/db-digests'
 import type { SceneDigest } from '../../services/generation/sceneDigest'
 import type { EntityStateRecord } from '../../services/generation/entityStates'
 
@@ -47,12 +47,16 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
   const projectId = scenes[0]?.projectId
   let sceneDigests: SceneDigest[] = []
   let entityStates: EntityStateRecord[] = []
+  let chapterDigests: Array<{ chapterNumber: number; summary: string }> = []
   if (projectId) {
     sceneDigests = await getProjectDigests(projectId)
     // The entity-state timeline is what the deterministic rules actually run on.
     // Absent (a project analysed before the state layer had a writer) it degrades
     // to the digest-only rules rather than failing the pass.
     entityStates = await getEntityStateTimeline(projectId).catch(() => [])
+    // Chapter rollups are newer than both. Absent, ledger text renders every
+    // candidate scene verbatim exactly as before.
+    chapterDigests = await getProjectChapterDigests(projectId).catch(() => [])
   }
 
   // 2. Run deterministic contradiction rules (zero LLM calls)
@@ -110,21 +114,19 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
   if (candidates.length === 0) return deterministicResults
 
 
-  const relevantLedgers = sceneLedgers.filter((l: any) => 
+  const relevantLedgers = sceneLedgers.filter((l: any) =>
     candidateSceneIds.has(l.sceneId ?? l.id)
   )
-  
-  const ledgerText = relevantLedgers
-    .map(
-      (l: any) =>
-        `Scene ${l.sceneNumber} ("${l.sceneTitle}"):\n` +
-        `  Characters: ${l.facts?.characters?.join(', ') ?? 'none'}\n` +
-        `  Locations: ${l.facts?.locations?.join(', ') ?? 'none'}\n` +
-        `  Events: ${l.facts?.events?.join('; ') ?? 'none'}\n` +
-        `  Objects: ${l.facts?.objects?.join(', ') ?? 'none'}\n` +
-        `  Timeline: ${l.facts?.timeline ?? 'unknown'}`
-    )
-    .join('\n\n')
+
+  // Single home for the format (tested in candidateLedgerText.test.js).
+  // No threshold passed yet, so output is byte-identical to the inline
+  // version this replaces; substitution is a calibrated follow-up.
+  const ledgerText = buildCandidateLedgerText({
+    ledgers: relevantLedgers,
+    scenes,
+    entityStates,
+    chapterDigests
+  })
 
   const prompt = `Focused fact ledger for specific scene pairs (deterministic rules already checked):\n\n${ledgerText}`
   const parsed = await aiGenerateJson(prompt, CONTRADICTION_PROMPT, {

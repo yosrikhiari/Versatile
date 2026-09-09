@@ -526,6 +526,78 @@ export async function runDeterministicContradictionChecks(
 }
 
 /**
+ * Ledger text for the LLM verification step.
+ *
+ * Pure and extracted so chapter-digest substitution is testable. SceneId →
+ * chapter resolves from the entity states first (they carry both), then
+ * from the scenes array when it carries chapter numbers. A ledger whose
+ * chapter never resolves is always rendered verbatim — substitution must
+ * never drop facts it cannot place.
+ */
+export function buildCandidateLedgerText({
+  ledgers,
+  scenes = [],
+  entityStates = [],
+  chapterDigests = [],
+  maxScenesPerChapter = Infinity
+}: {
+  ledgers: any[]
+  scenes?: any[]
+  entityStates?: EntityStateRecord[]
+  chapterDigests?: Array<{ chapterNumber: number; summary: string }>
+  maxScenesPerChapter?: number
+}): string {
+  const chapterByScene = new Map<string, number>()
+  for (const s of entityStates) {
+    if (s?.sceneId != null && typeof s.chapterNumber === 'number') {
+      chapterByScene.set(String(s.sceneId), s.chapterNumber)
+    }
+  }
+  for (const s of scenes) {
+    const id = s?.id ?? s?.sceneId
+    if (id != null && typeof s.chapterNumber === 'number' && !chapterByScene.has(String(id))) {
+      chapterByScene.set(String(id), s.chapterNumber)
+    }
+  }
+  const digestByChapter = new Map<number, string>()
+  for (const d of chapterDigests) {
+    if (d && typeof d.chapterNumber === 'number' && !digestByChapter.has(d.chapterNumber)) {
+      digestByChapter.set(d.chapterNumber, d.summary ?? '')
+    }
+  }
+
+  const byChapter = new Map<number | null, any[]>()
+  for (const l of ledgers) {
+    const ch = chapterByScene.get(String(l.sceneId ?? l.id)) ?? null
+    if (!byChapter.has(ch)) byChapter.set(ch, [])
+    byChapter.get(ch)!.push(l)
+  }
+
+  const blocks: string[] = []
+  for (const [ch, group] of byChapter) {
+    const digest = ch != null ? digestByChapter.get(ch) : undefined
+    if (ch != null && digest != null && group.length > maxScenesPerChapter) {
+      const nums = group.map((l: any) => l.sceneNumber).filter((n: any) => n != null)
+      blocks.push(`Chapter ${ch} (digest covering ${group.length} scenes${nums.length ? ` ${nums.join(', ')}` : ''}):\n  ${digest}`)
+      continue
+    }
+    for (const l of group) blocks.push(renderLedger(l))
+  }
+  return blocks.join('\n\n')
+}
+
+function renderLedger(l: any): string {
+  return (
+    `Scene ${l.sceneNumber} ("${l.sceneTitle}"):\n` +
+    `  Characters: ${l.facts?.characters?.join(', ') ?? 'none'}\n` +
+    `  Locations: ${l.facts?.locations?.join(', ') ?? 'none'}\n` +
+    `  Events: ${l.facts?.events?.join('; ') ?? 'none'}\n` +
+    `  Objects: ${l.facts?.objects?.join(', ') ?? 'none'}\n` +
+    `  Timeline: ${l.facts?.timeline ?? 'unknown'}`
+  )
+}
+
+/**
  * Scene pairs worth an LLM look, after the deterministic rules have run.
  *
  * Pairs come from the entity-state index rather than from re-reading digests:
