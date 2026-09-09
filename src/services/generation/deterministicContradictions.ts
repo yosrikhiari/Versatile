@@ -24,6 +24,7 @@ export interface DeterministicContradiction {
     | 'appearance_change'
     | 'location_impossible'
     | 'knowledge_relearned'
+    | 'seam_disconnect'
   severity: 'error' | 'warning'
   entityType: string
   entityId: string
@@ -328,6 +329,179 @@ export function checkTimelineInversion(sceneDigests: any[]): DeterministicContra
 }
 
 /**
+ * Rules 7a/7b: seam continuity — a present cast that vanishes between
+ * adjacent units of story with no recorded death is a dropped thread.
+ *
+ * Identity is by entity NAME, not id: rows derived without a story-bible
+ * resolver share placeholder ids, while names are what the derivation and
+ * every seam test actually distinguish on.
+ */
+function seamIdentity(s: EntityStateRecord): string {
+  return s.entityName || String(s.entityId)
+}
+
+function rowsByScene(states: EntityStateRecord[]): Map<string, EntityStateRecord[]> {
+  const map = new Map<string, EntityStateRecord[]>()
+  for (const s of states) {
+    if (s.entityType !== 'character') continue
+    const list = map.get(s.sceneId)
+    if (list) list.push(s)
+    else map.set(s.sceneId, [s])
+  }
+  return map
+}
+
+/** Latest row for an entity at or before a story position, for death checks. */
+function latestRowAtOrBefore(
+  rows: EntityStateRecord[],
+  posOf: (s: EntityStateRecord) => number | undefined,
+  boundaryPos: number
+): EntityStateRecord | null {
+  let latest: EntityStateRecord | null = null
+  for (const s of rows) {
+    const p = posOf(s)
+    if (p === undefined || p > boundaryPos) continue
+    if (!latest || (posOf(latest) as number) <= p) latest = s
+  }
+  return latest
+}
+
+/**
+ * Rule 7b: scene-level seam — adjacent scenes with disjoint present casts.
+ *
+ * Either side empty stays silent (cold opens, interludes, single-scene
+ * chapters mid-list). A death recorded on or before the later scene explains
+ * the absence and stays silent too — only an unexplained disappearance warns.
+ */
+export function checkSeamContinuity(states: EntityStateRecord[]): DeterministicContradiction[] {
+  const out: DeterministicContradiction[] = []
+  const pos = buildPositionIndex(states)
+  const byScene = rowsByScene(states)
+  const scenesInOrder = [...pos.keys()].sort((a, b) => (pos.get(a) as number) - (pos.get(b) as number))
+  const posOf = (s: EntityStateRecord): number | undefined => pos.get(s.sceneId)
+
+  const presentOf = (sceneId: string): Map<string, EntityStateRecord> => {
+    const map = new Map<string, EntityStateRecord>()
+    for (const r of byScene.get(sceneId) || []) {
+      if (r.state.present) map.set(seamIdentity(r), r)
+    }
+    return map
+  }
+
+  for (let i = 1; i < scenesInOrder.length; i++) {
+    const prev = scenesInOrder[i - 1]
+    const cur = scenesInOrder[i]
+    const prevCast = presentOf(prev)
+    const curCast = presentOf(cur)
+    if (prevCast.size === 0 || curCast.size === 0) continue
+    for (const [key, row] of prevCast) {
+      if (curCast.has(key)) continue
+      const timeline = states.filter(
+        (s) => s.entityType === 'character' && seamIdentity(s) === key
+      )
+      const last = latestRowAtOrBefore(timeline, posOf, pos.get(cur) as number)
+      if (last?.state.status === 'dead') continue
+      out.push({
+        type: 'seam_disconnect',
+        severity: 'warning',
+        entityType: 'character',
+        entityId: row.entityId,
+        entityName: row.entityName,
+        sceneIds: [prev, cur],
+        description:
+          `"${row.entityName || key}" is present in scene ${prev} ` +
+          `but does not appear in the next scene (${cur}).`,
+        evidence: [...row.sourceFacts]
+      })
+    }
+  }
+
+  return out
+}
+
+/**
+ * Rule 7a: chapter-level seam — a character present at the end of one chapter
+ * and absent from the whole next chapter, with no recorded death in between.
+ *
+ * Only chapter-ADJACENT pairs in story order are compared, and only characters
+ * (locations teleporting is checkLocationImpossible's job). The description
+ * names both chapters because the generation-time consumer parses them back
+ * out to place the warning.
+ */
+export function checkChapterSeam(states: EntityStateRecord[]): DeterministicContradiction[] {
+  const out: DeterministicContradiction[] = []
+  const pos = buildPositionIndex(states)
+  const posOf = (s: EntityStateRecord): number | undefined => pos.get(s.sceneId)
+  const byScene = rowsByScene(states)
+
+  const chaptersInOrder: number[] = [
+    ...new Set(
+      states
+        .map((s) => s.chapterNumber)
+        .filter((n): n is number => typeof n === 'number')
+    )
+  ].sort((a, b) => a - b)
+  if (chaptersInOrder.length < 2) return out
+
+  const scenesOfChapter = new Map<number, string[]>()
+  for (const [sceneId, rows] of byScene) {
+    const ch = rows[0]?.chapterNumber
+    if (typeof ch !== 'number') continue
+    const list = scenesOfChapter.get(ch)
+    if (list) list.push(sceneId)
+    else scenesOfChapter.set(ch, [sceneId])
+  }
+  const orderScene = (id: string): number => pos.get(id) ?? Number.MAX_SAFE_INTEGER
+  for (const list of scenesOfChapter.values()) list.sort((a, b) => orderScene(a) - orderScene(b))
+
+  const presentOf = (sceneId: string): Map<string, EntityStateRecord> => {
+    const map = new Map<string, EntityStateRecord>()
+    for (const r of byScene.get(sceneId) || []) {
+      if (r.state.present) map.set(seamIdentity(r), r)
+    }
+    return map
+  }
+
+  for (let i = 1; i < chaptersInOrder.length; i++) {
+    const prevCh = chaptersInOrder[i - 1]
+    const curCh = chaptersInOrder[i]
+    const prevScenes = scenesOfChapter.get(prevCh) || []
+    const curScenes = scenesOfChapter.get(curCh) || []
+    if (prevScenes.length === 0 || curScenes.length === 0) continue
+    const endOfPrev = prevScenes[prevScenes.length - 1]
+    const startOfCur = curScenes[0]
+    const endCast = presentOf(endOfPrev)
+    if (endCast.size === 0) continue
+    const curCast = new Map<string, EntityStateRecord>()
+    for (const id of curScenes) {
+      for (const [key, row] of presentOf(id)) curCast.set(key, row)
+    }
+    for (const [key, row] of endCast) {
+      if (curCast.has(key)) continue
+      const timeline = states.filter(
+        (s) => s.entityType === 'character' && seamIdentity(s) === key
+      )
+      const last = latestRowAtOrBefore(timeline, posOf, pos.get(startOfCur) as number)
+      if (last?.state.status === 'dead') continue
+      out.push({
+        type: 'seam_disconnect',
+        severity: 'warning',
+        entityType: 'character',
+        entityId: row.entityId,
+        entityName: row.entityName,
+        sceneIds: [endOfPrev, startOfCur],
+        description:
+          `"${row.entityName || key}" was present at the end of chapter ${prevCh} ` +
+          `but does not appear in chapter ${curCh}.`,
+        evidence: [...row.sourceFacts]
+      })
+    }
+  }
+
+  return out
+}
+
+/**
  * Run every deterministic rule. No LLM calls.
  *
  * `checkDeadThenAlive` and the knowledge rule are registered here for the first
@@ -345,7 +519,9 @@ export async function runDeterministicContradictionChecks(
     ...checkLocationImpossible(entityStates),
     ...checkAppearanceChange(entityStates),
     ...checkKnowledgeRelearned(entityStates),
-    ...checkTimelineInversion(sceneDigests)
+    ...checkTimelineInversion(sceneDigests),
+    ...checkChapterSeam(entityStates),
+    ...checkSeamContinuity(entityStates)
   ]
 }
 
