@@ -89,3 +89,139 @@ export async function runCrossChapterRuleChecks(
 ): Promise<DeterministicContradiction[]> {
   return [...checkCrossChapterResurrection(entityStates)]
 }
+
+/** A volume digest with just the fields drift analysis reads. */
+export interface VolumeDriftInput {
+  volumeId: string
+  charactersPresent?: string[] | null
+  locations?: string[] | null
+}
+
+function normSet(values?: string[] | null): Set<string> {
+  return new Set((values ?? []).map((v) => String(v ?? '').trim().toLowerCase()).filter(Boolean))
+}
+
+/** Jaccard distance in [0, 1]; empty-vs-empty is 0 (nothing to drift). */
+export function jaccardDistance(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 0
+  let inter = 0
+  for (const v of a) if (b.has(v)) inter++
+  return 1 - inter / (a.size + b.size - inter)
+}
+
+/** Provisional drift bar — calibration on real multi-volume books is owed. */
+export const DEFAULT_VOLUME_DRIFT_THRESHOLD = 0.7
+/** Share of a volume's cast never seen in any earlier volume. */
+export const DEFAULT_VOLUME_INFLUX_THRESHOLD = 0.5
+
+function volumeLabel(
+  volumeId: string,
+  chaptersByVolume: Map<string, number[]>
+): string {
+  const chs = [...(chaptersByVolume.get(volumeId) ?? [])].sort((x, y) => x - y)
+  if (chs.length) return `the volume covering chapter${chs.length > 1 ? 's' : ''} ${chs[0]}–${chs[chs.length - 1]}`
+  return `volume ${String(volumeId).slice(0, 8)}`
+}
+
+/**
+ * Cast and setting drift between consecutive volumes, in story order.
+ *
+ * Volumes arrive ordered (see `orderVolumesByChapter`); chapter digests
+ * supply human labels only. Thin pairs (union under 2 on both axes) stay
+ * silent — drift means nothing when neither volume establishes anything.
+ * All findings are warnings: a new book phase legitimately turns the cast
+ * over; the author judges, the rule only points.
+ */
+export function checkVolumeDrift(
+  orderedVolumes: VolumeDriftInput[],
+  chaptersByVolume: Map<string, number[]> = new Map()
+): DeterministicContradiction[] {
+  const out: DeterministicContradiction[] = []
+  for (let i = 1; i < orderedVolumes.length; i++) {
+    const prev = orderedVolumes[i - 1]
+    const cur = orderedVolumes[i]
+    const prevChars = normSet(prev.charactersPresent)
+    const curChars = normSet(cur.charactersPresent)
+    const prevLocs = normSet(prev.locations)
+    const curLocs = normSet(cur.locations)
+    if (prevChars.size + curChars.size < 2 && prevLocs.size + curLocs.size < 2) continue
+    const from = volumeLabel(prev.volumeId, chaptersByVolume)
+    const to = volumeLabel(cur.volumeId, chaptersByVolume)
+    const charDrift = jaccardDistance(prevChars, curChars)
+    if (charDrift >= DEFAULT_VOLUME_DRIFT_THRESHOLD) {
+      out.push({
+        type: 'volume_drift',
+        severity: 'warning',
+        entityType: 'volume',
+        entityId: cur.volumeId,
+        sceneIds: [],
+        description: `Cast turns over sharply between ${from} and ${to} (${Math.round(charDrift * 100)}% of the combined cast appears on only one side). Intended for a new book phase; unintended for a continuous one.`
+      })
+    }
+    const locDrift = jaccardDistance(prevLocs, curLocs)
+    if (locDrift >= DEFAULT_VOLUME_DRIFT_THRESHOLD) {
+      out.push({
+        type: 'volume_drift',
+        severity: 'warning',
+        entityType: 'volume',
+        entityId: cur.volumeId,
+        sceneIds: [],
+        description: `Setting turns over sharply between ${from} and ${to} (${Math.round(locDrift * 100)}% of locations appear on only one side).`
+      })
+    }
+  }
+  return out
+}
+
+/**
+ * New-cast influx: the share of a volume's characters seen in no earlier
+ * volume. Distinct from pairwise drift — a slow bleed across three volumes
+ * trips no single pair but shows here.
+ */
+export function checkVolumeInflux(orderedVolumes: VolumeDriftInput[]): DeterministicContradiction[] {
+  const out: DeterministicContradiction[] = []
+  const seen = new Set<string>()
+  for (const vol of orderedVolumes) {
+    const chars = normSet(vol.charactersPresent)
+    if (chars.size > 0 && seen.size > 0) {
+      let fresh = 0
+      for (const c of chars) if (!seen.has(c)) fresh++
+      if (fresh / chars.size >= DEFAULT_VOLUME_INFLUX_THRESHOLD) {
+        out.push({
+          type: 'volume_drift',
+          severity: 'warning',
+          entityType: 'volume',
+          entityId: vol.volumeId,
+          sceneIds: [],
+          description: `${Math.round((fresh / chars.size) * 100)}% of this volume's cast (${fresh} of ${chars.size}) never appeared in any earlier volume.`
+        })
+      }
+    }
+    for (const c of chars) seen.add(c)
+  }
+  return out
+}
+
+/**
+ * Order volumes by their lowest chapter number (from chapter digests).
+ * Volumes with no chapters in the digests keep input order at the end —
+ * never dropped for lack of placement.
+ */
+export function orderVolumesByChapter<
+  T extends { volumeId: string }
+>(volumes: T[], chapterDigests: Array<{ volumeId?: string | null; chapterNumber?: number | null }>): T[] {
+  const minChapter = new Map<string, number>()
+  for (const d of chapterDigests) {
+    if (d?.volumeId == null || typeof d.chapterNumber !== 'number') continue
+    const prev = minChapter.get(d.volumeId)
+    if (prev === undefined || d.chapterNumber < prev) minChapter.set(d.volumeId, d.chapterNumber)
+  }
+  return [...volumes].sort((a, b) => {
+    const ca = minChapter.get(a.volumeId)
+    const cb = minChapter.get(b.volumeId)
+    if (ca === undefined && cb === undefined) return 0
+    if (ca === undefined) return 1
+    if (cb === undefined) return -1
+    return ca - cb
+  })
+}

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/services/db-digests', () => ({
   getProjectDigests: vi.fn(),
   getProjectChapterDigests: vi.fn(),
+  getProjectVolumeDigests: vi.fn(),
   getEntityStateTimeline: vi.fn()
 }))
 vi.mock('@/composables/useAiService', () => ({
@@ -13,6 +14,7 @@ import { detectContradictions } from '@/composables/betareader/contradictionDete
 import {
   getProjectDigests,
   getProjectChapterDigests,
+  getProjectVolumeDigests,
   getEntityStateTimeline
 } from '@/services/db-digests'
 import { aiGenerateJson } from '@/composables/useAiService'
@@ -53,6 +55,7 @@ beforeEach(() => {
   vi.resetAllMocks()
   getProjectDigests.mockResolvedValue([])
   getProjectChapterDigests.mockResolvedValue([])
+  getProjectVolumeDigests.mockResolvedValue([])
   getEntityStateTimeline.mockResolvedValue([
     st({ sceneId: 's1', sceneNumber: 1, chapterNumber: 1, state: flags({ status: 'dead' }) }),
     st({
@@ -158,5 +161,22 @@ describe('detectContradictions chapter grouping', () => {
       expect.stringMatching(/^contradiction-\d+$/)
     ])
     expect(deaths.map((r) => r.severity)).toEqual(['error', 'warning', 'warning'])
+  })
+
+  it('surfaces volume drift with a legacy id (no scenes to attribute)', async () => {
+    getProjectVolumeDigests.mockResolvedValue([
+      { volumeId: 'v1', charactersPresent: ['Kael', 'Mira'], locations: ['Harbor'] },
+      { volumeId: 'v2', charactersPresent: ['Jax', 'Pell'], locations: ['Desert'] }
+    ])
+    getProjectChapterDigests.mockResolvedValue([
+      { chapterNumber: 1, volumeId: 'v1', summary: 'Harbor days' },
+      { chapterNumber: 2, volumeId: 'v2', summary: 'Desert days' }
+    ])
+    const out = await detectContradictions([], scenes, {})
+    const drift = out.filter((r) => r.category === 'volume_drift')
+    expect(drift.length).toBeGreaterThan(0)
+    expect(drift[0]).toMatchObject({ severity: 'warning' })
+    expect(drift[0].id).toMatch(/^contradiction-\d+$/)
+    expect(drift[0].description).toContain('chapter 1')
   })
 })

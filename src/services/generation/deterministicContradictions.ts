@@ -25,6 +25,7 @@ export interface DeterministicContradiction {
     | 'location_impossible'
     | 'knowledge_relearned'
     | 'seam_disconnect'
+    | 'volume_drift'
   severity: 'error' | 'warning'
   entityType: string
   entityId: string

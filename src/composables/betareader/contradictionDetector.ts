@@ -1,7 +1,7 @@
 import { aiGenerateJson } from '../useAiService'
 import { runDeterministicContradictionChecks, generateContradictionCandidates, buildCandidateLedgerText, indexScenesByChapter, DEFAULT_MAX_SCENES_PER_CHAPTER, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
-import { runCrossChapterRuleChecks } from '../../services/generation/crossChapterRules'
-import { getProjectDigests, getProjectChapterDigests, getEntityStateTimeline } from '../../services/db-digests'
+import { runCrossChapterRuleChecks, checkVolumeDrift, checkVolumeInflux, orderVolumesByChapter } from '../../services/generation/crossChapterRules'
+import { getProjectDigests, getProjectChapterDigests, getProjectVolumeDigests, getEntityStateTimeline } from '../../services/db-digests'
 import type { SceneDigest } from '../../services/generation/sceneDigest'
 import type { EntityStateRecord } from '../../services/generation/entityStates'
 
@@ -49,6 +49,7 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
   let sceneDigests: SceneDigest[] = []
   let entityStates: EntityStateRecord[] = []
   let chapterDigests: Array<{ chapterNumber: number; summary: string }> = []
+  let volumeDigests: Array<{ volumeId: string; charactersPresent?: string[] | null; locations?: string[] | null }> = []
   if (projectId) {
     sceneDigests = await getProjectDigests(projectId)
     // The entity-state timeline is what the deterministic rules actually run on.
@@ -58,6 +59,8 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
     // Chapter rollups are newer than both. Absent, ledger text renders every
     // candidate scene verbatim exactly as before.
     chapterDigests = await getProjectChapterDigests(projectId).catch(() => [])
+    // Volume rollups are newest. Absent, Pass 2 simply has no drift input.
+    volumeDigests = await getProjectVolumeDigests(projectId).catch(() => [])
   }
 
   // 2. Pass 1: chapter groups. The shared scene→chapter index first
@@ -108,6 +111,19 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
     )
   }
   const pass2Findings = await runCrossChapterRuleChecks(entityStates)
+  // Volume drift is display-only rollup analysis: order volumes by lowest
+  // chapter (chapter digests supply labels), then pairwise drift + influx.
+  const chaptersByVolume = new Map<string, number[]>()
+  for (const d of chapterDigests as Array<{ volumeId?: string | null; chapterNumber?: number | null }>) {
+    if (d?.volumeId == null || typeof d.chapterNumber !== 'number') continue
+    if (!chaptersByVolume.has(d.volumeId)) chaptersByVolume.set(d.volumeId, [])
+    chaptersByVolume.get(d.volumeId)!.push(d.chapterNumber)
+  }
+  const orderedVolumes = orderVolumesByChapter(volumeDigests, chapterDigests as Array<{ volumeId?: string | null; chapterNumber?: number | null }>)
+  pass2Findings.push(
+    ...checkVolumeDrift(orderedVolumes, chaptersByVolume),
+    ...checkVolumeInflux(orderedVolumes)
+  )
   const allDeterministic = [...pass1Findings, ...pass2Findings]
   
   // Deterministic findings are normalised ONCE, here, and reused on both exits.
