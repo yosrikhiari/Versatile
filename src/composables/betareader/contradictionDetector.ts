@@ -42,7 +42,13 @@ For each contradiction, specify severity (error = definite mistake, warning = li
 Include which scenes are in conflict by scene number.
 Respond ONLY with valid JSON matching the schema.`
 
-export async function detectContradictions(sceneLedgers: any, scenes: any, aiOptions: any) {
+export async function detectContradictions(
+  sceneLedgers: any,
+  scenes: any,
+  aiOptions: any,
+  deps?: { generateJson?: typeof aiGenerateJson }
+) {
+  const generateJson = deps?.generateJson ?? aiGenerateJson
   // Phase 2: Hierarchical contradiction detection
   // 1. Get scene digests for deterministic rule checking
   const projectId = scenes[0]?.projectId
@@ -208,7 +214,7 @@ export async function detectContradictions(sceneLedgers: any, scenes: any, aiOpt
       maxScenesPerChapter: DEFAULT_MAX_SCENES_PER_CHAPTER
     })
     const prompt = `Focused fact ledger for specific scene pairs (deterministic rules already checked):\n\n${ledgerText}`
-    const parsed = await aiGenerateJson(prompt, CONTRADICTION_PROMPT, {
+    const parsed = await generateJson(prompt, CONTRADICTION_PROMPT, {
       ...aiOptions,
       schema: CONTRADICTION_SCHEMA,
       schemaName: 'contradiction_detection'

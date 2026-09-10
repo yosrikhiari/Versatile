@@ -179,4 +179,26 @@ describe('detectContradictions chapter grouping', () => {
     expect(drift[0].id).toMatch(/^contradiction-\d+$/)
     expect(drift[0].description).toContain('chapter 1')
   })
+
+  it('routes batches through the injected generator when provided', async () => {
+    const seen = []
+    const stub = vi.fn(async (prompt, system, opts) => {
+      seen.push({ prompt, schemaName: opts.schemaName })
+      return null
+    })
+    getEntityStateTimeline.mockResolvedValue([
+      st({ sceneId: 's1', sceneNumber: 1, chapterNumber: 1, state: flags({ status: 'dead' }) }),
+      st({
+        sceneId: 's2',
+        sceneNumber: 2,
+        chapterNumber: 1,
+        state: flags({ present: true, status: 'healthy' })
+      })
+    ])
+    const out = await detectContradictions([], scenes, {}, { generateJson: stub })
+    expect(stub).toHaveBeenCalledOnce()
+    expect(seen[0].schemaName).toBe('contradiction_detection')
+    expect(aiGenerateJson).not.toHaveBeenCalled()
+    expect(out).toHaveLength(1)
+  })
 })
