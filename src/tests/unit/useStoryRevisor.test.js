@@ -149,4 +149,53 @@ describe('useStoryRevisor', () => {
     const { REVISION_WORD_TOLERANCE } = await import('@/composables/useStoryRevisor')
     expect(REVISION_WORD_TOLERANCE).toBe(0.15)
   })
+
+  it('revises a low-scored scene despite few minors', async () => {
+    mockAiGenerate.mockResolvedValue('Revised text that is about the same length here')
+    const { useStoryRevisor, MIN_SHORT_CIRCUIT_SCORE } =
+      await import('@/composables/useStoryRevisor')
+    expect(MIN_SHORT_CIRCUIT_SCORE).toBe(7)
+    const revisor = useStoryRevisor()
+    await revisor.reviseScene({
+      draft: 'A scene draft of moderate length for word band checks.',
+      critiqueResult: {
+        score: 6,
+        issues: [{ severity: 'minor', type: 'style', description: 'Polish' }]
+      },
+      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], tension: 'm' },
+      storyBible: 'B'
+    })
+    expect(mockAiGenerate).toHaveBeenCalled()
+  })
+
+  it('skips a scene at the boundary score', async () => {
+    const { useStoryRevisor } = await import('@/composables/useStoryRevisor')
+    const revisor = useStoryRevisor()
+    const draft = 'A scene draft of moderate length for word band checks.'
+    const result = await revisor.reviseScene({
+      draft,
+      critiqueResult: {
+        score: 7,
+        issues: [{ severity: 'minor', type: 'style', description: 'Polish' }]
+      },
+      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], tension: 'm' },
+      storyBible: 'B'
+    })
+    expect(result).toBe(draft)
+    expect(mockAiGenerate).not.toHaveBeenCalled()
+  })
+
+  it('skips when the score is missing (fail open)', async () => {
+    const { useStoryRevisor } = await import('@/composables/useStoryRevisor')
+    const revisor = useStoryRevisor()
+    const draft = 'A scene draft of moderate length for word band checks.'
+    const result = await revisor.reviseScene({
+      draft,
+      critiqueResult: { issues: [{ severity: 'minor', type: 'style', description: 'Polish' }] },
+      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], tension: 'm' },
+      storyBible: 'B'
+    })
+    expect(result).toBe(draft)
+    expect(mockAiGenerate).not.toHaveBeenCalled()
+  })
 })

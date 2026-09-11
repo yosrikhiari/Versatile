@@ -14,6 +14,13 @@ export const MAX_MINOR_ISSUES_SHORT_CIRCUIT = 2
  * The prompt states it as a hard constraint and the retry enforces it.
  */
 export const REVISION_WORD_TOLERANCE = 0.15
+/**
+ * Score floor for the short-circuit: a scene with few minors still revises
+ * when the critic scored it below this. Provisional — needs real-model
+ * calibration (mock evidence doesn't count). Fail-open: a missing score
+ * leaves the count bar as the sole decider, exactly today's behaviour.
+ */
+export const MIN_SHORT_CIRCUIT_SCORE = 7
 
 export function useStoryRevisor() {
   const isRevising = ref(false)
@@ -39,7 +46,12 @@ export function useStoryRevisor() {
       const majorIssues = critiqueResult.issues.filter((i: any) => i.severity === 'major')
       const minorIssues = critiqueResult.issues.filter((i: any) => i.severity === 'minor')
 
-      if (majorIssues.length === 0 && minorIssues.length <= MAX_MINOR_ISSUES_SHORT_CIRCUIT) {
+      const score = (critiqueResult as any)?.score
+      if (
+        majorIssues.length === 0 &&
+        minorIssues.length <= MAX_MINOR_ISSUES_SHORT_CIRCUIT &&
+        (typeof score !== 'number' || score >= MIN_SHORT_CIRCUIT_SCORE)
+      ) {
         return draft
       }
 
