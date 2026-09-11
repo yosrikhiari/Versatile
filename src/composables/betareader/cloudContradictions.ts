@@ -60,3 +60,29 @@ export function buildCloudBatchInjector({ provider, model, localGenerateJson, on
     return parsed
   }
 }
+
+export type AnalysisTier = 'local' | 'cloud-on-demand' | 'cloud-audit'
+
+export interface BatchInjectorContext {
+  tier: AnalysisTier
+  cloudAvailable: boolean
+  runOptIn: boolean
+  projectOptIn: boolean
+  provider: string
+  model: string
+  localGenerateJson: typeof aiGenerateJson
+  onFallback?: (reason: string) => void
+}
+
+export function resolveBatchInjector(ctx: BatchInjectorContext) {
+  if (!ctx.cloudAvailable) return undefined
+  if (ctx.tier === 'cloud-on-demand' && !ctx.runOptIn) return undefined
+  if (ctx.tier === 'cloud-audit' && !ctx.projectOptIn) return undefined
+  if (ctx.tier === 'local') return undefined
+  return buildCloudBatchInjector({
+    provider: ctx.provider,
+    model: ctx.model,
+    localGenerateJson: ctx.localGenerateJson,
+    onFallback: ctx.onFallback
+  })
+}

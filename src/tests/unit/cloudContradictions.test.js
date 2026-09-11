@@ -49,3 +49,75 @@ describe('buildCloudBatchInjector', () => {
     expect(local).toHaveBeenCalledOnce()
   })
 })
+
+import { resolveBatchInjector } from '@/composables/betareader/cloudContradictions'
+
+describe('resolveBatchInjector', () => {
+  const ctx = { provider: 'openai', model: 'm', localGenerateJson: local, onFallback: () => {} }
+  it('returns undefined for local tier', () => {
+    expect(
+      resolveBatchInjector({
+        ...ctx,
+        tier: 'local',
+        cloudAvailable: true,
+        runOptIn: true,
+        projectOptIn: true
+      })
+    ).toBeUndefined()
+  })
+  it('returns undefined for on-demand without the run opt-in', () => {
+    expect(
+      resolveBatchInjector({
+        ...ctx,
+        tier: 'cloud-on-demand',
+        cloudAvailable: true,
+        runOptIn: false,
+        projectOptIn: false
+      })
+    ).toBeUndefined()
+  })
+  it('returns an injector for on-demand with the run opt-in', () => {
+    expect(
+      typeof resolveBatchInjector({
+        ...ctx,
+        tier: 'cloud-on-demand',
+        cloudAvailable: true,
+        runOptIn: true,
+        projectOptIn: false
+      })
+    ).toBe('function')
+  })
+  it('returns undefined for audit tier without the project opt-in', () => {
+    expect(
+      resolveBatchInjector({
+        ...ctx,
+        tier: 'cloud-audit',
+        cloudAvailable: true,
+        runOptIn: true,
+        projectOptIn: false
+      })
+    ).toBeUndefined()
+  })
+  it('returns an injector for audit tier with the project opt-in (no run opt-in needed)', () => {
+    expect(
+      typeof resolveBatchInjector({
+        ...ctx,
+        tier: 'cloud-audit',
+        cloudAvailable: true,
+        runOptIn: false,
+        projectOptIn: true
+      })
+    ).toBe('function')
+  })
+  it('returns undefined when no cloud provider is configured', () => {
+    expect(
+      resolveBatchInjector({
+        ...ctx,
+        tier: 'cloud-audit',
+        cloudAvailable: false,
+        runOptIn: true,
+        projectOptIn: true
+      })
+    ).toBeUndefined()
+  })
+})

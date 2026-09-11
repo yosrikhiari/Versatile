@@ -1,8 +1,17 @@
 import { ref, computed } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { extractAllFacts } from './factLedger'
 import { detectContradictions } from './contradictionDetector'
+import { resolveBatchInjector } from './cloudContradictions'
+import {
+  buildCloudDisclosure,
+  canUseCloudEscalation,
+  getAnalysisTier,
+  type CloudDisclosure
+} from '../../services/cloudEscalation'
+import { aiGenerateJson } from '../useAiService'
 import { analyzeArc } from './arcAnalyzer'
 import { detectRepetitions } from './repetitionDetector'
 import { buildBetaReport } from './betaReport'
@@ -25,6 +34,14 @@ export function useBetaReader() {
   const summary: any = ref(null)
   const activePass = ref(0)
   const currentPhase = ref('')
+  // Per-run opt-in for on-demand cloud contradiction detection. Defaults off;
+  // the panel binds its checkbox to this ref.
+  const cloudRunOptIn = ref(false)
+  const cloudDisclosure = ref<CloudDisclosure | null>(null)
+  // Tier/availability snapshot for the panel's opt-in visibility. Evaluated
+  // lazily so the panel stays in sync with settings.
+  const cloudTier = computed(() => getAnalysisTier())
+  const cloudAvailable = computed(() => canUseCloudEscalation())
 
   const { saveRecord } = useEvalPersistence()
 
@@ -51,6 +68,26 @@ export function useBetaReader() {
       const aiOptions = {}
       const passResults: any = {}
 
+      // Disclosure for the panel's opt-in line, built before the pass starts.
+      // Best-effort: a disclosure failure must never block the local pass.
+      try {
+        if (canUseCloudEscalation()) {
+          const settings = useSettingsStore()
+          cloudDisclosure.value = await buildCloudDisclosure({
+            projectId,
+            operation: 'contradiction-sweep',
+            text: scenes.map((s) => s.content).join('\n\n'),
+            systemPrompt: 'You are an expert fiction editor. Detect contradictions across scenes.',
+            provider: settings.aiProvider,
+            model: settings.ollamaModel
+          })
+        } else {
+          cloudDisclosure.value = null
+        }
+      } catch {
+        cloudDisclosure.value = null
+      }
+
       for (let i = 0; i < PASSES.length; i++) {
         const pass = PASSES[i]
         activePass.value = i
@@ -61,11 +98,36 @@ export function useBetaReader() {
         if (pass.key === 'factLedger') {
           passResults.factLedger = await extractAllFacts(scenes, aiOptions, projectId)
         } else if (pass.key === 'contradictions') {
-          passResults.contradictions = await detectContradictions(
-            passResults.factLedger,
-            scenes,
-            aiOptions
-          )
+          const tier = getAnalysisTier()
+          const available = canUseCloudEscalation()
+          const settings = useSettingsStore()
+          // TODO(Task 4): wire projectOptIn to the per-project cloud audit
+          // opt-in setting once it exists; until then the audit tier never
+          // routes to cloud.
+          const projectOptIn = false
+          const injector = resolveBatchInjector({
+            tier,
+            cloudAvailable: available,
+            runOptIn: cloudRunOptIn.value,
+            projectOptIn,
+            provider: settings.aiProvider,
+            model: settings.ollamaModel,
+            localGenerateJson: aiGenerateJson
+          })
+          if (injector) {
+            passResults.contradictions = await detectContradictions(
+              passResults.factLedger,
+              scenes,
+              aiOptions,
+              { generateJson: injector }
+            )
+          } else {
+            passResults.contradictions = await detectContradictions(
+              passResults.factLedger,
+              scenes,
+              aiOptions
+            )
+          }
         } else if (pass.key === 'arc') {
           passResults.arc = await analyzeArc(scenes, aiOptions)
         } else if (pass.key === 'repetition') {
@@ -120,6 +182,10 @@ export function useBetaReader() {
     activePass,
     currentPhase,
     progress,
+    cloudRunOptIn,
+    cloudTier,
+    cloudAvailable,
+    cloudDisclosure,
     scan,
     clearResults
   }

@@ -16,6 +16,10 @@ const {
   activePass,
   currentPhase,
   progress,
+  cloudRunOptIn,
+  cloudTier,
+  cloudAvailable,
+  cloudDisclosure,
   scan,
   clearResults
 } = useBetaReader()
@@ -43,6 +47,18 @@ function handleResultAction(action) {
       <BaseButton variant="outline" size="sm" :loading="isScanning" @click="handleReScan">
         {{ results.length > 0 ? 'Recheck' : 'Scan' }}
       </BaseButton>
+    </div>
+
+    <div v-if="cloudAvailable && cloudTier === 'cloud-on-demand'" class="cloud-optin">
+      <label class="cloud-optin-label">
+        <input v-model="cloudRunOptIn" type="checkbox" :disabled="isScanning" />
+        Use cloud AI for contradiction detection
+      </label>
+      <p v-if="cloudDisclosure" class="cloud-disclosure">
+        {{ cloudDisclosure.warning }} Est. {{ cloudDisclosure.estimatedTokens }} tokens (~${{
+          cloudDisclosure.estimatedCostUsd.toFixed(4)
+        }}) via {{ cloudDisclosure.provider }} ({{ cloudDisclosure.model }}).
+      </p>
     </div>
 
     <div v-if="isScanning" class="scanning-state">
@@ -164,6 +180,28 @@ function handleResultAction(action) {
   color: var(--vers-text-secondary);
   line-height: 1.4;
   margin: 8px 0 0;
+}
+
+.cloud-optin {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.cloud-optin-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--vers-text-secondary);
+}
+
+.cloud-disclosure {
+  font-size: 0.6875rem;
+  color: var(--vers-text-muted);
+  line-height: 1.4;
+  margin: 0;
 }
 
 .spinner {
