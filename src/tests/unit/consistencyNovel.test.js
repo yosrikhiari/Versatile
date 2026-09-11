@@ -171,6 +171,11 @@ describe('consistency pipeline (AI critic, requires local Ollama)', () => {
     const settings = useSettingsStore()
     settings.localOnly = true
     settings.ollamaModel = 'qwen3:8b'
+    // Same vacuous-pass trap as betareaderLive had: the provider defaults
+    // to relative /ollama (vite-proxy-only), so without this every batch
+    // fails fast to null and the assertions pass on nothing.
+    const { setOllamaEndpoint } = await import('../../config/ollama')
+    setOllamaEndpoint('http://localhost:11434')
     const { useStoryCritic } = await import('../../composables/useStoryCritic')
     critic = useStoryCritic()
   })
@@ -200,6 +205,10 @@ describe('consistency pipeline (AI critic, requires local Ollama)', () => {
       })
       expect(report.characterIssues || []).toHaveLength(0)
       expect(report.locationIssues || []).toHaveLength(0)
+      // Self-proving: without real inference this passes vacuously (see
+      // beforeAll). A loaded model within keepalive means Ollama worked.
+      const ps = await fetch('http://localhost:11434/api/ps').then((r) => r.json())
+      expect((ps.models || []).length).toBeGreaterThan(0)
     }
   )
 })
