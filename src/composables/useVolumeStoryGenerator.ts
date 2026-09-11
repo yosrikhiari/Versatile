@@ -102,7 +102,7 @@ import {
 import { useDelegatorGeneration } from './generation/delegator'
 import { useDriftTriggeredEval } from './useDriftTriggeredEval'
 import { ActiveLearningBridge } from './generation/activeLearning'
-import { buildCloudDisclosure, canUseCloudEscalation, requestCloudEscalation } from '../services/cloudEscalation'
+import { buildCloudDisclosure, canUseCloudEscalation, requestCloudEscalation, maybeAutoEscalateScene, getAnalysisTier } from '../services/cloudEscalation'
 
 import { getResumableRun } from './generation/checkpoint'
 import { buildPreliminaryEdges } from './generation/graph'
@@ -1669,6 +1669,30 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
             `Estimated cost: $${disclosure.estimatedCostUsd.toFixed(4)}\n` +
             `Provider: ${disclosure.provider} (${disclosure.model})\n`
           )
+
+          // Audit tier goes one step further: the project opt-in is advance
+          // consent, so request the second opinion immediately instead of
+          // waiting on the offer. Best-effort — the outcome is a ledger
+          // note either way, never a run failure.
+          try {
+            const auto = await maybeAutoEscalateScene({
+              projectId: writeParams.value?.projectId || '',
+              tier: getAnalysisTier(),
+              cloudAvailable: true,
+              projectOptIn: !!settings.cloudAuditOptIn,
+              provider: settings.aiProvider,
+              model: settings.ollamaModel,
+              operation: 'escalation-on-failure',
+              text: proseText,
+              systemPrompt: 'You are an expert fiction editor. Evaluate this scene for quality, continuity, voice, and adherence to the story bible. Provide a score 1-10, dimension scores, issues, and strengths.'
+            })
+            if (auto.note) {
+              actLog.appendThought(currentTaskId, scenePhase, `\n${auto.note}\n`)
+            }
+          } catch {
+            // maybeAutoEscalateScene never throws by contract; this guards
+            // the ledger call itself so a logging failure cannot break the run.
+          }
         }
       }
 

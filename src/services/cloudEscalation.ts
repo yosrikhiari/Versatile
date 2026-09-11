@@ -1,4 +1,5 @@
 import { backendStream, backendTestConnection } from './backendAiService'
+import { providerBudget } from './aiProviderBudget'
 import { useSettingsStore } from '../stores/settingsStore'
 
 export interface CloudEscalationOptions {
@@ -141,4 +142,74 @@ export function canUseCloudEscalation(): boolean {
 export function getAnalysisTier(): 'local' | 'cloud-on-demand' | 'cloud-audit' {
   const settings = useSettingsStore()
   return settings.analysisTier as 'local' | 'cloud-on-demand' | 'cloud-audit'
+}
+
+export interface AutoEscalationContext {
+  projectId: string
+  tier: 'local' | 'cloud-on-demand' | 'cloud-audit'
+  cloudAvailable: boolean
+  projectOptIn: boolean
+  provider: string
+  model: string
+  operation: CloudEscalationOptions['operation']
+  text: string
+  systemPrompt: string
+  onProgress?: CloudEscalationOptions['onProgress']
+  abortSignal?: AbortSignal
+  /** Injectable for tests; defaults to the real request path. */
+  request?: (options: CloudEscalationOptions) => Promise<CloudEscalationResult>
+}
+
+export interface AutoEscalationOutcome {
+  requested: boolean
+  note: string
+}
+
+/**
+ * Audit-tier auto-escalation for a single scene evaluation.
+ *
+ * On-demand tier is owned by the offer path (disclosure text the user acts
+ * on), so this function only ever fires under `cloud-audit` with the
+ * project opt-in — graduated consent stays in one shape per tier. Budget
+ * is checked before sending and recorded after; every failure degrades to
+ * a note, never a throw, so the run continues locally no matter what.
+ */
+export async function maybeAutoEscalateScene(
+  ctx: AutoEscalationContext
+): Promise<AutoEscalationOutcome> {
+  if (ctx.tier !== 'cloud-audit' || !ctx.projectOptIn || !ctx.cloudAvailable) {
+    return { requested: false, note: '' }
+  }
+  const run = ctx.request ?? requestCloudEscalation
+  try {
+    providerBudget.check(ctx.provider)
+  } catch (err: any) {
+    return { requested: false, note: `Cloud auto-escalation skipped: budget exhausted (${err?.message || err}). Continued locally.` }
+  }
+  try {
+    const result = await run({
+      projectId: ctx.projectId,
+      operation: ctx.operation,
+      text: ctx.text,
+      systemPrompt: ctx.systemPrompt,
+      provider: ctx.provider,
+      model: ctx.model,
+      onProgress: ctx.onProgress,
+      abortSignal: ctx.abortSignal
+    })
+    if (!result.success) {
+      return { requested: true, note: `Cloud auto-escalation failed (${result.error || 'unknown error'}). Continued locally.` }
+    }
+    const est = result.costEstimate
+    if (est) {
+      try {
+        providerBudget.record(ctx.provider, est.inputTokens + est.outputTokens, est.estimatedCostUsd)
+      } catch {
+        // Recording must never fail a batch the cloud just judged.
+      }
+    }
+    return { requested: true, note: `Cloud second opinion (${ctx.provider}/${ctx.model}):\n${result.result || '(empty)'}` }
+  } catch (err: any) {
+    return { requested: false, note: `Cloud auto-escalation failed (${err?.message || err}). Continued locally.` }
+  }
 }
