@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import { computeWordDiff, collapseSegments } from '../../utils/wordDiff'
 
 const props = defineProps({
   revisionResult: { type: Object, default: null },
@@ -44,6 +45,27 @@ const dimensionDeltas = computed(() => {
 
 const hasRegressions = computed(() => !!props.revisionResult?.degradation?.hasRegressions)
 const hasMajorRegressions = computed(() => !!props.revisionResult?.degradation?.hasMajorRegressions)
+
+// Side-effect-free: the computation returns both values instead of writing
+// a ref from inside the computed (vue/no-side-effects-in-computed-properties).
+const diffResult = computed(() => {
+  if (!hasRevision.value) return { segments: [], error: null }
+  try {
+    return {
+      segments: collapseSegments(
+        computeWordDiff(
+          props.revisionResult.originalProse || '',
+          props.revisionResult.revisedProse || ''
+        )
+      ),
+      error: null
+    }
+  } catch (err) {
+    return { segments: [], error: err?.message || 'diff unavailable' }
+  }
+})
+const diffSegments = computed(() => diffResult.value.segments)
+const diffError = computed(() => diffResult.value.error)
 
 function deltaClass(val) {
   if (val == null) return ''
@@ -151,6 +173,27 @@ function statusColor(status) {
             </span>
           </div>
         </div>
+      </div>
+
+      <div v-if="diffSegments.length > 0 || diffError" class="word-diff space-y-1.5">
+        <h5 class="text-2xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
+          What Changed
+        </h5>
+        <p class="text-xs font-body text-text-primary leading-relaxed">
+          <template v-for="(seg, i) in diffSegments" :key="i">
+            <span v-if="seg.collapsed" class="text-text-hint font-ui text-2xs"
+              >… {{ seg.count }} words unchanged …</span
+            >
+            <span v-else-if="seg.removed" class="word-removed text-danger line-through">{{
+              seg.value
+            }}</span>
+            <span v-else-if="seg.added" class="word-added text-success bg-success/10">{{
+              seg.value
+            }}</span>
+            <span v-else>{{ seg.value }}</span>
+          </template>
+        </p>
+        <p v-if="diffError" class="text-2xs font-ui text-text-hint">{{ diffError }}</p>
       </div>
     </template>
 
