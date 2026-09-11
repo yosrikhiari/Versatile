@@ -107,8 +107,8 @@ export async function buildVectorIndex(
   items: Array<{ id: string; vector: Float32Array; metadata?: Record<string, unknown> }>,
   config: { dim: number; nClusters?: number; nProbe?: number; minClusterSize?: number }
 ): Promise<void> {
-  if (items.length > 50000) {
-    console.warn(`[vectorIndexService] ${items.length} vectors exceeds safe limit of 50000`)
+  if (items.length > MAX_SAFE_VECTORS) {
+    console.warn(`[vectorIndexService] ${items.length} vectors exceeds safe limit of ${MAX_SAFE_VECTORS}`)
   }
   await workerCall('build', key, items, config)
 }
