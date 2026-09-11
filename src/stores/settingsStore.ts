@@ -43,6 +43,9 @@ const DEFAULT_SETTINGS = {
   // 'cloud-on-demand' — user explicitly triggers cloud audit per operation
   // 'cloud-audit' — background cloud audits enabled (opt-in, per-book)
   analysisTier: 'local',
+  // Per-project opt-in for background cloud audits ('cloud-audit' tier).
+  // Default off — the audit tier never routes to cloud without it.
+  cloudAuditOptIn: false,
   // Chapter generation gets its own pipeline, its own delegator and its own
   // acceptance gate. The flag is the zero-deploy way back: turning it off
   // hides the Chapter tab and leaves the arc path exactly as it was.
@@ -62,6 +65,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const embeddingModel = ref(DEFAULT_SETTINGS.embeddingModel)
   const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
   const analysisTier = ref(DEFAULT_SETTINGS.analysisTier)
+  const cloudAuditOptIn = ref(DEFAULT_SETTINGS.cloudAuditOptIn)
   const enableChapterGeneration = ref(DEFAULT_SETTINGS.enableChapterGeneration)
 
   const featureModels = useLocalStorage<Record<string, any>>(STORAGE_KEYS.FEATURE_MODELS, {})
@@ -112,6 +116,11 @@ export const useSettingsStore = defineStore('settings', () => {
         if (data.embeddingThreshold !== undefined)
           embeddingThreshold.value = data.embeddingThreshold
         if (data.analysisTier) analysisTier.value = data.analysisTier
+        // Explicit `!== undefined` for the same reason as `localOnly`: an
+        // opt-in the user never gave must survive a save/load round-trip
+        // as false, not flip to true — and vice versa.
+        if (data.cloudAuditOptIn !== undefined)
+          cloudAuditOptIn.value = !!data.cloudAuditOptIn
         // Explicit `!== undefined` for the same reason as `localOnly`: turning
         // the flag off is a real choice, and truthiness would undo it on load.
         if (data.enableChapterGeneration !== undefined)
@@ -154,6 +163,7 @@ export const useSettingsStore = defineStore('settings', () => {
           embeddingModel: embeddingModel.value,
           embeddingThreshold: embeddingThreshold.value,
           analysisTier: analysisTier.value,
+          cloudAuditOptIn: cloudAuditOptIn.value,
           enableChapterGeneration: enableChapterGeneration.value
         })
       )
@@ -296,6 +306,11 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  function setCloudAuditOptIn(value: any) {
+    cloudAuditOptIn.value = !!value
+    saveSettings()
+  }
+
   function setEnableChapterGeneration(value: any) {
     enableChapterGeneration.value = !!value
     saveSettings()
@@ -315,6 +330,7 @@ export const useSettingsStore = defineStore('settings', () => {
     embeddingModel.value = DEFAULT_SETTINGS.embeddingModel
     embeddingThreshold.value = DEFAULT_SETTINGS.embeddingThreshold
     analysisTier.value = DEFAULT_SETTINGS.analysisTier
+    cloudAuditOptIn.value = DEFAULT_SETTINGS.cloudAuditOptIn
     enableChapterGeneration.value = DEFAULT_SETTINGS.enableChapterGeneration
     featureModels.value = {}
     saveSettings()
@@ -372,6 +388,7 @@ export const useSettingsStore = defineStore('settings', () => {
     // always true: a user who chose the local tier still had cloud escalation
     // enabled, and getAnalysisTier() returned undefined. Only tsc noticed.
     analysisTier,
+    cloudAuditOptIn,
     enableChapterGeneration,
     setEnableChapterGeneration,
     featureModels,
@@ -394,6 +411,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setEmbeddingModel,
     setEmbeddingThreshold,
     setAnalysisTier,
+    setCloudAuditOptIn,
     resetToDefaults,
     testOllamaConnection,
     testProviderConnection

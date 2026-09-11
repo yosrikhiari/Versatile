@@ -101,10 +101,7 @@ export function useBetaReader() {
           const tier = getAnalysisTier()
           const available = canUseCloudEscalation()
           const settings = useSettingsStore()
-          // TODO(Task 4): wire projectOptIn to the per-project cloud audit
-          // opt-in setting once it exists; until then the audit tier never
-          // routes to cloud.
-          const projectOptIn = false
+          const projectOptIn = settings.cloudAuditOptIn
           const injector = resolveBatchInjector({
             tier,
             cloudAvailable: available,

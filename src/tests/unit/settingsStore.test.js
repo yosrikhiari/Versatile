@@ -94,6 +94,22 @@ describe('settingsStore', () => {
     expect(store.featureModels.content).toEqual({ provider: 'ollama', model: 'llama3' })
   })
 
+  it('defaults cloud audit opt-in to off', () => {
+    const store = useSettingsStore()
+    expect(store.cloudAuditOptIn).toBe(false)
+  })
+
+  it('persists cloud audit opt-in through save and load', () => {
+    const store = useSettingsStore()
+    store.setCloudAuditOptIn(true)
+    expect(store.cloudAuditOptIn).toBe(true)
+
+    setActivePinia(createPinia())
+    const reloaded = useSettingsStore()
+    reloaded.loadSettings()
+    expect(reloaded.cloudAuditOptIn).toBe(true)
+  })
+
   it('resets to defaults', () => {
     const store = useSettingsStore()
     store.setOllamaEndpoint('http://custom')
