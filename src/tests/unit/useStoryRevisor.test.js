@@ -104,4 +104,49 @@ describe('useStoryRevisor', () => {
     await promise
     expect(revisor.isRevising.value).toBe(false)
   })
+
+  it('short-circuits at exactly MAX_MINOR_ISSUES_SHORT_CIRCUIT minors', async () => {
+    const { useStoryRevisor, MAX_MINOR_ISSUES_SHORT_CIRCUIT } =
+      await import('@/composables/useStoryRevisor')
+    expect(MAX_MINOR_ISSUES_SHORT_CIRCUIT).toBe(2)
+    const revisor = useStoryRevisor()
+    const draft = 'Scene text at the boundary.'
+    const issues = Array.from({ length: MAX_MINOR_ISSUES_SHORT_CIRCUIT }, (_, i) => ({
+      severity: 'minor',
+      type: 'style',
+      description: `Polish ${i}`
+    }))
+    const result = await revisor.reviseScene({
+      draft,
+      critiqueResult: { issues },
+      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], tension: 'm' },
+      storyBible: 'B'
+    })
+    expect(result).toBe(draft)
+    expect(mockAiGenerate).not.toHaveBeenCalled()
+  })
+
+  it('revises one past the short-circuit boundary', async () => {
+    mockAiGenerate.mockResolvedValue('Revised text that is about the same length here')
+    const { useStoryRevisor, MAX_MINOR_ISSUES_SHORT_CIRCUIT } =
+      await import('@/composables/useStoryRevisor')
+    const revisor = useStoryRevisor()
+    const issues = Array.from({ length: MAX_MINOR_ISSUES_SHORT_CIRCUIT + 1 }, (_, i) => ({
+      severity: 'minor',
+      type: 'style',
+      description: `Polish ${i}`
+    }))
+    await revisor.reviseScene({
+      draft: 'A scene draft of moderate length for word band checks.',
+      critiqueResult: { issues },
+      sceneBrief: { title: 'T', emotionalGoal: 'G', charactersPresent: ['A'], tension: 'm' },
+      storyBible: 'B'
+    })
+    expect(mockAiGenerate).toHaveBeenCalled()
+  })
+
+  it('exposes the word-count tolerance as a named constant', async () => {
+    const { REVISION_WORD_TOLERANCE } = await import('@/composables/useStoryRevisor')
+    expect(REVISION_WORD_TOLERANCE).toBe(0.15)
+  })
 })

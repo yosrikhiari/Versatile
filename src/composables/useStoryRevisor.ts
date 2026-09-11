@@ -3,6 +3,18 @@ import { useProjectStore } from '../stores/projectStore'
 import { aiGenerate } from './useAiService'
 import { FEATURES } from '../config/ai'
 
+/**
+ * Short-circuit bar: scenes with no majors and at most this many minors
+ * skip revision entirely. Named (not inline) because the boundary is a
+ * product decision the audits keep relitigating — 2 skips, 3 revises.
+ */
+export const MAX_MINOR_ISSUES_SHORT_CIRCUIT = 2
+/**
+ * Word-count band for revisions, as a fraction of the draft: ±15%.
+ * The prompt states it as a hard constraint and the retry enforces it.
+ */
+export const REVISION_WORD_TOLERANCE = 0.15
+
 export function useStoryRevisor() {
   const isRevising = ref(false)
 
@@ -27,15 +39,15 @@ export function useStoryRevisor() {
       const majorIssues = critiqueResult.issues.filter((i: any) => i.severity === 'major')
       const minorIssues = critiqueResult.issues.filter((i: any) => i.severity === 'minor')
 
-      if (majorIssues.length === 0 && minorIssues.length <= 2) {
+      if (majorIssues.length === 0 && minorIssues.length <= MAX_MINOR_ISSUES_SHORT_CIRCUIT) {
         return draft
       }
 
       const issuesToFix = majorIssues.length > 0 ? majorIssues : minorIssues
 
       const wordCount = draft.split(/\s+/).length
-      const maxWords = Math.round(wordCount * 1.15)
-      const minWords = Math.round(wordCount * 0.85)
+      const maxWords = Math.round(wordCount * (1 + REVISION_WORD_TOLERANCE))
+      const minWords = Math.round(wordCount * (1 - REVISION_WORD_TOLERANCE))
 
       const userPrompt = `Revise this scene draft to fix the following issues.
 
