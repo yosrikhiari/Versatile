@@ -118,6 +118,36 @@ export function useBetaReader() {
         // Keep whichever disclosure (if any) the sweep block produced.
       }
 
+      // The repetition prompt is also whole-manuscript — when it will route
+      // to cloud its estimate supersedes the arc one above.
+      // Best-effort: a disclosure failure must never block the local pass.
+      try {
+        if (canUseCloudEscalation()) {
+          const settings = useSettingsStore()
+          const repetitionInjector = resolveBatchInjector({
+            tier: getAnalysisTier(),
+            cloudAvailable: true,
+            runOptIn: cloudRunOptIn.value,
+            projectOptIn: settings.cloudAuditOptIn,
+            provider: settings.aiProvider,
+            model: settings.ollamaModel,
+            localGenerateJson: aiGenerateJson
+          })
+          if (repetitionInjector) {
+            cloudDisclosure.value = await buildCloudDisclosure({
+              projectId,
+              operation: 'pacing-review',
+              text: scenes.map((s) => s.content).join('\n\n'),
+              systemPrompt: 'You are a prose style analyst for fiction manuscripts.',
+              provider: settings.aiProvider,
+              model: settings.ollamaModel
+            })
+          }
+        }
+      } catch {
+        // Keep whichever disclosure (if any) the earlier blocks produced.
+      }
+
       for (let i = 0; i < PASSES.length; i++) {
         const pass = PASSES[i]
         activePass.value = i
@@ -174,7 +204,25 @@ export function useBetaReader() {
             passResults.arc = await analyzeArc(scenes, aiOptions)
           }
         } else if (pass.key === 'repetition') {
-          passResults.repetitions = await detectRepetitions(scenes, aiOptions)
+          const tier = getAnalysisTier()
+          const available = canUseCloudEscalation()
+          const settings = useSettingsStore()
+          const injector = resolveBatchInjector({
+            tier,
+            cloudAvailable: available,
+            runOptIn: cloudRunOptIn.value,
+            projectOptIn: settings.cloudAuditOptIn,
+            provider: settings.aiProvider,
+            model: settings.ollamaModel,
+            localGenerateJson: aiGenerateJson
+          })
+          if (injector) {
+            passResults.repetitions = await detectRepetitions(scenes, aiOptions, {
+              generateJson: injector
+            })
+          } else {
+            passResults.repetitions = await detectRepetitions(scenes, aiOptions)
+          }
         }
       }
 
