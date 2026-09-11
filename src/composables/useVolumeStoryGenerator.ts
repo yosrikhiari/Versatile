@@ -3092,7 +3092,22 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       const audit = await consistencyService.runTerminalConsistencyAudit(projectId, currentTaskId)
       auditIssues = audit?.issueCount || 0
     } catch (err: any) {
+      // An audit outage is not "no contradictions" — record it as unknown
+      // so the ledger and the activity log disagree with NO_ISSUES honestly:
+      // the prose proceeds (it is written either way) but nothing claims it
+      // was checked. Same lie class as eval_unavailable once was.
       console.warn('[useVolumeStoryGenerator] consistency audit failed:', err)
+      runHealth.record('audit_unavailable', {
+        stage: 'terminal-audit',
+        detail: err?.message || String(err)
+      })
+      const auditPhase = actLog.addPhase(currentTaskId, 'Terminal consistency audit')
+      actLog.appendThought(
+        currentTaskId,
+        auditPhase,
+        `\n⚠ Consistency audit did not run (${err?.message || err}) — proceeding with ${auditIssues} confirmed issues, which means unconfirmed, not clean.\n`
+      )
+      actLog.updatePhase(currentTaskId, auditPhase, { status: 'failed' })
     }
 
     // The service already ran its fix rounds internally, so any issues left here

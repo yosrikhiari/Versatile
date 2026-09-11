@@ -48,6 +48,8 @@ export type DegradationKind =
   | 'metadata_skipped'
   /** The critic could not produce a usable verdict. */
   | 'eval_unavailable'
+  /** The terminal consistency audit threw instead of reporting. */
+  | 'audit_unavailable'
   /** A quality gate raised blocking flags. */
   | 'gate_failed'
   /** A scene contributed no story-bible changes despite usable metadata. */

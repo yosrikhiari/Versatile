@@ -41,6 +41,19 @@ describe('recording', () => {
     expect(h.getEvents()[0].sceneIndex).toBeNull()
     expect(h.degradedScenes()).toBe(0)
   })
+
+  it('records audit_unavailable without an abort budget', () => {
+    // The terminal audit runs once per run, so streak-abort is meaningless
+    // for it — deliberately no ABORT_BUDGET entry (which would silently
+    // enable halting). The record exists so "unknown" never reads as clean.
+    const h = new RunHealth()
+    expect(() =>
+      h.record('audit_unavailable', { stage: 'terminal-audit', detail: 'boom' })
+    ).not.toThrow()
+    expect(h.getEvents()).toHaveLength(1)
+    expect(ABORT_BUDGET).not.toHaveProperty('audit_unavailable')
+    expect(h.getAbortReason()).toBeNull()
+  })
 })
 
 describe('abort budget', () => {
