@@ -483,7 +483,8 @@ export function useVolumeStoryGenerator() {
     manuscriptStore,
     getGenRun,
     saveGenRun,
-    makeInitialGenState
+    makeInitialGenState,
+    runCreatedSectionIds
   })
 
   const consistencyService = new ConsistencyService({
@@ -2661,6 +2662,14 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     const branchId = (branchStore as any).activeBranch?.id
     const batchResults = await batchCreatePlanStructure({ projectId, groups, branchId })
 
+    // Track run-created sections for chapter aggregation: buildManuscript
+    // only aggregates these, so hand-written chapters are never clobbered.
+    // (This set stayed empty for the feature's whole life — aggregation
+    // silently skipped every section. Never remove this without a test.)
+    for (const sec of batchResults) {
+      runCreatedSectionIds.value.add(sec.id)
+    }
+
     // Update Pinia reactive state
     for (const sec of batchResults) {
       ;(manuscriptStore.sections as any[]).push({
@@ -3710,6 +3719,10 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
         }))
 
       const created = await batchCreatePlanStructure({ projectId, groups, branchId, startOrder: survey.chapters })
+      // Same run-created tracking as the main planning path (see above).
+      for (const sec of created) {
+        runCreatedSectionIds.value.add(sec.id)
+      }
       await manuscriptStore.loadManuscript(projectId)
 
       const extended = surveyManuscript(
