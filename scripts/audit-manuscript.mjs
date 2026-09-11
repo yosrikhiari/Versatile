@@ -244,6 +244,7 @@ const jsonPath = arg('json', null)
 const idbPath = arg('idb', null)
 const port = arg('port', '5173')
 const failOver = Number(arg('fail-over', NaN))
+const dumpDir = arg('dump-scenes', null)
 
 let scenes = []
 let source = ''
@@ -335,6 +336,16 @@ writeFileSync(
     2
   )
 )
+if (dumpDir) {
+  // Raw scene HTML for downstream tooling (calibration fixtures, regen
+  // identification). IndexedDB rows carry no titles, so files are numbered
+  // to match the per-scene table above.
+  mkdirSync(dumpDir, { recursive: true })
+  scenes.forEach((html, i) => {
+    writeFileSync(resolve(dumpDir, `scene-${i}.html`), html)
+  })
+  say(`  dumped ${scenes.length} scenes to ${dumpDir}`)
+}
 if (!jsonPath) {
   say('')
   say('  NOTE — coverage is partial when reading IndexedDB directly. The write-ahead')
