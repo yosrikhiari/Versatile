@@ -121,3 +121,16 @@ describe('resolveBatchInjector', () => {
     ).toBeUndefined()
   })
 })
+
+it('labels structural-arc disclosures distinctly from contradiction sweeps', async () => {
+  const { buildCloudDisclosure } = await import('@/services/cloudEscalation')
+  const arc = await buildCloudDisclosure({
+    projectId: 'p1',
+    operation: 'structural-arc',
+    text: 'x'.repeat(1000),
+    systemPrompt: 'y',
+    provider: 'openai',
+    model: 'gpt-4o-mini'
+  })
+  expect(arc.operation).toBe('Structural arc analysis')
+})

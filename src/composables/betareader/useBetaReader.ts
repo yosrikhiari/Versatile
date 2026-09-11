@@ -88,6 +88,36 @@ export function useBetaReader() {
         cloudDisclosure.value = null
       }
 
+      // The arc prompt dominates (whole manuscript) — when it will route to
+      // cloud its estimate supersedes the contradiction-sweep one above.
+      // Best-effort: a disclosure failure must never block the local pass.
+      try {
+        if (canUseCloudEscalation()) {
+          const settings = useSettingsStore()
+          const arcInjector = resolveBatchInjector({
+            tier: getAnalysisTier(),
+            cloudAvailable: true,
+            runOptIn: cloudRunOptIn.value,
+            projectOptIn: settings.cloudAuditOptIn,
+            provider: settings.aiProvider,
+            model: settings.ollamaModel,
+            localGenerateJson: aiGenerateJson
+          })
+          if (arcInjector) {
+            cloudDisclosure.value = await buildCloudDisclosure({
+              projectId,
+              operation: 'structural-arc',
+              text: scenes.map((s) => s.content).join('\n\n'),
+              systemPrompt: 'You are a narrative structure analyst for fiction manuscripts.',
+              provider: settings.aiProvider,
+              model: settings.ollamaModel
+            })
+          }
+        }
+      } catch {
+        // Keep whichever disclosure (if any) the sweep block produced.
+      }
+
       for (let i = 0; i < PASSES.length; i++) {
         const pass = PASSES[i]
         activePass.value = i
@@ -126,7 +156,23 @@ export function useBetaReader() {
             )
           }
         } else if (pass.key === 'arc') {
-          passResults.arc = await analyzeArc(scenes, aiOptions)
+          const tier = getAnalysisTier()
+          const available = canUseCloudEscalation()
+          const settings = useSettingsStore()
+          const injector = resolveBatchInjector({
+            tier,
+            cloudAvailable: available,
+            runOptIn: cloudRunOptIn.value,
+            projectOptIn: settings.cloudAuditOptIn,
+            provider: settings.aiProvider,
+            model: settings.ollamaModel,
+            localGenerateJson: aiGenerateJson
+          })
+          if (injector) {
+            passResults.arc = await analyzeArc(scenes, aiOptions, { generateJson: injector })
+          } else {
+            passResults.arc = await analyzeArc(scenes, aiOptions)
+          }
         } else if (pass.key === 'repetition') {
           passResults.repetitions = await detectRepetitions(scenes, aiOptions)
         }
