@@ -111,6 +111,7 @@ import {
   describeFinalizeReport
 } from '../services/generation/finalizeArtifacts'
 import { RunHealth, describeRunHealth } from '../services/generation/runHealth'
+import { mapPlanScenes } from '../services/generation/planScenes'
 import {
   snapshotBeforeRun,
   saveRunStateSnapshot,
@@ -1174,38 +1175,13 @@ export function useVolumeStoryGenerator() {
 
       chapterPlan.value = directorResult.chapters
 
-      scenePlan.value = planScenes.map((s, i) => ({
-        sceneNumber: i + 1,
-        sceneIndex: i + 1,
-        title: s.title || `Scene ${i + 1}`,
-        goal: s.emotionalGoal || '',
-        obstacle: s.whatChanges || '',
-        characters: s.charactersPresent || [],
-        location: s.location || '',
-        change: s.whatChanges || '',
-        toneNote: s.tension || 'medium',
-        tension: s.tension || 'medium',
-        pacing: s.pacing || 'medium',
-        estimatedWords:
-          !structureSpec && singleChapter
-            ? effectiveWordTarget
-            : s.estimatedWords || Math.round(effectiveWordTarget / scenes.length),
-        emotionalGoal: s.emotionalGoal || '',
-        whatChanges: s.whatChanges || '',
-        charactersPresent: s.charactersPresent || [],
-        characterWants: s.characterWants || {},
-        setup: s.setup || '',
-        payoff: s.payoff || 'none',
-        sensoryAnchor: s.sensoryAnchor || '',
-        arcPosition: s.arcPosition || '',
-        // POV anchor: use the director's choice, else the first character present.
-        // Keeps narration from drifting between viewpoints across a long draft.
-        pov:
-          s.pov ||
-          s.povCharacter ||
-          (Array.isArray(s.charactersPresent) ? s.charactersPresent[0] : '') ||
-          ''
-      }))
+      // Plan-scene mapping lives in services/generation/planScenes so the
+      // director→plan transit is unit-testable (unnamed fields die here).
+      scenePlan.value = mapPlanScenes(planScenes, {
+        singleChapter,
+        structureSpec,
+        effectiveWordTarget
+      })
 
       progress.current = 4
       progress.statusText = 'Sealing the Arc Contract...'
