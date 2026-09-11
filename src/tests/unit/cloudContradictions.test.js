@@ -10,6 +10,7 @@ vi.mock('@/services/aiProviderBudget', () => ({
 }))
 
 import { buildCloudBatchInjector } from '@/composables/betareader/cloudContradictions'
+import { combineDisclosures } from '@/composables/betareader/cloudContradictions'
 import { backendStream } from '@/services/backendAiService'
 import { providerBudget, BudgetExceededError } from '@/services/aiProviderBudget'
 
@@ -119,6 +120,55 @@ describe('resolveBatchInjector', () => {
         projectOptIn: true
       })
     ).toBeUndefined()
+  })
+})
+
+describe('combineDisclosures', () => {
+  const disc = (over = {}) => ({
+    operation: 'Contradiction sweep',
+    textLength: 4000,
+    estimatedTokens: 1100,
+    provider: 'openai',
+    model: 'gpt-4o-mini',
+    estimatedCostUsd: 0.022,
+    warning: 'w',
+    ...over
+  })
+
+  it('returns null for no disclosures', () => {
+    expect(combineDisclosures([])).toBeNull()
+  })
+
+  it('passes a lone disclosure through unchanged', () => {
+    expect(combineDisclosures([disc()])).toEqual(disc())
+  })
+
+  it('sums a full-audit run and names it honestly', () => {
+    const out = combineDisclosures([
+      disc({
+        operation: 'Contradiction sweep',
+        estimatedTokens: 1100,
+        estimatedCostUsd: 0.022,
+        textLength: 4000
+      }),
+      disc({
+        operation: 'Structural arc analysis',
+        estimatedTokens: 5200,
+        estimatedCostUsd: 0.09,
+        textLength: 20000
+      }),
+      disc({
+        operation: 'Pacing and structure review',
+        estimatedTokens: 5100,
+        estimatedCostUsd: 0.088,
+        textLength: 20000
+      })
+    ])
+    expect(out.operation).toBe('Full manuscript quality audit')
+    expect(out.estimatedTokens).toBe(11400)
+    expect(out.estimatedCostUsd).toBeCloseTo(0.2, 10)
+    expect(out.textLength).toBe(44000)
+    expect(out.provider).toBe('openai')
   })
 })
 

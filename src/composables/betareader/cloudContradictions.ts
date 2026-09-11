@@ -1,5 +1,5 @@
 import { backendStream } from '../../services/backendAiService'
-import { providerBudget, BudgetExceededError } from '../../services/aiProviderBudget'
+import { providerBudget } from '../../services/aiProviderBudget'
 import type { aiGenerateJson } from '../useAiService'
 
 const CHARS_PER_TOKEN = 4
@@ -85,4 +85,27 @@ export function resolveBatchInjector(ctx: BatchInjectorContext) {
     localGenerateJson: ctx.localGenerateJson,
     onFallback: ctx.onFallback
   })
+}
+
+/**
+ * Combine per-pass disclosures into one full-audit disclosure.
+ *
+ * Each routed pass previously overwrote the panel line, so a three-pass
+ * cloud run displayed one pass's estimate. Sums tokens, cost and text;
+ * provider/model/warning come from the first entry. A lone disclosure
+ * passes through untouched (same values, no relabel) so single-pass runs
+ * read exactly as before; empty input yields null.
+ */
+export function combineDisclosures(disclosures: any[]): any | null {
+  const list = (disclosures || []).filter(Boolean)
+  if (list.length === 0) return null
+  if (list.length === 1) return list[0]
+  const first = list[0]
+  return {
+    ...first,
+    operation: 'Full manuscript quality audit',
+    textLength: list.reduce((a, d) => a + (d.textLength || 0), 0),
+    estimatedTokens: list.reduce((a, d) => a + (d.estimatedTokens || 0), 0),
+    estimatedCostUsd: list.reduce((a, d) => a + (d.estimatedCostUsd || 0), 0)
+  }
 }

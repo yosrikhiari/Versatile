@@ -4,7 +4,7 @@ import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { extractAllFacts } from './factLedger'
 import { detectContradictions } from './contradictionDetector'
-import { resolveBatchInjector } from './cloudContradictions'
+import { resolveBatchInjector, combineDisclosures } from './cloudContradictions'
 import {
   buildCloudDisclosure,
   canUseCloudEscalation,
@@ -70,82 +70,61 @@ export function useBetaReader() {
 
       // Disclosure for the panel's opt-in line, built before the pass starts.
       // Best-effort: a disclosure failure must never block the local pass.
+      // One combined line for the whole run: each routed pass previously
+      // overwrote the last, so a three-pass cloud run displayed one pass's
+      // estimate. resolveBatchInjector is pure, so probing twice (here and
+      // in the pass branches below) is cheap and keeps this block local.
       try {
         if (canUseCloudEscalation()) {
           const settings = useSettingsStore()
-          cloudDisclosure.value = await buildCloudDisclosure({
-            projectId,
-            operation: 'contradiction-sweep',
-            text: scenes.map((s) => s.content).join('\n\n'),
-            systemPrompt: 'You are an expert fiction editor. Detect contradictions across scenes.',
+          const manuscriptText = scenes.map((s) => s.content).join('\n\n')
+          const ctxBase = {
+            tier: getAnalysisTier(),
+            cloudAvailable: true,
+            runOptIn: cloudRunOptIn.value,
+            projectOptIn: settings.cloudAuditOptIn,
             provider: settings.aiProvider,
-            model: settings.ollamaModel
-          })
+            model: settings.ollamaModel,
+            localGenerateJson: aiGenerateJson
+          }
+          const routed: Array<{ operation: any; systemPrompt: string }> = []
+          if (resolveBatchInjector(ctxBase)) {
+            routed.push({
+              operation: 'contradiction-sweep',
+              systemPrompt: 'You are an expert fiction editor. Detect contradictions across scenes.'
+            })
+          }
+          if (resolveBatchInjector(ctxBase)) {
+            routed.push({
+              operation: 'structural-arc',
+              systemPrompt: 'You are a narrative structure analyst for fiction manuscripts.'
+            })
+          }
+          if (resolveBatchInjector(ctxBase)) {
+            routed.push({
+              operation: 'pacing-review',
+              systemPrompt: 'You are a prose style analyst for fiction manuscripts.'
+            })
+          }
+          const built = []
+          for (const r of routed) {
+            built.push(
+              await buildCloudDisclosure({
+                projectId,
+                operation: r.operation,
+                text: manuscriptText,
+                systemPrompt: r.systemPrompt,
+                provider: settings.aiProvider,
+                model: settings.ollamaModel
+              })
+            )
+          }
+          cloudDisclosure.value = combineDisclosures(built)
         } else {
           cloudDisclosure.value = null
         }
       } catch {
         cloudDisclosure.value = null
-      }
-
-      // The arc prompt dominates (whole manuscript) — when it will route to
-      // cloud its estimate supersedes the contradiction-sweep one above.
-      // Best-effort: a disclosure failure must never block the local pass.
-      try {
-        if (canUseCloudEscalation()) {
-          const settings = useSettingsStore()
-          const arcInjector = resolveBatchInjector({
-            tier: getAnalysisTier(),
-            cloudAvailable: true,
-            runOptIn: cloudRunOptIn.value,
-            projectOptIn: settings.cloudAuditOptIn,
-            provider: settings.aiProvider,
-            model: settings.ollamaModel,
-            localGenerateJson: aiGenerateJson
-          })
-          if (arcInjector) {
-            cloudDisclosure.value = await buildCloudDisclosure({
-              projectId,
-              operation: 'structural-arc',
-              text: scenes.map((s) => s.content).join('\n\n'),
-              systemPrompt: 'You are a narrative structure analyst for fiction manuscripts.',
-              provider: settings.aiProvider,
-              model: settings.ollamaModel
-            })
-          }
-        }
-      } catch {
-        // Keep whichever disclosure (if any) the sweep block produced.
-      }
-
-      // The repetition prompt is also whole-manuscript — when it will route
-      // to cloud its estimate supersedes the arc one above.
-      // Best-effort: a disclosure failure must never block the local pass.
-      try {
-        if (canUseCloudEscalation()) {
-          const settings = useSettingsStore()
-          const repetitionInjector = resolveBatchInjector({
-            tier: getAnalysisTier(),
-            cloudAvailable: true,
-            runOptIn: cloudRunOptIn.value,
-            projectOptIn: settings.cloudAuditOptIn,
-            provider: settings.aiProvider,
-            model: settings.ollamaModel,
-            localGenerateJson: aiGenerateJson
-          })
-          if (repetitionInjector) {
-            cloudDisclosure.value = await buildCloudDisclosure({
-              projectId,
-              operation: 'pacing-review',
-              text: scenes.map((s) => s.content).join('\n\n'),
-              systemPrompt: 'You are a prose style analyst for fiction manuscripts.',
-              provider: settings.aiProvider,
-              model: settings.ollamaModel
-            })
-          }
-        }
-      } catch {
-        // Keep whichever disclosure (if any) the earlier blocks produced.
       }
 
       for (let i = 0; i < PASSES.length; i++) {
