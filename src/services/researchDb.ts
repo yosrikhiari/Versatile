@@ -393,11 +393,21 @@ async function getOrBuildVectorIndex(projectId: any, chunks: any[], queryDim: nu
 
   if (items.length === 0) return { index: null, version: 0, dim: 0 }
 
-  const { VectorIndex } = await import('./vectorIndex')
-  const index = new VectorIndex({ dim: queryDim, nClusters: Math.max(1, Math.floor(Math.sqrt(items.length))) })
-  await index.build(items)
+  // Build new index using queryDim to filter chunks. The build runs in the
+  // vector-index worker (or the keyed fallback where workers don't exist),
+  // keyed by project so corpora never see each other's vectors. Previously
+  // this built main-thread (multi-second freeze at a few thousand chunks).
+  const { buildVectorIndex, searchVectorIndex } = await import('./vectorIndexService')
+  await buildVectorIndex(projectId, items, {
+    dim: queryDim,
+    nClusters: Math.max(1, Math.floor(Math.sqrt(items.length)))
+  })
 
-  const entry = { index, version: VECTOR_INDEX_VERSION, dim: queryDim }
+  const entry = {
+    index: { search: (q: any, limit: number) => searchVectorIndex(projectId, q, limit) },
+    version: VECTOR_INDEX_VERSION,
+    dim: queryDim
+  }
   vectorIndexCache.set(projectId, entry)
   return entry
 }

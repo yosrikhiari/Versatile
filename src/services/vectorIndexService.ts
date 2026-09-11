@@ -6,7 +6,7 @@
  * large-scale semantic search.
  */
 
-import type { VectorIndexConfig, SearchResult } from './vectorIndex'
+import type { VectorIndexConfig } from './vectorIndex'
 
 const MAX_SAFE_VECTORS = 50000
 
@@ -37,21 +37,16 @@ function getWorker(): Worker {
       else entry.resolve(result)
     }
     worker.onerror = function (e: ErrorEvent) {
+      // A dead worker must fail its callers, not hang them: reject every
+      // in-flight request the same way terminate does below.
       console.error('[vectorIndex] Worker error:', e.message)
+      for (const [, entry] of pending) {
+        entry.reject(new Error(`Vector index worker error: ${e.message}`))
+      }
+      pending.clear()
     }
   }
   return worker
-}
-
-function terminateWorker(): void {
-  if (worker) {
-    worker.terminate()
-    worker = null
-    for (const [, entry] of pending) {
-      entry.reject(new Error('Worker terminated'))
-    }
-    pending.clear()
-  }
 }
 
 interface WorkerMessage {
@@ -60,32 +55,34 @@ interface WorkerMessage {
   error?: string
 }
 
-let directFns: { 
-  build: (items: any, config: VectorIndexConfig) => Promise<void>
-  search: (query: Float32Array, limit: number) => Promise<SearchResult[]>
-  getStats: () => { nClusters: number; totalVectors: number; dim: number }
-  serialize: () => string
-} | null = null
+// Worker-less fallback (SSR/tests): one real index per key, mirroring the
+// worker's keyed map below. Previously build constructed an index, threw it
+// away, and search ran on a shared empty one — every result was [].
+const directIndexes = new Map<string, any>()
 
 async function directCall(method: string, ...args: unknown[]): Promise<unknown> {
-  if (!directFns) {
+  const [key, ...rest] = args as [string, ...unknown[]]
+  if (method === 'build') {
+    const [items, config] = rest as [any, VectorIndexConfig]
     const { VectorIndex } = await import('./vectorIndex')
-    const index = new VectorIndex({ dim: 0 })
-    directFns = {
-      build: async (items: any, config: VectorIndexConfig) => {
-        const idx = new VectorIndex(config)
-        await idx.build(items as any)
-      },
-      search: async (query: Float32Array, limit: number) => {
-        return index.search(query, limit)
-      },
-      getStats: () => index.getStats(),
-      serialize: () => index.toJSON()
-    }
+    const idx = new VectorIndex(config)
+    await idx.build(items as any)
+    directIndexes.set(key, idx)
+    return { success: true }
   }
-  const fn = directFns[method as keyof typeof directFns]
-  if (!fn) throw new Error('Unknown worker method: ' + method)
-  return (fn as (...args: unknown[]) => Promise<unknown>)(...args)
+  const index = directIndexes.get(key)
+  if (method === 'search') {
+    if (!index) return []
+    const [query, limit] = rest as [Float32Array, number]
+    return index.search(query, limit)
+  }
+  if (method === 'getStats') {
+    return index ? index.getStats() : { nClusters: 0, totalVectors: 0, dim: 0 }
+  }
+  if (method === 'serialize') {
+    return index ? index.toJSON() : '{}'
+  }
+  throw new Error('Unknown worker method: ' + method)
 }
 
 function workerCall(method: string, ...args: unknown[]): Promise<unknown> {
@@ -100,27 +97,32 @@ function workerCall(method: string, ...args: unknown[]): Promise<unknown> {
 }
 
 // --- Public API ---
+//
+// All calls are keyed (researchDb passes projectId): the worker and the
+// fallback each hold one index per key so projects never see each
+// other's vectors.
 
 export async function buildVectorIndex(
+  key: string,
   items: Array<{ id: string; vector: Float32Array; metadata?: Record<string, unknown> }>,
   config: { dim: number; nClusters?: number; nProbe?: number; minClusterSize?: number }
 ): Promise<void> {
   if (items.length > 50000) {
     console.warn(`[vectorIndexService] ${items.length} vectors exceeds safe limit of 50000`)
   }
-  await workerCall('build', items, config)
+  await workerCall('build', key, items, config)
 }
 
-export async function searchVectorIndex(query: Float32Array, limit = 20): Promise<Array<{ id: string; score: number; metadata?: Record<string, unknown> }>> {
-  return workerCall('search', query, limit) as Promise<Array<{ id: string; score: number; metadata?: Record<string, unknown> }>>
+export async function searchVectorIndex(key: string, query: Float32Array, limit = 20): Promise<Array<{ id: string; score: number; metadata?: Record<string, unknown> }>> {
+  return workerCall('search', key, query, limit) as Promise<Array<{ id: string; score: number; metadata?: Record<string, unknown> }>>
 }
 
-export async function getVectorIndexStats(): Promise<{ nClusters: number; totalVectors: number; dim: number }> {
-  return workerCall('getStats') as Promise<{ nClusters: number; totalVectors: number; dim: number }>
+export async function getVectorIndexStats(key: string): Promise<{ nClusters: number; totalVectors: number; dim: number }> {
+  return workerCall('getStats', key) as Promise<{ nClusters: number; totalVectors: number; dim: number }>
 }
 
-export async function serializeVectorIndex(): Promise<string> {
-  return workerCall('serialize') as Promise<string>
+export async function serializeVectorIndex(key: string): Promise<string> {
+  return workerCall('serialize', key) as Promise<string>
 }
 
 export function terminateVectorIndexWorker(): void {
