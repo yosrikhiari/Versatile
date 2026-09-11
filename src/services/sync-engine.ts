@@ -195,7 +195,16 @@ class SyncEngine {
     const storyApiId = await this._idMap.resolveStoryApiId()
     if (!storyApiId) {
       try {
-        await this._transport.pushTable('projects', null, this._idMap, findSyncConfig, db)
+        const { failed } = await this._transport.pushTable('projects', null, this._idMap, findSyncConfig, db)
+        if (failed > 0) {
+          // Projects could not bootstrap — nothing downstream can resolve.
+          // Carry it as a table failure so the retry queue picks it up.
+          this._failedTables.add('projects')
+          syncStatus.lastError = `Push failed on projects — ${failed} row(s) still pending`
+          syncStatus.state = 'error'
+          this._startRetryQueue()
+          return
+        }
       } catch (err) {
         console.error('[SyncEngine] Push failed for projects:', (err as Error).message)
         syncStatus.lastError = `Push failed on projects — ${(err as Error).message}`
@@ -204,7 +213,10 @@ class SyncEngine {
       }
     }
 
+    // Parents before children (branches carry the branchId every row scoping
+    // reads through), documents before their chunks/tags.
     const order = [
+      'branches',
       'projects',
       'volumes',
       'characters',
@@ -215,14 +227,22 @@ class SyncEngine {
       'characterRelationships',
       'volumeEntities',
       'manuscripts',
-      'researchDocuments'
+      'researchDocuments',
+      'researchChunks',
+      'researchTags'
     ]
 
     let anyFailed = false
     for (const tableName of order) {
       try {
-        await this._transport.pushTable(tableName, storyApiId, this._idMap, findSyncConfig, db)
-        this._failedTables.delete(tableName)
+        const { failed } = await this._transport.pushTable(tableName, storyApiId, this._idMap, findSyncConfig, db)
+        if (failed > 0) {
+          anyFailed = true
+          this._failedTables.add(tableName)
+          syncStatus.lastError = `Push failed — ${tableName}: ${failed} row(s) still pending`
+        } else {
+          this._failedTables.delete(tableName)
+        }
       } catch (err) {
         anyFailed = true
         this._failedTables.add(tableName)
@@ -239,7 +259,11 @@ class SyncEngine {
       syncStatus.lastError = `Push deletions failed — ${(err as Error).message}`
     }
 
-    syncStatus.lastSync = new Date().toISOString()
+    // lastSync means "everything known pushed" — stamping it after a
+    // partial failure is what made failed rows read as synced.
+    if (!anyFailed) {
+      syncStatus.lastSync = new Date().toISOString()
+    }
     this._updateSyncStatus()
     if (anyFailed && this._failedTables.size > 0) this._startRetryQueue()
   }
@@ -309,8 +333,8 @@ class SyncEngine {
       for (const tableName of tables) {
         try {
           const storyApiId = await this._idMap.resolveStoryApiId()
-          await this._transport.pushTable(tableName, storyApiId, this._idMap, findSyncConfig, db)
-          this._failedTables.delete(tableName)
+          const { failed } = await this._transport.pushTable(tableName, storyApiId, this._idMap, findSyncConfig, db)
+          if (failed === 0) this._failedTables.delete(tableName)
         } catch (err) {
           console.warn(`[SyncEngine] Retry failed for ${tableName}: ${(err as Error).message}`)
         }

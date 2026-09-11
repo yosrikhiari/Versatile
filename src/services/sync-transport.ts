@@ -49,13 +49,13 @@ export class SyncTransport {
     return typeof config.endpoint === 'function' ? config.endpoint(storyApiId!) : config.endpoint
   }
 
-  async pushTable(tableName: string, storyApiId: string | null, idMap: IdMap, findSyncConfig: FindSyncConfig, db: any): Promise<void> {
+  async pushTable(tableName: string, storyApiId: string | null, idMap: IdMap, findSyncConfig: FindSyncConfig, db: any): Promise<{ pushed: number; failed: number }> {
     const config = findSyncConfig(tableName)
-    if (!config) return
+    if (!config) return { pushed: 0, failed: 0 }
 
     if (tableName !== 'projects' && !storyApiId) {
       storyApiId = await idMap.resolveStoryApiId()
-      if (!storyApiId) return
+      if (!storyApiId) return { pushed: 0, failed: 0 }
     }
 
     const pendings = await db[tableName]
@@ -68,12 +68,22 @@ export class SyncTransport {
     // timer, so aborting here would strand local changes with no visible cause.
     guardSyncPush(tableName, pendings, { entryPoint: `sync-transport.pushTable.${tableName}` })
 
+    // Per-row outcomes surface instead of vanishing: the engine feeds
+    // failures into its retry queue and status, so a failed row no longer
+    // reads as synced while rotting in pending-* forever.
+    let pushed = 0
+    let failed = 0
     for (const local of pendings) {
-      await this.pushOne(config, local, storyApiId, idMap, db)
+      if (await this.pushOne(config, local, storyApiId, idMap, db)) {
+        pushed++
+      } else {
+        failed++
+      }
     }
+    return { pushed, failed }
   }
 
-  async pushOne(config: SyncEntityConfig, local: any, storyApiId: string | null, idMap: IdMap, db: any): Promise<void> {
+  async pushOne(config: SyncEntityConfig, local: any, storyApiId: string | null, idMap: IdMap, db: any): Promise<boolean> {
     const { table, isTopLevel, toApi } = config
     const resolved = this.resolveEndpoint(config, storyApiId!)
 
@@ -99,7 +109,7 @@ export class SyncTransport {
             lastSyncedAt: new Date().toISOString(),
             _suppressHooks: true
           })
-          return
+          return true
         }
 
         const result: any = await this.withRetry(() => this._api(resolved, { method: 'POST', body }))
@@ -118,7 +128,10 @@ export class SyncTransport {
         }
       } else if (local.syncStatus === 'pending-update') {
         const apiId = idMap.getApiId(table, local.id)
-        if (!apiId) return
+        // No server record to update: nothing to do, not a failure. (A
+        // pending-update without an apiId is itself suspicious, but inventing
+        // a POST here would risk the duplicates the PUT path exists to avoid.)
+        if (!apiId) return true
 
         await this.withRetry(() => this._api(`${resolved}/${apiId}`, { method: 'PUT', body }))
 
@@ -127,9 +140,13 @@ export class SyncTransport {
           lastSyncedAt: new Date().toISOString(),
           _suppressHooks: true
         })
+        return true
       }
+      // Unknown syncStatus: no-op, counted as pushed (nothing pending).
+      return true
     } catch (err) {
       console.error(`[SyncTransport] Push failed ${table}:${local.id}`, (err as Error).message)
+      return false
     }
   }
 

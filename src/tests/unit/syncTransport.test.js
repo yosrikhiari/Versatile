@@ -6,12 +6,15 @@ import { SyncTransport } from '../../services/sync-transport'
 function makeMockDb() {
   const rows = new Map()
   const table = {
-    where: () => ({
+    where: (field) => ({
       equals: (id) => ({
         modify: async (patch) => {
           const row = rows.get(id)
           if (row) Object.assign(row, patch)
         }
+      }),
+      anyOf: (...statuses) => ({
+        toArray: async () => [...rows.values()].filter((r) => statuses.includes(r[field]))
       })
     }),
     add: async (row) => {
@@ -81,5 +84,34 @@ describe('SyncTransport.pushOne idempotency', () => {
     // The second call must be a PUT against the existing id, not a second POST.
     expect(rows.get('local-2').apiId).toBe('api-first')
     expect(rows.get('local-2').syncStatus).toBe('synced')
+  })
+
+  it('pushOne reports false when the row cannot be pushed', async () => {
+    const { db } = makeMockDb()
+    const idMap = makeIdMap()
+    const api = async () => {
+      throw new Error('server down')
+    }
+    const transport = new SyncTransport(api)
+    const row = { id: 'local-3', syncStatus: 'pending-create' }
+
+    const ok = await transport.pushOne(CONFIG, row, 'story-1', idMap, db)
+
+    expect(ok).toBe(false)
+  })
+
+  it('pushTable counts pushed vs failed rows instead of swallowing', async () => {
+    const { db, rows } = makeMockDb()
+    rows.set('good-1', { id: 'good-1', syncStatus: 'pending-create' })
+    rows.set('bad-1', { id: 'bad-1', syncStatus: 'pending-create' })
+    const idMap = makeIdMap()
+    const api = async (url, opts) => {
+      if (JSON.stringify(opts?.body || {}).includes('bad-1')) throw new Error('server down')
+      return { id: 'api-x' }
+    }
+    const transport = new SyncTransport(api)
+    const result = await transport.pushTable('characters', 'story-1', idMap, () => CONFIG, db)
+
+    expect(result).toEqual({ pushed: 1, failed: 1 })
   })
 })
