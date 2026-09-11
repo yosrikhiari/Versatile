@@ -51,7 +51,7 @@ src/
 │   ├── useStoryCritic.js       — Draft consistency analysis
 │   └── ...
 ├── services/           — Persistence and external API wrappers (~55 modules)
-│   ├── db-core.js      — Dexie IndexedDB schema (v33, ~40 tables)
+│   ├── db-core.ts      — Dexie IndexedDB schema (v47)
 │   ├── aiService.ts    — Unified AI provider interface
 │   ├── providers/      — OpenAI, Anthropic, Gemini, Groq, Ollama adapters
 │   ├── sync-engine.js  — Offline-to-server sync
@@ -111,7 +111,7 @@ The dev server starts at `http://localhost:5173`.
 - **Framework**: Vue 3 (Composition API, `<script setup>`)
 - **State**: Pinia (15 stores)
 - **Editor**: Tiptap (ProseMirror)
-- **Persistence**: Dexie v33 (IndexedDB, ~40 tables)
+- **Persistence**: Dexie v4 lib, schema v47 (IndexedDB)
 - **Styling**: Tailwind CSS
 - **Build**: Vite
 - **Testing**: Vitest + jsdom (115 files, 1193 tests)
