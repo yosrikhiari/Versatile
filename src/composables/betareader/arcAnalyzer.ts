@@ -58,13 +58,14 @@ Analyze the full manuscript and produce three analyses:
 
 Respond ONLY with valid JSON matching the schema.`
 
-export async function analyzeArc(scenes: any, aiOptions: any) {
+export async function analyzeArc(scenes: any, aiOptions: any, deps?: { generateJson?: typeof aiGenerateJson }) {
+  const generateJson = deps?.generateJson ?? aiGenerateJson
   const scenesText = scenes
     .map((s: any) => `Scene ${s.sceneNumber} ("${s.title}"):\n${s.content}`)
     .join('\n\n---\n\n')
 
   const prompt = `Full manuscript (${scenes.length} scenes):\n\n${scenesText}`
-  const parsed = await aiGenerateJson(prompt, ARC_PROMPT, {
+  const parsed = await generateJson(prompt, ARC_PROMPT, {
     ...aiOptions,
     schema: ARC_SCHEMA,
     schemaName: 'arc_analysis'
