@@ -133,6 +133,12 @@ describe('BetaReader contradictions pass (live Ollama)', () => {
     const settings = useSettingsStore()
     settings.localOnly = true
     settings.ollamaModel = 'qwen3:8b'
+    // The provider defaults to the relative `/ollama` endpoint, which only
+    // resolves behind the vite dev-server proxy. Without this line every
+    // batch fails fast to null and the test passes vacuously — proven by
+    // /api/ps showing no loaded model after a "green" run.
+    const { setOllamaEndpoint } = await import('@/config/ollama')
+    setOllamaEndpoint('http://localhost:11434')
     getProjectDigests.mockResolvedValue([])
     getProjectChapterDigests.mockResolvedValue([])
     getProjectVolumeDigests.mockResolvedValue([])
@@ -177,6 +183,12 @@ describe('BetaReader contradictions pass (live Ollama)', () => {
     async () => {
       if (!ready) return
       const out = await detectContradictions(ledgers, scenes, {})
+      // Proof inference actually happened: without it this whole test
+      // passes vacuously (batches fail fast to null and only the
+      // deterministic finding asserts). A loaded completion model within
+      // keepalive means Ollama did work for this run.
+      const ps = await fetch('http://localhost:11434/api/ps').then((r) => r.json())
+      expect((ps.models || []).length).toBeGreaterThan(0)
       // Deterministic Pass-2 resurrection must survive the live run.
       const deaths = out.filter((r) => r.category === 'dead_then_alive')
       expect(deaths.length).toBeGreaterThanOrEqual(1)
