@@ -39,13 +39,14 @@ Severity: "warning" for patterns that noticeably distract, "info" for minor over
 Include specific examples and which scenes are affected.
 Respond ONLY with valid JSON matching the schema.`
 
-export async function detectRepetitions(scenes: any, aiOptions: any) {
+export async function detectRepetitions(scenes: any, aiOptions: any, deps?: { generateJson?: typeof aiGenerateJson }) {
+  const generateJson = deps?.generateJson ?? aiGenerateJson
   const scenesText = scenes
     .map((s: any) => `Scene ${s.sceneNumber} ("${s.title}"):\n${s.content}`)
     .join('\n\n---\n\n')
 
   const prompt = `Full manuscript (${scenes.length} scenes):\n\n${scenesText}`
-  const parsed: any = await aiGenerateJson(prompt, REPETITION_PROMPT, {
+  const parsed: any = await generateJson(prompt, REPETITION_PROMPT, {
     ...aiOptions,
     schema: REPETITION_SCHEMA,
     schemaName: 'repetition_detection'
