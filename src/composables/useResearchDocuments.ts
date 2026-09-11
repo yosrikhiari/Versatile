@@ -364,8 +364,8 @@ export function useResearchDocuments(projectId: any) {
       oldChunkByText.set(c.text, c)
     }
 
-    await deleteChunksForDocument(documentId)
-
+    // No delete here: the swap below runs delete+insert+doc-update in one
+    // transaction, so any failure above or inside it leaves old chunks intact.
     const segments = splitText(doc.text)
     const fastMode = doc.text.length > FAST_MODE_THRESHOLD
     const allChunks: any[] = []
@@ -388,7 +388,7 @@ export function useResearchDocuments(projectId: any) {
       allChunks.push(...result)
     }
 
-    const chunkRows = []
+    const chunkRows: any[] = []
     const needsEmbedding = []
 
     for (let i = 0; i < allChunks.length; i++) {
@@ -430,12 +430,36 @@ export function useResearchDocuments(projectId: any) {
       }
     }
 
-    await db.researchDocuments.update(documentId, {
-      tags: [...allDocTags].slice(0, 20),
-      chunkCount: allChunks.length
-    })
-
-    const ids = await addResearchChunks(chunkRows)
+    // Atomic swap: delete-old + insert-new + doc update in ONE transaction.
+    // The old code deleted first and inserted after, so a chunking failure
+    // between them stranded the document with zero chunks (same
+    // rewrite-without-rollback shape as the old scene incident). All compute
+    // happens above; only Dexie operations enter the transaction, so there
+    // are no timer gaps for it to auto-commit on. addResearchChunks is
+    // deliberately NOT reused here: its inter-batch setTimeout yields would
+    // risk premature commit on >500-chunk docs, and its rollback is
+    // subsumed by the outer transaction anyway.
+    const ids = await db.transaction(
+      'rw',
+      db.researchChunks,
+      db.researchDocuments,
+      async () => {
+        await deleteChunksForDocument(documentId)
+        let newIds: any[] = []
+        if (chunkRows.length > 0) {
+          newIds = await db.researchChunks.bulkAdd(
+            chunkRows.map((c: any) => ({ ...c, embeddingStatus: c.embeddingStatus || 'PENDING' })),
+            null,
+            { allKeys: true }
+          )
+        }
+        await db.researchDocuments.update(documentId, {
+          tags: [...allDocTags].slice(0, 20),
+          chunkCount: allChunks.length
+        })
+        return newIds
+      }
+    )
 
     if (needsEmbedding.length > 0) {
       const idTextPairs = needsEmbedding.map((i) => ({
