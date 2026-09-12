@@ -107,4 +107,31 @@ describe('deriveSeamWarnings (generation-time seam)', () => {
   it('returns no warnings for an empty digest list', () => {
     expect(deriveSeamWarnings([])).toEqual([])
   })
+
+  it('stays clean across the real pilot boundary (full cast, weeks pass)', () => {
+    // Modeled on the actual qwen3 pilot: ch1 closes with Mara+June in the
+    // lamp room (pencil handoff), ch2 opens weeks later in the snow with
+    // both present. A legitimate time jump with full cast continuity must
+    // not warn — the validator judges presence, not elapsed time.
+    const pilot = [
+      scene({
+        subsectionId: 'ch1s5',
+        chapterNumber: 1,
+        sceneNumber: 5,
+        location: 'lamp room',
+        charactersPresent: ['Mara Voss', 'June Voss'],
+        summary: 'June asks to stay; Mara answers by handing her the log pencil.'
+      }),
+      scene({
+        subsectionId: 'ch2s1',
+        chapterNumber: 2,
+        sceneNumber: 1,
+        location: 'landing and stores',
+        charactersPresent: ['Mara Voss', 'June Voss'],
+        summary: 'First snow, weeks later. June runs the inventory; the pencil lives in her pocket.'
+      })
+    ]
+    const warnings = deriveSeamWarnings(pilot)
+    expect(warnings.filter((w) => w.kind === 'chapter')).toEqual([])
+  })
 })
