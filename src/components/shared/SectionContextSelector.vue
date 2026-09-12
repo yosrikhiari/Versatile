@@ -139,7 +139,7 @@ defineExpose({
       <BaseIcon name="file-text" :size="10" />
       <span>{{ contextPreview.label }}</span>
       <span class="text-text-hint"
-        >({{ contextPreview.chars }}/{{ contextPreview.budgetChars }} chars)</span
+        >{{ contextPreview.chars }} of {{ contextPreview.budgetChars }} chars used</span
       >
       <span v-if="contextPreview.truncated" class="text-warning">truncated</span>
     </div>

@@ -1030,8 +1030,12 @@ function getPhaseLabel(phase) {
           v-for="m in tabs"
           :key="m.id"
           :data-test="`tab-${m.id}`"
-          class="flex-1 py-1.5 text-xs rounded-md font-ui transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-accent"
-          :class="tab === m.id ? 'text-accent' : 'text-text-secondary hover:text-text-primary'"
+          class="flex-1 py-1.5 text-xs rounded-md border font-ui transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-accent"
+          :class="
+            tab === m.id
+              ? 'text-accent border-accent'
+              : 'text-text-secondary border-transparent hover:text-text-primary'
+          "
           :style="tab === m.id ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.14)' } : {}"
           @click="tab = m.id"
         >
