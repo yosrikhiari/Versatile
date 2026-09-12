@@ -5,6 +5,7 @@ import * as axeMatchers from 'vitest-axe/matchers'
 
 import EmptyState from '@/components/shared/EmptyState.vue'
 import Skeleton from '@/components/shared/Skeleton.vue'
+import PreviousGenerationsList from '@/components/story/PreviousGenerationsList.vue'
 
 expect.extend(axeMatchers)
 
@@ -35,5 +36,30 @@ describe('a11y — shared components', () => {
 
   it('Skeleton (panel) has no axe violations', async () => {
     await assertNoViolations(Skeleton, { variant: 'panel', count: 2 })
+  })
+
+  it('PreviousGenerationsList (with entries) has no axe violations', async () => {
+    await assertNoViolations(PreviousGenerationsList, {
+      generations: [
+        {
+          id: 1,
+          title: 'Volume Story',
+          generatedAt: '2026-07-31T00:00:00.000Z',
+          totalWords: 1200,
+          qualityScore: 0
+        },
+        {
+          id: 2,
+          title: 'Volume Story',
+          generatedAt: '2026-08-01T00:00:00.000Z',
+          totalWords: 800,
+          qualityScore: -2
+        }
+      ]
+    })
+  })
+
+  it('PreviousGenerationsList (empty) has no axe violations', async () => {
+    await assertNoViolations(PreviousGenerationsList, { generations: [] })
   })
 })

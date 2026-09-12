@@ -6,6 +6,13 @@ import BaseIcon from '../shared/BaseIcon.vue'
 defineProps({
   generations: { type: Array, default: () => [] }
 })
+
+// qualityScore is stored as 0 both when a run was never evaluated and when
+// it was evaluated with zero issues (see useVolumeStoryGenerator commit),
+// so a bare 0 cannot be read as a real score — it renders as unscored.
+function hasRecordedScore(gen) {
+  return typeof gen?.qualityScore === 'number' && gen.qualityScore !== 0
+}
 </script>
 
 <template>
@@ -25,10 +32,17 @@ defineProps({
           <p class="text-text-hint text-2xs font-ui">
             {{ new Date(gen.generatedAt).toLocaleDateString() }}
             <span v-if="gen.totalWords"> · {{ gen.totalWords }} words</span>
-            <span v-if="gen.qualityScore !== undefined"> · score {{ gen.qualityScore }}</span>
+            <span v-if="hasRecordedScore(gen)"> · score {{ gen.qualityScore }}</span>
+            <span v-else> · no score recorded</span>
           </p>
         </div>
       </div>
     </div>
+  </div>
+  <div v-else class="border-t border-border-subtle pt-4 mt-4">
+    <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
+      Previous Generations
+    </h3>
+    <p class="text-xs text-text-hint">No previous generations yet</p>
   </div>
 </template>
