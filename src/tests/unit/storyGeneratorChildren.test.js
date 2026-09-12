@@ -8,9 +8,9 @@ import ConsistencyReportModal from '@/components/story/ConsistencyReportModal.vu
 const global = { stubs: { BaseIcon: true } }
 
 describe('PreviousGenerationsList', () => {
-  it('renders nothing when there are no generations', () => {
+  it('renders an honest empty state when there are no generations', () => {
     const w = mount(PreviousGenerationsList, { props: { generations: [] }, global })
-    expect(w.text()).not.toContain('Previous Generations')
+    expect(w.text()).toContain('No previous generations yet')
   })
 
   it('lists each generation with title and word count', () => {
