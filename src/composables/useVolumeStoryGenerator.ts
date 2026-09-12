@@ -112,6 +112,8 @@ import {
 } from '../services/generation/finalizeArtifacts'
 import { RunHealth, describeRunHealth } from '../services/generation/runHealth'
 import { mapPlanScenes } from '../services/generation/planScenes'
+import { writeSceneAnalysis } from '../services/generation/sceneAnalysis'
+import { buildSceneAnalysisInput } from '../services/generation/sceneAnalysisInput'
 import {
   snapshotBeforeRun,
   saveRunStateSnapshot,
@@ -428,6 +430,29 @@ export function useVolumeStoryGenerator() {
     // Freeform: the director decides the shape, so size for the largest plan it
     // is allowed to return rather than guessing low and truncating the book.
     return { chapters: 12, scenes: 36 }
+  }
+
+  /**
+   * Record a digest + entity states for a just-committed scene, best-effort.
+   *
+   * This is what feeds the earlier-chapters context on later runs: without
+   * it, only the backfill queue (which may never run) populates digests and
+   * the writer's long memory is just the last-20 log. Never throws — a
+   * digest failure must not fail a written scene. Not awaited by callers
+   * for the same reason; failures land in console, not in the run.
+   */
+  function recordSceneDigest(args: {
+    projectId: any
+    subsectionId: any
+    chapterNumber?: number | null
+    prose?: string
+    structured?: any
+    scene?: any
+  }): void {
+    if (!args.projectId || !args.subsectionId) return
+    writeSceneAnalysis(buildSceneAnalysisInput(args)).catch((err: any) => {
+      console.warn('[useVolumeStoryGenerator] scene digest not recorded:', err?.message || err)
+    })
   }
 
   /**
@@ -1843,6 +1868,16 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
           chapterId: chapterNumber,
           keyFacts: Array.isArray(chosenStructured?.keyFacts) ? chosenStructured.keyFacts : []
         }
+        // Feed the digest layer from the committed scene (best-effort, never
+        // awaited): this is what later runs read as earlier-chapters context.
+        recordSceneDigest({
+          projectId,
+          subsectionId: scene.subsectionId,
+          chapterNumber,
+          prose: fullProse,
+          structured: chosenStructured,
+          scene
+        })
         markSceneComplete()
         actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
         // Checkpoint per scene. Without this the parallel writer — the path a
@@ -2065,6 +2100,16 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
         chapterId: result.chapterId,
         keyFacts: result.keyFacts
       }
+      // Same digest feed as the anchor path (best-effort, never awaited).
+      // chapterId carries the chapter NUMBER here, not a row id.
+      recordSceneDigest({
+        projectId,
+        subsectionId: result.subsectionId,
+        chapterNumber: result.chapterId,
+        prose: result.prose,
+        structured: result.structured,
+        scene: result.scene || result
+      })
     }
 
     const middleOutcomes = []
@@ -2916,6 +2961,16 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
           // the end whenever the array was shorter than its index, silently
           // reordering the draft.
           writtenScenes.value[index] = rebuilt
+          // Digest feed for repaired scenes too (chapter unknown on this
+          // path — states still derive, rollup skips unnumbered chapters).
+          recordSceneDigest({
+            projectId,
+            subsectionId: sub.id,
+            chapterNumber: null,
+            prose: fullProse,
+            structured: result.structured,
+            scene
+          })
         } else {
           await manuscriptStore.updateSubsectionData(sub.id, { contentStatus: 'failed' }, projectId)
         }
