@@ -571,106 +571,12 @@ watch(
       />
 
       <div class="flex-1 flex overflow-hidden relative">
-        <!-- panel-left -->
-        <aside
-          v-if="activePanelName === 'story-generator' && !flowMode && !focusMode"
-          key="story-generator"
-          class="tool-panel w-full md:w-[500px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="story-generator"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'story-bible' && !flowMode && !focusMode"
-          key="story-bible"
-          class="tool-panel w-full md:w-[600px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="story-bible"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'canvas' && !flowMode && !focusMode"
-          key="canvas"
-          class="tool-panel w-full md:w-[400px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="canvas"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'outline' && !flowMode && !focusMode"
-          key="outline"
-          class="tool-panel w-full md:w-[350px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="outline"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'sections' && !flowMode && !focusMode"
-          key="sections"
-          class="tool-panel w-full md:w-[320px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="sections"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'network' && !flowMode && !focusMode"
-          key="network"
-          class="tool-panel w-full md:w-[900px] md:max-w-[95vw] xl:max-w-[900px] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="network"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'timeline' && !flowMode && !focusMode"
-          key="timeline"
-          class="tool-panel w-full md:w-[600px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-hidden shrink-0"
-        >
-          <slot name="timeline"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'voice-lab' && !flowMode && !focusMode"
-          key="voice-lab"
-          class="tool-panel w-full md:w-[420px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="voice-lab"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'whatif' && !flowMode && !focusMode"
-          key="whatif"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="whatif"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'story-shape' && !flowMode && !focusMode"
-          key="story-shape"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="story-shape"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'consistency' && !flowMode && !focusMode"
-          key="consistency"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="consistency"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'beta-reader' && !flowMode && !focusMode"
-          key="beta-reader"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="beta-reader"></slot>
-        </aside>
-        <aside
-          v-else-if="activePanelName === 'cost-dashboard' && !flowMode && !focusMode"
-          key="cost-dashboard"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-r border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
-        >
-          <slot name="cost-dashboard"></slot>
-        </aside>
-        <!-- /panel-left -->
-
         <main
           id="main-content"
           ref="mainContentRef"
           tabindex="-1"
           aria-label="Manuscript editor"
-          class="flex-1 flex flex-col overflow-hidden focus:outline-none"
+          class="flex-1 min-w-0 flex flex-col overflow-hidden focus:outline-none"
         >
           <div class="flex-1 overflow-hidden">
             <slot name="editor"></slot>
@@ -690,6 +596,100 @@ watch(
             <slot name="revise"></slot>
           </div>
         </main>
+
+        <!-- tool panels (dock right of the canvas) -->
+        <aside
+          v-if="activePanelName === 'story-generator' && !flowMode && !focusMode"
+          key="story-generator"
+          class="tool-panel w-full md:w-[420px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="story-generator"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'story-bible' && !flowMode && !focusMode"
+          key="story-bible"
+          class="tool-panel w-full md:w-[600px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="story-bible"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'canvas' && !flowMode && !focusMode"
+          key="canvas"
+          class="tool-panel w-full md:w-[400px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="canvas"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'outline' && !flowMode && !focusMode"
+          key="outline"
+          class="tool-panel w-full md:w-[350px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="outline"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'sections' && !flowMode && !focusMode"
+          key="sections"
+          class="tool-panel w-full md:w-[320px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="sections"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'network' && !flowMode && !focusMode"
+          key="network"
+          class="tool-panel w-full md:w-[900px] md:max-w-[95vw] xl:max-w-[900px] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="network"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'timeline' && !flowMode && !focusMode"
+          key="timeline"
+          class="tool-panel w-full md:w-[600px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+        >
+          <slot name="timeline"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'voice-lab' && !flowMode && !focusMode"
+          key="voice-lab"
+          class="tool-panel w-full md:w-[420px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="voice-lab"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'whatif' && !flowMode && !focusMode"
+          key="whatif"
+          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="whatif"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'story-shape' && !flowMode && !focusMode"
+          key="story-shape"
+          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="story-shape"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'consistency' && !flowMode && !focusMode"
+          key="consistency"
+          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="consistency"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'beta-reader' && !flowMode && !focusMode"
+          key="beta-reader"
+          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="beta-reader"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'cost-dashboard' && !flowMode && !focusMode"
+          key="cost-dashboard"
+          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="cost-dashboard"></slot>
+        </aside>
+        <!-- /tool panels -->
 
         <!-- panel-right -->
         <aside
