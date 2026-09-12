@@ -3,6 +3,7 @@ import {
   evaluateChapter,
   describeChapterGate,
   shortestScenes,
+  checkChapterBoundary,
   CHAPTER_SHORT_RATIO,
   CHAPTER_LONG_RATIO
 } from '../../services/generation/chapterGate'
@@ -432,5 +433,37 @@ describe('chapterGate — tense consistency', () => {
       targetWords: 200
     })
     expect(report.findings.some((f) => f.code === 'tense_shift')).toBe(false)
+  })
+
+  it('warns when consecutive chapters hold different tenses', () => {
+    // A real qwen3:8b pilot chapter flipped the whole regime at the
+    // boundary (past chapter → present chapter) and every gate passed:
+    // tense_shift only compares scenes within one chapter.
+    const findings = checkChapterBoundary(
+      { label: 'Chapter 1', scenes: [pastScene, { ...pastScene, title: 'S1b' }] },
+      { label: 'Chapter 2', scenes: [presentScene, { ...presentScene, title: 'S2b' }] }
+    )
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toMatchObject({ code: 'chapter_tense_shift', severity: 'warn' })
+    expect(findings[0].message).toContain('Chapter 1')
+    expect(findings[0].message).toContain('Chapter 2')
+  })
+
+  it('stays silent when consecutive chapters share a tense', () => {
+    expect(
+      checkChapterBoundary(
+        { label: 'Chapter 1', scenes: [pastScene] },
+        { label: 'Chapter 2', scenes: [{ ...pastScene, title: 'S2' }] }
+      )
+    ).toEqual([])
+  })
+
+  it('abstains when a chapter side has thin evidence', () => {
+    expect(
+      checkChapterBoundary(
+        { label: 'Chapter 1', scenes: [{ title: 'S1', characters: [], prose: 'Mara stood.' }] },
+        { label: 'Chapter 2', scenes: [presentScene] }
+      )
+    ).toEqual([])
   })
 })

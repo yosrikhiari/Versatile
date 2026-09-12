@@ -166,6 +166,61 @@ function weakestDimensionOf(verdicts: ChapterVerdictLike[]): { name: string; sco
   return weakest
 }
 
+const PAST_AUX = ['was', 'were', 'had', 'did', 'would', 'could', 'should', 'might']
+const PRESENT_AUX = ['is', 'are', 'has', 'does', 'will', 'can', 'shall']
+const PAST_IRREGULAR = [
+  'stood', 'went', 'came', 'saw', 'took', 'felt', 'knew', 'thought', 'said',
+  'told', 'made', 'found', 'left', 'kept', 'began', 'wrote', 'spoke'
+]
+
+// Quoted speech keeps its own tense legitimately ("he said 'I am tired'"),
+// so dialogue is stripped before scoring narrative tense. Only double-quoted
+// spans: stripping single quotes would eat contractions.
+function stripDialogue(text: string): string {
+  return String(text || '').replace(/[""][^"""]*["""]/g, ' ')
+}
+
+// Expand n't-contractions so "doesn't" scores as present-tense "does" and
+// "wasn't" as past-tense "was" (otherwise the commonest auxiliaries in real
+// prose never match their word lists). Smart quotes normalized first.
+function expandContractions(text: string): string {
+  return String(text || '')
+    .replace(/[’‘]/g, "'")
+    .replace(/\bcan't\b/gi, 'can not')
+    .replace(/\bwon't\b/gi, 'will not')
+    .replace(/n't\b/gi, ' not')
+}
+
+function tenseCounts(text: string): { past: number; present: number } {
+  const words = expandContractions(stripDialogue(text)).toLowerCase().match(/[a-z']+/g) || []
+  let past = 0
+  let present = 0
+  for (const w of words) {
+    if (PAST_AUX.includes(w) || PAST_IRREGULAR.includes(w)) past += 2
+    else if (PRESENT_AUX.includes(w)) present += 2
+    else if (w.length >= 4 && w.endsWith('ed')) past += 1
+    // No apostrophes: possessives ("June's", "the boat's") are nouns, not
+    // present-tense verbs, and they outnumber real -s verbs in family drama.
+    // Bare plurals ("boats", "hands") still leak through — the margin below
+    // absorbs them.
+    else if (w.length >= 4 && w.endsWith('s') && !w.endsWith('ss') && !w.includes("'")) present += 1
+  }
+  return { past, present }
+}
+
+// Dominant narrative tense, or null when the evidence is thin or tied.
+// Deliberately a bare lean (past>present), not a margin: tuning showed real
+// past narration carries so many plural nouns ("boats", "hands") and stray
+// present bits ("The stores are low" inside narration) that any margin high
+// enough to feel safe also acquits genuine flips. Thin scenes (< 8 markers)
+// and ties abstain instead — no evidence, no finding.
+function dominantTense(text: string): 'past' | 'present' | null {
+  const { past, present } = tenseCounts(text)
+  if (past + present < 8) return null
+  if (past === present) return null
+  return past > present ? 'past' : 'present'
+}
+
 /**
  * Judge a finished chapter.
  *
@@ -259,61 +314,6 @@ export function evaluateChapter(input: ChapterGateInput): ChapterGateReport {
     }
   }
 
-  const PAST_AUX = ['was', 'were', 'had', 'did', 'would', 'could', 'should', 'might']
-const PRESENT_AUX = ['is', 'are', 'has', 'does', 'will', 'can', 'shall']
-const PAST_IRREGULAR = [
-  'stood', 'went', 'came', 'saw', 'took', 'felt', 'knew', 'thought', 'said',
-  'told', 'made', 'found', 'left', 'kept', 'began', 'wrote', 'spoke'
-]
-
-// Quoted speech keeps its own tense legitimately ("he said 'I am tired'"),
-// so dialogue is stripped before scoring narrative tense. Only double-quoted
-// spans: stripping single quotes would eat contractions.
-function stripDialogue(text: string): string {
-  return String(text || '').replace(/[""][^"""]*["""]/g, ' ')
-}
-
-// Expand n't-contractions so "doesn't" scores as present-tense "does" and
-// "wasn't" as past-tense "was" (otherwise the commonest auxiliaries in real
-// prose never match their word lists). Smart quotes normalized first.
-function expandContractions(text: string): string {
-  return String(text || '')
-    .replace(/[’‘]/g, "'")
-    .replace(/\bcan't\b/gi, 'can not')
-    .replace(/\bwon't\b/gi, 'will not')
-    .replace(/n't\b/gi, ' not')
-}
-
-function tenseCounts(text: string): { past: number; present: number } {
-  const words = expandContractions(stripDialogue(text)).toLowerCase().match(/[a-z']+/g) || []
-  let past = 0
-  let present = 0
-  for (const w of words) {
-    if (PAST_AUX.includes(w) || PAST_IRREGULAR.includes(w)) past += 2
-    else if (PRESENT_AUX.includes(w)) present += 2
-    else if (w.length >= 4 && w.endsWith('ed')) past += 1
-    // No apostrophes: possessives ("June's", "the boat's") are nouns, not
-    // present-tense verbs, and they outnumber real -s verbs in family drama.
-    // Bare plurals ("boats", "hands") still leak through — the margin below
-    // absorbs them.
-    else if (w.length >= 4 && w.endsWith('s') && !w.endsWith('ss') && !w.includes("'")) present += 1
-  }
-  return { past, present }
-}
-
-// Dominant narrative tense, or null when the evidence is thin or tied.
-// Deliberately a bare lean (past>present), not a margin: tuning showed real
-// past narration carries so many plural nouns ("boats", "hands") and stray
-// present bits ("The stores are low" inside narration) that any margin high
-// enough to feel safe also acquits genuine flips. Thin scenes (< 8 markers)
-// and ties abstain instead — no evidence, no finding.
-function dominantTense(text: string): 'past' | 'present' | null {
-  const { past, present } = tenseCounts(text)
-  if (past + present < 8) return null
-  if (past === present) return null
-  return past > present ? 'past' : 'present'
-}
-
   // Narrative-tense consistency. A chapter that flips past to present mid-way
   // reads as an editing accident — a real model sample did exactly this and
   // every gate passed, because tense is a chapter-level property no scene
@@ -331,7 +331,6 @@ function dominantTense(text: string): 'past' | 'present' | null {
       )
     }
   }
-
 // Content words that carry payoff meaning: length 4+ and not structural
 // filler. Deliberately small stopword list — an unlisted filler word only
 // adds one more term to hit, while an overzealous list silently unburies
@@ -552,6 +551,35 @@ const planTarget = plan.reduce((sum, s) => sum + (Number(s?.estimatedWords) || 0
       ...(coherence ? { coherence } : {})
     }
   }
+}
+
+/**
+ * Tense-regime check across one chapter boundary.
+ *
+ * A real qwen3:8b pilot held past tense for a whole chapter, then went
+ * fully present for the next — coherent within each chapter, so the
+ * scene-level gate stayed silent on both sides. Each side is judged on
+ * its JOINED prose (one present-tense scene among past ones must not
+ * flip a whole chapter's verdict), with the same thin-evidence
+ * abstention. Warn only: a deliberate regime change at a chapter break
+ * is a legitimate craft choice.
+ */
+export function checkChapterBoundary(
+  prevChapter: { label: string; scenes: Array<{ prose?: string }> },
+  nextChapter: { label: string; scenes: Array<{ prose?: string }> }
+): ChapterGateFinding[] {
+  const joinProse = (scenes: Array<{ prose?: string }>) =>
+    (scenes || []).map((s) => String(s?.prose || '')).join('\n\n')
+  const prev = dominantTense(joinProse(prevChapter?.scenes || []))
+  const next = dominantTense(joinProse(nextChapter?.scenes || []))
+  if (!prev || !next || prev === next) return []
+  return [
+    {
+      code: 'chapter_tense_shift',
+      severity: 'warn',
+      message: `${prevChapter.label} holds ${prev} tense but ${nextChapter.label} switches to ${next}.`
+    }
+  ]
 }
 
 /** One human-readable block for the activity log. */
