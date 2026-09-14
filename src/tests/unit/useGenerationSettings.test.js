@@ -6,6 +6,7 @@ describe('useGenerationSettings', () => {
     const s = useGenerationSettings()
     expect(s.genre.value).toBe('')
     expect(s.tone.value).toBe('')
+    expect(s.focus.value).toBe('')
     expect(s.wordTarget.value).toBe(3500)
     expect(s.usePreciseStructure.value).toBe(false)
     expect(s.volumes.value).toBe(1)

@@ -14,6 +14,7 @@ import { estimateRun, formatDuration, LONG_RUN_WARNING_MS } from '../../services
 // reads it), while the read-only display data comes in as props.
 const genre = defineModel('genre', { type: String, default: '' })
 const tone = defineModel('tone', { type: String, default: '' })
+const focus = defineModel('focus', { type: String, default: '' })
 const wordTarget = defineModel('wordTarget', { type: Number, default: 2000 })
 const usePreciseStructure = defineModel('usePreciseStructure', { type: Boolean, default: false })
 const volumes = defineModel('volumes', { type: Number, default: 1 })
@@ -95,6 +96,21 @@ const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
     >
       <span>No synopsis set — open Project Settings to add a category and description</span>
     </div>
+  </div>
+
+  <div>
+    <label for="gen-focus" class="label-micro text-text-hint mb-2 block"
+      >What should this be about?</label
+    >
+    <textarea
+      id="gen-focus"
+      v-model="focus"
+      data-test="focus-input"
+      rows="3"
+      maxlength="2000"
+      placeholder="e.g. A tense reunion between two estranged siblings at a harbour market…"
+      class="w-full px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary placeholder:text-text-hint placeholder:italic focus:outline-none focus:ring-1 focus:ring-accent resize-y"
+    />
   </div>
 
   <div>

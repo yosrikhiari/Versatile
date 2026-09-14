@@ -70,4 +70,18 @@ describe('GenerationSettingsForm — chapter mode', () => {
     expect(wrapper.find('[data-test="word-target-stepper"]').text()).toContain('Total Word Target')
     expect(wrapper.find('[data-test="volumes-stepper"]').exists()).toBe(false)
   })
+
+  it('renders the topic field in both chapter and arc modes', () => {
+    const chapter = mountForm({ mode: MODE_CHAPTER })
+    expect(chapter.find('[data-test="focus-input"]').exists()).toBe(true)
+    const arc = mountForm({ mode: MODE_ARC })
+    expect(arc.find('[data-test="focus-input"]').exists()).toBe(true)
+  })
+
+  it('emits focus updates via v-model', async () => {
+    const wrapper = mountForm({ mode: MODE_CHAPTER })
+    await wrapper.find('[data-test="focus-input"]').setValue('A harbour reunion.')
+    expect(wrapper.emitted('update:focus')).toBeTruthy()
+    expect(wrapper.emitted('update:focus')[0]).toEqual(['A harbour reunion.'])
+  })
 })

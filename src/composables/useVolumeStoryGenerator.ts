@@ -77,7 +77,7 @@ import {
   buildResearchContext
 } from './generation/context/sceneContext'
 import { buildRagOptions } from '../services/researchScope'
-import { parallelWithLimit, computeSummary } from './generation/utils'
+import { parallelWithLimit, computeSummary, buildEnhancedSynopsis } from './generation/utils'
 import { CommitService } from './generation/commit'
 import { ConsistencyService } from './generation/consistency'
 import {
@@ -759,6 +759,7 @@ export function useVolumeStoryGenerator() {
     wordTarget,
     singleChapter,
     sparkContext,
+    focus,
     auto,
     structure,
     research,
@@ -834,9 +835,7 @@ export function useVolumeStoryGenerator() {
     currentTaskId = actLog.addTask({ name: 'Story Generator', type: 'generation' })
     let bpPhase = actLog.addPhase(currentTaskId, 'Bootstrapping')
 
-    const enhancedSynopsis = sparkContext
-      ? `${synopsis}\n\nAdditional context from brainstorming:\n${sparkContext}`
-      : synopsis
+    const enhancedSynopsis = buildEnhancedSynopsis(synopsis, sparkContext, focus)
 
     let activeStage: any = null
     try {
@@ -2620,6 +2619,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     storyContract,
     synopsis,
     sparkContext,
+    focus,
     onPhaseChange,
     onChunk
   }: any) {
@@ -2818,9 +2818,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       total: scenePlan.value.length
     })
 
-    const enhancedSynopsis = sparkContext
-      ? `${synopsis}\n\nAdditional context from brainstorming:\n${sparkContext}`
-      : synopsis
+    const enhancedSynopsis = buildEnhancedSynopsis(synopsis, sparkContext, focus)
 
     // Cache story bible docs for the entire run (Fix #4 — avoids Dexie re-query per batch)
     const storyDocuments = useStoryDocuments()
@@ -3704,6 +3702,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     synopsis,
     genre,
     tone,
+    focus,
     onChunk
   }: any) {
     if (isContinuing.value) return null
@@ -3743,7 +3742,11 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
         (heartbeat, stageSignal) =>
           director.generateStoryPlan({
             goal: {
-              premise: synopsis || survey.scenes[0]?.chapterSummary || 'Continue the existing story',
+              premise: buildEnhancedSynopsis(
+                synopsis || survey.scenes[0]?.chapterSummary || 'Continue the existing story',
+                null,
+                focus
+              ),
               genre,
               tone,
               wordTarget: chapters * wordsPerChapter,

@@ -204,6 +204,15 @@ describe('useChapterStoryGenerator', () => {
     expect(gen.runSize.value).toEqual({ chapters: 1, scenes: 1 })
   })
 
+  it('forwards the topic focus to the volume pipeline on start and confirm', async () => {
+    await gen.startGeneration({ ...baseSettings, focus: 'A harbour reunion.' })
+    expect(inner.lastStartArgs.focus).toBe('A harbour reunion.')
+    await gen.confirmPlan('')
+    expect(inner.confirmPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ focus: 'A harbour reunion.' })
+    )
+  })
+
   it('a full single-chapter run reaches complete with N scenes written', async () => {
     await gen.startGeneration({ ...baseSettings, scenesPerChapter: 1, wordTarget: 300 })
     await gen.confirmPlan('')

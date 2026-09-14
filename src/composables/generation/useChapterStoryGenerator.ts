@@ -50,6 +50,7 @@ export interface ChapterRunSettings {
   wordTarget: number
   scenesPerChapter: number
   sparkContext?: string
+  focus?: string
   auto?: boolean
   research?: any
   onPhaseChange?: (phase: any) => void
@@ -77,6 +78,7 @@ export function useChapterStoryGenerator() {
     projectId: string
     synopsis: string
     sparkContext: string
+    focus: string
     storyArc: any
     storyContract: string
     wordTarget: number
@@ -145,6 +147,7 @@ export function useChapterStoryGenerator() {
         wordsPerChapter: wordTarget
       },
       sparkContext: settings.sparkContext,
+      focus: settings.focus,
       auto: settings.auto,
       research: settings.research,
       onPhaseChange: settings.onPhaseChange,
@@ -156,6 +159,7 @@ export function useChapterStoryGenerator() {
       projectId: settings.projectId,
       synopsis: settings.synopsis,
       sparkContext: settings.sparkContext || '',
+      focus: settings.focus || '',
       storyArc: result?.storyArc ?? null,
       storyContract: result?.storyContract ?? '',
       wordTarget,
@@ -192,6 +196,7 @@ export function useChapterStoryGenerator() {
       storyContract: options.storyContract ?? ctx?.storyContract ?? '',
       synopsis: options.synopsis ?? ctx?.synopsis ?? '',
       sparkContext: options.sparkContext ?? ctx?.sparkContext ?? '',
+      focus: options.focus ?? ctx?.focus ?? '',
       onPhaseChange: options.onPhaseChange ?? ctx?.onPhaseChange,
       onChunk: options.onChunk ?? ctx?.onChunk
     })

@@ -12,6 +12,27 @@ export function normalizeField(parsed: any, field: any) {
   return parsed[field] || parsed[field.charAt(0).toUpperCase() + field.slice(1)] || ''
 }
 
+/**
+ * Merge the author's topic guidance into the premise the planner/writer see.
+ *
+ * `synopsis` is the project's standing premise, `sparkContext` the optional
+ * brainstorming excerpt, and `focus` the per-run "what should this scene /
+ * chapter be about" field from the Story Tools form. Empty parts are skipped
+ * so a blank field leaves the prompt byte-identical to before.
+ */
+export function buildEnhancedSynopsis(
+  synopsis: string,
+  sparkContext?: string | null,
+  focus?: string | null
+): string {
+  let out = String(synopsis ?? '')
+  const context = String(sparkContext ?? '').trim()
+  if (context) out += `\n\nAdditional context from brainstorming:\n${context}`
+  const topic = String(focus ?? '').trim()
+  if (topic) out += `\n\nWhat this scene / chapter should be about:\n${topic}`
+  return out
+}
+
 export function wrapApiError(error: any) {
   if (!error)
     return new Error('Generation failed. Ensure Ollama is running and your model is loaded.')

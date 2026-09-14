@@ -3,6 +3,7 @@ import {
   sanitizeJsonResponse,
   normalizeField,
   wrapApiError,
+  buildEnhancedSynopsis,
   FIELD_LENGTH_CONSTRAINTS
 } from '@/composables/generation/utils'
 
@@ -115,5 +116,26 @@ describe('retryWithBackoff', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('buildEnhancedSynopsis', () => {
+  it('returns the synopsis unchanged when context and focus are blank', () => {
+    expect(buildEnhancedSynopsis('A storm arrives.', '', '')).toBe('A storm arrives.')
+    expect(buildEnhancedSynopsis('A storm arrives.', null, null)).toBe('A storm arrives.')
+    expect(buildEnhancedSynopsis('A storm arrives.', '   ', '  ')).toBe('A storm arrives.')
+  })
+
+  it('appends spark context and focus in order', () => {
+    const out = buildEnhancedSynopsis('Premise.', 'A brainstorm note.', 'A harbour reunion.')
+    expect(out).toContain('Premise.')
+    expect(out).toContain('Additional context from brainstorming:\nA brainstorm note.')
+    expect(out).toContain('What this scene / chapter should be about:\nA harbour reunion.')
+  })
+
+  it('appends focus alone when there is no spark context', () => {
+    const out = buildEnhancedSynopsis('Premise.', '', 'Two siblings argue.')
+    expect(out).toContain('What this scene / chapter should be about:\nTwo siblings argue.')
+    expect(out).not.toContain('brainstorming')
   })
 })

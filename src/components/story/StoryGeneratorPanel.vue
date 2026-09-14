@@ -88,6 +88,7 @@ const mode = computed(() =>
 const {
   genre,
   tone,
+  focus,
   wordTarget,
   usePreciseStructure,
   volumes,
@@ -431,6 +432,7 @@ async function handleExtendStory(structure) {
       synopsis: synopsis.value,
       genre: genre.value,
       tone: tone.value,
+      focus: focus.value,
       onChunk: handleVolumeChunk
     })
   } catch {
@@ -479,6 +481,7 @@ async function handleVolumeGenerate() {
       wordTarget: wordTarget.value,
       singleChapter: mode.value === MODE_SCENE || mode.value === MODE_CHAPTER, // Keep compatible for now until follow-up task
       sparkContext: sparkContext.value,
+      focus: focus.value,
       auto: autoRun.value,
       structure: usePreciseStructure.value
         ? {
@@ -525,6 +528,7 @@ async function handleVolumeConfirmPlan() {
       storyContract: volumeStoryContract.value,
       synopsis: synopsis.value,
       sparkContext: sparkContext.value,
+      focus: focus.value,
       onPhaseChange: () => {},
       onChunk: handleVolumeChunk
     })
@@ -713,6 +717,7 @@ async function handleChapterGenerate() {
       wordTarget: wordTarget.value,
       scenesPerChapter: scenesPerChapter.value,
       sparkContext: sparkContext.value,
+      focus: focus.value,
       auto: chapterAutoRun.value,
       research: buildResearchScope(),
       onPhaseChange: () => {},
@@ -747,6 +752,7 @@ async function handleChapterConfirmPlan() {
       storyContract: chapterStoryContract.value,
       synopsis: synopsis.value,
       sparkContext: sparkContext.value,
+      focus: focus.value,
       onPhaseChange: () => {},
       onChunk: handleChapterChunk
     })
@@ -1263,6 +1269,7 @@ function getPhaseLabel(phase) {
               <GenerationSettingsForm
                 v-model:genre="genre"
                 v-model:tone="tone"
+                v-model:focus="focus"
                 v-model:word-target="wordTarget"
                 v-model:use-precise-structure="usePreciseStructure"
                 v-model:volumes="volumes"
@@ -1747,6 +1754,7 @@ function getPhaseLabel(phase) {
             <GenerationSettingsForm
               v-model:genre="genre"
               v-model:tone="tone"
+              v-model:focus="focus"
               v-model:word-target="wordTarget"
               v-model:use-precise-structure="usePreciseStructure"
               v-model:volumes="volumes"
