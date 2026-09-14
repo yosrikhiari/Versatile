@@ -5,7 +5,7 @@ import { analyzeWorkspace, generateReport, DEFAULTS } from '../evaluation/driftA
 interface DriftReport {
   generatedAt: string
   pipeline: string
-  config: { recentWindow: number; driftThreshold: number; minDataPoints: number }
+  config: { recentWindow: number; driftThreshold: number; warnThreshold: number; minDataPoints: number }
   summary: {
     totalEvals: number
     workspacesAnalyzed: number
@@ -13,12 +13,14 @@ interface DriftReport {
     dimensionsWithRegression: number
     dimensionsWithImprovement: number
     dimensionsWithVolatility: number
+    dimensionsWithWarning: number
   }
   workspaceResults: any[]
   flaggedItems: {
     regressions: any[]
     improvements: any[]
     volatilityIncreases: any[]
+    warnings: any[]
   }
 }
 
@@ -48,6 +50,11 @@ export function useDriftMonitor() {
     return driftReport.value.flaggedItems?.volatilityIncreases || []
   })
 
+  const flaggedWarnings = computed(() => {
+    if (!driftReport.value) return []
+    return driftReport.value.flaggedItems?.warnings || []
+  })
+
   const hasDrift = computed(() => {
     return flaggedRegressions.value.length > 0 || flaggedImprovements.value.length > 0
   })
@@ -70,6 +77,7 @@ export function useDriftMonitor() {
           config: {
             recentWindow: DEFAULTS.recentWindow,
             driftThreshold: DEFAULTS.driftThreshold,
+            warnThreshold: DEFAULTS.warnThreshold,
             minDataPoints: DEFAULTS.minDataPoints
           },
           summary: {
@@ -78,10 +86,11 @@ export function useDriftMonitor() {
             workspacesWithDrift: 0,
             dimensionsWithRegression: 0,
             dimensionsWithImprovement: 0,
-            dimensionsWithVolatility: 0
+            dimensionsWithVolatility: 0,
+            dimensionsWithWarning: 0
           },
           workspaceResults: [],
-          flaggedItems: { regressions: [], improvements: [], volatilityIncreases: [] }
+          flaggedItems: { regressions: [], improvements: [], volatilityIncreases: [], warnings: [] }
         }
         return driftReport.value
       }
@@ -89,6 +98,7 @@ export function useDriftMonitor() {
       const options = {
         recentWindow: DEFAULTS.recentWindow,
         threshold: DEFAULTS.driftThreshold,
+        warnThreshold: DEFAULTS.warnThreshold,
         minData: DEFAULTS.minDataPoints
       }
 
@@ -119,6 +129,7 @@ export function useDriftMonitor() {
     flaggedRegressions,
     flaggedImprovements,
     flaggedVolatility,
+    flaggedWarnings,
     hasDrift,
     hasHighSeverity,
     analyze,

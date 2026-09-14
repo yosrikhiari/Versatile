@@ -3,6 +3,11 @@ import { EVAL_DIMENSIONS } from '../config/evalDimensions'
 const DEFAULTS = {
   recentWindow: 0.3,
   driftThreshold: 1.0,
+  // Warn tier: visible signal below the act tier. Defaults equal to the act
+  // threshold (warning unreachable) so behavior matches the old single
+  // threshold until calibration lands. Recalibrate on model/prompt change —
+  // see planning/DESIGN-drift-calibration-2026-09-12.md.
+  warnThreshold: 1.0,
   varianceRatioThreshold: 2.0,
   minDataPoints: 10,
   minRecentPoints: 2
@@ -32,8 +37,12 @@ export function computeDrift(evals: any, dimensionNames: any, options: any = {})
   const {
     recentWindow = DEFAULTS.recentWindow,
     threshold = DEFAULTS.driftThreshold,
+    warnThreshold = DEFAULTS.warnThreshold,
     minData = DEFAULTS.minDataPoints
   } = options
+  // Misconfig safety: a warn tier above the act tier can never fire, since
+  // the act check runs first. Clamp so act always dominates.
+  const effectiveWarn = Math.min(warnThreshold, threshold)
 
   if (evals.length < minData) {
     return {
@@ -101,6 +110,16 @@ export function computeDrift(evals: any, dimensionNames: any, options: any = {})
         (delta < 0 ? 'Investigate possible cause.' : 'No action needed.')
     }
 
+    if (status === 'stable' && absDelta >= effectiveWarn) {
+      status = 'warning'
+      severity = 'low'
+      const direction = delta < 0 ? 'dropped' : 'rose'
+      recommendation =
+        `${dimName} ${direction} by ${absDelta.toFixed(1)} points ` +
+        `(baseline ${baseMean.toFixed(1)} → recent ${recentMean.toFixed(1)}). ` +
+        'Below act threshold — watch, no action.'
+    }
+
     if (status === 'stable' && varianceRatio >= DEFAULTS.varianceRatioThreshold) {
       status = 'volatility_increase'
       severity = 'low'
@@ -140,7 +159,7 @@ export function computeDrift(evals: any, dimensionNames: any, options: any = {})
     message: hasDrift
       ? 'Drift detected in one or more dimensions'
       : 'No significant drift detected',
-    config: { recentWindow, threshold, baselineEvals: baseline.length, recentEvals: recent.length },
+    config: { recentWindow, threshold, warnThreshold, baselineEvals: baseline.length, recentEvals: recent.length },
     dimensionDrifts
   }
 }
@@ -211,6 +230,7 @@ export function generateReport(results: any, options: any) {
   const regressions = []
   const improvements = []
   const volatilities = []
+  const warnings = []
 
   for (const r of results) {
     if (r.error) continue
@@ -221,11 +241,14 @@ export function generateReport(results: any, options: any) {
         improvements.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
       if (d.status === 'volatility_increase')
         volatilities.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
+      if (d.status === 'warning')
+        warnings.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
     }
   }
 
   regressions.sort((a, b) => (a.delta || 0) - (b.delta || 0))
   improvements.sort((a, b) => (b.delta || 0) - (a.delta || 0))
+  warnings.sort((a, b) => Math.abs(b.delta || 0) - Math.abs(a.delta || 0))
 
   return {
     generatedAt: new Date().toISOString(),
@@ -233,6 +256,7 @@ export function generateReport(results: any, options: any) {
     config: {
       recentWindow: options.recentWindow,
       driftThreshold: options.threshold,
+      warnThreshold: options.warnThreshold ?? DEFAULTS.warnThreshold,
       minDataPoints: options.minData
     },
     summary: {
@@ -241,13 +265,15 @@ export function generateReport(results: any, options: any) {
       workspacesWithDrift: workspacesWithDrift.length,
       dimensionsWithRegression: regressions.length,
       dimensionsWithImprovement: improvements.length,
-      dimensionsWithVolatility: volatilities.length
+      dimensionsWithVolatility: volatilities.length,
+      dimensionsWithWarning: warnings.length
     },
     workspaceResults: results,
     flaggedItems: {
       regressions,
       improvements,
-      volatilityIncreases: volatilities
+      volatilityIncreases: volatilities,
+      warnings
     }
   }
 }

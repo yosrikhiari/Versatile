@@ -9,6 +9,11 @@ const REPORTS_DIR = resolve(__dirname, '..', '..', '..', 'reports')
 const DEFAULTS = {
   recentWindow: 0.3,
   driftThreshold: 1.0,
+  // Warn tier: visible signal below the act tier. Defaults equal to the act
+  // threshold (warning unreachable) so behavior matches the old single
+  // threshold until calibration lands. Recalibrate on model/prompt change —
+  // see planning/DESIGN-drift-calibration-2026-09-12.md.
+  warnThreshold: 1.0,
   varianceRatioThreshold: 2.0,
   minDataPoints: 10,
   minRecentPoints: 2
@@ -29,6 +34,7 @@ function parseArgs() {
     source: null,
     recentWindow: DEFAULTS.recentWindow,
     threshold: DEFAULTS.driftThreshold,
+    warnThreshold: DEFAULTS.warnThreshold,
     minData: DEFAULTS.minDataPoints,
     format: 'json'
   }
@@ -40,6 +46,8 @@ function parseArgs() {
       flags.recentWindow = parseFloat(args[++i])
     } else if (args[i] === '--threshold' && args[i + 1]) {
       flags.threshold = parseFloat(args[++i])
+    } else if (args[i] === '--warn-threshold' && args[i + 1]) {
+      flags.warnThreshold = parseFloat(args[++i])
     } else if (args[i] === '--min-data' && args[i + 1]) {
       flags.minData = parseInt(args[++i], 10)
     } else if (args[i] === '--format' && args[i + 1]) {
@@ -81,7 +89,15 @@ function splitByPeriod(evals, recentFraction) {
 }
 
 function computeDrift(evals, dimensionNames, options) {
-  const { recentWindow, threshold, minData } = options
+  const {
+    recentWindow = DEFAULTS.recentWindow,
+    threshold = DEFAULTS.driftThreshold,
+    warnThreshold = DEFAULTS.warnThreshold,
+    minData = DEFAULTS.minDataPoints
+  } = options
+  // Misconfig safety: a warn tier above the act tier can never fire, since
+  // the act check runs first. Clamp so act always dominates.
+  const effectiveWarn = Math.min(warnThreshold, threshold)
 
   if (evals.length < minData) {
     return {
@@ -149,6 +165,16 @@ function computeDrift(evals, dimensionNames, options) {
         (delta < 0 ? 'Investigate possible cause.' : 'No action needed.')
     }
 
+    if (status === 'stable' && absDelta >= effectiveWarn) {
+      status = 'warning'
+      severity = 'low'
+      const direction = delta < 0 ? 'dropped' : 'rose'
+      recommendation =
+        `${dimName} ${direction} by ${absDelta.toFixed(1)} points ` +
+        `(baseline ${baseMean.toFixed(1)} → recent ${recentMean.toFixed(1)}). ` +
+        'Below act threshold — watch, no action.'
+    }
+
     if (status === 'stable' && varianceRatio >= DEFAULTS.varianceRatioThreshold) {
       status = 'volatility_increase'
       severity = 'low'
@@ -188,7 +214,13 @@ function computeDrift(evals, dimensionNames, options) {
     message: hasDrift
       ? 'Drift detected in one or more dimensions'
       : 'No significant drift detected',
-    config: { recentWindow, threshold, baselineEvals: baseline.length, recentEvals: recent.length },
+    config: {
+      recentWindow,
+      threshold,
+      warnThreshold,
+      baselineEvals: baseline.length,
+      recentEvals: recent.length
+    },
     dimensionDrifts
   }
 }
@@ -259,6 +291,7 @@ function generateReport(results, options) {
   const regressions = []
   const improvements = []
   const volatilities = []
+  const warnings = []
 
   for (const r of results) {
     if (r.error) continue
@@ -269,11 +302,14 @@ function generateReport(results, options) {
         improvements.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
       if (d.status === 'volatility_increase')
         volatilities.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
+      if (d.status === 'warning')
+        warnings.push({ workspaceType: r.workspaceType, dimension: dim, ...d })
     }
   }
 
   regressions.sort((a, b) => (a.delta || 0) - (b.delta || 0))
   improvements.sort((a, b) => (b.delta || 0) - (a.delta || 0))
+  warnings.sort((a, b) => Math.abs(b.delta || 0) - Math.abs(a.delta || 0))
 
   return {
     generatedAt: new Date().toISOString(),
@@ -281,6 +317,7 @@ function generateReport(results, options) {
     config: {
       recentWindow: options.recentWindow,
       driftThreshold: options.threshold,
+      warnThreshold: options.warnThreshold ?? DEFAULTS.warnThreshold,
       minDataPoints: options.minData
     },
     summary: {
@@ -289,13 +326,15 @@ function generateReport(results, options) {
       workspacesWithDrift: workspacesWithDrift.length,
       dimensionsWithRegression: regressions.length,
       dimensionsWithImprovement: improvements.length,
-      dimensionsWithVolatility: volatilities.length
+      dimensionsWithVolatility: volatilities.length,
+      dimensionsWithWarning: warnings.length
     },
     workspaceResults: results,
     flaggedItems: {
       regressions,
       improvements,
-      volatilityIncreases: volatilities
+      volatilityIncreases: volatilities,
+      warnings
     }
   }
 }
@@ -313,6 +352,7 @@ function printReport(report) {
   log(`Regressions: ${report.summary.dimensionsWithRegression}`)
   log(`Improvements: ${report.summary.dimensionsWithImprovement}`)
   log(`Volatility increases: ${report.summary.dimensionsWithVolatility}`)
+  log(`Warnings: ${report.summary.dimensionsWithWarning}`)
   log('')
 
   if (
@@ -346,6 +386,13 @@ function printReport(report) {
     log('')
   }
 
+  for (const r of report.flaggedItems.warnings) {
+    log(`? WARNING: ${r.workspaceType}/${r.dimension}`)
+    log(`   Delta: ${r.delta}  |  Baseline: ${r.baseline.mean} → Recent: ${r.recent.mean}`)
+    log(`   ${r.recommendation}`)
+    log('')
+  }
+
   if (report.summary.dimensionsWithRegression > 0 || report.summary.dimensionsWithVolatility > 0) {
     log('Recommendations:')
     if (report.summary.dimensionsWithRegression > 0) {
@@ -367,6 +414,7 @@ async function main() {
   const options = {
     recentWindow: flags.recentWindow,
     threshold: flags.threshold,
+    warnThreshold: flags.warnThreshold,
     minData: flags.minData
   }
 
@@ -393,7 +441,13 @@ async function main() {
   log(`Report written to ${reportPath}`)
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+// Importable under vitest (VITEST=true) for tier-agreement tests without
+// executing the CLI; runs unconditionally under node / vite-node otherwise.
+if (!process.env.VITEST) {
+  main().catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
+}
+
+export { computeDrift, generateReport, splitByPeriod, DEFAULTS }

@@ -80,6 +80,25 @@
         </div>
       </div>
 
+      <div v-if="flaggedWarnings.length > 0" class="drift-section">
+        <h4 class="drift-section-title">Warnings</h4>
+        <div
+          v-for="r in flaggedWarnings"
+          :key="`warn-${r.workspaceType}-${r.dimension}`"
+          class="drift-item warning"
+        >
+          <div class="drift-item-header">
+            <span class="dimension-badge">warning</span>
+            <strong>{{ r.workspaceType }}</strong> / {{ r.dimension }}
+          </div>
+          <div class="drift-item-stats">
+            <span>Delta: {{ r.delta }}</span>
+            <span>Baseline: {{ r.baseline.mean }} → Recent: {{ r.recent.mean }}</span>
+          </div>
+          <p class="drift-item-recommendation">{{ r.recommendation }}</p>
+        </div>
+      </div>
+
       <p v-if="driftReport" class="drift-meta">
         {{ driftReport.summary.totalEvals }} evals across
         {{ driftReport.summary.workspacesAnalyzed }} workspaces &middot;
@@ -99,6 +118,7 @@ defineProps({
   flaggedRegressions: { type: Array, default: () => [] },
   flaggedImprovements: { type: Array, default: () => [] },
   flaggedVolatility: { type: Array, default: () => [] },
+  flaggedWarnings: { type: Array, default: () => [] },
   hasDrift: { type: Boolean, default: false },
   hasHighSeverity: { type: Boolean, default: false }
 })
@@ -182,6 +202,10 @@ defineEmits(['run-analysis'])
 }
 .drift-item.volatility {
   border-left: 3px solid var(--vers-status-warning);
+}
+.drift-item.warning {
+  border-left: 3px solid var(--vers-status-warning);
+  border-left-style: dashed;
 }
 .drift-item-header {
   display: flex;
