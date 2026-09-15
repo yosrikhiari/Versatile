@@ -68,7 +68,7 @@
     "docx": "^9.7.1",
     "dompurify": "^3.4.15",
     "focus-trap": "^8.2.1",
-    "gpt-tokenizer": "^3.4.0",
+    "gpt-tokenizer": "^4.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
