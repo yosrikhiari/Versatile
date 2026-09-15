@@ -1,4 +1,7 @@
 <script setup>
+import BaseSection from '../ui/BaseSection.vue'
+import BaseButton from '../ui/BaseButton.vue'
+import BaseSwitch from '../ui/BaseSwitch.vue'
 import { computed } from 'vue'
 import { MODE_SCENE, MODE_CHAPTER } from '../../constants/generationModes'
 import BaseChip from '../ui/BaseChip.vue'
@@ -21,6 +24,8 @@ const volumes = defineModel('volumes', { type: Number, default: 1 })
 const chaptersPerVolume = defineModel('chaptersPerVolume', { type: Number, default: 10 })
 const wordsPerChapter = defineModel('wordsPerChapter', { type: Number, default: 2000 })
 const scenesPerChapter = defineModel('scenesPerChapter', { type: Number, default: 3 })
+
+const emit = defineEmits(['open-context'])
 
 const props = defineProps({
   genres: { type: Array, default: () => [] },
@@ -82,178 +87,220 @@ const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
 </script>
 
 <template>
-  <div>
-    <p class="label-micro text-text-hint mb-2">Story Synopsis</p>
-    <div
-      v-if="hasSynopsis"
-      class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary whitespace-pre-wrap"
-    >
-      {{ synopsis }}
-    </div>
-    <div
-      v-else
-      class="w-full min-h-20 px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-hint italic flex items-center justify-center text-center"
-    >
-      <span>No synopsis set — open Project Settings to add a category and description</span>
-    </div>
-  </div>
+  <!-- ── Brief ──────────────────────────────────────────────────────────── -->
+  <BaseSection
+    first
+    title="Brief"
+    description="What the model already knows about this book, and what you want from this run."
+  >
+    <template #actions>
+      <BaseButton variant="ghost" size="sm" icon="book-open" @click="emit('open-context')">
+        Story context
+      </BaseButton>
+    </template>
 
-  <div>
-    <label for="gen-focus" class="label-micro text-text-hint mb-2 block"
-      >What should this be about?</label
-    >
-    <textarea
-      id="gen-focus"
-      v-model="focus"
-      data-test="focus-input"
-      rows="3"
-      maxlength="2000"
-      placeholder="e.g. A tense reunion between two estranged siblings at a harbour market…"
-      class="w-full px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary placeholder:text-text-hint placeholder:italic focus:outline-none focus:ring-1 focus:ring-accent resize-y"
-    />
-  </div>
-
-  <div>
-    <p id="gen-genre-label" class="label-micro text-text-hint mb-2">Genre</p>
-    <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="gen-genre-label">
-      <BaseChip
-        v-for="g in genres"
-        :key="g"
-        variant="filter"
-        size="md"
-        :active="genre === g"
-        @click="toggleGenre(g)"
-      >
-        {{ g }}
-      </BaseChip>
-    </div>
-  </div>
-
-  <div>
-    <p id="gen-tone-label" class="label-micro text-text-hint mb-2">Tone</p>
-    <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="gen-tone-label">
-      <BaseChip
-        v-for="t in tones"
-        :key="t"
-        variant="filter"
-        size="md"
-        :active="tone === t"
-        @click="toggleTone(t)"
-      >
-        {{ t }}
-      </BaseChip>
-    </div>
-  </div>
-
-  <div v-if="isChapterMode || !usePreciseStructure" data-test="word-target-stepper">
-    <BaseStepper
-      v-model="wordTarget"
-      :label="
-        isChapterMode
-          ? 'Chapter Word Target'
-          : mode === MODE_SCENE
-            ? 'Words per Scene'
-            : 'Total Word Target'
-      "
-      :min="500"
-      :max="10000"
-      :step="100"
-      suffix="words"
-    />
-  </div>
-
-  <!-- Chapter mode: one chapter, so the only structural choice is how many
-       scenes it is cut into. -->
-  <div v-if="isChapterMode" class="rounded-lg border border-border-subtle p-3 space-y-3">
-    <div data-test="scenes-per-chapter-stepper" role="group" aria-label="Scenes in this chapter">
-      <BaseStepper
-        v-model="scenesPerChapter"
-        label="Scenes / chapter"
-        :min="1"
-        :max="12"
-        size="sm"
-      />
-    </div>
-
-    <p
-      data-test="estimate"
-      role="status"
-      aria-live="polite"
-      class="text-xs font-ui leading-relaxed"
-      :class="isLongRun ? 'text-warning' : 'text-text-hint'"
-    >
-      1 chapter · {{ scenesPerChapter }} scene(s) · ~{{
-        Math.ceil(wordTarget / Math.max(1, scenesPerChapter)).toLocaleString()
-      }}
-      words per scene. Estimated generation time: <strong>{{ estimateLabel }}</strong>
-      <template v-if="runEstimate.measured">
-        at {{ runEstimate.tokensPerSecond.toFixed(1) }} tokens/sec measured on this machine.
-      </template>
-      <template v-else> (provisional — refined once a run has been measured here). </template>
-    </p>
-  </div>
-
-  <!-- Precise structure: exact volumes / chapters / words -->
-  <div v-else class="rounded-lg border border-border-subtle p-3 space-y-3">
-    <BaseCheckbox
-      v-model="usePreciseStructure"
-      label="Precise structure (exact volumes, chapters & length)"
-    />
-
-    <div v-if="usePreciseStructure" class="grid grid-cols-2 gap-3">
-      <div data-test="volumes-stepper" role="group" aria-label="Volumes">
-        <BaseStepper v-model="volumes" label="Volumes" :min="1" :max="20" size="sm" />
+    <div class="space-y-4">
+      <div>
+        <p class="label-micro text-text-hint mb-1.5">Story synopsis</p>
+        <div
+          v-if="hasSynopsis"
+          class="font-ui text-sm text-text-secondary leading-5 whitespace-pre-wrap border-l-2 border-border-subtle pl-3"
+        >
+          {{ synopsis }}
+        </div>
+        <p v-else class="font-ui text-xs text-text-hint leading-5">
+          No synopsis set — open Project Settings to add a category and description. The generator
+          needs one to plan from.
+        </p>
       </div>
-      <div data-test="chapters-per-volume-stepper" role="group" aria-label="Chapters per volume">
-        <BaseStepper
-          v-model="chaptersPerVolume"
-          label="Chapters / volume"
-          :min="1"
-          :max="60"
-          size="sm"
+
+      <div>
+        <label for="gen-focus" class="label-micro text-text-hint mb-1.5 block">
+          What should this be about?
+        </label>
+        <textarea
+          id="gen-focus"
+          v-model="focus"
+          data-test="focus-input"
+          rows="3"
+          maxlength="2000"
+          placeholder="e.g. A tense reunion between two estranged siblings at a harbour market…"
+          class="w-full px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-y font-ui transition-colors duration-150"
         />
       </div>
-      <div data-test="words-per-chapter-stepper" role="group" aria-label="Words per chapter">
+    </div>
+  </BaseSection>
+
+  <!-- ── Style ──────────────────────────────────────────────────────────── -->
+  <BaseSection
+    title="Style"
+    description="One genre, one tone. Leave both unset to let the synopsis decide."
+  >
+    <div class="space-y-3">
+      <div>
+        <p id="gen-genre-label" class="label-micro text-text-hint mb-1.5">Genre</p>
+        <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="gen-genre-label">
+          <BaseChip
+            v-for="g in genres"
+            :key="g"
+            variant="filter"
+            size="sm"
+            :active="genre === g"
+            @click="toggleGenre(g)"
+          >
+            {{ g }}
+          </BaseChip>
+        </div>
+      </div>
+
+      <div>
+        <p id="gen-tone-label" class="label-micro text-text-hint mb-1.5">Tone</p>
+        <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="gen-tone-label">
+          <BaseChip
+            v-for="t in tones"
+            :key="t"
+            variant="filter"
+            size="sm"
+            :active="tone === t"
+            @click="toggleTone(t)"
+          >
+            {{ t }}
+          </BaseChip>
+        </div>
+      </div>
+    </div>
+  </BaseSection>
+
+  <!-- ── Length ─────────────────────────────────────────────────────────── -->
+  <BaseSection
+    title="Length"
+    :description="
+      isChapterMode
+        ? 'One chapter, cut into scenes. The estimate is measured on this machine once a run has been timed here.'
+        : mode === MODE_SCENE
+          ? 'A single scene.'
+          : 'A whole arc — either a total word target, or an exact structure.'
+    "
+  >
+    <div class="space-y-4">
+      <div v-if="isChapterMode || !usePreciseStructure" data-test="word-target-stepper">
         <BaseStepper
-          v-model="wordsPerChapter"
-          label="Words / chapter"
-          :min="300"
-          :max="20000"
+          v-model="wordTarget"
+          :label="
+            isChapterMode
+              ? 'Chapter Word Target'
+              : mode === MODE_SCENE
+                ? 'Words per Scene'
+                : 'Total Word Target'
+          "
+          :min="500"
+          :max="10000"
           :step="100"
-          size="sm"
+          suffix="words"
         />
       </div>
-      <div data-test="scenes-per-chapter-stepper" role="group" aria-label="Scenes per chapter">
-        <BaseStepper
-          v-model="scenesPerChapter"
-          label="Scenes / chapter"
-          :min="1"
-          :max="12"
+
+      <!-- Chapter mode: one chapter, so the only structural choice is how many
+           scenes it is cut into. -->
+      <template v-if="isChapterMode">
+        <div
+          data-test="scenes-per-chapter-stepper"
+          role="group"
+          aria-label="Scenes in this chapter"
+        >
+          <BaseStepper
+            v-model="scenesPerChapter"
+            label="Scenes / chapter"
+            :min="1"
+            :max="12"
+            size="sm"
+          />
+        </div>
+
+        <p
+          data-test="estimate"
+          role="status"
+          aria-live="polite"
+          class="font-ui text-xs leading-5"
+          :class="isLongRun ? 'text-warning' : 'text-text-hint'"
+        >
+          1 chapter · {{ scenesPerChapter }} scene(s) · ~{{
+            Math.ceil(wordTarget / Math.max(1, scenesPerChapter)).toLocaleString()
+          }}
+          words per scene. Estimated generation time: <strong>{{ estimateLabel }}</strong>
+          <template v-if="runEstimate.measured">
+            at {{ runEstimate.tokensPerSecond.toFixed(1) }} tokens/sec measured on this machine.
+          </template>
+          <template v-else> (provisional — refined once a run has been measured here). </template>
+        </p>
+      </template>
+
+      <!-- Precise structure: exact volumes / chapters / words -->
+      <template v-else>
+        <BaseSwitch
+          v-model="usePreciseStructure"
           size="sm"
+          label="Precise structure"
+          description="Exact volumes, chapters and words per chapter"
         />
-      </div>
+        <div v-if="usePreciseStructure" class="grid grid-cols-2 gap-x-4 gap-y-3">
+          <div data-test="volumes-stepper" role="group" aria-label="Volumes">
+            <BaseStepper v-model="volumes" label="Volumes" :min="1" :max="20" size="sm" />
+          </div>
+          <div
+            data-test="chapters-per-volume-stepper"
+            role="group"
+            aria-label="Chapters per volume"
+          >
+            <BaseStepper
+              v-model="chaptersPerVolume"
+              label="Chapters / volume"
+              :min="1"
+              :max="60"
+              size="sm"
+            />
+          </div>
+          <div data-test="words-per-chapter-stepper" role="group" aria-label="Words per chapter">
+            <BaseStepper
+              v-model="wordsPerChapter"
+              label="Words / chapter"
+              :min="300"
+              :max="20000"
+              :step="100"
+              size="sm"
+            />
+          </div>
+          <div data-test="scenes-per-chapter-stepper" role="group" aria-label="Scenes per chapter">
+            <BaseStepper
+              v-model="scenesPerChapter"
+              label="Scenes / chapter"
+              :min="1"
+              :max="12"
+              size="sm"
+            />
+          </div>
+        </div>
+        <p v-if="usePreciseStructure" class="font-ui text-xs text-text-hint leading-5">
+          {{ volumes * chaptersPerVolume }} chapters · ~{{ estimatedTotalWords.toLocaleString() }}
+          words total. Chapters are linked via hook endings + a shared spine for continuity.
+        </p>
+        <p
+          v-if="usePreciseStructure"
+          class="font-ui text-xs leading-5"
+          :class="isLongRun ? 'text-warning' : 'text-text-hint'"
+        >
+          Estimated generation time:
+          <strong>{{ estimateLabel }}</strong>
+          <template v-if="runEstimate.measured">
+            at {{ runEstimate.tokensPerSecond.toFixed(1) }} tokens/sec measured on this machine.
+          </template>
+          <template v-else> (provisional — refined once a run has been measured here). </template>
+          <template v-if="isLongRun">
+            The run resumes if interrupted, but consider fewer chapters, a shorter chapter length,
+            or a faster model.
+          </template>
+        </p>
+      </template>
     </div>
-
-    <p v-if="usePreciseStructure" class="text-xs text-text-hint font-ui leading-relaxed">
-      {{ volumes * chaptersPerVolume }} chapters · ~{{ estimatedTotalWords.toLocaleString() }}
-      words total. Chapters are linked via hook endings + a shared spine for continuity.
-    </p>
-
-    <p
-      v-if="usePreciseStructure"
-      class="text-xs font-ui leading-relaxed"
-      :class="isLongRun ? 'text-warning' : 'text-text-hint'"
-    >
-      <template v-if="isLongRun">⏳ </template>Estimated generation time:
-      <strong>{{ estimateLabel }}</strong>
-      <template v-if="runEstimate.measured">
-        at {{ runEstimate.tokensPerSecond.toFixed(1) }} tokens/sec measured on this machine.
-      </template>
-      <template v-else> (provisional — refined once a run has been measured here). </template>
-      <template v-if="isLongRun">
-        The run resumes if interrupted, but consider fewer chapters, a shorter chapter length, or a
-        faster model.
-      </template>
-    </p>
-  </div>
+  </BaseSection>
 </template>

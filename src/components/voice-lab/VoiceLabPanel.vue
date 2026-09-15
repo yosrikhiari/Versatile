@@ -1,4 +1,5 @@
 <script setup>
+import BaseButton from '../ui/BaseButton.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useDialogueIndexer } from '../../composables/useDialogueIndexer'
@@ -101,25 +102,24 @@ watch(projectId, (id) => {
     <BasePanelHeader
       title="Voice Lab"
       icon="message-square"
-      :meta="`${dialogueEntries.length} lines`"
-    />
+      :meta="dialogueEntries.length ? `${dialogueEntries.length} lines` : ''"
+    >
+      <template #actions>
+        <BaseButton
+          variant="soft"
+          size="sm"
+          icon="scan-line"
+          :loading="indexing"
+          :disabled="indexing || !projectId"
+          @click="handleIndex"
+        >
+          {{ indexing ? `Scanning ${progress.current}/${progress.total}` : 'Scan manuscript' }}
+        </BaseButton>
+      </template>
+    </BasePanelHeader>
 
-    <div class="p-4 border-b border-border-subtle">
-      <button
-        :disabled="indexing || !projectId"
-        class="w-full py-2 px-3 rounded-lg text-xs transition-all duration-150 flex items-center justify-center gap-2"
-        :class="
-          indexing ? 'bg-surface-hover text-accent cursor-wait' : 'btn-primary active:scale-[0.98]'
-        "
-        @click="handleIndex"
-      >
-        <BaseIcon :name="indexing ? 'loader-2' : 'message-square'" :size="14" />
-        {{
-          indexing ? `Indexing ${progress.current}/${progress.total}...` : 'Index Current Content'
-        }}
-      </button>
-
-      <div v-if="indexing" class="mt-2 h-1 bg-bg-tertiary rounded-full overflow-hidden">
+    <div v-if="indexing || dialogueStats" class="px-4 py-2 border-b border-border-subtle">
+      <div v-if="indexing" class="h-1 bg-bg-tertiary rounded-full overflow-hidden">
         <div
           class="h-full bg-accent rounded-full transition-all duration-300"
           :style="{
@@ -128,7 +128,7 @@ watch(projectId, (id) => {
         />
       </div>
 
-      <div v-if="dialogueStats" class="mt-2 flex gap-3 text-2xs text-text-hint">
+      <div v-if="dialogueStats" class="flex gap-3 font-ui text-2xs text-text-hint">
         <span>{{ dialogueStats.sectionsIndexed }} sections</span>
         <span>{{ dialogueStats.totalLines }} dialogue lines</span>
       </div>
@@ -136,7 +136,7 @@ watch(projectId, (id) => {
 
     <div v-if="speakers.length > 0" class="px-4 py-2 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-2xs font-medium text-text-hint uppercase tracking-wider">Speakers</span>
+        <span class="label-micro text-text-hint">Speakers</span>
         <div class="flex gap-1">
           <button
             v-if="selectedSpeakerId || filterType === 'unreviewed'"
@@ -191,7 +191,7 @@ watch(projectId, (id) => {
         <p class="text-xs">
           {{
             dialogueEntries.length === 0
-              ? 'No dialogue indexed yet. Click "Index Current Content" above.'
+              ? 'Nothing scanned yet. Voice Lab collects every line of dialogue so you can hear each character — scan the manuscript above.'
               : 'No entries match the current filter.'
           }}
         </p>
@@ -273,9 +273,7 @@ watch(projectId, (id) => {
               {{ entry.textContent }}
             </p>
             <div v-if="entry.contextBefore" class="pt-1 border-t border-border-subtle">
-              <span class="text-2xs text-text-hint uppercase tracking-wider font-medium"
-                >Context</span
-              >
+              <span class="label-micro text-text-hint">Context</span>
               <p class="text-2xs text-text-hint mt-0.5 italic leading-relaxed">
                 {{ truncate(entry.contextBefore, 200) }}
               </p>

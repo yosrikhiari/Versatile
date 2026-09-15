@@ -37,9 +37,7 @@
       v-if="gateHealth.length > 0"
       class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
     >
-      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-        Pipeline Health
-      </h4>
+      <h4 class="label-micro text-text-hint mb-2">Pipeline Health</h4>
       <div class="space-y-1.5">
         <div v-for="gate in gateHealth" :key="gate.name" class="flex items-center gap-2 text-xs">
           <BaseIcon
@@ -60,9 +58,7 @@
       v-if="dimensionStats.length > 0"
       class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
     >
-      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-        Score by Dimension
-      </h4>
+      <h4 class="label-micro text-text-hint mb-2">Score by Dimension</h4>
       <div class="space-y-1.5">
         <div v-for="dim in dimensionStats" :key="dim.name" class="flex items-center gap-2 text-xs">
           <span class="font-ui text-text-primary w-24 truncate shrink-0">{{ dim.label }}</span>
@@ -78,14 +74,12 @@
       </div>
     </div>
 
-    <!-- Active Focus Areas -->
+    <!-- Active focus areas -->
     <div
       v-if="focusInstructions"
       class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
     >
-      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-        Active Focus Areas
-      </h4>
+      <h4 class="label-micro text-text-hint mb-2">Active focus areas</h4>
       <div class="text-xs text-text-primary font-ui whitespace-pre-wrap leading-relaxed">
         {{ focusInstructions }}
       </div>
@@ -100,9 +94,7 @@
       v-if="pastEvalResults"
       class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
     >
-      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-        Evaluation History
-      </h4>
+      <h4 class="label-micro text-text-hint mb-2">Evaluation History</h4>
       <pre class="text-xs text-text-secondary font-ui whitespace-pre-wrap leading-relaxed">{{
         pastEvalResults
       }}</pre>
@@ -113,9 +105,7 @@
       v-if="degradationHotspots.length > 0"
       class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
     >
-      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-        Degradation Hotspots
-      </h4>
+      <h4 class="label-micro text-text-hint mb-2">Degradation Hotspots</h4>
       <div class="space-y-1.5">
         <div
           v-for="dim in degradationHotspots"
@@ -140,9 +130,7 @@
       v-if="scoreDistribution.length > 0"
       class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
     >
-      <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-        Score Distribution
-      </h4>
+      <h4 class="label-micro text-text-hint mb-2">Score Distribution</h4>
       <div class="space-y-1">
         <div
           v-for="bucket in scoreDistribution"

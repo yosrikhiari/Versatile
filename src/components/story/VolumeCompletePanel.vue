@@ -2,6 +2,8 @@
 import { ref, computed } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseButton from '../ui/BaseButton.vue'
+import BaseSection from '../ui/BaseSection.vue'
 import EvalPanel from '../eval/EvalPanel.vue'
 import RevisionDeltaPanel from '../eval/RevisionDeltaPanel.vue'
 import EvalDashboard from '../eval/EvalDashboard.vue'
@@ -11,7 +13,7 @@ defineOptions({ name: 'VolumeCompletePanel' })
 const props = defineProps({
   volumeGenerator: { type: Object, required: true },
   sceneEval: { type: Object, required: true },
-  saveStatus: { default: null }
+  saveStatus: { type: Object, default: null }
 })
 
 const emit = defineEmits([
@@ -39,13 +41,6 @@ const volumeTotalConsistencyIssues = computed(() => {
   return (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
 })
 
-const qualityGrade = computed(() => {
-  const n = volumeTotalConsistencyIssues.value
-  if (n === 0) return 'good'
-  if (n <= 3) return 'fair'
-  return 'poor'
-})
-
 const totalCharacterIssues = computed(
   () => props.volumeGenerator.consistencyReport.value?.characterIssues?.length || 0
 )
@@ -53,263 +48,254 @@ const totalLocationIssues = computed(
   () => props.volumeGenerator.consistencyReport.value?.locationIssues?.length || 0
 )
 
+function wordCount(prose) {
+  const t = (prose || '').trim()
+  return t ? t.split(/\s+/).length : 0
+}
+
 const totalWordsWritten = computed(() =>
-  props.volumeGenerator.writtenScenes.value.reduce(
-    (sum, s) => sum + (s.prose?.split(/\s+/).length || 0),
-    0
-  )
+  props.volumeGenerator.writtenScenes.value.reduce((sum, s) => sum + wordCount(s.prose), 0)
 )
 </script>
 
 <template>
-  <div class="p-4 space-y-4">
-    <!-- Scene list header with inline stats -->
-    <div class="flex items-center justify-between gap-2">
-      <h3 class="text-xs uppercase tracking-widest text-text-hint font-ui">
-        Scenes ({{ volumeGenerator.writtenScenes.value.length }})
-        <span class="font-normal tracking-normal text-text-hint/60"
-          >· {{ totalWordsWritten.toLocaleString() }} words</span
-        >
-      </h3>
-      <div class="flex items-center gap-1.5">
-        <div v-if="volumeTotalConsistencyIssues > 0">
-          <button
-            class="text-2xs text-warning font-ui flex items-center gap-1 hover:text-warning focus:outline-none focus:ring-1 focus:ring-accent rounded"
-            @click="emit('open-consistency')"
-          >
-            <BaseIcon name="alert-triangle" :size="10" />
-            {{ volumeTotalConsistencyIssues }}
-          </button>
-        </div>
-        <div v-else class="text-2xs text-success font-ui flex items-center gap-1">
-          <BaseIcon name="check-circle" :size="10" />
-          ok
-        </div>
-      </div>
-    </div>
-
-    <!-- Quality summary card -->
-    <div
-      v-if="volumeGenerator.consistencyReport.value"
-      class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border-subtle bg-bg-secondary"
+  <div>
+    <!-- ── Summary ──────────────────────────────────────────────────────── -->
+    <BaseSection
+      first
+      title="Draft complete"
+      :description="`${volumeGenerator.writtenScenes.value.length} scenes · ${totalWordsWritten.toLocaleString()} words written into the manuscript.`"
     >
-      <div class="flex items-center gap-2">
-        <BaseIcon
-          :name="qualityGrade === 'good' ? 'check-circle' : 'alert-triangle'"
-          :size="14"
-          :class="
-            qualityGrade === 'good'
-              ? 'text-success'
-              : qualityGrade === 'fair'
-                ? 'text-warning'
-                : 'text-danger'
-          "
-        />
-        <span class="text-xs font-ui text-text-secondary">
-          Quality:
+      <template #actions>
+        <BaseButton variant="primary" size="sm" icon="plus" @click="emit('reset')">
+          Generate another
+        </BaseButton>
+      </template>
+
+      <!-- Three actions on the result, one row, no colour. -->
+      <div class="flex flex-wrap items-center gap-2">
+        <BaseButton variant="secondary" size="sm" icon="book-open" @click="emit('open-read')">
+          Read
+        </BaseButton>
+        <div class="relative">
+          <BaseButton variant="secondary" size="sm" icon="save" @click="emit('save')"
+            >Save</BaseButton
+          >
           <span
-            :class="
-              qualityGrade === 'good'
-                ? 'text-success'
-                : qualityGrade === 'fair'
-                  ? 'text-warning'
-                  : 'text-danger'
-            "
-            >{{ qualityGrade }}</span
-          >
-        </span>
-      </div>
-      <div class="flex gap-3 text-2xs text-text-hint">
-        <span>{{ totalCharacterIssues }} character issues</span>
-        <span>{{ totalLocationIssues }} location issues</span>
-      </div>
-    </div>
-
-    <!-- Story-level eval aggregate summary -->
-    <div class="rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2">
-      <div class="flex items-center justify-between gap-2">
-        <span class="text-2xs uppercase tracking-wider text-text-hint font-ui">Evaluations</span>
-        <div class="flex items-center gap-2">
-          <div class="flex gap-3 text-2xs text-text-hint">
-            <span
-              >{{ sceneEval.aggregateStats.value?.evaluatedCount || 0 }} /
-              {{ sceneEval.aggregateStats.value?.totalScenes || 0 }} scenes</span
-            >
-            <span v-if="sceneEval.aggregateStats.value?.averageScore !== null" class="text-info">
-              Avg: {{ sceneEval.aggregateStats.value?.averageScore }}
-            </span>
-            <span v-if="sceneEval.aggregateStats.value?.totalRegressions > 0" class="text-warning">
-              {{ sceneEval.aggregateStats.value?.totalRegressions }} regressions
-            </span>
-          </div>
-          <button
-            class="text-2xs text-accent font-ui hover:text-accent focus:outline-none focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5"
-            @click="showDashboard = !showDashboard"
-          >
-            {{ showDashboard ? 'Hide' : 'Dashboard' }}
-          </button>
-        </div>
-      </div>
-      <EvalDashboard
-        v-if="showDashboard"
-        :scene-results-map="sceneEval.sceneResultsMap.value"
-        :gate-results="sceneEval.gateResults.value"
-        :workspace-type="projectStore.activeWorkspaceType || 'creative'"
-        :focus-instructions="sceneEval.focusInstructions.value"
-        :past-eval-results="sceneEval.pastEvalResults.value"
-        class="mt-2 border-t border-border-subtle pt-2"
-      />
-    </div>
-
-    <!-- Scene list -->
-    <div class="rounded-lg border border-border-subtle overflow-hidden">
-      <div
-        v-for="(scene, i) in volumeGenerator.writtenScenes.value"
-        :key="i"
-        class="px-3 py-2.5 border-b border-border-subtle last:border-b-0 cursor-pointer transition-colors hover:bg-surface-hover"
-        :class="
-          i === selectedSceneIndex
-            ? 'border-l-2 border-accent bg-bg-secondary'
-            : 'border-l-2 border-transparent'
-        "
-        @click="selectedSceneIndex = i"
-      >
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-sm font-semibold text-text-primary font-ui truncate"
-            >Scene {{ i + 1 }}: {{ scene.title }}</span
-          >
-          <span class="text-2xs text-text-hint/60 font-ui whitespace-nowrap"
-            >{{ scene.prose.split(/\s+/).length }} words</span
+            v-if="saveStatus"
+            class="absolute -top-2 -right-1 font-ui text-2xs px-1.5 py-0.5 rounded-full whitespace-nowrap border border-border-subtle bg-bg-secondary"
+            :class="saveStatus.type === 'saving' ? 'text-text-hint' : 'text-success'"
+            >{{ saveStatus.message }}</span
           >
         </div>
-      </div>
-    </div>
-
-    <!-- Selected scene actions -->
-    <div v-if="selectedSceneIndex >= 0" class="space-y-2">
-      <div class="flex gap-1.5">
-        <button
-          class="flex-1 py-1.5 px-2 bg-bg-secondary text-warning rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-          @click="emit('regenerate', selectedSceneIndex)"
+        <BaseButton variant="secondary" size="sm" icon="list" @click="emit('open-chapters')">
+          Chapters
+        </BaseButton>
+        <span class="flex-1"></span>
+        <BaseButton variant="ghost" size="sm" icon="file-text" @click="emit('export-txt')"
+          >.txt</BaseButton
         >
-          <BaseIcon name="refresh-cw" :size="12" /> Re-generate Scene
-          {{ selectedSceneIndex + 1 }}
-        </button>
-        <button
-          class="flex-1 py-1.5 px-2 bg-bg-secondary text-accent rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
-          :disabled="
-            sceneEval.isEvaluating.value ||
-            !volumeGenerator.writtenScenes.value?.[selectedSceneIndex]?.prose
-          "
-          @click="emit('evaluate', selectedSceneIndex)"
+        <BaseButton variant="ghost" size="sm" icon="file-down" @click="emit('export-md')"
+          >.md</BaseButton
         >
-          <BaseIcon :name="sceneEval.isEvaluating.value ? 'loader' : 'check-circle'" :size="12" />
-          {{
-            sceneEval.isEvaluating.value
-              ? 'Evaluating...'
-              : sceneEval.hasBeenEvaluated.value
-                ? 'Re-evaluate'
-                : 'Evaluate'
-          }}
-        </button>
       </div>
+    </BaseSection>
 
-      <div
-        v-if="sceneEval.hasBeenEvaluated.value || sceneEval.isEvaluating.value"
-        class="space-y-2 border border-border-subtle rounded-lg p-3 bg-bg-secondary"
-      >
-        <EvalPanel
-          :critique-result="sceneEval.critiqueResult.value"
-          :gate-results="sceneEval.gateResults.value"
-          :eval-gates="{
-            dimensionCoverage: sceneEval.gateResults.value?.dimensionCoverage,
-            scoreDistribution: sceneEval.gateResults.value?.scoreDistribution,
-            revisionEffectiveness: sceneEval.gateResults.value?.revisionEffectiveness
-          }"
-          :workspace-type="projectStore.activeWorkspaceType || 'creative'"
-          :compact="true"
-        />
-
-        <div v-if="sceneEval.hasBeenEvaluated.value" class="flex gap-1.5">
-          <button
-            class="flex-1 py-1 px-2 bg-bg-secondary text-info rounded-md text-11px font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
-            :disabled="sceneEval.isRevising.value || !sceneEval.critiqueResult.value"
-            @click="emit('revise', selectedSceneIndex)"
-          >
-            <BaseIcon :name="sceneEval.isRevising.value ? 'loader' : 'refresh-cw'" :size="11" />
-            {{ sceneEval.isRevising.value ? 'Revising...' : 'Apply Revision' }}
-          </button>
-          <button
-            v-if="sceneEval.revisionResult.value"
-            class="flex-1 py-1 px-2 bg-bg-secondary text-success rounded-md text-11px font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-            @click="emit('accept-revision')"
-          >
-            <BaseIcon name="check" :size="11" /> Accept Revision
-          </button>
-        </div>
-
-        <RevisionDeltaPanel :revision-result="sceneEval.revisionResult.value" :compact="true" />
-      </div>
-    </div>
-
-    <!-- Primary action -->
-    <button
-      class="w-full py-2.5 btn-primary rounded-lg font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-      @click="emit('reset')"
+    <!-- ── Quality ──────────────────────────────────────────────────────── -->
+    <BaseSection
+      title="Quality"
+      description="Continuity against the story bible, and the critic's verdicts where scenes were evaluated."
+      dense
     >
-      <span class="flex items-center justify-center gap-2"
-        ><BaseIcon name="plus" :size="16" /> Generate Another</span
+      <dl class="grid grid-cols-3 gap-x-4">
+        <div>
+          <dt class="label-micro text-text-hint mb-1">Continuity</dt>
+          <dd class="font-ui text-sm text-text-primary">
+            <button
+              v-if="volumeTotalConsistencyIssues > 0"
+              type="button"
+              class="inline-flex items-center gap-1.5 text-warning hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+              @click="emit('open-consistency')"
+            >
+              <BaseIcon name="alert-triangle" :size="12" />
+              {{ volumeTotalConsistencyIssues }} issue{{
+                volumeTotalConsistencyIssues === 1 ? '' : 's'
+              }}
+            </button>
+            <span
+              v-else-if="volumeGenerator.consistencyReport.value"
+              class="inline-flex items-center gap-1.5 text-success"
+            >
+              <BaseIcon name="check-circle" :size="12" /> Clean
+            </span>
+            <span v-else class="text-text-hint">Not checked</span>
+          </dd>
+        </div>
+        <div>
+          <dt class="label-micro text-text-hint mb-1">Evaluated</dt>
+          <dd class="font-ui text-sm text-text-primary tabular-nums">
+            {{ sceneEval.aggregateStats.value?.evaluatedCount || 0 }} /
+            {{
+              sceneEval.aggregateStats.value?.totalScenes ||
+              volumeGenerator.writtenScenes.value.length
+            }}
+          </dd>
+        </div>
+        <div>
+          <dt class="label-micro text-text-hint mb-1">Average score</dt>
+          <dd class="font-ui text-sm text-text-primary tabular-nums">
+            <template v-if="sceneEval.aggregateStats.value?.averageScore != null">
+              {{ sceneEval.aggregateStats.value.averageScore }}
+              <span
+                v-if="sceneEval.aggregateStats.value?.totalRegressions > 0"
+                class="text-warning text-xs"
+              >
+                · {{ sceneEval.aggregateStats.value.totalRegressions }} regressed
+              </span>
+            </template>
+            <span v-else class="text-text-hint">—</span>
+          </dd>
+        </div>
+      </dl>
+      <p
+        v-if="volumeGenerator.consistencyReport.value && volumeTotalConsistencyIssues > 0"
+        class="mt-2 font-ui text-xs text-text-hint"
       >
-    </button>
-
-    <!-- Secondary actions -->
-    <div class="flex gap-1.5">
-      <button
-        class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-        @click="emit('open-read')"
-      >
-        <BaseIcon name="book-open" :size="12" /> Read
-      </button>
-      <div class="relative flex-1">
+        {{ totalCharacterIssues }} character · {{ totalLocationIssues }} location
+      </p>
+      <div class="mt-3">
         <button
-          class="w-full py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-          @click="emit('save')"
+          type="button"
+          class="flex items-center gap-1.5 label-micro text-text-hint hover:text-text-secondary transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+          :aria-expanded="showDashboard"
+          @click="showDashboard = !showDashboard"
         >
-          <BaseIcon name="save" :size="12" /> Save
+          <BaseIcon
+            name="chevron-right"
+            :size="12"
+            class="transition-transform duration-150"
+            :class="showDashboard ? 'rotate-90' : ''"
+          />
+          Evaluation dashboard
         </button>
-        <span
-          v-if="saveStatus"
-          class="absolute -top-2 right-0 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
-          :class="
-            saveStatus.type === 'saving'
-              ? 'bg-accent text-bg-primary'
-              : 'bg-bg-secondary text-success'
-          "
-          >{{ saveStatus.message }}</span
-        >
+        <EvalDashboard
+          v-if="showDashboard"
+          :scene-results-map="sceneEval.sceneResultsMap.value"
+          :gate-results="sceneEval.gateResults.value"
+          :workspace-type="projectStore.activeWorkspaceType || 'creative'"
+          :focus-instructions="sceneEval.focusInstructions.value"
+          :past-eval-results="sceneEval.pastEvalResults.value"
+          class="mt-3"
+        />
       </div>
-      <button
-        class="flex-1 py-1.5 px-2 bg-bg-tertiary text-text-secondary rounded-md text-xs font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1.5"
-        @click="emit('open-chapters')"
-      >
-        <BaseIcon name="list" :size="12" /> Chapters
-      </button>
-    </div>
+    </BaseSection>
 
-    <!-- Tertiary / Export actions -->
-    <div class="flex gap-1.5">
-      <button
-        class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1"
-        @click="emit('export-txt')"
-      >
-        <BaseIcon name="file-text" :size="10" /> .txt
-      </button>
-      <button
-        class="flex-1 py-1 px-2 bg-transparent text-text-hint rounded text-2xs font-medium hover:text-text-secondary hover:bg-bg-tertiary transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent flex items-center justify-center gap-1"
-        @click="emit('export-md')"
-      >
-        <BaseIcon name="file-down" :size="10" /> .md
-      </button>
-    </div>
+    <!-- ── Scenes ───────────────────────────────────────────────────────── -->
+    <BaseSection
+      title="Scenes"
+      description="Pick a scene to regenerate it, or run the critic on it."
+      :meta="`${volumeGenerator.writtenScenes.value.length}`"
+      dense
+    >
+      <ul class="-mx-1 divide-y divide-border-subtle" role="listbox" aria-label="Written scenes">
+        <li
+          v-for="(scene, i) in volumeGenerator.writtenScenes.value"
+          :key="i"
+          role="option"
+          :aria-selected="i === selectedSceneIndex"
+          tabindex="0"
+          class="flex items-center gap-3 px-2 py-2 cursor-pointer rounded-md transition-colors duration-150 hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          :class="
+            i === selectedSceneIndex
+              ? 'bg-surface-hover shadow-[inset_2px_0_0_0_rgb(var(--vers-accent-primary-rgb))]'
+              : ''
+          "
+          @click="selectedSceneIndex = i"
+          @keydown.enter.space.prevent="selectedSceneIndex = i"
+        >
+          <span class="font-ui text-xs text-text-hint tabular-nums w-5 shrink-0">{{ i + 1 }}</span>
+          <span class="flex-1 min-w-0 font-ui text-sm text-text-primary truncate">{{
+            scene.title
+          }}</span>
+          <span class="font-ui text-xs text-text-hint tabular-nums shrink-0"
+            >{{ wordCount(scene.prose).toLocaleString() }} w</span
+          >
+        </li>
+      </ul>
+
+      <!-- Selected scene -->
+      <div v-if="selectedSceneIndex >= 0" class="mt-3 space-y-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <BaseButton
+            variant="secondary"
+            size="sm"
+            icon="refresh-cw"
+            @click="emit('regenerate', selectedSceneIndex)"
+          >
+            Regenerate scene {{ selectedSceneIndex + 1 }}
+          </BaseButton>
+          <BaseButton
+            variant="secondary"
+            size="sm"
+            icon="check-circle"
+            :loading="sceneEval.isEvaluating.value"
+            :disabled="
+              sceneEval.isEvaluating.value ||
+              !volumeGenerator.writtenScenes.value?.[selectedSceneIndex]?.prose
+            "
+            @click="emit('evaluate', selectedSceneIndex)"
+          >
+            {{
+              sceneEval.isEvaluating.value
+                ? 'Evaluating'
+                : sceneEval.hasBeenEvaluated.value
+                  ? 'Re-evaluate'
+                  : 'Evaluate'
+            }}
+          </BaseButton>
+        </div>
+
+        <div
+          v-if="sceneEval.hasBeenEvaluated.value || sceneEval.isEvaluating.value"
+          class="space-y-3 border-t border-border-subtle pt-3"
+        >
+          <EvalPanel
+            :critique-result="sceneEval.critiqueResult.value"
+            :gate-results="sceneEval.gateResults.value"
+            :eval-gates="{
+              dimensionCoverage: sceneEval.gateResults.value?.dimensionCoverage,
+              scoreDistribution: sceneEval.gateResults.value?.scoreDistribution,
+              revisionEffectiveness: sceneEval.gateResults.value?.revisionEffectiveness
+            }"
+            :workspace-type="projectStore.activeWorkspaceType || 'creative'"
+            :compact="true"
+          />
+
+          <div v-if="sceneEval.hasBeenEvaluated.value" class="flex flex-wrap items-center gap-2">
+            <BaseButton
+              variant="secondary"
+              size="sm"
+              icon="refresh-cw"
+              :loading="sceneEval.isRevising.value"
+              :disabled="sceneEval.isRevising.value || !sceneEval.critiqueResult.value"
+              @click="emit('revise', selectedSceneIndex)"
+            >
+              {{ sceneEval.isRevising.value ? 'Revising' : 'Apply revision' }}
+            </BaseButton>
+            <BaseButton
+              v-if="sceneEval.revisionResult.value"
+              variant="primary"
+              size="sm"
+              icon="check"
+              @click="emit('accept-revision')"
+            >
+              Accept revision
+            </BaseButton>
+          </div>
+
+          <RevisionDeltaPanel :revision-result="sceneEval.revisionResult.value" :compact="true" />
+        </div>
+      </div>
+    </BaseSection>
   </div>
 </template>

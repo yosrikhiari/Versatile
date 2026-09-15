@@ -113,9 +113,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
         <div class="flex-1 overflow-y-auto p-4 space-y-3">
           <!-- Active tasks -->
           <div v-if="hasActive" class="space-y-3">
-            <h3 class="text-xs font-ui font-medium text-text-secondary uppercase tracking-wider">
-              Running
-            </h3>
+            <h3 class="label-micro text-text-hint">Running</h3>
             <div
               v-for="task in log.activeTasks.value"
               :key="task.id"
@@ -258,9 +256,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
           <!-- Completed tasks -->
           <div v-if="hasCompleted" class="space-y-2">
             <div class="flex items-center justify-between">
-              <h3 class="text-xs font-ui font-medium text-text-secondary uppercase tracking-wider">
-                Session Log
-              </h3>
+              <h3 class="label-micro text-text-hint">Session Log</h3>
               <button
                 class="text-2xs text-text-secondary hover:text-danger transition-colors"
                 @click="log.clearCompleted()"

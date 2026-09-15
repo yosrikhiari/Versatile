@@ -525,9 +525,9 @@ defineExpose({ refresh })
     <div class="h-full flex flex-col overflow-hidden">
       <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
         <div class="flex items-center justify-between mb-3">
-          <span class="font-ui font-medium text-text-primary tracking-wide">{{
-            projectStore.terminology.bible
-          }}</span>
+          <h2 class="font-ui text-sm font-semibold text-text-primary">
+            {{ projectStore.terminology.bible }}
+          </h2>
         </div>
       </div>
 
@@ -616,7 +616,7 @@ defineExpose({ refresh })
               v-for="character in filteredCharacters"
               :id="'char-' + character.id"
               :key="character.id"
-              class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
+              class="rounded-lg border border-border-subtle p-3 hover:border-border-strong transition-colors duration-150"
               draggable="true"
               @dragstart="handleDragStart($event, character)"
             >
@@ -837,7 +837,7 @@ defineExpose({ refresh })
               v-for="thread in filteredPlotThreads"
               :id="'thread-' + thread.id"
               :key="thread.id"
-              class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
+              class="rounded-lg border border-border-subtle p-3 hover:border-border-strong transition-colors duration-150"
             >
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
@@ -949,7 +949,7 @@ defineExpose({ refresh })
               v-for="location in filteredLocations"
               :id="'loc-' + location.id"
               :key="location.id"
-              class="bg-bg-tertiary border border-border-subtle rounded-lg p-3"
+              class="rounded-lg border border-border-subtle p-3 hover:border-border-strong transition-colors duration-150"
             >
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">

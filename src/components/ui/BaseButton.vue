@@ -72,7 +72,7 @@ const variantClasses = computed(() => {
       // Dark-on-danger clears AA (~7:1); white on the same fill sits near 3:1.
       return 'bg-danger text-bg-primary hover:bg-danger/90 active:scale-[0.98]'
     case 'soft':
-      return 'bg-accent/12 text-accent hover:bg-accent/20 active:scale-[0.98]'
+      return 'bg-accent/10 text-accent hover:bg-accent/20 active:scale-[0.98]'
     case 'accent-ghost':
       return 'bg-surface-hover text-accent active:scale-[0.98]'
     case 'elevated':

@@ -54,7 +54,11 @@ onMounted(async () => {
       // manuscript (actual writing). ISO strings sort chronologically.
       const lastEdited =
         [p.updatedAt, manuscript?.updatedAt].filter(Boolean).sort().at(-1) || p.updatedAt
-      return { ...p, wordCount: manuscript?.wordCount || 0, updatedAt: lastEdited }
+      // The project row carries the whole-manuscript total (root + sections),
+      // written on every save. Projects predating that field fall back to the
+      // root document's count.
+      const wordCount = typeof p.wordCount === 'number' ? p.wordCount : manuscript?.wordCount || 0
+      return { ...p, wordCount, updatedAt: lastEdited }
     })
   )
 

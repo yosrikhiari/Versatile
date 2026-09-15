@@ -1,4 +1,5 @@
 <script setup>
+import BaseButton from '../ui/BaseButton.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useProjectStore } from '../../stores/projectStore'
@@ -161,12 +162,10 @@ onMounted(() => {
 <template>
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
-      <span class="font-ui text-accent tracking-wide">Story Canvas</span>
-      <div class="flex gap-2">
-        <button class="px-3 py-1 text-xs btn-primary rounded font-ui" @click="showAddModal = true">
-          + Add Element
-        </button>
-      </div>
+      <h2 class="font-ui text-sm font-semibold text-text-primary">Story canvas</h2>
+      <BaseButton variant="soft" size="sm" icon="plus" @click="showAddModal = true"
+        >Add element</BaseButton
+      >
     </div>
 
     <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-4">
@@ -188,7 +187,7 @@ onMounted(() => {
       </div>
 
       <div class="mb-4 p-3 bg-surface-hover rounded-lg">
-        <div class="text-xs text-text-hint font-ui mb-2">Quick Add from Document</div>
+        <div class="label-micro text-text-hint mb-2">Quick add from the manuscript</div>
         <draggable
           :list="manuscriptStore.sortedSections"
           item-key="id"
@@ -215,7 +214,7 @@ onMounted(() => {
         </draggable>
       </div>
 
-      <div class="text-xs text-text-hint font-ui mb-3">Drag elements to reorder</div>
+      <div class="label-micro text-text-hint mb-3">Board · drag to reorder</div>
 
       <draggable
         :list="manuscriptStore.storyElements"

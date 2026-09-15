@@ -4,16 +4,19 @@ import { useBetaReader } from '../../composables/betareader/useBetaReader'
 import BetaResultItem from './BetaResultItem.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BasePanelHeader from '../ui/BasePanelHeader.vue'
+import BaseCheckbox from '../ui/BaseCheckbox.vue'
 
 const emit = defineEmits(['navigate'])
 
 const {
   results,
   isScanning,
+  lastScan,
+  noScenes,
   counts,
   resultsBySeverity,
   summary,
-  activePass,
   currentPhase,
   progress,
   cloudRunOptIn,
@@ -23,6 +26,12 @@ const {
   scan,
   clearResults
 } = useBetaReader()
+
+const GROUPS = [
+  { key: 'errors', label: 'Errors', icon: 'alert-circle', tone: 'text-danger' },
+  { key: 'warnings', label: 'Warnings', icon: 'alert-triangle', tone: 'text-warning' },
+  { key: 'info', label: 'Notes', icon: 'info', tone: 'text-text-hint' }
+]
 
 onMounted(() => {
   if (results.value.length === 0) {
@@ -38,266 +47,115 @@ function handleReScan() {
 function handleResultAction(action) {
   emit('navigate', action)
 }
+
+function countsLabel() {
+  const c = counts.value || {}
+  const parts = []
+  if (c.errors) parts.push(`${c.errors} error${c.errors > 1 ? 's' : ''}`)
+  if (c.warnings) parts.push(`${c.warnings} warning${c.warnings > 1 ? 's' : ''}`)
+  if (c.info) parts.push(`${c.info} note${c.info > 1 ? 's' : ''}`)
+  return parts.join(' · ')
+}
 </script>
 
 <template>
-  <div class="beta-panel">
-    <div class="panel-header">
-      <h3 class="panel-title">Beta Reader</h3>
-      <BaseButton variant="outline" size="sm" :loading="isScanning" @click="handleReScan">
-        {{ results.length > 0 ? 'Recheck' : 'Scan' }}
-      </BaseButton>
-    </div>
+  <div class="h-full flex flex-col overflow-hidden">
+    <BasePanelHeader title="Beta Reader" icon="eye" :meta="isScanning ? '' : countsLabel()">
+      <template #actions>
+        <BaseButton
+          variant="soft"
+          size="sm"
+          icon="refresh-cw"
+          :loading="isScanning"
+          :disabled="isScanning"
+          @click="handleReScan"
+        >
+          {{ results.length > 0 ? 'Reread' : 'Read' }}
+        </BaseButton>
+      </template>
+    </BasePanelHeader>
 
-    <div v-if="cloudAvailable && cloudTier === 'cloud-on-demand'" class="cloud-optin">
-      <label class="cloud-optin-label">
-        <input v-model="cloudRunOptIn" type="checkbox" :disabled="isScanning" />
-        Use cloud AI for contradiction detection
-      </label>
-      <p v-if="cloudDisclosure" class="cloud-disclosure">
-        {{ cloudDisclosure.warning }} Est. {{ cloudDisclosure.estimatedTokens }} tokens (~${{
-          cloudDisclosure.estimatedCostUsd.toFixed(4)
-        }}) via {{ cloudDisclosure.provider }} ({{ cloudDisclosure.model }}).
-      </p>
-    </div>
-
-    <div v-if="isScanning" class="scanning-state">
-      <div class="spinner" />
-      <span class="scanning-label">{{ currentPhase }}</span>
-      <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: progress + '%' }" />
+    <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+      <div
+        v-if="cloudAvailable && cloudTier === 'cloud-on-demand'"
+        class="px-4 py-3 border-b border-border-subtle"
+      >
+        <BaseCheckbox
+          v-model="cloudRunOptIn"
+          :disabled="isScanning"
+          label="Use cloud AI for contradiction detection"
+        />
+        <p v-if="cloudDisclosure" class="mt-1.5 font-ui text-xs text-text-hint leading-4">
+          {{ cloudDisclosure.warning }} About {{ cloudDisclosure.estimatedTokens }} tokens (~${{
+            cloudDisclosure.estimatedCostUsd.toFixed(4)
+          }}) via {{ cloudDisclosure.provider }} ({{ cloudDisclosure.model }}).
+        </p>
       </div>
-    </div>
 
-    <div v-else-if="summary" class="summary-section">
-      <div class="summary-row">
-        <div v-if="counts.errors > 0" class="summary-badge summary-badge--error">
-          {{ counts.errors }} error{{ counts.errors > 1 ? 's' : '' }}
+      <!-- Reading -->
+      <div v-if="isScanning" class="px-4 py-5" role="status" aria-live="polite">
+        <div class="flex items-center gap-2 font-ui text-xs text-text-hint">
+          <BaseIcon name="loader-2" :size="14" class="animate-spin text-accent" />
+          {{ currentPhase || 'Reading…' }}
         </div>
-        <div v-if="counts.warnings > 0" class="summary-badge summary-badge--warning">
-          {{ counts.warnings }} warning{{ counts.warnings > 1 ? 's' : '' }}
-        </div>
-        <div v-if="counts.info > 0" class="summary-badge summary-badge--info">
-          {{ counts.info }} info
+        <div class="mt-3 h-1 rounded-full bg-bg-tertiary overflow-hidden">
+          <div
+            class="h-full rounded-full bg-accent transition-[width] duration-300"
+            :style="{ width: progress + '%' }"
+          />
         </div>
       </div>
-      <p class="summary-text">{{ summary }}</p>
-    </div>
 
-    <div v-else-if="results.length > 0">
-      <div class="results-list">
-        <template v-for="group in ['errors', 'warnings', 'info']" :key="group">
-          <div v-if="resultsBySeverity[group]?.length" class="result-group">
-            <h4 v-if="group === 'errors'" class="group-label group-label--error">
-              <BaseIcon name="alert-circle" :size="13" />
-              Errors
-            </h4>
-            <h4 v-else-if="group === 'warnings'" class="group-label group-label--warning">
-              <BaseIcon name="alert-triangle" :size="13" />
-              Warnings
-            </h4>
-            <h4 v-else class="group-label group-label--info">
-              <BaseIcon name="info" :size="13" />
-              Info
-            </h4>
+      <template v-else-if="results.length > 0 || summary">
+        <!-- The reader's overall impression, then the findings behind it. The
+             summary used to replace the list; now it introduces it. -->
+        <p
+          v-if="summary"
+          class="px-4 py-4 font-ui text-sm text-text-secondary leading-6 border-b border-border-subtle text-pretty"
+        >
+          {{ summary }}
+        </p>
+
+        <section
+          v-for="(group, gi) in GROUPS.filter((g) => resultsBySeverity[g.key]?.length)"
+          :key="group.key"
+          :class="['px-4 py-4', gi === 0 ? '' : 'border-t border-border-subtle']"
+        >
+          <h3 class="flex items-center gap-1.5 label-micro text-text-hint mb-2">
+            <BaseIcon :name="group.icon" :size="12" :class="group.tone" />
+            {{ group.label }}
+            <span class="tabular-nums">· {{ resultsBySeverity[group.key].length }}</span>
+          </h3>
+          <ul class="-mx-1 divide-y divide-border-subtle">
             <BetaResultItem
-              v-for="item in resultsBySeverity[group]"
+              v-for="item in resultsBySeverity[group.key]"
               :key="item.id"
               :result="item"
               @action="handleResultAction"
             />
-          </div>
-        </template>
-      </div>
-    </div>
+          </ul>
+        </section>
+      </template>
 
-    <div v-else class="empty-state">
-      <div class="empty-icon">
-        <BaseIcon name="check-circle" :size="32" class="empty-check" />
+      <div v-else class="px-4 py-10 text-center">
+        <BaseIcon
+          :name="lastScan ? 'check-circle' : 'eye'"
+          :size="24"
+          class="mx-auto mb-3"
+          :class="lastScan ? 'text-success' : 'text-text-hint'"
+        />
+        <p class="font-ui text-sm text-text-primary">
+          {{ noScenes ? 'Nothing to read yet' : lastScan ? 'Reads clean' : 'Not read yet' }}
+        </p>
+        <p class="mt-1 font-ui text-xs text-text-hint leading-5 max-w-[32ch] mx-auto text-pretty">
+          <template v-if="noScenes">
+            Beta Reader reads subsections that contain prose — split a section into subsections in
+            <span class="text-text-secondary">Sections</span> and it will pick them up.
+          </template>
+          <template v-else-if="!lastScan">Read when you have prose to test.</template>
+          <template v-else>No narrative issues found in the current draft.</template>
+        </p>
       </div>
-      <p class="empty-text">
-        No narrative issues detected. Your story reads smoothly with strong consistency.
-      </p>
     </div>
   </div>
 </template>
-
-<style scoped>
-.beta-panel {
-  padding: 12px;
-  font-family: 'Geist Variable', Geist, system-ui, sans-serif;
-  color: var(--vers-text-primary);
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.panel-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--vers-text-primary);
-}
-
-.scanning-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 32px 0;
-  color: var(--vers-text-muted);
-  font-size: 0.75rem;
-}
-
-.scanning-label {
-  font-style: italic;
-}
-
-.progress-bar {
-  width: 120px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--vers-border-subtle);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--vers-accent-primary);
-  transition: width 0.3s ease;
-}
-
-.summary-section {
-  margin-bottom: 10px;
-}
-
-.summary-text {
-  font-size: 0.6875rem;
-  color: var(--vers-text-secondary);
-  line-height: 1.4;
-  margin: 8px 0 0;
-}
-
-.cloud-optin {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
-}
-
-.cloud-optin-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  color: var(--vers-text-secondary);
-}
-
-.cloud-disclosure {
-  font-size: 0.6875rem;
-  color: var(--vers-text-muted);
-  line-height: 1.4;
-  margin: 0;
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--vers-accent-primary);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-.summary-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 0;
-}
-
-.summary-badge {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.summary-badge--error {
-  background: color-mix(in srgb, var(--vers-status-danger) 12%, transparent);
-  color: var(--vers-status-danger);
-}
-
-.summary-badge--warning {
-  background: color-mix(in srgb, var(--vers-status-warning) 12%, transparent);
-  color: var(--vers-status-warning);
-}
-
-.summary-badge--info {
-  background: color-mix(in srgb, var(--vers-status-info) 12%, transparent);
-  color: var(--vers-status-info);
-}
-
-.results-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.result-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.group-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 0 0 2px 0;
-  padding: 0 2px;
-}
-
-.group-label--error {
-  color: var(--vers-status-danger);
-}
-.group-label--warning {
-  color: var(--vers-status-warning);
-}
-.group-label--info {
-  color: var(--vers-status-info);
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 32px 16px;
-  text-align: center;
-}
-
-.empty-icon {
-  opacity: 0.4;
-}
-
-.empty-check {
-  color: var(--vers-status-success);
-}
-
-.empty-text {
-  font-size: 0.75rem;
-  color: var(--vers-text-muted);
-  line-height: 1.4;
-  max-width: 220px;
-}
-</style>

@@ -17,6 +17,8 @@ import { groupNetworkByVolume } from '../../composables/useVolumeGrouping'
 import { wouldCreateCycle, sortGroupsParentFirst } from '../../utils/networkGrouping'
 import { useStoryGraphPersistence } from '../../composables/useStoryGraphPersistence'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseButton from '../ui/BaseButton.vue'
+import BaseChip from '../ui/BaseChip.vue'
 import EntitySidebar from './EntitySidebar.vue'
 import AddConnectionModal from './AddConnectionModal.vue'
 import SuggestionsModal from './SuggestionsModal.vue'
@@ -91,6 +93,31 @@ function expandGroupIfNeeded(group, relativeX, relativeY) {
 const showCharEdges = ref(true)
 const showLocEdges = ref(true)
 const showThreadEdges = ref(true)
+
+/** The three edge kinds as one list, so the header renders them uniformly. */
+const edgeFilters = [
+  {
+    key: 'char',
+    label: 'Characters',
+    title: 'Toggle character relationships',
+    color: '--vers-entity-character',
+    model: showCharEdges
+  },
+  {
+    key: 'loc',
+    label: 'Locations',
+    title: 'Toggle location connections',
+    color: '--vers-entity-location',
+    model: showLocEdges
+  },
+  {
+    key: 'thread',
+    label: 'Plot threads',
+    title: 'Toggle plot thread connections',
+    color: '--vers-entity-plotThread',
+    model: showThreadEdges
+  }
+]
 
 const forceRefreshKey = ref(0)
 
@@ -1746,121 +1773,96 @@ function handleApplySuggestionsModalClose() {
 
 <template>
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
-    <div
-      class="shrink-0 px-4 py-2 h-14 border-b border-border-subtle flex items-center justify-between bg-bg-secondary z-10"
+    <header
+      class="shrink-0 px-4 py-2.5 border-b border-border-subtle flex flex-wrap items-center gap-x-3 gap-y-2 bg-bg-secondary z-10"
     >
-      <div class="flex items-center gap-2">
-        <span class="font-ui font-medium text-text-primary tracking-wide">Story Network</span>
+      <div class="flex items-center gap-2 min-w-0">
+        <BaseIcon name="share-2" :size="14" class="shrink-0 text-text-hint" />
+        <h2 class="font-ui text-sm font-semibold text-text-primary truncate">Story Network</h2>
       </div>
-      <div class="flex items-center gap-3">
-        <div class="flex items-center gap-1 border-l border-border-subtle pl-3">
-          <button
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-all"
-            :class="
-              showCharEdges
-                ? 'bg-bg-tertiary text-text-primary'
-                : 'bg-bg-secondary text-text-hint opacity-50'
-            "
-            title="Toggle character relationships"
-            @click="showCharEdges = !showCharEdges"
-          >
-            <span
-              class="w-2 h-2 rounded-full"
-              :style="{ backgroundColor: 'var(--vers-entity-character)' }"
-            ></span>
-            Characters
-          </button>
-          <button
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-all"
-            :class="
-              showLocEdges
-                ? 'bg-bg-tertiary text-text-primary'
-                : 'bg-bg-secondary text-text-hint opacity-50'
-            "
-            title="Toggle location connections"
-            @click="showLocEdges = !showLocEdges"
-          >
-            <span
-              class="w-2 h-2 rounded-full"
-              :style="{ backgroundColor: 'var(--vers-entity-location)' }"
-            ></span>
-            Locations
-          </button>
-          <button
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-all"
-            :class="
-              showThreadEdges
-                ? 'bg-bg-tertiary text-text-primary'
-                : 'bg-bg-secondary text-text-hint opacity-50'
-            "
-            title="Toggle plot thread connections"
-            @click="showThreadEdges = !showThreadEdges"
-          >
-            <span
-              class="w-2 h-2 rounded-full"
-              :style="{ backgroundColor: 'var(--vers-entity-plotThread)' }"
-            ></span>
-            Plot Threads
-          </button>
-        </div>
 
-        <button
-          class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
-          :title="showSidebar ? 'Hide sidebar' : 'Show sidebar'"
+      <!-- Edge filters: which kinds of connection are drawn. -->
+      <div class="flex items-center gap-1.5" role="group" aria-label="Connection types">
+        <BaseChip
+          v-for="f in edgeFilters"
+          :key="f.key"
+          variant="filter"
+          size="sm"
+          :active="f.model.value"
+          :title="f.title"
+          @click="f.model.value = !f.model.value"
+        >
+          <span
+            class="inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle"
+            :style="{ backgroundColor: `var(${f.color})` }"
+          ></span
+          >{{ f.label }}
+        </BaseChip>
+      </div>
+
+      <span class="flex-1"></span>
+
+      <div class="flex items-center gap-1">
+        <BaseButton
+          variant="ghost"
+          size="sm"
+          :icon="showSidebar ? 'panel-left-close' : 'panel-left-open'"
+          :title="showSidebar ? 'Hide entity list' : 'Show entity list'"
+          :aria-label="showSidebar ? 'Hide entity list' : 'Show entity list'"
           @click="toggleSidebar"
-        >
-          <BaseIcon :name="showSidebar ? 'panel-left-close' : 'panel-left-open'" :size="18" />
-        </button>
-        <button
-          class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+        <BaseButton
+          variant="ghost"
+          size="sm"
+          icon="folder-plus"
           title="Add group"
+          aria-label="Add group"
           @click="openCreateGroupModal"
-        >
-          <BaseIcon name="folder-plus" :size="18" />
-        </button>
-        <button
-          class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+        <BaseButton
+          variant="ghost"
+          size="sm"
+          icon="layers"
           title="Group by volume — one group per volume, named by the volume"
+          aria-label="Group by volume"
+          :loading="isGroupingByVolume"
           :disabled="isGroupingByVolume"
           @click="groupByVolume"
-        >
-          <BaseIcon
-            :name="isGroupingByVolume ? 'loader' : 'layers'"
-            :size="18"
-            :class="isGroupingByVolume ? 'animate-spin' : ''"
-          />
-        </button>
-        <button
-          class="p-1.5 text-text-hint hover:text-text-primary rounded hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
-          title="Extended star layout - group clusters with mini-stars"
+        />
+        <BaseButton
+          variant="ghost"
+          size="sm"
+          icon="orbit"
+          title="Arrange as clusters"
+          aria-label="Arrange as clusters"
           @click="arrangeExtendedStarLayout"
-        >
-          <BaseIcon name="circle" :size="18" />
-        </button>
-        <button
-          class="px-3 py-1.5 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui flex items-center gap-1.5"
+        />
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <BaseButton
+          variant="secondary"
+          size="sm"
+          icon="sparkles"
           title="Automatically generate connections"
           @click="openAutoGenerateModal"
         >
-          <BaseIcon name="sparkles" :size="14" />
           Auto-generate
-        </button>
-        <button
-          class="px-3 py-1.5 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui flex items-center gap-1.5"
+        </BaseButton>
+        <BaseButton
+          variant="secondary"
+          size="sm"
+          icon="lightbulb"
           title="Get AI suggestions"
           @click="handleGetSuggestions"
         >
-          <BaseIcon name="lightbulb" :size="14" />
           Ideas
-        </button>
-        <button
-          class="btn-primary px-3 py-1.5 text-xs rounded font-ui"
-          @click="openAddConnectionModal"
-        >
-          + Connection
-        </button>
+        </BaseButton>
+        <BaseButton variant="primary" size="sm" icon="plus" @click="openAddConnectionModal">
+          Connection
+        </BaseButton>
       </div>
-    </div>
+    </header>
 
     <div class="flex-1 flex relative overflow-hidden">
       <Transition name="slide">

@@ -1,4 +1,5 @@
 <script setup>
+import BaseChip from '../ui/BaseChip.vue'
 defineProps({
   activeLenses: { type: Object, default: () => ({}) },
   lensIssueCounts: { type: Object, default: () => ({}) }
@@ -15,22 +16,22 @@ const lensOptions = [
 </script>
 
 <template>
-  <div class="flex gap-2">
-    <button
+  <div class="flex flex-wrap gap-1.5" role="group" aria-label="Lenses">
+    <BaseChip
       v-for="lens in lensOptions"
       :key="lens.key"
-      :class="[
-        'px-2 py-1 text-xs rounded-full transition-colors font-ui relative focus:outline-none focus:ring-2 focus:ring-accent',
-        activeLenses[lens.key]
-          ? 'bg-surface-hover text-accent'
-          : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-      ]"
+      variant="filter"
+      size="sm"
+      :active="!!activeLenses[lens.key]"
       @click="emit('toggle', lens.key)"
     >
-      {{ lens.label }}
-      <span v-if="lensIssueCounts[lens.key] > 0 && activeLenses[lens.key]" class="ml-1 opacity-75">
+      {{ lens.label
+      }}<span
+        v-if="lensIssueCounts[lens.key] > 0 && activeLenses[lens.key]"
+        class="ml-1 tabular-nums opacity-70"
+      >
         {{ lensIssueCounts[lens.key] }}
       </span>
-    </button>
+    </BaseChip>
   </div>
 </template>

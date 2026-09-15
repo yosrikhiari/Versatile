@@ -14,6 +14,7 @@ import EmptyState from '../shared/EmptyState.vue'
 
 const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
+const terms = computed(() => projectStore.structureTerms)
 const { endDrag } = useDraggableList()
 
 const {
@@ -110,7 +111,7 @@ onMounted(() => {
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="px-4 py-3 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-3 gap-2">
-        <span class="font-ui text-accent tracking-wide">Subsection Outline</span>
+        <h2 class="font-ui text-sm font-semibold text-text-primary">Outline</h2>
         <BaseSegmented
           v-model="viewMode"
           size="sm"
@@ -125,8 +126,9 @@ onMounted(() => {
       <input
         v-model="searchQuery"
         type="text"
-        placeholder="Search subsections..."
-        class="w-full px-3 py-1.5 text-xs border border-border-subtle rounded-lg bg-bg-tertiary text-text-primary font-ui focus:outline-none focus:border-accent"
+        :placeholder="`Search ${terms.subsectionsLc}…`"
+        :aria-label="`Search ${terms.subsectionsLc}`"
+        class="w-full px-3 py-1.5 text-xs border border-border-subtle rounded-md bg-bg-tertiary text-text-primary font-ui placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150"
       />
 
       <!--
@@ -137,7 +139,7 @@ onMounted(() => {
       <div class="mt-2 flex flex-wrap gap-1" role="group" aria-label="Filter sections by status">
         <BaseChip
           variant="filter"
-          size="md"
+          size="sm"
           :active="filterStatus === 'all'"
           @click="filterStatus = 'all'"
         >
@@ -147,7 +149,7 @@ onMounted(() => {
           v-for="status in SECTION_STATUSES"
           :key="status.value"
           variant="filter"
-          size="md"
+          size="sm"
           :active="filterStatus === status.value"
           @click="filterStatus = status.value"
         >
@@ -160,21 +162,12 @@ onMounted(() => {
       <EmptyState
         v-if="sortedSections.length === 0"
         icon="folder-plus"
-        title="No sections yet"
-        description="Create sections in Section Manager to organize your subsections."
-      >
-        <p class="text-xs text-text-hint font-ui mt-1">
-          Tip: Press <kbd class="px-1.5 py-0.5 bg-bg-tertiary rounded text-2xs">8</kbd> to open
-          Section Manager
-        </p>
-      </EmptyState>
+        :title="`No ${terms.sectionsLc} yet`"
+        :description="`Add ${terms.sectionsLc} from ${terms.sections} in the sidebar; their ${terms.subsectionsLc} are outlined here.`"
+      />
 
-      <div v-else-if="viewMode === 'sections'" class="space-y-4">
-        <div
-          v-for="section in filteredSections"
-          :key="section.id"
-          class="bg-bg-tertiary rounded-lg border border-border-subtle overflow-hidden"
-        >
+      <div v-else-if="viewMode === 'sections'" class="divide-y divide-border-subtle">
+        <div v-for="section in filteredSections" :key="section.id" class="py-1">
           <!--
             Active state was `border-l-2 border-accent`, which both nudged the
             row's contents 2px sideways as it toggled and reached for the chunky
@@ -183,8 +176,8 @@ onMounted(() => {
           -->
           <div
             :class="[
-              'relative p-3 cursor-pointer flex items-center justify-between hover:bg-surface-hover transition-colors',
-              manuscriptStore.activeSectionId === section.id ? 'bg-accent/8' : ''
+              'relative px-3 py-2.5 rounded-lg cursor-pointer flex items-center justify-between hover:bg-surface-hover transition-colors',
+              manuscriptStore.activeSectionId === section.id ? 'bg-accent/10' : ''
             ]"
             @click="selectSection(section.id)"
           >
@@ -194,8 +187,8 @@ onMounted(() => {
               aria-hidden="true"
             />
             <div class="min-w-0">
-              <div class="font-semibold text-text-primary font-ui truncate">
-                {{ section.title || `Section ${section.order + 1}` }}
+              <div class="font-ui text-sm font-medium text-text-primary truncate">
+                {{ section.title || `${terms.section} ${section.order + 1}` }}
               </div>
               <!-- Status used to be an 8px colour bar and nothing else, so it
                    was unreadable to anyone who could not tell the hues apart.
@@ -209,8 +202,8 @@ onMounted(() => {
                 />
                 <span aria-hidden="true">·</span>
                 <span>
-                  {{ getSectionTotalSubsections(section.id) }} subsections ·
-                  {{ getSectionWordCount(section.id) }} words
+                  {{ getSectionTotalSubsections(section.id) }} {{ terms.subsectionsLc }} ·
+                  {{ getSectionWordCount(section.id).toLocaleString() }} words
                 </span>
               </div>
             </div>
@@ -254,7 +247,7 @@ onMounted(() => {
                         <span
                           class="text-sm font-medium font-ui cursor-pointer hover:text-accent"
                           :class="
-                            manuscriptStore.activeSubsectionId === subsection.id
+ manuscriptStore.activeSubsectionId === subsection.id
                               ? 'text-accent'
                               : 'text-text-primary'
                           "

@@ -107,6 +107,35 @@ function formatTime(ts) {
   })
 }
 
+/** Internal event types, in the writer's words. */
+const TYPE_LABELS = {
+  spark_prompt: 'Spark prompt',
+  spark_outline: 'Spark outline',
+  spark_content: 'Spark draft',
+  polish_analysis: 'Polish analysis',
+  polish_annotation: 'Polish note',
+  revise_comment: 'Revision note',
+  entity_generation: 'Generated element',
+  entity_enhance: 'Enhanced element',
+  session_end: 'Writing session',
+  state_snapshot: 'Snapshot'
+}
+
+function typeLabel(type) {
+  return TYPE_LABELS[type] || String(type || '').replace(/_/g, ' ')
+}
+
+const SIGNAL_LABELS = {
+  accepted: 'kept',
+  partial: 'partly kept',
+  rejected: 'discarded',
+  neutral: 'no verdict'
+}
+
+function signalLabel(signal) {
+  return SIGNAL_LABELS[signal] || signal
+}
+
 function signalBadge(signal) {
   return signal === 'accepted'
     ? 'text-accent'
@@ -186,12 +215,14 @@ function handleSignalClick(opt) {
 
       <template v-if="activeTab === 'snapshots'">
         <div v-if="archiveStore.stateSnapshots.length === 0" class="text-center py-8">
-          <p class="text-xs italic text-text-hint">No state snapshots yet</p>
+          <p class="font-ui text-xs text-text-hint">
+            No snapshots yet — one is kept every few minutes of writing.
+          </p>
         </div>
         <div
           v-for="snap in archiveStore.stateSnapshots"
           :key="snap.id"
-          class="p-2 rounded-lg bg-bg-tertiary border border-border-subtle cursor-pointer"
+          class="px-2 py-2 rounded-md hover:bg-surface-hover cursor-pointer transition-colors duration-150"
           @click="showDetails = showDetails === snap.id ? null : snap.id"
         >
           <div class="flex items-center justify-between">
@@ -228,23 +259,25 @@ function handleSignalClick(opt) {
 
       <template v-else>
         <div v-if="archiveStore.archivedSessions.length === 0" class="text-center py-8">
-          <p class="text-xs italic text-text-hint">No archived sessions yet</p>
+          <p class="font-ui text-xs text-text-hint">
+            No sessions yet — a writing session is filed when Flow mode ends.
+          </p>
         </div>
         <div
           v-for="entry in archiveStore.archivedSessions"
           :key="entry.id"
-          class="p-2 rounded-lg bg-bg-tertiary border border-border-subtle cursor-pointer"
+          class="px-2 py-2 rounded-md hover:bg-surface-hover cursor-pointer transition-colors duration-150"
           @click="showDetails = showDetails === entry.id ? null : entry.id"
         >
           <div class="flex items-center justify-between gap-1">
             <span
               class="text-2xs font-ui truncate"
               :class="typeColors[entry.type] || 'text-text-hint'"
-              >{{ entry.type.replace('_', ' ') }}</span
+              >{{ typeLabel(entry.type) }}</span
             >
-            <span class="text-2xs font-ui shrink-0" :class="signalBadge(entry.signal)"
-              >[{{ entry.signal }}]</span
-            >
+            <span class="text-2xs font-ui shrink-0" :class="signalBadge(entry.signal)">{{
+              signalLabel(entry.signal)
+            }}</span>
           </div>
           <div class="flex items-center justify-between mt-0.5">
             <span class="text-2xs text-text-hint font-ui">{{ formatTime(entry.timestamp) }}</span>
@@ -265,7 +298,7 @@ function handleSignalClick(opt) {
 
       <details class="mt-3 border-t border-border-subtle pt-2">
         <summary
-          class="py-1 text-2xs uppercase tracking-wider text-text-hint font-ui cursor-pointer hover:text-text-secondary"
+          class="py-1 label-micro text-text-hint cursor-pointer hover:text-text-secondary"
           @click.prevent="toggleContextPreview"
         >
           {{ showContextPreview ? '▼' : '▶' }} Context Preview
@@ -279,7 +312,9 @@ function handleSignalClick(opt) {
           >
             <span class="text-text-hint shrink-0 mt-0.5">•</span>
             <span class="text-text-secondary">
-              <span v-if="line.signal" :class="signalBadge(line.signal)">[{{ line.signal }}]</span>
+              <span v-if="line.signal" :class="signalBadge(line.signal)">{{
+                signalLabel(line.signal)
+              }}</span>
               {{ line.summary }}
             </span>
           </div>

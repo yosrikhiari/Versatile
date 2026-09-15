@@ -409,7 +409,7 @@ function scanForEntities() {
 
               <div class="relative">
                 <div class="flex items-center justify-between mb-1">
-                  <label class="text-xs uppercase tracking-wider text-text-hint">Title</label>
+                  <label class="label-micro text-text-hint">Title</label>
                   <button
                     :disabled="isGenerating === editingThread?.id"
                     :title="editingThread?.title ? 'Regenerate with AI' : 'Complete with AI'"
@@ -432,7 +432,7 @@ function scanForEntities() {
 
               <div class="relative">
                 <div class="flex items-center justify-between mb-1">
-                  <label class="text-xs uppercase tracking-wider text-text-hint">Notes</label>
+                  <label class="label-micro text-text-hint">Notes</label>
                   <div class="flex items-center gap-1">
                     <button
                       title="Extract entities (works with [Characters:] [Locations:] blocks)"

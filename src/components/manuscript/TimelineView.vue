@@ -10,6 +10,8 @@ import { countWords } from '../../utils/textUtils'
 import draggable from 'vuedraggable'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseStatusDot from '../ui/BaseStatusDot.vue'
+import BasePanelHeader from '../ui/BasePanelHeader.vue'
+import BaseSegmented from '../ui/BaseSegmented.vue'
 import EmptyState from '../shared/EmptyState.vue'
 import { threadStatusMeta } from '../../config/statuses'
 
@@ -172,37 +174,38 @@ onMounted(async () => {
 
 <template>
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
-    <div class="p-4 border-b border-border-subtle flex items-start gap-4">
-      <div class="min-w-0">
-        <h2 class="text-lg font-semibold text-text-primary font-ui">Timeline</h2>
-        <p class="text-xs text-text-hint mt-1">
-          {{
-            view === 'chapters'
-              ? 'What changes in each chapter, from the written manuscript'
-              : 'Drag plot threads to arrange story order'
-          }}
-        </p>
-      </div>
-
-      <div
-        v-if="hasAxis"
-        class="ml-auto shrink-0 flex items-center rounded-md border border-border-subtle overflow-hidden"
-      >
-        <button
-          v-for="mode in ['chapters', 'threads']"
-          :key="mode"
-          class="px-2.5 py-1 text-2xs font-ui capitalize transition-colors"
-          :class="
-            view === mode
-              ? 'bg-bg-tertiary text-text-primary'
-              : 'text-text-hint hover:text-text-secondary'
-          "
-          @click="view = mode"
-        >
-          {{ mode }}
-        </button>
-      </div>
-    </div>
+    <BasePanelHeader
+      title="Timeline"
+      icon="clock"
+      :meta="
+        view === 'chapters'
+          ? hasAxis
+            ? `${chapters.length} chapter${chapters.length !== 1 ? 's' : ''} · ${totalEvents} change${totalEvents !== 1 ? 's' : ''}`
+            : ''
+          : sortedThreads.length
+            ? `${sortedThreads.length} thread${sortedThreads.length !== 1 ? 's' : ''}`
+            : ''
+      "
+    >
+      <template v-if="hasAxis" #actions>
+        <BaseSegmented
+          v-model="view"
+          :options="[
+            { value: 'chapters', label: 'Chapters' },
+            { value: 'threads', label: 'Threads' }
+          ]"
+          size="sm"
+          aria-label="Timeline view"
+        />
+      </template>
+    </BasePanelHeader>
+    <p class="px-4 py-2 border-b border-border-subtle font-ui text-xs text-text-hint">
+      {{
+        view === 'chapters'
+          ? 'What changes in each chapter, from the written manuscript.'
+          : 'Drag plot threads to arrange story order.'
+      }}
+    </p>
 
     <!-- Chapter axis -->
     <div v-if="view === 'chapters'" class="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
@@ -356,18 +359,6 @@ onMounted(async () => {
         </div>
       </div>
     </template>
-
-    <div class="p-3 border-t border-border-subtle text-center">
-      <span v-if="view === 'chapters' && hasAxis" class="text-xs text-text-hint">
-        {{ chapters.length }} chapter{{ chapters.length !== 1 ? 's' : '' }} ·
-        {{ totalEvents }} change{{ totalEvents !== 1 ? 's' : '' }}
-      </span>
-      <span
-        v-else-if="view === 'threads' && sortedThreads.length > 0"
-        class="text-xs text-text-hint"
-        >{{ sortedThreads.length }} thread{{ sortedThreads.length !== 1 ? 's' : '' }}</span
-      >
-    </div>
   </div>
 </template>
 

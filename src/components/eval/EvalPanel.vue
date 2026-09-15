@@ -110,9 +110,7 @@ function gateColor(pass) {
 
     <!-- Gate Summary (aggregated across scenes) -->
     <div v-if="gateSummary" class="bg-bg-secondary border border-border-subtle rounded-lg p-3">
-      <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider mb-2">
-        Eval Gates
-      </h4>
+      <h4 class="label-micro text-text-hint mb-2">Eval Gates</h4>
       <div class="flex items-center gap-3 text-xs font-ui">
         <span class="text-success">{{ gateSummary.passed }} passed</span>
         <span v-if="gateSummary.failed > 0" class="text-danger"
@@ -130,9 +128,7 @@ function gateColor(pass) {
         class="bg-bg-secondary border border-border-subtle rounded-lg p-3"
       >
         <div class="flex items-center justify-between mb-1">
-          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
-            Dimension Coverage
-          </h4>
+          <h4 class="label-micro text-text-hint">Dimension Coverage</h4>
           <BaseIcon
             :name="gateIcon(props.gateResults.dimensionCoverage.pass)"
             :size="14"
@@ -157,9 +153,7 @@ function gateColor(pass) {
         class="bg-bg-secondary border border-border-subtle rounded-lg p-3"
       >
         <div class="flex items-center justify-between mb-1">
-          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
-            Score Distribution
-          </h4>
+          <h4 class="label-micro text-text-hint">Score Distribution</h4>
           <BaseIcon
             :name="gateIcon(props.gateResults.scoreDistribution.pass)"
             :size="14"
@@ -184,9 +178,7 @@ function gateColor(pass) {
         class="bg-bg-secondary border border-border-subtle rounded-lg p-3"
       >
         <div class="flex items-center justify-between mb-1">
-          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
-            Revision Effectiveness
-          </h4>
+          <h4 class="label-micro text-text-hint">Revision Effectiveness</h4>
           <BaseIcon
             :name="gateIcon(props.gateResults.revisionEffectiveness.pass)"
             :size="14"
@@ -225,9 +217,7 @@ function gateColor(pass) {
         class="bg-bg-secondary border border-border-subtle rounded-lg p-3"
       >
         <div class="flex items-center justify-between mb-1">
-          <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
-            Prose Quality
-          </h4>
+          <h4 class="label-micro text-text-hint">Prose Quality</h4>
           <BaseIcon
             :name="gateIcon(props.gateResults.proseQuality.pass)"
             :size="14"
@@ -289,7 +279,7 @@ function gateColor(pass) {
 
     <!-- Issues -->
     <div v-if="issues.length > 0 && !compact">
-      <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider mb-2">
+      <h4 class="label-micro text-text-hint mb-2">
         Issues ({{ majorIssues.length }} major, {{ minorIssues.length }} minor)
       </h4>
       <div class="space-y-1.5">
@@ -312,9 +302,7 @@ function gateColor(pass) {
 
     <!-- Strengths -->
     <div v-if="strengths.length > 0 && !compact">
-      <h4 class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider mb-2">
-        Strengths
-      </h4>
+      <h4 class="label-micro text-text-hint mb-2">Strengths</h4>
       <div class="space-y-1.5">
         <div v-for="(strength, i) in strengths" :key="i" class="flex items-start gap-2 text-xs">
           <BaseIcon name="sparkles" :size="12" class="text-success mt-0.5 shrink-0" />

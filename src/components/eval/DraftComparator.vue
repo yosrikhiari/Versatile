@@ -126,7 +126,7 @@ function onKeydown(event) {
           :class="[
             'flex flex-col rounded-xl border p-3 text-left transition-colors duration-150',
             selected === side.key
-              ? 'border-accent bg-accent/8'
+              ? 'border-accent bg-accent/10'
               : 'border-border-subtle bg-bg-tertiary hover:border-border-strong'
           ]"
           @click="selected = side.key"

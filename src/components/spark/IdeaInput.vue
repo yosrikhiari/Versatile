@@ -1,4 +1,6 @@
 <script setup>
+import BaseChip from '../ui/BaseChip.vue'
+import BaseSegmented from '../ui/BaseSegmented.vue'
 const props = defineProps({
   idea: {
     type: String,
@@ -44,75 +46,48 @@ function toggleTone(t) {
 </script>
 
 <template>
-  <div class="space-y-5">
-    <!-- The idea -->
+  <div class="space-y-4">
     <div>
-      <label class="block text-11px uppercase tracking-widest text-text-secondary font-ui mb-2"
-        >The idea</label
-      >
+      <label for="spark-idea" class="label-micro text-text-hint block mb-1.5">The idea</label>
       <textarea
+        id="spark-idea"
         :value="idea"
         maxlength="400"
-        rows="5"
+        rows="4"
         class="w-full px-3 py-2.5 bg-bg-tertiary border border-border-subtle rounded-md text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-text-primary font-ui placeholder:text-text-hint transition-colors duration-150"
         placeholder="A shadow crosses the moon…"
         @input="emit('update:idea', $event.target.value)"
       ></textarea>
     </div>
 
-    <div class="flex flex-col gap-5 pt-4 border-t border-border-subtle">
-      <!-- Emotional registers -->
-      <div>
-        <label class="block text-11px uppercase tracking-widest text-text-secondary font-ui mb-2.5"
-          >Emotional registers · max 2</label
-        >
+    <div class="flex flex-wrap items-start gap-x-6 gap-y-4">
+      <div class="min-w-0">
+        <div class="label-micro text-text-hint mb-1.5">
+          Register <span class="normal-case tracking-normal font-normal">· up to two</span>
+        </div>
         <div class="flex flex-wrap gap-1.5">
-          <button
+          <BaseChip
             v-for="t in tones"
             :key="t.value"
-            class="px-3 py-1.5 text-11px rounded-md border font-ui transition-[color,background-color,transform] duration-150 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            :class="
-              isActive(t.value)
-                ? 'border-accent text-accent'
-                : 'bg-bg-tertiary border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-hover'
-            "
-            :style="
-              isActive(t.value) ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.14)' } : {}
-            "
+            variant="filter"
+            size="sm"
+            :active="isActive(t.value)"
             @click="toggleTone(t.value)"
           >
             {{ t.label }}
-          </button>
+          </BaseChip>
         </div>
       </div>
 
-      <!-- Target length -->
       <div>
-        <label class="block text-11px uppercase tracking-widest text-text-secondary font-ui mb-2.5"
-          >Target length</label
-        >
-        <div
-          class="inline-flex gap-0.5 p-0.5 bg-bg-tertiary border border-border-subtle rounded-lg"
-        >
-          <button
-            v-for="len in lengths"
-            :key="len.value"
-            class="px-3.5 py-1.5 text-11px rounded-md font-ui transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            :class="
-              targetLength === len.value
-                ? 'text-accent'
-                : 'text-text-secondary hover:text-text-primary'
-            "
-            :style="
-              targetLength === len.value
-                ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.16)' }
-                : {}
-            "
-            @click="emit('update:targetLength', len.value)"
-          >
-            {{ len.label }}
-          </button>
-        </div>
+        <div class="label-micro text-text-hint mb-1.5">Length</div>
+        <BaseSegmented
+          :model-value="targetLength"
+          :options="lengths"
+          size="sm"
+          aria-label="Target length"
+          @update:model-value="emit('update:targetLength', $event)"
+        />
       </div>
     </div>
   </div>

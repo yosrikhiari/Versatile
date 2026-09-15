@@ -85,7 +85,7 @@ async function generate() {
         Generating...
       </span>
       <span v-else-if="portrait">Regenerate</span>
-      <span v-else>Generate Portrait</span>
+      <span v-else>Generate portrait</span>
     </button>
     <div v-if="error" class="text-xs text-danger mt-1">
       {{ error }}

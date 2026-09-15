@@ -60,7 +60,7 @@ watch(
   async (show) => {
     if (show) {
       localName.value = projectStore.currentProjectName
-      localGenre.value = projectStore.currentCategory
+      localGenre.value = projectStore.currentGenre
       localSynopsis.value = projectStore.currentDescription
       localPromptOverrides.value = { ...projectStore.promptOverrides }
       activeTab.value = 'general'
@@ -256,7 +256,7 @@ async function handleSave() {
   try {
     await projectStore.updateProjectInfo({
       name: localName.value.trim(),
-      category: localGenre.value,
+      genre: localGenre.value.trim(),
       description: localSynopsis.value.trim()
     })
     await projectStore.savePromptOverrides(localPromptOverrides.value)
@@ -311,7 +311,7 @@ function handleOverlayClick(event) {
               <div class="flex items-center gap-2">
                 <BaseIcon name="settings" :size="18" class="text-accent" />
                 <h2 class="font-medium text-text-primary font-ui tracking-wide">
-                  Project Settings
+                  Project settings
                 </h2>
               </div>
               <button
@@ -372,7 +372,7 @@ function handleOverlayClick(event) {
 
               <div>
                 <label class="block text-sm font-medium text-text-primary mb-2">
-                  Project Name
+                  Project name
                 </label>
                 <input
                   v-model="localName"
@@ -401,7 +401,7 @@ function handleOverlayClick(event) {
               -->
               <div>
                 <label for="daily-goal" class="block text-sm font-medium text-text-primary mb-2">
-                  Daily Word Goal
+                  Daily word goal
                 </label>
                 <input
                   id="daily-goal"
@@ -504,7 +504,7 @@ function handleOverlayClick(event) {
                 class="px-4 py-2 text-sm btn-primary rounded-lg font-ui flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handleSave"
               >
-                {{ isSaving ? 'Saving...' : 'Save Changes' }}
+                {{ isSaving ? 'Saving...' : 'Save changes' }}
               </button>
             </div>
           </div>

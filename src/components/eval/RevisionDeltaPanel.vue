@@ -92,9 +92,7 @@ function statusColor(status) {
   <div class="revision-delta-panel space-y-3">
     <template v-if="hasRevision">
       <div class="flex items-center justify-between">
-        <h4
-          class="text-xs font-semibold text-text-secondary font-ui uppercase tracking-wider flex items-center gap-1.5"
-        >
+        <h4 class="label-micro text-text-hint flex items-center gap-1.5">
           <BaseIcon name="refresh-cw" :size="12" class="text-accent" />
           Revision Applied
         </h4>
@@ -152,9 +150,7 @@ function statusColor(status) {
       </div>
 
       <div v-if="dimensionDeltas && dimensionDeltas.length > 0 && !compact" class="space-y-1.5">
-        <h5 class="text-2xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
-          Dimension Deltas
-        </h5>
+        <h5 class="label-micro text-text-hint">Dimension Deltas</h5>
         <div
           v-for="dim in dimensionDeltas"
           :key="dim.key"
@@ -176,9 +172,7 @@ function statusColor(status) {
       </div>
 
       <div v-if="diffSegments.length > 0 || diffError" class="word-diff space-y-1.5">
-        <h5 class="text-2xs font-semibold text-text-secondary font-ui uppercase tracking-wider">
-          What Changed
-        </h5>
+        <h5 class="label-micro text-text-hint">What Changed</h5>
         <p class="text-xs font-body text-text-primary leading-relaxed">
           <template v-for="(seg, i) in diffSegments" :key="i">
             <span v-if="seg.collapsed" class="text-text-hint font-ui text-2xs"

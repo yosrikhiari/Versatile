@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import PolishAnnotation from './PolishAnnotation.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseAlert from '../ui/BaseAlert.vue'
 
 const props = defineProps({
   isAnalyzing: { type: Boolean, default: false },
@@ -41,43 +42,46 @@ function flagAnnotation(id) {
 </script>
 
 <template>
-  <div class="flex-[3] p-4 overflow-y-auto border-r border-border-subtle">
-    <div v-if="selectedParagraphIndex === null" class="text-center py-8">
-      <p class="text-sm italic text-text-hint">Click any paragraph in the editor to analyze it</p>
-    </div>
-
-    <div v-else-if="isAnalyzing" class="flex flex-col items-center justify-center py-8 gap-4">
-      <div class="flex items-center gap-2 text-text-secondary">
-        <BaseIcon name="loader-2" :size="16" class="animate-spin" />
-        <span>Analyzing...</span>
-      </div>
-      <div class="w-full max-w-sm space-y-2">
-        <div class="h-3 bg-surface-hover rounded w-3/4 animate-pulse"></div>
-        <div class="h-3 bg-surface-hover rounded w-full animate-pulse"></div>
-        <div class="h-3 bg-surface-hover rounded w-5/6 animate-pulse"></div>
-      </div>
-    </div>
-
-    <div v-else-if="currentAnnotations.length === 0 && !error" class="text-center py-8">
-      <p class="text-sm italic text-text-hint">No issues found — this paragraph looks clean</p>
-    </div>
-
-    <div
-      v-else-if="error"
-      class="p-3 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-danger font-ui"
+  <div
+    class="flex-1 min-w-0 px-4 py-3 overflow-y-auto scrollbar-thin border-r border-border-subtle"
+  >
+    <p
+      v-if="selectedParagraphIndex === null"
+      class="py-8 text-center font-ui text-xs text-text-hint leading-5"
     >
-      {{ error }}
+      Click a paragraph in the editor, then Analyze.
+    </p>
+
+    <div v-else-if="isAnalyzing" class="py-4 space-y-3" role="status">
+      <div class="flex items-center gap-2 font-ui text-xs text-text-hint">
+        <BaseIcon name="loader-2" :size="14" class="animate-spin text-accent" />
+        Reading the paragraph…
+      </div>
+      <div class="max-w-sm space-y-2 animate-pulse" aria-hidden="true">
+        <div class="h-3 bg-bg-tertiary rounded w-3/4"></div>
+        <div class="h-3 bg-bg-tertiary rounded w-full"></div>
+        <div class="h-3 bg-bg-tertiary rounded w-5/6"></div>
+      </div>
     </div>
 
-    <div v-else class="space-y-4">
-      <div
+    <BaseAlert v-else-if="error" variant="danger">{{ error }}</BaseAlert>
+
+    <p
+      v-else-if="currentAnnotations.length === 0"
+      class="py-8 text-center font-ui text-xs text-text-hint leading-5"
+    >
+      Nothing to fix here — this paragraph reads clean under the active lenses.
+    </p>
+
+    <div v-else>
+      <p
         v-if="overallNote"
-        class="bg-bg-secondary border-l-2 border-accent rounded-r-lg p-3 text-sm text-text-secondary italic"
+        class="mb-3 font-ui text-sm text-text-secondary leading-5 border-l-2 border-border-subtle pl-3"
       >
         {{ overallNote }}
-      </div>
+      </p>
 
-      <TransitionGroup name="fade-stagger" tag="div" class="space-y-4">
+      <TransitionGroup name="fade-stagger" tag="div" class="divide-y divide-border-subtle">
         <PolishAnnotation
           v-for="annotation in currentAnnotations"
           :key="annotation.id"

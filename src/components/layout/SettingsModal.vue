@@ -118,7 +118,7 @@ watch(
                 class="flex-1 py-2 bg-surface-hover text-text-secondary rounded-lg font-medium hover:bg-bg-tertiary text-sm"
                 @click="showVoiceUpload = true"
               >
-                Upload Sample Text
+                Upload sample text
               </button>
             </div>
             <VoiceUploadModal :is-open="showVoiceUpload" @close="showVoiceUpload = false" />

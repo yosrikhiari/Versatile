@@ -2,7 +2,7 @@
   <div class="voice-profile-display">
     <!-- Header -->
     <div class="profile-header">
-      <h3 class="text-lg font-semibold text-text-primary">Writing Voice Profile</h3>
+      <h3 class="text-lg font-semibold text-text-primary">Writing voice profile</h3>
       <div class="header-actions">
         <BaseButton
           v-if="profile && !isLocked"
@@ -42,7 +42,7 @@
       <div v-if="growthWarning" class="growth-warning">
         <span class="warning-icon">⚠️</span>
         <div class="warning-text">
-          <p class="font-medium text-sm">Profile Size Mismatch</p>
+          <p class="font-medium text-sm">Profile size mismatch</p>
           <p class="text-xs text-text-secondary">
             {{ growthWarning }}
           </p>
@@ -84,7 +84,7 @@
             <span class="value">{{ (profile.vocabulary.uniqueWordRatio * 100).toFixed(1) }}%</span>
           </div>
           <div class="stat">
-            <span class="label">Avg Word Length</span>
+            <span class="label">Avg word length</span>
             <span class="value">{{ profile.vocabulary.averageWordLength.toFixed(1) }} chars</span>
           </div>
           <div class="stat">
@@ -111,7 +111,7 @@
         <h4 class="metric-title">📊 Sentence Structure</h4>
         <div class="metric-grid">
           <div class="stat">
-            <span class="label">Avg Sentence Length</span>
+            <span class="label">Avg sentence length</span>
             <span class="value"
               >{{ profile.sentenceStructure.averageSentenceLength.toFixed(1) }} words</span
             >
@@ -185,11 +185,11 @@
         <h4 class="metric-title">⚡ Pacing & Paragraphs</h4>
         <div class="metric-grid">
           <div class="stat">
-            <span class="label">Avg Paragraph Length</span>
+            <span class="label">Avg paragraph length</span>
             <span class="value">{{ profile.pacing.averageParagraphLength.toFixed(0) }} words</span>
           </div>
           <div class="stat">
-            <span class="label">Avg Line Breaks</span>
+            <span class="label">Avg line breaks</span>
             <span class="value">{{ profile.pacing.averageLineBreaks.toFixed(1) }}</span>
           </div>
         </div>

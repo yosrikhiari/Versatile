@@ -46,7 +46,7 @@ function handleConfirm() {
 <template>
   <div class="space-y-4">
     <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 space-y-2">
-      <h3 class="text-sm font-semibold text-text-primary font-ui">Review New Entities</h3>
+      <h3 class="text-sm font-semibold text-text-primary font-ui">Review new entities</h3>
       <p class="text-xs text-text-hint">
         The writer discovered the following entities during generation.
         <template v-if="changes.length > 0">
@@ -83,7 +83,7 @@ function handleConfirm() {
     </div>
 
     <div v-if="characterChanges.length > 0" class="space-y-1.5">
-      <h4 class="text-xs uppercase tracking-widest text-text-hint font-ui flex items-center gap-1">
+      <h4 class="label-micro text-text-hint flex items-center gap-1">
         <BaseIcon name="users" :size="12" />
         Characters ({{ characterChanges.length }})
       </h4>
@@ -119,7 +119,7 @@ function handleConfirm() {
     </div>
 
     <div v-if="locationChanges.length > 0" class="space-y-1.5">
-      <h4 class="text-xs uppercase tracking-widest text-text-hint font-ui flex items-center gap-1">
+      <h4 class="label-micro text-text-hint flex items-center gap-1">
         <BaseIcon name="map-pin" :size="12" />
         Locations ({{ locationChanges.length }})
       </h4>
@@ -155,7 +155,7 @@ function handleConfirm() {
     </div>
 
     <div v-if="plotThreadChanges.length > 0" class="space-y-1.5">
-      <h4 class="text-xs uppercase tracking-widest text-text-hint font-ui flex items-center gap-1">
+      <h4 class="label-micro text-text-hint flex items-center gap-1">
         <BaseIcon name="git-branch" :size="12" />
         Plot Threads ({{ plotThreadChanges.length }})
       </h4>

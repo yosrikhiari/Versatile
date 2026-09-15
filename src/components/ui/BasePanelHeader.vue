@@ -40,13 +40,20 @@ defineEmits(['toggle-collapse', 'close'])
 
     <BaseIcon v-if="icon" :name="icon" :size="14" class="shrink-0 text-text-hint" />
 
-    <h2 class="min-w-0 flex-1 truncate font-ui text-sm font-semibold text-text-primary">
+    <!-- The title is the identity; when the row is tight the meta gives way
+         first, the title only after it. -->
+    <h2 class="min-w-0 shrink truncate font-ui text-sm font-semibold text-text-primary">
       {{ title }}
     </h2>
 
-    <span v-if="meta" class="shrink-0 font-ui text-xs tabular-nums text-text-hint">
+    <span
+      v-if="meta"
+      class="min-w-0 flex-1 truncate text-right font-ui text-xs tabular-nums text-text-hint"
+      :title="meta"
+    >
       {{ meta }}
     </span>
+    <span v-else class="flex-1"></span>
 
     <div v-if="$slots.actions" class="flex shrink-0 items-center gap-1">
       <slot name="actions" />

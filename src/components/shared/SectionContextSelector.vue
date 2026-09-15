@@ -112,36 +112,52 @@ defineExpose({
 </script>
 
 <template>
-  <div class="space-y-2">
-    <div class="flex items-center gap-2">
-      <span class="text-xs text-text-hint">Context:</span>
-      <select
-        v-model="selectedSelector"
-        class="flex-1 px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-      >
-        <option v-for="opt in options" :key="opt.value" :value="opt.value">
-          {{ opt.label }}
-        </option>
-      </select>
+  <!-- One line: what the AI reads, as a quiet control rather than a form field.
+       The select is borderless with its own chevron so it reads as a choice,
+       not an input; the budget preview sits under it in the hint colour. -->
+  <div class="space-y-1.5">
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="label-micro text-text-hint shrink-0">Context</span>
+      <label class="relative inline-flex items-center min-w-0">
+        <select
+          v-model="selectedSelector"
+          aria-label="Which part of the manuscript the AI reads"
+          class="appearance-none bg-transparent pl-2 pr-6 py-1 rounded-md font-ui text-xs text-text-primary border border-transparent hover:border-border-subtle hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer max-w-[14rem] truncate transition-colors duration-150"
+        >
+          <option v-for="opt in options" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+        <BaseIcon
+          name="chevron-down"
+          :size="12"
+          class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-text-hint"
+        />
+      </label>
     </div>
 
-    <div v-if="selectedSelector === 'specific'" class="pl-16">
+    <div v-if="selectedSelector === 'specific'" class="flex items-center gap-2">
       <input
         v-model="specificSections"
         type="text"
         placeholder="e.g. 3, 5, 8"
-        class="w-full px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent"
+        aria-label="Section numbers, comma separated"
+        class="w-32 px-2 py-1 font-ui text-xs bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent"
       />
-      <p class="mt-1 text-2xs text-text-hint">Enter section numbers, separated by commas</p>
+      <span class="font-ui text-2xs text-text-hint">section numbers, comma separated</span>
     </div>
 
-    <div v-if="contextPreview" class="pl-16 flex items-center gap-1.5 text-2xs text-text-hint">
-      <BaseIcon name="file-text" :size="10" />
-      <span>{{ contextPreview.label }}</span>
-      <span class="text-text-hint"
-        >{{ contextPreview.chars }} of {{ contextPreview.budgetChars }} chars used</span
+    <p
+      v-if="contextPreview"
+      class="flex items-center gap-1.5 font-ui text-2xs text-text-hint tabular-nums"
+    >
+      <BaseIcon name="file-text" :size="10" class="shrink-0" />
+      <span class="truncate">{{ contextPreview.label }}</span>
+      <span class="shrink-0"
+        >· {{ contextPreview.chars.toLocaleString() }} /
+        {{ contextPreview.budgetChars.toLocaleString() }} chars</span
       >
-      <span v-if="contextPreview.truncated" class="text-warning">truncated</span>
-    </div>
+      <span v-if="contextPreview.truncated" class="text-warning shrink-0">· truncated</span>
+    </p>
   </div>
 </template>

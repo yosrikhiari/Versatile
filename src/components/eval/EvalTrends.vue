@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between">
-      <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui">Score Trends</h3>
+      <h3 class="label-micro text-text-hint">Score Trends</h3>
       <div class="flex items-center gap-2">
         <select
           v-model="selectedDimension"
@@ -41,9 +41,7 @@
         v-if="selectedDimension === '__overall' && trendDirection"
         class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
       >
-        <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-          Trend Analysis
-        </h4>
+        <h4 class="label-micro text-text-hint mb-2">Trend Analysis</h4>
         <span class="inline-flex items-center gap-1 text-xs font-ui" :class="trendDirection.color">
           <BaseIcon :name="trendDirection.icon" :size="12" />
           {{ trendDirection.label }}
@@ -54,9 +52,7 @@
         v-if="selectedDimension === '__overall' && dimensionMiniCharts.length > 0"
         class="rounded-lg bg-bg-tertiary/40 border border-border-subtle p-3"
       >
-        <h4 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-          Per-Dimension Trends
-        </h4>
+        <h4 class="label-micro text-text-hint mb-2">Per-Dimension Trends</h4>
         <div class="grid grid-cols-2 gap-3">
           <div
             v-for="dm in dimensionMiniCharts"

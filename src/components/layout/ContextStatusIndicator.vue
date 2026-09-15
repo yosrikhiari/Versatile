@@ -25,6 +25,11 @@ async function toggle() {
 
 const sourceCount = () => preview.value?.previewLines?.length || 0
 
+const SIGNAL_LABELS = { accepted: 'kept', partial: 'partly kept', rejected: 'discarded' }
+function signalLabel(signal) {
+  return SIGNAL_LABELS[signal] || signal
+}
+
 function signalBadge(signal) {
   return signal === 'accepted'
     ? 'text-accent'
@@ -39,20 +44,20 @@ function signalBadge(signal) {
 <template>
   <div class="relative">
     <button
-      class="flex items-center gap-1 px-2 py-1 text-label rounded font-ui transition-colors"
+      class="flex items-center gap-1 px-2 py-1 text-label rounded font-ui transition-colors whitespace-nowrap"
       :class="
         expanded
           ? 'bg-surface-hover text-accent'
           : 'text-text-hint hover:text-text-secondary hover:bg-surface-hover'
       "
-      title="Context status"
+      title="What the AI reads from your project before it writes"
       :aria-expanded="expanded"
       aria-haspopup="true"
       @click="toggle"
     >
       <BaseIcon name="layers" :size="12" />
-      <span v-if="preview">Ctx: {{ sourceCount() }}</span>
-      <span v-else>Context</span>
+      <span v-if="preview">AI context · {{ sourceCount() }}</span>
+      <span v-else>AI context</span>
     </button>
     <div
       v-if="expanded"
@@ -61,9 +66,8 @@ function signalBadge(signal) {
     >
       <div v-if="loading" class="text-label text-text-hint font-ui">Loading...</div>
       <div v-else-if="preview" class="space-y-1.5">
-        <div class="text-label uppercase tracking-wider text-text-hint font-ui">
-          {{ preview.sourceDescription }}
-        </div>
+        <div class="label-micro text-text-hint">What the AI sees</div>
+        <div class="text-label text-text-hint font-ui">{{ preview.sourceDescription }}</div>
         <div
           v-for="(line, i) in preview.previewLines"
           :key="i"
@@ -71,7 +75,9 @@ function signalBadge(signal) {
         >
           <span class="text-text-hint shrink-0 mt-0.5">•</span>
           <span class="text-text-secondary">
-            <span v-if="line.signal" :class="signalBadge(line.signal)">[{{ line.signal }}]</span>
+            <span v-if="line.signal" :class="signalBadge(line.signal)">{{
+              signalLabel(line.signal)
+            }}</span>
             {{ line.summary }}
           </span>
         </div>
@@ -87,7 +93,9 @@ function signalBadge(signal) {
           >
         </details>
       </div>
-      <div v-else class="text-label text-text-hint font-ui">No context available</div>
+      <div v-else class="text-label text-text-hint font-ui">
+        Nothing yet — the AI reads your recent sessions, story bible and manuscript once they exist.
+      </div>
     </div>
   </div>
 </template>

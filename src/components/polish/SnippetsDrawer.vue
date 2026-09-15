@@ -1,4 +1,5 @@
 <script setup>
+import BaseIcon from '../shared/BaseIcon.vue'
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -17,41 +18,32 @@ const sortedSnippets = computed(() => {
 
 <template>
   <div class="h-full flex flex-col overflow-hidden">
-    <h3 class="text-11px uppercase tracking-widest text-text-hint font-ui mb-3">Snippets</h3>
+    <h3 class="label-micro text-text-hint mb-2">Overused words</h3>
 
-    <div v-if="sortedSnippets.length === 0" class="text-center py-4">
-      <p class="text-sm italic text-text-hint">Overused words will appear here as you write</p>
-    </div>
+    <p v-if="sortedSnippets.length === 0" class="font-ui text-xs text-text-hint leading-5">
+      Words you lean on will collect here as you write.
+    </p>
 
-    <div v-else class="flex-1 overflow-y-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-text-hint text-xs font-ui">
-            <th class="pb-2">Word</th>
-            <th class="pb-2 text-center">#</th>
-            <th class="pb-2"></th>
-          </tr>
-        </thead>
-        <TransitionGroup tag="tbody" name="row" appear>
-          <tr
-            v-for="snippet in sortedSnippets"
-            :key="snippet.id"
-            class="border-t border-border-subtle/50"
-          >
-            <td class="py-2 text-text-secondary font-ui">{{ snippet.word }}</td>
-            <td class="py-2 text-center text-text-hint font-mono text-xs">{{ snippet.count }}</td>
-            <td class="py-2 text-right">
-              <button
-                class="text-text-hint hover:text-danger text-xs focus:outline-none focus:ring-2 focus:ring-accent rounded"
-                @click="emit('remove', snippet.id)"
-              >
-                ×
-              </button>
-            </td>
-          </tr>
-        </TransitionGroup>
-      </table>
-    </div>
+    <ul v-else class="flex-1 overflow-y-auto scrollbar-thin -mx-1 divide-y divide-border-subtle">
+      <li
+        v-for="snippet in sortedSnippets"
+        :key="snippet.id"
+        class="group flex items-center gap-2 px-1 py-1.5"
+      >
+        <span class="flex-1 min-w-0 truncate font-manuscript text-sm text-text-secondary">{{
+          snippet.word
+        }}</span>
+        <span class="font-ui text-xs text-text-hint tabular-nums">{{ snippet.count }}</span>
+        <button
+          type="button"
+          class="rounded p-0.5 text-text-hint opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          :aria-label="`Remove ${snippet.word}`"
+          @click="emit('remove', snippet.id)"
+        >
+          <BaseIcon name="x" :size="12" />
+        </button>
+      </li>
+    </ul>
   </div>
 </template>
 

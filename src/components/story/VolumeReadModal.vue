@@ -35,7 +35,7 @@ const emit = defineEmits(['close'])
       </div>
       <div class="space-y-6">
         <div v-for="(scene, i) in scenes" :key="i" class="space-y-2">
-          <h3 class="text-sm font-semibold text-accent font-ui">
+          <h3 class="text-sm font-semibold text-text-primary font-ui">
             Scene {{ i + 1 }}: {{ scene.title }}
           </h3>
           <div class="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">

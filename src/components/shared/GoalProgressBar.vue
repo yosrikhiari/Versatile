@@ -26,7 +26,11 @@ const goalReached = computed(() => {
 
 <template>
   <div class="flex items-center gap-2">
-    <div v-if="goalWords > 0" class="w-20 h-1 bg-bg-tertiary rounded-full overflow-hidden">
+    <!-- The bar is decoration for the number; on phones the number alone fits. -->
+    <div
+      v-if="goalWords > 0"
+      class="hidden sm:block w-20 h-1 bg-bg-tertiary rounded-full overflow-hidden"
+    >
       <div
         class="h-full transition-all duration-300 rounded-full"
         :class="{ 'bg-accent': !goalReached }"

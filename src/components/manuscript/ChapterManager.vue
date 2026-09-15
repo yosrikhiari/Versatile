@@ -9,9 +9,11 @@ import {
 } from '../../composables/useSectionSchemaManager'
 import { useDraggableList, DRAG_OPTIONS } from '../../composables/useDraggableList'
 import { useNotifications } from '../../composables/useNotifications'
+import { countWords, stripHtmlTags } from '../../utils/textUtils'
 
 import Modal from '../shared/Modal.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseButton from '../ui/BaseButton.vue'
 import draggable from 'vuedraggable'
 import SnapshotHistoryDrawer from './SnapshotHistoryDrawer.vue'
 import TagInput from '../shared/TagInput.vue'
@@ -20,6 +22,9 @@ const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
 const volumeStore = useVolumeStore()
 const { showConfirm } = useNotifications()
+
+// "Chapter"/"Scene" for a novel, "Scene"/"Beat" for a screenplay — see config/workspace.ts.
+const terms = computed(() => projectStore.structureTerms)
 const { endDrag } = useDraggableList()
 
 const {
@@ -151,8 +156,8 @@ function saveSection() {
 async function deleteSection(section) {
   if (
     await showConfirm(
-      'Delete Section',
-      `Delete "${section.title || 'Section ' + (section.order + 1)}"? This will also delete all subsections in this section.`,
+      `Delete ${terms.value.section}`,
+      `Delete "${section.title || terms.value.section + ' ' + (section.order + 1)}"? This will also delete all ${terms.value.subsectionsLc} in this ${terms.value.sectionLc}.`,
       'Delete',
       'danger'
     )
@@ -165,6 +170,53 @@ function updateSectionOrder() {
   endDrag()
   const ids = sortedSections.value.map((s) => s.id)
   manuscriptStore.reorderSectionsData(ids, projectStore.currentProjectId)
+}
+
+/**
+ * Text written before any section existed.
+ *
+ * "Start writing" on an empty project puts the words in the project's root
+ * document. The moment the writer opens a section, that text leaves the
+ * editor and nothing in this list led back to it — the header kept counting
+ * it while "Total" here said 0. Surface it as its own row, and offer to file
+ * it into a section so it stops living outside the structure.
+ */
+const looseDraftWords = computed(() => countWords(projectStore.documentContentRaw))
+const hasLooseDraft = computed(() => looseDraftWords.value > 0)
+const isLooseDraftActive = computed(
+  () => !manuscriptStore.activeSectionId && !manuscriptStore.activeSubsectionId
+)
+
+function selectLooseDraft() {
+  activeSectionExpanded.value = null
+  manuscriptStore.setActiveSection(null)
+  manuscriptStore.setActiveSubsection(null)
+}
+
+const filingDraft = ref(false)
+
+async function fileLooseDraftAsSection() {
+  if (filingDraft.value || !hasLooseDraft.value) return
+  filingDraft.value = true
+  try {
+    const content = projectStore.documentContent
+    const id = await manuscriptStore.addSectionData(projectStore.currentProjectId, {
+      title: `${terms.value.section} ${sortedSections.value.length + 1}`,
+      summary: '',
+      tags: [],
+      content,
+      wordCount: countWords(stripHtmlTags(content))
+    })
+    // Empty the root only after the section holds the text, so a failed
+    // write cannot lose the draft.
+    projectStore.updateContent('', '')
+    await projectStore.saveDocumentNow()
+    activeSectionExpanded.value = id
+    manuscriptStore.setActiveSection(id)
+    manuscriptStore.setActiveSubsection(null)
+  } finally {
+    filingDraft.value = false
+  }
 }
 
 function selectSection(sectionId) {
@@ -245,7 +297,7 @@ async function deleteVolume(volume) {
   if (
     await showConfirm(
       'Delete Volume',
-      `Delete "${volume.title}"? Sections will be unassigned from this volume.`,
+      `Delete "${volume.title}"? ${terms.value.sections} will be unassigned from this volume.`,
       'Delete',
       'danger'
     )
@@ -327,13 +379,10 @@ function handleSnapshotRestored(content) {
 <template>
   <div class="h-full flex flex-col bg-bg-primary overflow-hidden">
     <div class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
-      <span class="font-ui text-accent tracking-wide">Section Manager</span>
-      <button
-        class="bg-accent/12 text-accent hover:bg-accent/20 rounded-md text-xs px-3 py-1 font-medium transition-colors"
-        @click="openAddSection"
-      >
-        + Add Section
-      </button>
+      <h2 class="font-ui text-sm font-semibold text-text-primary">{{ terms.sections }}</h2>
+      <BaseButton variant="soft" size="sm" icon="plus" @click="openAddSection">
+        Add {{ terms.sectionLc }}
+      </BaseButton>
     </div>
 
     <div
@@ -366,13 +415,8 @@ function handleSnapshotRestored(content) {
     <div
       class="flex items-center justify-between px-4 pt-2.5 pb-2 border-b border-border-subtle shrink-0"
     >
-      <span class="text-xs font-medium text-text-secondary uppercase tracking-wider">Volumes</span>
-      <button
-        class="text-xs px-2.5 py-0.5 bg-transparent text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-        @click="openAddVolume"
-      >
-        + Add
-      </button>
+      <span class="label-micro text-text-hint">Volumes</span>
+      <BaseButton variant="ghost" size="sm" icon="plus" @click="openAddVolume">Add</BaseButton>
     </div>
 
     <div
@@ -398,17 +442,21 @@ function handleSnapshotRestored(content) {
               class="w-2.5 h-2.5 rounded-full flex-shrink-0"
               :style="{ background: volume.color || 'var(--vers-default-fallback)' }"
             ></span>
-            <span class="text-sm font-medium text-text-primary">{{ volume.title }}</span>
+            <span
+              class="font-ui text-sm font-medium text-text-primary truncate"
+              :title="volume.title"
+              >{{ volume.title }}</span
+            >
             <span
               class="text-xs text-text-hint bg-bg-primary border border-border-subtle rounded-full px-2 py-0.5 whitespace-nowrap"
             >
-              {{ getSectionsInVolume(volume.id).length }} sections
+              {{ getSectionsInVolume(volume.id).length }} {{ terms.sectionsLc }}
             </span>
           </div>
           <div class="flex items-center gap-0.5" @click.stop>
             <button
               class="p-1 text-text-hint hover:text-text-secondary rounded"
-              title="Assign sections"
+              :title="`Assign ${terms.sectionsLc}`"
               :class="
                 assignMode && assignVolumeId === volume.id ? 'bg-surface-hover text-accent' : ''
               "
@@ -444,7 +492,7 @@ function handleSnapshotRestored(content) {
           >
             <div class="flex items-center gap-2 min-w-0">
               <span class="text-sm text-text-primary font-medium">{{
-                section.title || `Section ${section.order + 1}`
+                section.title || `${terms.section} ${section.order + 1}`
               }}</span>
               <span
                 class="text-xs font-medium px-2 py-0.5 rounded-full bg-bg-secondary text-text-secondary"
@@ -453,37 +501,74 @@ function handleSnapshotRestored(content) {
             </div>
             <button
               class="p-1 text-text-hint hover:text-danger rounded"
-              title="Remove section from volume"
+              :title="`Remove ${terms.sectionLc} from volume`"
               @click="removeFromVolume(section)"
             >
               <BaseIcon name="x" :size="12" />
             </button>
           </div>
           <div v-if="getSectionsInVolume(volume.id).length === 0" class="text-center py-2">
-            <p class="text-xs text-text-hint">No sections assigned</p>
+            <p class="text-xs text-text-hint">No {{ terms.sectionsLc }} assigned</p>
           </div>
         </div>
       </div>
     </div>
 
     <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-3 pt-3 pb-2">
-      <p class="text-xs font-medium text-text-hint uppercase tracking-wider mx-1 mb-2">Sections</p>
+      <p class="label-micro text-text-hint mx-1 mb-2">
+        {{ terms.sections }}
+      </p>
+
+      <div
+        v-if="hasLooseDraft"
+        :class="[
+          'mb-2 rounded-lg border px-3 py-2 flex items-center justify-between gap-2 transition-colors',
+          isLooseDraftActive
+            ? 'border-accent/40 bg-accent/10'
+            : 'border-dashed border-border-subtle hover:bg-surface-hover'
+        ]"
+      >
+        <button
+          type="button"
+          class="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+          :title="`Open the text written outside any ${terms.sectionLc}`"
+          @click="selectLooseDraft"
+        >
+          <span class="block text-sm font-medium text-text-primary font-ui truncate">
+            Loose draft
+          </span>
+          <span class="block text-xs text-text-hint font-ui">
+            {{ looseDraftWords.toLocaleString() }} words &middot; not in any {{ terms.sectionLc }}
+          </span>
+        </button>
+        <button
+          type="button"
+          class="shrink-0 text-xs px-2.5 py-1 rounded-md border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-hover font-ui disabled:opacity-50"
+          :disabled="filingDraft"
+          :title="`Move this text into a new ${terms.sectionLc}`"
+          @click="fileLooseDraftAsSection"
+        >
+          File as {{ terms.sectionLc }}
+        </button>
+      </div>
 
       <div
         v-if="filteredSections.length === 0 && sortedSections.length > 0"
         class="text-center py-8"
       >
-        <p class="text-text-hint font-ui text-sm mb-4">No sections match the selected tags.</p>
+        <p class="text-text-hint font-ui text-sm mb-4">
+          No {{ terms.sectionsLc }} match the selected tags.
+        </p>
         <button class="px-4 py-2 btn-primary rounded-lg font-ui" @click="tagFilter = []">
           Clear Filters
         </button>
       </div>
       <div v-else-if="filteredSections.length === 0" class="text-center py-8">
         <p class="text-text-hint font-ui text-sm mb-4">
-          No sections yet. Start planning your document!
+          No {{ terms.sectionsLc }} yet. Add the first one to give the manuscript a shape.
         </p>
         <button class="px-4 py-2 btn-primary rounded-lg font-ui" @click="openAddSection">
-          Add First Section
+          Add first {{ terms.sectionLc }}
         </button>
       </div>
 
@@ -491,22 +576,25 @@ function handleSnapshotRestored(content) {
         :list="filteredSections"
         item-key="id"
         v-bind="sectionDragOptions"
-        class="space-y-2"
+        class="divide-y divide-border-subtle"
         @end="updateSectionOrder"
       >
         <template #item="{ element: section }">
           <div
             :id="'section-' + section.id"
             :class="[
-              'border border-border-subtle rounded-lg overflow-hidden',
+              'rounded-lg overflow-hidden transition-colors',
+              activeSectionExpanded === section.id ? 'bg-bg-secondary' : '',
               assignMode ? 'ring-2 ring-accent cursor-pointer' : ''
             ]"
           >
             <div
               :class="[
-                'flex items-center gap-2.5 p-3 bg-bg-primary transition-colors',
+                'flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors',
                 assignMode ? 'hover:bg-surface-hover' : 'hover:bg-surface-hover cursor-pointer',
-                manuscriptStore.activeSectionId === section.id ? 'border-l-2 border-accent' : ''
+                manuscriptStore.activeSectionId === section.id
+                  ? 'shadow-[inset_2px_0_0_0_rgb(var(--vers-accent-primary-rgb))]'
+                  : ''
               ]"
               @click="assignMode ? assignSectionToVolume(section.id) : selectSection(section.id)"
             >
@@ -524,7 +612,7 @@ function handleSnapshotRestored(content) {
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="text-sm font-medium text-text-primary">{{
-                    section.title || `Section ${section.order + 1}`
+                    section.title || `${terms.section} ${section.order + 1}`
                   }}</span>
                   <span
                     class="text-xs font-medium px-2 py-0.5 rounded-full bg-bg-secondary text-text-secondary"
@@ -538,7 +626,7 @@ function handleSnapshotRestored(content) {
                   </span>
                   <span class="text-xs text-text-hint flex items-center gap-1">
                     <BaseIcon name="list" :size="12" class="flex-shrink-0" />
-                    {{ subsectionsBySection[section.id]?.length || 0 }} subsections
+                    {{ subsectionsBySection[section.id]?.length || 0 }} {{ terms.subsectionsLc }}
                   </span>
                 </div>
               </div>
@@ -557,10 +645,10 @@ function handleSnapshotRestored(content) {
                 <!-- Row 1: action buttons -->
                 <div class="flex items-center gap-1">
                   <button
-                    class="text-xs px-2.5 py-1 bg-accent/12 text-accent hover:bg-accent/20 rounded-md font-medium transition-colors"
+                    class="text-xs px-2.5 py-1 bg-accent/10 text-accent hover:bg-accent/20 rounded-md font-medium transition-colors"
                     @click="openAddSubsection(section.id)"
                   >
-                    + Subsection
+                    + {{ terms.subsection }}
                   </button>
                   <button
                     class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
@@ -581,26 +669,29 @@ function handleSnapshotRestored(content) {
                   >
                     Unassign
                   </button>
+                  <!-- Destructive: pushed to the far edge and quiet until hovered,
+                       so it does not read as one of the everyday actions. -->
+                  <button
+                    class="ml-auto p-1 rounded-md text-text-hint hover:text-danger hover:bg-surface-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+                    :title="`Delete ${terms.sectionLc}`"
+                    :aria-label="`Delete ${terms.sectionLc}`"
+                    @click="deleteSection(section)"
+                  >
+                    <BaseIcon name="trash-2" :size="14" />
+                  </button>
                 </div>
-                <!-- Row 2: destructive action, full width -->
-                <button
-                  class="w-full text-xs px-2.5 py-1 bg-bg-primary text-danger border border-border-subtle rounded-md hover:bg-surface-hover text-center"
-                  @click="deleteSection(section)"
-                >
-                  Delete
-                </button>
               </div>
 
               <draggable
                 :list="subsectionsBySection[section.id]"
                 item-key="id"
                 v-bind="subsectionDragOptions"
-                class="space-y-1.5 min-h-[40px]"
+                class="space-y-0.5 min-h-[40px]"
                 @end="() => updateSubsectionOrder(section.id)"
               >
                 <template #item="{ element: subsection }">
                   <div
-                    class="flex items-center gap-2 px-2.5 py-2 bg-bg-primary border border-border-subtle rounded-md"
+                    class="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-surface-hover transition-colors"
                   >
                     <BaseIcon
                       name="grip-vertical"
@@ -611,13 +702,30 @@ function handleSnapshotRestored(content) {
                     <span
                       class="text-xs font-medium flex-1 min-w-0 cursor-pointer hover:text-accent"
                       :class="
-                        manuscriptStore.activeSubsectionId === subsection.id
+ manuscriptStore.activeSubsectionId === subsection.id
                           ? 'text-accent'
                           : 'text-text-primary'
                       "
                       @click="handleSubsectionClick(subsection)"
                       >{{ subsection.title || 'Untitled Subsection' }}</span
                     >
+                    <!-- Generator verdicts: a scene kept for review still has
+                         prose; a failed one has none. Icon only — the row is
+                         already dense. -->
+                    <span
+                      v-if="subsection.contentStatus === 'review'"
+                      class="shrink-0 text-warning"
+                      title="Generated, but the quality gate asked for a look — open it or regenerate the scene"
+                    >
+                      <BaseIcon name="alert-triangle" :size="12" />
+                    </span>
+                    <span
+                      v-else-if="subsection.contentStatus === 'failed'"
+                      class="shrink-0 text-danger"
+                      title="Generation failed — no prose yet. Continue drafting from the Generator to fill it"
+                    >
+                      <BaseIcon name="circle-off" :size="12" />
+                    </span>
                     <button
                       class="bg-transparent border-none text-xs text-text-secondary cursor-pointer px-1.5 py-0.5 hover:text-text-primary"
                       @click="openEditSubsection(subsection)"
@@ -626,7 +734,7 @@ function handleSnapshotRestored(content) {
                     </button>
                     <button
                       class="bg-transparent border-none text-xs text-danger cursor-pointer px-1.5 py-0.5 hover:opacity-80"
-                      title="Delete subsection"
+                      :title="`Delete ${terms.subsectionLc}`"
                       @click="deleteSubsection(subsection)"
                     >
                       <BaseIcon name="x" :size="12" />
@@ -637,7 +745,9 @@ function handleSnapshotRestored(content) {
 
               <div v-if="!subsectionsBySection[section.id]?.length" class="text-center py-3">
                 <p class="text-xs text-text-hint">
-                  No subsections yet. Break down this section into subsections.
+                  No {{ terms.subsectionsLc }} yet. Write straight into the {{ terms.sectionLc }},
+                  or split it into {{ terms.subsectionsLc }}
+                  to move through it scene by scene.
                 </p>
               </div>
             </div>
@@ -650,11 +760,13 @@ function handleSnapshotRestored(content) {
         class="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between"
       >
         <span class="text-xs text-text-hint"
-          >Total: {{ totalWordCount.toLocaleString() }} words</span
+          >Total: {{ totalWordCount.toLocaleString() }} words<template v-if="hasLooseDraft">
+            &middot; {{ looseDraftWords.toLocaleString() }} loose</template
+          ></span
         >
         <span class="text-xs text-text-hint"
-          >{{ sortedSections.length }} sections &middot;
-          {{ totalSubsectionCount }} subsections</span
+          >{{ sortedSections.length }} {{ terms.sectionsLc }} &middot; {{ totalSubsectionCount }}
+          {{ terms.subsectionsLc }}</span
         >
       </div>
     </div>
@@ -662,15 +774,17 @@ function handleSnapshotRestored(content) {
     <Modal :show="showSectionModal" @close="showSectionModal = false">
       <div class="p-6">
         <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
-          {{ editingSection ? 'Edit Section' : 'Add Section' }}
+          {{ editingSection ? `Edit ${terms.section}` : `Add ${terms.section}` }}
         </h3>
         <div class="mb-3">
           <label class="block text-xs text-text-hint font-ui mb-1">Title</label>
           <input
             v-model="newSection.title"
             type="text"
-            placeholder="Section title..."
+            :placeholder="`${terms.section} title…`"
+            autofocus
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            @keydown.enter.prevent="saveSection"
           />
         </div>
         <div class="mb-3">
@@ -722,15 +836,19 @@ function handleSnapshotRestored(content) {
     <Modal :show="showSubsectionModal" @close="showSubsectionModal = false">
       <div class="p-6">
         <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
-          {{ editingSubsection ? 'Edit Subsection' : 'New Subsection' }}
+          {{ editingSubsection ? `Edit ${terms.subsection}` : `New ${terms.subsection}` }}
         </h3>
         <div class="mb-3">
-          <label class="block text-xs text-text-hint font-ui mb-1">Subsection Title</label>
+          <label class="block text-xs text-text-hint font-ui mb-1"
+            >{{ terms.subsection }} title</label
+          >
           <input
             v-model="newSubsection.title"
             type="text"
-            placeholder="Scene title..."
+            :placeholder="`${terms.subsection} title…`"
+            autofocus
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            @keydown.enter.prevent="saveSubsection"
           />
         </div>
         <div class="mb-4">
@@ -779,7 +897,9 @@ function handleSnapshotRestored(content) {
             v-model="newVolume.title"
             type="text"
             placeholder="e.g. Volume 1: The Awakening"
+            autofocus
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            @keydown.enter.prevent="saveVolume"
           />
         </div>
         <div class="mb-3">

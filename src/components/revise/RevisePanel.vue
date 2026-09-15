@@ -111,7 +111,7 @@ watch(() => projectStore.currentProjectId, loadComments)
   <div class="h-full flex flex-col bg-manuscript overflow-hidden">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between">
-        <span class="font-ui text-accent tracking-wide">Revise</span>
+        <h2 class="font-ui text-sm font-semibold text-text-primary">Revise</h2>
         <span class="text-xs text-text-hint font-ui"
           >{{ comments.length }} comment{{ comments.length !== 1 ? 's' : '' }}</span
         >

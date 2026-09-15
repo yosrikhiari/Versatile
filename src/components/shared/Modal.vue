@@ -47,13 +47,34 @@ function handleKeydown(e) {
   }
 }
 
+/**
+ * Where focus lands when the dialog opens.
+ *
+ * With `initialFocus: false` the opener kept focus, so a writer who clicked
+ * "Add Section" and started typing put the title into the manuscript behind
+ * the dialog. Prefer an explicit `autofocus`, then the first text field, then
+ * the panel itself so keyboard users are at least inside the trap.
+ */
+function pickInitialFocus() {
+  const panel = panelEl.value
+  if (!panel) return undefined
+  return (
+    panel.querySelector('[autofocus]') ||
+    panel.querySelector(
+      'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([disabled]), textarea:not([disabled]), select:not([disabled])'
+    ) ||
+    panel
+  )
+}
+
 function openModal() {
   lastFocused.value = document.activeElement
   document.addEventListener('keydown', handleKeydown)
   nextTick(() => {
     if (panelEl.value) {
       trap = createFocusTrap(panelEl.value, {
-        initialFocus: false,
+        initialFocus: pickInitialFocus,
+        fallbackFocus: panelEl.value,
         escapeDeactivates: false
       })
       trap.activate()
@@ -116,6 +137,7 @@ onBeforeUnmount(() => {
             ref="panelEl"
             role="dialog"
             aria-modal="true"
+            tabindex="-1"
             :aria-label="ariaLabel"
             :class="[
               'glass-modal rounded-xl shadow-warm-lg w-full overflow-y-auto max-h-[90vh]',

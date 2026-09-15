@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useSnapshotStore } from '../../stores/snapshotStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
@@ -118,11 +118,22 @@ const autoSaveManual = useDebounceFn(() => {
   }
 }, 2000)
 
-onMounted(() => {
+function refresh() {
   if (projectStore.currentProjectId) {
     snapshotStore.loadSnapshots(projectStore.currentProjectId)
   }
-})
+}
+
+onMounted(refresh)
+
+// The store no longer reloads after each write; refresh only while the
+// drawer is actually open, and again whenever it opens.
+watch(
+  () => [props.show, snapshotStore.lastWriteId],
+  ([show]) => {
+    if (show) refresh()
+  }
+)
 
 function cancelLabelInput() {
   showLabelInput.value = false
@@ -147,7 +158,7 @@ onUnmounted(() => {
         <div
           class="px-4 py-3 border-b border-border-subtle flex items-center justify-between shrink-0"
         >
-          <span class="font-ui text-accent tracking-wide">History</span>
+          <h2 class="font-ui text-sm font-semibold text-text-primary">History</h2>
           <div class="flex items-center gap-2">
             <BaseButton
               variant="ghost"

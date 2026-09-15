@@ -10,7 +10,7 @@
     >
       <div class="modal-content">
         <div class="modal-header">
-          <h2 class="text-xl font-bold text-text-primary">Upload Sample Text</h2>
+          <h2 class="text-xl font-bold text-text-primary">Upload sample text</h2>
           <BaseButton
             variant="ghost"
             size="sm"
@@ -44,11 +44,11 @@
 
           <!-- Preview Section -->
           <div v-if="mergedProfile" class="preview-section">
-            <h3 class="text-sm font-semibold text-text-primary mb-3">Merged Profile Preview</h3>
+            <h3 class="text-sm font-semibold text-text-primary mb-3">Merged profile preview</h3>
 
             <div class="preview-grid">
               <div class="preview-stat">
-                <span class="label">Avg Sentence Length</span>
+                <span class="label">Avg sentence length</span>
                 <span class="old-value">{{
                   (currentProfile?.sentenceStructure?.averageSentenceLength || 0).toFixed(1)
                 }}</span>
@@ -72,7 +72,7 @@
               </div>
 
               <div class="preview-stat">
-                <span class="label">Unique Word Ratio</span>
+                <span class="label">Unique word ratio</span>
                 <span class="old-value"
                   >{{
                     ((currentProfile?.vocabulary?.uniqueWordRatio || 0) * 100).toFixed(1)

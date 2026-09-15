@@ -35,72 +35,54 @@ function handleSelect(subsection) {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center gap-2 px-3 py-2.5 border-b border-border-subtle">
-      <BaseIcon name="git-branch-plus" :size="14" class="text-text-hint shrink-0" />
-      <span class="text-xs font-medium text-text-primary">Pick a divergence point</span>
-    </div>
+    <p class="px-4 py-3 border-b border-border-subtle font-ui text-xs text-text-hint leading-5">
+      Pick the scene the story diverges from. Everything after it is what changes.
+    </p>
 
-    <div class="flex-1 overflow-y-auto scrollbar-thin">
-      <div v-if="!sections.length" class="text-xs text-text-hint text-center py-8">
+    <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+      <p v-if="!sections.length" class="px-4 py-8 text-center font-ui text-xs text-text-hint">
         No sections yet
-      </div>
+      </p>
 
-      <div
+      <section
         v-for="section in sections"
         :key="section.id"
-        class="border-b border-border-subtle last:border-b-0"
+        class="px-4 py-3 border-b border-border-subtle last:border-b-0"
       >
-        <div class="flex items-center gap-2 px-3 py-2 bg-bg-secondary/30">
-          <BaseIcon name="book-open" :size="12" class="text-text-hint shrink-0" />
-          <span class="text-xs font-medium text-text-primary truncate flex-1">
-            {{ section.title || 'Untitled Section' }}
-          </span>
-          <span class="text-[10px] text-text-hint">{{ section.subsections.length }} scenes</span>
-        </div>
+        <h3 class="flex items-center justify-between gap-2 label-micro text-text-hint mb-1">
+          <span class="truncate">{{ section.title || 'Untitled section' }}</span>
+          <span class="shrink-0 tabular-nums">{{ section.subsections.length }}</span>
+        </h3>
 
-        <div
-          v-for="sub in section.subsections"
-          :key="sub.id"
-          class="flex items-center gap-2.5 px-3 py-2 ml-1 cursor-pointer transition-colors border-t border-border-subtle/50"
-          :class="
-            isSelected(sub)
-              ? 'bg-accent/10 border-l-2 border-l-accent'
-              : 'hover:bg-surface-hover border-l-2 border-l-transparent'
-          "
-          @click="handleSelect(sub)"
-        >
-          <div
-            class="w-2 h-2 rounded-full shrink-0"
-            :class="
-              isSelected(sub) ? 'bg-accent' : isActive(sub) ? 'bg-green-500' : 'bg-border-subtle'
-            "
-          />
-          <span
-            class="text-xs truncate flex-1 min-w-0"
+        <ul class="-mx-1" role="listbox" aria-label="Scenes">
+          <li
+            v-for="sub in section.subsections"
+            :key="sub.id"
+            role="option"
+            :aria-selected="isSelected(sub)"
+            tabindex="0"
+            class="flex items-center gap-2.5 px-2 py-1.5 rounded-md cursor-pointer transition-colors duration-150 hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             :class="
               isSelected(sub)
-                ? 'text-accent font-medium'
-                : isActive(sub)
-                  ? 'text-text-primary font-medium'
-                  : 'text-text-secondary'
+                ? 'bg-surface-hover shadow-[inset_2px_0_0_0_rgb(var(--vers-accent-primary-rgb))]'
+                : ''
             "
+            @click="handleSelect(sub)"
+            @keydown.enter.space.prevent="handleSelect(sub)"
           >
-            {{ sub.title || sub.brief?.summary || 'Untitled Scene' }}
-          </span>
-          <span
-            v-if="isActive(sub) && !isSelected(sub)"
-            class="text-[10px] text-green-500 shrink-0"
-          >
-            current
-          </span>
-          <BaseIcon
-            v-if="isSelected(sub)"
-            name="check-circle"
-            :size="14"
-            class="text-accent shrink-0"
-          />
-        </div>
-      </div>
+            <span
+              class="flex-1 min-w-0 truncate font-ui text-sm"
+              :class="
+                isSelected(sub) || isActive(sub) ? 'text-text-primary' : 'text-text-secondary'
+              "
+            >
+              {{ sub.title || sub.brief?.summary || 'Untitled scene' }}
+            </span>
+            <span v-if="isActive(sub)" class="shrink-0 font-ui text-xs text-text-hint">open</span>
+            <BaseIcon v-if="isSelected(sub)" name="check" :size="14" class="text-accent shrink-0" />
+          </li>
+        </ul>
+      </section>
     </div>
   </div>
 </template>

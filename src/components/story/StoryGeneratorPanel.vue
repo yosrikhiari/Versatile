@@ -1,20 +1,21 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { db } from '../../services/db-core'
 import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useVolumeStoryGenerator } from '../../composables/useVolumeStoryGenerator'
 import { useChapterStoryGenerator } from '../../composables/generation/useChapterStoryGenerator'
+import { useGenerationRunController } from '../../composables/generation/useGenerationRunController'
 import { useStoryExport } from '../../composables/useStoryExport'
 import { useSparkStore } from '../../stores/sparkStore'
 import { useCompactConversation } from '../../composables/useOllama'
 import SparkPanel from '../spark/SparkPanel.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
-import GenerationSyncPreview from './GenerationSyncPreview.vue'
-import GenerationLoadingScreen from './GenerationLoadingScreen.vue'
-import GenerationStages from './GenerationStages.vue'
+import BaseButton from '../ui/BaseButton.vue'
+import BaseSection from '../ui/BaseSection.vue'
+import GenerationRunView from './GenerationRunView.vue'
+import GenerationSetupView from './GenerationSetupView.vue'
 import PreviousGenerationsList from './PreviousGenerationsList.vue'
 import VolumeReadModal from './VolumeReadModal.vue'
 import StoryContextModal from './StoryContextModal.vue'
@@ -37,10 +38,6 @@ import { useSparkContext } from '../../composables/useSparkContext'
 import { useGenerationSettings } from '../../composables/useGenerationSettings'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { t as tChapter } from '../../composables/useChapterI18n'
-import VolumeCompletePanel from './VolumeCompletePanel.vue'
-import VolumeSceneReview from './VolumeSceneReview.vue'
-import VolumePlanPreview from './VolumePlanPreview.vue'
-import ChapterGateReport from './ChapterGateReport.vue'
 
 const emit = defineEmits(['openChapters'])
 
@@ -75,6 +72,36 @@ const tabs = computed(() =>
 )
 
 const tab = ref(MODE_BRAINSTORM)
+
+/** Research library state for the setup view; null hides the Sources section. */
+const researchState = computed(() =>
+  hasResearchDocs.value
+    ? {
+        docs: researchDocs.value,
+        use: useResearch.value,
+        selectedIds: selectedResearchDocIds.value,
+        selectedCount: selectedResearchCount.value
+      }
+    : null
+)
+
+const bibleFootnote = computed(() => {
+  const parts = []
+  if (characterCount.value) parts.push(`${characterCount.value} characters`)
+  if (locationCount.value) parts.push(`${locationCount.value} locations`)
+  if (threadCount.value) parts.push(`${threadCount.value} plot threads`)
+  return parts.length ? `Draws on ${parts.join(', ')}.` : 'Draws on your story bible.'
+})
+
+/** One line under the tab strip saying what the current tab is for. */
+const TAB_HINTS = {
+  [MODE_BRAINSTORM]: 'prompts and blueprints',
+  [MODE_SCENE]: 'one scene',
+  [MODE_CHAPTER]: 'one chapter, scene by scene',
+  [MODE_ARC]: 'a whole book',
+  [MODE_BLURB]: 'back-cover copy'
+}
+const tabHint = computed(() => TAB_HINTS[tab.value] || '')
 
 // If the flag is turned off while the chapter tab is open, fall back rather
 // than leaving the panel on a tab that renders nothing.
@@ -160,104 +187,61 @@ async function handleDeleteBlurb(id) {
 const showVolumeReadModal = ref(false)
 const showStoryContextModal = ref(false)
 
-// Live prose, kept per scene rather than in one shared string. Parallel
-// generation has several scenes in flight at once, and a single buffer meant
-// each one overwrote the others mid-sentence — the preview read as one scene
-// glitching rather than several progressing.
-const volumeStreams = ref({})
-const volumeStreamSceneIndex = ref(0)
-const volumeStreamingText = computed(() => volumeStreams.value[volumeStreamSceneIndex.value] || '')
-const volumeActiveStreamCount = computed(
-  () => Object.values(volumeStreams.value).filter((t) => t && t.length > 0).length
-)
-const volumeCurrentScene = ref(0)
-const volumeTotalScenes = ref(0)
-
-/**
- * Record a streamed chunk. The preview follows the lowest in-flight scene so it
- * reads in story order, matching what the editor is showing.
- */
-function handleVolumeChunk({ sceneIndex, total, fullProse }) {
-  if (total) volumeTotalScenes.value = total
-  volumeStreams.value = { ...volumeStreams.value, [sceneIndex]: fullProse }
-  const inFlight = Object.keys(volumeStreams.value).map(Number)
-  volumeStreamSceneIndex.value = inFlight.length ? Math.min(...inFlight) : sceneIndex
-  volumeCurrentScene.value = Math.max(volumeCurrentScene.value, sceneIndex)
-}
-
-function resetVolumeStreams() {
-  volumeStreams.value = {}
-  volumeStreamSceneIndex.value = 0
-  volumeCurrentScene.value = 0
-  volumeTotalScenes.value = 0
-}
-const volumeStoryArc = ref(null)
-const volumeStoryContract = ref('')
-const volumePlanEdits = ref([])
-const liveEntities = ref([])
-
 const consistencyModalOpen = ref(false)
 const selectedSceneIndex = ref(0)
-const showDashboard = ref(false)
-
-const sceneReviewEnabled = computed({
-  get: () => volumeGenerator.sceneReviewMode.value,
-  set: (val) => {
-    volumeGenerator.sceneReviewMode.value = val
-  }
-})
-const inlineEvalEnabled = computed({
-  get: () => volumeGenerator.inlineEvalEnabled.value,
-  set: (val) => {
-    volumeGenerator.inlineEvalEnabled.value = val
-  }
-})
-const autoRun = computed({
-  get: () => volumeGenerator.autoMode.value,
-  set: (val) => {
-    volumeGenerator.autoMode.value = val
-  }
-})
-// Phases where a run is in flight and the stage list should be visible. Derived
-// as "not one of the resting states" rather than an allow-list of active ones,
-// so a phase added to the delegator's ROUTING_TABLE shows progress by default
-// instead of silently rendering nothing (which is how spine-generation ended up
-// with a blank panel).
-const GENERATION_RESTING_PHASES = ['idle', 'complete', 'error']
-const isGenerationActive = computed(
-  () => !GENERATION_RESTING_PHASES.includes(volumeGenerator.phase.value)
-)
-
-const previewScenes = computed(() =>
-  volumePlanEdits.value.length > 0 ? volumePlanEdits.value : volumeGenerator.scenePlan.value
-)
+const saveStatus = ref(null)
 
 const sceneEval = useSceneEval()
 const driftTriggeredEval = useDriftTriggeredEval(sceneEval)
 
-async function handleEvaluateScene(idx) {
-  const scene = volumeGenerator.writtenScenes.value?.[idx]
-  const planItem = volumeGenerator.scenePlan.value?.[idx]
-  if (!scene) return
-  const ws = projectStore.activeWorkspaceType || 'creative'
-  const storyBible = await storyDocuments.getStoryDocumentContext(projectStore.currentProjectId)
-  const chapterLog = volumeGenerator.writtenScenes.value
-    .filter((_, i) => i < idx)
-    .filter(Boolean)
-    .map((s) => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary || '(written)'}`)
-    .slice(-20)
-    .join('\n')
-  sceneEval.evaluate(
-    scene,
-    ws,
-    planItem,
-    idx,
-    projectStore.currentProjectId,
-    storyBible,
-    chapterLog
-  )
-  checkDriftAfterEval()
+// One controller per pipeline. They share no state — a chapter run and an arc
+// run used to overwrite each other's streams and plan edits when they did —
+// but they share every line of code (see useGenerationRunController).
+const runDeps = {
+  projectStore,
+  manuscriptStore,
+  storyDocuments,
+  sceneEval,
+  exportAsText,
+  exportAsMarkdown,
+  selectedSceneIndex,
+  saveStatus
 }
+const volumeRun = useGenerationRunController(volumeGenerator, {
+  ...runDeps,
+  exportTitle: 'Generated Story',
+  onAfterEvaluate: () => checkDriftAfterEval()
+})
+const chapterRun = useGenerationRunController(chapterGenerator, {
+  ...runDeps,
+  exportTitle: 'Generated Chapter'
+})
+
+// Top-level aliases: the idle forms bind these with v-model, and a ref only
+// unwraps in a template when it is a top-level binding.
+const autoRun = volumeRun.autoRun
+const sceneReviewEnabled = volumeRun.sceneReviewEnabled
+const inlineEvalEnabled = volumeRun.inlineEvalEnabled
+const chapterAutoRun = chapterRun.autoRun
+const chapterSceneReviewEnabled = chapterRun.sceneReviewEnabled
+const chapterInlineEvalEnabled = chapterRun.inlineEvalEnabled
+const chapterResumableRun = chapterRun.resumableRun
+const resetVolumeStreams = volumeRun.resetStreams
+const handleVolumeChunk = volumeRun.handleChunk
+// The arc tab's "Unfinished draft" card reads useGenerationHistory's
+// resumableRun, not the controller's — clear it here so the card goes away.
+const handleVolumeResume = () => {
+  resumableRun.value = null
+  return volumeRun.resume()
+}
+const handleChapterResume = () => chapterRun.resume()
+
+/** What confirmPlan hands back to the generator alongside the edited plan. */
+const planContext = computed(() => ({
+  synopsis: synopsis.value,
+  sparkContext: sparkContext.value,
+  focus: focus.value
+}))
 
 async function checkDriftAfterEval() {
   const pid = projectStore.currentProjectId
@@ -283,15 +267,6 @@ async function runDriftCheck() {
   await checkDriftAfterEval()
 }
 
-async function handleReviseScene(idx) {
-  const scene = volumeGenerator.writtenScenes.value?.[idx]
-  const planItem = volumeGenerator.scenePlan.value?.[idx]
-  if (!scene || !sceneEval.critiqueResult.value) return
-  const ws = projectStore.activeWorkspaceType || 'creative'
-  const storyBible = await storyDocuments.getStoryDocumentContext(projectStore.currentProjectId)
-  sceneEval.revise(scene, ws, planItem, idx, projectStore.currentProjectId, storyBible)
-}
-
 const genres = [
   'Fantasy',
   'Sci-Fi',
@@ -306,6 +281,7 @@ const tones = ['Tense', 'Melancholic', 'Hopeful', 'Dark', 'Playful', 'Atmospheri
 const synopsis = computed(() => {
   const parts = []
   if (projectStore.currentCategory) parts.push(`Category: ${projectStore.currentCategory}`)
+  if (projectStore.currentGenre) parts.push(`Genre: ${projectStore.currentGenre}`)
   if (projectStore.currentDescription) parts.push(projectStore.currentDescription)
   return parts.join('\n') || ''
 })
@@ -315,34 +291,6 @@ const hasSynopsis = computed(() => synopsis.value.length >= 10)
 const characterCount = computed(() => storyBibleStore.characters.length)
 const locationCount = computed(() => storyBibleStore.locations.length)
 const threadCount = computed(() => storyBibleStore.plotThreads.length)
-
-const volumeTotalConsistencyIssues = computed(() => {
-  const report = volumeGenerator.consistencyReport.value
-  if (!report) return 0
-  return (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
-})
-
-const qualityGrade = computed(() => {
-  const n = volumeTotalConsistencyIssues.value
-  if (n === 0) return 'good'
-  if (n <= 3) return 'fair'
-  return 'poor'
-})
-
-const totalCharacterIssues = computed(
-  () => volumeGenerator.consistencyReport.value?.characterIssues?.length || 0
-)
-const totalLocationIssues = computed(
-  () => volumeGenerator.consistencyReport.value?.locationIssues?.length || 0
-)
-
-// `writtenScenes` is positional, so a scene that failed every attempt leaves a
-// null hole in it — reading `s.prose` unguarded threw during render.
-const totalWordsWritten = computed(() =>
-  volumeGenerator.writtenScenes.value
-    .filter(Boolean)
-    .reduce((sum, s) => sum + (s.prose?.split(/\s+/).filter(Boolean).length || 0), 0)
-)
 
 const {
   previousGenerations,
@@ -442,30 +390,11 @@ async function handleExtendStory(structure) {
   }
 }
 
-async function handleVolumeResume() {
-  if (!projectStore.currentProjectId) return
-  resumableRun.value = null
-  resetVolumeStreams()
-  try {
-    await volumeGenerator.resumeGeneration({
-      projectId: projectStore.currentProjectId,
-      onPhaseChange: () => {},
-      onChunk: handleVolumeChunk
-    })
-  } catch {
-    /* phase/error set internally */
-  }
-}
-
 // ----- Volume pipeline -----
 async function handleVolumeGenerate() {
   if (!hasSynopsis.value || !projectStore.currentProjectId) return
 
-  resetVolumeStreams()
-  volumeStoryArc.value = null
-  volumeStoryContract.value = ''
-  volumePlanEdits.value = []
-  liveEntities.value = []
+  volumeRun.beginRun()
 
   // Re-read the library at the moment it matters. Anything imported since this
   // panel mounted would otherwise be missing from the scope, and a project whose
@@ -493,201 +422,21 @@ async function handleVolumeGenerate() {
         : null,
       research: buildResearchScope(),
       onPhaseChange: (_p) => {},
-      onPartialData: (type, name) => {
-        liveEntities.value.push({
-          id: Date.now().toString(36) + performance.now().toString(36).replace('.', ''),
-          type,
-          name
-        })
-      },
+      onPartialData: (type, name) => volumeRun.noteLiveEntity(type, name),
       // In one-click mode writing runs inside startGeneration, so stream here too
-      onChunk: handleVolumeChunk
+      onChunk: volumeRun.handleChunk
     })
-
-    if (result) {
-      volumeStoryArc.value = result.storyArc
-      volumeStoryContract.value = result.storyContract
-    }
-  } catch (err) {
+    volumeRun.notePlanned(result)
+  } catch {
     // The composable already sets phase.value = 'error' and logs the error.
-    // Swallowing it here to prevent Uncaught Promise Rejection in Vue.
   }
-}
-
-async function handleVolumeConfirmPlan() {
-  if (!projectStore.currentProjectId) return
-
-  const editedPlan =
-    volumePlanEdits.value.length > 0 ? volumePlanEdits.value : volumeGenerator.scenePlan.value
-
-  try {
-    await volumeGenerator.confirmPlan({
-      projectId: projectStore.currentProjectId,
-      editedPlan,
-      storyArc: volumeStoryArc.value,
-      storyContract: volumeStoryContract.value,
-      synopsis: synopsis.value,
-      sparkContext: sparkContext.value,
-      focus: focus.value,
-      onPhaseChange: () => {},
-      onChunk: handleVolumeChunk
-    })
-  } catch {
-    // error.value and phase already set internally
-  }
-}
-
-async function handleVolumeConfirmSync(acceptedEntities) {
-  if (!projectStore.currentProjectId) return
-  try {
-    await volumeGenerator.confirmSync({
-      acceptedEntities,
-      projectId: projectStore.currentProjectId,
-      volumeId: volumeGenerator.volumeId.value,
-      chapterId: null
-    })
-  } catch {
-    // error handled internally
-  }
-}
-
-async function handleApproveScene() {
-  await volumeGenerator.approveScene()
-}
-
-async function handleRejectScene() {
-  await volumeGenerator.rejectScene()
-}
-
-async function handleRerequestScene(edits) {
-  if (!edits?.trim()) return
-  await volumeGenerator.rerequestScene(edits)
-}
-
-function handleVolumeReset() {
-  volumeGenerator.reset()
-  selectedSceneIndex.value = 0
-  resetVolumeStreams()
-  volumeStoryArc.value = null
-  volumeStoryContract.value = ''
-  volumePlanEdits.value = []
-  sparkContext.value = ''
-}
-
-async function handleVolumeExportTxt() {
-  const scenes = volumeGenerator.writtenScenes.value
-  if (scenes.length === 0) return
-  await exportAsText({
-    title: `Generated Story`,
-    scenes: scenes.map((s) => ({ title: s.title, prose: s.prose }))
-  })
-}
-
-async function handleVolumeExportMd() {
-  const scenes = volumeGenerator.writtenScenes.value
-  if (scenes.length === 0) return
-  await exportAsMarkdown({
-    title: `Generated Story`,
-    scenes: scenes.map((s) => ({ title: s.title, prose: s.prose }))
-  })
-}
-
-function handleVolumeSceneEdit(sceneIndex, field, value) {
-  if (!volumePlanEdits.value.length) {
-    volumePlanEdits.value = JSON.parse(JSON.stringify(volumeGenerator.scenePlan.value))
-  }
-  if (volumePlanEdits.value[sceneIndex]) {
-    volumePlanEdits.value[sceneIndex][field] = value
-  }
-}
-function handleWantsEdit(sceneIndex, text) {
-  const wants = {}
-  if (text) {
-    text.split(',').forEach((part) => {
-      const trimmed = part.trim()
-      const sep = trimmed.indexOf('→')
-      if (sep > 0) {
-        const name = trimmed.slice(0, sep).trim()
-        const goal = trimmed.slice(sep + 1).trim()
-        if (name && goal) wants[name] = goal
-      }
-    })
-  }
-  handleVolumeSceneEdit(sceneIndex, 'characterWants', wants)
-}
-
-async function handleRegenerateScene(sceneIndex) {
-  if (!projectStore.currentProjectId) return
-  await volumeGenerator.regenerateScene(projectStore.currentProjectId, sceneIndex)
 }
 
 // ----- Chapter pipeline -----
-//
-// A parallel set of state and handlers, deliberately not shared with the volume
-// pipeline above. Sharing them is what made a chapter run and an arc run
-// overwrite each other's progress, streams and plan edits.
-const chapterStreams = ref({})
-const chapterStreamSceneIndex = ref(0)
-const chapterStreamingText = computed(
-  () => chapterStreams.value[chapterStreamSceneIndex.value] || ''
-)
-const chapterActiveStreamCount = computed(
-  () => Object.values(chapterStreams.value).filter((t) => t && t.length > 0).length
-)
-const chapterCurrentScene = ref(0)
-const chapterTotalScenes = ref(0)
-const chapterLiveEntities = ref([])
-const chapterPlanEdits = ref([])
-const chapterStoryArc = ref(null)
-const chapterStoryContract = ref('')
-const chapterResumableRun = ref(null)
-
-function handleChapterChunk({ sceneIndex, total, fullProse }) {
-  if (total) chapterTotalScenes.value = total
-  chapterStreams.value = { ...chapterStreams.value, [sceneIndex]: fullProse }
-  const inFlight = Object.keys(chapterStreams.value).map(Number)
-  chapterStreamSceneIndex.value = inFlight.length ? Math.min(...inFlight) : sceneIndex
-  chapterCurrentScene.value = Math.max(chapterCurrentScene.value, sceneIndex)
-}
-
-function resetChapterStreams() {
-  chapterStreams.value = {}
-  chapterStreamSceneIndex.value = 0
-  chapterCurrentScene.value = 0
-  chapterTotalScenes.value = 0
-}
-
-const isChapterGenerationActive = computed(
-  () => !GENERATION_RESTING_PHASES.includes(chapterGenerator.phase.value)
-)
-
-const chapterPreviewScenes = computed(() =>
-  chapterPlanEdits.value.length > 0 ? chapterPlanEdits.value : chapterGenerator.scenePlan.value
-)
-
-const chapterSceneReviewEnabled = computed({
-  get: () => chapterGenerator.sceneReviewMode.value,
-  set: (val) => {
-    chapterGenerator.sceneReviewMode.value = val
-  }
-})
-const chapterInlineEvalEnabled = computed({
-  get: () => chapterGenerator.inlineEvalEnabled.value,
-  set: (val) => {
-    chapterGenerator.inlineEvalEnabled.value = val
-  }
-})
-const chapterAutoRun = computed({
-  get: () => chapterGenerator.autoMode.value,
-  set: (val) => {
-    chapterGenerator.autoMode.value = val
-  }
-})
-
 async function checkChapterResumable() {
   if (!projectStore.currentProjectId) return
   try {
-    chapterResumableRun.value = await chapterGenerator.getResumableRun(
+    chapterRun.resumableRun.value = await chapterGenerator.getResumableRun(
       projectStore.currentProjectId
     )
   } catch (err) {
@@ -698,11 +447,7 @@ async function checkChapterResumable() {
 async function handleChapterGenerate() {
   if (!hasSynopsis.value || !projectStore.currentProjectId) return
 
-  resetChapterStreams()
-  chapterStoryArc.value = null
-  chapterStoryContract.value = ''
-  chapterPlanEdits.value = []
-  chapterLiveEntities.value = []
+  chapterRun.beginRun()
 
   // Re-read the library at the moment it matters, exactly as the arc path does:
   // anything imported since this panel mounted would otherwise be missing.
@@ -721,168 +466,13 @@ async function handleChapterGenerate() {
       auto: chapterAutoRun.value,
       research: buildResearchScope(),
       onPhaseChange: () => {},
-      onPartialData: (type, name) => {
-        chapterLiveEntities.value.push({
-          id: Date.now().toString(36) + performance.now().toString(36).replace('.', ''),
-          type,
-          name
-        })
-      },
-      onChunk: handleChapterChunk
+      onPartialData: (type, name) => chapterRun.noteLiveEntity(type, name),
+      onChunk: chapterRun.handleChunk
     })
-
-    if (result) {
-      chapterStoryArc.value = result.storyArc
-      chapterStoryContract.value = result.storyContract
-    }
+    chapterRun.notePlanned(result)
   } catch {
     // The composable sets phase 'error' and populates error; the block renders it.
   }
-}
-
-async function handleChapterConfirmPlan() {
-  if (!projectStore.currentProjectId) return
-  const editedPlan =
-    chapterPlanEdits.value.length > 0 ? chapterPlanEdits.value : chapterGenerator.scenePlan.value
-  try {
-    await chapterGenerator.confirmPlan({
-      projectId: projectStore.currentProjectId,
-      editedPlan,
-      storyArc: chapterStoryArc.value,
-      storyContract: chapterStoryContract.value,
-      synopsis: synopsis.value,
-      sparkContext: sparkContext.value,
-      focus: focus.value,
-      onPhaseChange: () => {},
-      onChunk: handleChapterChunk
-    })
-  } catch {
-    // error.value and phase already set internally
-  }
-}
-
-async function handleChapterResume() {
-  if (!projectStore.currentProjectId) return
-  chapterResumableRun.value = null
-  resetChapterStreams()
-  try {
-    await chapterGenerator.resumeGeneration({
-      projectId: projectStore.currentProjectId,
-      onPhaseChange: () => {},
-      onChunk: handleChapterChunk
-    })
-  } catch {
-    /* phase/error set internally */
-  }
-}
-
-async function handleChapterConfirmSync(acceptedEntities) {
-  if (!projectStore.currentProjectId) return
-  try {
-    await chapterGenerator.confirmSync({
-      acceptedEntities,
-      projectId: projectStore.currentProjectId,
-      volumeId: chapterGenerator.volumeId.value,
-      chapterId: null
-    })
-  } catch {
-    // error handled internally
-  }
-}
-
-async function handleChapterApprove() {
-  await chapterGenerator.approveScene()
-}
-
-async function handleChapterReject() {
-  await chapterGenerator.rejectScene()
-}
-
-async function handleChapterRerequest(edits) {
-  await chapterGenerator.reRequestScene(edits)
-}
-
-async function handleChapterReset() {
-  await chapterGenerator.reset()
-  resetChapterStreams()
-  chapterStoryArc.value = null
-  chapterStoryContract.value = ''
-  chapterPlanEdits.value = []
-  chapterLiveEntities.value = []
-  chapterResumableRun.value = null
-}
-
-function handleChapterSceneEdit(sceneIndex, field, value) {
-  if (!chapterPlanEdits.value.length) {
-    chapterPlanEdits.value = JSON.parse(JSON.stringify(chapterGenerator.scenePlan.value))
-  }
-  if (chapterPlanEdits.value[sceneIndex]) {
-    chapterPlanEdits.value[sceneIndex][field] = value
-  }
-}
-
-function handleChapterWantsEdit(sceneIndex, text) {
-  const wants = {}
-  if (text) {
-    text.split(',').forEach((part) => {
-      const trimmed = part.trim()
-      const sep = trimmed.indexOf('→')
-      if (sep > 0) {
-        const name = trimmed.slice(0, sep).trim()
-        const goal = trimmed.slice(sep + 1).trim()
-        if (name && goal) wants[name] = goal
-      }
-    })
-  }
-  handleChapterSceneEdit(sceneIndex, 'characterWants', wants)
-}
-
-async function handleChapterRegenerateScene(sceneIndex) {
-  if (!projectStore.currentProjectId) return
-  await chapterGenerator.regenerateScene(projectStore.currentProjectId, sceneIndex)
-}
-
-// The eval/revise controls in VolumeCompletePanel are positional over the
-// generator that produced the scenes, so the chapter panel needs its own —
-// pointing them at `volumeGenerator` would evaluate whatever an arc run last
-// left behind.
-async function handleChapterEvaluateScene(idx) {
-  const scene = chapterGenerator.writtenScenes.value?.[idx]
-  const planItem = chapterGenerator.scenePlan.value?.[idx]
-  if (!scene) return
-  const ws = projectStore.activeWorkspaceType || 'creative'
-  const storyBible = await storyDocuments.getStoryDocumentContext(projectStore.currentProjectId)
-  const chapterLog = chapterGenerator.writtenScenes.value
-    .filter((_, i) => i < idx)
-    .filter(Boolean)
-    .map((s) => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary || '(written)'}`)
-    .slice(-20)
-    .join('\n')
-  sceneEval.evaluate(
-    scene,
-    ws,
-    planItem,
-    idx,
-    projectStore.currentProjectId,
-    storyBible,
-    chapterLog
-  )
-}
-
-async function handleChapterReviseScene(idx) {
-  const scene = chapterGenerator.writtenScenes.value?.[idx]
-  const planItem = chapterGenerator.scenePlan.value?.[idx]
-  if (!scene || !sceneEval.critiqueResult.value) return
-  const ws = projectStore.activeWorkspaceType || 'creative'
-  const storyBible = await storyDocuments.getStoryDocumentContext(projectStore.currentProjectId)
-  sceneEval.revise(scene, ws, planItem, idx, projectStore.currentProjectId, storyBible)
-}
-
-function chapterAcceptRevision() {
-  const idx = selectedSceneIndex.value
-  const scene = chapterGenerator.writtenScenes.value?.[idx]
-  if (!scene || !sceneEval.revisionResult.value) return
-  scene.prose = sceneEval.revisionResult.value.revisedProse
 }
 
 // The read/consistency modals are shared chrome, so they follow whichever
@@ -897,152 +487,38 @@ const activeTotalConsistencyIssues = computed(() => {
   return (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
 })
 
-async function handleChapterSaveToManuscript() {
-  const scenes = chapterGenerator.writtenScenes.value
-  if (scenes.length === 0 || !projectStore.currentProjectId) return
-
-  saveStatus.value = { type: 'saving', message: `Saving ${scenes.length} scene(s)...` }
-  let saved = 0
-  let skipped = 0
-  let errors = 0
-
-  for (let i = 0; i < scenes.length; i++) {
-    const scene = scenes[i]
-    const subsectionId = scene?.subsectionId || chapterGenerator.scenePlan.value[i]?.subsectionId
-    if (!scene || !subsectionId) {
-      skipped++
-      continue
-    }
-    try {
-      await manuscriptStore.updateSubsectionData(
-        subsectionId,
-        { content: scene.prose, wordCount: scene.prose.split(/\s+/).filter(Boolean).length },
-        projectStore.currentProjectId
-      )
-      saved++
-    } catch (err) {
-      console.error('[StoryGeneratorPanel] failed to save chapter scene', i, err)
-      errors++
-    }
-  }
-
-  saveStatus.value = {
-    type: 'done',
-    message:
-      `Saved ${saved} scene(s)` +
-      (skipped > 0 ? `, ${skipped} skipped (no subsection)` : '') +
-      (errors > 0 ? `, ${errors} error(s)` : '')
-  }
-  setTimeout(() => {
-    saveStatus.value = null
-  }, 5000)
-}
-
-async function handleChapterExportTxt() {
-  const scenes = chapterGenerator.writtenScenes.value
-  if (scenes.length === 0) return
-  await exportAsText({
-    title: 'Generated Chapter',
-    scenes: scenes.map((s) => ({ title: s.title, prose: s.prose }))
-  })
-}
-
-async function handleChapterExportMd() {
-  const scenes = chapterGenerator.writtenScenes.value
-  if (scenes.length === 0) return
-  await exportAsMarkdown({
-    title: 'Generated Chapter',
-    scenes: scenes.map((s) => ({ title: s.title, prose: s.prose }))
-  })
-}
-
 // A run left in flight outlives the panel otherwise: the writer keeps streaming
 // into a store nothing is rendering.
 onBeforeUnmount(() => {
   chapterGenerator.destroy()
 })
-
-const saveStatus = ref(null)
-
-async function handleVolumeSaveToManuscript() {
-  const scenes = volumeGenerator.writtenScenes.value
-  if (scenes.length === 0 || !projectStore.currentProjectId) return
-
-  saveStatus.value = { type: 'saving', message: `Saving ${scenes.length} scene(s)...` }
-  let saved = 0
-  let skipped = 0
-  let errors = 0
-
-  for (let i = 0; i < scenes.length; i++) {
-    const scene = scenes[i]
-    const subsectionId = scene.subsectionId || volumeGenerator.scenePlan.value[i]?.subsectionId
-    if (!subsectionId) {
-      skipped++
-      continue
-    }
-
-    try {
-      await manuscriptStore.updateSubsectionData(
-        subsectionId,
-        {
-          content: scene.prose,
-          wordCount: scene.prose.split(/\s+/).length
-        },
-        projectStore.currentProjectId
-      )
-      saved++
-    } catch (err) {
-      console.error('[StoryGeneratorPanel] failed to save scene', i, err)
-      errors++
-    }
-  }
-
-  saveStatus.value = {
-    type: 'done',
-    message: `Saved ${saved} scene(s)${skipped > 0 ? `, ${skipped} skipped (no subsection)` : ''}${errors > 0 ? `, ${errors} error(s)` : ''}`
-  }
-  setTimeout(() => {
-    saveStatus.value = null
-  }, 5000)
-}
-
-function acceptRevision() {
-  if (selectedSceneIndex.value === null || selectedSceneIndex.value === undefined) return
-  volumeGenerator.writtenScenes.value[selectedSceneIndex.value].prose =
-    sceneEval.revisionResult.value.revisedProse
-}
-
-function getPhaseLabel(phase) {
-  const labels = {
-    bootstrapping: 'Preparing Story Elements',
-    planning: 'Planning Chapter Arc',
-    'plan-preview': 'Review the Plan',
-    writing: 'Writing Scenes',
-    'sync-preview': 'Reviewing New Characters',
-    'consistency-check': 'Checking for Contradictions',
-    complete: 'Done',
-    error: 'Error'
-  }
-  return labels[phase] || phase
-}
 </script>
 
 <template>
   <div class="h-full flex flex-col bg-bg-primary overflow-hidden">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
-      <h2 class="text-base font-semibold text-text-primary font-ui mb-3">Story Tools</h2>
-      <div class="flex w-full gap-0.5 p-0.5 bg-bg-secondary border border-border-subtle rounded-lg">
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="font-ui text-sm font-semibold text-text-primary">Story tools</h2>
+        <span class="font-ui text-xs text-text-hint">{{ tabHint }}</span>
+      </div>
+      <div
+        class="flex w-full gap-0.5 p-0.5 rounded-lg border border-border-subtle bg-bg-primary"
+        role="tablist"
+        aria-label="Story tools"
+      >
         <button
           v-for="m in tabs"
           :key="m.id"
+          role="tab"
+          type="button"
           :data-test="`tab-${m.id}`"
-          class="flex-1 py-1.5 text-xs rounded-md border font-ui transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-accent"
+          :aria-selected="tab === m.id ? 'true' : 'false'"
+          class="flex-1 py-1.5 text-xs rounded-md font-ui font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           :class="
             tab === m.id
-              ? 'text-accent border-accent'
-              : 'text-text-secondary border-transparent hover:text-text-primary'
+              ? 'bg-bg-elevated text-text-primary'
+              : 'text-text-hint hover:bg-surface-hover hover:text-text-secondary'
           "
-          :style="tab === m.id ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.14)' } : {}"
           @click="tab = m.id"
         >
           {{ m.label }}
@@ -1222,50 +698,36 @@ function getPhaseLabel(phase) {
         <div data-test="chapter-pipeline">
           <!-- IDLE / CONTROLS -->
           <template v-if="chapterGenerator.phase.value === 'idle'">
-            <div class="p-4 space-y-5">
-              <button
-                class="w-full flex items-center gap-2 py-2 px-3 text-xs text-text-secondary hover:text-text-primary border border-border-subtle rounded-lg font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
-                @click="showStoryContextModal = true"
-              >
-                <BaseIcon name="book-open" :size="15" class="text-accent shrink-0" />
-                <span class="flex-1 text-left">Story Context</span>
-                <span class="text-2xs text-text-hint">keeps the writer grounded</span>
-              </button>
-
-              <!-- Resume an interrupted chapter run -->
-              <div
-                v-if="chapterResumableRun"
-                data-test="chapter-resume-card"
-                class="rounded-lg border border-accent bg-bg-secondary p-3 space-y-2"
-              >
-                <p class="text-xs text-text-primary font-ui">
-                  {{
-                    tChapter('chapter.unfinished', {
-                      written: chapterResumableRun.written,
-                      total: chapterResumableRun.total
-                    })
-                  }}
-                </p>
-                <div class="flex items-center gap-2">
-                  <button
-                    data-test="chapter-resume-btn"
-                    class="flex-1 py-1.5 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                    @click="handleChapterResume"
-                  >
-                    {{ tChapter('chapter.resume') }}
-                  </button>
-                  <button
-                    class="py-1.5 px-3 text-xs text-text-hint hover:text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent rounded-md"
-                    @click="chapterResumableRun = null"
-                  >
-                    Discard
-                  </button>
-                </div>
-              </div>
-
-              <!-- ContinueStoryCard is deliberately absent: continuation
-                   surveys and extensions are whole-manuscript operations, not
-                   chapter-scoped ones. -->
+            <GenerationSetupView
+              v-model:auto-run="chapterAutoRun"
+              v-model:scene-review="chapterSceneReviewEnabled"
+              v-model:inline-eval="chapterInlineEvalEnabled"
+              test-prefix="chapter"
+              :resumable="chapterResumableRun"
+              :research="researchState"
+              :spark-context="sparkContext"
+              :spark-context-label="sparkContextLabel"
+              :generate-label="
+                tChapter('chapter.generate') + (sparkContext ? ' with Spark context' : '')
+              "
+              :disabled="!hasSynopsis || chapterGenerator.phase.value !== 'idle'"
+              :footnote="
+                tChapter('chapter.perScene', {
+                  scenes: scenesPerChapter,
+                  words: chapterGenerator
+                    .getSceneBudget(wordTarget, scenesPerChapter)
+                    .toLocaleString()
+                })
+              "
+              @resume="handleChapterResume"
+              @discard-resume="chapterResumableRun = null"
+              @clear-spark="clearSparkContext"
+              @generate="handleChapterGenerate"
+              @toggle-research="useResearch = $event"
+              @select-all-research="selectAllResearch"
+              @select-no-research="selectNoResearch"
+              @toggle-doc="toggleResearchDoc"
+            >
               <GenerationSettingsForm
                 v-model:genre="genre"
                 v-model:tone="tone"
@@ -1282,417 +744,21 @@ function getPhaseLabel(phase) {
                 :synopsis="synopsis"
                 :has-synopsis="hasSynopsis"
                 :estimated-total-words="estimatedTotalWords"
+                @open-context="showStoryContextModal = true"
               />
-
-              <!-- Research sources -->
-              <div
-                v-if="hasResearchDocs"
-                class="rounded-lg border border-border-subtle p-3 space-y-3"
-              >
-                <label
-                  class="flex items-center gap-2 text-xs text-text-primary font-ui cursor-pointer select-none"
-                >
-                  <input
-                    v-model="useResearch"
-                    type="checkbox"
-                    class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-                  />
-                  Use research to inform this chapter
-                </label>
-
-                <div v-if="useResearch" class="space-y-2">
-                  <div class="flex items-center justify-between">
-                    <span class="text-2xs uppercase tracking-widest text-text-hint font-ui">
-                      {{ selectedResearchCount }} of {{ researchDocs.length }} sources
-                    </span>
-                    <div class="flex items-center gap-3">
-                      <button
-                        type="button"
-                        class="text-2xs font-ui text-text-hint hover:text-accent focus:outline-none focus:ring-1 focus:ring-accent rounded"
-                        @click="selectAllResearch"
-                      >
-                        All
-                      </button>
-                      <button
-                        type="button"
-                        class="text-2xs font-ui text-text-hint hover:text-accent focus:outline-none focus:ring-1 focus:ring-accent rounded"
-                        @click="selectNoResearch"
-                      >
-                        None
-                      </button>
-                    </div>
-                  </div>
-
-                  <ul class="max-h-40 overflow-y-auto space-y-1 pr-1">
-                    <li v-for="doc in researchDocs" :key="doc.id">
-                      <label
-                        class="flex items-center gap-2 text-xs text-text-secondary font-ui cursor-pointer select-none hover:text-text-primary"
-                      >
-                        <input
-                          type="checkbox"
-                          :checked="selectedResearchDocIds.has(doc.id)"
-                          class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent shrink-0"
-                          @change="toggleResearchDoc(doc.id)"
-                        />
-                        <span class="flex-1 truncate">{{ doc.fileName }}</span>
-                        <span class="text-2xs text-text-hint tabular-nums shrink-0">{{
-                          doc.chunkCount
-                        }}</span>
-                      </label>
-                    </li>
-                  </ul>
-
-                  <p v-if="selectedResearchCount === 0" class="text-2xs text-text-hint font-ui">
-                    No sources selected — generation will proceed without research context.
-                  </p>
-                </div>
-              </div>
-
-              <!-- Spark context badge -->
-              <div
-                v-if="sparkContext"
-                class="rounded-lg bg-bg-secondary border border-border-subtle px-3 py-2.5 space-y-1"
-              >
-                <div class="flex items-center gap-2">
-                  <BaseIcon name="sparkles" :size="14" class="text-accent shrink-0" />
-                  <span class="text-xs text-accent font-semibold font-ui flex-1 truncate"
-                    >Spark context active</span
-                  >
-                  <button
-                    class="text-text-hint hover:text-text-primary focus:outline-none focus:ring-1 focus:ring-accent rounded"
-                    title="Remove Spark context"
-                    @click="clearSparkContext"
-                  >
-                    <BaseIcon name="x" :size="14" />
-                  </button>
-                </div>
-                <p class="text-2xs text-text-hint font-ui truncate pl-5" :title="sparkContext">
-                  {{ sparkContextLabel }}
-                </p>
-              </div>
-
-              <div class="flex items-center gap-2 px-1">
-                <label
-                  class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none"
-                >
-                  <input
-                    v-model="chapterAutoRun"
-                    type="checkbox"
-                    class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-                  />
-                  One-click: write the whole chapter (no stops)
-                </label>
-              </div>
-              <div class="flex items-center gap-2 px-1">
-                <label
-                  class="flex items-center gap-2 text-xs font-ui select-none"
-                  :class="
-                    chapterAutoRun
-                      ? 'text-text-hint/40 cursor-not-allowed'
-                      : 'text-text-hint cursor-pointer'
-                  "
-                >
-                  <input
-                    v-model="chapterSceneReviewEnabled"
-                    type="checkbox"
-                    :disabled="chapterAutoRun"
-                    class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent disabled:opacity-40"
-                  />
-                  Pause per scene for review
-                </label>
-              </div>
-              <div class="flex items-center gap-2 px-1">
-                <label
-                  class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none"
-                >
-                  <input
-                    v-model="chapterInlineEvalEnabled"
-                    type="checkbox"
-                    class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-                  />
-                  Auto-evaluate scenes
-                </label>
-              </div>
-
-              <button
-                data-test="generate-chapter-btn"
-                :disabled="!hasSynopsis || chapterGenerator.phase.value !== 'idle'"
-                class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-                @click="handleChapterGenerate"
-              >
-                <span class="flex items-center justify-center gap-2">
-                  <BaseIcon name="wand-2" :size="16" />
-                  {{ tChapter('chapter.generate') }}{{ sparkContext ? ' with Spark context' : '' }}
-                </span>
-              </button>
-
-              <p class="text-xs text-text-hint text-center font-ui">
-                {{
-                  tChapter('chapter.perScene', {
-                    scenes: scenesPerChapter,
-                    words: chapterGenerator
-                      .getSceneBudget(wordTarget, scenesPerChapter)
-                      .toLocaleString()
-                  })
-                }}
-              </p>
-            </div>
+            </GenerationSetupView>
           </template>
 
-          <!-- ERROR -->
-          <div
-            v-else-if="chapterGenerator.phase.value === 'error'"
-            data-test="chapter-error"
-            class="p-8 text-center space-y-4"
-          >
-            <div class="flex items-center justify-center gap-3 text-danger py-4">
-              <BaseIcon name="alert-triangle" :size="32" />
-            </div>
-            <div class="text-lg font-ui text-text-primary">{{ tChapter('chapter.failed') }}</div>
-            <p
-              class="text-sm text-danger bg-bg-secondary p-4 rounded-lg border border-border-subtle max-w-lg mx-auto whitespace-pre-wrap"
-            >
-              {{ chapterGenerator.error.value || 'An unknown error occurred.' }}
-            </p>
-            <div class="pt-4">
-              <button
-                class="px-6 py-2 bg-bg-tertiary text-text-secondary hover:text-text-primary rounded-lg transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-                @click="handleChapterReset"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-
-          <!-- PIPELINE PROGRESS -->
-          <div v-if="isChapterGenerationActive" data-test="chapter-stages" class="px-4 pt-4">
-            <GenerationStages
-              :phase="chapterGenerator.phase.value"
-              :current-scene="chapterCurrentScene"
-              :total-scenes="chapterTotalScenes"
-              :status-text="chapterGenerator.progress.statusText"
-            />
-          </div>
-
-          <!-- BOOTSTRAPPING / PLANNING -->
-          <div
-            v-if="
-              chapterGenerator.phase.value === 'bootstrapping' ||
-              chapterGenerator.phase.value === 'planning'
-            "
-            class="p-8 text-center space-y-4"
-          >
-            <GenerationLoadingScreen
-              :phase="chapterGenerator.phase.value"
-              :progress="chapterGenerator.progress"
-              :streamed-entities="chapterLiveEntities"
-              @cancel="handleChapterReset"
-            />
-          </div>
-
-          <!-- PLAN PREVIEW -->
-          <VolumePlanPreview
-            v-if="chapterGenerator.phase.value === 'plan-preview'"
-            data-test="chapter-plan-preview"
-            :scenes="chapterPreviewScenes"
-            plan-label="Chapter"
-            :scene-count="chapterGenerator.scenePlan.value.length"
-            @scene-edit="handleChapterSceneEdit"
-            @wants-edit="handleChapterWantsEdit"
-            @confirm="handleChapterConfirmPlan"
-            @cancel="handleChapterReset"
-          />
-
-          <!-- WRITING -->
-          <div v-if="chapterGenerator.phase.value === 'writing'" class="p-4 space-y-4">
-            <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-              <div
-                class="h-full bg-accent rounded-full transition-[width] duration-300 ease-out"
-                :style="{
-                  width:
-                    chapterTotalScenes > 0
-                      ? (chapterCurrentScene / chapterTotalScenes) * 100 + '%'
-                      : '0%'
-                }"
-              ></div>
-            </div>
-
-            <div class="flex items-baseline justify-between gap-2">
-              <span class="text-11px text-text-hint font-ui">
-                Scene {{ chapterStreamSceneIndex }} — also live in the editor
-              </span>
-              <span v-if="chapterActiveStreamCount > 1" class="text-11px text-text-hint font-ui">
-                +{{ chapterActiveStreamCount - 1 }} writing in parallel
-              </span>
-            </div>
-
-            <div
-              class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin"
-            >
-              <div class="p-3 text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
-                {{ chapterStreamingText || 'Writing...' }}
-                <BaseIcon
-                  v-if="chapterStreamingText"
-                  name="loader-2"
-                  :size="12"
-                  class="animate-spin inline ml-1 text-accent"
-                />
-              </div>
-            </div>
-
-            <div class="space-y-1.5">
-              <button
-                data-test="chapter-pause-btn"
-                class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60 disabled:pointer-events-none"
-                :disabled="chapterGenerator.isCancelling.value || !chapterGenerator.canPause.value"
-                @click="chapterGenerator.pause()"
-              >
-                <span
-                  v-if="chapterGenerator.pauseRequested.value"
-                  class="inline-flex items-center gap-2"
-                >
-                  <BaseIcon name="loader-2" :size="14" class="animate-spin" />
-                  Pausing after this scene…
-                </span>
-                <span v-else class="inline-flex items-center gap-2">
-                  <BaseIcon name="pause" :size="14" />
-                  {{ tChapter('chapter.pause') }}
-                </span>
-              </button>
-              <button
-                class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60 disabled:pointer-events-none"
-                :disabled="chapterGenerator.isCancelling.value"
-                @click="handleChapterReset"
-              >
-                <span
-                  v-if="chapterGenerator.isCancelling.value"
-                  class="inline-flex items-center gap-2"
-                >
-                  <BaseIcon name="loader-2" :size="14" class="animate-spin" />
-                  Stopping…
-                </span>
-                <span v-else>Stop generation</span>
-              </button>
-              <p class="text-11px text-text-hint font-ui text-center">Finished scenes are kept.</p>
-            </div>
-          </div>
-
-          <!-- PAUSED -->
-          <div
-            v-if="chapterGenerator.phase.value === 'paused'"
-            data-test="chapter-paused"
-            class="p-4 space-y-4"
-          >
-            <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-              <div
-                class="h-full bg-accent/50 rounded-full"
-                :style="{
-                  width:
-                    chapterTotalScenes > 0
-                      ? (chapterCurrentScene / chapterTotalScenes) * 100 + '%'
-                      : '0%'
-                }"
-              ></div>
-            </div>
-
-            <div class="flex items-center gap-2 text-text-secondary">
-              <BaseIcon name="pause" :size="14" />
-              <span class="text-sm font-ui">
-                Paused after scene {{ chapterCurrentScene }} of {{ chapterTotalScenes }}
-              </span>
-            </div>
-
-            <div class="space-y-1.5">
-              <button
-                data-test="chapter-continue-btn"
-                class="w-full py-2.5 btn-primary rounded-lg font-medium font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-                @click="chapterGenerator.continueGeneration()"
-              >
-                <span class="inline-flex items-center gap-2">
-                  <BaseIcon name="play" :size="14" />
-                  Continue
-                </span>
-              </button>
-              <button
-                class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-                @click="handleChapterReset"
-              >
-                Stop generation
-              </button>
-              <p class="text-11px text-text-hint font-ui text-center">
-                The run is held in memory — continuing picks up exactly where it stopped.
-              </p>
-            </div>
-          </div>
-
-          <!-- SYNC PREVIEW -->
-          <div v-if="chapterGenerator.phase.value === 'sync-preview'" class="p-4 space-y-4">
-            <GenerationSyncPreview
-              :changes="chapterGenerator.syncPreview.value"
-              :loading="false"
-              @confirm="handleChapterConfirmSync"
-            />
-            <button
-              class="w-full py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="handleChapterReset"
-            >
-              Cancel
-            </button>
-          </div>
-
-          <!-- SCENE REVIEW -->
-          <VolumeSceneReview
-            :volume-generator="chapterGenerator"
-            data-test="chapter-scene-review"
-            @approve="handleChapterApprove"
-            @reject="handleChapterReject"
-            @rerequest="handleChapterRerequest"
-            @cancel="handleChapterReset"
-          />
-
-          <!-- CONSISTENCY CHECK -->
-          <div
-            v-if="chapterGenerator.phase.value === 'consistency-check'"
-            class="p-8 text-center space-y-4"
-          >
-            <div class="flex items-center justify-center gap-3 py-8">
-              <BaseIcon name="loader-2" :size="24" class="animate-spin text-accent" />
-              <span class="text-lg text-text-primary font-ui animate-pulse"
-                >Checking continuity...</span
-              >
-            </div>
-            <p class="text-sm text-text-hint">
-              {{
-                chapterGenerator.progress.statusText ||
-                'Comparing character and location depictions across the chapter'
-              }}
-            </p>
-          </div>
-
-          <!-- CHAPTER GATE REPORT — shown alongside the complete panel, because
-               the gate reports rather than deletes: the prose is committed
-               either way and the author is told, precisely, what the run could
-               not deliver. -->
-          <ChapterGateReport
-            v-if="chapterGenerator.phase.value === 'complete'"
-            :report="chapterGenerator.chapterGateReport.value"
-          />
-
-          <!-- COMPLETE -->
-          <VolumeCompletePanel
-            v-if="chapterGenerator.phase.value === 'complete'"
-            data-test="chapter-complete"
-            :volume-generator="chapterGenerator"
+          <GenerationRunView
+            :run="chapterRun"
             :scene-eval="sceneEval"
             :save-status="saveStatus"
-            @regenerate="handleChapterRegenerateScene"
-            @evaluate="handleChapterEvaluateScene"
-            @revise="handleChapterReviseScene"
-            @accept-revision="chapterAcceptRevision"
-            @reset="handleChapterReset"
-            @save="handleChapterSaveToManuscript"
-            @export-txt="handleChapterExportTxt"
-            @export-md="handleChapterExportMd"
+            plan-label="Chapter"
+            :failed-title="tChapter('chapter.failed')"
+            test-prefix="chapter"
+            :gate-report="chapterGenerator.chapterGateReport.value"
+            consistency-hint="Comparing character and location depictions across the chapter"
+            :plan-context="planContext"
             @open-chapters="emit('openChapters')"
             @open-consistency="consistencyModalOpen = true"
             @open-read="showVolumeReadModal = true"
@@ -1704,542 +770,142 @@ function getPhaseLabel(phase) {
       <template v-else-if="tab !== MODE_BRAINSTORM && tab !== MODE_BLURB">
         <!-- ==================== IDLE / CONTROLS ==================== -->
         <template v-if="volumeGenerator.phase.value === 'idle'">
-          <div data-test="volume-pipeline" class="p-4 space-y-5">
-            <!-- Story Context: the canonical grounding doc fed to the writer -->
-            <button
-              class="w-full flex items-center gap-2 py-2 px-3 text-xs text-text-secondary hover:text-text-primary border border-border-subtle rounded-lg font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
-              @click="showStoryContextModal = true"
-            >
-              <BaseIcon name="book-open" :size="15" class="text-accent shrink-0" />
-              <span class="flex-1 text-left">Story Context</span>
-              <span class="text-2xs text-text-hint">keeps the writer grounded</span>
-            </button>
-
-            <!-- Resume an interrupted one-click run -->
-            <div
-              v-if="resumableRun"
-              class="rounded-lg border border-accent bg-bg-secondary p-3 space-y-2"
-            >
-              <p class="text-xs text-text-primary font-ui">
-                Unfinished draft — {{ resumableRun.written }} of {{ resumableRun.total }} scenes
-                written.
-              </p>
-              <div class="flex items-center gap-2">
-                <button
-                  class="flex-1 py-1.5 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                  @click="handleVolumeResume"
-                >
-                  Resume
-                </button>
-                <button
-                  class="py-1.5 px-3 text-xs text-text-hint hover:text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent rounded-md"
-                  @click="handleDiscardResumable"
-                >
-                  Discard
-                </button>
-              </div>
-            </div>
-
-            <!-- Add to a manuscript that already has work in it -->
-            <ContinueStoryCard
-              :survey="continuationSurvey"
-              :busy="volumeGenerator.isContinuing.value"
-              :report="volumeGenerator.continuationReport.value"
-              :report-label="continuationLabel"
-              @continue="handleContinueDrafting"
-              @extend="handleExtendStory"
-              @stop="volumeGenerator.stop()"
-            />
-
-            <GenerationSettingsForm
-              v-model:genre="genre"
-              v-model:tone="tone"
-              v-model:focus="focus"
-              v-model:word-target="wordTarget"
-              v-model:use-precise-structure="usePreciseStructure"
-              v-model:volumes="volumes"
-              v-model:chapters-per-volume="chaptersPerVolume"
-              v-model:words-per-chapter="wordsPerChapter"
-              v-model:scenes-per-chapter="scenesPerChapter"
-              :genres="genres"
-              :tones="tones"
-              :mode="mode"
-              :synopsis="synopsis"
-              :has-synopsis="hasSynopsis"
-              :estimated-total-words="estimatedTotalWords"
-            />
-
-            <!-- Research sources: choose which imported documents inform the novel -->
-            <div
-              v-if="hasResearchDocs"
-              class="rounded-lg border border-border-subtle p-3 space-y-3"
-            >
-              <label
-                class="flex items-center gap-2 text-xs text-text-primary font-ui cursor-pointer select-none"
-              >
-                <input
-                  v-model="useResearch"
-                  type="checkbox"
-                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-                />
-                Use research to inform this novel
-              </label>
-
-              <div v-if="useResearch" class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-2xs uppercase tracking-widest text-text-hint font-ui">
-                    {{ selectedResearchCount }} of {{ researchDocs.length }} sources
-                  </span>
-                  <div class="flex items-center gap-3">
-                    <button
-                      type="button"
-                      class="text-2xs font-ui text-text-hint hover:text-accent focus:outline-none focus:ring-1 focus:ring-accent rounded"
-                      @click="selectAllResearch"
-                    >
-                      All
-                    </button>
-                    <button
-                      type="button"
-                      class="text-2xs font-ui text-text-hint hover:text-accent focus:outline-none focus:ring-1 focus:ring-accent rounded"
-                      @click="selectNoResearch"
-                    >
-                      None
-                    </button>
-                  </div>
-                </div>
-
-                <ul class="max-h-40 overflow-y-auto space-y-1 pr-1">
-                  <li v-for="doc in researchDocs" :key="doc.id">
-                    <label
-                      class="flex items-center gap-2 text-xs text-text-secondary font-ui cursor-pointer select-none hover:text-text-primary"
-                    >
-                      <input
-                        type="checkbox"
-                        :checked="selectedResearchDocIds.has(doc.id)"
-                        class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent shrink-0"
-                        @change="toggleResearchDoc(doc.id)"
-                      />
-                      <span class="flex-1 truncate">{{ doc.fileName }}</span>
-                      <span class="text-2xs text-text-hint tabular-nums shrink-0">{{
-                        doc.chunkCount
-                      }}</span>
-                    </label>
-                  </li>
-                </ul>
-
-                <p v-if="selectedResearchCount === 0" class="text-2xs text-text-hint font-ui">
-                  No sources selected — generation will proceed without research context.
-                </p>
-              </div>
-            </div>
-
-            <!-- Spark context badge -->
-            <div
-              v-if="sparkContext"
-              class="rounded-lg bg-bg-secondary border border-border-subtle px-3 py-2.5 space-y-1"
-            >
-              <div class="flex items-center gap-2">
-                <BaseIcon name="sparkles" :size="14" class="text-accent shrink-0" />
-                <span class="text-xs text-accent font-semibold font-ui flex-1 truncate"
-                  >Spark context active</span
-                >
-                <button
-                  class="text-text-hint hover:text-text-primary focus:outline-none focus:ring-1 focus:ring-accent rounded"
-                  title="Remove Spark context"
-                  @click="clearSparkContext"
-                >
-                  <BaseIcon name="x" :size="14" />
-                </button>
-              </div>
-              <p class="text-2xs text-text-hint font-ui truncate pl-5" :title="sparkContext">
-                {{ sparkContextLabel }}
-              </p>
-            </div>
-
-            <div class="flex items-center gap-2 px-1">
-              <label
-                class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none"
-              >
-                <input
-                  v-model="autoRun"
-                  type="checkbox"
-                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-                />
-                One-click: write the whole thing (no stops)
-              </label>
-            </div>
-            <div class="flex items-center gap-2 px-1">
-              <label
-                class="flex items-center gap-2 text-xs font-ui select-none"
-                :class="
-                  autoRun ? 'text-text-hint/40 cursor-not-allowed' : 'text-text-hint cursor-pointer'
-                "
-              >
-                <input
-                  v-model="sceneReviewEnabled"
-                  type="checkbox"
-                  :disabled="autoRun"
-                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent disabled:opacity-40"
-                />
-                Pause per scene for review
-              </label>
-            </div>
-            <div class="flex items-center gap-2 px-1">
-              <label
-                class="flex items-center gap-2 text-xs text-text-hint font-ui cursor-pointer select-none"
-              >
-                <input
-                  v-model="inlineEvalEnabled"
-                  type="checkbox"
-                  class="rounded border-border-subtle bg-bg-tertiary text-accent focus:ring-accent"
-                />
-                Auto-evaluate scenes
-              </label>
-            </div>
-
-            <button
+          <div data-test="volume-pipeline">
+            <GenerationSetupView
+              v-model:auto-run="autoRun"
+              v-model:scene-review="sceneReviewEnabled"
+              v-model:inline-eval="inlineEvalEnabled"
+              :resumable="resumableRun"
+              :research="researchState"
+              :spark-context="sparkContext"
+              :spark-context-label="sparkContextLabel"
+              :generate-label="
+                (mode === MODE_SCENE
+                  ? 'Generate scene'
+                  : mode === MODE_CHAPTER
+                    ? 'Generate chapter'
+                    : 'Generate arc') + (sparkContext ? ' with Spark context' : '')
+              "
               :disabled="!hasSynopsis || volumeGenerator.phase.value !== 'idle'"
-              class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="handleVolumeGenerate"
+              :footnote="bibleFootnote"
+              @resume="handleVolumeResume"
+              @discard-resume="handleDiscardResumable"
+              @clear-spark="clearSparkContext"
+              @generate="handleVolumeGenerate"
+              @toggle-research="useResearch = $event"
+              @select-all-research="selectAllResearch"
+              @select-no-research="selectNoResearch"
+              @toggle-doc="toggleResearchDoc"
             >
-              <span class="flex items-center justify-center gap-2">
-                <BaseIcon name="wand-2" :size="16" />
-                {{
-                  mode === MODE_SCENE
-                    ? 'Generate Scene'
-                    : mode === MODE_CHAPTER
-                      ? 'Generate Chapter'
-                      : 'Generate Arc'
-                }}{{ sparkContext ? ' with Spark context' : '' }}
-              </span>
-            </button>
-
-            <p class="text-xs text-text-hint text-center font-ui">
-              Powered by your story bible
-              <span v-if="characterCount > 0 || locationCount > 0 || threadCount > 0">
-                ({{ characterCount }} characters, {{ locationCount }} locations,
-                {{ threadCount }} plot threads)
-              </span>
-            </p>
+              <template #before>
+                <!-- Add to a manuscript that already has work in it -->
+                <ContinueStoryCard
+                  :survey="continuationSurvey"
+                  :busy="volumeGenerator.isContinuing.value"
+                  :report="volumeGenerator.continuationReport.value"
+                  :report-label="continuationLabel"
+                  @continue="handleContinueDrafting"
+                  @extend="handleExtendStory"
+                  @stop="volumeGenerator.stop()"
+                />
+              </template>
+              <GenerationSettingsForm
+                v-model:genre="genre"
+                v-model:tone="tone"
+                v-model:focus="focus"
+                v-model:word-target="wordTarget"
+                v-model:use-precise-structure="usePreciseStructure"
+                v-model:volumes="volumes"
+                v-model:chapters-per-volume="chaptersPerVolume"
+                v-model:words-per-chapter="wordsPerChapter"
+                v-model:scenes-per-chapter="scenesPerChapter"
+                :genres="genres"
+                :tones="tones"
+                :mode="mode"
+                :synopsis="synopsis"
+                :has-synopsis="hasSynopsis"
+                :estimated-total-words="estimatedTotalWords"
+                @open-context="showStoryContextModal = true"
+              />
+            </GenerationSetupView>
           </div>
         </template>
 
-        <!-- ==================== CHAPTER GENERATOR ==================== -->
-        <!-- ERROR STATE -->
-        <div v-if="volumeGenerator.phase.value === 'error'" class="p-8 text-center space-y-4">
-          <div class="flex items-center justify-center gap-3 text-danger py-4">
-            <BaseIcon name="alert-triangle" :size="32" />
-          </div>
-          <div class="text-lg font-ui text-text-primary">Conjuration Failed</div>
-          <p
-            class="text-sm text-danger bg-bg-secondary p-4 rounded-lg border border-border-subtle max-w-lg mx-auto whitespace-pre-wrap"
-          >
-            {{ volumeGenerator.error.value || 'An unknown error occurred.' }}
-          </p>
-          <div class="pt-4">
-            <button
-              class="px-6 py-2 bg-bg-tertiary text-text-secondary hover:text-text-primary rounded-lg transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="handleVolumeReset"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-
-        <!-- PIPELINE PROGRESS — spans every active phase.
-             Two reasons this sits above the per-phase blocks rather than inside
-             one of them. (1) Some phases had no block at all: spine-generation
-             is ~10 LLM calls and rendered an empty panel, which reads as a hang.
-             (2) A run is minutes long and multi-stage, so "where am I in the
-             whole thing" is the question a per-phase view can never answer. -->
-        <div v-if="isGenerationActive" class="px-4 pt-4">
-          <GenerationStages
-            :phase="volumeGenerator.phase.value"
-            :current-scene="volumeCurrentScene"
-            :total-scenes="volumeTotalScenes"
-            :status-text="volumeGenerator.progress.statusText"
-          />
-        </div>
-
-        <!-- BOOTSTRAPPING / PLANNING -->
-        <div
-          v-if="
-            volumeGenerator.phase.value === 'bootstrapping' ||
-            volumeGenerator.phase.value === 'planning'
-          "
-          class="p-8 text-center space-y-4"
-        >
-          <GenerationLoadingScreen
-            :phase="volumeGenerator.phase.value"
-            :progress="volumeGenerator.progress"
-            :streamed-entities="liveEntities"
-            @cancel="handleVolumeReset"
-          />
-        </div>
-
-        <!-- PLAN PREVIEW -->
-        <VolumePlanPreview
-          v-if="volumeGenerator.phase.value === 'plan-preview'"
-          :scenes="previewScenes"
-          :plan-label="mode === MODE_SCENE ? 'Scene' : mode === MODE_CHAPTER ? 'Chapter' : 'Arc'"
-          :scene-count="volumeGenerator.scenePlan.value.length"
-          @scene-edit="handleVolumeSceneEdit"
-          @wants-edit="handleWantsEdit"
-          @confirm="handleVolumeConfirmPlan"
-          @cancel="handleVolumeReset"
-        />
-
-        <!-- WRITING STATE -->
-        <div v-if="volumeGenerator.phase.value === 'writing'" class="p-4 space-y-4">
-          <!-- Scenes-done / scenes-planned is a real ratio, so this bar is
-               honest and stays. The stage list above now carries the phase
-               label and status text, so they are not repeated here. -->
-          <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-            <div
-              class="h-full bg-accent rounded-full transition-[width] duration-300 ease-out"
-              :style="{
-                width:
-                  volumeTotalScenes > 0
-                    ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%'
-                    : '0%'
-              }"
-            ></div>
-          </div>
-
-          <!-- The full prose streams into the editor itself; this is a shoulder
-               view of the one scene the editor is following. Under parallel
-               writing the others are streaming into their own scenes at the
-               same time, so say so rather than letting the count look wrong. -->
-          <div class="flex items-baseline justify-between gap-2">
-            <span class="text-11px text-text-hint font-ui">
-              Scene {{ volumeStreamSceneIndex }} — also live in the editor
-            </span>
-            <span v-if="volumeActiveStreamCount > 1" class="text-11px text-text-hint font-ui">
-              +{{ volumeActiveStreamCount - 1 }} writing in parallel
-            </span>
-          </div>
-
-          <div
-            class="rounded-lg bg-bg-tertiary border border-border-subtle max-h-64 overflow-y-auto scrollbar-thin"
-          >
-            <div class="p-3 text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
-              {{ volumeStreamingText || 'Writing...' }}
-              <BaseIcon
-                v-if="volumeStreamingText"
-                name="loader-2"
-                :size="12"
-                class="animate-spin inline ml-1 text-accent"
-              />
-            </div>
-          </div>
-
-          <div class="space-y-1.5">
-            <!-- Pause holds the loop between scenes and keeps the run in
-                 memory; Stop unwinds it. Two different intentions that used to
-                 share one button. -->
-            <button
-              class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60 disabled:pointer-events-none"
-              :disabled="volumeGenerator.isCancelling.value || !volumeGenerator.canPause.value"
-              @click="volumeGenerator.pause()"
-            >
-              <span
-                v-if="volumeGenerator.pauseRequested.value"
-                class="inline-flex items-center gap-2"
-              >
-                <BaseIcon name="loader-2" :size="14" class="animate-spin" />
-                Pausing after this scene…
-              </span>
-              <span v-else class="inline-flex items-center gap-2">
-                <BaseIcon name="pause" :size="14" />
-                Pause
-              </span>
-            </button>
-            <button
-              class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60 disabled:pointer-events-none"
-              :disabled="volumeGenerator.isCancelling.value"
-              @click="handleVolumeReset"
-            >
-              <span
-                v-if="volumeGenerator.isCancelling.value"
-                class="inline-flex items-center gap-2"
-              >
-                <BaseIcon name="loader-2" :size="14" class="animate-spin" />
-                Stopping…
-              </span>
-              <span v-else>Stop generation</span>
-            </button>
-            <p class="text-11px text-text-hint font-ui text-center">Finished scenes are kept.</p>
-          </div>
-        </div>
-
-        <!-- PAUSED STATE -->
-        <div v-if="volumeGenerator.phase.value === 'paused'" class="p-4 space-y-4">
-          <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-            <div
-              class="h-full bg-accent/50 rounded-full"
-              :style="{
-                width:
-                  volumeTotalScenes > 0
-                    ? (volumeCurrentScene / volumeTotalScenes) * 100 + '%'
-                    : '0%'
-              }"
-            ></div>
-          </div>
-
-          <div class="flex items-center gap-2 text-text-secondary">
-            <BaseIcon name="pause" :size="14" />
-            <span class="text-sm font-ui">
-              Paused after scene {{ volumeCurrentScene }} of {{ volumeTotalScenes }}
-            </span>
-          </div>
-
-          <div class="space-y-1.5">
-            <button
-              class="w-full py-2.5 btn-primary rounded-lg font-medium font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="volumeGenerator.continueGeneration()"
-            >
-              <span class="inline-flex items-center gap-2">
-                <BaseIcon name="play" :size="14" />
-                Continue
-              </span>
-            </button>
-            <button
-              class="w-full py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover active:scale-[0.96] transition-[background-color,scale] font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="handleVolumeReset"
-            >
-              Stop generation
-            </button>
-            <p class="text-11px text-text-hint font-ui text-center">
-              The run is held in memory — continuing picks up exactly where it stopped.
-            </p>
-          </div>
-        </div>
-
-        <!-- SYNC PREVIEW STATE -->
-        <div v-if="volumeGenerator.phase.value === 'sync-preview'" class="p-4 space-y-4">
-          <GenerationSyncPreview
-            :changes="volumeGenerator.syncPreview.value"
-            :loading="false"
-            @confirm="handleVolumeConfirmSync"
-          />
-          <button
-            class="w-full py-2 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="handleVolumeReset"
-          >
-            Cancel
-          </button>
-        </div>
-
-        <!-- SCENE REVIEW STATE -->
-        <VolumeSceneReview
-          :volume-generator="volumeGenerator"
-          @approve="handleApproveScene"
-          @reject="handleRejectScene"
-          @rerequest="handleRerequestScene"
-          @cancel="handleVolumeReset"
-        />
-
-        <!-- CONSISTENCY CHECK STATE -->
-        <div
-          v-if="volumeGenerator.phase.value === 'consistency-check'"
-          class="p-8 text-center space-y-4"
-        >
-          <div class="flex items-center justify-center gap-3 py-8">
-            <BaseIcon name="loader-2" :size="24" class="animate-spin text-accent" />
-            <span class="text-lg text-text-primary font-ui animate-pulse"
-              >Checking continuity...</span
-            >
-          </div>
-          <p class="text-sm text-text-hint">
-            {{
-              volumeGenerator.progress.statusText ||
-              'Comparing character and location depictions across all scenes'
-            }}
-          </p>
-        </div>
-
-        <!-- COMPLETE STATE -->
-        <VolumeCompletePanel
-          v-if="volumeGenerator.phase.value === 'complete'"
-          :volume-generator="volumeGenerator"
+        <!-- ==================== ARC / SCENE RUN ==================== -->
+        <GenerationRunView
+          :run="volumeRun"
           :scene-eval="sceneEval"
           :save-status="saveStatus"
-          @regenerate="handleRegenerateScene"
-          @evaluate="handleEvaluateScene"
-          @revise="handleReviseScene"
-          @accept-revision="acceptRevision"
-          @reset="handleVolumeReset"
-          @save="handleVolumeSaveToManuscript"
-          @export-txt="handleVolumeExportTxt"
-          @export-md="handleVolumeExportMd"
+          :plan-label="mode === MODE_SCENE ? 'Scene' : mode === MODE_CHAPTER ? 'Chapter' : 'Arc'"
+          failed-title="Conjuration Failed"
+          consistency-hint="Comparing character and location depictions across all scenes"
+          :plan-context="planContext"
           @open-chapters="emit('openChapters')"
           @open-consistency="consistencyModalOpen = true"
           @open-read="showVolumeReadModal = true"
         />
 
-        <!-- DRIFT TRIGGER -->
-        <div
+        <!-- DRIFT TRIGGER: a section like the ones inside the complete panel,
+             so the run's tail reads as one column rather than a stray card. -->
+        <BaseSection
           v-if="volumeGenerator.phase.value === 'complete'"
-          class="mt-1 px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-subtle"
+          title="Drift"
+          description="Re-evaluate recent scenes against earlier verdicts to catch quality sliding over a long run."
+          dense
         >
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-1.5">
-              <BaseIcon name="activity" :size="14" class="text-text-tertiary shrink-0" />
-              <span class="text-xs text-text-tertiary font-ui">Consistency Monitor</span>
-            </div>
-            <button
-              class="text-xs font-ui text-accent hover:text-accent-hover disabled:opacity-40"
+          <template #actions>
+            <BaseButton
+              variant="ghost"
+              size="sm"
+              icon="activity"
+              :loading="driftTriggeredEval.isChecking.value"
               :disabled="driftTriggeredEval.isChecking.value"
               @click="runDriftCheck"
             >
-              <template v-if="driftTriggeredEval.isChecking.value">Checking…</template>
-              <template v-else>Check for Drift</template>
-            </button>
-          </div>
+              {{ driftTriggeredEval.isChecking.value ? 'Checking' : 'Check for drift' }}
+            </BaseButton>
+          </template>
 
-          <div
+          <p
             v-if="driftTriggeredEval.lastCheckResult.value"
-            class="mt-1.5 text-xs font-ui leading-relaxed"
+            class="font-ui text-xs leading-5"
+            :class="
+              driftTriggeredEval.lastCheckResult.value.triggered ? 'text-warning' : 'text-text-hint'
+            "
           >
             <template v-if="driftTriggeredEval.lastCheckResult.value.triggered">
-              <span class="text-accent">
-                Drift detected —
-                {{ driftTriggeredEval.lastCheckResult.value.action.regressedDims.length }}
-                dimension(s) regressed,
-                {{ driftTriggeredEval.lastCheckResult.value.action.reEvaluatedScenes }}
-                scene(s) re-evaluated
-              </span>
+              Drift detected —
+              {{ driftTriggeredEval.lastCheckResult.value.action.regressedDims.length }}
+              dimension(s) regressed,
+              {{ driftTriggeredEval.lastCheckResult.value.action.reEvaluatedScenes }}
+              scene(s) re-evaluated.
               <button
-                class="ml-2 text-danger hover:text-danger-hover"
+                type="button"
+                class="ml-1 text-text-hint hover:text-text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
                 @click="driftTriggeredEval.clearTriggers()"
               >
                 Clear
               </button>
             </template>
-            <template v-else>
-              <span class="text-text-tertiary">
-                {{ driftTriggeredEval.lastCheckResult.value.reason }}
-              </span>
-            </template>
-          </div>
-
-          <div
-            v-if="
-              driftTriggeredEval.hasRecentTriggers.value &&
-              !driftTriggeredEval.lastCheckResult.value?.triggered
-            "
-            class="mt-1"
+            <template v-else>{{ driftTriggeredEval.lastCheckResult.value.reason }}</template>
+          </p>
+          <p
+            v-else-if="driftTriggeredEval.hasRecentTriggers.value"
+            class="font-ui text-xs text-text-hint leading-5"
           >
-            <span class="text-xs text-accent font-ui">
-              {{ driftTriggeredEval.triggeredActions.value.length }} prior drift trigger(s)
-            </span>
-          </div>
-        </div>
+            {{ driftTriggeredEval.triggeredActions.value.length }} prior drift trigger(s).
+          </p>
+          <p v-else class="font-ui text-xs text-text-hint leading-5">Not checked yet.</p>
+        </BaseSection>
       </template>
-    </div>
 
-    <!-- ==================== PREVIOUS GENERATIONS ==================== -->
-    <PreviousGenerationsList :generations="previousGenerations" />
+      <!-- Past runs scroll with the form; they used to be pinned under the
+           scroll area and painted over whatever was at the bottom of it. -->
+      <PreviousGenerationsList
+        v-if="tab !== MODE_BRAINSTORM && tab !== MODE_BLURB"
+        :generations="previousGenerations"
+      />
+    </div>
 
     <!-- ==================== VOLUME READ MODAL ==================== -->
     <VolumeReadModal

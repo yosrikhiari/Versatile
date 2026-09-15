@@ -46,9 +46,7 @@ function manage() {
         v-if="open"
         class="absolute left-0 top-full mt-2 z-50 w-64 bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg py-1 animate-fade-in"
       >
-        <div class="px-3 py-2 text-[10px] uppercase tracking-wider text-text-hint">
-          Switch organization
-        </div>
+        <div class="px-3 py-2 label-micro text-text-hint">Switch organization</div>
 
         <button
           v-for="org in auth.organizations"

@@ -1,14 +1,21 @@
 <script setup>
 import { onMounted } from 'vue'
-
-const emit = defineEmits(['navigate'])
 import { useConsistencyChecker } from '../../composables/useConsistencyChecker'
 import ConsistencyResultItem from './ConsistencyResultItem.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BasePanelHeader from '../ui/BasePanelHeader.vue'
 
-const { results, isScanning, counts, resultsBySeverity, scan, clearResults } =
+const emit = defineEmits(['navigate'])
+
+const { results, isScanning, lastScan, counts, resultsBySeverity, scan, clearResults } =
   useConsistencyChecker()
+
+const GROUPS = [
+  { key: 'errors', label: 'Errors', icon: 'alert-circle', tone: 'text-danger' },
+  { key: 'warnings', label: 'Warnings', icon: 'alert-triangle', tone: 'text-warning' },
+  { key: 'info', label: 'Notes', icon: 'info', tone: 'text-text-hint' }
+]
 
 onMounted(() => {
   if (results.value.length === 0) {
@@ -24,204 +31,85 @@ function handleRecheck() {
 function handleResultAction(action) {
   emit('navigate', action)
 }
+
+function summary() {
+  const parts = []
+  if (counts.value.errors)
+    parts.push(`${counts.value.errors} error${counts.value.errors > 1 ? 's' : ''}`)
+  if (counts.value.warnings)
+    parts.push(`${counts.value.warnings} warning${counts.value.warnings > 1 ? 's' : ''}`)
+  if (counts.value.info) parts.push(`${counts.value.info} note${counts.value.info > 1 ? 's' : ''}`)
+  return parts.join(' · ')
+}
 </script>
 
 <template>
-  <div class="consistency-panel">
-    <div class="panel-header">
-      <h3 class="panel-title">Consistency Check</h3>
-      <BaseButton variant="outline" size="sm" :loading="isScanning" @click="handleRecheck">
-        {{ results.length > 0 ? 'Recheck' : 'Scan' }}
-      </BaseButton>
-    </div>
+  <div class="h-full flex flex-col overflow-hidden">
+    <BasePanelHeader title="Consistency" icon="clipboard-check" :meta="isScanning ? '' : summary()">
+      <template #actions>
+        <BaseButton
+          variant="soft"
+          size="sm"
+          icon="refresh-cw"
+          :loading="isScanning"
+          :disabled="isScanning"
+          @click="handleRecheck"
+        >
+          {{ results.length > 0 ? 'Recheck' : 'Scan' }}
+        </BaseButton>
+      </template>
+    </BasePanelHeader>
 
-    <div v-if="isScanning" class="scanning-state">
-      <div class="spinner" />
-      <span>Scanning for inconsistencies…</span>
-    </div>
-
-    <div v-else-if="results.length > 0">
-      <div class="summary-row">
-        <div v-if="counts.errors > 0" class="summary-badge summary-badge--error">
-          {{ counts.errors }} error{{ counts.errors > 1 ? 's' : '' }}
-        </div>
-        <div v-if="counts.warnings > 0" class="summary-badge summary-badge--warning">
-          {{ counts.warnings }} warning{{ counts.warnings > 1 ? 's' : '' }}
-        </div>
-        <div v-if="counts.info > 0" class="summary-badge summary-badge--info">
-          {{ counts.info }} info
-        </div>
+    <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+      <div
+        v-if="isScanning"
+        class="flex items-center gap-2 px-4 py-6 font-ui text-xs text-text-hint"
+        role="status"
+      >
+        <BaseIcon name="loader-2" :size="14" class="animate-spin text-accent" />
+        Checking the story bible, manuscript and graph against each other…
       </div>
 
-      <div class="results-list">
-        <template v-for="group in ['errors', 'warnings', 'info']" :key="group">
-          <div v-if="resultsBySeverity[group]?.length" class="result-group">
-            <h4 v-if="group === 'errors'" class="group-label group-label--error">
-              <BaseIcon name="alert-circle" :size="13" />
-              Errors
-            </h4>
-            <h4 v-else-if="group === 'warnings'" class="group-label group-label--warning">
-              <BaseIcon name="alert-triangle" :size="13" />
-              Warnings
-            </h4>
-            <h4 v-else class="group-label group-label--info">
-              <BaseIcon name="info" :size="13" />
-              Info
-            </h4>
+      <template v-else-if="results.length > 0">
+        <section
+          v-for="(group, gi) in GROUPS.filter((g) => resultsBySeverity[g.key]?.length)"
+          :key="group.key"
+          :class="['px-4 py-4', gi === 0 ? '' : 'border-t border-border-subtle']"
+        >
+          <h3 class="flex items-center gap-1.5 label-micro text-text-hint mb-2">
+            <BaseIcon :name="group.icon" :size="12" :class="group.tone" />
+            {{ group.label }}
+            <span class="tabular-nums">· {{ resultsBySeverity[group.key].length }}</span>
+          </h3>
+          <ul class="-mx-1 divide-y divide-border-subtle">
             <ConsistencyResultItem
-              v-for="item in resultsBySeverity[group]"
+              v-for="item in resultsBySeverity[group.key]"
               :key="item.id"
               :result="item"
               @action="handleResultAction"
             />
-          </div>
-        </template>
-      </div>
-    </div>
+          </ul>
+        </section>
+      </template>
 
-    <div v-else class="empty-state">
-      <div class="empty-icon">
-        <BaseIcon name="check-circle" :size="32" class="empty-check" />
+      <div v-else class="px-4 py-10 text-center">
+        <BaseIcon
+          name="check-circle"
+          :size="24"
+          class="mx-auto mb-3"
+          :class="lastScan ? 'text-success' : 'text-text-hint'"
+        />
+        <p class="font-ui text-sm text-text-primary">
+          {{ lastScan ? 'Everything lines up' : 'Not checked yet' }}
+        </p>
+        <p class="mt-1 font-ui text-xs text-text-hint leading-5 max-w-[30ch] mx-auto text-pretty">
+          {{
+            lastScan
+              ? 'Story bible, manuscript and story graph agree with each other.'
+              : 'Scan to compare the story bible, manuscript and story graph.'
+          }}
+        </p>
       </div>
-      <p class="empty-text">
-        No inconsistencies found. Your story bible, manuscript, and story graph are in sync.
-      </p>
     </div>
   </div>
 </template>
-
-<style scoped>
-.consistency-panel {
-  padding: 12px;
-  font-family: 'Geist Variable', Geist, system-ui, sans-serif;
-  color: var(--vers-text-primary);
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.panel-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--vers-text-primary);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.scanning-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 32px 0;
-  color: var(--vers-text-muted);
-  font-size: 0.75rem;
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--vers-accent-primary);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-.summary-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.summary-badge {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.summary-badge--error {
-  background: color-mix(in srgb, var(--vers-status-danger) 12%, transparent);
-  color: var(--vers-status-danger);
-}
-
-.summary-badge--warning {
-  background: color-mix(in srgb, var(--vers-status-warning) 12%, transparent);
-  color: var(--vers-status-warning);
-}
-
-.summary-badge--info {
-  background: color-mix(in srgb, var(--vers-status-info) 12%, transparent);
-  color: var(--vers-status-info);
-}
-
-.results-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.result-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.group-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 0 0 2px 0;
-  padding: 0 2px;
-}
-
-.group-label--error {
-  color: var(--vers-status-danger);
-}
-
-.group-label--warning {
-  color: var(--vers-status-warning);
-}
-
-.group-label--info {
-  color: var(--vers-status-info);
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 32px 16px;
-  text-align: center;
-}
-
-.empty-icon {
-  opacity: 0.4;
-}
-
-.empty-check {
-  color: var(--vers-status-success);
-}
-
-.empty-text {
-  font-size: 0.75rem;
-  color: var(--vers-text-muted);
-  line-height: 1.4;
-  max-width: 220px;
-}
-</style>

@@ -389,7 +389,7 @@ defineExpose({
     </div>
 
     <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
-      <h3 class="text-sm font-medium text-text-primary">Per-Feature Model Overrides</h3>
+      <h3 class="text-sm font-medium text-text-primary">Per-Feature model overrides</h3>
       <p class="text-2xs text-text-hint">
         Override the default provider/model for specific tasks. Set to "Default" to inherit from the
         global default above.

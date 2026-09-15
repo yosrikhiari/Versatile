@@ -72,31 +72,25 @@ const fieldSize = computed(() => (props.size === 'sm' ? 'h-6 text-11px' : 'h-7 t
         <BaseIcon name="minus" :size="13" />
       </button>
 
-      <div class="relative">
-        <input
-          :id="inputId"
-          type="number"
-          inputmode="numeric"
-          :value="modelValue"
-          :min="min"
-          :max="Number.isFinite(max) ? max : undefined"
-          :step="step"
-          :disabled="disabled"
-          :class="[
-            'vers-stepper-input w-16 rounded-md border border-border-subtle bg-bg-primary text-center font-ui tabular-nums text-text-primary transition-colors duration-150 focus:border-accent',
-            fieldSize,
-            suffix && 'pr-8'
-          ]"
-          @input="onInput"
-          @blur="onBlur"
-        />
-        <span
-          v-if="suffix"
-          class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-ui text-11px text-text-hint"
-        >
-          {{ suffix }}
-        </span>
-      </div>
+      <input
+        :id="inputId"
+        type="number"
+        inputmode="numeric"
+        :value="modelValue"
+        :min="min"
+        :max="Number.isFinite(max) ? max : undefined"
+        :step="step"
+        :disabled="disabled"
+        :class="[
+          'vers-stepper-input w-20 rounded-md border border-border-subtle bg-bg-primary text-center font-ui tabular-nums text-text-primary transition-colors duration-150 focus:border-accent',
+          fieldSize
+        ]"
+        @input="onInput"
+        @blur="onBlur"
+      />
+      <!-- Beside the field, not inside it: a suffix overlaid on a 4-digit
+           value ("3500words") was unreadable. -->
+      <span v-if="suffix" class="ml-0.5 font-ui text-xs text-text-hint">{{ suffix }}</span>
 
       <button
         type="button"

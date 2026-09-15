@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import BaseIcon from '../shared/BaseIcon.vue'
+import BaseButton from '../ui/BaseButton.vue'
 
 const props = defineProps({
   annotation: {
@@ -17,16 +17,6 @@ const hasSuggestion = computed(() => props.annotation.original && props.annotati
 
 const isIdentical = computed(() => props.annotation.original === props.annotation.suggestion)
 
-const typeColors = {
-  weak_verb: 'bg-bg-secondary text-warning',
-  repetition: 'bg-bg-secondary text-danger',
-  pacing: 'bg-bg-secondary text-info',
-  antecedent: 'bg-bg-secondary text-text-secondary'
-}
-
-const typeBadge = computed(
-  () => typeColors[props.annotation.type] || 'bg-bg-tertiary text-text-hint'
-)
 const typeLabel = computed(() => {
   const labels = {
     weak_verb: 'Weak Verb',
@@ -64,76 +54,55 @@ function handleDismiss() {
 </script>
 
 <template>
-  <div class="bg-bg-tertiary border border-border-subtle rounded-lg p-3">
-    <div class="flex items-center gap-2 mb-2">
-      <span :class="['px-2 py-0.5 text-xs rounded-full font-ui', typeBadge]">
-        {{ typeLabel }}
-      </span>
-    </div>
+  <article class="py-3">
+    <p class="label-micro text-text-hint mb-1.5">{{ typeLabel }}</p>
 
-    <div
-      v-if="showDiff && hasSuggestion"
-      class="mb-3 p-2 bg-bg-secondary rounded border border-border-subtle"
-    >
-      <template v-if="isIdentical">
-        <p class="text-xs text-warning font-ui">Suggestion matches original text</p>
-        <div class="mt-2">
-          <button
-            class="py-1 px-3 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-surface-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-            @click="handleDismiss"
-          >
-            Dismiss
-          </button>
-        </div>
-      </template>
-      <template v-else>
-        <p class="text-xs text-text-hint mb-1 font-ui">Original:</p>
-        <p class="text-sm text-text-hint line-through">{{ annotation.original }}</p>
-        <p class="text-xs text-accent mt-2 mb-1 font-ui">Replacement:</p>
-        <p class="text-sm text-accent">{{ annotation.suggestion }}</p>
-      </template>
-    </div>
+    <template v-if="showDiff && hasSuggestion && isIdentical">
+      <p class="font-ui text-xs text-warning">The suggestion is identical to the original.</p>
+    </template>
+    <template v-else-if="hasSuggestion">
+      <p class="font-manuscript text-sm text-text-hint line-through leading-6">
+        {{ annotation.original }}
+      </p>
+      <p class="font-manuscript text-sm text-text-primary leading-6">{{ annotation.suggestion }}</p>
+    </template>
 
-    <div v-else class="text-sm space-y-1">
-      <p class="text-text-hint line-through">{{ annotation.original }}</p>
-      <p class="text-accent">{{ annotation.suggestion }}</p>
-    </div>
-
-    <p v-if="annotation.reason" class="text-xs text-text-hint italic mt-2">
+    <p v-if="annotation.reason" class="mt-1.5 font-ui text-xs text-text-hint leading-4">
       {{ annotation.reason }}
     </p>
 
-    <div class="flex gap-2 mt-3">
-      <button
-        class="flex-1 py-1 text-xs btn-primary rounded font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-        @click="handleAccept"
-      >
-        {{ showDiff ? 'Confirm' : 'Accept' }}
-      </button>
-      <template v-if="showDiff">
-        <button
-          class="py-1 px-3 text-xs bg-bg-secondary text-text-secondary rounded hover:bg-surface-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-          @click="handleCancel"
-        >
-          Cancel
-        </button>
+    <div class="mt-2.5 flex items-center gap-1">
+      <template v-if="showDiff && hasSuggestion && isIdentical">
+        <BaseButton variant="ghost" size="sm" @click="handleDismiss">Dismiss</BaseButton>
       </template>
       <template v-else>
-        <button
-          class="p-1.5 text-text-hint hover:text-text-secondary font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
-          title="Decide later"
-          @click="emit('flag', annotation.id)"
+        <BaseButton variant="secondary" size="sm" icon="check" @click="handleAccept">
+          {{ showDiff ? 'Confirm' : 'Accept' }}
+        </BaseButton>
+        <BaseButton v-if="showDiff" variant="ghost" size="sm" @click="handleCancel"
+          >Cancel</BaseButton
         >
-          <BaseIcon name="clock" :size="14" />
-        </button>
-        <button
-          class="p-1.5 text-text-hint hover:text-danger font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
-          title="Reject"
-          @click="emit('reject', annotation.id)"
-        >
-          <BaseIcon name="x" :size="14" />
-        </button>
+        <template v-else>
+          <BaseButton
+            variant="ghost"
+            size="sm"
+            icon="clock"
+            title="Decide later"
+            @click="emit('flag', annotation.id)"
+          >
+            Later
+          </BaseButton>
+          <BaseButton
+            variant="ghost"
+            size="sm"
+            icon="x"
+            title="Reject"
+            @click="emit('reject', annotation.id)"
+          >
+            Reject
+          </BaseButton>
+        </template>
       </template>
     </div>
-  </div>
+  </article>
 </template>

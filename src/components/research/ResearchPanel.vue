@@ -7,6 +7,9 @@ import { useEmbeddingIndexer } from '../../composables/useEmbeddingIndexer'
 import { useNotifications } from '../../composables/useNotifications'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BasePanelHeader from '../ui/BasePanelHeader.vue'
+import BaseButton from '../ui/BaseButton.vue'
+import BaseSegmented from '../ui/BaseSegmented.vue'
 import VirtualScrollList from '../shared/VirtualScrollList.vue'
 import Skeleton from '../shared/Skeleton.vue'
 import { getDocumentStatusCounts, searchLexical, semanticSearch } from '../../services/researchDb'
@@ -396,45 +399,46 @@ function handleClearExtraction() {
     fallback-description="Failed to render the Research panel. Try refreshing the page."
   >
     <div class="h-full flex flex-col overflow-hidden">
-      <div
-        class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0"
+      <BasePanelHeader
+        title="Research"
+        icon="search"
+        :meta="documents.length ? `${documents.length} documents` : ''"
       >
-        <h2 class="text-sm font-semibold text-text-primary tracking-wide">Research Library</h2>
-        <div class="flex items-center gap-1">
-          <!-- prettier-ignore -->
-          <button
-            class="p-1.5 rounded-lg transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 disabled:opacity-50"
-            :class="showUrlInput ? 'btn-primary' : 'bg-bg-secondary border border-border-subtle text-text-hint hover:text-text-primary hover:border-border-hover'"
+        <template #actions>
+          <BaseButton
+            variant="ghost"
+            size="sm"
+            icon="link"
             :disabled="isImporting"
+            :aria-pressed="showUrlInput"
             title="Import from URL"
             aria-label="Import from URL"
             @click="toggleUrlInput"
-          >
-            <BaseIcon name="link" size="14" />
-          </button>
-          <!-- prettier-ignore -->
-          <button
-            class="p-1.5 rounded-lg btn-primary active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 disabled:opacity-50"
+          />
+          <BaseButton
+            variant="soft"
+            size="sm"
+            icon="upload"
+            :loading="isImporting"
             :disabled="isImporting"
             title="Import files"
-            aria-label="Import files"
             @click="triggerFileInput"
           >
-            <BaseIcon name="upload" size="16" />
-          </button>
-        </div>
-        <input
-          ref="fileInput"
-          type="file"
-          accept=".pdf,.txt,.md,.html,.htm"
-          multiple
-          class="hidden"
-          @change="handleFileChange"
-        />
-      </div>
+            Import
+          </BaseButton>
+        </template>
+      </BasePanelHeader>
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".pdf,.txt,.md,.html,.htm"
+        multiple
+        class="hidden"
+        @change="handleFileChange"
+      />
 
-      <div class="px-3 py-2 space-y-1.5">
-        <div class="flex items-center gap-1.5">
+      <div class="px-4 py-3 space-y-2 border-b border-border-subtle">
+        <div class="flex items-center gap-2">
           <div class="relative flex-1">
             <BaseIcon
               name="search"
@@ -444,53 +448,35 @@ function handleClearExtraction() {
             <input
               v-model="globalSearchQuery"
               type="text"
-              placeholder="Search all chunks..."
-              class="w-full pl-8 pr-3 py-2 text-xs bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/40 transition-colors"
+              placeholder="Search every document…"
+              class="w-full pl-8 pr-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150"
               @input="onGlobalSearchInput"
             />
           </div>
-          <!-- prettier-ignore -->
-          <button
-            class="w-7 h-7 text-11px font-medium rounded-lg transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
-            :class="
-              globalSearchMode === 'lexical'
-                ? 'btn-primary'
-                : 'bg-bg-secondary border border-border-subtle text-text-hint hover:text-text-primary hover:border-border-hover'
+          <BaseSegmented
+            :model-value="globalSearchMode"
+            :options="[
+              { value: 'lexical', label: 'Words' },
+              { value: 'semantic', label: 'Meaning' }
+            ]"
+            size="sm"
+            aria-label="Search mode"
+            @update:model-value="
+              (v) => (v === 'lexical' ? setLexicalSearch() : setSemanticSearch())
             "
-            title="Lexical search (keyword matching)"
-            aria-label="Lexical search mode"
-            :aria-pressed="globalSearchMode === 'lexical'"
-            @click="setLexicalSearch()"
-          >
-            T
-          </button>
-          <!-- prettier-ignore -->
-          <button
-            class="w-7 h-7 text-11px font-medium rounded-lg transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
-            :class="
-              globalSearchMode === 'semantic'
-                ? 'btn-primary'
-                : 'bg-bg-secondary border border-border-subtle text-text-hint hover:text-text-primary hover:border-border-hover'
-            "
-            title="Semantic search (embedding similarity)"
-            aria-label="Semantic search mode"
-            :aria-pressed="globalSearchMode === 'semantic'"
-            @click="setSemanticSearch()"
-          >
-            AI
-          </button>
+          />
         </div>
         <div v-if="!globalSearchResults.length" class="relative">
           <BaseIcon
-            name="search"
+            name="filter"
             size="14"
             class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-hint pointer-events-none"
           />
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Filter documents..."
-            class="w-full pl-8 pr-3 py-2 text-xs bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/40 transition-colors"
+            placeholder="Filter documents by name…"
+            class="w-full pl-8 pr-3 py-1.5 text-xs bg-transparent border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150"
           />
         </div>
       </div>
@@ -821,10 +807,7 @@ function handleClearExtraction() {
             >
               <template #item="{ item: chunk }">
                 <div class="px-6 py-2 border-b border-border-subtle/20">
-                  <p
-                    v-if="chunk.heading"
-                    class="text-2xs uppercase tracking-wider text-accent/70 mb-1"
-                  >
+                  <p v-if="chunk.heading" class="label-micro text-text-hint mb-1">
                     {{ chunk.heading }}
                   </p>
                   <p class="text-11px text-text-secondary leading-relaxed line-clamp-3">

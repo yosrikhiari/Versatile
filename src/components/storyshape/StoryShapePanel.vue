@@ -3,6 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useStoryShapeAnalyzer } from '../../composables/useStoryShapeAnalyzer'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import BaseButton from '../ui/BaseButton.vue'
+import BasePanelHeader from '../ui/BasePanelHeader.vue'
+import BaseIcon from '../shared/BaseIcon.vue'
 import TensionCurveChart from './TensionCurveChart.vue'
 import EmotionalArcChart from './EmotionalArcChart.vue'
 import CharacterFocusMatrix from './CharacterFocusMatrix.vue'
@@ -67,378 +69,317 @@ function priorityClass(p) {
 </script>
 
 <template>
-  <div class="story-shape-panel">
-    <div class="panel-header">
-      <h3 class="panel-title">Story Shape</h3>
-      <BaseButton
-        variant="outline"
-        size="sm"
-        custom-class="border-accent text-accent"
-        :loading="isAnalyzing"
-        @click="handleAnalyze"
+  <div class="h-full flex flex-col overflow-hidden">
+    <BasePanelHeader
+      title="Story Shape"
+      icon="activity"
+      :meta="hasAnalysis && currentVersion > 0 ? `v${currentVersion}` : ''"
+    >
+      <template #actions>
+        <BaseButton
+          variant="soft"
+          size="sm"
+          icon="activity"
+          :loading="isAnalyzing"
+          :disabled="isAnalyzing"
+          @click="handleAnalyze"
+        >
+          {{ hasAnalysis ? 'Reanalyze' : 'Analyze' }}
+        </BaseButton>
+      </template>
+    </BasePanelHeader>
+
+    <div class="story-shape-panel flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+      <div
+        v-if="isAnalyzing && !isAIAnalyzing"
+        class="flex items-center gap-2 py-4 font-ui text-xs text-text-hint"
+        role="status"
       >
-        {{ hasAnalysis ? 'Reanalyze' : 'Analyze Manuscript' }}
-      </BaseButton>
-    </div>
+        <BaseIcon name="loader-2" :size="14" class="animate-spin text-accent" />
+        Analyzing narrative structure…
+      </div>
 
-    <div v-if="isAnalyzing && !isAIAnalyzing" class="analyzing-state">
-      <div class="spinner" />
-      <span>Analyzing narrative structure…</span>
-    </div>
+      <template v-if="hasAnalysis">
+        <div class="section">
+          <h4 class="section-title label-micro text-text-hint">Tension Curve</h4>
+          <TensionCurveChart
+            :data="combinedTension"
+            :hover-index="sharedHoverIndex"
+            @hover="onChartHover"
+            @leave="onChartLeave"
+          />
+          <div class="metric-row">
+            <div class="metric">
+              <span class="metric-value">{{ currentAnalysis.metrics.avgTension }}</span>
+              <span class="metric-label">Average</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value">{{ currentAnalysis.metrics.maxTension }}</span>
+              <span class="metric-label">Peak</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value">{{
+                currentAnalysis.metrics.wordCount.toLocaleString()
+              }}</span>
+              <span class="metric-label">Words</span>
+            </div>
+            <div class="metric">
+              <span
+                :class="[
+                  'metric-value',
+                  {
+                    'text-accent': currentAnalysis.metrics.overallTensionLevel === 'high',
+                    'text-warning': currentAnalysis.metrics.overallTensionLevel === 'medium'
+                  }
+                ]"
+              >
+                {{ currentAnalysis.metrics.overallTensionLevel }}
+              </span>
+              <span class="metric-label">Level</span>
+            </div>
+          </div>
+        </div>
 
-    <template v-if="hasAnalysis">
-      <div v-if="currentVersion > 0" class="version-badge">v{{ currentVersion }}</div>
+        <div class="section">
+          <h4 class="section-title label-micro text-text-hint">Metrics</h4>
+          <StoryMetricsDashboard
+            :word-based-tension="currentAnalysis.wordBasedTension"
+            :emotion-by-chunk="emotionData"
+            :chunks="chunkTexts"
+            :character-names="characterNames"
+            :pacing-gradient="currentAnalysis.metrics.pacingGradient"
+          />
+        </div>
 
-      <div class="section">
-        <h4 class="section-title">Tension Curve</h4>
-        <TensionCurveChart
-          :data="combinedTension"
-          :hover-index="sharedHoverIndex"
-          @hover="onChartHover"
-          @leave="onChartLeave"
-        />
-        <div class="metric-row">
-          <div class="metric">
-            <span class="metric-value">{{ currentAnalysis.metrics.avgTension }}</span>
-            <span class="metric-label">Average</span>
+        <div class="section">
+          <h4 class="section-title label-micro text-text-hint">Rhythm</h4>
+          <div class="rhythm-block">
+            <div class="rhythm-row">
+              <span class="rhythm-label">Dialogue Ratio</span>
+              <span class="rhythm-value"
+                >{{ Math.round(currentAnalysis.metrics.dialogueRatio * 100) }}%</span
+              >
+            </div>
+            <div class="rhythm-row">
+              <span class="rhythm-label">Fingerprint</span>
+              <span class="rhythm-value capitalize">{{
+                currentAnalysis.metrics.rhythmFingerprint
+              }}</span>
+            </div>
+            <div class="rhythm-row">
+              <span class="rhythm-label">Pacing</span>
+              <span class="rhythm-value"
+                >{{ currentAnalysis.metrics.pacingGradient.toFixed(1) }}x</span
+              >
+            </div>
           </div>
-          <div class="metric">
-            <span class="metric-value">{{ currentAnalysis.metrics.maxTension }}</span>
-            <span class="metric-label">Peak</span>
-          </div>
-          <div class="metric">
-            <span class="metric-value">{{
-              currentAnalysis.metrics.wordCount.toLocaleString()
-            }}</span>
-            <span class="metric-label">Words</span>
-          </div>
-          <div class="metric">
-            <span
+        </div>
+
+        <div v-if="emotionData.length" class="section">
+          <h4 class="section-title label-micro text-text-hint">Emotional Arc</h4>
+          <div class="emotion-breakdown">
+            <div
+              v-for="em in currentAnalysis.metrics.emotionBreakdown"
+              :key="em.emotion"
               :class="[
-                'metric-value',
-                {
-                  'text-accent': currentAnalysis.metrics.overallTensionLevel === 'high',
-                  'text-warning': currentAnalysis.metrics.overallTensionLevel === 'medium'
-                }
+                'emotion-bar',
+                { dominant: currentAnalysis.metrics.dominantEmotion.emotion === em.emotion }
               ]"
             >
-              {{ currentAnalysis.metrics.overallTensionLevel }}
-            </span>
-            <span class="metric-label">Level</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h4 class="section-title">Metrics</h4>
-        <StoryMetricsDashboard
-          :word-based-tension="currentAnalysis.wordBasedTension"
-          :emotion-by-chunk="emotionData"
-          :chunks="chunkTexts"
-          :character-names="characterNames"
-          :pacing-gradient="currentAnalysis.metrics.pacingGradient"
-        />
-      </div>
-
-      <div class="section">
-        <h4 class="section-title">Rhythm</h4>
-        <div class="rhythm-block">
-          <div class="rhythm-row">
-            <span class="rhythm-label">Dialogue Ratio</span>
-            <span class="rhythm-value"
-              >{{ Math.round(currentAnalysis.metrics.dialogueRatio * 100) }}%</span
-            >
-          </div>
-          <div class="rhythm-row">
-            <span class="rhythm-label">Fingerprint</span>
-            <span class="rhythm-value capitalize">{{
-              currentAnalysis.metrics.rhythmFingerprint
-            }}</span>
-          </div>
-          <div class="rhythm-row">
-            <span class="rhythm-label">Pacing</span>
-            <span class="rhythm-value"
-              >{{ currentAnalysis.metrics.pacingGradient.toFixed(1) }}x</span
-            >
-          </div>
-        </div>
-      </div>
-
-      <div v-if="emotionData.length" class="section">
-        <h4 class="section-title">Emotional Arc</h4>
-        <div class="emotion-breakdown">
-          <div
-            v-for="em in currentAnalysis.metrics.emotionBreakdown"
-            :key="em.emotion"
-            :class="[
-              'emotion-bar',
-              { dominant: currentAnalysis.metrics.dominantEmotion.emotion === em.emotion }
-            ]"
-          >
-            <div class="emotion-bar-header">
-              <span class="emotion-name">{{ em.emotion }}</span>
-              <span class="emotion-score">{{ em.score }}</span>
-            </div>
-            <div class="emotion-track">
-              <div
-                class="emotion-fill"
-                :style="{
-                  width:
-                    Math.min(
-                      (em.score / currentAnalysis.metrics.dominantEmotion.score) * 100,
-                      100
-                    ) + '%'
-                }"
-              />
-            </div>
-          </div>
-        </div>
-        <EmotionalArcChart
-          :data="emotionData"
-          :hover-index="sharedHoverIndex"
-          @hover="onChartHover"
-          @leave="onChartLeave"
-        />
-      </div>
-
-      <div v-if="storyBible.characters.length && chunkTexts.length" class="section">
-        <h4 class="section-title">Character Focus</h4>
-        <CharacterFocusMatrix
-          :characters="storyBible.characters"
-          :chunks="chunkTexts"
-          :hover-index="sharedHoverIndex"
-          @hover="onChartHover"
-          @leave="onChartLeave"
-        />
-      </div>
-
-      <div class="section">
-        <h4 class="section-title">Structural Beats</h4>
-        <NarrativeStructureTimeline
-          :beats="currentAnalysis.metrics.structuralBeats"
-          :chunk-count="chunkCount"
-          :hover-index="sharedHoverIndex"
-          @hover="onChartHover"
-          @leave="onChartLeave"
-        />
-        <div class="beats-grid">
-          <div
-            v-for="beat in currentAnalysis.metrics.structuralBeats"
-            :key="beat.label"
-            :class="['beat-item', { 'beat-detected': beat.confidence > 20 }]"
-          >
-            <div class="beat-indicator">
-              <div class="beat-dot" :style="{ opacity: Math.min(beat.confidence / 100, 1) }" />
-            </div>
-            <div class="beat-info">
-              <span class="beat-label">{{ beat.label }}</span>
-              <span class="beat-confidence">{{ Math.round(beat.confidence) }}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <div v-if="isAIAnalyzing" class="section">
-      <h4 class="section-title">AI Enhancement</h4>
-      <div class="analyzing-ai-row">
-        <div class="analyzing-spinner" />
-        <span>Running AI narrative analysis…</span>
-      </div>
-    </div>
-
-    <template v-if="aiInsights">
-      <div v-if="aiInsights.narrativeArc" class="section">
-        <h4 class="section-title">Narrative Arc</h4>
-        <div class="arc-block">
-          <div class="arc-type">{{ aiInsights.narrativeArc.type }}</div>
-          <div class="arc-conf">Confidence: {{ aiInsights.narrativeArc.confidence }}%</div>
-          <p class="arc-desc">{{ aiInsights.narrativeArc.description }}</p>
-        </div>
-      </div>
-
-      <div v-if="aiInsights.pacingAssessment" class="section">
-        <h4 class="section-title">Pacing Assessment</h4>
-        <div class="pacing-block">
-          <div
-            :class="[
-              'pacing-badge',
-              aiInsights.pacingAssessment.rating?.includes('slow')
-                ? 'pacing-warn'
-                : aiInsights.pacingAssessment.rating === 'well-paced'
-                  ? 'pacing-good'
-                  : ''
-            ]"
-          >
-            {{ aiInsights.pacingAssessment.rating }}
-          </div>
-          <div v-if="aiInsights.pacingAssessment.strengths?.length" class="pacing-list">
-            <span class="pacing-list-label">Strengths</span>
-            <ul>
-              <li v-for="s in aiInsights.pacingAssessment.strengths" :key="s">{{ s }}</li>
-            </ul>
-          </div>
-          <div v-if="aiInsights.pacingAssessment.concerns?.length" class="pacing-list">
-            <span class="pacing-list-label">Concerns</span>
-            <ul>
-              <li v-for="c in aiInsights.pacingAssessment.concerns" :key="c">{{ c }}</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="aiInsights.themes?.length" class="section">
-        <h4 class="section-title">Themes</h4>
-        <div class="themes-list">
-          <div v-for="t in aiInsights.themes" :key="t.theme" class="theme-item">
-            <div class="theme-header">
-              <span class="theme-name">{{ t.theme }}</span>
-              <span class="theme-relevance">{{ t.relevance }}%</span>
-            </div>
-            <div class="theme-track">
-              <div class="theme-fill" :style="{ width: Math.min(t.relevance, 100) + '%' }" />
-            </div>
-            <p v-if="t.evidence" class="theme-evidence">{{ t.evidence }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="aiInsights.qualityMetrics" class="section">
-        <h4 class="section-title">Quality Metrics</h4>
-        <div class="quality-grid">
-          <div v-for="(val, key) in aiInsights.qualityMetrics" :key="key" class="quality-item">
-            <span class="quality-label">{{ formatKey(key) }}</span>
-            <div class="quality-bar-row">
-              <div class="quality-track">
+              <div class="emotion-bar-header">
+                <span class="emotion-name">{{ em.emotion }}</span>
+                <span class="emotion-score">{{ em.score }}</span>
+              </div>
+              <div class="emotion-track">
                 <div
-                  class="quality-fill"
-                  :style="{ width: (Math.min(val, 10) / 10) * 100 + '%' }"
+                  class="emotion-fill"
+                  :style="{
+                    width:
+                      Math.min(
+                        (em.score / currentAnalysis.metrics.dominantEmotion.score) * 100,
+                        100
+                      ) + '%'
+                  }"
                 />
               </div>
-              <span class="quality-value">{{ val }}/10</span>
+            </div>
+          </div>
+          <EmotionalArcChart
+            :data="emotionData"
+            :hover-index="sharedHoverIndex"
+            @hover="onChartHover"
+            @leave="onChartLeave"
+          />
+        </div>
+
+        <div v-if="storyBible.characters.length && chunkTexts.length" class="section">
+          <h4 class="section-title label-micro text-text-hint">Character Focus</h4>
+          <CharacterFocusMatrix
+            :characters="storyBible.characters"
+            :chunks="chunkTexts"
+            :hover-index="sharedHoverIndex"
+            @hover="onChartHover"
+            @leave="onChartLeave"
+          />
+        </div>
+
+        <div class="section">
+          <h4 class="section-title label-micro text-text-hint">Structural Beats</h4>
+          <NarrativeStructureTimeline
+            :beats="currentAnalysis.metrics.structuralBeats"
+            :chunk-count="chunkCount"
+            :hover-index="sharedHoverIndex"
+            @hover="onChartHover"
+            @leave="onChartLeave"
+          />
+          <div class="beats-grid">
+            <div
+              v-for="beat in currentAnalysis.metrics.structuralBeats"
+              :key="beat.label"
+              :class="['beat-item', { 'beat-detected': beat.confidence > 20 }]"
+            >
+              <div class="beat-indicator">
+                <div class="beat-dot" :style="{ opacity: Math.min(beat.confidence / 100, 1) }" />
+              </div>
+              <div class="beat-info">
+                <span class="beat-label">{{ beat.label }}</span>
+                <span class="beat-confidence">{{ Math.round(beat.confidence) }}%</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </template>
 
-      <div v-if="aiInsights.recommendations?.length" class="section">
-        <h4 class="section-title">Recommendations</h4>
-        <div class="recs-list">
-          <div
-            v-for="(r, i) in aiInsights.recommendations"
-            :key="i"
-            :class="['rec-item', priorityClass(r.priority)]"
-          >
-            <div class="rec-header">
-              <span :class="['rec-priority', priorityClass(r.priority)]">{{
-                priorityLabel(r.priority)
-              }}</span>
-              <span class="rec-area">{{ r.area }}</span>
-            </div>
-            <p class="rec-suggestion">{{ r.suggestion }}</p>
-          </div>
+      <div v-if="isAIAnalyzing" class="section">
+        <h4 class="section-title label-micro text-text-hint">AI Enhancement</h4>
+        <div class="flex items-center gap-2 font-ui text-xs text-text-hint" role="status">
+          <BaseIcon name="loader-2" :size="14" class="animate-spin text-accent" />
+          Running AI narrative analysis…
         </div>
       </div>
-    </template>
 
-    <div v-if="!isAnalyzing && !hasAnalysis" class="empty-state">
-      <div class="empty-icon">
-        <svg
-          width="32"
-          height="32"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          class="text-text-hint"
-        >
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-        </svg>
+      <template v-if="aiInsights">
+        <div v-if="aiInsights.narrativeArc" class="section">
+          <h4 class="section-title label-micro text-text-hint">Narrative Arc</h4>
+          <div class="arc-block">
+            <div class="arc-type">{{ aiInsights.narrativeArc.type }}</div>
+            <div class="arc-conf">Confidence: {{ aiInsights.narrativeArc.confidence }}%</div>
+            <p class="arc-desc">{{ aiInsights.narrativeArc.description }}</p>
+          </div>
+        </div>
+
+        <div v-if="aiInsights.pacingAssessment" class="section">
+          <h4 class="section-title label-micro text-text-hint">Pacing Assessment</h4>
+          <div class="pacing-block">
+            <div
+              :class="[
+                'pacing-badge',
+                aiInsights.pacingAssessment.rating?.includes('slow')
+                  ? 'pacing-warn'
+                  : aiInsights.pacingAssessment.rating === 'well-paced'
+                    ? 'pacing-good'
+                    : ''
+              ]"
+            >
+              {{ aiInsights.pacingAssessment.rating }}
+            </div>
+            <div v-if="aiInsights.pacingAssessment.strengths?.length" class="pacing-list">
+              <span class="pacing-list-label">Strengths</span>
+              <ul>
+                <li v-for="s in aiInsights.pacingAssessment.strengths" :key="s">{{ s }}</li>
+              </ul>
+            </div>
+            <div v-if="aiInsights.pacingAssessment.concerns?.length" class="pacing-list">
+              <span class="pacing-list-label">Concerns</span>
+              <ul>
+                <li v-for="c in aiInsights.pacingAssessment.concerns" :key="c">{{ c }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="aiInsights.themes?.length" class="section">
+          <h4 class="section-title label-micro text-text-hint">Themes</h4>
+          <div class="themes-list">
+            <div v-for="t in aiInsights.themes" :key="t.theme" class="theme-item">
+              <div class="theme-header">
+                <span class="theme-name">{{ t.theme }}</span>
+                <span class="theme-relevance">{{ t.relevance }}%</span>
+              </div>
+              <div class="theme-track">
+                <div class="theme-fill" :style="{ width: Math.min(t.relevance, 100) + '%' }" />
+              </div>
+              <p v-if="t.evidence" class="theme-evidence">{{ t.evidence }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="aiInsights.qualityMetrics" class="section">
+          <h4 class="section-title label-micro text-text-hint">Quality Metrics</h4>
+          <div class="quality-grid">
+            <div v-for="(val, key) in aiInsights.qualityMetrics" :key="key" class="quality-item">
+              <span class="quality-label">{{ formatKey(key) }}</span>
+              <div class="quality-bar-row">
+                <div class="quality-track">
+                  <div
+                    class="quality-fill"
+                    :style="{ width: (Math.min(val, 10) / 10) * 100 + '%' }"
+                  />
+                </div>
+                <span class="quality-value">{{ val }}/10</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="aiInsights.recommendations?.length" class="section">
+          <h4 class="section-title label-micro text-text-hint">Recommendations</h4>
+          <div class="recs-list">
+            <div
+              v-for="(r, i) in aiInsights.recommendations"
+              :key="i"
+              :class="['rec-item', priorityClass(r.priority)]"
+            >
+              <div class="rec-header">
+                <span :class="['rec-priority', priorityClass(r.priority)]">{{
+                  priorityLabel(r.priority)
+                }}</span>
+                <span class="rec-area">{{ r.area }}</span>
+              </div>
+              <p class="rec-suggestion">{{ r.suggestion }}</p>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div v-if="!isAnalyzing && !hasAnalysis" class="py-10 text-center">
+        <BaseIcon name="activity" :size="24" class="mx-auto mb-3 text-text-hint" />
+        <p class="font-ui text-sm text-text-primary">No analysis yet</p>
+        <p class="mt-1 font-ui text-xs text-text-hint leading-5 max-w-[30ch] mx-auto text-pretty">
+          Analyze the manuscript to see where tension rises and falls across your sections.
+        </p>
       </div>
-      <p class="empty-text">
-        No analysis yet. Run an analysis to see the narrative shape of your manuscript.
-      </p>
     </div>
   </div>
 </template>
 
 <style scoped>
 .story-shape-panel {
-  padding: 12px;
+  padding: 0 16px;
   font-family: 'Geist Variable', Geist, system-ui, sans-serif;
   color: var(--vers-text-primary);
 }
 
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.panel-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--vers-text-primary);
-}
-
-.analyzing-spinner {
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid var(--vers-accent-primary);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.analyzing-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 24px 0;
-  color: var(--vers-text-muted);
-  font-size: 0.75rem;
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--vers-accent-primary);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-.version-badge {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgb(var(--vers-accent-primary-rgb) / 0.1);
-  color: var(--vers-accent-primary);
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
-}
-
 .section {
-  margin-bottom: 16px;
+  padding: 16px 0;
+  border-top: 1px solid var(--vers-border-subtle);
+}
+.section:first-child {
+  border-top: 0;
 }
 
 .section-title {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--vers-text-muted);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .metric-row {
@@ -594,41 +535,8 @@ function priorityClass(p) {
   font-variant-numeric: tabular-nums;
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 32px 16px;
-  text-align: center;
-}
-
-.empty-icon {
-  opacity: 0.3;
-}
-
-.empty-text {
-  font-size: 0.75rem;
-  color: var(--vers-text-muted);
-  line-height: 1.4;
-  max-width: 200px;
-}
-
 .capitalize {
   text-transform: capitalize;
-}
-
-.analyzing-ai-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--vers-text-muted);
-  font-size: 0.6875rem;
-}
-
-.analyzing-ai-row .analyzing-spinner {
-  width: 10px;
-  height: 10px;
 }
 
 .arc-block {

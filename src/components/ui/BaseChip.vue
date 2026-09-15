@@ -98,7 +98,10 @@ const colorMap = {
  * chosen. The tinted styles stay on `default`/`removable`, where the color
  * carries a status rather than an availability.
  */
-const FILTER_REST = 'bg-bg-tertiary text-text-hint hover:bg-surface-hover hover:text-text-secondary'
+// A hairline, so a resting filter chip reads as a choice and not as a word
+// that happens to be sitting in a row.
+const FILTER_REST =
+  'border border-border-subtle bg-transparent text-text-secondary hover:border-border-strong hover:bg-surface-hover hover:text-text-primary'
 
 const variantClasses = computed(() => {
   const c = colorMap[props.color]
@@ -106,7 +109,13 @@ const variantClasses = computed(() => {
     case 'default':
       return `${c.bg} ${c.text}`
     case 'filter':
-      return props.active ? `${c.activeBg} ${c.activeText}` : FILTER_REST
+      // Selected: tinted, not filled. The same treatment the sidebar gives its
+      // active item, so one row of chips does not become a row of solid slabs.
+      return props.active
+        ? props.color === 'accent'
+          ? 'border border-accent/60 bg-accent/10 text-accent'
+          : `border border-transparent ${c.activeBg} ${c.activeText}`
+        : FILTER_REST
     case 'removable':
       return `${c.bg} ${c.text} pr-1`
     default:

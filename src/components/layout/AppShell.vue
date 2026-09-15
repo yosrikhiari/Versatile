@@ -40,7 +40,6 @@ const showBranchManager = ref(false)
 const showProjectDropdown = ref(false)
 const projects = ref([])
 
-const showRevise = ref(false)
 const showCoreLoop = ref(true)
 const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, {
   write: false,
@@ -76,7 +75,7 @@ const isNarrativeWorkspace = computed(() =>
   CREATIVE_WORKSPACE_TYPES.includes(projectStore.activeWorkspaceType)
 )
 
-const wordCount = computed(() => projectStore.wordCount)
+const wordCount = computed(() => projectStore.manuscriptWordCount)
 const projectName = computed(() => projectStore.currentProjectName)
 
 const { isDark: isThemeDark, initTheme, toggleTheme } = useTheme()
@@ -381,7 +380,9 @@ watch(
 <template>
   <div class="h-full flex flex-col overflow-hidden">
     <a href="#main-content" class="skip-to-content" @click.prevent="focusMain"> Skip to content </a>
-    <header class="h-12 glass flex items-center justify-between px-3 shrink-0 z-10">
+    <header
+      class="h-12 glass flex items-center justify-between gap-2 px-3 shrink-0 z-10 whitespace-nowrap"
+    >
       <div class="flex items-center gap-2">
         <button
           class="md:hidden grid place-items-center w-9 h-9 -ml-1 rounded-lg text-text-hint hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-colors duration-150"
@@ -402,12 +403,12 @@ watch(
 
         <div class="relative">
           <button
-            class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2 py-1 text-sm flex items-center gap-1.5 transition-all duration-150 btn-ghost"
+            class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2 py-1 text-sm flex items-center gap-1.5 transition-all duration-150 btn-ghost max-w-[44vw] sm:max-w-[16rem]"
             title="Switch project"
             @click="toggleProjectDropdown"
           >
-            {{ projectName || 'Untitled Project' }}
-            <BaseIcon name="chevron-down" :size="14" class="opacity-60" />
+            <span class="truncate">{{ projectName || 'Untitled Project' }}</span>
+            <BaseIcon name="chevron-down" :size="14" class="opacity-60 shrink-0" />
           </button>
           <Transition name="anim-scale">
             <div
@@ -463,9 +464,9 @@ watch(
 
         <!-- The switcher above names the project; this continues the trail into
              the chapter and scene actually being edited. -->
-        <EditorBreadcrumb :include-project="false" class="hidden md:flex" />
+        <EditorBreadcrumb :include-project="false" class="hidden lg:flex" />
 
-        <div class="hidden sm:flex items-center gap-3 text-2xs text-text-hint">
+        <div class="hidden sm:flex items-center gap-3 text-2xs text-text-hint whitespace-nowrap">
           <span class="tabular-nums font-ui">{{ wordCount.toLocaleString() }} words</span>
           <span v-if="projectStore.currentStreak > 0" class="text-warning flex items-center gap-1">
             <BaseIcon name="flame" :size="11" class="text-warning" />
@@ -475,7 +476,7 @@ watch(
 
         <BranchSwitcher
           v-if="projectStore.currentProjectId"
-          class="ml-2"
+          class="ml-2 hidden sm:flex"
           @switch="handleBranchSwitch"
           @open-manager="showBranchManager = true"
         />
@@ -492,8 +493,10 @@ watch(
           <kbd class="font-ui text-xs">Ctrl K</kbd>
         </button>
         <NetworkStatusBadge />
-        <ContextStatusIndicator />
-        <GuardrailIndicator />
+        <!-- Diagnostics and secondary exports leave the 48px row on phones;
+             every one of them is still reachable from the palette or Settings. -->
+        <ContextStatusIndicator class="hidden sm:flex" />
+        <GuardrailIndicator class="hidden sm:flex" />
         <button
           class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           :title="isThemeDark ? 'Switch to light mode' : 'Switch to dark mode'"
@@ -522,21 +525,21 @@ watch(
           <BaseIcon name="upload" :size="16" />
         </button>
         <button
-          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          class="hidden sm:inline-flex hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           title="Export to PDF"
           @click="emit('export-pdf')"
         >
           <BaseIcon name="file-text" :size="16" />
         </button>
         <button
-          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          class="hidden sm:inline-flex hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           title="Export manuscript (RTF — opens in Word, Docs, Scrivener)"
           @click="emit('export-rtf')"
         >
           <BaseIcon name="book-open" :size="16" />
         </button>
         <button
-          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          class="hidden sm:inline-flex hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           title="Import project (Ctrl+I)"
           @click="emit('import')"
           @keydown.enter="emit('import')"
@@ -544,7 +547,7 @@ watch(
           <BaseIcon name="download" :size="16" />
         </button>
         <button
-          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          class="hidden sm:inline-flex hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           :title="
             authStore.localUser
               ? `Signed in as ${authStore.localUser.displayName || authStore.localUser.username}`
@@ -581,12 +584,16 @@ watch(
           <div class="flex-1 overflow-hidden">
             <slot name="editor"></slot>
           </div>
+          <!-- Polish docks under the manuscript, not beside it: its lenses
+               annotate the paragraph that was clicked, so the text has to
+               stay in view. The drawer sizes itself (320px, or 50vh expanded). -->
           <Transition name="panel-bottom">
             <div
-              v-if="showRevise && !focusMode"
-              class="bg-bg-secondary border-t border-border-subtle overflow-y-auto scrollbar-thin"
+              v-if="activePanelName === 'polish' && !flowMode && !focusMode"
+              key="polish"
+              class="bg-bg-secondary border-t border-border-subtle overflow-hidden shrink-0"
             >
-              <slot name="revise"></slot>
+              <slot name="polish"></slot>
             </div>
           </Transition>
           <div
@@ -601,91 +608,91 @@ watch(
         <aside
           v-if="activePanelName === 'story-generator' && !flowMode && !focusMode"
           key="story-generator"
-          class="tool-panel w-full md:w-[420px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          class="tool-panel w-full lg:w-[420px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="story-generator"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'story-bible' && !flowMode && !focusMode"
           key="story-bible"
-          class="tool-panel w-full md:w-[600px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+          class="tool-panel w-full lg:w-[600px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
         >
           <slot name="story-bible"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'canvas' && !flowMode && !focusMode"
           key="canvas"
-          class="tool-panel w-full md:w-[400px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+          class="tool-panel w-full lg:w-[400px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
         >
           <slot name="canvas"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'outline' && !flowMode && !focusMode"
           key="outline"
-          class="tool-panel w-full md:w-[350px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+          class="tool-panel w-full lg:w-[350px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
         >
           <slot name="outline"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'sections' && !flowMode && !focusMode"
           key="sections"
-          class="tool-panel w-full md:w-[320px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+          class="tool-panel w-full lg:w-[320px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
         >
           <slot name="sections"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'network' && !flowMode && !focusMode"
           key="network"
-          class="tool-panel w-full md:w-[900px] md:max-w-[95vw] xl:max-w-[900px] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+          class="tool-panel w-full lg:w-[900px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
         >
           <slot name="network"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'timeline' && !flowMode && !focusMode"
           key="timeline"
-          class="tool-panel w-full md:w-[600px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
+          class="tool-panel w-full lg:w-[600px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
         >
           <slot name="timeline"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'voice-lab' && !flowMode && !focusMode"
           key="voice-lab"
-          class="tool-panel w-full md:w-[420px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          class="tool-panel w-full lg:w-[420px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="voice-lab"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'whatif' && !flowMode && !focusMode"
           key="whatif"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          class="tool-panel w-full lg:w-[380px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="whatif"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'story-shape' && !flowMode && !focusMode"
           key="story-shape"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          class="tool-panel w-full lg:w-[380px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="story-shape"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'consistency' && !flowMode && !focusMode"
           key="consistency"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          class="tool-panel w-full lg:w-[380px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="consistency"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'beta-reader' && !flowMode && !focusMode"
           key="beta-reader"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          class="tool-panel w-full lg:w-[380px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="beta-reader"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'cost-dashboard' && !flowMode && !focusMode"
           key="cost-dashboard"
-          class="tool-panel w-full md:w-[380px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          class="tool-panel w-full lg:w-[380px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="cost-dashboard"></slot>
         </aside>
@@ -695,18 +702,30 @@ watch(
         <aside
           v-if="activePanelName === 'archive' && !flowMode && !focusMode"
           key="archive"
-          class="tool-panel w-full md:w-[320px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          class="tool-panel w-full lg:w-[320px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="archive"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'research' && !flowMode && !focusMode"
           key="research"
-          class="tool-panel w-full md:w-[360px] md:max-w-[95vw] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+          class="tool-panel w-full lg:w-[360px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="research"></slot>
         </aside>
         <!-- /panel-right -->
+
+        <!-- On phones a panel covers the manuscript entirely; the only way back
+             was the hamburger menu and re-tapping the same item. -->
+        <button
+          v-if="activePanelName && !flowMode && !focusMode"
+          type="button"
+          class="lg:hidden fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-full border border-border-subtle bg-bg-elevated px-3.5 py-2.5 text-sm text-text-primary shadow-warm-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          @click="closeAllPanels"
+        >
+          <BaseIcon name="x" :size="16" />
+          Back to writing
+        </button>
       </div>
     </div>
 
@@ -727,10 +746,13 @@ watch(
 </template>
 
 <style scoped>
-/* Adaptive tool panels (M-4.1): on phones a panel overlays the editor full-screen
-   instead of squeezing it in a flex row; from md up it sits inline at its fixed
-   width. `shrink-0` on the aside keeps the desktop width from collapsing. */
-@media (max-width: 767px) {
+/* Adaptive tool panels (M-4.1): below lg a panel overlays the editor full-screen
+   instead of squeezing it in a flex row; from lg up it sits inline at its fixed
+   width, capped at `calc(100vw - 32rem)` so the sidebar plus a readable editor
+   column (≈340px) always survive — a 900px Timeline on a 1024px screen used to
+   leave the manuscript five words wide. `shrink-0` on the aside keeps the
+   desktop width from collapsing. */
+@media (max-width: 1023px) {
   .tool-panel {
     position: absolute;
     inset: 0;

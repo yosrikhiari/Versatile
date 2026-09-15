@@ -17,6 +17,12 @@ import IdeaInput from './IdeaInput.vue'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import SectionContextSelector from '../shared/SectionContextSelector.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseSection from '../ui/BaseSection.vue'
+import BaseSegmented from '../ui/BaseSegmented.vue'
+import BaseSwitch from '../ui/BaseSwitch.vue'
+import BaseButton from '../ui/BaseButton.vue'
+import BaseAlert from '../ui/BaseAlert.vue'
+import Modal from '../shared/Modal.vue'
 
 defineProps({
   embedded: Boolean
@@ -189,110 +195,74 @@ function switchTab(tab) {
     fallback-description="Failed to render the Spark panel. Try refreshing the page."
   >
     <div :class="embedded ? 'flex flex-col min-h-0' : 'h-full flex flex-col'">
-      <div class="px-5 pt-5 pb-4 border-b border-border-subtle/30 flex-shrink-0 bg-bg-secondary/10">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-semibold text-text-primary font-ui">Spark</h3>
-          <div class="flex gap-2 items-center">
-            <button
-              v-if="!compactIsCompacting && !embedded"
-              class="px-2 py-1 text-2xs bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover rounded font-ui transition-colors duration-150"
-              title="Compact conversation"
-              @click="handleCompact"
-            >
-              Compact
-            </button>
-          </div>
-        </div>
-
-        <!-- Context Selector always near top -->
-        <div>
+      <!-- Standalone panel header. Embedded in Story Tools the host owns the
+           title and tabs, so only the context control shows. -->
+      <div
+        class="px-4 pt-4 pb-3 border-b border-border-subtle shrink-0 flex items-start justify-between gap-3"
+      >
+        <div class="min-w-0 flex-1">
+          <h3 v-if="!embedded" class="font-ui text-sm font-semibold text-text-primary mb-2">
+            Spark
+          </h3>
           <SectionContextSelector ref="contextSelectorRef" panel-id="spark-global" />
         </div>
+        <BaseButton
+          v-if="!compactIsCompacting && !embedded"
+          variant="ghost"
+          size="sm"
+          icon="minimize-2"
+          title="Compact conversation"
+          @click="handleCompact"
+        >
+          Compact
+        </BaseButton>
       </div>
 
-      <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-8 scrollbar-thin">
-        <section aria-label="Prompts" class="space-y-4">
-          <h4 class="text-11px uppercase tracking-widest text-text-hint font-ui">Prompts</h4>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-11px uppercase tracking-widest text-text-hint font-ui mb-2"
-                >Prompt Type</label
-              >
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="type in promptTypes"
-                  :key="type.value"
-                  :class="[
-                    'px-3 py-1.5 text-xs rounded-md transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent',
-                    sparkStore.selectedPromptType === type.value
-                      ? 'bg-accent text-bg-primary'
-                      : 'bg-bg-tertiary text-text-hint hover:text-text-secondary hover:bg-surface-hover'
-                  ]"
-                  @click="sparkStore.selectedPromptType = type.value"
-                >
-                  {{ type.label }}
-                </button>
-              </div>
-            </div>
+      <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+        <!-- ── Spark a prompt ─────────────────────────────────────────── -->
+        <BaseSection
+          first
+          title="Spark a prompt"
+          description="A seed, a scenario, a what-if or an obstacle — one paragraph from the model to write against."
+        >
+          <div class="space-y-3">
+            <BaseSegmented
+              v-model="sparkStore.selectedPromptType"
+              :options="promptTypes"
+              size="sm"
+              block
+              aria-label="Prompt type"
+            />
 
-            <div class="flex items-center gap-2">
-              <input
-                id="relateToProject"
+            <div class="flex items-center justify-between gap-3">
+              <BaseSwitch
                 v-model="sparkStore.relateToProject"
-                type="checkbox"
-                class="w-4 h-4 rounded accent-accent"
+                size="sm"
+                label="Relate to my project"
               />
-              <label
-                for="relateToProject"
-                class="text-sm text-text-secondary font-ui cursor-pointer select-none"
+              <BaseButton
+                variant="primary"
+                size="md"
+                icon="sparkles"
+                :loading="sparkStore.isGenerating"
+                :disabled="sparkStore.isGenerating"
+                @click="generatePrompt"
               >
-                Relate to my project
-              </label>
+                {{ sparkStore.isGenerating ? 'Generating' : 'Generate' }}
+              </BaseButton>
             </div>
-
-            <button
-              :disabled="sparkStore.isGenerating"
-              class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="generatePrompt"
-              @keydown.enter="generatePrompt"
-            >
-              <span v-if="sparkStore.isGenerating" class="flex items-center justify-center gap-2">
-                <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                    fill="none"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Generating...
-              </span>
-              <span v-else>Generate</span>
-            </button>
 
             <div
               v-if="sparkStore.isGenerating"
-              class="rounded-lg p-4 space-y-3 animate-pulse bg-surface-hover"
+              class="rounded-lg p-4 space-y-2.5 animate-pulse bg-surface-hover"
+              aria-hidden="true"
             >
-              <div class="h-4 bg-bg-tertiary rounded w-3/4"></div>
-              <div class="h-4 bg-bg-tertiary rounded w-full"></div>
-              <div class="h-4 bg-bg-tertiary rounded w-5/6"></div>
+              <div class="h-3 bg-bg-tertiary rounded w-3/4"></div>
+              <div class="h-3 bg-bg-tertiary rounded w-full"></div>
+              <div class="h-3 bg-bg-tertiary rounded w-5/6"></div>
             </div>
 
-            <div
-              v-if="sparkStore.error"
-              class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui"
-            >
-              {{ sparkStore.error }}
-            </div>
+            <BaseAlert v-if="sparkStore.error" variant="danger">{{ sparkStore.error }}</BaseAlert>
 
             <SparkPromptCard
               v-if="currentPrompt"
@@ -301,47 +271,45 @@ function switchTab(tab) {
               @regenerate="generatePrompt"
             />
 
-            <div
+            <p
               v-if="!currentPrompt && !sparkStore.isGenerating && !sparkStore.error"
-              class="text-center py-8 space-y-2"
+              class="font-ui text-xs text-text-hint leading-5"
             >
-              <BaseIcon name="lightbulb" :size="24" class="mx-auto text-text-hint" />
-              <p class="text-sm text-text-hint">Pick a prompt type above and hit Generate.</p>
-              <p class="text-xs text-text-hint font-ui opacity-70">
-                Once you have a prompt you like, use<br /><span class="text-accent"
-                  >Use as Generator Context</span
-                >
-                to turn it into a full chapter.
-              </p>
-            </div>
+              Nothing yet. A prompt you like can go straight into the editor, or become the seed for
+              a whole chapter with
+              <span class="text-text-secondary">Use as context</span>.
+            </p>
           </div>
-        </section>
+        </BaseSection>
 
-        <section aria-label="Develop idea" class="space-y-8">
-          <h4 class="text-11px uppercase tracking-widest text-text-hint font-ui">Develop idea</h4>
-          <div class="space-y-8">
-            <!-- Step 1: Idea Input -->
+        <!-- ── Develop an idea ────────────────────────────────────────── -->
+        <BaseSection
+          title="Develop an idea"
+          description="Write a line, pick its register and length. Spark drafts a blueprint you can expand into prose or hand to the generator."
+        >
+          <div class="space-y-4">
             <IdeaInput
               v-model:idea="idea"
               v-model:tone="tone"
               v-model:target-length="targetLength"
             />
 
-            <div
-              v-if="sparkStore.error"
-              class="p-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger font-ui"
-            >
-              {{ sparkStore.error }}
-            </div>
+            <BaseAlert v-if="sparkStore.error" variant="danger">{{ sparkStore.error }}</BaseAlert>
 
-            <button
+            <div
               v-if="!sparkStore.currentBlueprint && !sparkStore.isGenerating"
-              :disabled="!idea"
-              class="w-full flex items-center justify-center gap-2 py-2.5 bg-accent text-bg-primary rounded-lg font-medium text-sm font-ui hover:bg-accent-hover active:scale-[0.99] transition-[background-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent"
-              @click="generateOutline"
+              class="flex justify-end"
             >
-              <BaseIcon name="wand-2" :size="16" /> Draft blueprint
-            </button>
+              <BaseButton
+                variant="primary"
+                size="md"
+                icon="wand-2"
+                :disabled="!idea"
+                @click="generateOutline"
+              >
+                Draft blueprint
+              </BaseButton>
+            </div>
 
             <div
               v-if="
@@ -349,205 +317,207 @@ function switchTab(tab) {
                 !sparkStore.currentBlueprint &&
                 !sparkStore.currentStreamingChapter
               "
-              class="flex items-center justify-center py-6 text-accent"
+              class="flex items-center gap-2 py-3 font-ui text-xs text-text-hint"
             >
-              <BaseIcon name="loader-2" :size="24" class="animate-spin" />
+              <BaseIcon name="loader-2" :size="14" class="animate-spin text-accent" />
+              Drafting the blueprint…
             </div>
 
             <!-- Step 2: The Blueprint -->
             <div
               v-if="sparkStore.currentBlueprint"
-              class="space-y-6 pt-6 border-t border-border-subtle"
+              class="space-y-4 pt-4 border-t border-border-subtle"
             >
               <BlueprintResult :blueprint="sparkStore.currentBlueprint" @insert="insertIntoFlow" />
 
-              <!-- Actions if Draft hasn't started -->
               <div
                 v-if="
                   !sparkStore.currentChapter &&
                   !sparkStore.currentStreamingChapter &&
                   !sparkStore.isGenerating
                 "
-                class="flex gap-2"
+                class="flex justify-end gap-2"
               >
-                <button
-                  class="flex-1 py-2 bg-bg-tertiary text-text-secondary rounded-lg text-sm font-medium font-ui hover:bg-surface-hover hover:text-text-primary transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
-                  @click="generateContent"
-                >
+                <BaseButton variant="secondary" size="md" @click="generateContent">
                   Expand to draft
-                </button>
-                <button
-                  class="flex-1 py-2 bg-accent text-bg-primary rounded-lg text-sm font-medium font-ui hover:bg-accent-hover transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
-                  @click="emit('useAsContext')"
-                >
+                </BaseButton>
+                <BaseButton variant="primary" size="md" @click="emit('useAsContext')">
                   Use as context
-                </button>
+                </BaseButton>
               </div>
             </div>
 
             <!-- Step 3: The Draft -->
             <div
               v-if="sparkStore.currentChapter || sparkStore.currentStreamingChapter"
-              class="space-y-6 pt-6 border-t border-border-subtle"
+              class="space-y-4 pt-4 border-t border-border-subtle"
             >
               <div
-                class="rounded-md p-4 bg-bg-tertiary border border-border-subtle text-sm text-text-primary whitespace-pre-wrap leading-relaxed relative"
+                v-if="sparkStore.isGenerating"
+                class="flex items-center gap-2 font-ui text-xs text-text-hint"
               >
-                <div
-                  v-if="sparkStore.isGenerating"
-                  class="flex items-center gap-2 text-xs text-accent font-ui mb-2"
-                >
-                  <BaseIcon name="loader-2" :size="12" class="animate-spin" /> Drafting...
-                </div>
+                <BaseIcon name="loader-2" :size="12" class="animate-spin text-accent" /> Drafting…
+              </div>
+              <div
+                class="font-manuscript text-sm text-text-primary whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto scrollbar-thin pr-1"
+              >
                 {{ sparkStore.currentStreamingChapter || sparkStore.currentChapter }}
               </div>
 
-              <div v-if="sparkStore.currentChapter && !sparkStore.isGenerating" class="flex gap-2">
-                <button
-                  class="flex-1 py-2 bg-bg-tertiary text-text-secondary rounded-lg text-sm font-medium font-ui hover:bg-surface-hover hover:text-text-primary transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
+              <div
+                v-if="sparkStore.currentChapter && !sparkStore.isGenerating"
+                class="flex justify-end gap-2"
+              >
+                <BaseButton
+                  variant="secondary"
+                  size="md"
                   @click="insertIntoFlow(sparkStore.currentChapter)"
                 >
-                  Insert to editor
-                </button>
-                <button
-                  class="flex-1 py-2 bg-accent text-bg-primary rounded-lg text-sm font-medium font-ui hover:bg-accent-hover transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent"
-                  @click="emit('useAsContext')"
-                >
+                  Insert into editor
+                </BaseButton>
+                <BaseButton variant="primary" size="md" @click="emit('useAsContext')">
                   Use as context
-                </button>
+                </BaseButton>
               </div>
             </div>
           </div>
-        </section>
+        </BaseSection>
 
-        <section aria-label="History" class="space-y-3">
-          <h4 class="text-11px uppercase tracking-widest text-text-hint font-ui">History</h4>
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-11px uppercase tracking-widest text-text-hint font-ui"
-                >{{ sparkStore.history.length }} saved</span
-              >
-              <button
-                v-if="sparkStore.history.length > 0"
-                class="text-xs text-text-hint hover:text-danger transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded px-1"
-                @click="clearHistory"
-              >
-                Clear all
-              </button>
-            </div>
+        <!-- ── History ────────────────────────────────────────────────── -->
+        <BaseSection
+          title="History"
+          :meta="sparkStore.history.length ? `${sparkStore.history.length} saved` : ''"
+          dense
+        >
+          <template v-if="sparkStore.history.length > 0" #actions>
+            <BaseButton variant="ghost" size="sm" @click="clearHistory">Clear all</BaseButton>
+          </template>
 
-            <div v-if="sparkStore.history.length === 0" class="text-center py-8 space-y-2">
-              <BaseIcon name="clock" :size="24" class="mx-auto text-text-hint" />
-              <p class="text-sm text-text-hint">No history yet.</p>
-              <p class="text-xs text-text-hint font-ui opacity-70">
-                Prompts, blueprints, and freewrites you generate will appear here.
-              </p>
-            </div>
+          <p v-if="sparkStore.history.length === 0" class="font-ui text-xs text-text-hint">
+            Prompts, blueprints and drafts you generate are kept here.
+          </p>
 
-            <div
+          <ul v-else class="divide-y divide-border-subtle -mx-1">
+            <li
               v-for="(item, index) in sparkStore.history"
               :key="index"
-              class="p-3 rounded-lg bg-bg-tertiary border border-border-subtle"
+              class="group flex items-start gap-3 px-1 py-2.5"
             >
-              <div class="text-2xs uppercase tracking-wider text-text-hint font-ui mb-1">
+              <span class="label-micro text-text-hint w-16 shrink-0 pt-0.5 truncate">
                 {{ item.type }}
-              </div>
-              <p class="text-sm text-text-secondary line-clamp-2">{{ item.prompt }}</p>
-              <button
+              </span>
+              <p class="flex-1 min-w-0 font-ui text-sm text-text-secondary line-clamp-2">
+                {{ item.prompt }}
+              </p>
+              <BaseButton
                 v-if="item.prompt"
-                class="mt-2 text-xs text-accent hover:text-accent-hover font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded"
+                variant="ghost"
+                size="sm"
+                icon="corner-down-left"
+                title="Insert into editor"
+                custom-class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
                 @click="insertIntoFlow(item.prompt)"
               >
-                Insert into editor
-              </button>
-            </div>
-          </div>
-        </section>
+                Insert
+              </BaseButton>
+            </li>
+          </ul>
+        </BaseSection>
 
-        <details class="mt-2">
-          <summary
-            class="py-1.5 text-2xs uppercase tracking-widest text-text-hint font-ui cursor-pointer hover:text-text-secondary"
-            @click.prevent="toggleContextPreview"
+        <!-- ── Context preview (diagnostic) ───────────────────────────── -->
+        <div class="px-4 py-3 border-t border-border-subtle">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 label-micro text-text-hint hover:text-text-secondary transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+            :aria-expanded="showContextPreview"
+            @click="toggleContextPreview"
           >
-            {{ showContextPreview ? '▼' : '▶' }} Context Preview
-          </summary>
-          <div
-            v-if="contextPreviewLoading"
-            class="mt-2 p-2 bg-bg-tertiary rounded text-xs text-text-hint"
-          >
-            Loading context...
-          </div>
-          <div v-else-if="contextPreview" class="mt-2 space-y-1">
-            <div class="text-xs text-text-hint font-ui">{{ contextPreview.sourceDescription }}</div>
-            <div
-              v-for="(line, i) in contextPreview.previewLines"
-              :key="i"
-              class="flex items-start gap-1.5 text-xs"
-            >
-              <span class="text-text-hint shrink-0 mt-0.5">•</span>
-              <span class="text-text-secondary">
-                <span
-                  v-if="line.signal"
-                  :class="line.signal === 'accepted' ? 'text-accent' : 'text-text-hint'"
-                  >[{{ line.signal }}]</span
-                >
-                {{ line.summary }}
-              </span>
-            </div>
-            <details class="mt-1">
-              <summary class="text-2xs text-text-hint cursor-pointer hover:text-text-secondary">
-                Full context text
-              </summary>
-              <pre
-                class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto"
-                >{{ contextPreview.contextText || '(empty)' }}</pre
+            <BaseIcon
+              name="chevron-right"
+              :size="12"
+              class="transition-transform duration-150"
+              :class="showContextPreview ? 'rotate-90' : ''"
+            />
+            What the AI reads
+          </button>
+          <div v-if="showContextPreview" class="mt-2">
+            <div v-if="contextPreviewLoading" class="font-ui text-xs text-text-hint">Loading…</div>
+            <div v-else-if="contextPreview" class="space-y-1">
+              <div class="font-ui text-xs text-text-hint">
+                {{ contextPreview.sourceDescription }}
+              </div>
+              <div
+                v-for="(line, i) in contextPreview.previewLines"
+                :key="i"
+                class="flex items-start gap-1.5 text-xs"
               >
-            </details>
+                <span class="text-text-hint shrink-0 mt-0.5">•</span>
+                <span class="text-text-secondary">
+                  <span
+                    v-if="line.signal"
+                    :class="line.signal === 'accepted' ? 'text-accent' : 'text-text-hint'"
+                    >{{ line.signal === 'accepted' ? 'kept' : line.signal }} ·</span
+                  >
+                  {{ line.summary }}
+                </span>
+              </div>
+              <details class="mt-1">
+                <summary
+                  class="font-ui text-2xs text-text-hint cursor-pointer hover:text-text-secondary"
+                >
+                  Full context text
+                </summary>
+                <pre
+                  class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto"
+                  >{{ contextPreview.contextText || '(empty)' }}</pre
+                >
+              </details>
+            </div>
+            <div v-else class="font-ui text-xs text-text-hint">
+              No context loaded for this project
+            </div>
           </div>
-          <div v-else class="mt-2 text-xs text-text-hint font-ui">
-            No context loaded for this project
-          </div>
-        </details>
+        </div>
       </div>
 
-      <div
-        v-if="showOpenAISettings"
-        class="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+      <Modal
+        :show="showOpenAISettings"
+        aria-label="Configure AI provider"
+        @close="showOpenAISettings = false"
       >
-        <div
-          class="bg-bg-tertiary rounded-xl shadow-xl p-6 max-w-md w-full border border-border-subtle"
-        >
-          <h3 class="text-lg font-semibold text-text-primary mb-2">Configure AI Provider</h3>
-          <p class="text-sm text-text-secondary mb-4">
-            Ollama is unavailable. Enter an OpenAI API key to use GPT-3.5 as a fallback.
+        <div class="p-6">
+          <h3 class="font-ui text-base font-semibold text-text-primary mb-1">
+            Configure AI provider
+          </h3>
+          <p class="font-ui text-sm text-text-secondary mb-4">
+            Ollama is unavailable. Enter an OpenAI API key to use GPT as a fallback.
           </p>
           <input
             v-model="openaiKeyInput"
             type="password"
-            placeholder="sk-..."
+            placeholder="sk-…"
+            autofocus
             class="w-full px-3 py-2 border border-border-subtle rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-accent/50 bg-bg-secondary text-text-primary font-ui"
-            @keyup.enter="saveOpenAIKey"
+            @keyup.enter="saveOpenAIKeyLocal"
           />
-          <div class="flex gap-2">
-            <button
+          <div class="flex justify-end gap-2">
+            <BaseButton variant="secondary" size="md" @click="showOpenAISettings = false"
+              >Cancel</BaseButton
+            >
+            <BaseButton
+              variant="primary"
+              size="md"
               :disabled="!openaiKeyInput.trim()"
-              class="flex-1 py-2 btn-primary rounded-lg disabled:opacity-50 font-ui"
               @click="saveOpenAIKeyLocal"
             >
-              Save Key
-            </button>
-            <button
-              class="px-4 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover font-ui"
-              @click="showOpenAISettings = false"
-            >
-              Cancel
-            </button>
+              Save key
+            </BaseButton>
           </div>
-          <p class="text-xs text-text-hint mt-3 font-ui">
-            Your API key is stored locally and never sent to any server except OpenAI.
+          <p class="font-ui text-xs text-text-hint mt-3">
+            Your API key is stored locally and never sent anywhere except OpenAI.
           </p>
         </div>
-      </div>
+      </Modal>
     </div>
   </ErrorBoundary>
 </template>

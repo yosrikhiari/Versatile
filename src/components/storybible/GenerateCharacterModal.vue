@@ -179,9 +179,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
 
           <div v-else class="flex-1 overflow-y-auto p-5 space-y-4">
             <div>
-              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
-                >Name</label
-              >
+              <label class="label-micro text-text-hint mb-1 block">Name</label>
               <input
                 v-model="character.name"
                 placeholder="Character name"
@@ -189,9 +187,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
-                >Role</label
-              >
+              <label class="label-micro text-text-hint mb-1 block">Role</label>
               <input
                 v-model="character.role"
                 placeholder="e.g. Protagonist, Antagonist, Mentor"
@@ -199,9 +195,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
-                >Goal</label
-              >
+              <label class="label-micro text-text-hint mb-1 block">Goal</label>
               <input
                 v-model="character.goal"
                 placeholder="What does this character want?"
@@ -209,9 +203,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
-                >Voice</label
-              >
+              <label class="label-micro text-text-hint mb-1 block">Voice</label>
               <input
                 v-model="character.voice"
                 placeholder="How do they speak?"
@@ -219,9 +211,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
-                >Notes</label
-              >
+              <label class="label-micro text-text-hint mb-1 block">Notes</label>
               <textarea
                 v-model="character.notes"
                 placeholder="Backstory, personality, quirks..."
@@ -230,9 +220,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
-                >Sample Dialogue</label
-              >
+              <label class="label-micro text-text-hint mb-1 block">Sample Dialogue</label>
               <textarea
                 v-model="character.sampleDialogue"
                 placeholder='A single line this character would say — e.g. "Get out of my sight."'
@@ -241,9 +229,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               />
             </div>
             <div>
-              <label class="text-xs uppercase tracking-wider text-text-hint font-ui mb-1 block"
-                >Traits</label
-              >
+              <label class="label-micro text-text-hint mb-1 block">Traits</label>
               <TagInput v-model="character.traits" placeholder="Add a trait, press Enter..." />
             </div>
           </div>

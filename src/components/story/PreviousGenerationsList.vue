@@ -1,4 +1,5 @@
 <script setup>
+import BaseSection from '../ui/BaseSection.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 // Read-only list of a project's prior generation runs. Extracted from
@@ -16,33 +17,31 @@ function hasRecordedScore(gen) {
 </script>
 
 <template>
-  <div v-if="generations.length > 0" class="border-t border-border-subtle pt-4 mt-4">
-    <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-      Previous Generations
-    </h3>
-    <div class="space-y-1.5">
-      <div
+  <BaseSection
+    title="Previous generations"
+    :meta="generations.length ? String(generations.length) : ''"
+    dense
+  >
+    <p v-if="generations.length === 0" class="font-ui text-xs text-text-hint">
+      Finished runs are listed here with their word count and score.
+    </p>
+    <ul v-else class="divide-y divide-border-subtle -mx-1">
+      <li
         v-for="(gen, i) in generations"
         :key="gen.id || i"
-        class="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-tertiary border border-border-subtle text-xs"
+        class="flex items-center gap-3 px-1 py-2.5"
       >
         <BaseIcon name="file-text" :size="14" class="text-text-hint shrink-0" />
         <div class="flex-1 min-w-0">
-          <p class="text-text-primary truncate">{{ gen.title }}</p>
-          <p class="text-text-hint text-2xs font-ui">
+          <p class="font-ui text-sm text-text-primary truncate">{{ gen.title }}</p>
+          <p class="font-ui text-2xs text-text-hint tabular-nums">
             {{ new Date(gen.generatedAt).toLocaleDateString() }}
-            <span v-if="gen.totalWords"> · {{ gen.totalWords }} words</span>
+            <span v-if="gen.totalWords"> · {{ gen.totalWords.toLocaleString() }} words</span>
             <span v-if="hasRecordedScore(gen)"> · score {{ gen.qualityScore }}</span>
             <span v-else> · no score recorded</span>
           </p>
         </div>
-      </div>
-    </div>
-  </div>
-  <div v-else class="border-t border-border-subtle pt-4 mt-4">
-    <h3 class="text-11px uppercase tracking-wider text-text-hint font-ui mb-2">
-      Previous Generations
-    </h3>
-    <p class="text-xs text-text-hint">No previous generations yet</p>
-  </div>
+      </li>
+    </ul>
+  </BaseSection>
 </template>

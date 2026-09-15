@@ -54,7 +54,10 @@ const figures = computed(() => [
 </script>
 
 <template>
-  <section aria-labelledby="writing-activity-heading" class="border-b border-border-subtle pb-8">
+  <section
+    aria-labelledby="writing-activity-heading"
+    :class="hasHistory ? 'border-b border-border-subtle pb-8' : 'pb-2'"
+  >
     <h2 id="writing-activity-heading" class="sr-only">Writing activity</h2>
 
     <p v-if="!hasHistory" class="font-ui text-sm text-text-hint">

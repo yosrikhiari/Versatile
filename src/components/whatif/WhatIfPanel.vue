@@ -9,6 +9,10 @@ import { useBranchStore } from '../../stores/branchStore'
 import { renderExtractedVoiceGuide } from '../../composables/useStoryDocuments'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BasePanelHeader from '../ui/BasePanelHeader.vue'
+import BaseSection from '../ui/BaseSection.vue'
+import BaseButton from '../ui/BaseButton.vue'
+import BaseAlert from '../ui/BaseAlert.vue'
+import WhatIfAlternative from './WhatIfAlternative.vue'
 import WhatIfTimeline from './WhatIfTimeline.vue'
 
 const manuscriptStore = useManuscriptStore()
@@ -120,24 +124,23 @@ function handleChangePoint() {
 <template>
   <div class="flex flex-col h-full">
     <BasePanelHeader
-      :title="mode === 'timeline' ? 'Divergence Point' : 'What If?'"
+      :title="mode === 'timeline' ? 'Divergence point' : 'What If'"
       :icon="mode === 'timeline' ? 'git-branch-plus' : 'shuffle'"
+      :meta="alternatives.length ? `${alternatives.length} alternatives` : ''"
     >
       <template #actions>
-        <button
+        <BaseButton
           v-if="mode === 'alternatives'"
-          class="rounded px-1.5 py-0.5 font-ui text-xs text-text-hint transition-colors hover:bg-surface-hover hover:text-text-secondary"
+          variant="ghost"
+          size="sm"
+          icon="git-branch-plus"
           @click="mode = 'timeline'"
         >
-          Divergence
-        </button>
-        <button
-          v-if="alternatives.length"
-          class="rounded px-1.5 py-0.5 font-ui text-xs text-text-hint transition-colors hover:bg-surface-hover hover:text-text-secondary"
-          @click="handleClear"
-        >
+          Diverge
+        </BaseButton>
+        <BaseButton v-if="alternatives.length" variant="ghost" size="sm" @click="handleClear">
           Clear
-        </button>
+        </BaseButton>
       </template>
     </BasePanelHeader>
 
@@ -148,209 +151,141 @@ function handleChangePoint() {
       @select="handleSelectDivergence"
     />
 
-    <template v-else-if="mode === 'edit'">
-      <div class="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-3">
-        <div class="flex items-center gap-2 text-xs text-text-secondary">
-          <BaseIcon name="map-pin" :size="12" class="text-accent shrink-0" />
-          <span class="truncate flex-1">
-            Diverging from:
-            <span class="text-text-primary font-medium">{{
-              sourceSub?.title || sourceSub?.brief?.summary || 'selected scene'
-            }}</span>
-          </span>
-          <button
-            class="text-text-hint hover:text-text-secondary shrink-0 transition-colors"
-            @click="handleChangePoint"
+    <div v-else class="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+      <!-- ── Diverging from a chosen point ────────────────────────────── -->
+      <template v-if="mode === 'edit'">
+        <BaseSection
+          first
+          title="The change"
+          description="What happens differently at this point. Everything after it is rewritten around that."
+        >
+          <template #actions>
+            <BaseButton variant="ghost" size="sm" icon="pencil" @click="handleChangePoint">
+              Change point
+            </BaseButton>
+          </template>
+
+          <div class="space-y-3">
+            <p class="flex items-center gap-2 font-ui text-xs text-text-hint">
+              <BaseIcon name="map-pin" :size="12" class="shrink-0" />
+              <span class="truncate">
+                Diverging from
+                <span class="text-text-primary">{{
+                  sourceSub?.title || sourceSub?.brief?.summary || 'selected scene'
+                }}</span>
+              </span>
+            </p>
+
+            <textarea
+              v-model="changeDescription"
+              rows="3"
+              autofocus
+              placeholder="e.g. Nesrin refuses Halim's terms at the lake and hires her own guide."
+              class="w-full px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-y transition-colors duration-150"
+            />
+
+            <BaseAlert v-if="error" variant="danger">{{ error }}</BaseAlert>
+            <BaseAlert v-if="forkError" variant="danger">{{ forkError }}</BaseAlert>
+
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <!-- The heavier sibling: rewrites the rest of the story on a new
+                   branch instead of offering replacements for this one scene. -->
+              <BaseButton
+                variant="secondary"
+                size="md"
+                icon="git-branch-plus"
+                :loading="isForking"
+                :disabled="isForking || isGenerating || !changeDescription.trim()"
+                :title="
+                  changeDescription.trim()
+                    ? 'Fork a new branch and rewrite every scene after this point'
+                    : 'Describe the change first'
+                "
+                @click="handleFork"
+              >
+                {{
+                  isForking
+                    ? forkProgress.label || 'Building branch'
+                    : 'Rewrite the rest as a branch'
+                }}
+              </BaseButton>
+              <BaseButton
+                variant="primary"
+                size="md"
+                icon="wand-2"
+                :loading="isGenerating"
+                :disabled="isGenerating"
+                @click="handleGenerate"
+              >
+                {{ isGenerating ? 'Generating' : 'Generate alternatives' }}
+              </BaseButton>
+            </div>
+            <p
+              v-if="isForking && forkProgress.total > 0"
+              class="font-ui text-xs text-text-hint text-right tabular-nums"
+            >
+              {{ forkProgress.current }} / {{ forkProgress.total }} scenes rewritten
+            </p>
+          </div>
+        </BaseSection>
+      </template>
+
+      <!-- ── Alternatives for the current scene ───────────────────────── -->
+      <template v-else>
+        <BaseSection
+          first
+          title="Alternatives"
+          description="Three ways the current scene could continue, in the manuscript's voice."
+        >
+          <p
+            v-if="!manuscriptStore.activeSubsection"
+            class="font-ui text-xs text-text-hint leading-5"
           >
-            <BaseIcon name="pencil" :size="12" />
-          </button>
-        </div>
+            What If branches from a single subsection. Open one from
+            <span class="text-text-secondary">Sections</span> in the sidebar to begin.
+          </p>
+          <div v-else class="space-y-3">
+            <BaseAlert v-if="error" variant="danger">{{ error }}</BaseAlert>
+            <div class="flex justify-end">
+              <BaseButton
+                variant="primary"
+                size="md"
+                icon="wand-2"
+                :loading="isGenerating"
+                :disabled="isGenerating"
+                @click="handleGenerate"
+              >
+                {{ isGenerating ? 'Generating' : 'Generate alternatives' }}
+              </BaseButton>
+            </div>
+          </div>
+        </BaseSection>
+      </template>
 
-        <textarea
-          v-model="changeDescription"
-          placeholder="Describe the change — e.g. 'The protagonist refuses the call' or 'The storm hits earlier than expected'..."
-          class="w-full min-h-[72px] resize-none rounded-lg border border-border-subtle bg-bg-primary px-3 py-2 text-xs text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent/30"
-        />
-
-        <button
-          class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-          :class="isGenerating ? 'bg-accent/10 text-accent cursor-wait' : 'btn-primary'"
-          :disabled="isGenerating"
-          @click="handleGenerate"
-        >
-          <BaseIcon
-            :name="isGenerating ? 'loader-2' : 'wand-2'"
-            :size="14"
-            :class="isGenerating ? 'animate-spin' : ''"
-          />
-          {{ isGenerating ? 'Generating...' : 'Generate Alternatives' }}
-        </button>
-
-        <!-- The heavier sibling: rewrites the rest of the story on a new branch
-             instead of offering replacements for this one scene. -->
-        <button
-          class="w-full py-2 px-4 rounded-lg text-xs font-medium border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="isForking || isGenerating || !changeDescription.trim()"
-          :title="
-            changeDescription.trim()
-              ? 'Fork a new branch and rewrite every scene after this point'
-              : 'Describe the change first'
-          "
-          @click="handleFork"
-        >
-          <BaseIcon
-            :name="isForking ? 'loader-2' : 'git-branch-plus'"
-            :size="13"
-            :class="isForking ? 'animate-spin' : ''"
-          />
-          {{
-            isForking
-              ? forkProgress.label || 'Building branch...'
-              : 'Explore as a branch (rewrites later scenes)'
-          }}
-        </button>
-
-        <div
-          v-if="isForking && forkProgress.total > 0"
-          class="text-2xs text-text-hint text-center tabular-nums"
-        >
-          {{ forkProgress.current }} / {{ forkProgress.total }}
-        </div>
-
-        <div
-          v-if="forkError"
-          class="rounded-lg border border-danger/25 bg-danger/10 p-3 text-xs text-danger"
-        >
-          {{ forkError }}
-        </div>
-
-        <div
-          v-if="error"
-          class="rounded-lg border border-danger/25 bg-danger/10 p-3 text-xs text-danger"
-        >
-          {{ error }}
-        </div>
-
-        <div
+      <!-- ── Results (both modes) ─────────────────────────────────────── -->
+      <div
+        v-if="alternatives.length"
+        class="px-4 border-t border-border-subtle divide-y divide-border-subtle"
+      >
+        <WhatIfAlternative
           v-for="(alt, index) in alternatives"
           :key="index"
-          class="rounded-lg border border-border-subtle bg-bg-primary overflow-hidden group"
-        >
-          <div
-            class="flex items-center justify-between p-2.5 border-b border-border-subtle bg-bg-secondary/50"
-          >
-            <span class="text-xs font-semibold text-text-primary truncate flex-1">
-              {{ alt.title }}
-            </span>
-            <span v-if="alt.styleNote" class="text-2xs text-text-hint ml-2 whitespace-nowrap">
-              {{ alt.styleNote }}
-            </span>
-          </div>
-          <p class="text-xs text-text-secondary leading-relaxed p-2.5 line-clamp-4">
-            {{ alt.prose }}
-          </p>
-          <div
-            class="flex gap-1 p-2 border-t border-border-subtle opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <button
-              class="flex-1 text-xs py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-              @click="handleApply(index)"
-            >
-              Insert
-            </button>
-            <button
-              class="flex-1 text-xs py-1 rounded bg-bg-secondary text-text-secondary hover:bg-border-subtle transition-colors"
-              @click="handleReplace(index)"
-            >
-              Replace
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="!isGenerating && !alternatives.length"
-          class="text-xs text-text-hint text-center py-8 leading-relaxed"
-        >
-          Describe the change and generate alternatives<br />for the selected divergence point.
-        </div>
+          :alt="alt"
+          :index="index"
+          @insert="handleApply"
+          @replace="handleReplace"
+        />
       </div>
-    </template>
-
-    <template v-else>
-      <div class="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-3">
-        <div
-          v-if="!manuscriptStore.activeSubsection"
-          class="text-xs text-text-hint text-center py-8"
-        >
-          Open a scene to use What If
-        </div>
-
-        <template v-else>
-          <button
-            class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-            :class="isGenerating ? 'bg-accent/10 text-accent cursor-wait' : 'btn-primary'"
-            :disabled="isGenerating"
-            @click="handleGenerate"
-          >
-            <BaseIcon
-              :name="isGenerating ? 'loader-2' : 'wand-2'"
-              :size="14"
-              :class="isGenerating ? 'animate-spin' : ''"
-            />
-            {{ isGenerating ? 'Generating...' : 'Generate Alternatives' }}
-          </button>
-
-          <div
-            v-if="error"
-            class="rounded-lg border border-danger/25 bg-danger/10 p-3 text-xs text-danger"
-          >
-            {{ error }}
-          </div>
-
-          <div
-            v-for="(alt, index) in alternatives"
-            :key="index"
-            class="rounded-lg border border-border-subtle bg-bg-primary overflow-hidden group"
-          >
-            <div
-              class="flex items-center justify-between p-2.5 border-b border-border-subtle bg-bg-secondary/50"
-            >
-              <span class="text-xs font-semibold text-text-primary truncate flex-1">
-                {{ alt.title }}
-              </span>
-              <span v-if="alt.styleNote" class="text-2xs text-text-hint ml-2 whitespace-nowrap">
-                {{ alt.styleNote }}
-              </span>
-            </div>
-            <p class="text-xs text-text-secondary leading-relaxed p-2.5 line-clamp-4">
-              {{ alt.prose }}
-            </p>
-            <div
-              class="flex gap-1 p-2 border-t border-border-subtle opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <button
-                class="flex-1 text-xs py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-                @click="handleApply(index)"
-              >
-                Insert
-              </button>
-              <button
-                class="flex-1 text-xs py-1 rounded bg-bg-secondary text-text-secondary hover:bg-border-subtle transition-colors"
-                @click="handleReplace(index)"
-              >
-                Replace
-              </button>
-            </div>
-          </div>
-
-          <div
-            v-if="!isGenerating && !alternatives.length"
-            class="text-xs text-text-hint text-center py-8 leading-relaxed"
-          >
-            Generate alternative continuations<br />for the current scene.
-          </div>
-        </template>
-      </div>
-    </template>
+      <p
+        v-else-if="!isGenerating && (mode === 'edit' || manuscriptStore.activeSubsection)"
+        class="px-4 py-6 font-ui text-xs text-text-hint leading-5 border-t border-border-subtle"
+      >
+        {{
+          mode === 'edit'
+            ? 'Describe the change, then generate to see how the scene could go instead.'
+            : 'Nothing generated yet. Alternatives appear here; insert one at the cursor or replace the scene with it.'
+        }}
+      </p>
+    </div>
   </div>
 </template>

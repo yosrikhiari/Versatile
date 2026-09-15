@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useBranchStore } from '../../stores/branchStore'
 import { useProjectStore } from '../../stores/projectStore'
 import BaseIcon from '../shared/BaseIcon.vue'
@@ -16,19 +16,6 @@ const emit = defineEmits(['switch', 'open-manager'])
 
 const branchStore = useBranchStore()
 const projectStore = useProjectStore()
-
-watch(
-  () => branchStore.branches,
-  (branches) => {
-    console.log(
-      '[DEBUG] branches array changed | names:',
-      branches.map((b) => b.name),
-      '| ids:',
-      branches.map((b) => b.id)
-    )
-  },
-  { deep: true, flush: 'sync' }
-)
 
 const open = ref(false)
 const renaming = ref(null)
@@ -104,9 +91,7 @@ function handleOpenManager() {
         v-if="open"
         class="absolute left-0 right-0 top-full mt-1 z-50 bg-bg-primary border border-border-subtle rounded-lg shadow-warm-lg overflow-hidden min-w-[260px]"
       >
-        <div class="px-3 py-2 text-xs font-medium uppercase tracking-wider text-text-hint">
-          Branches
-        </div>
+        <div class="px-3 py-2 label-micro text-text-hint">Branches</div>
         <div class="max-h-48 overflow-y-auto">
           <div
             v-for="branch in sortedBranches"

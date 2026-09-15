@@ -1,7 +1,8 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
-import { NAV_GROUPS, SYSTEM_ITEMS } from '../../constants/navigation'
+import { NAV_GROUPS, SYSTEM_ITEMS, navItemLabel } from '../../constants/navigation'
+import { useProjectStore } from '../../stores/projectStore'
 
 /**
  * Ctrl/⌘-K launcher over every panel and global action.
@@ -25,15 +26,18 @@ const inputEl = ref(null)
 const listEl = ref(null)
 let previouslyFocused = null
 
+const projectStore = useProjectStore()
+
 const panelCommands = computed(() => [
   ...NAV_GROUPS.flatMap((group) =>
     group.items.map((item) => ({
       kind: 'panel',
       id: item.panel,
-      label: item.label,
+      label: navItemLabel(item, projectStore.terminology),
       icon: item.icon,
       group: group.label,
-      keywords: item.keywords || []
+      // The generic name stays searchable even when the label is workspace-specific.
+      keywords: [...(item.keywords || []), item.label.toLowerCase()]
     }))
   ),
   ...SYSTEM_ITEMS.map((item) => ({

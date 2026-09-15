@@ -13,6 +13,8 @@
  */
 import { ref, computed } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseSection from '../ui/BaseSection.vue'
+import BaseButton from '../ui/BaseButton.vue'
 import BaseStepper from '../ui/BaseStepper.vue'
 import BaseCheckbox from '../ui/BaseCheckbox.vue'
 
@@ -47,109 +49,118 @@ const willWrite = computed(() => unwritten.value + (redraftStubs.value ? short.v
 </script>
 
 <template>
-  <div
-    v-if="!isEmptyProject"
-    class="rounded-lg border border-border-subtle bg-bg-secondary p-3 space-y-3"
-  >
-    <div class="flex items-start gap-2">
-      <BaseIcon name="edit-3" :size="15" class="text-accent shrink-0 mt-0.5" />
-      <div class="flex-1 min-w-0">
-        <p class="text-xs text-text-primary font-ui">Continue this story</p>
-        <p class="text-2xs text-text-hint font-ui leading-relaxed mt-0.5">
-          {{ written }} of {{ totalScenes }} scenes written · {{ words.toLocaleString() }} words
-          <template v-if="unwritten"> · {{ unwritten }} still empty</template>
-          <template v-if="short"> · {{ short }} are stubs</template>
+  <div v-if="!isEmptyProject" class="border-b border-border-subtle">
+    <BaseSection
+      first
+      title="Continue this story"
+      :description="`${written} of ${totalScenes} scenes written · ${words.toLocaleString()} words${unwritten ? ` · ${unwritten} still empty` : ''}${short ? ` · ${short} are stubs` : ''}`"
+    >
+      <template v-if="busy" #actions>
+        <BaseButton variant="ghost" size="sm" icon="square" @click="emit('stop')">Stop</BaseButton>
+      </template>
+
+      <div class="space-y-3">
+        <!-- Fill: write the scenes that were planned but never drafted -->
+        <template v-if="unwritten || short">
+          <BaseCheckbox
+            v-if="short"
+            v-model="redraftStubs"
+            :label="`Also redraft ${short} stub scene(s)`"
+          />
+          <BaseButton
+            variant="primary"
+            size="sm"
+            icon="edit-3"
+            :loading="busy"
+            :disabled="busy || !willWrite"
+            @click="emit('continue', { includeShort: redraftStubs })"
+          >
+            {{
+              busy
+                ? 'Writing…'
+                : `Continue drafting (${willWrite} scene${willWrite === 1 ? '' : 's'})`
+            }}
+          </BaseButton>
+        </template>
+        <p v-else class="font-ui text-xs text-text-hint leading-5">
+          Every planned scene has prose. Add more chapters to keep going.
+        </p>
+
+        <!-- Extend: plan and write new chapters onto the end of the draft -->
+        <button
+          type="button"
+          class="flex items-center gap-1.5 label-micro text-text-hint hover:text-text-secondary transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded disabled:opacity-50"
+          :aria-expanded="showExtend"
+          :disabled="busy"
+          @click="showExtend = !showExtend"
+        >
+          <BaseIcon
+            name="chevron-right"
+            :size="12"
+            class="transition-transform duration-150"
+            :class="showExtend ? 'rotate-90' : ''"
+          />
+          Extend with new chapters
+        </button>
+
+        <div v-if="showExtend" class="space-y-3">
+          <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+            <BaseStepper v-model="extraVolumes" label="Volumes" :min="1" :max="10" size="sm" />
+            <BaseStepper
+              v-model="extraChapters"
+              label="Chapters / volume"
+              :min="1"
+              :max="30"
+              size="sm"
+            />
+            <BaseStepper
+              v-model="extraScenes"
+              label="Scenes / chapter"
+              :min="1"
+              :max="12"
+              size="sm"
+            />
+            <BaseStepper
+              v-model="extraWords"
+              label="Words / chapter"
+              :min="300"
+              :max="20000"
+              :step="100"
+              size="sm"
+            />
+          </div>
+          <p class="font-ui text-xs text-text-hint leading-5">
+            {{ extraVolumes * extraChapters }} new chapter(s) planned from where the manuscript
+            ends. The existing draft is passed to the planner as canon, so the continuation follows
+            on rather than restarting the premise.
+          </p>
+          <BaseButton
+            variant="secondary"
+            size="sm"
+            icon="plus"
+            :disabled="busy"
+            @click="
+              emit('extend', {
+                volumes: extraVolumes,
+                chaptersPerVolume: extraChapters,
+                scenesPerChapter: extraScenes,
+                wordsPerChapter: extraWords
+              })
+            "
+          >
+            {{ busy ? 'Writing…' : 'Plan & write new chapters' }}
+          </BaseButton>
+        </div>
+
+        <!-- What the last run actually did, including what it did not reach. -->
+        <p
+          v-if="report && !busy"
+          class="font-ui text-xs leading-5"
+          :class="report.stoppedBy || report.failed ? 'text-warning' : 'text-text-hint'"
+        >
+          {{ reportLabel }}
         </p>
       </div>
-    </div>
-
-    <!-- Fill: write the scenes that were planned but never drafted -->
-    <template v-if="unwritten || short">
-      <BaseCheckbox
-        v-if="short"
-        v-model="redraftStubs"
-        :label="`Also redraft ${short} stub scene(s)`"
-      />
-      <button
-        class="w-full py-1.5 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
-        :disabled="busy || !willWrite"
-        @click="emit('continue', { includeShort: redraftStubs })"
-      >
-        {{
-          busy ? 'Writing…' : `Continue drafting (${willWrite} scene${willWrite === 1 ? '' : 's'})`
-        }}
-      </button>
-    </template>
-    <p v-else class="text-2xs text-text-hint font-ui">
-      Every planned scene has prose. Add more chapters below to keep going.
-    </p>
-
-    <!-- Extend: plan and write new chapters onto the end of the draft -->
-    <button
-      class="w-full flex items-center gap-2 py-1.5 px-2 text-xs text-text-secondary hover:text-text-primary border border-border-subtle rounded-md font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
-      :disabled="busy"
-      @click="showExtend = !showExtend"
-    >
-      <BaseIcon :name="showExtend ? 'chevron-down' : 'chevron-right'" :size="14" class="shrink-0" />
-      <span class="flex-1 text-left">Extend with new chapters</span>
-    </button>
-
-    <div v-if="showExtend" class="space-y-3 pl-2">
-      <div class="grid grid-cols-2 gap-3">
-        <BaseStepper v-model="extraVolumes" label="Volumes" :min="1" :max="10" size="sm" />
-        <BaseStepper
-          v-model="extraChapters"
-          label="Chapters / volume"
-          :min="1"
-          :max="30"
-          size="sm"
-        />
-        <BaseStepper v-model="extraScenes" label="Scenes / chapter" :min="1" :max="12" size="sm" />
-        <BaseStepper
-          v-model="extraWords"
-          label="Words / chapter"
-          :min="300"
-          :max="20000"
-          :step="100"
-          size="sm"
-        />
-      </div>
-      <p class="text-2xs text-text-hint font-ui leading-relaxed">
-        {{ extraVolumes * extraChapters }} new chapter(s) planned from where the manuscript
-        currently ends — the existing draft is passed to the planner as canon, so the continuation
-        follows on rather than restarting the premise.
-      </p>
-      <button
-        class="w-full py-1.5 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
-        :disabled="busy"
-        @click="
-          emit('extend', {
-            volumes: extraVolumes,
-            chaptersPerVolume: extraChapters,
-            scenesPerChapter: extraScenes,
-            wordsPerChapter: extraWords
-          })
-        "
-      >
-        {{ busy ? 'Writing…' : 'Plan & write new chapters' }}
-      </button>
-    </div>
-
-    <button
-      v-if="busy"
-      class="w-full py-1.5 text-xs text-text-hint hover:text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent rounded-md"
-      @click="emit('stop')"
-    >
-      Stop
-    </button>
-
-    <!-- What the last run actually did, including what it did not reach. -->
-    <p
-      v-if="report && !busy"
-      class="text-2xs font-ui leading-relaxed"
-      :class="report.stoppedBy || report.failed ? 'text-warning' : 'text-text-hint'"
-    >
-      {{ reportLabel }}
-    </p>
+    </BaseSection>
   </div>
 </template>

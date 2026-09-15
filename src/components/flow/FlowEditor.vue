@@ -50,24 +50,11 @@ const editor = useEditor({
       class: 'editor-content focus:outline-none'
     }
   },
-  onUpdate: ({ editor }) => {
-    const textContent = editor.state.doc.textContent
-    contentSize.value = textContent.length
-
-    // Push what was typed into the store BEFORE scheduling the save.
-    //
-    // Nothing did this. When no section is open, `useFlowSave` persists via
-    // `projectStore.saveDocumentNow()`, which writes `documentContent` —
-    // a ref only Spark and Polish ever updated. So typing in the main document
-    // saved whatever had been loaded, not what was on screen: the editor showed
-    // "Saved", and the text was gone on reload.
-    //
-    // It is also the only thing that recomputes `wordCount`, which is why the
-    // header sat at "0 words" no matter how much was written.
-    if (!manuscriptStore.activeSubsectionId && !manuscriptStore.activeSectionId) {
-      projectStore.updateContent(editor.getHTML(), textContent)
-    }
-
+  onUpdate: () => {
+    // Serialising the document is O(size), so it is not done per keystroke.
+    // The store, the size banner and the word count catch up after a short
+    // idle gap; the save timer and flow tracking stay immediate.
+    scheduleDocumentSync()
     scheduleSave()
     flow.handleKeystroke()
   },
@@ -77,6 +64,50 @@ const editor = useEditor({
 })
 
 const { isSaving, scheduleSave, flushSave } = useFlowSave(editor)
+
+/** Idle gap before the editor's text is pushed into the store. */
+const DOCUMENT_SYNC_MS = 300
+let documentSyncTimer = null
+/** The HTML this editor last handed to the store — its own echo, not a change. */
+let lastPushedHtml = null
+
+/**
+ * Push the editor's text into the store.
+ *
+ * When no section is open, `useFlowSave` persists via
+ * `projectStore.saveDocumentNow()`, which writes `documentContent` — so the
+ * store has to hold what is on screen or the save writes stale text. It is also
+ * what recomputes `wordCount`.
+ *
+ * This ran on every keystroke and serialised the whole document twice each
+ * time: once here, and once more in the `activeContent` watcher, which called
+ * `getHTML()` again just to discover the change was its own. A long root
+ * document made typing visibly lag.
+ */
+function syncDocumentToStore() {
+  documentSyncTimer = null
+  if (!editor.value) return
+  const textContent = editor.value.state.doc.textContent
+  contentSize.value = textContent.length
+  if (!manuscriptStore.activeSubsectionId && !manuscriptStore.activeSectionId) {
+    const html = editor.value.getHTML()
+    lastPushedHtml = html
+    projectStore.updateContent(html, textContent)
+  }
+}
+
+function scheduleDocumentSync() {
+  if (documentSyncTimer) clearTimeout(documentSyncTimer)
+  documentSyncTimer = setTimeout(syncDocumentToStore, DOCUMENT_SYNC_MS)
+}
+
+/** Run a pending sync now — before a save or teardown reads the store. */
+function flushDocumentSync() {
+  if (documentSyncTimer) {
+    clearTimeout(documentSyncTimer)
+    syncDocumentToStore()
+  }
+}
 
 const activeContent = computed(() => {
   if (manuscriptStore.activeSubsectionId) {
@@ -163,6 +194,9 @@ function handleClick(_event) {
 }
 
 watch(activeContent, (newContent) => {
+  // Our own push coming back around — nothing to load.
+  if (newContent === lastPushedHtml) return
+  lastPushedHtml = null
   if (editor.value?.getHTML() !== newContent) {
     const savedScroll = scrollContainer.value?.scrollTop ?? 0
     editor.value.commands.setContent(newContent || '')
@@ -178,6 +212,7 @@ onBeforeUnmount(() => {
   // Each step is isolated: a throw here aborts the rest of the teardown, and a
   // half-unmounted editor left route changes needing a manual refresh.
   try {
+    flushDocumentSync()
     flushSave()
   } catch (err) {
     console.error('[FlowEditor] flush on unmount failed:', err)
@@ -234,7 +269,7 @@ defineExpose({
         v-if="isEmptyContent"
         icon="edit-3"
         title="Start writing"
-        description="Create a chapter from the sidebar, or jump right in."
+        description="Jump right in — you can file this text into a section later — or open Sections in the sidebar to plan first."
         action-label="Start writing"
         @action="handleStartWriting"
       />

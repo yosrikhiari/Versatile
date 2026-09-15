@@ -1,157 +1,88 @@
 <template>
-  <div v-if="scenes.length" class="space-y-4">
-    <div>
-      <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 space-y-3">
-        <h3 class="text-sm font-semibold text-text-primary font-ui">
-          {{ planLabel }} Plan — {{ sceneCount || scenes.length }} scene{{
-            (sceneCount || scenes.length) === 1 ? '' : 's'
-          }}
-        </h3>
-        <p class="text-xs text-text-hint">
-          Edit scene fields before writing begins. Narrative pitches are auto-generated previews —
-          edit the underlying fields to update them.
-        </p>
-      </div>
-    </div>
-
-    <div class="space-y-2">
-      <h3 class="text-xs uppercase tracking-widest text-text-hint font-ui">Scenes</h3>
-
-      <!-- Tension arc visualization -->
+  <div v-if="scenes.length">
+    <BaseSection
+      first
+      :title="`${planLabel} plan`"
+      description="Adjust any scene before writing begins. Fields left empty are decided by the writer."
+      :meta="`${sceneCount || scenes.length} scene${(sceneCount || scenes.length) === 1 ? '' : 's'}`"
+    >
+      <!-- Tension arc: one hue, height is the level. Reads as a shape, not a
+           traffic light. -->
       <div
-        class="flex gap-0.5 h-3 rounded overflow-hidden bg-bg-tertiary"
-        title="Tension arc across scenes"
+        class="flex items-end gap-px h-6"
+        role="img"
+        :aria-label="`Tension across scenes: ${scenes.map((s) => s.tension || 'medium').join(', ')}`"
       >
         <div
           v-for="(scene, j) in scenes"
           :key="j"
-          :class="getTensionBarClass(scene.tension)"
-          class="h-full transition-colors"
-          :style="{ width: 100 / scenes.length + '%' }"
-          :title="'Scene ' + (j + 1) + ': ' + scene.tension"
+          class="flex-1 rounded-t-sm transition-all duration-150"
+          :class="j === open ? 'bg-accent' : 'bg-text-hint/30'"
+          :style="{ height: tensionHeight(scene.tension) }"
+          :title="`Scene ${j + 1}: ${scene.tension || 'medium'}`"
         />
       </div>
 
-      <div
-        v-for="(scene, i) in scenes"
-        :key="i"
-        class="rounded-lg bg-bg-secondary border border-border-subtle p-3 space-y-2"
-      >
-        <!-- Header -->
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-semibold text-text-primary font-ui"
-            >Scene {{ scene.sceneNumber || i + 1 }}: {{ scene.title }}</span
-          >
-          <span :class="['px-2 py-0.5 rounded text-xs font-ui', getTensionColor(scene.tension)]">{{
-            scene.tension
-          }}</span>
-        </div>
-
-        <!-- Collapsible narrative pitch -->
-        <div class="rounded-lg bg-bg-tertiary border border-border-subtle">
+      <ul class="mt-3 -mx-1 divide-y divide-border-subtle">
+        <li v-for="(scene, i) in scenes" :key="i">
           <button
-            class="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-hover hover:text-text-primary transition-colors font-ui focus:outline-none"
-            @click="togglePitch(i)"
+            type="button"
+            class="w-full flex items-center gap-3 px-2 py-2.5 text-left rounded-md transition-colors duration-150 hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            :aria-expanded="open === i"
+            @click="toggle(i)"
           >
-            <BaseIcon :name="pitchOpen === i ? 'chevron-down' : 'chevron-right'" :size="12" />
-            <span class="font-medium">Narrative Pitch</span>
+            <span class="font-ui text-xs text-text-hint tabular-nums w-5 shrink-0">{{
+              scene.sceneNumber || i + 1
+            }}</span>
+            <span class="flex-1 min-w-0">
+              <span class="block font-ui text-sm text-text-primary truncate">{{
+                scene.title
+              }}</span>
+              <span
+                v-if="open !== i && scene.goal"
+                class="block font-ui text-xs text-text-hint truncate"
+              >
+                {{ scene.goal }}
+              </span>
+            </span>
+            <span class="font-ui text-xs text-text-hint shrink-0">{{
+              scene.tension || 'medium'
+            }}</span>
+            <BaseIcon
+              name="chevron-right"
+              :size="14"
+              class="text-text-hint shrink-0 transition-transform duration-150"
+              :class="open === i ? 'rotate-90' : ''"
+            />
           </button>
-          <div
-            v-if="pitchOpen === i"
-            class="px-3 pb-2.5 text-xs text-text-secondary leading-relaxed space-y-1.5 border-t border-border-subtle pt-2"
-          >
-            <p v-if="scene.goal">
-              Emotional goal:
-              <span class="text-text-primary font-medium">{{ scene.goal }}</span
-              >.
-            </p>
-            <p v-if="scene.obstacle">
-              What changes / obstacle:
-              <span class="text-text-primary">{{ scene.obstacle }}</span
-              >.
-            </p>
-            <p v-if="scene.setup">
-              Sets up: <span class="text-text-primary">{{ scene.setup }}</span
-              >.
-            </p>
-            <p v-if="scene.payoff">
-              Pays off: <span class="text-text-primary">{{ scene.payoff }}</span
-              >.
-            </p>
-            <p v-if="scene.sensoryAnchor">
-              Sensory anchor:
-              <span class="text-text-primary italic">{{ scene.sensoryAnchor }}</span
-              >.
-            </p>
-            <p v-if="scene.location">
-              Location: <span class="text-text-primary">{{ scene.location }}</span
-              >.
-            </p>
-            <p v-if="scene.tension">
-              Tension: <span class="text-text-primary font-medium">{{ scene.tension }}</span
-              >.
-            </p>
-            <p v-if="scene.pacing">
-              Pacing: <span class="text-text-primary font-medium">{{ scene.pacing }}</span
-              >.
-            </p>
-            <p v-if="scene.arcPosition">
-              Arc position:
-              <span class="text-text-primary font-medium">{{ scene.arcPosition }}</span
-              >.
-            </p>
-            <p v-if="scene.emotionalGoal">
-              Reader's emotional response:
-              <span class="text-text-primary">{{ scene.emotionalGoal }}</span
-              >.
-            </p>
-            <p v-if="scene.characterWants && Object.keys(scene.characterWants).length > 0">
-              Character wants:
-              <span class="text-text-primary">{{ formatWants(scene.characterWants) }}</span
-              >.
-            </p>
-            <p v-if="scene.estimatedWords">
-              Target words: <span class="text-text-primary">{{ scene.estimatedWords }}</span
-              >.
-            </p>
-            <p
-              v-if="
-                !scene.goal &&
-                !scene.setup &&
-                !scene.payoff &&
-                !scene.sensoryAnchor &&
-                !scene.obstacle &&
-                !scene.tension &&
-                !scene.pacing
-              "
-              class="text-text-hint italic"
-            >
-              No narrative details yet.
-            </p>
-          </div>
-        </div>
 
-        <!-- 2-column editable field grid -->
-        <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
-          <!-- Left column -->
-          <div class="space-y-1.5">
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Goal:</span>
+          <div v-if="open === i" class="px-2 pb-4 pt-1 grid grid-cols-2 gap-x-4 gap-y-3">
+            <label class="col-span-2 block">
+              <span class="label-micro text-text-hint mb-1 block">Goal</span>
               <input
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                :class="inputClass"
                 :value="scene.goal || ''"
                 @input="emit('scene-edit', i, 'goal', $event.target.value)"
               />
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Characters:</span>
+            </label>
+            <label class="col-span-2 block">
+              <span class="label-micro text-text-hint mb-1 block">What changes</span>
               <input
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                :class="inputClass"
+                :value="scene.obstacle || ''"
+                @input="emit('scene-edit', i, 'obstacle', $event.target.value)"
+              />
+            </label>
+            <label class="block">
+              <span class="label-micro text-text-hint mb-1 block">Characters</span>
+              <input
+                :class="inputClass"
                 :value="
                   scene.characters
                     ? scene.characters.join(', ')
                     : (scene.charactersPresent || []).join(', ')
                 "
+                placeholder="Comma separated"
                 @input="
                   emit(
                     'scene-edit',
@@ -161,27 +92,57 @@
                   )
                 "
               />
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Setup:</span>
+            </label>
+            <label class="block">
+              <span class="label-micro text-text-hint mb-1 block">Location</span>
               <input
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                :class="inputClass"
+                :value="scene.location || ''"
+                @input="emit('scene-edit', i, 'location', $event.target.value)"
+              />
+            </label>
+            <label class="block">
+              <span class="label-micro text-text-hint mb-1 block">Sets up</span>
+              <input
+                :class="inputClass"
                 :value="scene.setup || ''"
                 @input="emit('scene-edit', i, 'setup', $event.target.value)"
               />
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Sensory:</span>
+            </label>
+            <label class="block">
+              <span class="label-micro text-text-hint mb-1 block">Pays off</span>
               <input
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                :class="inputClass"
+                :value="scene.payoff || ''"
+                @input="emit('scene-edit', i, 'payoff', $event.target.value)"
+              />
+            </label>
+            <label class="col-span-2 block">
+              <span class="label-micro text-text-hint mb-1 block">Sensory anchor</span>
+              <input
+                :class="inputClass"
                 :value="scene.sensoryAnchor || ''"
                 @input="emit('scene-edit', i, 'sensoryAnchor', $event.target.value)"
               />
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Tension:</span>
+            </label>
+            <label class="col-span-2 block">
+              <span class="label-micro text-text-hint mb-1 block">Character wants</span>
+              <input
+                :class="inputClass"
+                :value="
+                  scene.characterWants && Object.keys(scene.characterWants).length > 0
+                    ? formatWants(scene.characterWants)
+                    : ''
+                "
+                placeholder="Nesrin → keep the mules, Halim → collect the debt"
+                @input="emit('wants-edit', i, $event.target.value)"
+              />
+            </label>
+
+            <label class="block">
+              <span class="label-micro text-text-hint mb-1 block">Tension</span>
               <select
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                :class="inputClass"
                 :value="scene.tension || 'medium'"
                 @change="emit('scene-edit', i, 'tension', $event.target.value)"
               >
@@ -190,11 +151,23 @@
                 <option value="high">high</option>
                 <option value="peak">peak</option>
               </select>
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Arc Pos:</span>
+            </label>
+            <label class="block">
+              <span class="label-micro text-text-hint mb-1 block">Pacing</span>
               <select
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                :class="inputClass"
+                :value="scene.pacing || 'medium'"
+                @change="emit('scene-edit', i, 'pacing', $event.target.value)"
+              >
+                <option value="slow">slow</option>
+                <option value="medium">medium</option>
+                <option value="fast">fast</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="label-micro text-text-hint mb-1 block">Arc position</span>
+              <select
+                :class="inputClass"
                 :value="scene.arcPosition || ''"
                 @change="emit('scene-edit', i, 'arcPosition', $event.target.value)"
               >
@@ -205,97 +178,31 @@
                 <option value="falling">falling</option>
                 <option value="resolution">resolution</option>
               </select>
-            </div>
-          </div>
-
-          <!-- Right column -->
-          <div class="space-y-1.5">
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Changes:</span>
-              <input
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                :value="scene.obstacle || ''"
-                @input="emit('scene-edit', i, 'obstacle', $event.target.value)"
-              />
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Location:</span>
-              <input
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                :value="scene.location || ''"
-                @input="emit('scene-edit', i, 'location', $event.target.value)"
-              />
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Payoff:</span>
-              <input
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                :value="scene.payoff || ''"
-                @input="emit('scene-edit', i, 'payoff', $event.target.value)"
-              />
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Words:</span>
+            </label>
+            <label class="block">
+              <span class="label-micro text-text-hint mb-1 block">Target words</span>
               <input
                 type="number"
                 min="100"
                 max="5000"
                 step="50"
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+                :class="inputClass"
                 :value="scene.estimatedWords || 800"
                 @input="
                   emit('scene-edit', i, 'estimatedWords', parseInt($event.target.value) || 800)
                 "
               />
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-text-hint font-ui w-16 shrink-0">Pacing:</span>
-              <select
-                class="flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
-                :value="scene.pacing || 'medium'"
-                @change="emit('scene-edit', i, 'pacing', $event.target.value)"
-              >
-                <option value="slow">slow</option>
-                <option value="medium">medium</option>
-                <option value="fast">fast</option>
-              </select>
-            </div>
+            </label>
           </div>
-        </div>
+        </li>
+      </ul>
+    </BaseSection>
 
-        <!-- Editable characterWants full-width display -->
-        <div class="text-xs text-text-hint border-t border-border-subtle pt-1.5">
-          <span class="font-ui text-text-hover">Character Wants:</span>
-          <input
-            class="ml-1 flex-1 bg-bg-tertiary border border-border-subtle rounded px-2 py-0.5 text-xs text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent w-full mt-1"
-            :value="
-              scene.characterWants && Object.keys(scene.characterWants).length > 0
-                ? formatWants(scene.characterWants)
-                : ''
-            "
-            placeholder="CharacterName → goal description, AnotherChar → their goal"
-            @input="emit('wants-edit', i, $event.target.value)"
-          />
-        </div>
-      </div>
-    </div>
-
-    <div class="flex gap-2">
-      <button
-        class="flex-1 py-2.5 btn-primary rounded-lg font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-        @click="emit('confirm')"
-      >
-        <span class="flex items-center justify-center gap-2">
-          <BaseIcon name="play" :size="16" />
-          Confirm & Start Writing
-        </span>
-      </button>
-      <button
-        class="px-4 py-2.5 bg-bg-tertiary text-text-secondary rounded-lg font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent"
-        @click="emit('cancel')"
-      >
-        Cancel
-      </button>
+    <div class="px-4 py-4 border-t border-border-subtle flex items-center justify-end gap-2">
+      <BaseButton variant="ghost" size="md" @click="emit('cancel')">Cancel</BaseButton>
+      <BaseButton variant="primary" size="md" icon="play" @click="emit('confirm')">
+        Start writing
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -303,6 +210,8 @@
 <script setup>
 import { ref } from 'vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseButton from '../ui/BaseButton.vue'
+import BaseSection from '../ui/BaseSection.vue'
 
 defineProps({
   scenes: {
@@ -321,11 +230,15 @@ defineProps({
 
 const emit = defineEmits(['scene-edit', 'wants-edit', 'confirm', 'cancel'])
 
-const pitchOpen = ref(-1)
+/** Index of the scene whose fields are open; one at a time. */
+const open = ref(-1)
 
-function togglePitch(i) {
-  pitchOpen.value = pitchOpen.value === i ? -1 : i
+function toggle(i) {
+  open.value = open.value === i ? -1 : i
 }
+
+const inputClass =
+  'w-full bg-bg-tertiary border border-border-subtle rounded-md px-2.5 py-1.5 text-sm text-text-primary font-ui placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150'
 
 function formatWants(wants) {
   if (!wants || typeof wants !== 'object') return ''
@@ -334,33 +247,9 @@ function formatWants(wants) {
     .join(', ')
 }
 
-function getTensionBarClass(tension) {
-  switch (tension) {
-    case 'peak':
-      return 'bg-danger'
-    case 'high':
-      return 'bg-warning'
-    case 'medium':
-      return 'bg-info'
-    case 'low':
-      return 'bg-surface-hover'
-    default:
-      return 'bg-surface-hover'
-  }
-}
+const TENSION_HEIGHT = { low: '30%', medium: '55%', high: '80%', peak: '100%' }
 
-function getTensionColor(tension) {
-  switch (tension) {
-    case 'peak':
-      return 'text-danger bg-bg-secondary'
-    case 'high':
-      return 'text-warning bg-bg-secondary'
-    case 'medium':
-      return 'text-info bg-bg-secondary'
-    case 'low':
-      return 'text-text-secondary bg-bg-secondary'
-    default:
-      return 'text-text-secondary bg-bg-secondary'
-  }
+function tensionHeight(tension) {
+  return TENSION_HEIGHT[tension] || TENSION_HEIGHT.medium
 }
 </script>
