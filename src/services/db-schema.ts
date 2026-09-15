@@ -435,5 +435,18 @@ export const SCHEMA_VERSIONS = [
       subsections:
         '++id, projectId, sectionId, title, summary, order, content, *tags, contentStatus, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt, pov, location, *charactersPresent, wordCount'
     }
+  },
+  /**
+   * v50: `apiId` index on `branches`. The v22 sync expansion indexed `apiId`
+   * on every synced table; branches arrived later (v34) and got `syncStatus`
+   * in v42 but never `apiId`, so the `where('apiId')` lookup that resolves a
+   * fork's `sourceBranchId` on pull threw `KeyPath apiId … is not indexed`.
+   */
+  {
+    version: 50,
+    stores: {
+      branches:
+        '++id, projectId, name, sourceBranchId, description, status, createdAt, updatedAt, syncStatus, lastSyncedAt, apiId'
+    }
   }
 ]

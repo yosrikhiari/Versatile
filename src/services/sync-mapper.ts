@@ -47,6 +47,20 @@ async function lookupApiId(
   return record?.apiId || null
 }
 
+/** Dexie table that holds a volume-entity row's `entityId`, by its `entityType`. */
+function entityTableFor(entityType: unknown): string | null {
+  switch (entityType) {
+    case 'character':
+      return 'characters'
+    case 'location':
+      return 'locations'
+    case 'plotThread':
+      return 'plotThreads'
+    default:
+      return null
+  }
+}
+
 async function lookupLocalId(
   table: string,
   apiId: string | null | undefined
@@ -380,20 +394,31 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       const volApiId = local.volumeId
         ? await lookupApiId('volumes', local.volumeId as string)
         : null
+      // `entityId` points at a character / location / plot thread and was sent
+      // as the LOCAL id — the server received a row pointing at nothing it
+      // knows. Translate through the entity's own table, like `volumeId`.
+      const entityTable = entityTableFor(local.entityType)
+      const entityApiId = entityTable
+        ? await lookupApiId(entityTable, local.entityId as string)
+        : null
       return {
         volumeId: volApiId || '00000000-0000-0000-0000-000000000000',
         entityType: (local.entityType || '') as string,
-        entityId: (local.entityId || '') as string,
+        entityId: entityApiId || (local.entityId || '') as string,
         isPrimary: (local.isPrimary ?? true) as boolean
       }
     },
     fromApi: async (api: Record<string, unknown>) => {
       const volLocalId = await lookupLocalId('volumes', api.volumeId as string)
+      const entityTable = entityTableFor(api.entityType)
+      const entityLocalId = entityTable
+        ? await lookupLocalId(entityTable, api.entityId as string)
+        : null
       return {
         apiId: api.id,
         volumeId: volLocalId,
         entityType: (api.entityType || '') as string,
-        entityId: (api.entityId || '') as string,
+        entityId: entityLocalId || ((api.entityId || '') as string),
         isPrimary: (api.isPrimary ?? true) as boolean,
         syncStatus: 'synced',
         lastSyncedAt: new Date().toISOString()
@@ -523,16 +548,24 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
     isTopLevel: false,
     selfReferencing: true,
     parentField: 'projectId',
-    toApi: (local: Record<string, unknown>) => ({
+    // `sourceBranchId` references another branch. Branches push serially
+    // (`selfReferencing`), so the source has an apiId by the time its fork is
+    // pushed; it was still sent as the local id, so every synced fork pointed
+    // at a branch the server did not know.
+    toApi: async (local: Record<string, unknown>) => ({
       name: (local.name || '') as string,
-      sourceBranchId: (local.sourceBranchId || null) as string | null,
+      sourceBranchId: local.sourceBranchId
+        ? await lookupApiId('branches', local.sourceBranchId as string)
+        : null,
       description: (local.description || '') as string,
       status: (local.status || 'active') as string
     }),
-    fromApi: (api: Record<string, unknown>) => ({
+    fromApi: async (api: Record<string, unknown>) => ({
       apiId: api.id,
       name: (api.name || '') as string,
-      sourceBranchId: (api.sourceBranchId || null) as string | null,
+      sourceBranchId: api.sourceBranchId
+        ? await lookupLocalId('branches', api.sourceBranchId as string)
+        : null,
       description: (api.description || '') as string,
       status: (api.status || 'active') as string,
       createdAt: (api.createdAt || new Date().toISOString()) as string,

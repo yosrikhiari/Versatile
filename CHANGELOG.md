@@ -26,6 +26,16 @@ was verified.
   never got digests.
 - Custom fields and tags round-trip through the character/location sync blob.
 
+### Sync — foreign keys crossed as local ids (2026-09-15)
+- `branches.sourceBranchId` and `volumeEntities.entityId` were pushed as the
+  browser's local ids (`sectionId`/`volumeId` were translated; these two were
+  not), so a synced fork pointed at a branch the server did not know and a
+  volume membership at an entity it could not find. Both now translate through
+  `lookupApiId`/`lookupLocalId` in both directions; `entityId` resolves
+  through the table named by `entityType`. Schema **v50** adds the `apiId`
+  index `branches` never had (the pull-side lookup threw without it).
+  Pinned by `syncMapperIds.test.js` against real Dexie.
+
 ### Generation — reading the book (2026-09-15; `6aab7b44`, `82a7fa88`, `941cbc22`, `46384ced`)
 - **The bible never moved because sync never ran.** `confirmPlan` always
   takes the parallel strategy, which never called `discoverSync`/`commitSync`

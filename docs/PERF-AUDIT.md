@@ -47,9 +47,9 @@ Also fixes the UX finding "Archive shows a new Writing session every few minutes
 
 - `sync-mapper.ts` declares `idBridge.needsTranslation` on several tables but nothing consumes it.
   `sectionId` and `volumeId` are translated anyway inside each `toApi` (`lookupApiId`), but
-  `branches.sourceBranchId` (`:512`) and `volumeEntities.entityId` (`:370`) are sent to the server
-  as **local** ids. A correctness gap in cloud sync, not a performance one —
-  `planning/AUDIT-2026-09-15.md` B1.
+  `branches.sourceBranchId` and `volumeEntities.entityId` were sent to the server as **local**
+  ids — fixed 2026-09-15 (translated both ways; `branches` gained the missing `apiId` index in
+  schema v50). `planning/AUDIT-2026-09-15.md` B1.
 - 164 ESLint warnings, 134 of them unused variables — dead code worth a sweep.
 - ~~Three files over 2,000 lines~~ — two of the three were split in the pipeline pass
   (`useVolumeStoryGenerator` 4,006 → 2,795 with the write strategies in

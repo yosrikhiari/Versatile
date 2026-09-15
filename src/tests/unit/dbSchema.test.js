@@ -15,7 +15,7 @@ const EXPECTED = {
   authorProfile: '++id | projectId',
   // v42 added syncStatus + lastSyncedAt so branches participate in backend sync.
   branches:
-    '++id | createdAt, description, lastSyncedAt, name, projectId, sourceBranchId, status, syncStatus, updatedAt',
+    '++id | apiId, createdAt, description, lastSyncedAt, name, projectId, sourceBranchId, status, syncStatus, updatedAt',
   characterRelationships:
     '++id | apiId, fromCharacterId, lastSyncedAt, notes, projectId, syncStatus, toCharacterId, type',
   characters:
@@ -109,7 +109,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(49)
+    expect(verno).toBe(50)
   })
 
   it('has exactly the expected set of tables', () => {
