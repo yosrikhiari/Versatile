@@ -54,6 +54,7 @@ text/border tiers for high-contrast users.
 | `--vers-accent-primary-rgb` | `110, 139, 181` | For `rgba()` composition |
 | `--vers-accent-secondary` | `#4f6e96` (dark) / `#5a7a9e` (light) | Secondary accent |
 | `--vers-glow-loading-rgb` | `110, 139, 181` | Loading glow |
+| `--vers-accent-hover` | `rgb(var(--vers-accent-hover-rgb))` | Hover state of accent fills; composed from its `-rgb` twin |
 
 ## Semantic status (eval / feedback)
 
@@ -73,6 +74,32 @@ These are applied via inline styles in graph/canvas code and work in both themes
 - **Timeline status:** `--vers-status-open|in_progress|resolved|closed`
 - **Graph edges:** `--vers-edge-appears_in|involved_in|located_at|intersects_with|features|connects_to|ally|enemy|family|romantic|mentor|rival|neutral`
 - **Fallbacks:** `--vers-default-fallback|edge|other`
+
+## Composition twins (`*-rgb`)
+
+Every colour token that is ever used with an alpha has an `-rgb` twin holding the bare
+channels, so translucency is written as `rgb(var(--vers-x-rgb) / 0.3)` instead of a second
+hard-coded colour. Twins exist for: `--vers-bg-base|panel|canvas|hover|elevated-rgb`,
+`--vers-text-primary-rgb`, `--vers-text-secondary-rgb`, `--vers-text-muted-rgb`,
+`--vers-text-faint-rgb`, `--vers-text-on-accent-rgb`,
+`--vers-accent-primary|secondary|hover-rgb`, `--vers-glow-loading-rgb`,
+`--vers-entity-character|location-rgb`, and
+`--vers-status-open|in_progress|resolved|closed|success|danger|warning|info-rgb`.
+Add a twin whenever you add a colour that will be tinted; never write `rgba(110, 139, 181, ...)`
+by hand.
+
+## Heat scale (writing heatmap)
+
+Five steps for the workspace's writing heatmap (`WritingHeatmap.vue`), from "no words" to
+"most words that month". Step 0 is a translucent well so it reads on either theme.
+
+| Token | Dark | Light |
+|-------|------|-------|
+| `--vers-heat-0` | `rgba(255,255,255,0.045)` | `rgba(0,0,0,0.05)` |
+| `--vers-heat-1` | `#3a4c62` | `#98afcc` |
+| `--vers-heat-2` | `#4e6683` | `#7c97bd` |
+| `--vers-heat-3` | `#6280a3` | `#6180a7` |
+| `--vers-heat-4` | `#7799c4` | `#476690` |
 
 ---
 
@@ -101,14 +128,16 @@ Defined in `tailwind.config.js` (`fontFamily`). Loaded non-blocking via
 
 | Class | Stack | Role |
 |-------|-------|------|
-| `font-body` | Crimson Pro | Manuscript prose |
-| `font-ui` | Geist Variable | UI chrome |
-| `font-mono` | Geist Mono | Code / numerics |
-| `font-flow` | Lora | Flow mode |
-| `font-polish` | Libre Baskerville | Polish mode |
-| `font-revise` | EB Garamond | Revise mode |
+| `font-ui` | Geist Variable | UI chrome: every label, button, panel |
+| `font-mono` | Geist Mono | Code / numerics in the UI |
+| *(none: `.manuscript` rules in `style.css`)* | IBM Plex Mono | The manuscript editor. Not a Tailwind class: the editor is styled directly so its typography cannot be overridden by a utility |
+| `font-body` | Crimson Pro | Legacy alias; not the manuscript font |
 | `font-storybible` | Merriweather | Story bible |
-| `font-display` / `font-spark` | Playfair Display | Display headings |
+
+**Retired** (0 usages in `src/`, forbidden by `npm run lint:tokens`, still defined in
+`tailwind.config.js` until removed): `font-spark`, `font-flow`, `font-polish`, `font-revise`,
+`font-display`. Do not reintroduce a per-mode display font; the modes differ by tooling,
+not by typeface.
 
 ## Motion
 
@@ -127,7 +156,10 @@ Panels are assembled from `src/components/ui/` — `BasePanelHeader`, `BaseSecti
 `BaseSwitch`, `BaseTab`, `BaseAlert`, `BaseSpinner`, `BaseStatusDot`, `BaseCheckbox`,
 `BaseRadio`. They are the only place a token should be turned into a panel-level
 pattern; a feature component composes them rather than restyling. The panel grammar
-itself is in `DESIGN.md` → Components.
+and the **primitives catalogue** (every prop, slot and event, with the story that shows it)
+are in `DESIGN.md` → Components. Every primitive has a story (`npm run storybook`,
+`UI/*`); Chromatic snapshots them on every push, and `npm run policy` fails if a
+`Base*.vue` is added without one.
 
 Note: Tailwind 3.4's opacity modifier scale does not include `/8`, `/12` or `/35`;
 those classes compile to nothing. Use `/10` and `/30`.
@@ -137,4 +169,6 @@ those classes compile to nothing. Use `/10` and `/30`.
 1. Add the property to **both** `:root` and `[data-theme='light']` in `src/style.css`.
 2. If it is a text/background color, verify **≥ 4.5:1** contrast (see M-2.3) in both themes.
 3. Expose a Tailwind alias in `tailwind.config.js` if it will be used in markup.
-4. Update this document.
+4. Add the `-rgb` twin if the colour will ever be tinted.
+5. Update this document: `npm run policy` fails the build if a `--vers-*` token in
+   `style.css` is missing from it.

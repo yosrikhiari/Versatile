@@ -1,0 +1,13 @@
+{
+  "src/components/editor/CharacterBubble.vue": 4,
+  "src/components/eval/ActiveLearningPanel.vue": 1,
+  "src/components/eval/EvalTrends.vue": 22,
+  "src/components/manuscript/TimelineView.vue": 7,
+  "src/components/shared/AmbientShader.vue": 12,
+  "src/components/storybible/StoryNetwork.vue": 11,
+  "src/components/storyshape/CharacterFocusMatrix.vue": 8,
+  "src/components/storyshape/EmotionalArcChart.vue": 2,
+  "src/components/storyshape/NarrativeStructureTimeline.vue": 6,
+  "src/components/storyshape/StoryMetricsDashboard.vue": 2,
+  "src/components/storyshape/TensionCurveChart.vue": 1
+}

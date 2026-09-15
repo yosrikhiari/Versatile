@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.{js,ts,vue}",
     "lint:tokens": "node scripts/lint-tokens.mjs",
+    "policy": "node scripts/policy.mjs",
     "lint:fix": "eslint src/**/*.{js,ts,vue} --fix",
     "validate:env": "node scripts/validate-env.mjs",
     "plop": "plop --plopfile plopfile.cjs",

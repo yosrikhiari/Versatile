@@ -165,7 +165,7 @@ writes a 2-scene sample with critic scores and gate verdicts to `reports/`.
 - **State**: Pinia (23 stores)
 - **Editor**: Tiptap 3 (ProseMirror)
 - **Persistence**: Dexie 4, schema v51 (IndexedDB)
-- **Styling**: Tailwind CSS 3.4 over `--vers-*` tokens (`docs/DESIGN-TOKENS.md`)
+- **Styling**: Tailwind CSS 3.4 over `--vers-*` tokens (`docs/DESIGN-TOKENS.md`); the visual system and the primitives catalogue are in `DESIGN.md`, every primitive has a Storybook story, and `npm run policy` enforces both. The UI/UX backlog with demos: `docs/UX-ENHANCEMENTS.html`
 - **Build**: Vite 8
 - **Testing**: Vitest 5 + jsdom + fake-indexeddb; Playwright; xUnit for the backend
 - **AI**: Ollama, OpenAI, Anthropic, Gemini, Groq; Langfuse tracing optional
@@ -175,7 +175,7 @@ writes a 2-scene sample with critic scores and gate verdicts to `reports/`.
 
 ## Contributing
 
-Read `AGENTS.md` for the conventions, `TESTING.md` for how to run every suite, `CHANGELOG.md` for what changed and why, and `docs/GENERATION-PIPELINE-ANALYSIS.md` before touching the generator. Both test suites are green on `master`; a failing test is a regression.
+Read `AGENTS.md` for the conventions (every coding agent loads it: OpenCode and Codex natively, Claude Code via `CLAUDE.md`, Cursor/Gemini/Copilot via their pointer files), `TESTING.md` for how to run every suite, `CHANGELOG.md` for what changed and why, and `docs/GENERATION-PIPELINE-ANALYSIS.md` before touching the generator. Both test suites are green on `master`; a failing test is a regression.
 
 ## License
 

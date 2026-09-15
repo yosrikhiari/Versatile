@@ -1,0 +1,5 @@
+---
+description: Versatile project rules. The contract is AGENTS.md; the design system is DESIGN.md + docs/DESIGN-TOKENS.md
+alwaysApply: true
+---
+Read and follow `AGENTS.md` at the repository root before changing anything. It is the single instruction file for every coding agent in this repo. Anything that renders uses the design system: compose the `Base*` primitives from `src/components/ui/` (catalogue in `DESIGN.md`), colours are `--vers-*` tokens (`docs/DESIGN-TOKENS.md`), and `npm run policy` must pass.

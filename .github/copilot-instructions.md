@@ -1,0 +1,1 @@
+All agent instructions for this repository live in `AGENTS.md` at the root (shared with every coding agent). Read it first and follow it. Anything that renders uses the design system: compose the `Base*` primitives from `src/components/ui/` (catalogue in `DESIGN.md`), colours are `--vers-*` tokens (`docs/DESIGN-TOKENS.md`), and `npm run policy` must pass.

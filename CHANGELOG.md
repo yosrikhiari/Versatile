@@ -7,6 +7,34 @@ was verified.
 
 ## [Unreleased]
 
+### Design system: catalogue, stories for every primitive, executable policies, tool-neutral agent rules (2026-09-15)
+- `DESIGN.md` gains a **primitives catalogue**: all 15 `Base*` components in
+  `src/components/ui/` with props, slots, events and what each is for.
+  `docs/DESIGN-TOKENS.md` now documents every `--vers-*` token in `style.css`
+  (the 28 that were missing: the `-rgb` composition twins, `--vers-accent-hover`,
+  the five `--vers-heat-*` steps), corrects the typography table (the manuscript
+  is IBM Plex Mono via `.manuscript`, not `font-body`; `font-spark/flow/polish/
+  revise/display` are retired aliases with zero usages) and adds the twin rule.
+- Storybook: 12 new stories so **every primitive has one** (`UI/*`): Alert,
+  Checkbox, Field, PanelHeader, Popover, Radio, Section, Segmented, Spinner,
+  StatusDot, Stepper, Switch. `storybook build` passes with all 15 indexed.
+- `npm run policy` (`scripts/policy.mjs`, now in the CI `lint` job with
+  `lint:tokens`): every token documented; every `Base*.vue` has a story; hex
+  colour literals in `src/components/**.vue` ratchet against
+  `scripts/policy-hex-baseline.json` (76 today across 11 files, may only fall;
+  `--update-baseline` locks a gain in); the agent files point at `AGENTS.md`.
+  Each check was run against a scratch breakage before landing.
+- `docs/UX-ENHANCEMENTS.html`: a 20-example UI/UX study with a live demo per
+  example on the shipped tokens (both themes). Four fill gaps with zero matches
+  in `src/` (find & replace, unload flush + tab title, outline scroll-spy, read
+  aloud); six close open items from `docs/UX-AUDIT.md` (#13, #14, inline add,
+  generator modes, the five untouched panels, `structureTerms` strings).
+- `AGENTS.md`: a **UI: the design system** section (the eight rules, in order of
+  how often they are broken) and a **Which tool reads what** table. New
+  pointers so every agent loads the same file: `CLAUDE.md` (`@AGENTS.md`,
+  Claude Code previously loaded nothing here), `GEMINI.md`, `opencode.json`,
+  `.cursor/rules/agents.mdc`, `.github/copilot-instructions.md`.
+
 ### CI: SonarCloud removed, lockfile made durable (2026-09-15)
 - `ci.yml` drops the `sonarcloud` job and `backend-ci.yml` drops the
   scanner steps (and the Java runtime they needed). The stored token had
