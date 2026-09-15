@@ -1,0 +1,208 @@
+# Generation Pipeline — Behavioural Analysis
+
+`PIPELINE_ANALYSIS.md` and `CONSISTENCY_LEDGER.md` describe what the pipeline is *for*. This
+document is about how it *behaves*: what one scene costs, where the calls go, what the quality
+gates can and cannot see, and where the code is fragile. Everything below was read from the
+code as it runs today, with file:line references.
+
+## 1. Shape
+
+```
+StoryGeneratorPanel (2,268 lines, now 932) ── Ideate │ Scene │ Chapter │ Arc │ Blurb
+        │                                          │          │
+        │                        useChapterStoryGenerator ──┐  │
+        │                                                   ▼  ▼
+        └────────────────────────────────► useVolumeStoryGenerator (4,006 lines, now 2,795)
+                                              │
+      ┌───────────┬───────────┬───────────────┼─────────────┬──────────────┬──────────────┐
+   Delegator   Director     Writer          Critic      CommitService  Consistency   chapterGate
+ (phase FSM)  (plan)      (prose+meta)    (score/audit)  (persist)     (audit/fix)   (deterministic)
+```
+
+One run = pre-run snapshot → volume → **Bible** (entity bootstrap) → **Network** (relationships)
+→ **Plan** (director, chunked) → *plan-preview pause* → **Prose** (per scene: write → gate →
+commit → digest) → chapter-boundary consistency → **Terminal audit** (+ fix rounds) → chapter gate
+→ complete. Every phase transition goes through the Delegator; checkpoints are written per scene;
+a heartbeat watchdog beats on every streamed token.
+
+## 2. What one scene costs
+
+Auto mode, 1,200-word scene (~7,200 chars), local Ollama (one request in flight at a time —
+`providerGate.ts:58`):
+
+| Step | Calls | Where |
+|---|---|---|
+| Prose (streamed) | 1 | `useStoryWriter.ts:1025` |
+| Extension passes if short (< 85% of target) | 0–2 | `useStoryWriter.ts:315`, `MAX_EXTENSION_PASSES = 2` |
+| Metadata extraction, 6,000-char chunks | ⌈chars/6000⌉ = **2** | `useStoryWriter.ts:525` |
+| Critic | 1 | `useVolumeStoryGenerator.ts:1573` |
+| **Per attempt** | **4–6** | |
+| Retry on failed gate (`SCENE_MAX_ATTEMPTS = 2`) | ×2 | `:145` |
+| **Worst case per scene** | **8–12** | budget assumes 8, hard cap ×3 (`aiProviderBudget.ts:309`) |
+
+At the documented ~5 tok/s, a scene is 4–6 serial model calls of 30 s–4 min each. The budget
+math is sane; the cost is inherent to running locally.
+
+**Per chapter boundary** (auto mode, `ConsistencyService.ts:140`): one contradiction call per
+character and per location that appears in ≥ 2 scenes, batched 3 wide but serialised by the
+Ollama gate. A 30-character / 15-location bible ⇒ **up to 45 calls at every chapter end**, and
+again at the terminal audit, then up to 3 fix rounds each of (rewrites + a full 45-call recheck).
+This is the dominant cost centre at scale and it is *not* the per-scene work.
+
+**Planning** is bounded and concurrent (`useStoryDirector.ts:1080`): ⌈N/12⌉ skeleton calls +
+one scene-plan call per chapter — 109 calls before any prose for a 100-chapter book.
+
+## 3. Findings
+
+### Quality gates that cannot see what they judge
+
+| # | Finding | Where | Effect |
+|---|---------|-------|--------|
+| **G1** ✅ | **The critic never received the chapter log.** Every `critic.evaluateScene` call site passes `chapterLog: ''`, so the critic prompt reads "(First scene)" for every scene. The critic has the field and a "CHAPTER LOG (previous events)" section built for it (`useStoryCritic.ts:64`). | `useVolumeStoryGenerator.ts:1577, 1976, 2166, 2484` | The inline gate cannot catch a continuity break; those are only found later by the 45-call audit and fixed by rewriting — the most expensive path in the run. `writeSceneWithGate` already holds `chapterLog`; it is simply not forwarded. |
+| **G2** ✅ | **Speculative prefetch wrote scene *i+1* without scene *i*.** In review mode `prefetchNextScene(i+1)` fires at `SCENE_WRITTEN`, before `approveScene` commits scene *i* into `writtenScenes`; the prefetch builds its chapter log from `writtenScenes` only. | `useVolumeStoryGenerator.ts:2429`, `:2227`, `SceneInteractionService.ts:110` | The one mode where the writer is reviewing each scene is the mode where the next scene is drafted blind to the previous one. `currentSceneResult` (summary + structured) is available and should be appended to the log. |
+| **G3** ✅ | Anchor (and middle) scenes were critiqued twice in the parallel path: once inside `writeSceneWithGate` (auto mode) and again in "Evaluating chapter anchors" when inline eval is on, discarding `chosenEval`. | `:1841` vs `:1963` | +2 critic calls per chapter, and the second verdict overwrites the one the gate acted on. Middle scenes correctly skip re-evaluation (`:2159`). |
+
+### Cost and latency
+
+| # | Finding | Where | Note |
+|---|---------|-------|------|
+| **C1** ✅ | The consistency audit fanned out one LLM call per entity, per chapter boundary, even though the deterministic digest/entity-state layer (v44–v47) was built precisely to make this O(dirty). Digests feed *context* (`rollupProjectDigests`) but not the audit's *scope*. | `ConsistencyService.ts:140-176`, `useStoryCritic.ts:396` | Cheapest big win: audit only entities whose `entityStates` changed since the last audit (the table is keyed `[projectId+entityType+entityId]` already), and skip the boundary audit entirely when the deterministic rules found nothing. |
+| **C2** ✅ | Fix rounds re-ran the *entire* audit after each round (`:239`) instead of rechecking only the entities that had findings. | `ConsistencyService.ts:226-245` | Up to 3× the full fan-out. |
+| **C3** | Extension passes re-send the full `userPrompt` plus a 2,000-char tail; metadata extraction re-sends the known-entity context per 6,000-char chunk. | `useStoryWriter.ts:337`, `:536` | Fine at 1,200 words; at 3,000-word scenes it is 3 metadata calls + 2 extension calls per attempt. Not a defect, a scaling note. |
+
+### Reliability and maintainability
+
+| # | Finding | Where | Note |
+|---|---------|-------|------|
+| **M1** ✅ | **The run itself had no end-to-end test.** The 75 tests in `useVolumeStoryGenerator.test.js` cover extracted helpers (`buildFactLedger`, `parallelWithLimit`, conflict resolution…). `useChapterStoryGenerator.test.js` runs a *fake* volume generator. Nothing drives `startGeneration → confirmPlan → writeOneBatch → completeGeneration` with a mocked writer/critic. | `src/tests/unit/` | G1–G3 above are exactly the class of bug such a test would have caught (assert what the critic was called with; assert the prefetch prompt contains the previous scene). |
+| **M2** ✅ | `useVolumeStoryGenerator.ts` was 4,006 lines holding two independent write strategies (`writeOneBatch` sequential, `runParallelGeneration` anchor/wave), continuation (`continueDrafting`, `extendStory`, `expandScene`), resume, repair and the phase glue. The services extracted so far (Commit, Consistency, Interaction, Delegator) are the right direction; the two write strategies are the next seam. | — | Each strategy re-implements eval bookkeeping (`evalStore.addResult` + `persistCritiqueEval` + `promptAdjuster.updateAdjustments` appears 4 times). |
+| **M3** ✅ | `StoryGeneratorPanel.vue` carried two near-identical run UIs — the Chapter tab (`:192-674`) and the Arc/Scene tab (`:675-1160`) — each with idle / error / plan-preview / writing / paused / sync-preview / consistency / complete blocks. | `StoryGeneratorPanel.vue` | ~480 lines duplicated by structure; `GenerationStages`, `VolumePlanPreview`, `GenerationSyncPreview` etc. are already components, so the remaining duplication is the wrapper. A single `<GenerationRun :generator>` would halve the file. |
+| **M4** | Failures inside the run are handled at four levels (writer guards → gate loop → `noteSceneOutcome` streak → `runHealth` budget → `haltRun`), each with its own counters (`runFailedScenes`, `runConsecutiveFailures`, `consecutiveWriteFailures`, `runHealth`). | `:1751-1800`, `:2444-2475` | Correct but hard to reason about; the counters can disagree (`runConsecutiveFailures` counts critique failures, `consecutiveWriteFailures` counts empty prose). |
+
+### UX of the run
+
+- Two levels of mode before anything happens (tab, then "Prompt type" chips on Ideate) — noted in
+  the UX audit.
+- The plan-preview pause is the right gate; the sync-preview pause (entity acceptance) is a second
+  interruption mid-run that auto mode skips but review mode does not explain.
+- `describeRunFailure` is good: every failure names how many scenes were written and that they are
+  saved. The chapter gate's "blocking never discards prose" is the correct contract.
+
+## 4. What is done well
+
+- Phase machine with a no-bypass invariant (`delegatorNoBypass.test.js`), per-scene checkpoints,
+  and a resume path.
+- Heartbeat watchdog on streamed tokens instead of a fixed timeout.
+- Session budget sized from the requested structure with a runaway ceiling, not a fixed cap.
+- Writer guards (refusal, repetition, empty prose) that *reject* rather than commit.
+- Scene-scoped entity blobs (`buildSceneEntitiesBlob`) instead of the whole bible per prompt.
+- Chunked metadata extraction instead of truncation.
+- Deterministic contradiction rules and the digest hierarchy (v44–v47) — built, tested, and
+  ready to take load off the LLM audit (C1).
+- Planning is concurrent and batched.
+
+## 5. Recommended order
+
+1. **G1** — forward `chapterLog` to the critic (four call sites; one line each). Add the
+   end-to-end run test (M1) in the same change so the assertion exists.
+2. **G2** — include the pending reviewed scene in the prefetch's chapter log.
+3. **G3** — reuse `chosenEval` for anchors instead of re-critiquing.
+4. **C1/C2** — scope the audit to changed entities and recheck only flagged ones. This is the
+   only item that changes the run's *time* materially at scale.
+5. **M3** — collapse the two run UIs into one component.
+6. **M2** — split the two write strategies out of the orchestrator when next touched.
+
+## 6. What shipped (second pass)
+
+| Item | Change | Where |
+|---|---|---|
+| G1 | `chapterLogBefore(sceneIndex, pending?)` builds the log from written scenes and, for scenes not yet written (the parallel path's closing anchor), from the plan's beat marked "planned, not yet written". Every critic call, the anchor writer call, the repair rewrite and the drift check now receive it. | `generation/writing/sceneGate.ts` |
+| G2 | The review-mode prefetch passes `currentSceneResult` as the pending scene, so scene *i+1* is drafted knowing scene *i*. | `generation/writing/batchStrategy.ts` |
+| G3 | The gate's verdict is kept on the written record (`gateEval`) and reused by the anchor/middle evaluation passes instead of a second critic call. | `generation/writing/parallelStrategy.ts` |
+| C1 | Chapter-boundary audits scope to entities the new chapter's scenes touch (`scopeEntitiesToScenes`); scenes without cast metadata fall back to the full audit. | `ConsistencyService.ts` |
+| C2 | Fix rounds recheck only flagged entities plus whatever the rewritten scenes touch (`entitiesToRecheck`). | `ConsistencyService.ts` |
+| M1 | `volumeGeneratorRun.test.js`: the real orchestrator, real stores and Dexie, only the model faked by `schemaName`. Asserts the critic's prompt carries the chapter log, the writer's brief carries prior scenes, and each scene is critiqued once. | `src/tests/unit/` |
+| M2 | Scene gate, parallel strategy and batch strategy extracted verbatim into `generation/writing/{sceneGate,parallelStrategy,batchStrategy}.ts` with explicit context interfaces; the orchestrator is 2,795 lines. Per-scene failures in the parallel path now log their reason (they were swallowed into a result object). | `generation/writing/` |
+| M3 | `useGenerationRunController` (state + handlers per pipeline) and `GenerationRunView` (the shared phases) replace the two copies; the panel is 932 lines after the 2026-09-14 panel pass. | `composables/generation/`, `components/story/` |
+
+Not done: M4 (the four failure counters) — left as-is; it is correct, just wordy.
+
+## 7. What shipped (third pass — running the book)
+
+Driving a real 10-chapter run end to end exposed three things the unit tests could not.
+
+| Item | Change | Where |
+|---|---|---|
+| Ollama rejected every skeleton call | `repeat_last_n: -1` is not accepted by the server (HTTP 400), so the director's skeleton batch never succeeded and every plan came from the degraded path — the root cause of the repetitive outlines seen in earlier runs. `-1` now resolves to `num_ctx`. | `providers/ollama.ts` |
+| Gate failures dropped the scene | After `SCENE_MAX_ATTEMPTS` the gate threw and both strategies treated the scene as failed: no prose, an empty subsection, later scenes drafted against the hole. With the critic floor at 7 per dimension and measured real prose averaging below that, a one-click run lost 10 of its first 15 scenes. The best attempt is now committed with `contentStatus: 'review'`, recorded as `gate_failed` in the health ledger (so the degraded-rate invariant still reports it), and flagged in the chapter list. | `writing/sceneGate.ts`, `parallelStrategy.ts`, `batchStrategy.ts`, `CommitService.ts`, `ChapterManager.vue` |
+| Running headless | A browser-driven run dies on any Vite full reload. `vitest.live.config.js` + `src/tests/live/saltRoad.live.js` run the real pipeline against local Ollama under fake-indexeddb, stream progress to `reports/live/<slug>/progress.log`, dump the outline as soon as it exists and the finished book as `book.md`. `LIVE_MODEL` picks the prose model; the utility model stays qwen3:8b. | `vitest.live.config.js`, `src/tests/live/` |
+| Model pin was stale | `VersatileGenerate.configureModels()` wrote the legacy `OLLAMA_MODEL` key, which nothing reads; the prose model lives in the settings blob. Demo projects are also stamped with the signed-in owner, or they never appear in the workspace list. | `generateDemoStory.ts` |
+| Project premise never reached the generator | `createProject` stored the description as `synopsis`, which nothing read back; onboarding's premise and workspace type were silently lost on reload. Stored as `description` / `category` now, with a `synopsis` fallback for older rows. | `db-projects.ts`, `projectStore.ts`, `exportService.ts` |
+
+### Measured on the default models (run of 2026-09-14)
+
+Full 10 × 3 × 2,400 run on the shipped defaults (prose `dolphin-mistral:7b`, utility
+`qwen3:8b`), headless:
+
+- Planning 12 min, prose 45 min, 28,617 words, every scene committed.
+- **30 of 30 scenes fell below the critic floor** (`show_tell` 6 on 25, `pacing` 4–5 on 5).
+  The floor (`minDimensionScore: 7`) was calibrated on the qwen3:8b critic; with the
+  default prose model the critic also runs on dolphin, and its show/tell score sits at 6
+  for essentially all of that writer's output. The gate cannot pass, so every retry is
+  spent for nothing and the run used to end in `error` with the book fully written.
+- The prose itself reads as told-not-shown summary ("a vortex of despair", "made of
+  tougher stuff") — the critic is right.
+
+The same premise with `LIVE_MODEL=qwen3:8b` (one chapter): all three scenes pass the gate
+first time, and the prose opens mid-action with concrete detail and subtext. The 10-chapter
+example under `reports/live/the-salt-road/` was generated this way.
+
+**Decision for the maintainer:** `config/ollama.ts` keeps dolphin as the prose default
+because it is uncensored for adult dark fantasy. On this hardware that choice costs most
+of the prose quality *and* makes the quality gate unpassable. Either the default flips to
+qwen3:8b (with dolphin as an explicit opt-in for content qwen3 refuses), or the gate floor
+is recalibrated per critic model. Left as-is here; the run harness takes `LIVE_MODEL`.
+
+Two more fixes landed from the same run:
+
+| Item | Change | Where |
+|---|---|---|
+| Progression contract was dropped | `validatedChapters` re-shaped every chapter and lost `events`, `revealed`, `stateAfter`, `storyFunction`, `partOf`. The spine, the writer's brief and the plan preview never saw them — which is why chapter 5 planned "finds the dead man" three times. Carried through now; the spine prompt lists the chapter's events and the fallback entry uses them as key facts. | `useStoryDirector.ts`, `context/spine.ts` |
+| Quality floor ended a finished run in `error` | Both strategies now record the breach as a `gate_failed` health event (parallel: fail ratio ≥ 50 %; sequential: 3 in a row) and continue to completion; every scene is on disk either way. | `writing/parallelStrategy.ts`, `writing/batchStrategy.ts` |
+| Skeleton events could be interior | The skeleton prompt now refuses "reflects / gathers strength / decides" as events and demands a named counterpart, object or place per event. | `useStoryDirector.ts` |
+
+### The example (run 5, qwen3:8b prose)
+
+`docs/examples/the-salt-road.md` — 10 chapters, 30 scenes, 28,457 words, 62 minutes end to
+end, `phase=complete`, zero gate failures, one warning (`bible_static`). Chapter 1 opens
+mid-action with a concrete object (the folded letter), dialogue carries subtext, tension
+and pacing follow the brief. It reads as a first draft a novelist could revise, which is the
+honest ceiling of an 8B model; the outline is coherent but generic in places (chapters 5
+and 8 are thin).
+
+What the run still taught, and what changed after it:
+
+| Finding | Change |
+|---|---|
+| The scene planner named the unnamed antagonist "Ahmed"; the writer had already used Ahmed for the son. | Writer canon block: bible names are the only names; everyone else is a role; a canon name is never reused. |
+| Chapters with interior events ("gazes at the stars / packs supplies / sets off") survive the skeleton. | `findInteriorChapters` + a shared `replanChapter` (also used for duplicate goals); the fix schema now carries `events`, so a replanned chapter does not keep the old ones. |
+| A re-planned duplicate chapter kept its old events. | Same fix. |
+
+## 8. What shipped (fourth pass — reading the book)
+
+Run 5 completed with one warning, `bible_static`, and thirty identical critic
+verdicts. Both were real, and both had been invisible to every test.
+
+| Finding | Mechanism | Change |
+|---|---|---|
+| **No entity or edge was ever written by a one-click run.** | Two defects stacked. `confirmPlan` always runs `parallelStrategy`, which never called `discoverSync`/`commitSync` — the batch strategy (resume and review only) was the only caller. And `commitSync` threw before writing anything: `graphStore.nodeInstances.value` on a Pinia-unwrapped `ref` is `undefined`, so its pre-commit snapshot did `JSON.parse("undefined")`; the catch logged it and the run went on. This is the mechanism behind `DERIVED-SURFACES-AUDIT` (prose + embeddings only). | `generation/writing/bibleSync.ts`: after a chapter's scenes land, one `discoverSync` per scene, one `commitSync` per chapter — entities as `generated`, edges stamped with the chapter, `structuredResults` populated for the terminal audit. `commitSync` returns `{ entitiesCreated, edgesWritten }` so `bibleChangesCommitted` counts commits. `volumeGeneratorRun.test.js` asserts a discovered character, location and edge reach Dexie. |
+| **The critic's 7 was a default, not a judgement.** | `CRITIC_SCHEMA` had no `required`. Under Ollama's grammar-constrained decoding qwen3:8b answered `{ "pass": true, "strengths": [...] }` — no score, no dimensions, no issues — on every scene, and `useStoryCritic` did `parsed.score ?? 7`. `deriveVerdict` then "passed on self-reported score (no dimension scores available)". Run 5's "zero gate failures" was the gate passing itself. | Schema built per workspace: every field required, `dimensionScores` names its keys, `score` first in emission order. No fabricated score (derived from dimensions when the overall is missing); a verdict-less answer is retried once with a pointed reminder, then returned as `evalUnavailable`, which the gate already counts (`eval_unavailable`, abort budget 5). `src/tests/live/criticProbe.live.js` reproduces it against the real model: before, `{pass, strengths}` ×3; after, score 8 / show_tell 7 / one minor issue ×3. |
+| `bible_static` conflated two failures | After the fix, a 1-chapter live run whose four characters all came from the bootstrapper synced every scene, added nothing, and still tripped "check that entity sync is reaching the bible". | `InvariantFacts.scenesSynced`: `bible_static` fires only when metadata exists and no scene went through sync; `bible_quiet` warns when ≥ 9 synced scenes added nothing. Two live 1-chapter runs: `synced=3`, no violations; the second had `bibleChanges=0` and is now silent. |
+| Harness reported the wrong scene | `writtenScenes` is a slot array filled out of order; "last non-empty slot" was the book's final scene for the whole second phase. | Report newly filled slots; `health.json` lists the committed bible. |
+
+Consequences worth stating plainly:
+
+- The run-5 quality numbers in §7 — "30 of 30 dolphin scenes below the floor", "all three qwen scenes pass first time" — were produced by a critic that, at least for qwen, was not scoring. The dolphin verdicts came through with dimension scores (show_tell 6), so that comparison may hold; the qwen "pass first time" did not mean what it said. Re-measure before deciding the default model.
+- A one-click run will now grow the bible by whatever the writer reports, without a review pause. Entities arrive as `generated` and can be approved or deleted in the Story Bible. Whether the parallel path needs the batch path's sync-preview pause is an open product question (`planning/README.md`).
+- Expect gate failures on the next run. A scene that fails after retries is kept for review (§7); a run with several is the gate working.
+

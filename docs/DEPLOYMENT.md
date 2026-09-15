@@ -1,377 +1,174 @@
-
 # Deployment
+
+The SPA runs entirely in the browser against IndexedDB and local Ollama; the
+.NET backend is optional and adds accounts, organisations, cloud sync and
+server-side AI. Everything below is read from `docker-compose.yml`,
+`.env.example`, `Dockerfile`, `backend/Dockerfile`, `nginx.conf` and the CI
+workflows as they are today.
 
 ## Prerequisites
 
-Before deploying, ensure the following tools are installed on your system:
+- **Node.js** 20.x (CI) — the frontend image builds on `node:22-alpine`
+- **npm** 9+
+- **.NET 10 SDK** — only to build or run the backend outside Docker
+- **Docker** — for the compose stack
+- **Git**
 
-- **Node.js** 18.x or 20.x (match the CI matrix; 20.x recommended for production)
-- **npm** 9+ (bundled with Node.js)
-- **.NET 10.0 SDK** — required to build and publish the backend API
-- **Docker Desktop** (or Docker engine) — required for running PostgreSQL locally via docker-compose
-- **Git** — for cloning the repository and triggering CI pipelines
+Optional: `psql` for inspecting Postgres; Ollama on the host for local AI.
 
-Optional but recommended:
+## Local development
 
-- **PostgreSQL 16** client tools (`psql`) for manual database inspection
-- **Azure CLI**, **AWS CLI**, or **Fly CLI** depending on your cloud target
-
-## Local Development Deployment
-
-### 1. Start the database
+### 1. Infrastructure
 
 ```bash
-docker compose up -d
+docker compose up -d postgres redis
 ```
 
-This starts a PostgreSQL 16 container named `versatile-postgres` on port **5432** with credentials `postgres / postgres` and a database named `versatile`. The container includes a health check that waits for `pg_isready` before reporting as healthy.
+Starts PostgreSQL 16 (`versatile-postgres`, port 5432, `postgres/postgres`,
+database `versatile`) and Redis 7 (`versatile-redis`, append-only). Both have
+health checks.
 
-### 2. Configure environment
-
-Copy or create a `.env` file at the project root. At minimum the following values are required:
-
-```bash
-# .env
-PORT=8080
-HOST=0.0.0.0
-DATABASE_URL=postgres://versatile:versatile@localhost:5432/versatile?sslmode=disable
-JWT_SECRET=dev-secret-change-in-production
-JWT_EXPIRY_HOURS=720
-OLLAMA_ENDPOINT=http://localhost:11434
-VITE_MISTRAL_API_KEY=your-mistral-api-key
-```
-
-### 3. Run the backend API
+### 2. Backend
 
 ```bash
 cd backend/Versatile.Api
 dotnet run
 ```
 
-The backend starts on **http://localhost:5171** (as defined in `Properties/launchSettings.json`). On first startup it automatically applies any pending Entity Framework migrations against the PostgreSQL database.
+Listens on `http://localhost:5171` (`launchSettings.json`). On start it
+applies EF migrations (skipped only in the `Testing` environment), exposes
+`/health`, and Swagger at `/swagger` in Development. Configuration comes from
+`appsettings.json` overridden by environment variables (`Section__Key` form).
 
-### 4. Run the frontend dev server
-
-Open a second terminal:
+### 3. Frontend
 
 ```bash
 npm install
 npm run dev
 ```
 
-The Vite dev server starts on **http://localhost:5173** and proxies `/api` requests to `http://localhost:5171`.
+Vite serves `http://localhost:5173` and proxies:
 
-### 5. Verify
+| Path      | Target                   | Notes                            |
+| --------- | ------------------------ | -------------------------------- |
+| `/api`    | `http://localhost:5171`  | REST                             |
+| `/hubs`   | `http://localhost:5171`  | SignalR, `ws: true`              |
+| `/ollama` | `http://localhost:11434` | prefix stripped                  |
+| `/sdapi`  | `http://127.0.0.1:7860`  | Stable Diffusion WebUI (portraits) |
 
-- Open **http://localhost:5173** in a browser
-- Confirm the frontend loads and API calls resolve (check browser dev tools Network tab)
-- Confirm the backend responds at **http://localhost:5171** (should return a 404 or valid API response)
+### 4. Verify
 
-## Production Build
+- `http://localhost:5173` loads; log in with the local demo account
+  (`test` / `test123` — seeded into the browser's IndexedDB by Vite dev
+  builds only, never by a production build or into a non-empty DB).
+- `curl http://localhost:5171/health` → 200.
 
-### Frontend
-
-```bash
-npm ci
-npm run build
-```
-
-The production build outputs static files to the `dist/` directory. These files are ready to be served by any static web server (Nginx, Caddy, CDN, etc.).
-
-Key build configuration (from `vite.config.js`):
-
-| Setting                  | Value   |
-| ------------------------ | ------- |
-| Output directory         | `dist/` |
-| Chunk size warning limit | 2500 kB |
-| Dev server port          | 5173    |
-
-### Backend
+## Full stack with Docker Compose
 
 ```bash
-cd backend/Versatile.Api
-dotnet publish -c Release -o ./publish
+cp .env.example .env        # then set JWT_KEY and ENCRYPTION_MASTER_KEY
+docker compose --profile frontend up --build
 ```
 
-The published output is placed in `backend/Versatile.Api/publish/` and can be deployed as a self-contained .NET application.
+| Service    | Image / build              | Port        | Profile    | Notes                                                                 |
+| ---------- | -------------------------- | ----------- | ---------- | --------------------------------------------------------------------- |
+| `postgres` | `postgres:16-alpine`       | 5432        | default    | volume `pgdata`                                                       |
+| `redis`    | `redis:7-alpine`           | —           | default    | volume `redisdata`; cache + rate limits                               |
+| `api`      | `backend/Dockerfile`       | 5171 → 8080 | default    | waits for both health checks; `curl /health`; runs migrations on boot |
+| `frontend` | root `Dockerfile` (nginx)  | 8080 → 80   | `frontend` | proxies `/api/`, `/hubs/`, `/health` to `api:8080` same-origin        |
+| `ollama`   | `ollama/ollama:latest`     | 11434       | `ollama`   | volume `ollamadata`; the api's default `Ai__Ollama__BaseUrl` resolves to it |
 
-## Environment Variables
+The `api` port mapping is published for debugging; behind the frontend
+service it is not needed — remove the `ports` block to keep the API reachable
+only through nginx.
 
-The following environment variables must be set in the production environment. The backend uses both environment variables and `appsettings.json` — values in environment variables take precedence over the config file.
+The frontend image serves Vite's pre-compressed `.gz` assets (`gzip_static`),
+long-caches `/assets/` (immutable, 1y), never caches `index.html`, and falls
+back to `index.html` for client-side routes. It listens dual-stack so its own
+health check (which resolves `localhost` to `::1` first) passes.
 
-### Backend (ASP.NET Core)
+## Environment variables
 
-| Variable                               | Required | Default                 | Description                                                                                                         |
-| -------------------------------------- | -------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `ConnectionStrings__DefaultConnection` | Yes      | —                       | PostgreSQL connection string (e.g., `Host=db.example.com;Port=5432;Database=versatile;Username=user;Password=pass`) |
-| `Jwt__Key`                             | Yes      | —                       | Symmetric signing key for JWT token generation and validation. Must be a sufficiently long string (32+ characters)  |
-| `Jwt__Issuer`                          | No       | `Versatile.Api`         | JWT issuer claim                                                                                                    |
-| `Jwt__Audience`                        | No       | `Versatile.App`         | JWT audience claim                                                                                                  |
-| `Ai__ApiKey`                           | Yes      | —                       | OpenAI-compatible API key used by the chat and AI generation services                                               |
-| `Ai__Endpoint`                         | No       | —                       | Custom OpenAI-compatible endpoint URL. If omitted, the default OpenAI endpoint is used                              |
-| `Ai__Model`                            | No       | `gpt-4o-minim`          | The model identifier to use for AI completions                                                                      |
-| `ASPNETCORE_URLS`                      | No       | `http://localhost:5171` | The URL the Kestrel server binds to                                                                                 |
+`.env` is read by compose; names are mapped to the backend's configuration
+sections (`JWT_KEY` → `Jwt__Key`). Generate secrets with
+`openssl rand -base64 48`.
 
-### Frontend (Vite / Build-time)
+### Required (the API fails fast, naming the missing variable)
 
-| Variable               | Required | Default | Description                                                        |
-| ---------------------- | -------- | ------- | ------------------------------------------------------------------ |
-| `VITE_MISTRAL_API_KEY` | Yes      | —       | API key for Mistral AI embedding service. Referenced at build time |
+| Variable                | Maps to                 | Description                       |
+| ----------------------- | ----------------------- | --------------------------------- |
+| `JWT_KEY`               | `Jwt__Key`              | Symmetric signing key, 32+ chars  |
+| `ENCRYPTION_MASTER_KEY` | `Encryption__MasterKey` | Encrypts stored per-user API keys |
 
-### Docker / Runtime
+### Optional
 
-| Variable          | Required | Default                  | Description                                                    |
-| ----------------- | -------- | ------------------------ | -------------------------------------------------------------- |
-| `PORT`            | No       | `8080`                   | Alternative port mapping for containerized deployments         |
-| `HOST`            | No       | `0.0.0.0`                | Bind address for the server                                    |
-| `OLLAMA_ENDPOINT` | No       | `http://localhost:11434` | Local Ollama instance endpoint (used during local development) |
+| Variable            | Maps to                                 | Default                          | Description                                                 |
+| ------------------- | --------------------------------------- | -------------------------------- | ----------------------------------------------------------- |
+| `POSTGRES_DB/USER/PASSWORD` | `ConnectionStrings__DefaultConnection` | `versatile` / `postgres` / `postgres` | Override the password in production                  |
+| `JWT_ISSUER`        | `Jwt__Issuer`                           | `Versatile.Api`                  |                                                             |
+| `JWT_AUDIENCE`      | `Jwt__Audience`                         | `Versatile.App`                  |                                                             |
+| `OPENAI_API_KEY`    | `Ai__OpenAi__ApiKey`                    | inert placeholder                | Server-side fallback; users normally store their own keys via the API. An **empty string** trips the DI guard — leave unset instead |
+| `MISTRAL_API_KEY`   | `Ai__MistralKey`                        | —                                | Server-proxied embeddings (`POST /api/embedding/mistral`)   |
+| `OLLAMA_BASE_URL`   | `Ai__Ollama__BaseUrl`                   | `http://ollama:11434`            | Resolves inside compose when the `ollama` profile is active |
+| `Cors__AllowedOrigins__0` | —                                 | —                                | Only when the API is reached cross-origin; compose is same-origin |
+| `ConnectionStrings__Redis` | —                                | `redis:6379` in compose          |                                                             |
+| `ASPNETCORE_ENVIRONMENT`   | —                                | `Production` in the image        | `Testing` disables migrations-on-boot and secure cookies    |
 
-## Deploying the Database
+The frontend has no build-time secrets: AI provider keys are entered in the
+in-app Settings and kept locally (the server only ever returns a masked hint).
 
-### Using docker-compose (single server)
-
-The included `docker-compose.yml` starts PostgreSQL 16 with a persistent volume:
+## Production build without compose
 
 ```bash
-docker compose up -d
-docker compose down      # stop
-docker compose down -v   # stop and delete volume
+npm ci && npm run build                      # dist/ with .br/.gz siblings
+cd backend/Versatile.Api && dotnet publish -c Release -o ./publish
 ```
 
-In production, replace this with a managed PostgreSQL service such as:
-
-- **Azure Database for PostgreSQL** — Flexible Server
-- **AWS RDS for PostgreSQL**
-- **DigitalOcean Managed Databases**
-- **Railway** or **Fly.io Postgres**
-- **Neon Serverless Postgres**
-
-After provisioning the database, run migrations:
-
-```bash
-cd backend/Versatile.Api
-export ConnectionStrings__DefaultConnection="<production-connection-string>"
-dotnet ef database update
-```
-
-Or let the application apply them on startup (the app calls `db.Database.Migrate()` in `Program.cs` when it starts).
-
-## CI/CD Pipeline
-
-The project includes a GitHub Actions CI pipeline defined in `.github/workflows/ci.yml`.
-
-### Trigger
-
-The pipeline runs on:
-
-- Push to `master`, `develop`, or `feature/*` branches
-- Pull requests targeting `master` or `develop`
-
-### Jobs
-
-**test** — runs on `ubuntu-latest` with a Node.js matrix (18.x and 20.x):
-
-| Step                    | Description                                        |
-| ----------------------- | -------------------------------------------------- |
-| `actions/checkout@v4`   | Clone repository                                   |
-| `actions/setup-node@v4` | Install Node.js with npm cache                     |
-| `npm ci`                | Install exact dependencies                         |
-| `npm run lint`          | Run ESLint                                         |
-| ESLint report           | Generate JSON report (Node 20.x only, non-failing) |
-| `npm run test:run`      | Run Vitest test suite                              |
-| `npm run test:coverage` | Run tests with coverage                            |
-| Upload coverage         | Send to Codecov (Node 20.x only)                   |
-
-**build** — runs on `ubuntu-latest` with Node.js 20.x:
-
-| Step                    | Description                                   |
-| ----------------------- | --------------------------------------------- |
-| `actions/checkout@v4`   | Clone repository                              |
-| `actions/setup-node@v4` | Install Node.js 20.x with npm cache           |
-| `npm ci`                | Install exact dependencies                    |
-| `npm run build`         | Build frontend to `dist/`                     |
-| Upload artifacts        | Upload `dist/` for subsequent deployment jobs |
-
-### Adding backend CI
-
-The current CI pipeline does not include the .NET backend. To add it, extend the `build` job:
-
-```yaml
-- name: Setup .NET
-  uses: actions/setup-dotnet@v4
-  with:
-    dotnet-version: '10.0.x'
-
-- name: Publish API
-  run: |
-    dotnet publish backend/Versatile.Api/Versatile.Api.csproj \
-      -c Release \
-      -o ./publish-api
-```
-
-## Deployment Options
-
-### Option 1: Static hosting + managed backend
-
-Deploy the frontend `dist/` folder to any static host and the backend to a .NET application host.
-
-**Frontend hosts:**
-
-- **Vercel** — connect the Git repository and set root directory; configure `npm run build` as the build command and `dist` as the output directory
-- **Netlify** — similar to Vercel; set publish directory to `dist/`
-- **Cloudflare Pages** — set build command to `npm run build` and build output to `dist/`
-- **AWS S3 + CloudFront** — sync `dist/` to an S3 bucket fronted by CloudFront
-- **Azure Static Web Apps** — configure build preset for Vue.js
-
-**Backend hosts:**
-
-- **Azure App Service** — deploy the .NET publish output as a Linux or Windows web app
-- **AWS Elastic Beanstalk** — package the publish output as a ZIP and upload
-- **Fly.io** — deploy with a Dockerfile (see Option 2)
-- **Railway** — connect the Git repository, set start command to `dotnet Versatile.Api.dll`
-
-### Option 2: Docker container deployment
-
-No Dockerfile exists in the project yet. To containerize, create a `Dockerfile` for the backend:
-
-```dockerfile
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
-WORKDIR /app
-EXPOSE 5171
-
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
-COPY backend/Versatile.Api/Versatile.Api.csproj .
-RUN dotnet restore
-COPY backend/Versatile.Api/ .
-RUN dotnet publish -c Release -o /app/publish
-
-FROM base AS final
-WORKDIR /app
-COPY --from=build /app/publish .
-ENV ASPNETCORE_URLS=http://+:5171
-ENTRYPOINT ["dotnet", "Versatile.Api.dll"]
-```
-
-And for the frontend:
-
-```dockerfile
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY package*.json .
-RUN npm ci
-COPY . .
-RUN npm run build
-
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-```
-
-### Option 3: docker-compose (full stack)
-
-Extend the existing `docker-compose.yml` to include the frontend and backend services alongside PostgreSQL. This is suitable for staging or single-server production.
-
-## Proxy Configuration
-
-The Vite dev server proxies the following paths to backend services:
-
-| Path      | Target                   | Description                |
-| --------- | ------------------------ | -------------------------- |
-| `/api`    | `http://localhost:5171`  | Backend ASP.NET API        |
-| `/ollama` | `http://localhost:11434` | Local Ollama instance      |
-| `/sdapi`  | `http://127.0.0.1:7860`  | Stable Diffusion WebUI API |
-
-In production, use a reverse proxy (Nginx, Caddy, or your cloud provider's load balancer) to route `/api` (and optionally `/hub/*` for SignalR WebSocket connections) to the backend.
-
-## Post-Deployment Verification Checklist
-
-After deploying, run through the following checks:
-
-### Connectivity
-
-- [ ] Frontend loads at the expected URL
-- [ ] Backend responds at `/api` endpoints
-- [ ] No CORS errors in browser console
-
-### Database
-
-- [ ] PostgreSQL container or managed instance is reachable
-- [ ] EF Core migrations have run (tables are created)
-- [ ] Connection string uses production credentials (not default dev values)
-
-### Authentication
-
-- [ ] Login flow works end-to-end
-- [ ] JWT tokens are issued and accepted
-- [ ] Protected endpoints return 401 when no token is provided
-
-### Real-time features
-
-- [ ] SignalR hubs (`/hub/generation`, `/hub/collaboration`) accept WebSocket connections
-- [ ] Real-time updates flow correctly
-
-### Environment
-
-- [ ] `Jwt__Key` is a strong, unique value (not `dev-secret-change-in-production`)
-- [ ] `Ai__ApiKey` is a valid production API key
-- [ ] All secrets are stored in the deployment platform's secret manager (not in config files)
-- [ ] `ASPNETCORE_ENVIRONMENT` is set to `Production`
-
-### Build artifacts
-
-- [ ] Frontend `dist/` files are served with correct MIME types
-- [ ] Static assets have cache-control headers configured
-- [ ] Backend publish output is self-contained and runs without SDK
-
-### Monitoring
-
-- [ ] Application logs are captured and searchable
-- [ ] Health check endpoint (if added) returns 200 OK
-- [ ] Error reporting is configured (if using Sentry, Application Insights, etc.)
-
----
-
-## Frontend: compression & CDN readiness (M-5.3 / M-9.1)
-
-### Pre-compressed assets
-
-The Vite build pre-compresses every asset over 1 KB to both Brotli (`.br`) and
-gzip (`.gz`) via `vite-plugin-compression` (see `vite.config.js`). The original
-uncompressed files are kept alongside them for clients that advertise neither
-encoding.
-
-```
-dist/assets/index-abc123.js       # original
-dist/assets/index-abc123.js.br    # brotli
-dist/assets/index-abc123.js.gz    # gzip
-```
-
-### Serving with content negotiation
-
-A CDN or origin server should pick the best encoding from the client's
-`Accept-Encoding` header and set `Content-Encoding` + `Vary: Accept-Encoding`
-accordingly — **without re-compressing on the fly**.
-
-- **nginx** — `gzip_static on;` serves the `.gz` sibling automatically (already
-  set in `nginx.conf`). Brotli static (`brotli_static on;`) needs the
-  `ngx_brotli` module compiled in; add it when your image ships the module.
-- **Cloudflare / Fastly / CloudFront** — enable "serve pre-compressed" /
-  compression at the edge and forward `Accept-Encoding`.
-
-### Cache headers
-
-- Fingerprinted files under `/assets/` are immutable — `Cache-Control: public, max-age=31536000, immutable`.
-- `index.html` must be `no-cache` so a new deploy's asset manifest is always picked up.
-
-Both rules are encoded in `nginx.conf`.
-
-### Docker
-
-The frontend ships as a multi-stage image (`Dockerfile`: Vite build → nginx).
-Run it standalone or via the optional compose profile:
-
-```bash
-docker compose --profile frontend up --build   # serves on http://localhost:8080
-```
+Serve `dist/` from any static host and run the API on a .NET host, with a
+reverse proxy routing `/api/`, `/hubs/` (WebSocket upgrade) and `/health`
+to it — `nginx.conf` is the reference. When the SPA and API are on different
+origins, set `Cors__AllowedOrigins__0`. Use a managed PostgreSQL 16 and a
+managed Redis; run migrations either on boot (default) or with
+`dotnet ef database update` against `ConnectionStrings__DefaultConnection`.
+
+## CI/CD
+
+`.github/workflows/ci.yml` — pushes to `master`, `develop`, `feature/*`; PRs
+to `master`/`develop`; Node 20.x:
+
+| Job          | Steps                                                                 |
+| ------------ | --------------------------------------------------------------------- |
+| `lint`       | `npm run lint`, `npm run typecheck`, Prettier check, ESLint JSON report |
+| `test`       | `npm run test:run`, `npm run test:coverage`, `npm run build`, Codecov |
+| `e2e`        | Playwright (Chromium) with report artifact                            |
+| `sonarcloud` | SonarCloud scan of the frontend                                       |
+| `backend`    | `dotnet restore/build/test backend/Versatile.slnx`                    |
+
+`.github/workflows/backend-ci.yml` — on `backend/**` changes: build + test
+with opencover coverage under `dotnet-sonarscanner`, and on `master` pushes
+the API image to `ghcr.io/<repo>/versatile-api:latest`.
+
+Also present: `chromatic.yml` (Storybook visual regression),
+`eval-regression.yml`, `deps-audit.yml`, `stale.yml`, `branch-cleanup.yml`.
+
+## Post-deployment checklist
+
+- [ ] SPA loads; `/health` returns 200 through the proxy
+- [ ] No CORS errors (same-origin proxy, or `Cors__AllowedOrigins` set)
+- [ ] EF migrations applied; connection string uses production credentials
+- [ ] Register/login work; protected endpoints return 401 without a token
+- [ ] `/hubs/generation` and `/hubs/collaboration` upgrade to WebSocket (`?access_token=` is accepted only on `/hubs/*`)
+- [ ] `JWT_KEY` and `ENCRYPTION_MASTER_KEY` are unique and stored in the platform's secret manager
+- [ ] `ASPNETCORE_ENVIRONMENT=Production`; the SPA is a production build (no demo-account seed)
+- [ ] `/assets/` served immutable; `index.html` `no-cache`
+- [ ] Rate limits observed: 100 req/min global, 20 req/min embedding → 429
+- [ ] Logs (Serilog) captured; Redis reachable (rate limits fail closed where safe)
+
+## Frontend compression notes
+
+The Vite build pre-compresses every asset over 1 KB to Brotli and gzip
+(`vite-plugin-compression`), keeping the originals. nginx serves `.gz`
+via `gzip_static on;` (in `nginx.conf`); Brotli static needs the
+`ngx_brotli` module — add `brotli_static on;` when the image ships it. CDNs
+should serve pre-compressed files and forward `Accept-Encoding` rather than
+re-compressing.

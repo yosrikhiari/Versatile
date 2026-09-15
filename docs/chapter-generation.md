@@ -13,7 +13,12 @@ a chapter instead.
    confirm.
 3. **Write** — scenes are written in order, streamed live into the editor. Each
    one is critiqued and, in auto mode, rewritten up to twice against that
-   critique before it is accepted.
+   critique before it is accepted. A scene that still fails after its last
+   attempt is **not dropped**: the best attempt is committed with
+   `contentStatus: 'review'`, recorded as `gate_failed` in the run's health
+   ledger, and flagged in the chapter list so you can see exactly which scenes
+   want a human pass. Every critic call sees the chapter so far, so a
+   continuity break is caught at the scene, not only by the end-of-run audit.
 4. **Chapter gate** — once every scene is written, the chapter is judged as a
    whole (see below).
 5. **Complete** — the prose, the continuity report and the chapter gate report.
@@ -65,6 +70,12 @@ checkpointed either way; the report tells you precisely what the run could not
 deliver. A short chapter additionally gets one bounded expansion round over its
 two shortest scenes, then is measured once more.
 
+The same holds for the run-level quality floor: three scenes failing critique
+back-to-back (sequential mode) or half the chapter's scenes failing (parallel
+mode) used to end a finished run in `error`. It is now recorded as a
+`gate_failed` health event and the run completes — the book is on disk, the
+report says what fell short.
+
 Word counts are **unique** words — duplicate sentences are removed first. A model
 stuck in a loop produces more words, not fewer, so a raw count would reward the
 worst failure the gate can see.
@@ -88,9 +99,35 @@ carries the previous chapters' events, the compressed story spine, and the fact
 ledger the continuity auditor reads. Entities are scoped to the volume being
 written plus anyone the new plan intends to cast.
 
+## Which model writes
+
+Ollama runs two models by default (`src/config/ollama.ts`): an uncensored
+prose model (`dolphin-mistral:7b`) and `qwen3:8b` for everything grammar-bound
+— planning, metadata extraction, the critic, the spine. Measured on the
+reference machine, the critic's `show_tell` score for dolphin's prose sits at
+6 against a floor of 7, so a dolphin chapter cannot pass the gate; the same
+premise written by `qwen3:8b` passes first time and reads better. Pick the
+prose model in Settings; keep dolphin for content qwen3 refuses. Details and
+numbers: `docs/GENERATION-PIPELINE-ANALYSIS.md` §7.
+
+## Running it headless
+
+A browser-driven run dies on any Vite full reload. For anything longer than a
+scene or two, run the real pipeline outside the tab:
+
+```bash
+LIVE_MODEL=qwen3:8b LIVE_CHAPTERS=1 LIVE_SCENES=4 npx vitest run --config vitest.live.config.js
+```
+
+Progress streams to `reports/live/<slug>/progress.log`; the outline lands as
+`plan.json` as soon as it exists, the prose as `book.md`, the health ledger as
+`health.json`. The one-chapter form is the fastest way to check a prompt or
+provider change against a real model.
+
 ## Expectations
 
 Local generation on the reference machine runs at roughly 5 tokens/second. A
-4-scene chapter at 1,200 words a scene is tens of minutes, not seconds. The
+4-scene chapter at 1,200 words a scene is tens of minutes, not seconds (the
+measured 10-chapter, 30-scene run took 62 minutes with `qwen3:8b`). The
 estimate in the form is the number to plan around, and the run resumes if it is
 interrupted.

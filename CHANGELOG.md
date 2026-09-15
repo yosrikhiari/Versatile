@@ -7,6 +7,118 @@ was verified.
 
 ## [Unreleased]
 
+### Generation — reading the book (2026-09-15, uncommitted)
+- **The bible never moved because sync never ran.** `confirmPlan` always
+  takes the parallel strategy, which never called `discoverSync`/`commitSync`
+  (only the batch path did); and `commitSync` itself threw on its first line
+  (`graphStore.nodeInstances.value` on a Pinia-unwrapped ref →
+  `JSON.parse("undefined")`), caught and logged. New
+  `generation/writing/bibleSync.ts` syncs each chapter once its scenes land —
+  discovered entities as `generationStatus: 'generated'`, edges stamped with
+  the chapter — and `commitSync` returns what it wrote so `bible_static`
+  counts commits. Pinned end-to-end in `volumeGeneratorRun.test.js`.
+- **The critic's 7 was fabricated.** `CRITIC_SCHEMA` had no `required`;
+  under grammar-constrained output qwen3:8b returned
+  `{ pass: true, strengths }` on 30/30 scenes and `useStoryCritic` defaulted
+  the missing score to 7 with zero issues. Every field is now required with
+  the dimension names in the grammar; a missing score is derived from the
+  dimensions, never a constant; a verdict-less answer is retried once, then
+  reported as `evalUnavailable`. Live probe (`criticProbe.live.js`): same
+  scene now scores 8 with show_tell 7 and a named issue, stable across
+  repeats. Four new critic tests.
+- `bible_static` now means "metadata was produced but never passed through
+  sync" (`scenesSynced === 0`); a run that synced every scene and added
+  nothing is a quiet story, warned as `bible_quiet` only past 9 synced
+  scenes. A one-chapter live run whose cast the bootstrapper had already
+  created tripped the old check after the fix.
+- Live harness reports newly filled scene slots and dumps the committed
+  bible into `health.json`. `PdfProject` gains `description` (`tsc` clean).
+
+### Generation — running the book (2026-09-12 → 2026-09-14, partly uncommitted)
+- Live harness: `vitest.live.config.js` + `src/tests/live/saltRoad.live.js`
+  run the real pipeline against local Ollama headless under fake-indexeddb,
+  streaming to `reports/live/<slug>/` (`c2c3cfb` 5-scene pilot, `a67c566`
+  chapter-2 pilot with prior-chapter seeding, then the 10-chapter run).
+  Run 5 (qwen3:8b prose): 10 × 3 scenes, 28,457 words, 62 min,
+  `phase=complete`, zero gate failures — `docs/examples/the-salt-road.md`.
+- Ollama rejected every director skeleton call: `repeat_last_n: -1` is
+  HTTP 400 on the server, so every plan came from the degraded path. `-1`
+  now resolves to `num_ctx` (`providers/ollama.ts`).
+- A scene that fails the gate after `SCENE_MAX_ATTEMPTS` is committed as
+  its best attempt with `contentStatus: 'review'` and a `gate_failed`
+  health event instead of leaving a hole; a quality-floor breach is
+  recorded and the run finishes instead of ending in `error`.
+- Chapter progression contract (`events`, `revealed`, `stateAfter`,
+  `storyFunction`, `partOf`) survives `validatedChapters` and reaches the
+  spine, the writer's brief and the plan preview; interior "reflects /
+  decides" events are refused by the skeleton prompt and replanned
+  (`findInteriorChapters` + shared `replanChapter`).
+- Writer canon block: bible names are the only names; unnamed roles are
+  never given a canon name.
+- Scene digests recorded at commit time (`f937b14`); cross-chapter
+  tense-regime gate (`6d3aba1`); seam carry pinned across the real pilot
+  boundary (`52b207e`).
+- Critic seams: `chapterLogBefore` gives every critic call the prior
+  scenes (G1); review-mode prefetch drafts scene *i+1* knowing scene *i*
+  (G2); anchors keep the gate's verdict instead of a second critique (G3).
+  Boundary audits scope to touched entities; fix rounds recheck only
+  flagged ones (C1/C2). End-to-end orchestrator test
+  `volumeGeneratorRun.test.js` (M1).
+- Split: `generation/writing/{sceneGate,parallelStrategy,batchStrategy}`
+  out of the orchestrator (4,006 → 2,795 lines); one
+  `useGenerationRunController` + `GenerationRunView` for chapter and arc
+  runs (panel 2,268 → 932 lines).
+- Project premise was stored as `synopsis` and never read back; now
+  `description`/`category` with a `synopsis` fallback. Demo projects are
+  stamped with the signed-in owner. Generation settings gain a `focus`
+  field (`e3be227`).
+- Dolphin critic / tense-flip probes (`fea31c1`).
+
+### Shell and panels (2026-09-12 → 2026-09-14)
+- Tool panels dock right, canvas dominant (`edea0fd`); generator shows
+  its selection, a plain counter and a single spark flow (`e664db6`);
+  history has honest empty and scoreless states (`1ecd3f5`, `24b5c03`).
+- Panel grammar in `src/components/ui/` (`BasePanelHeader`,
+  `BaseSection`, `.label-micro`) applied to every tool panel; Tailwind
+  opacity classes that emitted no CSS (`/8`, `/12`, `/35`) fixed —
+  `docs/UX-AUDIT.md` "Panel pass".
+- Autosave no longer appends three permanent rows per save: content
+  snapshots dedup and cap at 40/chapter, state snapshots throttle to one
+  per 5 min and cap at 50/project, reads are `O(limit)` over the new
+  `[projectId+timestamp]` indexes (schema v48) — `docs/PERF-AUDIT.md`.
+- Progress, goals, streak and the workspace heatmap count the whole
+  manuscript (root + sections + subsections), not just the root document.
+
+### Offline-first architecture, Phases 2–4 (2026-09-09 → 2026-09-11)
+- Deterministic contradictions as a tree traversal: Pass-1 chapter
+  grouping (`3bd821b`), Pass-2 cross-chapter rules (`0359d53`), volume
+  drift rules (`ff7d418`), chapter rollup in the candidate ledger
+  (`7af4f48`), substitution threshold calibrated at 4 scenes (`a7d26d3`).
+- Per-scene `threadIds` from the director's catalog into the scoped blob
+  (`77857fb`), preserved through plan assembly (`5cbcfdb`).
+- Context reports the budget it enforces, not a phantom constant
+  (`0a4a620`); keyed vector-worker wiring with correct fallback
+  (`f2bfb81`, `0123af0`); atomic research reindex (`336e7a9`).
+- Cloud tier: injectable JSON-generator seams for contradiction, arc and
+  repetition passes (`a3ceabe`, `e1f880e`, `4c3e5fb`); budget-guarded
+  cloud batch injector with local fallback (`621528e`); tier-gated routing
+  with graduated consent (`37ca8d5`, `c4b0865`, `c362e2e`); per-project
+  cloud audit opt-in (`b69950e`); combined full-audit disclosure
+  (`2f5d3d0`); audit-tier auto-request for on-failure second opinions
+  (`668decb`); critic score floor on the revisor short-circuit (`fcfe5df`).
+- Manuscript-scoped shape analysis joins the finalize contract
+  (`bc4e02a`); run-created sections populated so chapters aggregate
+  (`87632f3`); audit outages recorded instead of reported clean
+  (`1e4c4c3`); sync surfaces row failures, retries them and pushes
+  stranded tables (`4d0d47c`).
+- Word-level diff helper and inline word-diff in the revision delta
+  panel (`0817b6f`, `f5087ab`); raw-scenes dump mode in the manuscript
+  audit (`a4a3e87`).
+- Auth accepts username or email (`31fe00e`); frontend container listens
+  dual-stack so its healthcheck passes (`99695ee`).
+- Live-Ollama consistency and beta-reader tests prove inference instead
+  of passing vacuously (`48773bd`, `c282682`, `98bbcf3`).
+
 ### Security
 - Close the open Mistral embedding relay behind `[Authorize]` plus a
   dedicated 20/min limiter (`24773d6`, verified live: anonymous embedding

@@ -1,5 +1,10 @@
 # Pipeline Analysis: Versatile Fiction-Writing System
 
+> **Status 2026-09-15.** This is the August description of what the pipeline is *for*. How it
+> *behaves* today — per-scene cost, the write strategies, the gate contract, what the real
+> 10-chapter run found — is `docs/GENERATION-PIPELINE-ANALYSIS.md`; the current system map is
+> `ARCHITECTURE.md`. File paths and line numbers below predate the `generation/writing/` split.
+
 ## Overview
 Versatile is a fiction-writing assistant with a Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL 16 backend, and 5 AI providers. The pipeline is **offline-first** with Dexie.js IndexedDB sync to PostgreSQL. The core workflow generates scenes, validates consistency, and maintains a story bible/network.
 

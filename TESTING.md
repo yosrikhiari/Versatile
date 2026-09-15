@@ -6,13 +6,18 @@ How to run every check in this repo, and the conventions new tests must follow.
 
 ```bash
 npm test              # watch mode
-npm run test:run      # single run (CI shape)
+npm run test:run      # single run (CI shape) — 263 files, ≈2,950 tests, ~2 min
 npm run test:coverage # v8 coverage with thresholds (statements 38, branches 30, functions 31, lines 38)
 npm run typecheck     # tsc --noEmit, must be zero errors
 npm run lint          # eslint, zero errors (warnings are pre-existing)
 ```
 
-- Tests live in `src/tests/unit/`, run in jsdom with fake-indexeddb.
+- Suites live under `src/tests/`: `unit/` (the bulk, 243 files),
+  `integration/` (multi-component flows: context pipeline, editor
+  population, voice extraction, volume membership, the chapter-tab panel),
+  `audit/` (consistency, eval gates, revisor), `evaluation/` (retrieval
+  quality), plus a few top-level eval/critic specs. All run in jsdom with
+  fake-indexeddb.
 - **Fake timers are mandatory** for anything touching a timer (`vi.useFakeTimers()`):
   attach rejection assertions *before* advancing time (otherwise the rejection
   fires unhandled mid-advance), and always restore in `finally`/`afterEach`
@@ -22,9 +27,20 @@ npm run lint          # eslint, zero errors (warnings are pre-existing)
   Slower than that on an offline CPU-bound suite means a hang, not load.
   Retry/backoff tests must use fake timers, never real sleeps.
 - **Live-model tests are opt-in**: `OLLAMA_LIVE_TESTS=1` runs the Ollama-backed
-  consistency test; without it, it skips. Reachability never gates a test —
-  a live model is nondeterministic by timing and load.
+  consistency and beta-reader tests; without it, they skip. Reachability never
+  gates a test — a live model is nondeterministic by timing and load. A live
+  test must prove inference happened (assert on the model's output), not pass
+  vacuously when the fixture has nothing to find.
 - Debounce tests use `vi.useFakeTimers()` + `advanceTimersByTimeAsync`.
+- **The orchestrator has an end-to-end test**: `volumeGeneratorRun.test.js`
+  drives `startGeneration → confirmPlan → write → completeGeneration` on the
+  real orchestrator, real stores and Dexie, faking only the model by schema
+  name. New pipeline seams get an assertion there (what the critic was called
+  with, what the writer's brief contained), not a mock of the orchestrator.
+- **Schema changes**: update `EXPECTED` in `dbSchema.test.js` for every
+  version, and cover every handler in `db-migrations.ts` in
+  `dbMigrations.test.js`. History-table bounds are tested against real Dexie
+  (`historyTables.test.js`).
 
 ## Backend (.NET 10)
 
@@ -45,14 +61,47 @@ npm run test:e2e:install   # one-time browser install
 npm run test:e2e           # boots `npm run dev` automatically
 ```
 
-Smoke/auth/responsive specs only. Full user journeys are covered by mocked
-pipeline tests in `src/tests/unit/e2ePipelineIntegration.test.js` instead.
+Specs in `e2e/`: `smoke`, `auth`, `responsive`, `panel-dock` (right-docked
+panels, canvas dominant) and `generator-reskin`. Full user journeys are
+covered by mocked pipeline tests in
+`src/tests/unit/e2ePipelineIntegration.test.js` instead.
 
-## Sample generation (manual QA)
+## Real-model runs (manual QA)
+
+None of these are tests; they need local Ollama with the models pulled and
+are measured in minutes to hours. Output goes to `reports/` (gitignored).
 
 ```bash
+# 2-scene chapter + critic scores + gate verdicts, ~5 min
 npx vite-node tools/generate-sample.mjs --model qwen3:8b --words 400
+
+# a whole book through the real pipeline, headless (default 10 × 3 × 2,400 words)
+LIVE_MODEL=qwen3:8b npx vitest run --config vitest.live.config.js
 ```
 
-Writes a real-model 2-scene chapter plus critic scores and gate verdicts to
-`reports/` (gitignored). Needs local Ollama with the model pulled.
+The live config is standalone (not merged with `vitest.config.js`) because
+`mergeConfig` concatenates `include` and would pull the unit suite into every
+run; it runs one file at a time because there is one GPU. Progress streams to
+`reports/live/<slug>/progress.log`; the outline is dumped as soon as it
+exists (`plan.json`), the finished book as `book.md`, and the run's health
+ledger as `health.json`. `LIVE_TITLE`, `LIVE_CHAPTERS`, `LIVE_SCENES`,
+`LIVE_WORDS`, `OLLAMA_HOST` and `LIVE_MODEL` (prose model; the utility model
+stays `qwen3:8b`) override the defaults. A browser-driven run dies on any
+Vite full reload — this is why the harness exists.
+
+Then:
+
+```bash
+npm run audit:manuscript        # duplicate / degraded prose re-measured from the DB
+npm run eval:snapshot           # critic regression baseline (SNAPSHOT_MODEL=qwen3:8b … --validate-all)
+```
+
+## CI
+
+`.github/workflows/ci.yml` runs `lint` (ESLint, typecheck, Prettier check),
+`test` (unit + coverage + production build on Node 20.x), `e2e`,
+`sonarcloud` and `backend` (restore/build/test the solution) on pushes to
+`master`, `develop`, `feature/*` and PRs to `master`/`develop`.
+`backend-ci.yml` additionally runs SonarCloud C# analysis with opencover and,
+on `master`, pushes the API image to GHCR. `eval-regression.yml` and
+`chromatic.yml` are separate.

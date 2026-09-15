@@ -2,7 +2,7 @@
 
 Base URL is same-origin `/api` in production (nginx proxies `/api/`,
 `/hubs/` and `/health` to the backend). In development the Vite proxy
-forwards to the API port (see `vite.config.ts`). Interactive reference:
+forwards to the API port (see `vite.config.js`). Interactive reference:
 `/swagger` in Development builds only.
 
 The endpoint table at the bottom is generated from controller sources

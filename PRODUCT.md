@@ -25,7 +25,7 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 - Focus Mode strips UI chrome for distraction-free writing
 - Auto-save to local IndexedDB via Dexie (no manual save needed)
 - Optional sync to a .NET 10 + PostgreSQL server for multi-device access
-- Five AI providers available: Ollama (default/local), OpenAI, Anthropic, Gemini, Groq
+- Five AI providers available: Ollama (default/local, prose model + `qwen3:8b` utility model), OpenAI, Anthropic, Gemini, Groq
 - Story planning tools: story bible (characters, locations, plot threads, relationships), chapter/scene/volume hierarchy, timeline view, story canvas, scene outline, visual graph network
 - Export to PDF and EPUB
 
@@ -35,10 +35,12 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 - Rich text editing via TipTap (ProseMirror) with distraction-free interface
 - Spark: AI prompts and outlines from user-provided ideas
 - Polish: paragraph-level prose analysis (repetition, pacing, dialogue, show-don't-tell, etc.)
-- Novel Pipeline: autonomous directed acyclic graph — bible → network → structure → spine → prose → consistency
+- Novel Pipeline: autonomous directed acyclic graph — bible → network → plan → spine → prose → consistency → chapter gate; gates warn and never discard prose
 - Director/Writer/Critic: multi-agent pipeline with streaming output and per-scene quality scoring
 - Entity Generation: AI-assisted creation of characters, locations, and plot threads
-- Embedding-Similarity Retrieval: context-aware text selection for stories exceeding 25 scenes
+- Embedding-Similarity Retrieval: IVF vector index in a worker for context selection on long stories
+- Digest layer: per-scene digests rolled into chapter/volume digests and an entity-state timeline; deterministic contradiction rules run before any LLM call
+- Cloud escalation: opt-in, per project, with an explicit disclosure of what leaves the device
 - Context Compaction: smart summarization to stay within AI token budgets
 - Author Voice Learning: statistical voice profiling without LLM calls
 - Story Bible: characters, locations, plot threads, relationships with visual graph (Vue Flow)
@@ -50,16 +52,18 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 - Export to PDF (jsPDF) and EPUB
 - Session history archive with author model tracking
 - Goal tracking (session and daily word counts)
-- Offline-first persistence via Dexie IndexedDB (v33, ~40 tables)
+- Offline-first persistence via Dexie IndexedDB (schema v48, 50 tables)
 - Cloud sync via .NET 10 + PostgreSQL (optional)
 - Light and dark themes (both equally maintained)
-- 115 test files (1193 tests) — Vitest
+- 263 test files (≈2,950 tests) — Vitest; Playwright E2E; xUnit backend
 - Geist Variable UI font, IBM Plex Mono manuscript font, various serif fonts for feature modes
+- One panel grammar across every tool panel (`BasePanelHeader` / `BaseSection`); panels dock right of a canvas-dominant shell
+- Whole-book generation verified against a real local model (10 chapters, 28K words, 62 min — `docs/examples/the-salt-road.md`)
 
 ### Undecided
-- Deployment / hosting model (static build vs. server-backed)
+- Deployment / hosting model — `docker compose` runs the full stack today; static-build-only remains possible
 - Pricing model (if any)
-- Multi-user or collaboration features
+- Multi-user or collaboration features (organisations, invites and a collaboration hub exist server-side; the product stance is undecided)
 - Mobile native app vs. responsive web only
 
 ## Brand Commitments
@@ -72,9 +76,9 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 
 - README.md at project root — full feature catalog and architecture overview
 - AGENTS.md — tech stack, conventions, performance rules, testing patterns
-- 1193 passing unit tests (Vitest)
+- ≈2,950 passing unit tests (Vitest), backend xUnit suites, Playwright E2E
 - End-to-end tests (Playwright)
-- Storybook setup with accessibility addon (a11y)
+- Storybook (24 stories) with accessibility addon (a11y), Chromatic visual regression
 - No published testimonials, case studies, or customer logos
 
 ## Product Principles

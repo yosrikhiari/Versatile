@@ -1,3 +1,9 @@
+> **Status 2026-09-15.** Session hand-off notes from late July, kept as a record. Everything
+> in "What We Did" has shipped; the solution file is now `backend/Versatile.slnx`; the
+> calibration self-defence described in Session 2 is what prints the
+> `[tokenCalibration] … auto-reset` lines in every live run. Current state lives in
+> `README.md` / `ARCHITECTURE.md` / `planning/README.md`.
+
 ## Current State
 
 ### Running Tests

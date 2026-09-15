@@ -1,5 +1,8 @@
 # 100-Chapter Novel Specification
 
+> **Status 2026-09-15.** Planning scaffold for the August stress test; kept for the dataset
+> reconciliation note below. Current pipeline behaviour: `docs/GENERATION-PIPELINE-ANALYSIS.md`.
+
 > ## Dataset Authority & Reconciliation Note
 >
 > This document is the **original planning scaffold** for the 100-chapter stress test. During validation, the actual dataset exercised by the pipeline and its tests diverged into **three distinct narratives**. To keep the deliverables consistent, this note declares which artifact is authoritative for what:

@@ -1,5 +1,10 @@
 # Consistency Ledger
 
+> **Status 2026-09-15.** Ledger of the 100-chapter stress test (2026-08-16). The consistency
+> engine has since moved to a digest hierarchy with deterministic rules as a tree traversal
+> (`ARCHITECTURE.md` → AI and generation); the first real 10-chapter run and its open findings
+> (`bible_static`, degenerate critic scores) are in `planning/README.md`.
+
 | Issue | Root Cause | Impact | Fix | Regression Test | Preventive Mechanism | Status |
 | ----- | ---------- | ------ | --- | --------------- | -------------------- | ------ |
 
