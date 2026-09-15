@@ -470,5 +470,12 @@ export const SCHEMA_VERSIONS = [
    * this clears it where it exists (only when the body equals the join exactly,
    * so a hand-edited chapter body is never touched).
    */
-  { version: 52, stores: {} }
+  { version: 52, stores: {} },
+  /**
+   * v53: data fix, no store change. While v52's double count was live, the
+   * daily-goal rows recorded the doubled manuscript total (#30). For a project
+   * the generator wrote into (a `generated` chapter whose prose is in its
+   * scenes), rows above the manuscript's real size are brought down to it.
+   */
+  { version: 53, stores: {} }
 ]

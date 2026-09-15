@@ -111,7 +111,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(52)
+    expect(verno).toBe(53)
   })
 
   it('has exactly the expected set of tables', () => {

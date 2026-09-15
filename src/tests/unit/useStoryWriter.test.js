@@ -326,6 +326,31 @@ describe('writeSceneStructured (prose-first, two calls)', () => {
       expect(result.prose).toBe(nearlyThere)
     })
 
+    it('states a range, not a floor, and caps tokens from the target (#27)', async () => {
+      mockAiGenerate.mockResolvedValue(longEnoughProse)
+      const { writeSceneStructured } = useStoryWriter()
+      await writeSceneStructured({ sceneBrief: baseSceneBrief, storyArc: defaultArc })
+      const [prompt, , opts] = mockAiGenerate.mock.calls[0]
+      // "MUST be at least N words" was the only lever and pushed one way: a
+      // 250-word request came back at 637.
+      expect(prompt).not.toContain('MUST be at least')
+      expect(prompt).toContain('between 425 and 650')
+      // 500 words * 1.3 * 1.8 + 300 = 1470 tokens; the old floor was 2000.
+      expect(opts.maxTokens).toBe(1470)
+    })
+
+    it('cuts a scene that ran past its range back to its last full sentence', async () => {
+      const { trimOvershoot } = await import('@/composables/useStoryWriter')
+      const sentence = 'The tide turned and nobody said a word. '
+      const long = sentence.repeat(60) + 'And then the lamp'
+      const trimmed = trimOvershoot(long, 100)
+      expect(trimmed.endsWith('word.')).toBe(true)
+      expect(trimmed).not.toContain('And then the lamp')
+      // Inside the range, or ending cleanly: untouched.
+      expect(trimOvershoot('Short and unfinished', 100)).toBe('Short and unfinished')
+      expect(trimOvershoot(sentence.repeat(60).trimEnd(), 100)).toBe(sentence.repeat(60).trimEnd())
+    })
+
     it('continues a short scene up to its target', async () => {
       const opening = Array.from({ length: 100 }, (_, i) => `alpha${i}`).join(' ')
       const rest = Array.from({ length: 420 }, (_, i) => `beta${i}`).join(' ')

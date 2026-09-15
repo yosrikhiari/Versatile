@@ -2,6 +2,36 @@
 const DEV_MODE = import.meta.env.DEV === true
 
 export const MIGRATIONS = {
+  53: async (trans: any) => {
+    // Only projects the generator wrote into carried the double count, and in
+    // those the daily total could never legitimately exceed the manuscript's
+    // present size by the doubled margin. Hand-written projects are not
+    // touched: a writer who cut words keeps that day's number.
+    const sections = (await trans.sections?.toArray()) ?? []
+    const subsections = (await trans.subsections?.toArray()) ?? []
+    const generatedProjects = new Set(
+      sections
+        .filter((s: any) => s.status === 'generated' && !String(s.content || '').trim())
+        .map((s: any) => s.projectId)
+    )
+    if (generatedProjects.size === 0) return
+    const totals = new Map<any, number>()
+    for (const s of sections) {
+      totals.set(s.projectId, (totals.get(s.projectId) || 0) + (Number(s.wordCount) || 0))
+    }
+    for (const s of subsections) {
+      totals.set(s.projectId, (totals.get(s.projectId) || 0) + (Number(s.wordCount) || 0))
+    }
+    const goals = (await trans.dailyGoals?.toArray()) ?? []
+    for (const g of goals) {
+      if (!generatedProjects.has(g.projectId)) continue
+      const total = totals.get(g.projectId) || 0
+      if ((Number(g.wordCount) || 0) > total) {
+        await trans.dailyGoals.update(g.id, { wordCount: total })
+      }
+    }
+  },
+
   52: async (trans: any) => {
     // Volumes the generator named after its own prompt ("Genre: Literary /
     // What this scene should be about: ...") get a plain name. Only that shape

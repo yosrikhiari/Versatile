@@ -26,8 +26,11 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    // The root and anything unknown go to the workspace; the guard below
+    // sends a signed-out visitor on to the login page. Sending everyone to
+    // /login first bounced a signed-in writer who opened the bare URL.
     path: '/:pathMatch(.*)*',
-    redirect: '/login'
+    redirect: '/workspace'
   }
 ]
 
@@ -37,11 +40,13 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth) {
-    const auth = useAuthStore()
-    if (!auth.isAuthenticated) {
-      return next('/login')
-    }
+  const auth = useAuthStore()
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    return next('/login')
+  }
+  // A signed-in writer has no use for the login page.
+  if (to.name === 'login' && auth.isAuthenticated) {
+    return next('/workspace')
   }
   next()
 })

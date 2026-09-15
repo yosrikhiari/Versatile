@@ -285,6 +285,50 @@ function stripAccidentalWrapping(text: any) {
 const LENGTH_TOLERANCE_RATIO = 0.85
 
 /**
+ * Upper edge of the length range the prompt states and the token cap allows.
+ * Matches `CHAPTER_LONG_RATIO` in the chapter gate so a scene the writer
+ * accepts is one the gate accepts.
+ */
+const LENGTH_LONG_RATIO = 1.3
+
+/** Token budget for a scene of `targetWords`: the long edge plus a sentence. */
+export function wordCapTokens(targetWords: number): number {
+  const target = Number(targetWords) || 800
+  return Math.max(
+    700,
+    Math.min(4500, Math.ceil(target * LENGTH_LONG_RATIO * WORDS_TO_TOKENS_RATIO) + 300)
+  )
+}
+
+/**
+ * A scene that ran past its range, or that the token cap stopped mid-sentence,
+ * ends on its last complete sentence. Nothing is cut from a scene inside the
+ * range, and never more than the trailing fragment: a long scene that ends
+ * cleanly keeps its ending.
+ */
+export function trimOvershoot(prose: string, targetWords: number): string {
+  const target = Number(targetWords) || 0
+  const text = String(prose || '').trimEnd()
+  if (!target || !text) return prose
+  if (countProseWords(text) <= Math.ceil(target * LENGTH_LONG_RATIO)) return prose
+  if (/[.!?…"'”’)\]]$/.test(text)) return prose
+  const cut = Math.max(
+    text.lastIndexOf('. '),
+    text.lastIndexOf('.\n'),
+    text.lastIndexOf('! '),
+    text.lastIndexOf('!\n'),
+    text.lastIndexOf('? '),
+    text.lastIndexOf('?\n'),
+    text.lastIndexOf('” '),
+    text.lastIndexOf('”\n'),
+    text.lastIndexOf('" '),
+    text.lastIndexOf('"\n')
+  )
+  if (cut <= 0) return prose
+  return text.slice(0, cut + 1).trimEnd()
+}
+
+/**
  * Two passes, then stop. If the model has not reached the target after being
  * asked twice to keep going, it has said what it has to say about this scene;
  * a third ask buys repetition, not length.
@@ -1059,16 +1103,17 @@ STORY ARC (for tonal reference):
 - Write this scene at the full intensity its genre and tone imply. Where the beat calls for violence, cruelty, sex, coercion or bodily horror, render it on the page with the same specificity as any other beat. Do not fade out, skip ahead, summarise past the difficult moment, or substitute a milder event than the brief describes. Explicitness is a craft choice governed by the tone above, not a thing to be minimised.
 
 ${fitted.storyContextBlock}${existingContext}
-The scene MUST be at least ${sceneBrief.estimatedWords || 800} words. Do not end the scene early. If you are below the word count, continue writing until you reach it.
+LENGTH: about ${sceneBrief.estimatedWords || 800} words — between ${Math.floor((sceneBrief.estimatedWords || 800) * LENGTH_TOLERANCE_RATIO)} and ${Math.ceil((sceneBrief.estimatedWords || 800) * LENGTH_LONG_RATIO)}. Bring the scene to its close inside that range. Do not pad to reach it and do not run past it; a scene that ends when its beat is done is right.
 
 Write the scene now as prose. Output ONLY the scene text — no JSON, no headings, no preamble, no notes. Start with the first sentence of the scene.`
 
-      // Compute a tight token cap based on the scene's word target
+      // The token cap follows the target. The old floor of 2000 tokens let a
+      // 250-word request come back at 637 words (#27): "at least N" was the
+      // only instruction and the cap never bit. The ceiling sits at the long
+      // ratio plus slack for the sentence in flight; overshoot beyond that is
+      // cut back to a sentence boundary below.
       const estimatedWords = sceneBrief.estimatedWords || 800
-      const maxTokens = Math.max(
-        2000,
-        Math.min(4500, Math.ceil(estimatedWords * WORDS_TO_TOKENS_RATIO) + 800)
-      )
+      const maxTokens = wordCapTokens(estimatedWords)
 
       const complexity = computeComplexityLevel({
         feature: FEATURES.STORY_GENERATION,
@@ -1160,6 +1205,7 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
         onChunk,
         onRawChunk
       })
+      prose = trimOvershoot(prose, estimatedWords)
       // The salvage path in `catch` hands back `accumulated`, so the extension
       // has to land there too — otherwise a failure in a later step would
       // silently return the short version of a scene we had already fixed.

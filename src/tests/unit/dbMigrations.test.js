@@ -348,6 +348,54 @@ describe('v52 migration (chapter body is not a copy of its scenes)', () => {
   })
 })
 
+describe('v53 migration (daily totals recorded while chapters were double-counted)', () => {
+  it("lowers a generated project's daily rows to the manuscript size and leaves other projects alone", async () => {
+    const seed = async (db) => {
+      await db.sections.bulkAdd([
+        {
+          id: 1,
+          projectId: 'gen',
+          title: 'Ch',
+          order: 0,
+          status: 'generated',
+          content: '',
+          wordCount: 0
+        },
+        {
+          id: 2,
+          projectId: 'hand',
+          title: 'Ch',
+          order: 0,
+          status: 'drafting',
+          content: '<p>a</p>',
+          wordCount: 100
+        }
+      ])
+      await db.subsections.bulkAdd([
+        { id: 11, projectId: 'gen', sectionId: 1, order: 0, content: '<p>x</p>', wordCount: 637 }
+      ])
+      await db.dailyGoals.bulkAdd([
+        { id: 1, projectId: 'gen', date: '2026-09-14', goalWords: 500, wordCount: 1313 },
+        { id: 2, projectId: 'gen', date: '2026-09-13', goalWords: 500, wordCount: 400 },
+        // A hand-written project that cut words keeps its history.
+        { id: 3, projectId: 'hand', date: '2026-09-14', goalWords: 500, wordCount: 900 }
+      ])
+    }
+    const verify = async (db) => {
+      const rows = await db.dailyGoals.toArray()
+      const byId = Object.fromEntries(rows.map((r) => [r.id, r]))
+      expect(byId[1].wordCount).toBe(637)
+      expect(byId[2].wordCount).toBe(400)
+      expect(byId[3].wordCount).toBe(900)
+    }
+    const beforeVersion53 = SCHEMA_VERSIONS.filter((v) => v.version <= 52)
+    const db = await withMigration({ version: 53, beforeSchemas: beforeVersion53, seed })
+    await verify(db)
+    db.close()
+    await db.delete()
+  })
+})
+
 describe('full schema version chain smoke test', () => {
   it('opens at latest version without error', async () => {
     const db = new Dexie(uniqueDbName())

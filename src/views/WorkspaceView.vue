@@ -112,8 +112,10 @@ async function handleLogout() {
         <div v-if="auth.organizations.length > 0" class="hidden sm:block">
           <OrganizationSwitcher @create-org="showCreateOrg = true" />
         </div>
+        <!-- Organizations live on the server. A local session has none to
+             join and nowhere to create one, so the link is not shown to it. -->
         <BaseButton
-          v-else
+          v-else-if="!auth.localUser"
           variant="ghost"
           size="sm"
           custom-class="underline underline-offset-2"

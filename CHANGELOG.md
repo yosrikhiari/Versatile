@@ -7,6 +7,18 @@ was verified.
 
 ## [Unreleased]
 
+### Functional audit, close-out: the open items (2026-09-15)
+- **Scene length is honoured** (`docs/UX-AUDIT.md` #27): the writer's prompt
+  states a range (85–130 % of the target) instead of a floor, the token cap
+  follows the target (`wordCapTokens`), and a scene that runs past its range
+  and stops mid-sentence ends on its last full sentence (`trimOvershoot`).
+- **Schema v53** (#30): daily-goal rows recorded while chapters were
+  double-counted are lowered to the manuscript's real size, only in projects
+  the generator wrote into.
+- Local sessions are not offered "Create organization" (#29); the bare URL
+  opens the workspace for a signed-in writer and the login page turns them
+  away (#41).
+
 ### Functional audit, second pass: the analysis panels (2026-09-15)
 - **Voice Lab works** (`docs/UX-AUDIT.md` #31): the scan button read a store
   property that never existed, the list threw on numeric ids, and the indexer
