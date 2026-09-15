@@ -7,8 +7,9 @@
 
 @layer base {
   :root {
-    /* === Versatile Design Tokens v3 — Manuscript Mono === */
-    /* Near-monochrome neutral foundation, single cool slate-blue accent.
+    /* === Versatile Design Tokens v4 — Typescript === */
+    /* Bone paper by default, charcoal under [data-theme='dark']; ink rules instead of shadows;
+       one cool signal colour (cobalt). Direction C of docs/DESIGN-DIRECTIONS.html.
        Every themeable color is authored once as a SPACE-SEPARATED rgb triplet;
        the named token derives from it. The triplet is what makes Tailwind's
        `<alpha-value>` work — `bg-accent/15`, `hover:bg-success/20` and friends
@@ -16,36 +17,41 @@
        (as this file did before) silently dropped every one of those tints. */
 
     /* Surfaces */
-    --vers-bg-base-rgb: 18 18 20;
-    --vers-bg-panel-rgb: 26 26 29;
-    --vers-bg-canvas-rgb: 18 18 20;
-    --vers-bg-hover-rgb: 34 34 38;
-    --vers-bg-elevated-rgb: 38 38 43;
-    --vers-bg-base: rgb(var(--vers-bg-base-rgb)); /* canvas / manuscript surface (darkest) */
+    --vers-bg-base-rgb: 247 245 241;
+    --vers-bg-panel-rgb: 238 237 232;
+    --vers-bg-canvas-rgb: 247 245 241;
+    --vers-bg-hover-rgb: 229 227 222;
+    --vers-bg-elevated-rgb: 254 253 251;
+    --vers-bg-base: rgb(var(--vers-bg-base-rgb)); /* the page: bone paper */
     --vers-bg-panel: rgb(var(--vers-bg-panel-rgb)); /* sidebar, header, side panels */
-    --vers-bg-canvas: rgb(var(--vers-bg-canvas-rgb)); /* writing column — sits on canvas */
+    --vers-bg-canvas: rgb(
+      var(--vers-bg-canvas-rgb)
+    ); /* writing column = the page; no separate sheet */
     --vers-bg-hover: rgb(var(--vers-bg-hover-rgb)); /* hover wells */
     --vers-bg-elevated: rgb(var(--vers-bg-elevated-rgb)); /* dropdowns, modals */
 
     /* Borders — intrinsically alpha, no triplet form */
-    --vers-border-subtle: rgba(255, 255, 255, 0.07); /* hairline, not solid */
-    --vers-border: rgba(255, 255, 255, 0.12);
+    --vers-border-subtle: rgba(0, 0, 0, 0.08); /* hairline */
+    --vers-border: rgba(0, 0, 0, 0.14);
     --vers-border-focus: rgb(var(--vers-accent-primary-rgb));
+    --vers-border-strong: rgb(
+      var(--vers-text-primary-rgb)
+    ); /* an ink rule: structure without shadows */
 
     /* Accent */
-    --vers-accent-primary-rgb: 110 139 181; /* cool slate-blue, used rarely */
-    --vers-accent-secondary-rgb: 79 110 150;
-    --vers-accent-hover-rgb: 132 160 200;
+    --vers-accent-primary-rgb: 18 81 204; /* cobalt — the one signal colour */
+    --vers-accent-secondary-rgb: 10 65 173;
+    --vers-accent-hover-rgb: 10 65 173;
     --vers-accent-primary: rgb(var(--vers-accent-primary-rgb));
     --vers-accent-secondary: rgb(var(--vers-accent-secondary-rgb));
     --vers-accent-hover: rgb(var(--vers-accent-hover-rgb));
 
     /* Text */
-    --vers-text-primary-rgb: 230 230 226;
-    --vers-text-secondary-rgb: 162 162 155;
-    --vers-text-muted-rgb: 130 130 122; /* WCAG AA: 4.83:1 on bg-base */
-    --vers-text-faint-rgb: 68 68 62; /* decorative only — never body text */
-    --vers-text-on-accent-rgb: 18 18 20; /* dark-on-accent clears AA; white does not */
+    --vers-text-primary-rgb: 18 18 18;
+    --vers-text-secondary-rgb: 72 72 69;
+    --vers-text-muted-rgb: 92 91 88; /* WCAG AA on bg-base, verified by scripts/typescript-tokens */
+    --vers-text-faint-rgb: 184 183 180; /* decorative only — never body text */
+    --vers-text-on-accent-rgb: 255 255 255; /* dark-on-accent clears AA; white does not */
     --vers-text-primary: rgb(var(--vers-text-primary-rgb));
     --vers-text-secondary: rgb(var(--vers-text-secondary-rgb));
     --vers-text-muted: rgb(var(--vers-text-muted-rgb));
@@ -53,9 +59,9 @@
     --vers-text-on-accent: rgb(var(--vers-text-on-accent-rgb));
 
     /* Graph entity type colors — muted, on-brand (Manuscript Mono, no purple) */
-    --vers-entity-character-rgb: 110 139 181; /* slate — matches brand accent */
-    --vers-entity-location-rgb: 106 158 122; /* muted sage */
-    --vers-entity-plotThread-rgb: 212 167 74; /* muted amber */
+    --vers-entity-character-rgb: 18 81 204; /* cobalt — matches the accent */
+    --vers-entity-location-rgb: 33 118 60; /* green */
+    --vers-entity-plotThread-rgb: 174 104 0; /* amber */
     --vers-entity-character: rgb(var(--vers-entity-character-rgb));
     --vers-entity-location: rgb(var(--vers-entity-location-rgb));
     --vers-entity-plotThread: rgb(var(--vers-entity-plotThread-rgb));
@@ -64,7 +70,7 @@
        Drawn from one desaturated on-brand family — slate, sage, amber, ochre,
        brick, steel, olive, stone. Relationship is carried by the label; these
        only need to be tellable apart at dot size. */
-    --vers-edge-appears_in: #6e8bb5; /* slate */
+    --vers-edge-appears_in: #1251cc; /* cobalt */
     --vers-edge-involved_in: #7d8a99; /* steel */
     --vers-edge-located_at: #6a9e7a; /* sage */
     --vers-edge-intersects_with: #6a9e7a; /* sage */
@@ -80,20 +86,20 @@
 
     /* Plot-thread lifecycle (timeline, thread boards) — a receding ramp:
        active reads warmest, closed recedes furthest into the panel. */
-    --vers-status-open-rgb: 106 158 122; /* sage */
-    --vers-status-in_progress-rgb: 110 139 181; /* slate */
-    --vers-status-resolved-rgb: 125 138 153; /* steel */
-    --vers-status-closed-rgb: 92 92 86; /* deep stone */
+    --vers-status-open-rgb: 33 118 60; /* green */
+    --vers-status-in_progress-rgb: 18 81 204; /* cobalt */
+    --vers-status-resolved-rgb: 82 88 100; /* steel */
+    --vers-status-closed-rgb: 106 105 102; /* stone */
     --vers-status-open: rgb(var(--vers-status-open-rgb));
     --vers-status-in_progress: rgb(var(--vers-status-in_progress-rgb));
     --vers-status-resolved: rgb(var(--vers-status-resolved-rgb));
     --vers-status-closed: rgb(var(--vers-status-closed-rgb));
 
     /* Semantic status colors (eval, feedback, alerts) */
-    --vers-status-success-rgb: 106 158 122;
-    --vers-status-danger-rgb: 208 112 112;
-    --vers-status-warning-rgb: 212 167 74;
-    --vers-status-info-rgb: 91 140 184;
+    --vers-status-success-rgb: 33 118 60;
+    --vers-status-danger-rgb: 179 34 40;
+    --vers-status-warning-rgb: 174 104 0;
+    --vers-status-info-rgb: 18 81 204; /* = accent */
     --vers-status-success: rgb(var(--vers-status-success-rgb));
     --vers-status-danger: rgb(var(--vers-status-danger-rgb));
     --vers-status-warning: rgb(var(--vers-status-warning-rgb));
@@ -106,16 +112,16 @@
        without re-validating — the ramp only reads as an ordered scale while the
        lightness gaps hold. `heat-0` is untracked, not zero, and stays neutral so
        "no data" never impersonates the bottom of the scale. */
-    --vers-heat-0: rgba(255, 255, 255, 0.045);
-    --vers-heat-1: #3a4c62;
-    --vers-heat-2: #4e6683;
-    --vers-heat-3: #6280a3;
-    --vers-heat-4: #7799c4;
+    --vers-heat-0: rgba(0, 0, 0, 0.05);
+    --vers-heat-1: #bcd2f9;
+    --vers-heat-2: #8eb1f1;
+    --vers-heat-3: #5889e6;
+    --vers-heat-4: #1957d2;
 
     /* Story-canvas element accents — mapped onto the entity palette so a
        character card and a character graph node read as the same thing. */
     --vers-element-section: #7d8a99; /* steel — structure */
-    --vers-element-character: #6e8bb5; /* slate */
+    --vers-element-character: #1251cc; /* cobalt */
     --vers-element-location: #6a9e7a; /* sage */
     --vers-element-plotpoint: #d4a74a; /* amber */
     --vers-element-note: #a08d6f; /* ochre */
@@ -128,33 +134,34 @@
 
   /* Light theme — warm cream/paper palette. Same hues, darkened to hold
      contrast on paper; the triplet-first structure mirrors :root exactly. */
-  [data-theme='light'] {
-    --vers-bg-base-rgb: 247 245 240;
-    --vers-bg-panel-rgb: 239 237 229;
-    --vers-bg-canvas-rgb: 250 248 244;
-    --vers-bg-hover-rgb: 230 227 219;
-    --vers-bg-elevated-rgb: 255 255 255;
+  [data-theme='dark'] {
+    --vers-bg-base-rgb: 20 20 20;
+    --vers-bg-panel-rgb: 13 13 13;
+    --vers-bg-canvas-rgb: 20 20 20;
+    --vers-bg-hover-rgb: 29 29 29;
+    --vers-bg-elevated-rgb: 31 31 31;
+    --vers-border-strong: rgb(var(--vers-text-primary-rgb));
 
-    --vers-border-subtle: rgba(0, 0, 0, 0.07);
-    --vers-border: rgba(0, 0, 0, 0.12);
+    --vers-border-subtle: rgba(255, 255, 255, 0.08); /* hairline */
+    --vers-border: rgba(255, 255, 255, 0.14);
 
-    --vers-accent-primary-rgb: 110 139 181;
-    --vers-accent-secondary-rgb: 90 122 158;
-    --vers-accent-hover-rgb: 90 122 158; /* light hover darkens rather than lifts */
+    --vers-accent-primary-rgb: 131 176 255; /* cobalt — the one signal colour */
+    --vers-accent-secondary-rgb: 107 151 232;
+    --vers-accent-hover-rgb: 153 196 255; /* light hover darkens rather than lifts */
 
-    --vers-text-primary-rgb: 28 28 26;
-    --vers-text-secondary-rgb: 90 90 85;
-    --vers-text-muted-rgb: 112 112 106; /* WCAG AA: 4.57:1 on light bg-base */
-    --vers-text-faint-rgb: 187 187 176; /* decorative only — never body text */
+    --vers-text-primary-rgb: 225 225 225;
+    --vers-text-secondary-rgb: 158 158 158;
+    --vers-text-muted-rgb: 131 131 131; /* WCAG AA on bg-base, verified by scripts/typescript-tokens */
+    --vers-text-faint-rgb: 61 61 61; /* decorative only — never body text */
     /* The accent is the same slate in both themes, so its foreground must be
        too. Cream-on-slate is 3.3:1 and fails AA; this is 5.4:1. */
-    --vers-text-on-accent-rgb: 18 18 20;
+    --vers-text-on-accent-rgb: 4 9 21;
 
-    --vers-entity-character-rgb: 90 122 158;
-    --vers-entity-location-rgb: 77 125 93;
-    --vers-entity-plotThread-rgb: 184 146 48;
+    --vers-entity-character-rgb: 131 176 255; /* cobalt — matches the accent */
+    --vers-entity-location-rgb: 111 192 130; /* green */
+    --vers-entity-plotThread-rgb: 233 180 82; /* amber */
 
-    --vers-edge-appears_in: #5a7a9e; /* slate */
+    --vers-edge-appears_in: #83b0ff; /* cobalt */
     --vers-edge-involved_in: #5d6a79; /* steel */
     --vers-edge-located_at: #4d7d5d; /* sage */
     --vers-edge-intersects_with: #4d7d5d; /* sage */
@@ -168,26 +175,26 @@
     --vers-edge-rival: #a26837; /* burnt ochre */
     --vers-edge-neutral: #6a6a63; /* stone */
 
-    --vers-status-open-rgb: 77 125 93;
-    --vers-status-in_progress-rgb: 90 122 158;
-    --vers-status-resolved-rgb: 93 106 121;
-    --vers-status-closed-rgb: 106 106 99;
+    --vers-status-open-rgb: 111 192 130; /* green */
+    --vers-status-in_progress-rgb: 131 176 255; /* cobalt */
+    --vers-status-resolved-rgb: 148 159 178; /* steel */
+    --vers-status-closed-rgb: 116 116 116; /* stone */
 
-    --vers-status-success-rgb: 74 138 90;
-    --vers-status-danger-rgb: 192 80 80;
-    --vers-status-warning-rgb: 184 146 48;
-    --vers-status-info-rgb: 66 114 156; /* WCAG AA: 4.68:1 on light bg */
+    --vers-status-success-rgb: 111 192 130;
+    --vers-status-danger-rgb: 249 119 112;
+    --vers-status-warning-rgb: 233 180 82;
+    --vers-status-info-rgb: 131 176 255; /* = accent */
 
     /* Light-mode heat ramp: same hue, re-stepped so the low end still clears
        2:1 on cream (2.06:1) — a paler step would vanish into the paper. */
-    --vers-heat-0: rgba(0, 0, 0, 0.05);
-    --vers-heat-1: #98afcc;
-    --vers-heat-2: #7c97bd;
-    --vers-heat-3: #6180a7;
-    --vers-heat-4: #476690;
+    --vers-heat-0: rgba(255, 255, 255, 0.05);
+    --vers-heat-1: #273857;
+    --vers-heat-2: #385790;
+    --vers-heat-3: #547ecd;
+    --vers-heat-4: #83b0ff;
 
     --vers-element-section: #5d6a79; /* steel */
-    --vers-element-character: #5a7a9e; /* slate */
+    --vers-element-character: #83b0ff; /* cobalt */
     --vers-element-location: #4d7d5d; /* sage */
     --vers-element-plotpoint: #b89230; /* amber */
     --vers-element-note: #85714f; /* ochre */
@@ -201,16 +208,16 @@
      so muted/faint/border text clears AA comfortably (M-2.3). */
   @media (prefers-contrast: more) {
     :root {
-      --vers-text-muted-rgb: 162 162 155;
-      --vers-text-faint-rgb: 130 130 122;
-      --vers-border-subtle: rgba(255, 255, 255, 0.18);
-      --vers-border: rgba(255, 255, 255, 0.28);
-    }
-    [data-theme='light'] {
-      --vers-text-muted-rgb: 90 90 85;
-      --vers-text-faint-rgb: 112 112 106;
+      --vers-text-muted-rgb: 72 72 69;
+      --vers-text-faint-rgb: 92 91 88;
       --vers-border-subtle: rgba(0, 0, 0, 0.2);
       --vers-border: rgba(0, 0, 0, 0.32);
+    }
+    [data-theme='dark'] {
+      --vers-text-muted-rgb: 158 158 158;
+      --vers-text-faint-rgb: 131 131 131;
+      --vers-border-subtle: rgba(255, 255, 255, 0.18);
+      --vers-border: rgba(255, 255, 255, 0.28);
     }
   }
 
@@ -272,18 +279,12 @@
   /* ── Liquid Glass (elevated interactive surfaces) ── */
   .liquid-glass {
     background: var(--vers-bg-elevated);
-    border: 1px solid var(--vers-border-subtle);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 1px 3px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--vers-border);
+    box-shadow: none; /* Typescript: depth is a rule, never a shadow */
   }
 
   .liquid-glass:hover {
-    border-color: rgb(var(--vers-accent-primary-rgb) / 0.3);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 0 0 1px rgb(var(--vers-accent-primary-rgb) / 0.08),
-      0 2px 8px rgba(0, 0, 0, 0.3);
+    border-color: var(--vers-accent-primary);
   }
 
   /* The `spring-*` transition set lived here: a 1.56 overshoot cubic-bezier on
@@ -612,11 +613,19 @@
      step below UI text and leans on tracking rather than weight.
      Reserved for labels that name something — never as a decorative eyebrow. */
   .label-micro {
-    font-family: 'Geist Variable', Geist, system-ui, sans-serif;
-    font-size: 0.75rem;
+    font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+    font-size: 0.6875rem;
     font-weight: 500;
     line-height: 1rem;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* Typescript display: headings and titles are the wordmark's voice — mono, tracked caps. */
+  .type-display {
+    font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+    font-weight: 500;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 }
@@ -628,6 +637,10 @@
   line-height: 1.75;
   color: var(--vers-text-primary);
   background-color: transparent;
+  /* Typescript: a typescript page has a ruled left margin; the caret is the signal colour. */
+  border-left: 2px solid var(--vers-border-strong);
+  padding-left: 1.5rem;
+  caret-color: var(--vers-accent-primary);
   outline: none;
   min-height: 60vh;
   position: relative;

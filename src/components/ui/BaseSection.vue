@@ -30,7 +30,7 @@ defineProps({
   <section :class="['px-4', dense ? 'py-4' : 'py-5', first ? '' : 'border-t border-border-subtle']">
     <header class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <h3 class="font-ui text-sm font-semibold text-text-primary leading-5">
+        <h3 class="type-display text-[11px] leading-5 text-text-primary">
           {{ title }}
         </h3>
         <p

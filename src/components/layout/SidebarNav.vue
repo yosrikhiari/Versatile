@@ -220,12 +220,12 @@ function goToWorkspace() {
               :class="[
                 effectiveCollapsed ? 'justify-center px-0' : 'gap-2.5 px-2.5',
                 isActive(item.panel)
-                  ? 'text-text-primary'
+                  ? 'text-accent'
                   : 'text-text-secondary hover:text-text-primary hover:bg-surface-hover'
               ]"
               :style="{
                 animationDelay: staggerDelays[item.panel] + 'ms',
-                ...(isActive(item.panel)
+                ...(isActive(item.panel) && effectiveCollapsed
                   ? { background: 'rgb(var(--vers-accent-primary-rgb) / 0.12)' }
                   : {})
               }"
@@ -233,10 +233,13 @@ function goToWorkspace() {
               :aria-current="isActive(item.panel) ? 'page' : undefined"
               @click="onNavClick(item.panel)"
             >
+              <!-- Typescript: the active item is marked the way a typescript marks a line — a ">" in the margin. -->
               <span
-                v-if="isActive(item.panel)"
-                class="absolute left-0 top-1/2 -translate-y-1/2 h-[18px] w-[2px] rounded-r-sm bg-accent"
-              ></span>
+                v-if="isActive(item.panel) && !effectiveCollapsed"
+                class="absolute left-0 top-1/2 -translate-y-1/2 font-mono text-[11px] leading-none text-accent"
+                aria-hidden="true"
+                >&gt;</span
+              >
               <BaseIcon
                 :name="item.icon"
                 :size="18"

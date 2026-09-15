@@ -1,46 +1,47 @@
 # Design Tokens — Versatile
 
-> **Manuscript Mono v3.** A near-monochrome neutral foundation with a single cool
-> slate-blue accent. All tokens are CSS custom properties defined in
+> **Typescript v4** (direction C of [`DESIGN-DIRECTIONS.html`](DESIGN-DIRECTIONS.html)).
+> Bone paper by default, charcoal in dark, ink rules instead of shadows, one cool
+> signal colour (cobalt). All tokens are CSS custom properties defined in
 > [`src/style.css`](../src/style.css) under `@layer base`, and consumed either
 > directly (`var(--vers-*)`) or through the Tailwind semantic aliases in
-> [`tailwind.config.js`](../tailwind.config.js).
+> [`tailwind.config.js`](../tailwind.config.js). Values were generated from OKLCH
+> and AA-checked by the script that produced them (`scripts/` is not involved at
+> runtime; the checks are recorded here).
 
-Two themes are defined: the default **dark** theme on `:root`, and a warm
-cream/paper **light** theme under `[data-theme='light']` (toggled by the
-`useTheme` composable, persisted to `localStorage`, flash-prevented by an inline
-script in `index.html`). A `@media (prefers-contrast: more)` block lifts the dim
-text/border tiers for high-contrast users.
+Two themes are defined: the default **light** theme on `:root`, and the charcoal
+**dark** theme under `[data-theme='dark']` (toggled by the `useTheme` composable,
+persisted to `localStorage`, flash-prevented by an inline script in `index.html`).
+A `@media (prefers-contrast: more)` block lifts the dim text/border tiers for
+high-contrast users.
 
 ---
 
 ## Surfaces (backgrounds)
 
-| Token | Dark | Light | Usage |
-|-------|------|-------|-------|
-| `--vers-bg-base` | `#121214` | `#f7f5f0` | Canvas / manuscript surface (darkest) |
-| `--vers-bg-panel` | `#1a1a1d` | `#efede5` | Sidebar, header, side panels |
-| `--vers-bg-canvas` | `#121214` | `#faf8f4` | Writing column |
-| `--vers-bg-hover` | `#222226` | `#e6e3db` | Hover wells |
-| `--vers-bg-elevated` | `#26262b` | `#ffffff` | Dropdowns, modals |
+| Token | Light | Dark | Usage |
+| `--vers-bg-base` | `#f7f5f1` | `#141414` | The page: manuscript surface and app canvas |
+| `--vers-bg-panel` | `#eeede8` | `#0d0d0d` | Sidebar, header, docked panels (one step down from the page) |
+| `--vers-bg-canvas` | `#f7f5f1` | `#141414` | Writing column = the page |
+| `--vers-bg-hover` | `#e5e3de` | `#1d1d1d` | Hover wells |
+| `--vers-bg-elevated` | `#fefdfb` | `#1f1f1f` | Dropdowns, modals, inputs |
 
 ## Borders
 
-| Token | Dark | Light | Usage |
-|-------|------|-------|-------|
-| `--vers-border-subtle` | `rgba(255,255,255,0.07)` | `rgba(0,0,0,0.07)` | Hairline dividers |
-| `--vers-border` | `rgba(255,255,255,0.12)` | `rgba(0,0,0,0.12)` | Standard border |
-| `--vers-border-focus` | `#6e8bb5` | `#6e8bb5` | Focus ring |
+| Token | Light | Dark | Usage |
+| `--vers-border-subtle` | `rgba(0,0,0,0.08)` | `rgba(255,255,255,0.08)` | Hairline dividers |
+| `--vers-border` | `rgba(0,0,0,0.14)` | `rgba(255,255,255,0.14)` | Standard border: inputs, chips, list edges |
+| `--vers-border-strong` | `= text-primary` | `= text-primary` | **Ink rule**: modals, the continue card, the manuscript margin. Structure without shadows |
+| `--vers-border-focus` | `#1251cc` | `#83b0ff` | Focus ring (= accent) |
 
 ## Text
 
-| Token | Dark | Light | Min contrast on bg-base | Usage |
-|-------|------|-------|-------------------------|-------|
-| `--vers-text-primary` | `#e6e6e2` | `#1c1c1a` | 14.95 / 15.66 | Body & headings |
-| `--vers-text-secondary` | `#a2a29b` | `#5a5a55` | 7.29 / 6.36 | Secondary copy |
-| `--vers-text-muted` | `#82827a` | `#70706a` | 4.83 / 4.57 (AA) | Hints, labels |
-| `--vers-text-faint` | `#44443e` | `#bbbbb0` | decorative | **Never** body text |
-| `--vers-text-on-accent` | `#ffffff` | `#ffffff` | — | Text on accent fills |
+| Token | Light | Dark | Contrast on bg-base (light / dark) | Usage |
+| `--vers-text-primary` | `#121212` | `#e1e1e1` | 17.2 / 14.1 | Body & headings; also the ink rule |
+| `--vers-text-secondary` | `#484845` | `#9e9e9e` | 8.4 / 6.9 | Secondary copy |
+| `--vers-text-muted` | `#5c5b58` | `#838383` | 6.2 / 4.9 (AA) | Hints, labels |
+| `--vers-text-faint` | `#b8b7b4` | `#3d3d3d` | decorative | **Never** body text |
+| `--vers-text-on-accent` | `#ffffff` | `#040915` | 6.8 / 9.1 | Text on accent fills (white on light cobalt, near-black on dark cobalt) |
 
 > Contrast ratios verified for WCAG 2.2 AA (≥ 4.5:1 for text). `text-faint` is
 > decorative only (dividers, watermark-level hints) and is intentionally below the
@@ -49,25 +50,23 @@ text/border tiers for high-contrast users.
 ## Accent
 
 | Token | Value | Usage |
-|-------|-------|-------|
-| `--vers-accent-primary` | `#6e8bb5` | Cool slate-blue, used sparingly (5.37:1 on dark) |
-| `--vers-accent-primary-rgb` | `110, 139, 181` | For `rgba()` composition |
-| `--vers-accent-secondary` | `#4f6e96` (dark) / `#5a7a9e` (light) | Secondary accent |
-| `--vers-glow-loading-rgb` | `110, 139, 181` | Loading glow |
-| `--vers-accent-hover` | `rgb(var(--vers-accent-hover-rgb))` | Hover state of accent fills; composed from its `-rgb` twin |
+| `--vers-accent-primary` | `#1251cc` light / `#83b0ff` dark | Cobalt, the one signal colour: caret, active line, links, primary action (6.3:1 / 8.4:1 on bg-base, so it works as text) |
+| `--vers-accent-primary-rgb` | `18, 81, 204` / `131, 176, 255` | For `rgba()` composition |
+| `--vers-accent-secondary` | `#0a41ad` / `#6b97e8` | Pressed / deep variant |
+| `--vers-accent-hover` | `#0a41ad` / `#99c4ff` | Hover of accent fills (darkens on light, lifts on dark) |
+| `--vers-glow-loading-rgb` | `= accent rgb` | Loading glow |
 
 ## Semantic status (eval / feedback)
 
-| Token | Dark | Light |
-|-------|------|-------|
-| `--vers-status-success` | `#6a9e7a` | `#4a8a5a` |
-| `--vers-status-danger` | `#d07070` | `#c05050` |
-| `--vers-status-warning` | `#d4a74a` | `#b89230` |
-| `--vers-status-info` | `#5b8cb8` | `#42729c` (AA on light) |
+| Token | Light | Dark |
+| `--vers-status-success` | `#21763c` | `#6fc082` |
+| `--vers-status-danger` | `#b32228` | `#f97770` |
+| `--vers-status-warning` | `#ae6800` | `#e9b452` |
+| `--vers-status-info` | `#1251cc` (= accent) | `#83b0ff` (= accent) |
 
 ## Graph & canvas (JS-assigned)
 
-These are applied via inline styles in graph/canvas code and work in both themes.
+These are applied via inline styles in graph/canvas code and work in both themes. Character and `appears_in` follow the accent (cobalt); location is green, plot thread amber; the remaining edge and element colours keep the desaturated family.
 
 - **Entity types:** `--vers-entity-character`, `--vers-entity-location`, `--vers-entity-plotThread`
 - **Element cards:** `--vers-element-section|character|location|plotpoint|note`
@@ -91,15 +90,11 @@ by hand.
 ## Heat scale (writing heatmap)
 
 Five steps for the workspace's writing heatmap (`WritingHeatmap.vue`), from "no words" to
-"most words that month". Step 0 is a translucent well so it reads on either theme.
-
-| Token | Dark | Light |
-|-------|------|-------|
-| `--vers-heat-0` | `rgba(255,255,255,0.045)` | `rgba(0,0,0,0.05)` |
-| `--vers-heat-1` | `#3a4c62` | `#98afcc` |
-| `--vers-heat-2` | `#4e6683` | `#7c97bd` |
-| `--vers-heat-3` | `#6280a3` | `#6180a7` |
-| `--vers-heat-4` | `#7799c4` | `#476690` |
+| `--vers-heat-0` | `rgba(0,0,0,0.05)` | `rgba(255,255,255,0.05)` |
+| `--vers-heat-1` | `#bcd2f9` | `#273857` |
+| `--vers-heat-2` | `#8eb1f1` | `#385790` |
+| `--vers-heat-3` | `#5889e6` | `#547ecd` |
+| `--vers-heat-4` | `#1957d2` | `#83b0ff` |
 
 ---
 
@@ -124,20 +119,27 @@ markup; drop to `var(--vers-*)` only for JS-assigned or non-color use.
 ## Typography (font families)
 
 Defined in `tailwind.config.js` (`fontFamily`). Loaded non-blocking via
-`<link>` in `index.html` (M-5.2).
+`<link>` in `index.html` (M-5.2). Two voices: **Plex Mono names, Geist explains.**
 
 | Class | Stack | Role |
 |-------|-------|------|
-| `font-ui` | Geist Variable | UI chrome: every label, button, panel |
-| `font-mono` | Geist Mono | Code / numerics in the UI |
-| *(none: `.manuscript` rules in `style.css`)* | IBM Plex Mono | The manuscript editor. Not a Tailwind class: the editor is styled directly so its typography cannot be overridden by a utility |
-| `font-body` | Crimson Pro | Legacy alias; not the manuscript font |
+| `font-ui` | Geist Variable | Running UI copy: descriptions, rows, buttons, hints |
+| `font-mono` / `font-display` / `font-manuscript` | IBM Plex Mono | The manuscript, every count/id/time, and the display voice |
+| `.type-display` (style.css) | IBM Plex Mono 500, uppercase, .14 em | Panel and section titles, empty-state titles, the workspace heading, modal titles |
+| `.label-micro` (style.css) | IBM Plex Mono 500, 11 px, uppercase, .14 em | Field labels |
+| `font-body` | Crimson Pro | Legacy alias; unused by the system |
 | `font-storybible` | Merriweather | Story bible |
 
 **Retired** (0 usages in `src/`, forbidden by `npm run lint:tokens`, still defined in
-`tailwind.config.js` until removed): `font-spark`, `font-flow`, `font-polish`, `font-revise`,
-`font-display`. Do not reintroduce a per-mode display font; the modes differ by tooling,
-not by typeface.
+`tailwind.config.js` until removed): `font-spark`, `font-flow`, `font-polish`, `font-revise`.
+`font-display` now points at Plex Mono and is live again.
+
+## Shape & depth
+
+`tailwind.config.js` collapses the radius scale so no component changes: `rounded`/`sm`/`md` = 2 px,
+`lg`/`xl` = 3 px, `2xl`/`3xl` = 4 px, `full` stays round (status dots, avatars). The
+`shadow-warm-sm/md` utilities compile to a 1 px `--vers-border` rule and `shadow-warm-lg/xl` to a
+1.5 px `--vers-border-strong` rule: **depth is a rule, never a shadow.**
 
 ## Motion
 

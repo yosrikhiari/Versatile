@@ -25,7 +25,7 @@ Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL
 
 Anything that renders goes through the design system. Read these before touching a `.vue` file:
 
-- **`DESIGN.md`**: the visual system (colour, type, layout, elevation, shapes), the **panel grammar**, and the **primitives catalogue**: every `Base*` component in `src/components/ui/` with its props, slots, events and what it is for.
+- **`DESIGN.md`**: the visual system, **Typescript v4** (bone paper, ink rules not shadows, one cobalt signal colour, Plex Mono tracked caps for titles and labels, 2–3 px corners; chosen from `docs/DESIGN-DIRECTIONS.html`), the **panel grammar**, and the **primitives catalogue**: every `Base*` component in `src/components/ui/` with its props, slots, events and what it is for.
 - **`docs/DESIGN-TOKENS.md`**: every `--vers-*` token in `src/style.css` with dark/light values, the `-rgb` composition twins, the Tailwind aliases, the fonts, and how to add a token.
 - **Storybook** (`npm run storybook`, `UI/*`): every primitive has a story; Chromatic snapshots them on each push.
 - **`docs/UX-ENHANCEMENTS.html`**: the agreed backlog of UI/UX improvements, each with a live demo. If you are asked to improve a screen, start there and cite the example number.
@@ -38,8 +38,9 @@ The rules, in order of how often they are broken:
 4. **Every async surface has four states**: skeleton (`Skeleton` variants), live, empty (`EmptyState` with an action that leads somewhere), error. A dead-end empty state is a bug (see `docs/UX-AUDIT.md` #8).
 5. **Copy is sentence case**; the structure vocabulary comes from `structureTerms` on the project store (Chapters/Scenes for a novel), never hard-coded "Sections".
 6. **Tailwind 3.4 has no `/8`, `/12`, `/35` opacity steps**; those classes emit nothing. Use `/10`, `/30`.
-7. **Motion** uses the `anim-*` presets and respects `prefers-reduced-motion`; focus uses the global `*:focus-visible` ring, never `outline: none`.
-8. **Document the change where it lives**: a new token in `docs/DESIGN-TOKENS.md`, a new primitive in the catalogue, a UX finding in `docs/UX-AUDIT.md`.
+7. **Two voices, no shadows.** Titles and labels are `.type-display` / `.label-micro` (Plex Mono caps); running copy is Geist. Depth is a hairline or an ink rule (`--vers-border-strong`); nothing at rest casts a shadow; nothing has a corner over 3 px except dots and avatars.
+8. **Motion** uses the `anim-*` presets and respects `prefers-reduced-motion`; focus uses the global `*:focus-visible` ring, never `outline: none`.
+9. **Document the change where it lives**: a new token in `docs/DESIGN-TOKENS.md`, a new primitive in the catalogue, a UX finding in `docs/UX-AUDIT.md`.
 
 Run `npm run policy` before you finish: it checks that every token is documented, every primitive has a story, hex literals did not grow, and the agent files still point here. `AGENT.md` is the longer setup guide (scripts, project structure, data model, pipeline, pitfalls); this file is the contract.
 

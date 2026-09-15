@@ -60,18 +60,30 @@ export default {
       fontFamily: {
         body: ['Crimson Pro', 'Georgia', 'serif'],
         ui: ['"Geist Variable"', 'Geist', 'system-ui', 'sans-serif'],
-        mono: ['"Geist Mono Variable"', 'Geist Mono', 'JetBrains Mono', 'monospace'],
+        mono: ['"IBM Plex Mono"', 'JetBrains Mono', 'monospace'],
         spark: ['Playfair Display', 'Georgia', 'serif'],
         flow: ['Lora', 'Georgia', 'serif'],
         polish: ['Libre Baskerville', 'Georgia', 'serif'],
         revise: ['EB Garamond', 'Georgia', 'serif'],
-        display: ['Playfair Display', 'Georgia', 'serif']
+        display: ['"IBM Plex Mono"', 'JetBrains Mono', 'monospace']
+      },
+      // Typescript: depth is an ink rule, never a shadow. The names stay so no component changes.
+      borderRadius: {
+        none: '0',
+        sm: '2px',
+        DEFAULT: '2px',
+        md: '2px',
+        lg: '3px',
+        xl: '3px',
+        '2xl': '4px',
+        '3xl': '4px',
+        full: '9999px'
       },
       boxShadow: {
-        'warm-sm': '0 1px 2px rgba(0,0,0,0.4)',
-        'warm-md': '0 4px 12px rgba(0,0,0,0.4)',
-        'warm-lg': '0 8px 24px rgba(0,0,0,0.5)',
-        'warm-xl': '0 12px 40px rgba(0,0,0,0.6)',
+        'warm-sm': '0 0 0 1px var(--vers-border)',
+        'warm-md': '0 0 0 1px var(--vers-border)',
+        'warm-lg': '0 0 0 1.5px var(--vers-border-strong)',
+        'warm-xl': '0 0 0 1.5px var(--vers-border-strong)',
         'accent-glow': '0 0 0 1px rgb(var(--vers-accent-primary-rgb) / 0.4)'
       },
       backdropBlur: {

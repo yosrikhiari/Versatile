@@ -133,7 +133,7 @@ async function handleLogout() {
     <main class="max-w-3xl mx-auto px-6 lg:px-8 py-10 animate-fade-in">
       <div class="flex items-end justify-between mb-8">
         <div>
-          <h1 class="text-2xl font-semibold text-text-primary">Your projects</h1>
+          <h1 class="type-display text-base text-text-primary">Your projects</h1>
           <p class="text-sm text-text-secondary mt-1">Pick up where you left off.</p>
         </div>
         <BaseButton variant="primary" size="lg" icon="plus" @click="showCreate = true">
@@ -225,7 +225,7 @@ async function handleLogout() {
       <div
         class="bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg p-6 w-full max-w-sm animate-fade-in"
       >
-        <h2 class="text-lg font-semibold text-text-primary mb-4">New project</h2>
+        <h2 class="type-display text-sm text-text-primary mb-4">New project</h2>
         <form class="space-y-4" @submit.prevent="handleCreate">
           <div>
             <label for="wp-name" class="block font-manuscript text-xs text-text-secondary mb-2">

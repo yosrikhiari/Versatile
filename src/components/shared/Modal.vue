@@ -140,7 +140,7 @@ onBeforeUnmount(() => {
             tabindex="-1"
             :aria-label="ariaLabel"
             :class="[
-              'glass-modal rounded-xl shadow-warm-lg w-full overflow-y-auto max-h-[90vh]',
+              'glass-modal rounded-sm shadow-warm-lg w-full overflow-y-auto max-h-[90vh]',
               maxWidth,
               panelClass
             ]"

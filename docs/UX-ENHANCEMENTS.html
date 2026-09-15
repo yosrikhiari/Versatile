@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,11 +24,11 @@
   .u-shell{ display:grid; grid-template-columns:248px 1fr; min-height:100vh; }
   .u-side{ position:sticky; top:0; height:100vh; overflow:auto; background:var(--vers-bg-panel); border-right:1px solid var(--vers-border-subtle); padding:20px 14px 24px; display:flex; flex-direction:column; }
   .u-brand{ display:flex; align-items:center; gap:10px; padding:0 8px 18px; }
-  .u-mark{ width:30px; height:30px; border-radius:8px; background:var(--vers-accent-primary); color:var(--vers-text-on-accent); display:grid; place-items:center; font:600 14px 'Geist', sans-serif; flex:none; }
+  .u-mark{ width:30px; height:30px; border-radius:2px; background:var(--vers-accent-primary); color:var(--vers-text-on-accent); display:grid; place-items:center; font:600 14px 'Geist', sans-serif; flex:none; }
   .u-brand b{ display:block; font-weight:600; font-size:14px; line-height:1.2; }
   .u-brand small{ display:block; color:var(--vers-text-muted); font-size:11px; }
   .u-nav-label{ font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--vers-text-muted); padding:16px 8px 6px; }
-  .u-nav a{ display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; color:var(--vers-text-secondary); text-decoration:none; font-size:13px; line-height:1.3; transition:background .15s ease-out, color .15s ease-out; }
+  .u-nav a{ display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:2px; color:var(--vers-text-secondary); text-decoration:none; font-size:13px; line-height:1.3; transition:background .15s ease-out, color .15s ease-out; }
   .u-nav a .n{ font-family:'Geist Mono', monospace; font-size:11px; color:var(--vers-text-muted); width:18px; flex:none; }
   .u-nav a:hover{ background:var(--vers-bg-hover); color:var(--vers-text-primary); }
   .u-nav a[data-active="true"]{ background:rgb(var(--vers-accent-primary-rgb) / .12); color:var(--vers-text-primary); }
@@ -38,30 +38,30 @@
   .u-side-foot .mono{ color:var(--vers-text-secondary); }
   .u-main{ min-width:0; }
   .u-strip{ position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:22px; padding:12px 32px; border-bottom:1px solid var(--vers-border-subtle); background:rgb(var(--vers-bg-base-rgb) / .88); backdrop-filter:blur(8px); }
-  .u-strip h1{ font-size:15px; font-weight:600; margin:0 auto 0 0; letter-spacing:-.01em; }
+  .u-strip h1{ font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:500; margin:0 auto 0 0; letter-spacing:.14em; text-transform:uppercase; }
   .u-strip .stat{ font-size:12px; color:var(--vers-text-muted); }
   .u-strip .stat b{ font-family:'Geist Mono', monospace; font-weight:500; color:var(--vers-text-primary); margin-left:4px; }
   .u-content{ padding:28px 32px 72px; max-width:1440px; display:flex; flex-direction:column; gap:22px; }
 
   /* ---- hero ---- */
   .u-hero{ display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:22px; align-items:stretch; }
-  .u-hero h2{ font-size:26px; font-weight:600; letter-spacing:-.02em; margin:0 0 10px; line-height:1.15; }
+  .u-hero h2{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; margin:0 0 10px; line-height:1.15; }
   .u-hero h2 em{ font-style:normal; color:var(--vers-accent-primary); }
   .u-intro{ color:var(--vers-text-secondary); font-size:14px; line-height:1.65; margin:0; max-width:64ch; }
   .u-intro b{ color:var(--vers-text-primary); font-weight:500; }
-  .u-stats{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--vers-border-subtle); border:1px solid var(--vers-border-subtle); border-radius:12px; overflow:hidden; }
+  .u-stats{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--vers-border-subtle); border:1px solid var(--vers-border-subtle); border-radius:3px; overflow:hidden; }
   .u-stat{ background:var(--vers-bg-panel); padding:16px 18px; }
   .u-stat .v{ font-family:'Geist Mono', monospace; font-size:26px; font-weight:500; letter-spacing:-.02em; line-height:1; }
   .u-stat .l{ font-size:11.5px; color:var(--vers-text-muted); margin-top:6px; }
   .u-stat .v.acc{ color:var(--vers-accent-primary); }
 
   /* ---- panels ---- */
-  .u-panel{ background:var(--vers-bg-panel); border:1px solid var(--vers-border-subtle); border-radius:12px; padding:20px 22px; transition:border-color .15s ease-out; }
+  .u-panel{ background:var(--vers-bg-panel); border:1px solid var(--vers-border-subtle); border-radius:3px; padding:20px 22px; transition:border-color .15s ease-out; }
   .u-panel:hover{ border-color:var(--vers-border); }
   .u-ex{ scroll-margin-top:70px; }
   .u-head{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
   .u-num{ font-family:'Geist Mono', monospace; font-size:12px; font-weight:500; color:var(--vers-accent-primary); background:rgb(var(--vers-accent-primary-rgb) / .12); border-radius:6px; padding:3px 7px; letter-spacing:.02em; }
-  .u-head h2{ font-size:17px; font-weight:600; margin:0; letter-spacing:-.015em; }
+  .u-head h2{ font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:500; margin:0; letter-spacing:.12em; text-transform:uppercase; }
   .u-tags{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
   .u-tag{ display:inline-flex; align-items:center; gap:6px; font-size:10.5px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:100px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); color:var(--vers-text-secondary); }
   .u-tag::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--vers-text-muted); }
@@ -78,9 +78,9 @@
   .u-p b{ color:var(--vers-text-primary); font-weight:500; }
   .u-prop{ color:var(--vers-text-primary); }
   .cite{ font-family:'Geist Mono', monospace; font-size:11.5px; color:var(--vers-accent-primary); background:rgb(var(--vers-accent-primary-rgb) / .08); padding:1px 5px; border-radius:4px; }
-  .u-demo{ position:relative; border:1px solid var(--vers-border-subtle); border-radius:10px; padding:18px 16px 16px; background:var(--vers-bg-base); }
+  .u-demo{ position:relative; border:1px solid var(--vers-border-subtle); border-radius:3px; padding:18px 16px 16px; background:var(--vers-bg-base); }
   .u-demo-label{ position:absolute; top:-9px; left:12px; background:var(--vers-bg-panel); border:1px solid var(--vers-border-subtle); border-radius:100px; padding:1px 8px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--vers-text-muted); }
-  .code{ font-family:'Geist Mono', monospace; font-size:11px; line-height:1.6; color:var(--vers-text-secondary); background:var(--vers-bg-base); border:1px solid var(--vers-border-subtle); border-radius:8px; padding:10px 12px; white-space:pre; overflow:auto; margin-top:10px; }
+  .code{ font-family:'Geist Mono', monospace; font-size:11px; line-height:1.6; color:var(--vers-text-secondary); background:var(--vers-bg-base); border:1px solid var(--vers-border-subtle); border-radius:2px; padding:10px 12px; white-space:pre; overflow:auto; margin-top:10px; }
 
   /* ---- matrix ---- */
   .u-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
@@ -94,7 +94,7 @@
   .mono{ font-family:'Geist Mono', ui-monospace, monospace; font-variant-numeric:tabular-nums; }
 
   /* ---- design-system-shaped primitives (mirrors src/components/ui) ---- */
-  .btn{ font:500 12.5px 'Geist', sans-serif; padding:6px 12px; border-radius:8px; border:1px solid transparent; cursor:pointer; transition:all .15s ease-out; background:transparent; color:var(--vers-text-primary); }
+  .btn{ font:500 12.5px 'Geist', sans-serif; padding:6px 12px; border-radius:2px; border:1px solid transparent; cursor:pointer; transition:all .15s ease-out; background:transparent; color:var(--vers-text-primary); }
   .btn.primary{ background:var(--vers-accent-primary); color:var(--vers-text-on-accent); }
   .btn.primary:hover{ opacity:.9; box-shadow:0 0 0 3px rgb(var(--vers-accent-primary-rgb) / .2); }
   .btn.primary:active{ opacity:.8; transform:scale(.98); }
@@ -103,7 +103,7 @@
   .btn.ghost{ color:var(--vers-text-secondary); } .btn.ghost:hover{ color:var(--vers-text-primary); transform:scale(1.02); }
   .btn.danger{ color:var(--vers-status-danger); }
   .btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
-  .field{ font:12.5px 'Geist', sans-serif; height:32px; padding:0 10px; border-radius:8px; border:1px solid var(--vers-border-subtle); background:var(--vers-bg-elevated); color:var(--vers-text-primary); transition:border-color .15s ease-out; }
+  .field{ font:12.5px 'Geist', sans-serif; height:32px; padding:0 10px; border-radius:2px; border:1px solid var(--vers-border-subtle); background:var(--vers-bg-elevated); color:var(--vers-text-primary); transition:border-color .15s ease-out; }
   .field::placeholder{ color:var(--vers-text-muted); }
   .field:focus{ outline:2px solid var(--vers-accent-primary); outline-offset:2px; border-color:var(--vers-accent-primary); }
   .chip{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; padding:3px 10px; border-radius:100px; border:1px solid var(--vers-border-subtle); background:var(--vers-bg-elevated); color:var(--vers-text-secondary); cursor:pointer; transition:all .12s ease-out; }
@@ -112,18 +112,18 @@
   .chip .n{ font-family:'Geist Mono', monospace; font-size:10px; color:var(--vers-text-muted); }
   .chip.on .n{ color:var(--vers-accent-primary); }
   .ph{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:2px 0 12px; border-bottom:1px solid var(--vers-border-subtle); }
-  .ph h3{ margin:0; font-size:13.5px; font-weight:600; } .ph .meta{ font-size:11.5px; color:var(--vers-text-muted); }
+  .ph h3{ margin:0; font:500 11px 'IBM Plex Mono', monospace; letter-spacing:.14em; text-transform:uppercase; } .ph .meta{ font-size:11.5px; color:var(--vers-text-muted); }
   .sec{ padding:12px 0; border-bottom:1px solid var(--vers-border-subtle); } .sec:last-child{ border-bottom:none; }
   .sec h4{ margin:0 0 2px; font-size:12.5px; font-weight:500; } .sec .desc{ font-size:11.5px; color:var(--vers-text-muted); margin:0 0 8px; }
   .eyebrow{ font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--vers-text-muted); }
   .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
   .row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .well{ background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:10px; padding:12px 14px; }
+  .well{ background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:3px; padding:12px 14px; }
   .empty{ padding:28px 12px; text-align:center; color:var(--vers-text-muted); font-size:13px; }
   .empty b{ display:block; color:var(--vers-text-primary); font-weight:500; margin-bottom:4px; font-size:14px; }
   .skel{ height:12px; border-radius:4px; background:linear-gradient(90deg, var(--vers-bg-elevated), var(--vers-bg-hover), var(--vers-bg-elevated)); background-size:200% 100%; animation:shim 1.4s linear infinite; }
   @keyframes shim{ 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  .toast{ position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:12px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border); border-radius:10px; padding:10px 14px; font-size:12.5px; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:rise .22s ease-out; }
+  .toast{ position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:12px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border); border-radius:3px; padding:10px 14px; font-size:12.5px; box-shadow:0 0 0 1.5px var(--vers-border-strong); animation:rise .22s ease-out; }
   @keyframes rise{ from{ opacity:0; transform:translateY(6px); } }
   .toast .act{ color:var(--vers-accent-primary); font-weight:500; cursor:pointer; }
   .editor{ font-family:'IBM Plex Mono', monospace; font-size:14px; line-height:1.75; max-width:66ch; color:var(--vers-text-primary); }
@@ -132,15 +132,15 @@
   .goal > div{ height:100%; background:var(--vers-accent-primary); transition:width .25s ease; }
   mark{ background:rgb(var(--vers-accent-primary-rgb) / .28); color:inherit; border-radius:2px; }
   mark.cur{ outline:2px solid var(--vers-accent-primary); }
-  .tabbar{ display:flex; align-items:center; gap:8px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:8px 8px 0 0; padding:7px 12px; font-size:12px; color:var(--vers-text-secondary); }
+  .tabbar{ display:flex; align-items:center; gap:8px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:2px 8px 0 0; padding:7px 12px; font-size:12px; color:var(--vers-text-secondary); }
   .tabbar .fav{ width:14px; height:14px; border-radius:3px; background:var(--vers-accent-primary); }
-  .seg{ display:inline-flex; background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:8px; padding:2px; }
+  .seg{ display:inline-flex; background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:2px; padding:2px; }
   .seg button{ font:500 12px 'Geist', sans-serif; padding:5px 11px; border:none; background:transparent; color:var(--vers-text-secondary); border-radius:6px; cursor:pointer; transition:all .12s ease-out; }
   .seg button[aria-checked="true"]{ background:var(--vers-bg-panel); color:var(--vers-text-primary); box-shadow:0 1px 2px rgba(0,0,0,.3); }
-  .menu{ position:absolute; background:var(--vers-bg-elevated); border:1px solid var(--vers-border); border-radius:8px; padding:4px; width:180px; z-index:3; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:rise .15s ease-out; }
+  .menu{ position:absolute; background:var(--vers-bg-elevated); border:1px solid var(--vers-border); border-radius:2px; padding:4px; width:180px; z-index:3; box-shadow:0 0 0 1.5px var(--vers-border-strong); animation:rise .15s ease-out; }
   .menu button{ display:block; width:100%; text-align:left; font:12px 'Geist', sans-serif; padding:6px 8px; border:none; background:transparent; color:var(--vers-text-primary); border-radius:6px; cursor:pointer; }
   .menu button:hover{ background:var(--vers-bg-hover); } .menu button.danger{ color:var(--vers-status-danger); }
-  .srow{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; transition:background .12s ease-out; }
+  .srow{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:2px; transition:background .12s ease-out; }
   .srow:hover{ background:var(--vers-bg-hover); }
   .srow .t{ flex:1; } .srow .c{ font-family:'Geist Mono', monospace; font-size:11px; color:var(--vers-text-muted); }
   .handle{ width:6px; cursor:col-resize; background:transparent; border-radius:3px; transition:background .12s ease-out; }
@@ -195,7 +195,7 @@
       <span class="stat">examples<b>20</b></span>
       <span class="stat">zero-match gaps<b>4</b></span>
       <span class="stat">audit items closed<b>6</b></span>
-      <button class="btn elevated" id="theme">Light theme</button>
+      <button class="btn elevated" id="theme">Dark theme</button>
     </header>
 
     <main class="u-content">
@@ -569,7 +569,7 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
             <p class="u-p u-prop">A 6 px handle on the panel's left edge: drag between 320 px and the existing cap, double-click to reset, width remembered per panel in <span class="cite">localStorage</span>. Keyboard: focus the handle, arrows move by 16 px. The cap stays as the hard limit.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Drag the handle · double-click resets</span>
-            <div id="rzWrap" style="display:flex;height:150px;border:1px solid var(--vers-border-subtle);border-radius:8px;overflow:hidden">
+            <div id="rzWrap" style="display:flex;height:150px;border:1px solid var(--vers-border-subtle);border-radius:2px;overflow:hidden">
               <div class="editor" style="flex:1;padding:12px;font-size:12px;overflow:hidden">The manuscript keeps the rest. Ilse reached the harbour before the tide turned…</div>
               <div class="handle" id="rzHandle" tabindex="0" title="drag, or arrow keys"></div>
               <div id="rzPanel" style="width:300px;background:var(--vers-bg-panel);padding:10px 12px"><div class="ph" style="padding-top:0"><h3>Timeline</h3><span class="meta mono" id="rzW">300 px</span></div><div class="skel" style="margin-top:10px"></div><div class="skel" style="width:80%;margin-top:8px"></div></div>
@@ -639,7 +639,7 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
   }
 
   // theme
-  $('theme').addEventListener('click', () => { const l = document.documentElement.dataset.theme === 'light'; document.documentElement.dataset.theme = l ? 'dark' : 'light'; $('theme').textContent = l ? 'Light theme' : 'Dark theme'; document.dispatchEvent(new Event('themechange')); });
+  $('theme').addEventListener('click', () => { const d = document.documentElement.dataset.theme === 'dark'; if (d) delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = 'dark'; $('theme').textContent = d ? 'Dark theme' : 'Light theme'; document.dispatchEvent(new Event('themechange')); });
 
   // reveal on scroll (respects reduced motion via CSS)
   (function () { const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' }); document.querySelectorAll('.u-ex').forEach(x => io.observe(x)); })();

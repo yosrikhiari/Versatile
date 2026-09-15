@@ -16,7 +16,7 @@ export function useTheme() {
     if (initialized) return
     initialized = true
     const stored = localStorage.getItem(THEME_KEY)
-    const dark = stored ? stored === 'dark' : true
+    const dark = stored ? stored === 'dark' : false // Typescript: bone paper by default
     apply(dark)
   }
 

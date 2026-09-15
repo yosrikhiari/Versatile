@@ -124,7 +124,7 @@ const variantClasses = computed(() => {
 })
 
 const baseClasses =
-  'inline-flex items-center gap-1 rounded-full font-medium font-ui transition-all duration-150 active:scale-[0.97]'
+  'inline-flex items-center gap-1 rounded-sm font-medium font-mono transition-all duration-150 active:scale-[0.97]'
 </script>
 
 <template>

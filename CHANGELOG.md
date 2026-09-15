@@ -7,6 +7,30 @@ was verified.
 
 ## [Unreleased]
 
+### Design system v4, Typescript (2026-09-15)
+- An audit of the running app (both themes) found the system disciplined but
+  flat: nothing was figure and nothing was ground; the accent did nothing but
+  colour two buttons; every empty state was the same template. Three
+  directions were mocked up on the same four screens (`docs/DESIGN-DIRECTIONS.html`);
+  **C, Typescript** was chosen.
+- Tokens (`src/style.css`): bone paper by default, charcoal under
+  `[data-theme='dark']` (the default theme flips to light; `useTheme` and the
+  `index.html` flash guard follow); one cobalt signal colour replaces slate
+  blue; a new `--vers-border-strong` ink rule; heat scale, status and entity
+  colours retinted to the family. Every value was generated from OKLCH and
+  AA-checked (muted text 6.2:1 / 4.9:1, accent-as-text 6.3:1 / 8.4:1).
+- Shape and depth (`tailwind.config.js`): the radius scale collapses to 2–3 px
+  and `shadow-warm-*` compile to rules, so no component needed a class change
+  for either. `font-mono`/`font-display` are IBM Plex Mono.
+- Type voice: `.type-display` (Plex Mono caps) on `BasePanelHeader`,
+  `BaseSection`, `EmptyState` and the workspace headings; `.label-micro` is
+  Plex Mono. The manuscript gets a ruled left margin and a cobalt caret; the
+  active sidebar item is a cobalt `>` in the margin; chips are squared;
+  modals are square with an ink rule; `liquid-glass` loses its shadow.
+- `DESIGN.md` and `docs/DESIGN-TOKENS.md` rewritten for v4 (the Signal, Ink,
+  Paper, Two-Voice, Tracking and Square rules). 3,065 tests green;
+  `npm run policy` green; Storybook builds.
+
 ### Design system: catalogue, stories for every primitive, executable policies, tool-neutral agent rules (2026-09-15)
 - `DESIGN.md` gains a **primitives catalogue**: all 15 `Base*` components in
   `src/components/ui/` with props, slots, events and what each is for.

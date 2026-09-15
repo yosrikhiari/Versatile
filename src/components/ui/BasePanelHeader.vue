@@ -42,7 +42,7 @@ defineEmits(['toggle-collapse', 'close'])
 
     <!-- The title is the identity; when the row is tight the meta gives way
          first, the title only after it. -->
-    <h2 class="min-w-0 shrink truncate font-ui text-sm font-semibold text-text-primary">
+    <h2 class="min-w-0 shrink truncate type-display text-[11px] text-text-primary">
       {{ title }}
     </h2>
 

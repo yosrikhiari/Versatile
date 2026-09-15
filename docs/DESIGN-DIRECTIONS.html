@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-dir="A" data-theme="light">
+<html lang="en" data-dir="C" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -317,13 +317,14 @@ h2.sec{ font:var(--display-weight) 22px/1.2 var(--font-display); letter-spacing:
   <div class="top">
     <h1>Versatile · three directions</h1>
     <div class="dirs" role="group" aria-label="Direction">
-      <button data-dir="A" aria-pressed="true">A · Folio</button>
+      <button data-dir="A" aria-pressed="false">A · Folio</button>
       <button data-dir="B" aria-pressed="false">B · Studio</button>
-      <button data-dir="C" aria-pressed="false">C · Typescript</button>
+      <button data-dir="C" aria-pressed="true">C · Typescript</button>
     </div>
     <button class="btn elevated" id="theme">Dark</button>
   </div>
 
+  <p class="lead" style="border:1.5px solid var(--color-accent);padding:12px 16px;border-radius:var(--radius-md)"><b>Decision (2026-09-15): direction C, Typescript.</b> Locked into <span class="cite">DESIGN.md</span>, <span class="cite">docs/DESIGN-TOKENS.md</span> and <span class="cite">src/style.css</span>; the primitives were re-skinned in the same change. A and B stay here as the record of what was considered.</p>
   <h2 class="sec">What the audit found</h2>
   <p class="lead">Walked the running app at 1440×900 in both themes (login → workspace → editor → Chapters, Consistency, Network, Settings). The system is disciplined and well documented; its problem is not inconsistency, it is <b>that nothing is figure and nothing is ground</b>. Eight findings, ranked. Each direction below is scored against them.</p>
   <div class="audit">
