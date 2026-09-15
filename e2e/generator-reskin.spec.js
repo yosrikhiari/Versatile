@@ -23,11 +23,21 @@ async function openGenerator(page) {
   return panel
 }
 
-test('active mode pill carries a visible accent border', async ({ page }) => {
+test('the active mode is visibly and accessibly selected', async ({ page }) => {
+  // The panel pass replaced the accent-bordered pill with a segmented
+  // control: one accent, never as a fill or border on a control. Selection
+  // is the elevated surface plus `aria-selected`, which is what a screen
+  // reader announces and what this asserts.
   await openGenerator(page)
-  const pill = page.locator('aside.tool-panel [data-test="tab-brainstorm"]')
-  await expect(pill).toBeVisible()
-  await expect(pill).toHaveClass(/border-accent/)
+  const active = page.locator('aside.tool-panel [data-test="tab-brainstorm"]')
+  await expect(active).toBeVisible()
+  await expect(active).toHaveAttribute('aria-selected', 'true')
+  await expect(active).toHaveClass(/bg-bg-elevated/)
+
+  // `tab-scene` is always rendered; the Chapter tab is behind a setting.
+  const inactive = page.locator('aside.tool-panel [data-test="tab-scene"]')
+  await expect(inactive).toHaveAttribute('aria-selected', 'false')
+  await expect(inactive).not.toHaveClass(/bg-bg-elevated/)
 })
 
 test('spark shows a single flow with history reachable and no tab row', async ({ page }) => {
@@ -35,6 +45,9 @@ test('spark shows a single flow with history reachable and no tab row', async ({
   // Old tab row is gone (buttons removed, not hidden).
   await expect(page.getByRole('button', { name: 'Develop idea' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Get prompts' })).toHaveCount(0)
-  // History content is reachable without switching tabs.
-  await expect(page.getByText('No history yet.')).toBeVisible()
+  // History is a section on the same surface, reachable without switching
+  // tabs. Its empty-state copy is the panel pass's, not pinned here.
+  const panel = page.locator('aside.tool-panel')
+  await expect(panel.getByRole('heading', { name: 'Spark a prompt' })).toBeVisible()
+  await expect(panel.getByRole('heading', { name: 'History' })).toBeVisible()
 })
