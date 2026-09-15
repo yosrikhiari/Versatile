@@ -79,3 +79,6 @@ screen no longer leaves the manuscript five words wide.
 
 Still open: Outline / Canvas / Research internals, the Settings and Voice Upload modals,
 and the login view were not touched beyond the eyebrow sweep.
+
+Component tests for the rewritten Consistency, Beta Reader and What If panels landed 2026-09-15
+(`consistencyPanel.test.js`, `betaReaderPanel.test.js`, `whatIfPanel.test.js`).

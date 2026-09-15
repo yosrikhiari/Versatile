@@ -26,6 +26,14 @@ was verified.
   never got digests.
 - Custom fields and tags round-trip through the character/location sync blob.
 
+### Tests — the panels the panel pass rewrote (2026-09-15)
+- Component tests for `ConsistencyPanel`, `BetaReaderPanel` and `WhatIfPanel`
+  (+ `WhatIfAlternative`): severity grouping and header counts, honest empty
+  states ("Not checked yet" vs "Everything lines up"; "Nothing to read yet"
+  never "Reads clean"), summary shown *with* the findings, always-visible
+  Insert/Replace on alternatives, the premise actually sent, the divergence
+  flow timeline → editor with the fork gated on a premise.
+
 ### Generation — one budget, one failure ledger (2026-09-15)
 - `useDelegatorGeneration` accepts the orchestrator's director / writer /
   critic / sync instances and wires the session budget onto them. It used to
