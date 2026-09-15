@@ -20,6 +20,7 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import EmptyState from '../shared/EmptyState.vue'
 import Skeleton from '../shared/Skeleton.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
+import EntityPropertiesPanel from './EntityPropertiesPanel.vue'
 import StoryBibleDocumentEditor from './StoryBibleDocumentEditor.vue'
 import EntityActionButtons from './EntityActionButtons.vue'
 import TraitSuggestionsPopover from './TraitSuggestionsPopover.vue'
@@ -801,6 +802,7 @@ defineExpose({ refresh })
                   @close="handleCloseSuggestions"
                 />
               </div>
+              <EntityPropertiesPanel kind="character" :entity-id="character.id" />
             </div>
             <EmptyState
               v-if="filteredCharacters.length === 0"
@@ -913,6 +915,7 @@ defineExpose({ refresh })
                   @close="handleCloseSuggestions"
                 />
               </div>
+              <EntityPropertiesPanel kind="plotThread" :entity-id="thread.id" />
             </div>
             <EmptyState
               v-if="filteredPlotThreads.length === 0"
@@ -1006,6 +1009,7 @@ defineExpose({ refresh })
                   @close="handleCloseSuggestions"
                 />
               </div>
+              <EntityPropertiesPanel kind="location" :entity-id="location.id" />
             </div>
             <EmptyState
               v-if="filteredLocations.length === 0"

@@ -9,7 +9,7 @@ generation run actually behaves in `docs/GENERATION-PIPELINE-ANALYSIS.md`.
 ## System map
 
 ```
-browser (Vue 3 SPA, Dexie/IndexedDB v48) ──/api, /hubs──► .NET 10 API ──► PostgreSQL 16 (RLS)
+browser (Vue 3 SPA, Dexie/IndexedDB v49) ──/api, /hubs──► .NET 10 API ──► PostgreSQL 16 (RLS)
         │ direct provider calls ▲                                       Redis (cache, rate limits)
         └───────────────────────────── 5 AI providers (openai, anthropic, gemini, groq, ollama)
 ```
@@ -26,7 +26,7 @@ browser (Vue 3 SPA, Dexie/IndexedDB v48) ──/api, /hubs──► .NET 10 API 
   typing pushes to the store on a 300 ms debounce and the watcher skips
   the editor's own echo (`docs/PERF-AUDIT.md`).
 - **Offline-first**: Dexie 4 (`src/services/db-schema.ts` declares the
-  48 schema versions; 26 `db-*.ts` table modules) is the source of truth
+  39 schema versions; 26 `db-*.ts` table modules) is the source of truth
   in the browser. Writes are debounced and coalesced per entity; the three
   append-only history tables are deduped, throttled and capped; sync to the
   API replays in the background with bounded concurrency and self-heals

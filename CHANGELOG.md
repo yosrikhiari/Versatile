@@ -7,6 +7,25 @@ was verified.
 
 ## [Unreleased]
 
+### Properties & scene metadata — Obsidian roadmap Phase 1 (2026-09-15)
+- Schema **v49**: `metadata` (open JSON) + `*tags` on characters, locations and
+  plot threads; `pov`, `location`, `*charactersPresent` on sections and
+  subsections; `wordCount` on subsections. This was built as v48 on 2026-08-19
+  and lost uncommitted (`planning/AUDIT-2026-09-15.md` §1); the perf pass took
+  v48, so the rebuild lands as v49.
+- Story-bible store: `findEntity`, `getEntityMeta`, `setEntityMeta`,
+  `addEntityTag`, `removeEntityTag`, `getEntityArray`. `EntityPropertiesPanel`
+  (typed custom fields + tags) mounted on every Story Bible card. The scene
+  dialog gains POV, location (with bible datalists) and characters present.
+- Single authority for scene context: `writeSceneAnalysis` reads the
+  subsection's columns back into the digest when the author set them and
+  hydrates them when empty — never overwrites; `wordCount` recomputed on every
+  commit. The digest gains `pov`.
+- `useDigestBackfill` and `backfillSceneContextV48` now run at idle on project
+  open; both had been written with no caller, so a hand-written manuscript
+  never got digests.
+- Custom fields and tags round-trip through the character/location sync blob.
+
 ### Generation — reading the book (2026-09-15; `6aab7b44`, `82a7fa88`, `941cbc22`, `46384ced`)
 - **The bible never moved because sync never ran.** `confirmPlan` always
   takes the parallel strategy, which never called `discoverSync`/`commitSync`

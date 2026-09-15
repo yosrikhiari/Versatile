@@ -15,6 +15,8 @@
 import { buildSceneDigest, type SceneDigest } from './sceneDigest'
 import { deriveEntityStates, type EntityStateType } from './entityStates'
 import { putSceneDigest, replaceSceneEntityStates } from '../db-digests'
+import { db } from '../db-core'
+import { countWords } from '../../utils/textUtils'
 
 export interface SceneAnalysisResult {
   digest: SceneDigest | null
@@ -69,9 +71,48 @@ export async function writeSceneAnalysis({
     return { digest: null, stateCount: 0, errors: ['missing projectId or subsectionId'] }
   }
 
+  // Single authority for scene context (schema v49). The subsection's own
+  // `pov` / `location` / `charactersPresent` columns are the author's; when
+  // they are set they win over whatever the writer reported, and when they are
+  // empty the digest's values hydrate them so the next edit starts from what
+  // the prose actually did. Best-effort: a missing row (tests, imports) means
+  // the digest is built from the writer's metadata alone, as before.
+  let row: any = null
+  try {
+    row = await db.subsections.get(subsectionId as any)
+  } catch {
+    row = null
+  }
+  const sceneForDigest = row
+    ? {
+        ...(scene || {}),
+        ...(row.pov ? { pov: row.pov } : {}),
+        ...(row.location ? { location: row.location } : {}),
+        ...(Array.isArray(row.charactersPresent) && row.charactersPresent.length
+          ? { charactersPresent: row.charactersPresent }
+          : {})
+      }
+    : scene
+  const structuredForDigest =
+    row && Array.isArray(row.charactersPresent) && row.charactersPresent.length
+      ? {
+          ...(structured || {}),
+          usedEntities: {
+            ...((structured || {}).usedEntities || {}),
+            characterNames: row.charactersPresent
+          }
+        }
+      : structured
+
   let digest: SceneDigest | null = null
   try {
-    digest = buildSceneDigest({ projectId, subsectionId, prose, structured, scene })
+    digest = buildSceneDigest({
+      projectId,
+      subsectionId,
+      prose,
+      structured: structuredForDigest,
+      scene: sceneForDigest
+    })
     await putSceneDigest(digest)
   } catch (err: any) {
     errors.push(`scene digest not written: ${err?.message || err}`)
@@ -88,6 +129,28 @@ export async function writeSceneAnalysis({
     stateCount = await replaceSceneEntityStates(projectId, String(subsectionId), states)
   } catch (err: any) {
     errors.push(`entity states not written: ${err?.message || err}`)
+  }
+
+  // Hydrate the empty columns from what was just derived — fill only, never
+  // overwrite. `wordCount` is recomputed from the committed prose so a
+  // rewrite of the same scene corrects it.
+  if (row) {
+    try {
+      const patch: any = {}
+      if (!row.pov && digest.pov) patch.pov = digest.pov
+      if (!row.location && digest.location) patch.location = digest.location
+      if (
+        (!Array.isArray(row.charactersPresent) || row.charactersPresent.length === 0) &&
+        digest.charactersPresent.length
+      ) {
+        patch.charactersPresent = digest.charactersPresent
+      }
+      const wc = countWords(prose)
+      if (wc && row.wordCount !== wc) patch.wordCount = wc
+      if (Object.keys(patch).length) await db.subsections.update(subsectionId as any, patch)
+    } catch (err: any) {
+      errors.push(`scene context not hydrated: ${err?.message || err}`)
+    }
   }
 
   return { digest, stateCount, errors }

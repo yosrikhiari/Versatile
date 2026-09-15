@@ -19,7 +19,7 @@ const EXPECTED = {
   characterRelationships:
     '++id | apiId, fromCharacterId, lastSyncedAt, notes, projectId, syncStatus, toCharacterId, type',
   characters:
-    '++id | apiId, color, generationStatus, goal, lastEditedAt, lastSyncedAt, name, notes, portrait, projectId, role, syncStatus, voice',
+    '++id | *tags, apiId, color, generationStatus, goal, lastEditedAt, lastSyncedAt, metadata, name, notes, portrait, projectId, role, syncStatus, voice',
   chatSessions: '++id | projectId, updatedAt',
   dailyGoals: '++id | [projectId+date], date, projectId',
   dialogueIndex: '++id | [projectId+speakerId], paragraphIndex, projectId, sectionId, speakerId',
@@ -39,13 +39,13 @@ const EXPECTED = {
   graphNodePositions: '[projectId+nodeId] | nodeId, nodeType, projectId, x, y',
   groupEdges: '++id | projectId, relationshipType, sourceGroupId, targetGroupId',
   locations:
-    '++id | apiId, description, generationStatus, lastSyncedAt, name, notes, projectId, syncStatus',
+    '++id | *tags, apiId, description, generationStatus, lastSyncedAt, metadata, name, notes, projectId, syncStatus',
   manuscripts: '++id | apiId, content, lastSyncedAt, projectId, syncStatus, updatedAt, wordCount',
   graphNodeInstances: '[projectId+nodeId] | nodeId, projectId',
   optimizationSessions: '++id | [projectId+sceneId], projectId, sceneId, timestamp',
   pendingDeletions: '++id | apiId, deletedAt, table',
   plotThreads:
-    '++id | apiId, generationStatus, lastSyncedAt, notes, projectId, status, syncStatus, title',
+    '++id | *tags, apiId, generationStatus, lastSyncedAt, metadata, notes, projectId, status, syncStatus, title',
   projectBlurbs: '++id | generatedAt, projectId',
   // v44: the derived-artifact layer. `&[projectId+subsectionId]` is unique —
   // one live digest per scene, replaced rather than accumulated.
@@ -73,7 +73,7 @@ const EXPECTED = {
   revisionComments:
     '++id | comment, createdAt, endOffset, paragraphIndex, projectId, selectedText, startOffset',
   sections:
-    '++id | *tags, [projectId+branchId], apiId, branchId, lastSyncedAt, order, projectId, status, summary, syncStatus, title, volumeId',
+    '++id | *charactersPresent, *tags, [projectId+branchId], apiId, branchId, lastSyncedAt, location, order, pov, projectId, status, summary, syncStatus, title, volumeId',
   sessionArchive: '++id | [projectId+timestamp], projectId, signal, timestamp, type',
   snapshots:
     '++id | [projectId+chapterId+timestamp], [projectId+chapterId], chapterId, label, projectId, timestamp',
@@ -85,7 +85,7 @@ const EXPECTED = {
     '++id | [projectId+sceneId], [projectId+version], analyzedAt, projectId, sceneId, version',
   storyStateSnapshots: '++id | [projectId+timestamp], projectId, timestamp',
   subsections:
-    '++id | *tags, [projectId+branchId], apiId, branchId, content, contentStatus, lastSyncedAt, order, projectId, sectionId, summary, syncStatus, title',
+    '++id | *charactersPresent, *tags, [projectId+branchId], apiId, branchId, content, contentStatus, lastSyncedAt, location, order, pov, projectId, sectionId, summary, syncStatus, title, wordCount',
   users: '++id | &username, createdAt, displayName, passwordHash',
   voiceProfiles: '++id | createdAt, projectId, updatedAt',
   volumeEntities:
@@ -109,7 +109,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(48)
+    expect(verno).toBe(49)
   })
 
   it('has exactly the expected set of tables', () => {

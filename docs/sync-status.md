@@ -92,6 +92,12 @@ Exist only in IndexedDB — no server equivalent.
 
 The digest and analysis tables are derived artifacts: rebuildable from prose, so never synced.
 
+**Column-level notes (schema v49):** entity `metadata` (custom fields) and `tags` ride inside
+the server Entity's `metadata` JSON blob for characters and locations; plot threads have no
+server-side blob, so their custom fields and tags are local-only. Section/subsection `pov`,
+`location`, `charactersPresent` and `wordCount` are local-only until the backend gains the
+columns.
+
 ---
 
 ## 🖥 Server-only (7 entities)

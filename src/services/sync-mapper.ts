@@ -189,7 +189,11 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         voice: local.voice,
         color: local.color,
         portrait: local.portrait,
-        notes: local.notes
+        notes: local.notes,
+        // Schema v49 custom fields and tags ride inside the server's existing
+        // metadata blob; the Entity table has no columns of its own for them.
+        customFields: local.metadata || {},
+        tags: Array.isArray(local.tags) ? local.tags : []
       })
     }),
     fromApi: (api: Record<string, unknown>) => {
@@ -208,6 +212,10 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         voice: (meta.voice || '') as string,
         color: (meta.color || '') as string,
         portrait: (meta.portrait || '') as string,
+        metadata: (meta.customFields && typeof meta.customFields === 'object'
+          ? meta.customFields
+          : {}) as Record<string, unknown>,
+        tags: (Array.isArray(meta.tags) ? meta.tags : []) as unknown[],
         lastEditedAt: Date.now(),
         createdAt: (api.createdAt || new Date().toISOString()) as string,
         updatedAt: (api.updatedAt || new Date().toISOString()) as string,
@@ -232,7 +240,11 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       name: (local.name || '') as string,
       type: 'Location',
       description: (local.description || local.notes || '') as string,
-      metadata: JSON.stringify({ notes: local.notes })
+      metadata: JSON.stringify({
+        notes: local.notes,
+        customFields: local.metadata || {},
+        tags: Array.isArray(local.tags) ? local.tags : []
+      })
     }),
     fromApi: (api: Record<string, unknown>) => {
       let meta: Record<string, unknown> = {}
@@ -246,6 +258,10 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         name: api.name as string,
         description: (api.description || meta.notes || '') as string,
         notes: (meta.notes || '') as string,
+        metadata: (meta.customFields && typeof meta.customFields === 'object'
+          ? meta.customFields
+          : {}) as Record<string, unknown>,
+        tags: (Array.isArray(meta.tags) ? meta.tags : []) as unknown[],
         createdAt: (api.createdAt || new Date().toISOString()) as string,
         updatedAt: (api.updatedAt || new Date().toISOString()) as string,
         syncStatus: 'synced',

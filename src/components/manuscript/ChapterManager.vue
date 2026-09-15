@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch, inject, nextTick } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
+import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import {
   useSectionSchemaManager,
   SECTION_STATUSES
@@ -20,6 +21,7 @@ import TagInput from '../shared/TagInput.vue'
 
 const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
+const storyBibleStore = useStoryBibleStore()
 const volumeStore = useVolumeStore()
 const { showConfirm } = useNotifications()
 
@@ -859,6 +861,41 @@ function handleSnapshotRestored(content) {
             placeholder="Key moments, beats, or summary of this scene..."
             class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
           ></textarea>
+        </div>
+        <div class="mb-3 grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-text-hint font-ui mb-1">POV character</label>
+            <input
+              v-model="newSubsection.pov"
+              type="text"
+              list="chapter-manager-characters"
+              placeholder="Whose eyes"
+              class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-text-hint font-ui mb-1">Location</label>
+            <input
+              v-model="newSubsection.location"
+              type="text"
+              list="chapter-manager-locations"
+              placeholder="Where it happens"
+              class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+        </div>
+        <datalist id="chapter-manager-characters">
+          <option v-for="c in storyBibleStore.characters" :key="c.id" :value="c.name" />
+        </datalist>
+        <datalist id="chapter-manager-locations">
+          <option v-for="l in storyBibleStore.locations" :key="l.id" :value="l.name" />
+        </datalist>
+        <div class="mb-3">
+          <label class="block text-xs text-text-hint font-ui mb-1">Characters present</label>
+          <TagInput
+            v-model="newSubsection.charactersPresent"
+            placeholder="Add a name, press Enter"
+          />
         </div>
         <div class="mb-4">
           <label class="block text-xs text-text-hint font-ui mb-1">Tags</label>

@@ -40,6 +40,8 @@ export interface SceneDigest {
   title: string
   charactersPresent: string[]
   location: string
+  /** POV character as planned (or as the author set on the scene); '' when unknown. */
+  pov: string
   /** Durable canon this scene establishes — the cross-scene memory carrier. */
   keyFacts: string[]
   facts: {
@@ -213,6 +215,7 @@ export function buildSceneDigest({
         : scene?.charactersPresent || scene?.characters
     ),
     location: String(scene?.location || s.usedEntities?.locationNames?.[0] || ''),
+    pov: String(scene?.pov || ''),
     keyFacts: stringList(s.keyFacts),
     facts: {
       characters: stringList(s.usedEntities?.characterNames),

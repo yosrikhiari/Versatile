@@ -16,7 +16,19 @@ export function useSectionSchemaManager() {
   const editingSubsection = ref<any>(null)
   const showSubsectionModal = ref(false)
   const activeSectionId = ref<any>(null)
-  const newSubsection = ref<any>({ title: '', summary: '', content: '', tags: [] })
+  // `pov` / `location` / `charactersPresent` are the scene-context columns
+  // (schema v49). They are the single write target for a scene's POV and
+  // cast: the digest layer reads them back and never overwrites a manual edit.
+  const emptySubsection = () => ({
+    title: '',
+    summary: '',
+    content: '',
+    tags: [],
+    pov: '',
+    location: '',
+    charactersPresent: []
+  })
+  const newSubsection = ref<any>(emptySubsection())
 
   function getStatusColor(status: any) {
     return SECTION_STATUSES.find((s: any) => s.value === status)?.color || 'var(--vers-text-muted)'
@@ -51,7 +63,7 @@ export function useSectionSchemaManager() {
 
   function openAddSubsection(sectionId: any) {
     editingSubsection.value = null
-    newSubsection.value = { title: '', summary: '', content: '' }
+    newSubsection.value = emptySubsection()
     activeSectionId.value = sectionId
     showSubsectionModal.value = true
   }
@@ -62,7 +74,12 @@ export function useSectionSchemaManager() {
       title: subsection.title || '',
       summary: subsection.summary || '',
       content: subsection.content || '',
-      tags: subsection.tags ? [...subsection.tags] : []
+      tags: subsection.tags ? [...subsection.tags] : [],
+      pov: subsection.pov || '',
+      location: subsection.location || '',
+      charactersPresent: Array.isArray(subsection.charactersPresent)
+        ? [...subsection.charactersPresent]
+        : []
     }
     showSubsectionModal.value = true
   }
@@ -79,7 +96,10 @@ export function useSectionSchemaManager() {
           title: newSubsection.value.title,
           summary: newSubsection.value.summary,
           content: newSubsection.value.content,
-          tags: newSubsection.value.tags
+          tags: newSubsection.value.tags,
+          pov: newSubsection.value.pov || '',
+          location: newSubsection.value.location || '',
+          charactersPresent: newSubsection.value.charactersPresent || []
         },
         projectStore.currentProjectId
       )

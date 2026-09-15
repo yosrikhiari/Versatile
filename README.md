@@ -62,7 +62,7 @@ src/
 │   ├── useStoryCritic.ts           — scoring and contradiction audit
 │   └── ...
 ├── services/           — ~120 modules
-│   ├── db-schema.ts / db-core.ts   — Dexie schema (v48), 26 db-* table modules
+│   ├── db-schema.ts / db-core.ts   — Dexie schema (v49), 26 db-* table modules
 │   ├── aiService.ts    — unified AI provider interface
 │   ├── providers/      — OpenAI, Anthropic, Gemini, Groq, Ollama adapters
 │   ├── ai/             — token calibration, model/context budgets, prompt store
@@ -154,7 +154,7 @@ writes a 2-scene sample with critic scores and gate verdicts to `reports/`.
 - **Framework**: Vue 3 (Composition API, `<script setup>`), TypeScript throughout `src/`
 - **State**: Pinia (20 stores)
 - **Editor**: Tiptap 3 (ProseMirror)
-- **Persistence**: Dexie 4, schema v48 (IndexedDB)
+- **Persistence**: Dexie 4, schema v49 (IndexedDB)
 - **Styling**: Tailwind CSS 3.4 over `--vers-*` tokens (`docs/DESIGN-TOKENS.md`)
 - **Build**: Vite 8
 - **Testing**: Vitest 5 + jsdom + fake-indexeddb; Playwright; xUnit for the backend

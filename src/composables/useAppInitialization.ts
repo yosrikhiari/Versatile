@@ -16,6 +16,8 @@ import { resume as resumeEmbeddingQueue } from '../services/embeddingQueue'
 import { markStale, pruneEmbeddingCache } from '../services/researchDb'
 import { resolveEmbeddingConfig } from '../services/embeddingConfig'
 import { EMBEDDING_DEFAULTS, EMBEDDING_VERSION } from '../config/ai'
+import { useDigestBackfill } from './useDigestBackfill'
+import { backfillSceneContextV48 } from '../services/dbMetadata'
 
 export function useAppInitialization() {
   const settingsStore = useSettingsStore()
@@ -217,6 +219,27 @@ export function useAppInitialization() {
     } catch (e) {
       console.warn('[resume] Embedding cache prune failed (non-fatal):', e)
     }
+
+    // Derived-artifact backfill, at idle, after the project is usable.
+    //
+    // `useDigestBackfill` (offline-first verdict Phase 3) and
+    // `backfillSceneContextV48` (roadmap Phase 1) were both written with no
+    // caller: the persistent analysis queue existed and nothing ever enqueued
+    // into it, so a hand-written manuscript never got digests, and scene
+    // context columns only ever filled at generation-commit time. Fire and
+    // forget — neither may delay the editor or surface as an error.
+    void (async () => {
+      try {
+        const backfill = useDigestBackfill()
+        await backfill.enqueue(projectId, manuscriptStore.subsections as any[])
+        const done = await backfill.run(projectId)
+        if (done > 0) console.info(`[resume] Built ${done} scene digest(s) in the background`)
+        const hydrated = await backfillSceneContextV48(projectId)
+        if (hydrated > 0) console.info(`[resume] Hydrated scene context on ${hydrated} scene(s)`)
+      } catch (e) {
+        console.warn('[resume] Digest backfill failed (non-fatal):', e)
+      }
+    })()
   }
 
   function isOnboardingDismissed() {

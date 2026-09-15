@@ -248,4 +248,43 @@ describe('storyBibleStore', () => {
       expect(store.voiceProfile.locked).toBe(true)
     })
   })
+
+  describe('entity metadata and tags (schema v49)', () => {
+    // The single write target for custom fields and tags on any entity.
+    // `EntityPropertiesPanel` and the roadmap's Story Query read these.
+    beforeEach(() => {
+      store.characters.push({ id: 'c1', name: 'Ines', metadata: { age: 34 }, tags: ['major'] })
+      store.locations.push({ id: 'l1', name: 'The Docks' })
+    })
+
+    it('reads and writes a custom field without clobbering the others', async () => {
+      expect(store.getEntityMeta('character', 'c1', 'age')).toBe(34)
+      await store.setEntityMeta('character', 'c1', 'ally', true)
+      expect(mockDbService.updateCharacter).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ metadata: { age: 34, ally: true } })
+      )
+      expect(store.getEntityMeta('character', 'c1', 'ally')).toBe(true)
+      expect(store.getEntityMeta('character', 'c1', 'age')).toBe(34)
+    })
+
+    it('removes a field when set to null', async () => {
+      await store.setEntityMeta('character', 'c1', 'age', null)
+      expect(store.findEntity('character', 'c1').metadata).toEqual({})
+    })
+
+    it('adds a tag once, trimmed, and removes it', async () => {
+      await store.addEntityTag('location', 'l1', '  harbour ')
+      await store.addEntityTag('location', 'l1', 'harbour')
+      expect(store.findEntity('location', 'l1').tags).toEqual(['harbour'])
+      await store.removeEntityTag('location', 'l1', 'harbour')
+      expect(store.findEntity('location', 'l1').tags).toEqual([])
+      await store.addEntityTag('location', 'l1', '   ')
+      expect(mockDbService.updateLocation).toHaveBeenCalledTimes(2)
+    })
+
+    it('refuses an unknown entity kind', () => {
+      expect(() => store.getEntityArray('spaceship')).toThrow(/Unknown entity kind/)
+    })
+  })
 })

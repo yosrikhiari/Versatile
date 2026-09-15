@@ -404,5 +404,36 @@ export const SCHEMA_VERSIONS = [
       storyStateSnapshots: '++id, projectId, timestamp, [projectId+timestamp]',
       sessionArchive: '++id, projectId, timestamp, type, signal, [projectId+timestamp]'
     }
+  },
+  /**
+   * v49: Properties & scene-metadata backbone (Obsidian Properties / Longform
+   * analog — `planning/OBSIDIAN-INSPIRED-ROADMAP.md` Phase 1).
+   *
+   * Entities gain an open `metadata` JSON column (unindexed, typed custom
+   * fields) plus a `*tags` multi-entry index so any entity is queryable and
+   * filterable. Sections and subsections gain editable scene-context columns
+   * (`pov` / `location` / `*charactersPresent`) that are the SINGLE WRITE
+   * TARGET for scene POV and cast — the derived digest layer (`sceneDigests`,
+   * `entityStates`) reads these back and never overwrites a manual edit.
+   * Subsections also gain `wordCount`; sections have no prose of their own,
+   * so their count is aggregated from subsections on read.
+   *
+   * This was built as v48 on 2026-08-19 and lost uncommitted; the perf pass
+   * took v48 on 2026-09-14, so the rebuild lands here as v49.
+   */
+  {
+    version: 49,
+    stores: {
+      characters:
+        '++id, projectId, name, role, goal, voice, notes, color, portrait, lastEditedAt, generationStatus, apiId, syncStatus, lastSyncedAt, metadata, *tags',
+      locations:
+        '++id, projectId, name, description, notes, generationStatus, apiId, syncStatus, lastSyncedAt, metadata, *tags',
+      plotThreads:
+        '++id, projectId, title, status, notes, generationStatus, apiId, syncStatus, lastSyncedAt, metadata, *tags',
+      sections:
+        '++id, projectId, title, summary, order, status, *tags, volumeId, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt, pov, location, *charactersPresent',
+      subsections:
+        '++id, projectId, sectionId, title, summary, order, content, *tags, contentStatus, branchId, [projectId+branchId], apiId, syncStatus, lastSyncedAt, pov, location, *charactersPresent, wordCount'
+    }
   }
 ]

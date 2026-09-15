@@ -268,6 +268,62 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     return characters.value.map((c: any) => c.name)
   }
 
+  // --- Entity metadata + tags (schema v49: Obsidian Properties analog) ---
+  // `metadata` is an open JSON column of typed custom fields; `tags` is a
+  // multi-entry index. These are the single write target for entity metadata.
+  function resolveEntityRef(kind: string) {
+    switch (kind) {
+      case 'character':
+        return { list: characters, update: updateCharacterData }
+      case 'location':
+        return { list: locations, update: updateLocationData }
+      case 'plotThread':
+        return { list: plotThreads, update: updatePlotThreadData }
+      default:
+        throw new Error(`Unknown entity kind: ${kind}`)
+    }
+  }
+
+  function getEntityArray(kind: string) {
+    return resolveEntityRef(kind).list.value
+  }
+
+  function findEntity(kind: string, id: any) {
+    return resolveEntityRef(kind).list.value.find((e: any) => e.id === id)
+  }
+
+  function getEntityMeta(kind: string, id: any, key: string) {
+    const entity = findEntity(kind, id)
+    return entity?.metadata?.[key]
+  }
+
+  async function setEntityMeta(kind: string, id: any, key: string, value: any) {
+    const entity = findEntity(kind, id)
+    const metadata = { ...(entity?.metadata || {}) }
+    if (value === undefined || value === null) delete metadata[key]
+    else metadata[key] = value
+    const { update } = resolveEntityRef(kind)
+    await update(id, { metadata }, undefined)
+  }
+
+  async function addEntityTag(kind: string, id: any, tag: string) {
+    const clean = String(tag || '').trim()
+    if (!clean) return
+    const entity = findEntity(kind, id)
+    const tags = Array.isArray(entity?.tags) ? [...entity.tags] : []
+    if (tags.includes(clean)) return
+    tags.push(clean)
+    const { update } = resolveEntityRef(kind)
+    await update(id, { tags }, undefined)
+  }
+
+  async function removeEntityTag(kind: string, id: any, tag: string) {
+    const entity = findEntity(kind, id)
+    const tags = Array.isArray(entity?.tags) ? entity.tags.filter((t: any) => t !== tag) : []
+    const { update } = resolveEntityRef(kind)
+    await update(id, { tags }, undefined)
+  }
+
   // Voice profile methods
   async function setVoiceProfile(profile: any) {
     voiceProfile.profile = profile
@@ -329,6 +385,12 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     getCharacterNames,
     setVoiceProfile,
     lockVoiceProfile,
-    loadVoiceProfileForProject
+    loadVoiceProfileForProject,
+    getEntityArray,
+    findEntity,
+    getEntityMeta,
+    setEntityMeta,
+    addEntityTag,
+    removeEntityTag
   }
 })
