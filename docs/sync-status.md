@@ -101,7 +101,7 @@ columns.
 
 ---
 
-## 🖥 Server-only (7 entities)
+## 🖥 Server-only (6 entities)
 
 Exist only in the backend database — no IndexedDB counterpart.
 
@@ -109,13 +109,21 @@ Exist only in the backend database — no IndexedDB counterpart.
 |----------------|-------|--------|
 | Organization | `DbSet<Organization>` | Multi-tenant identity; server-managed |
 | OrganizationMembership | `DbSet<OrganizationMembership>` | Org membership join table; server-managed |
-| Research | `DbSet<Research>` (ResearchNotes) | Possibly dead code — distinct from ResearchDocument |
 | Flow | `DbSet<Flow>` | Story-flow graph metadata; frontend uses graphEdges/nodePositions directly |
 | BibleEntry | `DbSet<BibleEntry>` | Story-bible entries; no Dexie counterpart |
 | OutboxMessage | `DbSet<OutboxMessage>` | Infrastructure: outbox pattern for event-driven processing |
 | AuditEntry | `DbSet<AuditEntry>` (AuditLog) | Server audit trail only |
 
 ---
+
+## Checked against the code (2026-09-15)
+
+`SYNC_ENTITIES` in `sync-mapper.ts` lists exactly the 14 tables above; the backend `DbSet`s match the
+local-only and server-only lists (the `Research`/ResearchNotes set this doc used to list was removed by the
+`RemoveResearchNotes` migration). The API boots against an empty Postgres 16, applies both migrations
+(`InitialCreate`, `AddOrganizationIdIndexes`) and answers `/health` with `database` and `ai_provider`
+healthy; the backend suite is 985 tests green. A two-client sync run (register on the server through the
+editor's sign-in, edit on two browsers) has not been exercised in this audit — it needs a server account.
 
 ## Workflow
 

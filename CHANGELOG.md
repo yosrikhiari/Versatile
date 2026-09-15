@@ -7,6 +7,12 @@ was verified.
 
 ## [Unreleased]
 
+### Backend and sync, checked (2026-09-15)
+- `docs/sync-status.md` matches the code again (a removed `Research` entity is
+  gone from it) and records what was verified: the API boots on an empty
+  Postgres 16, migrates, and reports healthy; the backend suite is green. A
+  two-client sync run still needs a server account (#64, #65).
+
 ### First run (2026-09-15)
 - **Open the sample story** on an empty workspace (`docs/UX-AUDIT.md` #60):
   two chapters, four scenes of prose, a small story bible — every panel has

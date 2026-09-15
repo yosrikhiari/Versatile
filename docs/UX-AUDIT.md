@@ -169,6 +169,13 @@ A fresh local writer, empty database: login → workspace → first project → 
 | 62 | P2 | A blank project's editor offered only the blank page; the generator's "No synopsis set — open Project Settings" was a sentence, not a way there. | `FlowEditor`, `GenerationSettingsForm`, `StoryGeneratorPanel`, `EmptyState` | fixed: **Or draft a scene with the generator** under *Start writing* opens the generator on its Scene tab (`initialTab`); the synopsis hint links to project settings; `EmptyState` gains an `#after` slot for a quieter second door |
 | 63 | P2 | The onboarding wizard (`WelcomeOnboarding`: name, description, first character) only appears when the editor opens with *no project*, and the workspace always creates one first — so no writer reaches it. | `useAppInitialization`, `EditorView` | open — either retire it or make it the New-project dialog's long form; a product call |
 
+### Sixth pass: backend and sync (2026-09-15)
+
+| # | Pri | Finding | Where | Status |
+|---|-----|---------|-------|--------|
+| 64 | P2 | `docs/sync-status.md` listed a server-only `Research` (ResearchNotes) entity that the `RemoveResearchNotes` migration had already dropped; the rest of the doc — 14 synced, 16 local-only, 21 client-only — matches `SYNC_ENTITIES` and the `DbSet`s. | `docs/sync-status.md` | fixed: the doc says what the code says, and records what was checked |
+| 65 | P2 | The API was never booted in this audit until now: against an empty Postgres 16 it applies its two migrations and reports `/health` healthy (`database`, `ai_provider`); Swagger serves. Not exercised: a two-client sync run, which needs a server account created through the editor's sign-in. | `backend/` | verified as far as it goes; the sync run is the user's to do with `docker compose up` |
+
 What works, and was left alone: the Chapters panel's "Loose draft — File as chapter" (one click, no dialog), Consistency and Beta Reader
 empty states now say what they need, Polish docks under the manuscript as a drawer (it looked dead only because it sits below a short
 viewport), Settings is a modal, Costs/Research/Archive/Network/Timeline/Story Shape all open with honest empty states.
