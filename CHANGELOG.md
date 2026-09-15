@@ -7,6 +7,18 @@ was verified.
 
 ## [Unreleased]
 
+### Data panels on a real book (2026-09-15)
+- **Compile is the export** (`docs/UX-AUDIT.md` #53): one header button opens
+  it; PDF and RTF are built from the compiled manuscript (the old RTF wrote the
+  root document only, the old PDF an outline without prose).
+- **Chapter digests are placed by manuscript order** (#54), so volumes no
+  longer collapse into one "chapter 1" on the timeline; the rollup also runs
+  after the background digest backfill.
+- **Sections order volume by volume** (#55) everywhere (`orderSections`).
+- **Story Shape reads the manuscript** (#56): Reanalyze works on a book written
+  in scenes, and the dialogue ratio counts quoted words.
+- Chapter summaries read as sentences (#57); canvas and shape copy (#58).
+
 ### Generation path audit: run, watched, fixed (2026-09-15)
 - **Chapter mode accepts a two-scene plan** (`docs/UX-AUDIT.md` #42); the
   scene floor is the plan, not a fixed three.

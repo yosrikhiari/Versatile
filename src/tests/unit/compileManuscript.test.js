@@ -216,8 +216,13 @@ describe('CompileManuscript.vue', () => {
     await w.find('[data-test="export-markdown"]').trigger('click')
     await flushPromises()
     expect(svc.exportCompiled).toHaveBeenLastCalledWith('p1', 'markdown', expect.anything())
+    // PDF and RTF are compiled like the others now; the PDF button used to
+    // hand off to the outline export, which carries no prose.
     await w.find('[data-test="export-pdf"]').trigger('click')
-    expect(w.emitted('export-pdf')).toBeTruthy()
+    expect(svc.exportCompiled).toHaveBeenLastCalledWith('p1', 'pdf', expect.anything())
+    await w.find('[data-test="export-rtf"]').trigger('click')
+    expect(svc.exportCompiled).toHaveBeenLastCalledWith('p1', 'rtf', expect.anything())
+    expect(w.emitted('export-pdf')).toBeFalsy()
     vi.doUnmock('@/services/compileManuscript')
   })
 })

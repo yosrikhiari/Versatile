@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { orderSections } from '../utils/sectionOrder'
 import { toPlain } from '../utils/toPlain'
 import { countWords, stripHtmlTags } from '../utils/textUtils'
 import {
@@ -120,9 +121,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     return map
   })
 
-  const sortedSections = computed(() => {
-    return [...sections.value].sort((a, b) => (a.order || 0) - (b.order || 0))
-  })
+  const sortedSections = computed(() => orderSections(sections.value))
 
   const activeSection = computed(() => {
     return sections.value.find((c) => c.id === activeSectionId.value)

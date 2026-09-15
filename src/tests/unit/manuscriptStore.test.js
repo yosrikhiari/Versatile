@@ -33,6 +33,19 @@ describe('manuscriptStore', () => {
     expect(sorted[1].id).toBe('ch2')
   })
 
+  it('keeps volumes together: order restarts per volume and must not interleave them', () => {
+    // Three runs: volume 3 (one chapter), volume 5 (three), volume 6 (one).
+    // Sorting on `order` alone put volume 6's chapter third, between volume 5's.
+    store.sections = [
+      { id: 1, order: 0, volumeId: 3 },
+      { id: 5, order: 0, volumeId: 5 },
+      { id: 6, order: 1, volumeId: 5 },
+      { id: 7, order: 2, volumeId: 5 },
+      { id: 8, order: 0, volumeId: 6 }
+    ]
+    expect(store.sortedSections.map((s) => s.id)).toEqual([1, 5, 6, 7, 8])
+  })
+
   it('counts words across section bodies and subsections', () => {
     store.sections = [
       { id: 'ch1', content: '<p>one two</p>', wordCount: 2 },

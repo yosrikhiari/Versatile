@@ -32,8 +32,8 @@ describe('buildManuscriptText', () => {
     expect(text.indexOf('The Arrival')).toBeLessThan(text.indexOf('Cold Water'))
     expect(text.indexOf('First paragraph')).toBeLessThan(text.indexOf('Second paragraph'))
     expect(text).not.toContain('<p>')
-    expect(text).toContain('[Section 1: The Arrival]')
-    expect(text).toContain('[Section 2: Cold Water]')
+    expect(text).toContain('[The Arrival]')
+    expect(text).toContain('[Cold Water]')
   })
 })
 

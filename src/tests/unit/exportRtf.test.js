@@ -80,3 +80,41 @@ describe('buildManuscriptRtf', () => {
     expect(rtf).toContain('Braces \\{and\\} back\\\\slash')
   })
 })
+
+describe('buildRtf (compiled manuscript)', () => {
+  it('writes every chapter and scene in narrative order, not the root document', async () => {
+    const { buildRtf } = await import('@/services/compileManuscript')
+    const rtf = buildRtf(
+      {
+        markdown: '',
+        stats: { volumes: 1, sections: 2, subsections: 3, words: 12 },
+        sections: [
+          {
+            id: 'a',
+            title: 'The Count',
+            number: 1,
+            volumeTitle: 'Volume 1',
+            scenes: [
+              { id: 's1', title: 'Night', text: 'Ilse counted.\n\nEleven, then ten.' },
+              { id: 's2', title: 'Dusk', text: 'Tomas’s lamp was out.' }
+            ]
+          },
+          {
+            id: 'b',
+            title: 'The Truth',
+            number: 2,
+            volumeTitle: 'Volume 1',
+            scenes: [{ id: 's3', title: 'x', text: 'Done.' }]
+          }
+        ]
+      },
+      'The Long Night'
+    )
+    expect(rtf.startsWith('{\\rtf1\\ansi')).toBe(true)
+    expect(rtf.indexOf('The Count')).toBeLessThan(rtf.indexOf('Eleven, then ten.'))
+    expect(rtf.indexOf('Eleven, then ten.')).toBeLessThan(rtf.indexOf('* * *'))
+    expect(rtf.indexOf('* * *')).toBeLessThan(rtf.indexOf('The Truth'))
+    expect(rtf).toContain('\\u8217?')
+    expect(rtf.trimEnd().endsWith('}')).toBe(true)
+  })
+})

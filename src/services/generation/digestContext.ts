@@ -5,6 +5,8 @@ import {
   putVolumeDigest
 } from '../db-digests'
 import { rollupAllDigests, type BookDigest } from './digestRollup'
+import { getSections, getSubsections } from '../db-structure'
+import { orderSections } from '../../utils/sectionOrder'
 
 /**
  * Wiring for the scene → chapter → volume → book digest hierarchy.
@@ -47,8 +49,21 @@ export async function rollupProjectDigests({
 }): Promise<BookDigest | null> {
   if (!projectId) return null
   try {
-    const sceneDigests = await getProjectDigests(projectId)
-    if (!sceneDigests.length) return null
+    const rawDigests = await getProjectDigests(projectId)
+    if (!rawDigests.length) return null
+
+    // A scene digest carries the chapter number its run gave it, which starts
+    // at 1 for every run: three volumes' first chapters all rolled up into
+    // "chapter 1" and the timeline showed one chapter made of three. The
+    // manuscript's own order is the number that means something — the same
+    // one TimelineView titles chapters by — so each digest is placed by the
+    // section its scene sits in. A digest whose scene is not in a section
+    // keeps its run number.
+    const placement = await sectionPlacement(projectId)
+    const sceneDigests = rawDigests.map((d: any) => {
+      const n = placement.chapterOfScene.get(String(d.subsectionId))
+      return n != null ? { ...d, chapterNumber: n } : d
+    })
 
     const chapterNumbers = [
       ...new Set(
@@ -60,11 +75,25 @@ export async function rollupProjectDigests({
     ].sort((a, b) => a - b)
     if (!chapterNumbers.length) return null
 
+    const chapters = chapterNumbers.map((number) => ({
+      number,
+      volumeId: placement.volumeOfChapter.get(number) ?? volumeId,
+      sceneIds: []
+    }))
+    const byVolume = new Map<string, number[]>()
+    for (const ch of chapters) {
+      if (ch.volumeId == null) continue
+      const key = String(ch.volumeId)
+      if (!byVolume.has(key)) byVolume.set(key, [])
+      byVolume.get(key)!.push(ch.number)
+    }
+    const volumes = [...byVolume.entries()].map(([id, nums]) => ({ id, chapterNumbers: nums }))
+
     return await rollupAllDigests(
       projectId,
       async () => sceneDigests,
-      async () => chapterNumbers.map((number) => ({ number, volumeId, sceneIds: [] })),
-      async () => (volumeId ? [{ id: volumeId, chapterNumbers }] : []),
+      async () => chapters,
+      async () => volumes,
       putChapterDigest,
       putVolumeDigest
     )
@@ -72,6 +101,32 @@ export async function rollupProjectDigests({
     console.warn('[digestContext] digest rollup failed:', err)
     return null
   }
+}
+
+/** sceneId → chapter number (1-based, in manuscript order) and chapter → volume. */
+async function sectionPlacement(projectId: string) {
+  const chapterOfScene = new Map<string, number>()
+  const volumeOfChapter = new Map<number, string | null>()
+  try {
+    const [sections, subsections] = await Promise.all([
+      getSections(projectId),
+      getSubsections(projectId)
+    ])
+    const sorted = orderSections(sections as any[])
+    const chapterOfSection = new Map<string, number>()
+    sorted.forEach((s: any, i: number) => {
+      chapterOfSection.set(String(s.id), i + 1)
+      volumeOfChapter.set(i + 1, s.volumeId ?? null)
+    })
+    for (const sub of subsections as any[]) {
+      const n = chapterOfSection.get(String(sub.sectionId))
+      if (n != null) chapterOfScene.set(String(sub.id), n)
+    }
+  } catch {
+    // No manuscript to place against (a test, or a project mid-load): the
+    // digests' own numbers are used.
+  }
+  return { chapterOfScene, volumeOfChapter }
 }
 
 /**

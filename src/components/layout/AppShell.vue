@@ -108,7 +108,7 @@ const paletteActions = computed(() => [
     icon: 'layers',
     keywords: ['export', 'docx', 'word', 'epub', 'markdown', 'compile', 'longform']
   },
-  { id: 'export-pdf', label: 'Export to PDF', icon: 'file-text' },
+  { id: 'export-pdf', label: 'Export outline and story bible (PDF)', icon: 'file-text' },
   {
     id: 'export-rtf',
     label: 'Export manuscript (RTF)',
@@ -573,17 +573,13 @@ watch(
         >
           <BaseIcon name="upload" :size="16" />
         </button>
+        <!-- One door to the manuscript. The two buttons this replaces exported
+             an outline PDF (no prose) and an RTF of the root document only —
+             for a book written in scenes, a title page. -->
         <button
           class="hidden sm:inline-flex hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
-          title="Export to PDF"
-          @click="emit('export-pdf')"
-        >
-          <BaseIcon name="file-text" :size="16" />
-        </button>
-        <button
-          class="hidden sm:inline-flex hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
-          title="Export manuscript (RTF — opens in Word, Docs, Scrivener)"
-          @click="emit('export-rtf')"
+          title="Compile manuscript (Word, EPUB, PDF, RTF, Markdown)"
+          @click="showCompile = true"
         >
           <BaseIcon name="book-open" :size="16" />
         </button>

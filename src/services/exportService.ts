@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
 import { exportToPDF } from './dbService'
+import { rtfEscape } from './rtf'
 
 interface PdfCharacter {
   name: string
@@ -56,7 +57,7 @@ interface PdfExportData {
 }
 
 export async function exportManuscriptToPDF(projectId: string, projectName = 'Manuscript') {
-  const data = await exportToPDF(projectId) as unknown as PdfExportData
+  const data = (await exportToPDF(projectId)) as unknown as PdfExportData
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -75,7 +76,12 @@ export async function exportManuscriptToPDF(projectId: string, projectName = 'Ma
     }
   }
 
-  function addWrappedText(text: string, fontSize = 12, fontStyle: 'normal' | 'bold' | 'italic' = 'normal', lineHeight = 6) {
+  function addWrappedText(
+    text: string,
+    fontSize = 12,
+    fontStyle: 'normal' | 'bold' | 'italic' = 'normal',
+    lineHeight = 6
+  ) {
     doc.setFontSize(fontSize)
     doc.setFont('helvetica', fontStyle)
     const lines = doc.splitTextToSize(text, maxLineWidth)
@@ -266,31 +272,7 @@ export async function exportManuscriptToPDF(projectId: string, projectName = 'Ma
  * central-directory records — a lot of binary surface for a format that buys
  * nothing over RTF at the point of handoff. RTF is plain text and costs nothing.
  */
-function rtfEscape(text: string): string {
-  let out = ''
-  for (const ch of String(text ?? '')) {
-    if (ch === '\\' || ch === '{' || ch === '}') {
-      out += '\\' + ch
-      continue
-    }
-    const code = ch.codePointAt(0)!
-    if (code < 128) {
-      out += ch
-    } else if (code <= 0xffff) {
-      // \uN carries a *signed* 16-bit value, so anything above 32767 wraps
-      // negative. The trailing `?` is the substitute a reader that cannot do
-      // Unicode falls back to — without it the next character is eaten.
-      out += `\\u${code > 32767 ? code - 65536 : code}?`
-    } else {
-      // Astral characters go as the surrogate pair RTF readers expect.
-      const v = code - 0x10000
-      const hi = 0xd800 + (v >> 10)
-      const lo = 0xdc00 + (v & 0x3ff)
-      out += `\\u${hi > 32767 ? hi - 65536 : hi}?\\u${lo > 32767 ? lo - 65536 : lo}?`
-    }
-  }
-  return out
-}
+export { rtfEscape }
 
 /** Blank lines separate paragraphs; a first-line indent is manuscript standard. */
 function rtfBody(text: string): string {
@@ -330,14 +312,12 @@ export function buildManuscriptRtf(data: PdfExportData, projectName = 'Manuscrip
   return parts.join('\n')
 }
 
-export async function exportManuscriptToRtf(projectId: string, projectName = 'Manuscript') {
-  const data = (await exportToPDF(projectId)) as unknown as PdfExportData
-  const rtf = buildManuscriptRtf(data, projectName)
-  const blob = new Blob([rtf], { type: 'application/rtf' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${projectName.replace(/[^a-z0-9]/gi, '_')}.rtf`
-  a.click()
-  URL.revokeObjectURL(url)
+/**
+ * The manuscript as RTF, compiled in narrative order. This used to write the
+ * root document only (`manuscript.content`), which for a book written in
+ * scenes is a title page and a word count and nothing else.
+ */
+export async function exportManuscriptToRtf(projectId: string, _projectName = 'Manuscript') {
+  const { exportCompiled } = await import('./compileManuscript')
+  return exportCompiled(projectId, 'rtf')
 }

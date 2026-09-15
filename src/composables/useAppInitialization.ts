@@ -234,6 +234,14 @@ export function useAppInitialization() {
         await backfill.enqueue(projectId, manuscriptStore.subsections as any[])
         const done = await backfill.run(projectId)
         if (done > 0) console.info(`[resume] Built ${done} scene digest(s) in the background`)
+        // Chapter and volume digests follow the scene digests; the timeline
+        // and the earlier-chapters block read them. A rollup used to happen
+        // only at the end of a generation run, so a hand-written or imported
+        // manuscript never got one.
+        if (done > 0) {
+          const { rollupProjectDigests } = await import('../services/generation/digestContext')
+          await rollupProjectDigests({ projectId })
+        }
         const hydrated = await backfillSceneContextV48(projectId)
         if (hydrated > 0) console.info(`[resume] Hydrated scene context on ${hydrated} scene(s)`)
       } catch (e) {

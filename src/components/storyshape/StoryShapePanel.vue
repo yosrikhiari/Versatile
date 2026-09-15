@@ -18,6 +18,7 @@ const {
   currentVersion,
   combinedTension,
   hasAnalysis,
+  hasManuscript,
   aiInsights,
   runFullAnalysis,
   loadLatestAnalysis
@@ -81,7 +82,7 @@ function priorityClass(p) {
           size="sm"
           icon="activity"
           :loading="isAnalyzing"
-          :disabled="isAnalyzing"
+          :disabled="isAnalyzing || !hasManuscript"
           @click="handleAnalyze"
         >
           {{ hasAnalysis ? 'Reanalyze' : 'Analyze' }}
@@ -155,15 +156,15 @@ function priorityClass(p) {
           <h4 class="section-title label-micro text-text-hint">Rhythm</h4>
           <div class="rhythm-block">
             <div class="rhythm-row">
-              <span class="rhythm-label">Dialogue Ratio</span>
+              <span class="rhythm-label">Dialogue</span>
               <span class="rhythm-value"
                 >{{ Math.round(currentAnalysis.metrics.dialogueRatio * 100) }}%</span
               >
             </div>
             <div class="rhythm-row">
               <span class="rhythm-label">Fingerprint</span>
-              <span class="rhythm-value capitalize">{{
-                currentAnalysis.metrics.rhythmFingerprint
+              <span class="rhythm-value">{{
+                String(currentAnalysis.metrics.rhythmFingerprint || '').replace(/-/g, ' ')
               }}</span>
             </div>
             <div class="rhythm-row">
@@ -354,9 +355,15 @@ function priorityClass(p) {
 
       <div v-if="!isAnalyzing && !hasAnalysis" class="py-10 text-center">
         <BaseIcon name="activity" :size="24" class="mx-auto mb-3 text-text-hint" />
-        <p class="font-ui text-sm text-text-primary">No analysis yet</p>
+        <p class="font-ui text-sm text-text-primary">
+          {{ hasManuscript ? 'Not analysed yet' : 'Nothing to analyse yet' }}
+        </p>
         <p class="mt-1 font-ui text-xs text-text-hint leading-5 max-w-[30ch] mx-auto text-pretty">
-          Analyze the manuscript to see where tension rises and falls across your sections.
+          {{
+            hasManuscript
+              ? 'Analyze reads the whole manuscript and shows where tension rises and falls.'
+              : 'Write or generate a scene first; the shape is read from the manuscript.'
+          }}
         </p>
       </div>
     </div>

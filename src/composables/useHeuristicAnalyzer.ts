@@ -218,7 +218,8 @@ const BEAT_PATTERNS = [
 function countKeywordHits(text: string, keywords: string[]): number {
   const lower = text.toLowerCase()
   return keywords.reduce(
-    (sum: number, kw: string) => sum + (lower.match(new RegExp('\\b' + kw + '\\w*\\b', 'gi')) || []).length,
+    (sum: number, kw: string) =>
+      sum + (lower.match(new RegExp('\\b' + kw + '\\w*\\b', 'gi')) || []).length,
     0
   )
 }
@@ -234,19 +235,21 @@ function computeSentenceScores(text: string): number[] {
   })
 }
 
-function computeDialogueRatio(text: string): number {
-  const lines = text.split('\n').filter((l) => l.trim().length > 0)
-  if (lines.length === 0) return 0
-  const dialogueLines = lines.filter((l) => {
-    const t = l.trim()
-    return (
-      t.startsWith('"') ||
-      t.startsWith('\u2018') ||
-      t.startsWith('\u201c') ||
-      t.match(/^[A-Z][a-z]+:\s*["\u2018\u201c]/)
-    )
-  }).length
-  return dialogueLines / lines.length
+/**
+ * Share of the words that sit inside quotation marks, straight or curly.
+ * The old version counted lines that *began* with a quote — after
+ * `stripHtmlTags` collapsed every paragraph onto one line, so a 3,300-word
+ * chapter set full of confrontations reported 0% dialogue and
+ * "narration-heavy".
+ */
+export function computeDialogueRatio(text: string): number {
+  const total = text.split(/\s+/).filter(Boolean).length
+  if (total === 0) return 0
+  let quoted = 0
+  for (const m of text.matchAll(/["\u201c]([^"\u201d\n]{1,800}?)["\u201d]/g)) {
+    quoted += m[1].split(/\s+/).filter(Boolean).length
+  }
+  return Math.min(1, quoted / total)
 }
 
 function computePacingGradient(words: number, sentences: number): number {

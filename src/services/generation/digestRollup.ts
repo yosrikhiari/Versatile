@@ -53,11 +53,9 @@ export function buildChapterDigest({
     for (const l of d.facts?.locations ?? []) allLocs.add(l)
   }
 
-  // Build summary from scene summaries
-  const summary = validScenes
-    .map((d) => d.summary)
-    .filter(Boolean)
-    .join(' | ')
+  // One sentence per scene, read as prose: the " | " join reached the
+  // timeline as a pipe-separated line.
+  const summary = joinSentences(validScenes.map((d) => d.summary))
 
   const contentForHash = JSON.stringify({
     scenes: validScenes.map((d) => d.contentHash),
@@ -101,10 +99,7 @@ export function buildVolumeDigest({
     for (const l of d.locations ?? []) allLocs.add(l)
   }
 
-  const summary = validChapters
-    .map((d) => d.summary)
-    .filter(Boolean)
-    .join(' | ')
+  const summary = joinSentences(validChapters.map((d) => d.summary))
 
   const contentForHash = JSON.stringify({
     chapters: validChapters.map((d) => d.contentHash),
@@ -143,10 +138,7 @@ export function buildBookDigest({
     for (const l of d.locations ?? []) allLocs.add(l)
   }
 
-  const summary = validVolumes
-    .map((d) => d.summary)
-    .filter(Boolean)
-    .join(' | ')
+  const summary = joinSentences(validVolumes.map((d) => d.summary))
 
   return {
     projectId,
@@ -158,6 +150,21 @@ export function buildBookDigest({
   }
 }
 
+/** Sentences joined with a space, each ending in a full stop, duplicates dropped. */
+function joinSentences(parts: Array<string | null | undefined>): string {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of parts) {
+    const t = String(raw ?? '').trim()
+    if (!t) continue
+    const key = t.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(/[.!?…]$/.test(t) ? t : `${t}.`)
+  }
+  return out.join(' ')
+}
+
 /**
  * Roll up all digests for a project: scene → chapter → volume → book.
  * Returns the book digest and also writes chapter/volume digests to DB.
@@ -165,7 +172,9 @@ export function buildBookDigest({
 export async function rollupAllDigests(
   projectId: string,
   getSceneDigests: () => Promise<SceneDigest[]>,
-  getChapters: () => Promise<Array<{ number: number; volumeId: string | null; sceneIds: string[] }>>,
+  getChapters: () => Promise<
+    Array<{ number: number; volumeId: string | null; sceneIds: string[] }>
+  >,
   getVolumes: () => Promise<Array<{ id: string; chapterNumbers: number[] }>>,
   putChapterDigest: (d: ChapterDigest) => Promise<any>,
   putVolumeDigest: (d: VolumeDigest) => Promise<any>

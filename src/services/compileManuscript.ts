@@ -14,6 +14,7 @@
  */
 import { getVolumes, getSections, getSubsections } from './db-structure'
 import { getProject } from './db-projects'
+import { rtfEscape } from './rtf'
 
 export type TitleStyle = 'none' | 'section' | 'numbered'
 
@@ -87,7 +88,12 @@ export function proseToText(content: string | null | undefined): string {
 
 function byOrder(a: any, b: any): number {
   const d = (a?.order ?? a?.sortOrder ?? 0) - (b?.order ?? b?.sortOrder ?? 0)
-  return d !== 0 ? d : String(a?.id ?? '').localeCompare(String(b?.id ?? ''))
+  if (d !== 0) return d
+  // Ids are numbers from Dexie; compared as strings, volume "10" sorted before "3".
+  const na = Number(a?.id)
+  const nb = Number(b?.id)
+  if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb
+  return String(a?.id ?? '').localeCompare(String(b?.id ?? ''))
 }
 
 function countWords(text: string): number {
@@ -96,7 +102,10 @@ function countWords(text: string): number {
 }
 
 /** Sections in narrative order with the volume each belongs to. */
-export function orderSections(volumes: any[], sections: any[]): Array<{ section: any; volume: any | null }> {
+export function orderSections(
+  volumes: any[],
+  sections: any[]
+): Array<{ section: any; volume: any | null }> {
   const out: Array<{ section: any; volume: any | null }> = []
   const seen = new Set<string>()
   const vols = [...(volumes || [])].sort(byOrder)
@@ -118,7 +127,10 @@ export function orderSections(volumes: any[], sections: any[]): Array<{ section:
   return out
 }
 
-export function compileMarkdown(input: CompileInput, workflow: CompileWorkflow = {}): CompileResult {
+export function compileMarkdown(
+  input: CompileInput,
+  workflow: CompileWorkflow = {}
+): CompileResult {
   const w = { ...DEFAULTS, ...workflow }
   const only = workflow.sectionIds?.length ? new Set(workflow.sectionIds.map(String)) : null
   const subsBySection = new Map<string, any[]>()
@@ -155,7 +167,11 @@ export function compileMarkdown(input: CompileInput, workflow: CompileWorkflow =
     const sceneTexts: string[] = []
     const subs = subsBySection.get(String(section.id)) || []
     // A section with prose of its own and no scenes compiles its own body.
-    const bodies = subs.length ? subs : section.content ? [{ id: section.id, title: '', content: section.content }] : []
+    const bodies = subs.length
+      ? subs
+      : section.content
+        ? [{ id: section.id, title: '', content: section.content }]
+        : []
     for (const sub of bodies) {
       let text = proseToText(sub.content)
       if (w.stripFrontmatter) text = stripFrontmatter(text)
@@ -196,7 +212,10 @@ export async function loadCompileInput(projectId: string): Promise<CompileInput>
   return { volumes, sections, subsections }
 }
 
-export async function compileManuscript(projectId: string, workflow: CompileWorkflow = {}): Promise<CompileResult> {
+export async function compileManuscript(
+  projectId: string,
+  workflow: CompileWorkflow = {}
+): Promise<CompileResult> {
   return compileMarkdown(await loadCompileInput(projectId), workflow)
 }
 
@@ -205,9 +224,7 @@ export async function compileManuscript(projectId: string, workflow: CompileWork
 export async function buildDocx(result: CompileResult, title = 'Manuscript'): Promise<ArrayBuffer> {
   const docx = await import('docx')
   const { Document, Packer, Paragraph, HeadingLevel, TextRun } = docx
-  const children: any[] = [
-    new Paragraph({ text: title, heading: HeadingLevel.TITLE })
-  ]
+  const children: any[] = [new Paragraph({ text: title, heading: HeadingLevel.TITLE })]
   let lastVolume: string | null = null
   result.sections.forEach((sec, i) => {
     if (sec.volumeTitle && sec.volumeTitle !== lastVolume) {
@@ -222,7 +239,10 @@ export async function buildDocx(result: CompileResult, title = 'Manuscript'): Pr
       })
     )
     sec.scenes.forEach((scene, j) => {
-      if (j > 0) children.push(new Paragraph({ children: [new TextRun('* * *')], alignment: 'center' as any }))
+      if (j > 0)
+        children.push(
+          new Paragraph({ children: [new TextRun('* * *')], alignment: 'center' as any })
+        )
       for (const para of scene.text.split(/\n{2,}/)) {
         const p = para.replace(/\n/g, ' ').trim()
         if (p) children.push(new Paragraph({ children: [new TextRun(p)], spacing: { after: 200 } }))
@@ -237,7 +257,11 @@ export async function buildDocx(result: CompileResult, title = 'Manuscript'): Pr
 // ── EPUB (minimal, valid EPUB 3) ───────────────────────────────────────────
 
 function xmlEscape(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 function sceneHtml(text: string): string {
@@ -339,13 +363,18 @@ ${items.join('\n')}
 <spine toc="ncx">${spine.join('')}</spine>
 </package>`
   )
-  return zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip', compression: 'DEFLATE' })
+  return zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/epub+zip',
+    compression: 'DEFLATE'
+  })
 }
 
 // ── downloads ──────────────────────────────────────────────────────────────
 
 export function safeFilename(name: string, ext: string): string {
-  const base = (name || 'manuscript').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'manuscript'
+  const base =
+    (name || 'manuscript').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'manuscript'
   return `${base}.${ext}`
 }
 
@@ -360,7 +389,93 @@ export function triggerDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url)
 }
 
-export type CompileFormat = 'markdown' | 'docx' | 'epub'
+export type CompileFormat = 'markdown' | 'docx' | 'epub' | 'pdf' | 'rtf'
+
+/**
+ * The compiled manuscript as RTF: title page, one heading per chapter, a
+ * centred `* * *` between scenes. Opens in Word, Docs, Scrivener. Before this
+ * the RTF export wrote the loose root document only, which for a book written
+ * in scenes is a title page and nothing else.
+ */
+export function buildRtf(result: CompileResult, title = 'Manuscript'): string {
+  const esc = rtfEscape
+  const parts = [
+    '{\\rtf1\\ansi\\ansicpg1252\\deff0',
+    '{\\fonttbl{\\f0\\froman\\fcharset0 Times New Roman;}}',
+    '\\f0\\fs24',
+    `{\\pard\\qc\\sa360\\fs48\\b ${esc(title)}\\b0\\par}`,
+    `{\\pard\\qc\\sa360\\fs24 ${result.stats.words.toLocaleString()} words\\par}`
+  ]
+  let lastVolume: string | null = null
+  result.sections.forEach((sec, i) => {
+    parts.push(i === 0 ? '{\\pard\\page\\par}' : '{\\pard\\page\\par}')
+    if (sec.volumeTitle && sec.volumeTitle !== lastVolume) {
+      parts.push(`{\\pard\\qc\\sa240\\fs32\\b ${esc(sec.volumeTitle)}\\b0\\par}`)
+      lastVolume = sec.volumeTitle
+    }
+    parts.push(`{\\pard\\qc\\sa360\\fs28\\b ${esc(sec.title)}\\b0\\par}`)
+    sec.scenes.forEach((scene, j) => {
+      if (j > 0) parts.push('{\\pard\\qc\\sa240 * * *\\par}')
+      for (const para of scene.text.split(/\n{2,}/)) {
+        const t = para.replace(/\n/g, ' ').trim()
+        if (t) parts.push(`{\\pard\\fi480\\sa120\\sl360\\slmult1 ${esc(t)}\\par}`)
+      }
+    })
+  })
+  parts.push('}')
+  return parts.join('\n')
+}
+
+/** The compiled manuscript as a PDF: the prose, wrapped, one chapter per page. */
+export async function buildPdf(result: CompileResult, title = 'Manuscript'): Promise<Blob> {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 22
+  const maxWidth = pageWidth - margin * 2
+  let y = margin
+  const line = (text: string, size: number, style: 'normal' | 'bold' | 'italic', gap: number) => {
+    doc.setFontSize(size)
+    doc.setFont('times', style)
+    const lines = doc.splitTextToSize(text, maxWidth) as string[]
+    for (const l of lines) {
+      if (y + size * 0.5 > pageHeight - margin) {
+        doc.addPage()
+        y = margin
+      }
+      doc.text(l, margin, y)
+      y += size * 0.5
+    }
+    y += gap
+  }
+  doc.setFontSize(24)
+  doc.setFont('times', 'bold')
+  doc.text(title, pageWidth / 2, pageHeight / 3, { align: 'center' })
+  doc.setFontSize(11)
+  doc.setFont('times', 'normal')
+  doc.text(`${result.stats.words.toLocaleString()} words`, pageWidth / 2, pageHeight / 3 + 10, {
+    align: 'center'
+  })
+  let lastVolume: string | null = null
+  for (const sec of result.sections) {
+    doc.addPage()
+    y = margin
+    if (sec.volumeTitle && sec.volumeTitle !== lastVolume) {
+      line(sec.volumeTitle, 14, 'bold', 4)
+      lastVolume = sec.volumeTitle
+    }
+    line(sec.title, 18, 'bold', 6)
+    sec.scenes.forEach((scene, j) => {
+      if (j > 0) line('* * *', 11, 'normal', 3)
+      for (const para of scene.text.split(/\n{2,}/)) {
+        const t = para.replace(/\n/g, ' ').trim()
+        if (t) line(t, 11, 'normal', 2)
+      }
+    })
+  }
+  return doc.output('blob')
+}
 
 /** Compile the project and hand the file to the browser. Returns the stats. */
 export async function exportCompiled(
@@ -368,15 +483,30 @@ export async function exportCompiled(
   format: CompileFormat,
   workflow: CompileWorkflow = {}
 ): Promise<CompileResult['stats']> {
-  const [result, project] = await Promise.all([compileManuscript(projectId, workflow), getProject(projectId)])
+  const [result, project] = await Promise.all([
+    compileManuscript(projectId, workflow),
+    getProject(projectId)
+  ])
   const title = project?.name || 'Manuscript'
   if (format === 'markdown') {
-    triggerDownload(new Blob([result.markdown], { type: 'text/markdown' }), safeFilename(title, 'md'))
+    triggerDownload(
+      new Blob([result.markdown], { type: 'text/markdown' }),
+      safeFilename(title, 'md')
+    )
   } else if (format === 'docx') {
     const buf = await buildDocx(result, title)
     triggerDownload(
-      new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
+      new Blob([buf], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      }),
       safeFilename(title, 'docx')
+    )
+  } else if (format === 'pdf') {
+    triggerDownload(await buildPdf(result, title), safeFilename(title, 'pdf'))
+  } else if (format === 'rtf') {
+    triggerDownload(
+      new Blob([buildRtf(result, title)], { type: 'application/rtf' }),
+      safeFilename(title, 'rtf')
     )
   } else {
     const blob = await buildEpub(result, { title, author: project?.author || undefined })

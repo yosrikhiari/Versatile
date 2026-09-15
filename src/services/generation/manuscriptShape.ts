@@ -12,6 +12,7 @@ import { useHeuristicAnalyzer } from '../../composables/useHeuristicAnalyzer'
 import { getSubsections } from '../db-structure'
 import { saveShapeAnalysis, getLatestShapeVersion } from '../db-story-shape'
 import { stripHtmlTags } from '../../utils/textUtils'
+import { orderSections } from '../../utils/sectionOrder'
 
 export interface ManuscriptShapeOutcome {
   ok: boolean
@@ -25,7 +26,7 @@ export interface ManuscriptShapeOutcome {
  * heuristic counts words, not tags.
  */
 export function buildManuscriptText(sections: any[], subsections: any[]): string {
-  const orderedSections = [...(sections || [])].sort((a, b) => (a?.order || 0) - (b?.order || 0))
+  const orderedSections = orderSections(sections || [])
   const parts: string[] = []
   for (const section of orderedSections) {
     const chunks = (subsections || [])
@@ -34,7 +35,7 @@ export function buildManuscriptText(sections: any[], subsections: any[]): string
       .map((s: any) => stripHtmlTags(String(s?.content || '')))
       .filter(Boolean)
     if (chunks.length === 0) continue
-    parts.push(`[Section ${(section?.order || 0) + 1}: ${section?.title || 'Untitled'}]`)
+    parts.push(`[${section?.title || 'Untitled'}]`)
     parts.push(chunks.join('\n\n'))
   }
   return parts.join('\n\n')

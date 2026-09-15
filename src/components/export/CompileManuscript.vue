@@ -57,10 +57,6 @@ async function preview() {
 
 async function doExport(format) {
   if (!props.projectId) return
-  if (format === 'pdf') {
-    emit('export-pdf')
-    return
-  }
   exporting.value = format
   error.value = null
   try {
@@ -177,10 +173,23 @@ const previewText = computed(() => {
           EPUB
         </BaseButton>
         <BaseButton
+          variant="secondary"
+          size="sm"
+          icon="file-text"
+          :disabled="!result?.stats.words"
+          data-test="export-rtf"
+          :loading="exporting === 'rtf'"
+          @click="doExport('rtf')"
+        >
+          RTF
+        </BaseButton>
+        <BaseButton
           variant="primary"
           size="sm"
           icon="printer"
+          :disabled="!result?.stats.words"
           data-test="export-pdf"
+          :loading="exporting === 'pdf'"
           @click="doExport('pdf')"
         >
           PDF

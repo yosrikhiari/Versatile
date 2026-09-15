@@ -1,6 +1,8 @@
 import { ref, computed } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useHeuristicAnalyzer } from './useHeuristicAnalyzer'
+import { useManuscriptStore } from '../stores/manuscriptStore'
+import { buildManuscriptText } from '../services/generation/manuscriptShape'
 import { useAIShapeAnalyzer } from './useAIShapeAnalyzer'
 import {
   saveShapeAnalysis,
@@ -26,8 +28,33 @@ export function useStoryShapeAnalyzer() {
 
   const hasAnalysis = computed(() => currentAnalysis.value !== null)
 
+  /**
+   * The whole manuscript as text: the loose root draft, then every chapter's
+   * scenes in manuscript order. The panel used to analyse the root document
+   * alone, which is empty for a book written in scenes, so Reanalyze did
+   * nothing and the panel showed whatever the last generation run had stored.
+   */
+  function manuscriptText(): string {
+    const manuscriptStore = useManuscriptStore()
+    const parts: string[] = []
+    const root = String(projectStore.documentContent || '')
+    if (root.trim()) parts.push(root)
+    parts.push(
+      buildManuscriptText(manuscriptStore.sections as any[], manuscriptStore.subsections as any[])
+    )
+    return parts.filter((p) => p.trim()).join('\n\n')
+  }
+
+  const hasManuscript = computed(() => {
+    const manuscriptStore = useManuscriptStore()
+    return (
+      String(projectStore.documentContent || '').trim().length > 0 ||
+      (manuscriptStore.subsections as any[]).some((s) => String(s?.content || '').trim())
+    )
+  })
+
   async function runFullAnalysis() {
-    const content = projectStore.documentContent
+    const content = manuscriptText()
     if (!content || content.trim().length === 0) return
 
     isAnalyzing.value = true
@@ -66,7 +93,11 @@ export function useStoryShapeAnalyzer() {
     const all = await getAllShapeAnalyses(projectId)
     if (all.length === 0) return
 
-    const sorted = all.sort((a: any, b: any) => b.version - a.version)
+    // Version, then id: two records can share a version (the panel and a
+    // generation run both write), and the older one used to win.
+    const sorted = all.sort(
+      (a: any, b: any) => b.version - a.version || (Number(b.id) || 0) - (Number(a.id) || 0)
+    )
     const latest = sorted[0]
     currentVersion.value = latest.version
     currentAnalysis.value = latest.analysis
@@ -80,6 +111,7 @@ export function useStoryShapeAnalyzer() {
     currentVersion,
     combinedTension,
     hasAnalysis,
+    hasManuscript,
     aiInsights,
     runFullAnalysis,
     loadLatestAnalysis
