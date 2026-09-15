@@ -110,14 +110,17 @@ completes.
 
 ## Which model writes
 
-Ollama runs two models by default (`src/config/ollama.ts`): an uncensored
-prose model (`dolphin-mistral:7b`) and `qwen3:8b` for everything grammar-bound
-— planning, metadata extraction, the critic, the spine. Measured on the
-reference machine, the critic's `show_tell` score for dolphin's prose sits at
-6 against a floor of 7, so a dolphin chapter cannot pass the gate; the same
-premise written by `qwen3:8b` passes first time and reads better. Pick the
-prose model in Settings; keep dolphin for content qwen3 refuses. Details and
-numbers: `docs/GENERATION-PIPELINE-ANALYSIS.md` §7.
+`qwen3:8b` is the default for everything (`src/config/ollama.ts`): the
+prose, and the grammar-bound work — planning, metadata extraction, the
+critic, the spine. The prose and utility choices are separate settings with
+separate defaults; changing one never changes the other. Measured under the
+repaired critic (the one that actually scores, §8 of the analysis): the
+10-chapter run on qwen3 had 29 of 30 scenes pass the gate; the same premise
+on the uncensored `dolphin-mistral:7b` failed 3 of 3 (voice 6, show/tell 5
+against a floor of 7, one verdict unavailable). Dolphin remains available as
+`UNCENSORED_MODEL` — pick it as the prose model in Settings for content qwen3
+refuses to write plainly, and expect the gate to reject more of it. Numbers:
+`docs/GENERATION-PIPELINE-ANALYSIS.md` §8.
 
 ## Running it headless
 

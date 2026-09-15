@@ -111,10 +111,10 @@ Run `npm install` again after every pull that touches `package.json`. With a sta
 ### Ollama Setup (Local AI)
 
 1. Install [Ollama](https://ollama.com)
-2. Pull the defaults: `ollama pull dolphin-mistral:7b` (prose) and `ollama pull qwen3:8b` (utility: planning, metadata, critic); `ollama pull nomic-embed-text` for embeddings
+2. Pull the default: `ollama pull qwen3:8b` (prose, planning, metadata, critic); `ollama pull nomic-embed-text` for embeddings
 3. The dev server proxies `/ollama` to `http://localhost:11434`
 
-Prose and utility work default to different models on purpose — see `src/config/ollama.ts`. On an 8 GB-class GPU, `qwen3:8b` as the prose model produces measurably better drafts than the uncensored default and passes the quality gate; dolphin stays the default only for content qwen3 refuses (`docs/GENERATION-PIPELINE-ANALYSIS.md` §7).
+`qwen3:8b` writes the prose by default (`src/config/ollama.ts`). It is the model that passes the quality gate: on the reference 8 GB GPU, the full 10-chapter run had 29 of 30 scenes pass, while the uncensored `dolphin-mistral:7b` failed 3 of 3 under the same critic (voice 6, show/tell 5). Dolphin is an explicit opt-in — `ollama pull dolphin-mistral:7b`, then pick it as the prose model in Settings → AI — for content qwen3 refuses to write plainly. Utility work (planning, metadata, critic) keeps its own default and never inherits the prose choice. Numbers: `docs/GENERATION-PIPELINE-ANALYSIS.md` §8.
 
 ### Configuration
 

@@ -157,11 +157,11 @@ The same premise with `LIVE_MODEL=qwen3:8b` (one chapter): all three scenes pass
 first time, and the prose opens mid-action with concrete detail and subtext. The 10-chapter
 example under `reports/live/the-salt-road/` was generated this way.
 
-**Decision for the maintainer:** `config/ollama.ts` keeps dolphin as the prose default
-because it is uncensored for adult dark fantasy. On this hardware that choice costs most
-of the prose quality *and* makes the quality gate unpassable. Either the default flips to
-qwen3:8b (with dolphin as an explicit opt-in for content qwen3 refuses), or the gate floor
-is recalibrated per critic model. Left as-is here; the run harness takes `LIVE_MODEL`.
+**Decision for the maintainer (taken in §8):** at the time of this pass `config/ollama.ts`
+kept dolphin as the prose default because it is uncensored for adult dark fantasy. On this
+hardware that choice cost most of the prose quality *and* made the quality gate unpassable.
+The critic that produced these numbers turned out to be broken for qwen (§8), so the
+decision waited for a re-measure; see §8 "Default prose model" for the outcome.
 
 Two more fixes landed from the same run:
 
@@ -205,4 +205,27 @@ Consequences worth stating plainly:
 - The run-5 quality numbers in §7 — "30 of 30 dolphin scenes below the floor", "all three qwen scenes pass first time" — were produced by a critic that, at least for qwen, was not scoring. The dolphin verdicts came through with dimension scores (show_tell 6), so that comparison may hold; the qwen "pass first time" did not mean what it said. Re-measure before deciding the default model.
 - A one-click run will now grow the bible by whatever the writer reports, without a review pause. Entities arrive as `generated` and can be approved or deleted in the Story Bible. Whether the parallel path needs the batch path's sync-preview pause is an open product question (`planning/README.md`).
 - Expect gate failures on the next run. A scene that fails after retries is kept for review (§7); a run with several is the gate working.
+
+### Default prose model — decided
+
+Re-measured with the repaired critic, same premise, same machine:
+
+| Prose model | Run | Scenes | Passed the gate | Failed | Scores (overall / weakest dimension) | Invariants |
+|---|---|---|---|---|---|---|
+| `qwen3:8b` | run 6, 10 × 3 × 2,400 | 30 | 29 | 1 | dimension scores present on every verdict | none; `bibleChanges=10`, `synced=30` |
+| `qwen3:8b` | 1-chapter check (same premise as the dolphin row) | 3 | 3 | 0 | 8 / show_tell 7 · 8 / emotional_goal 7 · 8 / show_tell 7 | none |
+| `dolphin-mistral:7b` | 1-chapter check | 3 | 0 | 3 | 7.5 / voice 6 · 8 / show_tell 5 · verdict unavailable | `degraded_rate` |
+
+Both 1-chapter checks are `reports/live/model-check-<model>/health.json`, run back to back on
+the same day with the same seed premise.
+
+The §7 comparison holds now that both sides are scored by a critic that emits dimensions:
+dolphin's prose sits below the floor on voice or show/tell on every scene, and one verdict
+did not come back at all. `config/ollama.ts` therefore ships `DEFAULT_MODEL = 'qwen3:8b'`
+for prose (the utility default was already qwen3), and exports dolphin as
+`UNCENSORED_MODEL` — an explicit opt-in in Settings → AI for content qwen3 refuses to write
+plainly, with the settings hint saying it will fail the gate more often. The two settings
+have independent defaults: switching prose to dolphin no longer drags planning, metadata
+and the critic along with it (`ollamaConfig.test.js`). The gate floor stays at 7; it is not
+recalibrated per model, because the point of the floor is that dolphin's prose *is* weaker.
 

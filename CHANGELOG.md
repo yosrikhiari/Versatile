@@ -7,6 +7,20 @@ was verified.
 
 ## [Unreleased]
 
+### `qwen3:8b` is the default prose model (2026-09-15)
+- `config/ollama.ts`: `DEFAULT_MODEL` flips from `dolphin-mistral:7b` to
+  `qwen3:8b`; dolphin is exported as `UNCENSORED_MODEL` and offered in
+  Settings → AI as an explicit opt-in for content qwen3 refuses to write
+  plainly. Decided on the re-measure under the repaired critic: run 6 on
+  qwen3 passed 29 of 30 scenes; back-to-back 1-chapter checks on one premise
+  went 3/3 for qwen3 (8/8/8) and 0/3 for dolphin (voice 6, show/tell 5, one
+  verdict unavailable; `degraded_rate`).
+  `docs/GENERATION-PIPELINE-ANALYSIS.md` §8.
+- The utility model keeps its own default and never inherits the prose
+  choice — the "Same as main model" option was inaccurate and now reads
+  "Default (qwen3:8b)". First-launch adoption of an already-pulled model
+  is unchanged (`useAppInitialization`).
+
 ### Canvas map view — roadmap Phase 8 (2026-09-15)
 - Story Canvas gains a **Map** view: upload a background image (persisted on
   the project row as `mapBackground`), pin characters / locations / threads

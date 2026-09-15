@@ -1,26 +1,28 @@
 import { STORAGE_KEYS } from './storageKeys'
 
 /**
- * Prose and utility work default to different models, because they fail in
- * opposite directions.
+ * Prose and utility work run on the same default model, qwen3:8b, after a
+ * measured decision on 2026-09-15.
  *
- * Prose for this project is adult dark fantasy. A safety-trained model does not
- * refuse cleanly — it softens, fades out, or substitutes a milder beat, and when
- * it does refuse outright the writer now has to throw the attempt away and pay
- * for a re-roll. dolphin-mistral is uncensored, so it writes the brief it was
- * given.
+ * The prose default used to be dolphin-mistral:7b because it is uncensored:
+ * a safety-trained model softens or fades out a dark beat instead of writing
+ * it. That reasoning still holds for the content it applies to. But on the
+ * reference machine, under a critic that actually scores (the fabricated-7
+ * critic of run 5 hid this), dolphin fails the quality gate on essentially
+ * every scene — voice 6, show_tell 5, verdicts unavailable — while qwen3:8b
+ * passed 29 of 30 scenes of the same book with no health violations
+ * (`docs/GENERATION-PIPELINE-ANALYSIS.md` §7–8, `reports/live/`). A default
+ * that cannot pass the gate is not a default; it is a guaranteed review pile.
  *
- * That same model is markedly worse at schema-constrained output, and almost
- * everything else in this pipeline is structured JSON — chapter skeletons, title
- * repair, cast expansion, the relationship network. Those run with
- * `role: 'utility'` and stay on qwen3, which holds a grammar.
- *
- * Both are only defaults: an explicit choice in Settings (localStorage) wins,
- * and a fresh profile needs both models pulled or generation fails at the
- * provider.
+ * dolphin stays one Settings click away (`UNCENSORED_MODEL`) for the content
+ * qwen3 refuses; the utility role (planning, metadata, critic, spine) has
+ * always been qwen3 because it holds a grammar. Both are only defaults: an
+ * explicit choice in Settings (localStorage) wins.
  */
-const DEFAULT_MODEL = 'dolphin-mistral:7b'
+const DEFAULT_MODEL = 'qwen3:8b'
 const DEFAULT_UTILITY_MODEL = 'qwen3:8b'
+/** Opt-in prose model for content the default refuses to write plainly. */
+const UNCENSORED_MODEL = 'dolphin-mistral:7b'
 const DEFAULT_ENDPOINT = '/ollama'
 
 /**
@@ -159,6 +161,7 @@ export function getOllamaMinP(): number {
 
 export {
   DEFAULT_MODEL,
+  UNCENSORED_MODEL,
   DEFAULT_NUM_CTX,
   DEFAULT_REPEAT_PENALTY,
   DEFAULT_REPEAT_LAST_N,

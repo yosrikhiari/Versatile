@@ -20,19 +20,22 @@ describe('Ollama config', () => {
 
   it('getOllamaModel returns default when nothing stored', async () => {
     const { getOllamaModel } = await import('../../config/ollama')
-    expect(getOllamaModel()).toBe('dolphin-mistral:7b')
+    expect(getOllamaModel()).toBe('qwen3:8b')
   })
 
-  it('utility work defaults to a different model than prose', async () => {
-    // The two fail in opposite directions. The prose default is uncensored and
-    // correspondingly weaker at grammar-bound output, and almost everything else
-    // in this pipeline is schema-constrained JSON — skeletons, title repair,
-    // cast expansion, the relationship network. Inheriting the prose model for
-    // those would put every schema-bound call on the model least able to satisfy
-    // a schema.
-    const { getOllamaModel, getOllamaUtilityModel } = await import('../../config/ollama')
+  it('utility work has its own default, independent of the prose choice', async () => {
+    // Almost everything besides prose is schema-constrained JSON — skeletons,
+    // title repair, cast expansion, the relationship network. The utility
+    // default must never *inherit* the prose model: an author who switches prose
+    // to the uncensored model (weaker at grammar-bound output) must not drag
+    // every schema-bound call along with it.
+    const { STORAGE_KEYS } = await import('../../config/storageKeys')
+    const { getOllamaModel, getOllamaUtilityModel, UNCENSORED_MODEL } =
+      await import('../../config/ollama')
     expect(getOllamaUtilityModel()).toBe('qwen3:8b')
-    expect(getOllamaUtilityModel()).not.toBe(getOllamaModel())
+    localStorage.setItem(STORAGE_KEYS.OLLAMA_MODEL, UNCENSORED_MODEL)
+    expect(getOllamaModel()).toBe('dolphin-mistral:7b')
+    expect(getOllamaUtilityModel()).toBe('qwen3:8b')
   })
 
   it('an explicit utility choice still wins over the default', async () => {

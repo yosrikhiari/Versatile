@@ -19,7 +19,12 @@ import {
   getStoredOpenAIKey,
   setStoredOpenAIKey
 } from '../../services/ollamaService'
-import { getOllamaUtilityModel, setOllamaUtilityModel } from '../../config/ollama'
+import {
+  getOllamaUtilityModel,
+  setOllamaUtilityModel,
+  DEFAULT_MODEL,
+  UNCENSORED_MODEL
+} from '../../config/ollama'
 
 const emit = defineEmits(['close', 'model-changed'])
 const settingsStore = useSettingsStore()
@@ -323,6 +328,11 @@ defineExpose({
             {{ model }}
           </option>
         </select>
+        <p class="text-11px text-text-hint mt-1 leading-snug" data-test="prose-model-hint">
+          Writes the prose. Default <code>{{ DEFAULT_MODEL }}</code> — the model that passes the
+          critic's gate. Pick <code>{{ UNCENSORED_MODEL }}</code> only for content the default
+          refuses to write plainly; it fails the gate far more often.
+        </p>
       </div>
       <div>
         <label for="ollama-utility-model" class="block text-xs text-text-secondary mb-1">
@@ -334,7 +344,7 @@ defineExpose({
           class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           @change="saveUtilityModel"
         >
-          <option value="">Same as main model</option>
+          <option value="">Default ({{ DEFAULT_MODEL }})</option>
           <option v-for="model in availableModels" :key="model" :value="model">
             {{ model }}
           </option>
