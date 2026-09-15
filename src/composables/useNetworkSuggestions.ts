@@ -884,9 +884,13 @@ Analyze these elements using semantic understanding and suggest meaningful new c
         ? `Description:\n${projectStore.currentDescription.trim()}\n\n`
         : ''
 
-      const genreContext = projectStore.currentCategory?.trim()
-        ? `Category: ${projectStore.currentCategory.trim()}\n\n`
-        : ''
+      const genreContext = [
+        projectStore.currentCategory?.trim() ? `Category: ${projectStore.currentCategory.trim()}` : '',
+        projectStore.currentGenre?.trim() ? `Genre: ${projectStore.currentGenre.trim()}` : ''
+      ]
+        .filter(Boolean)
+        .map((line) => `${line}\n\n`)
+        .join('')
 
       const contextLine = prompt?.trim()
         ? `Writer's focus: "${prompt.trim()}". Prioritise connections relevant to this theme.`

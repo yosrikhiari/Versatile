@@ -179,8 +179,13 @@ function buildOllamaOptions(options: OllamaOptions = {}) {
   const repeatPenalty = options.repeatPenalty ?? getOllamaRepeatPenalty()
   if (repeatPenalty > 0) opts.repeat_penalty = repeatPenalty
 
+  // -1 is llama.cpp's "whole context", but Ollama's request validation rejects
+  // it ("must be between 0 and 2147483647") — and the skeleton call, the one
+  // planning call that sees the whole arc, was sending exactly that and dying
+  // with a 400 on every run. Ask for the same thing in terms the API accepts.
   const repeatLastN = options.repeatLastN ?? getOllamaRepeatLastN()
-  if (repeatLastN > 0 || repeatLastN === -1) opts.repeat_last_n = repeatLastN
+  if (repeatLastN === -1) opts.repeat_last_n = numCtx > 0 ? numCtx : 8192
+  else if (repeatLastN > 0) opts.repeat_last_n = repeatLastN
 
   const topP = options.topP ?? getOllamaTopP()
   if (topP > 0 && topP <= 1) opts.top_p = topP

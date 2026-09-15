@@ -20,3 +20,12 @@ bootstrapGuardrails({ enforcement: 'detective' })
 ready().then(() => {
   app.mount('#app')
 })
+
+// Dev only: drive the real generation pipeline from the console against local
+// Ollama (`await VersatileGenerate.demo({...})`). Loaded lazily so production
+// bundles carry nothing extra.
+if (import.meta.env.DEV) {
+  import('./services/generateDemoStory').then(({ VersatileGenerate }) => {
+    ;(window as any).VersatileGenerate = VersatileGenerate
+  })
+}

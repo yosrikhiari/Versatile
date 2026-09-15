@@ -1,20 +1,11 @@
-import { ref, reactive, computed } from 'vue'
-import { formatEvalFeedback } from '../services/evalFeedback'
+import { ref, reactive, computed, readonly } from 'vue'
 import { useAutoPromptAdjuster } from './useAutoPromptAdjuster'
 import {
   seedPromptAdjusterFromHistory,
   rehydratePromptAdjuster,
   clearAndSeedEvalStore
 } from './generation/evalBootstrap'
-import { deriveVerdict } from '../services/criticVerdict'
-import { getDefaultThreshold } from '../config/evalDimensions'
-import {
-  gateDimensionCoverage,
-  gateScoreDistribution,
-  gateProseQuality,
-  countWords,
-  duplicateRatio
-} from '../services/evalGates'
+import { duplicateRatio } from '../services/evalGates'
 import { useProjectStore } from '../stores/projectStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useEvalStore } from '../stores/evalStore'
@@ -25,7 +16,7 @@ import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useBranchStore } from '../stores/branchStore'
 import { useStoryDirector } from './useStoryDirector'
 import { useEntityBootstrapper } from './useEntityBootstrapper'
-import { useStoryWriter, isUnsalvageableProse } from './useStoryWriter'
+import { useStoryWriter } from './useStoryWriter'
 import { useStoryCritic } from './useStoryCritic'
 import { useChapterGenerationSync } from './useChapterGenerationSync'
 import { useStoryDocuments } from './useStoryDocuments'
@@ -35,13 +26,8 @@ import { langfuseService } from '../services/langfuseService'
 import { generateRelationships } from './generation/generators/relationships'
 import { groupNetworkByVolume } from './useVolumeGrouping'
 import { scopeBibleToVolume } from '../services/volumeScope'
-import { rollupProjectDigests, buildEarlierChaptersBlock } from '../services/generation/digestContext'
+import { rollupProjectDigests } from '../services/generation/digestContext'
 
-// How many recent scenes stay in the writer's log at full detail. Chapters that
-// fall entirely outside this window are carried by their digests instead — the
-// boundary has to be one number, or the two blocks overlap or leave a gap.
-const RECENT_SCENE_LOG_LIMIT = 20
-import { shouldChunkScene, splitSceneIntoChunks, mergeChunkProse } from './generation/sceneChunker'
 import { getFailedSubsections, batchCreatePlanStructure } from '../services/db-structure'
 import {
   saveGenRun,
@@ -52,25 +38,16 @@ import {
   makeInitialGenState,
   STAGE_IDLE_TIMEOUT_MS
 } from '../services/db-generation'
-import { aiGenerate, aiGenerateJson, resolveFeatureConfig } from './useAiService'
-import { FEATURES, PROVIDERS } from '../config/ai'
-import { getEmbedding } from '../services/embeddingService'
-import { cosineSimilarity } from '../services/ollamaService'
 import {
   isOllamaProvider,
-  PARALLEL_CHAPTER_LIMIT,
   formatFullSpineEntry,
-  SPINE_ENTRY_SCHEMA,
   compressSpine,
-  SPINE_TIMEOUT_MS,
   fallbackSpineEntry,
   generateSpine
 } from './generation/context/spine'
 import {
   buildExistingEntitiesBlob,
   buildSceneEntitiesBlob,
-  EMBEDDING_CONTEXT_MAX_TOKENS,
-  PROSE_EXCERPT_MAX_SCENES,
   buildEmbeddingContext,
   selectRelevantPriorScenes,
   buildRetrievalContext,
@@ -89,6 +66,10 @@ import {
 } from './generation/lifecycle'
 import { createPauseGate } from '../utils/pauseGate'
 import { LiveDraftBridge, proseToHtml, countProseWords } from './generation/writing'
+import { createSceneGate } from './generation/writing/sceneGate'
+import { createParallelStrategy } from './generation/writing/parallelStrategy'
+import { createBatchStrategy } from './generation/writing/batchStrategy'
+import { WRITE_FAILURE_STREAK_ABORT } from './generation/writing/limits'
 import { SceneInteractionService } from './generation/interaction'
 import { SceneSpeculativeCache } from '../services/speculativeGenManager'
 import { SessionBudgetExceededError } from '../services/aiProviderBudget'
@@ -102,7 +83,6 @@ import {
 import { useDelegatorGeneration } from './generation/delegator'
 import { useDriftTriggeredEval } from './useDriftTriggeredEval'
 import { ActiveLearningBridge } from './generation/activeLearning'
-import { buildCloudDisclosure, canUseCloudEscalation, requestCloudEscalation, maybeAutoEscalateScene, getAnalysisTier } from '../services/cloudEscalation'
 
 import { getResumableRun } from './generation/checkpoint'
 import { buildPreliminaryEdges } from './generation/graph'
@@ -125,28 +105,15 @@ import { useStateSummarizer } from './useStateSummarizer'
 // bottom alongside the other test-facing helpers, so `mod.batchEndIndex`
 // keeps working exactly as before.
 import {
-  sectionIndexForScene,
   runBatchLoop,
   batchEndIndex,
   assertProse,
-  attemptScore,
-  isCleanPass,
   detectSceneConflicts,
   resolveSceneConflicts
 } from './generation/runMechanics'
-import type { NextBatch } from './generation/runMechanics'
+import { stripHtmlTags } from '../utils/textUtils'
 
 const MAX_REJECTED_PATTERNS = 5
-const PARALLEL_SCENE_LIMIT = 2
-// One-click quality guardrails: rewrite a scene that fails critique up to this
-// many times, and abort the whole run if this many scenes fail back-to-back
-// (signals a broken model/critic rather than letting it churn out garbage).
-const SCENE_MAX_ATTEMPTS = 2
-const QUALITY_FLOOR_CONSECUTIVE = 3
-// Consecutive scenes that may fail to produce ANY prose before the run gives up.
-// Distinct from the quality floor above: that judges prose the model wrote, this
-// catches a pipeline that is not writing prose at all.
-const WRITE_FAILURE_STREAK_ABORT = 4
 
 export function useVolumeStoryGenerator() {
   const settings = useSettingsStore()
@@ -199,7 +166,7 @@ export function useVolumeStoryGenerator() {
   const isContinuing = ref(false)
   const continuationReport = ref<any | null>(null)
 
-  async   function persistCritiqueEval(entry: any, pid: any, sceneTitle: any, subsectionId?: string) {
+  async function persistCritiqueEval(entry: any, pid: any, sceneTitle: any, subsectionId?: string) {
     if (!pid || !entry || entry.score == null) return
     try {
       await evalPersistence.saveRecord({
@@ -229,7 +196,9 @@ export function useVolumeStoryGenerator() {
   // error raised while a signal was attached threw a ReferenceError that masked
   // the real one. That is fixed; this is now safe to turn on.)
   const abort = createAbortScope()
-  function throwIfAborted() { abort.throwIfAborted() }
+  function throwIfAborted() {
+    abort.throwIfAborted()
+  }
   const isCancelling = ref(false)
 
   // ─── Pause / continue ─────────────────────────────────────────────────────
@@ -581,6 +550,9 @@ export function useVolumeStoryGenerator() {
   const stateSummarizer = useStateSummarizer()
   /** Bible changes discovered across the run — an invariant input, not a stat. */
   const bibleChangesDiscovered = ref(0)
+  // Scenes whose metadata went through entity sync — lets the health check tell
+  // "sync never ran" from "sync ran and the story added nothing".
+  const scenesSynced = ref(0)
 
   // Wire locally-constructed services into Delegator memory so tool wrappers
   // (commitTool, consistencyTool, sceneTool) can reach them via memory.instances.*
@@ -617,6 +589,10 @@ export function useVolumeStoryGenerator() {
     clearPauseState()
     speculativeCache.flush()
     liveDraft.reset()
+    // A resumed run re-audits from the top the first time it reaches a
+    // chapter boundary; the scenes it restores were audited by a run that is
+    // gone.
+    consistencyService.auditedUpTo = 0
     const run = await getGenRun(projectId)
     if (!run || !run.state) return { resumed: false, reason: 'no-checkpoint' }
 
@@ -636,7 +612,9 @@ export function useVolumeStoryGenerator() {
     if (missingIds.length > 0) {
       return { resumed: false, reason: 'subsection-count-mismatch' }
     }
-    const summaryBySub = new Map((state.writtenMeta || []).map((m: any) => [m.subsectionId, m.summary]))
+    const summaryBySub = new Map(
+      (state.writtenMeta || []).map((m: any) => [m.subsectionId, m.summary])
+    )
 
     // Rebuild the section grouping exactly as confirmPlan created it, reusing the
     // existing section rows (found via each scene's subsectionId → parent section)
@@ -783,6 +761,7 @@ export function useVolumeStoryGenerator() {
     isCancelling.value = false
     clearPauseState()
     liveDraft.reset()
+    consistencyService.auditedUpTo = 0
 
     // Normalize an explicit volumes/chapters/words request into a structure spec
     let structureSpec = null
@@ -847,7 +826,10 @@ export function useVolumeStoryGenerator() {
       // the run fails during bootstrapping.
       const snapResult = await snapshotBeforeRun(projectId, manuscriptStore.sortedSections)
       if (!snapResult.ok) {
-        runHealth.record('artifact_failed', { stage: 'pre-run snapshot', detail: snapResult.detail })
+        runHealth.record('artifact_failed', {
+          stage: 'pre-run snapshot',
+          detail: snapResult.detail
+        })
       }
       actLog.appendThought(currentTaskId, bpPhase, `${snapResult.detail}\n`)
 
@@ -874,7 +856,7 @@ export function useVolumeStoryGenerator() {
       const storyDocs = useStoryDocuments()
 
       const sceneSummaries: string[] = []
-      for (const section of (manuscriptStore.sortedSections as any[])) {
+      for (const section of manuscriptStore.sortedSections as any[]) {
         const allSubs: any[] = manuscriptStore.subsections as any[]
         const sectionSubs = allSubs
           .filter((s: any) => s.sectionId === section.id)
@@ -1150,6 +1132,18 @@ export function useVolumeStoryGenerator() {
           detail: `${planDegradation.chaptersWithoutScenePlan} chapter(s) got no scene plan — their scene briefs are placeholders`
         })
       }
+      if (planDegradation?.duplicateChapterGoals > 0) {
+        runHealth.record('plan_padded', {
+          stage: 'structure',
+          detail: `${planDegradation.duplicateChapterGoals} chapter(s) still share a goal with an earlier chapter after a re-plan`
+        })
+      }
+      if (planDegradation?.repetitiveChapters > 0) {
+        runHealth.record('plan_padded', {
+          stage: 'structure',
+          detail: `${planDegradation.repetitiveChapters} chapter(s) still repeat an earlier chapter's scenes after a re-plan — the prose will retread ground`
+        })
+      }
 
       // The first weave ran against the opening cast only, so anyone added for
       // the arc would sit in the bible with no edges at all. Re-weave under the
@@ -1293,976 +1287,78 @@ export function useVolumeStoryGenerator() {
     }
   }
 
-  /**
-   * Build the per-scene chunk emitter.
-   *
-   * One place now owns what happens to a streamed token: it goes into the
-   * scene's own manuscript subsection (so the editor renders it live, in the
-   * right scene, without parallel scenes trampling each other) and it goes to
-   * the caller's `onChunk` for the generator panel.
-   *
-   * Returns `{ emitChunk, done }`; `done` must be called when the scene settles
-   * so the bridge flushes the last tokens and hands the editor to the next scene.
-   */
-  function makeSceneStream({ scene, sceneIndex, onChunk }: any) {
-    const subsectionId = scene?.subsectionId ?? null
-    let started = false
-
-    const emitChunk = (proseChunk: any, fullProse: any) => {
-      if (!started) {
-        started = true
-        liveDraft.begin({ sceneIndex, subsectionId })
-      }
-      liveDraft.push(subsectionId, fullProse)
-      onChunk?.({
-        sceneIndex: sceneIndex + 1,
-        total: scenePlan.value.length,
-        chunk: proseChunk,
-        fullProse,
-        subsectionId,
-        scene
-      })
-    }
-
-    return {
-      emitChunk,
-      done(finalProse?: any) {
-        if (!started) return
-        if (finalProse != null) liveDraft.push(subsectionId, finalProse)
-        liveDraft.finish(subsectionId)
-      },
-      abandon() {
-        if (started) liveDraft.abandon(subsectionId)
-      }
-    }
+  // ── Write strategies ────────────────────────────────────────────────────
+  // The scene gate and both write strategies live in generation/writing/*.
+  // They read the orchestrator's run state through this context; the two
+  // plain `let`s are exposed as getters so a per-run reassignment is seen.
+  const strategyCtx = {
+    get currentTaskId() {
+      return currentTaskId
+    },
+    get structuredResults() {
+      return structuredResults
+    },
+    abort,
+    actLog,
+    activeLearningBridge,
+    autoMode,
+    bibleChangesDiscovered,
+    chapterPlan,
+    commitService,
+    completeGeneration,
+    confirmSync,
+    scenesSynced,
+    consistencyService,
+    critic,
+    currentSceneResult,
+    currentWriteIndex,
+    delegatorApi,
+    driftTriggeredEval,
+    error,
+    evalStore,
+    evalUnavailableCount,
+    gate,
+    generationSpanIds,
+    generationTraceId,
+    haltRun,
+    hasPendingBatches,
+    inlineEvalEnabled,
+    lastSyncedResultIndex,
+    liveDraft,
+    logRejectedPattern,
+    manuscriptStore,
+    pendingBatchStart,
+    persistCritiqueEval,
+    prefetchStats,
+    progress,
+    promptAdjuster,
+    recordSceneDigest,
+    rejectedPatterns,
+    researchRagOptions,
+    runConsecutiveFailures,
+    runFailedScenes,
+    runHealth,
+    scenePlan,
+    sceneReviewMode,
+    scopedEntitiesBlob,
+    settings,
+    speculativeCache,
+    spineArray,
+    spineContext,
+    storyBibleStore,
+    sync,
+    syncPreview,
+    throwIfAborted,
+    volumeId,
+    workspaceType,
+    writeParams,
+    writer,
+    writtenScenes
   }
-
-  // Splits an extra-long scene into sections, generates each in parallel
-  // through the full writer-critic-eval gate, then merges the prose.
-  // Each section gets its own sectionRole directive in the brief so the model
-  // knows which narrative beat to focus on.
-  async function writeSceneChunked({
-    scene,
-    sceneIndex,
-    storyArc,
-    chapterLog = '',
-    storyBible,
-    storyContract,
-    existingEntitiesJson,
-    embeddingContext = '',
-    extraRejected,
-    pastEvalResults,
-    focusInstructions,
-    anchorRole,
-    anchorConstraints,
-    emitChunk
-  }: any): Promise<any> {
-    const sections = splitSceneIntoChunks(scene)
-
-    // Sections are written concurrently but belong to one scene, so their live
-    // output has to be recomposed in section order before it is emitted.
-    // Previously each section was given `emitChunk: null` and the scene emitted
-    // exactly once, at the end — a long scene showed nothing at all while it was
-    // being written, which is indistinguishable from a stall.
-    const sectionBuffers: string[] = sections.map(() => '')
-    const emitComposed = () => {
-      if (!emitChunk) return
-      const composed = mergeChunkProse(sectionBuffers)
-      emitChunk('', composed)
-    }
-
-    const sectionPromises: any[] = sections.map((sectionBrief: any, i: any) => {
-      const phaseName = `Section ${i + 1}: ${scene.title || `Scene ${scene.sceneNumber}`}`
-      const sectionPhase = actLog.addPhase(currentTaskId, phaseName)
-      return writeSceneWithGate({
-        scene: sectionBrief,
-        sceneIndex,
-        scenePhase: sectionPhase,
-        storyArc,
-        chapterLog,
-        storyBible,
-        storyContract,
-        existingEntitiesJson,
-        embeddingContext,
-        extraRejected,
-        pastEvalResults,
-        focusInstructions,
-        anchorRole,
-        anchorConstraints,
-        emitChunk: emitChunk
-          ? (_proseChunk: any, sectionProse: any) => {
-              sectionBuffers[i] = sectionProse || ''
-              emitComposed()
-            }
-          : null
-      })
-    })
-
-    const results: any[] = await Promise.allSettled(sectionPromises)
-    const proseSections = results.map((r: any) => (r.status === 'fulfilled' ? r.value.chosenProse : ''))
-    const chosenProse = mergeChunkProse(proseSections)
-
-    // `allSettled` never rejects, so before this check a scene whose sections
-    // ALL failed returned `chosenProse: ''` — and the callers, which only looked
-    // for a thrown error, wrote that empty string to the manuscript and marked
-    // the subsection `generated`. Every scene in a long book "succeeded" with
-    // zero words, and the run finished and reported a completed novel.
-    //
-    // Any scene over CHUNK_THRESHOLD words takes this path, so on a 10,000-word
-    // chapter that was every scene in the book.
-    const rejections = results.filter((r: any) => r.status === 'rejected')
-    if (!chosenProse.trim()) {
-      const cause = rejections[0]?.reason
-      // A budget stop or a cancel has to stay recognisable as itself so the run
-      // above can end deliberately instead of treating it as one bad scene.
-      if (cause && isFatalRunError(cause)) throw cause
-      throw new Error(
-        `Scene "${scene.title || scene.sceneNumber}" produced no prose — ` +
-          `all ${sections.length} sections failed` +
-          (cause?.message ? `: ${cause.message}` : '.')
-      )
-    }
-    if (rejections.length > 0) {
-      // Partial is still a scene worth keeping, but it is short by design and
-      // the author should be told rather than left to find the seam.
-      console.warn(
-        `[useVolumeStoryGenerator] scene "${scene.title}": ${rejections.length} of ` +
-          `${sections.length} sections failed; kept the rest`
-      )
-      actLog.appendThought(
-        currentTaskId,
-        0,
-        `\n⚠ "${scene.title}" is incomplete — ${rejections.length} of ${sections.length} sections failed to write.\n`
-      )
-    }
-
-    const best: any[] = results
-      .filter((r: any) => r.status === 'fulfilled')
-      .sort((a: any, b: any) => (b.value.chosenEval?.score || 0) - (a.value.chosenEval?.score || 0))
-    const bestResult: any = best[0]
-
-    emitChunk?.(chosenProse, chosenProse)
-
-    return {
-      chosenProse,
-      chosenStructured: bestResult?.value?.chosenStructured || null,
-      chosenEval: bestResult?.value?.chosenEval || null
-    }
-  }
-
-  // Shared per-scene writer with the one-click quality gate. In autoMode it
-  // writes up to SCENE_MAX_ATTEMPTS times, critiques each attempt, keeps the
-  // best, applies a continuity floor, and feeds each attempt's critique into
-  // the next. Manual mode writes once. Both the sequential (writeNextBatch)
-  // and parallel (runParallelGeneration) paths route through this so the same
-  // quality gates apply regardless of generation mode.
-  async function writeSceneWithGate({
-    scene,
-    sceneIndex,
-    scenePhase,
-    storyArc,
-    chapterLog = '',
-    storyBible,
-    storyContract,
-    existingEntitiesJson,
-    embeddingContext = '',
-    extraRejected,
-    pastEvalResults,
-    focusInstructions,
-    anchorRole,
-    anchorConstraints,
-    emitChunk
-  }: any): Promise<any> {
-    const retryGate = autoMode.value
-    const maxAttempts = retryGate ? SCENE_MAX_ATTEMPTS : 1
-    let chosenProse = ''
-    let chosenStructured = null
-    let chosenEval = null
-    let attemptFeedback = pastEvalResults
-    let attemptFocusInstructions = focusInstructions
-
-    // Spend prompt budget on this scene's cast, not the whole bible. Falls back
-    // to the caller's full dump when the scene names nobody to scope on.
-    const sceneEntitiesJson =
-      buildSceneEntitiesBlob(scene, {
-        characters: storyBibleStore.characters,
-        locations: storyBibleStore.locations,
-        plotThreads: storyBibleStore.plotThreads
-      }) || existingEntitiesJson
-
-    if (shouldChunkScene(scene)) {
-      return writeSceneChunked({
-        scene,
-        sceneIndex,
-        storyArc,
-        chapterLog,
-        storyBible,
-        storyContract,
-        existingEntitiesJson: sceneEntitiesJson,
-        embeddingContext,
-        extraRejected,
-        pastEvalResults,
-        focusInstructions,
-        anchorRole,
-        anchorConstraints,
-        emitChunk
-      })
-    }
-
-    let baselineWordCount = 0
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      throwIfAborted()
-      let fullProse = ''
-      let result: any
-      try {
-        result = await (writer.writeSceneStructured as any)({
-          sceneBrief: scene,
-          storyArc,
-          chapterLog,
-          storyBible,
-          spineContext: spineContext.value,
-          anchorRole,
-          anchorConstraints,
-          signal: abort.signal(),
-          onChunk: (_chunk: any, proseChunk: any) => {
-            fullProse += proseChunk || ''
-            emitChunk?.(proseChunk, fullProse)
-          },
-          onRawChunk: (chunk: any) => actLog.appendThought(currentTaskId, scenePhase, chunk),
-          embeddingContext,
-          storyContract,
-          rejectedPatterns: extraRejected,
-          existingEntitiesJson: sceneEntitiesJson,
-          pastEvalResults: attemptFeedback || undefined,
-          focusInstructions: attemptFocusInstructions || undefined
-        })
-      } catch (err: any) {
-        // A rejected attempt is not a failed scene. The writer refuses to hand
-        // back looping prose OR a model refusal ("I'm sorry, but I can't..."),
-        // so re-roll — that is the response this retry loop already exists for.
-        // Anything else is a real error and propagates.
-        if (!isUnsalvageableProse(err)) throw err
-
-        runHealth.record('prose_rejected', {
-          stage: 'writer',
-          sceneIndex,
-          detail: err?.message || 'rejected output'
-        })
-        actLog.appendThought(
-          currentTaskId,
-          scenePhase,
-          `\n⚠ Attempt ${attempt + 1} was rejected (${err?.message || 'unusable output'}). Retrying.\n`
-        )
-        // Out of attempts: let the caller treat the scene as failed rather than
-        // committing prose the guard rejected.
-        if (attempt === maxAttempts - 1) throw err
-        continue
-      }
-      const proseText = result.prose
-      if (attempt === 0) {
-        baselineWordCount = countWords(proseText)
-      }
-
-      if (!retryGate) {
-        chosenProse = proseText
-        chosenStructured = result.structured
-        break
-      }
-
-      const criticResult = await critic.evaluateScene({
-        draft: proseText,
-        sceneBrief: scene,
-        storyBible,
-        chapterLog: '',
-        existingEntitiesJson: sceneEntitiesJson,
-        focusInstructions: attemptFocusInstructions
-      })
-      if (!chosenEval || attemptScore(criticResult) > attemptScore(chosenEval)) {
-        chosenProse = proseText
-        chosenStructured = result.structured
-        chosenEval = criticResult
-      }
-
-      const dimCov = gateDimensionCoverage(criticResult, workspaceType.value)
-      const scoreDist = gateScoreDistribution(criticResult)
-      if (!dimCov.pass && dimCov.warnings.length > 0) {
-        console.warn('[evalGate] dimensionCoverage:', dimCov.warnings.join('; '))
-      }
-      if (!scoreDist.pass && scoreDist.flags.length > 0) {
-        console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
-      }
-
-      const proseQ = gateProseQuality(
-        criticResult,
-        baselineWordCount,
-        countWords(proseText),
-        Number(scene?.estimatedWords) || 0,
-        proseText
-      )
-      if (!proseQ.pass && proseQ.flags.length > 0) {
-        console.warn('[evalGate] proseQuality:', proseQ.flags.join('; '))
-        runHealth.record('gate_failed', {
-          stage: 'proseQuality',
-          sceneIndex,
-          detail: proseQ.flags.join('; ')
-        })
-      }
-
-      // Metadata status, recorded from the value the writer already returns.
-      // This is the signal whose silent absence froze the story bible: a scene
-      // that skipped extraction contributed no entities, no keyFacts, and so no
-      // context for the scene after it.
-      const metaStatus = chosenStructured?.metadataStatus ?? result?.structured?.metadataStatus
-      if (metaStatus === 'failed' || metaStatus === 'skipped') {
-        runHealth.record(`metadata_${metaStatus}` as any, { stage: 'writer', sceneIndex })
-      }
-
-      // A critic that cannot parse its own output makes the run look healthier
-      // and cheaper than it is: the gate exits, the draft is accepted, and
-      // nothing in the UI says the quality gate never ran. Retrying the writer
-      // would not help — it is the critic that failed — so we still break, but
-      // loudly, where the user is actually looking.
-      if (criticResult?.evalUnavailable) {
-        evalUnavailableCount.value += 1
-        // `evalUnavailableCount` was incremented, reset, and exposed on the
-        // return object — with no consumer anywhere in the codebase. Routing it
-        // through the ledger gives it one: enough of these in a row and the run
-        // stops rather than writing another ten scenes unchecked.
-        runHealth.record('eval_unavailable', { stage: 'critic', sceneIndex })
-        actLog.appendThought(
-          currentTaskId,
-          scenePhase,
-          "\n⚠ Quality gate did not run for this scene — the critic's output could not be parsed. The draft was accepted unchecked.\n"
-        )
-      }
-const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >= 6
-
-      // Cloud escalation check: if eval is unavailable or has suspect scores and
-      // user has cloud escalation enabled, offer to escalate this scene's
-      // evaluation to a cloud provider for a second opinion.
-      if (canUseCloudEscalation()) {
-        const needsEscalation = criticResult?.evalUnavailable ||
-          (criticResult?.score != null && (criticResult.score < 3 || criticResult.score > 9)) ||
-          (criticResult?.issues?.length === 0 && criticResult?.score != null && criticResult.score >= 7)
-
-        if (needsEscalation) {
-          const disclosure = await buildCloudDisclosure({
-            // `writeParamsVal` is runParallelGeneration's local — it does not
-            // exist in this scope, so this threw a ReferenceError (optional
-            // chaining does not shield an undeclared identifier) every time a
-            // scene qualified for cloud escalation.
-            projectId: writeParams.value?.projectId || '',
-            operation: 'escalation-on-failure',
-            text: proseText,
-            systemPrompt: 'You are an expert fiction editor. Evaluate this scene for quality, continuity, voice, and adherence to the story bible. Provide a score 1-10, dimension scores, issues, and strengths.',
-            provider: settings.aiProvider,
-            model: settings.ollamaModel
-          })
-
-          // Store the disclosure for the UI to present to the user
-          // This is a non-blocking offer - the user can choose to escalate or continue
-          actLog.appendThought(
-            currentTaskId,
-            scenePhase,
-            `\n☁ Cloud escalation available: ${disclosure.warning}\n` +
-            `Operation: ${disclosure.operation}\n` +
-            `Estimated tokens: ${disclosure.estimatedTokens}\n` +
-            `Estimated cost: $${disclosure.estimatedCostUsd.toFixed(4)}\n` +
-            `Provider: ${disclosure.provider} (${disclosure.model})\n`
-          )
-
-          // Audit tier goes one step further: the project opt-in is advance
-          // consent, so request the second opinion immediately instead of
-          // waiting on the offer. Best-effort — the outcome is a ledger
-          // note either way, never a run failure.
-          try {
-            const auto = await maybeAutoEscalateScene({
-              projectId: writeParams.value?.projectId || '',
-              tier: getAnalysisTier(),
-              cloudAvailable: true,
-              projectOptIn: !!settings.cloudAuditOptIn,
-              provider: settings.aiProvider,
-              model: settings.ollamaModel,
-              operation: 'escalation-on-failure',
-              text: proseText,
-              systemPrompt: 'You are an expert fiction editor. Evaluate this scene for quality, continuity, voice, and adherence to the story bible. Provide a score 1-10, dimension scores, issues, and strengths.'
-            })
-            if (auto.note) {
-              actLog.appendThought(currentTaskId, scenePhase, `\n${auto.note}\n`)
-            }
-          } catch {
-            // maybeAutoEscalateScene never throws by contract; this guards
-            // the ledger call itself so a logging failure cannot break the run.
-          }
-        }
-      }
-
-      if (
-        !criticResult ||
-        criticResult.evalUnavailable ||
-        (criticResult.pass && continuityOk && proseQ.pass)
-      ) {
-        break
-      }
-
-      const evalSnapshot = {
-        sceneIndex: sceneIndex + 1,
-        passed: criticResult.pass,
-        score: criticResult.score,
-        dimensionScores: criticResult.dimensionScores || null,
-        topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
-      }
-      attemptFeedback = formatEvalFeedback([evalSnapshot])
-      const retryResult = promptAdjuster.updateAdjustments([evalSnapshot], { workspaceType: workspaceType.value })
-      attemptFocusInstructions = retryResult.focusInstructions
-    }
-
-  // After all retries exhausted, if we're in autoMode and the final eval still fails, throw.
-  // This ensures callers (writeNextBatch, writeScenesInto) treat it as a failed scene.
-  if (retryGate && chosenEval && !chosenEval.evalUnavailable && !isCleanPass(chosenEval)) {
-    // Feed the verdict's weakest dimension into the adjuster so a rejected scene
-    // produces a matching focus area (reconciles the two "weak dimension" rules).
-    const verdict = deriveVerdict(chosenEval, getDefaultThreshold(workspaceType.value))
-    if (verdict.weakestDimension) {
-      promptAdjuster.updateAdjustments([{ dimensionScores: { [verdict.weakestDimension.name]: verdict.weakestDimension.score } }], { workspaceType: workspaceType.value })
-    }
-
-    const reason = chosenEval.issues?.find((i: any) => i.type === 'repetition')
-      ? `Repetition detected: ${chosenEval.issues.find((i: any) => i.type === 'repetition').description}`
-      // `verdictReason` names the dimension that actually failed ("voice scored
-      // 6"), which is the actionable part. The score alone says nothing now that
-      // the verdict is no longer derived from it.
-      : `Quality gate failed after ${maxAttempts} attempt(s): ${chosenEval.verdictReason || `score ${chosenEval.score}`}${chosenEval.issues?.length ? ` — issues: ${chosenEval.issues.map((i: any) => i.description).join('; ')}` : ''}`
-    throw new Error(reason)
-  }
-
-  // A scene that came through with usable metadata and no gate failure clears
-  // every streak. The budget measures CONSECUTIVE failure — without this reset,
-  // three failures spread across fifty healthy scenes would halt a run that is
-  // fundamentally fine.
-  if (chosenProse && chosenStructured?.metadataStatus === 'ok') {
-    runHealth.recordSuccess()
-  }
-
-  return { chosenProse, chosenStructured, chosenEval }
-}
-
-  async function runParallelGeneration(writeParamsVal: any) {
-    if (!writeParamsVal) return
-    const parallelSpanId = crypto.randomUUID()
-    generationSpanIds.parallel = parallelSpanId
-    langfuseService.span(generationTraceId.value!, parallelSpanId, 'parallel-writing', {
-      projectId: writeParamsVal.projectId
-    })
-    const { storyArc, storyBibleDocs, storyContract, projectId, onChunk } = writeParamsVal
-
-    // Research scope for this run. The parallel path — the one a one-click volume
-    // actually takes — passed no retrieval context at all, so every scene in a
-    // full-book run was written with the story bible and nothing retrieved.
-    const ragOptions = buildRagOptions(projectId, writeParamsVal.research)
-
-    const existingEntitiesJson = await scopedEntitiesBlob(projectId)
-
-    writtenScenes.value = new Array(scenePlan.value.length).fill(null)
-
-    // Scenes-completed, tracked explicitly. `progress.current` used to be driven
-    // only by whichever scene emitted the last token, so under parallel writing
-    // the bar jumped backwards whenever a lower-numbered scene streamed.
-    progress.total = scenePlan.value.length
-    progress.current = 0
-    const markSceneComplete = () => {
-      progress.current = Math.min(progress.total, progress.current + 1)
-    }
-
-    // Stop a run that is producing nothing.
-    //
-    // Every per-scene failure is caught and recorded, which is right for one
-    // flaky scene and catastrophic in aggregate: a misconfigured model or a
-    // prompt that overflows the context window fails every scene the same way,
-    // and the run walked through all 300 of them, marked the stage done, and
-    // reported a finished novel. Consecutive failures with nothing written is
-    // the signal that this is not bad luck.
-    let consecutiveWriteFailures = 0
-    const noteSceneOutcome = (ok: boolean) => {
-      if (ok) {
-        consecutiveWriteFailures = 0
-        return
-      }
-      runFailedScenes.value++
-      consecutiveWriteFailures++
-      if (
-        consecutiveWriteFailures >= WRITE_FAILURE_STREAK_ABORT &&
-        writtenScenes.value.every((s: any) => !s)
-      ) {
-        throw new Error(
-          `Aborting: the first ${consecutiveWriteFailures} scenes all failed to produce prose. ` +
-            `Check the model and context settings for this project — nothing has been written, ` +
-            `so no work is lost.`
-        )
-      }
-    }
-
-    const chaptersWithScenes: any[] = []
-    let offset = 0
-    for (const c of chapterPlan.value) {
-      const group = scenePlan.value.slice(offset, offset + c.scenes.length)
-      chaptersWithScenes.push({ chapterMeta: c, scenes: group, startIndex: offset })
-      offset += c.scenes.length
-    }
-
-    progress.statusText = 'Phase 1: Generating chapter anchors in parallel...'
-
-    async function generateAnchor(scene: any, role: any, constraints: any, sceneIndex: any, chapterIndex: any) {
-      const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
-      const scenePhase = actLog.addPhase(currentTaskId, phaseName)
-      const stream = makeSceneStream({ scene, sceneIndex, onChunk })
-      try {
-        const embeddingContext = await buildRetrievalContext(
-          scene,
-          writtenScenes.value.filter(Boolean),
-          5,
-          ragOptions
-        )
-        const { chosenProse, chosenStructured, chosenEval } = await writeSceneWithGate({
-          scene,
-          sceneIndex,
-          scenePhase,
-          storyArc,
-          chapterLog: '',
-          storyBible: storyBibleDocs,
-          storyContract,
-          existingEntitiesJson,
-          embeddingContext,
-          anchorRole: role,
-          anchorConstraints: constraints,
-          emitChunk: stream.emitChunk
-        })
-        const fullProse = chosenProse
-        assertProse(fullProse, scene)
-        stream.done(fullProse)
-
-        progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
-        // The writer already returned a summary in its structured output; this
-        // only falls back to a separate LLM call if it didn't.
-        const summary = await computeSummary(fullProse, chosenStructured)
-        const wordCount = countProseWords(fullProse)
-
-        if (scene.subsectionId) {
-          await manuscriptStore.updateSubsectionData(
-            scene.subsectionId,
-            { content: proseToHtml(fullProse), wordCount, contentStatus: 'generated' },
-            projectId
-          )
-        }
-
-        const chapterNumber = chaptersWithScenes[chapterIndex].chapterMeta.chapterNumber
-        writtenScenes.value[sceneIndex] = {
-          title: scene.title || `Scene ${scene.sceneNumber}`,
-          prose: fullProse,
-          summary,
-          characters: scene.characters || scene.charactersPresent || [],
-          location: scene.location || '',
-          sceneNumber: scene.sceneNumber,
-          subsectionId: scene.subsectionId,
-          chapterId: chapterNumber,
-          keyFacts: Array.isArray(chosenStructured?.keyFacts) ? chosenStructured.keyFacts : []
-        }
-        // Feed the digest layer from the committed scene (best-effort, never
-        // awaited): this is what later runs read as earlier-chapters context.
-        recordSceneDigest({
-          projectId,
-          subsectionId: scene.subsectionId,
-          chapterNumber,
-          prose: fullProse,
-          structured: chosenStructured,
-          scene
-        })
-        markSceneComplete()
-        actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
-        // Checkpoint per scene. Without this the parallel writer — the path a
-        // one-click volume actually takes — never wrote a resumable checkpoint
-        // at all, so `getResumableRun` always returned null and the "Unfinished
-        // draft" resume control could never appear no matter how far a run got.
-        await commitService.persistCheckpoint(projectId)
-        noteSceneOutcome(true)
-        return { success: true, sceneIndex, structured: chosenStructured, eval: chosenEval }
-      } catch (err: any) {
-        stream.abandon()
-        actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
-        // A spent budget or a stop is not this scene's failure — every remaining
-        // scene would fail the same way, instantly. Swallowing it here is what
-        // turned an exhausted run into 300 no-ops and a false "complete".
-        rethrowIfFatal(err)
-        if (scene?.subsectionId) {
-          await manuscriptStore
-            .updateSubsectionData(scene.subsectionId, { contentStatus: 'failed' }, projectId)
-            .catch(() => {})
-        }
-        noteSceneOutcome(false)
-        return { success: false, sceneIndex, error: err.message }
-      }
-    }
-
-    const anchorTasks = chaptersWithScenes.map((chGroup, chapterIndex) => {
-      return async () => {
-        const { chapterMeta, scenes, startIndex } = chGroup
-        const prevSpine = chapterIndex > 0 ? spineArray.value[chapterIndex - 1] : null
-        const prevEmotion = prevSpine?.emotionalStateAtEnd || 'story beginning'
-
-        const openingConstraints = `Previous chapter ended with: ${prevEmotion}\\nThis scene must begin where the previous chapter left off emotionally.`
-        const closingConstraints = `This scene MUST end on this exact hook:\\n"${chapterMeta.hookEnding}"\\nDo not soften it. Do not add resolution. End there.`
-
-        const openingScene = scenes[0]
-        const closingScene = scenes.length > 1 ? scenes[scenes.length - 1] : null
-
-        const promises = [
-          generateAnchor(
-            openingScene,
-            "Opening scene — this is the chapter's entry point.",
-            openingConstraints,
-            startIndex,
-            chapterIndex
-          )
-        ]
-        if (closingScene) {
-          promises.push(
-            generateAnchor(
-              closingScene,
-              'Closing scene — this scene MUST end on this exact hook.',
-              closingConstraints,
-              startIndex + scenes.length - 1,
-              chapterIndex
-            )
-          )
-        }
-
-        const results = await Promise.all(promises)
-        const failed = results.filter((r) => !r.success)
-        return { chapterNumber: chapterMeta.chapterNumber, results, failed: failed.length > 0 }
-      }
-    })
-
-    await gate()
-    const limit = PARALLEL_CHAPTER_LIMIT()
-    const anchorOutcomes = await parallelWithLimit(anchorTasks, limit)
-    throwIfAborted()
-
-    // Same damping term the batch path has. The anchor phase writes every
-    // chapter opener before any bridge scene exists, so a model looping here
-    // poisons the context of everything that follows it — this is the worst
-    // possible place to keep going.
-    if (runHealth.shouldAbort()) {
-      await haltRun(
-        writeParamsVal.projectId,
-        runHealth.getAbortReason() || 'run health budget exceeded'
-      )
-      return
-    }
-
-    let anchorEvalFeedback = ''
-    let anchorFocusInstructions = ''
-    if (inlineEvalEnabled.value) {
-      progress.statusText = 'Evaluating chapter anchors...'
-      const anchorResults = []
-      for (let idx = 0; idx < writtenScenes.value.length; idx++) {
-        const s = writtenScenes.value[idx]
-        if (!s) continue
-        const sceneBrief = scenePlan.value.find((sp) => sp.sceneNumber === s.sceneNumber) || {}
-        const criticResult = await critic.evaluateScene({
-          draft: s.prose,
-          sceneBrief,
-          storyBible: storyBibleDocs,
-          chapterLog: '',
-          existingEntitiesJson: '',
-          focusInstructions: ''
-        })
-        anchorResults.push({
-          sceneIndex: idx + 1,
-          passed: criticResult.pass,
-          score: criticResult.score,
-          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i),
-          dimensionScores: criticResult.dimensionScores || null
-        })
-      }
-      evalStore.setResults(anchorResults)
-      for (const ae of anchorResults) {
-        const sb = scenePlan.value.find((sp) => sp.sceneNumber === ae.sceneIndex)
-        persistCritiqueEval(ae, projectId, sb?.title, sb?.subsectionId)
-      }
-      anchorEvalFeedback = formatEvalFeedback(anchorResults)
-      const anchorResult = promptAdjuster.updateAdjustments(anchorResults, { workspaceType: workspaceType.value })
-      anchorFocusInstructions = anchorResult.focusInstructions
-    }
-
-    // Phase 2: Per-chapter wave-based parallel scene generation.
-    // Within each chapter, scenes are grouped into waves of PARALLEL_SCENE_LIMIT.
-    // Scenes within a wave run concurrently, then conflict detection scans the
-    // wave's key facts for contradictions. If conflicts are found, a resolution
-    // pass corrects them before any scene is committed — so later waves (and
-    // readers) never see inconsistent state.
-    progress.statusText = 'Phase 2: Generating chapter scenes in parallel waves...'
-
-    async function generateMiddleScene(scene: any, sceneIndex: any, chapterMeta: any) {
-      const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
-      const scenePhase = actLog.addPhase(currentTaskId, phaseName)
-      const stream = makeSceneStream({ scene, sceneIndex, onChunk })
-      try {
-        // Chapter-scoped log: only scenes from this chapter (Fix #2 — never cross-chapter)
-        const logEntries = writtenScenes.value
-          .filter((s) => s && s.chapterId === chapterMeta.chapterNumber && s.summary)
-          .map((s) => `Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}`)
-        const chapterLog = logEntries.join('\n')
-
-        const embeddingContext = await buildRetrievalContext(
-          scene,
-          writtenScenes.value.filter(Boolean),
-          5,
-          ragOptions
-        )
-
-        const { chosenProse, chosenStructured, chosenEval } = await writeSceneWithGate({
-          scene,
-          sceneIndex,
-          scenePhase,
-          storyArc,
-          chapterLog,
-          storyBible: storyBibleDocs,
-          storyContract,
-          existingEntitiesJson,
-          embeddingContext,
-          pastEvalResults: anchorEvalFeedback || undefined,
-          focusInstructions: anchorFocusInstructions || undefined,
-          emitChunk: stream.emitChunk
-        })
-        const fullProse = chosenProse
-        assertProse(fullProse, scene)
-        stream.done(fullProse)
-
-        progress.statusText = `Compiling prose for scene ${scene.sceneNumber}...`
-        const summary = await computeSummary(fullProse, chosenStructured)
-        const wordCount = countProseWords(fullProse)
-
-        markSceneComplete()
-        actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
-        noteSceneOutcome(true)
-        return {
-          success: true,
-          sceneIndex,
-          scene,
-          prose: fullProse,
-          summary,
-          wordCount,
-          characters: scene.characters || scene.charactersPresent || [],
-          location: scene.location || '',
-          sceneNumber: scene.sceneNumber,
-          subsectionId: scene.subsectionId,
-          chapterId: chapterMeta.chapterNumber,
-          keyFacts: Array.isArray(chosenStructured?.keyFacts) ? chosenStructured.keyFacts : [],
-          structured: chosenStructured,
-          eval: chosenEval
-        }
-      } catch (err: any) {
-        stream.abandon()
-        actLog.updatePhase(currentTaskId, scenePhase, { status: 'failed' })
-        rethrowIfFatal(err)
-        if (scene?.subsectionId) {
-          await manuscriptStore
-            .updateSubsectionData(scene.subsectionId, { contentStatus: 'failed' }, projectId)
-            .catch(() => {})
-        }
-        noteSceneOutcome(false)
-        return { success: false, sceneIndex, error: err.message }
-      }
-    }
-
-    async function commitSceneResult(result: any) {
-      if (!result.success) return
-      if (result.subsectionId) {
-        await manuscriptStore.updateSubsectionData(
-          result.subsectionId,
-          {
-            content: proseToHtml(result.prose),
-            wordCount: result.wordCount,
-            contentStatus: 'generated'
-          },
-          projectId
-        )
-      }
-      writtenScenes.value[result.sceneIndex] = {
-        title: result.title || result.scene?.title || `Scene ${result.sceneNumber}`,
-        prose: result.prose,
-        summary: result.summary,
-        characters: result.characters,
-        location: result.location,
-        sceneNumber: result.sceneNumber,
-        subsectionId: result.subsectionId,
-        chapterId: result.chapterId,
-        keyFacts: result.keyFacts
-      }
-      // Same digest feed as the anchor path (best-effort, never awaited).
-      // chapterId carries the chapter NUMBER here, not a row id.
-      recordSceneDigest({
-        projectId,
-        subsectionId: result.subsectionId,
-        chapterNumber: result.chapterId,
-        prose: result.prose,
-        structured: result.structured,
-        scene: result.scene || result
-      })
-    }
-
-    const middleOutcomes = []
-    for (let chapterIndex = 0; chapterIndex < chaptersWithScenes.length; chapterIndex++) {
-      const { chapterMeta, scenes, startIndex } = chaptersWithScenes[chapterIndex]
-      const unwritten: any[] = []
-      for (let j = 0; j < scenes.length; j++) {
-        const sceneIndex = startIndex + j
-        if (writtenScenes.value[sceneIndex] !== null) continue
-        unwritten.push({ scene: scenes[j], sceneIndex })
-      }
-      if (unwritten.length === 0) continue
-
-      for (let waveStart = 0; waveStart < unwritten.length; waveStart += PARALLEL_SCENE_LIMIT) {
-        const waveEnd = Math.min(waveStart + PARALLEL_SCENE_LIMIT, unwritten.length)
-        const wave = unwritten.slice(waveStart, waveEnd)
-
-        await gate()
-
-        const waveResults = await Promise.all(
-          wave.map(({ scene, sceneIndex }) => generateMiddleScene(scene, sceneIndex, chapterMeta))
-        )
-
-        const conflicts = detectSceneConflicts(waveResults)
-        if (conflicts.length > 0) {
-          const changed = await resolveSceneConflicts(conflicts, waveResults)
-          if (changed) {
-            progress.statusText = `Reconciled ${conflicts.length} fact conflict(s) in parallel wave`
-          }
-        }
-
-        for (let wi = 0; wi < wave.length; wi++) {
-          const result = waveResults[wi]
-          if (result.success) {
-            await commitSceneResult(result)
-            middleOutcomes.push(result)
-          }
-        }
-        await commitService.persistCheckpoint(projectId)
-      }
-    }
-
-    if (inlineEvalEnabled.value) {
-      progress.statusText = 'Evaluating middle scenes...'
-      const middleResults = []
-      for (let idx = 0; idx < writtenScenes.value.length; idx++) {
-        const s = writtenScenes.value[idx]
-        if (!s || evalStore.results.some((r) => r.sceneIndex === idx + 1)) continue
-        const sceneBrief = scenePlan.value.find((sp) => sp.sceneNumber === s.sceneNumber) || {}
-        const criticResult = await critic.evaluateScene({
-          draft: s.prose,
-          sceneBrief,
-          storyBible: storyBibleDocs,
-          chapterLog: '',
-          existingEntitiesJson: null,
-          focusInstructions: null
-        })
-        middleResults.push({
-          sceneIndex: idx + 1,
-          passed: criticResult.pass,
-          score: criticResult.score,
-          dimensionScores: criticResult.dimensionScores || null,
-          topIssues: (criticResult.issues || []).slice(0, 3).map((i) => i.text || i)
-        })
-      }
-      evalStore.setResults([...evalStore.results, ...middleResults])
-      for (const me of middleResults) {
-        const sb = scenePlan.value.find((sp) => sp.sceneNumber === me.sceneIndex)
-        persistCritiqueEval(me, projectId, sb?.title, sb?.subsectionId)
-      }
-    }
-
-    // Parallel-safe quality floor. The sequential path aborts on N *consecutive*
-    // gate failures, which is undefined under parallel execution — so here we
-    // use an aggregate fail-ratio over judged scenes. Only meaningful when the
-    // gate actually ran (autoMode); otherwise no per-scene evals were produced.
-    if (autoMode.value) {
-      const QUALITY_FLOOR_FAIL_RATIO = 0.5
-      const QUALITY_FLOOR_MIN_JUDGED = 4
-      const anchorEvals = anchorOutcomes.flatMap((o: any) => (o?.results || []).map((r: any) => r?.eval))
-      const gateEvals = [...anchorEvals, ...middleOutcomes.map((r: any) => r?.eval)].filter(Boolean)
-      const judged = gateEvals.filter((e: any) => !e.evalUnavailable && e.score != null)
-      const failed = judged.filter((e) => !isCleanPass(e))
-      runFailedScenes.value = failed.length
-      if (
-        judged.length >= QUALITY_FLOOR_MIN_JUDGED &&
-        failed.length / judged.length >= QUALITY_FLOOR_FAIL_RATIO
-      ) {
-        error.value = `Quality floor breached: ${failed.length}/${judged.length} scenes failed critique after retries. The writer or critic model is likely misconfigured. ${writtenScenes.value.filter(Boolean).length} scene(s) written and saved.`
-        commitService.persistCheckpoint(projectId)
-        await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
-        await delegatorApi.dispatch('ERROR', { error: error.value, message: error.value })
-        return
-      }
-    }
-
-    langfuseService.endSpan(parallelSpanId)
-    await completeGeneration(projectId)
-  }
-
-  /**
-   * Best-effort speculative prefetch of a single scene.
-   * Fails silently — the cache is an optimisation, never a correctness requirement.
-   */
-  async function prefetchNextScene(index: any) {
-    if (speculativeCache.has(index)) return
-    if (!writeParams.value) return
-    const { projectId, storyArc, storyContract, onChunk, storyBibleDocs, sections } =
-      writeParams.value
-    const scene = scenePlan.value[index]
-    if (!scene) return
-
-    speculativeCache.reserve(index)
-
-    try {
-      // Running chapter log, same shape the batch path builds. Previously '',
-      // which meant a prefetched scene was written with no knowledge of the
-      // scenes before it — a cache hit would have been worse than a miss.
-      const chapterLog = writtenScenes.value
-        .filter(Boolean)
-        .map((ws: any) => `Scene ${ws.sceneNumber} ("${ws.title}"): ${ws.summary || '(written)'}`)
-        .join('\n')
-
-      // Was called with one argument — the written scenes — against a signature
-      // of (characterList, locationList, plotThreadList), and `as any` hid it
-      // from the typechecker. `locationList.map` threw on every single call, the
-      // bare catch below swallowed it AND flushed the cache, so speculative
-      // prefetch never once produced a hit.
-      const existingEntitiesJson = await scopedEntitiesBlob(projectId)
-      const scenePhase = null
-      const result = await writeSceneWithGate({
-        scene,
-        sceneIndex: index,
-        scenePhase,
-        storyArc,
-        chapterLog,
-        storyBible: storyBibleDocs,
-        storyContract,
-        existingEntitiesJson,
-        emitChunk: () => {}
-      })
-      speculativeCache.set(index, result)
-      prefetchStats.hits++
-    } catch (err: any) {
-      // Still non-fatal — the cache is an optimisation, never a correctness
-      // requirement — but no longer invisible. A permanently-dead cache used to
-      // look identical to a cache that was simply never warm.
-      prefetchStats.misses++
-      prefetchStats.lastError = err?.message || String(err)
-      runHealth.record('prefetch_failed', { stage: 'prefetch', sceneIndex: index })
-      console.debug('[useVolumeStoryGenerator] speculative prefetch failed:', err)
-      speculativeCache.flush()
-    }
-  }
+  const sceneGate = createSceneGate(strategyCtx)
+  const { makeSceneStream, writeSceneWithGate, chapterLogBefore } = sceneGate
+  const { runParallelGeneration } = createParallelStrategy(strategyCtx, sceneGate)
+  const { prefetchNextScene, writeOneBatch } = createBatchStrategy(strategyCtx, sceneGate)
 
   /**
    * Write batches until something other than "keep going" happens.
@@ -2284,332 +1380,6 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
    */
   async function writeNextBatch(startIndex: any, incomingFocusInstructions = '') {
     await runBatchLoop(writeOneBatch, startIndex, incomingFocusInstructions)
-  }
-
-  /**
-   * One batch: write its scenes, evaluate, sync its entity changes.
-   *
-   * @returns where the loop should go next, or `null` when this batch was the
-   * end of the road. Null covers every outcome where something other than the
-   * loop owns the next step — the run finished, the user has a scene or a sync
-   * preview to review, the run was halted, or an error was dispatched.
-   */
-  async function writeOneBatch(
-    startIndex: any,
-    incomingFocusInstructions = ''
-  ): Promise<NextBatch> {
-    if (!writeParams.value) return null
-
-    const { projectId, storyArc, storyContract, onChunk, storyBibleDocs, sections } =
-      writeParams.value
-    const endIndex = batchEndIndex(startIndex, chapterPlan.value, scenePlan.value.length)
-
-    // Build running chapter log once from existing scenes (Fix #2 — avoids O(n²) rebuild per scene)
-    const runningChapterLog = writtenScenes.value
-      .filter(Boolean)
-      .map((ws) => `Scene ${ws.sceneNumber} ("${ws.title}"): ${ws.summary || '(written)'}`)
-
-    // Build entities JSON once per batch (Fix #3 — entities don't change within a batch)
-    const existingEntitiesJson = await scopedEntitiesBlob(projectId)
-
-    // Everything older than the last 20 scenes used to leave the writer's view
-    // entirely. Roll the committed scene digests up into chapter digests and
-    // hand back the chapters that window no longer reaches. Pure aggregation —
-    // no model call — so it is cheap enough to redo each batch.
-    await rollupProjectDigests({ projectId, volumeId: volumeId.value })
-    const earlierChapters = await buildEarlierChaptersBlock({
-      projectId,
-      recentSceneCount: RECENT_SCENE_LOG_LIMIT
-    })
-
-    let batchEvalFeedback = ''
-    let batchFocusInstructions = incomingFocusInstructions
-
-    for (let i = startIndex; i < endIndex; i++) {
-      await gate()
-      const scene = scenePlan.value[i]
-      const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
-      const scenePhase = actLog.addPhase(currentTaskId, phaseName)
-      progress.current = i + 1
-      progress.sceneLabel = scene.title || `Scene ${scene.sceneNumber}`
-      progress.statusText = `Drafting scene details, building continuity context, and streaming prose...`
-
-      // Retrieve continuity context — prose excerpts for short drafts, semantic
-      // retrieval once the story grows past the prose-excerpt ceiling — plus the
-      // research chunks this scene is about.
-      const embeddingContext = await buildRetrievalContext(
-        scene,
-        writtenScenes.value,
-        5,
-        researchRagOptions()
-      )
-
-      // Build chapter log from running array (O(1) slice instead of O(n) rebuild),
-      // preceded by the summarised chapters that fall outside that window.
-      const chapterLog = [earlierChapters, runningChapterLog.slice(-RECENT_SCENE_LOG_LIMIT).join('\n')]
-        .filter(Boolean)
-        .join('\n\n')
-
-      // Retrieve rejected patterns for Writer
-      const extraRejected = rejectedPatterns.value.length > 0 ? rejectedPatterns.value : undefined
-
-      // Attach total scene count for context
-      scene.totalScenes = scenePlan.value.length
-
-      // Write the scene with structured output
-      const effectiveStoryContract = scene.reRequestInstruction
-        ? storyContract +
-          `\n\nUser revision request for scene ${scene.sceneNumber}: ${scene.reRequestInstruction}`
-        : storyContract
-      if (scene.reRequestInstruction) delete scene.reRequestInstruction
-
-      // Route through the shared per-scene quality gate (retry + critique +
-      // best-attempt selection) — identical logic to the parallel path.
-      // First check the speculative cache: if the user reviewed the previous
-      // scene quickly enough, we may already have this scene pre-generated.
-      let written
-      let retryGate: any
-      let maxAttempts: any
-      if (speculativeCache.has(i)) {
-        // Prefetched while the user was reviewing the previous scene — there is
-        // nothing left to stream, so open it in the editor directly.
-        written = speculativeCache.consume(i)
-        if (scene.subsectionId) liveDraft.focusSubsection(scene.subsectionId)
-      } else {
-        retryGate = autoMode.value
-        maxAttempts = retryGate ? SCENE_MAX_ATTEMPTS : 1
-        const stream = makeSceneStream({ scene, sceneIndex: i, onChunk })
-        try {
-          written = await writeSceneWithGate({
-            scene,
-            sceneIndex: i,
-            scenePhase,
-            storyArc,
-            chapterLog,
-            storyBible: storyBibleDocs,
-            storyContract: effectiveStoryContract,
-            existingEntitiesJson,
-            embeddingContext,
-            extraRejected,
-            pastEvalResults: batchEvalFeedback,
-            focusInstructions: batchFocusInstructions,
-            emitChunk: stream.emitChunk
-          })
-        } catch (err) {
-          stream.abandon()
-          throw err
-        }
-        stream.done(written?.chosenProse)
-      }
-      const { chosenProse, chosenStructured, chosenEval } = written
-      // Before the phase is marked done: an empty result reaching this point
-      // committed an empty scene and logged it as a success.
-      assertProse(chosenProse, scene)
-      actLog.updatePhase(currentTaskId, scenePhase, { status: 'done' })
-
-      const fullProse = chosenProse
-      structuredResults.push({ sceneIndex: i, structured: chosenStructured })
-
-      if (sceneReviewMode.value && i < scenePlan.value.length - 1) {
-        currentSceneResult.value = {
-          scene,
-          sceneIndex: i,
-          fullProse,
-          structured: chosenStructured,
-          sectionIdx: sectionIndexForScene(sections, i)
-        }
-        currentWriteIndex.value = i + 1
-        await delegatorApi.dispatch('SCENE_WRITTEN', {
-          sceneResult: currentSceneResult.value,
-          sceneIndex: i
-        })
-        // The user owns the next step now — `approveScene`/`rejectScene` re-enter
-        // through `onWriteNextBatch`.
-        void prefetchNextScene(i + 1)
-        return null
-      }
-
-      await commitService.commitAndStoreScene(
-        scene,
-        fullProse,
-        sectionIndexForScene(sections, i),
-        sections,
-        projectId,
-        chosenStructured,
-        i
-      )
-      commitService.persistCheckpoint(projectId)
-
-      if (retryGate && chosenEval) {
-        const retryEntry = {
-          sceneIndex: i + 1,
-          passed: chosenEval.pass,
-          score: chosenEval.score,
-          dimensionScores: chosenEval.dimensionScores || null,
-          topIssues: (chosenEval.issues || []).slice(0, 3).map((iss: any) => iss.text || iss)
-        }
-        evalStore.addResult(retryEntry)
-        persistCritiqueEval(retryEntry, projectId, scene.title, scene.subsectionId)
-        batchEvalFeedback = formatEvalFeedback(evalStore.results)
-        const batchResult = promptAdjuster.updateAdjustments(evalStore.results, { workspaceType: workspaceType.value })
-        batchFocusInstructions = batchResult.focusInstructions
-
-        // Quality floor: a scene that still fails after all retries counts against
-        // the run; too many in a row aborts (work so far is already saved).
-        const judged = chosenEval && !chosenEval.evalUnavailable && chosenEval.score != null
-        if (judged && !isCleanPass(chosenEval)) {
-          runFailedScenes.value++
-          runConsecutiveFailures.value++
-          logRejectedPattern(
-            `Scene ${scene.sceneNumber} failed critique after ${maxAttempts} attempt(s)`,
-            fullProse.slice(0, 200)
-          )
-          if (runConsecutiveFailures.value >= QUALITY_FLOOR_CONSECUTIVE) {
-            error.value = `Quality floor breached: ${runConsecutiveFailures.value} scenes in a row failed critique after retries. The writer or critic model is likely misconfigured. ${writtenScenes.value.filter(Boolean).length} scene(s) written and saved.`
-            commitService.persistCheckpoint(projectId)
-            await updateGenRunStage(projectId, 'prose', { status: 'failed', error: error.value })
-            await delegatorApi.dispatch('ERROR', { error: error.value, message: error.value })
-            actLog.updatePhase(currentTaskId, scenePhase, { status: 'error' })
-            return null
-          }
-        } else {
-          runConsecutiveFailures.value = 0
-        }
-      } else if (inlineEvalEnabled.value) {
-        const criticResult = await critic.evaluateScene({
-          draft: scene.prose,
-          sceneBrief: scene,
-          storyBible: storyBibleDocs,
-          chapterLog: '',
-          existingEntitiesJson: null,
-          focusInstructions: null
-        })
-        const evalEntry = {
-          sceneIndex: i + 1,
-          passed: criticResult.pass,
-          score: criticResult.score,
-          dimensionScores: criticResult.dimensionScores || null,
-          topIssues: (criticResult.issues || []).slice(0, 3).map((iss) => iss.text || iss)
-        }
-        evalStore.addResult(evalEntry)
-        persistCritiqueEval(evalEntry, projectId, scene.title, scene.subsectionId)
-        batchEvalFeedback = formatEvalFeedback(evalStore.results)
-        const batchResult2 = promptAdjuster.updateAdjustments(evalStore.results, { workspaceType: workspaceType.value })
-        batchFocusInstructions = batchResult2.focusInstructions
-      }
-
-      // Append to running log after scene completes (avoids full rebuild next
-      // iteration). Indexed by scene position — `at(-1)` read the last *slot*,
-      // which on the positional array is a later, still-unwritten scene.
-      const latestScene = writtenScenes.value[i]
-      runningChapterLog.push(
-        `Scene ${scene.sceneNumber} ("${scene.title || `Scene ${scene.sceneNumber}`}"): ${latestScene?.summary || '(written)'}`
-      )
-    }
-
-    // Drift-triggered re-evaluation: check for regressions across the whole project
-    // and append any regressed dimensions to the next batch's focus instructions.
-    const batchScenes = writtenScenes.value.slice(startIndex).filter(Boolean)
-    const driftResult = await driftTriggeredEval.check({
-      projectId,
-      scenes: batchScenes,
-      workspaceType: workspaceType.value,
-      scenePlanItems: scenePlan.value.slice(startIndex),
-      storyBible: storyBibleDocs,
-      chapterLog: ''
-    })
-    if (driftResult && (driftResult as any).triggered) {
-      const regressed = (driftResult as any).action.regressedDims
-      if (regressed.length > 0) {
-        const driftFocus = `Quality regressions detected in: ${regressed.join(', ')}. Focus on improving these dimensions in the next batch.`
-        batchFocusInstructions = batchFocusInstructions
-          ? `${driftFocus}\n\n${batchFocusInstructions}`
-          : driftFocus
-      }
-    }
-
-    // Active learning bridge: periodic deep analysis (every 3 batches, once ≥5 evals)
-    // merges its focus instructions and hint history into the prompt adjuster.
-    const bridgeResult = activeLearningBridge.afterBatchEval(evalStore.results)
-    if (bridgeResult?.focusInstructions) {
-      batchFocusInstructions = batchFocusInstructions
-        ? `${bridgeResult.focusInstructions}\n\n${batchFocusInstructions}`
-        : bridgeResult.focusInstructions
-    }
-    if (bridgeResult?.givenHints?.length) {
-      promptAdjuster.allGivenHints.value.push(...bridgeResult.givenHints)
-    }
-
-    // Early continuity audit at chapter boundaries (detection only).
-    await consistencyService.maybeRunIncrementalConsistency(endIndex)
-
-    // Discover entities from this batch only
-    const freshStructured = structuredResults.slice(lastSyncedResultIndex.value)
-    lastSyncedResultIndex.value = structuredResults.length
-
-    const batchChanges = []
-    for (const sr of freshStructured) {
-      if (sr.structured) {
-        const sceneChanges = sync.discoverSync(sr.structured)
-        batchChanges.push(...sceneChanges)
-        // A scene whose metadata extraction SUCCEEDED and still yielded nothing
-        // for the bible is the signature of the frozen-bible failure. Recorded
-        // separately from a metadata failure so the two are distinguishable:
-        // "the extractor found nothing" and "the extractor never ran" produced
-        // identical downstream state before `metadataStatus` existed.
-        if (sceneChanges.length === 0 && sr.structured.metadataStatus === 'ok') {
-          runHealth.record('sync_empty', { stage: 'sync' })
-        }
-      }
-    }
-    bibleChangesDiscovered.value += batchChanges.length
-
-    if (endIndex < scenePlan.value.length) {
-      if (batchChanges.length > 0) {
-        hasPendingBatches.value = true
-        pendingBatchStart.value = endIndex
-        syncPreview.value = batchChanges
-        await delegatorApi.dispatch('BATCH_COMPLETE', {
-          batchStart: pendingBatchStart.value,
-          batchEnd: endIndex,
-          preview: batchChanges
-        })
-        // One-click mode: accept every discovered entity and keep writing.
-        // `confirmSync` drives the run forward from `pendingBatchStart` by
-        // re-entering `writeNextBatch`, so the loop here is finished either way.
-        if (autoMode.value) {
-          await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
-        }
-        return null
-      }
-      // The damping term. Without it the feedback loop has none: a degraded
-      // scene degrades the next scene's context, so continuing past a run of
-      // failures manufactures more of them. Stopping here costs the author the
-      // scenes in the budget; not stopping cost them a whole volume.
-      if (runHealth.shouldAbort()) {
-        await haltRun(projectId, runHealth.getAbortReason() || 'run health budget exceeded')
-        return null
-      }
-      // The one path that continues the loop: scenes left, and no entity
-      // changes needing a look first.
-      return { startIndex: endIndex, focusInstructions: batchFocusInstructions }
-    }
-
-    if (batchChanges.length > 0) {
-      syncPreview.value = batchChanges
-      await delegatorApi.dispatch('BATCH_COMPLETE', {
-        batchStart: pendingBatchStart.value,
-        batchEnd: endIndex,
-        preview: batchChanges
-      })
-      if (autoMode.value) {
-        await confirmSync({ acceptedEntities: batchChanges, projectId, volumeId: volumeId.value })
-      }
-      return null
-    }
-
-    await completeGeneration(projectId)
-    return null
   }
 
   async function confirmPlan({
@@ -2802,9 +1572,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       // This catch rethrows past the prose handler below rather than into it, so
       // it has to close the task itself.
       if (currentTaskId) actLog.failTask(currentTaskId, error.value)
-      await delegatorApi
-        .dispatch('ERROR', { error: err, message: error.value })
-        .catch(() => {})
+      await delegatorApi.dispatch('ERROR', { error: err, message: error.value }).catch(() => {})
       throw err
     }
 
@@ -2898,7 +1666,9 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       return
     }
 
-    const failed = (await getFailedSubsections(projectId)).filter((sub: any) => scenesBySub.has(sub.id))
+    const failed = (await getFailedSubsections(projectId)).filter((sub: any) =>
+      scenesBySub.has(sub.id)
+    )
     if (failed.length === 0) {
       langfuseService.endSpan(repairSpanId)
       return
@@ -2929,7 +1699,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
         const result = await (writer.writeSceneStructured as any)({
           sceneBrief: scene,
           storyArc,
-          chapterLog: '',
+          chapterLog: chapterLogBefore(index),
           storyBible: storyBibleDocs,
           embeddingContext,
           storyContract,
@@ -3046,7 +1816,10 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
         runHealth.record('artifact_failed', { stage: 'finalize', detail: e })
       }
     } catch (err: any) {
-      runHealth.record('artifact_failed', { stage: 'finalize', detail: err?.message || String(err) })
+      runHealth.record('artifact_failed', {
+        stage: 'finalize',
+        detail: err?.message || String(err)
+      })
     }
     await persistRunArtifacts(projectId, { halted: true })
 
@@ -3068,6 +1841,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       scenesWritten: written.length,
       scenesWithMetadata: withMetadata,
       bibleChangesCommitted: bibleChangesDiscovered.value,
+      scenesSynced: scenesSynced.value,
       duplicateRatio: proseText ? duplicateRatio(proseText) : undefined
     })
 
@@ -3081,7 +1855,10 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       // but they must be told it did not meet the run's own claims, which is
       // precisely what thirteen scenes of duplicate text against a frozen bible
       // never told anyone.
-      console.warn('[runHealth] run did not deliver:', blocking.map((v: any) => v.message).join(' | '))
+      console.warn(
+        '[runHealth] run did not deliver:',
+        blocking.map((v: any) => v.message).join(' | ')
+      )
     }
   }
 
@@ -3108,14 +1885,13 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       halted
     })
     if (!archiveResult.ok) {
-      runHealth.record('artifact_failed', { stage: 'session archive', detail: archiveResult.detail })
+      runHealth.record('artifact_failed', {
+        stage: 'session archive',
+        detail: archiveResult.detail
+      })
     }
 
-    actLog.appendThought(
-      currentTaskId,
-      null,
-      `${stateResult.detail} · ${archiveResult.detail}\n`
-    )
+    actLog.appendThought(currentTaskId, null, `${stateResult.detail} · ${archiveResult.detail}\n`)
   }
 
   async function completeGeneration(projectId: any) {
@@ -3213,7 +1989,10 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       }
     } catch (err: any) {
       console.warn('[useVolumeStoryGenerator] artifact finalization failed:', err)
-      runHealth.record('artifact_failed', { stage: 'finalize', detail: err?.message || String(err) })
+      runHealth.record('artifact_failed', {
+        stage: 'finalize',
+        detail: err?.message || String(err)
+      })
       actLog.updatePhase(currentTaskId, artifactsPhase, { status: 'failed' })
     }
 
@@ -3331,10 +2110,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
       if (htmlParts.length === 0) continue
 
       const joinedHtml = htmlParts.join('<hr>')
-      const totalWords = subs.reduce(
-        (sum: number, s: any) => sum + (s.wordCount || 0),
-        0
-      )
+      const totalWords = subs.reduce((sum: number, s: any) => sum + (s.wordCount || 0), 0)
 
       await manuscriptStore.updateSectionData(
         section.id,
@@ -3471,10 +2247,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     if ((manuscriptStore.sections as any[]).length === 0) {
       await manuscriptStore.loadManuscript(projectId)
     }
-    return surveyManuscript(
-      manuscriptStore.sections as any[],
-      manuscriptStore.subsections as any[]
-    )
+    return surveyManuscript(manuscriptStore.sections as any[], manuscriptStore.subsections as any[])
   }
 
   /**
@@ -3487,7 +2260,17 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
    */
   async function writeScenesInto(
     targets: any[],
-    { projectId, survey, checkpointPlan, targetWords, storyBibleDocs, storyArc, storyContract, instructions, onChunk }: any
+    {
+      projectId,
+      survey,
+      checkpointPlan,
+      targetWords,
+      storyBibleDocs,
+      storyArc,
+      storyContract,
+      instructions,
+      onChunk
+    }: any
   ) {
     const report = emptyReport()
     report.remaining = targets.length
@@ -3660,11 +2443,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
 
     const run = await getGenRun(projectId)
     const checkpointPlan = Array.isArray(run?.state?.scenePlan) ? run.state.scenePlan : null
-    const storyBibleDocs = await beginContinuation(
-      projectId,
-      'Continue drafting',
-      targets.length
-    )
+    const storyBibleDocs = await beginContinuation(projectId, 'Continue drafting', targets.length)
 
     try {
       const report = await writeScenesInto(targets, {
@@ -3724,7 +2503,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
         ? '# The story so far (already written — continue from here)\n' +
           tail
             .map((s) => {
-              const text = String(s.prose).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+              const text = stripHtmlTags(String(s.prose))
               return `- ${s.chapterTitle} / "${s.title}": ${text.slice(0, 400)}…`
             })
             .join('\n')
@@ -3791,7 +2570,12 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
           chapterMeta: c
         }))
 
-      const created = await batchCreatePlanStructure({ projectId, groups, branchId, startOrder: survey.chapters })
+      const created = await batchCreatePlanStructure({
+        projectId,
+        groups,
+        branchId,
+        startOrder: survey.chapters
+      })
       // Same run-created tracking as the main planning path (see above).
       for (const sec of created) {
         runCreatedSectionIds.value.add(sec.id)
@@ -3832,7 +2616,13 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
    * context to continue from — otherwise the model appends a second scene to the
    * first instead of replacing it.
    */
-  async function expandScene({ projectId, subsectionId, targetWords = 1500, instructions, onChunk }: any) {
+  async function expandScene({
+    projectId,
+    subsectionId,
+    targetWords = 1500,
+    instructions,
+    onChunk
+  }: any) {
     if (isContinuing.value) return null
     const survey = await surveyContinuation(projectId)
     if (!survey) return null
@@ -3840,7 +2630,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     const target = survey.scenes.find((s) => s.subsectionId === subsectionId)
     if (!target) return null
 
-    const existing = String(target.prose).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    const existing = stripHtmlTags(String(target.prose))
     const rewriteBrief = [
       existing
         ? `EXISTING DRAFT OF THIS SCENE (rewrite it at greater length — keep every event, character and outcome; add depth, sensory detail and interiority rather than new plot):\n${existing}`
@@ -3910,6 +2700,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     runHealth.reset()
     runHealthViolations.value = []
     bibleChangesDiscovered.value = 0
+    scenesSynced.value = 0
     // Rehydrate prompt adjuster from persisted history instead of clearing
     // This preserves cross-run hint history and repeat-dampening
     await rehydratePromptAdjuster(
@@ -3925,6 +2716,10 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     error,
     volumeId,
     scenePlan,
+    // Read-only views of the outline the scenes were planned from, for the
+    // plan preview and headless runs; the run state itself is not exposed.
+    chapterPlan: readonly(chapterPlan),
+    spineArray: readonly(spineArray),
     writtenScenes,
     consistencyReport,
     rejectedPatterns,
@@ -3959,6 +2754,7 @@ const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >
     runHealth,
     runHealthViolations,
     bibleChangesDiscovered,
+    scenesSynced,
     hasPendingBatches,
     pendingBatchStart,
     logRejectedPattern,

@@ -20,10 +20,7 @@
 const FLUSH_INTERVAL_MS = 120
 
 function escapeHtml(text: string) {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 /**
@@ -92,7 +89,15 @@ export class LiveDraftBridge {
    * one: under parallel generation "most recent" would yank the editor around
    * unpredictably, whereas lowest-index reads in story order.
    */
-  begin({ sceneIndex, subsectionId, sectionId }: { sceneIndex: number; subsectionId: any; sectionId?: any }) {
+  begin({
+    sceneIndex,
+    subsectionId,
+    sectionId
+  }: {
+    sceneIndex: number
+    subsectionId: any
+    sectionId?: any
+  }) {
     if (!this.enabled || subsectionId == null) return
     const row = this.findRow(subsectionId)
     this.active.set(subsectionId, {

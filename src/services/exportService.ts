@@ -40,6 +40,8 @@ interface PdfManuscript {
 
 interface PdfProject {
   genre?: string
+  description?: string
+  /** Older rows stored the premise here; `description` wins when both exist. */
   synopsis?: string
 }
 
@@ -98,7 +100,8 @@ export async function exportManuscriptToPDF(projectId: string, projectName = 'Ma
     y += 10
   }
 
-  if (data.project?.synopsis) {
+  const synopsis = data.project?.description || data.project?.synopsis
+  if (synopsis) {
     y += 5
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
@@ -106,7 +109,7 @@ export async function exportManuscriptToPDF(projectId: string, projectName = 'Ma
     y += 8
     doc.setFontSize(11)
     doc.setFont('helvetica', 'normal')
-    addWrappedText(data.project.synopsis, 11)
+    addWrappedText(synopsis, 11)
     y += 5
   }
 

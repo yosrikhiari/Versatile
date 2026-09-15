@@ -3,14 +3,27 @@ import { countWords } from '../utils/textUtils'
 
 const db = _db as any
 
-export async function createProject(name: any, genre: any = '', synopsis: any = '', userId: any = null) {
+/**
+ * `description` is the field the workspace reads back (`projectStore.loadProject`,
+ * the generator brief, export); it used to be written as `synopsis`, which
+ * nothing read — so a premise typed during onboarding never reached the
+ * generator. `category` is the workspace type (creative, screenplay, …).
+ */
+export async function createProject(
+  name: any,
+  genre: any = '',
+  description: any = '',
+  userId: any = null,
+  category: any = ''
+) {
   try {
     const now = new Date().toISOString()
     const projectId = await db.transaction('rw', db.projects, db.manuscripts, async () => {
       const id = await db.projects.add({
         name,
         genre,
-        synopsis,
+        category,
+        description,
         userId,
         createdAt: now,
         updatedAt: now

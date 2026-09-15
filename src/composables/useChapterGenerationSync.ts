@@ -157,6 +157,13 @@ export function useChapterGenerationSync() {
         location: new Set(),
         plotThread: new Set()
       }
+      // What actually landed, so the caller's health ledger counts commits
+      // rather than proposals. `bibleChangesCommitted` was the number of
+      // entities *discovered*, and in the one path that never called this
+      // function it stayed at zero for a whole book.
+      let entitiesCreated = 0
+      let edgesWritten = 0
+
       const uniqueChanges = acceptedEntities.filter((c: any) => {
         const key = (c.entity.name || c.entity.title || '').toLowerCase().trim()
         if (seen[c.type as SyncEntityType].has(key)) return false
@@ -182,7 +189,8 @@ export function useChapterGenerationSync() {
         if (name) delete nameToId[name]
 
         if (preEntityNodeSnapshot) {
-          graphStore.nodeInstances.value = preEntityNodeSnapshot
+          // Pinia unwraps the store's `ref` — `nodeInstances` IS the map here.
+          graphStore.nodeInstances = preEntityNodeSnapshot
           try {
             await graphStore.saveNodeInstances(resolvedProjectId)
           } catch (restoreErr) {
@@ -197,8 +205,14 @@ export function useChapterGenerationSync() {
       for (const change of uniqueChanges) {
         let entityId: string | null = null
         const name = change.entity.name || change.entity.title
+        // `graphStore.nodeInstances` is a setup-store `ref`, which Pinia unwraps:
+        // the property is the map itself. Reading `.value` on it gave
+        // `undefined`, `JSON.stringify(undefined)` is `undefined`, and
+        // `JSON.parse("undefined")` threw — before a single entity was written.
+        // Every commit, on every path, failed on this line; the catch below
+        // logged it and the run carried on with an unchanged bible.
         const preEntityNodeSnapshot = JSON.parse(
-          JSON.stringify(toRaw(graphStore.nodeInstances.value))
+          JSON.stringify(toRaw(graphStore.nodeInstances) ?? {})
         )
 
         try {
@@ -209,7 +223,10 @@ export function useChapterGenerationSync() {
                 {
                   name: change.entity.name,
                   role: change.entity.role || 'unknown',
-                  description: change.entity.description || ''
+                  description: change.entity.description || '',
+                  // Discovered by the writer, not approved by the author: the
+                  // db default is `approved`, which is the canon-locked state.
+                  generationStatus: 'generated'
                 },
                 'generated',
                 chapterId || null
@@ -227,7 +244,8 @@ export function useChapterGenerationSync() {
                 {
                   name: change.entity.name,
                   type: change.entity.type || 'unknown',
-                  description: change.entity.description || ''
+                  description: change.entity.description || '',
+                  generationStatus: 'generated'
                 },
                 'generated',
                 chapterId || null
@@ -245,7 +263,8 @@ export function useChapterGenerationSync() {
                 {
                   title: change.entity.title,
                   status: change.entity.status || 'open',
-                  summary: change.entity.summary || ''
+                  summary: change.entity.summary || '',
+                  generationStatus: 'generated'
                 },
                 'generated',
                 chapterId || null
@@ -263,6 +282,7 @@ export function useChapterGenerationSync() {
               await networkStore.assignEntityToVolume(change.type, entityId, volumeId, false)
             }
           })
+          if (entityId) entitiesCreated++
         } catch (err) {
           console.error(`[commitSync] Failed to commit entity "${name}":`, err)
           if (entityId) {
@@ -324,12 +344,15 @@ export function useChapterGenerationSync() {
         })
 
         for (const s of plan.supersedes) {
-          await updateGraphEdge(s.id, { validUntilChapter: s.validUntilChapter }).catch(
-            (err: any) => console.warn('[commitSync] could not close superseded edge:', err)
-          )
+          await updateGraphEdge(s.id, { validUntilChapter: s.validUntilChapter })
+            .then(() => edgesWritten++)
+            .catch((err: any) =>
+              console.warn('[commitSync] could not close superseded edge:', err)
+            )
         }
         for (const e of plan.inserts) {
           await graphStore.addEdgeData(resolvedProjectId, e)
+          edgesWritten++
         }
         // The volume subgraph reads from `graphEdges`, which the inserts above
         // already populate with the volume stamped on — the second write through
@@ -337,7 +360,7 @@ export function useChapterGenerationSync() {
       }
 
       pendingChanges.value = []
-      return true
+      return { entitiesCreated, edgesWritten }
     } finally {
       isCommitting.value = false
     }

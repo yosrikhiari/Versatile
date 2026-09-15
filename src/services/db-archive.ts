@@ -1,9 +1,27 @@
+import Dexie from 'dexie'
 import { db as _db } from './db-core'
 import { SIGNAL } from '../config/archive'
 
 const db = _db as any
 
-export async function saveSessionArchive(projectId: any, type: any, data: any, tags: any, signal: any) {
+/** Newest-first cursor over one project's rows on a `[projectId+timestamp]` index. */
+function newestFirst(table: any, projectId: any) {
+  return table
+    .where('[projectId+timestamp]')
+    .between([projectId, Dexie.minKey], [projectId, Dexie.maxKey])
+    .reverse()
+}
+
+/** State snapshots kept per project; older ones are dropped on write. */
+export const STATE_SNAPSHOT_CAP = 50
+
+export async function saveSessionArchive(
+  projectId: any,
+  type: any,
+  data: any,
+  tags: any,
+  signal: any
+) {
   if (
     !signal ||
     ![SIGNAL.ACCEPTED, SIGNAL.PARTIAL, SIGNAL.NEUTRAL, SIGNAL.REJECTED].includes(signal)
@@ -24,23 +42,25 @@ export async function saveSessionArchive(projectId: any, type: any, data: any, t
 
 export async function getSessionArchive(projectId: any, opts: any = {}) {
   const { types, limit = 50, tags, minSignal, before } = opts
-  let entries = await db.sessionArchive.where('projectId').equals(projectId).toArray()
-  if (types && types.length > 0) {
-    entries = entries.filter((e: any) => types.includes(e.type))
-  }
-  if (tags && tags.length > 0) {
-    entries = entries.filter((e: any) => tags.some((t: any) => e.tags.includes(t)))
-  }
-  if (minSignal) {
-    const rank: any = { accepted: 4, partial: 3, neutral: 2, rejected: 1 }
-    const minRank = rank[minSignal] || 0
-    entries = entries.filter((e: any) => (rank[e.signal] || 0) >= minRank)
-  }
-  if (before) {
-    entries = entries.filter((e: any) => e.timestamp < before)
-  }
-  entries.sort((a: any, b: any) => b.timestamp.localeCompare(a.timestamp))
-  return entries.slice(0, limit)
+  const rank: any = { accepted: 4, partial: 3, neutral: 2, rejected: 1 }
+  const minRank = minSignal ? rank[minSignal] || 0 : 0
+
+  // Walk the index newest-first and stop at `limit` matches. This used to load
+  // the project's whole archive, filter, sort and slice — the cost of showing
+  // the last 50 entries grew with every entry ever written.
+  const upper = before ? [projectId, before] : [projectId, Dexie.maxKey]
+  return db.sessionArchive
+    .where('[projectId+timestamp]')
+    .between([projectId, Dexie.minKey], upper, true, false)
+    .reverse()
+    .filter((e: any) => {
+      if (types && types.length > 0 && !types.includes(e.type)) return false
+      if (tags && tags.length > 0 && !tags.some((t: any) => e.tags?.includes(t))) return false
+      if (minRank && (rank[e.signal] || 0) < minRank) return false
+      return true
+    })
+    .limit(limit)
+    .toArray()
 }
 
 export async function searchSessionArchive(projectId: any, query: any) {
@@ -61,25 +81,27 @@ export async function searchSessionArchive(projectId: any, query: any) {
 }
 
 export async function saveStateSnapshot(projectId: any, sessionId: any, state: any) {
-  return db.storyStateSnapshots.add({
+  const id = await db.storyStateSnapshots.add({
     projectId,
     sessionId,
     state,
     timestamp: new Date().toISOString()
   })
+  // Bounded history: one row per save used to accumulate for the life of the
+  // project, and every read of "the latest" paid for all of them.
+  const stale = await newestFirst(db.storyStateSnapshots, projectId)
+    .offset(STATE_SNAPSHOT_CAP)
+    .primaryKeys()
+  if (stale.length) await db.storyStateSnapshots.bulkDelete(stale)
+  return id
 }
 
 export async function getLatestStateSnapshot(projectId: any) {
-  const entries = await db.storyStateSnapshots.where('projectId').equals(projectId).toArray()
-  if (entries.length === 0) return null
-  entries.sort((a: any, b: any) => b.timestamp.localeCompare(a.timestamp))
-  return entries[0]
+  return (await newestFirst(db.storyStateSnapshots, projectId).first()) || null
 }
 
 export async function getStateSnapshotHistory(projectId: any, limit = 20) {
-  const entries = await db.storyStateSnapshots.where('projectId').equals(projectId).toArray()
-  entries.sort((a: any, b: any) => b.timestamp.localeCompare(a.timestamp))
-  return entries.slice(0, limit)
+  return newestFirst(db.storyStateSnapshots, projectId).limit(limit).toArray()
 }
 
 export async function saveAuthorProfile(projectId: any, profile: any) {

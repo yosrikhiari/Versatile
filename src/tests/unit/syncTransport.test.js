@@ -115,3 +115,46 @@ describe('SyncTransport.pushOne idempotency', () => {
     expect(result).toEqual({ pushed: 1, failed: 1 })
   })
 })
+
+describe('SyncTransport.pushTable concurrency', () => {
+  function harness(rowCount) {
+    const { rows, db } = makeMockDb()
+    for (let i = 0; i < rowCount; i++) {
+      rows.set(`local-${i}`, { id: `local-${i}`, syncStatus: 'pending-create', projectId: 'p1' })
+    }
+    let inFlight = 0
+    let peak = 0
+    const api = async () => {
+      inFlight++
+      peak = Math.max(peak, inFlight)
+      await new Promise((r) => setTimeout(r, 5))
+      inFlight--
+      return { id: `api-${Math.random()}` }
+    }
+    return { db, api, peak: () => peak, rows }
+  }
+
+  it('pushes a table a few rows at a time instead of strictly one after another', async () => {
+    const h = harness(10)
+    const transport = new SyncTransport(h.api)
+    const result = await transport.pushTable(
+      'characters',
+      'story-1',
+      makeIdMap(),
+      () => CONFIG,
+      h.db
+    )
+    expect(result).toEqual({ pushed: 10, failed: 0 })
+    expect(h.peak()).toBeGreaterThan(1)
+    expect(h.peak()).toBeLessThanOrEqual(4)
+    expect([...h.rows.values()].every((r) => r.syncStatus === 'synced')).toBe(true)
+  })
+
+  it('keeps a self-referencing table strictly sequential', async () => {
+    const h = harness(6)
+    const transport = new SyncTransport(h.api)
+    const config = { ...CONFIG, table: 'branches', selfReferencing: true }
+    await transport.pushTable('branches', 'story-1', makeIdMap(), () => config, h.db)
+    expect(h.peak()).toBe(1)
+  })
+})

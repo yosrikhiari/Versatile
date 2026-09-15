@@ -24,6 +24,7 @@ function setupMocks() {
   const projectStore = {
     currentProjectId: 'p1',
     saveDocumentNow: vi.fn().mockResolvedValue(undefined),
+    recordProgress: vi.fn().mockResolvedValue(undefined),
     updateContent: vi.fn()
   }
   const manuscriptStore = {
@@ -96,5 +97,64 @@ describe('useFlowSave debounce + flush', () => {
     const saver = useFlowSave(editorRef)
     await saver.flushSave()
     expect(projectStore.saveDocumentNow).not.toHaveBeenCalled()
+  })
+})
+
+// Goal, streak and the "Saved" mark all hang off recordProgress. Only the root
+// document used to reach it, so writing in chapters never counted.
+describe('useFlowSave records progress for structured saves', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  })
+
+  const editorRef = { value: { getHTML: () => '<p>one two three</p>' } }
+
+  it('section save stores a word count and records progress', async () => {
+    const { projectStore, manuscriptStore } = setupMocks()
+    manuscriptStore.activeSectionId = 's1'
+    useFlowSave(editorRef).scheduleSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(manuscriptStore.updateSectionData).toHaveBeenCalledWith(
+      's1',
+      { content: '<p>one two three</p>', wordCount: 3 },
+      'p1'
+    )
+    expect(projectStore.recordProgress).toHaveBeenCalledTimes(1)
+    expect(projectStore.saveDocumentNow).not.toHaveBeenCalled()
+  })
+
+  it('subsection save records progress', async () => {
+    const { projectStore, manuscriptStore } = setupMocks()
+    manuscriptStore.activeSubsectionId = 'sub1'
+    manuscriptStore.activeSectionId = 's1'
+    useFlowSave(editorRef).scheduleSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(manuscriptStore.updateSubsectionData).toHaveBeenCalledTimes(1)
+    expect(projectStore.recordProgress).toHaveBeenCalledTimes(1)
+  })
+
+  it('root save does not record progress twice', async () => {
+    const { projectStore } = setupMocks()
+    useFlowSave(editorRef).scheduleSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(projectStore.saveDocumentNow).toHaveBeenCalledTimes(1)
+    expect(projectStore.recordProgress).not.toHaveBeenCalled()
+  })
+
+  it('root save hands the live editor text to the store before writing', async () => {
+    // The editor's own store push is debounced; the save must not depend on it.
+    const { projectStore } = setupMocks()
+    useFlowSave(editorRef).scheduleSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(projectStore.updateContent).toHaveBeenCalledWith('<p>one two three</p>', 'one two three')
+    expect(projectStore.updateContent.mock.invocationCallOrder[0]).toBeLessThan(
+      projectStore.saveDocumentNow.mock.invocationCallOrder[0]
+    )
   })
 })

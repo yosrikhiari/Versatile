@@ -37,6 +37,6 @@ describe('PreviousGenerationsList honest states', () => {
 
   it('shows a one-line empty state when there is no history', () => {
     const wrapper = mount(PreviousGenerationsList, { props: { generations: [] } })
-    expect(wrapper.text()).toContain('No previous generations yet')
+    expect(wrapper.text()).toContain('Finished runs are listed here')
   })
 })

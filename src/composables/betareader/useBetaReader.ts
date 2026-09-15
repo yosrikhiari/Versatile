@@ -27,6 +27,10 @@ const PASSES = [
 
 export function useBetaReader() {
   const isScanning = ref(false)
+  /** When the last full scan finished; null until one has run. */
+  const lastScan = ref<Date | null>(null)
+  /** The last scan found no subsection with prose to read. */
+  const noScenes = ref(false)
   const results: any = ref([])
   const counts: any = ref({ errors: 0, warnings: 0, info: 0 })
   const resultsBySeverity: any = ref({ errors: [], warnings: [], info: [] })
@@ -59,7 +63,12 @@ export function useBetaReader() {
       .filter((s) => s.content?.trim())
       .sort((a, b) => (a.sceneNumber || a.order || 0) - (b.sceneNumber || b.order || 0))
 
-    if (scenes.length === 0) return
+    if (scenes.length === 0) {
+      // Say so, rather than leaving the panel to claim the story reads clean.
+      noScenes.value = true
+      return
+    }
+    noScenes.value = false
 
     isScanning.value = true
     activePass.value = 0
@@ -216,6 +225,7 @@ export function useBetaReader() {
       resultsBySeverity.value = report.resultsBySeverity
       resultsByPass.value = report.resultsByPass
       summary.value = report.summary
+      lastScan.value = new Date()
 
       await saveRecord({
         projectId,
@@ -244,6 +254,8 @@ export function useBetaReader() {
 
   return {
     isScanning,
+    lastScan,
+    noScenes,
     results,
     counts,
     resultsBySeverity,

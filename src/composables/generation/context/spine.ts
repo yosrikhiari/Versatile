@@ -57,14 +57,31 @@ const SPINE_TIMEOUT_MS = 120000
 // Silence budget between streamed tokens of one spine entry.
 const SPINE_IDLE_TIMEOUT_MS = 90000
 
+/**
+ * The outline's progression contract for one chapter — its events (one per
+ * scene), what it reveals and how things stand after it. Empty when the
+ * skeleton did not supply them, so older plans render as before.
+ */
+function progressionBlock(chapter: any) {
+  const lines: string[] = []
+  if (Array.isArray(chapter.events) && chapter.events.length) {
+    lines.push('EVENTS IN THIS CHAPTER (in order):')
+    chapter.events.forEach((e: string, k: number) => lines.push(`${k + 1}. ${e}`))
+  }
+  if (chapter.revealed) lines.push(`REVEALED BY THE END: ${chapter.revealed}`)
+  if (chapter.stateAfter) lines.push(`SITUATION AFTER THIS CHAPTER: ${chapter.stateAfter}`)
+  return lines.length ? lines.join('\n') + '\n' : ''
+}
+
 function fallbackSpineEntry(chapter: any) {
   return {
     chapterNumber: chapter.chapterNumber,
     chapterTitle: chapter.title,
     emotionalStateAtEnd: chapter.emotionalTarget || 'the chapter reaches its turning point',
-    readerKnowledgeAtEnd: chapter.goal || `the events of "${chapter.title}"`,
+    readerKnowledgeAtEnd: chapter.revealed || chapter.goal || `the events of "${chapter.title}"`,
     transitionToNext: chapter.hookEnding || 'the story carries forward into the next chapter',
-    keyFacts: [],
+    // The outline's events are durable facts even when the model call failed.
+    keyFacts: Array.isArray(chapter.events) ? chapter.events.slice(0, 5) : [],
     wordCount: chapter.estimatedWords || 100
   }
 }
@@ -90,7 +107,7 @@ Generate a 150-word spine entry for Chapter ${chapter.chapterNumber}: "${chapter
 CHAPTER GOAL: ${chapter.goal}
 EMOTIONAL TARGET: ${chapter.emotionalTarget}
 HOOK ENDING: ${chapter.hookEnding}
-
+${progressionBlock(chapter)}
 `
     if (prevChapter) {
       prompt += `THE PREVIOUS CHAPTER (${prevChapter.chapterNumber}: "${prevChapter.title}") WAS PLANNED TO END ON:

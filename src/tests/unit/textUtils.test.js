@@ -46,6 +46,15 @@ describe('textUtils', () => {
     it('returns plain text unchanged', () => {
       expect(stripHtmlTags('Hello world')).toBe('Hello world')
     })
+
+    it('separates adjacent paragraphs so words are not glued together', () => {
+      expect(stripHtmlTags('<p>sky.</p><p>Ilse walked</p>')).toBe('sky. Ilse walked')
+      expect(countWords(stripHtmlTags('<p>three</p><p>four five</p>'))).toBe(3)
+    })
+
+    it('does not split a word around an inline mark', () => {
+      expect(stripHtmlTags('<p>un<b>believ</b>able</p>')).toBe('unbelievable')
+    })
   })
 
   describe('truncate', () => {

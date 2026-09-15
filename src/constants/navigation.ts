@@ -5,6 +5,18 @@ export interface NavItem {
   icon: string
   /** Extra words the command palette should match on, beyond the label. */
   keywords?: string[]
+  /**
+   * When set, the visible label comes from the active workspace's terminology
+   * (`projectStore.terminology[termKey]`), so a novel shows "Chapters" where a
+   * screenplay shows "Scenes". `label` stays as the fallback and search key.
+   */
+  termKey?: 'sections' | 'subsections' | 'bible'
+}
+
+/** The label to show for an item under a given terminology. */
+export function navItemLabel(item: NavItem, terminology?: Record<string, string> | null): string {
+  if (item.termKey && terminology?.[item.termKey]) return terminology[item.termKey]
+  return item.label
 }
 
 export interface NavGroup {
@@ -57,7 +69,8 @@ export const NAV_GROUPS: NavGroup[] = [
         label: 'Sections',
         panel: 'sections',
         icon: 'book-marked',
-        keywords: ['chapters', 'scenes', 'volumes']
+        keywords: ['chapters', 'scenes', 'volumes', 'sections', 'structure'],
+        termKey: 'sections'
       },
       { label: 'Canvas', panel: 'canvas', icon: 'palette', keywords: ['board', 'storyboard'] },
       {
@@ -81,7 +94,8 @@ export const NAV_GROUPS: NavGroup[] = [
         label: 'Story Bible',
         panel: 'story-bible',
         icon: 'book-open',
-        keywords: ['characters', 'locations', 'plot threads', 'entities']
+        keywords: ['characters', 'locations', 'plot threads', 'entities', 'bible'],
+        termKey: 'bible'
       },
       { label: 'Network', panel: 'network', icon: 'network', keywords: ['graph', 'relationships'] },
       { label: 'Timeline', panel: 'timeline', icon: 'clock', keywords: ['chronology', 'events'] },

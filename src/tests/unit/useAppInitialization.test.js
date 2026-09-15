@@ -22,7 +22,9 @@ vi.mock('@/composables/useStoryDocuments', () => ({
 }))
 
 const storeStub = () => ({ $reset: vi.fn(), load: vi.fn(), loadAll: vi.fn() })
-vi.mock('@/stores/projectStore', () => ({ useProjectStore: storeStub }))
+// Shared instance so a test can observe calls the composable makes on it.
+let projectStoreStub
+vi.mock('@/stores/projectStore', () => ({ useProjectStore: () => projectStoreStub }))
 vi.mock('@/stores/sparkStore', () => ({ useSparkStore: storeStub }))
 vi.mock('@/stores/polishStore', () => ({ usePolishStore: storeStub }))
 vi.mock('@/stores/storyBibleStore', () => ({ useStoryBibleStore: storeStub }))
@@ -54,6 +56,7 @@ beforeEach(async () => {
   vi.clearAllMocks()
   setActivePinia(createPinia())
   global.fetch = mockFetch
+  projectStoreStub = { ...storeStub(), currentProjectId: null, loadProject: vi.fn() }
   settings = {
     ollamaModel: 'qwen3:8b',
     embeddingModel: 'nomic-embed-text',
@@ -147,6 +150,28 @@ describe('checkModelAvailability', () => {
     const app = useAppInitialization()
     await expect(app.checkModelAvailability()).resolves.toBeUndefined()
     expect(settings.setOllamaModel).not.toHaveBeenCalled()
+  })
+})
+
+describe('initializeApp ordering', () => {
+  it('loads the project without waiting for the Ollama probe', async () => {
+    // A probe that never answers within the test.
+    mockFetch.mockReturnValueOnce(new Promise(() => {}))
+    const app = useAppInitialization()
+
+    // Let the project load run without settling the probe.
+    const init = app.initializeApp(1)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(projectStoreStub.loadProject).toHaveBeenCalledWith(1)
+    expect(app.ollamaAvailable.value).toBe(true) // still the optimistic default
+    void init
+  })
+
+  it('marks Ollama unavailable when the probe times out or fails', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('aborted'))
+    const app = useAppInitialization()
+    await app.checkModelAvailability()
+    expect(app.ollamaAvailable.value).toBe(false)
   })
 })
 

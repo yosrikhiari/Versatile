@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useProjectStore } from '@/stores/projectStore'
+import { useManuscriptStore } from '@/stores/manuscriptStore'
 import { useAuthStore } from '@/stores/authStore'
 import * as dbService from '@/services/dbService'
 
@@ -61,7 +62,13 @@ describe('projectStore', () => {
     // The owner id is part of the call. Omitting it wrote the project with a
     // null userId, and `getAllProjects(userId)` filters on that — so projects
     // created this way disappeared from the workspace and the switcher.
-    expect(dbService.createProject).toHaveBeenCalledWith('Test Project', 'Fantasy', 'A test', null)
+    expect(dbService.createProject).toHaveBeenCalledWith(
+      'Test Project',
+      '',
+      'A test',
+      null,
+      'Fantasy'
+    )
   })
 
   it('stamps the signed-in local user as the project owner', async () => {
@@ -83,7 +90,7 @@ describe('projectStore', () => {
 
     await store.createNewProject('Owned', '', '')
 
-    expect(dbService.createProject).toHaveBeenCalledWith('Owned', '', '', 42)
+    expect(dbService.createProject).toHaveBeenCalledWith('Owned', '', '', 42, '')
   })
 
   it('should update content and recalculate word count', () => {
@@ -103,10 +110,23 @@ describe('projectStore', () => {
   it('should calculate session progress correctly', () => {
     const store = useProjectStore()
     store.sessionGoal = 1000
-    store.sessionWordCount = 250
+    // Session words are derived: manuscript total minus the baseline taken
+    // when the session started.
+    store.initialWordCount = 100
+    store.wordCount = 350
+    expect(store.sessionWordCount).toBe(250)
 
     const expectedProgress = Math.round((250 / 1000) * 100)
     expect(store.sessionProgress).toBe(expectedProgress)
+  })
+
+  it('manuscriptWordCount adds the structure to the root document', () => {
+    const store = useProjectStore()
+    const manuscript = useManuscriptStore()
+    store.wordCount = 10
+    manuscript.sections = [{ id: 'ch1', content: '<p>a b c</p>', wordCount: 3 }]
+    manuscript.subsections = [{ id: 'sc1', sectionId: 'ch1', content: '<p>d e</p>' }]
+    expect(store.manuscriptWordCount).toBe(15)
   })
 
   it('should calculate daily progress correctly', () => {

@@ -70,8 +70,13 @@ export function useFlowSave(editorRef: any) {
           projectStore.currentProjectId
         )
       } else {
-        projectStore.saveDocumentNow()
+        // The editor's store push is debounced; hand the save the live text
+        // so nothing typed inside that window is written stale.
+        projectStore.updateContent(content, stripHtmlTags(content))
+        await projectStore.saveDocumentNow()
       }
+      // Root saves record their own progress inside saveDocumentNow.
+      if (saveSubId || saveSecId) await projectStore.recordProgress()
 
       if (_flushResolver) {
         _flushResolver()

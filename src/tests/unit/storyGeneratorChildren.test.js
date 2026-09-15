@@ -10,7 +10,7 @@ const global = { stubs: { BaseIcon: true } }
 describe('PreviousGenerationsList', () => {
   it('renders an honest empty state when there are no generations', () => {
     const w = mount(PreviousGenerationsList, { props: { generations: [] }, global })
-    expect(w.text()).toContain('No previous generations yet')
+    expect(w.text()).toContain('Finished runs are listed here')
   })
 
   it('lists each generation with title and word count', () => {
@@ -23,9 +23,9 @@ describe('PreviousGenerationsList', () => {
       },
       global
     })
-    expect(w.text()).toContain('Previous Generations')
+    expect(w.text()).toContain('Previous generations')
     expect(w.text()).toContain('Draft One')
-    expect(w.text()).toContain('1200 words')
+    expect(w.text()).toContain('1,200 words')
     expect(w.text()).toContain('Draft Two')
   })
 })

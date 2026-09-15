@@ -1,3 +1,4 @@
+import { countWords, stripHtmlTags } from '../../../utils/textUtils'
 /**
  * Working out what a continuation run should do, from what is already on disk.
  *
@@ -41,11 +42,7 @@ export interface ContinuationSurvey {
 }
 
 function wordsIn(html: unknown): number {
-  const text = String(html ?? '')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .trim()
-  return text ? text.split(/\s+/).length : 0
+  return countWords(stripHtmlTags(String(html ?? '')))
 }
 
 function hasProse(sub: any): boolean {
@@ -119,7 +116,9 @@ export function briefForScene(
   checkpointPlan: any[] | null | undefined,
   targetWords: number
 ): any {
-  const planned = (checkpointPlan || []).find((p: any) => p && p.subsectionId === scene.subsectionId)
+  const planned = (checkpointPlan || []).find(
+    (p: any) => p && p.subsectionId === scene.subsectionId
+  )
   if (planned) {
     return { ...planned, estimatedWords: planned.estimatedWords || targetWords }
   }
@@ -163,10 +162,7 @@ export function neighbourContext(
   if (before.length === 0) return ''
 
   const parts = before.map((s) => {
-    const text = String(s.prose)
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
+    const text = stripHtmlTags(String(s.prose))
     // The tail, not the head: what a scene has to continue from is how the
     // previous one ended.
     const excerpt =
@@ -176,7 +172,10 @@ export function neighbourContext(
     return `[${s.chapterTitle} — "${s.title}"]\n${excerpt}`
   })
 
-  return 'IMMEDIATELY PRECEDING PROSE (this is already written and is canon — continue from it):\n' + parts.join('\n\n')
+  return (
+    'IMMEDIATELY PRECEDING PROSE (this is already written and is canon — continue from it):\n' +
+    parts.join('\n\n')
+  )
 }
 
 export interface ContinuationReport {

@@ -1,0 +1,245 @@
+/**
+ * Live run: a 10-chapter book through the real pipeline against local Ollama,
+ * headless. Not a test of the code — a way to run the generator without a
+ * browser tab, so a Vite reload cannot kill a two-hour run.
+ *
+ *   npx vitest run --config vitest.live.config.js
+ *
+ * Progress streams to `reports/live/<slug>/progress.log`; the finished book
+ * (and the plan, health records and per-scene metadata) land beside it.
+ *
+ * Env: LIVE_TITLE, LIVE_CHAPTERS, LIVE_SCENES, LIVE_WORDS, OLLAMA_HOST, LIVE_MODEL
+ * (prose model; unset keeps the app default — the utility model is always qwen3:8b).
+ */
+import 'fake-indexeddb/auto'
+import { describe, it, expect } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
+import { mkdirSync, writeFileSync, appendFileSync } from 'fs'
+import { join } from 'path'
+import { STORAGE_KEYS } from '@/config/storageKeys'
+
+const TITLE = process.env.LIVE_TITLE || 'The Salt Road'
+const CHAPTERS = Number(process.env.LIVE_CHAPTERS || 10)
+const SCENES = Number(process.env.LIVE_SCENES || 3)
+const WORDS = Number(process.env.LIVE_WORDS || 2400)
+const HOST = process.env.OLLAMA_HOST || 'http://localhost:11434'
+
+const GENRE = 'Literary historical fiction'
+const TONE = 'restrained, precise, quietly tense'
+const SYNOPSIS =
+  'Ottoman Anatolia, 1868. Nesrin, a widowed salt-carrier, inherits her husband’s debt to the ' +
+  'caravan master Halim and his route along the Salt Road from the Tuz lake to the coast. To ' +
+  'keep her son and her mules, she must complete one full season of hauling salt through a ' +
+  'province where the tax-farmers are tightening, the old road is being bypassed by the new ' +
+  'railway survey, and a rumour spreads that the salt itself is being cut with something that ' +
+  'kills. Over ten chapters she learns the road, its people and its quiet crimes — and has to ' +
+  'decide whether to expose what she finds when the man cutting the salt is the only one who ' +
+  'can cancel her debt.'
+
+const slug = TITLE.toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/(^-|-$)/g, '')
+const OUT = join(process.cwd(), 'reports', 'live', slug)
+mkdirSync(OUT, { recursive: true })
+const LOG = join(OUT, 'progress.log')
+writeFileSync(LOG, '')
+
+const t0 = Date.now()
+function log(line) {
+  const stamp = ((Date.now() - t0) / 60000).toFixed(1).padStart(6)
+  appendFileSync(LOG, `[${stamp}m] ${line}\n`)
+}
+
+function words(text) {
+  const t = (text || '').trim()
+  return t ? t.split(/\s+/).length : 0
+}
+
+describe('live: The Salt Road', () => {
+  it('writes the book', async () => {
+    setActivePinia(createPinia())
+    localStorage.setItem(STORAGE_KEYS.OLLAMA_ENDPOINT, HOST)
+    localStorage.setItem(STORAGE_KEYS.OLLAMA_UTILITY_MODEL, 'qwen3:8b')
+    localStorage.setItem(
+      STORAGE_KEYS.SETTINGS,
+      JSON.stringify({
+        ollamaEndpoint: HOST,
+        ...(process.env.LIVE_MODEL ? { ollamaModel: process.env.LIVE_MODEL } : {}),
+        embeddingProvider: 'ollama',
+        embeddingModel: 'snowflake-arctic-embed2'
+      })
+    )
+
+    const { db } = await import('@/services/db-core')
+    await db.delete()
+    await db.open()
+    const { createProject } = await import('@/services/db-projects')
+    const { useProjectStore } = await import('@/stores/projectStore')
+    const { useVolumeStoryGenerator } = await import('@/composables/useVolumeStoryGenerator')
+
+    const projectId = await createProject(TITLE, GENRE, SYNOPSIS, 1)
+    await useProjectStore().loadProject(projectId)
+
+    const gen = useVolumeStoryGenerator()
+    let lastPhase = ''
+    let lastStatus = ''
+    const tick = setInterval(() => {
+      const p = gen.phase.value
+      const s = gen.progress.statusText || ''
+      if (p !== lastPhase || s !== lastStatus) {
+        log(
+          `phase=${p} ${gen.progress.current}/${gen.progress.total} ${gen.progress.sceneLabel || ''} — ${s}`
+        )
+        lastPhase = p
+        lastStatus = s
+      }
+    }, 5000)
+
+    const seenSlots = new Set()
+    let planDumped = false
+    const scenesTick = setInterval(() => {
+      // The outline is worth reading long before the prose is finished.
+      if (!planDumped && gen.scenePlan.value.length) {
+        writeFileSync(
+          join(OUT, 'plan.json'),
+          JSON.stringify(
+            {
+              chapterPlan: gen.chapterPlan?.value ?? [],
+              spine: gen.spineArray?.value ?? [],
+              scenePlan: gen.scenePlan.value
+            },
+            null,
+            2
+          )
+        )
+        planDumped = true
+        log(
+          `plan dumped: ${gen.chapterPlan?.value?.length ?? 0} chapters, ${gen.scenePlan.value.length} scenes`
+        )
+      }
+      // `writtenScenes` is a fixed-length slot array filled out of order (the
+      // parallel writer lands every chapter's anchors first, then the middles),
+      // so "the last non-empty slot" is not "the scene that just landed" — for
+      // the whole second phase it was the book's final scene, reported over and
+      // over. Report the slots that are newly filled since the last tick.
+      const filled = gen.writtenScenes.value.map((s, i) => (s ? i : -1)).filter((i) => i >= 0)
+      const fresh = filled.filter((i) => !seenSlots.has(i))
+      if (fresh.length) {
+        for (const i of fresh) {
+          const s = gen.writtenScenes.value[i]
+          seenSlots.add(i)
+          log(
+            `scene ${seenSlots.size}/${gen.scenePlan.value.length} written: #${i + 1} "${s?.title}" ${words(s?.prose)}w`
+          )
+        }
+      }
+    }, 5000)
+
+    log(`start ${TITLE}: ${CHAPTERS} chapters × ${SCENES} scenes × ${WORDS} words @ ${HOST}`)
+    try {
+      await gen.startGeneration({
+        projectId,
+        synopsis: SYNOPSIS,
+        genre: GENRE,
+        tone: TONE,
+        auto: true,
+        structure: {
+          volumes: 1,
+          chaptersPerVolume: CHAPTERS,
+          scenesPerChapter: SCENES,
+          wordsPerChapter: WORDS
+        },
+        research: null,
+        onChunk: () => {}
+      })
+      if (gen.phase.value === 'plan-preview') {
+        log('plan-preview reached in auto mode; confirming')
+        await gen.confirmPlan({ projectId, onChunk: () => {} })
+      }
+    } catch (e) {
+      log(`FAILED: ${e?.stack || e}`)
+      throw e
+    } finally {
+      clearInterval(tick)
+      clearInterval(scenesTick)
+    }
+
+    // ── Dump everything the run produced ─────────────────────────────────
+    writeFileSync(
+      join(OUT, 'plan.json'),
+      JSON.stringify(
+        {
+          chapterPlan: gen.chapterPlan?.value ?? [],
+          spine: gen.spineArray?.value ?? [],
+          scenePlan: gen.scenePlan.value
+        },
+        null,
+        2
+      )
+    )
+    writeFileSync(
+      join(OUT, 'health.json'),
+      JSON.stringify(
+        {
+          phase: gen.phase.value,
+          error: gen.error.value,
+          violations: gen.runHealthViolations.value,
+          failedScenes: gen.runFailedScenes.value,
+          bibleChangesCommitted: gen.bibleChangesDiscovered.value,
+          scenesSynced: gen.scenesSynced.value,
+          bible: {
+            characters: (await db.characters.where('projectId').equals(projectId).toArray()).map(
+              (c) => ({ name: c.name, status: c.generationStatus, chapterId: c.chapterId ?? null })
+            ),
+            locations: (await db.locations.where('projectId').equals(projectId).toArray()).map(
+              (l) => ({ name: l.name, status: l.generationStatus })
+            ),
+            plotThreads: (await db.plotThreads.where('projectId').equals(projectId).toArray()).map(
+              (t) => ({ title: t.title, status: t.generationStatus })
+            ),
+            edges: (await db.graphEdges.where('projectId').equals(projectId).toArray()).map(
+              (e) => ({
+                from: e.sourceId,
+                to: e.targetId,
+                type: e.relationshipType,
+                fromChapter: e.validFromChapter ?? null,
+                untilChapter: e.validUntilChapter ?? null
+              })
+            )
+          },
+          consistency: gen.consistencyReport.value
+        },
+        null,
+        2
+      )
+    )
+
+    const sections = (await db.sections.where('projectId').equals(projectId).toArray()).sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0)
+    )
+    const subs = await db.subsections.where('projectId').equals(projectId).toArray()
+    let book = `# ${TITLE}\n\n`
+    let total = 0
+    for (const s of sections) {
+      book += `\n\n## ${s.title}\n`
+      const scenes = subs
+        .filter((x) => x.sectionId === s.id)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      for (const sc of scenes) {
+        const text = (sc.content || '')
+          .replace(/<[^>]+>/g, '\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim()
+        total += words(text)
+        book += `\n\n### ${sc.title}\n\n${text}\n`
+      }
+    }
+    writeFileSync(join(OUT, 'book.md'), book)
+    log(
+      `done phase=${gen.phase.value} error=${gen.error.value} chapters=${sections.length} scenes=${subs.length} words=${total} bibleChanges=${gen.bibleChangesDiscovered.value} synced=${gen.scenesSynced.value}`
+    )
+
+    expect(gen.error.value).toBeNull()
+    expect(gen.phase.value).toBe('complete')
+  })
+})

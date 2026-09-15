@@ -161,8 +161,10 @@ describe('ollama generate', () => {
 
     const body = JSON.parse(mockFetch.mock.calls[1][1].body)
     expect(body.options.repeat_penalty).toBe(1.3)
-    // -1 means "the whole context" and must survive the positive-only guard.
-    expect(body.options.repeat_last_n).toBe(-1)
+    // -1 means "the whole context". Ollama's request validation rejects a
+    // literal -1 with a 400, so it is sent as the context window itself.
+    expect(body.options.repeat_last_n).toBe(body.options.num_ctx)
+    expect(body.options.repeat_last_n).toBeGreaterThan(0)
   })
 
   it('omits num_ctx when numCtx is 0, deferring to the server default', async () => {

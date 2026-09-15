@@ -11,7 +11,8 @@ import {
   describeRunHealth,
   ABORT_BUDGET,
   MAX_DEGRADED_SCENE_RATIO,
-  MAX_RUN_DUPLICATE_RATIO
+  MAX_RUN_DUPLICATE_RATIO,
+  BIBLE_QUIET_MIN_SCENES
 } from '@/services/generation/runHealth'
 
 describe('recording', () => {
@@ -149,6 +150,44 @@ describe('invariants', () => {
     // A story can genuinely introduce nothing new for a scene or two, so this
     // is suspicious rather than wrong.
     expect(v.find((x) => x.code === 'bible_static')?.severity).toBe('warn')
+  })
+
+  it('with scenesSynced reported: bible_static means sync never ran, not "nothing new"', () => {
+    // A real run wrote 30 scenes and zero bible rows because the parallel
+    // path never called sync. The same code also fired on a 3-scene chapter
+    // whose cast the bootstrapper had already created — sync ran, found
+    // nothing, and the warning said "check that entity sync is reaching the
+    // bible". Two failures, one message; the count tells them apart.
+    const neverRan = new RunHealth().checkInvariants({
+      ...clean,
+      bibleChangesCommitted: 0,
+      scenesSynced: 0
+    })
+    expect(neverRan.find((x) => x.code === 'bible_static')?.message).toMatch(
+      /never|none was passed/
+    )
+
+    const quietChapter = new RunHealth().checkInvariants({
+      ...clean,
+      scenesWritten: 3,
+      scenesWithMetadata: 3,
+      bibleChangesCommitted: 0,
+      scenesSynced: 3
+    })
+    expect(quietChapter.map((x) => x.code)).not.toContain('bible_static')
+    expect(quietChapter.map((x) => x.code)).not.toContain('bible_quiet')
+  })
+
+  it('warns bible_quiet when a whole volume syncs and adds nothing', () => {
+    const v = new RunHealth().checkInvariants({
+      ...clean,
+      scenesWritten: 12,
+      scenesWithMetadata: 12,
+      bibleChangesCommitted: 0,
+      scenesSynced: BIBLE_QUIET_MIN_SCENES
+    })
+    expect(v.find((x) => x.code === 'bible_quiet')?.severity).toBe('warn')
+    expect(v.find((x) => x.code === 'bible_static')).toBeUndefined()
   })
 
   it('does not raise bible_static when metadata never ran', () => {

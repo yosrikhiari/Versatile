@@ -33,6 +33,16 @@ describe('manuscriptStore', () => {
     expect(sorted[1].id).toBe('ch2')
   })
 
+  it('counts words across section bodies and subsections', () => {
+    store.sections = [
+      { id: 'ch1', content: '<p>one two</p>', wordCount: 2 },
+      // No stored count: fall back to counting the plain text.
+      { id: 'ch2', content: '<p>three</p><p>four five</p>' }
+    ]
+    store.subsections = [{ id: 'sc1', sectionId: 'ch1', content: '<p>six</p>', wordCount: 1 }]
+    expect(store.structuredWordCount).toBe(6)
+  })
+
   it('should compute subsections by section', () => {
     store.subsections = [
       { id: 'sc1', sectionId: 'ch1' },

@@ -16,17 +16,19 @@ const tone = computed(() => {
 
 const icon = computed(() => (errorCount.value > 0 ? 'shield-alert' : 'shield'))
 
+// A count only when there is something to count. "Clear" in the header was
+// one more unexplained word for a writer who never asked about guardrails.
 const label = computed(() => {
   const total = unresolved.value.length
-  return total === 0 ? 'Clear' : String(total)
+  return total === 0 ? '' : String(total)
 })
 
 const title = computed(() => {
-  if (unresolved.value.length === 0) return 'Guardrails: no open findings'
+  if (unresolved.value.length === 0) return 'AI safety checks: nothing flagged'
   const parts = []
   if (errorCount.value) parts.push(`${errorCount.value} blocking`)
   if (warningCount.value) parts.push(`${warningCount.value} advisory`)
-  return `Guardrails: ${parts.join(', ')}`
+  return `AI safety checks: ${parts.join(', ')}`
 })
 
 const recent = computed(() => unresolved.value.slice(0, 6))
@@ -55,7 +57,8 @@ function formatKind(kind) {
       @click="expanded = !expanded"
     >
       <BaseIcon :name="icon" :size="12" />
-      <span>{{ label }}</span>
+      <span v-if="label">{{ label }}</span>
+      <span class="sr-only">{{ title }}</span>
     </button>
 
     <div
@@ -64,11 +67,11 @@ function formatKind(kind) {
       @click.stop
     >
       <div class="text-label uppercase tracking-wider text-text-hint font-ui mb-1.5">
-        Guardrail findings
+        AI safety checks
       </div>
 
       <div v-if="recent.length === 0" class="text-label text-text-hint font-ui">
-        Nothing flagged this session.
+        Nothing flagged this session. Generated text that trips a check shows up here.
       </div>
 
       <div v-else class="space-y-1.5">

@@ -16,6 +16,8 @@ interface SyncEntityConfig {
     apiParentField: string | null
     needsTranslation: string[]
   }
+  /** Rows reference other rows of the same table; push them one at a time. */
+  selfReferencing?: boolean
 }
 
 export function findSyncConfig(tableName: string): SyncEntityConfig | undefined {
@@ -36,13 +38,19 @@ function tagsFromApi(tags: unknown): unknown[] {
   }
 }
 
-async function lookupApiId(table: string, localId: string | null | undefined): Promise<string | null> {
+async function lookupApiId(
+  table: string,
+  localId: string | null | undefined
+): Promise<string | null> {
   if (localId == null) return null
   const record = await dbTable(table).get(localId)
   return record?.apiId || null
 }
 
-async function lookupLocalId(table: string, apiId: string | null | undefined): Promise<string | null> {
+async function lookupLocalId(
+  table: string,
+  apiId: string | null | undefined
+): Promise<string | null> {
   if (!apiId) return null
   const records = await dbTable(table).where('apiId').equals(apiId).toArray()
   return records.length > 0 ? records[0].id : null
@@ -124,7 +132,9 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
     isTopLevel: false,
     parentField: 'projectId',
     toApi: async (local: Record<string, unknown>) => {
-      const sectionApiId = local.sectionId ? await lookupApiId('sections', local.sectionId as string) : null
+      const sectionApiId = local.sectionId
+        ? await lookupApiId('sections', local.sectionId as string)
+        : null
       return {
         sectionId: sectionApiId || '00000000-0000-0000-0000-000000000000',
         title: (local.title || '') as string,
@@ -134,7 +144,9 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       }
     },
     fromApi: async (api: Record<string, unknown>) => {
-      const sectionLocalId = api.sectionId ? await lookupLocalId('sections', api.sectionId as string) : null
+      const sectionLocalId = api.sectionId
+        ? await lookupLocalId('sections', api.sectionId as string)
+        : null
       return {
         apiId: api.id,
         sectionId: sectionLocalId,
@@ -165,8 +177,12 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
     toApi: (local: Record<string, unknown>) => ({
       name: (local.name || '') as string,
       type: 'Character',
-      description:
-        (local.notes || local.description || local.role || local.goal || local.voice || '') as string,
+      description: (local.notes ||
+        local.description ||
+        local.role ||
+        local.goal ||
+        local.voice ||
+        '') as string,
       metadata: JSON.stringify({
         role: local.role,
         goal: local.goal,
@@ -318,7 +334,7 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       sortOrder: (local.sortOrder ?? 0) as number,
       sectionIds: Array.isArray(local.sectionIds)
         ? JSON.stringify(local.sectionIds)
-        : (local.sectionIds || null)
+        : local.sectionIds || null
     }),
     fromApi: (api: Record<string, unknown>) => ({
       apiId: api.id,
@@ -345,7 +361,9 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
     isTopLevel: false,
     parentField: 'volumeId',
     toApi: async (local: Record<string, unknown>) => {
-      const volApiId = local.volumeId ? await lookupApiId('volumes', local.volumeId as string) : null
+      const volApiId = local.volumeId
+        ? await lookupApiId('volumes', local.volumeId as string)
+        : null
       return {
         volumeId: volApiId || '00000000-0000-0000-0000-000000000000',
         entityType: (local.entityType || '') as string,
@@ -487,6 +505,7 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
     table: 'branches',
     endpoint: (storyApiId: string) => `/story/${storyApiId}/branch`,
     isTopLevel: false,
+    selfReferencing: true,
     parentField: 'projectId',
     toApi: (local: Record<string, unknown>) => ({
       name: (local.name || '') as string,

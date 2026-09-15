@@ -35,6 +35,8 @@ const PLAN_FIRST_TOKEN_TIMEOUT_MS = 300_000
 // Under-budgeting truncates the batch, and the padding path turns a truncated
 // chapter into "Chapter 47" — the exact failure this budget exists to prevent.
 const TOKENS_PER_CHAPTER_STUB = 190
+/** One planned event line ("Ines signs the pastor's certificate; Tomas watches"). */
+const TOKENS_PER_EVENT = 45
 const TOKENS_PER_SCENE = 300
 const STORY_ARC_TOKENS = 400
 
@@ -137,7 +139,11 @@ function enforceStructure(chapters: any, spec: any) {
         pacing: 'medium'
       })
     }
-    scenes = scenes.map((s: any, j: number) => ({ ...s, sceneNumber: j + 1, estimatedWords: wordsPerScene }))
+    scenes = scenes.map((s: any, j: number) => ({
+      ...s,
+      sceneNumber: j + 1,
+      estimatedWords: wordsPerScene
+    }))
     return {
       ...c,
       chapterNumber: i + 1,
@@ -180,7 +186,18 @@ const SKELETON_SCHEMA = {
           goal: { type: 'string' },
           arcPosition: { type: 'string' },
           emotionalTarget: { type: 'string' },
-          hookEnding: { type: 'string' }
+          hookEnding: { type: 'string' },
+          // The progression contract. `revealed` is what the reader knows at
+          // the end of this chapter that they did not before; `stateAfter` is
+          // how the situation differs from the chapter's start. Both exist so
+          // a chapter cannot be "Ines begins to suspect…" for the ninth time.
+          revealed: { type: 'string' },
+          stateAfter: { type: 'string' },
+          // The chapter's events, one per scene, decided here — the one call
+          // that sees the whole arc. Scene planning dresses them; it no longer
+          // invents them, which is how three chapters came to discover the
+          // same certificate.
+          events: { type: 'array', items: { type: 'string' } }
         },
         required: ['title']
       }
@@ -237,6 +254,20 @@ const SCENES_SCHEMA = {
 // and a model handed a large num_predict duly does. The array bound is what lets
 // the call terminate on its own rather than by running out of budget — the
 // difference between a planning step that finishes and one that gets cut off.
+const CHAPTER_FIX_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    goal: { type: 'string' },
+    revealed: { type: 'string' },
+    stateAfter: { type: 'string' },
+    emotionalTarget: { type: 'string' },
+    hookEnding: { type: 'string' },
+    events: { type: 'array', items: { type: 'string' } }
+  },
+  required: ['title', 'goal']
+}
+
 function makeSkeletonSchema(batchCount: number) {
   return {
     ...SKELETON_SCHEMA,
@@ -311,7 +342,10 @@ function titleShape(title: any): string {
   if (!t) return 'empty'
   if (t.endsWith('?')) return 'question'
   // Apostrophes survive the strip — they are the possessive signal below.
-  const words = t.replace(/[.,;:!"]/g, '').split(/\s+/).filter(Boolean)
+  const words = t
+    .replace(/[.,;:!"]/g, '')
+    .split(/\s+/)
+    .filter(Boolean)
   if (words.length === 0) return 'empty'
   if (words.length === 1) return 'single-word'
   const connector = words.find((w) => SHAPE_CONNECTORS.has(w))
@@ -335,11 +369,36 @@ function titleShape(title: any): string {
  * Throne" without pretending to parse English, and both lists are closed
  * classes, so this cannot drift the way a verb lexicon would.
  */
-const SUBJECT_PRONOUNS = new Set(['i', 'he', 'she', 'they', 'we', 'you', 'it', 'nobody', 'everyone', 'someone'])
+const SUBJECT_PRONOUNS = new Set([
+  'i',
+  'he',
+  'she',
+  'they',
+  'we',
+  'you',
+  'it',
+  'nobody',
+  'everyone',
+  'someone'
+])
 const COPULA_OR_AUX = new Set([
-  'is', 'was', 'are', 'were', 'am', 'be', 'been',
-  'will', 'did', 'does', 'do', 'has', 'have', 'had',
-  'can', 'cannot', 'must'
+  'is',
+  'was',
+  'are',
+  'were',
+  'am',
+  'be',
+  'been',
+  'will',
+  'did',
+  'does',
+  'do',
+  'has',
+  'have',
+  'had',
+  'can',
+  'cannot',
+  'must'
 ])
 
 const SHAPE_LABELS: Record<string, string> = {
@@ -538,9 +597,7 @@ These govern every choice below. Where the story bible, the style guide or the r
  * thread language at all (today's behaviour, byte-identical).
  */
 export function buildThreadCatalogBlock(plotThreads?: any[]): string {
-  const threads = (plotThreads || []).filter(
-    (t: any) => t && (t.id !== undefined && t.id !== null)
-  )
+  const threads = (plotThreads || []).filter((t: any) => t && t.id !== undefined && t.id !== null)
   if (threads.length === 0) return ''
   const lines = threads.map(
     (t: any) => `- ${String(t.id)}: ${String(t.title || 'Untitled thread')}`
@@ -558,22 +615,144 @@ ${lines.join('\n')}`
  * internal call for the same reason: the probe's baseline passes '' to
  * reproduce the old behaviour without a test-only branch living in here.
  */
+/**
+ * The whole outline, one line per chapter, with the chapter being planned
+ * marked. Scene planning used to see only its own chapter's line and the
+ * previous chapter's hook — nothing about where the chapter sat in the book —
+ * and every chapter re-derived the same opening beats from the premise.
+ */
+export function buildOutlineBlock(chapters: any[], currentIndex: number): string {
+  if (!Array.isArray(chapters) || chapters.length === 0) return ''
+  const lines = chapters.map((ch, i) => {
+    const marker = i === currentIndex ? ' ◀ THIS CHAPTER' : ''
+    const goal = (ch?.goal || '').trim()
+    const reveal = (ch?.revealed || '').trim()
+    return `${i + 1}. ${ch?.title || `Chapter ${i + 1}`} — ${goal}${reveal ? ` [reveals: ${reveal}]` : ''}${marker}`
+  })
+  return `FULL OUTLINE (${chapters.length} chapters):\n${lines.join('\n')}`
+}
+
+/**
+ * What earlier chapters have already put on the page: their reveals and
+ * end-states. Handed to the planner as "do not re-establish", which is the
+ * instruction that stops chapter 7 from re-discovering the second body.
+ */
+export function buildEstablishedBlock(chapters: any[], uptoIndex: number): string {
+  const prior = (chapters || []).slice(0, Math.max(0, uptoIndex)).filter(Boolean)
+  const facts: string[] = []
+  for (const [i, ch] of prior.entries()) {
+    const reveal = (ch?.revealed || '').trim()
+    const after = (ch?.stateAfter || '').trim()
+    if (reveal) facts.push(`- ch ${i + 1}: ${reveal}`)
+    if (after) facts.push(`- after ch ${i + 1}: ${after}`)
+  }
+  if (facts.length === 0) return ''
+  return `ALREADY ESTABLISHED — the reader knows all of this. Do not re-discover, re-explain or re-stage any of it; build on it:\n${facts.join('\n')}`
+}
+
+/**
+ * A deterministic beat ladder for an N-chapter book: what job each chapter
+ * does. Handed to the model as a scaffold to fill rather than a shape to
+ * invent, because an 8B model asked for "one continuous arc" produced a book
+ * that left town in chapter 2, discovered the inciting body in chapter 3, and
+ * ended twice. Climax always lands on chapter N−1 and resolution on N.
+ */
+const STORY_BEATS = [
+  'opening — the ordinary world and the first anomaly; establish who wants what',
+  'inciting incident — the story problem arrives and cannot be ignored',
+  'first complication — the obvious explanation fails; someone lies',
+  'commitment — the protagonist acts in a way that cannot be undone',
+  'rising pressure — allies and adversaries declare themselves; a second front opens',
+  'midpoint reversal — what the protagonist believed is inverted',
+  'consequences — the reversal costs someone; a relationship breaks',
+  'the walls close in — the last safe option disappears',
+  'crisis — the darkest point; the protagonist must choose what to sacrifice',
+  'climax — the decisive confrontation; the central question is answered on the page',
+  'resolution — the new order, what it cost, and where the protagonist stands'
+]
+
+export function storyShapeFor(n: number): string[] {
+  const N = Math.max(1, Math.floor(n))
+  if (N === 1) return [STORY_BEATS[STORY_BEATS.length - 2]]
+  if (N === 2) return [STORY_BEATS[1], STORY_BEATS[STORY_BEATS.length - 2]]
+  const last = STORY_BEATS.length - 1
+  return Array.from({ length: N }, (_, i) => {
+    if (i === N - 1) return STORY_BEATS[last]
+    if (i === N - 2) return STORY_BEATS[last - 1]
+    // Spread the remaining beats across chapters 1..N−2, monotonically.
+    const idx = Math.round((i / Math.max(1, N - 3)) * (last - 2))
+    return STORY_BEATS[Math.min(last - 2, idx)]
+  })
+}
+
+export function buildShapeBlock(N: number, batchStart: number, batchCount: number): string {
+  const shape = storyShapeFor(N)
+  const lines = []
+  for (let k = batchStart; k < batchStart + batchCount; k++) {
+    lines.push(`${k + 1}. ${shape[k]}`)
+  }
+  return `CHAPTER FUNCTIONS — each chapter does exactly this job and nothing from another chapter's line:\n${lines.join('\n')}`
+}
+
+/**
+ * Goals of the chapters that come AFTER the one being planned. A small model
+ * handed the whole outline still staged chapter 7's discovery in chapter 2;
+ * naming the future as forbidden is what stops it.
+ */
+export function buildNotYetBlock(chapters: any[], currentIndex: number): string {
+  const later = (chapters || []).slice(currentIndex + 1).filter(Boolean)
+  if (later.length === 0) return ''
+  const lines = later.map((ch, j) => {
+    const n = currentIndex + 2 + j
+    return `- ch ${n}: ${(ch?.goal || ch?.title || '').trim()}`
+  })
+  return `NOT YET HAPPENED — reserved for later chapters. Do not stage, pre-empt, foreshadow heavily, or resolve any of it here:\n${lines.join('\n')}`
+}
+
+/** The scenes chapters 1..i−1 already planned — the strongest "not this again" a planner can get. */
+export function buildPlannedScenesBlock(chapters: any[], uptoIndex: number): string {
+  const lines: string[] = []
+  for (const [k, ch] of (chapters || []).slice(0, Math.max(0, uptoIndex)).entries()) {
+    for (const sc of ch?.scenes || []) {
+      const beat = (sc?.whatChanges || sc?.goal || '').trim()
+      if (!sc?.title && !beat) continue
+      lines.push(`- ch ${k + 1}: "${sc?.title || ''}" — ${beat}`)
+    }
+  }
+  if (lines.length === 0) return ''
+  return `SCENES ALREADY PLANNED in earlier chapters. None of these may happen again, under any title:\n${lines.join('\n')}`
+}
+
+/** The chapter's events from the skeleton, numbered so scene k can be told to realise event k. */
+export function buildEventsBlock(ch: any, S: number): string {
+  const events = Array.isArray(ch?.events) ? ch.events.filter(Boolean) : []
+  if (events.length === 0) return ''
+  return `EVENTS FOR THIS CHAPTER (decided in the outline; one per scene, in this order):\n${events
+    .slice(0, S)
+    .map((e: string, k: number) => `EVENT ${k + 1}: ${e}`)
+    .join('\n')}`
+}
+
 function buildSkeletonPrompt({
   goal,
   N,
+  S = 3,
   batchStart,
   batchCount,
   prevHook,
   needArc,
-  titleBlock
+  titleBlock,
+  establishedBlock = ''
 }: {
   goal: any
   N: number
+  S?: number
   batchStart: number
   batchCount: number
   prevHook: string
   needArc: boolean
   titleBlock: string
+  establishedBlock?: string
 }): string {
   return `Plan the chapter skeleton for this story.
 PREMISE: "${goal.premise}"
@@ -581,10 +760,23 @@ ${buildIdentityBlock(goal)}
 
 Produce EXACTLY ${batchCount} chapters, numbered ${batchStart + 1} through ${batchStart + batchCount}, forming part of ONE continuous arc across ${N} total chapters. Each chapter's "hookEnding" must set up the next chapter.
 ${prevHook ? `The PREVIOUS chapter (#${batchStart}) ended on: "${prevHook}". Chapter ${batchStart + 1} must follow directly from that.` : 'This batch opens the story.'}
+${establishedBlock}
+${buildShapeBlock(N, batchStart, batchCount)}
+
+PROGRESSION RULES — these matter more than anything else:
+- The premise is the situation at the START of chapter 1. It is not a chapter. No chapter may re-introduce, re-discover or re-explain what the premise already states.
+- Every chapter changes the story's state. "goal" is what is DIFFERENT when the chapter ends: a specific discovery, decision, loss, betrayal, reversal or arrival. Not a mood, not "begins to suspect", not "starts to question".
+- "revealed" is the concrete fact, name, document or event the reader learns in this chapter and did not know before. Each chapter reveals something new; later chapters build on earlier reveals and never re-reveal them.
+- "stateAfter" is one sentence: where things stand at the chapter's end (who knows what, who has done what, what is now impossible).
+- Escalate. Chapters ${batchStart + 1}–${batchStart + batchCount} must climb: what is at risk grows, options close, and the ending chapters pay off what the opening chapters planted. The final chapter resolves the central conflict on the page.
+- No two chapters may share a goal, a reveal, or a setting-plus-purpose pairing. If two chapters would do the same thing, one of them is wrong.
+- "events" lists EXACTLY ${S} concrete events for the chapter, in order, one sentence each — a thing that happens on the page (someone arrives, finds, says, refuses, breaks, signs, dies). Each event moves the chapter toward its goal; the last one is the hookEnding. Across all ${N} chapters, no event may happen twice.
+- An event is external and specific: it names who does what to whom, or what object changes hands or state. "She reflects", "gathers strength", "realizes", "prepares", "decides", "vows" and "considers" are not events — they are what a scene makes the reader feel while something else happens. A chapter whose three events are all interior is an empty chapter; give it a person, a place and a thing at stake instead.
+- Name the counterpart. Every event involves a second named character, or a named object or document, or a named place that resists. "Nesrin walks the road once more" is a mood; "Nesrin pays the tax-farmer with the last of the coast salt and he short-weighs her in front of the town" is an event.
 ${titleBlock}
 Return ONLY JSON, no markdown:
 {
-  ${needArc ? '"storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },\n  ' : ''}"chapters": [ { "chapterNumber": ${batchStart + 1}, "title": "", "partOf": "", "partNumber": 0, "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "" } ]
+  ${needArc ? '"storyArc": { "premise": "", "genre": "", "tone": "", "centralConflict": "", "emotionalJourney": "", "resolution": "" },\n  ' : ''}"chapters": [ { "chapterNumber": ${batchStart + 1}, "title": "", "partOf": "", "partNumber": 0, "goal": "", "arcPosition": "", "emotionalTarget": "", "hookEnding": "", "revealed": "", "stateAfter": "", "events": [${Array.from({ length: S }, () => '""').join(', ')}] } ]
 }`
 }
 
@@ -680,7 +872,10 @@ function planTitleRepairs(titles: string[], batchCount: number, priorTitles: str
   }
   requireForm(!q.wantQuestion || shapes.includes('question'), 'must be a question ending in "?"')
   requireForm(!q.wantSingleWord || shapes.includes('single-word'), 'must be exactly ONE word')
-  requireForm(!q.wantSentence || shapes.includes('sentence'), 'must be a full statement, e.g. "He Stopped Speaking"')
+  requireForm(
+    !q.wantSentence || shapes.includes('sentence'),
+    'must be a full statement, e.g. "He Stopped Speaking"'
+  )
 
   return repairs
 }
@@ -846,7 +1041,23 @@ async function runWithConcurrency(tasks: any[], limit: number) {
 // scenes with bounded concurrency. Every step degrades to padding rather than
 // throwing, so a long novel always yields a usable plan — that is what keeps the
 // "Forging the Story Graph" stage from hanging or aborting at scale.
-async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady, sessionBudget, signal, plotThreads }: { goal: any; systemPrompt: any; onPartialData: any; onSkeletonReady?: any; sessionBudget?: SessionBudget | null; signal?: AbortSignal; plotThreads?: any[] }) {
+async function planChunked({
+  goal,
+  systemPrompt,
+  onPartialData,
+  onSkeletonReady,
+  sessionBudget,
+  signal,
+  plotThreads
+}: {
+  goal: any
+  systemPrompt: any
+  onPartialData: any
+  onSkeletonReady?: any
+  sessionBudget?: SessionBudget | null
+  signal?: AbortSignal
+  plotThreads?: any[]
+}) {
   const s = goal.structure
   const N = Math.max(1, s.chapters)
   const S = Math.max(1, s.scenesPerChapter || 3)
@@ -869,7 +1080,15 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
   // but none of them can guarantee it: they steer a model, they do not constrain
   // it. Counting survivors puts the failure on the run-health ledger instead of
   // leaving it for the author to notice at chapter 97.
-  const degradation = { paddedChapters: 0, chaptersWithoutScenePlan: 0, duplicateTitles: 0, quotaViolations: 0 }
+  const degradation = {
+    paddedChapters: 0,
+    chaptersWithoutScenePlan: 0,
+    duplicateTitles: 0,
+    quotaViolations: 0,
+    repetitiveChapters: 0,
+    duplicateChapterGoals: 0,
+    interiorChapters: 0
+  }
   const seenTitleKeys = new Set<string>()
   while (chapters.length < N) {
     throwIfAborted(signal, 'Story planning cancelled')
@@ -881,18 +1100,22 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
     const skeletonPrompt = buildSkeletonPrompt({
       goal,
       N,
+      S,
       batchStart,
       batchCount,
       prevHook,
       needArc,
-      titleBlock: buildTitleVarietyBlock(usedTitles, goal.genre, goal.tone, batchCount)
+      titleBlock: buildTitleVarietyBlock(usedTitles, goal.genre, goal.tone, batchCount),
+      establishedBlock: buildEstablishedBlock(chapters, batchStart)
     })
     const skel = await aiGenerateJson(skeletonPrompt, activeSystemPrompt, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
       idleTimeout: PLAN_IDLE_TIMEOUT_MS,
       firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
-      maxTokens: batchCount * TOKENS_PER_CHAPTER_STUB + (needArc ? STORY_ARC_TOKENS : 0),
+      maxTokens:
+        batchCount * (TOKENS_PER_CHAPTER_STUB + S * TOKENS_PER_EVENT) +
+        (needArc ? STORY_ARC_TOKENS : 0),
       // Sampling tuned for THIS call's shape. The ledger above stops a batch
       // repeating an *earlier* batch, but it is built once per batch and so
       // cannot stop a batch repeating itself — and the reported run did exactly
@@ -1001,7 +1224,15 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
         goal: entry.raw.goal || '',
         arcPosition: entry.raw.arcPosition || '',
         emotionalTarget: entry.raw.emotionalTarget || '',
-        hookEnding: entry.raw.hookEnding || ''
+        hookEnding: entry.raw.hookEnding || '',
+        // The progression contract travels with the chapter: scene planning
+        // reads these to know what is already on the page.
+        revealed: entry.raw.revealed || '',
+        stateAfter: entry.raw.stateAfter || '',
+        events: Array.isArray(entry.raw.events)
+          ? entry.raw.events.map((e: any) => String(e || '').trim()).filter(Boolean)
+          : [],
+        storyFunction: storyShapeFor(N)[entry.chapterNumber - 1] || ''
       })
     }
     try {
@@ -1009,6 +1240,91 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
     } catch {
       // Best-effort progress callback; a throwing consumer must not break planning.
     }
+  }
+
+  // 1.4) Re-plan chapters the skeleton got wrong, one call per offender:
+  //      - two chapters with the same goal are one chapter written twice (a
+  //        live run ended twice: chapter 9 and 10 both "Ines signs the final
+  //        certificate and leaves");
+  //      - a chapter whose events are interior ("reflects", "gathers strength",
+  //        "decides") has nothing for a scene to dramatise — a live run planned
+  //        "gazes at the stars / packs supplies / sets off" as its crisis.
+  //      Each re-ask names the problem and the chapter's function in the book.
+  async function replanChapter(index: number, problem: string) {
+    throwIfAborted(signal, 'Story planning cancelled')
+    const ch = chapters[index]
+    const shape = storyShapeFor(N)
+    const prompt = `The outline below has a problem: ${problem}
+STORY: "${goal.premise}"
+${buildIdentityBlock(goal)}
+${buildOutlineBlock(chapters, index)}
+${buildEstablishedBlock(chapters, index)}
+Chapter ${index + 1}'s function in the book is: ${shape[index]}
+Write a REPLACEMENT for chapter ${index + 1} only. It must do that function, follow chapter ${index} directly, lead into chapter ${index + 2 <= N ? index + 2 : 'the end'}, and contain events that happen nowhere else in the outline.
+"events" lists EXACTLY ${S} external events in order — each names who does what to whom, or what object or document changes hands or state. No reflecting, deciding, preparing, realising or vowing.
+Return ONLY JSON, no markdown:
+{ "title": "", "goal": "", "revealed": "", "stateAfter": "", "emotionalTarget": "", "hookEnding": "", "events": [${Array.from({ length: S }, () => '""').join(', ')}] }`
+    const fixed = await aiGenerateJson(prompt, activeSystemPrompt, {
+      feature: FEATURES.STORY_GENERATION,
+      temperature: 0.8,
+      idleTimeout: PLAN_IDLE_TIMEOUT_MS,
+      firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
+      maxTokens: TOKENS_PER_CHAPTER_STUB * 2 + TOKENS_PER_EVENT * S,
+      schema: CHAPTER_FIX_SCHEMA,
+      schemaName: 'chapter_fix',
+      role: 'utility',
+      sessionBudget,
+      signal
+    }).catch((err) => {
+      rethrowIfFatal(err)
+      console.warn(`[StoryDirector] chapter re-plan for ${index + 1} failed:`, err)
+      return null
+    })
+    if (fixed && typeof fixed === 'object' && (fixed.goal || fixed.title)) {
+      if (fixed.title) ch.title = String(fixed.title)
+      if (fixed.goal) ch.goal = String(fixed.goal)
+      if (fixed.revealed) ch.revealed = String(fixed.revealed)
+      if (fixed.stateAfter) ch.stateAfter = String(fixed.stateAfter)
+      if (fixed.emotionalTarget) ch.emotionalTarget = String(fixed.emotionalTarget)
+      if (fixed.hookEnding) ch.hookEnding = String(fixed.hookEnding)
+      const events = Array.isArray(fixed.events)
+        ? fixed.events.map((e: any) => String(e || '').trim()).filter(Boolean)
+        : []
+      // A new goal with the old events would contradict itself; better none
+      // (scene planning then derives beats from the goal) than the wrong ones.
+      ch.events = events.length ? events : []
+    }
+  }
+
+  const dupChapters = findDuplicateChapterGoals(chapters)
+  if (dupChapters.length > 0) {
+    await runWithConcurrency(
+      dupChapters.map(
+        ({ index, duplicateOf }) =>
+          () =>
+            replanChapter(
+              index,
+              `chapter ${index + 1} ("${chapters[index].title}") repeats chapter ${duplicateOf + 1} ("${chapters[duplicateOf].title}") — same goal, same event.`
+            )
+      ),
+      planConcurrency()
+    )
+    degradation.duplicateChapterGoals = findDuplicateChapterGoals(chapters).length
+  }
+
+  const interiorChapters = findInteriorChapters(chapters)
+  if (interiorChapters.length > 0) {
+    await runWithConcurrency(
+      interiorChapters.map(
+        (index) => () =>
+          replanChapter(
+            index,
+            `chapter ${index + 1} ("${chapters[index].title}") has no events — its beats are interior (${(chapters[index].events || []).join('; ')}). Nothing happens that a scene could show.`
+          )
+      ),
+      planConcurrency()
+    )
+    degradation.interiorChapters = findInteriorChapters(chapters).length
   }
 
   // 1.5) The cast an arc needs is only knowable once the arc exists. Give the
@@ -1045,19 +1361,38 @@ async function planChunked({ goal, systemPrompt, onPartialData, onSkeletonReady,
       // Best-effort progress callback; a throwing consumer must not break planning.
     }
     const threadCatalog = buildThreadCatalogBlock(plotThreads)
-    const scenePrompt = `Plan EXACTLY ${S} scenes for this chapter of the story.
+    const outlineBlock = buildOutlineBlock(chapters, i)
+    const establishedBlock = buildEstablishedBlock(chapters, i)
+    const notYetBlock = buildNotYetBlock(chapters, i)
+    const plannedBlock = buildPlannedScenesBlock(chapters, i)
+    const eventsBlock = buildEventsBlock(ch, S)
+    const scenePrompt = `Plan EXACTLY ${S} scenes for chapter ${i + 1} of ${chapters.length}.
 STORY: "${goal.premise}"
 ${buildIdentityBlock(goal)}
-${threadCatalog ? `${threadCatalog}\n` : ''}CHAPTER ${i + 1}: "${ch.title}"
-- Chapter goal: ${ch.goal || ''}
+${outlineBlock}
+${establishedBlock ? `\n${establishedBlock}\n` : ''}${plannedBlock ? `\n${plannedBlock}\n` : ''}${notYetBlock ? `\n${notYetBlock}\n` : ''}${threadCatalog ? `${threadCatalog}\n` : ''}CHAPTER ${i + 1}: "${ch.title}"
+- This chapter's function in the book: ${ch.storyFunction || storyShapeFor(chapters.length)[i] || ''}
+- Chapter goal (what is different when it ends): ${ch.goal || ''}
+${eventsBlock}
+- What this chapter reveals: ${ch.revealed || '(decide it — something the reader does not yet know)'}
 - Emotional target: ${ch.emotionalTarget || ''}
 - This chapter must end on: ${ch.hookEnding || 'a hook into the next chapter'}
 ${prev ? `- The PREVIOUS chapter ended on: "${prev.hookEnding || ''}". Scene 1 must pick up directly from that.` : '- This is the opening chapter.'}
 
+SCENE RULES:
+- ${ch.events?.length ? `Scene k realises EVENT k above — that event is the scene's "whatChanges". Do not merge, reorder, skip or replace them.` : `The ${S} scenes together must move the story from this chapter's start to its goal.`} Each scene's "whatChanges" is a concrete event, decision or discovery — never "begins to", "starts to", "becomes aware", "realizes she must".
+- Do not re-stage anything in ALREADY ESTABLISHED or in earlier chapters of the outline. A scene may refer to it in a clause; it may not be the scene's event.
+- Scene titles must be specific to this chapter's events, not the book's motifs. Do not reuse a title, a location-plus-purpose, or an event from any other chapter in the outline.
+- Vary the surface: not every scene is Ines alone thinking. Put other characters in the room; give them wants that collide with hers.
+
 Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
 { "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "pov": "", "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium"${plotThreads?.length ? `, "threadIds": []` : ''} } ] }
-"pov" is the ONE character whose head this scene is narrated from. It must be a name from that scene's "charactersPresent".${plotThreads?.length ? `
-"threadIds" lists the ids of the Active plot threads this scene advances (from the thread catalog) — [] when it advances none. Name only threads the scene actually moves.` : ''}`
+"pov" is the ONE character whose head this scene is narrated from. It must be a name from that scene's "charactersPresent".${
+      plotThreads?.length
+        ? `
+"threadIds" lists the ids of the Active plot threads this scene advances (from the thread catalog) — [] when it advances none. Name only threads the scene actually moves.`
+        : ''
+    }`
     const parsedScenes = await aiGenerateJson(scenePrompt, activeSystemPrompt, {
       feature: FEATURES.STORY_GENERATION,
       temperature: 0.7,
@@ -1094,9 +1429,197 @@ Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
       }
     }
   })
-  await runWithConcurrency(sceneTasks, planConcurrency())
+  // Sequential on purpose: chapter i's prompt lists the scenes chapters 1..i−1
+  // actually planned, which only exists if they were planned first. Ollama
+  // serialises calls regardless, so this costs nothing locally.
+  await runWithConcurrency(sceneTasks, 1)
+
+  // Steering a model is not constraining it: audit the plan for chapters that
+  // repeat an earlier chapter's scenes, and re-plan each once with the repeats
+  // named. Survivors are counted on the degradation ledger.
+  const repeatOffenders = findRepetitiveChapters(chapters)
+  if (repeatOffenders.length > 0) {
+    const retryTasks = repeatOffenders.map(({ index, repeats }) => async () => {
+      throwIfAborted(signal, 'Scene planning cancelled')
+      const ch = chapters[index]
+      const prev = chapters[index - 1]
+      const rejected = repeats.map((r) => `- "${r.title}" (${r.reason})`).join('\n')
+      const prompt = `Plan EXACTLY ${S} scenes for chapter ${index + 1} of ${chapters.length}.
+STORY: "${goal.premise}"
+${buildIdentityBlock(goal)}
+${buildOutlineBlock(chapters, index)}
+${buildEstablishedBlock(chapters, index)}
+${buildNotYetBlock(chapters, index)}
+CHAPTER ${index + 1}: "${ch.title}"
+- This chapter's function in the book: ${ch.storyFunction || ''}
+- Chapter goal: ${ch.goal || ''}
+- What this chapter reveals: ${ch.revealed || ''}
+- This chapter must end on: ${ch.hookEnding || 'a hook into the next chapter'}
+${prev ? `- The PREVIOUS chapter ended on: "${prev.hookEnding || ''}".` : ''}
+
+YOUR PREVIOUS PLAN FOR THIS CHAPTER WAS REJECTED. These scenes repeated earlier chapters:
+${rejected}
+Plan ${S} DIFFERENT scenes that only this chapter could contain: new events, new decisions, new information. Every "whatChanges" must be something that has not happened anywhere in the outline.
+
+Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
+{ "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "pov": "", "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium" } ] }`
+      const replanned = await aiGenerateJson(prompt, activeSystemPrompt, {
+        feature: FEATURES.STORY_GENERATION,
+        temperature: 0.8,
+        idleTimeout: PLAN_IDLE_TIMEOUT_MS,
+        firstTokenTimeout: PLAN_FIRST_TOKEN_TIMEOUT_MS,
+        maxTokens: S * TOKENS_PER_SCENE,
+        schema: makeScenesSchema(S),
+        schemaName: 'chapter_scenes',
+        role: 'utility',
+        sessionBudget,
+        signal
+      }).catch((err) => {
+        rethrowIfFatal(err)
+        console.warn(`[StoryDirector] scene re-plan for chapter ${index + 1} failed:`, err)
+        return null
+      })
+      if (Array.isArray(replanned?.scenes) && replanned.scenes.length > 0) {
+        ch.scenes = replanned.scenes
+      }
+    })
+    await runWithConcurrency(retryTasks, planConcurrency())
+    degradation.repetitiveChapters = findRepetitiveChapters(chapters).length
+  }
 
   return { chapters, storyArc, degradation }
+}
+
+/** Words that carry meaning for comparing two scene beats. */
+function beatWords(text: unknown): Set<string> {
+  const STOP = new Set(
+    'the a an of to in on at and or but is are was were be been being for with from by as that this it its her his she he they them their who what which into out up down over about begins begin starts start becomes become aware realizes realize decides decide feels feel'.split(
+      ' '
+    )
+  )
+  // Crude stemming, enough that "chooses"/"choosing" and "belong"/"belongs"
+  // count as the same word — inflection is not a different event.
+  const stem = (w: string) =>
+    w.length > 5 ? w.replace(/(ing|ies|ed|es|s)$/, '') : w.length > 3 ? w.replace(/s$/, '') : w
+  return new Set(
+    String(text || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !STOP.has(w))
+      .map(stem)
+  )
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0
+  let inter = 0
+  for (const w of a) if (b.has(w)) inter++
+  return inter / (a.size + b.size - inter)
+}
+
+/** Chapters whose goal repeats an earlier chapter's, each with the chapter it copies. */
+/**
+ * Verbs that describe a mind rather than an event. An event built on one of
+ * these gives the scene planner nothing to stage; the writer then pads.
+ */
+const INTERIOR_EVENT_RE =
+  /\b(reflect(s|ed|ing)?|gaz(es|ed|ing)|consider(s|ed|ing)?|contemplat(es|ed|ing)|ponder(s|ed|ing)?|wonder(s|ed|ing)?|prepar(es|ed|ing)( herself| himself| themselves)?|decid(es|ed|ing)|resolv(es|ed|ing)|vow(s|ed|ing)?|realiz(es|ed|ing)|realis(es|ed|ing)|steel(s|ed|ing) (herself|himself)|brac(es|ed|ing) (herself|himself)|gather(s|ed|ing) ((her|his|their) )?(strength|courage|resolve|thoughts)|think(s|ing)? about|thought about|remember(s|ed|ing)?|recall(s|ed|ing)?|feel(s|ing)? the weight|weigh(s|ed|ing) (her|his|their) options)\b/i
+
+/** True when an event is only something happening inside a character's head. */
+export function isInteriorEvent(event: unknown): boolean {
+  const text = String(event || '').trim()
+  return text.length > 0 && INTERIOR_EVENT_RE.test(text)
+}
+
+/**
+ * Chapters whose events are mostly interior — half or more, with at least two
+ * events to judge. Returned as indices so the caller can re-ask for each.
+ */
+export function findInteriorChapters(chapters: any[]): number[] {
+  const out: number[] = []
+  ;(chapters || []).forEach((ch, index) => {
+    const events = Array.isArray(ch?.events) ? ch.events.filter(Boolean) : []
+    if (events.length < 2) return
+    const interior = events.filter(isInteriorEvent).length
+    if (interior * 2 >= events.length) out.push(index)
+  })
+  return out
+}
+
+export function findDuplicateChapterGoals(
+  chapters: any[]
+): Array<{ index: number; duplicateOf: number }> {
+  const out: Array<{ index: number; duplicateOf: number }> = []
+  const seen: Array<{ index: number; words: Set<string> }> = []
+  ;(chapters || []).forEach((ch, index) => {
+    const words = beatWords(`${ch?.goal || ''} ${ch?.revealed || ''}`)
+    if (words.size >= 3) {
+      const twin = seen.find((e) => jaccard(e.words, words) >= SCENE_REPEAT_THRESHOLD)
+      if (twin) out.push({ index, duplicateOf: twin.index })
+    }
+    seen.push({ index, words })
+  })
+  return out
+}
+
+/** Two scene beats are "the same event" above this word-set overlap. */
+export const SCENE_REPEAT_THRESHOLD = 0.5
+
+/**
+ * Chapters whose scenes repeat an earlier chapter's — by identical title, or
+ * by a `whatChanges` that shares most of its meaningful words with an earlier
+ * scene's. Returns each offender once with the repeats named, so a re-plan can
+ * be told exactly what not to do.
+ */
+export function findRepetitiveChapters(
+  chapters: any[]
+): Array<{ index: number; repeats: Array<{ title: string; reason: string }> }> {
+  const seenTitles = new Map<string, number>()
+  const seenBeats: Array<{ words: Set<string>; chapter: number; title: string }> = []
+  const offenders: Array<{ index: number; repeats: Array<{ title: string; reason: string }> }> = []
+  ;(chapters || []).forEach((ch, index) => {
+    const repeats: Array<{ title: string; reason: string }> = []
+    for (const sc of ch?.scenes || []) {
+      const title = String(sc?.title || '').trim()
+      const key = title.toLowerCase()
+      const words = beatWords(sc?.whatChanges || sc?.goal)
+      // A repeated title only counts when the scene carries a real beat —
+      // "Scene 3" / "S1" with nothing behind it is a placeholder, not a repeat
+      // worth a model call.
+      const generic = /^(scene|chapter|part|s)\s*\d*$/i.test(key) || words.size < 3
+      if (key && !generic && seenTitles.has(key) && seenTitles.get(key) !== index) {
+        repeats.push({
+          title,
+          reason: `same title as a scene in chapter ${seenTitles.get(key)! + 1}`
+        })
+      }
+      const twin = seenBeats.find(
+        (b) => b.chapter !== index && jaccard(b.words, words) >= SCENE_REPEAT_THRESHOLD
+      )
+      if (twin && words.size >= 3) {
+        repeats.push({
+          title,
+          reason: `same event as "${twin.title}" in chapter ${twin.chapter + 1}`
+        })
+      }
+    }
+    // Register this chapter's scenes only after checking it, so a chapter is
+    // never compared against itself.
+    for (const sc of ch?.scenes || []) {
+      const key = String(sc?.title || '')
+        .trim()
+        .toLowerCase()
+      if (key && !seenTitles.has(key)) seenTitles.set(key, index)
+      seenBeats.push({
+        words: beatWords(sc?.whatChanges || sc?.goal),
+        chapter: index,
+        title: String(sc?.title || '')
+      })
+    }
+    if (repeats.length > 0) offenders.push({ index, repeats })
+  })
+  return offenders
 }
 
 export function useStoryDirector() {
@@ -1125,7 +1648,23 @@ export function useStoryDirector() {
   // planning: [{ id, title }]. When present, the scene prompt carries the
   // catalog and the schema asks for per-scene `threadIds`; absent, neither
   // appears (today's behaviour). Callers pass storyBibleStore.plotThreads.
-  async function generateStoryPlan({ goal, evidence, onPartialData, onSkeletonReady, research, signal, plotThreads }: { goal: any; evidence: any; onPartialData: any; onSkeletonReady?: any; research: any; signal?: AbortSignal; plotThreads?: any[] }) {
+  async function generateStoryPlan({
+    goal,
+    evidence,
+    onPartialData,
+    onSkeletonReady,
+    research,
+    signal,
+    plotThreads
+  }: {
+    goal: any
+    evidence: any
+    onPartialData: any
+    onSkeletonReady?: any
+    research: any
+    signal?: AbortSignal
+    plotThreads?: any[]
+  }) {
     isPlanning.value = true
     planError.value = null
 
@@ -1166,8 +1705,7 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
 
       // Same resolver the scene writer uses, so "which sources inform this run"
       // means one thing at plan time and write time.
-      const { enabled: researchEnabled, documentIds: scopedDocIds } =
-        resolveResearchScope(research)
+      const { enabled: researchEnabled, documentIds: scopedDocIds } = resolveResearchScope(research)
       const selectedDocIds = scopedDocIds.length ? new Set(scopedDocIds.map(String)) : null
       let researchContext = ''
       if (researchEnabled) {
@@ -1195,7 +1733,9 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
               .map((c: any, i: number) => ({ chunk: c, score: lexicalScores[i] }))
               .sort((a: any, b: any) => b.score - a.score)
             const lexicalRankMap = new Map()
-            lexicalRanks.forEach((item: any, rank: number) => lexicalRankMap.set(item.chunk.id, rank + 1))
+            lexicalRanks.forEach((item: any, rank: number) =>
+              lexicalRankMap.set(item.chunk.id, rank + 1)
+            )
 
             // Semantic ranking (best-effort)
             const semanticRankMap = new Map()
@@ -1215,9 +1755,14 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
                 : []
               if (withEmb.length > 0) {
                 const scored = withEmb
-                  .map((c: any) => ({ chunk: c, score: cosineSimilarity(queryEmbedding as any, c.embedding as any) }))
+                  .map((c: any) => ({
+                    chunk: c,
+                    score: cosineSimilarity(queryEmbedding as any, c.embedding as any)
+                  }))
                   .sort((a: any, b: any) => b.score - a.score)
-                scored.forEach((item: any, rank: number) => semanticRankMap.set(item.chunk.id, rank + 1))
+                scored.forEach((item: any, rank: number) =>
+                  semanticRankMap.set(item.chunk.id, rank + 1)
+                )
               }
             } catch {
               // semantic unavailable, lexical-only RRF
@@ -1409,6 +1954,17 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
           arcPosition: c.arcPosition || '',
           emotionalTarget: c.emotionalTarget || '',
           hookEnding: c.hookEnding || '',
+          // The progression contract the skeleton decided (what this chapter
+          // reveals, how things stand after it, its events one per scene).
+          // This re-shape used to drop them here, so the spine, the writer and
+          // the plan preview never saw them — every chapter read as "she
+          // begins to suspect" again because nothing downstream knew what had
+          // already happened.
+          revealed: c.revealed || '',
+          stateAfter: c.stateAfter || '',
+          events: Array.isArray(c.events) ? c.events.filter(Boolean) : [],
+          storyFunction: c.storyFunction || '',
+          ...(c.partOf ? { partOf: c.partOf, partNumber: c.partNumber } : {}),
           estimatedWords: c.estimatedWords || 7000,
           scenes: (c.scenes || []).map((s: any, j: number) => ({
             sceneNumber: s.sceneNumber || j + 1,
@@ -1474,7 +2030,9 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
           paddedChapters: parsed?.degradation?.paddedChapters || 0,
           chaptersWithoutScenePlan: parsed?.degradation?.chaptersWithoutScenePlan || 0,
           duplicateTitles: parsed?.degradation?.duplicateTitles || 0,
-          quotaViolations: parsed?.degradation?.quotaViolations || 0
+          quotaViolations: parsed?.degradation?.quotaViolations || 0,
+          repetitiveChapters: parsed?.degradation?.repetitiveChapters || 0,
+          duplicateChapterGoals: parsed?.degradation?.duplicateChapterGoals || 0
         },
         storyArc: {
           premise: storyArc.premise || goal.premise,
@@ -1494,7 +2052,10 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
           resolution: storyArc.resolution || '',
           totalChapters: finalChapters.length,
           totalScenes: flatScenes.length,
-          totalEstimatedWords: finalChapters.reduce((sum: number, c: any) => sum + (c.estimatedWords || 0), 0)
+          totalEstimatedWords: finalChapters.reduce(
+            (sum: number, c: any) => sum + (c.estimatedWords || 0),
+            0
+          )
         }
       }
     } catch (err: any) {
@@ -1505,7 +2066,17 @@ The JSON must have a "chapters" array. Each chapter object must contain a "scene
     }
   }
 
-  return { generateStoryPlan, isPlanning, planError, get sessionBudget() { return _sessionBudget }, set sessionBudget(v: SessionBudget | null) { _sessionBudget = v } }
+  return {
+    generateStoryPlan,
+    isPlanning,
+    planError,
+    get sessionBudget() {
+      return _sessionBudget
+    },
+    set sessionBudget(v: SessionBudget | null) {
+      _sessionBudget = v
+    }
+  }
 }
 
 export { sanitizeJson, enforceStructure }

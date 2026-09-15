@@ -16,6 +16,8 @@ interface SyncEntityConfig {
     apiParentField: string | null
     needsTranslation: string[]
   }
+  /** Rows reference other rows of the same table; push them one at a time. */
+  selfReferencing?: boolean
 }
 
 interface IdMap {
@@ -24,6 +26,30 @@ interface IdMap {
   getLocalId: (table: string, apiId: string) => string | null
   resolveStoryApiId: (localProjectId?: string) => Promise<string | null>
   persistStoryId: (apiId: string) => void
+}
+
+/** Concurrent requests per table during a push. */
+const PUSH_CONCURRENCY = 4
+
+/**
+ * Run `fn` over `items` with at most `limit` in flight, preserving nothing
+ * about order except that item i starts no later than item i + limit.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++
+      results[i] = await fn(items[i])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
 }
 
 export class SyncTransport {
@@ -49,7 +75,13 @@ export class SyncTransport {
     return typeof config.endpoint === 'function' ? config.endpoint(storyApiId!) : config.endpoint
   }
 
-  async pushTable(tableName: string, storyApiId: string | null, idMap: IdMap, findSyncConfig: FindSyncConfig, db: any): Promise<{ pushed: number; failed: number }> {
+  async pushTable(
+    tableName: string,
+    storyApiId: string | null,
+    idMap: IdMap,
+    findSyncConfig: FindSyncConfig,
+    db: any
+  ): Promise<{ pushed: number; failed: number }> {
     const config = findSyncConfig(tableName)
     if (!config) return { pushed: 0, failed: 0 }
 
@@ -71,19 +103,29 @@ export class SyncTransport {
     // Per-row outcomes surface instead of vanishing: the engine feeds
     // failures into its retry queue and status, so a failed row no longer
     // reads as synced while rotting in pending-* forever.
+    // Rows within one table are independent of each other — parents live in
+    // tables pushed earlier — so they go out a few at a time instead of one
+    // request after another. Branches reference branches, so they stay serial.
+    const limit = config.selfReferencing ? 1 : PUSH_CONCURRENCY
+    const outcomes = await mapWithConcurrency(pendings, limit, (local) =>
+      this.pushOne(config, local, storyApiId, idMap, db)
+    )
     let pushed = 0
     let failed = 0
-    for (const local of pendings) {
-      if (await this.pushOne(config, local, storyApiId, idMap, db)) {
-        pushed++
-      } else {
-        failed++
-      }
+    for (const ok of outcomes) {
+      if (ok) pushed++
+      else failed++
     }
     return { pushed, failed }
   }
 
-  async pushOne(config: SyncEntityConfig, local: any, storyApiId: string | null, idMap: IdMap, db: any): Promise<boolean> {
+  async pushOne(
+    config: SyncEntityConfig,
+    local: any,
+    storyApiId: string | null,
+    idMap: IdMap,
+    db: any
+  ): Promise<boolean> {
     const { table, isTopLevel, toApi } = config
     const resolved = this.resolveEndpoint(config, storyApiId!)
 
@@ -101,7 +143,9 @@ export class SyncTransport {
           // write recording it was lost (crash between POST and modify), so
           // the row still reads pending-create. PUT-update the known record
           // instead of POSTing a duplicate, then mark it synced.
-          await this.withRetry(() => this._api(`${resolved}/${knownApiId}`, { method: 'PUT', body }))
+          await this.withRetry(() =>
+            this._api(`${resolved}/${knownApiId}`, { method: 'PUT', body })
+          )
 
           await db[table].where('id').equals(local.id).modify({
             apiId: knownApiId,
@@ -112,7 +156,9 @@ export class SyncTransport {
           return true
         }
 
-        const result: any = await this.withRetry(() => this._api(resolved, { method: 'POST', body }))
+        const result: any = await this.withRetry(() =>
+          this._api(resolved, { method: 'POST', body })
+        )
 
         await db[table].where('id').equals(local.id).modify({
           apiId: result.id,
@@ -150,7 +196,12 @@ export class SyncTransport {
     }
   }
 
-  async pushDeletions(storyApiId: string | null, idMap: IdMap, db: any, findSyncConfig: FindSyncConfig): Promise<void> {
+  async pushDeletions(
+    storyApiId: string | null,
+    idMap: IdMap,
+    db: any,
+    findSyncConfig: FindSyncConfig
+  ): Promise<void> {
     const deletions = await db.pendingDeletions.toArray()
     for (const del of deletions) {
       const config = findSyncConfig(del.table)
@@ -160,12 +211,20 @@ export class SyncTransport {
         await this.withRetry(() => this._api(`${resolved}/${del.apiId}`, { method: 'DELETE' }))
         await db.pendingDeletions.where('id').equals(del.id).delete()
       } catch (err) {
-        console.warn(`[SyncTransport] Delete failed ${del.table}:${del.apiId}`, (err as Error).message)
+        console.warn(
+          `[SyncTransport] Delete failed ${del.table}:${del.apiId}`,
+          (err as Error).message
+        )
       }
     }
   }
 
-  async pullTable(config: SyncEntityConfig, storyApiId: string | null, idMap: IdMap, db: any): Promise<void> {
+  async pullTable(
+    config: SyncEntityConfig,
+    storyApiId: string | null,
+    idMap: IdMap,
+    db: any
+  ): Promise<void> {
     const { table, isTopLevel, fromApi, entityType, parentField } = config
     const resolved = this.resolveEndpoint(config, storyApiId!)
 

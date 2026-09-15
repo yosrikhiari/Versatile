@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useProjectStore } from '../stores/projectStore'
 import { SECTION_STATUSES } from '../config/statuses'
-import { countWords } from '../utils/textUtils'
+import { countWords, stripHtmlTags } from '../utils/textUtils'
 import { useNotifications } from './useNotifications'
 import { useDialogueIndexer } from './useDialogueIndexer'
 
@@ -32,12 +32,21 @@ export function useSectionSchemaManager() {
   }
 
   function getSubsectionWordCount(subsection: any) {
-    return countWords(subsection.content)
+    return countWords(stripHtmlTags(subsection.content))
   }
 
+  /**
+   * Words in the section body plus every subsection.
+   *
+   * Only subsections used to count, so a writer who drafts straight into a
+   * section — the path the empty editor invites — saw "0 words" in the
+   * manager and in the total no matter how much they wrote.
+   */
   function getSectionWordCount(sectionId: any) {
+    const section = manuscriptStore.sectionsById.get(sectionId)
+    const own = section ? countWords(stripHtmlTags(section.content)) : 0
     const subsections = manuscriptStore.subsectionsBySection[sectionId] || []
-    return subsections.reduce((sum: number, s: any) => sum + getSubsectionWordCount(s), 0)
+    return own + subsections.reduce((sum: number, s: any) => sum + getSubsectionWordCount(s), 0)
   }
 
   function openAddSubsection(sectionId: any) {

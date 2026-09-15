@@ -86,6 +86,12 @@ export interface InvariantFacts {
   scenesWithMetadata: number
   /** Entities/relationships actually committed to the bible across the run. */
   bibleChangesCommitted: number
+  /**
+   * Scenes whose metadata was passed through entity sync (`discoverSync`).
+   * Optional for callers that predate it: when absent, `bibleChangesCommitted`
+   * alone decides, as before.
+   */
+  scenesSynced?: number
   /** Share of committed prose that is duplicate sentences, 0..1. */
   duplicateRatio?: number
 }
@@ -114,6 +120,9 @@ export const ABORT_BUDGET: Partial<Record<DegradationKind, number>> = {
   metadata_skipped: 3,
   eval_unavailable: 5
 }
+
+/** Synced scenes that may add nothing to the bible before the run is called quiet. */
+export const BIBLE_QUIET_MIN_SCENES = 9
 
 /** Above this share of degraded scenes, the run did not deliver. */
 export const MAX_DEGRADED_SCENE_RATIO = 0.3
@@ -223,7 +232,8 @@ export class RunHealth {
    */
   checkInvariants(facts: InvariantFacts): InvariantViolation[] {
     const violations: InvariantViolation[] = []
-    const { scenesWritten, scenesWithMetadata, bibleChangesCommitted, duplicateRatio } = facts
+    const { scenesWritten, scenesWithMetadata, bibleChangesCommitted, duplicateRatio, scenesSynced } =
+      facts
 
     if (scenesWritten === 0) return violations
 
@@ -256,15 +266,36 @@ export class RunHealth {
       })
     }
 
-    // Only meaningful once metadata is landing. A story genuinely may introduce
-    // no new entities for a scene or two; it does not do so for a whole volume
-    // while extraction is working.
-    if (scenesWithMetadata > 0 && bibleChangesCommitted === 0 && scenesWritten >= 3) {
-      violations.push({
-        severity: 'warn',
-        code: 'bible_static',
-        message: `${scenesWritten} scenes produced metadata but committed no story-bible changes — check that entity sync is reaching the bible`
-      })
+    // Only meaningful once metadata is landing. Two different failures used to
+    // share one code here: "sync never ran" (the parallel path did not call
+    // it, and `commitSync` threw on entry — a whole book with zero bible rows)
+    // and "sync ran and found nothing new" (a short chapter whose cast the
+    // bootstrapper already created). The first is a defect; the second is a
+    // story being quiet. Callers that report `scenesSynced` get them apart.
+    if (scenesWithMetadata > 0 && scenesWritten >= 3) {
+      if (scenesSynced == null) {
+        if (bibleChangesCommitted === 0) {
+          violations.push({
+            severity: 'warn',
+            code: 'bible_static',
+            message: `${scenesWritten} scenes produced metadata but committed no story-bible changes — check that entity sync is reaching the bible`
+          })
+        }
+      } else if (scenesSynced === 0) {
+        violations.push({
+          severity: 'warn',
+          code: 'bible_static',
+          message: `${scenesWithMetadata} scene(s) produced metadata but none was passed through entity sync — the bible could not have changed`
+        })
+      } else if (bibleChangesCommitted === 0 && scenesSynced >= BIBLE_QUIET_MIN_SCENES) {
+        // A scene or a chapter may add nothing; a whole volume does not while
+        // the writer is reporting entities and events.
+        violations.push({
+          severity: 'warn',
+          code: 'bible_quiet',
+          message: `${scenesSynced} scenes were synced and none added an entity or relationship — the writer may not be reporting what the prose introduces`
+        })
+      }
     }
 
     return violations

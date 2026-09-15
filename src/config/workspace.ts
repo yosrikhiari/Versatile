@@ -5,6 +5,11 @@
 export interface WorkspaceTerminology {
   bible: string
   sections: string
+  /** Singular of `sections`; derived when a config does not set it. */
+  section?: string
+  /** The level below a section ("Scenes"); defaults to "Subsections". */
+  subsections?: string
+  subsection?: string
   generator: string
   generatorLabel: string
   entityLabel: string
@@ -34,6 +39,9 @@ const WORKSPACE_CONFIGS: WorkspaceConfig[] = [
     terminology: {
       bible: 'Story Bible',
       sections: 'Chapters',
+      section: 'Chapter',
+      subsections: 'Scenes',
+      subsection: 'Scene',
       generator: 'Story Generator',
       generatorLabel: 'Story Tools',
       entityLabel: 'Story Elements',
@@ -53,6 +61,9 @@ const WORKSPACE_CONFIGS: WorkspaceConfig[] = [
     terminology: {
       bible: 'Story Bible',
       sections: 'Chapters',
+      section: 'Chapter',
+      subsections: 'Scenes',
+      subsection: 'Scene',
       generator: 'Chapter Generator',
       generatorLabel: 'Novel Tools',
       entityLabel: 'Story Elements',
@@ -72,6 +83,9 @@ const WORKSPACE_CONFIGS: WorkspaceConfig[] = [
     terminology: {
       bible: 'Script Bible',
       sections: 'Scenes',
+      section: 'Scene',
+      subsections: 'Beats',
+      subsection: 'Beat',
       generator: 'Script Generator',
       generatorLabel: 'Script Tools',
       entityLabel: 'Script Elements',
@@ -356,10 +370,27 @@ export const WORKSPACE_DESCRIPTIONS = WORKSPACE_CONFIGS.reduce<Record<string, st
   {}
 )
 
+/** "Chapters" → "Chapter"; leaves "Clauses / Sections" style labels alone. */
+function singular(label: string): string {
+  if (/[\/,]/.test(label)) return label
+  return label.endsWith('s') && label.length > 3 ? label.slice(0, -1) : label
+}
+
+/** Fills the optional structure terms so consumers never need fallbacks. */
+export function completeTerminology(t: WorkspaceTerminology): Required<WorkspaceTerminology> {
+  const subsections = t.subsections || 'Subsections'
+  return {
+    ...t,
+    section: t.section || singular(t.sections),
+    subsections,
+    subsection: t.subsection || singular(subsections)
+  }
+}
+
 export const WORKSPACE_TERMINOLOGY = WORKSPACE_CONFIGS.reduce<
-  Record<string, WorkspaceTerminology>
+  Record<string, Required<WorkspaceTerminology>>
 >((acc, cfg) => {
-  acc[cfg.type] = cfg.terminology
+  acc[cfg.type] = completeTerminology(cfg.terminology)
   return acc
 }, {})
 

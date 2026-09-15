@@ -42,9 +42,12 @@ const SYNOPSIS =
  */
 export function configureModels() {
   try {
-    localStorage.setItem(STORAGE_KEYS.OLLAMA_MODEL, 'qwen3:8b')
+    // The prose model lives in the settings blob (`settingsStore.ollamaModel`),
+    // not under the legacy OLLAMA_MODEL key — writing only the legacy key left
+    // generation on whatever the settings default was.
     localStorage.setItem(STORAGE_KEYS.OLLAMA_UTILITY_MODEL, 'qwen3:8b')
     const settings = JSON.parse(localStorage.getItem(STORAGE_KEYS.SETTINGS) || '{}')
+    settings.ollamaModel = 'qwen3:8b'
     settings.embeddingProvider = 'ollama'
     settings.embeddingModel = 'snowflake-arctic-embed2'
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings))
@@ -54,10 +57,22 @@ export function configureModels() {
   }
 }
 
-async function ensureDemoProject(): Promise<string> {
-  const existing = await db.projects.where('name').equals(DEMO_TITLE).first()
+async function ensureDemoProject(
+  title = DEMO_TITLE,
+  genre = GENRE,
+  synopsis = SYNOPSIS
+): Promise<string> {
+  const existing = await db.projects.where('name').equals(title).first()
   if (existing) return existing.id
-  const id = await createProject(DEMO_TITLE, GENRE, SYNOPSIS)
+  // Stamp the signed-in local user as owner, or the project never shows in the
+  // workspace list (`getAllProjects(userId)` filters on it).
+  let ownerId: any = null
+  try {
+    ownerId = JSON.parse(localStorage.getItem('versatile_local_user') || 'null')?.id ?? null
+  } catch {
+    /* no local session — an unowned project is still usable by id */
+  }
+  const id = await createProject(title, genre, synopsis, ownerId)
   console.info(`[VersatileGenerate] created project ${id}`)
   return id
 }
@@ -89,7 +104,16 @@ export interface DemoOptions {
   scenesPerChapter?: number
   wordsPerChapter?: number
   projectId?: string
+  /** Override the shipped demo premise — for generating a different book. */
+  title?: string
+  synopsis?: string
+  genre?: string
+  tone?: string
+  onChunk?: (payload: any) => void
 }
+
+/** The generator of the run in flight, for polling progress from the console. */
+export const current: { gen: any; projectId: string | null } = { gen: null, projectId: null }
 
 /**
  * Generate the demo story through the real pipeline. Volume 1 bootstraps the
@@ -104,21 +128,27 @@ export async function demo(opts: DemoOptions = {}): Promise<{ projectId: string 
   const scenesPerChapter = opts.scenesPerChapter ?? 3
   const wordsPerChapter = opts.wordsPerChapter ?? 400
 
-  const projectId = opts.projectId ?? (await ensureDemoProject())
+  const synopsis = opts.synopsis ?? SYNOPSIS
+  const genre = opts.genre ?? GENRE
+  const tone = opts.tone ?? TONE
+  const projectId =
+    opts.projectId ?? (await ensureDemoProject(opts.title ?? DEMO_TITLE, genre, synopsis))
   // One generator instance, reused across volumes (mirrors the panel's single
   // `volumeGenerator`), so phase state resets cleanly between volumes.
   const gen = useVolumeStoryGenerator()
+  current.gen = gen
+  current.projectId = projectId
 
-  console.info(`[VersatileGenerate] generating volume 1 / ${volumes} (10 chapters)…`)
+  console.info(`[VersatileGenerate] generating volume 1 / ${volumes} (${chaptersPerVolume} chapters)…`)
   await gen.startGeneration({
     projectId,
-    synopsis: SYNOPSIS,
-    genre: GENRE,
-    tone: TONE,
+    synopsis,
+    genre,
+    tone,
     auto: true,
     structure: { volumes: 1, chaptersPerVolume, scenesPerChapter, wordsPerChapter },
     research: null,
-    onChunk: () => {}
+    onChunk: opts.onChunk ?? (() => {})
   })
   await finalizeCanvas(projectId)
 
@@ -130,10 +160,10 @@ export async function demo(opts: DemoOptions = {}): Promise<{ projectId: string 
       chaptersPerVolume,
       scenesPerChapter,
       wordsPerChapter,
-      synopsis: SYNOPSIS,
-      genre: GENRE,
-      tone: TONE,
-      onChunk: () => {}
+      synopsis,
+      genre,
+      tone,
+      onChunk: opts.onChunk ?? (() => {})
     })
     await finalizeCanvas(projectId)
   }
@@ -145,4 +175,4 @@ export async function demo(opts: DemoOptions = {}): Promise<{ projectId: string 
   return { projectId }
 }
 
-export const VersatileGenerate = { configureModels, demo, ensureDemoProject }
+export const VersatileGenerate = { configureModels, demo, ensureDemoProject, current }

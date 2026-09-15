@@ -74,15 +74,16 @@ const EXPECTED = {
     '++id | comment, createdAt, endOffset, paragraphIndex, projectId, selectedText, startOffset',
   sections:
     '++id | *tags, [projectId+branchId], apiId, branchId, lastSyncedAt, order, projectId, status, summary, syncStatus, title, volumeId',
-  sessionArchive: '++id | projectId, signal, timestamp, type',
-  snapshots: '++id | [projectId+chapterId], chapterId, label, projectId, timestamp',
+  sessionArchive: '++id | [projectId+timestamp], projectId, signal, timestamp, type',
+  snapshots:
+    '++id | [projectId+chapterId+timestamp], [projectId+chapterId], chapterId, label, projectId, timestamp',
   snippets: '++id | count, lastSeen, projectId, word',
   sparkHistory: '++id | [projectId+type], blueprint, createdAt, projectId, prompt, type',
   storyDocuments: '++id | [projectId+docType], content, docType, projectId, updatedAt',
   storyElements: '++id | data, height, projectId, title, type, width, x, y',
   storyShapeAnalysis:
     '++id | [projectId+sceneId], [projectId+version], analyzedAt, projectId, sceneId, version',
-  storyStateSnapshots: '++id | projectId, timestamp',
+  storyStateSnapshots: '++id | [projectId+timestamp], projectId, timestamp',
   subsections:
     '++id | *tags, [projectId+branchId], apiId, branchId, content, contentStatus, lastSyncedAt, order, projectId, sectionId, summary, syncStatus, title',
   users: '++id | &username, createdAt, displayName, passwordHash',
@@ -108,7 +109,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(47)
+    expect(verno).toBe(48)
   })
 
   it('has exactly the expected set of tables', () => {

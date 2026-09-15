@@ -5,7 +5,6 @@ import {
   getSessionArchive as dbGetSessionArchive,
   searchSessionArchive as dbSearchSessionArchive,
   saveStateSnapshot as dbSaveStateSnapshot,
-  getLatestStateSnapshot as dbGetLatestStateSnapshot,
   getStateSnapshotHistory as dbGetStateSnapshotHistory,
   saveAuthorProfile as dbSaveAuthorProfile,
   getAuthorProfile as dbGetAuthorProfile,
@@ -20,7 +19,13 @@ export const useArchiveStore = defineStore('archive', () => {
   const archiveSearchResults = ref<any[]>([])
   const isLoading = ref(false)
 
-  async function saveInteraction(projectId: any, type: any, data: any, tags: any = [], signal: any) {
+  async function saveInteraction(
+    projectId: any,
+    type: any,
+    data: any,
+    tags: any = [],
+    signal: any
+  ) {
     if (signal === null || signal === undefined) {
       throw new Error(`saveInteraction: signal is required. Caller: ${type}`)
     }
@@ -45,16 +50,24 @@ export const useArchiveStore = defineStore('archive', () => {
     }
   }
 
-  async function saveEndOfSessionState(projectId: any, sessionId: any, state: any) {
+  /** How many state snapshots the drawer lists. */
+  const STATE_HISTORY_LIMIT = 20
+
+  /**
+   * Persist a story-state snapshot and fold it into the loaded history in
+   * place — no re-read of the table, which used to happen on every write.
+   */
+  async function saveStateSnapshot(projectId: any, sessionId: any, state: any) {
     const id = await dbSaveStateSnapshot(projectId, sessionId, state)
-    currentStateSnapshot.value = {
-      id,
-      projectId,
-      sessionId,
-      state,
-      timestamp: new Date().toISOString()
-    }
-    await loadStateSnapshots(projectId)
+    const row = { id, projectId, sessionId, state, timestamp: new Date().toISOString() }
+    currentStateSnapshot.value = row
+    stateSnapshots.value = [row, ...stateSnapshots.value].slice(0, STATE_HISTORY_LIMIT)
+    return id
+  }
+
+  /** A real end of session: the snapshot plus an archive entry the writer can browse. */
+  async function saveEndOfSessionState(projectId: any, sessionId: any, state: any) {
+    const id = await saveStateSnapshot(projectId, sessionId, state)
     await saveInteraction(
       projectId,
       ARCHIVE_TYPES.SESSION_END,
@@ -66,11 +79,9 @@ export const useArchiveStore = defineStore('archive', () => {
   }
 
   async function loadStateSnapshots(projectId: any) {
-    stateSnapshots.value = await dbGetStateSnapshotHistory(projectId)
-    const latest = await dbGetLatestStateSnapshot(projectId)
-    if (latest) {
-      currentStateSnapshot.value = latest
-    }
+    // Newest first, so the head of the history is the latest — one read.
+    stateSnapshots.value = await dbGetStateSnapshotHistory(projectId, STATE_HISTORY_LIMIT)
+    if (stateSnapshots.value.length) currentStateSnapshot.value = stateSnapshots.value[0]
   }
 
   async function saveAuthorProfileData(projectId: any, profile: any) {
@@ -97,6 +108,7 @@ export const useArchiveStore = defineStore('archive', () => {
     loadSessionHistory,
     searchArchive,
     saveEndOfSessionState,
+    saveStateSnapshot,
     loadStateSnapshots,
     saveAuthorProfileData,
     loadAuthorProfile,

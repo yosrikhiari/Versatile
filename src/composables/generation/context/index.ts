@@ -19,6 +19,7 @@ export async function buildGenerationContext({
     entityType,
     project: {
       category: project.currentCategory || '',
+      genre: project.currentGenre || '',
       description: project.currentDescription || ''
     },
     entities: entityContext,

@@ -143,6 +143,9 @@ function generateSynopsisDoc() {
   if (projectStore.currentCategory) {
     lines.push(`**Category:** ${projectStore.currentCategory}`)
   }
+  if (projectStore.currentGenre) {
+    lines.push(`**Genre:** ${projectStore.currentGenre}`)
+  }
   if (projectStore.currentDescription) {
     lines.push(`**Description:** ${projectStore.currentDescription}`)
   }

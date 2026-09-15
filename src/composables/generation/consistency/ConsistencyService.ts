@@ -11,7 +11,72 @@ import {
 } from '../context/sceneContext'
 import { buildRagOptions } from '../../../services/researchScope'
 
+/** Case-insensitive name match, tolerant of stray whitespace. */
+function sameName(a: unknown, b: unknown): boolean {
+  return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase()
+}
+
+/**
+ * The characters and locations that appear in `scenes`.
+ *
+ * The audit costs one model call per entity. An entity that does not appear in
+ * any scene written since the last audit cannot have acquired a new
+ * contradiction, so auditing it again buys nothing. This is the filter that
+ * turns "every entity, every chapter" into "entities this chapter touched".
+ */
+export function scopeEntitiesToScenes(
+  characters: any[],
+  locations: any[],
+  scenes: any[]
+): { characters: any[]; locations: any[] } {
+  const castNames = new Set<string>()
+  const placeNames = new Set<string>()
+  for (const scene of scenes || []) {
+    if (!scene) continue
+    for (const name of scene.characters || scene.charactersPresent || []) {
+      castNames.add(String(name).trim().toLowerCase())
+    }
+    if (scene.location) placeNames.add(String(scene.location).trim().toLowerCase())
+  }
+  return {
+    characters: (characters || []).filter((c) => castNames.has(String(c?.name || '').trim().toLowerCase())),
+    locations: (locations || []).filter((l) => placeNames.has(String(l?.name || '').trim().toLowerCase()))
+  }
+}
+
+/**
+ * The entities a report flagged, plus any that appear in `alsoScenes` — after
+ * a fix round, the rewritten scenes may have introduced a new problem for an
+ * entity that was clean before. Everything else was clean and stays so.
+ */
+export function entitiesToRecheck(
+  report: any,
+  characters: any[],
+  locations: any[],
+  alsoScenes: any[] = []
+): { characters: any[]; locations: any[] } {
+  const flaggedChars = new Set((report?.characterIssues || []).map((i: any) => String(i.character || '').trim().toLowerCase()))
+  const flaggedLocs = new Set((report?.locationIssues || []).map((i: any) => String(i.location || '').trim().toLowerCase()))
+  const touched = scopeEntitiesToScenes(characters, locations, alsoScenes)
+  const chars = (characters || []).filter(
+    (c) => flaggedChars.has(String(c?.name || '').trim().toLowerCase()) || touched.characters.some((t) => sameName(t.name, c.name))
+  )
+  const locs = (locations || []).filter(
+    (l) => flaggedLocs.has(String(l?.name || '').trim().toLowerCase()) || touched.locations.some((t) => sameName(t.name, l.name))
+  )
+  return { characters: chars, locations: locs }
+}
+
+/** Scenes with no cast or location metadata cannot be scoped — audit everything. */
+export function scenesCarryCast(scenes: any[]): boolean {
+  return (scenes || []).some(
+    (s) => s && ((s.characters || s.charactersPresent || []).length > 0 || s.location)
+  )
+}
+
 export class ConsistencyService {
+  /** How many written scenes the incremental audit has already covered. */
+  auditedUpTo = 0
   writeParams: any
   scenePlan: any
   chapterPlan: any
@@ -152,12 +217,18 @@ export class ConsistencyService {
     }
     if (!atChapterEnd || writtenUpToIndex >= this.scenePlan.value.length) return
 
-    const characters = this.storyBibleStore.characters
-    const locations = this.storyBibleStore.locations
-    if (characters.length <= 1 && locations.length <= 1) return
-
     const written = this.writtenScenes.value.filter(Boolean)
     if (written.length < 2) return
+
+    // Only entities this chapter's scenes touched. The excerpts still come
+    // from every written scene, so an old fact can still be contradicted —
+    // but an entity absent from the new scenes is not re-audited.
+    const newScenes = this.writtenScenes.value.slice(this.auditedUpTo, writtenUpToIndex).filter(Boolean)
+    this.auditedUpTo = writtenUpToIndex
+    const { characters, locations } = scenesCarryCast(newScenes)
+      ? scopeEntitiesToScenes(this.storyBibleStore.characters, this.storyBibleStore.locations, newScenes)
+      : { characters: this.storyBibleStore.characters, locations: this.storyBibleStore.locations }
+    if (characters.length <= 1 && locations.length <= 1) return
 
     try {
       const report = await this.critic.checkContradictions({
@@ -236,9 +307,13 @@ export class ConsistencyService {
           }
         }
         const rechecked = this.writtenScenes.value.filter(Boolean)
+        // Re-audit what was flagged and what the rewrites touched — not the
+        // whole cast again. Entities that were clean and untouched stay clean.
+        const rewritten = targets.map(([sceneIndex]) => this.writtenScenes.value[sceneIndex])
+        const scope = entitiesToRecheck(this.consistencyReport.value, characters, locations, rewritten)
         const recheck = await this.critic.checkContradictions({
-          characters,
-          locations,
+          characters: scope.characters,
+          locations: scope.locations,
           sceneProse: rechecked,
           synopsis: '',
           ledger: buildFactLedger(this.spineArray.value, rechecked)

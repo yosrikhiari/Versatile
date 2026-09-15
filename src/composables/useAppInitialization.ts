@@ -1,5 +1,4 @@
 import { ref } from 'vue'
-import { checkOllamaConnection } from '../services/ollamaService'
 import { getOllamaEndpoint, DEFAULT_MODEL } from '../config/ollama'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useProjectStore } from '../stores/projectStore'
@@ -52,9 +51,29 @@ export function useAppInitialization() {
     return names.some((n: any) => n === wanted || n.split(':')[0] === wanted.split(':')[0])
   }
 
+  /** How long the startup probe waits for Ollama before treating it as absent. */
+  const PROBE_TIMEOUT_MS = 5000
+
+  /**
+   * One request to `/api/tags` answers everything the banners need: whether
+   * Ollama is reachable, and which generation and embedding models are pulled.
+   *
+   * This used to be two requests in series — a reachability check, then an
+   * untimed model check — and the manuscript waited on both before loading.
+   * `initializeApp` now runs this alongside the project load; nothing here is
+   * needed to show the writer their text.
+   */
   async function checkModelAvailability() {
     try {
-      const response = await fetch(`${getOllamaEndpoint()}/api/tags`)
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS)
+      let response: Response
+      try {
+        response = await fetch(`${getOllamaEndpoint()}/api/tags`, { signal: controller.signal })
+      } finally {
+        clearTimeout(timeout)
+      }
+      ollamaAvailable.value = response.ok
       if (!response.ok) return
       const data = await response.json()
       const modelNames = data.models?.map((m: any) => m.name) || []
@@ -103,17 +122,16 @@ export function useAppInitialization() {
       settingsStore.setOllamaModel(adopted)
       adoptedModel.value = adopted
     } catch (e) {
-      console.error('[useAppInitialization] checkModelAvailability failed:', e)
+      // Unreachable, refused, or timed out: local AI is off, writing is not.
+      ollamaAvailable.value = false
+      console.warn('[useAppInitialization] Ollama probe failed:', (e as Error)?.message || e)
     }
   }
 
   async function initializeApp(projectId = null) {
-    const ollamaOk = await checkOllamaConnection()
-    ollamaAvailable.value = ollamaOk
-
-    if (ollamaOk) {
-      await checkModelAvailability()
-    }
+    // Start the network probe, but do not wait for it: the project comes out of
+    // IndexedDB and should be on screen regardless of whether Ollama answers.
+    const probe = checkModelAvailability()
 
     let hasProject = false
     if (projectId) {
@@ -125,31 +143,45 @@ export function useAppInitialization() {
 
     if (!hasProject && !isOnboardingDismissed()) {
       hasLoaded.value = true
+      await probe
       return { showOnboarding: true }
     } else if (projectStore.currentProjectId) {
       await loadProjectData()
     }
 
     hasLoaded.value = true
+    // Settled before returning so callers still see a decided `ollamaAvailable`.
+    await probe
     return { showOnboarding: false }
   }
 
   async function loadProjectData() {
     if (!projectStore.currentProjectId) return
 
-    await sparkStore.loadHistory(projectStore.currentProjectId)
-    await polishStore.loadAnnotations(projectStore.currentProjectId)
-    await polishStore.loadSnippets(projectStore.currentProjectId)
-    await storyBibleStore.loadAll(projectStore.currentProjectId)
-    await manuscriptStore.loadManuscript(projectStore.currentProjectId)
-    sparkStore.setProjectId(projectStore.currentProjectId)
-
+    const projectId = projectStore.currentProjectId
     const archiveStore = useArchiveStore()
-    await projectStore.loadAuthorProfile()
-    await archiveStore.loadStateSnapshots(projectStore.currentProjectId)
-    const { snapshotToRecap } = useStateSummarizer()
-    const latest = await getLatestStateSnapshot(projectStore.currentProjectId)
+
+    // Independent IndexedDB reads, batched. They used to run one after another,
+    // so opening a project paid eight sequential round trips before the first
+    // panel could render anything.
+    await Promise.all([
+      sparkStore.loadHistory(projectId),
+      polishStore.loadAnnotations(projectId),
+      polishStore.loadSnippets(projectId),
+      storyBibleStore.loadAll(projectId),
+      manuscriptStore.loadManuscript(projectId),
+      projectStore.loadAuthorProfile(),
+      archiveStore.loadStateSnapshots(projectId)
+    ])
+    // The session baseline must include the structure, which was not loaded
+    // yet when loadProject set it from the root document alone.
+    projectStore.resetSessionCount()
+    sparkStore.setProjectId(projectId)
+
+    // loadStateSnapshots is newest-first, so its head is the latest snapshot.
+    const latest = archiveStore.stateSnapshots?.[0] || (await getLatestStateSnapshot(projectId))
     if (latest) {
+      const { snapshotToRecap } = useStateSummarizer()
       projectStore.lastSessionRecap = snapshotToRecap(latest.state)
     }
 

@@ -15,13 +15,17 @@ import {
   getAuthorProfile
 } from '../services/dbService'
 import { countWords, stripHtmlTags } from '../utils/textUtils'
-import { WORKSPACE_TYPES as WORKSPACE_TYPES_RAW, WORKSPACE_TERMINOLOGY as WORKSPACE_TERMINOLOGY_RAW } from '../config/workspace'
+import {
+  WORKSPACE_TYPES as WORKSPACE_TYPES_RAW,
+  WORKSPACE_TERMINOLOGY as WORKSPACE_TERMINOLOGY_RAW
+} from '../config/workspace'
 const WORKSPACE_TYPES = WORKSPACE_TYPES_RAW as Record<string, string>
 const WORKSPACE_TERMINOLOGY = WORKSPACE_TERMINOLOGY_RAW as Record<string, any>
 import { STORAGE_KEYS } from '../config/storageKeys'
 import { useLocalStorage } from '../utils/useLocalStorage'
 import { getSyncEngine } from '../services/sync-engine'
 import { useAuthStore } from './authStore'
+import { useManuscriptStore } from './manuscriptStore'
 import { DOCUMENT_PROMPTS } from '../config/documentPrompts'
 
 export const useProjectStore = defineStore('project', () => {
@@ -29,10 +33,11 @@ export const useProjectStore = defineStore('project', () => {
   const currentProjectName = ref('')
   const currentDescription = ref('')
   const currentCategory = ref('')
+  /** Free-text genre ("Fantasy, Mystery"). `category` is the workspace type. */
+  const currentGenre = ref('')
   const documentContent = ref('')
   const documentContentRaw = computed(() => stripHtmlTags(documentContent.value))
   const wordCount = ref(0)
-  const sessionWordCount = ref(0)
   const sessionGoal = useLocalStorage(STORAGE_KEYS.SESSION_GOAL, 500)
   const dailyGoal = ref(500)
   const dailyWordCount = ref(0)
@@ -84,6 +89,26 @@ export const useProjectStore = defineStore('project', () => {
     return WORKSPACE_TERMINOLOGY[activeWorkspaceType.value]
   })
 
+  /**
+   * The structure vocabulary with lower-case forms ready for running text:
+   * "No chapters yet", "3 chapters · 4 scenes". Components read these instead
+   * of hard-coding "section"/"subsection", so a novel says Chapters/Scenes and
+   * a screenplay says Scenes/Beats everywhere.
+   */
+  const structureTerms = computed(() => {
+    const t = terminology.value
+    return {
+      sections: t.sections,
+      section: t.section,
+      subsections: t.subsections,
+      subsection: t.subsection,
+      sectionsLc: t.sections.toLowerCase(),
+      sectionLc: t.section.toLowerCase(),
+      subsectionsLc: t.subsections.toLowerCase(),
+      subsectionLc: t.subsection.toLowerCase()
+    }
+  })
+
   const sessionProgress = computed(() => {
     return Math.min((sessionWordCount.value / sessionGoal.value) * 100, 100)
   })
@@ -94,14 +119,28 @@ export const useProjectStore = defineStore('project', () => {
 
   const lastSaved = computed(() => lastSavedAt.value)
 
+  /**
+   * The whole manuscript: root document plus every section and subsection.
+   * `wordCount` alone is the root document, which is empty for anyone who
+   * writes in chapters. Progress surfaces read this one.
+   */
+  const manuscriptWordCount = computed(
+    () => wordCount.value + useManuscriptStore().structuredWordCount
+  )
+  const sessionWordCount = computed(() =>
+    Math.max(0, manuscriptWordCount.value - initialWordCount.value)
+  )
+
   async function loadProject(id: any) {
     const [project, manuscript] = await Promise.all([getProject(id), getManuscript(id)])
     if (!project) return
 
     currentProjectId.value = id
     currentProjectName.value = project.name
-    currentDescription.value = project.description || ''
+    // `synopsis` is the pre-fix column name; older rows still carry it.
+    currentDescription.value = project.description || project.synopsis || ''
     currentCategory.value = project.category || ''
+    currentGenre.value = project.genre || ''
     lastWrittenAt.value = project.updatedAt
 
     if (manuscript) {
@@ -157,14 +196,29 @@ export const useProjectStore = defineStore('project', () => {
     if (!currentProjectId.value) return
     try {
       await saveManuscript(currentProjectId.value, documentContent.value)
-      lastSavedAt.value = new Date().toISOString()
-      await updateDailyWordCount(currentProjectId.value, wordCount.value)
-      dailyWordCount.value = wordCount.value
-      await updateStreakAfterSave()
-      autoSnapshot()
+      await recordProgress()
     } catch (error) {
       console.error('Auto-save failed:', error)
     }
+  }
+
+  /**
+   * Bookkeeping that follows any manuscript write — root, section or
+   * subsection: the "Saved" mark, today's total for the goal bar and the
+   * heatmap, the streak, and the periodic snapshot. Section saves happen in
+   * `useFlowSave`, which calls this so writing in chapters counts.
+   */
+  async function recordProgress() {
+    if (!currentProjectId.value) return
+    lastSavedAt.value = new Date().toISOString()
+    const total = manuscriptWordCount.value
+    // Denormalised onto the project row so the workspace index can show the
+    // whole manuscript without loading every section of every project.
+    await updateProject(currentProjectId.value, { wordCount: total })
+    await updateDailyWordCount(currentProjectId.value, total)
+    dailyWordCount.value = total
+    await updateStreakAfterSave()
+    autoSnapshot()
   }
 
   let wordCountTimer: any = null
@@ -173,33 +227,46 @@ export const useProjectStore = defineStore('project', () => {
     clearTimeout(wordCountTimer)
     wordCountTimer = setTimeout(() => {
       const text = plainText || stripHtmlTags(newContent)
-      const words = countWords(text)
-      wordCount.value = words
-      sessionWordCount.value = Math.max(0, words - initialWordCount.value)
+      wordCount.value = countWords(text)
     }, 300)
   }
 
+  /** Minimum gap between automatic story-state snapshots. */
+  const AUTO_SNAPSHOT_INTERVAL_MS = 5 * 60_000
+
   let snapshotTimer: any = null
+  let lastAutoSnapshotAt = 0
+  let lastAutoSnapshotKey = ''
+
+  /**
+   * Story-state snapshot after a save — throttled, and skipped when the
+   * summary has not changed.
+   *
+   * This used to fire two seconds after every autosave and file each one as a
+   * "session end" in the archive, so a writer saw a new "Writing session" row
+   * every time they paused, the history table grew by one row per pause, and
+   * each write re-read the whole table. The real session end is recorded by
+   * the flow store when a session actually ends.
+   */
   function autoSnapshot() {
     if (snapshotTimer) clearTimeout(snapshotTimer)
+    const wait = Math.max(2000, AUTO_SNAPSHOT_INTERVAL_MS - (Date.now() - lastAutoSnapshotAt))
     snapshotTimer = setTimeout(async () => {
       try {
         const { useStateSummarizer } = await import('../composables/useStateSummarizer')
         const { useArchiveStore } = await import('./archiveStore')
-        const { summarize, snapshotToContextString } = useStateSummarizer()
+        const { summarize } = useStateSummarizer()
         const snapshot = summarize()
-        if (snapshot) {
-          const archiveStore = useArchiveStore()
-          await archiveStore.saveEndOfSessionState(
-            currentProjectId.value,
-            'auto_snapshot',
-            snapshot
-          )
-        }
+        if (!snapshot) return
+        const key = JSON.stringify(snapshot)
+        if (key === lastAutoSnapshotKey) return
+        lastAutoSnapshotKey = key
+        lastAutoSnapshotAt = Date.now()
+        await useArchiveStore().saveStateSnapshot(currentProjectId.value, 'auto_snapshot', snapshot)
       } catch (e) {
         console.error('[projectStore] autoSnapshot failed:', e)
       }
-    }, 2000)
+    }, wait)
   }
 
   function updateContent(newContent: any, plainText: any) {
@@ -225,17 +292,22 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   function resetSessionCount() {
-    initialWordCount.value = wordCount.value
-    sessionWordCount.value = 0
+    initialWordCount.value = manuscriptWordCount.value
   }
 
   async function updateDailyWordCountFromTotal() {
     if (!currentProjectId.value) return
-    dailyWordCount.value = wordCount.value
-    await updateDailyWordCount(currentProjectId.value, wordCount.value)
+    const total = manuscriptWordCount.value
+    dailyWordCount.value = total
+    await updateDailyWordCount(currentProjectId.value, total)
   }
 
-  async function createNewProject(name: any, category: any = '', description: any = '', blueprintId: any = null) {
+  async function createNewProject(
+    name: any,
+    category: any = '',
+    description: any = '',
+    blueprintId: any = null
+  ) {
     getSyncEngine().clearStoryId()
 
     // Owner must be stamped at creation. `createProject`'s `userId` defaults to
@@ -247,7 +319,7 @@ export const useProjectStore = defineStore('project', () => {
     const authStore = useAuthStore()
     const ownerId = authStore.localUser?.id ?? authStore.user?.id ?? null
 
-    const id = await createProject(name, category, description, ownerId)
+    const id = await createProject(name, '', description, ownerId, category)
     await loadProject(id)
 
     try {
@@ -276,7 +348,6 @@ export const useProjectStore = defineStore('project', () => {
         if (blueprint) {
           const manuscriptStore = useManuscriptStore()
           for (const section of blueprint.sections) {
-
             const sectionId = await manuscriptStore.addSectionData(id, {
               title: section.title,
               summary: section.summary,
@@ -305,6 +376,7 @@ export const useProjectStore = defineStore('project', () => {
     await updateProject(currentProjectId.value, data)
     if (data.name !== undefined) currentProjectName.value = data.name
     if (data.category !== undefined) currentCategory.value = data.category
+    if (data.genre !== undefined) currentGenre.value = data.genre
     if (data.description !== undefined) currentDescription.value = data.description
   }
 
@@ -325,8 +397,10 @@ export const useProjectStore = defineStore('project', () => {
     currentProjectName,
     currentDescription,
     currentCategory,
+    currentGenre,
     activeWorkspaceType,
     terminology,
+    structureTerms,
     documentContent,
     documentContentRaw,
     wordCount,
@@ -337,6 +411,8 @@ export const useProjectStore = defineStore('project', () => {
     dailyWordCount,
     lastSavedAt,
     lastSaved,
+    manuscriptWordCount,
+    recordProgress,
     lastWrittenAt,
     sessionProgress,
     dailyProgress,

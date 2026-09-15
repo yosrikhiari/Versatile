@@ -10,8 +10,12 @@ export async function getBranch(id: any) {
   return db.branches.get(id)
 }
 
-export async function createBranch(projectId: any, name: any, sourceBranchId: any = null, opts: any = {}) {
-  console.log('[DEBUG] db.createBranch | projectId:', projectId, '| name:', name, '| sourceBranchId:', sourceBranchId)
+export async function createBranch(
+  projectId: any,
+  name: any,
+  sourceBranchId: any = null,
+  opts: any = {}
+) {
   const now = new Date().toISOString()
   const id = await db.branches.add({
     projectId,
@@ -23,7 +27,6 @@ export async function createBranch(projectId: any, name: any, sourceBranchId: an
     updatedAt: now
   })
   const result = await db.branches.get(id)
-  console.log('[DEBUG] db.createBranch result:', result)
   return result
 }
 
@@ -38,9 +41,7 @@ export async function deleteBranch(id: any) {
 }
 
 export async function ensureMainBranch(projectId: any) {
-  const existing = await db.branches
-    .where({ projectId, name: 'main' })
-    .first()
+  const existing = await db.branches.where({ projectId, name: 'main' }).first()
   if (existing) return existing
   return createBranch(projectId, 'main')
 }

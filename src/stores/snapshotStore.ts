@@ -19,10 +19,16 @@ export const useSnapshotStore = defineStore('snapshot', () => {
   const autoSaveInterval = ref(5)
   let intervalTimer: ReturnType<typeof setInterval> | null = null
 
+  /** Bumped on every write so an open history drawer knows to refresh. */
+  const lastWriteId = ref<any>(null)
+
   async function saveNewSnapshot(projectId: any, chapterId: any, content: any, label = '') {
     if (!projectId || chapterId === null) return null
     const id = await addSnapshot(projectId, chapterId, content, label)
-    await loadSnapshots(projectId, chapterId)
+    // No reload here. This ran after every autosave and re-read every snapshot
+    // for the chapter — content included — whether or not anything was
+    // showing them. The drawer refreshes itself while it is open.
+    lastWriteId.value = id
     return id
   }
 
@@ -79,6 +85,7 @@ export const useSnapshotStore = defineStore('snapshot', () => {
     autoSaveInterval,
     loadSnapshots,
     saveNewSnapshot,
+    lastWriteId,
     restoreSnapshot,
     removeSnapshot,
     startAutoSave,

@@ -14,7 +14,9 @@ const mockDb = {
     state: {},
     timestamp: '2025-01-01'
   })),
-  getStateSnapshotHistory: vi.fn(() => [{ id: 'snap1', projectId: 'p1' }]),
+  getStateSnapshotHistory: vi.fn(() => [
+    { id: 'snap1', projectId: 'p1', sessionId: 's1', state: {}, timestamp: '2025-01-01' }
+  ]),
   saveAuthorProfile: vi.fn(() => undefined),
   getAuthorProfile: vi.fn(() => ({ name: 'Author' })),
   pruneSessionArchive: vi.fn(() => 5)
@@ -96,20 +98,30 @@ describe('archiveStore', () => {
   })
 
   describe('saveEndOfSessionState', () => {
-    it('saves state and reloads snapshots', async () => {
-      mockDb.getStateSnapshotHistory.mockResolvedValue([{ id: 'snap1', projectId: 'p1' }])
+    it('saves state, files an archive entry, and folds the row into history without re-reading', async () => {
       const id = await store.saveEndOfSessionState('p1', 's1', { text: 'hello' })
       expect(mockDb.saveStateSnapshot).toHaveBeenCalledWith('p1', 's1', { text: 'hello' })
       expect(mockDb.saveSessionArchive).toHaveBeenCalled()
+      expect(mockDb.getStateSnapshotHistory).not.toHaveBeenCalled()
       expect(id).toBe('snap1')
+      expect(store.stateSnapshots[0].id).toBe('snap1')
+      expect(store.currentStateSnapshot.state).toEqual({ text: 'hello' })
+    })
+  })
+
+  describe('saveStateSnapshot', () => {
+    it('does not write an archive entry — that is for real session ends', async () => {
+      await store.saveStateSnapshot('p1', 'auto_snapshot', { text: 'hi' })
+      expect(mockDb.saveStateSnapshot).toHaveBeenCalledTimes(1)
+      expect(mockDb.saveSessionArchive).not.toHaveBeenCalled()
     })
   })
 
   describe('loadStateSnapshots', () => {
-    it('loads snapshots and sets current', async () => {
+    it('loads snapshots newest-first in one read and sets current from the head', async () => {
       await store.loadStateSnapshots('p1')
-      expect(mockDb.getStateSnapshotHistory).toHaveBeenCalledWith('p1')
-      expect(mockDb.getLatestStateSnapshot).toHaveBeenCalledWith('p1')
+      expect(mockDb.getStateSnapshotHistory).toHaveBeenCalledWith('p1', 20)
+      expect(mockDb.getLatestStateSnapshot).not.toHaveBeenCalled()
       expect(store.currentStateSnapshot).toEqual({
         id: 'snap1',
         projectId: 'p1',

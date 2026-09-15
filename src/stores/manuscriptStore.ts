@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { toPlain } from '../utils/toPlain'
+import { countWords, stripHtmlTags } from '../utils/textUtils'
 import {
   getSections,
   addSection,
@@ -52,16 +53,16 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   // Every caller still awaits actual persistence, so flushSave and the
   // generation loops keep their ordering guarantees; single calls behave
   // exactly as the old write-through (write, then reactive update).
-  const pendingWrites = new Map<string, {
-    trailingData: any | null
-    resolvers: Array<() => void>
-    rejecters: Array<(e: any) => void>
-  }>()
+  const pendingWrites = new Map<
+    string,
+    {
+      trailingData: any | null
+      resolvers: Array<() => void>
+      rejecters: Array<(e: any) => void>
+    }
+  >()
 
-  function flushEntityWrite(
-    key: string,
-    write: (merged: any) => Promise<void>
-  ) {
+  function flushEntityWrite(key: string, write: (merged: any) => Promise<void>) {
     const entry = pendingWrites.get(key)
     pendingWrites.delete(key)
     if (!entry || !entry.trailingData) return
@@ -80,7 +81,11 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     const plain = toPlain(data)
     const pending = pendingWrites.get(key)
     if (!pending) {
-      const entry = { trailingData: null as any | null, resolvers: [] as Array<() => void>, rejecters: [] as Array<(e: any) => void> }
+      const entry = {
+        trailingData: null as any | null,
+        resolvers: [] as Array<() => void>,
+        rejecters: [] as Array<(e: any) => void>
+      }
       pendingWrites.set(key, entry)
       setTimeout(() => flushEntityWrite(key, write), SECTION_WRITE_DEBOUNCE)
       return write(plain)
@@ -108,6 +113,13 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     }, STYLE_GUIDE_DEBOUNCE)
   }
 
+  /** Section rows by id — O(1) lookups for anything rendered per row. */
+  const sectionsById = computed(() => {
+    const map = new Map<any, any>()
+    for (const s of sections.value) map.set(s.id, s)
+    return map
+  })
+
   const sortedSections = computed(() => {
     return [...sections.value].sort((a, b) => (a.order || 0) - (b.order || 0))
   })
@@ -119,6 +131,27 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   const activeSubsection = computed(() => {
     return subsections.value.find((s) => s.id === activeSubsectionId.value)
   })
+
+  /**
+   * Words held by the structure — every section body plus every subsection.
+   *
+   * Progress (header count, daily goal, streak, the workspace heatmap) used to
+   * read only the root document, so a writer working in chapters — the path
+   * the app recommends — saw "0 words" and a goal that never moved. Prefer the
+   * count stored at save time; fall back to counting for rows written by
+   * older code or created with content but no count.
+   */
+  const structuredWordCount = computed(() => {
+    let total = 0
+    for (const s of sections.value) total += rowWordCount(s)
+    for (const s of subsections.value) total += rowWordCount(s)
+    return total
+  })
+
+  function rowWordCount(row: any) {
+    if (typeof row?.wordCount === 'number') return row.wordCount
+    return countWords(stripHtmlTags(row?.content || ''))
+  }
 
   const subsectionsBySection = computed(() => {
     const grouped: Record<string, any[]> = {}
@@ -155,7 +188,8 @@ export const useManuscriptStore = defineStore('manuscript', () => {
       // raw insertion order silently discarded any reordering they had done.
       // Elements predating `order` sort last but keep their relative order.
       storyElements.value = loadedElements.sort(
-        (a: any, b: any) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
+        (a: any, b: any) =>
+          (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
       )
       relationships.value = loadedRelationships
       import('../composables/useManuscriptContext')
@@ -175,7 +209,10 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     const branchStore = useBranchStore()
     const branchId = (branchStore as any).activeBranch?.id
     const order = sections.value.length
-    const id = await addSection(projectId, toPlain({ ...data, order, status: 'planning', branchId }))
+    const id = await addSection(
+      projectId,
+      toPlain({ ...data, order, status: 'planning', branchId })
+    )
     sections.value.push({ id, projectId, order, status: 'planning', ...data })
     queueStyleGuideRegen()
     return id
@@ -331,6 +368,8 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     activeSection,
     activeSubsection,
     subsectionsBySection,
+    structuredWordCount,
+    sectionsById,
     isLoading,
     loadError,
     loadManuscript,

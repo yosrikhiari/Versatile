@@ -13,10 +13,12 @@ describe('generateDemoStory (real-pipeline demo generator)', () => {
   it('configureModels pins the local Ollama models + embeddings', () => {
     configureModels()
 
-    expect(localStorage.getItem(STORAGE_KEYS.OLLAMA_MODEL)).toBe('qwen3:8b')
     expect(localStorage.getItem(STORAGE_KEYS.OLLAMA_UTILITY_MODEL)).toBe('qwen3:8b')
 
+    // The prose model is read from the settings blob (`settingsStore.ollamaModel`);
+    // the legacy OLLAMA_MODEL key is not consulted by generation.
     const settings = JSON.parse(localStorage.getItem(STORAGE_KEYS.SETTINGS) || '{}')
+    expect(settings.ollamaModel).toBe('qwen3:8b')
     expect(settings.embeddingProvider).toBe('ollama')
     expect(settings.embeddingModel).toBe('snowflake-arctic-embed2')
   })

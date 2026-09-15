@@ -27,9 +27,7 @@ export const useBranchStore = defineStore('branch', () => {
     isLoading,
     load: loadBranches
   } = useLoading<Branch, [string]>(async (projectId: string) => {
-    console.log('[DEBUG] loadBranhes called with projectId:', projectId, '| stack:', new Error().stack?.split('\n').slice(2, 6).join(' → '))
     const all: Branch[] = await getBranches(projectId)
-    console.log('[DEBUG] getBranches returned:', all.map((b) => ({ id: b.id, name: b.name })))
     if (all.length === 0) {
       const main = await ensureMainBranch(projectId)
       return [main]
@@ -49,7 +47,6 @@ export const useBranchStore = defineStore('branch', () => {
   }
 
   async function initForProject(projectId: any) {
-    console.log('[DEBUG] initForProject called, projectId:', projectId, '| stack:', new Error().stack?.split('\n').slice(2, 5).join(' → '))
     await loadBranches(projectId)
     if (branches.value.length > 0 && !activeBranchId.value) {
       const main = branches.value.find((b) => b.name === 'main')
@@ -61,11 +58,8 @@ export const useBranchStore = defineStore('branch', () => {
     if (branches.value.length === 0) {
       await loadBranches(projectId)
     }
-    console.log('[DEBUG] forkBranch start | projectId:', projectId, '| name:', name, '| activeBranchId:', activeBranchId.value, '| current branches:', branches.value.map((b: any) => b.name))
     const branch = await createBranch(projectId, name, sourceBranchId || activeBranchId.value, opts)
-    console.log('[DEBUG] forkBranch created:', branch, '| about to push')
     branches.value.push(branch)
-    console.log('[DEBUG] forkBranch after push | branches:', branches.value.map((b: any) => b.name))
     return branch
   }
 

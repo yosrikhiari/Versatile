@@ -37,9 +37,11 @@ describe('GuardrailIndicator', () => {
     clearGuardrailNotifications()
   })
 
-  it('renders a clear state when nothing has been flagged', () => {
+  it('renders no count when nothing has been flagged', () => {
     const wrapper = mount(GuardrailIndicator)
-    expect(wrapper.text()).toContain('Clear')
+    // Icon only in the header; the state lives in the accessible name.
+    expect(wrapper.find('button').attributes('title')).toContain('nothing flagged')
+    expect(wrapper.find('button').text()).not.toMatch(/\d/)
   })
 
   it('shows a count once a guard fails', async () => {
@@ -73,7 +75,7 @@ describe('GuardrailIndicator', () => {
     await buttons[buttons.length - 1].trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Clear')
+    expect(wrapper.find('button').attributes('title')).toContain('nothing flagged')
   })
 
   it('reports an empty state when expanded with nothing flagged', async () => {

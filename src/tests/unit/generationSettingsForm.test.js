@@ -56,9 +56,9 @@ describe('GenerationSettingsForm', () => {
     expect(on.findAll('input[type="number"]').length).toBe(4)
   })
 
-  it('emits update:usePreciseStructure when the checkbox toggles', async () => {
+  it('emits update:usePreciseStructure when the switch toggles', async () => {
     const w = mount(GenerationSettingsForm, { props: base })
-    await w.find('input[type="checkbox"]').setValue(true)
+    await w.find('[role="switch"]').trigger('click')
     expect(w.emitted('update:usePreciseStructure')[0]).toEqual([true])
   })
 

@@ -36,8 +36,8 @@ export function shapeContext(rawContext: any, options: any = {}) {
   const plotThreadsBlock = buildEntityBlock(sortedPlotThreads, 'plotThreads', formatPlotThread)
 
   const projectBlock =
-    rawContext.project.category || rawContext.project.description
-      ? `\n\nPROJECT CONTEXT:\n${['Category', 'Description']
+    rawContext.project.category || rawContext.project.genre || rawContext.project.description
+      ? `\n\nPROJECT CONTEXT:\n${['Category', 'Genre', 'Description']
           .filter((k) => rawContext.project[k.toLowerCase()])
           .map((k) => `${k}: ${rawContext.project[k.toLowerCase()]}`)
           .join('\n')}`

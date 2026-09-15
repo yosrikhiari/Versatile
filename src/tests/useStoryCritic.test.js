@@ -229,3 +229,104 @@ describe('useStoryCritic — dimensionScores extraction', () => {
     expect(vi.mocked(aiGenerate)).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('useStoryCritic — a critique with no judgement is not a verdict', () => {
+  const brief = {
+    title: 'Test',
+    emotionalGoal: 'joy',
+    charactersPresent: ['Hero'],
+    payoff: 'win',
+    tension: 'medium'
+  }
+
+  it('requires every field in the schema it sends, with the dimensions named', async () => {
+    const { aiGenerate } = await import('../services/aiService')
+    vi.mocked(aiGenerate).mockResolvedValue(
+      JSON.stringify({
+        score: 8,
+        dimensionScores: { continuity: 8, voice: 8, emotional_goal: 8, show_tell: 8, pacing: 8 },
+        issues: [],
+        strengths: [],
+        pass: true
+      })
+    )
+    await useStoryCritic().evaluateScene({
+      draft: 'x',
+      sceneBrief: brief,
+      storyBible: '',
+      chapterLog: ''
+    })
+    const opts = vi.mocked(aiGenerate).mock.calls[0][2]
+    expect(opts.schema.required).toEqual(
+      expect.arrayContaining(['score', 'dimensionScores', 'issues', 'strengths', 'pass'])
+    )
+    expect(opts.schema.properties.dimensionScores.required).toEqual(mockCreativeDims)
+    expect(Object.keys(opts.schema.properties)[0]).toBe('score')
+  })
+
+  it('retries once, then reports evalUnavailable instead of fabricating a 7', async () => {
+    // What qwen3:8b returned on 30 of 30 scenes of a real run under the
+    // optional-field schema. The old parse made this `score: 7, issues: []`
+    // and the verdict passed on the self-reported score.
+    const { aiGenerate } = await import('../services/aiService')
+    vi.mocked(aiGenerate).mockResolvedValue(JSON.stringify({ pass: true, strengths: ['vivid'] }))
+
+    const result = await useStoryCritic().evaluateScene({
+      draft: 'x',
+      sceneBrief: brief,
+      storyBible: '',
+      chapterLog: ''
+    })
+    expect(vi.mocked(aiGenerate)).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(aiGenerate).mock.calls[1][0]).toMatch(/omitted "score" and "dimensionScores"/)
+    expect(result.evalUnavailable).toBe(true)
+    expect(result.score).toBeNull()
+    expect(result.strengths).toEqual(['vivid'])
+  })
+
+  it('accepts the retry when it carries a judgement', async () => {
+    const { aiGenerate } = await import('../services/aiService')
+    vi.mocked(aiGenerate)
+      .mockResolvedValueOnce(JSON.stringify({ pass: true, strengths: [] }))
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          score: 6,
+          dimensionScores: { continuity: 8, voice: 6, emotional_goal: 7, show_tell: 6, pacing: 7 },
+          issues: [{ type: 'voice', severity: 'minor', description: 'flat' }],
+          strengths: [],
+          pass: false
+        })
+      )
+    const result = await useStoryCritic().evaluateScene({
+      draft: 'x',
+      sceneBrief: brief,
+      storyBible: '',
+      chapterLog: ''
+    })
+    expect(result.evalUnavailable).toBeUndefined()
+    expect(result.score).toBe(6)
+    expect(result.dimensionScores.voice).toBe(6)
+    expect(result.pass).toBe(false)
+  })
+
+  it('derives a missing overall score from the dimension scores, never from a constant', async () => {
+    const { aiGenerate } = await import('../services/aiService')
+    vi.mocked(aiGenerate).mockResolvedValue(
+      JSON.stringify({
+        dimensionScores: { continuity: 9, voice: 8, emotional_goal: 8, show_tell: 8, pacing: 7 },
+        issues: [],
+        strengths: [],
+        pass: true
+      })
+    )
+    const result = await useStoryCritic().evaluateScene({
+      draft: 'x',
+      sceneBrief: brief,
+      storyBible: '',
+      chapterLog: ''
+    })
+    expect(vi.mocked(aiGenerate)).toHaveBeenCalledTimes(1)
+    expect(result.score).toBe(8)
+    expect(result.evalUnavailable).toBeUndefined()
+  })
+})

@@ -67,25 +67,58 @@ function detectRepetition(prose: string): { hasRepetition: boolean; details: str
   return { hasRepetition: false, details: '' }
 }
 
-const CRITIC_SCHEMA = {
-  type: 'object',
-  properties: {
-    score: { type: 'number' },
-    pass: { type: 'boolean' },
-    dimensionScores: { type: 'object' },
-    issues: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          severity: { type: 'string' },
-          type: { type: 'string' },
-          description: { type: 'string' }
+/**
+ * The critic's output contract, built per workspace so the dimension names are
+ * part of the grammar.
+ *
+ * Every field is `required`, and `dimensionScores` names its keys. Under
+ * grammar-constrained decoding (Ollama `format`) an optional property may be
+ * omitted, and qwen3:8b did exactly that on a long evaluation prompt: 30 of 30
+ * scenes of a real run came back as `{ "pass": true, "strengths": [...] }` —
+ * no score, no dimensions, no issues — which the old parse turned into a
+ * fabricated 7 with zero issues, and the verdict "passed on self-reported
+ * score". The whole quality gate was passing itself. With the fields required
+ * the same model returns a full evaluation (`reports/live/critic-probe/`).
+ *
+ * Property order is the emission order under the grammar: the score and the
+ * per-dimension scores come before `pass`, so the verdict is written after the
+ * judgement rather than first.
+ */
+function buildCriticSchema(dimensionNames: string[]) {
+  const dims = dimensionNames.length ? dimensionNames : ['continuity', 'voice', 'emotional_goal', 'show_tell', 'pacing']
+  const dimensionProps: Record<string, unknown> = {}
+  for (const d of dims) dimensionProps[d] = { type: 'number' }
+  return {
+    type: 'object',
+    properties: {
+      score: { type: 'number' },
+      dimensionScores: { type: 'object', properties: dimensionProps, required: dims },
+      issues: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            type: { type: 'string' },
+            severity: { type: 'string', enum: ['minor', 'major'] },
+            description: { type: 'string' }
+          },
+          required: ['type', 'severity', 'description']
         }
-      }
+      },
+      strengths: { type: 'array', items: { type: 'string' } },
+      pass: { type: 'boolean' }
     },
-    strengths: { type: 'array', items: { type: 'string' } }
+    required: ['score', 'dimensionScores', 'issues', 'strengths', 'pass']
   }
+}
+
+/** A critique that carries no judgement at all: no score and no dimension scores. */
+function isVerdictless(parsed: any, dims: string[]) {
+  if (!parsed || typeof parsed !== 'object') return true
+  const hasScore = typeof parsed.score === 'number' && Number.isFinite(parsed.score)
+  const raw = parsed.dimensionScores || {}
+  const hasDims = dims.some((d) => typeof raw[d] === 'number' && Number.isFinite(raw[d]))
+  return !hasScore && !hasDims
 }
 
 const CONTRADICTION_SCHEMA = {
@@ -298,14 +331,46 @@ ${draft.slice(0, 4000)}
 
 Return JSON evaluation with dimensionScores covering all listed dimensions.`
 
-      const parsed = await aiGenerateJson(userPrompt, activePrompts.critic, {
-        feature: FEATURES.STORY_GENERATION,
-        temperature: 0.3,
-        maxTokens: 1000,
-        schema: CRITIC_SCHEMA,
-        schemaName: 'scene_evaluation',
-        sessionBudget: _sessionBudget
-      }).catch(() => null)
+      const criticSchema = buildCriticSchema(promptDims)
+      const callCritic = (prompt: string) =>
+        aiGenerateJson(prompt, activePrompts.critic, {
+          feature: FEATURES.STORY_GENERATION,
+          temperature: 0.3,
+          maxTokens: 1000,
+          schema: criticSchema,
+          schemaName: 'scene_evaluation',
+          sessionBudget: _sessionBudget
+        }).catch(() => null)
+
+      let parsed: any = await callCritic(userPrompt)
+      // One retry when the model produced JSON that judges nothing. The
+      // grammar now requires the fields, so this is a backstop for a provider
+      // that ignores `required` (or a text-mode fallback), not the normal path.
+      if (parsed && isVerdictless(parsed, promptDims)) {
+        console.warn(
+          '[useStoryCritic] critic returned no score and no dimension scores — asking once more'
+        )
+        parsed = await callCritic(
+          `${userPrompt}
+
+Your previous answer omitted "score" and "dimensionScores". Return every field: a numeric "score" (1-10) and a numeric score for EACH dimension listed above.`
+        )
+      }
+      if (parsed && isVerdictless(parsed, promptDims)) {
+        // Honest surrender: a critique with no judgement is not a verdict, and
+        // it must not become one by defaulting the score.
+        console.warn(
+          '[useStoryCritic] Scene evaluation unavailable — the critic returned no score and no dimension scores twice. The quality gate did NOT run for this scene.'
+        )
+        return {
+          pass: true,
+          score: null,
+          evalUnavailable: true,
+          issues: [],
+          strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+          verdictReason: 'critic returned no score and no dimension scores'
+        }
+      }
       if (!parsed) {
         // Don't fabricate a passing 7 — that poisons quality averages and makes
         // unattended runs look fine when the critic actually never ran.
@@ -329,7 +394,6 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
 
       const issues = Array.isArray(parsed.issues) ? parsed.issues : []
       const strengths = Array.isArray(parsed.strengths) ? parsed.strengths : []
-      const score = typeof parsed.score === 'number' ? parsed.score : 7
 
       const expectedDims = getDimensionNames(categoryType)
       const rawScores: any = parsed.dimensionScores || {}
@@ -338,6 +402,17 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         const val = rawScores[dim]
         dimensionScores[dim] = typeof val === 'number' && val >= 1 && val <= 10 ? val : null
       }
+
+      // No fabricated score. A missing overall score is derived from the
+      // dimension scores the model did give (the verdict is derived from those
+      // anyway); `isVerdictless` above guarantees at least one exists here.
+      const numericDims = Object.values(dimensionScores).filter(
+        (v): v is number => typeof v === 'number'
+      )
+      const score: number =
+        typeof parsed.score === 'number' && Number.isFinite(parsed.score)
+          ? parsed.score
+          : Math.round((numericDims.reduce((a, b) => a + b, 0) / numericDims.length) * 10) / 10
 
       const threshold = getDefaultThreshold(categoryType)
 

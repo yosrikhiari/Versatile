@@ -189,12 +189,15 @@ function extractDoc(docString: any, heading: any) {
  * - Repeated paragraphs (by sentence clusters)
  * - Excessive character/word repetition ratios
  */
-function detectRepetition(prose: string, options: {
-  minNgramWords?: number
-  maxNgramOccurrences?: number
-  minParagraphWords?: number
-  maxParagraphOccurrences?: number
-} = {}): { hasRepetition: boolean; details: string } {
+function detectRepetition(
+  prose: string,
+  options: {
+    minNgramWords?: number
+    maxNgramOccurrences?: number
+    minParagraphWords?: number
+    maxParagraphOccurrences?: number
+  } = {}
+): { hasRepetition: boolean; details: string } {
   const {
     minNgramWords = 6,
     maxNgramOccurrences = 3,
@@ -204,7 +207,10 @@ function detectRepetition(prose: string, options: {
 
   if (!prose || prose.length < 100) return { hasRepetition: false, details: '' }
 
-  const sentences = prose.split(/[.!?]+/).map(s => s.trim()).filter(Boolean)
+  const sentences = prose
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
   if (sentences.length < 4) return { hasRepetition: false, details: '' }
 
   // Check for repeated n-grams (word sequences)
@@ -442,7 +448,10 @@ export function chunkProseForMetadata(prose: string, limit = METADATA_CHUNK_CHAR
     // A single paragraph longer than the limit still has to be cut, but that is
     // the rare case rather than every scene.
     if (para.length > limit) {
-      if (current) { chunks.push(current); current = '' }
+      if (current) {
+        chunks.push(current)
+        current = ''
+      }
       for (let i = 0; i < para.length; i += limit) chunks.push(para.slice(i, i + limit))
       continue
     }
@@ -461,7 +470,9 @@ function dedupeByName(items: any[]): any[] {
   const seen = new Set<string>()
   const out: any[] = []
   for (const item of items) {
-    const key = String(item?.name || item?.title || '').toLowerCase().trim()
+    const key = String(item?.name || item?.title || '')
+      .toLowerCase()
+      .trim()
     if (!key || seen.has(key)) continue
     seen.add(key)
     out.push(item)
@@ -513,7 +524,11 @@ function dedupeEvents(events: any[]): any[] {
   const out: any[] = []
   for (const e of events) {
     const key = [e?.type, e?.from, e?.to, e?.label]
-      .map((v) => String(v || '').toLowerCase().trim())
+      .map((v) =>
+        String(v || '')
+          .toLowerCase()
+          .trim()
+      )
       .join('|')
     if (key === '|||' || seen.has(key)) continue
     seen.add(key)
@@ -522,7 +537,14 @@ function dedupeEvents(events: any[]): any[] {
   return out
 }
 
-async function extractSceneMetadata(prose: any, { entityContext, signal, sessionBudget }: { entityContext?: any; signal?: any; sessionBudget?: SessionBudget | null } = {}) {
+async function extractSceneMetadata(
+  prose: any,
+  {
+    entityContext,
+    signal,
+    sessionBudget
+  }: { entityContext?: any; signal?: any; sessionBudget?: SessionBudget | null } = {}
+) {
   const full = String(prose || '')
   if (!full.trim()) return { ...EMPTY_METADATA, metadataStatus: 'skipped' as const }
 
@@ -537,7 +559,14 @@ async function extractSceneMetadata(prose: any, { entityContext, signal, session
   return mergeSceneMetadata(parts)
 }
 
-async function extractMetadataChunk(excerpt: string, { entityContext, signal, sessionBudget }: { entityContext?: any; signal?: any; sessionBudget?: SessionBudget | null } = {}) {
+async function extractMetadataChunk(
+  excerpt: string,
+  {
+    entityContext,
+    signal,
+    sessionBudget
+  }: { entityContext?: any; signal?: any; sessionBudget?: SessionBudget | null } = {}
+) {
   const prompt = `Read this scene and extract structured metadata about it. Do not rewrite or summarize the prose beyond the one-sentence summary field.
 
 ${entityContext ? `KNOWN ENTITIES (already established — classify references to these as "used", anything genuinely new as "new"):\n${entityContext}\n\n` : ''}SCENE:
@@ -605,9 +634,18 @@ export function useStoryWriter() {
     completedScenes,
     characters
   }: {
-    sceneBrief: any; storyArc: any; chapterLog: any; storyBible: any; onChunk: any;
-    embeddingContext: any; storyContract: any; rejectedPatterns: any; existingEntitiesJson: any;
-    voiceProfile: any; completedScenes: any; characters: any;
+    sceneBrief: any
+    storyArc: any
+    chapterLog: any
+    storyBible: any
+    onChunk: any
+    embeddingContext: any
+    storyContract: any
+    rejectedPatterns: any
+    existingEntitiesJson: any
+    voiceProfile: any
+    completedScenes: any
+    characters: any
   }) {
     isWriting.value = true
     writeError.value = null
@@ -621,7 +659,7 @@ export function useStoryWriter() {
       // self-contradicting scenes when continuing an existing draft.
       const storyContextBlock =
         storyBible && storyBible.trim()
-          ? `STORY CONTEXT (established canon — everything below is already TRUE; never contradict or re-invent it):\n${storyBible.trim()}\n`
+          ? `STORY CONTEXT (established canon — everything below is already TRUE; never contradict or re-invent it):\n${storyBible.trim()}\nNAMES: the characters named above are the only named people in this story. Anyone else — a son, a clerk, a guide — is referred to by role, never given a name, and a canon name is never reused for someone else.\n`
           : ''
 
       const profileResult = voiceProfile ? getVoiceProfile(voiceProfile, FALLBACK_VOICE) : null
@@ -644,7 +682,10 @@ export function useStoryWriter() {
       if (extraRejected && extraRejected.length > 0) {
         allRejected.push(
           extraRejected
-            .map((p: any, i: any) => `${i + 1}. Context: "${p.context}" — AVOID generating similar content`)
+            .map(
+              (p: any, i: any) =>
+                `${i + 1}. Context: "${p.context}" — AVOID generating similar content`
+            )
             .join('\n')
         )
       }
@@ -810,11 +851,25 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     characters,
     signal
   }: {
-    sceneBrief: any; storyArc: any; chapterLog: any; storyBible: any; onChunk: any;
-    onRawChunk: any; embeddingContext: any; storyContract: any; rejectedPatterns: any;
-    existingEntitiesJson: any; spineContext: any; anchorRole: any; anchorConstraints: any;
-    pastEvalResults: any; focusInstructions: any; voiceProfile: any; completedScenes: any;
-    characters: any; signal: any;
+    sceneBrief: any
+    storyArc: any
+    chapterLog: any
+    storyBible: any
+    onChunk: any
+    onRawChunk: any
+    embeddingContext: any
+    storyContract: any
+    rejectedPatterns: any
+    existingEntitiesJson: any
+    spineContext: any
+    anchorRole: any
+    anchorConstraints: any
+    pastEvalResults: any
+    focusInstructions: any
+    voiceProfile: any
+    completedScenes: any
+    characters: any
+    signal: any
   }) {
     isWriting.value = true
     writeError.value = null
@@ -830,7 +885,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       // self-contradicting scenes when continuing an existing draft.
       const storyContextBlock =
         storyBible && storyBible.trim()
-          ? `STORY CONTEXT (established canon — everything below is already TRUE; never contradict or re-invent it):\n${storyBible.trim()}\n`
+          ? `STORY CONTEXT (established canon — everything below is already TRUE; never contradict or re-invent it):\n${storyBible.trim()}\nNAMES: the characters named above are the only named people in this story. Anyone else — a son, a clerk, a guide — is referred to by role, never given a name, and a canon name is never reused for someone else.\n`
           : ''
 
       const profileResult = voiceProfile ? getVoiceProfile(voiceProfile, FALLBACK_VOICE) : null
@@ -853,7 +908,10 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       if (extraRejected && extraRejected.length > 0) {
         allRejected.push(
           extraRejected
-            .map((p: any, i: any) => `${i + 1}. Context: "${p.context}" — AVOID generating similar content`)
+            .map(
+              (p: any, i: any) =>
+                `${i + 1}. Context: "${p.context}" — AVOID generating similar content`
+            )
             .join('\n')
         )
       }
@@ -1007,7 +1065,10 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
 
       // Compute a tight token cap based on the scene's word target
       const estimatedWords = sceneBrief.estimatedWords || 800
-      const maxTokens = Math.max(2000, Math.min(4500, Math.ceil(estimatedWords * WORDS_TO_TOKENS_RATIO) + 800))
+      const maxTokens = Math.max(
+        2000,
+        Math.min(4500, Math.ceil(estimatedWords * WORDS_TO_TOKENS_RATIO) + 800)
+      )
 
       const complexity = computeComplexityLevel({
         feature: FEATURES.STORY_GENERATION,
@@ -1030,7 +1091,13 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
             if (onRawChunk) onRawChunk(chunk)
             onChunk(chunk, chunk)
           },
-          { feature: FEATURES.STORY_GENERATION, maxTokens, signal, complexity, sessionBudget: _sessionBudget }
+          {
+            feature: FEATURES.STORY_GENERATION,
+            maxTokens,
+            signal,
+            complexity,
+            sessionBudget: _sessionBudget
+          }
         )
       } else {
         accumulated = await aiGenerate(userPrompt, systemPrompt, {
@@ -1159,16 +1226,21 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
     }
   }
 
-  return { writeScene, writeSceneStructured, isWriting, writeError, get sessionBudget() { return _sessionBudget }, set sessionBudget(v: SessionBudget | null) { _sessionBudget = v } }
+  return {
+    writeScene,
+    writeSceneStructured,
+    isWriting,
+    writeError,
+    get sessionBudget() {
+      return _sessionBudget
+    },
+    set sessionBudget(v: SessionBudget | null) {
+      _sessionBudget = v
+    }
+  }
 }
 
-export {
-  summarizeLog,
-  CRAFT_RULES,
-  PROSE_STYLE_GUIDE,
-  FALLBACK_VOICE,
-  UnsalvageableProseError
-}
+export { summarizeLog, CRAFT_RULES, PROSE_STYLE_GUIDE, FALLBACK_VOICE, UnsalvageableProseError }
 
 /**
  * Name-based check rather than `instanceof`.

@@ -11,6 +11,7 @@
 import { useHeuristicAnalyzer } from '../../composables/useHeuristicAnalyzer'
 import { getSubsections } from '../db-structure'
 import { saveShapeAnalysis, getLatestShapeVersion } from '../db-story-shape'
+import { stripHtmlTags } from '../../utils/textUtils'
 
 export interface ManuscriptShapeOutcome {
   ok: boolean
@@ -30,7 +31,7 @@ export function buildManuscriptText(sections: any[], subsections: any[]): string
     const chunks = (subsections || [])
       .filter((s: any) => String(s?.sectionId) === String(section?.id))
       .sort((a: any, b: any) => (a?.order || 0) - (b?.order || 0))
-      .map((s: any) => String(s?.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim())
+      .map((s: any) => stripHtmlTags(String(s?.content || '')))
       .filter(Boolean)
     if (chunks.length === 0) continue
     parts.push(`[Section ${(section?.order || 0) + 1}: ${section?.title || 'Untitled'}]`)

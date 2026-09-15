@@ -148,7 +148,9 @@ export class CommitService {
     sections: any,
     projectId: any,
     structured: any,
-    sceneIndex?: number
+    sceneIndex?: number,
+    /** Set when the quality gate ran out of attempts and kept its best try. */
+    gateFailure: string | null = null
   ) {
     this.progress.statusText =
       'Compiling prose and generating plot-accurate continuity summaries...'
@@ -163,7 +165,7 @@ export class CommitService {
           // HTML. Storing raw model text collapsed every paragraph break.
           content: proseToHtml(fullProse),
           wordCount,
-          contentStatus: 'generated'
+          contentStatus: gateFailure ? 'review' : 'generated'
         },
         projectId
       )
@@ -233,9 +235,10 @@ export class CommitService {
   async buildManuscript(_scenePlan: any, _writtenScenes: any) {
     const sections = this.manuscriptStore.sections
     const subsectionsBySection = this.manuscriptStore.subsectionsBySection
-    const runCreatedIds = this.runCreatedSectionIds.value instanceof Set
-      ? this.runCreatedSectionIds.value
-      : new Set(this.runCreatedSectionIds.value)
+    const runCreatedIds =
+      this.runCreatedSectionIds.value instanceof Set
+        ? this.runCreatedSectionIds.value
+        : new Set(this.runCreatedSectionIds.value)
 
     for (const section of sections) {
       // Only aggregate sections created in this run
@@ -255,10 +258,7 @@ export class CommitService {
       if (htmlParts.length === 0) continue
 
       const joinedHtml = htmlParts.join('<hr>')
-      const totalWords = subs.reduce(
-        (sum: number, s: any) => sum + (s.wordCount || 0),
-        0
-      )
+      const totalWords = subs.reduce((sum: number, s: any) => sum + (s.wordCount || 0), 0)
 
       await this.manuscriptStore.updateSectionData(section.id, {
         content: joinedHtml,

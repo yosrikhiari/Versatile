@@ -6,6 +6,12 @@ export function getProjectContext() {
   if (projectStore.currentCategory) {
     parts.push(`Category: ${projectStore.currentCategory}`)
   }
+  if (projectStore.currentGenre) {
+    parts.push(`Genre: ${projectStore.currentGenre}`)
+  }
+  if (projectStore.currentGenre) {
+    parts.push(`Genre: ${projectStore.currentGenre}`)
+  }
   if (projectStore.currentDescription) {
     parts.push(`Description: ${projectStore.currentDescription}`)
   }

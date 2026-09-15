@@ -270,7 +270,8 @@ export const SCHEMA_VERSIONS = [
   {
     version: 40,
     stores: {
-      researchChunks: '++id, documentId, projectId, chunkIndex, embeddingStatus, syncStatus, lastSyncedAt'
+      researchChunks:
+        '++id, documentId, projectId, chunkIndex, embeddingStatus, syncStatus, lastSyncedAt'
     }
   },
   // v41: +syncStatus, lastSyncedAt on researchTags (was missing from v22 sync expansion)
@@ -284,7 +285,8 @@ export const SCHEMA_VERSIONS = [
   {
     version: 42,
     stores: {
-      branches: '++id, projectId, name, sourceBranchId, description, status, createdAt, updatedAt, syncStatus, lastSyncedAt'
+      branches:
+        '++id, projectId, name, sourceBranchId, description, status, createdAt, updatedAt, syncStatus, lastSyncedAt'
     }
   },
   // v43: +evalPreferences for pairwise draft ranking
@@ -330,8 +332,7 @@ export const SCHEMA_VERSIONS = [
     stores: {
       chapterDigests:
         '++id, projectId, chapterNumber, volumeId, contentHash, updatedAt, &[projectId+chapterNumber]',
-      volumeDigests:
-        '++id, projectId, volumeId, contentHash, updatedAt, &[projectId+volumeId]',
+      volumeDigests: '++id, projectId, volumeId, contentHash, updatedAt, &[projectId+volumeId]',
       entityStates:
         '++id, projectId, entityType, entityId, sceneId, stateHash, updatedAt, &[projectId+entityType+entityId+sceneId]'
     }
@@ -384,6 +385,24 @@ export const SCHEMA_VERSIONS = [
       graphEdges:
         '++id, projectId, sourceId, sourceType, targetId, targetType, relationshipType, volumeId, ' +
         'validFromChapter, validUntilChapter, runId, [projectId+validFromChapter]'
+    }
+  },
+  /**
+   * v48: time-ordered compound indexes on the three append-only history tables.
+   *
+   * Every autosave appended to all three and then read each one back in full
+   * (`where('projectId').toArray()` → sort in JS → take one). The cost per save
+   * grew with the number of saves ever made. With `[projectId+timestamp]` (and
+   * the chapter-scoped variant for snapshots) "latest N" is a reverse cursor
+   * that stops after N rows, and the writers can cap history cheaply.
+   */
+  {
+    version: 48,
+    stores: {
+      snapshots:
+        '++id, projectId, chapterId, timestamp, label, [projectId+chapterId], [projectId+chapterId+timestamp]',
+      storyStateSnapshots: '++id, projectId, timestamp, [projectId+timestamp]',
+      sessionArchive: '++id, projectId, timestamp, type, signal, [projectId+timestamp]'
     }
   }
 ]
