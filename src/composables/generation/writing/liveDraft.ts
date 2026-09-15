@@ -41,8 +41,21 @@ export function proseToHtml(text: any) {
     .split(/\n\s*\n+/)
     .map((paragraph: string) => paragraph.trim())
     .filter(Boolean)
-    .map((paragraph: string) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+    .map((paragraph: string) => `<p>${emphasis(escapeHtml(paragraph)).replace(/\n/g, '<br>')}</p>`)
     .join('')
+}
+
+/**
+ * Models write emphasis the markdown way (`*Vespera*`, `**no**`), and the
+ * asterisks used to land in the manuscript as asterisks. Runs on escaped text,
+ * so nothing here can open a tag the model wrote; a lone `*` or a scene break
+ * (`* * *`) is left alone.
+ */
+function emphasis(escaped: string): string {
+  return escaped
+    .replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^\w*])\*(\S(?:[^*\n]*?\S)?)\*(?![\w*])/g, '$1<em>$2</em>')
+    .replace(/(^|[^\w])_(\S(?:[^_\n]*?\S)?)_(?![\w])/g, '$1<em>$2</em>')
 }
 
 /** Word count over plain prose — the editor's HTML is not a counting surface. */

@@ -42,7 +42,7 @@ describe('GenerationSettingsForm — chapter mode', () => {
   it('labels the word target as the chapter’s own', () => {
     const wrapper = mountForm({ mode: MODE_CHAPTER })
     expect(wrapper.find('[data-test="word-target-stepper"]').text()).toContain(
-      'Chapter Word Target'
+      'Chapter word target'
     )
   })
 
@@ -51,7 +51,7 @@ describe('GenerationSettingsForm — chapter mode', () => {
     const estimate = chapter.find('[data-test="estimate"]')
     expect(estimate.exists()).toBe(true)
     expect(estimate.text()).toContain('1 chapter')
-    expect(estimate.text()).toContain('2 scene(s)')
+    expect(estimate.text()).toContain('2 scenes')
     // 1600 words over 2 scenes.
     expect(estimate.text()).toContain('800')
   })
@@ -67,7 +67,7 @@ describe('GenerationSettingsForm — chapter mode', () => {
 
   it('leaves arc mode without precise structure exactly as it was', () => {
     const wrapper = mountForm({ mode: MODE_ARC, usePreciseStructure: false })
-    expect(wrapper.find('[data-test="word-target-stepper"]').text()).toContain('Total Word Target')
+    expect(wrapper.find('[data-test="word-target-stepper"]').text()).toContain('Total word target')
     expect(wrapper.find('[data-test="volumes-stepper"]').exists()).toBe(false)
   })
 

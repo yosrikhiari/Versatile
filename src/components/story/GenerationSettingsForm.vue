@@ -188,10 +188,10 @@ const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
           v-model="wordTarget"
           :label="
             isChapterMode
-              ? 'Chapter Word Target'
+              ? 'Chapter word target'
               : mode === MODE_SCENE
-                ? 'Words per Scene'
-                : 'Total Word Target'
+                ? 'Words per scene'
+                : 'Total word target'
           "
           :min="500"
           :max="10000"
@@ -224,7 +224,7 @@ const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
           class="font-ui text-xs leading-5"
           :class="isLongRun ? 'text-warning' : 'text-text-hint'"
         >
-          1 chapter · {{ scenesPerChapter }} scene(s) · ~{{
+          1 chapter · {{ scenesPerChapter }} {{ scenesPerChapter === 1 ? 'scene' : 'scenes' }} · ~{{
             Math.ceil(wordTarget / Math.max(1, scenesPerChapter)).toLocaleString()
           }}
           words per scene. Estimated generation time: <strong>{{ estimateLabel }}</strong>

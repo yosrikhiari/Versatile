@@ -155,7 +155,9 @@ function refusalIn(prose: string): string | null {
   return null
 }
 
-function weakestDimensionOf(verdicts: ChapterVerdictLike[]): { name: string; score: number } | null {
+function weakestDimensionOf(
+  verdicts: ChapterVerdictLike[]
+): { name: string; score: number } | null {
   let weakest: { name: string; score: number } | null = null
   for (const v of verdicts) {
     for (const [name, score] of Object.entries(v?.dimensionScores || {})) {
@@ -169,8 +171,23 @@ function weakestDimensionOf(verdicts: ChapterVerdictLike[]): { name: string; sco
 const PAST_AUX = ['was', 'were', 'had', 'did', 'would', 'could', 'should', 'might']
 const PRESENT_AUX = ['is', 'are', 'has', 'does', 'will', 'can', 'shall']
 const PAST_IRREGULAR = [
-  'stood', 'went', 'came', 'saw', 'took', 'felt', 'knew', 'thought', 'said',
-  'told', 'made', 'found', 'left', 'kept', 'began', 'wrote', 'spoke'
+  'stood',
+  'went',
+  'came',
+  'saw',
+  'took',
+  'felt',
+  'knew',
+  'thought',
+  'said',
+  'told',
+  'made',
+  'found',
+  'left',
+  'kept',
+  'began',
+  'wrote',
+  'spoke'
 ]
 
 // Quoted speech keeps its own tense legitimately ("he said 'I am tired'"),
@@ -192,7 +209,10 @@ function expandContractions(text: string): string {
 }
 
 function tenseCounts(text: string): { past: number; present: number } {
-  const words = expandContractions(stripDialogue(text)).toLowerCase().match(/[a-z']+/g) || []
+  const words =
+    expandContractions(stripDialogue(text))
+      .toLowerCase()
+      .match(/[a-z']+/g) || []
   let past = 0
   let present = 0
   for (const w of words) {
@@ -240,7 +260,9 @@ export function evaluateChapter(input: ChapterGateInput): ChapterGateReport {
     message: string,
     sceneIndices?: number[]
   ) => {
-    findings.push(sceneIndices?.length ? { code, severity, message, sceneIndices } : { code, severity, message })
+    findings.push(
+      sceneIndices?.length ? { code, severity, message, sceneIndices } : { code, severity, message }
+    )
   }
 
   // ─── Stage A — structure and prose, no model calls ───────────────────────
@@ -331,46 +353,96 @@ export function evaluateChapter(input: ChapterGateInput): ChapterGateReport {
       )
     }
   }
-// Content words that carry payoff meaning: length 4+ and not structural
-// filler. Deliberately small stopword list — an unlisted filler word only
-// adds one more term to hit, while an overzealous list silently unburies
-// real misses by shrinking the denominator.
-const PAYOFF_STOPWORDS = new Set([
-  'that', 'this', 'with', 'from', 'into', 'over', 'after', 'before',
-  'during', 'between', 'through', 'about', 'there', 'here', 'they', 'them',
-  'their', 'she', 'him', 'his', 'you', 'your', 'our', 'who', 'what',
-  'when', 'where', 'which', 'while', 'will', 'would', 'have', 'has',
-  'been', 'were', 'then', 'than', 'also', 'just', 'even', 'still',
-  'back', 'down', 'only', 'such', 'much', 'many', 'more', 'most',
-  'other', 'some', 'each', 'both', 'until', 'again', 'further', 'once'
-])
+  // Content words that carry payoff meaning: length 4+ and not structural
+  // filler. Deliberately small stopword list — an unlisted filler word only
+  // adds one more term to hit, while an overzealous list silently unburies
+  // real misses by shrinking the denominator.
+  const PAYOFF_STOPWORDS = new Set([
+    'that',
+    'this',
+    'with',
+    'from',
+    'into',
+    'over',
+    'after',
+    'before',
+    'during',
+    'between',
+    'through',
+    'about',
+    'there',
+    'here',
+    'they',
+    'them',
+    'their',
+    'she',
+    'him',
+    'his',
+    'you',
+    'your',
+    'our',
+    'who',
+    'what',
+    'when',
+    'where',
+    'which',
+    'while',
+    'will',
+    'would',
+    'have',
+    'has',
+    'been',
+    'were',
+    'then',
+    'than',
+    'also',
+    'just',
+    'even',
+    'still',
+    'back',
+    'down',
+    'only',
+    'such',
+    'much',
+    'many',
+    'more',
+    'most',
+    'other',
+    'some',
+    'each',
+    'both',
+    'until',
+    'again',
+    'further',
+    'once'
+  ])
 
-function payoffTerms(payoff: string): string[] {
-  return String(payoff || '')
-    .toLowerCase()
-    .split(/[^a-z']+/)
-    .filter((w) => w.length >= 4 && !PAYOFF_STOPWORDS.has(w))
-    .map((w) => w.replace(/'s$/, ''))
-    .filter((w) => w.length >= 4)
-}
-
-// Word-level hit with light inflection tolerance (stay/staying, ask/asked)
-// instead of substring matching, so "ask" never matches "mask". Favors
-// recall: a delivered beat uses the terms or their inflections.
-function payoffTermHit(draftWords: Set<string>, term: string): boolean {
-  if (draftWords.has(term)) return true
-  for (const suffix of ['s', 'es', 'ing', 'ed', 'd']) {
-    if (draftWords.has(term + suffix)) return true
+  function payoffTerms(payoff: string): string[] {
+    return String(payoff || '')
+      .toLowerCase()
+      .split(/[^a-z']+/)
+      .filter((w) => w.length >= 4 && !PAYOFF_STOPWORDS.has(w))
+      .map((w) => w.replace(/'s$/, ''))
+      .filter((w) => w.length >= 4)
   }
-  for (const w of draftWords) {
-    if (w.startsWith(term) && w.length - term.length <= 3) return true
-  }
-  return false
-}
 
-function isPlaceholderPayoff(payoff: unknown): boolean {
-  return !payoff || /^\s*(none|n\/a|tbd)?\s*$/i.test(String(payoff))
-}
+  // Word-level hit with light inflection tolerance (stay/staying, ask/asked)
+  // instead of substring matching, so "ask" never matches "mask". Favors
+  // recall: a delivered beat uses the terms or their inflections.
+  function payoffTermHit(draftWords: Set<string>, term: string): boolean {
+    if (draftWords.has(term)) return true
+    for (const suffix of ['s', 'es', 'ing', 'ed', 'd']) {
+      if (draftWords.has(term + suffix)) return true
+    }
+    for (const w of draftWords) {
+      if (w.startsWith(term) && w.length - term.length <= 3) return true
+    }
+    return false
+  }
+
+  function isPlaceholderPayoff(payoff: unknown): boolean {
+    return !payoff || /^\s*(none|n\/a|tbd)?\s*$/i.test(String(payoff))
+  }
 
   // Payoff coverage. The critic sees each scene's payoff and still passes
   // misses (a real sample dropped "June asks to stay the winter" at 8.6),
@@ -386,7 +458,10 @@ function isPlaceholderPayoff(payoff: unknown): boolean {
     const terms = payoffTerms(payoff as string)
     if (terms.length === 0) continue
     const draftWords = new Set(
-      String(scene.prose).toLowerCase().split(/[^a-z']+/).filter(Boolean)
+      String(scene.prose)
+        .toLowerCase()
+        .split(/[^a-z']+/)
+        .filter(Boolean)
     )
     const missing = terms.filter((t) => !payoffTermHit(draftWords, t))
     const required = Math.max(1, Math.ceil((terms.length * 2) / 3))
@@ -394,15 +469,19 @@ function isPlaceholderPayoff(payoff: unknown): boolean {
       add(
         'payoff_missed',
         'warn',
-        `Scene ${i + 1} misses its planned payoff ` +
-          `(${missing.slice(0, 3).join(', ')} absent — ` +
-          `${terms.length - missing.length} of ${terms.length} key terms present).`,
+        // Read by the writer, not a log: the plan's own words are the clue.
+        `Scene ${i + 1} may not land its planned payoff: only ` +
+          `${terms.length - missing.length} of its ${terms.length} planned beats appear ` +
+          `(the plan mentions ${missing
+            .slice(0, 3)
+            .map((m) => `"${m}"`)
+            .join(', ')}).`,
         [i + 1]
       )
     }
   }
 
-const planTarget = plan.reduce((sum, s) => sum + (Number(s?.estimatedWords) || 0), 0)
+  const planTarget = plan.reduce((sum, s) => sum + (Number(s?.estimatedWords) || 0), 0)
   const targetWords = Number(input.targetWords) || planTarget
   const uniqueWords = countUniqueWords(joined)
   const wordRatio = targetWords > 0 ? uniqueWords / targetWords : 1
@@ -610,6 +689,8 @@ export function shortestScenes(
   return scenes
     .map((scene, index) => ({ index, scene }))
     .filter((entry): entry is { index: number; scene: WrittenSceneLike } => !!entry.scene)
-    .sort((a, b) => countWords(String(a.scene.prose || '')) - countWords(String(b.scene.prose || '')))
+    .sort(
+      (a, b) => countWords(String(a.scene.prose || '')) - countWords(String(b.scene.prose || ''))
+    )
     .slice(0, limit)
 }

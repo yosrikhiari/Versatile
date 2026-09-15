@@ -8,6 +8,7 @@ import { useSettingsStore } from '../../stores/settingsStore'
 function makeGenerator(overrides = {}) {
   return {
     phase: ref('idle'),
+    historyVersion: ref(0),
     progress: { current: 0, total: 0, statusText: '' },
     error: ref(null),
     volumeId: ref(null),

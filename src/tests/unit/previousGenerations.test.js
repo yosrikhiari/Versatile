@@ -22,7 +22,7 @@ describe('PreviousGenerationsList honest states', () => {
         ]
       }
     })
-    expect(wrapper.text()).toContain('no score recorded')
+    expect(wrapper.text()).toContain('not scored')
     expect(wrapper.text()).not.toContain('score 0')
   })
 
@@ -32,7 +32,23 @@ describe('PreviousGenerationsList honest states', () => {
         generations: [{ title: 'Volume Story', generatedAt: '2026-07-31T00:00:00.000Z' }]
       }
     })
-    expect(wrapper.text()).toContain('no score recorded')
+    expect(wrapper.text()).toContain('not scored')
+  })
+
+  it('reads a negative score as the continuity issue count it encodes', () => {
+    const wrapper = mount(PreviousGenerationsList, {
+      props: {
+        generations: [
+          {
+            title: 'The Count … The Truth',
+            generatedAt: '2026-09-15T00:00:00.000Z',
+            qualityScore: -4
+          }
+        ]
+      }
+    })
+    expect(wrapper.text()).toContain('4 continuity issues')
+    expect(wrapper.text()).not.toContain('score -4')
   })
 
   it('shows a one-line empty state when there is no history', () => {

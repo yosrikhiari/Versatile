@@ -198,8 +198,19 @@ export function useGenerationRunController(generator: any, deps: RunControllerDe
     storyContract.value = ''
     planEdits.value = []
     liveEntities.value = []
-    resumableRun.value = null
     if (selectedSceneIndex) selectedSceneIndex.value = 0
+    // Stop lands here. A run stopped mid-write has a checkpoint, and the idle
+    // form used to come back with no trace of it until the panel remounted;
+    // the resume card is what tells the writer their scenes were kept.
+    resumableRun.value = null
+    const pid = projectStore?.currentProjectId
+    if (pid && typeof generator.getResumableRun === 'function') {
+      try {
+        resumableRun.value = await generator.getResumableRun(pid)
+      } catch {
+        resumableRun.value = null
+      }
+    }
   }
 
   function sceneEdit(sceneIndex: number, field: string, value: any) {

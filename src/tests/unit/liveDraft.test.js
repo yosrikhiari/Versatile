@@ -18,6 +18,14 @@ describe('proseToHtml', () => {
     expect(proseToHtml('A.\n\n\n\nB.')).toBe('<p>A.</p><p>B.</p>')
   })
 
+  it('turns markdown emphasis into em/strong and leaves lone asterisks alone', () => {
+    expect(proseToHtml('The *Vespera* was gone.')).toBe('<p>The <em>Vespera</em> was gone.</p>')
+    expect(proseToHtml('She said **no**.')).toBe('<p>She said <strong>no</strong>.</p>')
+    expect(proseToHtml('a _quiet_ word')).toBe('<p>a <em>quiet</em> word</p>')
+    expect(proseToHtml('* * *')).toBe('<p>* * *</p>')
+    expect(proseToHtml('snake_case_name')).toBe('<p>snake_case_name</p>')
+  })
+
   it('escapes markup so model output cannot inject nodes', () => {
     expect(proseToHtml('a < b & c > d')).toBe('<p>a &lt; b &amp; c &gt; d</p>')
   })

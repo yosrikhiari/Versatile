@@ -53,7 +53,7 @@ const willWrite = computed(() => unwritten.value + (redraftStubs.value ? short.v
     <BaseSection
       first
       title="Continue this story"
-      :description="`${written} of ${totalScenes} scenes written · ${words.toLocaleString()} words${unwritten ? ` · ${unwritten} still empty` : ''}${short ? ` · ${short} are stubs` : ''}`"
+      :description="`${written} of ${totalScenes} scenes written · ${words.toLocaleString()} words${unwritten ? ` · ${unwritten} still empty` : ''}${short ? ` · ${short} ${short === 1 ? 'is a stub' : 'are stubs'}` : ''}`"
     >
       <template v-if="busy" #actions>
         <BaseButton variant="ghost" size="sm" icon="square" @click="emit('stop')">Stop</BaseButton>
@@ -65,7 +65,9 @@ const willWrite = computed(() => unwritten.value + (redraftStubs.value ? short.v
           <BaseCheckbox
             v-if="short"
             v-model="redraftStubs"
-            :label="`Also redraft ${short} stub scene(s)`"
+            :label="
+              short === 1 ? 'Also redraft the stub scene' : `Also redraft the ${short} stub scenes`
+            "
           />
           <BaseButton
             variant="primary"
@@ -78,7 +80,9 @@ const willWrite = computed(() => unwritten.value + (redraftStubs.value ? short.v
             {{
               busy
                 ? 'Writing…'
-                : `Continue drafting (${willWrite} scene${willWrite === 1 ? '' : 's'})`
+                : willWrite === 0
+                  ? 'Nothing to draft — tick the stub above'
+                  : `Continue drafting (${willWrite} scene${willWrite === 1 ? '' : 's'})`
             }}
           </BaseButton>
         </template>

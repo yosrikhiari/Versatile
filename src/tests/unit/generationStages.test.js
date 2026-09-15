@@ -90,8 +90,10 @@ describe('GenerationStages', () => {
   })
 
   it('reports the real scene count under the writing stage', () => {
+    // `currentScene` is the 0-based index of the scene in flight; the writing
+    // block says "Scene 5 of 30" for it, and the stage line must agree.
     const w = mountAt('writing', { currentScene: 4, totalScenes: 30 })
-    expect(w.text()).toContain('Scene 4 of 30')
+    expect(w.text()).toContain('Scene 5 of 30')
   })
 
   it('does not invent a scene count before the plan exists', () => {

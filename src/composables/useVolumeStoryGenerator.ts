@@ -131,6 +131,13 @@ export function useVolumeStoryGenerator() {
   const syncPreview = ref<any[]>([])
   let structuredResults: any[] = []
   const hasPendingBatches = ref(false)
+  /** Bumped after a run is written to `generatedStories`, so a panel can re-read its history. */
+  const historyVersion = ref(0)
+  const continuityFixesSkipped = ref(false)
+  function skipContinuityFixes() {
+    continuityFixesSkipped.value = true
+    consistencyService.skipFixes()
+  }
   const bibleChangesDiscovered = ref(0)
   // Scenes whose metadata went through entity sync — lets the health check tell
   // "sync never ran" from "sync ran and the story added nothing".
@@ -834,12 +841,18 @@ export function useVolumeStoryGenerator() {
 
       // Phase 0: Create volume first (so bootstrapping has a real volume ID)
       progress.current = 1
-      progress.statusText = 'Creating volume...'
+      progress.statusText = 'Creating the volume…'
+      // The store may not have loaded this project's volumes yet, which is how
+      // two runs both produced "Volume 1". Count what is in the database.
+      await volumeStore.loadVolumes(projectId)
+      const taken = new Set((volumeStore.volumes as any[]).map((v) => String(v.title || '')))
+      let n = (volumeStore.volumes as any[]).length + 1
+      while (taken.has(`Volume ${n}`)) n += 1
       const vId = await volumeStore.createVolume(projectId, {
         // The title used to be the first 60 characters of the assembled prompt
         // ("Genre: Literary\nWhat this scene should be about: ..."), which is
         // what the Chapters panel then showed as the volume's name.
-        title: `Volume ${(volumeStore.volumes as any[]).length + 1}`,
+        title: `Volume ${n}`,
         description: `Generated story — ${genre}, ${tone}`,
         // `getNextColor()` picks the first colour not already in use, from the
         // store's palette. Hardcoding `#6366f1` — which is simply VOLUME_COLORS[0]
@@ -854,7 +867,7 @@ export function useVolumeStoryGenerator() {
       await delegatorApi.dispatch('BOOTSTRAP_START', { projectId, volumeId: vId })
 
       // Load story bible context and existing manuscript as evidence for the Director
-      progress.statusText = 'Loading story context for planning...'
+      progress.statusText = 'Reading the story so far…'
       const storyDocs = useStoryDocuments()
 
       const sceneSummaries: string[] = []
@@ -865,10 +878,13 @@ export function useVolumeStoryGenerator() {
           .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
         for (const sub of sectionSubs) {
           if (sub.content || sub.description) {
-            const excerpt = sub.content
-              ? sub.content.slice(0, 300).replace(/\s+\S*$/, '') + '...'
-              : ''
-            sceneSummaries.push(`"${sub.title}": ${sub.description || excerpt || '(written)'}`)
+            // Plain text: the excerpt used to start with "<p>", and the model
+            // planned around the markup.
+            const plain = sub.content ? stripHtmlTags(sub.content) : ''
+            const excerpt = plain ? plain.slice(0, 300).replace(/\s+\S*$/, '') + '...' : ''
+            sceneSummaries.push(
+              `"${section.title} / ${sub.title}": ${sub.description || excerpt || '(written)'}`
+            )
           }
         }
       }
@@ -881,7 +897,12 @@ export function useVolumeStoryGenerator() {
         const bible = await storyDocs.getStoryDocumentContext(projectId)
         if (bible) parts.push(bible)
         if (sceneSummaries.length > 0) {
-          parts.push('# Existing Manuscript Scenes\n' + sceneSummaries.slice(-20).join('\n'))
+          // Told as history, not as material: the planner used to lift these
+          // titles verbatim into the new chapters ("The Torn Ledger" twice).
+          parts.push(
+            '# Scenes already written (the new plan continues AFTER these; do not reuse their titles or retell their events)\n' +
+              sceneSummaries.slice(-20).join('\n')
+          )
         }
         return parts.join('\n\n')
       }
@@ -925,7 +946,7 @@ export function useVolumeStoryGenerator() {
       // Phase 1.5 (Stage B — Story Network): with the Bible entities committed
       // (stable IDs), generate the deliberate relationships between them BEFORE
       // planning, so scenes and views can build on a populated network. Best-effort.
-      progress.statusText = 'Weaving the Story Network (relationships)...'
+      progress.statusText = 'Mapping relationships…'
       const networkPhase = actLog.addPhase(currentTaskId, 'Story Network')
       // Whether the base was actually laid this run. An expanded cast only needs
       // weaving into a network that was just built from nothing — in a project
@@ -1016,7 +1037,7 @@ export function useVolumeStoryGenerator() {
 
       // Phase 2: Generate story plan using the updated context
       progress.current = 3
-      progress.statusText = 'Forging the Story Graph (Planning scenes)...'
+      progress.statusText = 'Planning scenes…'
       await delegatorApi.dispatch('BOOTSTRAPPED', undefined)
       const planPhase = actLog.addPhase(currentTaskId, 'Planning')
       activeStage = 'structure'
@@ -1113,14 +1134,50 @@ export function useVolumeStoryGenerator() {
       const scenes = directorResult.scenes
       const storyArc = directorResult.storyArc
 
-      if (!Array.isArray(scenes) || scenes.length < 3) {
-        throw new Error('Director returned insufficient scenes (need at least 3)')
+      // The floor is what was asked for, not a fixed three: the form lets a
+      // writer plan one chapter of two scenes, and this used to reject that
+      // plan after two minutes of planning it.
+      const plannedScenes = structureSpec
+        ? structureSpec.chapters * structureSpec.scenesPerChapter
+        : 3
+      const minScenes = Math.max(1, Math.min(3, plannedScenes))
+      if (!Array.isArray(scenes) || scenes.length < minScenes) {
+        throw new Error(
+          `The planner returned ${Array.isArray(scenes) ? scenes.length : 0} scene(s) for a plan of ${plannedScenes}`
+        )
       }
 
       // A plan that had to pad still has the right shape, which is exactly why it
       // needs saying out loud. Padding is per-batch, so on a long book it arrives
       // in blocks of twelve chapters — a blank volume the author would otherwise
       // only discover by reading 6,000 words of prose written from an empty brief.
+      // Titles that repeat a scene already in the manuscript. The evidence
+      // block above tells the planner not to; this is the net under it.
+      const writtenTitles = new Set(
+        (manuscriptStore.subsections as any[])
+          .filter((s: any) => s.content)
+          .map((s: any) =>
+            String(s.title || '')
+              .trim()
+              .toLowerCase()
+          )
+          .filter(Boolean)
+      )
+      const reused = scenes.filter((sc: any) =>
+        writtenTitles.has(
+          String(sc.title || '')
+            .trim()
+            .toLowerCase()
+        )
+      )
+      if (reused.length > 0) {
+        for (const sc of reused) sc.title = `${sc.title} (continued)`
+        runHealth.record('plan_padded', {
+          stage: 'structure',
+          detail: `${reused.length} planned scene title(s) repeated a written scene and were renamed`
+        })
+      }
+
       const planDegradation = (directorResult as any).degradation
       if (planDegradation?.paddedChapters > 0) {
         runHealth.record('plan_padded', {
@@ -1205,7 +1262,7 @@ export function useVolumeStoryGenerator() {
       })
 
       progress.current = 4
-      progress.statusText = 'Sealing the Arc Contract...'
+      progress.statusText = 'Settling the arc…'
       await buildPreliminaryEdges(projectId, vId, scenePlan.value)
 
       // Build story contract from the plan
@@ -1251,6 +1308,10 @@ export function useVolumeStoryGenerator() {
       // Store arc for later use
       return { scenes: scenePlan.value, storyArc, volumeId: vId, storyContract }
     } catch (err: any) {
+      // A plan that dies or is stopped before a chapter exists leaves nothing
+      // behind: the volume created in phase 0 used to stay, empty, in the
+      // Chapters panel after every failed run.
+      await dropEmptyRunVolume(projectId)
       // A user-requested stop is an outcome, not a fault. Reporting it as
       // "Generation failed" would be the app lying about its own state.
       if (isAbortError(err)) {
@@ -1381,6 +1442,20 @@ export function useVolumeStoryGenerator() {
    */
   async function writeNextBatch(startIndex: any, incomingFocusInstructions = '') {
     await runBatchLoop(writeOneBatch, startIndex, incomingFocusInstructions)
+  }
+
+  async function dropEmptyRunVolume(projectId: any) {
+    const vId = volumeId.value
+    if (vId == null) return
+    try {
+      const owned = (manuscriptStore.sections || []).some((s: any) => s.volumeId === vId)
+      if (!owned) {
+        await volumeStore.deleteVolumeData(vId, projectId)
+        volumeId.value = null
+      }
+    } catch (err: any) {
+      console.warn('[useVolumeStoryGenerator] could not drop the empty volume:', err)
+    }
   }
 
   async function confirmPlan({
@@ -1532,7 +1607,7 @@ export function useVolumeStoryGenerator() {
     await updateGenRunStage(projectId, 'structure', { status: 'done' })
 
     // Phase 0: Spine Generation
-    progress.statusText = 'Generating hierarchical narrative spine...'
+    progress.statusText = 'Building the story spine…'
     await delegatorApi.dispatch('CONFIRMED', {
       autoMode: autoMode.value,
       sceneReviewMode: sceneReviewMode.value,
@@ -1580,7 +1655,7 @@ export function useVolumeStoryGenerator() {
     // Phase 3: Incremental writing
     await delegatorApi.dispatch('SPINE_GENERATED', undefined)
     error.value = null
-    progress.statusText = 'Entering incremental drafting pipeline...'
+    progress.statusText = 'Writing scenes…'
     await updateGenRunStage(projectId, 'prose', {
       status: 'running',
       written: 0,
@@ -1921,6 +1996,7 @@ export function useVolumeStoryGenerator() {
     // scenes are actually still missing rather than always saying zero.
     await advance('REPAIRED', { failedScenes: holes() })
     let auditIssues = 0
+    continuityFixesSkipped.value = false
     try {
       const audit = await consistencyService.runTerminalConsistencyAudit(projectId, currentTaskId)
       auditIssues = audit?.issueCount || 0
@@ -1972,7 +2048,7 @@ export function useVolumeStoryGenerator() {
     // only REFRESHES surfaces derived from the bible and touches nothing to do
     // with the timeline, which is a projection of `plotThreads`. With an empty
     // bible it produced an empty canvas while claiming to have populated one.
-    progress.statusText = 'Refreshing canvas and story bible documents...'
+    progress.statusText = 'Refreshing the canvas and story bible…'
     const artifactsPhase = actLog.addPhase(currentTaskId, 'Story Bible & Canvas')
     try {
       const report = await finalizeStoryArtifacts({
@@ -2045,7 +2121,7 @@ export function useVolumeStoryGenerator() {
     // single-scene regeneration): make sure the run still lands on `complete`.
     if (phase.value !== 'complete') await advance('WRITING_DONE')
 
-    progress.statusText = 'Volume generation complete!'
+    progress.statusText = 'Done'
     progress.current = written().length
     progress.total = scenePlan.value.length || written().length
 
@@ -2060,9 +2136,21 @@ export function useVolumeStoryGenerator() {
 
     try {
       const { db } = await import('../services/db-core')
+      // Named after what was written: the chapter titles of this run, so the
+      // history reads "The Last Log" rather than "Volume Story — 9/15/2026".
+      const runTitles = (manuscriptStore.sections || [])
+        .filter((s: any) => runCreatedSectionIds.value.has(s.id))
+        .map((s: any) => s.title)
+        .filter(Boolean)
+      const runTitle =
+        runTitles.length === 0
+          ? 'Generated run'
+          : runTitles.length <= 2
+            ? runTitles.join(' · ')
+            : `${runTitles[0]} … ${runTitles[runTitles.length - 1]} (${runTitles.length} chapters)`
       await (db as any).generatedStories.add({
         projectId,
-        title: `Volume Story — ${new Date().toLocaleDateString()}`,
+        title: runTitle,
         generatedAt: new Date().toISOString(),
         totalWords,
         qualityScore: consistencyReport.value
@@ -2071,6 +2159,7 @@ export function useVolumeStoryGenerator() {
             -1
           : 0
       })
+      historyVersion.value += 1
     } catch {
       // Non-critical: generatedStories save
     }
@@ -2590,7 +2679,7 @@ export function useVolumeStoryGenerator() {
       // Materialize the new chapters AFTER the existing ones. `order` continues
       // from the current section count so the additions read as a continuation
       // rather than being interleaved into the existing book.
-      progress.statusText = 'Adding new chapters to the manuscript...'
+      progress.statusText = 'Adding chapters…'
       const branchId = (branchStore as any).activeBranch?.id
       const targetVolumeId =
         (manuscriptStore.sections as any[]).slice(-1)[0]?.volumeId || volumeId.value || null
@@ -2766,6 +2855,9 @@ export function useVolumeStoryGenerator() {
     rejectedPatterns,
     evalUnavailableCount,
     stop,
+    skipContinuityFixes,
+    continuityFixesSkipped,
+    historyVersion,
     isCancelling,
     pause,
     continueGeneration,
@@ -2790,6 +2882,7 @@ export function useVolumeStoryGenerator() {
     expandScene,
     describeContinuation: describeReport,
     confirmPlan,
+    dropEmptyRunVolume,
     confirmSync,
     syncPreview,
     prefetchStats,

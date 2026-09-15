@@ -13,7 +13,9 @@
 export const SECTION_STATUSES = [
   { value: 'planning', label: 'Planning', color: 'var(--vers-text-muted)', shape: 'dashed' },
   { value: 'drafting', label: 'Drafting', color: 'var(--vers-accent-primary)', shape: 'half' },
-  { value: 'review', label: 'Under Review', color: 'var(--vers-status-warning)', shape: 'target' },
+  // Set by the generator's commit; the Chapters panel showed the raw key.
+  { value: 'generated', label: 'Generated', color: 'var(--vers-accent-primary)', shape: 'half' },
+  { value: 'review', label: 'Under review', color: 'var(--vers-status-warning)', shape: 'target' },
   { value: 'final', label: 'Final', color: 'var(--vers-status-success)', shape: 'check' }
 ]
 

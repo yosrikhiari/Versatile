@@ -73,10 +73,7 @@ const phase = () => generator.phase.value
     </div>
 
     <!-- BOOTSTRAPPING / PLANNING -->
-    <div
-      v-if="phase() === 'bootstrapping' || phase() === 'planning'"
-      class="p-8 text-center space-y-4"
-    >
+    <div v-if="phase() === 'bootstrapping' || phase() === 'planning'" class="px-4 py-4">
       <GenerationLoadingScreen
         :phase="phase()"
         :progress="generator.progress"
@@ -240,6 +237,24 @@ const phase = () => generator.phase.value
       <p class="font-ui text-xs text-text-hint leading-5">
         {{ generator.progress.statusText || consistencyHint }}
       </p>
+      <div
+        v-if="generator.skipContinuityFixes"
+        class="flex items-center justify-between gap-2 pt-1"
+      >
+        <p class="font-ui text-xs text-text-hint">Each fix rewrites a scene with the model.</p>
+        <BaseButton
+          variant="ghost"
+          size="sm"
+          :disabled="generator.continuityFixesSkipped?.value"
+          @click="generator.skipContinuityFixes()"
+        >
+          {{
+            generator.continuityFixesSkipped?.value
+              ? 'Finishing the current rewrite…'
+              : 'Keep the prose as written'
+          }}
+        </BaseButton>
+      </div>
     </div>
 
     <!-- GATE REPORT — beside the complete panel: the gate reports, it never

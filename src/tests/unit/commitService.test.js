@@ -62,3 +62,23 @@ describe('CommitService.buildManuscript scope guard', () => {
     expect(updated).toHaveLength(0)
   })
 })
+
+describe('CommitService.persistCheckpoint', () => {
+  it('does not overwrite a stored checkpoint with an empty plan', async () => {
+    // Stop clears the plan while the scene in flight is still finishing; its
+    // commit used to write writtenCount 1 with scenePlan [], which nothing can
+    // resume ("Continue" never appeared after a stop).
+    const saveGenRun = vi.fn(async () => {})
+    const svc = new CommitService({
+      manuscriptStore: { sections: [], subsectionsBySection: {}, updateSectionData: vi.fn() },
+      runCreatedSectionIds: { value: new Set() },
+      scenePlan: { value: [] },
+      writtenScenes: { value: [{ title: 'kept' }] },
+      progress: { total: 2 },
+      getGenRun: vi.fn(async () => ({ state: { version: 2, scenePlan: [{}, {}], stages: {} } })),
+      saveGenRun
+    })
+    await svc.persistCheckpoint('p1')
+    expect(saveGenRun).not.toHaveBeenCalled()
+  })
+})

@@ -37,8 +37,14 @@ function hasRecordedScore(gen) {
           <p class="font-ui text-2xs text-text-hint tabular-nums">
             {{ new Date(gen.generatedAt).toLocaleDateString() }}
             <span v-if="gen.totalWords"> · {{ gen.totalWords.toLocaleString() }} words</span>
-            <span v-if="hasRecordedScore(gen)"> · score {{ gen.qualityScore }}</span>
-            <span v-else> · no score recorded</span>
+            <!-- qualityScore is minus the continuity issue count (see the
+                 generator's commit); "score -4" meant nothing to a writer. -->
+            <span v-if="hasRecordedScore(gen) && gen.qualityScore < 0">
+              · {{ -gen.qualityScore }} continuity
+              {{ gen.qualityScore === -1 ? 'issue' : 'issues' }}
+            </span>
+            <span v-else-if="hasRecordedScore(gen)"> · score {{ gen.qualityScore }}</span>
+            <span v-else> · not scored</span>
           </p>
         </div>
       </li>

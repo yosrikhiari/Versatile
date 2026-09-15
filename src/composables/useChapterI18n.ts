@@ -9,27 +9,31 @@
  */
 
 const STRINGS: Record<string, string> = {
-  'chapter.generate': 'Generate Chapter',
+  'chapter.generate': 'Generate chapter',
   'chapter.scenes': 'Scenes',
-  'chapter.wordTarget': 'Chapter Word Target',
+  'chapter.wordTarget': 'Chapter word target',
   'chapter.approve': 'Approve',
   'chapter.reject': 'Reject',
-  'chapter.rerequest': 'Request Changes',
+  'chapter.rerequest': 'Request changes',
   'chapter.pause': 'Pause',
   'chapter.resume': 'Resume',
   'chapter.stop': 'Stop generation',
-  'chapter.complete': 'Chapter Complete',
-  'chapter.failed': 'Chapter Generation Failed',
+  'chapter.complete': 'Chapter complete',
+  'chapter.failed': 'Chapter generation failed',
   'chapter.gatePassed': 'Chapter gate passed',
   'chapter.gateBlocked': 'Chapter gate found blocking issues',
   'chapter.unfinished': 'Unfinished chapter — {written} of {total} scenes written.',
-  'chapter.perScene': '{scenes} scene(s) · ~{words} words per scene'
+  'chapter.perScene': '{scenes} {scenes|scene|scenes} · ~{words} words per scene'
 }
 
 export function t(key: string, params?: Record<string, string | number>): string {
   let text = STRINGS[key] ?? key
   if (params) {
     for (const [name, value] of Object.entries(params)) {
+      // `{count|one|many}` picks a plural from the same slot: "2 scenes", not "2 scene(s)".
+      text = text.replace(new RegExp(`\\{${name}\\|([^|}]*)\\|([^}]*)\\}`, 'g'), (_m, one, many) =>
+        Number(value) === 1 ? one : many
+      )
       text = text.split(`{${name}}`).join(String(value))
     }
   }

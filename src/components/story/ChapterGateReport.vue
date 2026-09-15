@@ -43,7 +43,7 @@ const warnings = computed(() => props.report?.findings?.filter((f) => f.severity
     </div>
 
     <p class="text-2xs text-text-hint font-ui tabular-nums">
-      {{ report.metrics.sceneCount }} scene(s) ·
+      {{ report.metrics.sceneCount }} {{ report.metrics.sceneCount === 1 ? 'scene' : 'scenes' }} ·
       {{ report.metrics.uniqueWords.toLocaleString() }} unique words ·
       {{ Math.round(report.metrics.wordRatio * 100) }}% of target
     </p>

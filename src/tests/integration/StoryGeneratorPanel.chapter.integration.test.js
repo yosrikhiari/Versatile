@@ -37,6 +37,7 @@ function makeProse(sceneNumber, words) {
 
 const volumePipeline = {
   phase: pipeline.phase,
+  historyVersion: ref(0),
   progress: { current: 0, total: 0, statusText: '' },
   error: ref(null),
   volumeId: ref('v1'),

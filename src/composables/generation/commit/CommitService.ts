@@ -109,6 +109,11 @@ export class CommitService {
     // a checkpoint from the parallel writer. A run that stops for any reason is
     // worth being able to pick back up regardless of how it was started.
     if (!projectId) return
+    // A stop clears the plan while the scene in flight is still finishing; its
+    // commit then reached here and wrote a checkpoint with writtenCount 1 and
+    // no plan, which nothing can resume. Without a plan there is nothing to
+    // checkpoint against, so the stored one stands.
+    if (this.scenePlan.value.length === 0) return
     try {
       const run = await this.getGenRun(projectId)
       const base = run?.state?.version === 2 ? run.state : this.makeInitialGenState()

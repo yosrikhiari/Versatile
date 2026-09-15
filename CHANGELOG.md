@@ -7,6 +7,25 @@ was verified.
 
 ## [Unreleased]
 
+### Generation path audit: run, watched, fixed (2026-09-15)
+- **Chapter mode accepts a two-scene plan** (`docs/UX-AUDIT.md` #42); the
+  scene floor is the plan, not a fixed three.
+- **One progress list** (#43): the loading screen no longer repeats the
+  stages in a second vocabulary; it shows what is arriving.
+- **No empty volumes after a failed plan; volumes are numbered from the
+  database** (#44).
+- **The planner is told which scenes are already written** and gets plain
+  text, not HTML; a reused title is renamed and counted (#45).
+- **Markdown emphasis becomes `<em>`/`<strong>`** in generated prose (#46).
+- **Continuity fixes report each rewrite and can be skipped** with *Keep the
+  prose as written* (#47).
+- **Stop is resumable**: the checkpoint survives the scene that was in flight,
+  the resume card returns after a stop, and the Chapter tab has the continue
+  card (#48).
+- History refreshes after a run, runs are named after their chapters, and a
+  negative score reads as an issue count (#49); stage copy, plurals, counters
+  and the `generated` status label (#50).
+
 ### Functional audit, close-out: the open items (2026-09-15)
 - **Scene length is honoured** (`docs/UX-AUDIT.md` #27): the writer's prompt
   states a range (85–130 % of the target) instead of a floor, the token cap

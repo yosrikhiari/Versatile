@@ -156,10 +156,11 @@ const showAddModal = ref(false)
 const newElementTitle = ref('')
 const newElementType = ref('section')
 
-const elementTypes = [
+// The first type is the project's own word for a section (Chapter, for a novel).
+const elementTypes = computed(() => [
   {
     value: 'section',
-    label: 'Section',
+    label: projectStore.structureTerms.section,
     color: 'var(--vers-element-section)',
     iconName: 'book-open'
   },
@@ -177,12 +178,12 @@ const elementTypes = [
   },
   {
     value: 'plotpoint',
-    label: 'Plot Point',
+    label: 'Plot point',
     color: 'var(--vers-element-plotpoint)',
     iconName: 'zap'
   },
   { value: 'note', label: 'Note', color: 'var(--vers-element-note)', iconName: 'file-text' }
-]
+])
 
 const storyDragOptions = {
   ...DRAG_OPTIONS,
@@ -200,11 +201,11 @@ const gridStyle = computed(() => ({
 }))
 
 function getElementIconName(type) {
-  return elementTypes.find((t) => t.value === type)?.iconName || 'file'
+  return elementTypes.value.find((t) => t.value === type)?.iconName || 'file'
 }
 
 function getElementColor(type) {
-  return elementTypes.find((t) => t.value === type)?.color || 'var(--vers-default-fallback)'
+  return elementTypes.value.find((t) => t.value === type)?.color || 'var(--vers-default-fallback)'
 }
 
 function selectElement(element) {

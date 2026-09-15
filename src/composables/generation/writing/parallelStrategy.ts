@@ -170,7 +170,7 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
       offset += c.scenes.length
     }
 
-    progress.statusText = 'Phase 1: Generating chapter anchors in parallel...'
+    progress.statusText = 'Writing the opening and closing scene of each chapter…'
 
     async function generateAnchor(
       scene: any,
@@ -347,7 +347,7 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
     let anchorEvalFeedback = ''
     let anchorFocusInstructions = ''
     if (inlineEvalEnabled.value) {
-      progress.statusText = 'Evaluating chapter anchors...'
+      progress.statusText = 'Reading the anchor scenes…'
       const anchorResults = []
       for (let idx = 0; idx < writtenScenes.value.length; idx++) {
         const s = writtenScenes.value[idx]
@@ -392,7 +392,7 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
     // wave's key facts for contradictions. If conflicts are found, a resolution
     // pass corrects them before any scene is committed — so later waves (and
     // readers) never see inconsistent state.
-    progress.statusText = 'Phase 2: Generating chapter scenes in parallel waves...'
+    progress.statusText = 'Writing the middle scenes…'
 
     async function generateMiddleScene(scene: any, sceneIndex: any, chapterMeta: any) {
       const phaseName = `Writing: "${scene.title || `Scene ${scene.sceneNumber}`}"`
@@ -584,7 +584,7 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
     }
 
     if (inlineEvalEnabled.value) {
-      progress.statusText = 'Evaluating middle scenes...'
+      progress.statusText = 'Reading the middle scenes…'
       const middleResults = []
       for (let idx = 0; idx < writtenScenes.value.length; idx++) {
         const s = writtenScenes.value[idx]

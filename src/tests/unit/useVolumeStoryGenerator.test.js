@@ -1102,6 +1102,31 @@ describe('useVolumeStoryGenerator', () => {
   })
 })
 
+describe('dropEmptyRunVolume', () => {
+  it('deletes the run volume when no chapter owns it, and keeps it once one does', async () => {
+    const { useVolumeStore } = await import('@/stores/volumeStore')
+    const spy = vi.spyOn(useVolumeStore(), 'deleteVolumeData').mockResolvedValue(undefined)
+    const gen = useVolumeStoryGenerator()
+    const fixture = aggMockSections.value
+    // A plan that failed before any chapter was created: the phase-0 volume
+    // used to stay behind, empty, after every failed run.
+    gen.volumeId.value = 'v9'
+    aggMockSections.value = []
+    await gen.dropEmptyRunVolume('p1')
+    expect(spy).toHaveBeenCalledWith('v9', 'p1')
+    expect(gen.volumeId.value).toBeNull()
+
+    spy.mockClear()
+    gen.volumeId.value = 'v9'
+    aggMockSections.value = [{ id: 's1', volumeId: 'v9', title: 'Ch' }]
+    await gen.dropEmptyRunVolume('p1')
+    expect(spy).not.toHaveBeenCalled()
+    expect(gen.volumeId.value).toBe('v9')
+    aggMockSections.value = fixture
+    spy.mockRestore()
+  })
+})
+
 describe('aggregateChapterContent', () => {
   it('marks run-created sections generated and leaves their body empty', async () => {
     const gen = useVolumeStoryGenerator()

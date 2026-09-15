@@ -17,7 +17,7 @@ import ChapterGateReport from '../../components/story/ChapterGateReport.vue'
 
 describe('chapter i18n seam', () => {
   it('resolves known keys to their English strings', () => {
-    expect(t('chapter.generate')).toBe('Generate Chapter')
+    expect(t('chapter.generate')).toBe('Generate chapter')
     expect(t('chapter.gatePassed')).toBe('Chapter gate passed')
   })
 
@@ -26,7 +26,10 @@ describe('chapter i18n seam', () => {
       'Unfinished chapter — 1 of 3 scenes written.'
     )
     expect(t('chapter.perScene', { scenes: 4, words: '600' })).toBe(
-      '4 scene(s) · ~600 words per scene'
+      '4 scenes · ~600 words per scene'
+    )
+    expect(t('chapter.perScene', { scenes: 1, words: '600' })).toBe(
+      '1 scene · ~600 words per scene'
     )
   })
 
@@ -81,7 +84,7 @@ describe('ChapterGateReport', () => {
   it('states the pass and the metrics behind it', () => {
     const wrapper = mountReport({ passed: true, findings: [], metrics })
     expect(wrapper.text()).toContain('Chapter gate passed')
-    expect(wrapper.text()).toContain('3 scene(s)')
+    expect(wrapper.text()).toContain('3 scenes')
     expect(wrapper.text()).toContain('3,480 unique words')
     expect(wrapper.text()).toContain('99% of target')
   })

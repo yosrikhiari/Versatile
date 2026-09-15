@@ -332,6 +332,15 @@ watch(
   () => loadResearchSources()
 )
 
+// A finished run belongs in "Previous generations" straight away; the list was
+// read once at mount and still said "Finished runs are listed here" after one.
+// The generator bumps `historyVersion` after the row is written, which is
+// later than its phase turning `complete`.
+watch(
+  () => volumeGenerator.historyVersion.value,
+  () => loadPreviousGenerations()
+)
+
 // ----- Generating on top of what already exists -----
 //
 // The survey is read from the manuscript, not from a run, so it stays accurate
@@ -813,6 +822,20 @@ onBeforeUnmount(() => {
               @select-no-research="selectNoResearch"
               @toggle-doc="toggleResearchDoc"
             >
+              <template #before>
+                <!-- A chapter stopped mid-write is a chapter to continue; the
+                     card used to exist only on the Scene and Arc tabs, so a
+                     writer who stopped here saw an empty form. -->
+                <ContinueStoryCard
+                  :survey="continuationSurvey"
+                  :busy="volumeGenerator.isContinuing.value"
+                  :report="volumeGenerator.continuationReport.value"
+                  :report-label="continuationLabel"
+                  @continue="handleContinueDrafting"
+                  @extend="handleExtendStory"
+                  @stop="volumeGenerator.stop()"
+                />
+              </template>
               <GenerationSettingsForm
                 v-model:genre="genre"
                 v-model:tone="tone"
@@ -930,7 +953,7 @@ onBeforeUnmount(() => {
           :scene-eval="sceneEval"
           :save-status="saveStatus"
           :plan-label="mode === MODE_SCENE ? 'Scene' : mode === MODE_CHAPTER ? 'Chapter' : 'Arc'"
-          failed-title="Conjuration Failed"
+          failed-title="Generation failed"
           consistency-hint="Comparing character and location depictions across all scenes"
           :plan-context="planContext"
           @open-chapters="emit('openChapters')"

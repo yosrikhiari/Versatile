@@ -13,7 +13,14 @@ import { buildRagOptions } from '../../../services/researchScope'
 
 /** Case-insensitive name match, tolerant of stray whitespace. */
 function sameName(a: unknown, b: unknown): boolean {
-  return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase()
+  return (
+    String(a || '')
+      .trim()
+      .toLowerCase() ===
+    String(b || '')
+      .trim()
+      .toLowerCase()
+  )
 }
 
 /**
@@ -39,8 +46,20 @@ export function scopeEntitiesToScenes(
     if (scene.location) placeNames.add(String(scene.location).trim().toLowerCase())
   }
   return {
-    characters: (characters || []).filter((c) => castNames.has(String(c?.name || '').trim().toLowerCase())),
-    locations: (locations || []).filter((l) => placeNames.has(String(l?.name || '').trim().toLowerCase()))
+    characters: (characters || []).filter((c) =>
+      castNames.has(
+        String(c?.name || '')
+          .trim()
+          .toLowerCase()
+      )
+    ),
+    locations: (locations || []).filter((l) =>
+      placeNames.has(
+        String(l?.name || '')
+          .trim()
+          .toLowerCase()
+      )
+    )
   }
 }
 
@@ -55,14 +74,36 @@ export function entitiesToRecheck(
   locations: any[],
   alsoScenes: any[] = []
 ): { characters: any[]; locations: any[] } {
-  const flaggedChars = new Set((report?.characterIssues || []).map((i: any) => String(i.character || '').trim().toLowerCase()))
-  const flaggedLocs = new Set((report?.locationIssues || []).map((i: any) => String(i.location || '').trim().toLowerCase()))
+  const flaggedChars = new Set(
+    (report?.characterIssues || []).map((i: any) =>
+      String(i.character || '')
+        .trim()
+        .toLowerCase()
+    )
+  )
+  const flaggedLocs = new Set(
+    (report?.locationIssues || []).map((i: any) =>
+      String(i.location || '')
+        .trim()
+        .toLowerCase()
+    )
+  )
   const touched = scopeEntitiesToScenes(characters, locations, alsoScenes)
   const chars = (characters || []).filter(
-    (c) => flaggedChars.has(String(c?.name || '').trim().toLowerCase()) || touched.characters.some((t) => sameName(t.name, c.name))
+    (c) =>
+      flaggedChars.has(
+        String(c?.name || '')
+          .trim()
+          .toLowerCase()
+      ) || touched.characters.some((t) => sameName(t.name, c.name))
   )
   const locs = (locations || []).filter(
-    (l) => flaggedLocs.has(String(l?.name || '').trim().toLowerCase()) || touched.locations.some((t) => sameName(t.name, l.name))
+    (l) =>
+      flaggedLocs.has(
+        String(l?.name || '')
+          .trim()
+          .toLowerCase()
+      ) || touched.locations.some((t) => sameName(t.name, l.name))
   )
   return { characters: chars, locations: locs }
 }
@@ -92,6 +133,8 @@ export class ConsistencyService {
   manuscriptStore: any
   updateGenRunStage: any
   actLog: any
+  /** Set by `skipFixes()`: the round in flight finishes its current rewrite, then the prose stands. */
+  skipRequested = false
 
   constructor({
     writeParams,
@@ -143,7 +186,21 @@ export class ConsistencyService {
     this.actLog = actLog
   }
 
-  async rewriteSceneForConsistency(projectId: any, sceneIndex: any, instruction: any, storyBibleDocs: any) {
+  /**
+   * The fix rounds rewrite whole scenes with the model, which on a local model
+   * can cost more than the writing did. The writer can decide the prose stands
+   * as written; whatever rewrite is in flight completes, the rest are skipped.
+   */
+  skipFixes() {
+    this.skipRequested = true
+  }
+
+  async rewriteSceneForConsistency(
+    projectId: any,
+    sceneIndex: any,
+    instruction: any,
+    storyBibleDocs: any
+  ) {
     const scene = this.scenePlan.value[sceneIndex]
     if (!scene || !this.writeParams.value) return
     const { storyArc, storyContract } = this.writeParams.value
@@ -223,10 +280,16 @@ export class ConsistencyService {
     // Only entities this chapter's scenes touched. The excerpts still come
     // from every written scene, so an old fact can still be contradicted —
     // but an entity absent from the new scenes is not re-audited.
-    const newScenes = this.writtenScenes.value.slice(this.auditedUpTo, writtenUpToIndex).filter(Boolean)
+    const newScenes = this.writtenScenes.value
+      .slice(this.auditedUpTo, writtenUpToIndex)
+      .filter(Boolean)
     this.auditedUpTo = writtenUpToIndex
     const { characters, locations } = scenesCarryCast(newScenes)
-      ? scopeEntitiesToScenes(this.storyBibleStore.characters, this.storyBibleStore.locations, newScenes)
+      ? scopeEntitiesToScenes(
+          this.storyBibleStore.characters,
+          this.storyBibleStore.locations,
+          newScenes
+        )
       : { characters: this.storyBibleStore.characters, locations: this.storyBibleStore.locations }
     if (characters.length <= 1 && locations.length <= 1) return
 
@@ -262,8 +325,8 @@ export class ConsistencyService {
   async runTerminalConsistencyAudit(projectId: any, currentTaskId: any) {
     const consistencyPhase = this.actLog.addPhase(currentTaskId, 'Consistency Check')
     await this.updateGenRunStage(projectId, 'consistency', { status: 'running' })
-    this.progress.statusText =
-      'Auditing written prose against character bio sheets to find narrative contradictions...'
+    this.skipRequested = false
+    this.progress.statusText = 'Reading the scenes against the story bible…'
     const characters = this.storyBibleStore.characters
     const locations = this.storyBibleStore.locations
     // A scene that failed generation leaves a null hole in the positional array;
@@ -293,8 +356,14 @@ export class ConsistencyService {
         const targets = [...fixMap.entries()]
           .sort((a, b) => b[0] - a[0])
           .slice(0, CONSISTENCY_FIX_MAX_SCENES)
-        this.progress.statusText = `Resolving ${targets.length} continuity issue(s) (pass ${round + 1})...`
+        if (this.skipRequested) break
+        let k = 0
         for (const [sceneIndex, reasons] of targets) {
+          if (this.skipRequested) break
+          k += 1
+          // One line per rewrite: the round used to sit on "Resolving 3
+          // issue(s) (pass 1)" for minutes with nothing moving.
+          this.progress.statusText = `Rewriting scene ${sceneIndex + 1} for continuity — ${k} of ${targets.length}, pass ${round + 1} of ${CONSISTENCY_FIX_ROUNDS}`
           try {
             await this.rewriteSceneForConsistency(
               projectId,
@@ -306,11 +375,18 @@ export class ConsistencyService {
             console.warn('[ConsistencyService] Consistency fix failed for scene', sceneIndex, err)
           }
         }
+        if (this.skipRequested) break
+        this.progress.statusText = `Rechecking the rewritten scenes — pass ${round + 1} of ${CONSISTENCY_FIX_ROUNDS}`
         const rechecked = this.writtenScenes.value.filter(Boolean)
         // Re-audit what was flagged and what the rewrites touched — not the
         // whole cast again. Entities that were clean and untouched stay clean.
         const rewritten = targets.map(([sceneIndex]) => this.writtenScenes.value[sceneIndex])
-        const scope = entitiesToRecheck(this.consistencyReport.value, characters, locations, rewritten)
+        const scope = entitiesToRecheck(
+          this.consistencyReport.value,
+          characters,
+          locations,
+          rewritten
+        )
         const recheck = await this.critic.checkContradictions({
           characters: scope.characters,
           locations: scope.locations,

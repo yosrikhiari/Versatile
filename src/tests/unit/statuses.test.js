@@ -3,14 +3,15 @@ import { SECTION_STATUSES, LENS_MAP, LENS_LABELS } from '../../config/statuses'
 
 describe('statuses config', () => {
   describe('SECTION_STATUSES', () => {
-    it('has 4 status entries', () => {
-      expect(SECTION_STATUSES).toHaveLength(4)
+    it('has 5 status entries', () => {
+      expect(SECTION_STATUSES).toHaveLength(5)
     })
 
     it.each([
       { value: 'planning', label: 'Planning' },
       { value: 'drafting', label: 'Drafting' },
-      { value: 'review', label: 'Under Review' },
+      { value: 'generated', label: 'Generated' },
+      { value: 'review', label: 'Under review' },
       { value: 'final', label: 'Final' }
     ])('includes status $value with label $label', ({ value, label }) => {
       const entry = SECTION_STATUSES.find((s) => s.value === value)

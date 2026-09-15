@@ -67,8 +67,13 @@ function statusOf(index) {
 function detailOf(stage, status) {
   if (status !== 'current') return ''
   if (stage.key === 'write' && props.totalScenes > 0) {
-    return `Scene ${props.currentScene} of ${props.totalScenes}`
+    // `currentScene` is a 0-based index; the writing block below says
+    // "Scene 5 of 6" for the same state, and the two used to disagree by one.
+    return `Scene ${Math.min(props.currentScene + 1, props.totalScenes)} of ${props.totalScenes}`
   }
+  // The plan is on screen and nothing runs until the writer says so; the last
+  // model status ("Settling the arc…") would claim otherwise.
+  if (props.phase === 'plan-preview') return 'Waiting for you to approve the plan'
   return props.statusText
 }
 </script>
