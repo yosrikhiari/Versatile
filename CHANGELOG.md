@@ -7,6 +7,17 @@ was verified.
 
 ## [Unreleased]
 
+### Ask your story — roadmap Phase 7 (2026-09-15)
+- `stores/useStoryAssistantStore.ts`: a question is grounded in the closest
+  scenes and bible entries from the Phase-3 index (reranked when there are
+  more than the 6-chunk window), answered by the local model under a
+  prompt that forbids invention and requires `[n]` citations; the citations
+  the answer used are kept, a scene citation opens the scene. Pure
+  `buildRagContext` / `buildRagPrompt` / `citedIn`.
+- `StoryAssistantChat` from the palette ("Ask your story"): turns with
+  citation chips; entity citations navigate to the bible card. Distinct from
+  character chat (a persona) — this is the manuscript about itself. 10 tests.
+
 ### Templates — roadmap Phase 6 (2026-09-15)
 - `stores/useTemplatesStore.ts`: templates are a title, fields, a body with
   `{{placeholders}}` and a mapping from fields to the scene-context columns;

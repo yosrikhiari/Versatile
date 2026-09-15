@@ -13,6 +13,7 @@ import ProjectSettingsModal from './ProjectSettingsModal.vue'
 import BranchManagerModal from './BranchManagerModal.vue'
 import StoryLookupModal from '../storybible/StoryLookupModal.vue'
 import CompileManuscript from '../export/CompileManuscript.vue'
+import StoryAssistantChat from '../assistant/StoryAssistantChat.vue'
 import RecapBanner from './RecapBanner.vue'
 import ContextStatusIndicator from './ContextStatusIndicator.vue'
 import GuardrailIndicator from '../../guardrails/reporting/components/GuardrailIndicator.vue'
@@ -40,6 +41,7 @@ function focusMain() {
 const showProjectSettings = ref(false)
 const showStoryLookup = ref(false)
 const showCompile = ref(false)
+const showStoryAssistant = ref(false)
 const showBranchManager = ref(false)
 const showProjectDropdown = ref(false)
 const projects = ref([])
@@ -121,6 +123,12 @@ const paletteActions = computed(() => [
     keywords: ['scene', 'chapter', 'opener', 'climax', 'templater', 'pov']
   },
   {
+    id: 'story-assistant',
+    label: 'Ask your story',
+    icon: 'message-circle-question',
+    keywords: ['chat', 'question', 'rag', 'assistant', 'answer']
+  },
+  {
     id: 'story-lookup',
     label: 'Ask the story',
     icon: 'search',
@@ -143,6 +151,9 @@ const PALETTE_ACTIONS = {
     showStoryLookup.value = true
   },
   'insert-template': () => emit('insert-template'),
+  'story-assistant': () => {
+    showStoryAssistant.value = true
+  },
   'compile-manuscript': () => {
     showCompile.value = true
   },
@@ -789,6 +800,11 @@ watch(
           emit('export-pdf')
         }
       "
+    />
+    <StoryAssistantChat
+      :show="showStoryAssistant"
+      @close="showStoryAssistant = false"
+      @navigate="emit('story-navigate', $event)"
     />
     <StoryLookupModal
       :show="showStoryLookup"
