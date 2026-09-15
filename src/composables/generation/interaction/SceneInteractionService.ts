@@ -39,6 +39,7 @@ export class SceneInteractionService {
   currentWriteIndex: any
   lastSyncedResultIndex: any
   syncPreview: any
+  bibleChangesDiscovered?: any
   currentTaskId: any
   volumeId: any
   consistencyService: any
@@ -68,6 +69,7 @@ export class SceneInteractionService {
     this.currentWriteIndex = args.currentWriteIndex
     this.lastSyncedResultIndex = args.lastSyncedResultIndex
     this.syncPreview = args.syncPreview
+    this.bibleChangesDiscovered = args.bibleChangesDiscovered
     this.currentTaskId = args.currentTaskId
     this.volumeId = args.volumeId
     this.consistencyService = args.consistencyService
@@ -80,13 +82,19 @@ export class SceneInteractionService {
     const validStructured = this.structuredResults
       .filter((sr: any) => sr.structured)
       .map((sr: any) => sr.structured)
-    await this.sync.commitSync({
+    const committed = await this.sync.commitSync({
       structuredOutputs: validStructured,
       acceptedEntities,
       projectId,
       volumeId: volumeId || this.volumeId,
       chapterId: chapterId || null
     })
+    // What landed counts toward the run's bible ledger (`bible_static` /
+    // `bible_quiet` read it), same as the auto-accept path.
+    if (this.bibleChangesDiscovered && committed && typeof committed === 'object') {
+      this.bibleChangesDiscovered.value +=
+        (committed.entitiesCreated || 0) + (committed.edgesWritten || 0)
+    }
 
     const resumeFrom = this.hasPendingBatches.value ? this.pendingBatchStart.value : null
     if (resumeFrom !== null) this.pendingBatchStart.value = 0

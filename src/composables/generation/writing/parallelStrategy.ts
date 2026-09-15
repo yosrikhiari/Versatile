@@ -38,6 +38,8 @@ export interface ParallelStrategyContext extends SceneGateContext {
   spineArray: Ref<any[]>
   structuredResults: any[]
   sync: any
+  syncPreview: Ref<any>
+  hasPendingBatches: Ref<boolean>
   volumeId: Ref<any>
 }
 
@@ -97,6 +99,12 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
     // complete so the whole chapter syncs to the bible in one commit (edges
     // stamped with the chapter, one `discoverSync` pass per scene).
     const structuredBySceneIndex = new Map<number, any>()
+    // Outside one-click mode the author reviews what the writer discovered —
+    // once, at the end, in the same sync-preview pause the batch path uses —
+    // instead of the bible growing unasked. One-click means one-click: commit
+    // per chapter as the run goes.
+    const reviewEntities = !autoMode.value
+    const pendingReview: any[] = []
     const sections: any[] = Array.isArray(writeParamsVal.sections) ? writeParamsVal.sections : []
     const chapterIdFor = (scenes: any[], chapterIndex: number) => {
       const bySubsection = sections.find((sec: any) =>
@@ -558,8 +566,10 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
           projectId,
           volumeId: ctx.volumeId?.value ?? null,
           chapterId: chapterIdFor(scenes, chapterIndex),
-          scenes: chapterScenes
+          scenes: chapterScenes,
+          commit: !reviewEntities
         })
+        if (reviewEntities) pendingReview.push(...synced.changes)
         if (synced.entitiesCreated || synced.edgesWritten) {
           actLog.appendThought(
             ctx.currentTaskId,
@@ -640,6 +650,30 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
     }
 
     langfuseService.endSpan(parallelSpanId)
+
+    // Review mode: hand the collected discoveries to the sync-preview pause.
+    // `confirmSync` commits the accepted ones against every structured result
+    // the run pushed and, with no pending batch, completes the generation.
+    if (reviewEntities && pendingReview.length > 0) {
+      const seen = new Set<string>()
+      const preview = pendingReview.filter((c: any) => {
+        const key = `${c.type}:${String(c.sourceKey || c.entity?.name || c.entity?.title || '').toLowerCase()}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      ctx.syncPreview.value = preview
+      await ctx.delegatorApi.dispatch('BATCH_COMPLETE', {
+        batchStart: scenePlan.value.length,
+        batchEnd: scenePlan.value.length,
+        preview
+      })
+      // Nothing is left to write; the confirm goes straight to completion.
+      ctx.hasPendingBatches.value = false
+      progress.statusText = `${preview.length} discovered entit${preview.length === 1 ? 'y' : 'ies'} waiting for your review`
+      return
+    }
+
     await completeGeneration(projectId)
   }
 

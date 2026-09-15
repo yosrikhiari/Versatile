@@ -26,6 +26,18 @@ was verified.
   never got digests.
 - Custom fields and tags round-trip through the character/location sync blob.
 
+### Two product decisions, made (2026-09-15)
+- **Discovered entities outside one-click mode are reviewed, once, at the end.**
+  One-click keeps committing per chapter (that is what one-click means). A
+  reviewed run collects everything the writer discovered and pauses in the
+  batch path's existing sync-preview; `confirmSync` commits the accepted
+  entities and edges against every structured result and completes the run.
+  Before this the parallel path synced nothing in any mode.
+- **A zero-issue verdict is a clean scene, not a broken critic — until every
+  scene is one.** Recorded as the non-degrading ledger kind `eval_suspect`;
+  `critic_flat` warns at run end when all ≥6 judged scenes raised no issue.
+  Nothing is retried or discarded per scene.
+
 ### Tests — the panels the panel pass rewrote (2026-09-15)
 - Component tests for `ConsistencyPanel`, `BetaReaderPanel` and `WhatIfPanel`
   (+ `WhatIfAlternative`): severity grouping and header counts, honest empty

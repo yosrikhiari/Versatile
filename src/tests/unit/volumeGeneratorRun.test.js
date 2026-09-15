@@ -250,7 +250,7 @@ beforeEach(async () => {
   ;({ useVolumeStoryGenerator } = await import('@/composables/useVolumeStoryGenerator'))
 })
 
-async function runOneChapter({ inlineEval = false } = {}) {
+async function runOneChapter({ inlineEval = false, auto = true } = {}) {
   const projectId = await createProject('Run Probe', 'Thriller', '', 1)
   const projectStore = useProjectStore()
   await projectStore.loadProject(projectId)
@@ -263,14 +263,15 @@ async function runOneChapter({ inlineEval = false } = {}) {
     genre: 'Thriller',
     tone: 'Bleak',
     wordTarget: 900,
-    auto: true,
+    auto,
     structure: { volumes: 1, chaptersPerVolume: 1, scenesPerChapter: 3, wordsPerChapter: 900 },
     onPhaseChange: () => {},
     onPartialData: () => {},
     onChunk: () => {}
   })
   if (gen.phase.value === 'plan-preview') {
-    await gen.confirmPlan({ projectId, onChunk: () => {} })
+    // What the plan-preview UI does on "Confirm": the plan as shown, unedited.
+    await gen.confirmPlan({ projectId, editedPlan: gen.scenePlan.value, onChunk: () => {} })
   }
   return { gen, projectId }
 }
@@ -360,6 +361,30 @@ describe('volume generator end-to-end run (model faked)', () => {
 
     expect(gen.bibleChangesDiscovered.value).toBeGreaterThan(0)
     expect(gen.scenesSynced.value).toBe(3)
+    expect(gen.runHealthViolations.value.map((v) => v.code)).not.toContain('bible_static')
+  }, 60_000)
+
+  it('outside one-click mode, holds discovered entities for review and commits on confirm', async () => {
+    // One-click auto-accepts per chapter. A reviewed run collects what the
+    // writer discovered and pauses once, at the end, in the batch path's
+    // sync-preview; the bible grows only after the author confirms.
+    const { gen, projectId } = await runOneChapter({ auto: false })
+    expect(gen.phase.value).toBe('sync-preview')
+    expect(gen.writtenScenes.value.filter(Boolean)).toHaveLength(3)
+    const preview = gen.syncPreview.value
+    expect(preview.map((c) => c.entity.name)).toEqual(
+      expect.arrayContaining(['Marguerite', 'The Customs House'])
+    )
+    // Nothing committed yet.
+    let chars = await db.characters.where('projectId').equals(projectId).toArray()
+    expect(chars.map((c) => c.name)).not.toContain('Marguerite')
+    expect(gen.bibleChangesDiscovered.value).toBe(0)
+
+    await gen.confirmSync({ acceptedEntities: preview, projectId, volumeId: gen.volumeId.value })
+    expect(gen.phase.value).toBe('complete')
+    chars = await db.characters.where('projectId').equals(projectId).toArray()
+    expect(chars.map((c) => c.name)).toContain('Marguerite')
+    expect(gen.bibleChangesDiscovered.value).toBeGreaterThan(0)
     expect(gen.runHealthViolations.value.map((v) => v.code)).not.toContain('bible_static')
   }, 60_000)
 

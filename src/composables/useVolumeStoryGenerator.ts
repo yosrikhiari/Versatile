@@ -131,6 +131,10 @@ export function useVolumeStoryGenerator() {
   const syncPreview = ref<any[]>([])
   let structuredResults: any[] = []
   const hasPendingBatches = ref(false)
+  const bibleChangesDiscovered = ref(0)
+  // Scenes whose metadata went through entity sync — lets the health check tell
+  // "sync never ran" from "sync ran and the story added nothing".
+  const scenesSynced = ref(0)
   const pendingBatchStart = ref(0)
   const lastSyncedResultIndex = ref(0)
   const writeParams = ref<any | null>(null)
@@ -525,6 +529,7 @@ export function useVolumeStoryGenerator() {
     currentWriteIndex,
     lastSyncedResultIndex,
     syncPreview,
+    bibleChangesDiscovered,
     currentTaskId,
     volumeId,
     consistencyService
@@ -549,10 +554,6 @@ export function useVolumeStoryGenerator() {
   const runHealthViolations = ref<any[]>([])
   const stateSummarizer = useStateSummarizer()
   /** Bible changes discovered across the run — an invariant input, not a stat. */
-  const bibleChangesDiscovered = ref(0)
-  // Scenes whose metadata went through entity sync — lets the health check tell
-  // "sync never ran" from "sync ran and the story added nothing".
-  const scenesSynced = ref(0)
 
   // Wire locally-constructed services into Delegator memory so tool wrappers
   // (commitTool, consistencyTool, sceneTool) can reach them via memory.instances.*
@@ -1839,6 +1840,9 @@ export function useVolumeStoryGenerator() {
       scenesWithMetadata: withMetadata,
       bibleChangesCommitted: bibleChangesDiscovered.value,
       scenesSynced: scenesSynced.value,
+      scenesJudged: written.filter(
+        (s: any) => s?.gateEval && !s.gateEval.evalUnavailable && s.gateEval.score != null
+      ).length,
       duplicateRatio: proseText ? duplicateRatio(proseText) : undefined
     })
 

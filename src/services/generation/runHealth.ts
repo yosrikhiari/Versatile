@@ -48,6 +48,12 @@ export type DegradationKind =
   | 'metadata_skipped'
   /** The critic could not produce a usable verdict. */
   | 'eval_unavailable'
+  /**
+   * The critic scored the scene and found nothing to say. One is a clean
+   * scene; a whole run of them is a critic that is not discriminating. Not
+   * degrading and never budgeted — it feeds the `critic_flat` invariant.
+   */
+  | 'eval_suspect'
   /** The terminal consistency audit threw instead of reporting. */
   | 'audit_unavailable'
   /** A quality gate raised blocking flags (prose quality, run-level floor). */
@@ -103,6 +109,8 @@ export interface InvariantFacts {
    * alone decides, as before.
    */
   scenesSynced?: number
+  /** Scenes the critic returned a numeric verdict for (whatever it said). */
+  scenesJudged?: number
   /** Share of committed prose that is duplicate sentences, 0..1. */
   duplicateRatio?: number
 }
@@ -131,6 +139,9 @@ export const ABORT_BUDGET: Partial<Record<DegradationKind, number>> = {
   metadata_skipped: 3,
   eval_unavailable: 5
 }
+
+/** Judged scenes before an all-zero-issue critic is called flat rather than lucky. */
+export const CRITIC_FLAT_MIN_JUDGED = 6
 
 /** Synced scenes that may add nothing to the bible before the run is called quiet. */
 export const BIBLE_QUIET_MIN_SCENES = 9
@@ -271,8 +282,14 @@ export class RunHealth {
    */
   checkInvariants(facts: InvariantFacts): InvariantViolation[] {
     const violations: InvariantViolation[] = []
-    const { scenesWritten, scenesWithMetadata, bibleChangesCommitted, duplicateRatio, scenesSynced } =
-      facts
+    const {
+      scenesWritten,
+      scenesWithMetadata,
+      bibleChangesCommitted,
+      duplicateRatio,
+      scenesSynced,
+      scenesJudged
+    } = facts
 
     if (scenesWritten === 0) return violations
 
@@ -333,6 +350,23 @@ export class RunHealth {
           severity: 'warn',
           code: 'bible_quiet',
           message: `${scenesSynced} scenes were synced and none added an entity or relationship — the writer may not be reporting what the prose introduces`
+        })
+      }
+    }
+
+    // A critic that finds nothing on every scene it judges is not judging.
+    // The gate cannot act per scene (a clean scene is a real outcome), so the
+    // run says it once, at the end, with the number.
+    if (scenesJudged != null && scenesJudged >= CRITIC_FLAT_MIN_JUDGED) {
+      const flat = new Set<number>()
+      for (const e of this.events) {
+        if (e.kind === 'eval_suspect' && e.sceneIndex != null) flat.add(e.sceneIndex)
+      }
+      if (flat.size >= scenesJudged) {
+        violations.push({
+          severity: 'warn',
+          code: 'critic_flat',
+          message: `the critic judged ${scenesJudged} scenes and raised no issue on any of them — the verdicts are not discriminating; check the critic model and the gate`
         })
       }
     }

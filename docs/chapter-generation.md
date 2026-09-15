@@ -99,6 +99,15 @@ carries the previous chapters' events, the compressed story spine, and the fact
 ledger the continuity auditor reads. Entities are scoped to the volume being
 written plus anyone the new plan intends to cast.
 
+## What the writer discovers
+
+Scenes report the characters, places and threads they used and any the bible did not
+know. In **One-click** mode those are committed to the Story Bible as each chapter
+finishes (as *generated*, so you can approve or delete them later) and relationships
+are stamped with the chapter they happened in. Outside one-click mode the run pauses
+once, at the end, with everything it discovered — accept what belongs, then the run
+completes.
+
 ## Which model writes
 
 Ollama runs two models by default (`src/config/ollama.ts`): an uncensored

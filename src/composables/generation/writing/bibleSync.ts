@@ -35,14 +35,27 @@ export interface ChapterSyncArgs {
   chapterId: any
   /** `{ sceneIndex, structured }` for every scene of the chapter that has metadata. */
   scenes: Array<{ sceneIndex: number; structured: any }>
+  /**
+   * `false` discovers and records without committing — the caller collects
+   * `discovered` for a review pause and commits on confirm. Default `true`.
+   */
+  commit?: boolean
 }
 
 export async function syncChapterToBible(
   ctx: BibleSyncContext,
-  { projectId, volumeId, chapterId, scenes }: ChapterSyncArgs
-): Promise<{ discovered: number; entitiesCreated: number; edgesWritten: number }> {
+  { projectId, volumeId, chapterId, scenes, commit = true }: ChapterSyncArgs
+): Promise<{
+  discovered: number
+  entitiesCreated: number
+  edgesWritten: number
+  /** The proposed changes, for a review pause when `commit` is false. */
+  changes: any[]
+}> {
   const withMetadata = scenes.filter((s) => s.structured)
-  if (withMetadata.length === 0) return { discovered: 0, entitiesCreated: 0, edgesWritten: 0 }
+  if (withMetadata.length === 0) {
+    return { discovered: 0, entitiesCreated: 0, edgesWritten: 0, changes: [] }
+  }
 
   // The terminal audit and `confirmSync` read the run's structured outputs
   // from here; the parallel path never appended to it.
@@ -62,6 +75,7 @@ export async function syncChapterToBible(
 
   let entitiesCreated = 0
   let edgesWritten = 0
+  if (!commit) return { discovered: changes.length, entitiesCreated, edgesWritten, changes }
   try {
     const result = await ctx.sync.commitSync({
       structuredOutputs: withMetadata.map((s) => s.structured),
@@ -83,5 +97,5 @@ export async function syncChapterToBible(
   }
 
   ctx.bibleChangesDiscovered.value += entitiesCreated + edgesWritten
-  return { discovered: changes.length, entitiesCreated, edgesWritten }
+  return { discovered: changes.length, entitiesCreated, edgesWritten, changes }
 }

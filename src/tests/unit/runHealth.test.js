@@ -12,7 +12,8 @@ import {
   ABORT_BUDGET,
   MAX_DEGRADED_SCENE_RATIO,
   MAX_RUN_DUPLICATE_RATIO,
-  BIBLE_QUIET_MIN_SCENES
+  BIBLE_QUIET_MIN_SCENES,
+  CRITIC_FLAT_MIN_JUDGED
 } from '@/services/generation/runHealth'
 
 describe('recording', () => {
@@ -212,6 +213,26 @@ describe('invariants', () => {
     })
     expect(quietChapter.map((x) => x.code)).not.toContain('bible_static')
     expect(quietChapter.map((x) => x.code)).not.toContain('bible_quiet')
+  })
+
+  it('warns critic_flat only when every judged scene came back with zero issues', () => {
+    const h = new RunHealth()
+    for (let i = 0; i < CRITIC_FLAT_MIN_JUDGED; i++) h.record('eval_suspect', { sceneIndex: i })
+    const flat = h.checkInvariants({ ...clean, scenesJudged: CRITIC_FLAT_MIN_JUDGED })
+    expect(flat.find((x) => x.code === 'critic_flat')?.severity).toBe('warn')
+    // eval_suspect is never a degraded scene — a clean scene is a real outcome.
+    expect(h.degradedScenes()).toBe(0)
+
+    // One scene with an issue is a critic that can say no.
+    const mixed = h.checkInvariants({ ...clean, scenesJudged: CRITIC_FLAT_MIN_JUDGED + 1 })
+    expect(mixed.find((x) => x.code === 'critic_flat')).toBeUndefined()
+
+    // Too few judged scenes to call it.
+    const few = new RunHealth()
+    for (let i = 0; i < 3; i++) few.record('eval_suspect', { sceneIndex: i })
+    expect(few.checkInvariants({ ...clean, scenesJudged: 3 }).map((x) => x.code)).not.toContain(
+      'critic_flat'
+    )
   })
 
   it('warns bible_quiet when a whole volume syncs and adds nothing', () => {

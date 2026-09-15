@@ -427,6 +427,19 @@ export function createSceneGate(ctx: SceneGateContext) {
       }
       if (!scoreDist.pass && scoreDist.flags.length > 0) {
         console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
+        // A scored verdict with nothing to say is counted, not acted on: one is
+        // a clean scene, all of them is a flat critic (`critic_flat`).
+        if (
+          criticResult?.score != null &&
+          !criticResult.evalUnavailable &&
+          (criticResult.issues || []).length === 0
+        ) {
+          runHealth.record('eval_suspect', {
+            stage: 'critic',
+            sceneIndex,
+            detail: scoreDist.flags.join('; ')
+          })
+        }
       }
 
       const proseQ = gateProseQuality(
