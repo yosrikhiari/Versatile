@@ -7,6 +7,15 @@ was verified.
 
 ## [Unreleased]
 
+### Templates — roadmap Phase 6 (2026-09-15)
+- `stores/useTemplatesStore.ts`: templates are a title, fields, a body with
+  `{{placeholders}}` and a mapping from fields to the scene-context columns;
+  three built-ins (Scene, Chapter opener, Climax); custom templates persist
+  in localStorage. `renderTemplate` / `metadataFromFields` are pure.
+- `TemplatePicker` from the palette ("Insert a template"): fields seeded from
+  the open scene, live preview, Insert puts the text at the cursor and writes
+  POV / setting / cast onto the scene. 5 tests.
+
 ### Story Network — filters, local graph, search (roadmap Phase 5, 2026-09-15)
 - `utils/graphFilters.ts` (pure): relationship-type collection, undirected
   adjacency `Map`, `computeLocalGraph` (BFS to depth N; edges between two

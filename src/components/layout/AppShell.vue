@@ -69,7 +69,8 @@ const emit = defineEmits([
   'open-auth',
   'complete-onboarding',
   'create-project',
-  'story-navigate'
+  'story-navigate',
+  'insert-template'
 ])
 
 const authStore = useAuthStore()
@@ -114,6 +115,12 @@ const paletteActions = computed(() => [
   },
   { id: 'import', label: 'Import project', icon: 'download', hint: 'Ctrl+I' },
   {
+    id: 'insert-template',
+    label: 'Insert a template',
+    icon: 'layout-template',
+    keywords: ['scene', 'chapter', 'opener', 'climax', 'templater', 'pov']
+  },
+  {
     id: 'story-lookup',
     label: 'Ask the story',
     icon: 'search',
@@ -135,6 +142,7 @@ const PALETTE_ACTIONS = {
   'story-lookup': () => {
     showStoryLookup.value = true
   },
+  'insert-template': () => emit('insert-template'),
   'compile-manuscript': () => {
     showCompile.value = true
   },

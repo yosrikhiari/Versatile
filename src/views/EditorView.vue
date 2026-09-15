@@ -7,6 +7,7 @@ import { useAppInitialization } from '../composables/useAppInitialization'
 import { useExportImport } from '../composables/useExportImport'
 import AppShell from '../components/layout/AppShell.vue'
 import SettingsModal from '../components/layout/SettingsModal.vue'
+import TemplatePicker from '../components/editor/TemplatePicker.vue'
 import WelcomeOnboarding from '../components/layout/WelcomeOnboarding.vue'
 import NotificationHost from '../components/shared/NotificationHost.vue'
 import FlowEditor from '../components/flow/FlowEditor.vue'
@@ -54,6 +55,7 @@ const polishDrawerRef = ref(null)
 const flowEditorRef = ref(null)
 const appShell = ref(null)
 const showSearchOverlay = ref(false)
+const showTemplatePicker = ref(false)
 const focusMode = ref(false)
 const embeddingBannerDismissed = ref(false)
 const consistencyNavigateTarget = ref(null)
@@ -357,6 +359,7 @@ function handleOnboardingSkipWrapper() {
       ref="appShell"
       :focus-mode="focusMode"
       @story-navigate="handleStoryNavigate"
+      @insert-template="showTemplatePicker = true"
       @start-flow="handleStartFlow"
       @end-flow="handleEndFlow"
       @export="handleExport"
@@ -645,6 +648,8 @@ function handleOnboardingSkipWrapper() {
       @close="showSettingsModal = false"
       @model-changed="checkModelAvailability"
     />
+
+    <TemplatePicker :show="showTemplatePicker" @close="showTemplatePicker = false" />
 
     <Modal :show="showCharacterChatModal" @close="onCharacterChatClose">
       <CharacterChatSession
