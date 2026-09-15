@@ -384,7 +384,24 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     } catch {
       saved = null
     }
-    if (!saved) return
+    if (!saved) {
+      // Nothing remembered (a first open, the sample, an import): land on the
+      // first scene that has prose rather than the root "Start writing"
+      // screen of a book whose words are all in its scenes.
+      const first = orderSections(sections.value)
+        .map((sec) => ({
+          sec,
+          sub: subsections.value
+            .filter((x) => x.sectionId === sec.id)
+            .sort((a, b) => (a.order || 0) - (b.order || 0))[0]
+        }))
+        .find((x) => x.sub && String(x.sub.content || '').trim())
+      if (first) {
+        activeSectionId.value = first.sec.id
+        activeSubsectionId.value = first.sub.id
+      }
+      return
+    }
     const sub = subsections.value.find((x) => x.id === saved.subsectionId)
     const sectionId = sub ? sub.sectionId : saved.sectionId
     if (sectionId != null && sections.value.some((x) => x.id === sectionId)) {

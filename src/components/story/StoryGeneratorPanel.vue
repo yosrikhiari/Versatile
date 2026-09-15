@@ -40,7 +40,7 @@ import { useGenerationSettings } from '../../composables/useGenerationSettings'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { t as tChapter } from '../../composables/useChapterI18n'
 
-const emit = defineEmits(['openChapters'])
+const emit = defineEmits(['openChapters', 'open-project-settings'])
 
 const projectStore = useProjectStore()
 const storyBibleStore = useStoryBibleStore()
@@ -73,7 +73,12 @@ const tabs = computed(() =>
   ].filter(Boolean)
 )
 
-const tab = ref(MODE_BRAINSTORM)
+const props = defineProps({
+  /** 'scene' | 'chapter' | 'arc' — the tab to open on; null keeps Ideate. */
+  initialTab: { type: String, default: null }
+})
+const INITIAL_TABS = { scene: MODE_SCENE, chapter: MODE_CHAPTER, arc: MODE_ARC }
+const tab = ref(INITIAL_TABS[props.initialTab] || MODE_BRAINSTORM)
 
 /** Research library state for the setup view; null hides the Sources section. */
 const researchState = computed(() =>
@@ -853,6 +858,7 @@ onBeforeUnmount(() => {
                 :has-synopsis="hasSynopsis"
                 :estimated-total-words="estimatedTotalWords"
                 @open-context="showStoryContextModal = true"
+                @open-project-settings="emit('open-project-settings')"
               />
             </GenerationSetupView>
           </template>
@@ -942,6 +948,7 @@ onBeforeUnmount(() => {
                 :has-synopsis="hasSynopsis"
                 :estimated-total-words="estimatedTotalWords"
                 @open-context="showStoryContextModal = true"
+                @open-project-settings="emit('open-project-settings')"
               />
             </GenerationSetupView>
           </div>

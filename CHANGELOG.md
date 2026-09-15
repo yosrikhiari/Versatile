@@ -7,6 +7,14 @@ was verified.
 
 ## [Unreleased]
 
+### First run (2026-09-15)
+- **Open the sample story** on an empty workspace (`docs/UX-AUDIT.md` #60):
+  two chapters, four scenes of prose, a small story bible — every panel has
+  something true to show. Stats wait for a project; the subtitle knows a first run.
+- **The editor lands on the first written scene** when nothing is remembered (#61).
+- **A blank project offers the generator** as its second door, on the Scene
+  tab; the "no synopsis" hint links to project settings (#62).
+
 ### Type discipline (2026-09-15)
 - Prettier covers `.ts` (format script, lint-staged, CI check); 166 files
   reformatted in one no-code-change commit.

@@ -158,6 +158,17 @@ true; the findings are where a panel read the wrong thing.
 | 58 | P2 | Canvas element types said "Section" and "Plot Point"; Story Shape said "Dialogue Ratio" and "Narration-Heavy". | `StoryCanvas`, `StoryShapePanel` | fixed: project vocabulary, sentence case |
 | 59 | P2 | **The writer reuses its own images across scenes.** Related ranks three scene openings at 89 % similar; "cold wind biting into her skin like an old wound" opens three of ten scenes. Repetition is checked within a scene, not across the book, at write time. | `useStoryWriter`, `repetitionDetector` | open — the previous scenes' opening sentences could go into the brief as "do not reuse", or the intra-scene detector could run over the last N openings |
 
+### Fifth pass: the first run (2026-09-15)
+
+A fresh local writer, empty database: login → workspace → first project → first scene.
+
+| # | Pri | Finding | Where | Status |
+|---|-----|---------|-------|--------|
+| 60 | P1 | **The workspace's first run was a form and a chart of nothing.** "Pick up where you left off" to someone who has never been here; a writing-stats panel saying it had nothing to say; the only door a blank project. | `WorkspaceView` | fixed: the subtitle knows it is a first run; stats appear once a project exists; **Open the sample story** seeds *The Long Night (sample)* — two chapters, four scenes of real prose, three characters, two places, one thread — so every panel has something true to show; a normal project once created (`seedSampleStory`, idempotent per user, no model calls) |
+| 61 | P1 | **A book whose words are all in scenes opened on "Start writing".** With no remembered place (the sample, an import, a first open) the editor showed the empty root document while the header counted 459 words. | `manuscriptStore.restoreLastPlace` | fixed: lands on the first scene with prose, in manuscript order |
+| 62 | P2 | A blank project's editor offered only the blank page; the generator's "No synopsis set — open Project Settings" was a sentence, not a way there. | `FlowEditor`, `GenerationSettingsForm`, `StoryGeneratorPanel`, `EmptyState` | fixed: **Or draft a scene with the generator** under *Start writing* opens the generator on its Scene tab (`initialTab`); the synopsis hint links to project settings; `EmptyState` gains an `#after` slot for a quieter second door |
+| 63 | P2 | The onboarding wizard (`WelcomeOnboarding`: name, description, first character) only appears when the editor opens with *no project*, and the workspace always creates one first — so no writer reaches it. | `useAppInitialization`, `EditorView` | open — either retire it or make it the New-project dialog's long form; a product call |
+
 What works, and was left alone: the Chapters panel's "Loose draft — File as chapter" (one click, no dialog), Consistency and Beta Reader
 empty states now say what they need, Polish docks under the manuscript as a drawer (it looked dead only because it sits below a short
 viewport), Settings is a modal, Costs/Research/Archive/Network/Timeline/Story Shape all open with honest empty states.

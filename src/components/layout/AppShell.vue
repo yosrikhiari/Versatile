@@ -384,7 +384,12 @@ function handleSidebarNav(name) {
   map[name]?.()
 }
 
+function openProjectSettings() {
+  showProjectSettings.value = true
+}
+
 defineExpose({
+  openProjectSettings,
   toggleSpark,
   toggleWhatIf,
   toggleRevise,

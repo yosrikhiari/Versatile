@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { getAllProjects, createProject, getManuscript } from '../services/db-projects'
+import { seedSampleStory } from '../services/seedSampleStory'
 import { editedAgo } from '../utils/relativeTime'
 import { useWritingStats } from '../composables/useWritingStats'
 import WritingStatsPanel from '../components/workspace/WritingStatsPanel.vue'
@@ -20,6 +21,7 @@ const showCreateOrg = ref(false)
 const projects = ref([])
 const loading = ref(true)
 const showCreate = ref(false)
+const seedingSample = ref(false)
 const newProjectName = ref('')
 const newProjectGenre = ref('')
 
@@ -79,6 +81,21 @@ function openProject(projectId) {
   router.push(`/editor/${projectId}`)
 }
 
+/**
+ * A first run has nothing to open. The sample is four scenes of real prose
+ * with a small bible, so every panel has something true to show before the
+ * writer has typed a word; it is a normal project once created.
+ */
+async function openSample() {
+  seedingSample.value = true
+  try {
+    const { projectId } = await seedSampleStory(auth.localUser?.id ?? null)
+    openProject(projectId)
+  } finally {
+    seedingSample.value = false
+  }
+}
+
 async function handleCreate() {
   if (!newProjectName.value.trim()) return
   const id = await createProject(
@@ -136,15 +153,23 @@ async function handleLogout() {
       <div class="flex items-end justify-between mb-8">
         <div>
           <h1 class="type-display text-base text-text-primary">Your projects</h1>
-          <p class="text-sm text-text-secondary mt-1">Pick up where you left off.</p>
+          <p class="text-sm text-text-secondary mt-1">
+            {{
+              projects.length
+                ? 'Pick up where you left off.'
+                : 'Start a project, or open the sample to see the tools on a real draft.'
+            }}
+          </p>
         </div>
         <BaseButton variant="primary" size="lg" icon="plus" @click="showCreate = true">
           New
         </BaseButton>
       </div>
 
+      <!-- Stats only once there is something to chart; a first run got a
+           panel that could only say it had nothing to say. -->
       <WritingStatsPanel
-        v-if="!loading"
+        v-if="!loading && projects.length > 0"
         class="mb-8"
         :columns="heatmapColumns"
         :words-this-week="wordsThisWeek"
@@ -181,11 +206,24 @@ async function handleLogout() {
         v-else-if="projects.length === 0"
         icon="book-open"
         title="No projects yet"
-        description="Create your first project and begin writing."
+        description="Create your first project and begin writing — or open the sample story: two chapters, a small story bible, every panel with something to show."
         action-label="Create project"
         class="border-t border-border-subtle"
         @action="showCreate = true"
-      />
+      >
+        <BaseButton
+          variant="ghost"
+          size="sm"
+          icon="book-marked"
+          custom-class="mt-3"
+          :loading="seedingSample"
+          :disabled="seedingSample"
+          data-test="open-sample"
+          @click="openSample"
+        >
+          Open the sample story
+        </BaseButton>
+      </EmptyState>
 
       <div v-else class="border-t border-border-subtle">
         <BaseButton

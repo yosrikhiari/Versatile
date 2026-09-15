@@ -33,7 +33,7 @@ describe('GenerationSettingsForm', () => {
 
   it('shows the no-synopsis hint when hasSynopsis is false', () => {
     const w = mount(GenerationSettingsForm, { props: { ...base, hasSynopsis: false } })
-    expect(w.text()).toContain('No synopsis set')
+    expect(w.text()).toContain('No synopsis yet')
   })
 
   it('emits update:genre when a genre is picked, and clears it when re-picked', async () => {

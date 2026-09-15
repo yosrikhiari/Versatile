@@ -11,6 +11,7 @@ import { AutoDialogue } from '../../extensions/AutoDialogue'
 import FlowTimer from './FlowTimer.vue'
 import FlowNudge from './FlowNudge.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseButton from '../ui/BaseButton.vue'
 import EmptyState from '../shared/EmptyState.vue'
 import EditorFormatMenu from '../editor/EditorFormatMenu.vue'
 import BaseAlert from '../ui/BaseAlert.vue'
@@ -20,7 +21,7 @@ const CONTENT_CRITICAL_THRESHOLD = 200_000
 
 const flow = useFlowSession()
 
-const emit = defineEmits(['paragraph-click', 'open-settings', 'exit-flow'])
+const emit = defineEmits(['paragraph-click', 'open-settings', 'exit-flow', 'open-generator'])
 
 function handleExitFlow() {
   emit('exit-flow')
@@ -293,7 +294,22 @@ defineExpose({
         :description="`Jump right in — you can file this text into a ${terms.sectionLc} later — or open ${terms.sections} in the sidebar to plan first.`"
         action-label="Start writing"
         @action="handleStartWriting"
-      />
+      >
+        <template #after>
+          <!-- The other way in: a first scene drafted from the synopsis. A
+               new project used to offer only the blank page. -->
+          <BaseButton
+            variant="ghost"
+            size="sm"
+            icon="sparkles"
+            custom-class="mt-3"
+            data-test="open-generator"
+            @click="emit('open-generator', 'scene')"
+          >
+            Or draft a {{ terms.subsectionLc }} with the generator
+          </BaseButton>
+        </template>
+      </EmptyState>
       <div v-else-if="chapterProseIsInScenes" class="max-w-[760px] mx-auto px-8 py-16">
         <EmptyState
           icon="book-marked"

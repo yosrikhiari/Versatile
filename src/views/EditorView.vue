@@ -279,6 +279,13 @@ function handleStoryNavigate(hit) {
   })
 }
 
+/** Which tab the generator opens on when a panel asks for it ('scene', 'chapter', 'arc'). */
+const generatorTab = ref(null)
+function openGeneratorOn(tab) {
+  generatorTab.value = tab || null
+  appShell.value?.toggleStoryGenerator?.()
+}
+
 function handleBetaReaderNavigate(action) {
   handleConsistencyNavigate(action)
 }
@@ -374,6 +381,7 @@ function handleOnboardingSkipWrapper() {
             ref="flowEditorRef"
             @paragraph-click="handleParagraphClick"
             @open-settings="showSettingsModal = true"
+            @open-generator="openGeneratorOn"
             @exit-flow="handleEndFlow"
           />
           <CharacterBubble
@@ -387,7 +395,11 @@ function handleOnboardingSkipWrapper() {
       </template>
 
       <template #story-generator>
-        <StoryGeneratorPanel @open-chapters="handleOpenChapters" />
+        <StoryGeneratorPanel
+          :initial-tab="generatorTab"
+          @open-chapters="handleOpenChapters"
+          @open-project-settings="appShell?.openProjectSettings?.()"
+        />
       </template>
 
       <template #polish>

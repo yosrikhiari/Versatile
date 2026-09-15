@@ -24,7 +24,7 @@ const chaptersPerVolume = defineModel('chaptersPerVolume', { type: Number, defau
 const wordsPerChapter = defineModel('wordsPerChapter', { type: Number, default: 2000 })
 const scenesPerChapter = defineModel('scenesPerChapter', { type: Number, default: 3 })
 
-const emit = defineEmits(['open-context'])
+const emit = defineEmits(['open-context', 'open-project-settings'])
 
 const props = defineProps({
   genres: { type: Array, default: () => [] },
@@ -108,8 +108,15 @@ const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
           {{ synopsis }}
         </div>
         <p v-else class="font-ui text-xs text-text-hint leading-5">
-          No synopsis set — open Project Settings to add a category and description. The generator
-          needs one to plan from.
+          No synopsis yet. The generator plans from the project's description;
+          <button
+            type="button"
+            class="text-accent underline underline-offset-2 hover:text-accent-hover focus-visible:ring-2 focus-visible:ring-accent rounded-sm"
+            data-test="open-project-settings"
+            @click="emit('open-project-settings')"
+          >
+            add one in project settings</button
+          >.
         </p>
       </div>
 

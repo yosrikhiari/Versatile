@@ -47,5 +47,7 @@ const emit = defineEmits(['action'])
       <BaseIcon :name="actionIcon" :size="12" />
       {{ actionLabel }}
     </button>
+    <!-- A second, quieter door, under the primary action. -->
+    <slot name="after" />
   </div>
 </template>
