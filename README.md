@@ -1,6 +1,8 @@
 # Versatile — Fiction Writing Assistant
 
-A browser-based fiction writing environment with AI-powered tools for planning, drafting, revising, and managing narrative projects. Built with Vue 3, Pinia, IndexedDB, and local AI inference, with an optional .NET backend for sync and collaboration.
+An offline-first fiction writing environment: a distraction-free editor, a story bible, chapters / scenes / timeline, a story network graph, and a local-AI pipeline that plans, drafts and critiques whole books on your own machine. Built with Vue 3, Pinia and Dexie (IndexedDB); Ollama by default for every model call; an optional .NET 10 backend for accounts, sync and collaboration.
+
+Nothing leaves the device unless you opt in — the cloud tier is per-project and discloses exactly what it sends.
 
 ## Features
 
@@ -27,14 +29,21 @@ A browser-based fiction writing environment with AI-powered tools for planning, 
 - **Author Voice Learning** — statistical voice profiling without LLM calls
 - **Beta Reader / Consistency / What If / Story Shape / Voice Lab / Character Chat** panels
 
+### Knowing your story (Obsidian-style)
+
+- **Properties & tags** on every character, location and plot thread; **POV / setting / cast** on every scene, set by hand or by the generator, and read back by the digest layer
+- **Story Query** — a Bases/Dataview-style table over scenes, chapters and entities: filters, All/Any, sort, group, inline edit. "Which draft scenes have no characters?" is one click
+- **Related** — what in the story is semantically close to the scene you are in, by local embeddings; link a hit into the graph
+- **Ask the story** (lookup) and **Ask your story** (chat) — plain-words search and grounded Q&A with citations that open the scene
+- **Templates** — Scene / Chapter opener / Climax (and your own) that insert at the cursor and set the scene's POV, setting and cast
+- **Story Network** — force-directed graph with relationship-type filters, a **local graph** view (click a node, see its neighbourhood), and find-a-node
+- **Story Canvas** — a board, or a **map** with an uploaded image and pinned, draggable entities
+- **Timeline**, **Scene Outline**, **Volumes** and **Branches**
+
 ### Planning & Organization
 
-- **Story Bible** — characters, locations, plot threads, relationships with visual graph network
+- **Story Bible** — characters, locations, plot threads, relationships
 - **Chapter & Scene Management** — section/subsection hierarchy with drag-and-drop reordering; a project's structure terms adapt to its workspace type (a novel says Chapters/Scenes, a screenplay Scenes/Beats)
-- **Story Canvas** — spatial storyboard
-- **Timeline View** — chronological plot thread visualization
-- **Scene Outline** — structured scene-by-scene breakdown
-- **Volume & Branch Management** — organize chapters into volumes; fork alternate branches
 
 ### Export & Archive
 
@@ -46,7 +55,7 @@ A browser-based fiction writing environment with AI-powered tools for planning, 
 
 ```
 src/
-├── components/         — 134 Vue components across 25 feature dirs
+├── components/         — 140 Vue components across 27 feature dirs
 │   └── ui/             — Base* primitives (panel header, section, button, chip, field …)
 ├── composables/        — ~150 composition modules
 │   ├── generation/     — the generation engine, split by concern:
@@ -61,17 +70,18 @@ src/
 │   ├── useStoryWriter.ts           — prose + metadata extraction
 │   ├── useStoryCritic.ts           — scoring and contradiction audit
 │   └── ...
-├── services/           — ~120 modules
+├── services/           — ~125 modules
 │   ├── db-schema.ts / db-core.ts   — Dexie schema (v51), 26 db-* table modules
+│   ├── storyQuery.ts / storyVectorIndex.ts / compileManuscript.ts — query, semantic index, compile
 │   ├── aiService.ts    — unified AI provider interface
 │   ├── providers/      — OpenAI, Anthropic, Gemini, Groq, Ollama adapters
 │   ├── ai/             — token calibration, model/context budgets, prompt store
 │   ├── generation/     — digests, rollups, deterministic contradictions, gates, run health
 │   ├── vectorIndex*.ts — IVF index + worker
 │   └── sync-engine.ts  — offline-to-server sync (14 synced tables)
-├── stores/             — 20 Pinia stores (setup syntax)
+├── stores/             — 23 Pinia stores (setup syntax)
 ├── config/             — providers, models, prompts, eval rubrics, gate config, workspaces
-└── tests/              — unit (243 files), integration, audit, evaluation, live
+└── tests/              — unit (259 files), integration, audit, evaluation, live
 ```
 
 See `ARCHITECTURE.md` for the system map, `API.md` for the backend contract, `TESTING.md` for every suite, and `docs/GENERATION-PIPELINE-ANALYSIS.md` for how a run behaves.
@@ -125,7 +135,7 @@ The .NET 10 API adds accounts, organisations, sync and collaboration. `docker co
 | `npm run build`            | Production build (pre-compressed `.br`/`.gz` assets)            |
 | `npm run preview`          | Preview production build                                        |
 | `npm test`                 | Run unit tests (watch mode)                                     |
-| `npm run test:run`         | Run unit tests once (≈2,950 tests)                              |
+| `npm run test:run`         | Run unit tests once (≈3,060 tests)                              |
 | `npm run test:coverage`    | Run tests with coverage report                                  |
 | `npm run test:e2e`         | Playwright smoke/auth/responsive/panel specs (boots dev server) |
 | `npm run typecheck`        | `tsc --noEmit`                                                  |
@@ -152,7 +162,7 @@ writes a 2-scene sample with critic scores and gate verdicts to `reports/`.
 ## Tech Stack
 
 - **Framework**: Vue 3 (Composition API, `<script setup>`), TypeScript throughout `src/`
-- **State**: Pinia (20 stores)
+- **State**: Pinia (23 stores)
 - **Editor**: Tiptap 3 (ProseMirror)
 - **Persistence**: Dexie 4, schema v51 (IndexedDB)
 - **Styling**: Tailwind CSS 3.4 over `--vers-*` tokens (`docs/DESIGN-TOKENS.md`)

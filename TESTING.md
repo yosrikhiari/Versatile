@@ -6,7 +6,7 @@ How to run every check in this repo, and the conventions new tests must follow.
 
 ```bash
 npm test              # watch mode
-npm run test:run      # single run (CI shape) — 263 files, ≈2,950 tests, ~2 min
+npm run test:run      # single run (CI shape) — 279 files, ≈3,060 tests, ~2 min
 npm run test:coverage # v8 coverage with thresholds (statements 38, branches 30, functions 31, lines 38)
 npm run typecheck     # tsc --noEmit, must be zero errors
 npm run lint          # eslint, zero errors (warnings are pre-existing)

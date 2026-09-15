@@ -16,7 +16,7 @@ browser (Vue 3 SPA, Dexie/IndexedDB v50) ──/api, /hubs──► .NET 10 API 
 
 ## Frontend (`src/`)
 
-- **Vue 3 Composition API + Pinia** (`src/stores/`, 20 stores with setup
+- **Vue 3 Composition API + Pinia** (`src/stores/`, 23 stores with setup
   syntax): `projectStore` and `manuscriptStore` own the document graph;
   `storyBibleStore`, `storyGraphStore`, `volumeStore`, `branchStore` own
   world state; `settingsStore`/`authStore` own identity, keys and the

@@ -55,7 +55,7 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 - Offline-first persistence via Dexie IndexedDB (schema v51, 51 tables)
 - Cloud sync via .NET 10 + PostgreSQL (optional)
 - Light and dark themes (both equally maintained)
-- 263 test files (≈2,950 tests) — Vitest; Playwright E2E; xUnit backend
+- 279 test files (≈3,060 tests) — Vitest; Playwright E2E; xUnit backend
 - Geist Variable UI font, IBM Plex Mono manuscript font, various serif fonts for feature modes
 - One panel grammar across every tool panel (`BasePanelHeader` / `BaseSection`); panels dock right of a canvas-dominant shell
 - Whole-book generation verified against a real local model (10 chapters, 28K words, 62 min — `docs/examples/the-salt-road.md`)

@@ -7,6 +7,16 @@ was verified.
 
 ## [Unreleased]
 
+### Canvas map view — roadmap Phase 8 (2026-09-15)
+- Story Canvas gains a **Map** view: upload a background image (persisted on
+  the project row as `mapBackground`), pin characters / locations / threads
+  by choosing one and clicking the map, drag pins to move them, double-click
+  to unpin, **Pin all locations** auto-places the unpinned ones. Coordinates
+  are `metadata.mapX` / `mapY` in 0..1 — Phase-1 metadata, no schema change.
+  `utils/canvasCoords.ts` is pure. 8 tests.
+- With this, all eight phases of the Obsidian-inspired roadmap lost on
+  2026-08-19 are rebuilt and committed, one commit per phase.
+
 ### Ask your story — roadmap Phase 7 (2026-09-15)
 - `stores/useStoryAssistantStore.ts`: a question is grounded in the closest
   scenes and bible entries from the Phase-3 index (reranked when there are

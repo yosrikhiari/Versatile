@@ -33,7 +33,7 @@ Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL
 
 ## Testing
 
-- `npm run test:run` — Vitest suite (≈2,950 tests, ~2 min)
+- `npm run test:run` — Vitest suite (≈3,060 tests, ~2 min)
 - `npm run typecheck` — `tsc --noEmit`, zero errors
 - `npm run lint` — ESLint
 - `npm run build` — Vite production build
