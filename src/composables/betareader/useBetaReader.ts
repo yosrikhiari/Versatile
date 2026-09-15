@@ -1,3 +1,4 @@
+import { stripHtmlBlock } from '../../utils/textUtils'
 import { ref, computed } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
@@ -38,6 +39,11 @@ export function useBetaReader() {
   const summary: any = ref(null)
   const activePass = ref(0)
   const currentPhase = ref('')
+  const stopRequested = ref(false)
+  const passCount = PASSES.length
+  function stop() {
+    if (isScanning.value) stopRequested.value = true
+  }
   // Per-run opt-in for on-demand cloud contradiction detection. Defaults off;
   // the panel binds its checkbox to this ref.
   const cloudRunOptIn = ref(false)
@@ -59,9 +65,18 @@ export function useBetaReader() {
     const projectId = projectStore.currentProjectId
     if (!projectId) return
 
+    // The model reads plain text: the editor stores HTML, and passing it through
+    // put "<em>Marguerite</em>" into finding titles. The same stripper the scene
+    // digest hashes with, so a stored digest is reused instead of always stale.
+    // Scene numbers are 1-based for the reader ("Scene 0" was the old default).
     const scenes = [...manuscriptStore.subsections]
       .filter((s) => s.content?.trim())
       .sort((a, b) => (a.sceneNumber || a.order || 0) - (b.sceneNumber || b.order || 0))
+      .map((s, i) => ({
+        ...s,
+        content: stripHtmlBlock(s.content),
+        sceneNumber: s.sceneNumber || i + 1
+      }))
 
     if (scenes.length === 0) {
       // Say so, rather than leaving the panel to claim the story reads clean.
@@ -71,6 +86,7 @@ export function useBetaReader() {
     noScenes.value = false
 
     isScanning.value = true
+    stopRequested.value = false
     activePass.value = 0
 
     try {
@@ -137,6 +153,9 @@ export function useBetaReader() {
       }
 
       for (let i = 0; i < PASSES.length; i++) {
+        // Stop lands between passes: a pass in flight finishes, the rest are
+        // skipped, and whatever was found so far is reported.
+        if (stopRequested.value) break
         const pass = PASSES[i]
         activePass.value = i
         currentPhase.value = pass.label
@@ -263,6 +282,9 @@ export function useBetaReader() {
     summary,
     activePass,
     currentPhase,
+    passCount,
+    stopRequested,
+    stop,
     progress,
     cloudRunOptIn,
     cloudTier,

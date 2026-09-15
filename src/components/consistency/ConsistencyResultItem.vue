@@ -35,6 +35,12 @@ function handleAction() {
     emit('action', props.result.action)
   }
 }
+
+function handleSecondary() {
+  if (props.result.secondaryAction) {
+    emit('action', props.result.secondaryAction)
+  }
+}
 </script>
 
 <template>
@@ -47,14 +53,13 @@ function handleAction() {
         }}<template v-if="result.description"> · {{ result.description }}</template>
       </p>
     </div>
-    <BaseButton
-      v-if="result.action"
-      variant="ghost"
-      size="sm"
-      custom-class="shrink-0"
-      @click="handleAction"
-    >
-      {{ result.action.label }}
-    </BaseButton>
+    <div v-if="result.action || result.secondaryAction" class="flex shrink-0 items-center gap-1">
+      <BaseButton v-if="result.action" variant="ghost" size="sm" @click="handleAction">
+        {{ result.action.label }}
+      </BaseButton>
+      <BaseButton v-if="result.secondaryAction" variant="ghost" size="sm" @click="handleSecondary">
+        {{ result.secondaryAction.label }}
+      </BaseButton>
+    </div>
   </li>
 </template>

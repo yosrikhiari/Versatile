@@ -7,6 +7,27 @@ was verified.
 
 ## [Unreleased]
 
+### Functional audit, second pass: the analysis panels (2026-09-15)
+- **Voice Lab works** (`docs/UX-AUDIT.md` #31): the scan button read a store
+  property that never existed, the list threw on numeric ids, and the indexer
+  stored the wrong field names. Rows now say where a line lives; speakers are
+  chip filters.
+- **One notification host** (#32): `NotificationHost` was mounted twice, so
+  every confirm and toast rendered twice.
+- **Findings open scenes** (#33): Beta Reader, Consistency and the timeline
+  send `{ subsectionId }`; the Chapters watcher now selects the scene and
+  scrolls to it, and the same finding can be clicked twice.
+- **Consistency** (#34): number/time words are not undefined characters; an
+  undefined name offers *Add to bible* (creates it and rechecks) and *Open scene*.
+- **Beta Reader** (#35, #36): scenes go to the model as prose through the same
+  stripper the digest hashes (`stripHtmlBlock`), 1-based scene numbers, a
+  one-line summary, worded categories, scene-titled pacing rows, "Pass n of 4"
+  with Stop; no read on panel open.
+- **The last open scene is restored on reload** (#37), per project.
+- Chapter row click no longer deselects; drafting derived from words; Story
+  Bible guard copy and idempotence; type voice on the confirm and Archive
+  headings; id props accept numbers (#38–#40).
+
 ### Functional audit: prose in one place, Scene mode writes where you are, one structure panel (2026-09-15)
 - **Generated prose was stored twice** (`docs/UX-AUDIT.md` #19): the chapter body
   received a copy of its scenes and every counter added both, so a 637-word scene

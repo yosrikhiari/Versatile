@@ -13,7 +13,7 @@ const RATES: Record<string, { input: number; output: number }> = {
 
 function estimateCost(inputTokens: number, outputTokens: number, provider: string): number {
   const rate = RATES[provider] || RATES.openai
-  return ((inputTokens * rate.input) + (outputTokens * rate.output)) / 1000
+  return (inputTokens * rate.input + outputTokens * rate.output) / 1000
 }
 
 export interface CloudBatchInjectorOptions {
@@ -23,7 +23,12 @@ export interface CloudBatchInjectorOptions {
   onFallback?: (reason: string) => void
 }
 
-export function buildCloudBatchInjector({ provider, model, localGenerateJson, onFallback }: CloudBatchInjectorOptions) {
+export function buildCloudBatchInjector({
+  provider,
+  model,
+  localGenerateJson,
+  onFallback
+}: CloudBatchInjectorOptions) {
   const fallBack = async (reason: string, prompt: string, systemPrompt: string, opts: any) => {
     onFallback?.(reason)
     try {
@@ -37,23 +42,42 @@ export function buildCloudBatchInjector({ provider, model, localGenerateJson, on
     try {
       providerBudget.check(provider)
     } catch (err: any) {
-      return fallBack(`cloud budget exceeded (${err?.message || err}); used local model`, prompt, systemPrompt, opts)
+      return fallBack(
+        `cloud budget exceeded (${err?.message || err}); used local model`,
+        prompt,
+        systemPrompt,
+        opts
+      )
     }
     let text: string
     try {
       text = await backendStream(prompt, systemPrompt, model, undefined, { provider })
     } catch (err: any) {
-      return fallBack(`cloud call failed (${err?.message || err}); used local model`, prompt, systemPrompt, opts)
+      return fallBack(
+        `cloud call failed (${err?.message || err}); used local model`,
+        prompt,
+        systemPrompt,
+        opts
+      )
     }
     let parsed: any = null
     try {
       parsed = JSON.parse(text)
     } catch {
-      return fallBack('cloud output was not valid JSON; used local model', prompt, systemPrompt, opts)
+      return fallBack(
+        'cloud output was not valid JSON; used local model',
+        prompt,
+        systemPrompt,
+        opts
+      )
     }
     const outputTokens = Math.ceil(text.length / CHARS_PER_TOKEN)
     try {
-      providerBudget.record(provider, inputTokens + outputTokens, estimateCost(inputTokens, outputTokens, provider))
+      providerBudget.record(
+        provider,
+        inputTokens + outputTokens,
+        estimateCost(inputTokens, outputTokens, provider)
+      )
     } catch {
       // Recording must never fail the batch the cloud just judged.
     }

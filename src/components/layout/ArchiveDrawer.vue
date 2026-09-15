@@ -156,7 +156,7 @@ function handleSignalClick(opt) {
   <div class="h-full flex flex-col overflow-hidden">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between">
-        <span class="font-semibold text-text-primary font-ui text-sm">Archive</span>
+        <h2 class="type-display text-[11px] text-text-primary">Archive</h2>
         <button
           class="text-text-hint hover:text-danger text-xs font-ui"
           :disabled="isPruning"

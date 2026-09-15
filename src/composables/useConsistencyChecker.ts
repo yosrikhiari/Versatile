@@ -1,3 +1,4 @@
+import { useProjectStore } from '../stores/projectStore'
 import { ref, computed } from 'vue'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
@@ -8,7 +9,82 @@ function uidNext() {
   return `cc-${++uid}`
 }
 
+// Number words and sentence-initial time words were flagged as undefined
+// characters ("Eleven, then ten." produced an undefined mention: "Eleven").
+const NUMBER_AND_TIME_WORDS = [
+  'One',
+  'Two',
+  'Three',
+  'Four',
+  'Five',
+  'Six',
+  'Seven',
+  'Eight',
+  'Nine',
+  'Ten',
+  'Eleven',
+  'Twelve',
+  'Thirteen',
+  'Fourteen',
+  'Fifteen',
+  'Sixteen',
+  'Seventeen',
+  'Eighteen',
+  'Nineteen',
+  'Twenty',
+  'Thirty',
+  'Forty',
+  'Fifty',
+  'Sixty',
+  'Seventy',
+  'Eighty',
+  'Ninety',
+  'Hundred',
+  'Thousand',
+  'Million',
+  'First',
+  'Second',
+  'Third',
+  'Last',
+  'Next',
+  'Once',
+  'Twice',
+  'Today',
+  'Tonight',
+  'Tomorrow',
+  'Yesterday',
+  'Morning',
+  'Evening',
+  'Night',
+  'Noon',
+  'Midnight',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+  'Spring',
+  'Summer',
+  'Autumn',
+  'Winter'
+]
+
 const COMMON_CAPITALIZED = new Set([
+  ...NUMBER_AND_TIME_WORDS,
   'The',
   'This',
   'That',
@@ -95,7 +171,22 @@ export interface ConsistencyFinding {
   category: string
   title: string
   description: string
-  action?: { label: string; type: string; payload: string }
+  action?: ConsistencyAction
+  secondaryAction?: ConsistencyAction
+}
+
+export interface ConsistencyAction {
+  label: string
+  type: string
+  payload: any
+}
+
+function terms() {
+  try {
+    return useProjectStore().structureTerms
+  } catch {
+    return { subsectionLc: 'scene', sectionLc: 'chapter' } as any
+  }
 }
 
 export function useConsistencyChecker() {
@@ -146,7 +237,10 @@ export function useConsistencyChecker() {
       if (l.name) locNameLower.set(l.name.toLowerCase(), l.id)
     }
 
-    const allBibleNamesLower = new Set([...Array.from(charNameLower.keys()), ...Array.from(locNameLower.keys())])
+    const allBibleNamesLower = new Set([
+      ...Array.from(charNameLower.keys()),
+      ...Array.from(locNameLower.keys())
+    ])
 
     const findings: any[] = []
 
@@ -194,7 +288,7 @@ export function useConsistencyChecker() {
             category: 'orphaned_character',
             title: `Orphaned character: ${char.name}`,
             description: `${char.name} has no manuscript mentions and no graph connections.`,
-            action: { label: 'Open Bible', type: 'open-bible', payload: String(char.id) }
+            action: { label: 'Open bible', type: 'open-bible', payload: String(char.id) }
           })
         }
       }
@@ -223,7 +317,7 @@ export function useConsistencyChecker() {
             category: 'orphaned_location',
             title: `Orphaned location: ${loc.name}`,
             description: `${loc.name} has no manuscript mentions and no graph connections.`,
-            action: { label: 'Open Bible', type: 'open-bible', payload: String(loc.id) }
+            action: { label: 'Open bible', type: 'open-bible', payload: String(loc.id) }
           })
         }
       }
@@ -240,7 +334,14 @@ export function useConsistencyChecker() {
             category: 'undefined_mention',
             title: `Undefined mention: "${name}"`,
             description: `"${name}" in "${sub.title || 'Untitled'}" isn't in the story bible.`,
-            action: { label: 'Open Section', type: 'open-section', payload: sub.sectionId }
+            // The useful next step is one click: add the name as a character.
+            // Opening the scene is the secondary path.
+            action: { label: 'Add to bible', type: 'add-character', payload: name },
+            secondaryAction: {
+              label: `Open ${terms().subsectionLc}`,
+              type: 'open-section',
+              payload: { subsectionId: sub.id }
+            }
           })
         }
       }
@@ -253,7 +354,8 @@ export function useConsistencyChecker() {
             category: 'undefined_mention',
             title: `Undefined mention: "${name}"`,
             description: `"${name}" in story element "${se.title}" isn't in the story bible.`,
-            action: { label: 'Open Section', type: 'open-section', payload: se.id }
+            action: { label: 'Add to bible', type: 'add-character', payload: name },
+            secondaryAction: { label: 'Open element', type: 'open-section', payload: se.id }
           })
         }
       }
@@ -280,7 +382,7 @@ export function useConsistencyChecker() {
               category: 'graph_mismatch',
               title: 'Graph references missing character',
               description: `Edge references character #${id} that no longer exists.`,
-              action: { label: 'Open Graph', type: 'open-graph', payload: edge.id }
+              action: { label: 'Open graph', type: 'open-graph', payload: edge.id }
             })
           } else if (type === 'location' && !locIdsSet.has(id)) {
             findings.push({
@@ -289,7 +391,7 @@ export function useConsistencyChecker() {
               category: 'graph_mismatch',
               title: 'Graph references missing location',
               description: `Edge references location #${id} that no longer exists.`,
-              action: { label: 'Open Graph', type: 'open-graph', payload: edge.id }
+              action: { label: 'Open graph', type: 'open-graph', payload: edge.id }
             })
           }
         }
@@ -304,7 +406,7 @@ export function useConsistencyChecker() {
             category: 'graph_mismatch',
             title: `No graph entry: ${char.name}`,
             description: `${char.name} has no story graph representation.`,
-            action: { label: 'Open Graph', type: 'open-graph', payload: String(char.id) }
+            action: { label: 'Open graph', type: 'open-graph', payload: String(char.id) }
           })
         }
       }
@@ -316,7 +418,7 @@ export function useConsistencyChecker() {
             category: 'graph_mismatch',
             title: `No graph entry: ${loc.name}`,
             description: `${loc.name} has no story graph representation.`,
-            action: { label: 'Open Graph', type: 'open-graph', payload: String(loc.id) }
+            action: { label: 'Open graph', type: 'open-graph', payload: String(loc.id) }
           })
         }
       }
@@ -350,7 +452,7 @@ export function useConsistencyChecker() {
             category: 'plot_thread_gap',
             title: `Plot thread not woven: ${threadTitle}`,
             description: `${threadTitle} has no character connections and no manuscript references.`,
-            action: { label: 'Open Bible', type: 'open-bible', payload: threadId }
+            action: { label: 'Open bible', type: 'open-bible', payload: threadId }
           })
         }
       }
@@ -390,7 +492,7 @@ export function useConsistencyChecker() {
   }
 }
 
-function extractUndefinedNames(text: string, knownNames: Set<string>) {
+export function extractUndefinedNames(text: string, knownNames: Set<string>) {
   if (!text) return []
   const found = new Set()
   const words = text.match(/\b[A-Z][a-z]+\b/g) || []

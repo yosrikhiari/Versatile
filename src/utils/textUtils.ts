@@ -29,6 +29,27 @@ export function stripHtmlTags(html: string | null | undefined): string {
     .trim()
 }
 
+/**
+ * Block-aware strip: keeps paragraph breaks and decodes entities. This is the
+ * text the scene digest hashes, so anything that compares against a digest
+ * (Beta Reader's fact ledger) must read scenes through the same function or
+ * every digest looks stale.
+ */
+export function stripHtmlBlock(html: any): string {
+  return String(html ?? '')
+    .replace(/<\/(p|div|h[1-6]|li)>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export function truncate(text: string, maxLength: number): string {
   if (!text || text.length <= maxLength) return text
   return text.slice(0, maxLength) + '...'

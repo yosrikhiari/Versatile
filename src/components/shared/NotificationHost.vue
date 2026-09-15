@@ -75,7 +75,7 @@ const positionClass = computed(
           class="bg-bg-tertiary border border-border-subtle rounded-xl shadow-warm-lg max-w-md w-full p-6"
           @click.stop
         >
-          <h3 class="text-lg font-ui text-text-primary mb-2">{{ activeConfirm.title }}</h3>
+          <h3 class="type-display text-sm text-text-primary mb-2">{{ activeConfirm.title }}</h3>
           <p class="text-text-secondary text-sm font-ui mb-6 whitespace-pre-wrap">
             {{ activeConfirm.message }}
           </p>

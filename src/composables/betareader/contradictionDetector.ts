@@ -1,7 +1,24 @@
 import { aiGenerateJson } from '../useAiService'
-import { runDeterministicContradictionChecks, generateContradictionCandidates, buildCandidateLedgerText, indexScenesByChapter, DEFAULT_MAX_SCENES_PER_CHAPTER, type DeterministicContradiction } from '../../services/generation/deterministicContradictions'
-import { runCrossChapterRuleChecks, checkVolumeDrift, checkVolumeInflux, orderVolumesByChapter } from '../../services/generation/crossChapterRules'
-import { getProjectDigests, getProjectChapterDigests, getProjectVolumeDigests, getEntityStateTimeline } from '../../services/db-digests'
+import {
+  runDeterministicContradictionChecks,
+  generateContradictionCandidates,
+  buildCandidateLedgerText,
+  indexScenesByChapter,
+  DEFAULT_MAX_SCENES_PER_CHAPTER,
+  type DeterministicContradiction
+} from '../../services/generation/deterministicContradictions'
+import {
+  runCrossChapterRuleChecks,
+  checkVolumeDrift,
+  checkVolumeInflux,
+  orderVolumesByChapter
+} from '../../services/generation/crossChapterRules'
+import {
+  getProjectDigests,
+  getProjectChapterDigests,
+  getProjectVolumeDigests,
+  getEntityStateTimeline
+} from '../../services/db-digests'
 import type { SceneDigest } from '../../services/generation/sceneDigest'
 import type { EntityStateRecord } from '../../services/generation/entityStates'
 
@@ -55,7 +72,11 @@ export async function detectContradictions(
   let sceneDigests: SceneDigest[] = []
   let entityStates: EntityStateRecord[] = []
   let chapterDigests: Array<{ chapterNumber: number; summary: string }> = []
-  let volumeDigests: Array<{ volumeId: string; charactersPresent?: string[] | null; locations?: string[] | null }> = []
+  let volumeDigests: Array<{
+    volumeId: string
+    charactersPresent?: string[] | null
+    locations?: string[] | null
+  }> = []
   if (projectId) {
     sceneDigests = await getProjectDigests(projectId)
     // The entity-state timeline is what the deterministic rules actually run on.
@@ -76,8 +97,7 @@ export async function detectContradictions(
   // run per group; the null group holds whatever no chapter resolves
   // (states, digests and ledgers alike) so nothing is ever dropped for
   // lack of a chapter. Group order is numeric chapters first, null last.
-  const groupOfSceneId = (sid: unknown): number | null =>
-    chapterByScene.get(String(sid)) ?? null
+  const groupOfSceneId = (sid: unknown): number | null => chapterByScene.get(String(sid)) ?? null
   const digestsByGroup = new Map<number | null, SceneDigest[]>()
   for (const d of sceneDigests) {
     const k = typeof d.chapterNumber === 'number' ? d.chapterNumber : null
@@ -99,7 +119,10 @@ export async function detectContradictions(
   // so spanning pairs are invisible to it — Pass 2 owns those and skips
   // same-chapter pairs, so no finding is ever reported twice.
   const pass1Findings: DeterministicContradiction[] = []
-  const candidatesByGroup = new Map<number | null, Array<{ sceneA: string; sceneB: string; reason: string }>>()
+  const candidatesByGroup = new Map<
+    number | null,
+    Array<{ sceneA: string; sceneB: string; reason: string }>
+  >()
   for (const g of groupKeys) {
     const groupDigests = digestsByGroup.get(g) ?? []
     const groupStates = statesByGroup.get(g) ?? []
@@ -120,18 +143,24 @@ export async function detectContradictions(
   // Volume drift is display-only rollup analysis: order volumes by lowest
   // chapter (chapter digests supply labels), then pairwise drift + influx.
   const chaptersByVolume = new Map<string, number[]>()
-  for (const d of chapterDigests as Array<{ volumeId?: string | null; chapterNumber?: number | null }>) {
+  for (const d of chapterDigests as Array<{
+    volumeId?: string | null
+    chapterNumber?: number | null
+  }>) {
     if (d?.volumeId == null || typeof d.chapterNumber !== 'number') continue
     if (!chaptersByVolume.has(d.volumeId)) chaptersByVolume.set(d.volumeId, [])
     chaptersByVolume.get(d.volumeId)!.push(d.chapterNumber)
   }
-  const orderedVolumes = orderVolumesByChapter(volumeDigests, chapterDigests as Array<{ volumeId?: string | null; chapterNumber?: number | null }>)
+  const orderedVolumes = orderVolumesByChapter(
+    volumeDigests,
+    chapterDigests as Array<{ volumeId?: string | null; chapterNumber?: number | null }>
+  )
   pass2Findings.push(
     ...checkVolumeDrift(orderedVolumes, chaptersByVolume),
     ...checkVolumeInflux(orderedVolumes)
   )
   const allDeterministic = [...pass1Findings, ...pass2Findings]
-  
+
   // Deterministic findings are normalised ONCE, here, and reused on both exits.
   // Previously only the no-candidates path built `betweenScenes` and `action`,
   // so as soon as a single candidate pair existed every deterministic finding
@@ -161,26 +190,26 @@ export async function detectContradictions(
     const id = nextId(c.sceneIds, detIndex++)
     return {
       id,
-    severity: c.severity,
-    category: c.type,
-    pass: 'contradictions',
-    title: c.description.split('.')[0],
-    description: c.description,
-    // The facts the rule fired on. A deterministic finding an author can't
-    // trace back to a sentence reads as a false positive whether or not it is.
-    evidence: c.evidence ?? [],
-    betweenScenes: c.sceneIds.map(
-      (sid) => `Scene ${scenes.find((s: any) => s.id === sid)?.sceneNumber ?? '?'}`
-    ),
-    action:
-      c.sceneIds.length > 0
-        ? {
-            label: 'Jump to Scene',
-            type: 'open-section',
-            payload: { subsectionId: c.sceneIds[0] },
-            sceneId: c.sceneIds[0]
-          }
-        : null
+      severity: c.severity,
+      category: c.type,
+      pass: 'contradictions',
+      title: c.description.split('.')[0],
+      description: c.description,
+      // The facts the rule fired on. A deterministic finding an author can't
+      // trace back to a sentence reads as a false positive whether or not it is.
+      evidence: c.evidence ?? [],
+      betweenScenes: c.sceneIds.map(
+        (sid) => `Scene ${scenes.find((s: any) => s.id === sid)?.sceneNumber ?? '?'}`
+      ),
+      action:
+        c.sceneIds.length > 0
+          ? {
+              label: 'Open scene',
+              type: 'open-section',
+              payload: { subsectionId: c.sceneIds[0] },
+              sceneId: c.sceneIds[0]
+            }
+          : null
     }
   })
 
@@ -214,11 +243,11 @@ export async function detectContradictions(
       maxScenesPerChapter: DEFAULT_MAX_SCENES_PER_CHAPTER
     })
     const prompt = `Focused fact ledger for specific scene pairs (deterministic rules already checked):\n\n${ledgerText}`
-    const parsed = await generateJson(prompt, CONTRADICTION_PROMPT, {
+    const parsed = (await generateJson(prompt, CONTRADICTION_PROMPT, {
       ...aiOptions,
       schema: CONTRADICTION_SCHEMA,
       schemaName: 'contradiction_detection'
-    }).catch(() => null) as { contradictions?: any[] } | null
+    }).catch(() => null)) as { contradictions?: any[] } | null
     if (!parsed?.contradictions) continue
 
     for (const c of parsed.contradictions) {
@@ -240,7 +269,7 @@ export async function detectContradictions(
         action:
           sceneIds.length > 0
             ? {
-                label: 'Jump to Scene',
+                label: 'Open scene',
                 type: 'open-section',
                 payload: { subsectionId: sceneIds[0] },
                 sceneId: sceneIds[0]

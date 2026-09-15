@@ -9,7 +9,7 @@ const props = defineProps({
   selectedParagraphIndex: { type: Number, default: null },
   annotations: { type: Array, default: () => [] },
   error: { type: String, default: null },
-  projectId: { type: String, default: null }
+  projectId: { type: [String, Number], default: null }
 })
 
 const emit = defineEmits(['accept', 'reject', 'flag'])

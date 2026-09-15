@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { countWords, stripHtmlTags, truncate } from '../../utils/textUtils'
+import { countWords, stripHtmlTags, stripHtmlBlock, truncate } from '../../utils/textUtils'
 
 describe('textUtils', () => {
   describe('countWords', () => {
@@ -54,6 +54,18 @@ describe('textUtils', () => {
 
     it('does not split a word around an inline mark', () => {
       expect(stripHtmlTags('<p>un<b>believ</b>able</p>')).toBe('unbelievable')
+    })
+  })
+
+  describe('stripHtmlBlock', () => {
+    it('keeps paragraph breaks and decodes entities', () => {
+      expect(stripHtmlBlock('<p>One &amp; two.</p><p>Three<br>four.</p>')).toBe(
+        'One & two.\n\nThree\nfour.'
+      )
+    })
+    it('is what the scene digest hashes, so the beta reader must read through it', () => {
+      expect(stripHtmlBlock(null)).toBe('')
+      expect(stripHtmlBlock('<em>Marguerite</em>')).toBe('Marguerite')
     })
   })
 

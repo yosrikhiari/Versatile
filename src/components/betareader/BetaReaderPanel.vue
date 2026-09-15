@@ -1,12 +1,14 @@
 <script setup>
-import { onMounted, computed } from 'vue'
+import { computed } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { useBetaReader } from '../../composables/betareader/useBetaReader'
 import BetaResultItem from './BetaResultItem.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BasePanelHeader from '../ui/BasePanelHeader.vue'
 import BaseCheckbox from '../ui/BaseCheckbox.vue'
+import { summarySentence } from '../../composables/betareader/betaReport'
 
 const emit = defineEmits(['navigate'])
 const projectStore = useProjectStore()
@@ -21,6 +23,10 @@ const {
   resultsBySeverity,
   summary,
   currentPhase,
+  activePass,
+  passCount,
+  stopRequested,
+  stop,
   progress,
   cloudRunOptIn,
   cloudTier,
@@ -30,17 +36,22 @@ const {
   clearResults
 } = useBetaReader()
 
+// "the local model" / "the OpenAI model": which model reads is a fair thing
+// to say before a four-pass run starts.
+const settingsStore = useSettingsStore()
+const providerLabel = computed(() =>
+  (settingsStore.aiProvider || 'ollama') === 'ollama' ? 'local' : settingsStore.aiProvider
+)
+
 const GROUPS = [
   { key: 'errors', label: 'Errors', icon: 'alert-circle', tone: 'text-danger' },
   { key: 'warnings', label: 'Warnings', icon: 'alert-triangle', tone: 'text-warning' },
   { key: 'info', label: 'Notes', icon: 'info', tone: 'text-text-hint' }
 ]
 
-onMounted(() => {
-  if (results.value.length === 0) {
-    scan()
-  }
-})
+// No read on mount. Each read is four model passes, and the results live in
+// this panel instance, so opening the panel used to start the model every
+// time; the writer asks for a read with the button.
 
 function handleReScan() {
   clearResults()
@@ -99,7 +110,19 @@ function countsLabel() {
       <div v-if="isScanning" class="px-4 py-5" role="status" aria-live="polite">
         <div class="flex items-center gap-2 font-ui text-xs text-text-hint">
           <BaseIcon name="loader-2" :size="14" class="animate-spin text-accent" />
-          {{ currentPhase || 'Reading…' }}
+          <span class="label-micro">Pass {{ activePass + 1 }} of {{ passCount }}</span>
+          <span class="truncate">{{ currentPhase || 'Reading…' }}</span>
+          <!-- Each pass is a model call; Stop lets the writer keep what the
+               finished passes found instead of waiting out all of them. -->
+          <BaseButton
+            variant="ghost"
+            size="sm"
+            custom-class="ml-auto shrink-0"
+            :disabled="stopRequested"
+            @click="stop"
+          >
+            {{ stopRequested ? 'Stopping…' : 'Stop' }}
+          </BaseButton>
         </div>
         <div class="mt-3 h-1 rounded-sm bg-bg-tertiary overflow-hidden">
           <div
@@ -116,7 +139,7 @@ function countsLabel() {
           v-if="summary"
           class="px-4 py-4 font-ui text-sm text-text-secondary leading-6 border-b border-border-subtle text-pretty"
         >
-          {{ summary }}
+          {{ summarySentence(summary) }}
         </p>
 
         <section
@@ -150,13 +173,26 @@ function countsLabel() {
         <p class="font-ui text-sm text-text-primary">
           {{ noScenes ? 'Nothing to read yet' : lastScan ? 'Reads clean' : 'Not read yet' }}
         </p>
+        <BaseButton
+          v-if="!noScenes && !lastScan"
+          variant="soft"
+          size="sm"
+          icon="eye"
+          custom-class="mt-4"
+          @click="handleReScan"
+        >
+          Read the manuscript
+        </BaseButton>
         <p class="mt-1 font-ui text-xs text-text-hint leading-5 max-w-[32ch] mx-auto text-pretty">
           <template v-if="noScenes">
             Beta Reader reads {{ terms.subsectionsLc }} that contain prose — split a
             {{ terms.sectionLc }} into {{ terms.subsectionsLc }} in
             <span class="text-text-secondary">{{ terms.sections }}</span> and it will pick them up.
           </template>
-          <template v-else-if="!lastScan">Read when you have prose to test.</template>
+          <template v-else-if="!lastScan"
+            >Four passes with the {{ providerLabel }} model: facts, contradictions, arc, and
+            repetition. It does not run until you ask.</template
+          >
           <template v-else>No narrative issues found in the current draft.</template>
         </p>
       </div>

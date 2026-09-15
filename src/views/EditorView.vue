@@ -9,7 +9,6 @@ import AppShell from '../components/layout/AppShell.vue'
 import SettingsModal from '../components/layout/SettingsModal.vue'
 import TemplatePicker from '../components/editor/TemplatePicker.vue'
 import WelcomeOnboarding from '../components/layout/WelcomeOnboarding.vue'
-import NotificationHost from '../components/shared/NotificationHost.vue'
 import FlowEditor from '../components/flow/FlowEditor.vue'
 import PolishDrawer from '../components/polish/PolishDrawer.vue'
 import StoryBiblePanel from '../components/storybible/StoryBiblePanel.vue'
@@ -230,22 +229,26 @@ function handleOpenChapters() {
   appShell.value?.toggleSections()
 }
 
+/**
+ * Findings navigate through one shared ref. It is cleared before it is set so
+ * the same finding clicked twice (after the writer moved elsewhere) still fires
+ * the panel watchers; a ref that does not change does not notify.
+ */
+function navigateFindingTo(open, payload) {
+  open?.(true)
+  consistencyNavigateTarget.value = null
+  nextTick(() => {
+    consistencyNavigateTarget.value = payload
+  })
+}
+
 function handleConsistencyNavigate(action) {
   if (action.type === 'open-bible') {
-    appShell.value?.toggleStoryBible(true)
-    nextTick(() => {
-      consistencyNavigateTarget.value = action.payload
-    })
+    navigateFindingTo(appShell.value?.toggleStoryBible, action.payload)
   } else if (action.type === 'open-section') {
-    appShell.value?.toggleSections(true)
-    nextTick(() => {
-      consistencyNavigateTarget.value = action.payload
-    })
+    navigateFindingTo(appShell.value?.toggleSections, action.payload)
   } else if (action.type === 'open-graph') {
-    appShell.value?.toggleNetwork(true)
-    nextTick(() => {
-      consistencyNavigateTarget.value = action.payload
-    })
+    navigateFindingTo(appShell.value?.toggleNetwork, action.payload)
   }
 }
 
@@ -277,17 +280,7 @@ function handleStoryNavigate(hit) {
 }
 
 function handleBetaReaderNavigate(action) {
-  if (action.type === 'open-section') {
-    appShell.value?.toggleSections(true)
-    nextTick(() => {
-      consistencyNavigateTarget.value = action.payload
-    })
-  } else if (action.type === 'open-bible') {
-    appShell.value?.toggleStoryBible(true)
-    nextTick(() => {
-      consistencyNavigateTarget.value = action.payload
-    })
-  }
+  handleConsistencyNavigate(action)
 }
 
 async function handleOnboardingCompleteWrapper() {
@@ -659,7 +652,8 @@ function handleOnboardingSkipWrapper() {
       />
     </Modal>
 
-    <NotificationHost />
+    <!-- Toasts and confirms are hosted once, in App.vue. A second host here
+         rendered every dialog twice (two "Discard" buttons on one question). -->
 
     <ActivityToast />
     <ActivityDrawer />

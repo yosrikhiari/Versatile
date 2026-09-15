@@ -48,10 +48,7 @@ export function useDialogueIndexer() {
       const dialogueLines = detectDialogue(para.textContent, para.paragraphIndex)
       if (dialogueLines.length === 0) continue
 
-      const identified = identifySpeakers(
-        dialogueLines as any,
-        storyBibleStore.characters
-      )
+      const identified = identifySpeakers(dialogueLines as any, storyBibleStore.characters)
 
       for (const line of identified) {
         results.push({
@@ -59,14 +56,17 @@ export function useDialogueIndexer() {
           sectionId: subsection.sectionId || null,
           subsectionId: subsection.id,
           paragraphIndex: para.paragraphIndex,
-          textContent: line.text,
+          // detectDialogue emits `dialogueText`, `tag`, `quoteName`; the row
+          // used to read `line.text` / `line.tagType`, so every stored line was
+          // blank and untagged.
+          textContent: line.dialogueText || '',
           speakerId: line.speakerId || null,
           speakerName: line.speakerName || null,
           confidence: line.confidence || 0,
           needsReview: line.needsReview !== false,
-          dialogueType: line.dialogueType || 'quoted',
-          tagType: line.tagType || null,
-          contextBefore: line.contextBefore || null,
+          dialogueType: line.quoteName === 'em-dash' ? 'em-dash' : 'quoted',
+          tagType: line.tag || null,
+          contextBefore: line.fullParagraphText || null,
           indexedAt: new Date().toISOString()
         })
       }

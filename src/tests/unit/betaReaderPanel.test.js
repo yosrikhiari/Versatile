@@ -85,7 +85,9 @@ describe('BetaReaderPanel', () => {
     state.reader = makeReader([])
     let w = mount(BetaReaderPanel, { global: { stubs } })
     expect(w.text()).toContain('Not read yet')
-    expect(state.reader.scan).toHaveBeenCalledTimes(1)
+    // Four model passes must not start because a panel opened.
+    expect(state.reader.scan).not.toHaveBeenCalled()
+    expect(w.text()).toContain('Read the manuscript')
 
     state.reader = makeReader([], { lastScan: Date.now() })
     w = mount(BetaReaderPanel, { global: { stubs } })
@@ -120,5 +122,26 @@ describe('BetaReaderPanel', () => {
     await w.find('button').trigger('click')
     expect(state.reader.clearResults).toHaveBeenCalledTimes(1)
     expect(state.reader.scan).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('betaReport presentation helpers', () => {
+  it('turns the summary object into one line and a category key into a word', async () => {
+    const { summarySentence, humanizeCategory } =
+      await import('@/composables/betareader/betaReport')
+    expect(
+      summarySentence({
+        totalScenes: 1,
+        contradictionsFound: 0,
+        droppedThreadsFound: 2,
+        orphanedSetups: 1,
+        repetitionsFound: 0
+      })
+    ).toBe('1 scene read · 0 contradictions · 2 dropped threads · 1 unpaid setup · 0 repetitions')
+    // The panel used to print this object raw: { "totalScenes": 1, ... }.
+    expect(summarySentence(null)).toBe('')
+    expect(summarySentence('A taut opening.')).toBe('A taut opening.')
+    expect(humanizeCategory('dropped_thread')).toBe('Dropped thread')
+    expect(humanizeCategory('pacing')).toBe('Pacing')
   })
 })

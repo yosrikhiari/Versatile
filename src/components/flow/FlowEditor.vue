@@ -298,7 +298,11 @@ defineExpose({
         <EmptyState
           icon="book-marked"
           :title="`This ${terms.sectionLc} is written in ${terms.subsectionsLc}`"
-          :description="`Its ${scenesOfActiveSection.length} ${scenesOfActiveSection.length === 1 ? terms.subsectionLc : terms.subsectionsLc} hold the prose. Open one to write, or start a ${terms.sectionLc} note here.`"
+          :description="
+            scenesOfActiveSection.length === 1
+              ? `Its one ${terms.subsectionLc} holds the prose. Open it to write, or start a ${terms.sectionLc} note here.`
+              : `Its ${scenesOfActiveSection.length} ${terms.subsectionsLc} hold the prose. Open one to write, or start a ${terms.sectionLc} note here.`
+          "
           action-label="Write a note here"
           @action="handleStartWriting"
         />

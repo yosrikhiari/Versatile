@@ -480,14 +480,24 @@ function cancelEdit() {
   }
 }
 
+let switchingTab = false
 async function switchTab(tab) {
+  if (tab === activeTab.value) return
+  // Two callers (the tab strip and a navigate target) could each ask; one dialog.
+  if (switchingTab) return
   if (editingId.value) {
-    const confirmed = await showConfirm(
-      'Unsaved Changes',
-      'Switch tabs? Your edits will be lost.',
-      'Switch',
-      'warning'
-    )
+    switchingTab = true
+    let confirmed = false
+    try {
+      confirmed = await showConfirm(
+        'Discard edits?',
+        'This entry has unsaved changes. Leave the tab and lose them?',
+        'Discard',
+        'warning'
+      )
+    } finally {
+      switchingTab = false
+    }
     if (!confirmed) return
   }
   cancelEdit()

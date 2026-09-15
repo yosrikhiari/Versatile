@@ -13,6 +13,16 @@ vi.mock('@/composables/useConsistencyChecker', () => ({
   useConsistencyChecker: () => state.checker
 }))
 
+const { bible, toasts } = vi.hoisted(() => ({
+  bible: { addCharacterData: vi.fn(async () => 'c9') },
+  toasts: { addToast: vi.fn() }
+}))
+vi.mock('@/stores/storyBibleStore', () => ({ useStoryBibleStore: () => bible }))
+vi.mock('@/stores/projectStore', () => ({
+  useProjectStore: () => ({ currentProjectId: 'p1' })
+}))
+vi.mock('@/composables/useNotifications', () => ({ useNotifications: () => toasts }))
+
 import ConsistencyPanel from '@/components/consistency/ConsistencyPanel.vue'
 
 function makeChecker(results = [], { scanning = false, lastScan = null } = {}) {
@@ -100,5 +110,49 @@ describe('ConsistencyPanel', () => {
     const item = w.findComponent({ name: 'ConsistencyResultItem' })
     item.vm.$emit('action', { type: 'open-entity', id: 'c1' })
     expect(w.emitted('navigate')?.[0]?.[0]).toEqual({ type: 'open-entity', id: 'c1' })
+  })
+
+  it('"Add to bible" creates the character here and rechecks, without navigating', async () => {
+    state.checker = makeChecker([
+      {
+        id: 1,
+        severity: 'error',
+        category: 'undefined_mention',
+        title: 'Undefined mention: "Zorath"',
+        action: { label: 'Add to bible', type: 'add-character', payload: 'Zorath' }
+      }
+    ])
+    const w = mount(ConsistencyPanel, { global: { stubs } })
+    const item = w.findComponent({ name: 'ConsistencyResultItem' })
+    item.vm.$emit('action', { label: 'Add to bible', type: 'add-character', payload: 'Zorath' })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(bible.addCharacterData).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({ name: 'Zorath' })
+    )
+    expect(toasts.addToast).toHaveBeenCalled()
+    expect(state.checker.clearResults).toHaveBeenCalled()
+    expect(w.emitted('navigate')).toBeUndefined()
+  })
+
+  it('renders a secondary action next to the primary one', () => {
+    state.checker = makeChecker([
+      {
+        id: 1,
+        severity: 'error',
+        category: 'undefined_mention',
+        title: 'Undefined mention: "Zorath"',
+        action: { label: 'Add to bible', type: 'add-character', payload: 'Zorath' },
+        secondaryAction: {
+          label: 'Open scene',
+          type: 'open-section',
+          payload: { subsectionId: 's1' }
+        }
+      }
+    ])
+    const w = mount(ConsistencyPanel, { global: { stubs } })
+    const labels = w.findAll('button').map((b) => b.text())
+    expect(labels).toContain('Add to bible')
+    expect(labels).toContain('Open scene')
   })
 })

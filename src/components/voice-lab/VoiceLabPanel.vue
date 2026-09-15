@@ -2,12 +2,16 @@
 import BaseButton from '../ui/BaseButton.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
+import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useDialogueIndexer } from '../../composables/useDialogueIndexer'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BasePanelHeader from '../ui/BasePanelHeader.vue'
 import Skeleton from '../shared/Skeleton.vue'
+import BaseChip from '../ui/BaseChip.vue'
 
 const projectStore = useProjectStore()
+const manuscriptStore = useManuscriptStore()
+const terms = computed(() => projectStore.structureTerms)
 const { indexing, progress, dialogueStats, indexProjectContent, loadDialogueForProject } =
   useDialogueIndexer()
 
@@ -17,7 +21,8 @@ const selectedEntry = ref(null)
 const loadingEntries = ref(false)
 const filterType = ref('all')
 
-const projectId = computed(() => projectStore.currentProject?.id)
+// `projectStore.currentProject` never existed; the button this feeds was disabled forever.
+const projectId = computed(() => projectStore.currentProjectId)
 
 const speakers = computed(() => {
   const seen = new Map()
@@ -80,6 +85,25 @@ function selectEntry(entry) {
   selectedEntry.value = selectedEntry.value?.id === entry.id ? null : entry
 }
 
+/**
+ * Where a line lives, in words: "The harbour · Counting the boats ¶3". The
+ * old `§{{ sectionId.slice(0, 6) }}` threw once ids became numbers, which is
+ * why this list never rendered.
+ */
+function whereLabel(entry) {
+  const sub = (manuscriptStore.subsections || []).find((x) => x.id === entry.subsectionId)
+  const sec = (manuscriptStore.sections || []).find((x) => x.id === entry.sectionId)
+  const parts = [sec?.title, sub?.title].filter(Boolean)
+  const where = parts.length
+    ? parts.join(' · ')
+    : `${terms.value.subsection} ${entry.subsectionId ?? '?'}`
+  return `${where} ¶${(entry.paragraphIndex ?? 0) + 1}`
+}
+
+function plural(n, one, many) {
+  return `${n} ${n === 1 ? one : many}`
+}
+
 function truncate(text, max = 120) {
   if (!text || text.length <= max) return text
   return text.slice(0, max) + '...'
@@ -102,7 +126,7 @@ watch(projectId, (id) => {
     <BasePanelHeader
       title="Voice Lab"
       icon="message-square"
-      :meta="dialogueEntries.length ? `${dialogueEntries.length} lines` : ''"
+      :meta="dialogueEntries.length ? plural(dialogueEntries.length, 'line', 'lines') : ''"
     >
       <template #actions>
         <BaseButton
@@ -129,8 +153,11 @@ watch(projectId, (id) => {
       </div>
 
       <div v-if="dialogueStats" class="flex gap-3 font-ui text-2xs text-text-hint">
-        <span>{{ dialogueStats.sectionsIndexed }} sections</span>
-        <span>{{ dialogueStats.totalLines }} dialogue lines</span>
+        <span>
+          {{ plural(dialogueStats.sectionsIndexed, terms.subsectionLc, terms.subsectionsLc) }}
+          scanned
+        </span>
+        <span>{{ plural(dialogueStats.totalLines, 'line of dialogue', 'lines of dialogue') }}</span>
       </div>
     </div>
 
@@ -148,36 +175,29 @@ watch(projectId, (id) => {
         </div>
       </div>
       <div class="flex flex-wrap gap-1.5">
-        <button
+        <BaseChip
           v-for="speaker in speakers"
           :key="speaker.id"
-          :class="[
-            'px-2 py-1 rounded-md text-2xs font-medium transition-all duration-150',
-            selectedSpeakerId === speaker.id
-              ? 'bg-surface-hover text-accent ring-1 ring-accent'
-              : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover'
-          ]"
+          variant="filter"
+          :active="selectedSpeakerId === speaker.id"
           @click="selectSpeaker(speaker.id)"
         >
           {{ speaker.name }}
           <span class="ml-1 opacity-60">{{ speaker.count }}</span>
-          <span v-if="speaker.needsReview > 0" class="ml-1 text-warning opacity-80">
+          <span v-if="speaker.needsReview > 0" class="ml-1 text-warning">
             ({{ speaker.needsReview }})
           </span>
-        </button>
+        </BaseChip>
       </div>
       <div class="flex gap-2 mt-2">
-        <button
-          :class="[
-            'px-2 py-0.5 rounded text-2xs font-medium transition-all',
-            filterType === 'unreviewed'
-              ? 'bg-surface-hover text-warning ring-1 ring-warning'
-              : 'text-text-hint hover:text-text-secondary'
-          ]"
+        <BaseChip
+          variant="filter"
+          :active="filterType === 'unreviewed'"
           @click="filterType = filterType === 'unreviewed' ? 'all' : 'unreviewed'"
         >
-          Unreviewed {{ unreviewedCount > 0 ? `(${unreviewedCount})` : '' }}
-        </button>
+          Unreviewed
+          <span v-if="unreviewedCount > 0" class="ml-1 opacity-60">{{ unreviewedCount }}</span>
+        </BaseChip>
       </div>
     </div>
 
@@ -202,12 +222,10 @@ watch(projectId, (id) => {
           v-for="entry in filteredEntries"
           :key="entry.id"
           :class="[
-            'group mx-2 my-1 rounded-lg border transition-all duration-100 cursor-pointer',
+            'group border-b border-border-subtle transition-colors duration-100 cursor-pointer',
             selectedEntry?.id === entry.id
-              ? 'border-accent bg-surface-hover'
-              : entry.needsReview
-                ? 'border-border-subtle bg-bg-secondary hover:bg-surface-hover hover:border-border-subtle'
-                : 'border-transparent hover:bg-surface-hover hover:border-border-subtle'
+              ? 'bg-surface-hover shadow-[inset_2px_0_0_var(--vers-accent-primary)]'
+              : 'hover:bg-surface-hover'
           ]"
           @click="selectEntry(entry)"
         >
@@ -215,18 +233,12 @@ watch(projectId, (id) => {
             <div class="flex items-start gap-2">
               <span
                 v-if="entry.speakerName"
-                class="shrink-0 px-1.5 py-0.5 rounded text-2xs font-semibold leading-tight"
-                :style="{
-                  backgroundColor: 'var(--vers-bg-hover)',
-                  color: entry.color || 'var(--vers-accent-primary)'
-                }"
+                class="shrink-0 label-micro leading-tight"
+                :style="{ color: entry.color || 'var(--vers-accent-primary)' }"
               >
                 {{ entry.speakerName }}
               </span>
-              <span
-                v-else
-                class="shrink-0 px-1.5 py-0.5 rounded text-2xs font-medium leading-tight bg-bg-tertiary text-text-hint"
-              >
+              <span v-else class="shrink-0 label-micro leading-tight text-text-hint">
                 Unknown
               </span>
               <p class="text-xs text-text-secondary leading-relaxed min-w-0 flex-1">
@@ -234,24 +246,17 @@ watch(projectId, (id) => {
               </p>
             </div>
             <div class="flex items-center gap-2 mt-1.5">
-              <span class="text-2xs text-text-hint font-mono">
-                §{{ entry.sectionId ? entry.sectionId.slice(0, 6) : '?' }}:{{
-                  entry.paragraphIndex
-                }}
-              </span>
+              <span class="text-2xs text-text-hint truncate">{{ whereLabel(entry) }}</span>
               <span v-if="entry.confidence < 1" class="text-2xs text-warning">
                 {{ Math.round(entry.confidence * 100) }}%
               </span>
               <span
                 v-if="entry.dialogueType === 'action'"
-                class="text-2xs px-1 py-0.5 rounded bg-bg-tertiary text-text-hint italic leading-none"
+                class="text-2xs text-text-hint italic leading-none"
               >
                 action
               </span>
-              <span
-                v-if="entry.needsReview"
-                class="text-2xs px-1.5 py-0.5 rounded bg-bg-secondary text-warning font-medium leading-none"
-              >
+              <span v-if="entry.needsReview" class="text-2xs text-warning leading-none">
                 Needs review
               </span>
               <span
@@ -279,7 +284,6 @@ watch(projectId, (id) => {
               </p>
             </div>
             <div class="flex flex-wrap gap-x-3 gap-y-1 pt-1 text-2xs text-text-hint">
-              <span>ID: {{ entry.id?.slice(0, 8) || '?' }}</span>
               <span>Type: {{ entry.dialogueType || 'quoted' }}</span>
               <span v-if="entry.tagType">Tag: {{ entry.tagType }}</span>
               <span

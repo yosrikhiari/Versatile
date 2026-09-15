@@ -52,3 +52,27 @@ export function buildBetaReport({
     factLedger
   }
 }
+
+/** "dropped_thread" -> "Dropped thread": the category is shown to the writer. */
+export function humanizeCategory(key: any): string {
+  const k = String(key || '')
+    .replace(/_/g, ' ')
+    .trim()
+  return k ? k.charAt(0).toUpperCase() + k.slice(1) : ''
+}
+
+/** The scan summary as one line of prose; the object itself was being rendered as JSON. */
+export function summarySentence(summary: any): string {
+  if (!summary) return ''
+  if (typeof summary === 'string') return summary
+  const n = (v: any) => Number(v) || 0
+  const scenes = n(summary.totalScenes)
+  const parts = [
+    `${scenes} ${scenes === 1 ? 'scene' : 'scenes'} read`,
+    `${n(summary.contradictionsFound)} ${n(summary.contradictionsFound) === 1 ? 'contradiction' : 'contradictions'}`,
+    `${n(summary.droppedThreadsFound)} dropped ${n(summary.droppedThreadsFound) === 1 ? 'thread' : 'threads'}`,
+    `${n(summary.orphanedSetups)} unpaid ${n(summary.orphanedSetups) === 1 ? 'setup' : 'setups'}`,
+    `${n(summary.repetitionsFound)} ${n(summary.repetitionsFound) === 1 ? 'repetition' : 'repetitions'}`
+  ]
+  return parts.join(' · ')
+}

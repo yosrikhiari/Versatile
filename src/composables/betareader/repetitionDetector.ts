@@ -39,7 +39,11 @@ Severity: "warning" for patterns that noticeably distract, "info" for minor over
 Include specific examples and which scenes are affected.
 Respond ONLY with valid JSON matching the schema.`
 
-export async function detectRepetitions(scenes: any, aiOptions: any, deps?: { generateJson?: typeof aiGenerateJson }) {
+export async function detectRepetitions(
+  scenes: any,
+  aiOptions: any,
+  deps?: { generateJson?: typeof aiGenerateJson }
+) {
   const generateJson = deps?.generateJson ?? aiGenerateJson
   const scenesText = scenes
     .map((s: any) => `Scene ${s.sceneNumber} ("${s.title}"):\n${s.content}`)
@@ -69,12 +73,14 @@ export async function detectRepetitions(scenes: any, aiOptions: any, deps?: { ge
       title: r.title,
       description:
         r.description +
-        (r.examples?.length ? `\nExamples:\n${r.examples.map((e: any) => `• "${e}"`).join('\n')}` : ''),
+        (r.examples?.length
+          ? `\nExamples:\n${r.examples.map((e: any) => `• "${e}"`).join('\n')}`
+          : ''),
       examples: r.examples || [],
       action:
         sceneIds.length > 0
           ? {
-              label: 'View First Occurrence',
+              label: 'Open first use',
               type: 'open-section',
               payload: { subsectionId: sceneIds[0] },
               sceneId: sceneIds[0]

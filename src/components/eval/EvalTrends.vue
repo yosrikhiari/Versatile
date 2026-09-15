@@ -94,7 +94,7 @@ export default {
   name: 'EvalTrends',
   components: { Chart: ChartComponent, BaseIcon },
   props: {
-    projectId: { type: String, required: true },
+    projectId: { type: [String, Number], required: true },
     workspaceType: { type: String, default: 'creative' }
   },
   emits: ['close'],

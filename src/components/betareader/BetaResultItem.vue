@@ -1,4 +1,5 @@
 <script setup>
+import { humanizeCategory } from '../../composables/betareader/betaReport'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 
@@ -31,7 +32,7 @@ function handleAction() {
     <div class="flex-1 min-w-0">
       <p class="font-ui text-sm text-text-primary leading-5">{{ result.title }}</p>
       <p class="font-ui text-xs text-text-hint leading-4">
-        {{ result.category
+        {{ humanizeCategory(result.category)
         }}<template v-if="result.description"> · {{ result.description }}</template>
       </p>
       <p

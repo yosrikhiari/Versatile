@@ -184,6 +184,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
         ])
       sections.value = loadedSections
       subsections.value = loadedSubsections
+      restoreLastPlace(projectId)
       // Sorted by the canvas arrangement the author saved. Reading them back in
       // raw insertion order silently discarded any reordering they had done.
       // Elements predating `order` sort last but keep their relative order.
@@ -339,10 +340,58 @@ export const useManuscriptStore = defineStore('manuscript', () => {
 
   function setActiveSection(id: any) {
     activeSectionId.value = id
+    rememberPlace()
   }
 
   function setActiveSubsection(id: any) {
     activeSubsectionId.value = id
+    rememberPlace()
+  }
+
+  /**
+   * Where the writer was, per project, so a reload or a return to the
+   * workspace reopens the same scene instead of the root "Start writing"
+   * screen. Only ids that still exist are restored; a deleted scene falls
+   * back to nothing, as before.
+   */
+  let placeProjectId: any = null
+  function placeKey(projectId: any) {
+    return `versatile:lastPlace:${projectId}`
+  }
+  function rememberPlace() {
+    if (placeProjectId == null) return
+    try {
+      localStorage.setItem(
+        placeKey(placeProjectId),
+        JSON.stringify({ sectionId: activeSectionId.value, subsectionId: activeSubsectionId.value })
+      )
+    } catch {
+      /* private mode or a full store: the place is simply not remembered */
+    }
+  }
+  function restoreLastPlace(projectId: any) {
+    if (placeProjectId != null && placeProjectId !== projectId) {
+      // Another project: its selection does not carry over.
+      activeSectionId.value = null
+      activeSubsectionId.value = null
+    }
+    placeProjectId = projectId
+    // A reload within the same project (branch switch, a generation run) keeps
+    // whatever is open.
+    if (activeSectionId.value != null || activeSubsectionId.value != null) return
+    let saved: any = null
+    try {
+      saved = JSON.parse(localStorage.getItem(placeKey(projectId)) || 'null')
+    } catch {
+      saved = null
+    }
+    if (!saved) return
+    const sub = subsections.value.find((x) => x.id === saved.subsectionId)
+    const sectionId = sub ? sub.sectionId : saved.sectionId
+    if (sectionId != null && sections.value.some((x) => x.id === sectionId)) {
+      activeSectionId.value = sectionId
+    }
+    if (sub) activeSubsectionId.value = sub.id
   }
 
   function setManuscriptContent(text: any) {

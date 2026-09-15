@@ -58,7 +58,11 @@ Analyze the full manuscript and produce three analyses:
 
 Respond ONLY with valid JSON matching the schema.`
 
-export async function analyzeArc(scenes: any, aiOptions: any, deps?: { generateJson?: typeof aiGenerateJson }) {
+export async function analyzeArc(
+  scenes: any,
+  aiOptions: any,
+  deps?: { generateJson?: typeof aiGenerateJson }
+) {
   const generateJson = deps?.generateJson ?? aiGenerateJson
   const scenesText = scenes
     .map((s: any) => `Scene ${s.sceneNumber} ("${s.title}"):\n${s.content}`)
@@ -85,12 +89,13 @@ export async function analyzeArc(scenes: any, aiOptions: any, deps?: { generateJ
     severity: sp.severity,
     category: sp.status === 'paid_off' ? 'setup_payoff' : 'orphaned_setup',
     pass: 'arc',
-    title: `${sp.element} — ${sp.status === 'paid_off' ? 'Paid Off' : 'Unresolved'}`,
+    status: sp.status,
+    title: `${sp.element} — ${sp.status === 'paid_off' ? 'paid off' : 'unresolved'}`,
     description: sp.description,
     action:
       sp.status !== 'paid_off' && sceneById[sp.setupScene]
         ? {
-            label: 'View Setup',
+            label: 'Open setup',
             type: 'open-section',
             payload: { subsectionId: sceneById[sp.setupScene].id },
             sceneId: sceneById[sp.setupScene].id
@@ -107,7 +112,7 @@ export async function analyzeArc(scenes: any, aiOptions: any, deps?: { generateJ
     description: dt.description + (dt.suggestion ? ` Suggestion: ${dt.suggestion}` : ''),
     action: sceneById[dt.introducedIn]
       ? {
-          label: 'View Introduction',
+          label: 'Open scene',
           type: 'open-section',
           payload: { subsectionId: sceneById[dt.introducedIn].id },
           sceneId: sceneById[dt.introducedIn].id
@@ -120,11 +125,11 @@ export async function analyzeArc(scenes: any, aiOptions: any, deps?: { generateJ
     severity: p.pace === 'slow' ? 'info' : p.pace === 'intense' ? 'info' : 'info',
     category: 'pacing',
     pass: 'arc',
-    title: `Scene ${p.sceneNumber}: ${p.pace}`,
+    title: `${sceneById[p.sceneNumber]?.title || `Scene ${p.sceneNumber}`}: ${p.pace} pacing`,
     description: p.note,
     action: sceneById[p.sceneNumber]
       ? {
-          label: 'Jump to Scene',
+          label: 'Open scene',
           type: 'open-section',
           payload: { subsectionId: sceneById[p.sceneNumber].id },
           sceneId: sceneById[p.sceneNumber].id

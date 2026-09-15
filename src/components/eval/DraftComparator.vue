@@ -17,7 +17,7 @@ import { useProjectStore } from '../../stores/projectStore'
 const props = defineProps({
   draftA: { type: Object, default: null },
   draftB: { type: Object, default: null },
-  sceneId: { type: String, default: '' }
+  sceneId: { type: [String, Number], default: '' }
 })
 
 const emit = defineEmits(['preference-recorded', 'skip'])

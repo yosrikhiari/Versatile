@@ -1,6 +1,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useClickOutside } from '../../composables/useClickOutside'
+import TagInput from '../shared/TagInput.vue'
+import BaseIcon from '../shared/BaseIcon.vue'
 
 const traitModel = defineModel({ type: Array, default: () => [] })
 

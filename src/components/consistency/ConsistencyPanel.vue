@@ -1,5 +1,8 @@
 <script setup>
 import { onMounted } from 'vue'
+import { useProjectStore } from '../../stores/projectStore'
+import { useStoryBibleStore } from '../../stores/storyBibleStore'
+import { useNotifications } from '../../composables/useNotifications'
 import { useConsistencyChecker } from '../../composables/useConsistencyChecker'
 import ConsistencyResultItem from './ConsistencyResultItem.vue'
 import BaseButton from '../ui/BaseButton.vue'
@@ -7,6 +10,9 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import BasePanelHeader from '../ui/BasePanelHeader.vue'
 
 const emit = defineEmits(['navigate'])
+const projectStore = useProjectStore()
+const storyBibleStore = useStoryBibleStore()
+const { addToast } = useNotifications()
 
 const { results, isScanning, lastScan, counts, resultsBySeverity, scan, clearResults } =
   useConsistencyChecker()
@@ -28,7 +34,22 @@ function handleRecheck() {
   scan()
 }
 
-function handleResultAction(action) {
+async function handleResultAction(action) {
+  if (action?.type === 'add-character') {
+    const projectId = projectStore.currentProjectId
+    if (!projectId) return
+    await storyBibleStore.addCharacterData(projectId, {
+      name: String(action.payload),
+      role: '',
+      description: '',
+      goal: '',
+      voice: '',
+      traits: []
+    })
+    addToast(`${action.payload} added to the story bible`, 'success')
+    handleRecheck()
+    return
+  }
   emit('navigate', action)
 }
 

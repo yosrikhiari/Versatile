@@ -4,8 +4,8 @@ import { useManuscriptStore } from '../../stores/manuscriptStore'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const props = defineProps({
-  selectedSectionId: { type: String, default: null },
-  selectedSubsectionId: { type: String, default: null }
+  selectedSectionId: { type: [String, Number], default: null },
+  selectedSubsectionId: { type: [String, Number], default: null }
 })
 
 const emit = defineEmits(['select'])

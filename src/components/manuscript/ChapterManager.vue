@@ -37,7 +37,6 @@ const {
   editingSubsection,
   getStatusLabel,
   getSectionWordCount,
-  openAddSubsection,
   openEditSubsection,
   saveSubsection,
   deleteSubsection
@@ -115,11 +114,22 @@ const navigateTarget = inject('consistencyNavigateTarget', ref(null))
 
 watch(navigateTarget, (target) => {
   if (!target) return
-  activeSectionExpanded.value = target
-  manuscriptStore.setActiveSection(target)
+  // A chapter id, or { subsectionId } from Beta Reader, Consistency and the
+  // timeline. The object form used to reach setActiveSection unchanged.
+  let sectionId = typeof target === 'object' ? target.sectionId : target
+  const subsectionId = typeof target === 'object' ? target.subsectionId : null
+  if (subsectionId != null && sectionId == null) {
+    const sub = (manuscriptStore.subsections || []).find((x) => x.id === subsectionId)
+    sectionId = sub?.sectionId ?? null
+  }
+  if (sectionId == null) return
+  view.value = 'structure'
+  activeSectionExpanded.value = sectionId
+  manuscriptStore.setActiveSection(sectionId)
+  if (subsectionId != null) manuscriptStore.setActiveSubsection(subsectionId)
   nextTick(() => {
     document
-      .getElementById('section-' + target)
+      .getElementById(subsectionId != null ? 'subsection-' + subsectionId : 'section-' + sectionId)
       ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   })
 })
@@ -167,12 +177,6 @@ async function commitInlineAdd() {
     })
   }
   inlineTitle.value = ''
-}
-
-function openAddSection() {
-  editingSection.value = null
-  newSection.value = { title: '', summary: '', status: 'planning', tags: [] }
-  showSectionModal.value = true
 }
 
 function openEditSection(section) {
@@ -270,13 +274,21 @@ async function fileLooseDraftAsSection() {
 }
 
 function selectSection(sectionId) {
+  // Clicking the open chapter folds its scene list; it never drops the editor
+  // back to the root draft, which is what toggling the selection did.
   activeSectionExpanded.value = activeSectionExpanded.value === sectionId ? null : sectionId
-  if (manuscriptStore.activeSectionId === sectionId) {
-    manuscriptStore.setActiveSection(null)
-  } else {
-    manuscriptStore.setActiveSection(sectionId)
-  }
+  manuscriptStore.setActiveSection(sectionId)
   manuscriptStore.setActiveSubsection(null)
+}
+
+/**
+ * The stored status follows the first save (planning -> drafting), but rows
+ * seeded by the generator or an import can still say "planning" with words
+ * in them. The label reads the words.
+ */
+function displayStatus(row, words) {
+  if ((row.status || 'planning') === 'planning' && words > 0) return 'drafting'
+  return row.status || 'planning'
 }
 
 function updateSubsectionOrder(sectionId) {
@@ -578,7 +590,9 @@ function handleSnapshotRestored(content) {
                 }}</span>
                 <span
                   class="text-xs font-medium px-2 py-0.5 rounded-sm bg-bg-secondary text-text-secondary"
-                  >{{ getStatusLabel(section.status) }}</span
+                  >{{
+                    getStatusLabel(displayStatus(section, getSectionWordCount(section.id)))
+                  }}</span
                 >
               </div>
               <button
@@ -701,7 +715,9 @@ function handleSnapshotRestored(content) {
                     }}</span>
                     <span
                       class="text-xs font-medium px-2 py-0.5 rounded-sm bg-bg-secondary text-text-secondary"
-                      >{{ getStatusLabel(section.status) }}</span
+                      >{{
+                        getStatusLabel(displayStatus(section, getSectionWordCount(section.id)))
+                      }}</span
                     >
                   </div>
                   <div class="flex items-center gap-3 mt-0.5">
@@ -869,7 +885,8 @@ function handleSnapshotRestored(content) {
           <span class="text-xs text-text-hint"
             >{{ sortedSections.length }}
             {{ sortedSections.length === 1 ? terms.sectionLc : terms.sectionsLc }} &middot;
-            {{ totalSubsectionCount }} {{ terms.subsectionsLc }}</span
+            {{ totalSubsectionCount }}
+            {{ totalSubsectionCount === 1 ? terms.subsectionLc : terms.subsectionsLc }}</span
           >
         </div>
       </div>

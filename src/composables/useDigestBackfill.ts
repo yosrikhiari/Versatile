@@ -20,12 +20,22 @@
  * `analysisQueue` table and processed at idle priority. Progress survives
  * tab close/crash and can be resumed.
  */
+import { stripHtmlBlock } from '../utils/textUtils'
 import { ref, computed } from 'vue'
 import { getProjectDigests } from '../services/db-digests'
 import { isDigestStale } from '../services/generation/sceneDigest'
 import { writeSceneAnalysis } from '../services/generation/sceneAnalysis'
 import { awaitForegroundIdle } from '../services/providerGate'
-import { enqueueAnalysisTasks, claimNextAnalysisTask, completeAnalysisTask, failAnalysisTask, resetStuckAnalysisTasks, getAnalysisQueueStats, getAnalysisQueueItems, type AnalysisQueueItem } from '../services/analysisQueue'
+import {
+  enqueueAnalysisTasks,
+  claimNextAnalysisTask,
+  completeAnalysisTask,
+  failAnalysisTask,
+  resetStuckAnalysisTasks,
+  getAnalysisQueueStats,
+  getAnalysisQueueItems,
+  type AnalysisQueueItem
+} from '../services/analysisQueue'
 
 export function useDigestBackfill() {
   const isRunning = ref(false)
@@ -162,21 +172,4 @@ export function useDigestBackfill() {
     stats,
     getItems: (projectId: string) => getAnalysisQueueItems(projectId)
   }
-}
-
-// Block-aware variant (keeps paragraph breaks, decodes entities) — distinct from
-// utils/textUtils stripHtmlTags, hence the distinct name.
-function stripHtmlBlock(html: any): string {
-  return String(html ?? '')
-    .replace(/<\/(p|div|h[1-6]|li)>/gi, '\n\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
 }

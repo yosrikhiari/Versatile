@@ -172,6 +172,45 @@ describe('useConsistencyChecker', () => {
       expect(queen).toBeTruthy()
     })
 
+    it('does not read number or time words as characters', async () => {
+      mockSubsections = [
+        {
+          id: 's1',
+          sectionId: 'sec1',
+          title: 'Chapter 1',
+          content: 'Eleven, then ten. Tomorrow she would count again. Monday came.'
+        }
+      ]
+      const c = await useChecked()
+      await c.scan()
+      const undefinedMentions = c.results.value.filter((r) => r.category === 'undefined_mention')
+      expect(undefinedMentions).toEqual([])
+    })
+
+    it('offers "Add to bible" first and opening the scene second', async () => {
+      mockSubsections = [
+        {
+          id: 's1',
+          sectionId: 'sec1',
+          title: 'Chapter 1',
+          content: 'Zorath appeared in the doorway.'
+        }
+      ]
+      const c = await useChecked()
+      await c.scan()
+      const zorath = c.results.value.find((r) => r.title.includes('Zorath'))
+      expect(zorath.action).toEqual({
+        label: 'Add to bible',
+        type: 'add-character',
+        payload: 'Zorath'
+      })
+      // The scene, not the chapter: the manager opens the chapter and selects the scene.
+      expect(zorath.secondaryAction.type).toBe('open-section')
+      expect(zorath.secondaryAction.payload).toEqual({ subsectionId: 's1' })
+      expect(zorath.secondaryAction.label).toMatch(/^Open /)
+      expect(zorath.secondaryAction.label).not.toContain('Section')
+    })
+
     it('detects undefined names in story elements', async () => {
       mockStoryElements = [{ id: 'se1', title: 'Maldor invades the kingdom' }]
       const c = await useChecked()
