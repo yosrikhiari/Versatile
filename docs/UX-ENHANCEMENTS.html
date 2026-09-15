@@ -12,6 +12,9 @@
   /* Doc chrome. Tailwind utilities are not available on a static page, so every demo is written
      against the tokens directly, the way a JS-assigned colour would be in the app. */
   *{ box-sizing:border-box; }
+  /* style.css locks html/body to height:100% + overflow:hidden for the app shell (panels scroll,
+     the page does not). This is a document, so the page scrolls. */
+  html, body{ height:auto; overflow:visible; }
   body{ margin:0; background:var(--vers-bg-base); color:var(--vers-text-primary); font:14px/1.55 'Geist', system-ui, sans-serif; }
   .u-shell{ display:grid; grid-template-columns:232px 1fr; min-height:100vh; }
   .u-side{ position:sticky; top:0; height:100vh; overflow:auto; background:var(--vers-bg-panel); border-right:1px solid var(--vers-border-subtle); padding:18px 12px; }
