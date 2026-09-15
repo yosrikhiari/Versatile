@@ -72,4 +72,3 @@ describe('cosineSimilarity', () => {
     expect(ollamaService.cosineSimilarity([1, 2], [0, 0])).toBe(0)
   })
 })
-

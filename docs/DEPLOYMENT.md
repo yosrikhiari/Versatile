@@ -8,7 +8,7 @@ workflows as they are today.
 
 ## Prerequisites
 
-- **Node.js** 20.x (CI) — the frontend image builds on `node:22-alpine`
+- **Node.js** 22.22+ — CI runs 22.x; the frontend image builds on `node:22-alpine`
 - **npm** 9+
 - **.NET 10 SDK** — only to build or run the backend outside Docker
 - **Docker** — for the compose stack
@@ -134,7 +134,7 @@ managed Redis; run migrations either on boot (default) or with
 ## CI/CD
 
 `.github/workflows/ci.yml` — pushes to `master`, `develop`, `feature/*`; PRs
-to `master`/`develop`; Node 20.x:
+to `master`/`develop`; Node 22.x:
 
 | Job          | Steps                                                                 |
 | ------------ | --------------------------------------------------------------------- |

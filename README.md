@@ -80,7 +80,7 @@ See `ARCHITECTURE.md` for the system map, `API.md` for the backend contract, `TE
 
 ### Prerequisites
 
-- **Node.js** 20+ (CI runs 20.x; the frontend image builds on 22)
+- **Node.js** 22.22+ (jsdom 30 needs it; CI runs 22.x and the frontend image builds on `node:22-alpine`)
 - **Ollama** (recommended) for local AI inference — or API keys for OpenAI/Anthropic/Gemini/Groq
 
 ### Install & Run

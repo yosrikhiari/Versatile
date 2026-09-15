@@ -99,7 +99,7 @@ npm run eval:snapshot           # critic regression baseline (SNAPSHOT_MODEL=qwe
 ## CI
 
 `.github/workflows/ci.yml` runs `lint` (ESLint, typecheck, Prettier check),
-`test` (unit + coverage + production build on Node 20.x), `e2e`,
+`test` (unit + coverage + production build on Node 22.x), `e2e`,
 `sonarcloud` and `backend` (restore/build/test the solution) on pushes to
 `master`, `develop`, `feature/*` and PRs to `master`/`develop`.
 `backend-ci.yml` additionally runs SonarCloud C# analysis with opencover and,

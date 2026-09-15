@@ -33,6 +33,14 @@ was verified.
   created tripped the old check after the fix.
 - Live harness reports newly filled scene slots and dumps the committed
   bible into `health.json`. `PdfProject` gains `description` (`tsc` clean).
+- CI had been red since 2026-09-11 for reasons unrelated to any change:
+  jsdom 30 requires Node ≥ 22.22 and every Vitest fork worker died on the
+  20.x runner (`webidl.util.markAsUncloneable`); one test file was not
+  Prettier-formatted; and `backend-ci.yml` used the `secrets` context in a
+  step `if`, which is a parse error, so no backend job or image publish had
+  run since it was added. Node 22.x everywhere, `engines.node >= 22.22`,
+  `SONAR_TOKEN` mirrored into `env`.
+- Repository licensed under MIT.
 
 ### Generation — running the book (2026-09-12 → 2026-09-14, partly uncommitted)
 - Live harness: `vitest.live.config.js` + `src/tests/live/saltRoad.live.js`

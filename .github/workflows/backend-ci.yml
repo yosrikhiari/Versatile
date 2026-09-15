@@ -23,6 +23,10 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      # `secrets` is not a valid context in a step-level `if`; the workflow
+      # failed to parse and never ran a job. Mirror it into env and test that.
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -55,16 +59,16 @@ jobs:
       - name: Install Sonar scanner
         # Skipped on fork PRs where SONAR_TOKEN is unavailable; build+test
         # still run, only the upload is gated.
-        if: ${{ secrets.SONAR_TOKEN != '' }}
+        if: ${{ env.SONAR_TOKEN != '' }}
         run: dotnet tool install --global dotnet-sonarscanner
 
       - name: Sonar begin
-        if: ${{ secrets.SONAR_TOKEN != '' }}
+        if: ${{ env.SONAR_TOKEN != '' }}
         run: >
           dotnet sonarscanner begin
           /k:"yosrikhiari_Versatile" /o:"yosrikhiari"
           /d:sonar.host.url="https://sonarcloud.io"
-          /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          /d:sonar.token="${{ env.SONAR_TOKEN }}"
           /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
           /d:sonar.coverage.exclusions="**/Migrations/**"
           /d:sonar.exclusions="**/Migrations/**"
@@ -76,8 +80,8 @@ jobs:
         run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage;Format=opencover"
 
       - name: Sonar end
-        if: ${{ secrets.SONAR_TOKEN != '' }}
-        run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: dotnet sonarscanner end /d:sonar.token="${{ env.SONAR_TOKEN }}"
 
       - name: Upload test results
         if: always()
