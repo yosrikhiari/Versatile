@@ -7,7 +7,7 @@ was verified.
 
 ## [Unreleased]
 
-### Generation — reading the book (2026-09-15, uncommitted)
+### Generation — reading the book (2026-09-15; `6aab7b44`, `82a7fa88`, `941cbc22`, `46384ced`)
 - **The bible never moved because sync never ran.** `confirmPlan` always
   takes the parallel strategy, which never called `discoverSync`/`commitSync`
   (only the batch path did); and `commitSync` itself threw on its first line
@@ -45,7 +45,7 @@ was verified.
   green builds. Lint, tests and build remain the gate.
 - Repository licensed under MIT.
 
-### Generation — running the book (2026-09-12 → 2026-09-14, partly uncommitted)
+### Generation — running the book (2026-09-12 → 2026-09-14; landed in `6aab7b44`)
 - Live harness: `vitest.live.config.js` + `src/tests/live/saltRoad.live.js`
   run the real pipeline against local Ollama headless under fake-indexeddb,
   streaming to `reports/live/<slug>/` (`c2c3cfb` 5-scene pilot, `a67c566`
@@ -85,7 +85,7 @@ was verified.
   field (`e3be227`).
 - Dolphin critic / tense-flip probes (`fea31c1`).
 
-### Shell and panels (2026-09-12 → 2026-09-14)
+### Shell and panels (2026-09-12 → 2026-09-14; landed in `f2ae4127`)
 - Tool panels dock right, canvas dominant (`edea0fd`); generator shows
   its selection, a plain counter and a single spark flow (`e664db6`);
   history has honest empty and scoreless states (`1ecd3f5`, `24b5c03`).
