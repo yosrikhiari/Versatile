@@ -40,6 +40,9 @@ was verified.
   step `if`, which is a parse error, so no backend job or image publish had
   run since it was added. Node 22.x everywhere, `engines.node >= 22.22`,
   `SONAR_TOKEN` mirrored into `env`.
+- Sonar upload steps are advisory in both workflows: the stored
+  `SONAR_TOKEN` is rejected (403) and a failed report upload was failing
+  green builds. Lint, tests and build remain the gate.
 - Repository licensed under MIT.
 
 ### Generation — running the book (2026-09-12 → 2026-09-14, partly uncommitted)

@@ -146,7 +146,9 @@ to `master`/`develop`; Node 22.x:
 
 `.github/workflows/backend-ci.yml` — on `backend/**` changes: build + test
 with opencover coverage under `dotnet-sonarscanner`, and on `master` pushes
-the API image to `ghcr.io/<repo>/versatile-api:latest`.
+the API image to `ghcr.io/<repo>/versatile-api:latest`. Sonar steps in both
+workflows are advisory; a rejected `SONAR_TOKEN` (403) no longer fails the
+build or blocks the image.
 
 Also present: `chromatic.yml` (Storybook visual regression),
 `eval-regression.yml`, `deps-audit.yml`, `stale.yml`, `branch-cleanup.yml`.

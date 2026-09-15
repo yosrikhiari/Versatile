@@ -140,6 +140,13 @@ jobs:
         run: npm ci
 
       - name: SonarCloud Scan
+        # Advisory. This uploads a report; it is not the gate — lint, test and
+        # build above are. The upload has failed with 403 since the stored
+        # SONAR_TOKEN stopped being accepted for yosrikhiari_Versatile, and a
+        # rejected report was turning every green build red. Regenerate the
+        # token at sonarcloud.io → My Account → Security and update the repo
+        # secret; the step then reports for real again.
+        continue-on-error: true
         uses: SonarSource/sonarcloud-github-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

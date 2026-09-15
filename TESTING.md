@@ -103,5 +103,8 @@ npm run eval:snapshot           # critic regression baseline (SNAPSHOT_MODEL=qwe
 `sonarcloud` and `backend` (restore/build/test the solution) on pushes to
 `master`, `develop`, `feature/*` and PRs to `master`/`develop`.
 `backend-ci.yml` additionally runs SonarCloud C# analysis with opencover and,
-on `master`, pushes the API image to GHCR. `eval-regression.yml` and
+on `master`, pushes the API image to GHCR. The Sonar uploads are advisory
+(`continue-on-error`): lint, tests and build are the gate. They have returned
+403 since the stored `SONAR_TOKEN` stopped being accepted — regenerate it at
+sonarcloud.io and update the repository secret to get reports back. `eval-regression.yml` and
 `chromatic.yml` are separate.

@@ -60,10 +60,15 @@ jobs:
         # Skipped on fork PRs where SONAR_TOKEN is unavailable; build+test
         # still run, only the upload is gated.
         if: ${{ env.SONAR_TOKEN != '' }}
+        continue-on-error: true
         run: dotnet tool install --global dotnet-sonarscanner
 
+      # The three Sonar steps are advisory (see ci.yml): the report upload has
+      # been rejected with 403 since the stored token stopped being accepted,
+      # and it must not fail the build or block the image publish.
       - name: Sonar begin
         if: ${{ env.SONAR_TOKEN != '' }}
+        continue-on-error: true
         run: >
           dotnet sonarscanner begin
           /k:"yosrikhiari_Versatile" /o:"yosrikhiari"
@@ -81,6 +86,7 @@ jobs:
 
       - name: Sonar end
         if: ${{ env.SONAR_TOKEN != '' }}
+        continue-on-error: true
         run: dotnet sonarscanner end /d:sonar.token="${{ env.SONAR_TOKEN }}"
 
       - name: Upload test results
