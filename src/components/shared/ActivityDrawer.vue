@@ -218,8 +218,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                       <pre
                         v-if="phase.thought"
                         class="text-11px font-mono text-text-secondary bg-bg-secondary rounded-lg p-3 max-h-[200px] overflow-y-auto leading-relaxed whitespace-pre-wrap break-all"
-                        >{{ phase.thought }}</pre
-                      >
+                        >{{ phase.thought }}</pre>
                       <p v-else-if="!phase.detail" class="text-2xs font-ui italic text-text-hint">
                         {{
                           phase.status === 'running'

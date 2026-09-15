@@ -135,8 +135,7 @@ async function insert() {
         <pre
           class="mt-1 max-h-40 overflow-auto rounded-lg border border-border-subtle bg-bg-secondary p-3 font-manuscript text-xs text-text-secondary whitespace-pre-wrap leading-5"
           data-test="template-preview"
-          >{{ preview }}</pre
-        >
+          >{{ preview }}</pre>
       </div>
 
       <p v-if="!activeScene" class="mt-3 font-ui text-xs text-text-hint">

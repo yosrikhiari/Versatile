@@ -467,8 +467,7 @@ function switchTab(tab) {
                 </summary>
                 <pre
                   class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto"
-                  >{{ contextPreview.contextText || '(empty)' }}</pre
-                >
+                  >{{ contextPreview.contextText || '(empty)' }}</pre>
               </details>
             </div>
             <div v-else class="font-ui text-xs text-text-hint">

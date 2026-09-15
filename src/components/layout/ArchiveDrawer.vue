@@ -290,8 +290,7 @@ function handleSignalClick(opt) {
               class="text-2xs text-text-secondary whitespace-pre-wrap max-h-24 overflow-y-auto bg-bg-secondary rounded p-1"
               >{{
                 typeof entry.data === 'string' ? entry.data : JSON.stringify(entry.data, null, 1)
-              }}</pre
-            >
+              }}</pre>
           </div>
         </div>
       </template>
@@ -324,8 +323,7 @@ function handleSignalClick(opt) {
             </summary>
             <pre
               class="mt-1 p-2 bg-bg-tertiary rounded text-2xs text-text-hint whitespace-pre-wrap max-h-32 overflow-y-auto"
-              >{{ contextPreview.contextText || '(empty)' }}</pre
-            >
+              >{{ contextPreview.contextText || '(empty)' }}</pre>
           </details>
         </div>
         <div v-else class="mt-1 text-xs text-text-hint font-ui">Click to load context preview</div>

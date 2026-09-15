@@ -89,8 +89,7 @@ function signalBadge(signal) {
           </summary>
           <pre
             class="mt-1 p-2 bg-bg-tertiary rounded text-label text-text-hint whitespace-pre-wrap max-h-24 overflow-y-auto"
-            >{{ preview.contextText || '(empty)' }}</pre
-          >
+            >{{ preview.contextText || '(empty)' }}</pre>
         </details>
       </div>
       <div v-else class="text-label text-text-hint font-ui">

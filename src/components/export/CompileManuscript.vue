@@ -139,8 +139,7 @@ const previewText = computed(() => {
           isCompiling
             ? 'Compiling…'
             : previewText || 'Nothing to compile yet — add chapters and scenes.'
-        }}</pre
-      >
+        }}</pre>
 
       <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
         <BaseButton variant="ghost" size="sm" @click="emit('close')">Close</BaseButton>
