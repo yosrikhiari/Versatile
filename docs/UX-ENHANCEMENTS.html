@@ -9,188 +9,247 @@
 <!-- The shipped stylesheet: the --vers-* tokens and both themes come from here, nothing is copied. -->
 <link rel="stylesheet" href="../src/style.css">
 <style>
-  /* Doc chrome. Tailwind utilities are not available on a static page, so every demo is written
-     against the tokens directly, the way a JS-assigned colour would be in the app. */
+  /* Doc chrome, written against the shipped --vers-* tokens (Tailwind utilities are not available
+     on a static page, so this is what a JS-assigned colour looks like in the app). Surfaces follow
+     DESIGN.md: tonal layering, hairline borders, one accent used for way-finding only. */
   *{ box-sizing:border-box; }
   /* style.css locks html/body to height:100% + overflow:hidden for the app shell (panels scroll,
      the page does not). This is a document, so the page scrolls. */
   html, body{ height:auto; overflow:visible; }
-  body{ margin:0; background:var(--vers-bg-base); color:var(--vers-text-primary); font:14px/1.55 'Geist', system-ui, sans-serif; }
-  .u-shell{ display:grid; grid-template-columns:232px 1fr; min-height:100vh; }
-  .u-side{ position:sticky; top:0; height:100vh; overflow:auto; background:var(--vers-bg-panel); border-right:1px solid var(--vers-border-subtle); padding:18px 12px; }
-  .u-brand{ font-weight:600; font-size:14px; padding:2px 8px 14px; }
-  .u-brand small{ display:block; color:var(--vers-text-muted); font-weight:400; font-size:11px; }
-  .u-nav-label{ font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--vers-text-muted); padding:14px 8px 4px; }
-  .u-nav a{ display:block; padding:6px 8px; border-radius:8px; color:var(--vers-text-secondary); text-decoration:none; font-size:13px; }
+  body{ margin:0; background:var(--vers-bg-base); color:var(--vers-text-primary); font:14px/1.55 'Geist', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  ::selection{ background:rgb(var(--vers-accent-primary-rgb) / .25); }
+  a{ color:inherit; }
+
+  /* ---- shell ---- */
+  .u-shell{ display:grid; grid-template-columns:248px 1fr; min-height:100vh; }
+  .u-side{ position:sticky; top:0; height:100vh; overflow:auto; background:var(--vers-bg-panel); border-right:1px solid var(--vers-border-subtle); padding:20px 14px 24px; display:flex; flex-direction:column; }
+  .u-brand{ display:flex; align-items:center; gap:10px; padding:0 8px 18px; }
+  .u-mark{ width:30px; height:30px; border-radius:8px; background:var(--vers-accent-primary); color:var(--vers-text-on-accent); display:grid; place-items:center; font:600 14px 'Geist', sans-serif; flex:none; }
+  .u-brand b{ display:block; font-weight:600; font-size:14px; line-height:1.2; }
+  .u-brand small{ display:block; color:var(--vers-text-muted); font-size:11px; }
+  .u-nav-label{ font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--vers-text-muted); padding:16px 8px 6px; }
+  .u-nav a{ display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; color:var(--vers-text-secondary); text-decoration:none; font-size:13px; line-height:1.3; transition:background .15s ease-out, color .15s ease-out; }
+  .u-nav a .n{ font-family:'Geist Mono', monospace; font-size:11px; color:var(--vers-text-muted); width:18px; flex:none; }
   .u-nav a:hover{ background:var(--vers-bg-hover); color:var(--vers-text-primary); }
-  .u-nav a[data-active="true"]{ background:rgb(var(--vers-accent-primary-rgb) / 0.12); color:var(--vers-accent-primary); }
+  .u-nav a[data-active="true"]{ background:rgb(var(--vers-accent-primary-rgb) / .12); color:var(--vers-text-primary); }
+  .u-nav a[data-active="true"] .n{ color:var(--vers-accent-primary); }
+  .u-back{ margin-bottom:4px; }
+  .u-side-foot{ margin-top:auto; padding:14px 8px 0; border-top:1px solid var(--vers-border-subtle); font-size:11.5px; color:var(--vers-text-muted); }
+  .u-side-foot .mono{ color:var(--vers-text-secondary); }
   .u-main{ min-width:0; }
-  .u-strip{ position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:18px; padding:12px 28px; border-bottom:1px solid var(--vers-border-subtle); background:rgb(var(--vers-bg-base-rgb) / 0.92); backdrop-filter:blur(6px); }
-  .u-strip h1{ font-size:15px; font-weight:600; margin:0 auto 0 0; }
-  .u-strip span{ font-size:12px; color:var(--vers-text-muted); }
-  .u-strip .mono{ color:var(--vers-text-primary); }
-  .u-content{ padding:24px 28px 60px; max-width:1400px; display:flex; flex-direction:column; gap:18px; }
-  .mono{ font-family:'Geist Mono', ui-monospace, monospace; font-variant-numeric:tabular-nums; }
-  .manu{ font-family:'IBM Plex Mono', ui-monospace, monospace; }
-  .u-panel{ background:var(--vers-bg-panel); border-radius:10px; padding:18px 20px; }
-  .u-intro{ color:var(--vers-text-secondary); max-width:860px; line-height:1.6; }
+  .u-strip{ position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:22px; padding:12px 32px; border-bottom:1px solid var(--vers-border-subtle); background:rgb(var(--vers-bg-base-rgb) / .88); backdrop-filter:blur(8px); }
+  .u-strip h1{ font-size:15px; font-weight:600; margin:0 auto 0 0; letter-spacing:-.01em; }
+  .u-strip .stat{ font-size:12px; color:var(--vers-text-muted); }
+  .u-strip .stat b{ font-family:'Geist Mono', monospace; font-weight:500; color:var(--vers-text-primary); margin-left:4px; }
+  .u-content{ padding:28px 32px 72px; max-width:1440px; display:flex; flex-direction:column; gap:22px; }
+
+  /* ---- hero ---- */
+  .u-hero{ display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:22px; align-items:stretch; }
+  .u-hero h2{ font-size:26px; font-weight:600; letter-spacing:-.02em; margin:0 0 10px; line-height:1.15; }
+  .u-hero h2 em{ font-style:normal; color:var(--vers-accent-primary); }
+  .u-intro{ color:var(--vers-text-secondary); font-size:14px; line-height:1.65; margin:0; max-width:64ch; }
+  .u-intro b{ color:var(--vers-text-primary); font-weight:500; }
+  .u-stats{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--vers-border-subtle); border:1px solid var(--vers-border-subtle); border-radius:12px; overflow:hidden; }
+  .u-stat{ background:var(--vers-bg-panel); padding:16px 18px; }
+  .u-stat .v{ font-family:'Geist Mono', monospace; font-size:26px; font-weight:500; letter-spacing:-.02em; line-height:1; }
+  .u-stat .l{ font-size:11.5px; color:var(--vers-text-muted); margin-top:6px; }
+  .u-stat .v.acc{ color:var(--vers-accent-primary); }
+
+  /* ---- panels ---- */
+  .u-panel{ background:var(--vers-bg-panel); border:1px solid var(--vers-border-subtle); border-radius:12px; padding:20px 22px; transition:border-color .15s ease-out; }
+  .u-panel:hover{ border-color:var(--vers-border); }
+  .u-ex{ scroll-margin-top:70px; }
+  .u-head{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .u-num{ font-family:'Geist Mono', monospace; font-size:12px; font-weight:500; color:var(--vers-accent-primary); background:rgb(var(--vers-accent-primary-rgb) / .12); border-radius:6px; padding:3px 7px; letter-spacing:.02em; }
+  .u-head h2{ font-size:17px; font-weight:600; margin:0; letter-spacing:-.015em; }
+  .u-tags{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+  .u-tag{ display:inline-flex; align-items:center; gap:6px; font-size:10.5px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:100px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); color:var(--vers-text-secondary); }
+  .u-tag::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--vers-text-muted); }
+  .u-tag.hi{ color:var(--vers-status-success); background:rgb(var(--vers-status-success-rgb) / .12); border-color:rgb(var(--vers-status-success-rgb) / .3); } .u-tag.hi::before{ background:var(--vers-status-success); }
+  .u-tag.mid{ color:var(--vers-status-warning); background:rgb(var(--vers-status-warning-rgb) / .12); border-color:rgb(var(--vers-status-warning-rgb) / .3); } .u-tag.mid::before{ background:var(--vers-status-warning); }
+  .u-tag.p0{ color:var(--vers-status-danger); background:rgb(var(--vers-status-danger-rgb) / .12); border-color:rgb(var(--vers-status-danger-rgb) / .3); } .u-tag.p0::before{ background:var(--vers-status-danger); }
+  .u-tag.plain::before{ display:none; }
+  .u-cols{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:22px; align-items:start; }
+  @media (max-width:1000px){ .u-cols, .u-hero{ grid-template-columns:1fr; } .u-shell{ grid-template-columns:1fr; } .u-side{ display:none; } .u-content{ padding:20px 16px 48px; } }
+  .u-k{ font-size:10.5px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--vers-text-muted); margin:14px 0 6px; display:flex; align-items:center; gap:8px; }
+  .u-k::after{ content:''; flex:1; height:1px; background:var(--vers-border-subtle); }
+  .u-k:first-child{ margin-top:0; }
+  .u-p{ font-size:13.5px; line-height:1.6; margin:0; color:var(--vers-text-secondary); }
+  .u-p b{ color:var(--vers-text-primary); font-weight:500; }
+  .u-prop{ color:var(--vers-text-primary); }
+  .cite{ font-family:'Geist Mono', monospace; font-size:11.5px; color:var(--vers-accent-primary); background:rgb(var(--vers-accent-primary-rgb) / .08); padding:1px 5px; border-radius:4px; }
+  .u-demo{ position:relative; border:1px solid var(--vers-border-subtle); border-radius:10px; padding:18px 16px 16px; background:var(--vers-bg-base); }
+  .u-demo-label{ position:absolute; top:-9px; left:12px; background:var(--vers-bg-panel); border:1px solid var(--vers-border-subtle); border-radius:100px; padding:1px 8px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--vers-text-muted); }
+  .code{ font-family:'Geist Mono', monospace; font-size:11px; line-height:1.6; color:var(--vers-text-secondary); background:var(--vers-bg-base); border:1px solid var(--vers-border-subtle); border-radius:8px; padding:10px 12px; white-space:pre; overflow:auto; margin-top:10px; }
+
+  /* ---- matrix ---- */
   .u-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
-  .u-table th{ text-align:left; font-weight:500; color:var(--vers-text-muted); font-size:11px; padding:6px 10px; border-bottom:1px solid var(--vers-border-subtle); }
-  .u-table td{ padding:7px 10px; border-bottom:1px solid var(--vers-border-subtle); }
+  .u-table th{ text-align:left; font-weight:500; color:var(--vers-text-muted); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; padding:8px 10px; border-bottom:1px solid var(--vers-border-subtle); }
+  .u-table td{ padding:8px 10px; border-bottom:1px solid var(--vers-border-subtle); }
+  .u-table tbody tr{ transition:background .12s ease-out; } .u-table tbody tr:hover td{ background:var(--vers-bg-hover); }
   .u-table tr:last-child td{ border-bottom:none; }
   .u-table td:first-child{ font-family:'Geist Mono', monospace; color:var(--vers-accent-primary); }
-  .u-ex{ scroll-margin-top:64px; }
-  .u-head{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:4px; }
-  .u-num{ font-family:'Geist Mono', monospace; font-size:12px; color:var(--vers-accent-primary); }
-  .u-head h2{ font-size:16px; font-weight:600; margin:0; }
-  .u-tags{ display:flex; gap:6px; margin-left:auto; }
-  .u-tag{ font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:100px; border:1px solid var(--vers-border); color:var(--vers-text-muted); }
-  .u-tag.hi{ color:var(--vers-status-success); border-color:rgb(var(--vers-status-success-rgb) / .4); }
-  .u-tag.mid{ color:var(--vers-status-warning); border-color:rgb(var(--vers-status-warning-rgb) / .4); }
-  .u-tag.p0{ color:var(--vers-status-danger); border-color:rgb(var(--vers-status-danger-rgb) / .4); }
-  .u-cols{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:18px; align-items:start; }
-  @media (max-width:1000px){ .u-cols{ grid-template-columns:1fr; } .u-shell{ grid-template-columns:1fr; } .u-side{ display:none; } }
-  .u-k{ font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--vers-text-muted); margin:10px 0 4px; }
-  .u-k:first-child{ margin-top:0; }
-  .u-p{ color:var(--vers-text-secondary); font-size:13px; margin:0; }
-  .u-p b{ color:var(--vers-text-primary); font-weight:500; }
-  .cite{ font-family:'Geist Mono', monospace; font-size:11px; color:var(--vers-accent-primary); }
-  .u-demo{ position:relative; border:1px dashed var(--vers-border); border-radius:10px; padding:16px; background:var(--vers-bg-base); }
-  .u-demo-label{ position:absolute; top:-8px; left:12px; background:var(--vers-bg-panel); padding:0 6px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--vers-text-muted); }
-  /* design-system-shaped primitives, written against tokens (mirrors src/components/ui) */
+  .u-table td:first-child a{ text-decoration:none; }
+  .u-table td:last-child{ font-family:'Geist Mono', monospace; font-size:11.5px; color:var(--vers-text-muted); }
+  .mono{ font-family:'Geist Mono', ui-monospace, monospace; font-variant-numeric:tabular-nums; }
+
+  /* ---- design-system-shaped primitives (mirrors src/components/ui) ---- */
   .btn{ font:500 12.5px 'Geist', sans-serif; padding:6px 12px; border-radius:8px; border:1px solid transparent; cursor:pointer; transition:all .15s ease-out; background:transparent; color:var(--vers-text-primary); }
   .btn.primary{ background:var(--vers-accent-primary); color:var(--vers-text-on-accent); }
   .btn.primary:hover{ opacity:.9; box-shadow:0 0 0 3px rgb(var(--vers-accent-primary-rgb) / .2); }
+  .btn.primary:active{ opacity:.8; transform:scale(.98); }
   .btn.elevated{ background:var(--vers-bg-elevated); border-color:var(--vers-border-subtle); }
-  .btn.elevated:hover{ transform:translateY(-1px); border-color:rgb(var(--vers-accent-primary-rgb) / .5); }
+  .btn.elevated:hover{ transform:translateY(-1px); border-color:rgb(var(--vers-accent-primary-rgb) / .5); box-shadow:0 4px 12px rgba(0,0,0,.25); }
   .btn.ghost{ color:var(--vers-text-secondary); } .btn.ghost:hover{ color:var(--vers-text-primary); transform:scale(1.02); }
   .btn.danger{ color:var(--vers-status-danger); }
-  .btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
-  .field{ font:12px 'Geist', sans-serif; height:32px; padding:0 10px; border-radius:8px; border:1px solid var(--vers-border-subtle); background:var(--vers-bg-elevated); color:var(--vers-text-primary); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+  .field{ font:12.5px 'Geist', sans-serif; height:32px; padding:0 10px; border-radius:8px; border:1px solid var(--vers-border-subtle); background:var(--vers-bg-elevated); color:var(--vers-text-primary); transition:border-color .15s ease-out; }
+  .field::placeholder{ color:var(--vers-text-muted); }
   .field:focus{ outline:2px solid var(--vers-accent-primary); outline-offset:2px; border-color:var(--vers-accent-primary); }
-  .chip{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; padding:2px 9px; border-radius:100px; border:1px solid var(--vers-border-subtle); background:var(--vers-bg-elevated); color:var(--vers-text-secondary); cursor:pointer; }
+  .chip{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; padding:3px 10px; border-radius:100px; border:1px solid var(--vers-border-subtle); background:var(--vers-bg-elevated); color:var(--vers-text-secondary); cursor:pointer; transition:all .12s ease-out; }
+  .chip:hover{ color:var(--vers-text-primary); border-color:var(--vers-border); }
   .chip.on{ background:rgb(var(--vers-accent-primary-rgb) / .14); color:var(--vers-accent-primary); border-color:rgb(var(--vers-accent-primary-rgb) / .35); }
   .chip .n{ font-family:'Geist Mono', monospace; font-size:10px; color:var(--vers-text-muted); }
-  .ph{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0 10px; border-bottom:1px solid var(--vers-border-subtle); }
-  .ph h3{ margin:0; font-size:13px; font-weight:600; } .ph .meta{ font-size:11.5px; color:var(--vers-text-muted); }
+  .chip.on .n{ color:var(--vers-accent-primary); }
+  .ph{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:2px 0 12px; border-bottom:1px solid var(--vers-border-subtle); }
+  .ph h3{ margin:0; font-size:13.5px; font-weight:600; } .ph .meta{ font-size:11.5px; color:var(--vers-text-muted); }
   .sec{ padding:12px 0; border-bottom:1px solid var(--vers-border-subtle); } .sec:last-child{ border-bottom:none; }
   .sec h4{ margin:0 0 2px; font-size:12.5px; font-weight:500; } .sec .desc{ font-size:11.5px; color:var(--vers-text-muted); margin:0 0 8px; }
   .eyebrow{ font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--vers-text-muted); }
   .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
   .row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .well{ background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:8px; padding:10px 12px; }
-  .empty{ padding:26px 12px; text-align:center; color:var(--vers-text-muted); font-size:13px; }
-  .empty b{ display:block; color:var(--vers-text-secondary); font-weight:500; margin-bottom:4px; }
+  .well{ background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:10px; padding:12px 14px; }
+  .empty{ padding:28px 12px; text-align:center; color:var(--vers-text-muted); font-size:13px; }
+  .empty b{ display:block; color:var(--vers-text-primary); font-weight:500; margin-bottom:4px; font-size:14px; }
   .skel{ height:12px; border-radius:4px; background:linear-gradient(90deg, var(--vers-bg-elevated), var(--vers-bg-hover), var(--vers-bg-elevated)); background-size:200% 100%; animation:shim 1.4s linear infinite; }
   @keyframes shim{ 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  .toast{ position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:12px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border); border-radius:10px; padding:9px 12px; font-size:12.5px; box-shadow:0 12px 40px rgba(0,0,0,.35); }
+  .toast{ position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:12px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border); border-radius:10px; padding:10px 14px; font-size:12.5px; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:rise .22s ease-out; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(6px); } }
   .toast .act{ color:var(--vers-accent-primary); font-weight:500; cursor:pointer; }
   .editor{ font-family:'IBM Plex Mono', monospace; font-size:14px; line-height:1.75; max-width:66ch; color:var(--vers-text-primary); }
   .editor p{ margin:0 0 1em; }
-  .editor ::selection, .u-demo ::selection{ background:rgb(var(--vers-accent-primary-rgb) / .25); }
   .goal{ height:4px; background:var(--vers-bg-elevated); border-radius:100px; overflow:hidden; }
   .goal > div{ height:100%; background:var(--vers-accent-primary); transition:width .25s ease; }
   mark{ background:rgb(var(--vers-accent-primary-rgb) / .28); color:inherit; border-radius:2px; }
   mark.cur{ outline:2px solid var(--vers-accent-primary); }
-  .tabbar{ display:flex; align-items:center; gap:8px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:8px 8px 0 0; padding:6px 10px; font-size:12px; color:var(--vers-text-secondary); }
+  .tabbar{ display:flex; align-items:center; gap:8px; background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:8px 8px 0 0; padding:7px 12px; font-size:12px; color:var(--vers-text-secondary); }
   .tabbar .fav{ width:14px; height:14px; border-radius:3px; background:var(--vers-accent-primary); }
   .seg{ display:inline-flex; background:var(--vers-bg-elevated); border:1px solid var(--vers-border-subtle); border-radius:8px; padding:2px; }
-  .seg button{ font:500 12px 'Geist', sans-serif; padding:5px 10px; border:none; background:transparent; color:var(--vers-text-secondary); border-radius:6px; cursor:pointer; }
+  .seg button{ font:500 12px 'Geist', sans-serif; padding:5px 11px; border:none; background:transparent; color:var(--vers-text-secondary); border-radius:6px; cursor:pointer; transition:all .12s ease-out; }
   .seg button[aria-checked="true"]{ background:var(--vers-bg-panel); color:var(--vers-text-primary); box-shadow:0 1px 2px rgba(0,0,0,.3); }
-  .menu{ position:absolute; background:var(--vers-bg-elevated); border:1px solid var(--vers-border); border-radius:8px; padding:4px; width:180px; z-index:3; box-shadow:0 12px 40px rgba(0,0,0,.35); }
+  .menu{ position:absolute; background:var(--vers-bg-elevated); border:1px solid var(--vers-border); border-radius:8px; padding:4px; width:180px; z-index:3; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:rise .15s ease-out; }
   .menu button{ display:block; width:100%; text-align:left; font:12px 'Geist', sans-serif; padding:6px 8px; border:none; background:transparent; color:var(--vers-text-primary); border-radius:6px; cursor:pointer; }
   .menu button:hover{ background:var(--vers-bg-hover); } .menu button.danger{ color:var(--vers-status-danger); }
-  .srow{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; }
+  .srow{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; transition:background .12s ease-out; }
   .srow:hover{ background:var(--vers-bg-hover); }
   .srow .t{ flex:1; } .srow .c{ font-family:'Geist Mono', monospace; font-size:11px; color:var(--vers-text-muted); }
-  .handle{ width:6px; cursor:col-resize; background:transparent; border-radius:3px; }
+  .handle{ width:6px; cursor:col-resize; background:transparent; border-radius:3px; transition:background .12s ease-out; }
   .handle:hover, .handle.on{ background:rgb(var(--vers-accent-primary-rgb) / .5); }
-  kbd{ font-family:'Geist Mono', monospace; font-size:10.5px; padding:1px 5px; border-radius:4px; border:1px solid var(--vers-border); background:var(--vers-bg-elevated); color:var(--vers-text-primary); }
-  .rtl-note{ font-size:11px; color:var(--vers-text-muted); }
-  .code{ font-family:'Geist Mono', monospace; font-size:11px; color:var(--vers-text-secondary); background:var(--vers-bg-panel); border:1px solid var(--vers-border-subtle); border-radius:8px; padding:8px 10px; white-space:pre; overflow:auto; margin-top:8px; }
-  @media (prefers-reduced-motion: reduce){ .skel, .btn, .goal > div{ animation:none; transition:none; } }
+  kbd{ font-family:'Geist Mono', monospace; font-size:10.5px; padding:1px 6px; border-radius:4px; border:1px solid var(--vers-border); border-bottom-width:2px; background:var(--vers-bg-elevated); color:var(--vers-text-primary); }
+  .u-order{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; margin-top:14px; }
+  .u-order .u-k{ margin-top:0; }
+  .u-order .u-k::after{ display:none; }
+  .u-order .u-k b{ font-family:'Geist Mono', monospace; color:var(--vers-accent-primary); font-weight:500; }
+  @media (max-width:1000px){ .u-order{ grid-template-columns:1fr; } }
+  /* reveal */
+  .u-ex{ opacity:0; transform:translateY(8px); transition:opacity .35s ease-out, transform .35s ease-out; }
+  .u-ex.in{ opacity:1; transform:none; }
+  @media (prefers-reduced-motion: reduce){ .skel, .btn, .goal > div, .toast, .menu{ animation:none; transition:none; } .u-ex{ opacity:1; transform:none; transition:none; } }
 </style>
 </head>
 <body>
 <div class="u-shell">
   <nav class="u-side u-nav" aria-label="Examples">
-    <div class="u-brand">Versatile<small>UX enhancement study</small></div>
-    <a href="../DESIGN.md">← DESIGN.md</a>
+    <div class="u-brand"><div class="u-mark">V</div><div><b>Versatile</b><small>UX enhancement study</small></div></div>
+    <a class="u-back" href="../DESIGN.md"><span class="n">←</span>DESIGN.md</a>
     <div class="u-nav-label">Losing work</div>
-    <a href="#ex01">01 Flush on close, tab title</a>
-    <a href="#ex02">02 Live goal and streak</a>
+    <a href="#ex01"><span class="n">01</span>Flush on close, tab title</a>
+    <a href="#ex02"><span class="n">02</span>Live goal and streak</a>
     <div class="u-nav-label">Moving through the manuscript</div>
-    <a href="#ex03">03 Find and replace</a>
-    <a href="#ex04">04 Outline scroll-spy</a>
-    <a href="#ex05">05 Typography preferences</a>
-    <a href="#ex06">06 Writing sprint</a>
+    <a href="#ex03"><span class="n">03</span>Find and replace</a>
+    <a href="#ex04"><span class="n">04</span>Outline scroll-spy</a>
+    <a href="#ex05"><span class="n">05</span>Typography preferences</a>
+    <a href="#ex06"><span class="n">06</span>Writing sprint</a>
     <div class="u-nav-label">Fewer steps</div>
-    <a href="#ex07">07 Inline "add chapter"</a>
-    <a href="#ex08">08 One generator mode row</a>
-    <a href="#ex09">09 Undo on delete</a>
-    <a href="#ex10">10 Header: read time, today</a>
-    <a href="#ex11">11 Context menu</a>
-    <a href="#ex12">12 Read aloud</a>
+    <a href="#ex07"><span class="n">07</span>Inline "add chapter"</a>
+    <a href="#ex08"><span class="n">08</span>One generator mode row</a>
+    <a href="#ex09"><span class="n">09</span>Undo on delete</a>
+    <a href="#ex10"><span class="n">10</span>Header: read time, today</a>
+    <a href="#ex11"><span class="n">11</span>Context menu</a>
+    <a href="#ex12"><span class="n">12</span>Read aloud</a>
     <div class="u-nav-label">System</div>
-    <a href="#ex13">13 Chart colours from tokens</a>
-    <a href="#ex14">14 Panel grammar leftovers</a>
-    <a href="#ex15">15 structureTerms everywhere</a>
-    <a href="#ex16">16 Workspace first run</a>
-    <a href="#ex17">17 Shaped skeletons</a>
-    <a href="#ex18">18 Resizable panels</a>
-    <a href="#ex19">19 Scene status as a filter</a>
-    <a href="#ex20">20 Chapter word targets</a>
+    <a href="#ex13"><span class="n">13</span>Chart colours from tokens</a>
+    <a href="#ex14"><span class="n">14</span>Panel grammar leftovers</a>
+    <a href="#ex15"><span class="n">15</span>structureTerms everywhere</a>
+    <a href="#ex16"><span class="n">16</span>Workspace first run</a>
+    <a href="#ex17"><span class="n">17</span>Shaped skeletons</a>
+    <a href="#ex18"><span class="n">18</span>Resizable panels</a>
+    <a href="#ex19"><span class="n">19</span>Scene status as a filter</a>
+    <a href="#ex20"><span class="n">20</span>Chapter word targets</a>
+    <div class="u-side-foot">tokens from <span class="mono">src/style.css</span><br>Sep 2026 · both themes</div>
   </nav>
 
   <div class="u-main">
     <header class="u-strip">
       <h1>UX enhancement study</h1>
-      <span>examples <b class="mono">20</b></span>
-      <span>quick wins <b class="mono">8</b></span>
-      <span>audit items closed <b class="mono">6</b></span>
+      <span class="stat">examples<b>20</b></span>
+      <span class="stat">zero-match gaps<b>4</b></span>
+      <span class="stat">audit items closed<b>6</b></span>
       <button class="btn elevated" id="theme">Light theme</button>
     </header>
 
     <main class="u-content">
+      <section class="u-hero">
+        <div class="u-panel">
+          <h2>Twenty ways to make Versatile <em>feel</em> as finished as it is</h2>
+          <p class="u-intro">Versatile already does the hard parts: focus rings, reduced motion, high contrast, focus traps, a command palette, onboarding, empty states with actions, and a panel grammar applied to fifteen panels. So this study does not recycle the usual list. Every example names <b>what the code does today</b> (with the file), <b>what to build instead</b>, and shows a <b>working demo</b> built on the shipped <span class="cite">--vers-*</span> tokens, so it renders in both themes; try the button in the header.</p>
+        </div>
+        <div class="u-stats">
+          <div class="u-stat"><div class="v acc">4</div><div class="l">gaps with zero matches in src/ (find &amp; replace, unload flush, outline jump, read aloud)</div></div>
+          <div class="u-stat"><div class="v">6</div><div class="l">open items from docs/UX-AUDIT.md closed</div></div>
+          <div class="u-stat"><div class="v">8</div><div class="l">quick wins: under a day, no new component</div></div>
+          <div class="u-stat"><div class="v">76</div><div class="l">hex literals the policy now ratchets down (example 13)</div></div>
+        </div>
+      </section>
+
       <section class="u-panel">
-        <div class="ph"><h3>How to read this</h3><span class="meta">Sep 2026 · grounded in <span class="cite">src/</span> and <span class="cite">docs/UX-AUDIT.md</span></span></div>
-        <p class="u-intro" style="margin-top:12px">Versatile already does the hard parts: focus rings, reduced motion, high contrast, focus traps, a command palette, onboarding, empty states with actions, and a panel grammar applied to fifteen panels. So this study does not recycle the usual list. Every example below names what the code does today (with the file), what to build instead, and shows a working demo built on the shipped <span class="cite">--vers-*</span> tokens, so it renders in both themes; try the button in the header. Six examples close items the UX audit left open; four fill gaps that returned zero matches in <span class="cite">src/</span> (find &amp; replace, unload flush, outline jump, read aloud); the rest make the writing loop faster or make the system itself harder to drift.</p>
+        <div class="ph"><h3>Priority matrix</h3><span class="meta">impact · effort · where it lands</span></div>
         <table class="u-table" style="margin-top:12px">
           <thead><tr><th>#</th><th>example</th><th>impact</th><th>effort</th><th>where</th></tr></thead>
           <tbody>
-            <tr><td>01</td><td>Flush saves on close; tab title shows state</td><td><span class="u-tag p0">P0</span></td><td>quick win</td><td>useFlowSave, App.vue</td></tr>
-            <tr><td>02</td><td>Goal and streak move with the header count, not the 10 s debounce</td><td><span class="u-tag hi">high</span></td><td>quick win</td><td>projectStore, GoalProgressBar</td></tr>
-            <tr><td>03</td><td>Find and replace in the manuscript</td><td><span class="u-tag hi">high</span></td><td>1 day</td><td>FlowEditor (TipTap)</td></tr>
-            <tr><td>04</td><td>Outline scroll-spy and jump-to-scene</td><td><span class="u-tag hi">high</span></td><td>half day</td><td>SubsectionOutline, FlowEditor</td></tr>
-            <tr><td>05</td><td>Manuscript typography preferences and typewriter scrolling</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>style.css .manuscript, Settings</td></tr>
-            <tr><td>06</td><td>Writing sprint with a session recap</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>RecapBanner, projectStore</td></tr>
-            <tr><td>07</td><td>Title-only inline add in the Section Manager</td><td><span class="u-tag hi">high</span></td><td>quick win</td><td>ChapterManager</td></tr>
-            <tr><td>08</td><td>Generator: one mode row, last mode remembered</td><td><span class="u-tag hi">high</span></td><td>half day</td><td>story tools panel</td></tr>
-            <tr><td>09</td><td>Undo on every delete through the toast action</td><td><span class="u-tag hi">high</span></td><td>quick win</td><td>useNotifications, ChapterManager</td></tr>
-            <tr><td>10</td><td>Header count reads "words · min read · +today"</td><td><span class="u-tag mid">medium</span></td><td>quick win</td><td>AppShell header</td></tr>
-            <tr><td>11</td><td>One context-menu primitive for rows and nodes</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>ui/BaseMenu, ChapterManager, StoryNetwork</td></tr>
-            <tr><td>12</td><td>Read aloud for revision</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>Polish drawer</td></tr>
-            <tr><td>13</td><td>Graph and chart colours from tokens (76 hex literals today)</td><td><span class="u-tag hi">high</span></td><td>1 day</td><td>StoryNetwork, EvalTrends, TimelineView…</td></tr>
-            <tr><td>14</td><td>Panel grammar for Outline, Canvas, Research, Settings, Login</td><td><span class="u-tag mid">medium</span></td><td>1 day</td><td>those five</td></tr>
-            <tr><td>15</td><td>structureTerms in Outline and the editor empty state</td><td><span class="u-tag mid">medium</span></td><td>quick win</td><td>SubsectionOutline, FlowEditor</td></tr>
-            <tr><td>16</td><td>Workspace: continue-writing card, demoted "Create organization"</td><td><span class="u-tag mid">medium</span></td><td>quick win</td><td>WorkspaceView</td></tr>
-            <tr><td>17</td><td>Shaped skeletons on every async panel</td><td><span class="u-tag mid">medium</span></td><td>quick win</td><td>Skeleton variants exist; 5 files use them</td></tr>
-            <tr><td>18</td><td>Resizable docked panel with a remembered width</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>AppShell</td></tr>
-            <tr><td>19</td><td>Scene status as a first-class filter</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>ChapterManager, BaseStatusDot</td></tr>
-            <tr><td>20</td><td>Chapter word targets against actual counts</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>ChapterManager, GenerationSettingsForm</td></tr>
+            <tr><td><a href="#ex01">01</a></td><td>Flush saves on close; tab title shows state</td><td><span class="u-tag p0">P0</span></td><td>quick win</td><td>useFlowSave, App.vue</td></tr>
+            <tr><td><a href="#ex02">02</a></td><td>Goal and streak move with the header count, not the 10 s debounce</td><td><span class="u-tag hi">high</span></td><td>quick win</td><td>projectStore, GoalProgressBar</td></tr>
+            <tr><td><a href="#ex03">03</a></td><td>Find and replace in the manuscript</td><td><span class="u-tag hi">high</span></td><td>1 day</td><td>FlowEditor (TipTap)</td></tr>
+            <tr><td><a href="#ex04">04</a></td><td>Outline scroll-spy and jump-to-scene</td><td><span class="u-tag hi">high</span></td><td>half day</td><td>SubsectionOutline, FlowEditor</td></tr>
+            <tr><td><a href="#ex05">05</a></td><td>Manuscript typography preferences and typewriter scrolling</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>style.css .manuscript, Settings</td></tr>
+            <tr><td><a href="#ex06">06</a></td><td>Writing sprint with a session recap</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>RecapBanner, projectStore</td></tr>
+            <tr><td><a href="#ex07">07</a></td><td>Title-only inline add in the Section Manager</td><td><span class="u-tag hi">high</span></td><td>quick win</td><td>ChapterManager</td></tr>
+            <tr><td><a href="#ex08">08</a></td><td>Generator: one mode row, last mode remembered</td><td><span class="u-tag hi">high</span></td><td>half day</td><td>story tools panel</td></tr>
+            <tr><td><a href="#ex09">09</a></td><td>Undo on every delete through the toast action</td><td><span class="u-tag hi">high</span></td><td>quick win</td><td>useNotifications, ChapterManager</td></tr>
+            <tr><td><a href="#ex10">10</a></td><td>Header count reads "words · min read · +today"</td><td><span class="u-tag mid">medium</span></td><td>quick win</td><td>AppShell header</td></tr>
+            <tr><td><a href="#ex11">11</a></td><td>One context-menu primitive for rows and nodes</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>ui/BaseMenu, ChapterManager, StoryNetwork</td></tr>
+            <tr><td><a href="#ex12">12</a></td><td>Read aloud for revision</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>Polish drawer</td></tr>
+            <tr><td><a href="#ex13">13</a></td><td>Graph and chart colours from tokens (76 hex literals today)</td><td><span class="u-tag hi">high</span></td><td>1 day</td><td>StoryNetwork, EvalTrends, TimelineView…</td></tr>
+            <tr><td><a href="#ex14">14</a></td><td>Panel grammar for Outline, Canvas, Research, Settings, Login</td><td><span class="u-tag mid">medium</span></td><td>1 day</td><td>those five</td></tr>
+            <tr><td><a href="#ex15">15</a></td><td>structureTerms in Outline and the editor empty state</td><td><span class="u-tag mid">medium</span></td><td>quick win</td><td>SubsectionOutline, FlowEditor</td></tr>
+            <tr><td><a href="#ex16">16</a></td><td>Workspace: continue-writing card, demoted "Create organization"</td><td><span class="u-tag mid">medium</span></td><td>quick win</td><td>WorkspaceView</td></tr>
+            <tr><td><a href="#ex17">17</a></td><td>Shaped skeletons on every async panel</td><td><span class="u-tag mid">medium</span></td><td>quick win</td><td>Skeleton variants exist; 5 files use them</td></tr>
+            <tr><td><a href="#ex18">18</a></td><td>Resizable docked panel with a remembered width</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>AppShell</td></tr>
+            <tr><td><a href="#ex19">19</a></td><td>Scene status as a first-class filter</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>ChapterManager, BaseStatusDot</td></tr>
+            <tr><td><a href="#ex20">20</a></td><td>Chapter word targets against actual counts</td><td><span class="u-tag mid">medium</span></td><td>half day</td><td>ChapterManager, GenerationSettingsForm</td></tr>
           </tbody>
         </table>
       </section>
 
       <!-- 01 -->
       <section class="u-panel u-ex" id="ex01">
-        <div class="u-head"><span class="u-num">01</span><h2>Flush saves when the tab closes; show save state in the title</h2><div class="u-tags"><span class="u-tag p0">P0</span><span class="u-tag">quick win</span></div></div>
+        <div class="u-head"><span class="u-num">01</span><h2>Flush saves when the tab closes; show save state in the title</h2><div class="u-tags"><span class="u-tag p0">P0</span><span class="u-tag plain">quick win</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">IndexedDB writes are debounced 500 ms per field and progress by 10 s (<span class="cite">AGENTS.md → Performance rules</span>, <span class="cite">useFlowSave</span>). There is <b>no <span class="cite">beforeunload</span> handler anywhere in <span class="cite">src/</span></b> and nothing sets <span class="cite">document.title</span>. Close the tab within half a second of typing and the last sentence is gone, silently; and with six project tabs open, none of them says which is which or which is still saving.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Flush every pending debounce on <span class="cite">pagehide</span> / <span class="cite">visibilitychange: hidden</span> (synchronous <span class="cite">put</span>, no prompt: autosave is the promise). Set <span class="cite">document.title</span> to <b>● Chapter 4 — The Long Night — Versatile</b> while a write is pending and drop the dot on commit. Announce nothing; the title is the indicator.</p>
+            <p class="u-p u-prop">Flush every pending debounce on <span class="cite">pagehide</span> / <span class="cite">visibilitychange: hidden</span> (synchronous <span class="cite">put</span>, no prompt: autosave is the promise). Set <span class="cite">document.title</span> to <b>● Chapter 4 — The Long Night — Versatile</b> while a write is pending and drop the dot on commit. Announce nothing; the title is the indicator.</p>
             <div class="code">window.addEventListener('pagehide', flushAllTimers)
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushAllTimers() })
 watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' — ' + project + ' — Versatile' })</div>
@@ -208,13 +267,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 02 -->
       <section class="u-panel u-ex" id="ex02">
-        <div class="u-head"><span class="u-num">02</span><h2>Goal and streak move with the header count</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag">quick win</span><span class="u-tag">audit #14</span></div></div>
+        <div class="u-head"><span class="u-num">02</span><h2>Goal and streak move with the header count</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag plain">quick win</span><span class="u-tag plain">audit #14</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p"><span class="cite">docs/UX-AUDIT.md #14</span> (open): the daily goal bar and streak hang off <span class="cite">recordProgress()</span>, which runs on the 10 s save debounce, while the header word count updates on the 300 ms <span class="cite">wordCountTimer</span>. The two disagree for ten seconds after every burst, and a writer who hits the goal sees the bar lag the number that told them so.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Derive <span class="cite">todayWords</span> from <span class="cite">manuscriptWordCount − startOfDayCount</span> as a computed on the store, so the bar and streak read the same value the header reads. Keep the 10 s persistence; it is only the <i>display</i> that should not wait. Ease the bar width (250 ms) so it reads as growth, not a jump.</p>
+            <p class="u-p u-prop">Derive <span class="cite">todayWords</span> from <span class="cite">manuscriptWordCount − startOfDayCount</span> as a computed on the store, so the bar and streak read the same value the header reads. Keep the 10 s persistence; it is only the <i>display</i> that should not wait. Ease the bar width (250 ms) so it reads as growth, not a jump.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Type: the goal follows the count, not the save</span>
             <textarea class="editor field" id="goalEd" style="width:100%;height:80px;padding:8px;resize:none"></textarea>
@@ -227,13 +286,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 03 -->
       <section class="u-panel u-ex" id="ex03">
-        <div class="u-head"><span class="u-num">03</span><h2>Find and replace in the manuscript</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag">1 day</span></div></div>
+        <div class="u-head"><span class="u-num">03</span><h2>Find and replace in the manuscript</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag plain">1 day</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">Zero matches for <span class="cite">find</span>/<span class="cite">replace</span> in <span class="cite">src/</span>. Renaming a character after chapter twelve, or fixing a place name the generator spelled two ways, means the browser's find (which cannot replace, and cannot see collapsed chapters) or an export round-trip.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">A TipTap extension with a <span class="cite">Decoration</span> set: <kbd>ctrl</kbd>+<kbd>F</kbd> opens a bar docked at the top of the editor (find, replace, match case, whole word, "in all chapters"), <kbd>Enter</kbd> steps, <kbd>ctrl</kbd>+<kbd>Enter</kbd> replaces one, Replace all runs as one undoable transaction. Across chapters it walks <span class="cite">manuscriptStore</span> and reports "12 in 4 chapters". The story bible gets the same bar for free.</p>
+            <p class="u-p u-prop">A TipTap extension with a <span class="cite">Decoration</span> set: <kbd>ctrl</kbd>+<kbd>F</kbd> opens a bar docked at the top of the editor (find, replace, match case, whole word, "in all chapters"), <kbd>Enter</kbd> steps, <kbd>ctrl</kbd>+<kbd>Enter</kbd> replaces one, Replace all runs as one undoable transaction. Across chapters it walks <span class="cite">manuscriptStore</span> and reports "12 in 4 chapters". The story bible gets the same bar for free.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Find · Enter steps · Replace one / all</span>
             <div class="row" style="margin-bottom:10px"><input class="field" id="fq" placeholder="find" value="harbour" style="width:130px"><input class="field" id="fr" placeholder="replace" value="quay" style="width:130px"><label class="u-p" style="font-size:11.5px"><input type="checkbox" id="fcase"> match case</label><span class="u-p mono" id="fcount"></span><span style="flex:1"></span><button class="btn ghost" id="fnext">Next</button><button class="btn elevated" id="fone">Replace</button><button class="btn elevated" id="fall">Replace all</button></div>
@@ -244,13 +303,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 04 -->
       <section class="u-panel u-ex" id="ex04">
-        <div class="u-head"><span class="u-num">04</span><h2>Outline scroll-spy and jump-to-scene</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag">half day</span></div></div>
+        <div class="u-head"><span class="u-num">04</span><h2>Outline scroll-spy and jump-to-scene</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag plain">half day</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">The Outline panel lists scenes; the editor shows one chapter. Nothing links the two: no <span class="cite">scrollToScene</span>, no <span class="cite">jumpTo</span> in <span class="cite">src/</span>, and the outline does not know which scene the caret is in. <span class="cite">EditorBreadcrumb</span> shows the chapter, not the scene.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Each scene heading in the editor gets <span class="cite">data-scene-id</span>; an <span class="cite">IntersectionObserver</span> marks the outline row whose heading last crossed the top third of the viewport. Clicking a row scrolls the heading to the top with the <span class="cite">anim-*</span> duration. The breadcrumb gains the scene. Cost: one observer, one <span class="cite">scrollIntoView</span>.</p>
+            <p class="u-p u-prop">Each scene heading in the editor gets <span class="cite">data-scene-id</span>; an <span class="cite">IntersectionObserver</span> marks the outline row whose heading last crossed the top third of the viewport. Clicking a row scrolls the heading to the top with the <span class="cite">anim-*</span> duration. The breadcrumb gains the scene. Cost: one observer, one <span class="cite">scrollIntoView</span>.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Scroll the editor; click the outline</span>
             <div style="display:grid;grid-template-columns:150px 1fr;gap:12px">
@@ -263,13 +322,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 05 -->
       <section class="u-panel u-ex" id="ex05">
-        <div class="u-head"><span class="u-num">05</span><h2>Manuscript typography preferences and typewriter scrolling</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">half day</span></div></div>
+        <div class="u-head"><span class="u-num">05</span><h2>Manuscript typography preferences and typewriter scrolling</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">half day</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">The editor is fixed: IBM Plex Mono, <span class="cite">clamp(16–18px)</span>, 1.75 leading, 66ch (<span class="cite">style.css .manuscript</span>, <span class="cite">DESIGN.md → Manuscript editor</span>). Focus mode exists (16 files) but there is no size, leading or measure setting, and no typewriter scrolling (<span class="cite">fontSize</span> appears only in <span class="cite">exportService</span>). Writers on a 13" laptop and on a 32" monitor get the same 66ch at the same size.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Three settings on the project (size S/M/L, leading, measure 56/66/76ch) written as CSS variables on <span class="cite">.manuscript</span>, plus a typewriter toggle that keeps the caret line at 40 % of the viewport. Keep the typeface fixed: that is the signature. Persist per project, expose in the palette as "Typography…".</p>
+            <p class="u-p u-prop">Three settings on the project (size S/M/L, leading, measure 56/66/76ch) written as CSS variables on <span class="cite">.manuscript</span>, plus a typewriter toggle that keeps the caret line at 40 % of the viewport. Keep the typeface fixed: that is the signature. Persist per project, expose in the palette as "Typography…".</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Size · leading · measure · typewriter</span>
             <div class="row" style="margin-bottom:10px">
@@ -285,13 +344,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 06 -->
       <section class="u-panel u-ex" id="ex06">
-        <div class="u-head"><span class="u-num">06</span><h2>Writing sprint with a session recap</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">half day</span></div></div>
+        <div class="u-head"><span class="u-num">06</span><h2>Writing sprint with a session recap</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">half day</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">A daily goal, a streak, a heatmap and a <span class="cite">RecapBanner</span> exist; a <b>timed sprint does not</b> (no <span class="cite">sprint</span>/<span class="cite">pomodoro</span> in <span class="cite">src/</span>). Sprints are the one technique most working novelists use daily, and everything needed (word delta, the banner) is already in <span class="cite">projectStore</span>.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Palette action "Start a sprint": 15 / 25 / custom minutes. While running, the header goal chip becomes <b>12:41 · 214 words</b>; the sidebar and tool panels stay, but generation buttons are disabled (a sprint is for typing). At the end, the <span class="cite">RecapBanner</span> shows words, pace and the best minute, with "Again". Stored as a <span class="cite">writingSession</span> row so the heatmap can show sprint days.</p>
+            <p class="u-p u-prop">Palette action "Start a sprint": 15 / 25 / custom minutes. While running, the header goal chip becomes <b>12:41 · 214 words</b>; the sidebar and tool panels stay, but generation buttons are disabled (a sprint is for typing). At the end, the <span class="cite">RecapBanner</span> shows words, pace and the best minute, with "Again". Stored as a <span class="cite">writingSession</span> row so the heatmap can show sprint days.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Demo sprint: 20 seconds</span>
             <div class="row"><button class="btn primary" id="spStart">Start a 20 s sprint</button><span class="u-p mono" id="spClock" style="font-size:16px">00:20</span><span class="u-p"><b class="mono" id="spWords">0</b> words</span></div>
@@ -303,13 +362,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 07 -->
       <section class="u-panel u-ex" id="ex07">
-        <div class="u-head"><span class="u-num">07</span><h2>Title-only inline add in the Section Manager</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag">quick win</span><span class="u-tag">audit</span></div></div>
+        <div class="u-head"><span class="u-num">07</span><h2>Title-only inline add in the Section Manager</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag plain">quick win</span><span class="u-tag plain">audit</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p"><span class="cite">ChapterManager.vue</span>: "Add Section" opens a dialog with title, summary, status and tags (<span class="cite">newSection = { title, summary, status: 'planning', tags }</span>). <span class="cite">docs/UX-AUDIT.md → Next pass</span> names it: a writer starting a chapter has a title, at most, and four fields is a form, not a start.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">An inline row at the end of the list: <b>+ Chapter</b> becomes a single title input; <kbd>Enter</kbd> creates with <span class="cite">status: 'planning'</span> and keeps the input open for the next one; <kbd>Esc</kbd> cancels. Summary, status and tags are edited on the row afterwards. The dialog stays for the generator, which does need a brief.</p>
+            <p class="u-p u-prop">An inline row at the end of the list: <b>+ Chapter</b> becomes a single title input; <kbd>Enter</kbd> creates with <span class="cite">status: 'planning'</span> and keeps the input open for the next one; <kbd>Esc</kbd> cancels. Summary, status and tags are edited on the row afterwards. The dialog stays for the generator, which does need a brief.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Enter adds and stays open</span>
             <div id="addList"></div>
@@ -320,13 +379,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 08 -->
       <section class="u-panel u-ex" id="ex08">
-        <div class="u-head"><span class="u-num">08</span><h2>Generator: one mode row, last mode remembered</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag">half day</span><span class="u-tag">audit</span></div></div>
+        <div class="u-head"><span class="u-num">08</span><h2>Generator: one mode row, last mode remembered</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag plain">half day</span><span class="u-tag plain">audit</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p"><span class="cite">docs/UX-AUDIT.md → Next pass</span>: the story-tools panel has tabs (Ideate / Scene / Chapter / Arc / Blurb) and then a second "Prompt type" row: two levels of mode before anything happens, and the panel forgets both when it closes.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">One <span class="cite">BaseSegmented</span> for <i>what</i> (Scene / Chapter / Arc) with the rare modes (Ideate, Blurb) behind a <span class="cite">BasePopover</span> "More"; the prompt type becomes a <span class="cite">BaseChip</span> filter row that only appears for modes that have one. Remember the last mode per project. The first screen is then a brief field and a primary button.</p>
+            <p class="u-p u-prop">One <span class="cite">BaseSegmented</span> for <i>what</i> (Scene / Chapter / Arc) with the rare modes (Ideate, Blurb) behind a <span class="cite">BasePopover</span> "More"; the prompt type becomes a <span class="cite">BaseChip</span> filter row that only appears for modes that have one. Remember the last mode per project. The first screen is then a brief field and a primary button.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">One row, brief, go</span>
             <div class="ph"><h3>Story tools</h3><span class="meta">chapter 4 · 2,310 words</span></div>
@@ -340,13 +399,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 09 -->
       <section class="u-panel u-ex" id="ex09">
-        <div class="u-head"><span class="u-num">09</span><h2>Undo on every delete, through the toast action</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag">quick win</span></div></div>
+        <div class="u-head"><span class="u-num">09</span><h2>Undo on every delete, through the toast action</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag plain">quick win</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p"><span class="cite">useNotifications.addToast(msg, type, duration, { action })</span> already supports an action and, when one is present, <b>suppresses auto-dismiss</b> so the user can reach it. Snapshots and database recovery use undo (10 files match); section and scene deletion in <span class="cite">ChapterManager</span> go through a confirm dialog instead: a modal for the common case, and no way back after "Delete".</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Delete immediately, keep the row in memory for 8 s, toast <b>Chapter 4 deleted · Undo</b>. Undo re-inserts at the same index. The confirm dialog stays only for deletes with children (a chapter with scenes) and says how many. This is the pattern Gmail settled on; it removes the modal from the path and adds a safety net.</p>
+            <p class="u-p u-prop">Delete immediately, keep the row in memory for 8 s, toast <b>Chapter 4 deleted · Undo</b>. Undo re-inserts at the same index. The confirm dialog stays only for deletes with children (a chapter with scenes) and says how many. This is the pattern Gmail settled on; it removes the modal from the path and adds a safety net.</p>
           </div>
           <div class="u-demo" style="min-height:190px"><span class="u-demo-label">Delete, then undo</span>
             <div id="undoList"></div>
@@ -357,13 +416,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 10 -->
       <section class="u-panel u-ex" id="ex10">
-        <div class="u-head"><span class="u-num">10</span><h2>The header count reads words · min read · +today</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">quick win</span></div></div>
+        <div class="u-head"><span class="u-num">10</span><h2>The header count reads words · min read · +today</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">quick win</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">The header shows a word count; the goal bar shows today's progress separately; reading time appears nowhere in the UI (the only match is a provider file). A writer asks three questions of that number: how long is it, how long does it take to read, and how much did I add today.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">One chip, three facts: <b>2,310 words · 9 min read · +240 today</b>, with the delta in <span class="cite">--vers-status-success</span> when positive and muted at zero. Reading time is words / 250 rounded up. Hover shows chapter vs manuscript totals. This is the same data as example 02; only the presentation is new.</p>
+            <p class="u-p u-prop">One chip, three facts: <b>2,310 words · 9 min read · +240 today</b>, with the delta in <span class="cite">--vers-status-success</span> when positive and muted at zero. Reading time is words / 250 rounded up. Hover shows chapter vs manuscript totals. This is the same data as example 02; only the presentation is new.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Hover the chip</span>
             <div class="row"><span class="chip" id="hdrChip" title="chapter 2,310 · manuscript 41,882"><span class="mono">2,310</span> words <span class="n">·</span> <span class="mono">10</span> min read <span class="n">·</span> <span class="mono" style="color:var(--vers-status-success)">+240</span> today</span><span class="u-p" style="font-size:11.5px">vs today: <span class="mono">2,310 words</span></span></div>
@@ -373,13 +432,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 11 -->
       <section class="u-panel u-ex" id="ex11">
-        <div class="u-head"><span class="u-num">11</span><h2>One context-menu primitive for rows and graph nodes</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">half day</span></div></div>
+        <div class="u-head"><span class="u-num">11</span><h2>One context-menu primitive for rows and graph nodes</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">half day</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">Only <span class="cite">CharacterBubble.vue</span> handles <span class="cite">contextmenu</span>. Section rows expose actions through an expanded row (<span class="cite">docs/UX-AUDIT.md #11</span> fixed their weights); graph nodes have none. Right-click is how people expect to rename, duplicate and delete a thing they can see.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">A <span class="cite">BaseMenu</span> built on <span class="cite">BasePopover</span>: items with icon, label, shortcut hint, <span class="cite">danger</span>; opened by right-click or a "⋯" trigger, so keyboard users get the same list. Section rows, scene rows, outline rows, network nodes and canvas cards share it. Add to the primitives catalogue with a story.</p>
+            <p class="u-p u-prop">A <span class="cite">BaseMenu</span> built on <span class="cite">BasePopover</span>: items with icon, label, shortcut hint, <span class="cite">danger</span>; opened by right-click or a "⋯" trigger, so keyboard users get the same list. Section rows, scene rows, outline rows, network nodes and canvas cards share it. Add to the primitives catalogue with a story.</p>
           </div>
           <div class="u-demo" style="min-height:170px"><span class="u-demo-label">Right-click a row (or use the ⋯)</span>
             <div id="ctxRows"></div>
@@ -390,13 +449,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 12 -->
       <section class="u-panel u-ex" id="ex12">
-        <div class="u-head"><span class="u-num">12</span><h2>Read aloud for revision</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">half day</span></div></div>
+        <div class="u-head"><span class="u-num">12</span><h2>Read aloud for revision</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">half day</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">No <span class="cite">speechSynthesis</span> anywhere. Hearing prose is the oldest revision trick there is; it catches the repeated word, the sentence that runs out of breath, the dialogue nobody would say. The Polish drawer has lenses and annotations but nothing that plays the text back.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">A Polish lens "Read aloud": Web Speech API, sentence-level highlighting via <span class="cite">onboundary</span>, play / pause / rate, starts from the caret or the selection. No model, no network, works offline. The highlight uses the selection colour so it reads as "where we are".</p>
+            <p class="u-p u-prop">A Polish lens "Read aloud": Web Speech API, sentence-level highlighting via <span class="cite">onboundary</span>, play / pause / rate, starts from the caret or the selection. No model, no network, works offline. The highlight uses the selection colour so it reads as "where we are".</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Uses your browser's voices</span>
             <div class="row" style="margin-bottom:10px"><button class="btn primary" id="ttsPlay">Read aloud</button><button class="btn elevated" id="ttsStop">Stop</button><label class="u-p" style="font-size:11.5px">rate <input type="range" id="ttsRate" min="0.7" max="1.4" step="0.1" value="1"></label></div>
@@ -407,13 +466,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 13 -->
       <section class="u-panel u-ex" id="ex13">
-        <div class="u-head"><span class="u-num">13</span><h2>Graph and chart colours from tokens</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag">1 day</span><span class="u-tag">policy</span></div></div>
+        <div class="u-head"><span class="u-num">13</span><h2>Graph and chart colours from tokens</h2><div class="u-tags"><span class="u-tag hi">high</span><span class="u-tag plain">1 day</span><span class="u-tag plain">policy</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p"><b>76 six-digit hex literals</b> in <span class="cite">src/components</span>: <span class="cite">EvalTrends.vue</span> 22, <span class="cite">AmbientShader.vue</span> 12, <span class="cite">StoryNetwork.vue</span> 11, <span class="cite">CharacterFocusMatrix</span> 8, <span class="cite">TimelineView</span> 7… while <span class="cite">--vers-edge-*</span>, <span class="cite">--vers-entity-*</span>, <span class="cite">--vers-status-*</span> and <span class="cite">--vers-heat-*</span> exist for exactly these. A hex literal does not follow the theme: switch this page to light and compare the two legends.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Read tokens at draw time: <span class="cite">getComputedStyle(root).getPropertyValue('--vers-edge-ally')</span>, cached per theme change (one <span class="cite">MutationObserver</span> on <span class="cite">data-theme</span>). Chart series that have no semantic token get a small ordinal palette added as tokens. <span class="cite">npm run policy</span> now ratchets the per-file count, so it can only go down; each chart moved lowers its baseline.</p>
+            <p class="u-p u-prop">Read tokens at draw time: <span class="cite">getComputedStyle(root).getPropertyValue('--vers-edge-ally')</span>, cached per theme change (one <span class="cite">MutationObserver</span> on <span class="cite">data-theme</span>). Chart series that have no semantic token get a small ordinal palette added as tokens. <span class="cite">npm run policy</span> now ratchets the per-file count, so it can only go down; each chart moved lowers its baseline.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Same legend, two ways: toggle the theme</span>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -426,13 +485,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 14 -->
       <section class="u-panel u-ex" id="ex14">
-        <div class="u-head"><span class="u-num">14</span><h2>Panel grammar for the five that missed the pass</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">1 day</span><span class="u-tag">audit</span></div></div>
+        <div class="u-head"><span class="u-num">14</span><h2>Panel grammar for the five that missed the pass</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">1 day</span><span class="u-tag plain">audit</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p"><span class="cite">docs/UX-AUDIT.md → Panel pass</span> rewrote fifteen panels against <span class="cite">BasePanelHeader</span> + <span class="cite">BaseSection</span>. "Still open: Outline / Canvas / Research internals, the Settings and Voice Upload modals, and the login view were not touched beyond the eyebrow sweep." Those five are where a new user spends their first ten minutes.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Apply the grammar as-is, no new components: Settings becomes sections (Model · Providers · Editor · Data) with one-line descriptions; Login is one section with two fields and one primary; Outline and Research get the header + sections and lose their inner cards. Then add a story for each rewritten panel, so Chromatic holds the line.</p>
+            <p class="u-p u-prop">Apply the grammar as-is, no new components: Settings becomes sections (Model · Providers · Editor · Data) with one-line descriptions; Login is one section with two fields and one primary; Outline and Research get the header + sections and lose their inner cards. Then add a story for each rewritten panel, so Chromatic holds the line.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Settings in the grammar</span>
             <div class="ph"><h3>Settings</h3><span class="meta">project · The Long Night</span></div>
@@ -445,13 +504,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 15 -->
       <section class="u-panel u-ex" id="ex15">
-        <div class="u-head"><span class="u-num">15</span><h2><span class="cite" style="font-size:inherit">structureTerms</span> in the Outline and the editor empty state</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">quick win</span><span class="u-tag">audit</span></div></div>
+        <div class="u-head"><span class="u-num">15</span><h2><span class="cite" style="font-size:inherit">structureTerms</span> in the Outline and the editor empty state</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">quick win</span><span class="u-tag plain">audit</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">The project store carries <span class="cite">structureTerms</span> (a novel says Chapters / Scenes, a screenplay Scenes / Beats); the sidebar, palette and Section Manager read it. <span class="cite">docs/UX-AUDIT.md</span>: "Outline and the editor empty state still say Sections." Two strings, and they are the two a new writer reads first.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Read the terms in <span class="cite">SubsectionOutline</span> and <span class="cite">FlowEditor</span>'s <span class="cite">EmptyState</span>; the empty state's action opens the inline add from example 07. Add a test that greps the two components for the literal "Section".</p>
+            <p class="u-p u-prop">Read the terms in <span class="cite">SubsectionOutline</span> and <span class="cite">FlowEditor</span>'s <span class="cite">EmptyState</span>; the empty state's action opens the inline add from example 07. Add a test that greps the two components for the literal "Section".</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Project type drives the words</span>
             <div class="row" style="margin-bottom:10px"><span class="seg" role="radiogroup" id="termsSeg"><button role="radio" data-v="novel" aria-checked="true">Novel</button><button role="radio" data-v="screenplay">Screenplay</button><button role="radio" data-v="serial">Serial</button></span></div>
@@ -462,13 +521,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 16 -->
       <section class="u-panel u-ex" id="ex16">
-        <div class="u-head"><span class="u-num">16</span><h2>Workspace first run: continue writing, demote the org</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">quick win</span><span class="u-tag">audit #13</span></div></div>
+        <div class="u-head"><span class="u-num">16</span><h2>Workspace first run: continue writing, demote the org</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">quick win</span><span class="u-tag plain">audit #13</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p"><span class="cite">docs/UX-AUDIT.md #13</span> (open): "Create organization" sits in the workspace header at the same weight as "New" for a first-time local user. Project rows already answer "which one is moving?" (count · edited ago · sparkline), but nothing says "pick up where you left off": <span class="cite">lastOpened</span> is used only in <span class="cite">SidebarAccount</span>.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">The last-opened project becomes a single card above the list: title, chapter you were in, "+240 words yesterday", one primary <b>Continue</b>. "Create organization" moves under the account menu until the user has a second project or signs in. The header keeps one primary: New project.</p>
+            <p class="u-p u-prop">The last-opened project becomes a single card above the list: title, chapter you were in, "+240 words yesterday", one primary <b>Continue</b>. "Create organization" moves under the account menu until the user has a second project or signs in. The header keeps one primary: New project.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Header + continue card</span>
             <div class="ph"><h3>Your projects</h3><div class="row"><button class="btn ghost">Account ▾</button><button class="btn primary">New project</button></div></div>
@@ -481,13 +540,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 17 -->
       <section class="u-panel u-ex" id="ex17">
-        <div class="u-head"><span class="u-num">17</span><h2>Shaped skeletons on every async panel</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">quick win</span></div></div>
+        <div class="u-head"><span class="u-num">17</span><h2>Shaped skeletons on every async panel</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">quick win</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p"><span class="cite">Skeleton.vue</span> has six variants (line · text · circle · card · list · panel) and a story, but only <b>5 files</b> use it; the rest of the panels that wait on IndexedDB or a model (Story Bible lists, Network, Timeline, Evals) show either nothing or a spinner, then snap into layout.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">Every panel with an async load renders <span class="cite">&lt;Skeleton variant="panel"&gt;</span> (header row + three list rows) until its first data, and <span class="cite">variant="list"</span> for refreshes that replace a list. The layout is then stable before the data lands, which is the whole point of a skeleton. One line per panel; the component already exists.</p>
+            <p class="u-p u-prop">Every panel with an async load renders <span class="cite">&lt;Skeleton variant="panel"&gt;</span> (header row + three list rows) until its first data, and <span class="cite">variant="list"</span> for refreshes that replace a list. The layout is then stable before the data lands, which is the whole point of a skeleton. One line per panel; the component already exists.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">panel variant vs a spinner</span>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -501,13 +560,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 18 -->
       <section class="u-panel u-ex" id="ex18">
-        <div class="u-head"><span class="u-num">18</span><h2>Resizable docked panel with a remembered width</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">half day</span></div></div>
+        <div class="u-head"><span class="u-num">18</span><h2>Resizable docked panel with a remembered width</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">half day</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">Tool panels dock to the right of the manuscript and are capped at <span class="cite">calc(100vw − 32rem)</span> (<span class="cite">DESIGN.md → Panel grammar</span>) so the editor never collapses. There is no resize handle in <span class="cite">AppShell.vue</span>; Timeline wants 900 px and Consistency wants 380, and both get whatever the cap gives them.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">A 6 px handle on the panel's left edge: drag between 320 px and the existing cap, double-click to reset, width remembered per panel in <span class="cite">localStorage</span>. Keyboard: focus the handle, arrows move by 16 px. The cap stays as the hard limit.</p>
+            <p class="u-p u-prop">A 6 px handle on the panel's left edge: drag between 320 px and the existing cap, double-click to reset, width remembered per panel in <span class="cite">localStorage</span>. Keyboard: focus the handle, arrows move by 16 px. The cap stays as the hard limit.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Drag the handle · double-click resets</span>
             <div id="rzWrap" style="display:flex;height:150px;border:1px solid var(--vers-border-subtle);border-radius:8px;overflow:hidden">
@@ -521,13 +580,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 19 -->
       <section class="u-panel u-ex" id="ex19">
-        <div class="u-head"><span class="u-num">19</span><h2>Scene status as a first-class filter</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">half day</span></div></div>
+        <div class="u-head"><span class="u-num">19</span><h2>Scene status as a first-class filter</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">half day</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">Sections carry a status (<span class="cite">ChapterManager: status: 'planning'</span>, shown via <span class="cite">getStatusLabel</span>) and the generator commits a scene it could not verify as <span class="cite">review</span> (<span class="cite">CommitService</span>, the generation contract in <span class="cite">AGENTS.md</span>). The label is on the row; there is no way to see <i>all</i> scenes awaiting review, which is the one list a writer wants after a chapter run.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">A <span class="cite">BaseChip</span> filter row at the top of the Section Manager with counts (Planning · Drafting · Review · Final), rows marked with <span class="cite">BaseStatusDot</span> shapes so status is not colour-only, and a palette entry "Scenes to review (3)". After a chapter run, the panel opens on Review.</p>
+            <p class="u-p u-prop">A <span class="cite">BaseChip</span> filter row at the top of the Section Manager with counts (Planning · Drafting · Review · Final), rows marked with <span class="cite">BaseStatusDot</span> shapes so status is not colour-only, and a palette entry "Scenes to review (3)". After a chapter run, the panel opens on Review.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Filter by status</span>
             <div class="row" id="stChips" style="margin-bottom:8px"></div>
@@ -538,13 +597,13 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <!-- 20 -->
       <section class="u-panel u-ex" id="ex20">
-        <div class="u-head"><span class="u-num">20</span><h2>Chapter word targets against actual counts</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag">half day</span></div></div>
+        <div class="u-head"><span class="u-num">20</span><h2>Chapter word targets against actual counts</h2><div class="u-tags"><span class="u-tag mid">medium</span><span class="u-tag plain">half day</span></div></div>
         <div class="u-cols">
           <div>
             <div class="u-k">Today</div>
             <p class="u-p">Targets exist as generation input (<span class="cite">GenerationSettingsForm</span>, target length) and the manager shows each chapter's count, but the two never meet: nothing shows a chapter at 1,400 of a 2,500 target, and the daily goal is the only progress bar in the app.</p>
             <div class="u-k">Proposal</div>
-            <p class="u-p">An optional <span class="cite">targetWords</span> on a section; the row shows <b>1,400 / 2,500</b> with a 3 px bar in the row's bottom edge; the manuscript total gets a book-level target. Over-length reads muted, not red: length is a plan, not a rule. The generator pre-fills its target from the section when present.</p>
+            <p class="u-p u-prop">An optional <span class="cite">targetWords</span> on a section; the row shows <b>1,400 / 2,500</b> with a 3 px bar in the row's bottom edge; the manuscript total gets a book-level target. Over-length reads muted, not red: length is a plan, not a rule. The generator pre-fills its target from the section when present.</p>
           </div>
           <div class="u-demo"><span class="u-demo-label">Rows with targets</span>
             <div id="tgRows"></div>
@@ -554,10 +613,10 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
 
       <section class="u-panel">
         <div class="ph"><h3>Suggested order</h3><span class="meta">three passes, each shippable on its own</span></div>
-        <div class="u-cols" style="grid-template-columns:1fr 1fr 1fr;margin-top:12px">
-          <div><div class="u-k">Pass 1 · never lose a word</div><p class="u-p">01 flush + title · 02 live goal · 09 undo · 07 inline add · 15 structureTerms · 16 workspace. Quick wins; four close audit items.</p></div>
-          <div><div class="u-k">Pass 2 · the manuscript loop</div><p class="u-p">03 find and replace · 04 outline spy · 05 typography · 06 sprint · 10 header chip · 12 read aloud · 19 status filter · 20 targets.</p></div>
-          <div><div class="u-k">Pass 3 · the system</div><p class="u-p">13 tokens in charts (the policy ratchets it) · 14 the five panels · 17 skeletons · 11 BaseMenu · 08 generator row · 18 resizable panels.</p></div>
+        <div class="u-order">
+          <div><div class="u-k"><b>Pass 1</b> never lose a word</div><p class="u-p">01 flush + title · 02 live goal · 09 undo · 07 inline add · 15 structureTerms · 16 workspace. Quick wins; four close audit items.</p></div>
+          <div><div class="u-k"><b>Pass 2</b> the manuscript loop</div><p class="u-p">03 find and replace · 04 outline spy · 05 typography · 06 sprint · 10 header chip · 12 read aloud · 19 status filter · 20 targets.</p></div>
+          <div><div class="u-k"><b>Pass 3</b> the system</div><p class="u-p">13 tokens in charts (the policy ratchets it) · 14 the five panels · 17 skeletons · 11 BaseMenu · 08 generator row · 18 resizable panels.</p></div>
         </div>
       </section>
     </main>
@@ -582,6 +641,8 @@ watch(pendingWrites, n => { document.title = (n ? '● ' : '') + chapter + ' —
   // theme
   $('theme').addEventListener('click', () => { const l = document.documentElement.dataset.theme === 'light'; document.documentElement.dataset.theme = l ? 'dark' : 'light'; $('theme').textContent = l ? 'Light theme' : 'Dark theme'; document.dispatchEvent(new Event('themechange')); });
 
+  // reveal on scroll (respects reduced motion via CSS)
+  (function () { const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' }); document.querySelectorAll('.u-ex').forEach(x => io.observe(x)); })();
   // sidebar spy
   (function () { const links = [...document.querySelectorAll('.u-nav a[href^="#ex"]')]; const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) links.forEach(a => a.dataset.active = String(a.getAttribute('href') === '#' + e.target.id)); }), { rootMargin: '-60px 0px -75% 0px' }); links.forEach(a => { const t = document.querySelector(a.getAttribute('href')); if (t) io.observe(t); }); })();
 
