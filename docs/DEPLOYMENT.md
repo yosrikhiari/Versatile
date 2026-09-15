@@ -139,16 +139,25 @@ to `master`/`develop`; Node 22.x:
 | Job          | Steps                                                                 |
 | ------------ | --------------------------------------------------------------------- |
 | `lint`       | `npm run lint`, `npm run typecheck`, Prettier check, ESLint JSON report |
-| `test`       | `npm run test:run`, `npm run test:coverage`, `npm run build`, Codecov |
+| `test`       | `npm run test:coverage` (the suite, once), `npm run build`, Codecov   |
 | `e2e`        | Playwright (Chromium) with report artifact                            |
-| `sonarcloud` | SonarCloud scan of the frontend                                       |
 | `backend`    | `dotnet restore/build/test backend/Versatile.slnx`                    |
 
-`.github/workflows/backend-ci.yml` — on `backend/**` changes: build + test
-with opencover coverage under `dotnet-sonarscanner`, and on `master` pushes
-the API image to `ghcr.io/yosrikhiari/versatile/versatile-api` tagged `latest` and by commit sha (GHCR requires the lowercase repository name). Sonar steps in both
-workflows are advisory; a rejected `SONAR_TOKEN` (403) no longer fails the
-build or blocks the image.
+`.github/workflows/backend-ci.yml` — on `backend/**` changes: build + test,
+and on `master` pushes the API image to
+`ghcr.io/yosrikhiari/versatile/versatile-api` tagged `latest` and by commit sha
+(GHCR requires the lowercase repository name).
+
+SonarCloud was removed from both workflows on 2026-09-15: the stored token
+had been rejected (403) for months and the scan added nothing the gate
+(lint, typecheck, tests, build) does not already enforce. The `SONAR_TOKEN`
+secret can be deleted from the repository settings.
+
+`npm ci` on the runner needs every lock entry Linux resolves. A Windows
+`npm install` prunes the optional peers `@emnapi/core` / `@emnapi/runtime`
+(behind `@napi-rs/wasm-runtime`), which broke every run from `e916785b` to
+`e97b6d1c`; both are pinned as devDependencies so the lock always carries
+them.
 
 Also present: `chromatic.yml` (Storybook visual regression),
 `eval-regression.yml`, `deps-audit.yml`, `stale.yml`, `branch-cleanup.yml`.

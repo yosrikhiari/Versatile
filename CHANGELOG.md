@@ -7,6 +7,18 @@ was verified.
 
 ## [Unreleased]
 
+### CI: SonarCloud removed, lockfile made durable (2026-09-15)
+- `ci.yml` drops the `sonarcloud` job and `backend-ci.yml` drops the
+  scanner steps (and the Java runtime they needed). The stored token had
+  been rejected with 403 for months; the scan was advisory and blocked
+  nothing, but it was noise on every run. `sonar-project.properties`
+  deleted; the `SONAR_TOKEN` secret can go.
+- `npm ci` had failed on every run since `e916785b`: a Windows
+  `npm install` pruned the optional peers `@emnapi/core` / `@emnapi/runtime`
+  from the lock, and the Linux runner needs them. Pinned as exact
+  devDependencies so no platform's install can drop them again.
+- The `test` job runs the suite once (`test:coverage`) instead of twice.
+
 ### `qwen3:8b` is the default prose model (2026-09-15)
 - `config/ollama.ts`: `DEFAULT_MODEL` flips from `dolphin-mistral:7b` to
   `qwen3:8b`; dolphin is exported as `UNCENSORED_MODEL` and offered in

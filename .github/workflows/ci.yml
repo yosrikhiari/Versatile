@@ -67,13 +67,17 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
+      # The lockfile must carry every entry the Linux runner resolves, including
+      # optional peers that a Windows `npm install` prunes (@emnapi/*); those are
+      # pinned as devDependencies for that reason. If this step fails with
+      # "package.json and package-lock.json are not in sync", the lock was
+      # regenerated on a machine that dropped them - see CHANGELOG 2026-09-15.
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm run test:run
-
-      - name: Run tests with coverage
+      # One pass: `vitest run --coverage` is the same suite as `test:run` plus
+      # the report, so running both doubled the job for no extra signal.
+      - name: Unit tests with coverage
         run: npm run test:coverage
 
       # Nothing else in this workflow compiles the app in production mode: the
@@ -119,38 +123,6 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
-
-  sonarcloud:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [lint, test]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: SonarCloud Scan
-        # Advisory. This uploads a report; it is not the gate — lint, test and
-        # build above are. The upload has failed with 403 since the stored
-        # SONAR_TOKEN stopped being accepted for yosrikhiari_Versatile, and a
-        # rejected report was turning every green build red. Regenerate the
-        # token at sonarcloud.io → My Account → Security and update the repo
-        # secret; the step then reports for real again.
-        continue-on-error: true
-        uses: SonarSource/sonarcloud-github-action@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   backend:
     runs-on: ubuntu-latest

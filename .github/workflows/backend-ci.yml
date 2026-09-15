@@ -23,27 +23,14 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    env:
-      # `secrets` is not a valid context in a step-level `if`; the workflow
-      # failed to parse and never ran a job. Mirror it into env and test that.
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # Full history: the Sonar scanner needs blame info.
-          fetch-depth: 0
 
       - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Setup Java (Sonar scanner runtime)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -56,38 +43,11 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Install Sonar scanner
-        # Skipped on fork PRs where SONAR_TOKEN is unavailable; build+test
-        # still run, only the upload is gated.
-        if: ${{ env.SONAR_TOKEN != '' }}
-        continue-on-error: true
-        run: dotnet tool install --global dotnet-sonarscanner
-
-      # The three Sonar steps are advisory (see ci.yml): the report upload has
-      # been rejected with 403 since the stored token stopped being accepted,
-      # and it must not fail the build or block the image publish.
-      - name: Sonar begin
-        if: ${{ env.SONAR_TOKEN != '' }}
-        continue-on-error: true
-        run: >
-          dotnet sonarscanner begin
-          /k:"yosrikhiari_Versatile" /o:"yosrikhiari"
-          /d:sonar.host.url="https://sonarcloud.io"
-          /d:sonar.token="${{ env.SONAR_TOKEN }}"
-          /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
-          /d:sonar.coverage.exclusions="**/Migrations/**"
-          /d:sonar.exclusions="**/Migrations/**"
-
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage;Format=opencover"
-
-      - name: Sonar end
-        if: ${{ env.SONAR_TOKEN != '' }}
-        continue-on-error: true
-        run: dotnet sonarscanner end /d:sonar.token="${{ env.SONAR_TOKEN }}"
+        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results
         if: always()
