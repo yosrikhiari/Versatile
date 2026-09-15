@@ -1,4 +1,5 @@
 import type { Ref } from 'vue'
+import type { GatedScene, WriteSceneWithGateArgs } from '../types'
 import {
   countWords,
   gateDimensionCoverage,
@@ -183,7 +184,7 @@ export function createSceneGate(ctx: SceneGateContext) {
               sectionBuffers[i] = sectionProse || ''
               emitComposed()
             }
-          : null
+          : undefined
       })
     })
 
@@ -307,7 +308,7 @@ export function createSceneGate(ctx: SceneGateContext) {
     anchorRole,
     anchorConstraints,
     emitChunk
-  }: any): Promise<any> {
+  }: WriteSceneWithGateArgs): Promise<GatedScene> {
     const retryGate = autoMode.value
     const maxAttempts = retryGate ? SCENE_MAX_ATTEMPTS : 1
     let chosenProse = ''

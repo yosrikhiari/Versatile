@@ -7,6 +7,18 @@ was verified.
 
 ## [Unreleased]
 
+### Type discipline (2026-09-15)
+- Prettier covers `.ts` (format script, lint-staged, CI check); 166 files
+  reformatted in one no-code-change commit.
+- ESLint warnings 149 → 4: unused imports, args and bindings removed, dead
+  helpers dropped, shorthand props given defaults. The four remaining are the
+  services-import-stores rule, kept as the architectural note it is.
+- `npm run policy` ratchets `any` per file (`scripts/policy-any-baseline.json`,
+  2,989 across 236 files at the start); it may only fall.
+- The generation seam has shapes: `SceneBrief`, `StoryArc`, `WrittenScene`,
+  `GatedScene`, `WriteSceneWithGateArgs` in `src/composables/generation/types.ts`;
+  `writeSceneStructured` and `writeSceneWithGate` are typed against them.
+
 ### Data panels on a real book (2026-09-15)
 - **Compile is the export** (`docs/UX-AUDIT.md` #53): one header button opens
   it; PDF and RTF are built from the compiled manuscript (the old RTF wrote the

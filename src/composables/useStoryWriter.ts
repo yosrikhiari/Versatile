@@ -14,6 +14,7 @@ import { fitSceneContext } from '../services/ai/contextBudget'
 import { guardScene } from '../guardrails/integration/composableGuardrails'
 import { REFUSAL_PATTERNS } from '../guardrails/guards/contentSafetyGuard'
 import { countProseWords } from './generation/writing/liveDraft'
+import type { SceneBrief, StoryArc, ChunkHandler, WrittenScene } from './generation/types'
 
 // Words-to-tokens ratio for maxTokens budgeting below. Deliberately NOT the
 // BPE-backed countTokens(): these formulas size the *request* budget with their
@@ -710,7 +711,7 @@ export function useStoryWriter() {
       const profileStyleGuide = profileResult?.styleGuide || ''
 
       const sceneContext =
-        completedScenes?.length > 0
+        (completedScenes?.length ?? 0) > 0
           ? buildSceneContext({
               completedScenes,
               characters: characters || [],
@@ -894,26 +895,27 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     characters,
     signal
   }: {
-    sceneBrief: any
-    storyArc: any
-    chapterLog: any
-    storyBible: any
-    onChunk: any
-    onRawChunk: any
-    embeddingContext: any
-    storyContract: any
-    rejectedPatterns: any
-    existingEntitiesJson: any
-    spineContext: any
-    anchorRole: any
-    anchorConstraints: any
-    pastEvalResults: any
-    focusInstructions: any
-    voiceProfile: any
-    completedScenes: any
-    characters: any
-    signal: any
-  }) {
+    sceneBrief: SceneBrief
+    storyArc: StoryArc | null | undefined
+    chapterLog?: string
+    storyBible?: string
+    onChunk?: ChunkHandler
+    onRawChunk?: (chunk: string) => void
+    embeddingContext?: string
+    storyContract?: string
+    rejectedPatterns?: string[]
+    existingEntitiesJson?: string
+    spineContext?: string
+    anchorRole?: string
+    anchorConstraints?: string
+    /** Formatted feedback from earlier attempts, already text. */
+    pastEvalResults?: string | null
+    focusInstructions?: string
+    voiceProfile?: unknown
+    completedScenes?: unknown[]
+    characters?: unknown[]
+    signal?: AbortSignal
+  }): Promise<WrittenScene> {
     isWriting.value = true
     writeError.value = null
 
@@ -936,7 +938,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
       const profileStyleGuide = profileResult?.styleGuide || ''
 
       const sceneContext =
-        completedScenes?.length > 0
+        (completedScenes?.length ?? 0) > 0
           ? buildSceneContext({
               completedScenes,
               characters: characters || [],
@@ -983,7 +985,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
         voiceInstruction,
         antiPatterns,
         activeCraftRules,
-        pastEvalResults,
+        pastEvalResults: pastEvalResults ?? null,
         proseStyleGuide: PROSE_STYLE_GUIDE,
         focusInstructions,
         profileStyleGuide,

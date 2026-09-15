@@ -42,7 +42,7 @@ The rules, in order of how often they are broken:
 8. **Motion** uses the `anim-*` presets and respects `prefers-reduced-motion`; focus uses the global `*:focus-visible` ring, never `outline: none`.
 9. **Document the change where it lives**: a new token in `docs/DESIGN-TOKENS.md`, a new primitive in the catalogue, a UX finding in `docs/UX-AUDIT.md`.
 
-Run `npm run policy` before you finish: it checks that every token is documented, every primitive has a story, hex literals did not grow, and the agent files still point here. `AGENT.md` is the longer setup guide (scripts, project structure, data model, pipeline, pitfalls); this file is the contract.
+Run `npm run policy` before you finish: it checks that every token is documented, every primitive has a story, hex literals did not grow, `any` did not grow per file (ratchet against `scripts/policy-any-baseline.json`; the generation seam's shapes are in `src/composables/generation/types.ts` — `SceneBrief`, `StoryArc`, `WrittenScene`, `GatedScene`), and the agent files still point here. `AGENT.md` is the longer setup guide (scripts, project structure, data model, pipeline, pitfalls); this file is the contract.
 
 ## Performance Rules
 
@@ -58,7 +58,8 @@ Run `npm run policy` before you finish: it checks that every token is documented
 
 - `npm run test:run` — Vitest suite (≈3,060 tests, ~2 min)
 - `npm run typecheck` — `tsc --noEmit`, zero errors
-- `npm run lint` — ESLint
+- `npm run lint` — ESLint (0 errors; the four `services must not import stores` warnings are the known architectural debt)
+- `npm run format` — Prettier over `src/**/*.{js,ts,vue,css}`; CI checks the same scope
 - `npm run lint:tokens` and `npm run policy` — the executable design-system and repo policies (both run in the CI `lint` job)
 - `npm run build` — Vite production build
 - `dotnet test backend/Versatile.slnx` — backend suite
