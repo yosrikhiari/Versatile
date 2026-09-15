@@ -533,11 +533,11 @@ function handleClearExtraction() {
       >
         <div
           ref="modalRef"
-          class="mx-4 w-full max-w-sm bg-bg-secondary border border-border-subtle rounded-xl shadow-2xl p-5 animate-fade-in"
+          class="mx-4 w-full max-w-sm bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg p-5 animate-fade-in"
           tabindex="-1"
           @keydown.escape="cancelImport"
         >
-          <h3 class="text-sm font-semibold text-text-primary mb-2">Large Import</h3>
+          <h3 class="type-display text-[11px] text-text-primary mb-2">Large Import</h3>
           <p class="text-xs text-text-secondary mb-1">
             These files total
             <strong>{{ (pendingImportInfo.totalChars / 1000000).toFixed(1) }}MB</strong>. Processing
@@ -567,9 +567,9 @@ function handleClearExtraction() {
           <BaseIcon name="rotate-cw" size="14" class="animate-spin shrink-0 text-accent" />
           <span class="text-accent">{{ importProgress || 'Importing...' }}</span>
         </div>
-        <div class="w-full h-1.5 bg-bg-secondary rounded-full overflow-hidden">
+        <div class="w-full h-1.5 bg-bg-secondary rounded-sm overflow-hidden">
           <div
-            class="h-full bg-accent rounded-full transition-all duration-300"
+            class="h-full bg-accent rounded-sm transition-all duration-300"
             :style="{ width: importProgressPercent + '%' }"
           ></div>
         </div>

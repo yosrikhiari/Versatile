@@ -108,7 +108,7 @@ defineProps({
 
 .sk-bar {
   display: block;
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--vers-bg-hover);
   background-image: linear-gradient(
     90deg,
@@ -148,7 +148,7 @@ defineProps({
   gap: 0.5rem;
   padding: 1rem;
   border: 1px solid var(--vers-border-subtle);
-  border-radius: 10px;
+  border-radius: 3px;
   background: var(--vers-bg-panel);
 }
 .sk-card-title {

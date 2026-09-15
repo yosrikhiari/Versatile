@@ -511,7 +511,7 @@ function scanForEntities() {
 .ghost {
   opacity: 0.5;
   background: var(--vers-accent-primary);
-  border-radius: 8px;
+  border-radius: 2px;
 }
 .drag {
   opacity: 0.9;

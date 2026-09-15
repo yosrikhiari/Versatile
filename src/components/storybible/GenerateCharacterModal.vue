@@ -130,11 +130,11 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
         @click.self="handleClose"
       >
         <div
-          class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col"
+          class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-warm-lg w-full max-w-lg max-h-[85vh] flex flex-col"
         >
           <div class="p-5 border-b border-border-subtle flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-semibold text-text-primary">
+              <h2 class="type-display text-sm text-text-primary">
                 {{ mode === 'enhance' ? 'Enhance Character' : 'Generate Character' }}
               </h2>
               <p class="text-xs text-text-hint mt-1">

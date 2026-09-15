@@ -111,7 +111,7 @@ onMounted(() => {
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="px-4 py-3 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-3 gap-2">
-        <h2 class="font-ui text-sm font-semibold text-text-primary">Outline</h2>
+        <h2 class="type-display text-[11px] text-text-primary">Outline</h2>
         <BaseSegmented
           v-model="viewMode"
           size="sm"
@@ -330,7 +330,7 @@ onMounted(() => {
 
     <Modal :show="showSubsectionModal" max-width="max-w-lg" @close="showSubsectionModal = false">
       <div class="p-6">
-        <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
+        <h3 class="type-display text-sm text-text-primary mb-4">
           {{ editingSubsection ? 'Edit Subsection' : 'New Subsection' }}
         </h3>
 

@@ -487,7 +487,7 @@ function handleOnboardingSkipWrapper() {
           class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-8 max-w-md text-center"
         >
           <BaseIcon name="waves" :size="48" class="mb-4 mx-auto text-accent" />
-          <h2 class="text-xl font-semibold text-text-primary mb-2">Session complete</h2>
+          <h2 class="type-display text-base text-text-primary mb-2">Session complete</h2>
           <p class="text-text-secondary mb-6">
             You wrote {{ timer.sessionWordCountEnd.value }} words.
           </p>
@@ -539,7 +539,7 @@ function handleOnboardingSkipWrapper() {
           class="bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg p-6 max-w-lg w-full"
         >
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-text-primary">Keyboard Shortcuts</h2>
+            <h2 class="type-display text-sm text-text-primary">Keyboard Shortcuts</h2>
             <button
               class="text-text-secondary hover:text-text-primary text-xl focus:outline-none focus:ring-2 focus:ring-accent rounded"
               @click="showShortcutsModal = false"

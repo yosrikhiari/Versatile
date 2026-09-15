@@ -137,7 +137,7 @@ defineEmits(['run-analysis'])
 }
 .drift-status.idle {
   border: 1px dashed var(--vers-border-subtle);
-  border-radius: 8px;
+  border-radius: 2px;
 }
 .spinner {
   display: inline-block;
@@ -157,7 +157,7 @@ defineEmits(['run-analysis'])
 }
 .alert {
   padding: 0.75rem 1rem;
-  border-radius: 6px;
+  border-radius: 2px;
   margin-bottom: 0.75rem;
   font-size: 0.9rem;
   font-weight: 500;
@@ -190,7 +190,7 @@ defineEmits(['run-analysis'])
 .drift-item {
   padding: 0.5rem 0.75rem;
   margin-bottom: 0.4rem;
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--vers-bg-panel);
   font-size: 0.85rem;
 }

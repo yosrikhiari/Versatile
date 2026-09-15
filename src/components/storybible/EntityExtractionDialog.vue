@@ -87,7 +87,7 @@ function selectAllNew() {
         @click.self="$emit('close')"
       >
         <div
-          class="bg-bg-secondary border border-border-subtle rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+          class="bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg w-full max-w-md overflow-hidden"
         >
           <div class="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
             <div class="flex items-center gap-2">

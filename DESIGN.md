@@ -193,7 +193,7 @@ A cool, saturated signal colour on a near-neutral bone/charcoal foundation. Both
 - **Mono values** (`font-mono` = Plex Mono): counts, ids, times.
 
 ### Named Rules
-**The Two-Voice Rule.** Plex Mono in caps names; Geist in sentence case explains. A heading is never Geist bold; body copy is never mono.
+**The Two-Voice Rule.** Plex Mono in caps names; Geist in sentence case explains. A heading is never Geist bold; body copy is never mono. Enforced: `npm run policy` (type-voice) fails on any `<h1>`-`<h4>` with `font-semibold`/`font-bold` and no `.type-display`.
 
 **The Tracking Rule.** Tracked caps below 11 px are illegible; `.label-micro` and `.type-display` never go smaller, and they never carry more than a few words.
 
@@ -228,7 +228,7 @@ Squared, like a typed page: nothing bulges.
 - **Focus-visible**: 2 px solid cobalt, 2 px offset, global.
 
 ### Named Rules
-**The Square Rule.** If it has a corner, it is 2–3 px. Full rounding means "this is a dot or a face", nothing else.
+**The Square Rule.** If it has a corner, it is 2–3 px. Full rounding means "this is a dot or a face", nothing else. Enforced: `npm run policy` (shape-ratchet) counts `rounded-full` on anything that is not a dot or an avatar, `shadow-sm..2xl`, resting inline `box-shadow`s and hard-coded radii over 4 px; the baseline is zero and may not grow.
 
 ## Components
 

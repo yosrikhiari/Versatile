@@ -395,7 +395,7 @@ function priorityClass(p) {
   align-items: center;
   gap: 1px;
   padding: 6px 4px;
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--vers-bg-hover);
 }
 
@@ -496,7 +496,7 @@ function priorityClass(p) {
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--vers-bg-hover);
   transition: background 0.15s;
 }
@@ -541,7 +541,7 @@ function priorityClass(p) {
 
 .arc-block {
   padding: 8px;
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--vers-bg-hover);
 }
 
@@ -566,7 +566,7 @@ function priorityClass(p) {
 
 .pacing-block {
   padding: 8px;
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--vers-bg-hover);
 }
 
@@ -623,7 +623,7 @@ function priorityClass(p) {
 
 .theme-item {
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--vers-bg-hover);
 }
 
@@ -724,7 +724,7 @@ function priorityClass(p) {
 
 .rec-item {
   padding: 8px;
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--vers-bg-hover);
   border-left: 2px solid transparent;
 }

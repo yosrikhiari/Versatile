@@ -29,10 +29,10 @@ const goalReached = computed(() => {
     <!-- The bar is decoration for the number; on phones the number alone fits. -->
     <div
       v-if="goalWords > 0"
-      class="hidden sm:block w-20 h-1 bg-bg-tertiary rounded-full overflow-hidden"
+      class="hidden sm:block w-20 h-1 bg-bg-tertiary rounded-sm overflow-hidden"
     >
       <div
-        class="h-full transition-all duration-300 rounded-full"
+        class="h-full transition-all duration-300 rounded-sm"
         :class="{ 'bg-accent': !goalReached }"
         :style="{
           width: `${progressPercent}%`,

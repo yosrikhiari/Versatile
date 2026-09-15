@@ -44,7 +44,7 @@ function toggle() {
       :aria-labelledby="label ? labelId : undefined"
       :disabled="disabled"
       :class="[
-        'relative mt-0.5 shrink-0 rounded-full transition-colors duration-150 disabled:cursor-not-allowed',
+        'relative mt-0.5 shrink-0 rounded-sm transition-colors duration-150 disabled:cursor-not-allowed',
         track,
         modelValue ? 'bg-accent' : 'bg-surface-hover border border-border-subtle'
       ]"
@@ -52,7 +52,7 @@ function toggle() {
     >
       <span
         :class="[
-          'absolute top-1/2 -translate-y-1/2 rounded-full transition-transform duration-150 ease-out',
+          'absolute top-1/2 -translate-y-1/2 rounded-sm transition-transform duration-150 ease-out',
           thumb,
           travel,
           modelValue ? 'bg-bg-primary' : 'bg-text-hint'

@@ -57,7 +57,7 @@ function handleKeydown(e) {
     <div
       v-for="(tag, index) in tags"
       :key="index"
-      class="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-hover text-accent text-xs rounded-full font-ui"
+      class="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-hover text-accent text-xs rounded-sm font-ui"
     >
       <span>{{ tag }}</span>
       <button

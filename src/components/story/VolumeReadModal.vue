@@ -20,9 +20,9 @@ const emit = defineEmits(['close'])
     >
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-2">
-          <h2 class="text-lg font-semibold text-text-primary font-ui">Generated Story</h2>
+          <h2 class="type-display text-sm text-text-primary">Generated Story</h2>
           <span
-            class="text-[10px] px-1.5 py-0.5 rounded-full bg-bg-secondary text-warning font-medium whitespace-nowrap"
+            class="text-[10px] px-1.5 py-0.5 rounded-sm bg-bg-secondary text-warning font-medium whitespace-nowrap"
             >Unsaved Preview</span
           >
         </div>
@@ -35,7 +35,7 @@ const emit = defineEmits(['close'])
       </div>
       <div class="space-y-6">
         <div v-for="(scene, i) in scenes" :key="i" class="space-y-2">
-          <h3 class="text-sm font-semibold text-text-primary font-ui">
+          <h3 class="type-display text-[11px] text-text-primary">
             Scene {{ i + 1 }}: {{ scene.title }}
           </h3>
           <div class="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">

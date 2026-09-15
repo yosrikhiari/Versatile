@@ -36,7 +36,7 @@ NOTES: ${b.writingNotes}`
 <template>
   <div class="rounded-lg p-4 space-y-4 bg-bg-tertiary border border-border-subtle">
     <div class="flex justify-between items-start">
-      <h3 class="font-semibold text-text-primary">{{ blueprint.title }}</h3>
+      <h3 class="type-display text-text-primary">{{ blueprint.title }}</h3>
       <button
         class="px-3 py-1 text-xs btn-primary rounded font-ui focus:outline-none focus:ring-2 focus:ring-accent"
         @click="formatForWriting"

@@ -99,7 +99,7 @@ const stages = [
             <div
               v-for="(entity, idx) in step2Entities"
               :key="entity.id"
-              class="px-2.5 py-1 text-xs rounded-full bg-bg-secondary border border-border-subtle text-accent"
+              class="px-2.5 py-1 text-xs rounded-sm bg-bg-secondary border border-border-subtle text-accent"
               :style="{ animationDelay: `${(idx % 10) * 100}ms` }"
             >
               {{ entity.name }}

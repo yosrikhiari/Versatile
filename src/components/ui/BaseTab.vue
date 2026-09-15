@@ -44,7 +44,7 @@ const variantClasses = computed(() => {
       ].join(' ')
     case 'pill':
       return [
-        'rounded-full',
+        'rounded-sm',
         props.active
           ? 'bg-accent text-bg-primary'
           : 'bg-bg-tertiary text-text-secondary hover:bg-surface-hover hover:text-text-primary'
@@ -53,7 +53,7 @@ const variantClasses = computed(() => {
       return [
         'rounded-md',
         props.active
-          ? 'bg-accent text-bg-primary shadow-sm'
+          ? 'bg-accent text-bg-primary shadow-warm-sm'
           : 'text-text-hint hover:text-text-secondary'
       ].join(' ')
     default:

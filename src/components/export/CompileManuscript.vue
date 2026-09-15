@@ -93,7 +93,7 @@ const previewText = computed(() => {
 <template>
   <Modal :show="show" @close="emit('close')">
     <div class="p-5 w-[min(44rem,92vw)]" data-test="compile-manuscript">
-      <h3 class="font-ui text-sm font-semibold text-text-primary">Compile manuscript</h3>
+      <h3 class="type-display text-[11px] text-text-primary">Compile manuscript</h3>
       <p class="mt-1 font-ui text-xs text-text-hint leading-5">
         Every chapter and scene in narrative order — volumes, then chapters, then scenes — as one
         document.

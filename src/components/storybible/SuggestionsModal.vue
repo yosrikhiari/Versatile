@@ -95,12 +95,12 @@ const canApply = computed(() => selectedSuggestions.value.size > 0)
         @click.self="emit('close')"
       >
         <div
-          class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+          class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-warm-lg w-full max-w-2xl max-h-[80vh] flex flex-col"
         >
           <div class="p-6 border-b border-border-subtle">
             <div class="flex items-center justify-between">
               <div>
-                <h2 class="text-lg font-semibold text-text-primary">Network Suggestions</h2>
+                <h2 class="type-display text-sm text-text-primary">Network Suggestions</h2>
                 <p v-if="suggestions.length > 0" class="text-xs text-text-hint mt-1">
                   {{ suggestions.length }} suggestions found. Select which to apply.
                 </p>

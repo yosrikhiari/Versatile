@@ -226,7 +226,7 @@ function toggleWorkspace(wt) {
 }
 .al-status.idle {
   border: 1px dashed var(--vers-border-subtle);
-  border-radius: 8px;
+  border-radius: 2px;
 }
 .spinner {
   display: inline-block;
@@ -246,7 +246,7 @@ function toggleWorkspace(wt) {
 }
 .alert {
   padding: 0.75rem 1rem;
-  border-radius: 6px;
+  border-radius: 2px;
   margin-bottom: 0.75rem;
   font-size: 0.9rem;
   font-weight: 500;
@@ -274,7 +274,7 @@ function toggleWorkspace(wt) {
 .al-recommendation {
   padding: 0.6rem 0.75rem;
   margin-bottom: 0.5rem;
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--vers-bg-panel);
   border-left: 3px solid var(--vers-accent-primary);
 }
@@ -361,7 +361,7 @@ function toggleWorkspace(wt) {
 .al-cal-workspace {
   margin-bottom: 0.75rem;
   border: 1px solid var(--vers-border-subtle);
-  border-radius: 6px;
+  border-radius: 2px;
   overflow: hidden;
 }
 .al-cal-ws-header {

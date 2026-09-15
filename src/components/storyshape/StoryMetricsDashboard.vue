@@ -77,7 +77,7 @@ const pacingRating = computed(() => {
   align-items: center;
   gap: 1px;
   padding: 6px 2px;
-  border-radius: 6px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.03);
 }
 

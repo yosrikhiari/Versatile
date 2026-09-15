@@ -141,7 +141,7 @@ function onKeydown(event) {
 
             <span
               v-if="modelOf(side.draft)"
-              class="ml-auto truncate rounded-full bg-surface-hover px-2 py-0.5 font-ui text-xs text-text-secondary"
+              class="ml-auto truncate rounded-sm bg-surface-hover px-2 py-0.5 font-ui text-xs text-text-secondary"
             >
               {{ modelOf(side.draft) }}
             </span>

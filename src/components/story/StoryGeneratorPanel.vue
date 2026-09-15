@@ -498,7 +498,7 @@ onBeforeUnmount(() => {
   <div class="h-full flex flex-col bg-bg-primary overflow-hidden">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-baseline justify-between mb-3">
-        <h2 class="font-ui text-sm font-semibold text-text-primary">Story tools</h2>
+        <h2 class="type-display text-[11px] text-text-primary">Story tools</h2>
         <span class="font-ui text-xs text-text-hint">{{ tabHint }}</span>
       </div>
       <div

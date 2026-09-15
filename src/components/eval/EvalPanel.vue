@@ -266,10 +266,10 @@ function gateColor(pass) {
             dim.displayScore
           }}</span>
         </div>
-        <div class="w-full h-1 bg-bg-secondary rounded-full overflow-hidden">
+        <div class="w-full h-1 bg-bg-secondary rounded-sm overflow-hidden">
           <div
             v-if="dim.score != null"
-            class="h-full rounded-full transition-all duration-300"
+            class="h-full rounded-sm transition-all duration-300"
             :class="dim.score >= 8 ? 'bg-success' : dim.score >= 6 ? 'bg-warning' : 'bg-danger'"
             :style="{ width: (dim.score / 10) * 100 + '%' }"
           />

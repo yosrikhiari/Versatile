@@ -91,9 +91,9 @@ function compact(n) {
             <span class="font-ui text-text-primary w-28 truncate shrink-0" :title="m.name">{{
               m.name
             }}</span>
-            <div class="flex-1 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+            <div class="flex-1 h-1.5 rounded-sm bg-bg-tertiary overflow-hidden">
               <div
-                class="h-full rounded-full transition-all duration-300"
+                class="h-full rounded-sm transition-all duration-300"
                 :class="m.barClass"
                 :style="{ width: m.barWidth + '%' }"
               ></div>
@@ -112,9 +112,9 @@ function compact(n) {
         <div class="space-y-2">
           <div v-for="p in providerBreakdown" :key="p.name" class="flex items-center gap-2 text-xs">
             <span class="font-ui text-text-primary w-28 truncate shrink-0">{{ p.name }}</span>
-            <div class="flex-1 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+            <div class="flex-1 h-1.5 rounded-sm bg-bg-tertiary overflow-hidden">
               <div
-                class="h-full rounded-full transition-all duration-300"
+                class="h-full rounded-sm transition-all duration-300"
                 :class="p.barClass"
                 :style="{ width: p.barWidth + '%' }"
               ></div>

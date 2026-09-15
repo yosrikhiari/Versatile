@@ -78,7 +78,7 @@ onUnmounted(() => {
            rather than nesting it, which broke both the layout and the click
            targets. Two sibling buttons inside a plain wrapper instead. -->
       <div
-        class="flex items-center gap-3 px-4 py-2.5 rounded-xl shadow-lg border border-border-subtle bg-bg-tertiary text-sm font-ui text-text-primary hover:bg-surface-hover transition-all group relative"
+        class="flex items-center gap-3 px-4 py-2.5 rounded-xl shadow-warm-lg border border-border-subtle bg-bg-tertiary text-sm font-ui text-text-primary hover:bg-surface-hover transition-all group relative"
       >
         <button
           class="flex flex-1 items-center gap-3 min-w-0 text-left cursor-pointer"

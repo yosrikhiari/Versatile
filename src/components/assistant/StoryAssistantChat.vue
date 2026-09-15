@@ -59,7 +59,7 @@ watch(
     <div class="p-5 w-[min(44rem,92vw)] flex flex-col" data-test="story-assistant">
       <div class="flex items-baseline justify-between gap-3">
         <div>
-          <h3 class="font-ui text-sm font-semibold text-text-primary">Ask your story</h3>
+          <h3 class="type-display text-[11px] text-text-primary">Ask your story</h3>
           <p class="mt-1 font-ui text-xs text-text-hint leading-5">
             Answers come only from your scenes and bible, with citations. Nothing leaves the device.
           </p>

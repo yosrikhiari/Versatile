@@ -201,9 +201,7 @@ function switchTab(tab) {
         class="px-4 pt-4 pb-3 border-b border-border-subtle shrink-0 flex items-start justify-between gap-3"
       >
         <div class="min-w-0 flex-1">
-          <h3 v-if="!embedded" class="font-ui text-sm font-semibold text-text-primary mb-2">
-            Spark
-          </h3>
+          <h3 v-if="!embedded" class="type-display text-[11px] text-text-primary mb-2">Spark</h3>
           <SectionContextSelector ref="contextSelectorRef" panel-id="spark-global" />
         </div>
         <BaseButton
@@ -486,9 +484,7 @@ function switchTab(tab) {
         @close="showOpenAISettings = false"
       >
         <div class="p-6">
-          <h3 class="font-ui text-base font-semibold text-text-primary mb-1">
-            Configure AI provider
-          </h3>
+          <h3 class="type-display text-xs text-text-primary mb-1">Configure AI provider</h3>
           <p class="font-ui text-sm text-text-secondary mb-4">
             Ollama is unavailable. Enter an OpenAI API key to use GPT as a fallback.
           </p>

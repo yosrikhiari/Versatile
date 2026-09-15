@@ -2,7 +2,7 @@
   <div class="voice-profile-display">
     <!-- Header -->
     <div class="profile-header">
-      <h3 class="text-lg font-semibold text-text-primary">Writing voice profile</h3>
+      <h3 class="type-display text-sm text-text-primary">Writing voice profile</h3>
       <div class="header-actions">
         <BaseButton
           v-if="profile && !isLocked"
@@ -334,7 +334,7 @@ function formatDate(date) {
 }
 
 .confidence-bar {
-  @apply h-2 bg-bg-tertiary rounded-full overflow-hidden;
+  @apply h-2 bg-bg-tertiary rounded-sm overflow-hidden;
 }
 
 .confidence-fill {
@@ -378,7 +378,7 @@ function formatDate(date) {
 }
 
 .word-tag {
-  @apply inline-block px-2 py-1 bg-bg-secondary text-accent text-xs rounded-full;
+  @apply inline-block px-2 py-1 bg-bg-secondary text-accent text-xs rounded-sm;
 }
 
 .distribution {

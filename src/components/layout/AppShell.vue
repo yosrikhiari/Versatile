@@ -441,7 +441,7 @@ watch(
         </button>
         <span
           v-if="flowMode"
-          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-semibold text-accent cursor-pointer transition-all duration-150"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-2xs font-semibold text-accent cursor-pointer transition-all duration-150"
           style="background: rgb(var(--vers-accent-primary-rgb) / 0.12)"
           @click="toggleFlow"
         >
@@ -775,7 +775,7 @@ watch(
         <button
           v-if="activePanelName && !flowMode && !focusMode"
           type="button"
-          class="lg:hidden fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-full border border-border-subtle bg-bg-elevated px-3.5 py-2.5 text-sm text-text-primary shadow-warm-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          class="lg:hidden fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-sm border border-border-subtle bg-bg-elevated px-3.5 py-2.5 text-sm text-text-primary shadow-warm-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           @click="closeAllPanels"
         >
           <BaseIcon name="x" :size="16" />
@@ -836,7 +836,7 @@ watch(
     z-index: 30;
     width: 100% !important;
     max-width: 100% !important;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 0 1.5px var(--vers-border-strong);
   }
 }
 
@@ -849,14 +849,14 @@ watch(
   transform: translateY(-120%);
   padding: 0.5rem 1rem;
   margin: 0.5rem;
-  border-radius: 8px;
+  border-radius: 2px;
   background: var(--vers-accent-primary);
   color: var(--vers-text-on-accent);
   font-family: var(--vers-font-ui, inherit);
   font-size: 0.8125rem;
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 1.5px var(--vers-border-strong);
   transition: transform 0.15s ease;
 }
 .skip-to-content:focus {

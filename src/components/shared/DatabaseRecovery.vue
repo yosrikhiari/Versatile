@@ -1,11 +1,11 @@
 <template>
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
     <div
-      class="bg-bg-tertiary rounded-xl shadow-xl max-w-md w-full border border-border-subtle max-h-[90vh] overflow-y-auto"
+      class="bg-bg-tertiary rounded-xl shadow-warm-lg max-w-md w-full border border-border-subtle max-h-[90vh] overflow-y-auto"
     >
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-text-primary">Database Recovery</h2>
+          <h2 class="type-display text-sm text-text-primary">Database Recovery</h2>
           <BaseButton variant="ghost" size="sm" @click="$emit('close')">
             <BaseIcon name="x" :size="20" />
           </BaseButton>

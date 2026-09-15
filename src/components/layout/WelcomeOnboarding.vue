@@ -113,7 +113,7 @@ function handleSkipSetup() {
           <!-- ============ STEP 1: Purpose Selection ============ -->
           <div v-if="currentStep === 1" class="space-y-6">
             <div>
-              <h1 class="text-xl font-semibold text-text-primary">Welcome to Versatile</h1>
+              <h1 class="type-display text-base text-text-primary">Welcome to Versatile</h1>
               <p class="text-text-secondary text-sm mt-1.5">
                 What would you like to create today? Choose a document type to get started.
               </p>
@@ -293,7 +293,7 @@ function handleSkipSetup() {
           <!-- ============ STEP 2: Character Setup (Narrative only) ============ -->
           <div v-if="currentStep === 2" class="space-y-6">
             <div>
-              <h2 class="text-lg font-semibold text-text-primary">Add your first character</h2>
+              <h2 class="type-display text-sm text-text-primary">Add your first character</h2>
               <p class="text-sm text-text-secondary mt-1">
                 Kick off your story bible with a key figure.
               </p>
@@ -362,7 +362,7 @@ function handleSkipSetup() {
           <!-- ============ STEP 3: Done ============ -->
           <div v-if="currentStep === 3" class="space-y-6 py-2">
             <div>
-              <h2 class="text-lg font-semibold text-text-primary">You're all set</h2>
+              <h2 class="type-display text-sm text-text-primary">You're all set</h2>
               <p class="text-sm text-text-secondary mt-1.5">Your workspace is ready to go.</p>
             </div>
             <div class="grid grid-cols-3 gap-3">

@@ -119,9 +119,9 @@ watch(projectId, (id) => {
     </BasePanelHeader>
 
     <div v-if="indexing || dialogueStats" class="px-4 py-2 border-b border-border-subtle">
-      <div v-if="indexing" class="h-1 bg-bg-tertiary rounded-full overflow-hidden">
+      <div v-if="indexing" class="h-1 bg-bg-tertiary rounded-sm overflow-hidden">
         <div
-          class="h-full bg-accent rounded-full transition-all duration-300"
+          class="h-full bg-accent rounded-sm transition-all duration-300"
           :style="{
             width: progress.total > 0 ? `${(progress.current / progress.total) * 100}%` : '0%'
           }"

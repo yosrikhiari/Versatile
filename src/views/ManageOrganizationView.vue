@@ -152,7 +152,7 @@ const roleLabels = {
         <div v-if="selectedOrg">
           <!-- Org details -->
           <section class="mb-10">
-            <h2 class="text-lg font-semibold text-text-primary mb-1">{{ selectedOrg.name }}</h2>
+            <h2 class="type-display text-sm text-text-primary mb-1">{{ selectedOrg.name }}</h2>
             <p class="text-xs text-text-hint font-mono">/{{ selectedOrg.slug }}</p>
             <p class="text-xs text-text-hint mt-1">
               Created {{ formatDate(selectedOrg.createdAt) }}

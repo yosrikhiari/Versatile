@@ -1843,7 +1843,7 @@ function handleApplySuggestionsModalClose() {
     >
       <div class="flex items-center gap-2 min-w-0">
         <BaseIcon name="share-2" :size="14" class="shrink-0 text-text-hint" />
-        <h2 class="font-ui text-sm font-semibold text-text-primary truncate">Story Network</h2>
+        <h2 class="type-display text-[11px] text-text-primary truncate">Story Network</h2>
       </div>
 
       <!-- Edge filters: which kinds of connection are drawn. -->
@@ -2244,7 +2244,7 @@ function handleApplySuggestionsModalClose() {
                 />
                 <span
                   v-if="data.nodeCount"
-                  class="text-2xs px-1.5 py-0.5 rounded-full shrink-0 font-mono"
+                  class="text-2xs px-1.5 py-0.5 rounded-sm shrink-0 font-mono"
                   :style="{ backgroundColor: data.color + '30', color: data.color }"
                 >
                   {{ data.nodeCount }}
@@ -2292,7 +2292,7 @@ function handleApplySuggestionsModalClose() {
             :height="120"
             pannable
             zoomable
-            class="story-minimap !absolute !bottom-2 !right-2 !border !border-border-subtle !rounded-lg !shadow-lg"
+            class="story-minimap !absolute !bottom-2 !right-2 !border !border-border-subtle !rounded-lg !shadow-warm-lg"
           />
           <Controls
             show-zoom
@@ -2324,7 +2324,7 @@ function handleApplySuggestionsModalClose() {
             v-if="isDraggingOver && (nodes.length > 0 || manualGroups.length > 0)"
             class="absolute inset-0 pointer-events-none border-2 border-dashed border-accent/50 bg-accent/5 flex items-center justify-center"
           >
-            <div class="bg-bg-tertiary/90 px-6 py-3 rounded-lg shadow-lg">
+            <div class="bg-bg-tertiary/90 px-6 py-3 rounded-lg shadow-warm-lg">
               <p class="text-text-secondary font-ui">Drop to add to network</p>
             </div>
           </div>
@@ -2332,7 +2332,7 @@ function handleApplySuggestionsModalClose() {
 
         <div
           v-if="selectedConnection"
-          class="absolute bottom-4 left-4 right-4 bg-bg-tertiary rounded-lg border border-border-subtle p-4 shadow-lg"
+          class="absolute bottom-4 left-4 right-4 bg-bg-tertiary rounded-lg border border-border-subtle p-4 shadow-warm-lg"
         >
           <div class="flex items-center justify-between mb-2">
             <h3 class="font-medium text-sm text-text-primary">Connection Details</h3>
@@ -2429,9 +2429,9 @@ function handleApplySuggestionsModalClose() {
         class="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50"
         @click.self="showCreateGroupModal = false"
       >
-        <div class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-72">
+        <div class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-warm-lg w-72">
           <div class="p-4">
-            <h3 class="text-sm font-semibold text-text-primary mb-3">New Group</h3>
+            <h3 class="type-display text-[11px] text-text-primary mb-3">New Group</h3>
             <input
               v-model="newGroupName"
               class="w-full px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary text-sm mb-3"
@@ -2443,7 +2443,7 @@ function handleApplySuggestionsModalClose() {
               <button
                 v-for="color in groupColors"
                 :key="color"
-                class="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
+                class="w-7 h-7 rounded-sm border-2 transition-transform hover:scale-110"
                 :class="newGroupColor === color ? 'border-white scale-110' : 'border-transparent'"
                 :style="{ backgroundColor: color }"
                 @click="newGroupColor = color"
@@ -2488,11 +2488,11 @@ function handleApplySuggestionsModalClose() {
 .node-card {
   background: var(--vers-bg-panel);
   border: 2px solid;
-  border-radius: 8px;
+  border-radius: 2px;
   padding: 10px 14px;
   min-width: 120px;
   max-width: 180px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 1px var(--vers-border);
   cursor: grab;
 }
 

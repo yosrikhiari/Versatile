@@ -41,7 +41,7 @@ useClickOutside(popoverRef, () => {
       <button
         v-for="t in suggestions"
         :key="t"
-        class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"
+        class="text-xs px-2 py-1 bg-accent/10 text-accent rounded-sm hover:bg-accent/20 transition-colors"
         @click="emit('add-suggestion', t)"
       >
         + {{ t }}

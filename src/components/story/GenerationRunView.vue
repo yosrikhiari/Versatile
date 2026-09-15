@@ -46,7 +46,7 @@ const phase = () => generator.phase.value
     <div v-if="phase() === 'error'" :data-test="t('error')" class="px-4 py-6 space-y-3">
       <div class="flex items-center gap-2">
         <BaseIcon name="alert-triangle" :size="16" class="text-danger shrink-0" />
-        <h3 class="font-ui text-sm font-semibold text-text-primary">{{ failedTitle }}</h3>
+        <h3 class="type-display text-[11px] text-text-primary">{{ failedTitle }}</h3>
       </div>
       <BaseAlert variant="danger">
         <span class="whitespace-pre-wrap">{{
@@ -113,13 +113,13 @@ const phase = () => generator.phase.value
         </span>
       </div>
       <div
-        class="h-1 bg-bg-tertiary rounded-full overflow-hidden"
+        class="h-1 bg-bg-tertiary rounded-sm overflow-hidden"
         role="progressbar"
         :aria-valuenow="run.currentScene.value"
         :aria-valuemax="run.totalScenes.value"
       >
         <div
-          class="h-full bg-accent rounded-full transition-[width] duration-300 ease-out"
+          class="h-full bg-accent rounded-sm transition-[width] duration-300 ease-out"
           :style="{
             width:
               run.totalScenes.value > 0
@@ -181,9 +181,9 @@ const phase = () => generator.phase.value
         </span>
         <span class="text-text-hint">held in memory</span>
       </div>
-      <div class="h-1 bg-bg-tertiary rounded-full overflow-hidden">
+      <div class="h-1 bg-bg-tertiary rounded-sm overflow-hidden">
         <div
-          class="h-full bg-accent/50 rounded-full"
+          class="h-full bg-accent/50 rounded-sm"
           :style="{
             width:
               run.totalScenes.value > 0

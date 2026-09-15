@@ -96,7 +96,7 @@ function timeAgo(dateStr) {
         >
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
-            <h2 class="text-base font-semibold text-text-primary">Branches</h2>
+            <h2 class="type-display text-xs text-text-primary">Branches</h2>
             <div class="flex items-center gap-2">
               <span class="text-xs text-text-hint tabular-nums"
                 >{{ branches.length }} branches</span
@@ -176,7 +176,7 @@ function timeAgo(dateStr) {
                     </button>
                     <span
                       v-if="branch.name === 'main'"
-                      class="text-xs px-1.5 py-0.5 rounded-full font-medium border shrink-0"
+                      class="text-xs px-1.5 py-0.5 rounded-sm font-medium border shrink-0"
                       :style="{
                         borderColor:
                           'color-mix(in srgb, var(--vers-accent-primary) 30%, transparent)',
@@ -189,7 +189,7 @@ function timeAgo(dateStr) {
                     </span>
                     <span
                       v-if="branch.id === branchStore.activeBranchId && branch.name !== 'main'"
-                      class="text-xs px-1.5 py-0.5 rounded-full font-medium border shrink-0"
+                      class="text-xs px-1.5 py-0.5 rounded-sm font-medium border shrink-0"
                       :style="{
                         borderColor:
                           'color-mix(in srgb, var(--vers-status-success) 30%, transparent)',

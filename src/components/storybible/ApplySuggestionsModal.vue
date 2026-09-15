@@ -130,7 +130,7 @@ function handleApply() {
         @click.self="emit('close')"
       >
         <div
-          class="bg-bg-secondary border border-border-subtle rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col"
+          class="bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col"
         >
           <div
             class="flex items-center justify-between px-5 py-4 border-b border-border-subtle shrink-0"
@@ -168,7 +168,7 @@ function handleApply() {
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                       <span
-                        class="px-2 py-0.5 text-xs rounded-full text-white"
+                        class="px-2 py-0.5 text-xs rounded-sm text-white"
                         :style="{ backgroundColor: getTypeColor(group.type) }"
                       >
                         {{ group.type || 'group' }}
@@ -182,14 +182,14 @@ function handleApply() {
                       <span
                         v-for="member in group.members"
                         :key="member.id"
-                        class="px-2 py-0.5 text-xs rounded-full bg-bg-secondary text-text-secondary"
+                        class="px-2 py-0.5 text-xs rounded-sm bg-bg-secondary text-text-secondary"
                       >
                         {{ member.type }}: {{ member.id }}
                       </span>
                     </div>
                   </div>
                   <span
-                    class="px-2 py-1 text-xs rounded-full whitespace-nowrap"
+                    class="px-2 py-1 text-xs rounded-sm whitespace-nowrap"
                     :class="getConfidenceClass(group.confidence)"
                   >
                     {{ Math.round((group.confidence || 0) * 100) }}%
@@ -218,7 +218,7 @@ function handleApply() {
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                       <span
-                        class="px-2 py-0.5 text-xs rounded-full text-white"
+                        class="px-2 py-0.5 text-xs rounded-sm text-white"
                         :style="{ backgroundColor: getTypeColor(suggestion.sourceType) }"
                       >
                         {{ suggestion.sourceType }}
@@ -232,7 +232,7 @@ function handleApply() {
                         class="text-text-hint"
                       />
                       <span
-                        class="px-2 py-0.5 text-xs rounded-full text-white"
+                        class="px-2 py-0.5 text-xs rounded-sm text-white"
                         :style="{ backgroundColor: getTypeColor(suggestion.targetType) }"
                       >
                         {{ suggestion.targetType }}
@@ -246,7 +246,7 @@ function handleApply() {
                     </p>
                   </div>
                   <span
-                    class="px-2 py-1 text-xs rounded-full whitespace-nowrap"
+                    class="px-2 py-1 text-xs rounded-sm whitespace-nowrap"
                     :class="getConfidenceClass(suggestion.confidence)"
                   >
                     {{ Math.round(suggestion.confidence * 100) }}%

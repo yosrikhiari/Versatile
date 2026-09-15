@@ -7,6 +7,16 @@ was verified.
 
 ## [Unreleased]
 
+### Typescript sweep: the old system's details removed from every component (2026-09-15)
+- The v4 tokens and Tailwind scale were app-wide, but 68 components still
+  carried old-system details on top: 51 Geist-bold headings (now
+  `.type-display` in 36 files, sizes mapped to keep hierarchy), 63 pills on
+  tags/badges/progress tracks (squared; 25 dots and avatars stay round), 31
+  resting shadows (now rules) and 20 hard-coded scoped-style radii.
+- Two new policies so none of it comes back: `type-voice` (no `<h1>`-`<h4>`
+  in Geist bold) and `shape-ratchet` (`scripts/policy-shape-baseline.json`,
+  currently empty: zero escapes allowed). Both bind-checked.
+
 ### Design system v4, Typescript (2026-09-15)
 - An audit of the running app (both themes) found the system disciplined but
   flat: nothing was figure and nothing was ground; the accent did nothing but

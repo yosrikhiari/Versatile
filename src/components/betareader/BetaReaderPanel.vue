@@ -98,9 +98,9 @@ function countsLabel() {
           <BaseIcon name="loader-2" :size="14" class="animate-spin text-accent" />
           {{ currentPhase || 'Reading…' }}
         </div>
-        <div class="mt-3 h-1 rounded-full bg-bg-tertiary overflow-hidden">
+        <div class="mt-3 h-1 rounded-sm bg-bg-tertiary overflow-hidden">
           <div
-            class="h-full rounded-full bg-accent transition-[width] duration-300"
+            class="h-full rounded-sm bg-accent transition-[width] duration-300"
             :style="{ width: progress + '%' }"
           />
         </div>

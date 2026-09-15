@@ -83,7 +83,7 @@ const totalWordsWritten = computed(() =>
           >
           <span
             v-if="saveStatus"
-            class="absolute -top-2 -right-1 font-ui text-2xs px-1.5 py-0.5 rounded-full whitespace-nowrap border border-border-subtle bg-bg-secondary"
+            class="absolute -top-2 -right-1 font-ui text-2xs px-1.5 py-0.5 rounded-sm whitespace-nowrap border border-border-subtle bg-bg-secondary"
             :class="saveStatus.type === 'saving' ? 'text-text-hint' : 'text-success'"
             >{{ saveStatus.message }}</span
           >

@@ -300,7 +300,7 @@ onMounted(() => {
 <template>
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="px-4 py-3 border-b border-border-subtle flex items-center justify-between gap-3">
-      <h2 class="font-ui text-sm font-semibold text-text-primary">Story canvas</h2>
+      <h2 class="type-display text-[11px] text-text-primary">Story canvas</h2>
       <BaseSegmented v-model="view" :options="VIEWS" size="sm" aria-label="Canvas view" />
       <BaseButton
         v-if="view === 'board'"
@@ -422,7 +422,7 @@ onMounted(() => {
           @dblclick.stop="unpin(pin)"
         >
           <span
-            class="px-1.5 py-0.5 rounded bg-bg-elevated/90 border border-border-subtle font-ui text-[11px] text-text-primary whitespace-nowrap shadow-sm"
+            class="px-1.5 py-0.5 rounded bg-bg-elevated/90 border border-border-subtle font-ui text-[11px] text-text-primary whitespace-nowrap shadow-warm-sm"
           >
             {{ pin.name }}
           </span>
@@ -440,7 +440,7 @@ onMounted(() => {
           v-for="type in elementTypes"
           :key="type.value"
           :class="[
-            'px-3 py-1 text-xs rounded-full border font-ui',
+            'px-3 py-1 text-xs rounded-sm border font-ui',
             newElementType === type.value
               ? 'border-accent bg-surface-hover text-accent'
               : 'border-border-subtle text-text-hint hover:border-text-hint'
@@ -495,7 +495,7 @@ onMounted(() => {
             :class="[
               'p-3 rounded-lg border-2 border-l-4 cursor-pointer transition-all',
               selectedElement?.id === element.id
-                ? 'border-accent shadow-lg scale-[1.02]'
+                ? 'border-accent shadow-warm-lg scale-[1.02]'
                 : 'border-border-subtle hover:border-accent'
             ]"
             :style="{ borderLeftColor: getElementColor(element.type) }"
@@ -536,7 +536,7 @@ onMounted(() => {
 
     <Modal :show="showAddModal" @close="showAddModal = false">
       <div class="p-6">
-        <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">Add Story Element</h3>
+        <h3 class="type-display text-sm text-text-primary mb-4">Add Story Element</h3>
         <input
           v-model="newElementTitle"
           type="text"

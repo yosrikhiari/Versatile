@@ -10,7 +10,7 @@
     >
       <div class="modal-content">
         <div class="modal-header">
-          <h2 class="text-xl font-bold text-text-primary">Upload sample text</h2>
+          <h2 class="type-display text-base text-text-primary">Upload sample text</h2>
           <BaseButton
             variant="ghost"
             size="sm"
@@ -44,7 +44,7 @@
 
           <!-- Preview Section -->
           <div v-if="mergedProfile" class="preview-section">
-            <h3 class="text-sm font-semibold text-text-primary mb-3">Merged profile preview</h3>
+            <h3 class="type-display text-[11px] text-text-primary mb-3">Merged profile preview</h3>
 
             <div class="preview-grid">
               <div class="preview-stat">
@@ -201,7 +201,7 @@ async function handleMerge() {
 }
 
 .modal-content {
-  @apply relative bg-bg-secondary border border-border-subtle rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto;
+  @apply relative bg-bg-secondary border border-border-subtle rounded-lg shadow-warm-lg max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto;
 }
 
 .modal-header {

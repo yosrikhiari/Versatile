@@ -37,7 +37,7 @@ function reset() {
 <template>
   <slot v-if="!hasError" />
   <div v-else class="flex flex-col items-center justify-center py-16 px-6 text-center">
-    <div class="w-14 h-14 rounded-full bg-danger/10 flex items-center justify-center mb-5">
+    <div class="w-14 h-14 rounded-sm bg-danger/10 flex items-center justify-center mb-5">
       <BaseIcon name="alert-triangle" :size="24" class="text-danger" />
     </div>
     <h3 class="text-sm font-ui font-medium text-text-primary mb-1.5">{{ fallbackTitle }}</h3>

@@ -17,7 +17,7 @@ const emit = defineEmits(['insert', 'replace'])
 <template>
   <article class="py-4">
     <header class="flex items-baseline justify-between gap-3">
-      <h4 class="min-w-0 flex-1 truncate font-ui text-sm font-semibold text-text-primary">
+      <h4 class="type-display min-w-0 flex-1 truncate text-[11px] text-text-primary">
         <span class="text-text-hint tabular-nums mr-1.5">{{ index + 1 }}</span
         >{{ alt.title }}
       </h4>

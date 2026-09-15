@@ -25,9 +25,9 @@ const progressPercent = computed(() => {
         formattedTime
       }}</span>
 
-      <div class="flex-1 h-2 bg-bg-tertiary rounded-full overflow-hidden">
+      <div class="flex-1 h-2 bg-bg-tertiary rounded-sm overflow-hidden">
         <div
-          class="h-full bg-accent transition-all duration-500 rounded-full"
+          class="h-full bg-accent transition-all duration-500 rounded-sm"
           :style="{ width: `${progressPercent}%` }"
         ></div>
       </div>
@@ -48,9 +48,9 @@ const progressPercent = computed(() => {
     <div class="max-w-[680px] mx-auto flex items-center gap-4 mt-3">
       <span class="text-xs text-text-hint font-ui w-12 tracking-wide">Daily</span>
 
-      <div class="flex-1 h-1 bg-bg-tertiary rounded-full overflow-hidden">
+      <div class="flex-1 h-1 bg-bg-tertiary rounded-sm overflow-hidden">
         <div
-          class="h-full bg-success transition-all duration-500 rounded-full"
+          class="h-full bg-success transition-all duration-500 rounded-sm"
           :style="{ width: `${flow.dailyProgress.value}%` }"
         ></div>
       </div>

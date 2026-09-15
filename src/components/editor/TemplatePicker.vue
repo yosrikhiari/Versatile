@@ -75,7 +75,7 @@ async function insert() {
 <template>
   <Modal :show="show" @close="emit('close')">
     <div class="p-5 w-[min(40rem,92vw)]" data-test="template-picker">
-      <h3 class="font-ui text-sm font-semibold text-text-primary">Insert a template</h3>
+      <h3 class="type-display text-[11px] text-text-primary">Insert a template</h3>
       <p class="mt-1 font-ui text-xs text-text-hint leading-5">
         Fill the fields, insert at the cursor. POV, setting and cast are written to the scene as
         well.

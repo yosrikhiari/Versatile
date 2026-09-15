@@ -21,7 +21,7 @@ const emit = defineEmits(['close'])
       class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto m-4 scrollbar-thin"
     >
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-text-primary font-ui">Consistency Report</h2>
+        <h2 class="type-display text-sm text-text-primary">Consistency Report</h2>
         <button
           class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
           @click="emit('close')"
@@ -31,9 +31,7 @@ const emit = defineEmits(['close'])
       </div>
 
       <div v-if="report.characterIssues?.length > 0" class="mb-4">
-        <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">
-          Character Contradictions
-        </h3>
+        <h3 class="type-display text-[11px] text-text-primary mb-2">Character Contradictions</h3>
         <div
           v-for="(item, i) in report.characterIssues"
           :key="'char-' + i"
@@ -53,9 +51,7 @@ const emit = defineEmits(['close'])
       </div>
 
       <div v-if="report.locationIssues?.length > 0">
-        <h3 class="text-sm font-semibold text-text-primary font-ui mb-2">
-          Location Contradictions
-        </h3>
+        <h3 class="type-display text-[11px] text-text-primary mb-2">Location Contradictions</h3>
         <div
           v-for="(item, i) in report.locationIssues"
           :key="'loc-' + i"

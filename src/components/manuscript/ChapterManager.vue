@@ -381,7 +381,7 @@ function handleSnapshotRestored(content) {
 <template>
   <div class="h-full flex flex-col bg-bg-primary overflow-hidden">
     <div class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
-      <h2 class="font-ui text-sm font-semibold text-text-primary">{{ terms.sections }}</h2>
+      <h2 class="type-display text-[11px] text-text-primary">{{ terms.sections }}</h2>
       <BaseButton variant="soft" size="sm" icon="plus" @click="openAddSection">
         Add {{ terms.sectionLc }}
       </BaseButton>
@@ -396,7 +396,7 @@ function handleSnapshotRestored(content) {
         v-for="tag in allTags"
         :key="tag"
         :class="[
-          'px-2 py-0.5 text-xs rounded-full font-ui shrink-0',
+          'px-2 py-0.5 text-xs rounded-sm font-ui shrink-0',
           tagFilter.includes(tag)
             ? 'btn-primary'
             : 'bg-bg-tertiary text-text-hint hover:text-text-secondary'
@@ -450,7 +450,7 @@ function handleSnapshotRestored(content) {
               >{{ volume.title }}</span
             >
             <span
-              class="text-xs text-text-hint bg-bg-primary border border-border-subtle rounded-full px-2 py-0.5 whitespace-nowrap"
+              class="text-xs text-text-hint bg-bg-primary border border-border-subtle rounded-sm px-2 py-0.5 whitespace-nowrap"
             >
               {{ getSectionsInVolume(volume.id).length }} {{ terms.sectionsLc }}
             </span>
@@ -497,7 +497,7 @@ function handleSnapshotRestored(content) {
                 section.title || `${terms.section} ${section.order + 1}`
               }}</span>
               <span
-                class="text-xs font-medium px-2 py-0.5 rounded-full bg-bg-secondary text-text-secondary"
+                class="text-xs font-medium px-2 py-0.5 rounded-sm bg-bg-secondary text-text-secondary"
                 >{{ getStatusLabel(section.status) }}</span
               >
             </div>
@@ -617,7 +617,7 @@ function handleSnapshotRestored(content) {
                     section.title || `${terms.section} ${section.order + 1}`
                   }}</span>
                   <span
-                    class="text-xs font-medium px-2 py-0.5 rounded-full bg-bg-secondary text-text-secondary"
+                    class="text-xs font-medium px-2 py-0.5 rounded-sm bg-bg-secondary text-text-secondary"
                     >{{ getStatusLabel(section.status) }}</span
                   >
                 </div>
@@ -775,7 +775,7 @@ function handleSnapshotRestored(content) {
 
     <Modal :show="showSectionModal" @close="showSectionModal = false">
       <div class="p-6">
-        <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
+        <h3 class="type-display text-sm text-text-primary mb-4">
           {{ editingSection ? `Edit ${terms.section}` : `Add ${terms.section}` }}
         </h3>
         <div class="mb-3">
@@ -805,7 +805,7 @@ function handleSnapshotRestored(content) {
               v-for="status in SECTION_STATUSES"
               :key="status.value"
               :class="[
-                'px-3 py-1 text-xs rounded-full border font-ui',
+                'px-3 py-1 text-xs rounded-sm border font-ui',
                 newSection.status === status.value
                   ? 'text-white'
                   : 'border-border-subtle text-text-hint'
@@ -837,7 +837,7 @@ function handleSnapshotRestored(content) {
 
     <Modal :show="showSubsectionModal" @close="showSubsectionModal = false">
       <div class="p-6">
-        <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
+        <h3 class="type-display text-sm text-text-primary mb-4">
           {{ editingSubsection ? `Edit ${terms.subsection}` : `New ${terms.subsection}` }}
         </h3>
         <div class="mb-3">
@@ -925,7 +925,7 @@ function handleSnapshotRestored(content) {
 
     <Modal :show="showVolumeModal" @close="showVolumeModal = false">
       <div class="p-6">
-        <h3 class="text-lg font-semibold text-text-primary mb-4 font-ui">
+        <h3 class="type-display text-sm text-text-primary mb-4">
           {{ editingVolume ? 'Edit Volume' : 'Add Volume' }}
         </h3>
         <div class="mb-3">

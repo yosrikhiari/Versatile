@@ -85,7 +85,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
 
       <!-- Drawer panel -->
       <div
-        class="absolute top-0 right-0 bottom-0 w-[420px] max-w-[90vw] bg-bg-primary border-l border-border-subtle shadow-2xl flex flex-col overflow-hidden"
+        class="absolute top-0 right-0 bottom-0 w-[420px] max-w-[90vw] bg-bg-primary border-l border-border-subtle shadow-warm-lg flex flex-col overflow-hidden"
         @click.stop
       >
         <!-- Header -->
@@ -97,7 +97,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
             <h2 class="text-sm font-ui text-text-primary font-medium">Activity</h2>
             <span
               v-if="hasActive"
-              class="text-xs px-1.5 py-0.5 rounded-full bg-surface-hover text-accent"
+              class="text-xs px-1.5 py-0.5 rounded-sm bg-surface-hover text-accent"
               >{{ log.activeTasks.value.length }} active</span
             >
           </div>
@@ -241,9 +241,9 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                 "
                 class="px-4 pb-3"
               >
-                <div class="w-full h-1 rounded-full bg-bg-secondary overflow-hidden">
+                <div class="w-full h-1 rounded-sm bg-bg-secondary overflow-hidden">
                   <div
-                    class="h-full rounded-full bg-accent transition-all duration-500"
+                    class="h-full rounded-sm bg-accent transition-all duration-500"
                     :style="{
                       width: `${Math.round((task.progress.current / task.progress.total) * 100)}%`
                     }"

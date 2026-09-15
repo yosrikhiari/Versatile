@@ -62,9 +62,9 @@
       <div class="space-y-1.5">
         <div v-for="dim in dimensionStats" :key="dim.name" class="flex items-center gap-2 text-xs">
           <span class="font-ui text-text-primary w-24 truncate shrink-0">{{ dim.label }}</span>
-          <div class="flex-1 h-2 rounded-full bg-bg-tertiary overflow-hidden">
+          <div class="flex-1 h-2 rounded-sm bg-bg-tertiary overflow-hidden">
             <div
-              class="h-full rounded-full transition-all duration-300"
+              class="h-full rounded-sm transition-all duration-300"
               :class="dim.barClass"
               :style="{ width: dim.barWidth + '%' }"
             ></div>
@@ -138,9 +138,9 @@
           class="flex items-center gap-2 text-xs"
         >
           <span class="font-ui text-text-hint w-16 shrink-0">{{ bucket.label }}</span>
-          <div class="flex-1 h-3 rounded-full bg-bg-tertiary overflow-hidden">
+          <div class="flex-1 h-3 rounded-sm bg-bg-tertiary overflow-hidden">
             <div
-              class="h-full rounded-full transition-all duration-300"
+              class="h-full rounded-sm transition-all duration-300"
               :class="bucket.barClass"
               :style="{ width: bucket.pct + '%' }"
             ></div>

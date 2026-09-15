@@ -159,11 +159,11 @@ onBeforeUnmount(() => {
   padding: 4px 10px 4px 6px;
   background: var(--vers-bg-elevated, #fff);
   border: 1px solid var(--vers-border, #e0e0e0);
-  border-radius: 20px;
+  border-radius: 3px;
   cursor: grab;
   user-select: none;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 0 1px var(--vers-border);
   font-size: 13px;
   line-height: 1;
 }
@@ -204,8 +204,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   background: var(--vers-bg-elevated, #fff);
   border: 1px solid var(--vers-border, #e0e0e0);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1.5px var(--vers-border-strong, currentColor);
   padding: 4px;
   min-width: 160px;
 }

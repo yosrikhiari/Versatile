@@ -58,7 +58,7 @@ watch(
           class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-thin"
         >
           <div class="flex items-center justify-between mb-6">
-            <h2 class="text-lg font-ui font-semibold text-text-primary tracking-wide">Settings</h2>
+            <h2 class="type-display text-sm text-text-primary">Settings</h2>
             <button
               class="text-text-hint hover:text-text-primary transition-all duration-150 btn-ghost rounded-lg p-1"
               @click="emit('close')"

@@ -153,12 +153,12 @@ onUnmounted(() => {
       @click.self="emit('close')"
     >
       <div
-        class="w-[420px] h-full bg-bg-secondary border-l border-border-subtle flex flex-col overflow-hidden shadow-xl"
+        class="w-[420px] h-full bg-bg-secondary border-l border-border-subtle flex flex-col overflow-hidden shadow-warm-lg"
       >
         <div
           class="px-4 py-3 border-b border-border-subtle flex items-center justify-between shrink-0"
         >
-          <h2 class="font-ui text-sm font-semibold text-text-primary">History</h2>
+          <h2 class="type-display text-[11px] text-text-primary">History</h2>
           <div class="flex items-center gap-2">
             <BaseButton
               variant="ghost"
@@ -260,9 +260,9 @@ onUnmounted(() => {
       @click.self="showLabelInput = false"
     >
       <div
-        class="bg-bg-tertiary rounded-xl shadow-xl p-6 max-w-sm w-full border border-border-subtle"
+        class="bg-bg-tertiary rounded-xl shadow-warm-lg p-6 max-w-sm w-full border border-border-subtle"
       >
-        <h3 class="text-lg font-semibold text-text-primary mb-2 font-ui">Label Snapshot</h3>
+        <h3 class="type-display text-sm text-text-primary mb-2">Label Snapshot</h3>
         <input
           v-model="newLabel"
           type="text"

@@ -527,7 +527,7 @@ defineExpose({ refresh })
     <div class="h-full flex flex-col overflow-hidden">
       <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="font-ui text-sm font-semibold text-text-primary">
+          <h2 class="type-display text-[11px] text-text-primary">
             {{ projectStore.terminology.bible }}
           </h2>
         </div>

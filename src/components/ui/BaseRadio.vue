@@ -40,7 +40,7 @@ const checked = computed(() => props.modelValue === props.value)
       <span
         aria-hidden="true"
         :class="[
-          'pointer-events-none flex h-4 w-4 items-center justify-center rounded-full border transition-colors duration-150 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent',
+          'pointer-events-none flex h-4 w-4 items-center justify-center rounded-sm border transition-colors duration-150 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent',
           checked ? 'border-accent' : 'border-border-strong bg-bg-primary'
         ]"
       >

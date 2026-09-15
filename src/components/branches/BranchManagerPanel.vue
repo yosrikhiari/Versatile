@@ -73,7 +73,7 @@ function statusColor(status) {
     <header
       class="flex items-center justify-between px-4 h-12 border-b border-border-subtle shrink-0"
     >
-      <h2 class="text-sm font-semibold text-text-primary">Branches</h2>
+      <h2 class="type-display text-[11px] text-text-primary">Branches</h2>
       <span class="text-2xs text-text-hint tabular-nums">{{ branches.length }} total</span>
     </header>
 
@@ -136,7 +136,7 @@ function statusColor(status) {
               </span>
               <span
                 v-if="branch.name === 'main'"
-                class="text-2xs px-1.5 py-0.5 rounded-full font-medium"
+                class="text-2xs px-1.5 py-0.5 rounded-sm font-medium"
                 style="
                   background: color-mix(in srgb, var(--vers-accent-primary) 15%, transparent);
                   color: var(--vers-accent-primary);
@@ -147,7 +147,7 @@ function statusColor(status) {
             </div>
             <div class="flex items-center gap-2 mt-0.5">
               <span
-                class="text-2xs px-1.5 py-px rounded-full font-medium"
+                class="text-2xs px-1.5 py-px rounded-sm font-medium"
                 :style="{
                   background: `color-mix(in srgb, ${statusColor(branch.status)} 15%, transparent)`,
                   color: statusColor(branch.status)

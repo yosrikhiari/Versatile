@@ -281,11 +281,11 @@ function handleSave() {
         @click.self="emit('close')"
       >
         <div
-          class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto"
+          class="bg-bg-tertiary rounded-xl border border-border-subtle shadow-warm-lg w-full max-w-md max-h-[80vh] overflow-y-auto"
         >
           <div class="p-6">
             <div class="flex items-center justify-between mb-6">
-              <h2 class="text-lg font-semibold text-text-primary">
+              <h2 class="type-display text-sm text-text-primary">
                 {{ existingEdge ? 'Edit Connection' : 'Add Connection' }}
               </h2>
               <BaseButton variant="ghost" size="sm" @click="emit('close')">

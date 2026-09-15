@@ -46,7 +46,7 @@ function handleConfirm() {
 <template>
   <div class="space-y-4">
     <div class="rounded-lg bg-bg-secondary border border-border-subtle p-4 space-y-2">
-      <h3 class="text-sm font-semibold text-text-primary font-ui">Review new entities</h3>
+      <h3 class="type-display text-[11px] text-text-primary">Review new entities</h3>
       <p class="text-xs text-text-hint">
         The writer discovered the following entities during generation.
         <template v-if="changes.length > 0">

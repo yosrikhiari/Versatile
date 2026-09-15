@@ -134,7 +134,7 @@ watch(
         <div class="space-y-1">
           <div class="flex items-center gap-2">
             <BaseIcon name="book-open" :size="18" class="text-accent" />
-            <h2 class="text-lg font-semibold text-text-primary font-ui">Story Context</h2>
+            <h2 class="type-display text-sm text-text-primary">Story Context</h2>
           </div>
           <p class="text-xs text-text-secondary font-ui max-w-lg">
             The AI reads this before writing every scene. Keep it accurate and it will stop

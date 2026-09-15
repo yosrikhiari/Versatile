@@ -30,7 +30,7 @@ const positionClass = computed(
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="px-5 py-2.5 rounded-lg shadow-lg text-sm font-ui bg-bg-tertiary border border-border-subtle max-w-md pointer-events-auto flex items-center justify-between gap-3"
+          class="px-5 py-2.5 rounded-lg shadow-warm-lg text-sm font-ui bg-bg-tertiary border border-border-subtle max-w-md pointer-events-auto flex items-center justify-between gap-3"
           :class="{
             'text-text-primary': toast.type === 'info',
             'text-success': toast.type === 'success',
@@ -72,7 +72,7 @@ const positionClass = computed(
         class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60"
       >
         <div
-          class="bg-bg-tertiary border border-border-subtle rounded-xl shadow-2xl max-w-md w-full p-6"
+          class="bg-bg-tertiary border border-border-subtle rounded-xl shadow-warm-lg max-w-md w-full p-6"
           @click.stop
         >
           <h3 class="text-lg font-ui text-text-primary mb-2">{{ activeConfirm.title }}</h3>
@@ -88,7 +88,7 @@ const positionClass = computed(
               Cancel
             </button>
             <button
-              class="px-4 py-2 text-sm font-ui font-medium rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-bg-tertiary"
+              class="px-4 py-2 text-sm font-ui font-medium rounded-lg shadow-warm-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-bg-tertiary"
               :class="{
                 'bg-danger text-white hover:bg-danger focus:ring-danger':
                   activeConfirm.type === 'danger',

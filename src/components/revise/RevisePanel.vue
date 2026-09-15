@@ -111,7 +111,7 @@ watch(() => projectStore.currentProjectId, loadComments)
   <div class="h-full flex flex-col bg-manuscript overflow-hidden">
     <div class="px-4 pt-4 pb-3 border-b border-border-subtle">
       <div class="flex items-center justify-between">
-        <h2 class="font-ui text-sm font-semibold text-text-primary">Revise</h2>
+        <h2 class="type-display text-[11px] text-text-primary">Revise</h2>
         <span class="text-xs text-text-hint font-ui"
           >{{ comments.length }} comment{{ comments.length !== 1 ? 's' : '' }}</span
         >
@@ -166,7 +166,7 @@ watch(() => projectStore.currentProjectId, loadComments)
 
     <div
       v-if="showCommentInput"
-      class="fixed bg-bg-tertiary rounded-lg shadow-lg border border-border-subtle p-3 z-50"
+      class="fixed bg-bg-tertiary rounded-lg shadow-warm-lg border border-border-subtle p-3 z-50"
       :style="{ top: commentInputPosition.top + 'px', left: commentInputPosition.left + 'px' }"
     >
       <div class="text-xs text-text-hint font-ui mb-2 truncate max-w-[200px] italic">

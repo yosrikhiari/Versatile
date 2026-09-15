@@ -63,10 +63,10 @@ onBeforeUnmount(() => {
       aria-modal="true"
       aria-label="Flow reminder"
       aria-describedby="flow-nudge-message"
-      class="bg-bg-tertiary rounded-xl shadow-xl p-8 max-w-md text-center border border-border-subtle"
+      class="bg-bg-tertiary rounded-xl shadow-warm-lg p-8 max-w-md text-center border border-border-subtle"
     >
       <div class="text-4xl mb-4 font-ui text-accent">Flow</div>
-      <h2 class="text-xl font-semibold text-text-primary mb-2">Keep moving</h2>
+      <h2 class="type-display text-base text-text-primary mb-2">Keep moving</h2>
       <p id="flow-nudge-message" class="text-text-secondary mb-6">
         Your words are waiting. Don't edit — just write. You can fix it later.
       </p>
