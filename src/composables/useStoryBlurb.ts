@@ -103,7 +103,11 @@ function collectStyleSample(manuscriptStore: any) {
   return parts.join('\n\n')
 }
 
-function buildBlurbPrompt(bibleContext: string, styleSample: string, { tone, length }: { tone?: string; length?: string }) {
+function buildBlurbPrompt(
+  bibleContext: string,
+  styleSample: string,
+  { tone, length }: { tone?: string; length?: string }
+) {
   const toneMap = {
     dramatic: 'dramatic and emotionally charged',
     mysterious: 'intriguing and mysterious, hinting at secrets',

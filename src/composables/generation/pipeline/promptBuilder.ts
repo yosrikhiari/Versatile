@@ -1,6 +1,14 @@
 import { FIELD_LENGTH_CONSTRAINTS } from '../utils'
 
-export function buildPrompt({ shapedBundle, schema, extraInstructions }: { shapedBundle: any; schema: any; extraInstructions: any }) {
+export function buildPrompt({
+  shapedBundle,
+  schema,
+  extraInstructions
+}: {
+  shapedBundle: any
+  schema: any
+  extraInstructions: any
+}) {
   const {
     projectBlock,
     charactersBlock,

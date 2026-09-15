@@ -79,9 +79,7 @@ export function autoAdjustPrompt(evalHistory: any, options: any = {}) {
   }
 
   const scored = weakDims.map((d) => {
-    const repeatPenalty = dampenRepeats
-      ? (repeatCounts[d.dim] || 0) * repeatWeight
-      : 0
+    const repeatPenalty = dampenRepeats ? (repeatCounts[d.dim] || 0) * repeatWeight : 0
     const gap = threshold - d.avg
     const score = gap - repeatPenalty
     return { ...d, gap, repeatPenalty, score }

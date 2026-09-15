@@ -350,9 +350,13 @@ export function createBatchStrategy(ctx: BatchStrategyContext, sceneGate: SceneG
             const warning = `Quality floor breached: ${streak} scenes in a row fell below the critic's floor after retries and were kept for review. The writer or critic model may be mismatched for this gate.`
             console.warn(`[useVolumeStoryGenerator] ${warning}`)
             runHealth.record('gate_failed', { stage: 'qualityFloor', detail: warning })
-            actLog.appendThought(ctx.currentTaskId, null, `
+            actLog.appendThought(
+              ctx.currentTaskId,
+              null,
+              `
 ⚠ ${warning}
-`)
+`
+            )
           }
         } else {
           runHealth.resetStreak('critique_failed')

@@ -1,6 +1,6 @@
 /**
  * Vector Index Service - Offloads IVF vector search to a Web Worker.
- * 
+ *
  * This service manages a Web Worker that hosts the VectorIndex class and handles
  * build/search operations off the main thread to prevent blocking the UI during
  * large-scale semantic search.
@@ -108,17 +108,31 @@ export async function buildVectorIndex(
   config: { dim: number; nClusters?: number; nProbe?: number; minClusterSize?: number }
 ): Promise<void> {
   if (items.length > MAX_SAFE_VECTORS) {
-    console.warn(`[vectorIndexService] ${items.length} vectors exceeds safe limit of ${MAX_SAFE_VECTORS}`)
+    console.warn(
+      `[vectorIndexService] ${items.length} vectors exceeds safe limit of ${MAX_SAFE_VECTORS}`
+    )
   }
   await workerCall('build', key, items, config)
 }
 
-export async function searchVectorIndex(key: string, query: Float32Array, limit = 20): Promise<Array<{ id: string; score: number; metadata?: Record<string, unknown> }>> {
-  return workerCall('search', key, query, limit) as Promise<Array<{ id: string; score: number; metadata?: Record<string, unknown> }>>
+export async function searchVectorIndex(
+  key: string,
+  query: Float32Array,
+  limit = 20
+): Promise<Array<{ id: string; score: number; metadata?: Record<string, unknown> }>> {
+  return workerCall('search', key, query, limit) as Promise<
+    Array<{ id: string; score: number; metadata?: Record<string, unknown> }>
+  >
 }
 
-export async function getVectorIndexStats(key: string): Promise<{ nClusters: number; totalVectors: number; dim: number }> {
-  return workerCall('getStats', key) as Promise<{ nClusters: number; totalVectors: number; dim: number }>
+export async function getVectorIndexStats(
+  key: string
+): Promise<{ nClusters: number; totalVectors: number; dim: number }> {
+  return workerCall('getStats', key) as Promise<{
+    nClusters: number
+    totalVectors: number
+    dim: number
+  }>
 }
 
 export async function serializeVectorIndex(key: string): Promise<string> {

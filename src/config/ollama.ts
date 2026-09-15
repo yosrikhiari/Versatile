@@ -119,7 +119,7 @@ export function setOllamaUtilityModel(model: string | null) {
 export function getOllamaNumCtx() {
   // STORAGE_KEYS ref
   const raw = localStorage.getItem(STORAGE_KEYS.OLLAMA_NUM_CTX)
-  const parsed = Number.parseInt(raw ?? "", 10)
+  const parsed = Number.parseInt(raw ?? '', 10)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_NUM_CTX
 }
 

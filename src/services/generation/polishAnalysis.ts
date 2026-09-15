@@ -18,7 +18,10 @@ const POLISH_SYSTEM_PROMPT = `You are a fiction editor. You do not check grammar
 You analyze prose craft only. You always respond in valid JSON only.
 No preamble. No markdown. No explanation outside the JSON.`
 
-export async function analyzePolish(paragraphText: string, activeLenses: Record<string, boolean> = {}): Promise<PolishResult> {
+export async function analyzePolish(
+  paragraphText: string,
+  activeLenses: Record<string, boolean> = {}
+): Promise<PolishResult> {
   const lensDefinitions: Record<string, string> = {
     weak_verb: 'weak verb constructions or weak verb choices ("was walking" instead of "paced")',
     repetition: 'the same word used more than once within 3 sentences',

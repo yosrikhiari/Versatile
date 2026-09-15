@@ -134,7 +134,7 @@ export async function api<T = unknown>(path: string, options?: ApiOptions): Prom
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => null) as Record<string, unknown> | null
+    const errorBody = (await response.json().catch(() => null)) as Record<string, unknown> | null
     const message =
       (errorBody?.message as string) ||
       (errorBody?.title as string) ||
@@ -143,7 +143,7 @@ export async function api<T = unknown>(path: string, options?: ApiOptions): Prom
   }
 
   if (response.status === 204) return null
-  return await response.json() as T
+  return (await response.json()) as T
 }
 
 export class ApiError extends Error {

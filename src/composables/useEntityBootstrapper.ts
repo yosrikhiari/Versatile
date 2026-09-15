@@ -227,7 +227,9 @@ function makeExpansionSchema(need: {
 
 /** Deterministic id so re-running an expansion updates a faction instead of cloning it. */
 function factionGroupId(name: string): string {
-  return `group-faction-${normalizeName(name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+  return `group-faction-${normalizeName(name)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')}`
 }
 
 function castGap(target: number, existing: number) {
@@ -435,7 +437,21 @@ export function useEntityBootstrapper() {
    * listening to. Cancellation has to reach the provider or the watchdog is
    * only a reporting mechanism.
    */
-  async function bootstrapEntities({ synopsis, projectId, volumeId, onPartialData, scope, signal }: { synopsis: any; projectId: any; volumeId: any; onPartialData: any; scope?: any; signal?: AbortSignal }) {
+  async function bootstrapEntities({
+    synopsis,
+    projectId,
+    volumeId,
+    onPartialData,
+    scope,
+    signal
+  }: {
+    synopsis: any
+    projectId: any
+    volumeId: any
+    onPartialData: any
+    scope?: any
+    signal?: AbortSignal
+  }) {
     isBootstrapping.value = true
     bootstrapError.value = null
 
@@ -451,9 +467,15 @@ export function useEntityBootstrapper() {
       // rest once the arc is known.
       const targets = castTargetsFor(scope)
       const opening = {
-        characters: Math.max(CAST_FLOOR.characters, Math.ceil(targets.characters * BOOTSTRAP_SHARE)),
+        characters: Math.max(
+          CAST_FLOOR.characters,
+          Math.ceil(targets.characters * BOOTSTRAP_SHARE)
+        ),
         locations: Math.max(CAST_FLOOR.locations, Math.ceil(targets.locations * BOOTSTRAP_SHARE)),
-        plotThreads: Math.max(CAST_FLOOR.plotThreads, Math.ceil(targets.plotThreads * BOOTSTRAP_SHARE))
+        plotThreads: Math.max(
+          CAST_FLOOR.plotThreads,
+          Math.ceil(targets.plotThreads * BOOTSTRAP_SHARE)
+        )
       }
 
       const needChars = castGap(opening.characters, existingChars.length)
@@ -601,7 +623,11 @@ TASK:
       const threadByKey = new Map()
       for (const t of existingThreads) threadByKey.set(normalizeName(t.title), t)
 
-      const generatedIds: { characters: string[]; locations: string[]; plotThreads: string[] } = { characters: [], locations: [], plotThreads: [] }
+      const generatedIds: { characters: string[]; locations: string[]; plotThreads: string[] } = {
+        characters: [],
+        locations: [],
+        plotThreads: []
+      }
 
       const newCharacters = []
       for (const char of parsed.characters || []) {
@@ -810,7 +836,10 @@ TASK:
       plotThreads: castGap(targets.plotThreads, existingThreads.length),
       // Only worth asking for factions once there are enough people to put in
       // one — a "group" of one is just a character with extra steps.
-      groups: existingChars.length + castGap(targets.characters, existingChars.length) >= 4 ? MAX_NEW_GROUPS : 0
+      groups:
+        existingChars.length + castGap(targets.characters, existingChars.length) >= 4
+          ? MAX_NEW_GROUPS
+          : 0
     }
     if (!need.characters && !need.locations && !need.plotThreads) return empty
 

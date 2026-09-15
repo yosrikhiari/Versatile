@@ -10,6 +10,7 @@ export const DEFINITION_OF_MASTERPIECE = {
     minWordCount: 150,
     maxWordCount: 1500,
     qualityThreshold: 7,
-    description: 'Absolute expected prose range for a single scene — catches pathological first-attempt truncation (e.g. 16-word bug, Stage 6)'
+    description:
+      'Absolute expected prose range for a single scene — catches pathological first-attempt truncation (e.g. 16-word bug, Stage 6)'
   }
 }

@@ -14,7 +14,6 @@ import { useLoading } from '../utils/useLoading'
 // Shared with the db layer, which cannot import a store. See config/volumeColors.ts.
 import { VOLUME_COLORS, nextVolumeColor } from '../config/volumeColors'
 
-
 const volumeColors = () => VOLUME_COLORS
 
 export interface VolumeEntityCounts {

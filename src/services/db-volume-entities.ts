@@ -2,7 +2,11 @@ import { db as _db } from './db-core'
 
 const db = _db as any
 
-export async function getVolumeEntities(_projectId: string | null, volumeId: string, entityType: string | null = null) {
+export async function getVolumeEntities(
+  _projectId: string | null,
+  volumeId: string,
+  entityType: string | null = null
+) {
   let query = db.volumeEntities.where('volumeId').equals(volumeId)
   if (entityType) {
     query = query.filter((item: any) => item.entityType === entityType)
@@ -61,7 +65,11 @@ export async function addEntityToVolume(
   })
 }
 
-export async function removeEntityFromVolume(entityType: string, entityId: string, volumeId: string) {
+export async function removeEntityFromVolume(
+  entityType: string,
+  entityId: string,
+  volumeId: string
+) {
   return db.volumeEntities
     .where('volumeId')
     .equals(volumeId)
@@ -155,7 +163,5 @@ export async function updateVolumeEdgeVolume(edgeId: string, newVolumeId: string
  */
 export async function getVolumeEdges(volumeId: string, includeGlobal = true) {
   if (!includeGlobal) return db.graphEdges.where('volumeId').equals(volumeId).toArray()
-  return db.graphEdges
-    .filter((e: any) => e.volumeId === volumeId || e.volumeId == null)
-    .toArray()
+  return db.graphEdges.filter((e: any) => e.volumeId === volumeId || e.volumeId == null).toArray()
 }

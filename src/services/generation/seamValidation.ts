@@ -60,10 +60,9 @@ export function deriveSeamWarnings(digests: SeamSceneDigest[]): SeamWarning[] {
   const chapterByScene = new Map<string, number>()
   for (const d of digests) chapterByScene.set(d.subsectionId, d.chapterNumber)
 
-  const contradictions = [
-    ...checkChapterSeam(states),
-    ...checkSeamContinuity(states)
-  ].filter((c) => c.type === 'seam_disconnect')
+  const contradictions = [...checkChapterSeam(states), ...checkSeamContinuity(states)].filter(
+    (c) => c.type === 'seam_disconnect'
+  )
 
   const warnings: SeamWarning[] = []
   for (const c of contradictions) {

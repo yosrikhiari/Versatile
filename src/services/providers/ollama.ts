@@ -281,16 +281,16 @@ async function runStream(
     if (firstTokenMs > 0) {
       firstTokenTimer = setTimeout(() => {
         firstTokenExpired = true
-        controller.abort(
-          new DOMException(`No output within ${firstTokenMs}ms`, 'TimeoutError')
-        )
+        controller.abort(new DOMException(`No output within ${firstTokenMs}ms`, 'TimeoutError'))
       }, firstTokenMs)
     }
 
     if (ceilingMs > 0) {
       ceilingTimer = setTimeout(
         () =>
-          controller.abort(new DOMException(`Request timed out after ${ceilingMs}ms`, 'AbortError')),
+          controller.abort(
+            new DOMException(`Request timed out after ${ceilingMs}ms`, 'AbortError')
+          ),
         ceilingMs
       )
     }
@@ -326,7 +326,11 @@ async function runStream(
         // Response body wasn't JSON; fall through and throw with status only.
       }
       const msg = `Ollama error (${response.status}): ${detail}`.trim()
-      if (/(?:context length exceeded|context_length_exceeded|maximum context|prompt too large)/i.test(msg)) {
+      if (
+        /(?:context length exceeded|context_length_exceeded|maximum context|prompt too large)/i.test(
+          msg
+        )
+      ) {
         throw new TokenLimitError(msg, PROVIDERS.OLLAMA, model, options.maxTokens)
       }
       throw decorateOllamaError(msg, detail)
@@ -364,7 +368,9 @@ async function runStream(
         let result: ReadableStreamReadResult<Uint8Array>
         try {
           result =
-            sawFirstToken && idleMs > 0 ? await readWithTimeout(reader, idleMs) : await reader.read()
+            sawFirstToken && idleMs > 0
+              ? await readWithTimeout(reader, idleMs)
+              : await reader.read()
         } catch (err) {
           if (firstTokenExpired) {
             throw new OllamaStalledError(
@@ -471,12 +477,29 @@ async function runStream(
   }
 }
 
-export async function generate(prompt: string, systemPrompt: string, model: string, options: OllamaOptions = {}) {
-  const { text, usage } = await runStream(prompt, systemPrompt, model, options.onToken ?? null, options)
+export async function generate(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  options: OllamaOptions = {}
+) {
+  const { text, usage } = await runStream(
+    prompt,
+    systemPrompt,
+    model,
+    options.onToken ?? null,
+    options
+  )
   return { text, usage }
 }
 
-export async function stream(prompt: string, systemPrompt: string, model: string, onChunk?: (text: string, full: string) => void, options: OllamaOptions = {}) {
+export async function stream(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  onChunk?: (text: string, full: string) => void,
+  options: OllamaOptions = {}
+) {
   const { text } = await runStream(prompt, systemPrompt, model, onChunk, options)
   return text
 }
@@ -487,7 +510,13 @@ export async function stream(prompt: string, systemPrompt: string, model: string
  * streaming is what makes the idle-timeout (rather than a wall-clock guess)
  * possible for the planning calls that need it most.
  */
-export async function generateStructured(prompt: string, systemPrompt: string, model: string, schema: Record<string, unknown>, options: OllamaOptions = {}) {
+export async function generateStructured(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  schema: Record<string, unknown>,
+  options: OllamaOptions = {}
+) {
   const raw = await runStream(prompt, systemPrompt, model, options.onToken ?? null, {
     ...options,
     format: schema

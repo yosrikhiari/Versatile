@@ -64,7 +64,7 @@ async function getCryptoKey(): Promise<CryptoKey> {
   if (sessionCryptoKey) return sessionCryptoKey
   const stored = localStorage.getItem(CRYPTO_KEY_NAME)
   if (stored) {
-    const raw = Uint8Array.from(atob(stored), c => c.charCodeAt(0))
+    const raw = Uint8Array.from(atob(stored), (c) => c.charCodeAt(0))
     return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, [
       'encrypt',
       'decrypt'
@@ -96,9 +96,7 @@ export async function encrypt(text: string): Promise<string> {
 
 function legacyDeobfuscate(encoded: string): string {
   try {
-    return new TextDecoder().decode(
-      Uint8Array.from(atob(encoded), c => c.charCodeAt(0))
-    )
+    return new TextDecoder().decode(Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0)))
   } catch {
     return ''
   }
@@ -108,7 +106,7 @@ export { legacyDeobfuscate as deobfuscate }
 export async function decrypt(encoded: string): Promise<string> {
   try {
     const key = await getCryptoKey()
-    const combined = Uint8Array.from(atob(encoded), c => c.charCodeAt(0))
+    const combined = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0))
     const iv = combined.slice(0, 12)
     const data = combined.slice(12)
     const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data)
@@ -223,7 +221,10 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
 }
 
-export async function ollamaEmbeddings(text: string, model: string | null = null): Promise<number[] | null> {
+export async function ollamaEmbeddings(
+  text: string,
+  model: string | null = null
+): Promise<number[] | null> {
   if (!text || text.trim().length === 0) {
     return null
   }
@@ -301,7 +302,7 @@ export async function getAvailableEmbeddingModels(): Promise<string[]> {
       const data = await response.json()
       const allModels: string[] = data.models?.map((m: any) => m.name) || []
       const embeddingModels = allModels.filter(
-        m => m.includes('embed') || m.includes('nomic') || m.includes('e5') || m.includes('bge')
+        (m) => m.includes('embed') || m.includes('nomic') || m.includes('e5') || m.includes('bge')
       )
       return embeddingModels.length > 0 ? embeddingModels : allModels.slice(0, 5)
     }
@@ -321,10 +322,7 @@ export async function checkEmbeddingModelAvailable(model: string | null = null):
   }
 }
 
-export async function ollamaGenerate(
-  prompt: string,
-  systemPrompt: string
-): Promise<string> {
+export async function ollamaGenerate(prompt: string, systemPrompt: string): Promise<string> {
   return await aiGenerate(prompt, systemPrompt, { feature: FEATURES.CONTENT })
 }
 

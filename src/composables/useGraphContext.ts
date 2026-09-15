@@ -81,7 +81,9 @@ export function useGraphContext() {
   }
 
   function getRelationshipLabel(relationshipType: any) {
-    return relationshipLabels[relationshipType as keyof typeof relationshipLabels] || relationshipType
+    return (
+      relationshipLabels[relationshipType as keyof typeof relationshipLabels] || relationshipType
+    )
   }
 
   function getNeighbors(nodeId: any, edges: any[]) {

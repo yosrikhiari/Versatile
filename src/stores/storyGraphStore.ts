@@ -15,13 +15,13 @@ import {
   getNodeParents as dbGetNodeParents,
   saveNodeParents as dbSaveNodeParents,
   getGroupEdges,
-  addGroupEdge,
+  addGroupEdge
 } from '../services/db-graph'
 import {
   updateGroupEdge,
   deleteGroupEdge,
   getCharacterRelationships,
-  deleteCharacterRelationship,
+  deleteCharacterRelationship
 } from '../services/dbService'
 import { syncQueue } from '../services/sync-queue'
 import { useStoryBibleStore } from './storyBibleStore'

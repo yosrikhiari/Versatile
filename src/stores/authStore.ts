@@ -51,7 +51,8 @@ export const useAuthStore = defineStore('auth', () => {
         }
         organizations.value = parseOrgs(payload)
         const currentOrgId = payload.org_id
-        activeOrganization.value = organizations.value.find(o => o.id === currentOrgId) || organizations.value[0] || null
+        activeOrganization.value =
+          organizations.value.find((o) => o.id === currentOrgId) || organizations.value[0] || null
         const se = getSyncEngine()
         await se.init()
         se.syncNow().catch(() => {})
@@ -82,7 +83,8 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = result.user
       organizations.value = result.organizations || []
       const payload = parseJwt(result.token)
-      activeOrganization.value = organizations.value.find(o => o.id === payload?.org_id) || organizations.value[0] || null
+      activeOrganization.value =
+        organizations.value.find((o) => o.id === payload?.org_id) || organizations.value[0] || null
       const se = getSyncEngine()
       await se.init()
       se.syncNow().catch(() => {})
@@ -109,7 +111,8 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = result.user
       organizations.value = result.organizations || []
       const payload = parseJwt(result.token)
-      activeOrganization.value = organizations.value.find(o => o.id === payload?.org_id) || organizations.value[0] || null
+      activeOrganization.value =
+        organizations.value.find((o) => o.id === payload?.org_id) || organizations.value[0] || null
       const se = getSyncEngine()
       await se.init()
       se.syncNow().catch(() => {})
@@ -136,7 +139,7 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = result.token
       organizations.value = result.organizations || []
       const payload = parseJwt(result.token)
-      activeOrganization.value = organizations.value.find(o => o.id === payload?.org_id) || null
+      activeOrganization.value = organizations.value.find((o) => o.id === payload?.org_id) || null
       return result
     } catch (err: any) {
       error.value = err.message

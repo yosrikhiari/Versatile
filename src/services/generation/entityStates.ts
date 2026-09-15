@@ -82,12 +82,14 @@ const REVIVAL =
   /\b(resurrect\w*|revived?|revives|reborn|alive again|back from the dead|returns? from the dead|survived|survives)\b/i
 const INJURY =
   /\b(wounded|wounds|injured|injures|hurt|stabbed|stabs|shot|shoots|maimed|crippled|bleeding|bloodied|beaten)\b/i
-const HEALED = /\b(healed|heals|recovered|recovers|mended|patched up|back on (?:his|her|their) feet)\b/i
+const HEALED =
+  /\b(healed|heals|recovered|recovers|mended|patched up|back on (?:his|her|their) feet)\b/i
 const DESTRUCTION =
   /\b(destroyed|destroys|shattered|shatters|burned|burnt|burns|smashed|smashes|ruined|ruins|obliterated|melted)\b/i
 const DAMAGE = /\b(cracked|chipped|dented|damaged|bent|frayed|scorched)\b/i
 const LOSS = /\b(lost|loses|stolen|steals|taken|missing|misplaced|vanished|disappeared)\b/i
-const RECOVERY = /\b(recovered|recovers|found|finds|retrieved|retrieves|repaired|restored|reforged)\b/i
+const RECOVERY =
+  /\b(recovered|recovers|found|finds|retrieved|retrieves|repaired|restored|reforged)\b/i
 const KNOWLEDGE =
   /\b(?:learns?|learned|learnt|discovers?|discovered|realis[ez]es?|realis[ez]ed|finds? out|found out|is told|was told|uncovers?|uncovered)\b/i
 
@@ -101,20 +103,28 @@ const KNOWLEDGE =
  * missed state costs a missed contradiction, while an inverted one manufactures
  * a false one.
  */
-const NEGATION = /\b(?:not|never|no longer|nor|without|isn't|wasn't|aren't|weren't|didn't|doesn't|don't|hasn't|haven't|hadn't|can't|couldn't|refuses? to|fails? to)\b/i
+const NEGATION =
+  /\b(?:not|never|no longer|nor|without|isn't|wasn't|aren't|weren't|didn't|doesn't|don't|hasn't|haven't|hadn't|can't|couldn't|refuses? to|fails? to)\b/i
 
 // Clause splitting, so "Kael survives but the blade is destroyed" attributes
 // each half to the right entity. Without it, one negation or one verb anywhere
 // in a compound fact contaminates every entity named in it.
-const CLAUSE_SPLIT = /\s*(?:[;,]|\bbut\b|\byet\b|\bwhile\b|\bwhereas\b|\balthough\b|\bthough\b|\bhowever\b)\s*/i
+const CLAUSE_SPLIT =
+  /\s*(?:[;,]|\bbut\b|\byet\b|\bwhile\b|\bwhereas\b|\balthough\b|\bthough\b|\bhowever\b)\s*/i
 
 const ATTRIBUTE_PATTERNS: Array<{ key: string; re: RegExp }> = [
-  { key: 'eye_color', re: /\b(?:has|had|with)\s+(blue|brown|green|hazel|grey|gray|amber|black)\s+eyes?\b/i },
+  {
+    key: 'eye_color',
+    re: /\b(?:has|had|with)\s+(blue|brown|green|hazel|grey|gray|amber|black)\s+eyes?\b/i
+  },
   {
     key: 'hair_color',
     re: /\b(?:has|had|with)\s+(blonde|blond|brown|black|red|auburn|silver|white|grey|gray)\s+hair\b/i
   },
-  { key: 'body_type', re: /\b(?:is|was)\s+(tall|short|muscular|slender|stocky|wiry|heavyset|frail)\b/i }
+  {
+    key: 'body_type',
+    re: /\b(?:is|was)\s+(tall|short|muscular|slender|stocky|wiry|heavyset|frail)\b/i
+  }
 ]
 
 /** Case- and punctuation-insensitive name key. Matches `normalizeName` elsewhere. */
@@ -153,7 +163,14 @@ function clausesMentioning(fact: string, name: string): string[] {
 }
 
 function emptyFlags(): EntityStateFlags {
-  return { present: false, status: 'unknown', condition: 'unknown', location: null, attributes: {}, knows: [] }
+  return {
+    present: false,
+    status: 'unknown',
+    condition: 'unknown',
+    location: null,
+    attributes: {},
+    knows: []
+  }
 }
 
 /** Everything after the knowledge verb, trimmed to a comparable topic key. */
@@ -388,9 +405,7 @@ export function compareStatePosition(a: EntityStateRecord, b: EntityStateRecord)
 }
 
 /** Group rows by entity, each group in story order — the shape every rule wants. */
-export function indexStatesByEntity(
-  states: EntityStateRecord[]
-): Map<string, EntityStateRecord[]> {
+export function indexStatesByEntity(states: EntityStateRecord[]): Map<string, EntityStateRecord[]> {
   const byEntity = new Map<string, EntityStateRecord[]>()
   for (const s of states) {
     const key = `${s.entityType}:${s.entityId}`

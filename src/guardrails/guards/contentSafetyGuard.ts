@@ -13,7 +13,7 @@ const PROMPT_LEAKAGE = [
   /\bhere('s| is) (the|your) (rewritten|revised|generated) (scene|text|output)\b/i,
   /\b(output|respond|return) (only )?(valid )?JSON\b/i,
   /\bdo not (include|add) any (explanation|preamble|commentary)\b/i,
-  /\b<\/?(system|instruction|context)>/i,
+  /\b<\/?(system|instruction|context)>/i
 ]
 
 /**
@@ -27,7 +27,7 @@ const PROMPT_LEAKAGE = [
  */
 export const REFUSAL_PATTERNS = [
   /\bI'm sorry,? but I (can't|cannot)\b/i,
-  /\bI'm (not able|unable) to (help|assist|continue) with\b/i,
+  /\bI'm (not able|unable) to (help|assist|continue) with\b/i
 ]
 
 /**
@@ -51,11 +51,20 @@ export function createContentSafetyGuard(
   } = {}
 ): GuardFunction {
   const { enabled = true, blockedTerms = [], blockOnTerms = false, extraFields = [] } = opts
-  const fields = ['content', 'text', 'narrative', 'summary', 'response', 'message', 'analysis', ...extraFields]
+  const fields = [
+    'content',
+    'text',
+    'narrative',
+    'summary',
+    'response',
+    'message',
+    'analysis',
+    ...extraFields
+  ]
 
-  const termPatterns = blockedTerms.map(term => ({
+  const termPatterns = blockedTerms.map((term) => ({
     term,
-    pattern: new RegExp(`\\b${escapeRegex(term)}\\b`, 'i'),
+    pattern: new RegExp(`\\b${escapeRegex(term)}\\b`, 'i')
   }))
 
   return (context: GuardrailContext): GuardrailResult[] => {
@@ -78,7 +87,7 @@ export function createContentSafetyGuard(
         details,
         layer: context.layer,
         contextId: context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 
@@ -86,14 +95,22 @@ export function createContentSafetyGuard(
       for (const pattern of PROMPT_LEAKAGE) {
         const match = text.match(pattern)
         if (match) {
-          push(`Output leaks prompt scaffolding: "${truncate(match[0])}"`, { match: match[0], pattern: pattern.source }, 'blocking')
+          push(
+            `Output leaks prompt scaffolding: "${truncate(match[0])}"`,
+            { match: match[0], pattern: pattern.source },
+            'blocking'
+          )
         }
       }
 
       for (const pattern of REFUSAL_PATTERNS) {
         const match = text.match(pattern)
         if (match) {
-          push(`Output is a refusal, not prose: "${truncate(match[0])}"`, { match: match[0] }, 'blocking')
+          push(
+            `Output is a refusal, not prose: "${truncate(match[0])}"`,
+            { match: match[0] },
+            'blocking'
+          )
         }
       }
 

@@ -46,7 +46,9 @@ function buildFactLedger(spine: any, writtenScenes: any) {
     } else if (Array.isArray(entry.keyFacts)) {
       emit(
         entry.chapterNumber,
-        entry.keyFacts.filter((f: any) => typeof f === 'string' && f.trim()).map((f: any) => f.trim())
+        entry.keyFacts
+          .filter((f: any) => typeof f === 'string' && f.trim())
+          .map((f: any) => f.trim())
       )
     }
   }
@@ -103,7 +105,10 @@ function nameKey(v: any) {
  *
  * @returns {string|null} compact JSON, or null if the scene has no usable cast
  */
-function buildSceneEntitiesBlob(scene: any, { characters = [], locations = [], plotThreads = [] }: any = {}) {
+function buildSceneEntitiesBlob(
+  scene: any,
+  { characters = [], locations = [], plotThreads = [] }: any = {}
+) {
   const present = new Set(
     [...(scene?.charactersPresent || []), ...(scene?.characters || [])].filter(Boolean).map(nameKey)
   )
@@ -342,7 +347,13 @@ async function buildBaseRetrievalContext(currentScene: any, priorScenes: any, k 
         }
       }
       if (s._summaryEmbedding) {
-        scored.push({ s, score: cosineSimilarity(queryEmbedding as unknown as number[], s._summaryEmbedding as unknown as number[]) })
+        scored.push({
+          s,
+          score: cosineSimilarity(
+            queryEmbedding as unknown as number[],
+            s._summaryEmbedding as unknown as number[]
+          )
+        })
       }
     }
     if (scored.length === 0) return buildEmbeddingContext(currentScene, priorScenes)

@@ -21,12 +21,7 @@ import { compareStatePosition, indexStatesByEntity, type EntityStateRecord } fro
 import { edgePairKey, type TemporalEdge } from './edgeTimeline'
 
 export type TimelineEventKind =
-  | 'status'
-  | 'condition'
-  | 'knowledge'
-  | 'appearance'
-  | 'relationship_opens'
-  | 'relationship_ends'
+  'status' | 'condition' | 'knowledge' | 'appearance' | 'relationship_opens' | 'relationship_ends'
 
 export interface TimelineEvent {
   kind: TimelineEventKind
@@ -226,9 +221,7 @@ function relationshipEvents(
       push(e.validFromChapter, {
         kind: 'relationship_opens',
         subject: pair,
-        text: replaced
-          ? `${pair}: ${replaced.relationshipType} → ${rel}`
-          : `${pair}: ${rel} begins`
+        text: replaced ? `${pair}: ${replaced.relationshipType} → ${rel}` : `${pair}: ${rel} begins`
       })
     }
 
@@ -283,7 +276,11 @@ export function pacingOutliers(
   const mean = measured.reduce((sum, c) => sum + c.wordCount!, 0) / measured.length
   if (!Number.isFinite(mean) || mean <= 0) return []
   return measured
-    .map((c) => ({ chapterNumber: c.chapterNumber, wordCount: c.wordCount!, ratio: c.wordCount! / mean }))
+    .map((c) => ({
+      chapterNumber: c.chapterNumber,
+      wordCount: c.wordCount!,
+      ratio: c.wordCount! / mean
+    }))
     .filter((c) => Math.abs(c.ratio - 1) > tolerance)
 }
 
@@ -367,7 +364,9 @@ export function buildStoryTimeline({
     ...stateEventsByChapter.keys(),
     ...relEventsByChapter.keys(),
     ...states.map((s) => s.chapterNumber).filter((n): n is number => n != null),
-    ...Object.keys(chapterTitles).map(Number).filter((n) => Number.isFinite(n))
+    ...Object.keys(chapterTitles)
+      .map(Number)
+      .filter((n) => Number.isFinite(n))
   ])
 
   if (chapterNumbers.size === 0) {
@@ -410,7 +409,10 @@ export function buildStoryTimeline({
         chapterNumber,
         title: chapterTitles[chapterNumber] || `Chapter ${chapterNumber}`,
         summary: String(digest?.summary || ''),
-        charactersPresent: uniqueStrings([...(digest?.charactersPresent || []), ...presence.characters]),
+        charactersPresent: uniqueStrings([
+          ...(digest?.charactersPresent || []),
+          ...presence.characters
+        ]),
         locations: uniqueStrings([...(digest?.locations || []), ...presence.locations]),
         events,
         wordCount:

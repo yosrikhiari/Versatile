@@ -36,7 +36,7 @@ export function createSchemaGuard(
         details,
         layer: context.layer,
         contextId: context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 
@@ -49,7 +49,7 @@ export function createSchemaGuard(
         payload = JSON.parse(raw)
       } catch (err) {
         fail(`Output is not valid JSON: ${err instanceof Error ? err.message : String(err)}`, {
-          preview: raw.slice(0, 200),
+          preview: raw.slice(0, 200)
         })
         return results
       }
@@ -69,7 +69,7 @@ export function createSchemaGuard(
 
     if (strictExtraKeys && schema.properties && isPlainObject(payload)) {
       const expected = new Set(Object.keys(schema.properties))
-      const extra = Object.keys(payload).filter(k => !expected.has(k))
+      const extra = Object.keys(payload).filter((k) => !expected.has(k))
       if (extra.length > 0) {
         fail(`Output has unexpected top-level key(s): ${extra.join(', ')}`, { extra })
       }
@@ -90,7 +90,7 @@ function validate(value: unknown, schema: SimpleSchema, path: string): Violation
   if (schema.type && !matchesType(value, schema.type)) {
     violations.push({
       message: `${path} should be ${schema.type} but got ${describe(value)}`,
-      details: { path, expected: schema.type, actual: describe(value) },
+      details: { path, expected: schema.type, actual: describe(value) }
     })
     return violations
   }
@@ -98,16 +98,16 @@ function validate(value: unknown, schema: SimpleSchema, path: string): Violation
   if (schema.enum && !schema.enum.includes(value as never)) {
     violations.push({
       message: `${path} is not one of the allowed values`,
-      details: { path, allowed: schema.enum, actual: value },
+      details: { path, allowed: schema.enum, actual: value }
     })
   }
 
   if (schema.required && isPlainObject(value)) {
-    const missing = schema.required.filter(k => value[k] === undefined || value[k] === null)
+    const missing = schema.required.filter((k) => value[k] === undefined || value[k] === null)
     if (missing.length > 0) {
       violations.push({
         message: `${path} is missing required field(s): ${missing.join(', ')}`,
-        details: { path, missing },
+        details: { path, missing }
       })
     }
   }

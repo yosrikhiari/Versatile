@@ -28,9 +28,7 @@ const COMPACT_SYSTEM_PROMPT = `You are a conversation summarizer. Given a sequen
 
 Keep it factual and specific. Do not editorialize. Do not add information not present in the exchanges.`
 
-export function useContextCompactor(
-  options: { model?: string; budgetRatio?: number } = {}
-) {
+export function useContextCompactor(options: { model?: string; budgetRatio?: number } = {}) {
   const conversations = ref<Record<string, any>>({})
   const isCompacting = ref(false)
   const activeModel = ref<string | null>(options.model ?? null)

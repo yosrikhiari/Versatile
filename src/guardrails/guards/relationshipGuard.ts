@@ -1,7 +1,10 @@
 import type { GuardrailContext, GuardrailResult, GuardFunction } from '../types'
 import type { GroundingService } from '../ontology/grounding'
 
-export function createRelationshipGuard(grounding: GroundingService, enabled: boolean = true): GuardFunction {
+export function createRelationshipGuard(
+  grounding: GroundingService,
+  enabled: boolean = true
+): GuardFunction {
   return (context: GuardrailContext): GuardrailResult[] => {
     if (!enabled) return []
 
@@ -17,15 +20,16 @@ export function createRelationshipGuard(grounding: GroundingService, enabled: bo
       if (Array.isArray(obj.relationships)) {
         for (const rel of obj.relationships) {
           if (rel && typeof rel === 'object') {
-            const src = (rel as Record<string, unknown>).source ?? (rel as Record<string, unknown>).character
-            const tgt = (rel as Record<string, unknown>).target ?? (rel as Record<string, unknown>).other
+            const src =
+              (rel as Record<string, unknown>).source ?? (rel as Record<string, unknown>).character
+            const tgt =
+              (rel as Record<string, unknown>).target ?? (rel as Record<string, unknown>).other
             if (src && tgt && typeof src === 'string' && typeof tgt === 'string') {
               pairs.push([src, tgt])
             }
           }
         }
       }
-
 
       if (typeof obj.character === 'string' && typeof obj.relationship_to === 'string') {
         pairs.push([obj.character, obj.relationship_to])
@@ -57,7 +61,7 @@ export function createRelationshipGuard(grounding: GroundingService, enabled: bo
       }
 
       const rels = grounding.getRelationshipsForEntity(srcId)
-      const hasRelationship = rels.some(r => r && (r.targetId === tgtId || r.sourceId === tgtId))
+      const hasRelationship = rels.some((r) => r && (r.targetId === tgtId || r.sourceId === tgtId))
       if (!hasRelationship) {
         unknownPairs.push([src, tgt])
       }
@@ -72,7 +76,7 @@ export function createRelationshipGuard(grounding: GroundingService, enabled: bo
         details: { unknownPairs },
         layer: context.layer,
         contextId: context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 

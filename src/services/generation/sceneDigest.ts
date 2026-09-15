@@ -71,8 +71,20 @@ export interface StyleVector {
 }
 
 const FILTER_WORDS = [
-  'felt', 'feel', 'knew', 'know', 'realized', 'realised', 'seemed', 'saw',
-  'heard', 'noticed', 'thought', 'wondered', 'watched', 'decided'
+  'felt',
+  'feel',
+  'knew',
+  'know',
+  'realized',
+  'realised',
+  'seemed',
+  'saw',
+  'heard',
+  'noticed',
+  'thought',
+  'wondered',
+  'watched',
+  'decided'
 ]
 const OPENING_PRONOUNS = ['he', 'she', 'they', 'it', 'his', 'her', 'their']
 

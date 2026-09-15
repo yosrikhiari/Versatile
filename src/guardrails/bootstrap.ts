@@ -22,7 +22,7 @@ export function bootstrapGuardrails(
   return installGuardrails({
     llmBudget: options.llmBudget,
     buildSnapshot,
-    getPronouns,
+    getPronouns
   })
 }
 
@@ -36,7 +36,7 @@ function buildSnapshot(): OntologySnapshot {
       getLocations: () => normalize(bible.locations),
       getPlotThreads: () => normalize(bible.plotThreads),
       getScenes: () => [],
-      getRelationships: () => normalizeEdges(graph.edges),
+      getRelationships: () => normalizeEdges(graph.edges)
     })
   } catch {
     // No active Pinia yet, or the bible has not loaded. An empty ontology means
@@ -62,14 +62,14 @@ function getPronouns(): Record<string, string> {
 function normalize(items: unknown): Array<{ id: string; name: string; aliases?: string[] }> {
   if (!Array.isArray(items)) return []
   return items
-    .filter(item => item && typeof item === 'object')
-    .map(item => {
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => {
       const row = item as Record<string, unknown>
       return {
         ...row,
         id: String(row.id ?? ''),
         name: String(row.name ?? row.title ?? ''),
-        aliases: Array.isArray(row.aliases) ? (row.aliases as string[]).map(String) : [],
+        aliases: Array.isArray(row.aliases) ? (row.aliases as string[]).map(String) : []
       }
     })
 }
@@ -79,7 +79,7 @@ function normalizeEdges(
 ): Array<{ id: string; sourceId: string; targetId: string; kind: string; label: string }> {
   if (!Array.isArray(edges)) return []
   return edges
-    .filter(edge => edge && typeof edge === 'object')
+    .filter((edge) => edge && typeof edge === 'object')
     .map((edge, i) => {
       const row = edge as Record<string, unknown>
       return {
@@ -87,8 +87,8 @@ function normalizeEdges(
         sourceId: String(row.sourceId ?? row.source ?? row.from ?? ''),
         targetId: String(row.targetId ?? row.target ?? row.to ?? ''),
         kind: String(row.kind ?? row.type ?? row.relationshipType ?? 'related'),
-        label: String(row.label ?? row.description ?? ''),
+        label: String(row.label ?? row.description ?? '')
       }
     })
-    .filter(edge => edge.sourceId && edge.targetId)
+    .filter((edge) => edge.sourceId && edge.targetId)
 }

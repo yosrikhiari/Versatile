@@ -17,7 +17,10 @@ import { recordQualityForOutput } from '../services/aiResponseCache'
 function detectRepetition(prose: string): { hasRepetition: boolean; details: string } {
   if (!prose || prose.length < 100) return { hasRepetition: false, details: '' }
 
-  const sentences = prose.split(/[.!?]+/).map(s => s.trim()).filter(Boolean)
+  const sentences = prose
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
   if (sentences.length < 4) return { hasRepetition: false, details: '' }
 
   // Check for repeated n-grams (word sequences)
@@ -85,7 +88,9 @@ function detectRepetition(prose: string): { hasRepetition: boolean; details: str
  * judgement rather than first.
  */
 function buildCriticSchema(dimensionNames: string[]) {
-  const dims = dimensionNames.length ? dimensionNames : ['continuity', 'voice', 'emotional_goal', 'show_tell', 'pacing']
+  const dims = dimensionNames.length
+    ? dimensionNames
+    : ['continuity', 'voice', 'emotional_goal', 'show_tell', 'pacing']
   const dimensionProps: Record<string, unknown> = {}
   for (const d of dims) dimensionProps[d] = { type: 'number' }
   return {
@@ -184,7 +189,8 @@ function formatExcerpts(scenes: any) {
   const { selected, omitted } = selectConsistencyScenes(scenes)
   const body = selected
     .map(
-      (s: any, i: any) => `--- Scene ${i + 1} ---\n${(s.prose || '').slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`
+      (s: any, i: any) =>
+        `--- Scene ${i + 1} ---\n${(s.prose || '').slice(0, CONSISTENCY_EXCERPT_MAX_CHARS)}`
     )
     .join('\n\n')
   if (!omitted) return body
@@ -280,11 +286,13 @@ export function useStoryCritic() {
           pass: false,
           score: 1,
           evalUnavailable: false,
-          issues: [{
-            severity: 'critical',
-            type: 'repetition',
-            description: `Excessive repetition detected: ${repCheck.details}`
-          }],
+          issues: [
+            {
+              severity: 'critical',
+              type: 'repetition',
+              description: `Excessive repetition detected: ${repCheck.details}`
+            }
+          ],
           strengths: [],
           dimensionScores: {}
         }
@@ -305,10 +313,14 @@ ${dimsList}
 
 You MUST provide a score (1-10) for each dimension in the "dimensionScores" field of your JSON response.
 
-${focusInstructions ? `FOCUS AREAS (pay extra attention to these dimensions based on historical weaknesses):
+${
+  focusInstructions
+    ? `FOCUS AREAS (pay extra attention to these dimensions based on historical weaknesses):
 ${focusInstructions}
 
-` : ''}SCENE BRIEF:
+`
+    : ''
+}SCENE BRIEF:
 - Title: ${sceneBrief.title}
 - Emotional goal: ${sceneBrief.emotionalGoal}
 - Characters present: ${sceneBrief.charactersPresent.join(', ')}
@@ -462,9 +474,24 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
     }
   }
 
-  async function checkContradictions({ characters, locations, sceneProse, synopsis, ledger }: { characters: any; locations: any; sceneProse: any; synopsis: any; ledger: any }) {
+  async function checkContradictions({
+    characters,
+    locations,
+    sceneProse,
+    synopsis,
+    ledger
+  }: {
+    characters: any
+    locations: any
+    sceneProse: any
+    synopsis: any
+    ledger: any
+  }) {
     isCheckingConsistency.value = true
-    const report: { characterIssues: any[]; locationIssues: any[]; error?: string } = { characterIssues: [], locationIssues: [] }
+    const report: { characterIssues: any[]; locationIssues: any[]; error?: string } = {
+      characterIssues: [],
+      locationIssues: []
+    }
 
     try {
       const systemNote = synopsis ? `Story synopsis: "${synopsis}"\n\n` : ''
@@ -556,8 +583,12 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
     checkContradictions,
     isCheckingConsistency,
     consistencyReport,
-    get sessionBudget() { return _sessionBudget },
-    set sessionBudget(v: SessionBudget | null) { _sessionBudget = v }
+    get sessionBudget() {
+      return _sessionBudget
+    },
+    set sessionBudget(v: SessionBudget | null) {
+      _sessionBudget = v
+    }
   }
 }
 

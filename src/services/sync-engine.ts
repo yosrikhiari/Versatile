@@ -92,13 +92,21 @@ class SyncEngine {
         obj.apiId = null
       })
 
-      table.hook('updating').subscribe((modifications: Record<string, unknown>, _primKey: unknown, obj: Record<string, unknown>) => {
-        if (modifications._suppressHooks) return
-        if (obj.syncStatus !== 'pending-create') {
-          modifications.syncStatus = 'pending-update'
-          modifications.lastSyncedAt = null
-        }
-      })
+      table
+        .hook('updating')
+        .subscribe(
+          (
+            modifications: Record<string, unknown>,
+            _primKey: unknown,
+            obj: Record<string, unknown>
+          ) => {
+            if (modifications._suppressHooks) return
+            if (obj.syncStatus !== 'pending-create') {
+              modifications.syncStatus = 'pending-update'
+              modifications.lastSyncedAt = null
+            }
+          }
+        )
 
       table.hook('deleting').subscribe(async (primKey: string) => {
         const existing = await table.get(primKey)
@@ -195,7 +203,13 @@ class SyncEngine {
     const storyApiId = await this._idMap.resolveStoryApiId()
     if (!storyApiId) {
       try {
-        const { failed } = await this._transport.pushTable('projects', null, this._idMap, findSyncConfig, db)
+        const { failed } = await this._transport.pushTable(
+          'projects',
+          null,
+          this._idMap,
+          findSyncConfig,
+          db
+        )
         if (failed > 0) {
           // Projects could not bootstrap — nothing downstream can resolve.
           // Carry it as a table failure so the retry queue picks it up.
@@ -235,7 +249,13 @@ class SyncEngine {
     let anyFailed = false
     for (const tableName of order) {
       try {
-        const { failed } = await this._transport.pushTable(tableName, storyApiId, this._idMap, findSyncConfig, db)
+        const { failed } = await this._transport.pushTable(
+          tableName,
+          storyApiId,
+          this._idMap,
+          findSyncConfig,
+          db
+        )
         if (failed > 0) {
           anyFailed = true
           this._failedTables.add(tableName)
@@ -333,7 +353,13 @@ class SyncEngine {
       for (const tableName of tables) {
         try {
           const storyApiId = await this._idMap.resolveStoryApiId()
-          const { failed } = await this._transport.pushTable(tableName, storyApiId, this._idMap, findSyncConfig, db)
+          const { failed } = await this._transport.pushTable(
+            tableName,
+            storyApiId,
+            this._idMap,
+            findSyncConfig,
+            db
+          )
           if (failed === 0) this._failedTables.delete(tableName)
         } catch (err) {
           console.warn(`[SyncEngine] Retry failed for ${tableName}: ${(err as Error).message}`)

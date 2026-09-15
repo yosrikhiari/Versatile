@@ -1,5 +1,10 @@
 import { ref } from 'vue'
-import { forkWithDivergence, getSections, getSubsections, updateSubsection } from '../services/dbService'
+import {
+  forkWithDivergence,
+  getSections,
+  getSubsections,
+  updateSubsection
+} from '../services/dbService'
 import { useBranchStore } from '../stores/branchStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { aiGenerate } from './useAiService'
@@ -95,7 +100,11 @@ export function useWhatIfGenerator() {
 
       for (let i = 0; i < allSubsections.length; i++) {
         const sub = allSubsections[i]
-        progress.value = { current: i + 1, total: allSubsections.length, label: `Writing: ${sub.title || 'Untitled'}...` }
+        progress.value = {
+          current: i + 1,
+          total: allSubsections.length,
+          label: `Writing: ${sub.title || 'Untitled'}...`
+        }
 
         const content = await aiGenerate(
           buildDivergedScenePrompt({
@@ -113,11 +122,19 @@ export function useWhatIfGenerator() {
         precedingSummaries.push(`- ${sub.title || 'Untitled'}: ${sub.summary || '(written)'}`)
       }
 
-      progress.value = { current: allSubsections.length, total: allSubsections.length, label: 'Switching branch...' }
+      progress.value = {
+        current: allSubsections.length,
+        total: allSubsections.length,
+        label: 'Switching branch...'
+      }
 
       await branchStore.setActiveBranch(branch.id)
 
-      progress.value = { current: allSubsections.length, total: allSubsections.length, label: 'Done' }
+      progress.value = {
+        current: allSubsections.length,
+        total: allSubsections.length,
+        label: 'Done'
+      }
 
       return branch
     } catch (e: any) {

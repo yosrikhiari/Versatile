@@ -15,7 +15,7 @@ function buildCharacterStates(completedScenes: any, characters: any) {
   if (!characters || characters.length === 0) return ''
 
   const states = characters
-      .map((char: any) => {
+    .map((char: any) => {
       const scenesWithChar = completedScenes.filter(
         (s: any) => s.prose && s.prose.toLowerCase().includes(char.name.toLowerCase())
       )
@@ -63,13 +63,19 @@ export function scoreSceneRelevance(pastScene: any, currentSceneBrief: any) {
   const sharedChars = pastChars.filter((c: any) => currentChars.includes(c))
   score += sharedChars.length * 3
 
-  if (pastScene.brief?.location && currentSceneBrief.location &&
-      pastScene.brief.location === currentSceneBrief.location) {
+  if (
+    pastScene.brief?.location &&
+    currentSceneBrief.location &&
+    pastScene.brief.location === currentSceneBrief.location
+  ) {
     score += 2
   }
 
-  if (pastScene.brief?.arcPosition && currentSceneBrief.arcPosition &&
-      pastScene.brief.arcPosition === currentSceneBrief.arcPosition) {
+  if (
+    pastScene.brief?.arcPosition &&
+    currentSceneBrief.arcPosition &&
+    pastScene.brief.arcPosition === currentSceneBrief.arcPosition
+  ) {
     score += 2
   }
 
@@ -87,7 +93,10 @@ export function buildSceneMemory(completedScenes: any, memoryLimit: any, current
     const scored = completedScenes
       .map((s: any) => ({ scene: s, score: scoreSceneRelevance(s, currentSceneBrief) }))
       .sort((a: any, b: any) => b.score - a.score || b.scene.number - a.scene.number)
-    selected = scored.slice(0, memoryLimit).map((s: any) => s.scene).sort((a: any, b: any) => a.number - b.number)
+    selected = scored
+      .slice(0, memoryLimit)
+      .map((s: any) => s.scene)
+      .sort((a: any, b: any) => a.number - b.number)
   } else {
     selected = completedScenes.slice(-memoryLimit)
   }
@@ -101,7 +110,13 @@ export function buildSceneMemory(completedScenes: any, memoryLimit: any, current
   return `SCENE MEMORY:\n${entries.join('\n')}`
 }
 
-export function buildSceneContext({ completedScenes, characters, currentSceneIndex, currentSceneBrief, options }: any) {
+export function buildSceneContext({
+  completedScenes,
+  characters,
+  currentSceneIndex,
+  currentSceneBrief,
+  options
+}: any) {
   if (!completedScenes || completedScenes.length === 0) return ''
 
   const opts = options || {}

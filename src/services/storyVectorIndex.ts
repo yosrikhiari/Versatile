@@ -58,7 +58,9 @@ const MAX_INDEX_CHARS = 6000
 
 // ── vector helpers (ported from researchDb.ts so both stores agree) ────────
 
-export function toNormalizedF32(embedding: ArrayLike<number> | null | undefined): Float32Array | null {
+export function toNormalizedF32(
+  embedding: ArrayLike<number> | null | undefined
+): Float32Array | null {
   if (!embedding || !embedding.length) return null
   const len = embedding.length
   let mag = 0
@@ -71,7 +73,12 @@ export function toNormalizedF32(embedding: ArrayLike<number> | null | undefined)
 }
 
 const warnedDimProjects = new Set<string>()
-export function warnDimMismatch(projectId: string, mismatched: number, total: number, queryDim: number): void {
+export function warnDimMismatch(
+  projectId: string,
+  mismatched: number,
+  total: number,
+  queryDim: number
+): void {
   if (warnedDimProjects.has(projectId)) return
   warnedDimProjects.add(projectId)
   console.warn(
@@ -116,7 +123,13 @@ export function rankVectors(
     let dot = 0
     for (let i = 0; i < v.length; i++) dot += v[i] * q[i]
     if (dot > threshold) {
-      scored.push({ kind: row.kind, refId: row.refId, title: row.title, text: row.text, score: dot })
+      scored.push({
+        kind: row.kind,
+        refId: row.refId,
+        title: row.title,
+        text: row.text,
+        score: dot
+      })
     }
   }
   scored.sort((a, b) => b.score - a.score)
@@ -176,7 +189,10 @@ function table() {
   return (db as any).contentVectors
 }
 
-export async function getStoredVectors(projectId: string, kinds?: ContentKind[]): Promise<ContentVectorRow[]> {
+export async function getStoredVectors(
+  projectId: string,
+  kinds?: ContentKind[]
+): Promise<ContentVectorRow[]> {
   const rows: ContentVectorRow[] = await table().where({ projectId }).toArray()
   const ready = rows.filter((r) => r.embeddingStatus === 'READY' && r.embedding)
   if (!kinds?.length) return ready
@@ -231,7 +247,9 @@ export async function indexStoryContentBatch(
   const usable = items.filter((i) => i && i.refId && (i.text || '').trim())
   if (!projectId || usable.length === 0) return 0
   const cfg = resolveEmbeddingConfig()
-  const { vectors } = await getEmbeddings(usable.map((i) => i.text.trim().slice(0, MAX_INDEX_CHARS)))
+  const { vectors } = await getEmbeddings(
+    usable.map((i) => i.text.trim().slice(0, MAX_INDEX_CHARS))
+  )
   let landed = 0
   const now = new Date().toISOString()
   for (let i = 0; i < usable.length; i++) {
@@ -291,7 +309,11 @@ function invalidateIndex(projectId: string) {
   builtIndexes.delete(indexKey(projectId))
 }
 
-async function ensureWorkerIndex(projectId: string, rows: ContentVectorRow[], dim: number): Promise<boolean> {
+async function ensureWorkerIndex(
+  projectId: string,
+  rows: ContentVectorRow[],
+  dim: number
+): Promise<boolean> {
   const key = indexKey(projectId)
   const usable = rows.filter((r) => r.embedding?.length === dim)
   if (usable.length === 0) return false
@@ -348,7 +370,13 @@ export async function searchStorySemantic(
         if (kinds && !kinds.has(kind)) continue
         if (excluded.has(`${kind}:${m.refId}`)) continue
         if (r.score <= threshold) continue
-        out.push({ kind, refId: String(m.refId), title: m.title || '', text: m.text || '', score: r.score })
+        out.push({
+          kind,
+          refId: String(m.refId),
+          title: m.title || '',
+          text: m.text || '',
+          score: r.score
+        })
         if (out.length >= limit) break
       }
       if (out.length > 0) return out
@@ -370,7 +398,12 @@ const pending = new Map<string, ReturnType<typeof setTimeout>>()
  * there is nothing to embed — the save path must never wait on or fail for
  * the index.
  */
-export function scheduleStoryIndex(projectId: string, kind: ContentKind, refId: string, data: any): void {
+export function scheduleStoryIndex(
+  projectId: string,
+  kind: ContentKind,
+  refId: string,
+  data: any
+): void {
   if (!projectId || !refId) return
   const key = `${projectId}:${kind}:${refId}`
   const prev = pending.get(key)

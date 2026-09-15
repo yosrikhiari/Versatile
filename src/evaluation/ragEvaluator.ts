@@ -15,7 +15,17 @@ export function aggregateMetrics(results: any) {
   return agg
 }
 
-export async function runEvaluation({ searchFn, testCases, projectId, k }: { searchFn: any; testCases: any; projectId: any; k: any }) {
+export async function runEvaluation({
+  searchFn,
+  testCases,
+  projectId,
+  k
+}: {
+  searchFn: any
+  testCases: any
+  projectId: any
+  k: any
+}) {
   const results = []
   for (const tc of testCases) {
     const { query, relevantChunkIds, label } = tc

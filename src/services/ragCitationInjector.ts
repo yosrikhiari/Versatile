@@ -18,7 +18,7 @@ export function buildRagCitations(chunks: Chunk[] | null | undefined): string {
   const lines = [
     '',
     '---',
-    'RESEARCH (from this project\'s imported sources — treat as factual; do not contradict):',
+    "RESEARCH (from this project's imported sources — treat as factual; do not contradict):",
     ''
   ]
 

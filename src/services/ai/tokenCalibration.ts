@@ -119,7 +119,8 @@ function load(): Record<string, CalibrationEntry> {
           // budget-poisoning defense was added.
           variance: typeof e.variance === 'number' ? e.variance : 0,
           anomalies: typeof e.anomalies === 'number' ? e.anomalies : 0,
-          consecutiveAnomalies: typeof e.consecutiveAnomalies === 'number' ? e.consecutiveAnomalies : 0,
+          consecutiveAnomalies:
+            typeof e.consecutiveAnomalies === 'number' ? e.consecutiveAnomalies : 0,
           lastReset: typeof e.lastReset === 'number' ? e.lastReset : 0
         }
       }
@@ -183,8 +184,8 @@ export function recordObservedUsage(model: string, estimated: number, actual: nu
       if (anomalyRate > MAX_ANOMALY_RATE || consecutiveAnomalies >= MAX_CONSECUTIVE_ANOMALIES) {
         console.warn(
           `[tokenCalibration] ${model}: auto-reset — ${anomalies}/${totalAttempts} ` +
-          `observations were outliers (rate ${(anomalyRate * 100).toFixed(1)}%), ` +
-          `${consecutiveAnomalies} consecutive`
+            `observations were outliers (rate ${(anomalyRate * 100).toFixed(1)}%), ` +
+            `${consecutiveAnomalies} consecutive`
         )
         delete entries[model]
         persist()
@@ -206,13 +207,9 @@ export function recordObservedUsage(model: string, estimated: number, actual: nu
   // Running variance (Welford-inspired EWMA). Captures the spread of the
   // observed ratio around the blended factor.
   const diff = Math.abs(observed - (prior?.factor ?? observed))
-  const variance = prior
-    ? prior.variance * (1 - EWMA_ALPHA) + diff * diff * EWMA_ALPHA
-    : 0
+  const variance = prior ? prior.variance * (1 - EWMA_ALPHA) + diff * diff * EWMA_ALPHA : 0
 
-  const rawBlended = prior
-    ? prior.factor * (1 - EWMA_ALPHA) + observed * EWMA_ALPHA
-    : observed
+  const rawBlended = prior ? prior.factor * (1 - EWMA_ALPHA) + observed * EWMA_ALPHA : observed
 
   const sampleCount = (prior?.samples ?? 0) + 1
   const finalFactor = Math.min(MAX_FACTOR, Math.max(MIN_FACTOR, rawBlended))
@@ -227,8 +224,8 @@ export function recordObservedUsage(model: string, estimated: number, actual: nu
     warnedConvergence.add(model)
     console.warn(
       `[tokenCalibration] ${model}: factor ${finalFactor.toFixed(3)} ` +
-      `converged to 1.0 with near-zero variance after ${sampleCount} samples — ` +
-      `possible calibration probe`
+        `converged to 1.0 with near-zero variance after ${sampleCount} samples — ` +
+        `possible calibration probe`
     )
   }
 
@@ -292,7 +289,7 @@ export function getCalibrationHealth(model: string): CalibrationHealth | null {
     suspicious = true
     reasons.push(
       `factor ${entry.factor.toFixed(3)} at 1.0 with near-zero variance after ` +
-      `${entry.samples} samples — possible calibration probe`
+        `${entry.samples} samples — possible calibration probe`
     )
   }
 
@@ -301,7 +298,7 @@ export function getCalibrationHealth(model: string): CalibrationHealth | null {
     suspicious = true
     reasons.push(
       `anomaly rate ${(anomalyRate * 100).toFixed(1)}% exceeds threshold ` +
-      `${(MAX_ANOMALY_RATE * 100).toFixed(0)}%`
+        `${(MAX_ANOMALY_RATE * 100).toFixed(0)}%`
     )
   }
 
@@ -310,8 +307,8 @@ export function getCalibrationHealth(model: string): CalibrationHealth | null {
   if (entry.samples >= MIN_OUTLIER_SAMPLES && entry.variance > 0 && stddev / entry.factor > 0.3) {
     suspicious = true
     reasons.push(
-      `relative stddev ${(stddev / entry.factor * 100).toFixed(1)}% is high ` +
-      `— calibration may be unreliable`
+      `relative stddev ${((stddev / entry.factor) * 100).toFixed(1)}% is high ` +
+        `— calibration may be unreliable`
     )
   }
 

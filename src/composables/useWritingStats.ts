@@ -122,9 +122,7 @@ export function useWritingStats() {
     [...dailyNet.value.entries()].filter(([, n]) => n > 0).sort((a, b) => a[0].localeCompare(b[0]))
   )
 
-  const totalWordsWritten = computed(() =>
-    positiveDays.value.reduce((sum, [, n]) => sum + n, 0)
-  )
+  const totalWordsWritten = computed(() => positiveDays.value.reduce((sum, [, n]) => sum + n, 0))
 
   const activeDays = computed(() => positiveDays.value.length)
 

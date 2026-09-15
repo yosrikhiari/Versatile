@@ -25,7 +25,13 @@
 import { db } from './db-core'
 import { addSection, addVolume } from './db-structure'
 import { countWords } from '../utils/textUtils'
-import { saveNodeInstances, saveNodePositions, addGraphEdgesBatch, saveGraphGroups, saveNodeParents } from './db-graph'
+import {
+  saveNodeInstances,
+  saveNodePositions,
+  addGraphEdgesBatch,
+  saveGraphGroups,
+  saveNodeParents
+} from './db-graph'
 
 const DEMO_USERNAME = 'test'
 const DEMO_HASH = 'ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae'
@@ -37,21 +43,105 @@ function rng(n: number): number {
   return x - Math.floor(x)
 }
 
-type Entity = { name: string; role: string; goal: string; voice: string; notes: string; home: number }
+type Entity = {
+  name: string
+  role: string
+  goal: string
+  voice: string
+  notes: string
+  home: number
+}
 type Place = { name: string; description: string; home: number }
-type Volume = { title: string; summary: string; thread: string; loc: string; cast: string[]; color: string }
+type Volume = {
+  title: string
+  summary: string
+  thread: string
+  loc: string
+  cast: string[]
+  color: string
+}
 
 const CHARACTERS: Entity[] = [
-  { name: 'Captain Halden', role: 'Keeper', goal: 'Keep the light through the dark', voice: 'weathered, terse', notes: 'Forty years a keeper.', home: 0 },
-  { name: 'Mira', role: 'Apprentice', goal: 'Prove herself as Halden’s heir', voice: 'eager, observant', notes: 'Halden’s daughter.', home: 0 },
-  { name: 'Old Tom', role: 'Lookout', goal: 'Carry word between shore and tower', voice: 'garrulous', notes: 'Former keeper, now the cove’s eyes.', home: 0 },
-  { name: 'Seraphine', role: 'Scholar', goal: 'Recover the lost lore', voice: 'precise', notes: 'Keeper of the Sunken Library.', home: 2 },
-  { name: 'Bran', role: 'Smuggler', goal: 'Survive the coming war', voice: 'sly', notes: 'Moves between every shore.', home: 1 },
-  { name: 'Lady Elowen', role: 'Noble', goal: 'Hold the Ironhold', voice: 'commanding', notes: 'Heir of the keep.', home: 3 },
-  { name: 'Father Aldous', role: 'Priest', goal: 'Keep faith in the dark', voice: 'gentle', notes: 'Chaplain of Ironhold.', home: 3 },
-  { name: 'Kestrel', role: 'Scout', goal: 'Map the wilds', voice: 'sharp', notes: 'Walker of the Whispering Woods.', home: 4 },
-  { name: 'Wynn', role: 'Child', goal: 'Find their family', voice: 'curious', notes: 'Orphan of the marsh.', home: 4 },
-  { name: 'Morgath', role: 'Usurper', goal: 'Seize the light for himself', voice: 'cold', notes: 'Exiled keeper, returned.', home: 7 }
+  {
+    name: 'Captain Halden',
+    role: 'Keeper',
+    goal: 'Keep the light through the dark',
+    voice: 'weathered, terse',
+    notes: 'Forty years a keeper.',
+    home: 0
+  },
+  {
+    name: 'Mira',
+    role: 'Apprentice',
+    goal: 'Prove herself as Halden’s heir',
+    voice: 'eager, observant',
+    notes: 'Halden’s daughter.',
+    home: 0
+  },
+  {
+    name: 'Old Tom',
+    role: 'Lookout',
+    goal: 'Carry word between shore and tower',
+    voice: 'garrulous',
+    notes: 'Former keeper, now the cove’s eyes.',
+    home: 0
+  },
+  {
+    name: 'Seraphine',
+    role: 'Scholar',
+    goal: 'Recover the lost lore',
+    voice: 'precise',
+    notes: 'Keeper of the Sunken Library.',
+    home: 2
+  },
+  {
+    name: 'Bran',
+    role: 'Smuggler',
+    goal: 'Survive the coming war',
+    voice: 'sly',
+    notes: 'Moves between every shore.',
+    home: 1
+  },
+  {
+    name: 'Lady Elowen',
+    role: 'Noble',
+    goal: 'Hold the Ironhold',
+    voice: 'commanding',
+    notes: 'Heir of the keep.',
+    home: 3
+  },
+  {
+    name: 'Father Aldous',
+    role: 'Priest',
+    goal: 'Keep faith in the dark',
+    voice: 'gentle',
+    notes: 'Chaplain of Ironhold.',
+    home: 3
+  },
+  {
+    name: 'Kestrel',
+    role: 'Scout',
+    goal: 'Map the wilds',
+    voice: 'sharp',
+    notes: 'Walker of the Whispering Woods.',
+    home: 4
+  },
+  {
+    name: 'Wynn',
+    role: 'Child',
+    goal: 'Find their family',
+    voice: 'curious',
+    notes: 'Orphan of the marsh.',
+    home: 4
+  },
+  {
+    name: 'Morgath',
+    role: 'Usurper',
+    goal: 'Seize the light for himself',
+    voice: 'cold',
+    notes: 'Exiled keeper, returned.',
+    home: 7
+  }
 ]
 
 const LOCATIONS: Place[] = [
@@ -66,19 +156,119 @@ const LOCATIONS: Place[] = [
 ]
 
 const VOLUMES: Volume[] = [
-  { title: 'The Darkened Lamp', summary: 'The lamp fails; the keepers hold the line.', thread: 'The Darkened Lamp', loc: 'The Lighthouse', cast: ['Captain Halden', 'Mira', 'Old Tom'], color: '#5b8def' },
-  { title: 'Word from the Cove', summary: 'A message washes in; the village hides a secret.', thread: 'The Message in the Bottle', loc: 'The Cove', cast: ['Mira', 'Old Tom', 'Seraphine'], color: '#3f9e8f' },
-  { title: "The Scholar's Secret", summary: 'The Sunken Library gives up one of its dead.', thread: 'The Sunken Archive', loc: 'The Sunken Library', cast: ['Seraphine', 'Bran'], color: '#9b6bd6' },
-  { title: 'Court of Thorns', summary: 'Ironhold’s succession turns violent.', thread: 'The Ironhold Succession', loc: 'Ironhold Keep', cast: ['Lady Elowen', 'Father Aldous'], color: '#d68b4a' },
-  { title: 'The Whispering Woods', summary: 'The forest recalls what was buried.', thread: 'The Woods Remember', loc: 'The Whispering Woods', cast: ['Kestrel', 'Wynn'], color: '#4a9bd6' },
-  { title: 'The Saltmarsh Pact', summary: 'A truce is signed in the mist.', thread: 'The Marsh Accord', loc: 'The Saltmarsh', cast: ['Bran', 'Lady Elowen'], color: '#5bb58f' },
-  { title: 'The Highland War', summary: 'The moors burn; the scout and the keeper ride.', thread: 'The Highland Rising', loc: 'The Highlands', cast: ['Kestrel', 'Captain Halden'], color: '#c2503f' },
-  { title: 'Morgath Rises', summary: 'The exiled keeper returns for the light.', thread: 'The Usurper’s Claim', loc: 'Ironhold Keep', cast: ['Morgath', 'Lady Elowen'], color: '#8a4ad6' },
-  { title: 'The Long Siege', summary: 'All who remain gather at the lighthouse.', thread: 'The Siege of the Light', loc: 'The Lighthouse', cast: ['Captain Halden', 'Mira', 'Old Tom', 'Seraphine', 'Bran', 'Lady Elowen', 'Father Aldous', 'Kestrel', 'Wynn'], color: '#d64a7a' },
-  { title: 'The Light Restored', summary: 'The lamp is lit; the dark is named.', thread: 'The Light Restored', loc: 'The Lighthouse', cast: ['Captain Halden', 'Mira', 'Old Tom', 'Seraphine', 'Bran', 'Lady Elowen', 'Father Aldous', 'Kestrel', 'Wynn', 'Morgath'], color: '#e0b341' }
+  {
+    title: 'The Darkened Lamp',
+    summary: 'The lamp fails; the keepers hold the line.',
+    thread: 'The Darkened Lamp',
+    loc: 'The Lighthouse',
+    cast: ['Captain Halden', 'Mira', 'Old Tom'],
+    color: '#5b8def'
+  },
+  {
+    title: 'Word from the Cove',
+    summary: 'A message washes in; the village hides a secret.',
+    thread: 'The Message in the Bottle',
+    loc: 'The Cove',
+    cast: ['Mira', 'Old Tom', 'Seraphine'],
+    color: '#3f9e8f'
+  },
+  {
+    title: "The Scholar's Secret",
+    summary: 'The Sunken Library gives up one of its dead.',
+    thread: 'The Sunken Archive',
+    loc: 'The Sunken Library',
+    cast: ['Seraphine', 'Bran'],
+    color: '#9b6bd6'
+  },
+  {
+    title: 'Court of Thorns',
+    summary: 'Ironhold’s succession turns violent.',
+    thread: 'The Ironhold Succession',
+    loc: 'Ironhold Keep',
+    cast: ['Lady Elowen', 'Father Aldous'],
+    color: '#d68b4a'
+  },
+  {
+    title: 'The Whispering Woods',
+    summary: 'The forest recalls what was buried.',
+    thread: 'The Woods Remember',
+    loc: 'The Whispering Woods',
+    cast: ['Kestrel', 'Wynn'],
+    color: '#4a9bd6'
+  },
+  {
+    title: 'The Saltmarsh Pact',
+    summary: 'A truce is signed in the mist.',
+    thread: 'The Marsh Accord',
+    loc: 'The Saltmarsh',
+    cast: ['Bran', 'Lady Elowen'],
+    color: '#5bb58f'
+  },
+  {
+    title: 'The Highland War',
+    summary: 'The moors burn; the scout and the keeper ride.',
+    thread: 'The Highland Rising',
+    loc: 'The Highlands',
+    cast: ['Kestrel', 'Captain Halden'],
+    color: '#c2503f'
+  },
+  {
+    title: 'Morgath Rises',
+    summary: 'The exiled keeper returns for the light.',
+    thread: 'The Usurper’s Claim',
+    loc: 'Ironhold Keep',
+    cast: ['Morgath', 'Lady Elowen'],
+    color: '#8a4ad6'
+  },
+  {
+    title: 'The Long Siege',
+    summary: 'All who remain gather at the lighthouse.',
+    thread: 'The Siege of the Light',
+    loc: 'The Lighthouse',
+    cast: [
+      'Captain Halden',
+      'Mira',
+      'Old Tom',
+      'Seraphine',
+      'Bran',
+      'Lady Elowen',
+      'Father Aldous',
+      'Kestrel',
+      'Wynn'
+    ],
+    color: '#d64a7a'
+  },
+  {
+    title: 'The Light Restored',
+    summary: 'The lamp is lit; the dark is named.',
+    thread: 'The Light Restored',
+    loc: 'The Lighthouse',
+    cast: [
+      'Captain Halden',
+      'Mira',
+      'Old Tom',
+      'Seraphine',
+      'Bran',
+      'Lady Elowen',
+      'Father Aldous',
+      'Kestrel',
+      'Wynn',
+      'Morgath'
+    ],
+    color: '#e0b341'
+  }
 ]
 
-function sceneProse(a: string, b: string, c: string | null, loc: string, thread: string, v: number, ch: number, s: number): string {
+function sceneProse(
+  a: string,
+  b: string,
+  c: string | null,
+  loc: string,
+  thread: string,
+  v: number,
+  ch: number,
+  s: number
+): string {
   const seed = v * 1000 + ch * 100 + s * 7 + 1
   const r = (n: number) => rng(seed + n)
   const pick = (arr: string[]) => arr[Math.floor(r(3) * arr.length) % arr.length]
@@ -87,50 +277,66 @@ function sceneProse(a: string, b: string, c: string | null, loc: string, thread:
   // "the Message in the Bottle" rather than "the The Message in the Bottle".
   const thr = thread.replace(/^The\s+/, '')
   const S: string[] = []
-  S.push(pick([
-    `${a} reached ${loc} while the light was still failing.`,
-    `${a} was already at ${loc} when the bell sounded.`,
-    `Before the others woke, ${a} had crossed into ${loc}.`
-  ]))
-  S.push(pick([
-    `${b} found ${a} there, and said nothing at first.`,
-    `${b} arrived at ${loc} with news that would not wait.`,
-    `${b} watched ${a} from the doorway of ${loc}.`
-  ]))
+  S.push(
+    pick([
+      `${a} reached ${loc} while the light was still failing.`,
+      `${a} was already at ${loc} when the bell sounded.`,
+      `Before the others woke, ${a} had crossed into ${loc}.`
+    ])
+  )
+  S.push(
+    pick([
+      `${b} found ${a} there, and said nothing at first.`,
+      `${b} arrived at ${loc} with news that would not wait.`,
+      `${b} watched ${a} from the doorway of ${loc}.`
+    ])
+  )
   S.push(`${a} spoke of the ${thr}, and ${b} answered carefully.`)
-  S.push(pick([
-    `The ${thr} had begun to turn, though neither said it aloud.`,
-    `Somewhere in ${loc} the ${thr} kept its own counsel.`,
-    `What the ${thr} wanted, ${loc} had not yet given.`
-  ]))
+  S.push(
+    pick([
+      `The ${thr} had begun to turn, though neither said it aloud.`,
+      `Somewhere in ${loc} the ${thr} kept its own counsel.`,
+      `What the ${thr} wanted, ${loc} had not yet given.`
+    ])
+  )
   if (c) S.push(`${c} joined them, and the balance in the room shifted.`)
-  S.push(pick([
-    `${a} had carried the weight of ${loc} longer than anyone remembered.`,
-    `There was a correctness to ${a}'s hands that ${loc} seemed to answer.`,
-    `${a} had learned ${loc} the way others learn a language.`
-  ]))
-  S.push(pick([
-    `In chapter ${ch} of this volume, ${a} moved against ${b}, and the air in ${loc} went still.`,
-    `In chapter ${ch}, a choice opened at ${loc}, and ${a} took it.`,
-    `In chapter ${ch}, ${b} revealed what the ${thr} had hidden.`
-  ]))
-  S.push(pick([
-    `By the time the light returned, something in ${loc} had changed.`,
-    `When the light returned to ${loc}, ${a} was not the same.`,
-    `The return of the light found ${loc} holding its breath.`
-  ]))
+  S.push(
+    pick([
+      `${a} had carried the weight of ${loc} longer than anyone remembered.`,
+      `There was a correctness to ${a}'s hands that ${loc} seemed to answer.`,
+      `${a} had learned ${loc} the way others learn a language.`
+    ])
+  )
+  S.push(
+    pick([
+      `In chapter ${ch} of this volume, ${a} moved against ${b}, and the air in ${loc} went still.`,
+      `In chapter ${ch}, a choice opened at ${loc}, and ${a} took it.`,
+      `In chapter ${ch}, ${b} revealed what the ${thr} had hidden.`
+    ])
+  )
+  S.push(
+    pick([
+      `By the time the light returned, something in ${loc} had changed.`,
+      `When the light returned to ${loc}, ${a} was not the same.`,
+      `The return of the light found ${loc} holding its breath.`
+    ])
+  )
   S.push(`${b} would remember ${loc} for the rest of the ${thr}.`)
   if (c) S.push(`${c} left ${loc} changed, and told no one why.`)
-  S.push(pick([
-    `Later, ${a} would say the ${thr} had chosen them, not the other way around.`,
-    `The ${thr} did not end that day, only changed its shape.`,
-    `${loc} kept the secret of the ${thr} long after they were gone.`
-  ]))
-  S.push(pick([
-    `${a} and ${b}${third} stood together as the dark pressed the glass.`,
-    `Whatever came next, ${loc} had made its judgement known.`,
-    `The ${thr} would outlast the chapter, and the chapter the season.`
-  ]))
+  S.push(
+    pick([
+      `Later, ${a} would say the ${thr} had chosen them, not the other way around.`,
+      `The ${thr} did not end that day, only changed its shape.`,
+      `${loc} kept the secret of the ${thr} long after they were gone.`
+    ])
+  )
+  S.push(
+    pick([
+      `${a} and ${b}${third} stood together as the dark pressed the glass.`,
+      `Whatever came next, ${loc} had made its judgement known.`,
+      `The ${thr} would outlast the chapter, and the chapter the season.`
+    ])
+  )
   const para = (start: number) => S.slice(start, start + 4).join(' ')
   return [para(0), para(4), para(8)].join('\n\n')
 }
@@ -165,13 +371,17 @@ async function clearDemoProject(projectId: string) {
   await (db as any).projects.delete(projectId)
 }
 
-export async function seedDemoStory(opts: { force?: boolean } = {}): Promise<{ projectId: string; title: string; note: string }> {
+export async function seedDemoStory(
+  opts: { force?: boolean } = {}
+): Promise<{ projectId: string; title: string; note: string }> {
   const now = new Date().toISOString()
   const userId = await ensureDemoUser()
 
   const prior = await (db as any).projects.where('name').equals(PROJECT_TITLE).first()
   if (prior && !opts.force) {
-    console.info(`[seedDemoStory] Demo project already exists (id=${prior.id}). Pass { force: true } to reseed.`)
+    console.info(
+      `[seedDemoStory] Demo project already exists (id=${prior.id}). Pass { force: true } to reseed.`
+    )
     return { projectId: prior.id, title: PROJECT_TITLE, note: 'already present' }
   }
   if (prior && opts.force) await clearDemoProject(prior.id)
@@ -180,7 +390,8 @@ export async function seedDemoStory(opts: { force?: boolean } = {}): Promise<{ p
     userId,
     name: PROJECT_TITLE,
     genre: 'Gothic Fantasy Saga',
-    synopsis: 'Ten volumes, a hundred chapters, and one failing light — the keepers, the court, the woods, and the usurper who would take the lamp for himself.',
+    synopsis:
+      'Ten volumes, a hundred chapters, and one failing light — the keepers, the court, the woods, and the usurper who would take the lamp for himself.',
     createdAt: now,
     updatedAt: now
   })
@@ -199,15 +410,35 @@ export async function seedDemoStory(opts: { force?: boolean } = {}): Promise<{ p
 
   // ---- Story bible ----
   const characterIds = await (db as any).characters.bulkAdd(
-    CHARACTERS.map((c) => ({ projectId, generationStatus: 'done', ...c, createdAt: now, updatedAt: now })),
+    CHARACTERS.map((c) => ({
+      projectId,
+      generationStatus: 'done',
+      ...c,
+      createdAt: now,
+      updatedAt: now
+    })),
     { allKeys: true }
   )
   const locationIds = await (db as any).locations.bulkAdd(
-    LOCATIONS.map((l) => ({ projectId, generationStatus: 'done', ...l, createdAt: now, updatedAt: now })),
+    LOCATIONS.map((l) => ({
+      projectId,
+      generationStatus: 'done',
+      ...l,
+      createdAt: now,
+      updatedAt: now
+    })),
     { allKeys: true }
   )
   const threadIds = await (db as any).plotThreads.bulkAdd(
-    VOLUMES.map((v) => ({ projectId, generationStatus: 'done', title: v.thread, status: 'active', notes: v.summary, createdAt: now, updatedAt: now })),
+    VOLUMES.map((v) => ({
+      projectId,
+      generationStatus: 'done',
+      title: v.thread,
+      status: 'active',
+      notes: v.summary,
+      createdAt: now,
+      updatedAt: now
+    })),
     { allKeys: true }
   )
 
@@ -220,17 +451,53 @@ export async function seedDemoStory(opts: { force?: boolean } = {}): Promise<{ p
   // ---- Sections (chapters) ----
   // Distinct, deterministic chapter subtitles so no two chapters read identically.
   const CHAPTER_SUBTITLES = [
-    'The Failing Light', 'A Knock Below', 'The Cold Bell', 'Salt on the Wind', 'The Drowned Letter',
-    'What the Tide Brought', 'The Long Watch', 'Embers in the Glass', 'The Quiet Hour', 'Before the Dawn',
-    'The Iron Door', 'Whispers in the Keep', 'The Sunken Page', 'A Name Recalled', 'The Bent Pin',
-    'The Marsh at Night', 'Smoke on the Moor', 'The Usurper’s Step', 'The Gathered Few', 'The Lit Glass',
-    'The Last Word', 'A Knock Returned', 'The Pale Signal', 'The Borrowed Boat', 'The Hidden Ledger',
-    'The Second Watch', 'The Broken Seal', 'The Witness Tree', 'The Vow Spoken', 'The Calm Before'
+    'The Failing Light',
+    'A Knock Below',
+    'The Cold Bell',
+    'Salt on the Wind',
+    'The Drowned Letter',
+    'What the Tide Brought',
+    'The Long Watch',
+    'Embers in the Glass',
+    'The Quiet Hour',
+    'Before the Dawn',
+    'The Iron Door',
+    'Whispers in the Keep',
+    'The Sunken Page',
+    'A Name Recalled',
+    'The Bent Pin',
+    'The Marsh at Night',
+    'Smoke on the Moor',
+    'The Usurper’s Step',
+    'The Gathered Few',
+    'The Lit Glass',
+    'The Last Word',
+    'A Knock Returned',
+    'The Pale Signal',
+    'The Borrowed Boat',
+    'The Hidden Ledger',
+    'The Second Watch',
+    'The Broken Seal',
+    'The Witness Tree',
+    'The Vow Spoken',
+    'The Calm Before'
   ]
   const SCENE_TITLES = [
-    'The Bell', 'The Threshold', 'A Name Spoken', 'The Ledger', 'The Cold Room', 'The Tide Turn',
-    'The Broken Seal', 'A Second Knock', 'The Long Table', 'The Vow', 'The Letter', 'The Lantern',
-    'The Witness', 'The Quiet', 'The Return'
+    'The Bell',
+    'The Threshold',
+    'A Name Spoken',
+    'The Ledger',
+    'The Cold Room',
+    'The Tide Turn',
+    'The Broken Seal',
+    'A Second Knock',
+    'The Long Table',
+    'The Vow',
+    'The Letter',
+    'The Lantern',
+    'The Witness',
+    'The Quiet',
+    'The Return'
   ]
   const chapterSubtitle = (v: number, ch: number) =>
     CHAPTER_SUBTITLES[(v * 10 + (ch - 1)) % CHAPTER_SUBTITLES.length]
@@ -318,7 +585,9 @@ export async function seedDemoStory(opts: { force?: boolean } = {}): Promise<{ p
       }
       // The manuscript carries the real prose, not a one-line summary, so the
       // dashboard word count reflects an actual ~300-word scene per subsection.
-      manuscriptParts.push(`# Chapter ${globalChapter}: ${chapterSubtitle(v, ch)}\n\n${chapterScenes.join('\n\n')}`)
+      manuscriptParts.push(
+        `# Chapter ${globalChapter}: ${chapterSubtitle(v, ch)}\n\n${chapterScenes.join('\n\n')}`
+      )
     }
   }
   await (db as any).subsections.bulkAdd(subsectionRows)
@@ -331,7 +600,9 @@ export async function seedDemoStory(opts: { force?: boolean } = {}): Promise<{ p
       description: v.summary,
       color: v.color,
       volumeOrder: i,
-      sectionIds: sectionRows.filter((_, idx) => Math.floor(idx / 10) === i).map((_, idx2) => sectionIdByKey[`${i}:${idx2 + 1}`])
+      sectionIds: sectionRows
+        .filter((_, idx) => Math.floor(idx / 10) === i)
+        .map((_, idx2) => sectionIdByKey[`${i}:${idx2 + 1}`])
     }))
   )
 
@@ -403,12 +674,23 @@ export async function seedDemoStory(opts: { force?: boolean } = {}): Promise<{ p
     }
     const isKin = (x?: Entity, y?: Entity) =>
       (x?.role === 'Apprentice' || x?.notes?.includes('daughter')) && y?.role === 'Keeper'
-    if (isKin(charByName.get(aName), charByName.get(bName)) || isKin(charByName.get(bName), charByName.get(aName)))
+    if (
+      isKin(charByName.get(aName), charByName.get(bName)) ||
+      isKin(charByName.get(bName), charByName.get(aName))
+    )
       return 'family'
     const a = charByName.get(aName)
     const b = charByName.get(bName)
-    if ((a?.role === 'Noble' && b?.role === 'Smuggler') || (b?.role === 'Noble' && a?.role === 'Smuggler')) return 'rival'
-    if ((a?.role === 'Scout' && b?.role === 'Child') || (b?.role === 'Scout' && a?.role === 'Child')) return 'protector'
+    if (
+      (a?.role === 'Noble' && b?.role === 'Smuggler') ||
+      (b?.role === 'Noble' && a?.role === 'Smuggler')
+    )
+      return 'rival'
+    if (
+      (a?.role === 'Scout' && b?.role === 'Child') ||
+      (b?.role === 'Scout' && a?.role === 'Child')
+    )
+      return 'protector'
     return 'ally'
   }
 
@@ -419,8 +701,22 @@ export async function seedDemoStory(opts: { force?: boolean } = {}): Promise<{ p
     const locId = locIdByName.get(vol.loc)!
     const cIds = vol.cast.map((n) => charIdByName.get(n)!)
     for (const cId of cIds) {
-      edges.push({ sourceId: cId, sourceType: 'character', targetId: tId, targetType: 'plotThread', relationshipType: 'involves', description: `${vol.thread} involves this character.` })
-      edges.push({ sourceId: cId, sourceType: 'character', targetId: locId, targetType: 'location', relationshipType: 'present_at', description: `Associated with ${vol.loc}.` })
+      edges.push({
+        sourceId: cId,
+        sourceType: 'character',
+        targetId: tId,
+        targetType: 'plotThread',
+        relationshipType: 'involves',
+        description: `${vol.thread} involves this character.`
+      })
+      edges.push({
+        sourceId: cId,
+        sourceType: 'character',
+        targetId: locId,
+        targetType: 'location',
+        relationshipType: 'present_at',
+        description: `Associated with ${vol.loc}.`
+      })
     }
     for (let i = 0; i < cIds.length; i++) {
       for (let j = i + 1; j < cIds.length; j++) {
@@ -436,10 +732,31 @@ export async function seedDemoStory(opts: { force?: boolean } = {}): Promise<{ p
       }
     }
     // The volume's primary location hosts its central thread.
-    edges.push({ sourceId: locId, sourceType: 'location', targetId: tId, targetType: 'plotThread', relationshipType: 'setting_for', description: `${vol.loc} is the stage for ${vol.thread}.` })
+    edges.push({
+      sourceId: locId,
+      sourceType: 'location',
+      targetId: tId,
+      targetType: 'plotThread',
+      relationshipType: 'setting_for',
+      description: `${vol.loc} is the stage for ${vol.thread}.`
+    })
     // Overarching hero/antagonist ties.
-    edges.push({ sourceId: haldenId, sourceType: 'character', targetId: tId, targetType: 'plotThread', relationshipType: 'drives', description: 'Halden’s thread runs through every volume.' })
-    edges.push({ sourceId: morgathId, sourceType: 'character', targetId: tId, targetType: 'plotThread', relationshipType: 'opposes', description: 'Morgath opposes the thread of this volume.' })
+    edges.push({
+      sourceId: haldenId,
+      sourceType: 'character',
+      targetId: tId,
+      targetType: 'plotThread',
+      relationshipType: 'drives',
+      description: 'Halden’s thread runs through every volume.'
+    })
+    edges.push({
+      sourceId: morgathId,
+      sourceType: 'character',
+      targetId: tId,
+      targetType: 'plotThread',
+      relationshipType: 'opposes',
+      description: 'Morgath opposes the thread of this volume.'
+    })
   }
 
   // Thread-to-thread spine: each arc leads into the next, tying the saga together.

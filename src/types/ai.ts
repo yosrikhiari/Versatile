@@ -256,7 +256,14 @@ export interface CriticParams {
 }
 
 export interface CheckContradictionsParams {
-  characters: Array<{ name: string; role?: string; goal?: string; voice?: string; notes?: string; traits?: string[] }>
+  characters: Array<{
+    name: string
+    role?: string
+    goal?: string
+    voice?: string
+    notes?: string
+    traits?: string[]
+  }>
   locations: Array<{ name: string; description?: string; notes?: string; traits?: string[] }>
   sceneProse: Array<{ prose: string; characters?: string[]; location?: string }>
   synopsis?: string

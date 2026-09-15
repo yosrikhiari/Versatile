@@ -6,7 +6,7 @@ const CHAT_KINDS: GuardrailKind[] = [
   'entity',
   'relationship',
   'cross_turn_consistency',
-  'content_safety',
+  'content_safety'
 ]
 
 /** A generated entity profile that will be written to the store. */
@@ -30,6 +30,6 @@ export function useEntityGuardrails() {
     validateProfile: (context: EntityContext) => run(context, PROFILE_KINDS),
     validateScenePlan: (context: EntityContext) => run(context, PLAN_KINDS),
     /** Plot diagnoses and scene suggestions — overlay-only, no persistence. */
-    validateSuggestion: (context: EntityContext) => run(context, ['entity', 'schema_conformance']),
+    validateSuggestion: (context: EntityContext) => run(context, ['entity', 'schema_conformance'])
   }
 }

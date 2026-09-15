@@ -59,7 +59,10 @@ export function describeSceneBrief(scene: SceneBriefLike): string {
   const pov = clean(scene.pov)
   if (pov) parts.push(`POV: ${pov}`)
 
-  const brief = parts.join('. ').replace(/\.\s*\.\s*/g, '. ').trim()
+  const brief = parts
+    .join('. ')
+    .replace(/\.\s*\.\s*/g, '. ')
+    .trim()
   if (!brief) {
     // Nothing usable in the plan — fall back to the old placeholder rather than
     // storing an empty description, so the outline still has a label.

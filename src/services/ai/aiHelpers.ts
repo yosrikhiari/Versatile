@@ -106,7 +106,10 @@ export function repairTruncatedJson(raw: unknown): Record<string, unknown> | nul
   if (balanced) return balanced
 
   let text = String(raw).trim()
-  text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').trim()
+  text = text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .trim()
   const start = text.indexOf('{')
   if (start === -1) return null
   text = text.slice(start)
@@ -222,9 +225,7 @@ export function repairTruncatedJson(raw: unknown): Record<string, unknown> | nul
  * `T` is the caller's expected parse shape — an assertion about what the model
  * was asked to emit, not a validated guarantee.
  */
-export function sanitizeJsonResponse<T = Record<string, unknown>>(
-  response: unknown
-): T | null {
+export function sanitizeJsonResponse<T = Record<string, unknown>>(response: unknown): T | null {
   if (!response || typeof response !== 'string') {
     return null
   }

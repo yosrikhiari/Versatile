@@ -36,13 +36,12 @@ export function useEvalExport() {
 
     const sections = await db.sections.where('projectId').equals(projectId).toArray()
     const sectionIds = sections.map((s: any) => s.id)
-    const subsections = await db.subsections
-      .where('sectionId')
-      .anyOf(sectionIds)
-      .sortBy('order')
+    const subsections = await db.subsections.where('sectionId').anyOf(sectionIds).sortBy('order')
 
     const sectionOrder: any = {}
-    sections.forEach((s: any) => { sectionOrder[s.id] = s.order || 0 })
+    sections.forEach((s: any) => {
+      sectionOrder[s.id] = s.order || 0
+    })
     subsections.sort((a: any, b: any) => {
       const sa = sectionOrder[a.sectionId] || 0
       const sb = sectionOrder[b.sectionId] || 0

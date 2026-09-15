@@ -13,8 +13,8 @@ export function createInputGuard(
     blockedPatterns = [
       /ignore\s+(previous|all)\s+(instructions|commands)/i,
       /you\s+(are\s+)?(now|will\s+now)\s+/i,
-      /system\s+(prompt|instruction|message)/i,
-    ],
+      /system\s+(prompt|instruction|message)/i
+    ]
   } = opts
 
   return (context: GuardrailContext): GuardrailResult[] => {
@@ -38,7 +38,7 @@ export function createInputGuard(
           message: `Prompt exceeds max length (${text.length} > ${maxPromptLength})`,
           details: { length: text.length, maxLength: maxPromptLength },
           layer: context.layer,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         })
       }
 
@@ -52,7 +52,7 @@ export function createInputGuard(
             message: `Prompt contains blocked pattern: "${match[0]}"`,
             details: { pattern: pattern.source, match: match[0] },
             layer: context.layer,
-            timestamp: Date.now(),
+            timestamp: Date.now()
           })
         }
       }

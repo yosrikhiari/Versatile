@@ -30,12 +30,12 @@ export class GroundingService {
 
   getRelationshipsForEntity(entityId: string) {
     const relIds = this.snapshot.relationshipsByEntity.get(entityId) ?? []
-    return relIds.map(id => this.snapshot.relationships.get(id)).filter(Boolean)
+    return relIds.map((id) => this.snapshot.relationships.get(id)).filter(Boolean)
   }
 
   getEntitiesByType(type: string) {
     const ids = this.snapshot.entityByType.get(type) ?? []
-    return ids.map(id => this.snapshot.entities.get(id)).filter(Boolean)
+    return ids.map((id) => this.snapshot.entities.get(id)).filter(Boolean)
   }
 
   /** Check whether a name refers to a known entity (O(1) lookup). */

@@ -1,6 +1,6 @@
 /**
  * Vector Index Worker - Hosts the IVF VectorIndex in a Web Worker.
- * 
+ *
  * This worker runs the vector index build and search operations off the main thread
  * to prevent blocking the UI during large-scale semantic search operations.
  */
@@ -34,7 +34,11 @@ self.onmessage = async function (e: MessageEvent<VectorIndexWorkerRequest>) {
 
     switch (method) {
       case 'build': {
-        const [key, items, config] = args as [string, Array<{ id: string; vector: Float32Array; metadata?: Record<string, unknown> }>, VectorIndexConfig]
+        const [key, items, config] = args as [
+          string,
+          Array<{ id: string; vector: Float32Array; metadata?: Record<string, unknown> }>,
+          VectorIndexConfig
+        ]
 
         // The built index is retained per key so later messages can use it.
         // It used to be built, discarded, and reported as a success — which is

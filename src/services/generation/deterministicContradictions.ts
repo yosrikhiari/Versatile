@@ -214,9 +214,7 @@ export function checkAppearanceChange(states: EntityStateRecord[]): Deterministi
  * Distance within the chapter is measured in story positions rather than raw
  * scene numbers, so the window means the same thing when scenes are unnumbered.
  */
-export function checkLocationImpossible(
-  states: EntityStateRecord[]
-): DeterministicContradiction[] {
+export function checkLocationImpossible(states: EntityStateRecord[]): DeterministicContradiction[] {
   const out: DeterministicContradiction[] = []
   const position = buildPositionIndex(states)
 
@@ -266,9 +264,7 @@ export function checkLocationImpossible(
  * is a real and common failure in a long generated draft: the midpoint reveal
  * fires again in chapter 30 because the writer had no memory that it already had.
  */
-export function checkKnowledgeRelearned(
-  states: EntityStateRecord[]
-): DeterministicContradiction[] {
+export function checkKnowledgeRelearned(states: EntityStateRecord[]): DeterministicContradiction[] {
   const out: DeterministicContradiction[] = []
 
   for (const [key, timeline] of indexStatesByEntity(states)) {
@@ -378,7 +374,9 @@ export function checkSeamContinuity(states: EntityStateRecord[]): DeterministicC
   const out: DeterministicContradiction[] = []
   const pos = buildPositionIndex(states)
   const byScene = rowsByScene(states)
-  const scenesInOrder = [...pos.keys()].sort((a, b) => (pos.get(a) as number) - (pos.get(b) as number))
+  const scenesInOrder = [...pos.keys()].sort(
+    (a, b) => (pos.get(a) as number) - (pos.get(b) as number)
+  )
   const posOf = (s: EntityStateRecord): number | undefined => pos.get(s.sceneId)
 
   const presentOf = (sceneId: string): Map<string, EntityStateRecord> => {
@@ -397,9 +395,7 @@ export function checkSeamContinuity(states: EntityStateRecord[]): DeterministicC
     if (prevCast.size === 0 || curCast.size === 0) continue
     for (const [key, row] of prevCast) {
       if (curCast.has(key)) continue
-      const timeline = states.filter(
-        (s) => s.entityType === 'character' && seamIdentity(s) === key
-      )
+      const timeline = states.filter((s) => s.entityType === 'character' && seamIdentity(s) === key)
       const last = latestRowAtOrBefore(timeline, posOf, pos.get(cur) as number)
       if (last?.state.status === 'dead') continue
       out.push({
@@ -436,11 +432,7 @@ export function checkChapterSeam(states: EntityStateRecord[]): DeterministicCont
   const byScene = rowsByScene(states)
 
   const chaptersInOrder: number[] = [
-    ...new Set(
-      states
-        .map((s) => s.chapterNumber)
-        .filter((n): n is number => typeof n === 'number')
-    )
+    ...new Set(states.map((s) => s.chapterNumber).filter((n): n is number => typeof n === 'number'))
   ].sort((a, b) => a - b)
   if (chaptersInOrder.length < 2) return out
 
@@ -479,9 +471,7 @@ export function checkChapterSeam(states: EntityStateRecord[]): DeterministicCont
     }
     for (const [key, row] of endCast) {
       if (curCast.has(key)) continue
-      const timeline = states.filter(
-        (s) => s.entityType === 'character' && seamIdentity(s) === key
-      )
+      const timeline = states.filter((s) => s.entityType === 'character' && seamIdentity(s) === key)
       const last = latestRowAtOrBefore(timeline, posOf, pos.get(startOfCur) as number)
       if (last?.state.status === 'dead') continue
       out.push({
@@ -609,7 +599,9 @@ export function buildCandidateLedgerText({
     const digest = ch != null ? digestByChapter.get(ch) : undefined
     if (ch != null && digest != null && group.length > maxScenesPerChapter) {
       const nums = group.map((l: any) => l.sceneNumber).filter((n: any) => n != null)
-      blocks.push(`Chapter ${ch} (digest covering ${group.length} scenes${nums.length ? ` ${nums.join(', ')}` : ''}):\n  ${digest}`)
+      blocks.push(
+        `Chapter ${ch} (digest covering ${group.length} scenes${nums.length ? ` ${nums.join(', ')}` : ''}):\n  ${digest}`
+      )
       continue
     }
     for (const l of group) blocks.push(renderLedger(l))

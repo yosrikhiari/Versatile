@@ -36,7 +36,10 @@ interface SpeakerIndex {
   [speakerId: string]: SpeakerIndexEntry
 }
 
-export function identifySpeakers(dialogueLines: DialogueLine[], characters: Character[]): EnrichedDialogueLine[] {
+export function identifySpeakers(
+  dialogueLines: DialogueLine[],
+  characters: Character[]
+): EnrichedDialogueLine[] {
   if (!Array.isArray(dialogueLines) || !Array.isArray(characters)) return []
 
   const charMap = buildCharacterMap(characters)
@@ -110,7 +113,10 @@ function buildCharacterMap(characters: Character[]): Map<string, CharacterInfo> 
   return map
 }
 
-function identifyFromTag(line: DialogueLine, charMap: Map<string, CharacterInfo>): CharacterInfo | null {
+function identifyFromTag(
+  line: DialogueLine,
+  charMap: Map<string, CharacterInfo>
+): CharacterInfo | null {
   if (!line.speakerCandidate) return null
 
   const candidate = line.speakerCandidate.toLowerCase().trim()
@@ -133,7 +139,11 @@ function identifyFromTag(line: DialogueLine, charMap: Map<string, CharacterInfo>
   return null
 }
 
-function identifyFromContext(dialogueLines: DialogueLine[], currentIndex: number, charMap: Map<string, CharacterInfo>): CharacterInfo | null {
+function identifyFromContext(
+  dialogueLines: DialogueLine[],
+  currentIndex: number,
+  charMap: Map<string, CharacterInfo>
+): CharacterInfo | null {
   const windowStart = Math.max(0, currentIndex - 10)
 
   for (let i = currentIndex - 1; i >= windowStart; i--) {

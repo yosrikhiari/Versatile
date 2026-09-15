@@ -159,7 +159,13 @@ export function computeDrift(evals: any, dimensionNames: any, options: any = {})
     message: hasDrift
       ? 'Drift detected in one or more dimensions'
       : 'No significant drift detected',
-    config: { recentWindow, threshold, warnThreshold, baselineEvals: baseline.length, recentEvals: recent.length },
+    config: {
+      recentWindow,
+      threshold,
+      warnThreshold,
+      baselineEvals: baseline.length,
+      recentEvals: recent.length
+    },
     dimensionDrifts
   }
 }
@@ -209,8 +215,9 @@ export function analyzeWorkspace(evals: any, workspaceType: any, options: any) {
     matched.length > 0
       ? parseFloat(
           (
-            matched.filter((e: any) => e.dimensionScores && Object.keys(e.dimensionScores).length > 0)
-              .length / matched.length
+            matched.filter(
+              (e: any) => e.dimensionScores && Object.keys(e.dimensionScores).length > 0
+            ).length / matched.length
           ).toFixed(2)
         )
       : 0

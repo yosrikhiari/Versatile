@@ -5,7 +5,7 @@ const PRONOUN_SETS: Record<string, string[]> = {
   he: ['he', 'him', 'his', 'himself'],
   she: ['she', 'her', 'hers', 'herself'],
   they: ['they', 'them', 'their', 'theirs', 'themselves'],
-  it: ['it', 'its', 'itself'],
+  it: ['it', 'its', 'itself']
 }
 
 /**
@@ -36,7 +36,7 @@ export function createCrossTurnGuard(
     grounding.refresh()
 
     const priorText = (context.priorTurns ?? [])
-      .map(turn => extractText(turn))
+      .map((turn) => extractText(turn))
       .filter((t): t is string => Boolean(t))
       .join('\n')
 
@@ -52,7 +52,7 @@ export function createCrossTurnGuard(
           drifted.push({
             entity: grounding.getEntity(entityId)?.name ?? entityId,
             previously,
-            now: surface,
+            now: surface
           })
         }
       }
@@ -66,7 +66,7 @@ export function createCrossTurnGuard(
           details: { drifted },
           layer: context.layer,
           contextId: context.sceneId,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         })
       }
     }
@@ -88,8 +88,8 @@ export function createCrossTurnGuard(
           // `they`/`it` overlap too often with unrelated referents to flag safely.
           if (setName === 'they' || setName === 'it') continue
 
-          const found = forms.find(f => new RegExp(`\\b${f}\\b`, 'i').test(sentence))
-          if (found && !expectedSet.some(e => new RegExp(`\\b${e}\\b`, 'i').test(sentence))) {
+          const found = forms.find((f) => new RegExp(`\\b${f}\\b`, 'i').test(sentence))
+          if (found && !expectedSet.some((e) => new RegExp(`\\b${e}\\b`, 'i').test(sentence))) {
             conflicts.push({ entity: entityName, expected: pronoun, found })
             break
           }
@@ -106,7 +106,7 @@ export function createCrossTurnGuard(
         details: { conflicts },
         layer: context.layer,
         contextId: context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 

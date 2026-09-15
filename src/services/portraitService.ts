@@ -66,7 +66,10 @@ function buildFallbackPrompt(character: CharacterInfo): string {
   return parts.join(', ')
 }
 
-export async function generatePortrait(character: CharacterInfo, projectId: string): Promise<PortraitResult> {
+export async function generatePortrait(
+  character: CharacterInfo,
+  projectId: string
+): Promise<PortraitResult> {
   try {
     const prompt = await generateSDPrompt(character)
 

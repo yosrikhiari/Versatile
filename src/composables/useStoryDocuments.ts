@@ -105,7 +105,8 @@ function getRelationshipLabel(type: any) {
 }
 
 function getRelationshipLabelDirected(type: any, fromTarget: any) {
-  if (fromTarget && inverseRelationshipLabels[type as keyof typeof inverseRelationshipLabels]) return inverseRelationshipLabels[type as keyof typeof inverseRelationshipLabels]
+  if (fromTarget && inverseRelationshipLabels[type as keyof typeof inverseRelationshipLabels])
+    return inverseRelationshipLabels[type as keyof typeof inverseRelationshipLabels]
   return getRelationshipLabel(type)
 }
 
@@ -294,11 +295,13 @@ async function generateTimelineDoc(projectId?: any, atChapter: number | null = n
  */
 async function buildChapterTimelineBody(projectId: any, atChapter: number | null = null) {
   try {
-    const [{ getProjectChapterDigests, getEntityStateTimeline }, { buildStoryTimeline, renderTimelineMarkdown }] =
-      await Promise.all([
-        import('../services/db-digests'),
-        import('../services/generation/storyTimeline')
-      ])
+    const [
+      { getProjectChapterDigests, getEntityStateTimeline },
+      { buildStoryTimeline, renderTimelineMarkdown }
+    ] = await Promise.all([
+      import('../services/db-digests'),
+      import('../services/generation/storyTimeline')
+    ])
     const storyGraphStore = useStoryGraphStore()
     const manuscriptStore = useManuscriptStore()
     const maps = getLookupMaps()

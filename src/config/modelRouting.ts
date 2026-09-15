@@ -47,35 +47,150 @@ export const SPEED_TIERS = {
 }
 
 export const MODEL_META = {
-  'gpt-4o-mini': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 128000, capabilityTier: COST_TIERS.BUDGET },
-  'gpt-4o': { costTier: COST_TIERS.STANDARD, speedTier: SPEED_TIERS.FAST, contextWindow: 128000, capabilityTier: COST_TIERS.STANDARD },
-  'gpt-4-turbo': { costTier: COST_TIERS.PREMIUM, speedTier: SPEED_TIERS.MEDIUM, contextWindow: 128000, capabilityTier: COST_TIERS.PREMIUM },
-  'gpt-4': { costTier: COST_TIERS.PREMIUM, speedTier: SPEED_TIERS.SLOW, contextWindow: 8192, capabilityTier: COST_TIERS.PREMIUM },
-  'gpt-3.5-turbo': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 16384, capabilityTier: COST_TIERS.BUDGET },
-  'claude-haiku-4-5': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 200000, capabilityTier: COST_TIERS.BUDGET },
-  'claude-sonnet-4-5': { costTier: COST_TIERS.STANDARD, speedTier: SPEED_TIERS.MEDIUM, contextWindow: 200000, capabilityTier: COST_TIERS.STANDARD },
-  'claude-opus-4-5': { costTier: COST_TIERS.CRITICAL, speedTier: SPEED_TIERS.SLOW, contextWindow: 200000, capabilityTier: COST_TIERS.CRITICAL },
-  'gemini-2.5-flash': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 1048576, capabilityTier: COST_TIERS.BUDGET },
-  'gemini-2.5-pro': { costTier: COST_TIERS.STANDARD, speedTier: SPEED_TIERS.FAST, contextWindow: 1048576, capabilityTier: COST_TIERS.STANDARD },
-  'gemini-1.5-pro': { costTier: COST_TIERS.STANDARD, speedTier: SPEED_TIERS.MEDIUM, contextWindow: 1048576, capabilityTier: COST_TIERS.STANDARD },
-  'openai/gpt-oss-120b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.MEDIUM, contextWindow: 16384, capabilityTier: COST_TIERS.STANDARD },
-  'openai/gpt-oss-20b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 8192, capabilityTier: COST_TIERS.BUDGET },
-  'qwen/qwen3-32b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 32768, capabilityTier: COST_TIERS.STANDARD },
-  'llama-3.3-70b-versatile': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 32768, capabilityTier: COST_TIERS.STANDARD },
-  'llama-3.1-8b-instant': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 32768, capabilityTier: COST_TIERS.BUDGET },
-  'meta-llama/llama-4-scout-17b-16e-instruct': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 262144, capabilityTier: COST_TIERS.BUDGET },
-  'mixtral-8x7b-32768': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.MEDIUM, contextWindow: 32768, capabilityTier: COST_TIERS.BUDGET },
-  'gemma2-9b-it': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 8192, capabilityTier: COST_TIERS.BUDGET },
-  'allam-2-7b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 8192, capabilityTier: COST_TIERS.BUDGET },
+  'gpt-4o-mini': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 128000,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'gpt-4o': {
+    costTier: COST_TIERS.STANDARD,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 128000,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'gpt-4-turbo': {
+    costTier: COST_TIERS.PREMIUM,
+    speedTier: SPEED_TIERS.MEDIUM,
+    contextWindow: 128000,
+    capabilityTier: COST_TIERS.PREMIUM
+  },
+  'gpt-4': {
+    costTier: COST_TIERS.PREMIUM,
+    speedTier: SPEED_TIERS.SLOW,
+    contextWindow: 8192,
+    capabilityTier: COST_TIERS.PREMIUM
+  },
+  'gpt-3.5-turbo': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 16384,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'claude-haiku-4-5': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 200000,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'claude-sonnet-4-5': {
+    costTier: COST_TIERS.STANDARD,
+    speedTier: SPEED_TIERS.MEDIUM,
+    contextWindow: 200000,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'claude-opus-4-5': {
+    costTier: COST_TIERS.CRITICAL,
+    speedTier: SPEED_TIERS.SLOW,
+    contextWindow: 200000,
+    capabilityTier: COST_TIERS.CRITICAL
+  },
+  'gemini-2.5-flash': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 1048576,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'gemini-2.5-pro': {
+    costTier: COST_TIERS.STANDARD,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 1048576,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'gemini-1.5-pro': {
+    costTier: COST_TIERS.STANDARD,
+    speedTier: SPEED_TIERS.MEDIUM,
+    contextWindow: 1048576,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'openai/gpt-oss-120b': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.MEDIUM,
+    contextWindow: 16384,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'openai/gpt-oss-20b': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 8192,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'qwen/qwen3-32b': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 32768,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'llama-3.3-70b-versatile': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 32768,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'llama-3.1-8b-instant': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 32768,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'meta-llama/llama-4-scout-17b-16e-instruct': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 262144,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'mixtral-8x7b-32768': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.MEDIUM,
+    contextWindow: 32768,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'gemma2-9b-it': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 8192,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'allam-2-7b': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 8192,
+    capabilityTier: COST_TIERS.BUDGET
+  },
 
   // Local Ollama models. Without entries here `getContextWindow` returns null for
   // every local model, so `maxOutputTokensForModel` fell back to a flat 4,096
   // regardless of the prompt — which is how a three-scene planning call was
   // handed the same runway as a hundred-chapter one and simply ran until it was
   // cut off. Context windows are the models' real ones as reported by /api/tags.
-  'qwen3:8b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.SLOW, contextWindow: 40960, capabilityTier: COST_TIERS.STANDARD },
-  'phi4-mini:3.8b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.FAST, contextWindow: 131072, capabilityTier: COST_TIERS.BUDGET },
-  'dolphin-mistral:7b': { costTier: COST_TIERS.BUDGET, speedTier: SPEED_TIERS.MEDIUM, contextWindow: 32768, capabilityTier: COST_TIERS.BUDGET }
+  'qwen3:8b': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.SLOW,
+    contextWindow: 40960,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'phi4-mini:3.8b': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 131072,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  'dolphin-mistral:7b': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.MEDIUM,
+    contextWindow: 32768,
+    capabilityTier: COST_TIERS.BUDGET
+  }
 }
 
 /**
@@ -111,13 +226,21 @@ const BASE_MATRIX = {
   },
   [FEATURES.POLISH]: {
     [COMPLEXITY.DRAFT]: matrixEntry(COMPLEXITY.DRAFT, PROVIDERS.OLLAMA, null),
-    [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5'),
+    [COMPLEXITY.STANDARD]: matrixEntry(
+      COMPLEXITY.STANDARD,
+      PROVIDERS.ANTHROPIC,
+      'claude-sonnet-4-5'
+    ),
     [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-opus-4-5')
   },
   [FEATURES.CONTENT]: {
     [COMPLEXITY.DRAFT]: matrixEntry(COMPLEXITY.DRAFT, PROVIDERS.OPENAI, 'gpt-4o-mini'),
     [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.OPENAI, 'gpt-4o'),
-    [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5')
+    [COMPLEXITY.CRITICAL]: matrixEntry(
+      COMPLEXITY.CRITICAL,
+      PROVIDERS.ANTHROPIC,
+      'claude-sonnet-4-5'
+    )
   },
   [FEATURES.WORLDBUILDING]: {
     [COMPLEXITY.DRAFT]: matrixEntry(COMPLEXITY.DRAFT, PROVIDERS.OLLAMA, null),
@@ -131,7 +254,11 @@ const BASE_MATRIX = {
   },
   [FEATURES.STORY_GENERATION]: {
     [COMPLEXITY.DRAFT]: matrixEntry(COMPLEXITY.DRAFT, PROVIDERS.OPENAI, 'gpt-4o-mini'),
-    [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5'),
+    [COMPLEXITY.STANDARD]: matrixEntry(
+      COMPLEXITY.STANDARD,
+      PROVIDERS.ANTHROPIC,
+      'claude-sonnet-4-5'
+    ),
     [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-opus-4-5')
   },
   [FEATURES.NETWORK]: {
@@ -147,12 +274,24 @@ const BASE_MATRIX = {
   [FEATURES.CHARACTER_CHAT]: {
     [COMPLEXITY.DRAFT]: matrixEntry(COMPLEXITY.DRAFT, PROVIDERS.OPENAI, 'gpt-4o-mini'),
     [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.OPENAI, 'gpt-4o'),
-    [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5')
+    [COMPLEXITY.CRITICAL]: matrixEntry(
+      COMPLEXITY.CRITICAL,
+      PROVIDERS.ANTHROPIC,
+      'claude-sonnet-4-5'
+    )
   },
   [FEATURES.POV_WRITING]: {
     [COMPLEXITY.DRAFT]: matrixEntry(COMPLEXITY.DRAFT, PROVIDERS.ANTHROPIC, 'claude-haiku-4-5'),
-    [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5'),
-    [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5')
+    [COMPLEXITY.STANDARD]: matrixEntry(
+      COMPLEXITY.STANDARD,
+      PROVIDERS.ANTHROPIC,
+      'claude-sonnet-4-5'
+    ),
+    [COMPLEXITY.CRITICAL]: matrixEntry(
+      COMPLEXITY.CRITICAL,
+      PROVIDERS.ANTHROPIC,
+      'claude-sonnet-4-5'
+    )
   },
   [FEATURES.SHAPE_ANALYSIS]: {
     [COMPLEXITY.DRAFT]: matrixEntry(COMPLEXITY.DRAFT, PROVIDERS.OLLAMA, null),
@@ -162,44 +301,84 @@ const BASE_MATRIX = {
   [FEATURES.BLURB]: {
     [COMPLEXITY.DRAFT]: matrixEntry(COMPLEXITY.DRAFT, PROVIDERS.OPENAI, 'gpt-4o-mini'),
     [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.OPENAI, 'gpt-4o-mini'),
-    [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5')
+    [COMPLEXITY.CRITICAL]: matrixEntry(
+      COMPLEXITY.CRITICAL,
+      PROVIDERS.ANTHROPIC,
+      'claude-sonnet-4-5'
+    )
   }
 }
 
 const WORKSPACE_OVERRIDES = {
   [WORKSPACE_TYPES.LEGAL]: {
     [FEATURES.CONTENT]: {
-      [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5'),
-      [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-opus-4-5')
+      [COMPLEXITY.STANDARD]: matrixEntry(
+        COMPLEXITY.STANDARD,
+        PROVIDERS.ANTHROPIC,
+        'claude-sonnet-4-5'
+      ),
+      [COMPLEXITY.CRITICAL]: matrixEntry(
+        COMPLEXITY.CRITICAL,
+        PROVIDERS.ANTHROPIC,
+        'claude-opus-4-5'
+      )
     },
     [FEATURES.POLISH]: {
-      [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5'),
-      [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-opus-4-5')
+      [COMPLEXITY.STANDARD]: matrixEntry(
+        COMPLEXITY.STANDARD,
+        PROVIDERS.ANTHROPIC,
+        'claude-sonnet-4-5'
+      ),
+      [COMPLEXITY.CRITICAL]: matrixEntry(
+        COMPLEXITY.CRITICAL,
+        PROVIDERS.ANTHROPIC,
+        'claude-opus-4-5'
+      )
     },
     [FEATURES.SPARK]: {
-      [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5')
+      [COMPLEXITY.CRITICAL]: matrixEntry(
+        COMPLEXITY.CRITICAL,
+        PROVIDERS.ANTHROPIC,
+        'claude-sonnet-4-5'
+      )
     }
   },
   [WORKSPACE_TYPES.TECHNICAL]: {
     [FEATURES.CONTENT]: {
       [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.OPENAI, 'gpt-4o'),
-      [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5')
+      [COMPLEXITY.CRITICAL]: matrixEntry(
+        COMPLEXITY.CRITICAL,
+        PROVIDERS.ANTHROPIC,
+        'claude-sonnet-4-5'
+      )
     }
   },
   [WORKSPACE_TYPES.RESEARCH]: {
     [FEATURES.CONTENT]: {
       [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.OPENAI, 'gpt-4o'),
-      [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-opus-4-5')
+      [COMPLEXITY.CRITICAL]: matrixEntry(
+        COMPLEXITY.CRITICAL,
+        PROVIDERS.ANTHROPIC,
+        'claude-opus-4-5'
+      )
     },
     [FEATURES.SHAPE_ANALYSIS]: {
       [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.OPENAI, 'gpt-4o'),
-      [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5')
+      [COMPLEXITY.CRITICAL]: matrixEntry(
+        COMPLEXITY.CRITICAL,
+        PROVIDERS.ANTHROPIC,
+        'claude-sonnet-4-5'
+      )
     }
   },
   [WORKSPACE_TYPES.BUSINESS]: {
     [FEATURES.CONTENT]: {
       [COMPLEXITY.STANDARD]: matrixEntry(COMPLEXITY.STANDARD, PROVIDERS.OPENAI, 'gpt-4o'),
-      [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.ANTHROPIC, 'claude-sonnet-4-5')
+      [COMPLEXITY.CRITICAL]: matrixEntry(
+        COMPLEXITY.CRITICAL,
+        PROVIDERS.ANTHROPIC,
+        'claude-sonnet-4-5'
+      )
     },
     [FEATURES.SPARK]: {
       [COMPLEXITY.CRITICAL]: matrixEntry(COMPLEXITY.CRITICAL, PROVIDERS.OPENAI, 'gpt-4o')
@@ -207,7 +386,13 @@ const WORKSPACE_OVERRIDES = {
   }
 }
 
-export function computeComplexityLevel({ feature, sceneBrief, storyArc, chapterIndex, totalChapters }: any) {
+export function computeComplexityLevel({
+  feature,
+  sceneBrief,
+  storyArc,
+  chapterIndex,
+  totalChapters
+}: any) {
   let score = 0
 
   const highNeedFeatures = [FEATURES.STORY_GENERATION, FEATURES.POV_WRITING, FEATURES.POLISH]
@@ -316,8 +501,7 @@ export function resolveOptimalModelWithPreferences(feature: any, options: any = 
       if (weight > 1.1) {
         return { ...base, preferenceBoost: weight, preferredMatch: true }
       }
-    } catch {
-    }
+    } catch {}
   }
 
   return { ...base, preferenceBoost: 1, preferredMatch: false }

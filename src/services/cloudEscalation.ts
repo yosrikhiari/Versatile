@@ -4,12 +4,22 @@ import { useSettingsStore } from '../stores/settingsStore'
 
 export interface CloudEscalationOptions {
   projectId: string
-  operation: 'full-audit' | 'contradiction-sweep' | 'pacing-review' | 'structural-arc' | 'escalation-on-failure'
+  operation:
+    | 'full-audit'
+    | 'contradiction-sweep'
+    | 'pacing-review'
+    | 'structural-arc'
+    | 'escalation-on-failure'
   text: string
   systemPrompt: string
   model?: string
   provider?: string
-  onProgress?: (progress: { stage: string; current: number; total: number; message: string }) => void
+  onProgress?: (progress: {
+    stage: string
+    current: number
+    total: number
+    message: string
+  }) => void
   abortSignal?: AbortSignal
 }
 
@@ -36,7 +46,12 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / TOKEN_ESTIMATE_CHARS)
 }
 
-function estimateCost(inputTokens: number, outputTokens: number, provider: string, model: string): number {
+function estimateCost(
+  inputTokens: number,
+  outputTokens: number,
+  provider: string,
+  model: string
+): number {
   const rates: Record<string, { input: number; output: number }> = {
     openai: { input: 0.005, output: 0.015 },
     anthropic: { input: 0.008, output: 0.024 },
@@ -49,14 +64,21 @@ function estimateCost(inputTokens: number, outputTokens: number, provider: strin
   return (inputTokens * rate.input + outputTokens * rate.output) / 1000
 }
 
-export async function buildCloudDisclosure(options: CloudEscalationOptions): Promise<CloudDisclosure> {
+export async function buildCloudDisclosure(
+  options: CloudEscalationOptions
+): Promise<CloudDisclosure> {
   const settings = useSettingsStore()
   const provider = options.provider || settings.aiProvider
   const model = options.model || settings.ollamaModel
   const systemPromptTokens = estimateTokens(options.systemPrompt)
   const textTokens = estimateTokens(options.text)
   const estimatedOutputTokens = Math.min(textTokens * 2, 8000)
-  const estimatedCost = estimateCost(systemPromptTokens + textTokens, estimatedOutputTokens, provider, model)
+  const estimatedCost = estimateCost(
+    systemPromptTokens + textTokens,
+    estimatedOutputTokens,
+    provider,
+    model
+  )
 
   const operationLabels: Record<string, string> = {
     'full-audit': 'Full manuscript quality audit',
@@ -73,31 +95,47 @@ export async function buildCloudDisclosure(options: CloudEscalationOptions): Pro
     provider,
     model,
     estimatedCostUsd: estimatedCost,
-    warning: 'This will send your manuscript text to a cloud AI provider. The text leaves your device and is processed on external servers. This action cannot be undone.'
+    warning:
+      'This will send your manuscript text to a cloud AI provider. The text leaves your device and is processed on external servers. This action cannot be undone.'
   }
 }
 
-export async function requestCloudEscalation(options: CloudEscalationOptions): Promise<CloudEscalationResult> {
+export async function requestCloudEscalation(
+  options: CloudEscalationOptions
+): Promise<CloudEscalationResult> {
   const settings = useSettingsStore()
   const provider = options.provider || settings.aiProvider
   const model = options.model || settings.ollamaModel
 
   if (!provider || provider === 'ollama') {
-    return { success: false, error: 'No cloud provider configured. Please set up an API key in settings.' }
+    return {
+      success: false,
+      error: 'No cloud provider configured. Please set up an API key in settings.'
+    }
   }
 
   if (options.abortSignal?.aborted) {
     return { success: false, error: 'Operation aborted' }
   }
 
-  options.onProgress?.({ stage: 'connecting', current: 0, total: 100, message: 'Connecting to cloud provider...' })
+  options.onProgress?.({
+    stage: 'connecting',
+    current: 0,
+    total: 100,
+    message: 'Connecting to cloud provider...'
+  })
 
   const connTest = await backendTestConnection(provider, model)
   if (!connTest.success) {
     return { success: false, error: `Cloud provider connection failed: ${connTest.error}` }
   }
 
-  options.onProgress?.({ stage: 'streaming', current: 10, total: 100, message: 'Streaming analysis from cloud...' })
+  options.onProgress?.({
+    stage: 'streaming',
+    current: 10,
+    total: 100,
+    message: 'Streaming analysis from cloud...'
+  })
 
   try {
     const result = await backendStream(
@@ -107,7 +145,7 @@ export async function requestCloudEscalation(options: CloudEscalationOptions): P
       (chunk, accumulated) => {
         options.onProgress?.({
           stage: 'streaming',
-          current: Math.min(10 + Math.floor(accumulated.length / options.text.length * 80), 90),
+          current: Math.min(10 + Math.floor((accumulated.length / options.text.length) * 80), 90),
           total: 100,
           message: `Received ${accumulated.length} chars...`
         })
@@ -115,7 +153,12 @@ export async function requestCloudEscalation(options: CloudEscalationOptions): P
       { provider, signal: options.abortSignal }
     )
 
-    options.onProgress?.({ stage: 'complete', current: 100, total: 100, message: 'Cloud analysis complete' })
+    options.onProgress?.({
+      stage: 'complete',
+      current: 100,
+      total: 100,
+      message: 'Cloud analysis complete'
+    })
 
     const inputTokens = estimateTokens(options.text + options.systemPrompt)
     const outputTokens = estimateTokens(result)
@@ -136,7 +179,9 @@ export async function requestCloudEscalation(options: CloudEscalationOptions): P
 
 export function canUseCloudEscalation(): boolean {
   const settings = useSettingsStore()
-  return settings.analysisTier !== 'local' && !!settings.aiProvider && settings.aiProvider !== 'ollama'
+  return (
+    settings.analysisTier !== 'local' && !!settings.aiProvider && settings.aiProvider !== 'ollama'
+  )
 }
 
 export function getAnalysisTier(): 'local' | 'cloud-on-demand' | 'cloud-audit' {
@@ -184,7 +229,10 @@ export async function maybeAutoEscalateScene(
   try {
     providerBudget.check(ctx.provider)
   } catch (err: any) {
-    return { requested: false, note: `Cloud auto-escalation skipped: budget exhausted (${err?.message || err}). Continued locally.` }
+    return {
+      requested: false,
+      note: `Cloud auto-escalation skipped: budget exhausted (${err?.message || err}). Continued locally.`
+    }
   }
   try {
     const result = await run({
@@ -198,18 +246,31 @@ export async function maybeAutoEscalateScene(
       abortSignal: ctx.abortSignal
     })
     if (!result.success) {
-      return { requested: true, note: `Cloud auto-escalation failed (${result.error || 'unknown error'}). Continued locally.` }
+      return {
+        requested: true,
+        note: `Cloud auto-escalation failed (${result.error || 'unknown error'}). Continued locally.`
+      }
     }
     const est = result.costEstimate
     if (est) {
       try {
-        providerBudget.record(ctx.provider, est.inputTokens + est.outputTokens, est.estimatedCostUsd)
+        providerBudget.record(
+          ctx.provider,
+          est.inputTokens + est.outputTokens,
+          est.estimatedCostUsd
+        )
       } catch {
         // Recording must never fail a batch the cloud just judged.
       }
     }
-    return { requested: true, note: `Cloud second opinion (${ctx.provider}/${ctx.model}):\n${result.result || '(empty)'}` }
+    return {
+      requested: true,
+      note: `Cloud second opinion (${ctx.provider}/${ctx.model}):\n${result.result || '(empty)'}`
+    }
   } catch (err: any) {
-    return { requested: false, note: `Cloud auto-escalation failed (${err?.message || err}). Continued locally.` }
+    return {
+      requested: false,
+      note: `Cloud auto-escalation failed (${err?.message || err}). Continued locally.`
+    }
   }
 }

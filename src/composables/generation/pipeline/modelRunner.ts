@@ -10,7 +10,19 @@ import { useEntityGuardrails } from '@/guardrails/hooks/useEntityGuardrails'
 // keep a single reparse retry (a fresh generation) for that case alone.
 const MAX_PARSE_RETRIES = 1
 
-export async function executeGeneration({ userPrompt, systemPrompt, schema, complexity, workspaceType }: { userPrompt: any; systemPrompt: any; schema: any; complexity: any; workspaceType: any }) {
+export async function executeGeneration({
+  userPrompt,
+  systemPrompt,
+  schema,
+  complexity,
+  workspaceType
+}: {
+  userPrompt: any
+  systemPrompt: any
+  schema: any
+  complexity: any
+  workspaceType: any
+}) {
   for (let attempt = 0; attempt <= MAX_PARSE_RETRIES; attempt++) {
     // Transport/auth errors propagate out of the loop as-is (aiGenerate has
     // already retried + fallen back); we don't re-retry them here.
@@ -31,10 +43,12 @@ export async function executeGeneration({ userPrompt, systemPrompt, schema, comp
         // it here was a type error that happened to carry the same value.
         const result = await validateProfile({
           data: entity,
-          entryPoint: 'generateEntity:character',
+          entryPoint: 'generateEntity:character'
         })
         if (!result.passed && result.blocking.length > 0) {
-          throw new Error(`Character name guard failed: ${result.blocking.map(r => r.message).join('; ')}`)
+          throw new Error(
+            `Character name guard failed: ${result.blocking.map((r) => r.message).join('; ')}`
+          )
         }
       }
 

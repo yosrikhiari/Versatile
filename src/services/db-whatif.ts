@@ -3,16 +3,26 @@ import { db as _db } from './db-core'
 const db = _db as any
 
 export async function getWhatIfBranches(projectId: string) {
-  return db.branches.where({ projectId }).filter((b: any) => b.name !== 'main').toArray()
+  return db.branches
+    .where({ projectId })
+    .filter((b: any) => b.name !== 'main')
+    .toArray()
 }
 
-export async function forkWithDivergence(projectId: string, sourceBranchId: string, dslPrompt: string) {
+export async function forkWithDivergence(
+  projectId: string,
+  sourceBranchId: string,
+  dslPrompt: string
+) {
   const sourceBranch = await db.branches.get(sourceBranchId)
   if (!sourceBranch) throw new Error(`Source branch ${sourceBranchId} not found`)
 
   const timestamp = Date.now()
   const label = dslPrompt
-    ? `what-if-${dslPrompt.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)}`
+    ? `what-if-${dslPrompt
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .slice(0, 40)}`
     : `what-if-${timestamp}`
 
   const newBranchId = await db.branches.add({
@@ -25,8 +35,12 @@ export async function forkWithDivergence(projectId: string, sourceBranchId: stri
     updatedAt: new Date().toISOString()
   })
 
-  const sourceSections = await db.sections.where({ projectId, branchId: sourceBranchId }).sortBy('order')
-  const sourceSubsections = await db.subsections.where({ projectId, branchId: sourceBranchId }).toArray()
+  const sourceSections = await db.sections
+    .where({ projectId, branchId: sourceBranchId })
+    .sortBy('order')
+  const sourceSubsections = await db.subsections
+    .where({ projectId, branchId: sourceBranchId })
+    .toArray()
 
   const sectionIdMap = new Map()
 
@@ -70,7 +84,11 @@ export async function forkWithDivergence(projectId: string, sourceBranchId: stri
   return db.branches.get(newBranchId)
 }
 
-export async function directDivergentSections(projectId: string, sourceBranchId: string, sectionIds: string[]) {
+export async function directDivergentSections(
+  projectId: string,
+  sourceBranchId: string,
+  sectionIds: string[]
+) {
   const sourceBranch = await db.branches.get(sourceBranchId)
   if (!sourceBranch) throw new Error(`Source branch ${sourceBranchId} not found`)
 
@@ -157,7 +175,9 @@ export async function acceptDivergence(branchId: string) {
   const now = new Date().toISOString()
 
   await db.transaction('rw', db.sections, db.subsections, async () => {
-    const divergentSections = await db.sections.where({ projectId: branch.projectId, branchId }).toArray()
+    const divergentSections = await db.sections
+      .where({ projectId: branch.projectId, branchId })
+      .toArray()
 
     for (const section of divergentSections) {
       const existingSection = await db.sections
@@ -176,7 +196,12 @@ export async function acceptDivergence(branchId: string) {
     const divergentSubs = await db.subsections.where({ branchId }).toArray()
     for (const sub of divergentSubs) {
       const existingSub = await db.subsections
-        .where({ projectId: branch.projectId, branchId: sourceBranchId, sectionId: sub.sectionId, title: sub.title })
+        .where({
+          projectId: branch.projectId,
+          branchId: sourceBranchId,
+          sectionId: sub.sectionId,
+          title: sub.title
+        })
         .first()
 
       if (existingSub && sub.content) {

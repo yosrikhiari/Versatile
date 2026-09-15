@@ -125,7 +125,8 @@ export function useStoryResearcher() {
 
       return evidenceText
     } catch (err) {
-      researchError.value = (err as any).message || 'Failed to gather evidence from the Story Bible.'
+      researchError.value =
+        (err as any).message || 'Failed to gather evidence from the Story Bible.'
       throw err
     } finally {
       isResearching.value = false

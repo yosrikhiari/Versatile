@@ -96,13 +96,21 @@ function getNodePrefix(entityType: any) {
   return 'thread'
 }
 
-export async function removeEntityFromNodeInstances(projectId: any, entityType: any, entityId: any) {
+export async function removeEntityFromNodeInstances(
+  projectId: any,
+  entityType: any,
+  entityId: any
+) {
   const prefix = getNodePrefix(entityType)
   const nodeId = `${prefix}-${entityId}`
   await db.graphNodeInstances.delete([projectId, nodeId])
 }
 
-export async function removeEntityFromNodePositions(projectId: any, entityType: any, entityId: any) {
+export async function removeEntityFromNodePositions(
+  projectId: any,
+  entityType: any,
+  entityId: any
+) {
   const prefix = getNodePrefix(entityType)
   const nodeId = `${prefix}-${entityId}`
   await db.graphNodePositions.delete([projectId, nodeId])

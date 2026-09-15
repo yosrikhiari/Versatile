@@ -4,7 +4,10 @@ import { applyTokenBudget } from './tokenBudget'
 const MAX_CHARACTERS = 8
 const MAX_LOCATIONS = 6
 const MAX_PLOT_THREADS = 5
-const LABEL_HEADINGS: Record<string, string> = { characters: 'EXISTING CHARACTERS:', locations: 'EXISTING LOCATIONS:' }
+const LABEL_HEADINGS: Record<string, string> = {
+  characters: 'EXISTING CHARACTERS:',
+  locations: 'EXISTING LOCATIONS:'
+}
 
 export function shapeContext(rawContext: any, options: any = {}) {
   const { entities } = rawContext

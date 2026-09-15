@@ -52,7 +52,7 @@ export function createCircuitBreakerGuard(
         message: `Circuit breaker open for ${provider} (${Math.ceil((cooldownMs - elapsed) / 1000)}s remaining)`,
         details: { provider, failures: state.failures, cooldownRemainingMs: cooldownMs - elapsed },
         layer: context.layer,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 
@@ -70,7 +70,7 @@ export function createCircuitBreakerGuard(
           message: `Circuit breaker tripped for ${provider} (${state.failures} failures)`,
           details: { provider, failures: state.failures, threshold },
           layer: context.layer,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         })
       }
     }

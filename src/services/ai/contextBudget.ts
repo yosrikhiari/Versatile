@@ -72,7 +72,11 @@ interface BudgetResult {
   fits: boolean
 }
 
-export function fitToBudget(blocks: Block[], budgetTokens: number, options: { separator?: string } = {}): BudgetResult {
+export function fitToBudget(
+  blocks: Block[],
+  budgetTokens: number,
+  options: { separator?: string } = {}
+): BudgetResult {
   const separator = options.separator ?? '\n\n'
   const sepTokens = estimateTokens(separator)
 

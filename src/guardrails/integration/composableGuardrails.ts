@@ -10,7 +10,7 @@ const NOOP: GuardrailRunResult = {
   blocking: [],
   detective: [],
   skipped: [],
-  durationMs: 0,
+  durationMs: 0
 }
 
 async function settle(run: Promise<GuardrailRunResult>): Promise<GuardrailRunResult> {
@@ -45,7 +45,7 @@ export async function guardScene(input: {
     validateScene({
       data: { ...(input.structured ?? {}), content: input.prose },
       sceneId: input.sceneId,
-      entryPoint: input.entryPoint ?? 'useStoryWriter.writeSceneStructured',
+      entryPoint: input.entryPoint ?? 'useStoryWriter.writeSceneStructured'
     })
   )
 }
@@ -63,7 +63,7 @@ export async function guardFreeformProse(input: {
     validateWhatIf({
       data: { content: input.text },
       sceneId: input.sceneId,
-      entryPoint: input.entryPoint ?? 'useStoryWriter.generateWhatIf',
+      entryPoint: input.entryPoint ?? 'useStoryWriter.generateWhatIf'
     })
   )
 }
@@ -79,7 +79,7 @@ export async function guardPlan(input: {
   return settle(
     validateScenePlan({
       data: input.plan,
-      entryPoint: input.entryPoint ?? 'useStoryDirector.generateStoryPlan',
+      entryPoint: input.entryPoint ?? 'useStoryDirector.generateStoryPlan'
     })
   )
 }
@@ -97,7 +97,7 @@ export async function guardCritique(input: {
     validateCritique({
       data: input.result,
       sceneId: input.sceneId,
-      entryPoint: input.entryPoint ?? 'useStoryCritic.evaluateScene',
+      entryPoint: input.entryPoint ?? 'useStoryCritic.evaluateScene'
     })
   )
 }
@@ -113,7 +113,7 @@ export async function guardAnalysis(input: {
   return settle(
     validateAnalysis({
       data: input.result,
-      entryPoint: input.entryPoint ?? 'useBetaReader.scan',
+      entryPoint: input.entryPoint ?? 'useBetaReader.scan'
     })
   )
 }

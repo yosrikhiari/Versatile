@@ -14,7 +14,13 @@ import { db as _db } from './db-core'
 
 const db = _db as any
 
-export type AnalysisTaskType = 'sceneDigest' | 'chapterDigest' | 'volumeDigest' | 'entityStates' | 'contradictionCheck' | 'custom'
+export type AnalysisTaskType =
+  | 'sceneDigest'
+  | 'chapterDigest'
+  | 'volumeDigest'
+  | 'entityStates'
+  | 'contradictionCheck'
+  | 'custom'
 
 export interface AnalysisQueueItem {
   id?: number
@@ -44,7 +50,11 @@ export interface AnalysisQueueItem {
  */
 export async function enqueueAnalysisTasks(
   projectId: string,
-  tasks: Array<{ taskType: AnalysisTaskType; payload: Record<string, unknown>; maxRetries?: number }>
+  tasks: Array<{
+    taskType: AnalysisTaskType
+    payload: Record<string, unknown>
+    maxRetries?: number
+  }>
 ): Promise<number[]> {
   if (!tasks.length) return []
   const now = new Date().toISOString()
@@ -89,10 +99,7 @@ export async function claimNextAnalysisTask(projectId: string): Promise<Analysis
 /**
  * Update progress of a running item.
  */
-export async function updateAnalysisTaskProgress(
-  id: number,
-  progress: number
-): Promise<void> {
+export async function updateAnalysisTaskProgress(id: number, progress: number): Promise<void> {
   await db.analysisQueue.update(id, {
     progress: Math.max(0, Math.min(100, progress)),
     updatedAt: new Date().toISOString()
@@ -114,10 +121,7 @@ export async function completeAnalysisTask(id: number): Promise<void> {
  * Mark an item as failed, with optional retry.
  * If retries remain, resets to 'pending' for retry.
  */
-export async function failAnalysisTask(
-  id: number,
-  error: string
-): Promise<void> {
+export async function failAnalysisTask(id: number, error: string): Promise<void> {
   const item = await db.analysisQueue.get(id)
   if (!item) return
 
@@ -154,7 +158,14 @@ export async function getAnalysisQueueStats(projectId: string): Promise<{
   totalProgress: number // 0-100 average across all items
 }> {
   const items = await db.analysisQueue.where('projectId').equals(projectId).toArray()
-  const stats = { total: items.length, pending: 0, running: 0, completed: 0, failed: 0, totalProgress: 0 }
+  const stats = {
+    total: items.length,
+    pending: 0,
+    running: 0,
+    completed: 0,
+    failed: 0,
+    totalProgress: 0
+  }
   let progressSum = 0
   for (const item of items) {
     stats[item.status as keyof typeof stats]++
@@ -174,11 +185,16 @@ export async function getAnalysisQueueItems(projectId: string): Promise<Analysis
 /**
  * Clear completed/failed items for a project (cleanup).
  */
-export async function clearAnalysisQueueHistory(projectId: string, keepFailed = false): Promise<number> {
+export async function clearAnalysisQueueHistory(
+  projectId: string,
+  keepFailed = false
+): Promise<number> {
   const toDelete = await db.analysisQueue
     .where('projectId')
     .equals(projectId)
-    .filter((item: any) => item.status === 'completed' || (keepFailed ? false : item.status === 'failed'))
+    .filter(
+      (item: any) => item.status === 'completed' || (keepFailed ? false : item.status === 'failed')
+    )
     .primaryKeys()
   if (toDelete.length) {
     await db.analysisQueue.bulkDelete(toDelete)

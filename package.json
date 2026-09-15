@@ -25,7 +25,7 @@
     "validate:env": "node scripts/validate-env.mjs",
     "plop": "plop --plopfile plopfile.cjs",
     "prepare": "husky",
-    "format": "prettier --write \"src/**/*.{js,vue,css}\"",
+    "format": "prettier --write \"src/**/*.{js,ts,vue,css}\"",
     "verify:planning": "npx vite-node scripts/verify-planning-fix.mjs",
     "verify:network": "npx vite-node scripts/verify-network-fix.mjs",
     "verify:cast": "npx vite-node scripts/verify-cast-expansion.mjs",
@@ -82,8 +82,8 @@
     "vuedraggable": "^4.1.0"
   },
   "lint-staged": {
-    "*.{js,vue,css}": "prettier --write",
-    "*.{js,vue}": "eslint --fix"
+    "*.{js,ts,vue,css}": "prettier --write",
+    "*.{js,ts,vue}": "eslint --fix"
   },
   "devDependencies": {
     "@emnapi/core": "1.11.3",

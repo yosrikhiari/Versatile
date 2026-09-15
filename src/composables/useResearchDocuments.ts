@@ -439,27 +439,22 @@ export function useResearchDocuments(projectId: any) {
     // deliberately NOT reused here: its inter-batch setTimeout yields would
     // risk premature commit on >500-chunk docs, and its rollback is
     // subsumed by the outer transaction anyway.
-    const ids = await db.transaction(
-      'rw',
-      db.researchChunks,
-      db.researchDocuments,
-      async () => {
-        await deleteChunksForDocument(documentId)
-        let newIds: any[] = []
-        if (chunkRows.length > 0) {
-          newIds = await db.researchChunks.bulkAdd(
-            chunkRows.map((c: any) => ({ ...c, embeddingStatus: c.embeddingStatus || 'PENDING' })),
-            null,
-            { allKeys: true }
-          )
-        }
-        await db.researchDocuments.update(documentId, {
-          tags: [...allDocTags].slice(0, 20),
-          chunkCount: allChunks.length
-        })
-        return newIds
+    const ids = await db.transaction('rw', db.researchChunks, db.researchDocuments, async () => {
+      await deleteChunksForDocument(documentId)
+      let newIds: any[] = []
+      if (chunkRows.length > 0) {
+        newIds = await db.researchChunks.bulkAdd(
+          chunkRows.map((c: any) => ({ ...c, embeddingStatus: c.embeddingStatus || 'PENDING' })),
+          null,
+          { allKeys: true }
+        )
       }
-    )
+      await db.researchDocuments.update(documentId, {
+        tags: [...allDocTags].slice(0, 20),
+        chunkCount: allChunks.length
+      })
+      return newIds
+    })
 
     if (needsEmbedding.length > 0) {
       const idTextPairs = needsEmbedding.map((i) => ({

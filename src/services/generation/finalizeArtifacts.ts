@@ -113,9 +113,7 @@ export async function finalizeStoryArtifacts({
 export function describeFinalizeReport(report: FinalizeReport): string {
   const parts: string[] = []
   parts.push(
-    report.canvasElements
-      ? `${report.canvasElements} canvas elements`
-      : 'canvas already up to date'
+    report.canvasElements ? `${report.canvasElements} canvas elements` : 'canvas already up to date'
   )
   parts.push(
     report.documents.length

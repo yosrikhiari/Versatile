@@ -37,7 +37,7 @@ export function createCacheGuard(
         details,
         layer: context.layer,
         contextId: context.cacheKey ?? context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 
@@ -48,7 +48,7 @@ export function createCacheGuard(
     if (key && typeof data.key === 'string' && data.key !== key) {
       push(`Cache entry key mismatch: entry is "${data.key}" but was looked up as "${key}"`, {
         entryKey: data.key,
-        lookupKey: key,
+        lookupKey: key
       })
     }
 
@@ -60,7 +60,7 @@ export function createCacheGuard(
         push('Cache entry digest does not match its payload', {
           expected: storedDigest,
           actual,
-          key,
+          key
         })
       }
     }
@@ -71,11 +71,14 @@ export function createCacheGuard(
       const entryTtl = typeof data.ttlMs === 'number' ? data.ttlMs : ttlMs
       const age = now() - createdAt
       if (age > entryTtl) {
-        push(`Cache entry is stale (age ${Math.round(age / 1000)}s exceeds TTL ${Math.round(entryTtl / 1000)}s)`, {
-          ageMs: age,
-          ttlMs: entryTtl,
-          key,
-        })
+        push(
+          `Cache entry is stale (age ${Math.round(age / 1000)}s exceeds TTL ${Math.round(entryTtl / 1000)}s)`,
+          {
+            ageMs: age,
+            ttlMs: entryTtl,
+            key
+          }
+        )
       }
     }
 
@@ -86,7 +89,7 @@ export function createCacheGuard(
         push(`Cached value is ${describe(value)} but the caller expects ${expectedType}`, {
           expected: expectedType,
           actual: describe(value),
-          key,
+          key
         })
       }
     }
@@ -97,7 +100,7 @@ export function createCacheGuard(
 
 /** FNV-1a, 32-bit, hex encoded. Stable across runs and cheap enough for every cache write. */
 export function digest(value: unknown): string {
-  const text = typeof value === 'string' ? value : JSON.stringify(value) ?? ''
+  const text = typeof value === 'string' ? value : (JSON.stringify(value) ?? '')
   let hash = 0x811c9dc5
   for (let i = 0; i < text.length; i++) {
     hash ^= text.charCodeAt(i)

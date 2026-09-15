@@ -51,8 +51,7 @@ export const useCostTrackingStore = defineStore('costTracking', () => {
     try {
       const trimmed = sessionLog.value.slice(-MAX_LOG_SIZE)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed))
-    } catch {
-    }
+    } catch {}
   }
 
   function logCost(entry: Omit<CostLogEntry, 'id' | 'timestamp'>) {
@@ -81,7 +80,7 @@ export const useCostTrackingStore = defineStore('costTracking', () => {
       if (!map[key]) map[key] = { count: 0, totalCost: 0, totalTokens: 0 }
       map[key].count++
       map[key].totalCost += e.cost
-      map[key].totalTokens += (e.totalTokens || 0)
+      map[key].totalTokens += e.totalTokens || 0
     }
     return map
   })
@@ -93,7 +92,7 @@ export const useCostTrackingStore = defineStore('costTracking', () => {
       if (!map[key]) map[key] = { count: 0, totalCost: 0, totalTokens: 0 }
       map[key].count++
       map[key].totalCost += e.cost
-      map[key].totalTokens += (e.totalTokens || 0)
+      map[key].totalTokens += e.totalTokens || 0
     }
     return map
   })
@@ -105,7 +104,7 @@ export const useCostTrackingStore = defineStore('costTracking', () => {
       if (!map[key]) map[key] = { count: 0, totalCost: 0, totalTokens: 0 }
       map[key].count++
       map[key].totalCost += e.cost
-      map[key].totalTokens += (e.totalTokens || 0)
+      map[key].totalTokens += e.totalTokens || 0
     }
     return map
   })
@@ -117,7 +116,7 @@ export const useCostTrackingStore = defineStore('costTracking', () => {
       if (!map[key]) map[key] = { count: 0, totalCost: 0, totalTokens: 0 }
       map[key].count++
       map[key].totalCost += e.cost
-      map[key].totalTokens += (e.totalTokens || 0)
+      map[key].totalTokens += e.totalTokens || 0
     }
     return map
   })
@@ -126,16 +125,28 @@ export const useCostTrackingStore = defineStore('costTracking', () => {
     console.table({
       'Total Cost': `$${sessionTotal.value.toFixed(6)}`,
       'By Model': Object.fromEntries(
-        Object.entries(breakdownByModel.value).map(([k, v]) => [k, `$${v.totalCost.toFixed(6)} (${v.count} calls)`])
+        Object.entries(breakdownByModel.value).map(([k, v]) => [
+          k,
+          `$${v.totalCost.toFixed(6)} (${v.count} calls)`
+        ])
       ),
       'By Provider': Object.fromEntries(
-        Object.entries(breakdownByProvider.value).map(([k, v]) => [k, `$${v.totalCost.toFixed(6)} (${v.count} calls)`])
+        Object.entries(breakdownByProvider.value).map(([k, v]) => [
+          k,
+          `$${v.totalCost.toFixed(6)} (${v.count} calls)`
+        ])
       ),
       'By Feature': Object.fromEntries(
-        Object.entries(breakdownByFeature.value).map(([k, v]) => [k, `$${v.totalCost.toFixed(6)} (${v.count} calls)`])
+        Object.entries(breakdownByFeature.value).map(([k, v]) => [
+          k,
+          `$${v.totalCost.toFixed(6)} (${v.count} calls)`
+        ])
       ),
       'By Phase': Object.fromEntries(
-        Object.entries(breakdownByPhase.value).map(([k, v]) => [k, `$${v.totalCost.toFixed(6)} (${v.count} calls)`])
+        Object.entries(breakdownByPhase.value).map(([k, v]) => [
+          k,
+          `$${v.totalCost.toFixed(6)} (${v.count} calls)`
+        ])
       )
     })
   }

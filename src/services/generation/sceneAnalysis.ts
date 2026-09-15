@@ -39,7 +39,10 @@ async function buildBibleResolver(): Promise<
   try {
     const { useStoryBibleStore } = await import('../../stores/storyBibleStore')
     const bible: any = useStoryBibleStore()
-    const norm = (s: any) => String(s ?? '').trim().toLowerCase()
+    const norm = (s: any) =>
+      String(s ?? '')
+        .trim()
+        .toLowerCase()
 
     const maps: Record<string, Map<string, any>> = {
       character: new Map((bible.characters || []).map((c: any) => [norm(c.name), c.id])),

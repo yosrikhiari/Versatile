@@ -98,8 +98,7 @@ function loadState(): BudgetState | null {
 function saveState(state: BudgetState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  } catch {
-  }
+  } catch {}
 }
 
 function freshPeriod(): BudgetState {
@@ -173,16 +172,25 @@ export class ProviderBudget {
     const monthlyP = s.monthly.providers[provider] || { tokens: 0, cost: 0 }
 
     if (limits.dailyTokens && dailyP.tokens >= limits.dailyTokens) {
-      throw new BudgetExceededError(provider, `Daily token limit (${limits.dailyTokens.toLocaleString()}) reached`)
+      throw new BudgetExceededError(
+        provider,
+        `Daily token limit (${limits.dailyTokens.toLocaleString()}) reached`
+      )
     }
     if (limits.dailyCost && dailyP.cost >= limits.dailyCost) {
       throw new BudgetExceededError(provider, `Daily cost limit ($${limits.dailyCost}) reached`)
     }
     if (limits.monthlyTokens && monthlyP.tokens >= limits.monthlyTokens) {
-      throw new BudgetExceededError(provider, `Monthly token limit (${limits.monthlyTokens.toLocaleString()}) reached — resets at month end`)
+      throw new BudgetExceededError(
+        provider,
+        `Monthly token limit (${limits.monthlyTokens.toLocaleString()}) reached — resets at month end`
+      )
     }
     if (limits.monthlyCost && monthlyP.cost >= limits.monthlyCost) {
-      throw new BudgetExceededError(provider, `Monthly cost limit ($${limits.monthlyCost}) reached — resets at month end`)
+      throw new BudgetExceededError(
+        provider,
+        `Monthly cost limit ($${limits.monthlyCost}) reached — resets at month end`
+      )
     }
 
     return { allowed: true }
@@ -196,8 +204,14 @@ export class ProviderBudget {
     initProvider(s.daily)
     initProvider(s.monthly)
 
-    const dailyP = s.daily.providers[provider] = s.daily.providers[provider] || { tokens: 0, cost: 0 }
-    const monthlyP = s.monthly.providers[provider] = s.monthly.providers[provider] || { tokens: 0, cost: 0 }
+    const dailyP = (s.daily.providers[provider] = s.daily.providers[provider] || {
+      tokens: 0,
+      cost: 0
+    })
+    const monthlyP = (s.monthly.providers[provider] = s.monthly.providers[provider] || {
+      tokens: 0,
+      cost: 0
+    })
 
     dailyP.tokens += tokens || 0
     dailyP.cost += cost || 0
@@ -280,10 +294,10 @@ export class SessionBudgetExceededError extends Error {
 
 const DEFAULT_SESSION_CONFIG: Required<SessionBudgetConfig> = {
   softCapTokens: 50_000,
-  softCapCost: 0.50,
+  softCapCost: 0.5,
   softCapCalls: 50,
   hardCapTokens: 100_000,
-  hardCapCost: 1.00,
+  hardCapCost: 1.0,
   hardCapCalls: 100
 }
 
@@ -332,7 +346,11 @@ export interface RunSize {
  * a run is costing more than its shape predicted); hard caps sit at
  * RUNAWAY_FACTOR times the estimate.
  */
-export function sessionConfigForRun({ chapters, scenes, localProvider }: RunSize): Required<SessionBudgetConfig> {
+export function sessionConfigForRun({
+  chapters,
+  scenes,
+  localProvider
+}: RunSize): Required<SessionBudgetConfig> {
   const safeChapters = Math.max(1, Math.ceil(chapters || 0))
   const safeScenes = Math.max(1, Math.ceil(scenes || 0))
 
@@ -381,7 +399,10 @@ export class SessionBudget {
     const c = this.config
 
     if (c.hardCapTokens != null && this.tokens >= c.hardCapTokens) {
-      return { allowed: false, reason: `Hard token cap (${c.hardCapTokens.toLocaleString()}) reached` }
+      return {
+        allowed: false,
+        reason: `Hard token cap (${c.hardCapTokens.toLocaleString()}) reached`
+      }
     }
     if (c.hardCapCost != null && this.cost >= c.hardCapCost) {
       return { allowed: false, reason: `Hard cost cap ($${c.hardCapCost}) reached` }
@@ -391,7 +412,11 @@ export class SessionBudget {
     }
 
     if (c.softCapTokens != null && this.tokens >= c.softCapTokens) {
-      return { allowed: true, warn: true, reason: `Soft token cap (${c.softCapTokens.toLocaleString()}) reached` }
+      return {
+        allowed: true,
+        warn: true,
+        reason: `Soft token cap (${c.softCapTokens.toLocaleString()}) reached`
+      }
     }
     if (c.softCapCost != null && this.cost >= c.softCapCost) {
       return { allowed: true, warn: true, reason: `Soft cost cap ($${c.softCapCost}) reached` }

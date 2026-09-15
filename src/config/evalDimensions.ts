@@ -301,7 +301,7 @@ const CREATIVE_DIMENSIONS = {
     weight: 1.0,
     defaultThreshold: 7,
     focusInstruction:
-      'Let every paragraph serve the scene\'s stated emotional target. Build the intended feeling gradually through character reactions, sensory details, and pacing rather than stating it directly. The reader should feel what the brief says they should feel.'
+      "Let every paragraph serve the scene's stated emotional target. Build the intended feeling gradually through character reactions, sensory details, and pacing rather than stating it directly. The reader should feel what the brief says they should feel."
   },
   show_tell: {
     label: 'Show vs Tell',
@@ -319,7 +319,7 @@ const CREATIVE_DIMENSIONS = {
     weight: 1.0,
     defaultThreshold: 7,
     focusInstruction:
-      'Match sentence and paragraph length to the scene\'s tension and pacing requirements. Cut any exposition, description, or interiority that does not advance the moment. Every paragraph should either complicate, escalate, or land a beat.'
+      "Match sentence and paragraph length to the scene's tension and pacing requirements. Cut any exposition, description, or interiority that does not advance the moment. Every paragraph should either complicate, escalate, or land a beat."
   }
 }
 

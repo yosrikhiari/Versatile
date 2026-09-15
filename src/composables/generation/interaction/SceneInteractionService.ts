@@ -75,7 +75,17 @@ export class SceneInteractionService {
     this.consistencyService = args.consistencyService
   }
 
-  async confirmSync({ acceptedEntities, projectId, volumeId, chapterId }: { acceptedEntities: any; projectId: any; volumeId: any; chapterId: any }) {
+  async confirmSync({
+    acceptedEntities,
+    projectId,
+    volumeId,
+    chapterId
+  }: {
+    acceptedEntities: any
+    projectId: any
+    volumeId: any
+    chapterId: any
+  }) {
     if (this.phase.value !== 'sync-preview') return
     this.progress.statusText = 'Integrating accepted entities and syncing story graph network...'
 

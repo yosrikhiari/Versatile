@@ -13,7 +13,7 @@ const API_KEYS: Array<{ label: string; pattern: RegExp }> = [
   { label: 'AWS', pattern: /\bAKIA[0-9A-Z]{16}\b/g },
   { label: 'Google', pattern: /\bAIza[0-9A-Za-z_-]{35}\b/g },
   { label: 'Slack', pattern: /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/g },
-  { label: 'Bearer token', pattern: /\bBearer\s+[A-Za-z0-9._-]{20,}\b/g },
+  { label: 'Bearer token', pattern: /\bBearer\s+[A-Za-z0-9._-]{20,}\b/g }
 ]
 
 /**
@@ -33,7 +33,16 @@ export function createPiiGuard(
   } = {}
 ): GuardFunction {
   const { enabled = true, extraFields = [], strict = false } = opts
-  const fields = ['content', 'text', 'narrative', 'summary', 'response', 'message', 'analysis', ...extraFields]
+  const fields = [
+    'content',
+    'text',
+    'narrative',
+    'summary',
+    'response',
+    'message',
+    'analysis',
+    ...extraFields
+  ]
 
   return (context: GuardrailContext): GuardrailResult[] => {
     if (!enabled) return []
@@ -55,25 +64,37 @@ export function createPiiGuard(
         details,
         layer: context.layer,
         contextId: context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 
     for (const text of texts) {
       const emails = matchAll(text, EMAIL)
       if (emails.length > 0) {
-        push(`Output contains ${emails.length} email address(es)`, { matches: redactAll(emails) }, strict ? 'blocking' : 'detective')
+        push(
+          `Output contains ${emails.length} email address(es)`,
+          { matches: redactAll(emails) },
+          strict ? 'blocking' : 'detective'
+        )
       }
 
       const phones = matchAll(text, PHONE)
       if (phones.length > 0) {
-        push(`Output contains ${phones.length} phone number(s)`, { matches: redactAll(phones) }, strict ? 'blocking' : 'detective')
+        push(
+          `Output contains ${phones.length} phone number(s)`,
+          { matches: redactAll(phones) },
+          strict ? 'blocking' : 'detective'
+        )
       }
 
       for (const { label, pattern } of API_KEYS) {
         const keys = matchAll(text, pattern)
         if (keys.length > 0) {
-          push(`Output contains what looks like a ${label} credential`, { provider: label, matches: redactAll(keys) }, 'blocking')
+          push(
+            `Output contains what looks like a ${label} credential`,
+            { provider: label, matches: redactAll(keys) },
+            'blocking'
+          )
         }
       }
     }
@@ -102,5 +123,5 @@ function matchAll(text: string, pattern: RegExp): string[] {
 
 /** Never echo a full secret into an event log — keep just enough to locate it. */
 function redactAll(matches: string[]): string[] {
-  return matches.slice(0, 5).map(m => (m.length <= 8 ? '***' : `${m.slice(0, 4)}…${m.slice(-2)}`))
+  return matches.slice(0, 5).map((m) => (m.length <= 8 ? '***' : `${m.slice(0, 4)}…${m.slice(-2)}`))
 }

@@ -54,12 +54,12 @@ function buildDimensionFeedback(sceneEvaluations: SceneEvaluation[]): string {
   const weakest = dimAverages[0]
   const strongest = dimAverages[dimAverages.length - 1]
 
-  const avgLines = dimAverages.map(
-    (d) => `  ${d.dim.replace(/_/g, ' ')}: ${d.avg}/10`
-  )
+  const avgLines = dimAverages.map((d) => `  ${d.dim.replace(/_/g, ' ')}: ${d.avg}/10`)
 
   const parts: string[] = [`PER-DIMENSION AVERAGES:\n${avgLines.join('\n')}`]
-  parts.push(`Recommended Focus: ${weakest.dim.replace(/_/g, ' ')} is the weakest dimension (${weakest.avg}/10). Prioritize improving this area in upcoming scenes.`)
+  parts.push(
+    `Recommended Focus: ${weakest.dim.replace(/_/g, ' ')} is the weakest dimension (${weakest.avg}/10). Prioritize improving this area in upcoming scenes.`
+  )
 
   if (strongest.avg >= 7) {
     parts.push(`Keep up the strong ${strongest.dim.replace(/_/g, ' ')} (${strongest.avg}/10).`)

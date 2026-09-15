@@ -125,10 +125,7 @@ export async function getLastSessionData(projectId: string) {
 export async function getDailyStatsForProjects(projectIds: Array<string | number>) {
   if (!projectIds.length) return []
 
-  const rows = await db.dailyGoals
-    .where('projectId')
-    .anyOf(projectIds)
-    .toArray()
+  const rows = await db.dailyGoals.where('projectId').anyOf(projectIds).toArray()
 
   return rows.sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)))
 }

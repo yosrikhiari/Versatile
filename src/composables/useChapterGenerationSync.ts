@@ -346,9 +346,7 @@ export function useChapterGenerationSync() {
         for (const s of plan.supersedes) {
           await updateGraphEdge(s.id, { validUntilChapter: s.validUntilChapter })
             .then(() => edgesWritten++)
-            .catch((err: any) =>
-              console.warn('[commitSync] could not close superseded edge:', err)
-            )
+            .catch((err: any) => console.warn('[commitSync] could not close superseded edge:', err))
         }
         for (const e of plan.inserts) {
           await graphStore.addEdgeData(resolvedProjectId, e)

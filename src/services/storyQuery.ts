@@ -162,7 +162,8 @@ export function matchFilter(row: any, filter: QueryFilter): boolean {
       if (typeof actual === 'number' && typeof wanted !== 'number') {
         return actual === Number(wanted)
       }
-      if (typeof actual === 'boolean') return actual === (wanted === true || norm(wanted) === 'true')
+      if (typeof actual === 'boolean')
+        return actual === (wanted === true || norm(wanted) === 'true')
       return norm(actual) === norm(wanted)
     case 'neq':
       return !matchFilter(row, { ...filter, op: 'eq' })
@@ -176,12 +177,7 @@ export function matchFilter(row: any, filter: QueryFilter): boolean {
     case 'in': {
       // The view's value box is one text input: "a, b, c" is the list.
       const options =
-        typeof wanted === 'string'
-          ? wanted
-              .split(',')
-              .map(norm)
-              .filter(Boolean)
-          : asList(wanted)
+        typeof wanted === 'string' ? wanted.split(',').map(norm).filter(Boolean) : asList(wanted)
       if (Array.isArray(actual)) return asList(actual).some((s) => options.includes(s))
       return options.includes(norm(actual))
     }
@@ -239,7 +235,11 @@ export function runStoryQuery(rows: any[], query: StoryQuery): QueryResult {
     groups = new Map()
     for (const row of out) {
       const v = readField(row, query.group)
-      const keys = Array.isArray(v) ? (v.length ? v.map(String) : [NONE_GROUP]) : [isEmptyValue(v) ? NONE_GROUP : String(v)]
+      const keys = Array.isArray(v)
+        ? v.length
+          ? v.map(String)
+          : [NONE_GROUP]
+        : [isEmptyValue(v) ? NONE_GROUP : String(v)]
       for (const k of keys) {
         const bucket = groups.get(k)
         if (bucket) bucket.push(row)

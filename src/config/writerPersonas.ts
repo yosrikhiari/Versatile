@@ -109,16 +109,16 @@ export const POV_PROFILES: Record<string, string> = {
   ].join('\n'),
 
   'third-limited': [
-    'Stay locked in one character\'s perspective per scene — no head-hopping',
+    "Stay locked in one character's perspective per scene — no head-hopping",
     'The reader knows only what the POV character perceives, feels, and learns',
     'Filtering language ("he noticed", "she saw", "he felt") creates distance — prefer direct sensory presentation',
-    'The POV character\'s voice should color the narration subtly — word choice, preoccupations, blind spots',
+    "The POV character's voice should color the narration subtly — word choice, preoccupations, blind spots",
     'Emotional states should be shown through physical sensation and action, not named directly',
     'The narrator can infer but not confirm what other characters think or feel'
   ].join('\n'),
 
   'third-omniscient': [
-    'The narrator has access to any character\'s thoughts, feelings, and history',
+    "The narrator has access to any character's thoughts, feelings, and history",
     'Use this power deliberately — shifting POV within a scene should serve a purpose',
     'The narrator can have a distinct voice and make commentary on events',
     'Be explicit when shifting between character perspectives to avoid confusion',

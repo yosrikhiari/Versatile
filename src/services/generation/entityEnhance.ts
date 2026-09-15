@@ -40,7 +40,10 @@ export function extractBracketContent(text: string, startIdx: number): string | 
   return text.slice(colonIdx + 1, endIdx).trim()
 }
 
-export async function enhanceCharacter(partialData: Partial<GeneratedCharacter>, manuscriptContext: { contextText?: string } | null = null): Promise<GeneratedCharacter> {
+export async function enhanceCharacter(
+  partialData: Partial<GeneratedCharacter>,
+  manuscriptContext: { contextText?: string } | null = null
+): Promise<GeneratedCharacter> {
   const projectContext = getProjectContext()
   const entityContext = await getExistingEntitiesContext()
 
@@ -122,7 +125,10 @@ All values must be strings. No markdown.`
       voice: partialData.voice || (parsed.voice as string) || (parsed.Voice as string) || '',
       notes: partialData.notes || (parsed.notes as string) || (parsed.Notes as string) || '',
       sampleDialogue:
-        partialData.sampleDialogue || (parsed.sampleDialogue as string) || (parsed.SampleDialogue as string) || ''
+        partialData.sampleDialogue ||
+        (parsed.sampleDialogue as string) ||
+        (parsed.SampleDialogue as string) ||
+        ''
     }
 
     return result
@@ -139,7 +145,10 @@ All values must be strings. No markdown.`
   }
 }
 
-export async function enhanceExistingCharacter(charData: GeneratedCharacter, manuscriptContext: { contextText?: string } | null = null): Promise<GeneratedCharacter> {
+export async function enhanceExistingCharacter(
+  charData: GeneratedCharacter,
+  manuscriptContext: { contextText?: string } | null = null
+): Promise<GeneratedCharacter> {
   const projectContext = getProjectContext()
   const entityContext = await getExistingEntitiesContext()
 
@@ -186,7 +195,10 @@ No markdown, no explanation, no preamble. JSON only.`
       voice: (parsed.voice as string) || (parsed.Voice as string) || charData.voice || '',
       notes: (parsed.notes as string) || (parsed.Notes as string) || charData.notes || '',
       sampleDialogue:
-        (parsed.sampleDialogue as string) || (parsed.SampleDialogue as string) || charData.sampleDialogue || ''
+        (parsed.sampleDialogue as string) ||
+        (parsed.SampleDialogue as string) ||
+        charData.sampleDialogue ||
+        ''
     }
 
     return result
@@ -223,7 +235,11 @@ export async function enhanceSingleField(
     .map(([key, value]) => `${key}: "${value}"`)
     .join('\n')
 
-  const typeLabels: Record<string, string> = { character: 'character', location: 'location', plotThread: 'plot thread' }
+  const typeLabels: Record<string, string> = {
+    character: 'character',
+    location: 'location',
+    plotThread: 'plot thread'
+  }
   const fieldType = typeLabels[entityType] || 'plot thread'
   const entityName = allFields?.name || allFields?.title || 'the entity'
 
@@ -347,7 +363,10 @@ Single string value, no markdown.`
   }
 }
 
-export async function enhanceLocation(partialData: Partial<GeneratedLocation>, manuscriptContext: { contextText?: string } | null = null): Promise<GeneratedLocation> {
+export async function enhanceLocation(
+  partialData: Partial<GeneratedLocation>,
+  manuscriptContext: { contextText?: string } | null = null
+): Promise<GeneratedLocation> {
   const projectContext = getProjectContext()
   const entityContext = await getExistingEntitiesContext()
 
@@ -413,7 +432,11 @@ All values must be strings. No markdown.`
 
     const result: GeneratedLocation = {
       name: partialData.name || (parsed.name as string) || (parsed.Name as string) || '',
-      description: partialData.description || (parsed.description as string) || (parsed.Description as string) || '',
+      description:
+        partialData.description ||
+        (parsed.description as string) ||
+        (parsed.Description as string) ||
+        '',
       notes: partialData.notes || (parsed.notes as string) || (parsed.Notes as string) || ''
     }
 
@@ -431,7 +454,10 @@ All values must be strings. No markdown.`
   }
 }
 
-export async function enhancePlotThread(partialData: Partial<GeneratedPlotThread>, manuscriptContext: { contextText?: string } | null = null): Promise<GeneratedPlotThread> {
+export async function enhancePlotThread(
+  partialData: Partial<GeneratedPlotThread>,
+  manuscriptContext: { contextText?: string } | null = null
+): Promise<GeneratedPlotThread> {
   const projectContext = getProjectContext()
 
   let contextInstruction = ''
@@ -539,7 +565,11 @@ export async function generateTraitSuggestions(
   existingTraits: string[] = [],
   manuscriptContext: { contextText?: string } | null = null
 ): Promise<string[]> {
-  const typeLabels: Record<string, string> = { character: 'character', location: 'location', plotThread: 'plot thread' }
+  const typeLabels: Record<string, string> = {
+    character: 'character',
+    location: 'location',
+    plotThread: 'plot thread'
+  }
   const label = typeLabels[entityType] || 'entity'
   const entityName = entityData?.name || entityData?.title || 'this entity'
 

@@ -226,9 +226,7 @@ export function gateProseQuality(
     // hex escapes on purpose (see commit history).
     const hasPlaceholders = /\?{3,}/.test(proseText)
     const hasUnexpectedScript =
-      /\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}/u.test(
-        proseText
-      )
+      /\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}/u.test(proseText)
     let hasControlChars = false
     for (let i = 0; i < proseText.length; i++) {
       const code = proseText.charCodeAt(i)

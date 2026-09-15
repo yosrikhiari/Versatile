@@ -404,7 +404,7 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       return {
         volumeId: volApiId || '00000000-0000-0000-0000-000000000000',
         entityType: (local.entityType || '') as string,
-        entityId: entityApiId || (local.entityId || '') as string,
+        entityId: entityApiId || ((local.entityId || '') as string),
         isPrimary: (local.isPrimary ?? true) as boolean
       }
     },

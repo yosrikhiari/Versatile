@@ -51,7 +51,9 @@ export function configureModels() {
     settings.embeddingProvider = 'ollama'
     settings.embeddingModel = 'snowflake-arctic-embed2'
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings))
-    console.info('[VersatileGenerate] models → prose/utility: qwen3:8b, embeddings: snowflake-arctic-embed2')
+    console.info(
+      '[VersatileGenerate] models → prose/utility: qwen3:8b, embeddings: snowflake-arctic-embed2'
+    )
   } catch (e) {
     console.warn('[VersatileGenerate] failed to configure models:', e)
   }
@@ -139,7 +141,9 @@ export async function demo(opts: DemoOptions = {}): Promise<{ projectId: string 
   current.gen = gen
   current.projectId = projectId
 
-  console.info(`[VersatileGenerate] generating volume 1 / ${volumes} (${chaptersPerVolume} chapters)…`)
+  console.info(
+    `[VersatileGenerate] generating volume 1 / ${volumes} (${chaptersPerVolume} chapters)…`
+  )
   await gen.startGeneration({
     projectId,
     synopsis,

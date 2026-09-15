@@ -101,7 +101,10 @@ let directFns: Record<string, (...args: unknown[]) => unknown> | null = null
 
 async function directCall(method: string, ...args: unknown[]): Promise<unknown> {
   if (!directFns) {
-    directFns = (await import('./documentChunker.worker.ts')).methodMap as Record<string, (...args: unknown[]) => unknown>
+    directFns = (await import('./documentChunker.worker.ts')).methodMap as Record<
+      string,
+      (...args: unknown[]) => unknown
+    >
   }
   const fn = directFns[method]
   if (!fn) throw new Error('Unknown worker method: ' + method)
@@ -128,10 +131,15 @@ export async function computeChunksForSentences(
   embeddings: (ArrayLike<number> | null)[],
   threshold: number
 ): Promise<ChunkResult[]> {
-  return workerCall('computeChunksForSentences', sentences, embeddings, threshold) as Promise<ChunkResult[]>
+  return workerCall('computeChunksForSentences', sentences, embeddings, threshold) as Promise<
+    ChunkResult[]
+  >
 }
 
-export async function mergeSmallChunks(chunks: ChunkResult[], minSentences: number): Promise<ChunkResult[]> {
+export async function mergeSmallChunks(
+  chunks: ChunkResult[],
+  minSentences: number
+): Promise<ChunkResult[]> {
   return workerCall('mergeSmallChunks', chunks, minSentences) as Promise<ChunkResult[]>
 }
 
@@ -149,7 +157,10 @@ function addChunkOverlap(chunks: ChunkResult[], overlap = CHUNK_OVERLAP_SENTENCE
   })
 }
 
-export async function computeSemanticChunks(text: string, options: ComputeSemanticOptions = {}): Promise<ChunkResult[]> {
+export async function computeSemanticChunks(
+  text: string,
+  options: ComputeSemanticOptions = {}
+): Promise<ChunkResult[]> {
   // Resolved from saved settings rather than the Pinia store: chunking is also
   // driven from the background import path, which has no component context.
   const settings = resolveEmbeddingConfig({
@@ -163,7 +174,7 @@ export async function computeSemanticChunks(text: string, options: ComputeSemant
   const onProgress = options.onProgress || (() => {})
   const skipEmbeddings = options.skipEmbeddings === true
 
-  const sentences = await workerCall('splitSentences', text) as string[]
+  const sentences = (await workerCall('splitSentences', text)) as string[]
   onProgress(2, 'Splitting sentences...')
   if (sentences.length <= 1) {
     return [{ text, sentences: [...sentences], startIdx: 0, endIdx: 0 }]
@@ -177,7 +188,9 @@ export async function computeSemanticChunks(text: string, options: ComputeSemant
     } else {
       console.warn(`Large document (${SENTENCE_COUNT} sentences), using size-based chunking`)
     }
-    return addChunkOverlap(await workerCall('sizeBasedChunk', text, maxChunkSize) as ChunkResult[])
+    return addChunkOverlap(
+      (await workerCall('sizeBasedChunk', text, maxChunkSize)) as ChunkResult[]
+    )
   }
 
   const groupByParagraph = SENTENCE_COUNT >= 12
@@ -185,11 +198,19 @@ export async function computeSemanticChunks(text: string, options: ComputeSemant
   let groupTexts: string[] | null = null
 
   if (groupByParagraph) {
-    groups = await workerCall('groupSentencesByParagraph', sentences, text) as Array<{ sentences: string[]; startIdx: number; endIdx: number }>
+    groups = (await workerCall('groupSentencesByParagraph', sentences, text)) as Array<{
+      sentences: string[]
+      startIdx: number
+      endIdx: number
+    }>
     if (groups.length === 1 && SENTENCE_COUNT > 20) {
-      const headingBreaks = await workerCall('findHeadingBreaks', sentences, text) as number[]
+      const headingBreaks = (await workerCall('findHeadingBreaks', sentences, text)) as number[]
       if (headingBreaks.length > 1) {
-        groups = await workerCall('applyBreaks', sentences, headingBreaks) as Array<{ sentences: string[]; startIdx: number; endIdx: number }>
+        groups = (await workerCall('applyBreaks', sentences, headingBreaks)) as Array<{
+          sentences: string[]
+          startIdx: number
+          endIdx: number
+        }>
       }
     }
     groupTexts = groups.map((g) => g.sentences.join(' '))
@@ -214,14 +235,19 @@ export async function computeSemanticChunks(text: string, options: ComputeSemant
 
   let chunkGroups: ChunkResult[]
   if (groupByParagraph && groups) {
-    chunkGroups = await workerCall(
+    chunkGroups = (await workerCall(
       'computeChunksFromParagraphGroups',
       groups,
       embeddings,
       threshold
-    ) as ChunkResult[]
+    )) as ChunkResult[]
   } else {
-    chunkGroups = await workerCall('computeChunksForSentences', sentences, embeddings, threshold) as ChunkResult[]
+    chunkGroups = (await workerCall(
+      'computeChunksForSentences',
+      sentences,
+      embeddings,
+      threshold
+    )) as ChunkResult[]
   }
 
   const result: ChunkResult[] = []
@@ -288,7 +314,12 @@ async function recursiveSplit(
     console.warn('Embedding failed during recursive split, falling back:', e.message)
     embeddings = sentences.map(() => null)
   }
-  const subChunks = await workerCall('computeChunksForSentences', sentences, embeddings, threshold) as ChunkResult[]
+  const subChunks = (await workerCall(
+    'computeChunksForSentences',
+    sentences,
+    embeddings,
+    threshold
+  )) as ChunkResult[]
 
   const result: ChunkResult[] = []
   for (const sub of subChunks) {
@@ -308,11 +339,14 @@ async function recursiveSplit(
   return result
 }
 
-export async function chunkDocument(text: string, options: ChunkDocumentOptions = {}): Promise<ChunkDocumentResult> {
+export async function chunkDocument(
+  text: string,
+  options: ChunkDocumentOptions = {}
+): Promise<ChunkDocumentResult> {
   const onProgress = options.onProgress || (() => {})
 
   if (text.length > MAX_SAFE_CHUNK_SIZE * 3) {
-    const segments = await workerCall('preSplitText', text, MAX_SAFE_CHUNK_SIZE) as string[]
+    const segments = (await workerCall('preSplitText', text, MAX_SAFE_CHUNK_SIZE)) as string[]
     const allChunks: DocumentChunk[] = []
     const allDocTags = new Set<string>()
     for (let s = 0; s < segments.length; s++) {
@@ -337,8 +371,8 @@ export async function chunkDocument(text: string, options: ChunkDocumentOptions 
     return allChunks as ChunkDocumentResult
   }
 
-  const normalized = await workerCall('normalizeText', text) as string
-  const headings = await workerCall('detectHeadings', normalized) as HeadingInfo[]
+  const normalized = (await workerCall('normalizeText', text)) as string
+  const headings = (await workerCall('detectHeadings', normalized)) as HeadingInfo[]
   onProgress(2, 'Detected headings')
 
   const chunks = await computeSemanticChunks(normalized, {
@@ -366,7 +400,7 @@ export async function chunkDocument(text: string, options: ChunkDocumentOptions 
         chunk.text.startsWith(h.text) ||
         normalized.indexOf(h.text) <= normalized.indexOf(chunk.text)
     )
-    const tags = await workerCall('extractTags', chunk.text) as string[]
+    const tags = (await workerCall('extractTags', chunk.text)) as string[]
     for (const t of tags) allTags.add(t)
     result.push({
       text: chunk.text,

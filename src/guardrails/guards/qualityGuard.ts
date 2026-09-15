@@ -32,7 +32,7 @@ export function createQualityGuard(
           message: `Output is very short (${text.length} chars, min ${minProseLength})`,
           details: { length: text.length, minLength: minProseLength },
           layer: context.layer,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         })
       }
 
@@ -45,7 +45,7 @@ export function createQualityGuard(
           message: `Output contains repeated phrase (${repeatCount}x)`,
           details: { repeatCount, maxRepeatPhrase },
           layer: context.layer,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         })
       }
     }

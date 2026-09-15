@@ -18,7 +18,10 @@ interface GeneratedContentResult {
   error: string | null
 }
 
-function buildContextString(category: string | null | undefined, description: string | null | undefined): string {
+function buildContextString(
+  category: string | null | undefined,
+  description: string | null | undefined
+): string {
   const parts: string[] = []
   if (category) parts.push(`Category: ${category}`)
   if (description) parts.push(`Description: ${description}`)

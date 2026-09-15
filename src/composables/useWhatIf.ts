@@ -17,8 +17,14 @@ const WHATIF_SCHEMA = {
         type: 'object',
         properties: {
           title: { type: 'string', description: 'Short label for this alternative direction' },
-          prose: { type: 'string', description: 'The continued or rewritten scene prose following this alternative' },
-          styleNote: { type: 'string', description: 'Brief note on how this alternative differs in tone or approach' }
+          prose: {
+            type: 'string',
+            description: 'The continued or rewritten scene prose following this alternative'
+          },
+          styleNote: {
+            type: 'string',
+            description: 'Brief note on how this alternative differs in tone or approach'
+          }
         },
         required: ['title', 'prose']
       },
@@ -34,13 +40,30 @@ export function useWhatIf() {
   const alternatives = ref<WhatIfAlternative[]>([])
   const error = ref<string | null>(null)
 
-  async function generateAlternatives({ sceneProse, sceneBrief, chapterLog, storyArc, voiceProfile, activeCraftRules, premise }: { sceneProse: any; sceneBrief: any; chapterLog: any; storyArc?: any; voiceProfile?: any; activeCraftRules?: any; premise?: any }) {
+  async function generateAlternatives({
+    sceneProse,
+    sceneBrief,
+    chapterLog,
+    storyArc,
+    voiceProfile,
+    activeCraftRules,
+    premise
+  }: {
+    sceneProse: any
+    sceneBrief: any
+    chapterLog: any
+    storyArc?: any
+    voiceProfile?: any
+    activeCraftRules?: any
+    premise?: any
+  }) {
     isGenerating.value = true
     error.value = null
     alternatives.value = []
 
     try {
-      const systemPrompt = 'You are a creative writing assistant. Generate alternative scene directions that match the voice and style of the existing prose.'
+      const systemPrompt =
+        'You are a creative writing assistant. Generate alternative scene directions that match the voice and style of the existing prose.'
 
       const briefText = sceneBrief
         ? Object.entries(sceneBrief)
@@ -49,9 +72,10 @@ export function useWhatIf() {
             .join('\n')
         : ''
 
-      const logText = Array.isArray(chapterLog) && chapterLog.length
-        ? chapterLog.join('\n')
-        : '(No prior events — this is early in the story.)'
+      const logText =
+        Array.isArray(chapterLog) && chapterLog.length
+          ? chapterLog.join('\n')
+          : '(No prior events — this is early in the story.)'
 
       // Both of these were already parameters and were dropped on the floor:
       // destructured at the top, never referenced in either prompt. So every
@@ -99,17 +123,13 @@ ${
     : 'The alternatives can change a character’s choice, introduce a complication, or take the scene in a totally different narrative direction.'
 }`
 
-      const result = await aiGenerateJson(
-        userPrompt,
-        systemPrompt,
-        {
-          feature: FEATURES.STORY_GENERATION,
-          temperature: 0.8,
-          maxTokens: 3000,
-          schema: WHATIF_SCHEMA,
-          schemaName: 'whatif_alternatives'
-        }
-      )
+      const result = await aiGenerateJson(userPrompt, systemPrompt, {
+        feature: FEATURES.STORY_GENERATION,
+        temperature: 0.8,
+        maxTokens: 3000,
+        schema: WHATIF_SCHEMA,
+        schemaName: 'whatif_alternatives'
+      })
 
       alternatives.value = (result.alternatives as WhatIfAlternative[]) || []
       return alternatives.value

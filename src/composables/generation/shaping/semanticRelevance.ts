@@ -74,7 +74,7 @@ export async function buildRelevanceIndex(options: {
 
   let vectors: Array<ArrayLike<number> | null>
   try {
-    const result = await getEmbeddings([query, ...pairs.map(p => p.text)])
+    const result = await getEmbeddings([query, ...pairs.map((p) => p.text)])
     vectors = result?.vectors ?? []
   } catch {
     // Embeddings are best-effort — never fail a generation over ranking.

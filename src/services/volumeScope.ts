@@ -108,7 +108,13 @@ export async function scopeBibleToVolume({
   }
 
   const keepNames = new Set(
-    (alwaysInclude || []).map((n) => String(n || '').trim().toLowerCase()).filter(Boolean)
+    (alwaysInclude || [])
+      .map((n) =>
+        String(n || '')
+          .trim()
+          .toLowerCase()
+      )
+      .filter(Boolean)
   )
 
   let omitted = 0
@@ -117,7 +123,11 @@ export async function scopeBibleToVolume({
       const id = String(e?.id)
       if (here[type].has(id)) return true
       if (!anywhere[type].has(id)) return true
-      return keepNames.has(String(labelOf(e) || '').trim().toLowerCase())
+      return keepNames.has(
+        String(labelOf(e) || '')
+          .trim()
+          .toLowerCase()
+      )
     })
     // Safety valve — never narrow a non-empty list down to nothing.
     if (list.length > 0 && kept.length === 0) return list

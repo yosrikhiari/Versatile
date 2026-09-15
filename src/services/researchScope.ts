@@ -48,7 +48,9 @@ export function buildRagOptions(
   projectId: string | null | undefined,
   scope?: ResearchScope | null,
   topK?: number
-): { projectId: string; enabled: boolean; documentIds: (string | number)[]; topK?: number } | undefined {
+):
+  | { projectId: string; enabled: boolean; documentIds: (string | number)[]; topK?: number }
+  | undefined {
   if (!projectId) return undefined
   const { enabled, documentIds } = resolveResearchScope(scope)
   if (!enabled) return undefined

@@ -8,16 +8,30 @@ export function emptySnapshot(): OntologySnapshot {
     entityByName: new Map(),
     entityByAlias: new Map(),
     entityByType: new Map(),
-    relationshipsByEntity: new Map(),
+    relationshipsByEntity: new Map()
   }
 }
 
 export function buildOntologySnapshot(opts: {
-  getCharacters: () => Array<{ id: string; name: string; aliases?: string[] } & Record<string, unknown>>
-  getLocations: () => Array<{ id: string; name: string; aliases?: string[] } & Record<string, unknown>>
-  getPlotThreads: () => Array<{ id: string; name: string; aliases?: string[] } & Record<string, unknown>>
-  getScenes: () => Array<{ id: string; title: string; aliases?: string[] } & Record<string, unknown>>
-  getRelationships: () => Array<{ id: string; sourceId: string; targetId: string; kind: string; label: string }>
+  getCharacters: () => Array<
+    { id: string; name: string; aliases?: string[] } & Record<string, unknown>
+  >
+  getLocations: () => Array<
+    { id: string; name: string; aliases?: string[] } & Record<string, unknown>
+  >
+  getPlotThreads: () => Array<
+    { id: string; name: string; aliases?: string[] } & Record<string, unknown>
+  >
+  getScenes: () => Array<
+    { id: string; title: string; aliases?: string[] } & Record<string, unknown>
+  >
+  getRelationships: () => Array<{
+    id: string
+    sourceId: string
+    targetId: string
+    kind: string
+    label: string
+  }>
 }): OntologySnapshot {
   const timestamp = Date.now()
   const entities = new Map<string, CanonicalEntity>()
@@ -27,10 +41,7 @@ export function buildOntologySnapshot(opts: {
   const relationships = new Map<string, CanonicalRelationship>()
   const relationshipsByEntity = new Map<string, string[]>()
 
-  const addEntities = (
-    items: Array<Record<string, unknown>>,
-    type: CanonicalEntity['type']
-  ) => {
+  const addEntities = (items: Array<Record<string, unknown>>, type: CanonicalEntity['type']) => {
     const typeIds: string[] = []
     for (const item of items) {
       const id = String(item.id)
@@ -56,7 +67,13 @@ export function buildOntologySnapshot(opts: {
   addEntities(opts.getScenes(), 'scene')
 
   for (const rel of opts.getRelationships()) {
-    const r: CanonicalRelationship = { id: rel.id, sourceId: rel.sourceId, targetId: rel.targetId, kind: rel.kind, label: rel.label }
+    const r: CanonicalRelationship = {
+      id: rel.id,
+      sourceId: rel.sourceId,
+      targetId: rel.targetId,
+      kind: rel.kind,
+      label: rel.label
+    }
     relationships.set(r.id, r)
 
     const srcList = relationshipsByEntity.get(r.sourceId) ?? []
@@ -68,5 +85,13 @@ export function buildOntologySnapshot(opts: {
     relationshipsByEntity.set(r.targetId, tgtList)
   }
 
-  return { timestamp, entities, relationships, entityByName, entityByAlias, entityByType, relationshipsByEntity }
+  return {
+    timestamp,
+    entities,
+    relationships,
+    entityByName,
+    entityByAlias,
+    entityByType,
+    relationshipsByEntity
+  }
 }

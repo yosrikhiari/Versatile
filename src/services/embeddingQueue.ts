@@ -44,7 +44,10 @@ function activeProvider(): string {
 
 function resolveBatchSize(): number {
   if (batchSizeOverride !== null) return batchSizeOverride
-  const caps = EMBEDDING_PROVIDER_CAPABILITIES[activeProvider() as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES]
+  const caps =
+    EMBEDDING_PROVIDER_CAPABILITIES[
+      activeProvider() as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES
+    ]
   return caps ? caps.maxBatchSize : EMBEDDING_DEFAULTS.batchSize
 }
 
@@ -130,7 +133,8 @@ async function processQueue(): Promise<void> {
     isProcessing = true
     const size = resolveBatchSize()
     const provider = activeProvider()
-    const caps = EMBEDDING_PROVIDER_CAPABILITIES[provider as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES]
+    const caps =
+      EMBEDDING_PROVIDER_CAPABILITIES[provider as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES]
     const maxConcurrent = caps ? caps.maxConcurrentRequests : 1
 
     async function worker(): Promise<void> {

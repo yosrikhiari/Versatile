@@ -35,7 +35,10 @@ export function toNormalized(
 }
 
 export function entityHasCoords(entity: any): boolean {
-  return normalizeCoord(entity?.metadata?.mapX) !== null && normalizeCoord(entity?.metadata?.mapY) !== null
+  return (
+    normalizeCoord(entity?.metadata?.mapX) !== null &&
+    normalizeCoord(entity?.metadata?.mapY) !== null
+  )
 }
 
 /** Every pinned entity as a pin, with its kind's colour. */

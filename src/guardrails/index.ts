@@ -14,7 +14,11 @@ export { createCrossTurnGuard } from './guards/crossTurnGuard'
 export { createCacheGuard, digest } from './guards/cacheGuard'
 export { createInputGuard } from './guards/inputGuard'
 export { createQualityGuard } from './guards/qualityGuard'
-export { createCircuitBreakerGuard, resetCircuitBreaker, getCircuitBreakerState } from './guards/circuitBreakerGuard'
+export {
+  createCircuitBreakerGuard,
+  resetCircuitBreaker,
+  getCircuitBreakerState
+} from './guards/circuitBreakerGuard'
 export { createIntegrityGuard } from './guards/integrityGuard'
 
 export {
@@ -24,7 +28,7 @@ export {
   guardPrompt,
   guardStructuredOutput,
   guardCacheWrite,
-  recordProviderFailure,
+  recordProviderFailure
 } from './integration/aiGuardrails'
 export type { GuardrailEnforcement } from './integration/aiGuardrails'
 export {
@@ -32,13 +36,13 @@ export {
   guardFreeformProse,
   guardPlan,
   guardCritique,
-  guardAnalysis,
+  guardAnalysis
 } from './integration/composableGuardrails'
 export {
   guardStorageWrite,
   guardStorageWriteBatch,
   guardSyncPush,
-  TABLE_CONTRACTS,
+  TABLE_CONTRACTS
 } from './integration/storageGuardrails'
 export type { TableContract } from './integration/storageGuardrails'
 
@@ -56,7 +60,7 @@ export {
   dismissGuardrailNotification,
   clearGuardrailNotifications,
   getGuardrailNotifications,
-  useGuardrailNotifications,
+  useGuardrailNotifications
 } from './reporting/useGuardrailReporting'
 export { default as GuardrailIndicator } from './reporting/components/GuardrailIndicator.vue'
 export { default as GuardrailFeed } from './reporting/components/GuardrailFeed.vue'
@@ -73,7 +77,7 @@ export type {
   GuardrailSeverity,
   GuardFunction,
   GuardMeta,
-  GuardRegistration,
+  GuardRegistration
 } from './types'
 export type { OntologySnapshot, CanonicalEntity, CanonicalRelationship } from './ontology/types'
 export type { GuardrailUserNotification } from './reporting/useGuardrailReporting'

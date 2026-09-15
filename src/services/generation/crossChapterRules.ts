@@ -61,8 +61,7 @@ export function checkCrossChapterResurrection(
         // only be a backfill gap, so it reports as a warning with the
         // legacy id rather than vanishing silently.
         const sameScope =
-          deathChapter === presenceChapter ||
-          (deathChapter === null && presenceChapter === null)
+          deathChapter === presenceChapter || (deathChapter === null && presenceChapter === null)
         if (!sameScope) {
           out.push({
             type: 'dead_then_alive',
@@ -98,7 +97,15 @@ export interface VolumeDriftInput {
 }
 
 function normSet(values?: string[] | null): Set<string> {
-  return new Set((values ?? []).map((v) => String(v ?? '').trim().toLowerCase()).filter(Boolean))
+  return new Set(
+    (values ?? [])
+      .map((v) =>
+        String(v ?? '')
+          .trim()
+          .toLowerCase()
+      )
+      .filter(Boolean)
+  )
 }
 
 /** Jaccard distance in [0, 1]; empty-vs-empty is 0 (nothing to drift). */
@@ -114,12 +121,10 @@ export const DEFAULT_VOLUME_DRIFT_THRESHOLD = 0.7
 /** Share of a volume's cast never seen in any earlier volume. */
 export const DEFAULT_VOLUME_INFLUX_THRESHOLD = 0.5
 
-function volumeLabel(
-  volumeId: string,
-  chaptersByVolume: Map<string, number[]>
-): string {
+function volumeLabel(volumeId: string, chaptersByVolume: Map<string, number[]>): string {
   const chs = [...(chaptersByVolume.get(volumeId) ?? [])].sort((x, y) => x - y)
-  if (chs.length) return `the volume covering chapter${chs.length > 1 ? 's' : ''} ${chs[0]}–${chs[chs.length - 1]}`
+  if (chs.length)
+    return `the volume covering chapter${chs.length > 1 ? 's' : ''} ${chs[0]}–${chs[chs.length - 1]}`
   return `volume ${String(volumeId).slice(0, 8)}`
 }
 
@@ -178,7 +183,9 @@ export function checkVolumeDrift(
  * volume. Distinct from pairwise drift — a slow bleed across three volumes
  * trips no single pair but shows here.
  */
-export function checkVolumeInflux(orderedVolumes: VolumeDriftInput[]): DeterministicContradiction[] {
+export function checkVolumeInflux(
+  orderedVolumes: VolumeDriftInput[]
+): DeterministicContradiction[] {
   const out: DeterministicContradiction[] = []
   const seen = new Set<string>()
   for (const vol of orderedVolumes) {
@@ -207,9 +214,10 @@ export function checkVolumeInflux(orderedVolumes: VolumeDriftInput[]): Determini
  * Volumes with no chapters in the digests keep input order at the end —
  * never dropped for lack of placement.
  */
-export function orderVolumesByChapter<
-  T extends { volumeId: string }
->(volumes: T[], chapterDigests: Array<{ volumeId?: string | null; chapterNumber?: number | null }>): T[] {
+export function orderVolumesByChapter<T extends { volumeId: string }>(
+  volumes: T[],
+  chapterDigests: Array<{ volumeId?: string | null; chapterNumber?: number | null }>
+): T[] {
   const minChapter = new Map<string, number>()
   for (const d of chapterDigests) {
     if (d?.volumeId == null || typeof d.chapterNumber !== 'number') continue

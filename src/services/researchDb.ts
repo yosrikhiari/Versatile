@@ -105,7 +105,10 @@ export async function getAllChunksForProject(projectId: any) {
 }
 
 export async function addResearchChunks(chunks: any) {
-  const withStatus = chunks.map((c: any) => ({ ...c, embeddingStatus: c.embeddingStatus || PENDING }))
+  const withStatus = chunks.map((c: any) => ({
+    ...c,
+    embeddingStatus: c.embeddingStatus || PENDING
+  }))
   const BATCH = 500
   const allIds = []
   const committedIds = []
@@ -175,7 +178,12 @@ export async function markFailed(ids: any) {
   invalidateChunkCache()
 }
 
-export async function markStale(projectId: any, currentProvider: any, currentModel: any, currentVersion: any) {
+export async function markStale(
+  projectId: any,
+  currentProvider: any,
+  currentModel: any,
+  currentVersion: any
+) {
   const chunks = await db.researchChunks
     .where({ projectId })
     .filter(
@@ -271,7 +279,9 @@ export async function searchLexical(projectId: any, query: any, limit = 20) {
   const N = allChunks.length
   if (N === 0) return []
 
-  const matchers = qTokens.map((t: any) => new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'))
+  const matchers = qTokens.map(
+    (t: any) => new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+  )
   const T = matchers.length
 
   const df = new Array(T).fill(0)
@@ -344,11 +354,13 @@ export async function semanticSearch(projectId: any, queryEmbedding: any, limit 
   if (indexData?.index) {
     try {
       const results = await indexData.index.search(q, limit)
-      return results.map((r: any) => ({
-        id: r.id,
-        _score: r.score,
-        ...r.metadata
-      })).filter((r: any) => r._score > 0.1)
+      return results
+        .map((r: any) => ({
+          id: r.id,
+          _score: r.score,
+          ...r.metadata
+        }))
+        .filter((r: any) => r._score > 0.1)
     } catch (e) {
       console.warn('[researchDb] Vector index search failed, falling back to brute-force:', e)
     }
@@ -380,8 +392,8 @@ async function getOrBuildVectorIndex(projectId: any, chunks: any[], queryDim: nu
 
   // Build new index using queryDim to filter chunks
   const items = chunks
-    .filter(c => c.embedding && c.embedding.length === queryDim)
-    .map(c => ({
+    .filter((c) => c.embedding && c.embedding.length === queryDim)
+    .map((c) => ({
       id: c.id,
       vector: toNormalizedF32(c.embedding)!,
       metadata: {

@@ -65,7 +65,12 @@ export const useVolumeStoryNetworkStore = defineStore('volumeStoryNetwork', () =
     }
   }
 
-  async function assignEntityToVolume(entityType: any, entityId: any, volumeId: any, isPrimary: any = false) {
+  async function assignEntityToVolume(
+    entityType: any,
+    entityId: any,
+    volumeId: any,
+    isPrimary: any = false
+  ) {
     const id = await addEntityToVolume(null, entityType, entityId, volumeId, isPrimary)
     // Invalidate cache
     if (volumeEntities.value[volumeId]) {
@@ -130,7 +135,12 @@ export const useVolumeStoryNetworkStore = defineStore('volumeStoryNetwork', () =
     return volumeEdges.value[volumeId] || []
   }
 
-  async function applyEventToVolumeNetwork(event: any, volumeId: any, nameToId: any, projectId: any) {
+  async function applyEventToVolumeNetwork(
+    event: any,
+    volumeId: any,
+    nameToId: any,
+    projectId: any
+  ) {
     if (!event.from || !event.to) return null
 
     const from = nameToId[event.from]

@@ -536,7 +536,11 @@ function extractPotentialEntities(text: string) {
   }
 }
 
-function getNewEntities(extracted: { characters: string[]; locations: string[] }, existingCharacters: { name?: string; id: string }[], existingLocations: { name?: string; id: string }[]) {
+function getNewEntities(
+  extracted: { characters: string[]; locations: string[] },
+  existingCharacters: { name?: string; id: string }[],
+  existingLocations: { name?: string; id: string }[]
+) {
   const characterMap = new Map(existingCharacters.map((c) => [c.name?.toLowerCase().trim(), c]))
   const locationMap = new Map(existingLocations.map((l) => [l.name?.toLowerCase().trim(), l]))
 

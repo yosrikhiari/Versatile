@@ -20,27 +20,26 @@ async function runSingleVariant(
   let error: string | undefined
 
   try {
-    const result = await aiGenerateJson<{ score: number; dimensionScores?: Record<string, number> }>(
-      prompt,
-      systemPrompt || '',
-      {
-        provider: variant.provider,
-        model: variant.model,
-        temperature: variant.temperature,
-        signal,
-        schema: {
-          type: 'object',
-          properties: {
-            score: { type: 'number', description: 'Overall quality score 1-10' },
-            dimensionScores: { type: 'object', description: 'Per-dimension scores 1-10' },
-            issues: { type: 'array', items: { type: 'string' } },
-            strengths: { type: 'array', items: { type: 'string' } }
-          },
-          required: ['score']
+    const result = await aiGenerateJson<{
+      score: number
+      dimensionScores?: Record<string, number>
+    }>(prompt, systemPrompt || '', {
+      provider: variant.provider,
+      model: variant.model,
+      temperature: variant.temperature,
+      signal,
+      schema: {
+        type: 'object',
+        properties: {
+          score: { type: 'number', description: 'Overall quality score 1-10' },
+          dimensionScores: { type: 'object', description: 'Per-dimension scores 1-10' },
+          issues: { type: 'array', items: { type: 'string' } },
+          strengths: { type: 'array', items: { type: 'string' } }
         },
-        schemaName: 'eval_result'
-      }
-    )
+        required: ['score']
+      },
+      schemaName: 'eval_result'
+    })
     score = result.score ?? 0
     dimensionScores = result.dimensionScores ?? {}
   } catch (e) {
@@ -88,7 +87,7 @@ export async function runEvalHarness(
   for (let i = 0; i < variants.length; i += concurrency) {
     const batch = variants.slice(i, i + concurrency)
     const batchResults = await Promise.allSettled(
-      batch.map(v => runSingleVariant(prompt, v, systemPrompt, signal))
+      batch.map((v) => runSingleVariant(prompt, v, systemPrompt, signal))
     )
     for (const result of batchResults) {
       if (result.status === 'fulfilled') {

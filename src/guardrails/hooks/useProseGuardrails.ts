@@ -8,7 +8,7 @@ const SCENE_KINDS: GuardrailKind[] = [
   'fact_canon',
   'content_safety',
   'pii_leakage',
-  'schema_conformance',
+  'schema_conformance'
 ]
 
 /** Free-form prose with no entity contract to honour (what-if branches, sparks). */
@@ -36,6 +36,6 @@ export function useProseGuardrails() {
     validateBlurb: (context: ProseContext) => run(context, STRUCTURAL_KINDS),
     /** Scene edits and rewrites — same contract as a fresh scene, minus the schema envelope. */
     validateRewrite: (context: ProseContext) =>
-      run(context, ['entity', 'relationship', 'fact_canon', 'content_safety']),
+      run(context, ['entity', 'relationship', 'fact_canon', 'content_safety'])
   }
 }

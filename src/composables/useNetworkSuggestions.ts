@@ -85,7 +85,13 @@ function generateEmbeddingRationale(
   return rationale
 }
 
-function calculateEmbeddingConfidence(sourceType: any, targetType: any, source: any, target: any, similarity: any) {
+function calculateEmbeddingConfidence(
+  sourceType: any,
+  targetType: any,
+  source: any,
+  target: any,
+  similarity: any
+) {
   let confidence = similarity
 
   if (sourceType === 'character' && targetType === 'character') {
@@ -251,7 +257,12 @@ function getEntityTypePrefix(type: any) {
  * Generate basic connections from entity metadata alone (no embeddings required).
  * Used as a last-resort fallback when AI and embeddings are unavailable.
  */
-function generateMetadataConnections(characters: any, locations: any, plotThreads: any, existingKeys: any) {
+function generateMetadataConnections(
+  characters: any,
+  locations: any,
+  plotThreads: any,
+  existingKeys: any
+) {
   const results: any[] = []
   const connected = new Set()
 
@@ -885,7 +896,9 @@ Analyze these elements using semantic understanding and suggest meaningful new c
         : ''
 
       const genreContext = [
-        projectStore.currentCategory?.trim() ? `Category: ${projectStore.currentCategory.trim()}` : '',
+        projectStore.currentCategory?.trim()
+          ? `Category: ${projectStore.currentCategory.trim()}`
+          : '',
         projectStore.currentGenre?.trim() ? `Genre: ${projectStore.currentGenre.trim()}` : ''
       ]
         .filter(Boolean)

@@ -42,12 +42,18 @@ export function getEmbeddingCacheSize(): number {
   return embeddingCache.size
 }
 
-async function embedBatch(inputs: string[], model: string | null, provider: string): Promise<(Float32Array | null)[]> {
+async function embedBatch(
+  inputs: string[],
+  model: string | null,
+  provider: string
+): Promise<(Float32Array | null)[]> {
   if (inputs.length === 0) return []
 
   const caps =
     EMBEDDING_PROVIDER_CAPABILITIES[provider as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES] ||
-    EMBEDDING_PROVIDER_CAPABILITIES[EMBEDDING_PROVIDERS.OLLAMA as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES]
+    EMBEDDING_PROVIDER_CAPABILITIES[
+      EMBEDDING_PROVIDERS.OLLAMA as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES
+    ]
   const batchSize = caps.maxBatchSize || 32
 
   if (inputs.length <= batchSize) {
@@ -61,7 +67,7 @@ async function embedBatch(inputs: string[], model: string | null, provider: stri
     batches.push(inputs.slice(i, i + batchSize))
   }
 
-  const results: ((Float32Array | null)[])[] = new Array(batches.length)
+  const results: (Float32Array | null)[][] = new Array(batches.length)
   let nextBatch = 0
 
   async function worker(): Promise<void> {
@@ -84,7 +90,11 @@ interface EmbeddingApiResult {
   model: string | null
 }
 
-async function embedBatchInternal(inputs: string[], model: string | null, provider: string): Promise<(Float32Array | null)[]> {
+async function embedBatchInternal(
+  inputs: string[],
+  model: string | null,
+  provider: string
+): Promise<(Float32Array | null)[]> {
   if (inputs.length === 0) return []
 
   const keyModel =
@@ -135,7 +145,9 @@ async function embedBatchInternal(inputs: string[], model: string | null, provid
     case EMBEDDING_PROVIDERS.MISTRAL: {
       const controller = new AbortController()
       const timeout = armTimeLimit(300000, (ms) =>
-        controller.abort(new DOMException(`Embedding request timed out after ${ms}ms`, 'AbortError'))
+        controller.abort(
+          new DOMException(`Embedding request timed out after ${ms}ms`, 'AbortError')
+        )
       )
       try {
         const response = await fetch(MISTRAL_API_URL, {
@@ -231,7 +243,10 @@ async function embedBatchInternal(inputs: string[], model: string | null, provid
   return results
 }
 
-export async function getEmbedding(text: string, options: { provider?: string; model?: string } = {}): Promise<Float32Array | null> {
+export async function getEmbedding(
+  text: string,
+  options: { provider?: string; model?: string } = {}
+): Promise<Float32Array | null> {
   // Resolved from the same place the indexer resolves it. This used to hardcode
   // ollama + a null model (which embedBatchInternal then turned into
   // 'nomic-embed-text'), so every retrieval query — the story director's, the
@@ -243,7 +258,10 @@ export async function getEmbedding(text: string, options: { provider?: string; m
   return results[0] || null
 }
 
-export async function getEmbeddings(texts: string[], options: { provider?: string; model?: string } = {}): Promise<EmbeddingApiResult> {
+export async function getEmbeddings(
+  texts: string[],
+  options: { provider?: string; model?: string } = {}
+): Promise<EmbeddingApiResult> {
   const valid = texts.map((t, i) => ({ text: t, index: i }))
   const toEmbed = valid.filter((v) => v.text && v.text.trim())
   if (toEmbed.length === 0) return { vectors: texts.map(() => null), provider: null, model: null }

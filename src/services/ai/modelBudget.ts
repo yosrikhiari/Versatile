@@ -73,7 +73,12 @@ export function estimateSchemaOverhead(schema: Record<string, unknown> | undefin
  * result so structured-output calls get extra headroom for JSON envelope tokens
  * (keys, braces, quotes) that aren't part of the content the call site estimated.
  */
-export function resolveMaxTokens(model: string, inputTokens: number, explicit?: number, schemaOverhead?: number): number {
+export function resolveMaxTokens(
+  model: string,
+  inputTokens: number,
+  explicit?: number,
+  schemaOverhead?: number
+): number {
   if (typeof explicit === 'number' && Number.isFinite(explicit) && explicit > 0) {
     return explicit
   }
@@ -107,7 +112,7 @@ export function checkInputBudget(model: string, inputTokens: number): BudgetOver
   if (window !== null && inputTokens > window) {
     throw new InputBudgetExceededError(
       `[modelBudget] ${model}: input is ${inputTokens} tokens, ` +
-      `exceeds context window of ${window}`,
+        `exceeds context window of ${window}`,
       model,
       inputTokens,
       window

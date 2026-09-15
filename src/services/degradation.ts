@@ -12,7 +12,11 @@ interface DimensionDelta {
 export function computeDegradation(
   originalCritique: Critique | null | undefined,
   revisedCritique: Critique | null | undefined
-): { dimensions: Record<string, DimensionDelta>; hasRegressions: boolean; hasMajorRegressions: boolean } {
+): {
+  dimensions: Record<string, DimensionDelta>
+  hasRegressions: boolean
+  hasMajorRegressions: boolean
+} {
   if (!originalCritique || !revisedCritique) {
     return { dimensions: {}, hasRegressions: false, hasMajorRegressions: false }
   }

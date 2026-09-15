@@ -5,7 +5,7 @@ const ROLE_TITLE_PATTERNS: RegExp[] = [
   /^\w+\s+who\s+/i,
   /^(a|an)\s+/i,
   /^(betrayer|antagonist|mentor|protagonist|villain|hero|sidekick|detective|spy|assassin|guardian|traitor|rival|ally|foe|friend|enemy|leader|follower|master|student|teacher|parent|child|sibling|lover|partner|stranger|outsider|insider|insider|traitor|mole|double\s+agent|secret\s+agent|undercover|informant|snitch|rat)$/i,
-  /^[A-Z][a-z]+\s+[A-Z][a-z]+\s+(who|that|which)\b/i,
+  /^[A-Z][a-z]+\s+[A-Z][a-z]+\s+(who|that|which)\b/i
 ]
 
 const COMMON_TITLES = new Set([
@@ -23,7 +23,7 @@ const COMMON_TITLES = new Set([
   'the guardian',
   'the traitor',
   'the mole',
-  'the informant',
+  'the informant'
 ])
 
 function isProperName(name: string): boolean {
@@ -38,10 +38,10 @@ function isProperName(name: string): boolean {
     if (pattern.test(trimmed)) return false
   }
 
-  const words = trimmed.split(/\s+/).filter(w => w.length > 0)
+  const words = trimmed.split(/\s+/).filter((w) => w.length > 0)
   if (words.length < 2) return false
 
-  if (!words.every(w => /^[A-Z][a-z'-]+$/.test(w))) return false
+  if (!words.every((w) => /^[A-Z][a-z'-]+$/.test(w))) return false
 
   return true
 }
@@ -63,10 +63,14 @@ export function createCharacterNameGuard(enabled: boolean = true): GuardFunction
         passed: false,
         severity: 'detective',
         message: `Character name "${name}" appears to be a role title or description, not a proper personal name`,
-        details: { name, suggestion: 'Use a proper name like "Marcus Vane" or "Elara Thorne". Put the narrative role in the "role" field.' },
+        details: {
+          name,
+          suggestion:
+            'Use a proper name like "Marcus Vane" or "Elara Thorne". Put the narrative role in the "role" field.'
+        },
         layer: context.layer,
         contextId: context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 

@@ -350,7 +350,11 @@ interface Chunk {
   endIdx: number
 }
 
-function computeChunksForSentences(sentences: string[], embeddings: number[][], threshold: number): Chunk[] {
+function computeChunksForSentences(
+  sentences: string[],
+  embeddings: number[][],
+  threshold: number
+): Chunk[] {
   if (sentences.length <= 1) {
     return [{ sentences: [...sentences], startIdx: 0, endIdx: 0 }]
   }
@@ -477,7 +481,11 @@ function applyBreaks(sentences: string[], breaks: number[]): SentenceGroup[] {
   return groups
 }
 
-function computeChunksFromParagraphGroups(groups: SentenceGroup[], embeddings: number[][], threshold: number): Chunk[] {
+function computeChunksFromParagraphGroups(
+  groups: SentenceGroup[],
+  embeddings: number[][],
+  threshold: number
+): Chunk[] {
   if (groups.length <= 1) {
     return [
       {

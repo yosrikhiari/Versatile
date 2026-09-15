@@ -101,7 +101,12 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     }
   }
 
-  async function addCharacterData(projectId: any, data: any, source = 'manual', chapterId: any = null) {
+  async function addCharacterData(
+    projectId: any,
+    data: any,
+    source = 'manual',
+    chapterId: any = null
+  ) {
     const id = await addCharacter(projectId, { ...data, source, chapterId })
     characters.value.push({ id, projectId, ...data, source, chapterId, lastEditedAt: Date.now() })
     queueDocumentRegeneration(['characters', 'relationships'])
@@ -140,11 +145,16 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
       removeEntityFromNodeParents(projectId, 'character', id)
     ])
     await deleteCharacter(id)
-      characters.value = characters.value.filter((c: any) => c.id !== id)
+    characters.value = characters.value.filter((c: any) => c.id !== id)
     queueDocumentRegeneration(['characters', 'relationships'])
   }
 
-  async function addLocationData(projectId: any, data: any, source = 'manual', chapterId: any = null) {
+  async function addLocationData(
+    projectId: any,
+    data: any,
+    source = 'manual',
+    chapterId: any = null
+  ) {
     const id = await addLocation(projectId, { ...data, source, chapterId })
     locations.value.push({ id, projectId, ...data, source, chapterId })
     queueDocumentRegeneration(['world', 'relationships'])
@@ -184,8 +194,16 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
     queueDocumentRegeneration(['world', 'relationships'])
   }
 
-  async function addPlotThreadData(projectId: any, data: any, source = 'manual', chapterId: any = null) {
-    const maxOrder = plotThreads.value.reduce((max: any, t: any) => Math.max(max, t.timelineOrder ?? 0), 0)
+  async function addPlotThreadData(
+    projectId: any,
+    data: any,
+    source = 'manual',
+    chapterId: any = null
+  ) {
+    const maxOrder = plotThreads.value.reduce(
+      (max: any, t: any) => Math.max(max, t.timelineOrder ?? 0),
+      0
+    )
     const id = await addPlotThread(projectId, {
       ...data,
       source,
@@ -208,7 +226,10 @@ export const useStoryBibleStore = defineStore('storyBible', () => {
   // sequential timelineOrder values continuing from the current max.
   async function addPlotThreadsBatchData(projectId: any, dataList: any) {
     if (!Array.isArray(dataList) || dataList.length === 0) return []
-    let maxOrder = plotThreads.value.reduce((max: any, t: any) => Math.max(max, t.timelineOrder ?? 0), 0)
+    let maxOrder = plotThreads.value.reduce(
+      (max: any, t: any) => Math.max(max, t.timelineOrder ?? 0),
+      0
+    )
     const rows = dataList.map((data: any) => ({
       source: 'manual',
       chapterId: null,

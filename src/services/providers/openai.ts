@@ -41,7 +41,12 @@ function timeoutSignal(options: OpenAIOptions) {
   }
 }
 
-export async function generate(prompt: string, systemPrompt: string, model: string, options: OpenAIOptions = {}) {
+export async function generate(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  options: OpenAIOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('OpenAI API key not configured')
 
@@ -70,7 +75,10 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
       const errMsg = error.error?.message || `OpenAI error: ${response.status}`
-      if (error.error?.code === 'context_length_exceeded' || /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)) {
+      if (
+        error.error?.code === 'context_length_exceeded' ||
+        /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)
+      ) {
         throw new TokenLimitError(errMsg, PROVIDERS.OPENAI, model, options.maxTokens)
       }
       throw new Error(errMsg)
@@ -94,7 +102,13 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
   }
 }
 
-export async function stream(prompt: string, systemPrompt: string, model: string, onChunk?: (text: string, full: string) => void, options: OpenAIOptions = {}) {
+export async function stream(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  onChunk?: (text: string, full: string) => void,
+  options: OpenAIOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('OpenAI API key not configured')
 
@@ -124,7 +138,10 @@ export async function stream(prompt: string, systemPrompt: string, model: string
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
       const errMsg = error.error?.message || `OpenAI error: ${response.status}`
-      if (error.error?.code === 'context_length_exceeded' || /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)) {
+      if (
+        error.error?.code === 'context_length_exceeded' ||
+        /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)
+      ) {
         throw new TokenLimitError(errMsg, PROVIDERS.OPENAI, model, options.maxTokens)
       }
       throw new Error(errMsg)
@@ -175,7 +192,13 @@ export async function stream(prompt: string, systemPrompt: string, model: string
 // Structured output via response_format json_schema. strict:false keeps the
 // call resilient to loosely-specified schemas; the caller adds a sanitizeJson
 // fallback for older models that ignore the directive.
-export async function generateStructured(prompt: string, systemPrompt: string, model: string, schema: Record<string, unknown>, options: OpenAIOptions = {}) {
+export async function generateStructured(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  schema: Record<string, unknown>,
+  options: OpenAIOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('OpenAI API key not configured')
 
@@ -208,7 +231,10 @@ export async function generateStructured(prompt: string, systemPrompt: string, m
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
       const errMsg = error.error?.message || `OpenAI error: ${response.status}`
-      if (error.error?.code === 'context_length_exceeded' || /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)) {
+      if (
+        error.error?.code === 'context_length_exceeded' ||
+        /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)
+      ) {
         throw new TokenLimitError(errMsg, PROVIDERS.OPENAI, model, options.maxTokens)
       }
       throw new Error(errMsg)

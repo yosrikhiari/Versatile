@@ -55,15 +55,18 @@ function buildBody(prompt: string, systemPrompt: string, options: GeminiOptions)
   if (options.stop) {
     body.generationConfig = {
       ...(body.generationConfig as Record<string, unknown>),
-      stopSequences: Array.isArray(options.stop)
-        ? options.stop
-        : [options.stop]
+      stopSequences: Array.isArray(options.stop) ? options.stop : [options.stop]
     }
   }
   return body
 }
 
-export async function generate(prompt: string, systemPrompt: string, model: string, options: GeminiOptions = {}) {
+export async function generate(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  options: GeminiOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('Gemini API key not configured')
 
@@ -106,7 +109,13 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
   }
 }
 
-export async function stream(prompt: string, systemPrompt: string, model: string, onChunk?: (text: string, full: string) => void, options: GeminiOptions = {}) {
+export async function stream(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  onChunk?: (text: string, full: string) => void,
+  options: GeminiOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('Gemini API key not configured')
 

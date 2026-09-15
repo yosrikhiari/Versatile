@@ -63,7 +63,10 @@ export function parseHtmlToParagraphs(html: string): Paragraph[] {
   return paragraphs
 }
 
-export function parseHtmlToDialogueBlocks(html: string, dialogueDetector: ((text: string) => unknown[]) | null): DialogueBlock[] {
+export function parseHtmlToDialogueBlocks(
+  html: string,
+  dialogueDetector: ((text: string) => unknown[]) | null
+): DialogueBlock[] {
   const paragraphs = parseHtmlToParagraphs(html)
   if (!dialogueDetector) return paragraphs as DialogueBlock[]
 

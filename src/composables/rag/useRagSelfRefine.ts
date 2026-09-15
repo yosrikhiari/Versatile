@@ -33,10 +33,11 @@ export async function useRagSelfRefine(sceneText: any, contextBlock: any) {
 
     let verdict
     try {
-      verdict = await aiGenerateJson<{ needsRevision?: boolean; reason?: string; missingElements?: string[] }>(
-        judgePrompt,
-        SYSTEM_CHECK
-      )
+      verdict = await aiGenerateJson<{
+        needsRevision?: boolean
+        reason?: string
+        missingElements?: string[]
+      }>(judgePrompt, SYSTEM_CHECK)
     } catch {
       break
     }

@@ -161,8 +161,7 @@ export function useActiveLearning() {
           r.workspaceType = wt
           const activeThreshold = getActiveThreshold(wt, r.dimension)
           r.threshold = activeThreshold
-          r.activeThresholdIsCustom =
-            getCustomThreshold(wt, r.dimension) !== null
+          r.activeThresholdIsCustom = getCustomThreshold(wt, r.dimension) !== null
           if (r.avgScore !== null) {
             r.gap = parseFloat(Math.max(0, activeThreshold - r.avgScore).toFixed(1))
           }

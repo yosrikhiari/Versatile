@@ -6,7 +6,7 @@ import type {
   GuardrailRunResult,
   GuardFunction,
   GuardMeta,
-  GuardRegistration,
+  GuardRegistration
 } from './types'
 
 /**
@@ -29,7 +29,7 @@ const DEFAULT_META: Record<GuardrailKind, GuardMeta> = {
   circuit_breaker: { category: 'operational', cost: 'O(1)', layers: ['ai_input', 'ai_output'] },
   integrity: { category: 'operational', cost: 'O(1)', layers: ['storage_write', 'sync'] },
   character_name: { category: 'structural', cost: 'O(1)', layers: ['ai_output'] },
-  undocumented_character: { category: 'structural', cost: 'O(n)', layers: ['ai_output'] },
+  undocumented_character: { category: 'structural', cost: 'O(n)', layers: ['ai_output'] }
 }
 
 const DEFAULT_LLM_BUDGET = 25
@@ -53,7 +53,7 @@ export const GuardrailRegistry = {
       guard,
       category: meta.category ?? base.category,
       cost: meta.cost ?? base.cost,
-      layers: meta.layers ?? base.layers,
+      layers: meta.layers ?? base.layers
     })
   },
 
@@ -166,7 +166,7 @@ export const GuardrailRegistry = {
   /** Drops all event subscribers. For tests that need a clean listener set. */
   clearListeners(): void {
     listeners.clear()
-  },
+  }
 }
 
 function selectGuards(context: GuardrailContext): GuardRegistration[] {
@@ -185,11 +185,11 @@ function enrich(
   context: GuardrailContext,
   durationMs: number
 ): GuardrailResult[] {
-  return raw.map(r => ({
+  return raw.map((r) => ({
     ...r,
     category: r.category ?? reg.category,
     durationMs: r.durationMs ?? durationMs,
-    entryPoint: r.entryPoint ?? context.entryPoint,
+    entryPoint: r.entryPoint ?? context.entryPoint
   }))
 }
 
@@ -210,7 +210,7 @@ function guardErrorResult(
     timestamp: Date.now(),
     category: reg.category,
     durationMs,
-    entryPoint: context.entryPoint,
+    entryPoint: context.entryPoint
   }
 }
 
@@ -220,8 +220,8 @@ function finalize(
   skipped: GuardrailKind[],
   durationMs: number
 ): GuardrailRunResult {
-  const blocking = results.filter(r => !r.passed && r.severity === 'blocking')
-  const detective = results.filter(r => !r.passed && r.severity === 'detective')
+  const blocking = results.filter((r) => !r.passed && r.severity === 'blocking')
+  const detective = results.filter((r) => !r.passed && r.severity === 'detective')
 
   for (const result of results) {
     if (!result.passed) {
@@ -232,7 +232,7 @@ function finalize(
         layer: context.layer,
         result,
         context: context as unknown as Record<string, unknown>,
-        resolved: false,
+        resolved: false
       })
     }
   }

@@ -62,11 +62,17 @@ export const BUILT_IN_TEMPLATES: StoryTemplate[] = [
   {
     id: 'scene',
     title: 'Scene',
-    description: 'POV, setting, goal, conflict — the four lines a scene needs before its first sentence.',
+    description:
+      'POV, setting, goal, conflict — the four lines a scene needs before its first sentence.',
     fields: [
       { key: 'pov', label: 'POV character', placeholder: 'Whose eyes', metadata: 'pov' },
       { key: 'setting', label: 'Setting', placeholder: 'Where, when', metadata: 'location' },
-      { key: 'cast', label: 'Also present', placeholder: 'Names, comma-separated', metadata: 'charactersPresent' },
+      {
+        key: 'cast',
+        label: 'Also present',
+        placeholder: 'Names, comma-separated',
+        metadata: 'charactersPresent'
+      },
       { key: 'goal', label: 'What {{pov}} wants', placeholder: 'The concrete want' },
       { key: 'conflict', label: 'What stands in the way', placeholder: 'Person, place or fact' }
     ],
@@ -76,11 +82,16 @@ export const BUILT_IN_TEMPLATES: StoryTemplate[] = [
   {
     id: 'chapter-opener',
     title: 'Chapter opener',
-    description: 'Ground the reader in the first paragraph: place, time, who, and the thing that is wrong.',
+    description:
+      'Ground the reader in the first paragraph: place, time, who, and the thing that is wrong.',
     fields: [
       { key: 'pov', label: 'POV character', metadata: 'pov' },
       { key: 'setting', label: 'Setting', metadata: 'location' },
-      { key: 'time', label: 'Time since last chapter', placeholder: 'the next morning / three weeks later' },
+      {
+        key: 'time',
+        label: 'Time since last chapter',
+        placeholder: 'the next morning / three weeks later'
+      },
       { key: 'wrong', label: 'The thing that is wrong', placeholder: 'Concrete and visible' }
     ],
     body: '{{time}}. {{setting}}. {{pov}} noticed {{wrong}}.\n\n',

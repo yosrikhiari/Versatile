@@ -29,12 +29,7 @@ export type GuardrailCost = 'O(1)' | 'O(n)' | 'llm'
 
 export type GuardrailSeverity = 'blocking' | 'detective'
 
-export type GuardrailLayer =
-  | 'ai_output'
-  | 'ai_input'
-  | 'user_edit'
-  | 'storage_write'
-  | 'sync'
+export type GuardrailLayer = 'ai_output' | 'ai_input' | 'user_edit' | 'storage_write' | 'sync'
 
 export interface GuardrailResult {
   kind: GuardrailKind

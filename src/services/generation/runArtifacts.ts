@@ -86,10 +86,7 @@ export async function snapshotBeforeRun(
  * of its three context sources; with the table empty it silently contributed
  * nothing, and the run's own outcome was invisible to the next session.
  */
-export async function saveRunStateSnapshot(
-  projectId: any,
-  state: any
-): Promise<ArtifactOutcome> {
+export async function saveRunStateSnapshot(projectId: any, state: any): Promise<ArtifactOutcome> {
   if (!projectId || !state) return { ok: true, detail: 'no state to save' }
   try {
     // `sessionId` is nullable in the schema and no run-level session id exists

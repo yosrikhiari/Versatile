@@ -26,7 +26,10 @@ interface PdfExtractResult {
   pageCount: number
 }
 
-export async function extractPdfText(file: File, onProgress: (pct: number) => void = () => {}): Promise<PdfExtractResult> {
+export async function extractPdfText(
+  file: File,
+  onProgress: (pct: number) => void = () => {}
+): Promise<PdfExtractResult> {
   const arrayBuffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
   const pages: string[] = []
@@ -73,7 +76,10 @@ interface FileExtractResult {
   fileName: string
 }
 
-export async function extractFileText(file: File, onProgress: (pct: number) => void = () => {}): Promise<FileExtractResult> {
+export async function extractFileText(
+  file: File,
+  onProgress: (pct: number) => void = () => {}
+): Promise<FileExtractResult> {
   const type = detectFileType(file)
   if (!type) throw new Error(`Unsupported file type: ${file.name}`)
 

@@ -17,7 +17,9 @@ export async function exportProject(projectId: string) {
   const annotations = await db.annotations.where('projectId').equals(projectId).toArray()
   const snippets = await db.snippets.where('projectId').equals(projectId).toArray()
   const volumes = await db.volumes.where('projectId').equals(projectId).toArray()
-  const volumeEntities = await db.volumeEntities.filter((e: any) => e.projectId === projectId).toArray()
+  const volumeEntities = await db.volumeEntities
+    .filter((e: any) => e.projectId === projectId)
+    .toArray()
   const graphEdges = await db.graphEdges.where('projectId').equals(projectId).toArray()
   const sections = await db.sections.where('projectId').equals(projectId).toArray()
   const subsections = await db.subsections.where('projectId').equals(projectId).toArray()
@@ -141,7 +143,11 @@ export async function importProject(data: Record<string, any>) {
       }
 
       if (data.annotations?.length > 0) {
-        const annotations = data.annotations.map((a: any) => ({ ...a, id: undefined, projectId: id }))
+        const annotations = data.annotations.map((a: any) => ({
+          ...a,
+          id: undefined,
+          projectId: id
+        }))
         await db.annotations.bulkAdd(annotations)
       }
 

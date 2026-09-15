@@ -4,7 +4,9 @@ import { ref, type Ref } from 'vue'
  * Minimal async-list loading helper (migrated to TypeScript — M-7.1).
  * Wraps a loader and tracks an `isLoading` flag around it.
  */
-export function useLoading<T, A extends unknown[] = unknown[]>(loadFn: (...args: A) => Promise<T[]>): {
+export function useLoading<T, A extends unknown[] = unknown[]>(
+  loadFn: (...args: A) => Promise<T[]>
+): {
   items: Ref<T[]>
   isLoading: Ref<boolean>
   load: (...args: A) => Promise<void>

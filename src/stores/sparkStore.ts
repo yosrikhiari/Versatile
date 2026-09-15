@@ -33,7 +33,11 @@ export const useSparkStore = defineStore('spark', () => {
     return result.success
   }
 
-  async function generatePrompt(type: any, characterNames: any[] = [], manuscriptContext: any | null = null) {
+  async function generatePrompt(
+    type: any,
+    characterNames: any[] = [],
+    manuscriptContext: any | null = null
+  ) {
     isGenerating.value = true
     error.value = null
     try {

@@ -9,7 +9,11 @@
  */
 import type { ContentKind } from './storyVectorIndex'
 
-export function queueStoryIndex(kind: ContentKind, refId: unknown, loadRow: () => Promise<any>): void {
+export function queueStoryIndex(
+  kind: ContentKind,
+  refId: unknown,
+  loadRow: () => Promise<any>
+): void {
   if (refId == null) return
   void (async () => {
     try {

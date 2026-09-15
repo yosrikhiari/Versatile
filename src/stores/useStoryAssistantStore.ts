@@ -2,7 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { aiGenerate } from '../services/aiService'
 import { FEATURES } from '../config/ai'
-import { searchStorySemantic, type StoryMatch, type ContentKind } from '../services/storyVectorIndex'
+import {
+  searchStorySemantic,
+  type StoryMatch,
+  type ContentKind
+} from '../services/storyVectorIndex'
 import { rerankChunks } from '../services/rerankingService'
 import { useManuscriptStore } from './manuscriptStore'
 import { useProjectStore } from './projectStore'
@@ -49,15 +53,27 @@ export function buildRagContext(matches: StoryMatch[]): { context: string; citat
   const lines: string[] = []
   for (const m of (matches || []).slice(0, MAX_CONTEXT_CHUNKS)) {
     const n = citations.length + 1
-    citations.push({ n, kind: m.kind, refId: m.refId, title: m.title, text: m.text, score: m.score })
-    const body = String(m.text || '').slice(0, MAX_CHUNK_CHARS).trim()
+    citations.push({
+      n,
+      kind: m.kind,
+      refId: m.refId,
+      title: m.title,
+      text: m.text,
+      score: m.score
+    })
+    const body = String(m.text || '')
+      .slice(0, MAX_CHUNK_CHARS)
+      .trim()
     lines.push(`[${n}] ${KIND_WORD[m.kind] || m.kind}: ${m.title || m.refId}\n${body}`)
   }
   return { context: lines.join('\n\n'), citations }
 }
 
 /** Pure: the prompt. Cite by [n]; say so when the context does not answer. */
-export function buildRagPrompt(question: string, context: string): { system: string; user: string } {
+export function buildRagPrompt(
+  question: string,
+  context: string
+): { system: string; user: string } {
   return {
     system:
       'You answer questions about a novel manuscript using ONLY the numbered excerpts provided. ' +
@@ -128,9 +144,15 @@ export const useStoryAssistantStore = defineStore('storyAssistant', () => {
         return turn
       }
       const { system, user } = buildRagPrompt(q, context)
-      const answer = await aiGenerate(user, system, { feature: FEATURES.CHARACTER_CHAT, temperature: 0.2, maxTokens: 500 })
+      const answer = await aiGenerate(user, system, {
+        feature: FEATURES.CHARACTER_CHAT,
+        temperature: 0.2,
+        maxTokens: 500
+      })
       turn.text = String(answer || '').trim()
-      turn.citations = citedIn(turn.text, citations).length ? citedIn(turn.text, citations) : citations
+      turn.citations = citedIn(turn.text, citations).length
+        ? citedIn(turn.text, citations)
+        : citations
       return turn
     } catch (e: any) {
       const message = e?.message || 'The assistant could not answer'

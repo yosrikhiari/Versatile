@@ -48,7 +48,10 @@ interface GateResults {
 }
 
 interface DegradationInfo {
-  dimensions: Record<string, { before: number | null; after: number | null; delta: number; status: string }>
+  dimensions: Record<
+    string,
+    { before: number | null; after: number | null; delta: number; status: string }
+  >
   hasRegressions: boolean
   hasMajorRegressions: boolean
 }
@@ -71,7 +74,10 @@ interface SceneEntry {
   dimensionScores?: Record<string, number | null>
   hasRegressions?: boolean
   hasMajorRegressions?: boolean
-  degradation?: Record<string, { before: number | null; after: number | null; delta: number; status: string }>
+  degradation?: Record<
+    string,
+    { before: number | null; after: number | null; delta: number; status: string }
+  >
 }
 
 interface SceneInfo {
@@ -116,7 +122,9 @@ export function useSceneEval() {
     if (entries.length === 0) return null
     const evaluated = entries.filter((e: SceneEntry) => e.critiqueResult)
     if (evaluated.length === 0) return null
-    const scores = evaluated.map((e: SceneEntry) => e.critiqueResult!.score).filter((s: any) => typeof s === 'number')
+    const scores = evaluated
+      .map((e: SceneEntry) => e.critiqueResult!.score)
+      .filter((s: any) => typeof s === 'number')
     const avgScore =
       scores.length > 0
         ? Math.round((scores.reduce((a: number, b: number) => a + b, 0) / scores.length) * 10) / 10

@@ -23,7 +23,11 @@ GuardrailRegistry.onEvent((event: GuardrailEvent) => {
   if (notification) {
     notifications = [notification, ...notifications].slice(0, 100)
     for (const cb of listeners) {
-      try { cb(notifications) } catch { /* noop */ }
+      try {
+        cb(notifications)
+      } catch {
+        /* noop */
+      }
     }
   }
 })
@@ -38,7 +42,7 @@ function eventToNotification(event: GuardrailEvent): GuardrailUserNotification |
     severity: sev,
     timestamp: event.result.timestamp,
     resolved: false,
-    details: (event.result.details ?? {}) as Record<string, unknown>,
+    details: (event.result.details ?? {}) as Record<string, unknown>
   }
 }
 
@@ -53,16 +57,24 @@ export function getGuardrailNotifications(): GuardrailUserNotification[] {
 }
 
 export function dismissGuardrailNotification(id: string): void {
-  notifications = notifications.map(n => n.id === id ? { ...n, resolved: true } : n)
+  notifications = notifications.map((n) => (n.id === id ? { ...n, resolved: true } : n))
   for (const cb of listeners) {
-    try { cb(notifications) } catch { /* noop */ }
+    try {
+      cb(notifications)
+    } catch {
+      /* noop */
+    }
   }
 }
 
 export function clearGuardrailNotifications(): void {
   notifications = []
   for (const cb of listeners) {
-    try { cb(notifications) } catch { /* noop */ }
+    try {
+      cb(notifications)
+    } catch {
+      /* noop */
+    }
   }
 }
 
@@ -73,15 +85,17 @@ export function clearGuardrailNotifications(): void {
  */
 export function useGuardrailNotifications() {
   const list = ref<GuardrailUserNotification[]>(notifications)
-  const stop = onGuardrailNotification(next => {
+  const stop = onGuardrailNotification((next) => {
     list.value = next
   })
 
   if (getCurrentInstance()) onUnmounted(stop)
 
-  const unresolved = computed(() => list.value.filter(n => !n.resolved))
-  const errorCount = computed(() => unresolved.value.filter(n => n.severity === 'error').length)
-  const warningCount = computed(() => unresolved.value.filter(n => n.severity === 'warning').length)
+  const unresolved = computed(() => list.value.filter((n) => !n.resolved))
+  const errorCount = computed(() => unresolved.value.filter((n) => n.severity === 'error').length)
+  const warningCount = computed(
+    () => unresolved.value.filter((n) => n.severity === 'warning').length
+  )
 
   return {
     notifications: list,
@@ -90,7 +104,7 @@ export function useGuardrailNotifications() {
     warningCount,
     dismiss: dismissGuardrailNotification,
     clear: clearGuardrailNotifications,
-    stop,
+    stop
   }
 }
 

@@ -95,7 +95,10 @@ export async function backendStream(
  *
  * Returns { success, model, error }.
  */
-export async function backendTestConnection(provider: string, model: string): Promise<{ success: boolean; model: string | null; error: string | null }> {
+export async function backendTestConnection(
+  provider: string,
+  model: string
+): Promise<{ success: boolean; model: string | null; error: string | null }> {
   const conn = await ensureConnection()
   const result = await conn.invoke('TestConnection', provider, model)
   return {
@@ -110,12 +113,19 @@ export async function backendTestConnection(provider: string, model: string): Pr
  *
  * Returns { success, models: [{id, name}], error }.
  */
-export async function backendListModels(provider: string): Promise<{ success: boolean; models: Array<{ id: string; name: string }>; error: string | null }> {
+export async function backendListModels(provider: string): Promise<{
+  success: boolean
+  models: Array<{ id: string; name: string }>
+  error: string | null
+}> {
   const conn = await ensureConnection()
   const result = await conn.invoke('ListModels', provider)
   return {
     success: result?.success ?? false,
-    models: (result?.models ?? []).map((m: { id: string; name: string }) => ({ id: m.id, name: m.name })),
+    models: (result?.models ?? []).map((m: { id: string; name: string }) => ({
+      id: m.id,
+      name: m.name
+    })),
     error: result?.error ?? null
   }
 }

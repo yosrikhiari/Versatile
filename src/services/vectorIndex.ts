@@ -1,9 +1,9 @@
 /**
  * Vector index for efficient semantic search.
- * 
- * Replaces the O(n) brute-force scan with an IVF (Inverted File Index) 
+ *
+ * Replaces the O(n) brute-force scan with an IVF (Inverted File Index)
  * + flat refinement approach. Suitable for up to ~50k vectors in the browser.
- * 
+ *
  * Can run in a Web Worker for non-blocking search.
  */
 
@@ -31,7 +31,7 @@ interface Cluster {
 
 /**
  * Simple IVF (Inverted File Index) vector index.
- * 
+ *
  * - Build: K-means clustering on vectors, assign to clusters
  * - Search: Find nearest centroids (nProbe), then brute-force within those clusters
  * - This is a simplified IVFFlat index, suitable for browser use
@@ -53,7 +53,9 @@ export class VectorIndex {
   }
 
   /** Build the index from a list of vectors. */
-  async build(items: Array<{ id: string; vector: Float32Array; metadata?: Record<string, unknown> }>): Promise<void> {
+  async build(
+    items: Array<{ id: string; vector: Float32Array; metadata?: Record<string, unknown> }>
+  ): Promise<void> {
     if (items.length === 0) {
       this.clusters = []
       this.built = true
@@ -66,7 +68,7 @@ export class VectorIndex {
 
     // 1. Initialize centroids using k-means++
     const centroids = this.initCentroidsKMeansPlusPlus(items, k)
-    
+
     // 2. Assign vectors to clusters
     const clusters = new Array<Cluster>(k)
     for (let i = 0; i < k; i++) {
@@ -86,19 +88,21 @@ export class VectorIndex {
 
     // 3. Remove empty/small clusters, recalculate centroids
     this.clusters = clusters
-      .filter(c => c.vectors.size >= minSize)
-      .map(c => ({
-        centroid: this.computeCentroid(Array.from(c.vectors.values()).map(v => v.vector)),
+      .filter((c) => c.vectors.size >= minSize)
+      .map((c) => ({
+        centroid: this.computeCentroid(Array.from(c.vectors.values()).map((v) => v.vector)),
         vectors: c.vectors
       }))
 
     // If we filtered too many, rebuild with fewer clusters
     if (this.clusters.length === 0 && items.length > 0) {
       // Fallback: single cluster
-      this.clusters = [{
-        centroid: this.computeCentroid(items.map(i => i.vector)),
-        vectors: new Map(items.map(i => [i.id, { vector: i.vector, metadata: i.metadata }]))
-      }]
+      this.clusters = [
+        {
+          centroid: this.computeCentroid(items.map((i) => i.vector)),
+          vectors: new Map(items.map((i) => [i.id, { vector: i.vector, metadata: i.metadata }]))
+        }
+      ]
     }
 
     this.built = true
@@ -106,7 +110,7 @@ export class VectorIndex {
 
   /** Initialize centroids using k-means++ for better spread. */
   private initCentroidsKMeansPlusPlus(
-    items: Array<{ vector: Float32Array }>, 
+    items: Array<{ vector: Float32Array }>,
     k: number
   ): Float32Array[] {
     const centroids: Float32Array[] = []
@@ -210,11 +214,11 @@ export class VectorIndex {
     return results.slice(0, limit)
   }
 
-/** Serialize for worker transfer. */
+  /** Serialize for worker transfer. */
   toJSON(): string {
     return JSON.stringify({
       config: this.config,
-      clusters: this.clusters.map(c => ({
+      clusters: this.clusters.map((c) => ({
         centroid: Array.from(c.centroid),
         vectors: Array.from(c.vectors.entries()).map(([id, { vector, metadata }]) => ({
           id,
@@ -231,10 +235,12 @@ export class VectorIndex {
     const index = new VectorIndex(data.config)
     index.clusters = data.clusters.map((c: any) => ({
       centroid: new Float32Array(c.centroid),
-      vectors: new Map(c.vectors.map((v: any) => [
-        v.id,
-        { vector: new Float32Array(v.vector), metadata: v.metadata }
-      ]))
+      vectors: new Map(
+        c.vectors.map((v: any) => [
+          v.id,
+          { vector: new Float32Array(v.vector), metadata: v.metadata }
+        ])
+      )
     }))
     index.built = true
     return index
@@ -261,7 +267,9 @@ export class VectorIndex {
   }
 
   private cosineSimilarity(a: Float32Array, b: Float32Array): number {
-    let dot = 0, magA = 0, magB = 0
+    let dot = 0,
+      magA = 0,
+      magB = 0
     for (let i = 0; i < this.dim; i++) {
       dot += a[i] * b[i]
       magA += a[i] * a[i]
@@ -302,7 +310,9 @@ export class VectorIndex {
  *   const results = await index.search(queryVector, limit)
  */
 export function createVectorIndexWorker(config: VectorIndexConfig): {
-  build: (items: Array<{ id: string; vector: Float32Array; metadata?: Record<string, unknown> }>) => Promise<void>
+  build: (
+    items: Array<{ id: string; vector: Float32Array; metadata?: Record<string, unknown> }>
+  ) => Promise<void>
   search: (query: Float32Array, limit: number) => Promise<SearchResult[]>
   getStats: () => { nClusters: number; totalVectors: number; dim: number }
 } {
@@ -319,7 +329,8 @@ export function createVectorIndexWorker(config: VectorIndexConfig): {
  * No clustering overhead, just brute-force with SIMD-friendly loops.
  */
 export class FlatVectorIndex {
-  private vectors: Map<string, { vector: Float32Array; metadata?: Record<string, unknown> }> = new Map()
+  private vectors: Map<string, { vector: Float32Array; metadata?: Record<string, unknown> }> =
+    new Map()
   private dim: number
 
   constructor(dim: number) {
@@ -341,7 +352,9 @@ export class FlatVectorIndex {
   }
 
   private cosineSimilarity(a: Float32Array, b: Float32Array): number {
-    let dot = 0, magA = 0, magB = 0
+    let dot = 0,
+      magA = 0,
+      magB = 0
     for (let i = 0; i < this.dim; i++) {
       dot += a[i] * b[i]
       magA += a[i] * a[i]

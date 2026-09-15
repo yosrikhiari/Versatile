@@ -41,8 +41,8 @@ export function useDriftTriggeredEval(sceneEval: any) {
         return lastCheckResult.value
       }
 
-      const regressions = driftMonitor.flaggedRegressions.value.filter((r: any) =>
-        !r.workspaceType || r.workspaceType === workspaceType
+      const regressions = driftMonitor.flaggedRegressions.value.filter(
+        (r: any) => !r.workspaceType || r.workspaceType === workspaceType
       )
 
       if (!regressions.length) {

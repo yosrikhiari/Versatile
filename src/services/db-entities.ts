@@ -49,7 +49,11 @@ export async function updateCharacter(id: any, data: any) {
   try {
     const n = await db.characters.update(
       id,
-      JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString(), lastEditedAt: Date.now() })))
+      JSON.parse(
+        JSON.stringify(
+          toRaw({ ...data, updatedAt: new Date().toISOString(), lastEditedAt: Date.now() })
+        )
+      )
     )
     queueStoryIndex('character', id, () => db.characters.get(id))
     return n
@@ -118,7 +122,10 @@ export async function addLocation(projectId: any, data: any) {
 }
 
 export async function updateLocation(id: any, data: any) {
-  const n = await db.locations.update(id, JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() }))))
+  const n = await db.locations.update(
+    id,
+    JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() })))
+  )
   queueStoryIndex('location', id, () => db.locations.get(id))
   return n
 }
@@ -171,7 +178,10 @@ export async function addPlotThread(projectId: any, data: any) {
 }
 
 export async function updatePlotThread(id: any, data: any) {
-  const n = await db.plotThreads.update(id, JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() }))))
+  const n = await db.plotThreads.update(
+    id,
+    JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() })))
+  )
   queueStoryIndex('thread', id, () => db.plotThreads.get(id))
   return n
 }

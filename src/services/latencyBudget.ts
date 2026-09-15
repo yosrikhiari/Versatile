@@ -81,7 +81,10 @@ export class LatencyBudget {
     return { exceeded: false, blocked: false, elapsedMs }
   }
 
-  wrap<T extends (...args: any[]) => any>(feature: string, fn: T): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
+  wrap<T extends (...args: any[]) => any>(
+    feature: string,
+    fn: T
+  ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
     return async (...args: Parameters<T>) => {
       const start = Date.now()
       try {

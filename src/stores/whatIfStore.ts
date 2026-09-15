@@ -137,7 +137,9 @@ export const useWhatIfStore = defineStore('whatIf', () => {
     for (const branch of stale) {
       await updateBranch(branch.id, { status: 'failed' })
     }
-    branches.value = all.map((b: any) => (b.status === 'generating' ? { ...b, status: 'failed' } : b))
+    branches.value = all.map((b: any) =>
+      b.status === 'generating' ? { ...b, status: 'failed' } : b
+    )
     return stale.length
   }
 

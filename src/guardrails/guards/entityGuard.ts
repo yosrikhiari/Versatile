@@ -1,7 +1,10 @@
 import type { GuardrailContext, GuardrailResult, GuardFunction } from '../types'
 import type { GroundingService } from '../ontology/grounding'
 
-export function createEntityGuard(grounding: GroundingService, enabled: boolean = true): GuardFunction {
+export function createEntityGuard(
+  grounding: GroundingService,
+  enabled: boolean = true
+): GuardFunction {
   return (context: GuardrailContext): GuardrailResult[] => {
     if (!enabled) return []
 
@@ -18,7 +21,13 @@ export function createEntityGuard(grounding: GroundingService, enabled: boolean 
       if (Array.isArray(obj.characters)) {
         for (const c of obj.characters) {
           if (typeof c === 'string') names.push(c)
-          else if (c && typeof c === 'object' && 'name' in (c as object) && typeof (c as Record<string, unknown>).name === 'string') names.push((c as Record<string, unknown>).name as string)
+          else if (
+            c &&
+            typeof c === 'object' &&
+            'name' in (c as object) &&
+            typeof (c as Record<string, unknown>).name === 'string'
+          )
+            names.push((c as Record<string, unknown>).name as string)
         }
       }
 
@@ -48,7 +57,7 @@ export function createEntityGuard(grounding: GroundingService, enabled: boolean 
         details: { unknownNames, allNames: names },
         layer: context.layer,
         contextId: context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 

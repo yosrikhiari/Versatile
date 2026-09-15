@@ -119,8 +119,7 @@ export const useSettingsStore = defineStore('settings', () => {
         // Explicit `!== undefined` for the same reason as `localOnly`: an
         // opt-in the user never gave must survive a save/load round-trip
         // as false, not flip to true — and vice versa.
-        if (data.cloudAuditOptIn !== undefined)
-          cloudAuditOptIn.value = !!data.cloudAuditOptIn
+        if (data.cloudAuditOptIn !== undefined) cloudAuditOptIn.value = !!data.cloudAuditOptIn
         // Explicit `!== undefined` for the same reason as `localOnly`: turning
         // the flag off is a real choice, and truthiness would undo it on load.
         if (data.enableChapterGeneration !== undefined)

@@ -148,14 +148,36 @@ interface StructuredResult {
 }
 
 interface ProviderModule {
-  generate(prompt: string, systemPrompt: string, model: string, options: ProviderOptions): Promise<GenerateResult>
-  stream(prompt: string, systemPrompt: string, model: string, onChunk?: ((delta: string, full: string) => void) | null, options?: ProviderOptions): Promise<string>
-  generateStructured?(prompt: string, systemPrompt: string, model: string, schema: Record<string, unknown>, options: ProviderOptions & { schemaName?: string }): Promise<StructuredResult>
+  generate(
+    prompt: string,
+    systemPrompt: string,
+    model: string,
+    options: ProviderOptions
+  ): Promise<GenerateResult>
+  stream(
+    prompt: string,
+    systemPrompt: string,
+    model: string,
+    onChunk?: ((delta: string, full: string) => void) | null,
+    options?: ProviderOptions
+  ): Promise<string>
+  generateStructured?(
+    prompt: string,
+    systemPrompt: string,
+    model: string,
+    schema: Record<string, unknown>,
+    options: ProviderOptions & { schemaName?: string }
+  ): Promise<StructuredResult>
   testConnection(apiKey?: string): Promise<boolean>
   listModels?(): Promise<string[]>
 }
 
-function makeLangfuseTrace(name: string, feature: string, provider: string, model: string): LangfuseTrace | null {
+function makeLangfuseTrace(
+  name: string,
+  feature: string,
+  provider: string,
+  model: string
+): LangfuseTrace | null {
   if (!langfuseService.isConfigured) return null
   const traceId = crypto.randomUUID()
   const generationId = crypto.randomUUID()
@@ -172,9 +194,19 @@ function makeLangfuseTrace(name: string, feature: string, provider: string, mode
   return { traceId, generationId }
 }
 
-function endLangfuseGen(trace: LangfuseTrace | null, output: string, usage: TokenUsage | null | undefined, model: string, durationMs: number): void {
+function endLangfuseGen(
+  trace: LangfuseTrace | null,
+  output: string,
+  usage: TokenUsage | null | undefined,
+  model: string,
+  durationMs: number
+): void {
   if (!trace) return
-  const body: Record<string, unknown> = { output, model, metadata: { latencyMs: durationMs, status: 'success' } }
+  const body: Record<string, unknown> = {
+    output,
+    model,
+    metadata: { latencyMs: durationMs, status: 'success' }
+  }
   if (usage) {
     body.usage = {
       input: usage.promptTokens,
@@ -220,7 +252,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function withRetry<T>(fn: (attempt: number, hasMoreRetries: boolean) => Promise<T>, isRetryableFn: (error: unknown) => boolean, options: { maxRetries?: number; retryDelay?: number } = {}): Promise<T> {
+async function withRetry<T>(
+  fn: (attempt: number, hasMoreRetries: boolean) => Promise<T>,
+  isRetryableFn: (error: unknown) => boolean,
+  options: { maxRetries?: number; retryDelay?: number } = {}
+): Promise<T> {
   const maxRetries = options.maxRetries ?? 2
   const retryDelay = options.retryDelay ?? 1000
   let lastError: unknown
@@ -263,7 +299,14 @@ interface IdempotencyEntry {
 export class IdempotencyTracker {
   private _inFlight = new Map<string, IdempotencyEntry>()
 
-  private async _hashKey(provider: string, model: string, temperature: number | undefined, feature: string, systemPrompt: string, prompt: string): Promise<string> {
+  private async _hashKey(
+    provider: string,
+    model: string,
+    temperature: number | undefined,
+    feature: string,
+    systemPrompt: string,
+    prompt: string
+  ): Promise<string> {
     const encoder = new TextEncoder()
     const data = encoder.encode(
       JSON.stringify({ provider, model, temperature, feature, systemPrompt, prompt })
@@ -273,7 +316,15 @@ export class IdempotencyTracker {
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
   }
 
-  async dedup(provider: string, model: string, temperature: number | undefined, feature: string, systemPrompt: string, prompt: string, factory: () => Promise<string>): Promise<string> {
+  async dedup(
+    provider: string,
+    model: string,
+    temperature: number | undefined,
+    feature: string,
+    systemPrompt: string,
+    prompt: string,
+    factory: () => Promise<string>
+  ): Promise<string> {
     const key = await this._hashKey(provider, model, temperature, feature, systemPrompt, prompt)
 
     const existing = this._inFlight.get(key)
@@ -282,9 +333,12 @@ export class IdempotencyTracker {
       return existing.promise
     }
 
-    const entry: IdempotencyEntry = { createdAt: Date.now(), promise: factory().finally(() => {
-      this._inFlight.delete(key)
-    }) }
+    const entry: IdempotencyEntry = {
+      createdAt: Date.now(),
+      promise: factory().finally(() => {
+        this._inFlight.delete(key)
+      })
+    }
     this._inFlight.set(key, entry)
 
     return entry.promise
@@ -332,7 +386,9 @@ function defaultModelForProvider(provider: string): string | null {
 
 function resolveFeatureConfig(feature: string): { provider: string; model: string | null } {
   const store = useSettingsStore()
-  const override = (store.featureModels as Record<string, { provider?: string; model?: string }> | undefined)?.[feature]
+  const override = (
+    store.featureModels as Record<string, { provider?: string; model?: string }> | undefined
+  )?.[feature]
   const defaultModelFor = (provider: string): string | null =>
     provider === PROVIDERS.OLLAMA ? store.ollamaModel : PROVIDER_MODELS[provider]?.[0] || null
 
@@ -374,7 +430,10 @@ export function getConfiguredProvider(feature: string): string {
   return config.provider
 }
 
-export function resolveOptimalConfig(feature: string, options: AiGenerateOptions = {}): { provider: string; model: string | null } {
+export function resolveOptimalConfig(
+  feature: string,
+  options: AiGenerateOptions = {}
+): { provider: string; model: string | null } {
   const base = options.complexity
     ? resolveOptimalModel(feature, {
         complexity: options.complexity,
@@ -440,7 +499,10 @@ function localModelFor(feature: string, options: AiGenerateOptions): string | nu
  * app at all. Warns once per call so the substitution is visible rather than
  * silently changing which model wrote the book.
  */
-function fallbackToUsableProvider(base: { provider: string; model: string | null }): { provider: string; model: string | null } {
+function fallbackToUsableProvider(base: { provider: string; model: string | null }): {
+  provider: string
+  model: string | null
+} {
   // A provider name we do not recognise is a typo or a broken setting, not a
   // missing credential. Substituting for it would hide the mistake; let it
   // reach the "Unknown provider" error where the user can see what they wrote.
@@ -479,7 +541,10 @@ interface ProviderError {
   error: unknown
 }
 
-async function withFallback<T>(executeOnProvider: (provider: string) => Promise<T>, primary: string): Promise<T> {
+async function withFallback<T>(
+  executeOnProvider: (provider: string) => Promise<T>,
+  primary: string
+): Promise<T> {
   const chain = getFallbackChain(primary)
   const errors: ProviderError[] = []
 
@@ -496,7 +561,7 @@ async function withFallback<T>(executeOnProvider: (provider: string) => Promise<
 
   const last = errors[errors.length - 1]
   if (errors.length > 1) {
-    (last.error as Error).cause = errors[0].error
+    ;(last.error as Error).cause = errors[0].error
   }
   throw last.error
 }
@@ -534,14 +599,17 @@ async function prepareCallBudget(
     if (anomaly?.isAnomaly) {
       console.warn(
         `[aiService] ${feature}: input is ${inputTokens} tokens, ` +
-        `anomalous (baseline ${anomaly.baseline.toFixed(0)} ± ${(anomaly.stddev * 3).toFixed(0)}, ` +
-        `${anomaly.samples} samples)`
+          `anomalous (baseline ${anomaly.baseline.toFixed(0)} ± ${(anomaly.stddev * 3).toFixed(0)}, ` +
+          `${anomaly.samples} samples)`
       )
     }
     recordFeatureTokens(feature, inputTokens)
   }
 
-  return { inputTokens, maxTokens: resolveMaxTokens(model, inputTokens, explicitMaxTokens, schemaOverhead) }
+  return {
+    inputTokens,
+    maxTokens: resolveMaxTokens(model, inputTokens, explicitMaxTokens, schemaOverhead)
+  }
 }
 
 /**
@@ -567,7 +635,11 @@ function checkPromptSanityCap(model: string, inputTokens: number): void {
   }
 }
 
-export async function aiGenerate(prompt: string, systemPrompt: string, options: AiGenerateOptions = {}): Promise<string> {
+export async function aiGenerate(
+  prompt: string,
+  systemPrompt: string,
+  options: AiGenerateOptions = {}
+): Promise<string> {
   const feature = options.feature || FEATURES.CONTENT
   const config = resolveOptimalConfig(feature, options)
   const provider = options.provider || config.provider
@@ -634,7 +706,12 @@ export async function aiGenerate(prompt: string, systemPrompt: string, options: 
         onToken: options.onToken
       }
 
-      async function trackGenerate(providerName: string, modelName: string, opts: ProviderOptions, estimatedInputTokens: number): Promise<string> {
+      async function trackGenerate(
+        providerName: string,
+        modelName: string,
+        opts: ProviderOptions,
+        estimatedInputTokens: number
+      ): Promise<string> {
         if (options.sessionBudget) {
           const sCheck = options.sessionBudget.check()
           if (!sCheck.allowed) throw new SessionBudgetExceededError(sCheck.reason)
@@ -649,7 +726,9 @@ export async function aiGenerate(prompt: string, systemPrompt: string, options: 
             () => {
               const generate = () =>
                 foregroundSlot(providerName)(() =>
-                  latencyBudget.wrap(feature, () => pm.generate(prompt, systemPrompt, modelName, opts))()
+                  latencyBudget.wrap(feature, () =>
+                    pm.generate(prompt, systemPrompt, modelName, opts)
+                  )()
                 )
               return generate().catch((err) => {
                 if (err instanceof TokenLimitError && (opts.maxTokens ?? 0) > MIN_OUTPUT_TOKENS) {
@@ -686,7 +765,11 @@ export async function aiGenerate(prompt: string, systemPrompt: string, options: 
             })
             providerBudget.record(providerName, usage.promptTokens + usage.completionTokens, cost)
             if (options.sessionBudget) {
-              options.sessionBudget.record(providerName, usage.promptTokens + usage.completionTokens, cost)
+              options.sessionBudget.record(
+                providerName,
+                usage.promptTokens + usage.completionTokens,
+                cost
+              )
             }
           }
           aiResponseCache!
@@ -729,7 +812,12 @@ export async function aiGenerate(prompt: string, systemPrompt: string, options: 
   )
 }
 
-export async function aiStream(prompt: string, systemPrompt: string, onChunk?: ((delta: string, full: string) => void) | null, options: AiGenerateOptions = {}): Promise<string> {
+export async function aiStream(
+  prompt: string,
+  systemPrompt: string,
+  onChunk?: ((delta: string, full: string) => void) | null,
+  options: AiGenerateOptions = {}
+): Promise<string> {
   const feature = options.feature || FEATURES.CONTENT
   const config = resolveOptimalConfig(feature, options)
   const provider = options.provider || config.provider
@@ -794,8 +882,15 @@ export async function aiStream(prompt: string, systemPrompt: string, onChunk?: (
             )()
           )
         return stream().catch((err) => {
-          if (!emittedAny && err instanceof TokenLimitError && (providerOptions.maxTokens ?? 0) > MIN_OUTPUT_TOKENS) {
-            providerOptions.maxTokens = Math.max(Math.floor(providerOptions.maxTokens! / 2), MIN_OUTPUT_TOKENS)
+          if (
+            !emittedAny &&
+            err instanceof TokenLimitError &&
+            (providerOptions.maxTokens ?? 0) > MIN_OUTPUT_TOKENS
+          ) {
+            providerOptions.maxTokens = Math.max(
+              Math.floor(providerOptions.maxTokens! / 2),
+              MIN_OUTPUT_TOKENS
+            )
             return stream()
           }
           if (err instanceof TokenLimitError) err.retryable = false
@@ -852,7 +947,11 @@ export async function aiStream(prompt: string, systemPrompt: string, onChunk?: (
   }
 }
 
-export async function aiGenerateStructured(prompt: string, systemPrompt: string, options: AiGenerateOptions = {}): Promise<Record<string, unknown>> {
+export async function aiGenerateStructured(
+  prompt: string,
+  systemPrompt: string,
+  options: AiGenerateOptions = {}
+): Promise<Record<string, unknown>> {
   const feature = options.feature || FEATURES.CONTENT
   const config = resolveOptimalConfig(feature, options)
   const provider = options.provider || config.provider
@@ -920,7 +1019,10 @@ export async function aiGenerateStructured(prompt: string, systemPrompt: string,
             )
           return generate().catch((err) => {
             if (err instanceof TokenLimitError && (structOpts.maxTokens ?? 0) > MIN_OUTPUT_TOKENS) {
-              structOpts.maxTokens = Math.max(Math.floor(structOpts.maxTokens! / 2), MIN_OUTPUT_TOKENS)
+              structOpts.maxTokens = Math.max(
+                Math.floor(structOpts.maxTokens! / 2),
+                MIN_OUTPUT_TOKENS
+              )
               return generate()
             }
             if (err instanceof TokenLimitError) err.retryable = false
@@ -949,12 +1051,21 @@ export async function aiGenerateStructured(prompt: string, systemPrompt: string,
           })
           providerBudget.record(provider, usage.promptTokens + usage.completionTokens, cost)
           if (options.sessionBudget) {
-            options.sessionBudget.record(provider, usage.promptTokens + usage.completionTokens, cost)
+            options.sessionBudget.record(
+              provider,
+              usage.promptTokens + usage.completionTokens,
+              cost
+            )
           }
         }
         // The provider claimed structured output — verify it actually matches
         // the schema before it reaches the store.
-        guardStructuredOutput({ data, schema, provider, entryPoint: 'aiService.aiGenerateStructured' })
+        guardStructuredOutput({
+          data,
+          schema,
+          provider,
+          entryPoint: 'aiService.aiGenerateStructured'
+        })
 
         const output = typeof data === 'string' ? data : JSON.stringify(data)
         aiResponseCache!

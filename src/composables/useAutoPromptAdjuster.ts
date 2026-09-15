@@ -7,14 +7,21 @@ export function useAutoPromptAdjuster() {
   const focusInstructions = ref('')
   const givenHints = ref<any[]>([])
 
-  function updateAdjustments(evalHistory: any, options: { workspaceType?: string; threshold?: number } = {}) {
+  function updateAdjustments(
+    evalHistory: any,
+    options: { workspaceType?: string; threshold?: number } = {}
+  ) {
     if (!evalHistory || evalHistory.length === 0) {
       focusInstructions.value = ''
       givenHints.value = []
       return { focusInstructions: '', givenHints: [] }
     }
     const { workspaceType = 'creative', threshold = getDefaultThreshold(workspaceType) } = options
-    const result = autoAdjustPrompt(evalHistory, { workspaceType, threshold, pastGivenHints: allGivenHints.value })
+    const result = autoAdjustPrompt(evalHistory, {
+      workspaceType,
+      threshold,
+      pastGivenHints: allGivenHints.value
+    })
     focusInstructions.value = result.focusInstructions
     givenHints.value = result.givenHints
     allGivenHints.value = [...allGivenHints.value, ...result.givenHints]

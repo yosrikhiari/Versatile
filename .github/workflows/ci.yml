@@ -40,7 +40,7 @@ jobs:
         run: npm run lint:tokens && npm run policy
 
       - name: Prettier formatting check
-        run: npx prettier --check "src/**/*.{js,vue,css}"
+        run: npx prettier --check "src/**/*.{js,ts,vue,css}"
 
       - name: Generate ESLint report
         run: npx eslint src/**/*.{js,vue} --format json -o eslint-report.json

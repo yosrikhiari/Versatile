@@ -15,7 +15,11 @@ import { autoAdjustPrompt } from '../../evaluation/autoPromptAdjuster'
  * cumulative focus instructions. This enables cross-run learning by
  * feeding past evaluation data into the adjuster at run start.
  */
-export async function seedPromptAdjusterFromHistory(projectId: string, workspaceType: string, promptAdjuster: any) {
+export async function seedPromptAdjusterFromHistory(
+  projectId: string,
+  workspaceType: string,
+  promptAdjuster: any
+) {
   if (!projectId) return
   try {
     const evalPersistence = (await import('../useEvalPersistence')).useEvalPersistence()
@@ -27,7 +31,10 @@ export async function seedPromptAdjusterFromHistory(projectId: string, workspace
       })
       promptAdjuster.focusInstructions.value = result.focusInstructions
       promptAdjuster.givenHints.value = result.givenHints
-      promptAdjuster.allGivenHints.value = [...promptAdjuster.allGivenHints.value, ...result.givenHints]
+      promptAdjuster.allGivenHints.value = [
+        ...promptAdjuster.allGivenHints.value,
+        ...result.givenHints
+      ]
     }
   } catch (err) {
     console.warn('[useVolumeStoryGenerator] Failed to seed prompt adjuster from history:', err)
@@ -38,7 +45,11 @@ export async function seedPromptAdjusterFromHistory(projectId: string, workspace
  * Rehydrate the prompt adjuster from persisted history instead of clearing.
  * Used when resetting the generator to preserve cross-run hint history.
  */
-export async function rehydratePromptAdjuster(projectId: string, workspaceType: string, promptAdjuster: any) {
+export async function rehydratePromptAdjuster(
+  projectId: string,
+  workspaceType: string,
+  promptAdjuster: any
+) {
   if (!projectId) {
     promptAdjuster.reset()
     return
@@ -80,14 +91,16 @@ export async function clearAndSeedEvalStore(projectId: string, evalStore: any) {
     if (evalHistory && evalHistory.length > 0) {
       // Convert persisted eval results to the format expected by evalStore
       // The evalStore expects entries with sceneIndex, score, dimensionScores, etc.
-      evalStore.setResults(evalHistory.map((e: any) => ({
-        sceneIndex: e.sceneId,
-        passed: e.score != null && e.score >= 7,
-        score: e.score,
-        dimensionScores: e.dimensionScores,
-        topIssues: e.issues || [],
-        workspaceType: e.workspaceType
-      })))
+      evalStore.setResults(
+        evalHistory.map((e: any) => ({
+          sceneIndex: e.sceneId,
+          passed: e.score != null && e.score >= 7,
+          score: e.score,
+          dimensionScores: e.dimensionScores,
+          topIssues: e.issues || [],
+          workspaceType: e.workspaceType
+        }))
+      )
     }
   } catch (err) {
     console.warn('[useVolumeStoryGenerator] Failed to seed evalStore from history:', err)

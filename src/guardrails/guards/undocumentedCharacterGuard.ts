@@ -18,39 +18,196 @@ import type { GroundingService } from '../ontology/grounding'
  */
 
 const TITLE_PREFIXES = [
-  'mr', 'mrs', 'ms', 'mx', 'dr', 'prof', 'professor', 'sir', 'lord', 'lady',
-  'capt', 'captain', 'col', 'colonel', 'gen', 'general', 'maj', 'major',
-  'sgt', 'sergeant', 'pvt', 'private', 'det', 'detective', 'insp', 'inspector',
-  'officer', 'agent', 'king', 'queen', 'prince', 'princess', 'duke', 'duchess',
-  'earl', 'baron', 'president', 'chancellor', 'governor', 'mayor', 'rev',
-  'reverend', 'father', 'mother', 'uncle', 'aunt', 'grandma', 'grandpa',
-  'madam', 'madame'
+  'mr',
+  'mrs',
+  'ms',
+  'mx',
+  'dr',
+  'prof',
+  'professor',
+  'sir',
+  'lord',
+  'lady',
+  'capt',
+  'captain',
+  'col',
+  'colonel',
+  'gen',
+  'general',
+  'maj',
+  'major',
+  'sgt',
+  'sergeant',
+  'pvt',
+  'private',
+  'det',
+  'detective',
+  'insp',
+  'inspector',
+  'officer',
+  'agent',
+  'king',
+  'queen',
+  'prince',
+  'princess',
+  'duke',
+  'duchess',
+  'earl',
+  'baron',
+  'president',
+  'chancellor',
+  'governor',
+  'mayor',
+  'rev',
+  'reverend',
+  'father',
+  'mother',
+  'uncle',
+  'aunt',
+  'grandma',
+  'grandpa',
+  'madam',
+  'madame'
 ]
 
 // Adjectives / common nouns that, when leading a capitalized span, usually mark
 // a place/object/title rather than a person name. Keeps the detective feed quiet.
 const STOP_FIRST = new Set([
-  'the', 'a', 'an', 'ancient', 'old', 'young', 'little', 'great', 'silent',
-  'dark', 'bright', 'hidden', 'forgotten', 'cursed', 'sacred', 'holy',
-  'black', 'white', 'red', 'blue', 'green', 'golden', 'silver', 'iron',
-  'stone', 'wooden', 'glass', 'high', 'low', 'broken', 'fallen', 'rising',
-  'distant', 'near', 'far', 'last', 'first', 'second', 'third', 'final',
-  'cold', 'warm', 'bitter', 'sweet', 'dead', 'living', 'lost', 'found',
+  'the',
+  'a',
+  'an',
+  'ancient',
+  'old',
+  'young',
+  'little',
+  'great',
+  'silent',
+  'dark',
+  'bright',
+  'hidden',
+  'forgotten',
+  'cursed',
+  'sacred',
+  'holy',
+  'black',
+  'white',
+  'red',
+  'blue',
+  'green',
+  'golden',
+  'silver',
+  'iron',
+  'stone',
+  'wooden',
+  'glass',
+  'high',
+  'low',
+  'broken',
+  'fallen',
+  'rising',
+  'distant',
+  'near',
+  'far',
+  'last',
+  'first',
+  'second',
+  'third',
+  'final',
+  'cold',
+  'warm',
+  'bitter',
+  'sweet',
+  'dead',
+  'living',
+  'lost',
+  'found',
   // Capitalized prepositions/connectives that open a name span but are not names
   // themselves (e.g. "At Duskwane's Redoubt" must not become a person name).
-  'at', 'in', 'on', 'to', 'from', 'with', 'by', 'into', 'upon', 'for', 'of',
-  'over', 'under', 'through', 'after', 'before', 'between', 'behind', 'beside'
+  'at',
+  'in',
+  'on',
+  'to',
+  'from',
+  'with',
+  'by',
+  'into',
+  'upon',
+  'for',
+  'of',
+  'over',
+  'under',
+  'through',
+  'after',
+  'before',
+  'between',
+  'behind',
+  'beside'
 ])
 
 const NON_PERSON = new Set([
-  'council', 'order', 'guild', 'empire', 'kingdom', 'realm', 'city', 'town',
-  'village', 'river', 'mountain', 'sea', 'forest', 'castle', 'palace', 'temple',
-  'university', 'academy', 'library', 'market', 'tavern', 'inn', 'school',
-  'company', 'group', 'team', 'family', 'clan', 'tribe', 'senate', 'parliament',
-  'army', 'fleet', 'church', 'court', 'society', 'brotherhood', 'tower',
-  'hall', 'bridge', 'gate', 'wall', 'road', 'path', 'field', 'valley', 'lake',
-  'island', 'continent', 'world', 'house', 'order', 'chapter', 'tome', 'book',
-  'scroll', 'sword', 'shield', 'knife', 'blade', 'staff', 'crown', 'throne'
+  'council',
+  'order',
+  'guild',
+  'empire',
+  'kingdom',
+  'realm',
+  'city',
+  'town',
+  'village',
+  'river',
+  'mountain',
+  'sea',
+  'forest',
+  'castle',
+  'palace',
+  'temple',
+  'university',
+  'academy',
+  'library',
+  'market',
+  'tavern',
+  'inn',
+  'school',
+  'company',
+  'group',
+  'team',
+  'family',
+  'clan',
+  'tribe',
+  'senate',
+  'parliament',
+  'army',
+  'fleet',
+  'church',
+  'court',
+  'society',
+  'brotherhood',
+  'tower',
+  'hall',
+  'bridge',
+  'gate',
+  'wall',
+  'road',
+  'path',
+  'field',
+  'valley',
+  'lake',
+  'island',
+  'continent',
+  'world',
+  'house',
+  'order',
+  'chapter',
+  'tome',
+  'book',
+  'scroll',
+  'sword',
+  'shield',
+  'knife',
+  'blade',
+  'staff',
+  'crown',
+  'throne'
 ])
 
 function escapeRe(s: string): string {
@@ -109,7 +266,11 @@ function buildKnownNames(grounding: GroundingService): KnownNames {
 }
 
 function isKnown(candidate: string, known: KnownNames): boolean {
-  const lower = candidate.toLowerCase().replace(/[^a-z' ]/g, ' ').replace(/\s+/g, ' ').trim()
+  const lower = candidate
+    .toLowerCase()
+    .replace(/[^a-z' ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   if (!lower) return true
   if (known.full.has(lower)) return true
 
@@ -120,11 +281,14 @@ function isKnown(candidate: string, known: KnownNames): boolean {
 }
 
 function isPersonLike(span: string): boolean {
-  const tokens = span.replace(/[^A-Za-z' ]/g, ' ').split(/\s+/).filter(Boolean)
+  const tokens = span
+    .replace(/[^A-Za-z' ]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
   if (tokens.length < 2) return false
   if (STOP_FIRST.has(tokens[0].toLowerCase())) return false
-  if (tokens.some(t => NON_PERSON.has(t.toLowerCase()))) return false
-  return tokens.every(t => /^[A-Z][a-zA-Z'’]+$/.test(t))
+  if (tokens.some((t) => NON_PERSON.has(t.toLowerCase()))) return false
+  return tokens.every((t) => /^[A-Z][a-zA-Z'’]+$/.test(t))
 }
 
 export function createUndocumentedCharacterGuard(

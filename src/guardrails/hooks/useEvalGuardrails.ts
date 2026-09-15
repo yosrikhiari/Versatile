@@ -21,6 +21,6 @@ export function useEvalGuardrails() {
     validateAnalysis: (context: EvalContext) => run(context, ANALYSIS_KINDS),
     /** Sensitivity reads handle charged material — content safety stays on. */
     validateSensitivityRead: (context: EvalContext) => run(context, ANALYSIS_KINDS),
-    validateShapeAnalysis: (context: EvalContext) => run(context, ['schema_conformance']),
+    validateShapeAnalysis: (context: EvalContext) => run(context, ['schema_conformance'])
   }
 }

@@ -40,7 +40,11 @@ export async function reorderSections(sectionIds: string[]) {
 
 // ========== SUBSECTIONS ==========
 
-export async function getSubsections(projectId: string, sectionId: string | null = null, branchId?: string) {
+export async function getSubsections(
+  projectId: string,
+  sectionId: string | null = null,
+  branchId?: string
+) {
   if (sectionId) {
     const filter: any = { projectId, sectionId }
     if (branchId) filter.branchId = branchId
@@ -208,9 +212,7 @@ export async function unassignAllSectionsFromVolume(volumeId: string): Promise<n
   const sections = await db.sections.where('volumeId').equals(volumeId).toArray()
   if (sections.length === 0) return 0
   await db.transaction('rw', db.sections, async () => {
-    await Promise.all(
-      sections.map((s: any) => db.sections.update(s.id, { volumeId: null }))
-    )
+    await Promise.all(sections.map((s: any) => db.sections.update(s.id, { volumeId: null })))
   })
   return sections.length
 }
@@ -222,7 +224,17 @@ export async function unassignAllSectionsFromVolume(volumeId: string): Promise<n
  *   new chapters the same `order` as the opening ones — interleaving the
  *   continuation into the middle of the book instead of after it.
  */
-export async function batchCreatePlanStructure({ projectId, groups, branchId, startOrder = 0 }: { projectId: string; groups: any[]; branchId?: string; startOrder?: number }) {
+export async function batchCreatePlanStructure({
+  projectId,
+  groups,
+  branchId,
+  startOrder = 0
+}: {
+  projectId: string
+  groups: any[]
+  branchId?: string
+  startOrder?: number
+}) {
   return db.transaction('rw', db.sections, db.subsections, async () => {
     const results = []
     const now = new Date().toISOString()

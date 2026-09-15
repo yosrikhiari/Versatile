@@ -24,10 +24,7 @@ export async function putSceneDigest(digest: SceneDigest) {
 }
 
 export async function getSceneDigest(projectId: string, subsectionId: string) {
-  return db.sceneDigests
-    .where('[projectId+subsectionId]')
-    .equals([projectId, subsectionId])
-    .first()
+  return db.sceneDigests.where('[projectId+subsectionId]').equals([projectId, subsectionId]).first()
 }
 
 export async function getProjectDigests(projectId: string): Promise<SceneDigest[]> {
@@ -148,10 +145,7 @@ export async function putVolumeDigest(digest: VolumeDigest) {
 }
 
 export async function getVolumeDigest(projectId: string, volumeId: string) {
-  return db.volumeDigests
-    .where('[projectId+volumeId]')
-    .equals([projectId, volumeId])
-    .first()
+  return db.volumeDigests.where('[projectId+volumeId]').equals([projectId, volumeId]).first()
 }
 
 export async function getProjectVolumeDigests(projectId: string): Promise<VolumeDigest[]> {

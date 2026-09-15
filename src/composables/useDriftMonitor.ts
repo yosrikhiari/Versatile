@@ -5,7 +5,12 @@ import { analyzeWorkspace, generateReport, DEFAULTS } from '../evaluation/driftA
 interface DriftReport {
   generatedAt: string
   pipeline: string
-  config: { recentWindow: number; driftThreshold: number; warnThreshold: number; minDataPoints: number }
+  config: {
+    recentWindow: number
+    driftThreshold: number
+    warnThreshold: number
+    minDataPoints: number
+  }
   summary: {
     totalEvals: number
     workspacesAnalyzed: number

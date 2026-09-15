@@ -29,7 +29,9 @@ export function editedAgo(iso?: string | null): string {
 
 /** The same scale without the "edited" verb, for dense rows and metadata. */
 export function shortAgo(iso?: string | null): string {
-  return editedAgo(iso).replace(/^edited /, '').replace(/^never edited$/, '—')
+  return editedAgo(iso)
+    .replace(/^edited /, '')
+    .replace(/^never edited$/, '—')
 }
 
 /** Initials for an avatar chip: "Dev Preview" → "DP", "yosri" → "YO". */

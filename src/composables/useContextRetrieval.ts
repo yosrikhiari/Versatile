@@ -30,7 +30,13 @@ export function useContextRetrieval() {
     if (!projectId) return null
 
     const previewLines = []
-    const contextBlocks: { name: string; text: string; priority: number; required?: boolean; minTokens?: number }[] = []
+    const contextBlocks: {
+      name: string
+      text: string
+      priority: number
+      required?: boolean
+      minTokens?: number
+    }[] = []
 
     const authorProfile = await getAuthorProfile(projectId)
     if (authorProfile) {

@@ -47,7 +47,12 @@ function timeoutSignal(options: AnthropicOptions) {
   }
 }
 
-export async function generate(prompt: string, systemPrompt: string, model: string, options: AnthropicOptions = {}) {
+export async function generate(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  options: AnthropicOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('Anthropic API key not configured')
 
@@ -103,7 +108,13 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
   }
 }
 
-export async function stream(prompt: string, systemPrompt: string, model: string, onChunk?: (text: string, full: string) => void, options: AnthropicOptions = {}) {
+export async function stream(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  onChunk?: (text: string, full: string) => void,
+  options: AnthropicOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('Anthropic API key not configured')
 
@@ -186,7 +197,13 @@ export async function stream(prompt: string, systemPrompt: string, model: string
 // Structured output via forced tool-use: the model must call our single tool,
 // whose input_schema is the caller's JSON schema, so the return is a validated
 // object rather than free text we have to regex out of prose.
-export async function generateStructured(prompt: string, systemPrompt: string, model: string, schema: Record<string, unknown>, options: AnthropicOptions = {}) {
+export async function generateStructured(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  schema: Record<string, unknown>,
+  options: AnthropicOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('Anthropic API key not configured')
 

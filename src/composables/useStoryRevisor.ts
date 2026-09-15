@@ -66,10 +66,14 @@ export function useStoryRevisor() {
 ISSUES TO FIX:
 ${issuesToFix.map((i: any) => `- [${i.severity}] ${i.type}: ${i.description}`).join('\n')}
 
-${focusInstructions ? `IMPROVEMENT GUIDANCE (based on historical patterns, focus extra attention on these areas):
+${
+  focusInstructions
+    ? `IMPROVEMENT GUIDANCE (based on historical patterns, focus extra attention on these areas):
 ${focusInstructions}
 
-` : ''}SCENE BRIEF (for context):
+`
+    : ''
+}SCENE BRIEF (for context):
 - Title: ${sceneBrief.title}
 - Emotional goal: ${sceneBrief.emotionalGoal}
 - Characters: ${sceneBrief.charactersPresent.join(', ')}

@@ -52,7 +52,12 @@ const TAG_BEFORE = new RegExp(
   'i'
 )
 
-function findMatchingQuote(text: string, startIndex: number, openChar: string, closeChar: string): number {
+function findMatchingQuote(
+  text: string,
+  startIndex: number,
+  openChar: string,
+  closeChar: string
+): number {
   let i = startIndex
   while (i < text.length) {
     if (text[i] === closeChar) return i

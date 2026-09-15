@@ -52,7 +52,7 @@ export function resetCacheStats() {
 
 /** FNV-1a over the output's string form. Bounded, stable, non-cryptographic. */
 function outputKey(output: unknown): string {
-  const text = typeof output === 'string' ? output : JSON.stringify(output) ?? ''
+  const text = typeof output === 'string' ? output : (JSON.stringify(output) ?? '')
   let hash = 0x811c9dc5
   for (let i = 0; i < text.length; i++) {
     hash ^= text.charCodeAt(i)
@@ -89,9 +89,7 @@ export async function recordQualityForOutput(output: unknown, score: number): Pr
 
     // Keep the worst score seen: one good eval should not clear a known-bad entry.
     const qualityScore =
-      typeof existing.qualityScore === 'number'
-        ? Math.min(existing.qualityScore, score)
-        : score
+      typeof existing.qualityScore === 'number' ? Math.min(existing.qualityScore, score) : score
 
     await db.aiResponseCache.update(hash, { qualityScore })
     cacheStats.qualityRecorded++
@@ -116,7 +114,14 @@ export function computeCosineSimilarity(a: ArrayLike<number>, b: ArrayLike<numbe
   return mag === 0 ? 0 : dot / mag
 }
 
-function computeCanonicalKey(provider: string, model: string, temperature: number | undefined, feature: string, systemPrompt: string, prompt: string) {
+function computeCanonicalKey(
+  provider: string,
+  model: string,
+  temperature: number | undefined,
+  feature: string,
+  systemPrompt: string,
+  prompt: string
+) {
   return { provider, model, temperature, feature, systemPrompt, prompt }
 }
 
@@ -168,7 +173,14 @@ async function evictDexieEntries() {
   }
 }
 
-export async function lookup(provider: string, model: string, temperature: number | undefined, feature: string, systemPrompt: string, prompt: string) {
+export async function lookup(
+  provider: string,
+  model: string,
+  temperature: number | undefined,
+  feature: string,
+  systemPrompt: string,
+  prompt: string
+) {
   if (!isCacheable(feature)) {
     cacheStats.misses++
     return null
@@ -226,7 +238,9 @@ export async function lookup(provider: string, model: string, temperature: numbe
             similarity: computeCosineSimilarity(promptEmbedding, c.embedding)
           }))
           .filter((r: { similarity: number }) => r.similarity >= SEMANTIC_THRESHOLD)
-          .sort((a: { similarity: number }, b: { similarity: number }) => b.similarity - a.similarity)
+          .sort(
+            (a: { similarity: number }, b: { similarity: number }) => b.similarity - a.similarity
+          )
           .slice(0, SEMANTIC_TOP_K)
 
         for (const { candidate, similarity } of ranked) {
@@ -268,7 +282,15 @@ export function getLastLookupMeta() {
   return lastLookupMeta
 }
 
-export async function store(provider: string, model: string, temperature: number | undefined, feature: string, systemPrompt: string, prompt: string, output: unknown) {
+export async function store(
+  provider: string,
+  model: string,
+  temperature: number | undefined,
+  feature: string,
+  systemPrompt: string,
+  prompt: string,
+  output: unknown
+) {
   if (!isCacheable(feature) || !output) return
 
   const key = computeCanonicalKey(provider, model, temperature, feature, systemPrompt, prompt)

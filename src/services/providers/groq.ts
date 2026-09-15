@@ -11,7 +11,12 @@ interface GroqOptions {
   temperature?: number
 }
 
-export async function generate(prompt: string, systemPrompt: string, model: string, options: GroqOptions = {}) {
+export async function generate(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  options: GroqOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('Groq API key not configured')
 
@@ -57,7 +62,10 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
       const errMsg = error.error?.message || `Groq error: ${response.status}`
-      if (error.error?.code === 'context_length_exceeded' || /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)) {
+      if (
+        error.error?.code === 'context_length_exceeded' ||
+        /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)
+      ) {
         throw new TokenLimitError(errMsg, PROVIDERS.GROQ, model, options.maxTokens)
       }
       throw new Error(errMsg)
@@ -82,7 +90,13 @@ export async function generate(prompt: string, systemPrompt: string, model: stri
   }
 }
 
-export async function stream(prompt: string, systemPrompt: string, model: string, onChunk?: (text: string, full: string) => void, options: GroqOptions = {}) {
+export async function stream(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  onChunk?: (text: string, full: string) => void,
+  options: GroqOptions = {}
+) {
   const apiKey = options.apiKey
   if (!apiKey) throw new Error('Groq API key not configured')
 
@@ -129,7 +143,10 @@ export async function stream(prompt: string, systemPrompt: string, model: string
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
       const errMsg = error.error?.message || `Groq error: ${response.status}`
-      if (error.error?.code === 'context_length_exceeded' || /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)) {
+      if (
+        error.error?.code === 'context_length_exceeded' ||
+        /(?:context_length_exceeded|maximum context length|too many tokens)/i.test(errMsg)
+      ) {
         throw new TokenLimitError(errMsg, PROVIDERS.GROQ, model, options.maxTokens)
       }
       throw new Error(errMsg)

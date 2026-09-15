@@ -84,7 +84,8 @@ export function useErrorTracker() {
   const errorCount = computed(() => errors.value.length)
   const hasCritical = computed(() => errors.value.some((e) => e.severity === 'critical'))
 
-  const bySource = (source: any) => computed(() => errors.value.filter((e: any) => e.source === source))
+  const bySource = (source: any) =>
+    computed(() => errors.value.filter((e: any) => e.source === source))
 
   return {
     errors,

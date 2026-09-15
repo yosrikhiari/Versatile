@@ -249,7 +249,10 @@ function buildNameMap(items: any, nameField: any) {
  * (IDs), dropping any endpoint whose name doesn't resolve to a committed entity.
  * Returns { characterRelationships, graphEdges, dropped }.
  */
-export function buildRelationshipEdges(aiResult: any, { characters, locations, plotThreads }: { characters: any; locations: any; plotThreads: any }) {
+export function buildRelationshipEdges(
+  aiResult: any,
+  { characters, locations, plotThreads }: { characters: any; locations: any; plotThreads: any }
+) {
   const charMap = buildNameMap(characters, 'name')
   const locMap = buildNameMap(locations, 'name')
   const threadMap = buildNameMap(plotThreads, 'title')
@@ -280,7 +283,14 @@ export function buildRelationshipEdges(aiResult: any, { characters, locations, p
     })
   }
 
-  const pushEdge = (sourceId: any, sourceType: any, targetId: any, targetType: any, relationshipType: any, description: any) => {
+  const pushEdge = (
+    sourceId: any,
+    sourceType: any,
+    targetId: any,
+    targetType: any,
+    relationshipType: any,
+    description: any
+  ) => {
     if (sourceId == null || targetId == null) return false
     const key = `${sourceType}:${sourceId}|${targetType}:${targetId}`
     if (seenEdge.has(key)) return true
@@ -346,7 +356,21 @@ export function countAiConnections(aiResult: any) {
   )
 }
 
-function buildUserPrompt({ characters, locations, plotThreads, synopsis, genre, tone }: { characters: any; locations: any; plotThreads: any; synopsis: any; genre: any; tone: any }) {
+function buildUserPrompt({
+  characters,
+  locations,
+  plotThreads,
+  synopsis,
+  genre,
+  tone
+}: {
+  characters: any
+  locations: any
+  plotThreads: any
+  synopsis: any
+  genre: any
+  tone: any
+}) {
   const payload = {
     synopsis: synopsis || '',
     genre: genre || '',

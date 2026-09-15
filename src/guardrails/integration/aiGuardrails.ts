@@ -30,11 +30,11 @@ export class GuardrailBlockedError extends Error {
   readonly kinds: string[]
 
   constructor(results: GuardrailResult[]) {
-    const summary = results.map(r => r.message).join('; ')
+    const summary = results.map((r) => r.message).join('; ')
     super(`Blocked by guardrails: ${summary}`)
     this.name = 'GuardrailBlockedError'
     this.results = results
-    this.kinds = [...new Set(results.map(r => r.kind))]
+    this.kinds = [...new Set(results.map((r) => r.kind))]
   }
 }
 
@@ -52,7 +52,7 @@ const NOOP: GuardrailRunResult = {
   blocking: [],
   detective: [],
   skipped: [],
-  durationMs: 0,
+  durationMs: 0
 }
 
 /**
@@ -76,7 +76,7 @@ export function guardPrompt(input: {
       kinds: ['input', 'circuit_breaker'],
       data: { prompt: input.prompt, systemPrompt: input.systemPrompt },
       provider: input.provider,
-      entryPoint: input.entryPoint ?? `aiService.${input.feature ?? 'generate'}`,
+      entryPoint: input.entryPoint ?? `aiService.${input.feature ?? 'generate'}`
     })
   )
 }
@@ -97,7 +97,7 @@ export function guardStructuredOutput(input: {
       data: input.data,
       schema: input.schema,
       provider: input.provider,
-      entryPoint: input.entryPoint ?? 'aiService.aiGenerateStructured',
+      entryPoint: input.entryPoint ?? 'aiService.aiGenerateStructured'
     })
   )
 }
@@ -108,11 +108,10 @@ export function guardStructuredOutput(input: {
  * Returns the digest to store alongside the value so a later read can verify
  * the pairing — see `createCacheGuard`.
  */
-export function guardCacheWrite(input: {
-  key: string
-  value: unknown
-  provider?: string
-}): { run: GuardrailRunResult; digest: string } {
+export function guardCacheWrite(input: { key: string; value: unknown; provider?: string }): {
+  run: GuardrailRunResult
+  digest: string
+} {
   const valueDigest = digest(input.value)
   if (enforcement === 'off') return { run: NOOP, digest: valueDigest }
 
@@ -122,7 +121,7 @@ export function guardCacheWrite(input: {
     cacheKey: input.key,
     data: { key: input.key, value: input.value, digest: valueDigest, createdAt: Date.now() },
     provider: input.provider,
-    entryPoint: 'aiService.cacheWrite',
+    entryPoint: 'aiService.cacheWrite'
   })
 
   // A failed cache write is never worth aborting a completed generation over —
@@ -145,7 +144,7 @@ export function recordProviderFailure(provider: string, error: unknown): void {
       kinds: ['circuit_breaker'],
       data: { error: error instanceof Error ? error.message : String(error), failed: true },
       provider,
-      entryPoint: 'aiService.providerError',
+      entryPoint: 'aiService.providerError'
     })
   } catch {
     // never mask the provider error

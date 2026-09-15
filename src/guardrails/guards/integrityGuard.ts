@@ -45,23 +45,23 @@ export function createIntegrityGuard(
         details: { table: label, ...details },
         layer: context.layer,
         contextId: context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 
-    const missing = required.filter(f => isEmpty(data[f]))
+    const missing = required.filter((f) => isEmpty(data[f]))
     if (missing.length > 0) {
       fail(`${label} is missing required field(s): ${missing.join(', ')}`, {
-        missingFields: missing,
+        missingFields: missing
       })
     }
 
     // Orphan check: a project-scoped row with no parent key is unreachable —
     // it will never appear in any project query and cannot be cleaned up.
-    const orphaned = parentKeys.filter(k => isEmpty(data[k]))
+    const orphaned = parentKeys.filter((k) => isEmpty(data[k]))
     if (orphaned.length > 0) {
       fail(`${label} would be orphaned — missing parent reference(s): ${orphaned.join(', ')}`, {
-        missingParents: orphaned,
+        missingParents: orphaned
       })
     }
 
@@ -81,7 +81,7 @@ export function createIntegrityGuard(
           details: { table: label, name: data.name },
           layer: context.layer,
           contextId: context.sceneId,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         })
       }
     }

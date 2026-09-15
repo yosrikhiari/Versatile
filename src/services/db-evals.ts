@@ -68,7 +68,10 @@ export async function getAggregateStats(projectId: string) {
     totalEvals: all.length,
     evaluatedScenes: new Set(all.map((r: any) => r.sceneId).filter(Boolean)).size,
     averageScore: avgScore,
-    latestTimestamp: all.reduce((latest: string, r: any) => (r.timestamp > latest ? r.timestamp : latest), '')
+    latestTimestamp: all.reduce(
+      (latest: string, r: any) => (r.timestamp > latest ? r.timestamp : latest),
+      ''
+    )
   }
 }
 

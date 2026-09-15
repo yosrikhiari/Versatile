@@ -8,7 +8,7 @@ const NOOP: GuardrailRunResult = {
   blocking: [],
   detective: [],
   skipped: [],
-  durationMs: 0,
+  durationMs: 0
 }
 
 /**
@@ -33,7 +33,7 @@ export const TABLE_CONTRACTS: Record<string, TableContract> = {
   subsections: { required: [], parents: ['projectId'] },
   evalResults: { required: ['evalType'], parents: ['projectId'] },
   projectBlurbs: { required: [], parents: ['projectId'] },
-  graphEdges: { required: [], parents: ['projectId'] },
+  graphEdges: { required: [], parents: ['projectId'] }
 }
 
 /**
@@ -69,8 +69,8 @@ export function guardStorageWrite(
       table,
       requiredFields: contract.required,
       parentKeys: contract.parents,
-      entityType: contract.entityType,
-    },
+      entityType: contract.entityType
+    }
   })
 
   if (getGuardrailEnforcement() === 'blocking' && result.blocking.length > 0) {
@@ -93,7 +93,7 @@ export function guardStorageWriteBatch(
     blocking: [],
     detective: [],
     skipped: [],
-    durationMs: 0,
+    durationMs: 0
   }
 
   for (const row of rows) {
@@ -133,7 +133,7 @@ export function guardSyncPush(
     blocking: [],
     detective: [],
     skipped: [],
-    durationMs: 0,
+    durationMs: 0
   }
 
   for (const row of rows) {
@@ -146,8 +146,8 @@ export function guardSyncPush(
         table,
         // A row being pushed has already been persisted, so it must carry its id.
         requiredFields: [...contract.required, 'id'],
-        parentKeys: contract.parents,
-      },
+        parentKeys: contract.parents
+      }
     })
     merged.results.push(...one.results)
     merged.blocking.push(...one.blocking)

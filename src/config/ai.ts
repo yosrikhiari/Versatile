@@ -132,7 +132,8 @@ export function getEmbeddingCapabilities(
   provider: keyof typeof EMBEDDING_PROVIDER_CAPABILITIES | string
 ) {
   return (
-    EMBEDDING_PROVIDER_CAPABILITIES[provider as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES] || null
+    EMBEDDING_PROVIDER_CAPABILITIES[provider as keyof typeof EMBEDDING_PROVIDER_CAPABILITIES] ||
+    null
   )
 }
 

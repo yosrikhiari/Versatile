@@ -1,9 +1,6 @@
 import { useContextCompactor } from '../../composables/useContextCompactor'
 import { generateEntity } from '../../composables/generation'
-import type {
-  GeneratedCharacter,
-  GeneratedLocation
-} from './entityGenerationAdvanced'
+import type { GeneratedCharacter, GeneratedLocation } from './entityGenerationAdvanced'
 
 interface ManuscriptContext {
   contextText?: string

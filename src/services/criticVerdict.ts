@@ -73,8 +73,7 @@ export interface Verdict {
 function numericDimensions(dimensionScores: Record<string, number | null> | null | undefined) {
   if (!dimensionScores) return [] as Array<[string, number]>
   return Object.entries(dimensionScores).filter(
-    (entry): entry is [string, number] =>
-      typeof entry[1] === 'number' && Number.isFinite(entry[1])
+    (entry): entry is [string, number] => typeof entry[1] === 'number' && Number.isFinite(entry[1])
   )
 }
 

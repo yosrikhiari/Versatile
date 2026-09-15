@@ -53,7 +53,7 @@ export function createFactCanonGuard(
         details: { contradictions, newFacts },
         layer: context.layer,
         contextId: context.sceneId,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
     }
 
@@ -75,13 +75,43 @@ function detectNegation(a: string, b: string): boolean {
     return false
   }
 
-  const sharedVerbs = ['is', 'was', 'has', 'had', 'does', 'did', 'will', 'can', 'must', 'lives', 'knows', 'wants', 'goes', 'killed', 'saved', 'found', 'lost', 'took', 'gave', 'said', 'went', 'came', 'left', 'met', 'saw', 'heard', 'felt', 'thought', 'believed']
+  const sharedVerbs = [
+    'is',
+    'was',
+    'has',
+    'had',
+    'does',
+    'did',
+    'will',
+    'can',
+    'must',
+    'lives',
+    'knows',
+    'wants',
+    'goes',
+    'killed',
+    'saved',
+    'found',
+    'lost',
+    'took',
+    'gave',
+    'said',
+    'went',
+    'came',
+    'left',
+    'met',
+    'saw',
+    'heard',
+    'felt',
+    'thought',
+    'believed'
+  ]
 
   if (hasNegation(aWords) !== hasNegation(bWords)) {
-    const shared = new Set([...aWords].filter(w => sharedVerbs.includes(w) || bWords.has(w)))
+    const shared = new Set([...aWords].filter((w) => sharedVerbs.includes(w) || bWords.has(w)))
     shared.delete('not')
     shared.delete('no')
-    const sharedSignificant = [...shared].filter(w => w.length > 2)
+    const sharedSignificant = [...shared].filter((w) => w.length > 2)
     if (sharedSignificant.length >= 2) {
       return true
     }
