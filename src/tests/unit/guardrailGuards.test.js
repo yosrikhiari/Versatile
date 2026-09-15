@@ -146,9 +146,13 @@ describe('piiGuard', () => {
 
   it('scans repeatedly without regex lastIndex leaking between calls', () => {
     const data = { content: 'a@b.com and c@d.com' }
+    // Results carry a `timestamp: Date.now()`; comparing them whole made this
+    // fail whenever the millisecond ticked between the two calls (it did, under
+    // a full-suite load). The claim is about the regex, so compare without it.
+    const strip = (rs) => rs.map(({ timestamp, ...rest }) => rest)
     const first = guard({ layer: OUTPUT, data })
     const second = guard({ layer: OUTPUT, data })
-    expect(second).toEqual(first)
+    expect(strip(second)).toEqual(strip(first))
     expect(second).toHaveLength(1)
   })
 })
