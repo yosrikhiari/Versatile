@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en" data-dir="A" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Versatile — Three Design Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Hallmark · redesign (multi-page, system-level) · three candidate systems, not one
+ * pre-emit critique: P5 H4 E4 S5 R4 V5
+ * A Folio      · paper band light  · display classical-serif (Newsreader, roman) · accent warm (madder 25°)
+ * B Studio     · paper band dark   · display grotesk-sans (Space Grotesk)        · accent chromatic-other (verdigris 165°)
+ * C Typescript · paper band light  · display mono (IBM Plex Mono, tracked caps)  · accent cool (cobalt 262°)
+ * Every colour below is a named token; every font-family references --font-*. No invented metrics:
+ * all numbers in the mockups are sample story data, labelled as such. */
+
+/* =========================================================================
+   Direction A · Folio — the manuscript is a sheet of paper on a desk
+   ========================================================================= */
+[data-dir="A"]{
+  --font-display:'Newsreader', Georgia, serif;
+  --font-ui:'Geist', system-ui, sans-serif;
+  --font-mono:'Geist Mono', ui-monospace, monospace;
+  --font-manuscript:'Newsreader', Georgia, serif;
+  --ms-size:17.5px; --ms-lead:1.7; --ms-weight:400;
+  --radius-sm:5px; --radius-md:8px; --radius-sheet:3px;
+  --color-ground:oklch(95.5% 0.013 80);
+  --color-panel:oklch(93% 0.015 78);
+  --color-sheet:oklch(98.6% 0.008 85);
+  --color-elevated:oklch(99.2% 0.006 85);
+  --color-hover:oklch(90.5% 0.016 78);
+  --color-rule:oklch(86% 0.014 75);
+  --color-rule-strong:oklch(74% 0.02 70);
+  --color-ink:oklch(23% 0.022 60);
+  --color-ink-2:oklch(44% 0.02 60);
+  --color-ink-3:oklch(60% 0.018 60);
+  --color-accent:oklch(49% 0.165 25);
+  --color-accent-soft:oklch(49% 0.165 25 / .12);
+  --color-accent-ink:oklch(98% 0.01 80);
+  --color-focus:oklch(49% 0.165 25);
+  --color-success:oklch(50% 0.11 150); --color-warning:oklch(62% 0.13 75); --color-danger:oklch(50% 0.17 25); --color-info:oklch(50% 0.1 240);
+  --shadow-sheet:0 1px 0 var(--color-rule), 0 10px 30px -18px oklch(30% 0.03 60 / .35);
+  --shadow-pop:0 12px 32px -12px oklch(30% 0.03 60 / .35);
+  --display-weight:500; --display-tracking:-0.01em; --label-tracking:.06em; --label-case:none;
+}
+[data-dir="A"][data-theme="dark"]{
+  --color-ground:oklch(19% 0.012 60);
+  --color-panel:oklch(16.5% 0.01 60);
+  --color-sheet:oklch(23.5% 0.012 65);
+  --color-elevated:oklch(27% 0.012 65);
+  --color-hover:oklch(22% 0.012 60);
+  --color-rule:oklch(30% 0.012 60);
+  --color-rule-strong:oklch(42% 0.015 60);
+  --color-ink:oklch(92% 0.012 80);
+  --color-ink-2:oklch(72% 0.014 75);
+  --color-ink-3:oklch(56% 0.014 70);
+  --color-accent:oklch(72% 0.14 30);
+  --color-accent-soft:oklch(72% 0.14 30 / .16);
+  --color-accent-ink:oklch(18% 0.02 40);
+  --color-focus:oklch(72% 0.14 30);
+  --color-success:oklch(74% 0.11 150); --color-warning:oklch(80% 0.12 80); --color-danger:oklch(72% 0.15 25); --color-info:oklch(74% 0.09 240);
+  --shadow-sheet:0 1px 0 oklch(30% 0.012 60), 0 14px 36px -18px oklch(0% 0 0 / .6);
+  --shadow-pop:0 16px 40px -12px oklch(0% 0 0 / .6);
+}
+
+/* =========================================================================
+   Direction B · Studio — a lit desk in a dark room; the page is the brightest object
+   ========================================================================= */
+[data-dir="B"]{
+  --font-display:'Space Grotesk', 'Geist', sans-serif;
+  --font-ui:'Geist', system-ui, sans-serif;
+  --font-mono:'Geist Mono', ui-monospace, monospace;
+  --font-manuscript:'IBM Plex Mono', ui-monospace, monospace;
+  --ms-size:15.5px; --ms-lead:1.8; --ms-weight:400;
+  --radius-sm:8px; --radius-md:12px; --radius-sheet:14px;
+  --color-ground:oklch(14% 0.008 270);
+  --color-panel:oklch(18.5% 0.009 270);
+  --color-sheet:oklch(21.5% 0.009 75);
+  --color-elevated:oklch(24% 0.01 270);
+  --color-hover:oklch(22.5% 0.01 270);
+  --color-rule:oklch(27% 0.01 270);
+  --color-rule-strong:oklch(38% 0.012 270);
+  --color-ink:oklch(93% 0.008 80);
+  --color-ink-2:oklch(71% 0.012 80);
+  --color-ink-3:oklch(55% 0.012 80);
+  --color-accent:oklch(76% 0.11 165);
+  --color-accent-soft:oklch(76% 0.11 165 / .14);
+  --color-accent-ink:oklch(15% 0.02 165);
+  --color-focus:oklch(76% 0.11 165);
+  --color-success:oklch(76% 0.12 150); --color-warning:oklch(81% 0.13 80); --color-danger:oklch(71% 0.16 20); --color-info:oklch(75% 0.1 230);
+  --shadow-sheet:inset 0 1px 0 oklch(100% 0 0 / .05), 0 0 0 1px oklch(100% 0 0 / .04), 0 24px 60px -30px oklch(0% 0 0 / .8);
+  --shadow-pop:inset 0 1px 0 oklch(100% 0 0 / .06), 0 20px 50px -16px oklch(0% 0 0 / .7);
+  --display-weight:600; --display-tracking:-0.02em; --label-tracking:.08em; --label-case:uppercase;
+}
+[data-dir="B"][data-theme="light"]{
+  --color-ground:oklch(94% 0.006 270);
+  --color-panel:oklch(97.5% 0.005 270);
+  --color-sheet:oklch(100% 0 0);
+  --color-elevated:oklch(100% 0 0);
+  --color-hover:oklch(93% 0.006 270);
+  --color-rule:oklch(88% 0.006 270);
+  --color-rule-strong:oklch(76% 0.008 270);
+  --color-ink:oklch(20% 0.01 270);
+  --color-ink-2:oklch(45% 0.012 270);
+  --color-ink-3:oklch(60% 0.012 270);
+  --color-accent:oklch(52% 0.11 165);
+  --color-accent-soft:oklch(52% 0.11 165 / .12);
+  --color-accent-ink:oklch(99% 0 0);
+  --color-focus:oklch(52% 0.11 165);
+  --color-success:oklch(52% 0.12 150); --color-warning:oklch(62% 0.13 80); --color-danger:oklch(52% 0.17 22); --color-info:oklch(52% 0.1 230);
+  --shadow-sheet:0 0 0 1px oklch(0% 0 0 / .05), 0 18px 40px -24px oklch(0% 0 0 / .25);
+  --shadow-pop:0 16px 40px -12px oklch(0% 0 0 / .2);
+}
+
+/* =========================================================================
+   Direction C · Typescript — the wordmark's DNA everywhere: mono, tracked caps, rules
+   ========================================================================= */
+[data-dir="C"]{
+  --font-display:'IBM Plex Mono', ui-monospace, monospace;
+  --font-ui:'Geist', system-ui, sans-serif;
+  --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+  --font-manuscript:'IBM Plex Mono', ui-monospace, monospace;
+  --ms-size:15px; --ms-lead:1.85; --ms-weight:400;
+  --radius-sm:2px; --radius-md:3px; --radius-sheet:0;
+  --color-ground:oklch(97% 0.006 90);
+  --color-panel:oklch(94.5% 0.006 90);
+  --color-sheet:oklch(97% 0.006 90);
+  --color-elevated:oklch(99.5% 0.003 90);
+  --color-hover:oklch(91.5% 0.007 90);
+  --color-rule:oklch(84% 0.006 90);
+  --color-rule-strong:oklch(18% 0 0);
+  --color-ink:oklch(18% 0 0);
+  --color-ink-2:oklch(40% 0.004 90);
+  --color-ink-3:oklch(58% 0.004 90);
+  --color-accent:oklch(50% 0.2 262);
+  --color-accent-soft:oklch(50% 0.2 262 / .1);
+  --color-accent-ink:oklch(100% 0 0);
+  --color-focus:oklch(50% 0.2 262);
+  --color-success:oklch(50% 0.12 150); --color-warning:oklch(60% 0.14 70); --color-danger:oklch(50% 0.18 25); --color-info:oklch(50% 0.2 262);
+  --shadow-sheet:none;
+  --shadow-pop:0 0 0 1.5px var(--color-rule-strong);
+  --display-weight:500; --display-tracking:.12em; --label-tracking:.14em; --label-case:uppercase;
+}
+[data-dir="C"][data-theme="dark"]{
+  --color-ground:oklch(19% 0 0);
+  --color-panel:oklch(16% 0 0);
+  --color-sheet:oklch(19% 0 0);
+  --color-elevated:oklch(24% 0 0);
+  --color-hover:oklch(23% 0 0);
+  --color-rule:oklch(30% 0 0);
+  --color-rule-strong:oklch(90% 0 0);
+  --color-ink:oklch(91% 0 0);
+  --color-ink-2:oklch(68% 0 0);
+  --color-ink-3:oklch(52% 0 0);
+  --color-accent:oklch(76% 0.13 262);
+  --color-accent-soft:oklch(76% 0.13 262 / .16);
+  --color-accent-ink:oklch(14% 0.03 262);
+  --color-focus:oklch(76% 0.13 262);
+  --color-success:oklch(74% 0.12 150); --color-warning:oklch(80% 0.13 80); --color-danger:oklch(72% 0.16 25); --color-info:oklch(76% 0.13 262);
+}
+
+/* =========================================================================
+   Shared: page chrome (this document) + the mockup grammar, all via tokens
+   ========================================================================= */
+*{ box-sizing:border-box; }
+html,body{ height:auto; overflow-x:clip; }
+body{ margin:0; background:var(--color-ground); color:var(--color-ink); font:14px/1.55 var(--font-ui); -webkit-font-smoothing:antialiased; transition:background .25s ease-out, color .25s ease-out; }
+.doc{ max-width:1240px; margin:0 auto; padding:0 28px 80px; }
+.top{ position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:10px; padding:12px 0; background:color-mix(in oklch, var(--color-ground) 88%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--color-rule); margin-bottom:28px; }
+.top h1{ font:var(--display-weight) 16px/1 var(--font-display); letter-spacing:var(--display-tracking); text-transform:var(--label-case); margin:0 auto 0 0; }
+.dirs{ display:inline-flex; border:1px solid var(--color-rule); border-radius:var(--radius-md); overflow:hidden; background:var(--color-panel); }
+.dirs button{ font:500 12.5px var(--font-ui); padding:7px 14px; border:none; background:transparent; color:var(--color-ink-2); cursor:pointer; border-right:1px solid var(--color-rule); }
+.dirs button:last-child{ border-right:none; }
+.dirs button[aria-pressed="true"]{ background:var(--color-accent); color:var(--color-accent-ink); }
+.btn{ font:500 12.5px var(--font-ui); padding:7px 13px; border-radius:var(--radius-sm); border:1px solid transparent; cursor:pointer; background:transparent; color:var(--color-ink); transition:transform .15s ease-out, background .15s ease-out, box-shadow .15s ease-out; }
+.btn.primary{ background:var(--color-accent); color:var(--color-accent-ink); }
+.btn.primary:hover{ box-shadow:0 0 0 3px var(--color-accent-soft); }
+.btn.elevated{ background:var(--color-elevated); border-color:var(--color-rule); box-shadow:var(--shadow-sheet); }
+.btn.elevated:hover{ transform:translateY(-1px); border-color:var(--color-rule-strong); }
+.btn.ghost{ color:var(--color-ink-2); } .btn.ghost:hover{ color:var(--color-ink); background:var(--color-hover); }
+.btn.danger{ color:var(--color-danger); }
+.btn:focus-visible, .field:focus-visible, .chip:focus-visible{ outline:2px solid var(--color-focus); outline-offset:2px; }
+[data-dir="C"] .btn.primary{ border-color:var(--color-rule-strong); }
+[data-dir="C"] .btn.elevated{ border:1.5px solid var(--color-rule-strong); box-shadow:none; }
+h2.sec{ font:var(--display-weight) 22px/1.2 var(--font-display); letter-spacing:var(--display-tracking); margin:44px 0 6px; }
+[data-dir="C"] h2.sec{ font-size:15px; text-transform:uppercase; }
+.lead{ color:var(--color-ink-2); max-width:70ch; margin:0 0 18px; font-size:14.5px; line-height:1.6; }
+.lead b, .p b{ color:var(--color-ink); font-weight:500; }
+.p{ color:var(--color-ink-2); font-size:13.5px; line-height:1.6; margin:0; }
+.cite{ font:11.5px var(--font-mono); color:var(--color-accent); background:var(--color-accent-soft); padding:1px 5px; border-radius:var(--radius-sm); }
+.audit{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; }
+@media (max-width:900px){ .audit{ grid-template-columns:1fr; } .doc{ padding:0 16px 60px; } }
+.card{ background:var(--color-panel); border:1px solid var(--color-rule); border-radius:var(--radius-md); padding:16px 18px; }
+.card h3{ font:600 13.5px var(--font-ui); margin:0 0 6px; display:flex; align-items:center; gap:10px; }
+.sev{ font:500 10px var(--font-mono); letter-spacing:.08em; text-transform:uppercase; padding:2px 7px; border-radius:100px; }
+.sev.a{ color:var(--color-danger); background:color-mix(in oklch, var(--color-danger) 14%, transparent); }
+.sev.b{ color:var(--color-warning); background:color-mix(in oklch, var(--color-warning) 16%, transparent); }
+.sev.c{ color:var(--color-ink-2); background:var(--color-hover); }
+.matrix{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:10px; }
+.matrix th{ text-align:left; font:500 10.5px var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--color-ink-3); padding:8px 10px; border-bottom:1px solid var(--color-rule); }
+.matrix td{ padding:9px 10px; border-bottom:1px solid var(--color-rule); vertical-align:top; color:var(--color-ink-2); }
+.matrix td:first-child{ color:var(--color-ink); font-weight:500; white-space:nowrap; }
+.matrix tr:last-child td{ border-bottom:none; }
+.dirhead{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin:40px 0 4px; }
+.dirhead .k{ font:500 11px var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--color-accent); }
+.dirhead h2{ font:var(--display-weight) 28px/1.1 var(--font-display); letter-spacing:var(--display-tracking); margin:0; }
+[data-dir="C"] .dirhead h2{ font-size:18px; text-transform:uppercase; }
+.dirhead .axes{ margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; }
+.axes span{ font:11px var(--font-mono); color:var(--color-ink-2); border:1px solid var(--color-rule); border-radius:100px; padding:2px 9px; background:var(--color-panel); }
+.swatches{ display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 18px; }
+.sw{ width:96px; }
+.sw i{ display:block; height:44px; border-radius:var(--radius-sm); border:1px solid var(--color-rule); }
+.sw small{ display:block; font:10.5px var(--font-mono); color:var(--color-ink-3); margin-top:4px; }
+.typ{ display:grid; grid-template-columns:140px 1fr; gap:6px 14px; align-items:baseline; font-size:12.5px; color:var(--color-ink-2); margin-bottom:18px; }
+.typ .d{ font:var(--display-weight) 22px/1.2 var(--font-display); letter-spacing:var(--display-tracking); color:var(--color-ink); }
+[data-dir="C"] .typ .d{ font-size:14px; text-transform:uppercase; }
+.typ .m{ font:var(--ms-weight) var(--ms-size)/var(--ms-lead) var(--font-manuscript); color:var(--color-ink); }
+.typ .u{ font:500 13px var(--font-ui); color:var(--color-ink); }
+.typ .mo{ font:12px var(--font-mono); color:var(--color-ink); }
+.frame{ margin:16px 0 26px; }
+.frame-label{ font:500 10.5px var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--color-ink-3); margin-bottom:8px; display:flex; gap:10px; align-items:center; }
+.frame-label::after{ content:''; flex:1; height:1px; background:var(--color-rule); }
+
+/* ---- mock grammar ---- */
+.mock{ border:1px solid var(--color-rule); border-radius:var(--radius-md); overflow:hidden; background:var(--color-ground); box-shadow:var(--shadow-sheet); }
+.wordmark{ font:var(--display-weight) 13px var(--font-display); letter-spacing:var(--display-tracking); text-transform:var(--label-case); }
+[data-dir="C"] .wordmark{ letter-spacing:.2em; }
+.label{ font:500 10.5px var(--font-ui); letter-spacing:var(--label-tracking); text-transform:var(--label-case); color:var(--color-ink-3); }
+[data-dir="C"] .label{ font-family:var(--font-mono); }
+.shell{ display:grid; grid-template-columns:200px 1fr 300px; height:560px; }
+.side{ background:var(--color-panel); border-right:1px solid var(--color-rule); padding:14px 10px; display:flex; flex-direction:column; gap:2px; font-size:12.5px; }
+.side .label{ padding:12px 8px 4px; }
+.nav{ display:flex; align-items:center; gap:9px; padding:6px 8px; border-radius:var(--radius-sm); color:var(--color-ink-2); }
+.nav i{ width:12px; height:12px; border:1.5px solid currentColor; border-radius:3px; opacity:.7; }
+.nav.on{ color:var(--color-ink); background:var(--color-accent-soft); position:relative; }
+[data-dir="A"] .nav.on{ background:transparent; box-shadow:inset 3px 0 0 var(--color-accent); border-radius:0; }
+[data-dir="C"] .nav.on{ background:transparent; color:var(--color-accent); }
+[data-dir="C"] .nav.on::before{ content:'>'; font-family:var(--font-mono); position:absolute; left:-2px; }
+.main{ display:flex; flex-direction:column; min-width:0; }
+.hdr{ display:flex; align-items:center; gap:14px; padding:10px 18px; border-bottom:1px solid var(--color-rule); font-size:12px; color:var(--color-ink-2); background:var(--color-ground); }
+.hdr b{ color:var(--color-ink); font-weight:500; }
+.hdr .goal{ width:90px; height:4px; background:var(--color-hover); border-radius:100px; overflow:hidden; } .hdr .goal i{ display:block; height:100%; width:38%; background:var(--color-accent); }
+.hdr .save{ margin-left:auto; display:flex; align-items:center; gap:6px; } .hdr .save::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--color-success); }
+.desk{ flex:1; padding:28px 32px; overflow:hidden; }
+.sheet{ max-width:62ch; margin:0 auto; background:var(--color-sheet); border-radius:var(--radius-sheet); padding:36px 44px; box-shadow:var(--shadow-sheet); }
+[data-dir="C"] .sheet{ border-left:2px solid var(--color-rule-strong); border-radius:0; padding:24px 32px; box-shadow:none; }
+.sheet h4{ font:var(--display-weight) 20px/1.2 var(--font-display); letter-spacing:var(--display-tracking); margin:0 0 4px; }
+[data-dir="C"] .sheet h4{ font-size:12px; text-transform:uppercase; letter-spacing:.16em; color:var(--color-ink-2); }
+.sheet .sc{ font:11px var(--font-mono); color:var(--color-ink-3); margin-bottom:18px; }
+.ms{ font:var(--ms-weight) var(--ms-size)/var(--ms-lead) var(--font-manuscript); color:var(--color-ink); }
+.ms p{ margin:0 0 1em; } .ms p:last-child{ margin:0; }
+.ms .caret{ display:inline-block; width:2px; height:1em; background:var(--color-accent); vertical-align:-2px; animation:blink 1s steps(2) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+.panel{ background:var(--color-panel); border-left:1px solid var(--color-rule); display:flex; flex-direction:column; min-width:0; }
+.ph{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border-bottom:1px solid var(--color-rule); }
+.ph h5{ margin:0; font:600 13px var(--font-ui); } [data-dir="C"] .ph h5{ font:500 11px var(--font-mono); letter-spacing:.14em; text-transform:uppercase; }
+.ph .meta{ font:11px var(--font-mono); color:var(--color-ink-3); }
+.sec2{ padding:12px 14px; border-bottom:1px solid var(--color-rule); }
+.sec2 h6{ margin:0 0 2px; font:500 12px var(--font-ui); } .sec2 .desc{ font-size:11px; color:var(--color-ink-3); margin:0 0 8px; }
+.find{ display:flex; gap:9px; padding:8px 0; border-top:1px solid var(--color-rule); font-size:12px; color:var(--color-ink-2); }
+.find:first-of-type{ border-top:none; }
+.find i{ flex:none; width:8px; height:8px; border-radius:50%; margin-top:5px; }
+.find b{ color:var(--color-ink); font-weight:500; display:block; }
+.row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.chip{ display:inline-flex; align-items:center; gap:6px; font:500 11.5px var(--font-ui); padding:3px 10px; border-radius:100px; border:1px solid var(--color-rule); background:var(--color-elevated); color:var(--color-ink-2); cursor:pointer; }
+.chip.on{ background:var(--color-accent-soft); color:var(--color-accent); border-color:transparent; }
+[data-dir="C"] .chip{ border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:11px; }
+[data-dir="C"] .chip.on{ border-color:var(--color-accent); }
+.field{ font:12.5px var(--font-ui); height:32px; padding:0 10px; border-radius:var(--radius-sm); border:1px solid var(--color-rule); background:var(--color-elevated); color:var(--color-ink); width:100%; }
+.field.err{ border-color:var(--color-danger); }
+.hint{ font-size:11px; color:var(--color-ink-3); margin-top:4px; } .hint.err{ color:var(--color-danger); }
+.sw2{ display:inline-flex; align-items:center; gap:10px; font-size:12.5px; }
+.sw2 i{ width:34px; height:19px; border-radius:100px; background:var(--color-accent); position:relative; display:inline-block; }
+.sw2 i::after{ content:''; position:absolute; top:2px; left:17px; width:15px; height:15px; border-radius:50%; background:var(--color-accent-ink); }
+.sw2.off i{ background:var(--color-rule-strong); } .sw2.off i::after{ left:2px; }
+.dot{ display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--color-ink-2); }
+.dot i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+.alert{ display:flex; gap:10px; padding:10px 12px; border-radius:var(--radius-sm); border:1px solid color-mix(in oklch, var(--color-warning) 35%, transparent); background:color-mix(in oklch, var(--color-warning) 10%, transparent); font-size:12.5px; }
+.alert b{ display:block; color:var(--color-warning); font-weight:500; }
+.skel{ height:11px; border-radius:4px; background:linear-gradient(90deg, var(--color-hover), var(--color-rule), var(--color-hover)); background-size:200% 100%; animation:shim 1.4s linear infinite; }
+@keyframes shim{ 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.empty{ text-align:center; padding:18px 10px; color:var(--color-ink-3); font-size:12.5px; }
+.empty b{ display:block; font:var(--display-weight) 16px var(--font-display); letter-spacing:var(--display-tracking); color:var(--color-ink); margin-bottom:4px; }
+[data-dir="C"] .empty b{ font-size:12px; text-transform:uppercase; letter-spacing:.14em; }
+/* workspace mock */
+.ws{ padding:22px 28px; min-height:360px; }
+.ws .bar{ display:flex; align-items:center; gap:14px; margin-bottom:22px; }
+.ws .bar .btn{ margin-left:auto; }
+.ws h3{ font:var(--display-weight) 26px/1.1 var(--font-display); letter-spacing:var(--display-tracking); margin:0 0 2px; }
+[data-dir="C"] .ws h3{ font-size:16px; text-transform:uppercase; }
+.cont{ display:flex; align-items:center; gap:18px; background:var(--color-sheet); border:1px solid var(--color-rule); border-radius:var(--radius-md); padding:16px 18px; margin:16px 0 8px; box-shadow:var(--shadow-sheet); }
+[data-dir="C"] .cont{ border:1.5px solid var(--color-rule-strong); box-shadow:none; }
+.cont .t{ font:var(--display-weight) 18px/1.2 var(--font-display); letter-spacing:var(--display-tracking); }
+[data-dir="C"] .cont .t{ font-size:13px; text-transform:uppercase; letter-spacing:.12em; }
+.cont .s{ font-size:12px; color:var(--color-ink-2); margin-top:3px; }
+.cont .btn{ margin-left:auto; }
+.prow{ display:grid; grid-template-columns:1fr 120px 80px 90px; align-items:center; gap:12px; padding:10px 12px; border-bottom:1px solid var(--color-rule); font-size:13px; }
+.prow:hover{ background:var(--color-hover); }
+.prow .c{ font:11.5px var(--font-mono); color:var(--color-ink-3); text-align:right; }
+.spark{ height:18px; }
+/* settings mock */
+.set{ display:grid; grid-template-columns:1fr 1fr; gap:0; }
+.set > div{ padding:16px 18px; } .set > div:first-child{ border-right:1px solid var(--color-rule); }
+/* sheet of components */
+.comp{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px; padding:18px; }
+@media (max-width:900px){ .comp{ grid-template-columns:1fr; } .shell{ grid-template-columns:1fr; height:auto; } .side, .panel{ display:none; } .set{ grid-template-columns:1fr; } }
+.comp .g{ display:flex; flex-direction:column; gap:10px; }
+.comp .label{ margin-bottom:2px; }
+.pick{ margin-top:40px; padding:22px 24px; border:1.5px solid var(--color-accent); border-radius:var(--radius-md); background:var(--color-accent-soft); }
+.pick h2{ margin:0 0 6px; font:var(--display-weight) 20px var(--font-display); letter-spacing:var(--display-tracking); }
+@media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="top">
+    <h1>Versatile · three directions</h1>
+    <div class="dirs" role="group" aria-label="Direction">
+      <button data-dir="A" aria-pressed="true">A · Folio</button>
+      <button data-dir="B" aria-pressed="false">B · Studio</button>
+      <button data-dir="C" aria-pressed="false">C · Typescript</button>
+    </div>
+    <button class="btn elevated" id="theme">Dark</button>
+  </div>
+
+  <h2 class="sec">What the audit found</h2>
+  <p class="lead">Walked the running app at 1440×900 in both themes (login → workspace → editor → Chapters, Consistency, Network, Settings). The system is disciplined and well documented; its problem is not inconsistency, it is <b>that nothing is figure and nothing is ground</b>. Eight findings, ranked. Each direction below is scored against them.</p>
+  <div class="audit">
+    <div class="card"><h3><span class="sev a">A1</span>The manuscript has no more presence than the chrome</h3><p class="p">Sidebar, header, canvas and docked panel are three greys within 6 L% of each other (<span class="cite">--vers-bg-base #121214</span>, <span class="cite">panel #1a1a1d</span>, <span class="cite">elevated #26262b</span>) separated by 7 % hairlines. The prose sits on the same surface as the navigation. For a writing tool, the page should be the brightest, most material object on screen.</p></div>
+    <div class="card"><h3><span class="sev a">A2</span>The one accent is spent on two buttons</h3><p class="p">Slate blue appears on the primary button and the active nav row, and nowhere else. "One accent, scarce" is right; but scarce is not absent. Saved state, the caret, the goal bar, links and progress have no voice, so the app reads as inert even while it is saving, counting and scanning.</p></div>
+    <div class="card"><h3><span class="sev a">A3</span>Every empty state is the same empty state</h3><p class="p">Icon in a grey circle · title · one line · a button, identically in Workspace, the editor, Chapters, Consistency and Network. Five identical templates in a first session is the strongest "generated" signal in the product (<span class="cite">EmptyState.vue</span>).</p></div>
+    <div class="card"><h3><span class="sev b">B1</span>Type has no hierarchy above 14 px</h3><p class="p">Panel titles, section headings, the project name and the workspace heading are all Geist 13–16 px, weight 500–600. The only typographic personality in the app is the tracked-mono wordmark on the login screen, and it never appears again.</p></div>
+    <div class="card"><h3><span class="sev b">B2</span>The manuscript reads as a terminal, not a page</h3><p class="p">IBM Plex Mono on a dark grey field with no margin, rule or sheet. Mono can be a signature (it is a real writers' preference), but it needs a page around it: a margin, a running head, a caret with colour, a scene marker.</p></div>
+    <div class="card"><h3><span class="sev b">B3</span>The docked panel is the sidebar's twin</h3><p class="p">Same colour, same hairline, same 13 px labels on both sides of the manuscript. The eye cannot tell "navigation" from "tool". The Story Network header's three coloured pills are the only chroma on the screen and they are decorative.</p></div>
+    <div class="card"><h3><span class="sev c">C1</span>Status is grey</h3><p class="p">"Saved", the word count, the daily goal and the streak are 11 px muted text in the header. The semantic tokens exist (<span class="cite">--vers-status-*</span>) and are barely used outside evals.</p></div>
+    <div class="card"><h3><span class="sev c">C2</span>Light theme is a value swap, not a mode</h3><p class="p">Cream paper is a good instinct, but the same flatness carries over: no sheet, no shadow, the manuscript again on the same surface as everything else. A light mode for a writing app should feel like paper under a lamp; today it feels like the dark mode inverted.</p></div>
+  </div>
+
+  <table class="matrix">
+    <thead><tr><th>direction</th><th>paper band</th><th>display type</th><th>manuscript face</th><th>accent</th><th>fixes</th><th>migration</th><th>risk</th></tr></thead>
+    <tbody>
+      <tr><td>A · Folio</td><td>light default, dark "lamp"</td><td>Newsreader (serif, roman)</td><td>Newsreader 17.5 px / 1.7</td><td>madder red, warm</td><td>A1 A2 A3 B1 B2 B3 C2</td><td>tokens + sheet surface + serif; 15 primitives re-skinned; ~70 components inherit</td><td>medium: flips the default theme; mono-loving users need the setting from example 05</td></tr>
+      <tr><td>B · Studio</td><td>dark default, light "daylight"</td><td>Space Grotesk 600</td><td>IBM Plex Mono (kept)</td><td>verdigris, chromatic</td><td>A1 A2 B1 B3 C1 C2</td><td>tokens only + one new surface (sheet); nothing structural</td><td>low: same theme structure, retokenized; the smallest change that fixes the flatness</td></tr>
+      <tr><td>C · Typescript</td><td>light bone, dark charcoal</td><td>Plex Mono, tracked caps</td><td>IBM Plex Mono (kept)</td><td>cobalt, cool</td><td>A2 A3 B1 B2 B3 C1</td><td>tokens + shapes (2 px, rules instead of shadows) + label case; the most opinionated</td><td>medium: strongest identity, least like other apps; caps labels need care for a11y</td></tr>
+    </tbody>
+  </table>
+
+  <!-- =============== Direction detail: rendered by the active direction =============== -->
+  <div class="dirhead"><span class="k" id="dk">Direction A</span><h2 id="dh">Folio</h2><div class="axes" id="dax"></div></div>
+  <p class="lead" id="dl"></p>
+  <div class="swatches" id="dsw"></div>
+  <div class="typ" id="dty"></div>
+
+  <div class="frame">
+    <div class="frame-label">Editor · sidebar, header, manuscript, docked Consistency panel · sample story data</div>
+    <div class="mock"><div class="shell">
+      <aside class="side">
+        <div class="row" style="padding:2px 8px 12px"><span class="wordmark">Versatile</span></div>
+        <div class="label">Write</div>
+        <div class="nav"><i></i>Generator</div><div class="nav"><i></i>Polish</div><div class="nav"><i></i>What if</div>
+        <div class="label">Structure</div>
+        <div class="nav"><i></i>Outline</div><div class="nav"><i></i>Chapters</div><div class="nav on"><i></i>Consistency</div><div class="nav"><i></i>Beta reader</div>
+        <div class="label">World</div>
+        <div class="nav"><i></i>Story bible</div><div class="nav"><i></i>Network</div><div class="nav"><i></i>Timeline</div>
+        <div style="margin-top:auto" class="nav"><i></i>Settings</div>
+      </aside>
+      <div class="main">
+        <div class="hdr"><b>The Long Night</b><span>Chapter 4 · scene 2</span><span class="goal"><i></i></span><span><b>190</b> / 500 today</span><span class="save">Saved</span></div>
+        <div class="desk"><div class="sheet">
+          <h4>The harbour</h4><div class="sc">Chapter 4 · scene 2 · 412 words · draft</div>
+          <div class="ms"><p>Ilse reached the harbour before the tide turned. The harbour master had already gone home; the office was dark, and somewhere behind it a dog was working through a long complaint.</p><p>She counted the boats twice. Eleven, then ten. The harbour did not care, and neither, she decided, would she.<span class="caret"></span></p></div>
+        </div></div>
+      </div>
+      <aside class="panel">
+        <div class="ph"><h5>Consistency</h5><span class="meta">2 findings · 1 min ago</span></div>
+        <div class="sec2"><h6>Findings</h6><p class="desc">Contradictions with the story bible, newest first.</p>
+          <div class="find"><i style="background:var(--color-warning)"></i><span><b>Ilse's eyes: grey in ch. 1, blue here</b>Story bible says grey. Change the bible, or the line.</span></div>
+          <div class="find"><i style="background:var(--color-info)"></i><span><b>Harbour office was "always lit" (ch. 2)</b>Here it is dark. Possibly intentional.</span></div>
+        </div>
+        <div class="sec2"><h6>Scope</h6><div class="row"><span class="chip on">This scene</span><span class="chip">Chapter</span><span class="chip">Book</span></div></div>
+        <div class="sec2" style="border-bottom:none"><button class="btn primary">Scan again</button></div>
+      </aside>
+    </div></div>
+  </div>
+
+  <div class="frame">
+    <div class="frame-label">Workspace · continue card and project rows · sample data</div>
+    <div class="mock"><div class="ws">
+      <div class="bar"><span class="wordmark">Versatile</span><button class="btn primary">New project</button></div>
+      <h3>Your projects</h3><div class="p">Pick up where you left off.</div>
+      <div class="cont"><div><div class="label">Continue</div><div class="t">The Long Night</div><div class="s">Chapter 4, scene 2 · 41,882 words · edited 14 h ago</div></div><button class="btn primary">Continue</button></div>
+      <div class="prow"><span>Harbour Lights</span><svg class="spark" viewBox="0 0 120 18" preserveAspectRatio="none"><polyline points="0,14 15,12 30,13 45,9 60,10 75,6 90,8 105,4 120,5" fill="none" stroke="var(--color-accent)" stroke-width="1.5"/></svg><span class="c">12,004</span><span class="c">3 d ago</span></div>
+      <div class="prow"><span>Untitled screenplay</span><svg class="spark" viewBox="0 0 120 18"><line x1="0" y1="15" x2="120" y2="15" stroke="var(--color-rule)"/></svg><span class="c">empty</span><span class="c">2 w ago</span></div>
+    </div></div>
+  </div>
+
+  <div class="frame">
+    <div class="frame-label">Settings in the panel grammar · and a component sheet</div>
+    <div class="mock"><div class="set">
+      <div>
+        <div class="ph" style="padding:0 0 12px"><h5>Project settings</h5><span class="meta">The Long Night</span></div>
+        <div class="sec2" style="padding-left:0;padding-right:0"><h6>Model</h6><p class="desc">The prose model and the utility model run separately.</p><div class="row"><span class="chip on">qwen3:8b</span><span class="chip">dolphin (opt-in)</span><span class="chip">cloud…</span></div></div>
+        <div class="sec2" style="padding-left:0;padding-right:0"><h6>Daily goal</h6><p class="desc">Drives the progress bar and your streak.</p><input class="field" value="500" style="max-width:160px"><div class="hint">words per day</div></div>
+        <div class="sec2" style="padding-left:0;padding-right:0;border-bottom:none"><h6>Editor</h6><div class="row" style="gap:18px"><span class="sw2"><i></i>Focus mode</span><span class="sw2 off"><i></i>Typewriter</span></div></div>
+        <div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn ghost">Cancel</button><button class="btn primary">Save changes</button></div>
+      </div>
+      <div class="comp" style="grid-template-columns:1fr 1fr;padding:16px 18px">
+        <div class="g"><div class="label">Buttons</div><div class="row"><button class="btn primary">Write the scene</button><button class="btn elevated">Resume</button></div><div class="row"><button class="btn ghost">Copy id</button><button class="btn ghost danger">Delete…</button></div></div>
+        <div class="g"><div class="label">Status</div><span class="dot"><i style="background:var(--color-success)"></i>Final</span><span class="dot"><i style="background:var(--color-warning)"></i>Review</span><span class="dot"><i style="border:1.5px dashed var(--color-ink-3)"></i>Planning</span></div>
+        <div class="g"><div class="label">Field · error</div><input class="field err" value="sk-xxxx"><div class="hint err">The key was rejected by the provider.</div></div>
+        <div class="g"><div class="label">Alert</div><div class="alert"><span><b>Context is nearly full</b>Older scenes will be summarised.</span></div></div>
+        <div class="g"><div class="label">Skeleton</div><div class="skel" style="width:55%"></div><div class="skel"></div><div class="skel" style="width:80%"></div></div>
+        <div class="g"><div class="label">Empty</div><div class="empty"><b>No scenes yet</b>Write the first one, or plan the chapter.</div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="pick">
+    <h2>How to choose</h2>
+    <p class="p" style="color:var(--color-ink)">Toggle the theme on each: the direction you pick has to work in both. <b>B</b> is the smallest change that fixes the flatness (tokens plus one surface) and keeps the mono manuscript everyone already writes in. <b>A</b> is the biggest shift in feel: it turns Versatile from a tool into a desk, and it makes the light theme the real one. <b>C</b> is the most distinctive and the most polarising; it is the direction the login screen was already pointing at. Once you pick, I lock it into <span class="cite">DESIGN.md</span> + <span class="cite">style.css</span> tokens, re-skin the 15 primitives (stories and Chromatic catch regressions), and the enhancement study re-renders itself.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  const html = document.documentElement, $ = (id) => document.getElementById(id);
+  const DIR = {
+    A: { name: 'Folio', axes: ['paper: light', 'display: classical serif', 'accent: warm 25°', 'manuscript: serif'], theme: 'light',
+      lead: 'The manuscript becomes a sheet of paper lifted off a warm desk; chrome is ink on paper, quiet and a little bookish. Headings in Newsreader (roman, never italic), UI in Geist, the manuscript itself in Newsreader at 17.5 px. One accent, madder red, used for the caret, the active rule, links and the goal, so the page is visibly alive while you write. Dark mode is a lamp on the same desk, not an inversion. Fixes A1 (the sheet), A2 (the accent works), A3 (empty states get display type and no icon), B1, B2, B3, C2.',
+      sw: [['ground','--color-ground'],['panel','--color-panel'],['sheet','--color-sheet'],['elevated','--color-elevated'],['rule','--color-rule'],['ink','--color-ink'],['ink-2','--color-ink-2'],['accent','--color-accent'],['success','--color-success'],['warning','--color-warning'],['danger','--color-danger']] },
+    B: { name: 'Studio', axes: ['paper: dark', 'display: grotesk', 'accent: verdigris 165°', 'manuscript: Plex Mono'], theme: 'dark',
+      lead: 'The evolution: keep the dark room and the mono manuscript, but give the room depth. Three real layers (14 / 18.5 / 24 L%) instead of three near-identical greys, an inner highlight on elevated surfaces, and a warmer, lighter sheet under the prose so the writing is the brightest object on screen. Space Grotesk 600 for headings, tight-tracked, gives the app a voice above 14 px. Verdigris replaces slate blue: greener, more alive, and it can carry "saved", "in progress" and the goal without competing with red/amber status. The smallest change that fixes A1, A2, B1, B3, C1, C2.',
+      sw: [['ground','--color-ground'],['panel','--color-panel'],['sheet','--color-sheet'],['elevated','--color-elevated'],['rule','--color-rule'],['ink','--color-ink'],['ink-2','--color-ink-2'],['accent','--color-accent'],['success','--color-success'],['warning','--color-warning'],['danger','--color-danger']] },
+    C: { name: 'Typescript', axes: ['paper: light bone', 'display: mono, tracked caps', 'accent: cobalt 262°', 'manuscript: Plex Mono'], theme: 'light',
+      lead: 'The login screen already knew what this app wanted to be: VERSATILE in tracked mono caps. Typescript takes that everywhere. Bone paper, ink rules instead of shadows, 2 px corners, labels and headings in Plex Mono small caps with wide tracking, the manuscript in Plex Mono with a ruled left margin like a typescript page. One cool accent, cobalt, for the caret, links and the active item, marked with a ">" in the nav. Nothing else on the market looks like this; it is also the least forgiving, so the caps labels stay ≥ 11 px with .14 em tracking. Fixes A2, A3, B1, B2, B3, C1.',
+      sw: [['ground','--color-ground'],['panel','--color-panel'],['elevated','--color-elevated'],['rule','--color-rule'],['rule-strong','--color-rule-strong'],['ink','--color-ink'],['ink-2','--color-ink-2'],['accent','--color-accent'],['success','--color-success'],['warning','--color-warning'],['danger','--color-danger']] }
+  };
+  function render() {
+    const d = DIR[html.dataset.dir];
+    $('dk').textContent = 'Direction ' + html.dataset.dir; $('dh').textContent = d.name; $('dl').textContent = d.lead;
+    $('dax').replaceChildren(...d.axes.map(a => Object.assign(document.createElement('span'), { textContent: a })));
+    const cs = getComputedStyle(html);
+    $('dsw').replaceChildren(...d.sw.map(([n, v]) => { const w = document.createElement('div'); w.className = 'sw'; const i = document.createElement('i'); i.style.background = `var(${v})`; const s = document.createElement('small'); s.textContent = n + ' · ' + cs.getPropertyValue(v).trim().replace(/oklch\(|\)/g, '').slice(0, 18); w.append(i, s); return w; }));
+    $('dty').replaceChildren(...[['display', 'd', 'Chapter four: the harbour'], ['manuscript', 'm', 'She counted the boats twice. Eleven, then ten.'], ['ui', 'u', 'Scan again · Save changes · Consistency'], ['mono', 'mo', '41,882 words · 14 h ago · qwen3:8b']].flatMap(([k, c, t]) => { const a = document.createElement('span'); a.textContent = k; const b = document.createElement('span'); b.className = c; b.textContent = t; return [a, b]; }));
+    $('theme').textContent = html.dataset.theme === 'dark' ? 'Light' : 'Dark';
+    document.querySelectorAll('.dirs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dir === html.dataset.dir)));
+  }
+  document.querySelectorAll('.dirs button').forEach(b => b.addEventListener('click', () => { html.dataset.dir = b.dataset.dir; html.dataset.theme = DIR[b.dataset.dir].theme; render(); }));
+  $('theme').addEventListener('click', () => { html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark'; render(); });
+  render();
+})();
+</script>
+</body>
+</html>
