@@ -1,5 +1,6 @@
 import { toRaw } from 'vue'
 import { db as _db } from './db-core'
+import { queueStoryIndex } from './storyIndexHook'
 import {
   guardStorageWrite,
   guardStorageWriteBatch
@@ -28,7 +29,7 @@ export async function addCharacter(projectId: any, data: any) {
       entryPoint: 'db-entities.addCharacter'
     })
     const now = new Date().toISOString()
-    return await db.characters.add({
+    const id = await db.characters.add({
       projectId,
       generationStatus: 'approved',
       createdAt: now,
@@ -36,6 +37,8 @@ export async function addCharacter(projectId: any, data: any) {
       ...data,
       lastEditedAt: Date.now()
     })
+    queueStoryIndex('character', id, () => db.characters.get(id))
+    return id
   } catch (error) {
     console.error('Failed to add character:', error)
     throw error
@@ -44,10 +47,12 @@ export async function addCharacter(projectId: any, data: any) {
 
 export async function updateCharacter(id: any, data: any) {
   try {
-    return await db.characters.update(
+    const n = await db.characters.update(
       id,
       JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString(), lastEditedAt: Date.now() })))
     )
+    queueStoryIndex('character', id, () => db.characters.get(id))
+    return n
   } catch (error) {
     console.error('Failed to update character:', error)
     throw error
@@ -101,17 +106,21 @@ export async function addLocation(projectId: any, data: any) {
     entryPoint: 'db-entities.addLocation'
   })
   const now = new Date().toISOString()
-  return db.locations.add({
+  const id = await db.locations.add({
     projectId,
     generationStatus: 'approved',
     createdAt: now,
     updatedAt: now,
     ...data
   })
+  queueStoryIndex('location', id, () => db.locations.get(id))
+  return id
 }
 
 export async function updateLocation(id: any, data: any) {
-  return db.locations.update(id, JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() }))))
+  const n = await db.locations.update(id, JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() }))))
+  queueStoryIndex('location', id, () => db.locations.get(id))
+  return n
 }
 
 export async function deleteLocation(id: any) {
@@ -150,17 +159,21 @@ export async function addPlotThread(projectId: any, data: any) {
     entryPoint: 'db-entities.addPlotThread'
   })
   const now = new Date().toISOString()
-  return db.plotThreads.add({
+  const id = await db.plotThreads.add({
     projectId,
     generationStatus: 'approved',
     createdAt: now,
     updatedAt: now,
     ...data
   })
+  queueStoryIndex('thread', id, () => db.plotThreads.get(id))
+  return id
 }
 
 export async function updatePlotThread(id: any, data: any) {
-  return db.plotThreads.update(id, JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() }))))
+  const n = await db.plotThreads.update(id, JSON.parse(JSON.stringify(toRaw({ ...data, updatedAt: new Date().toISOString() }))))
+  queueStoryIndex('thread', id, () => db.plotThreads.get(id))
+  return n
 }
 
 export async function deletePlotThread(id: any) {

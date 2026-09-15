@@ -52,7 +52,7 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 - Export to PDF (jsPDF) and EPUB
 - Session history archive with author model tracking
 - Goal tracking (session and daily word counts)
-- Offline-first persistence via Dexie IndexedDB (schema v50, 50 tables)
+- Offline-first persistence via Dexie IndexedDB (schema v51, 51 tables)
 - Cloud sync via .NET 10 + PostgreSQL (optional)
 - Light and dark themes (both equally maintained)
 - 263 test files (≈2,950 tests) — Vitest; Playwright E2E; xUnit backend

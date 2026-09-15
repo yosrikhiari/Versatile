@@ -23,6 +23,7 @@ import TimelineView from '../components/manuscript/TimelineView.vue'
 import SearchOverlay from '../components/manuscript/SearchOverlay.vue'
 import ArchiveDrawer from '../components/layout/ArchiveDrawer.vue'
 import ResearchPanel from '../components/research/ResearchPanel.vue'
+import RelatedPanel from '../components/storybible/RelatedPanel.vue'
 import StoryGeneratorPanel from '../components/story/StoryGeneratorPanel.vue'
 import VoiceLabPanel from '../components/voice-lab/VoiceLabPanel.vue'
 import StoryShapePanel from '../components/storyshape/StoryShapePanel.vue'
@@ -246,6 +247,33 @@ function handleConsistencyNavigate(action) {
   }
 }
 
+/**
+ * A Related / Lookup hit: a scene opens in the editor; an entity opens its
+ * Story Bible card through the same target the consistency panels use.
+ */
+function handleStoryNavigate(hit) {
+  if (!hit) return
+  const id = hit.refId ?? hit.id
+  if (hit.kind === 'subsection') {
+    const sub = manuscriptStore.subsections.find((s) => String(s.id) === String(id))
+    if (sub?.sectionId) manuscriptStore.setActiveSection(sub.sectionId)
+    manuscriptStore.setActiveSubsection(sub?.id ?? id)
+    return
+  }
+  if (hit.kind === 'section') {
+    appShell.value?.toggleSections(true)
+    nextTick(() => {
+      consistencyNavigateTarget.value = String(id)
+    })
+    return
+  }
+  const prefix = hit.kind === 'character' ? 'char-' : hit.kind === 'location' ? 'loc-' : 'thread-'
+  appShell.value?.toggleStoryBible(true)
+  nextTick(() => {
+    consistencyNavigateTarget.value = `${prefix}${id}`
+  })
+}
+
 function handleBetaReaderNavigate(action) {
   if (action.type === 'open-section') {
     appShell.value?.toggleSections(true)
@@ -328,6 +356,7 @@ function handleOnboardingSkipWrapper() {
     <AppShell
       ref="appShell"
       :focus-mode="focusMode"
+      @story-navigate="handleStoryNavigate"
       @start-flow="handleStartFlow"
       @end-flow="handleEndFlow"
       @export="handleExport"
@@ -415,6 +444,9 @@ function handleOnboardingSkipWrapper() {
       </template>
       <template #voice-lab>
         <VoiceLabPanel />
+      </template>
+      <template #related>
+        <RelatedPanel @navigate="handleStoryNavigate" />
       </template>
       <template #whatif>
         <WhatIfPanel />

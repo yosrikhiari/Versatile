@@ -84,6 +84,12 @@ export const NAV_GROUPS: NavGroup[] = [
         panel: 'beta-reader',
         icon: 'eye',
         keywords: ['feedback', 'review']
+      },
+      {
+        label: 'Related',
+        panel: 'related',
+        icon: 'link',
+        keywords: ['similar', 'semantic', 'connections', 'neighbours']
       }
     ]
   },

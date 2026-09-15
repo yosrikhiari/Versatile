@@ -1,4 +1,5 @@
 import { db as _db } from './db-core'
+import { queueStoryIndex } from './storyIndexHook'
 import { countWords } from '../utils/textUtils'
 import { getEmbedding } from './ollamaService'
 import { guardStorageWrite } from '../guardrails/integration/storageGuardrails'
@@ -69,6 +70,7 @@ export async function addSubsection(projectId: string, data: any) {
       console.error('Failed to generate embedding for new subsection:', result, err)
     })
   }
+  queueStoryIndex('subsection', result, () => db.subsections.get(result))
   return result
 }
 
@@ -78,6 +80,10 @@ export async function updateSubsection(id: string, data: any) {
     getEmbedding('subsection', id, data.content).catch((err: Error) => {
       console.error('Failed to generate embedding for subsection update:', id, err)
     })
+  }
+  // Only what the index reads; a status flip or reorder does not re-embed.
+  if ('content' in data || 'title' in data || 'summary' in data) {
+    queueStoryIndex('subsection', id, () => db.subsections.get(id))
   }
 }
 

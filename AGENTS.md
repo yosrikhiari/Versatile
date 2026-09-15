@@ -7,7 +7,7 @@ Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL
 - **Frontend**: Vue 3 (Composition API), TypeScript, Pinia stores, TipTap 3 editor, Vite 8, Vitest 5
 - **Backend**: .NET 10, PostgreSQL 16 (RLS), Redis, Entity Framework Core, SignalR
 - **AI**: 5 providers (Ollama default, OpenAI, Anthropic, Gemini, Groq); Ollama runs a prose model and a separate `qwen3:8b` utility model
-- **Storage**: IndexedDB via Dexie 4 (offline-first, schema v50), PostgreSQL (server)
+- **Storage**: IndexedDB via Dexie 4 (offline-first, schema v51), PostgreSQL (server)
 - **Build/CI**: npm/vite for frontend, dotnet for backend
 
 ## Key Conventions

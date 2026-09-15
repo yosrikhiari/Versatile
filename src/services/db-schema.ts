@@ -448,5 +448,19 @@ export const SCHEMA_VERSIONS = [
       branches:
         '++id, projectId, name, sourceBranchId, description, status, createdAt, updatedAt, syncStatus, lastSyncedAt, apiId'
     }
+  },
+  /**
+   * v51: `contentVectors` — embeddings of the story's own content (bible
+   * entities and scenes) for Related / Lookup (roadmap Phase 3). Mirrors the
+   * `researchChunks` shape so the same worker index serves both. `model` and
+   * `dim` are mandatory on every row: a query embedded with a different model
+   * must fail loud (warn + brute-force), never silently drop rows.
+   */
+  {
+    version: 51,
+    stores: {
+      contentVectors:
+        '++id, projectId, kind, refId, model, dim, embeddingStatus, updatedAt, &[projectId+kind+refId]'
+    }
   }
 ]

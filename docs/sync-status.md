@@ -63,7 +63,7 @@ Backend `DbSet`s with **no Dexie table any more** (server-side kept for backward
 
 ---
 
-## 📱 Client-only (20 tables)
+## 📱 Client-only (21 tables)
 
 Exist only in IndexedDB — no server equivalent.
 
@@ -89,6 +89,7 @@ Exist only in IndexedDB — no server equivalent.
 | `volumeDigests` | Volume rollup (v45) |
 | `entityStates` | Entity-state timeline for contradiction candidates (v45/v47) |
 | `analysisQueue` | Persistent idle-priority analysis work queue (v46) |
+| `contentVectors` | Embeddings of bible entities and scenes for Related / Lookup (v51) |
 
 The digest and analysis tables are derived artifacts: rebuildable from prose, so never synced.
 

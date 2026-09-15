@@ -26,7 +26,7 @@ browser (Vue 3 SPA, Dexie/IndexedDB v50) ──/api, /hubs──► .NET 10 API 
   typing pushes to the store on a 300 ms debounce and the watcher skips
   the editor's own echo (`docs/PERF-AUDIT.md`).
 - **Offline-first**: Dexie 4 (`src/services/db-schema.ts` declares the
-  40 schema versions; 26 `db-*.ts` table modules) is the source of truth
+  41 schema versions; 26 `db-*.ts` table modules) is the source of truth
   in the browser. Writes are debounced and coalesced per entity; the three
   append-only history tables are deduped, throttled and capped; sync to the
   API replays in the background with bounded concurrency and self-heals

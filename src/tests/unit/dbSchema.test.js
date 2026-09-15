@@ -21,6 +21,8 @@ const EXPECTED = {
   characters:
     '++id | *tags, apiId, color, generationStatus, goal, lastEditedAt, lastSyncedAt, metadata, name, notes, portrait, projectId, role, syncStatus, voice',
   chatSessions: '++id | projectId, updatedAt',
+  contentVectors:
+    '++id | &[projectId+kind+refId], dim, embeddingStatus, kind, model, projectId, refId, updatedAt',
   dailyGoals: '++id | [projectId+date], date, projectId',
   dialogueIndex: '++id | [projectId+speakerId], paragraphIndex, projectId, sectionId, speakerId',
   embeddingCache: 'hash | createdAt',
@@ -109,7 +111,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(50)
+    expect(verno).toBe(51)
   })
 
   it('has exactly the expected set of tables', () => {

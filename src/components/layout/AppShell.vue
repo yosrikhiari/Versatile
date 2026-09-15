@@ -11,6 +11,7 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import GoalProgressBar from '../shared/GoalProgressBar.vue'
 import ProjectSettingsModal from './ProjectSettingsModal.vue'
 import BranchManagerModal from './BranchManagerModal.vue'
+import StoryLookupModal from '../storybible/StoryLookupModal.vue'
 import RecapBanner from './RecapBanner.vue'
 import ContextStatusIndicator from './ContextStatusIndicator.vue'
 import GuardrailIndicator from '../../guardrails/reporting/components/GuardrailIndicator.vue'
@@ -36,6 +37,7 @@ function focusMain() {
   mainContentRef.value?.focus()
 }
 const showProjectSettings = ref(false)
+const showStoryLookup = ref(false)
 const showBranchManager = ref(false)
 const showProjectDropdown = ref(false)
 const projects = ref([])
@@ -64,7 +66,8 @@ const emit = defineEmits([
   'open-settings',
   'open-auth',
   'complete-onboarding',
-  'create-project'
+  'create-project',
+  'story-navigate'
 ])
 
 const authStore = useAuthStore()
@@ -102,6 +105,12 @@ const paletteActions = computed(() => [
     keywords: ['word', 'docx', 'scrivener', 'manuscript']
   },
   { id: 'import', label: 'Import project', icon: 'download', hint: 'Ctrl+I' },
+  {
+    id: 'story-lookup',
+    label: 'Ask the story',
+    icon: 'search',
+    keywords: ['lookup', 'semantic', 'find', 'search', 'question']
+  },
   { id: 'project-settings', label: 'Project settings', icon: 'settings' },
   { id: 'all-projects', label: 'All projects', icon: 'layout-grid', keywords: ['workspace'] }
 ])
@@ -114,6 +123,9 @@ const PALETTE_ACTIONS = {
   import: () => emit('import'),
   'project-settings': () => {
     showProjectSettings.value = true
+  },
+  'story-lookup': () => {
+    showStoryLookup.value = true
   },
   'all-projects': () => router.push('/workspace')
 }
@@ -296,6 +308,10 @@ function toggleWhatIf() {
   activePanelName.value = activePanelName.value === 'whatif' ? null : 'whatif'
 }
 
+function toggleRelated() {
+  activePanelName.value = activePanelName.value === 'related' ? null : 'related'
+}
+
 function toggleRevise() {
   activePanelName.value = activePanelName.value === 'revise' ? null : 'revise'
 }
@@ -337,6 +353,7 @@ function handleSidebarNav(name) {
     consistency: toggleConsistency,
     'beta-reader': toggleBetaReader,
     whatif: toggleWhatIf,
+    related: toggleRelated,
     'cost-dashboard': toggleCostDashboard
   }
   map[name]?.()
@@ -358,6 +375,7 @@ defineExpose({
   toggleStoryShape,
   toggleConsistency,
   toggleBetaReader,
+  toggleRelated,
   toggleCostDashboard
 })
 
@@ -669,6 +687,13 @@ watch(
           <slot name="whatif"></slot>
         </aside>
         <aside
+          v-else-if="activePanelName === 'related' && !flowMode && !focusMode"
+          key="related"
+          class="tool-panel w-full lg:w-[360px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="related"></slot>
+        </aside>
+        <aside
           v-else-if="activePanelName === 'story-shape' && !flowMode && !focusMode"
           key="story-shape"
           class="tool-panel w-full lg:w-[380px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
@@ -735,6 +760,12 @@ watch(
       @open-ai-settings="emit('open-settings')"
     />
     <BranchManagerModal :show="showBranchManager" @close="showBranchManager = false" />
+    <StoryLookupModal
+      :show="showStoryLookup"
+      :project-id="projectStore.currentProjectId"
+      @close="showStoryLookup = false"
+      @select="emit('story-navigate', $event)"
+    />
 
     <CommandPalette
       v-model:open="showCommandPalette"

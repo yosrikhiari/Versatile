@@ -7,6 +7,23 @@ was verified.
 
 ## [Unreleased]
 
+### Related + Story Lookup — Obsidian roadmap Phase 3 (2026-09-15)
+- Schema **v51** `contentVectors`: embeddings of the story's own bible
+  entities and scenes, `researchChunks`-shaped so the same worker IVF index
+  serves both; every row records `model` + `dim`.
+- `services/storyVectorIndex.ts`: `indexStoryContent` / `indexStoryContentBatch`
+  / `indexProject`, pure `rankVectors`, `searchStorySemantic` (worker index
+  with brute-force fallback; a dimension mismatch warns once per project and
+  still answers from matching rows), and a 500 ms per-key `scheduleStoryIndex`
+  hooked into every character / location / thread / scene save through a
+  lazy `storyIndexHook` so the db modules never load the worker stack.
+- **Related** panel (analysis group; `related` slot): what is semantically
+  close to the scene you are in, filter by kind, one-click *Link in graph*
+  writes a `related` edge, *Reindex* embeds the whole story.
+- **Ask the story** (command palette): plain-words lookup across manuscript
+  and bible; selecting a hit opens the scene or the bible card.
+- 15 new tests. Local embeddings only; nothing leaves the device.
+
 ### Story Query — Obsidian roadmap Phase 2 (2026-09-15)
 - `services/storyQuery.ts`: pure, total query engine — dataset + filters
   (`eq neq contains in empty notEmpty gt lt`, AND/OR) + sort (empties last) +

@@ -207,7 +207,22 @@ describe('live: The Salt Road', () => {
               })
             )
           },
-          consistency: gen.consistencyReport.value
+          consistency: gen.consistencyReport.value,
+          // Every critic verdict the run persisted, so the model decision can
+          // be made from numbers rather than from the gate's pass/fail alone.
+          // The gate's verdict per scene (`gateEval` on the written record) —
+          // `evalResults` is only persisted when inline evaluation is on.
+          evals: gen.writtenScenes.value.filter(Boolean).map((s, i) => ({
+            index: i + 1,
+            title: s.title,
+            words: words(s.prose),
+            score: s.gateEval?.score ?? null,
+            pass: s.gateEval?.pass ?? null,
+            dimensionScores: s.gateEval?.dimensionScores || null,
+            weakest: s.gateEval?.weakestDimension || null,
+            issues: (s.gateEval?.issues || []).map((x) => `${x.type}: ${x.description}`),
+            unavailable: !!s.gateEval?.evalUnavailable
+          }))
         },
         null,
         2
