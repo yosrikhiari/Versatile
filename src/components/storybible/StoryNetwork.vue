@@ -16,6 +16,12 @@ import { useNetworkSuggestions } from '../../composables/useNetworkSuggestions'
 import { groupNetworkByVolume } from '../../composables/useVolumeGrouping'
 import { wouldCreateCycle, sortGroupsParentFirst } from '../../utils/networkGrouping'
 import { useStoryGraphPersistence } from '../../composables/useStoryGraphPersistence'
+import {
+  collectRelationshipTypes,
+  computeLocalGraph,
+  findNodesByName
+} from '../../utils/graphFilters'
+import BasePopover from '../ui/BasePopover.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseChip from '../ui/BaseChip.vue'
@@ -95,6 +101,65 @@ const showLocEdges = ref(true)
 const showThreadEdges = ref(true)
 
 /** The three edge kinds as one list, so the header renders them uniformly. */
+// ── Relationship-type filter, local graph and search (roadmap Phase 5) ────
+// A `Set` reassigned on change so the template sees it; `Map`s for the
+// per-render lookups, never `Array.find` in the loop.
+const disabledRelTypes = ref(new Set())
+const localGraphMode = ref(false)
+const focusNodeId = ref(null)
+const localDepth = ref(1)
+const focusQuery = ref('')
+
+const relationshipTypeOptions = computed(() =>
+  collectRelationshipTypes(storyGraphStore.edges || [])
+)
+function isRelTypeEnabled(type) {
+  return !disabledRelTypes.value.has(type)
+}
+function toggleRelType(type) {
+  const next = new Set(disabledRelTypes.value)
+  if (next.has(type)) next.delete(type)
+  else next.add(type)
+  disabledRelTypes.value = next
+}
+function resetRelTypes() {
+  disabledRelTypes.value = new Set()
+}
+
+const localGraph = computed(() =>
+  localGraphMode.value && focusNodeId.value
+    ? computeLocalGraph(focusNodeId.value, edges.value, localDepth.value)
+    : null
+)
+function isNodeIncluded(id) {
+  return !localGraph.value || localGraph.value.nodeIds.has(id)
+}
+function isEdgeIncluded(id) {
+  return !localGraph.value || localGraph.value.edgeIds.has(id)
+}
+/** The edges VueFlow draws: type filter first, then the local neighbourhood. */
+const visibleEdges = computed(() =>
+  edges.value.filter((e) => isRelTypeEnabled(e.data?.relationshipType) && isEdgeIncluded(e.id))
+)
+function handleNodeClick(event) {
+  const id = event?.node?.id
+  if (!id || String(id).startsWith('group-')) return
+  focusNodeId.value = id
+  localGraphMode.value = true
+}
+function clearLocalGraph() {
+  focusNodeId.value = null
+  localGraphMode.value = false
+}
+const focusMatches = computed(() => findNodesByName(nodes.value, focusQuery.value).slice(0, 8))
+function focusOnNode(id) {
+  fitView({ nodes: [{ id }], padding: 0.3, duration: 300 })
+  if (localGraphMode.value) focusNodeId.value = id
+}
+const graphFilterActive = computed(
+  () => disabledRelTypes.value.size > 0 || (localGraphMode.value && !!focusNodeId.value)
+)
+
 const edgeFilters = [
   {
     key: 'char',
@@ -1837,6 +1902,128 @@ function handleApplySuggestionsModalClose() {
           aria-label="Arrange as clusters"
           @click="arrangeExtendedStarLayout"
         />
+        <BasePopover placement="bottom" align="end">
+          <template #trigger="{ toggle }">
+            <BaseButton
+              variant="ghost"
+              size="sm"
+              icon="filter"
+              title="Filter connections, focus a neighbourhood, find a node"
+              aria-label="Graph filters"
+              data-test="graph-filters"
+              :class="graphFilterActive ? 'text-accent' : ''"
+              @click="toggle"
+            />
+          </template>
+          <div class="w-72 p-3 space-y-4" data-test="graph-filter-panel">
+            <div>
+              <div class="flex items-baseline justify-between">
+                <span class="label-micro text-text-hint">Relationship types</span>
+                <button
+                  v-if="disabledRelTypes.size"
+                  type="button"
+                  class="font-ui text-[11px] text-accent hover:underline"
+                  @click="resetRelTypes"
+                >
+                  Show all
+                </button>
+              </div>
+              <p v-if="!relationshipTypeOptions.length" class="mt-1 font-ui text-xs text-text-hint">
+                No connections yet.
+              </p>
+              <ul v-else class="mt-1.5 space-y-1">
+                <li v-for="t in relationshipTypeOptions" :key="t">
+                  <label
+                    class="flex items-center gap-2 font-ui text-xs text-text-primary cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      class="accent-accent"
+                      :checked="isRelTypeEnabled(t)"
+                      :data-test="`reltype-${t}`"
+                      @change="toggleRelType(t)"
+                    />
+                    <span
+                      class="inline-block w-1.5 h-1.5 rounded-full"
+                      :style="{ backgroundColor: getEdgeColor(t) }"
+                    ></span>
+                    {{ t.replace(/_/g, ' ') }}
+                  </label>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <label
+                class="flex items-center gap-2 font-ui text-xs text-text-primary cursor-pointer"
+              >
+                <input
+                  v-model="localGraphMode"
+                  type="checkbox"
+                  class="accent-accent"
+                  data-test="local-graph"
+                />
+                Local graph — click a node to see only its neighbourhood
+              </label>
+              <div
+                v-if="localGraphMode"
+                class="mt-2 flex items-center gap-2 font-ui text-xs text-text-hint"
+              >
+                Depth
+                <input
+                  v-model.number="localDepth"
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="1"
+                  class="flex-1 accent-accent"
+                  aria-label="Neighbourhood depth"
+                  data-test="local-depth"
+                />
+                <span class="tabular-nums w-3 text-text-primary">{{ localDepth }}</span>
+              </div>
+              <p v-if="localGraphMode" class="mt-1 font-ui text-[11px] text-text-hint">
+                <template v-if="focusNodeId">Focused; everything else is dimmed.</template>
+                <template v-else>Click a node to focus it.</template>
+                <button
+                  v-if="focusNodeId"
+                  type="button"
+                  class="ml-1 text-accent hover:underline"
+                  data-test="clear-focus"
+                  @click="clearLocalGraph"
+                >
+                  Clear
+                </button>
+              </p>
+            </div>
+
+            <div>
+              <input
+                v-model="focusQuery"
+                type="text"
+                placeholder="Find a node…"
+                aria-label="Find a node"
+                data-test="focus-query"
+                class="w-full px-2 py-1 border border-border-subtle rounded bg-bg-secondary text-text-primary font-ui text-xs focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-text-hint"
+              />
+              <ul v-if="focusMatches.length" class="mt-1 divide-y divide-border-subtle">
+                <li v-for="n in focusMatches" :key="n.id">
+                  <button
+                    type="button"
+                    class="w-full text-left py-1 font-ui text-xs text-text-primary hover:text-accent"
+                    :data-test="`focus-${n.id}`"
+                    @click="focusOnNode(n.id)"
+                  >
+                    {{ n.data?.label || n.label || n.id }}
+                    <span v-if="n.data?.sublabel" class="text-text-hint"
+                      >· {{ n.data.sublabel }}</span
+                    >
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </BasePopover>
       </div>
 
       <div class="flex items-center gap-1.5">
@@ -1886,7 +2073,7 @@ function handleApplySuggestionsModalClose() {
           v-if="nodes.length > 0 || manualGroups.length > 0"
           :only-render-visible-elements="true"
           :nodes="nodes"
-          :edges="[...edges, ...groupEdges]"
+          :edges="[...visibleEdges, ...groupEdges]"
           :default-viewport="{ x: 0, y: 0, zoom: 1 }"
           :min-zoom="0.2"
           :max-zoom="2"
@@ -1894,6 +2081,7 @@ function handleApplySuggestionsModalClose() {
           class="story-network"
           :class="{ 'drag-over': isDraggingOver }"
           style="height: 100%; width: 100%; position: relative"
+          @node-click="handleNodeClick"
           @node-double-click="handleNodeDoubleClick"
           @edge-click="handleEdgeClick"
           @dragover="handleDragOver"
@@ -1956,6 +2144,7 @@ function handleApplySuggestionsModalClose() {
           <template #node-character="{ data, id }">
             <div
               class="node-card"
+              :class="{ 'node-dimmed': !isNodeIncluded(id) }"
               :style="{ borderColor: data.color }"
               @mouseenter="handleNodeMouseEnter({ id })"
               @mouseleave="handleNodeMouseLeave"
@@ -1980,6 +2169,7 @@ function handleApplySuggestionsModalClose() {
           <template #node-location="{ data, id }">
             <div
               class="node-card"
+              :class="{ 'node-dimmed': !isNodeIncluded(id) }"
               :style="{ borderColor: data.color }"
               @mouseenter="handleNodeMouseEnter({ id })"
               @mouseleave="handleNodeMouseLeave"
@@ -2004,6 +2194,7 @@ function handleApplySuggestionsModalClose() {
           <template #node-plotThread="{ data, id }">
             <div
               class="node-card"
+              :class="{ 'node-dimmed': !isNodeIncluded(id) }"
               :style="{ borderColor: data.color }"
               @mouseenter="handleNodeMouseEnter({ id })"
               @mouseleave="handleNodeMouseLeave"
@@ -2286,6 +2477,12 @@ function handleApplySuggestionsModalClose() {
 
 .story-network.drag-over {
   background: var(--vers-bg-hover);
+}
+
+.node-dimmed {
+  opacity: 0.22;
+  filter: saturate(0.4);
+  transition: opacity 150ms ease-out;
 }
 
 .node-card {

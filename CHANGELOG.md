@@ -7,6 +7,15 @@ was verified.
 
 ## [Unreleased]
 
+### Story Network — filters, local graph, search (roadmap Phase 5, 2026-09-15)
+- `utils/graphFilters.ts` (pure): relationship-type collection, undirected
+  adjacency `Map`, `computeLocalGraph` (BFS to depth N; edges between two
+  reached nodes are kept), name search.
+- Story Network gains a filter popover: per-relationship-type toggles (only
+  those edges vanish), **Local graph** (click a node → its neighbourhood
+  stays lit, everything else dims; depth 1–3), and find-a-node → `fitView`.
+  "Who is connected to Halden?" is one click. 9 tests (VueFlow stubbed).
+
 ### Compile + DOCX/EPUB export — Obsidian roadmap Phase 4 (2026-09-15)
 - `services/compileManuscript.ts`: pure `compileMarkdown` walks volumes →
   sections → scenes in narrative order (unfiled sections last; never reads
