@@ -7,6 +7,21 @@ was verified.
 
 ## [Unreleased]
 
+### Story Query — Obsidian roadmap Phase 2 (2026-09-15)
+- `services/storyQuery.ts`: pure, total query engine — dataset + filters
+  (`eq neq contains in empty notEmpty gt lt`, AND/OR) + sort (empties last) +
+  group (`Map`, list fields fan out) over rows; reads `metadata.*` custom
+  fields and discovers them as typed columns; 500-row cap. Five presets:
+  scenes with no cast, revision checklist, scenes by POV, characters by tag,
+  generated-not-approved.
+- `stores/useStoryQueryStore.ts`: the active query over the story-bible and
+  manuscript stores' own rows; edits write back through `update*Data` /
+  `setEntityMeta` — one query surface, not a third copy of the data.
+- `StoryQueryView.vue` as a **Query** tab in the Story Bible: presets,
+  dataset picker, filter rows, All/Any, group-by, sortable columns,
+  double-click inline edit. `BaseChip` now forwards attrs.
+- "Which draft scenes have no characters?" is one click. 17 new tests.
+
 ### Properties & scene metadata — Obsidian roadmap Phase 1 (2026-09-15)
 - Schema **v49**: `metadata` (open JSON) + `*tags` on characters, locations and
   plot threads; `pov`, `location`, `*charactersPresent` on sections and

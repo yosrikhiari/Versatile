@@ -21,6 +21,7 @@ import EmptyState from '../shared/EmptyState.vue'
 import Skeleton from '../shared/Skeleton.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
 import EntityPropertiesPanel from './EntityPropertiesPanel.vue'
+import StoryQueryView from './StoryQueryView.vue'
 import StoryBibleDocumentEditor from './StoryBibleDocumentEditor.vue'
 import EntityActionButtons from './EntityActionButtons.vue'
 import TraitSuggestionsPopover from './TraitSuggestionsPopover.vue'
@@ -590,6 +591,19 @@ defineExpose({ refresh })
           >
             Documents
           </button>
+          <button
+            :class="[
+              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
+              activeTab === 'query'
+                ? 'text-accent border-b-2 border-accent'
+                : 'text-text-hint hover:text-text-secondary'
+            ]"
+            role="tab"
+            data-test="tab-query"
+            @click="switchTab('query')"
+          >
+            Query
+          </button>
         </div>
 
         <div
@@ -1029,6 +1043,8 @@ defineExpose({ refresh })
             v-if="activeTab === 'documents'"
             :project-id="projectStore.currentProjectId"
           />
+
+          <StoryQueryView v-if="activeTab === 'query'" />
         </div>
 
         <!-- prettier-ignore -->

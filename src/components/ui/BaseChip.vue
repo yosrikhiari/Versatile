@@ -130,6 +130,7 @@ const baseClasses =
 <template>
   <span
     v-if="variant !== 'filter'"
+    v-bind="$attrs"
     :class="[baseClasses, sizeClasses, variantClasses, customClass]"
   >
     <slot />
@@ -151,6 +152,7 @@ const baseClasses =
   -->
   <button
     v-else
+    v-bind="$attrs"
     type="button"
     :aria-pressed="active ? 'true' : 'false'"
     :disabled="disabled"
