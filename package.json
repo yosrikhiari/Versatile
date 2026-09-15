@@ -64,7 +64,7 @@
     "@vue-flow/minimap": "^1.5.4",
     "@vueuse/core": "^14.4.0",
     "dexie": "^4.4.5",
-    "diff": "^3.5.1",
+    "diff": "^9.0.0",
     "docx": "^9.7.1",
     "dompurify": "^3.4.15",
     "focus-trap": "^8.2.1",
