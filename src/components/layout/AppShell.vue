@@ -12,6 +12,7 @@ import GoalProgressBar from '../shared/GoalProgressBar.vue'
 import ProjectSettingsModal from './ProjectSettingsModal.vue'
 import BranchManagerModal from './BranchManagerModal.vue'
 import StoryLookupModal from '../storybible/StoryLookupModal.vue'
+import CompileManuscript from '../export/CompileManuscript.vue'
 import RecapBanner from './RecapBanner.vue'
 import ContextStatusIndicator from './ContextStatusIndicator.vue'
 import GuardrailIndicator from '../../guardrails/reporting/components/GuardrailIndicator.vue'
@@ -38,6 +39,7 @@ function focusMain() {
 }
 const showProjectSettings = ref(false)
 const showStoryLookup = ref(false)
+const showCompile = ref(false)
 const showBranchManager = ref(false)
 const showProjectDropdown = ref(false)
 const projects = ref([])
@@ -97,6 +99,12 @@ const paletteActions = computed(() => [
     icon: isThemeDark.value ? 'sun' : 'moon'
   },
   { id: 'export', label: 'Export project', icon: 'upload', hint: 'Ctrl+S' },
+  {
+    id: 'compile-manuscript',
+    label: 'Compile manuscript',
+    icon: 'layers',
+    keywords: ['export', 'docx', 'word', 'epub', 'markdown', 'compile', 'longform']
+  },
   { id: 'export-pdf', label: 'Export to PDF', icon: 'file-text' },
   {
     id: 'export-rtf',
@@ -126,6 +134,9 @@ const PALETTE_ACTIONS = {
   },
   'story-lookup': () => {
     showStoryLookup.value = true
+  },
+  'compile-manuscript': () => {
+    showCompile.value = true
   },
   'all-projects': () => router.push('/workspace')
 }
@@ -760,6 +771,17 @@ watch(
       @open-ai-settings="emit('open-settings')"
     />
     <BranchManagerModal :show="showBranchManager" @close="showBranchManager = false" />
+    <CompileManuscript
+      :show="showCompile"
+      :project-id="projectStore.currentProjectId"
+      @close="showCompile = false"
+      @export-pdf="
+        () => {
+          showCompile = false
+          emit('export-pdf')
+        }
+      "
+    />
     <StoryLookupModal
       :show="showStoryLookup"
       :project-id="projectStore.currentProjectId"

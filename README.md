@@ -38,7 +38,7 @@ A browser-based fiction writing environment with AI-powered tools for planning, 
 
 ### Export & Archive
 
-- Export to **PDF** and **EPUB**
+- **Compile** the manuscript in narrative order to **Markdown, Word (.docx), EPUB** or **PDF**
 - Session history archive with author model tracking
 - Goal tracking (session and daily word counts) across the whole manuscript, not just the root document
 

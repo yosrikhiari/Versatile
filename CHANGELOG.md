@@ -7,6 +7,19 @@ was verified.
 
 ## [Unreleased]
 
+### Compile + DOCX/EPUB export — Obsidian roadmap Phase 4 (2026-09-15)
+- `services/compileManuscript.ts`: pure `compileMarkdown` walks volumes →
+  sections → scenes in narrative order (unfiled sections last; never reads
+  the derived `volume.sectionIds`), with title style, scene titles, scene
+  separator and frontmatter stripping as workflow options; `buildDocx` (lazy
+  `docx`) and `buildEpub` (lazy `jszip`, minimal valid EPUB 3 with nav +
+  ncx); `exportCompiled` hands the file to the browser.
+- `CompileManuscript.vue` from the palette ("Compile manuscript"): live
+  Markdown preview with chapter/scene/word counts; Markdown, Word, EPUB and
+  PDF (the existing exporter) buttons.
+- New deps `docx`, `jszip`, both loaded only when their format is requested.
+  8 tests, including the DOCX and EPUB archives inspected with jszip.
+
 ### Related + Story Lookup — Obsidian roadmap Phase 3 (2026-09-15)
 - Schema **v51** `contentVectors`: embeddings of the story's own bible
   entities and scenes, `researchChunks`-shaped so the same worker IVF index
