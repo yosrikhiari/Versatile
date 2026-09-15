@@ -4,6 +4,7 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
+import { useNotifications } from '../../composables/useNotifications'
 import { useVolumeStoryGenerator } from '../../composables/useVolumeStoryGenerator'
 import { useChapterStoryGenerator } from '../../composables/generation/useChapterStoryGenerator'
 import { useGenerationRunController } from '../../composables/generation/useGenerationRunController'
@@ -45,6 +46,7 @@ const projectStore = useProjectStore()
 const storyBibleStore = useStoryBibleStore()
 const storyDocuments = useStoryDocuments()
 const manuscriptStore = useManuscriptStore()
+const { showConfirm } = useNotifications()
 const volumeGenerator = useVolumeStoryGenerator()
 // A second, fully independent pipeline: its own delegator, its own AgentMemory,
 // its own session budget. Created once at mount rather than per tab switch, so
@@ -390,9 +392,92 @@ async function handleExtendStory(structure) {
   }
 }
 
+// ----- Scene mode: the prose lands where the cursor is -----
+const terms = computed(() => projectStore.structureTerms)
+const activeScene = computed(() =>
+  manuscriptStore.activeSubsectionId ? manuscriptStore.activeSubsection : null
+)
+const activeChapter = computed(() =>
+  manuscriptStore.activeSectionId ? manuscriptStore.activeSection : null
+)
+/** What "Generate scene" will do, in the writer's words. */
+const sceneTargetLabel = computed(() => {
+  if (mode.value !== MODE_SCENE) return ''
+  const chapterName = activeChapter.value
+    ? activeChapter.value.title || `${terms.value.section} ${(activeChapter.value.order ?? 0) + 1}`
+    : ''
+  if (activeScene.value) {
+    const words = activeScene.value.wordCount || 0
+    const name = activeScene.value.title || terms.value.subsection
+    return words > 0
+      ? `Replaces the ${words.toLocaleString()} words in "${name}" (${chapterName})`
+      : `Writes into "${name}" (${chapterName})`
+  }
+  if (activeChapter.value) return `Adds a ${terms.value.subsectionLc} to ${chapterName}`
+  return `Starts a new ${terms.value.sectionLc} with this ${terms.value.subsectionLc}`
+})
+
+/**
+ * The scene row to write into, creating one in the open chapter if needed.
+ * Returns null when nothing is open, in which case the volume pipeline runs.
+ */
+async function resolveSceneTarget() {
+  const projectId = projectStore.currentProjectId
+  if (activeScene.value) {
+    const words = activeScene.value.wordCount || 0
+    if (words > 0) {
+      const ok = await showConfirm(
+        `Replace this ${terms.value.subsectionLc}?`,
+        `"${activeScene.value.title || terms.value.subsection}" already has ${words.toLocaleString()} words. Generating replaces them; a snapshot of the current text is kept in History.`,
+        'Replace',
+        'danger'
+      )
+      if (!ok) return null
+    }
+    return activeScene.value.id
+  }
+  if (activeChapter.value) {
+    const n = (manuscriptStore.subsectionsBySection[activeChapter.value.id] || []).length + 1
+    const id = await manuscriptStore.addSubsectionData(projectId, activeChapter.value.id, {
+      title: `${terms.value.subsection} ${n}`,
+      summary: focus.value || '',
+      status: 'planning',
+      tags: []
+    })
+    manuscriptStore.setActiveSubsection(id)
+    return id
+  }
+  return null
+}
+
+async function handleSceneGenerate() {
+  const target = await resolveSceneTarget()
+  if (!target) return false
+  resetVolumeStreams()
+  try {
+    await volumeGenerator.writeSceneInto({
+      projectId: projectStore.currentProjectId,
+      subsectionId: target,
+      instructions: focus.value,
+      targetWords: wordTarget.value,
+      onChunk: handleVolumeChunk
+    })
+  } catch {
+    // volumeGenerator.error is set internally; the card shows the outcome.
+  } finally {
+    await refreshContinuationSurvey()
+  }
+  return true
+}
+
 // ----- Volume pipeline -----
 async function handleVolumeGenerate() {
   if (!hasSynopsis.value || !projectStore.currentProjectId) return
+  // One scene into the open chapter or scene never needs a volume plan.
+  if (mode.value === MODE_SCENE && (activeScene.value || activeChapter.value)) {
+    if (await handleSceneGenerate()) return
+    return
+  }
 
   volumeRun.beginRun()
 
@@ -808,6 +893,14 @@ onBeforeUnmount(() => {
                   @extend="handleExtendStory"
                   @stop="volumeGenerator.stop()"
                 />
+                <p
+                  v-if="sceneTargetLabel"
+                  class="mt-2 flex items-center gap-2 text-xs font-ui text-text-secondary"
+                  data-test="scene-target"
+                >
+                  <BaseIcon name="corner-down-right" :size="14" class="text-accent shrink-0" />
+                  <span>{{ sceneTargetLabel }}</span>
+                </p>
               </template>
               <GenerationSettingsForm
                 v-model:genre="genre"

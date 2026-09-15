@@ -133,12 +133,33 @@ const contentSizeWarning = computed(() => {
 const contentSizeK = computed(() => Math.round(contentSize.value / 1000))
 
 const dismissEmptyState = ref(false)
+const terms = computed(() => projectStore.structureTerms)
 const isEmptyContent = computed(() => {
   if (dismissEmptyState.value) return false
   if (manuscriptStore.activeSubsectionId || manuscriptStore.activeSectionId) return false
   const content = projectStore.documentContent
   return !content || content === '<p></p>' || content.trim() === ''
 })
+
+/**
+ * A chapter row is open, its own body is empty, and its scenes hold prose. The
+ * generator used to paper over this by copying the scenes into the body (and
+ * doubling every word count); now the editor says where the text is and opens it.
+ */
+const scenesOfActiveSection = computed(() => {
+  if (!manuscriptStore.activeSectionId || manuscriptStore.activeSubsectionId) return []
+  return (manuscriptStore.subsectionsBySection[manuscriptStore.activeSectionId] || []).filter(
+    (s) => (s.wordCount || 0) > 0 || (s.content && s.content !== '<p></p>')
+  )
+})
+const chapterProseIsInScenes = computed(() => {
+  if (dismissEmptyState.value || scenesOfActiveSection.value.length === 0) return false
+  const body = manuscriptStore.activeSection?.content || ''
+  return !body || body === '<p></p>' || body.trim() === ''
+})
+function openScene(scene) {
+  manuscriptStore.setActiveSubsection(scene.id)
+}
 
 function handleStartWriting() {
   dismissEmptyState.value = true
@@ -269,10 +290,34 @@ defineExpose({
         v-if="isEmptyContent"
         icon="edit-3"
         title="Start writing"
-        description="Jump right in — you can file this text into a section later — or open Sections in the sidebar to plan first."
+        :description="`Jump right in — you can file this text into a ${terms.sectionLc} later — or open ${terms.sections} in the sidebar to plan first.`"
         action-label="Start writing"
         @action="handleStartWriting"
       />
+      <div v-else-if="chapterProseIsInScenes" class="max-w-[760px] mx-auto px-8 py-16">
+        <EmptyState
+          icon="book-marked"
+          :title="`This ${terms.sectionLc} is written in ${terms.subsectionsLc}`"
+          :description="`Its ${scenesOfActiveSection.length} ${scenesOfActiveSection.length === 1 ? terms.subsectionLc : terms.subsectionsLc} hold the prose. Open one to write, or start a ${terms.sectionLc} note here.`"
+          action-label="Write a note here"
+          @action="handleStartWriting"
+        />
+        <div class="mt-4 flex flex-col gap-1">
+          <button
+            v-for="scene in scenesOfActiveSection"
+            :key="scene.id"
+            class="flex items-center justify-between gap-3 px-3 py-2 rounded-sm border border-border-subtle bg-bg-secondary text-left text-sm font-ui text-text-primary hover:border-accent transition-colors"
+            @click="openScene(scene)"
+          >
+            <span class="truncate">{{
+              scene.title || `${terms.subsection} ${scene.order + 1}`
+            }}</span>
+            <span class="font-mono text-xs text-text-hint shrink-0"
+              >{{ (scene.wordCount || 0).toLocaleString() }} words</span
+            >
+          </button>
+        </div>
+      </div>
       <div
         v-else
         class="editor-wrapper max-w-[760px] mx-auto px-8 py-16 relative z-1"

@@ -120,9 +120,12 @@ describe('useFlowSave records progress for structured saves', () => {
     manuscriptStore.activeSectionId = 's1'
     useFlowSave(editorRef).scheduleSave()
     await vi.advanceTimersByTimeAsync(10_000)
+    // The row had no status (planning by default): the first prose moves it to
+    // drafting without a dialog, so the manager and outline stop calling a
+    // chapter with words "Planning".
     expect(manuscriptStore.updateSectionData).toHaveBeenCalledWith(
       's1',
-      { content: '<p>one two three</p>', wordCount: 3 },
+      { content: '<p>one two three</p>', wordCount: 3, status: 'drafting' },
       'p1'
     )
     expect(projectStore.recordProgress).toHaveBeenCalledTimes(1)

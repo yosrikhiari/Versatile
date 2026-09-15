@@ -2,7 +2,38 @@
 const DEV_MODE = import.meta.env.DEV === true
 
 export const MIGRATIONS = {
-   11: async (trans: any) => {
+  52: async (trans: any) => {
+    // Volumes the generator named after its own prompt ("Genre: Literary /
+    // What this scene should be about: ...") get a plain name. Only that shape
+    // is touched: a title a writer typed never starts with a prompt label or
+    // contains a line break.
+    const volumes = (await trans.volumes?.toArray()) ?? []
+    let n = 0
+    for (const v of volumes) {
+      const title = String(v.title || '')
+      if (/^(Genre|Category|Tone):/.test(title) || title.includes('\n')) {
+        n += 1
+        await trans.volumes.update(v.id, { title: `Volume ${n}`, description: '' })
+      }
+    }
+    const sections = (await trans.sections?.toArray()) ?? []
+    const subsections = (await trans.subsections?.toArray()) ?? []
+    for (const section of sections) {
+      if (!section.content) continue
+      const subs = subsections
+        .filter((s: any) => s.sectionId === section.id)
+        .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+      const joined = subs
+        .map((s: any) => s.content)
+        .filter(Boolean)
+        .join('<hr>')
+      if (joined && section.content === joined) {
+        await trans.sections.update(section.id, { content: '', wordCount: 0 })
+      }
+    }
+  },
+
+  11: async (trans: any) => {
     await trans.graphEdges.toCollection().modify((edge: any) => {
       if (edge.volumeId === undefined) edge.volumeId = null
     })

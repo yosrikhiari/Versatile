@@ -20,6 +20,7 @@ const emit = defineEmits(['navigate'])
 
 const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
+const terms = computed(() => projectStore.structureTerms)
 const graphStore = useStoryGraphStore()
 const { addToast } = useNotifications()
 
@@ -163,8 +164,9 @@ watch(
       </BaseSection>
 
       <div v-if="!anchor" class="px-4 py-8 text-center font-ui text-xs text-text-hint leading-5">
-        Open a scene from <span class="text-text-secondary">Sections</span> and its neighbours
-        appear here.
+        Open a {{ terms.subsectionLc }} from
+        <span class="text-text-secondary">{{ terms.sections }}</span> and its neighbours appear
+        here.
       </div>
       <div
         v-else-if="isSearching"

@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
+import { useProjectStore } from '../../stores/projectStore'
 import { useBetaReader } from '../../composables/betareader/useBetaReader'
 import BetaResultItem from './BetaResultItem.vue'
 import BaseButton from '../ui/BaseButton.vue'
@@ -8,6 +9,8 @@ import BasePanelHeader from '../ui/BasePanelHeader.vue'
 import BaseCheckbox from '../ui/BaseCheckbox.vue'
 
 const emit = defineEmits(['navigate'])
+const projectStore = useProjectStore()
+const terms = computed(() => projectStore.structureTerms)
 
 const {
   results,
@@ -149,8 +152,9 @@ function countsLabel() {
         </p>
         <p class="mt-1 font-ui text-xs text-text-hint leading-5 max-w-[32ch] mx-auto text-pretty">
           <template v-if="noScenes">
-            Beta Reader reads subsections that contain prose — split a section into subsections in
-            <span class="text-text-secondary">Sections</span> and it will pick them up.
+            Beta Reader reads {{ terms.subsectionsLc }} that contain prose — split a
+            {{ terms.sectionLc }} into {{ terms.subsectionsLc }} in
+            <span class="text-text-secondary">{{ terms.sections }}</span> and it will pick them up.
           </template>
           <template v-else-if="!lastScan">Read when you have prose to test.</template>
           <template v-else>No narrative issues found in the current draft.</template>

@@ -18,6 +18,7 @@ import WhatIfTimeline from './WhatIfTimeline.vue'
 const manuscriptStore = useManuscriptStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
+const terms = computed(() => projectStore.structureTerms)
 const branchStore = useBranchStore()
 const {
   isGenerating: isForking,
@@ -241,8 +242,8 @@ function handleChangePoint() {
             v-if="!manuscriptStore.activeSubsection"
             class="font-ui text-xs text-text-hint leading-5"
           >
-            What If branches from a single subsection. Open one from
-            <span class="text-text-secondary">Sections</span> in the sidebar to begin.
+            What If branches from a single {{ terms.subsectionLc }}. Open one from
+            <span class="text-text-secondary">{{ terms.sections }}</span> in the sidebar to begin.
           </p>
           <div v-else class="space-y-3">
             <BaseAlert v-if="error" variant="danger">{{ error }}</BaseAlert>

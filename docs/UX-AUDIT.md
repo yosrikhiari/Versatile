@@ -82,3 +82,27 @@ and the login view were not touched beyond the eyebrow sweep.
 
 Component tests for the rewritten Consistency, Beta Reader and What If panels landed 2026-09-15
 (`consistencyPanel.test.js`, `betaReaderPanel.test.js`, `whatIfPanel.test.js`).
+
+## Functional audit (2026-09-15, Typescript v4)
+
+Walked every panel of the running app with a fresh local session: workspace → new project → editor → all 18 panels,
+and one real generation run on `qwen3:8b`. Each finding names the file; the status column is what this pass did.
+
+| # | Pri | Finding | Where | Status |
+|---|-----|---------|-------|--------|
+| 19 | P0 | **Generated prose was stored twice.** `buildManuscript` copied every scene's HTML into the chapter body (joined with `<hr>`) and set the chapter's `wordCount` to the scene sum; both counters then added body + scenes. A 637-word scene reported a 1,274-word chapter and a 1,313-word manuscript. | `CommitService.buildManuscript`, `useVolumeStoryGenerator.aggregateChapterContent`, `manuscriptStore.structuredWordCount` | fixed: prose lives in the scene rows only; the chapter is marked `generated`; migration v52 clears bodies that exactly equal the join; the editor's chapter row shows "written in scenes" with the scenes as buttons |
+| 20 | P0 | **"Generate scene" ran the whole book pipeline.** With an empty scene open, Scene mode planned chapters, built a story spine, created a *new volume and chapter* and wrote there — 5½ minutes, a plan-approval detour, and the scene you were in stayed empty. `singleChapter: … // Keep compatible for now until follow-up task`. | `StoryGeneratorPanel.handleVolumeGenerate` | fixed: Scene mode writes into the open scene (confirming if it has words), or adds a scene to the open chapter, via `writeSceneInto`; the form says what it will do ("Writes into "The harbour" (Chapter 1)"); the pipeline runs only when nothing is open |
+| 21 | P1 | **Volumes were named after the prompt.** `title: enhancedSynopsis.slice(0, 60) + '...'` → a volume called "Genre: Literary What this scene / chapter should be about: ...". | `useVolumeStoryGenerator` | fixed: `Volume N`; v52 renames existing prompt-titled volumes |
+| 22 | P1 | **Outline and Chapters were two sidebar items over one tree.** Both listed chapters → scenes, both added scenes through the same six-field dialog, both selected scenes; Outline could not add a chapter and said "Add chapters from Chapters in the sidebar". A writer had to learn which door to use. | `navigation.ts`, `SubsectionOutline`, `ChapterManager` | fixed: one panel, two views — Structure (tree, volumes, reorder, edit, history) and Outline (flat, searchable, status-filtered) — via a `BaseSegmented` in the Chapters header; `outline` deep links and palette words still open it |
+| 23 | P1 | **A chapter with prose said "Planning".** Filing the loose draft made a 39-word chapter with status `planning`; writing into a scene never moved it either. | `useFlowSave`, `ChapterManager.fileLooseDraftAsSection` | fixed: the first save with words moves `planning` → `drafting`; filing the draft creates it as `drafting` |
+| 24 | P1 | **Adding a chapter or scene was a form.** "Add chapter" and "+ Scene" opened dialogs (the scene one has six fields) when a writer has, at most, a title. | `ChapterManager` | fixed: title-only inline rows; Enter adds and keeps the row open, Esc closes; the dialog stays behind Edit |
+| 25 | P1 | **Vocabulary drift.** The nav said Chapters; the editor empty state said "open Sections", Beta Reader "split a section into subsections in Sections", What If and Related "from Sections", Outline "+ Add Subsection" and "Sec. 1", delete said "Delete Subsection". | those five components, `useSectionSchemaManager` | fixed: all read `structureTerms`; "1 scenes" plurals fixed in the manager and outline |
+| 26 | P1 | **Generator copy broke its own rule.** Stages read "Conjuring Characters & World", "Forging the Story Graph", "Sealing the Arc Contract", "Waiting for the ether…", "[ Abandon Conjuration ]" while the panel pass had settled on plain sentence case. | `GenerationLoadingScreen`, `useVolumeStoryGenerator` | fixed: plain words |
+| 27 | P2 | Scene mode did not honour its length: 250 words requested, 637 written. | writer prompts | open — the continuation path passes `targetWords`; the pipeline path did not. Now that Scene mode uses the continuation path this is largely moot, but the writer still overshoots; a length gate is a generator-quality item |
+| 28 | P2 | The "+ Scene" action row wrapped at the panel's 350 px ("+" on one line, "Scene" on the next). | `ChapterManager` | fixed: `whitespace-nowrap` |
+| 29 | P2 | Workspace "Create organization" still sits beside "New" at equal weight for a local user (#13). | `WorkspaceView` | open |
+| 30 | P2 | The daily-goal figure recorded while #19 was live (1,313) stays in the history table; it corrects on the next save. | `projectStore.recordProgress` | open (history is append-only by design) |
+
+What works, and was left alone: the Chapters panel's "Loose draft — File as chapter" (one click, no dialog), Consistency and Beta Reader
+empty states now say what they need, Polish docks under the manuscript as a drawer (it looked dead only because it sits below a short
+viewport), Settings is a modal, Costs/Research/Archive/Network/Timeline/Story Shape all open with honest empty states.

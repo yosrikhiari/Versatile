@@ -7,6 +7,25 @@ was verified.
 
 ## [Unreleased]
 
+### Functional audit: prose in one place, Scene mode writes where you are, one structure panel (2026-09-15)
+- **Generated prose was stored twice** (`docs/UX-AUDIT.md` #19): the chapter body
+  received a copy of its scenes and every counter added both, so a 637-word scene
+  showed a 1,274-word chapter. `buildManuscript` / `aggregateChapterContent` now
+  only mark the chapter `generated`; **schema v52** clears bodies that exactly equal
+  the scene join and renames prompt-titled volumes to `Volume N`; opening such a
+  chapter shows "written in scenes" with the scenes as buttons.
+- **"Generate scene" writes into the scene you are in** (#20) through
+  `writeSceneInto` (the continuation writer) instead of the whole-book pipeline,
+  asks before replacing a scene that has words, adds a scene to the open chapter
+  when none is open, and says what it will do above the button.
+- **One structure panel** (#22): Outline is a view inside Chapters (Structure |
+  Outline); the Outline nav item is gone, its palette words and deep links still open it.
+- Title-only inline add for chapters and scenes (#24); first prose moves a row from
+  planning to drafting (#23); every panel speaks the project's vocabulary (#25);
+  generator loading copy in plain words (#26); plurals and a wrapping button (#28).
+- Tests updated to the new contracts (`commitService`, `useVolumeStoryGenerator`,
+  `useFlowSave`, `whatIfPanel`); v52 migration test added.
+
 ### Typescript sweep: the old system's details removed from every component (2026-09-15)
 - The v4 tokens and Tailwind scale were app-wide, but 68 components still
   carried old-system details on top: 51 Geist-bold headings (now

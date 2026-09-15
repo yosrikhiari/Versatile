@@ -16,6 +16,8 @@ import Modal from '../shared/Modal.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import draggable from 'vuedraggable'
+import SubsectionOutline from './SubsectionOutline.vue'
+import BaseSegmented from '../ui/BaseSegmented.vue'
 import SnapshotHistoryDrawer from './SnapshotHistoryDrawer.vue'
 import TagInput from '../shared/TagInput.vue'
 
@@ -122,6 +124,51 @@ watch(navigateTarget, (target) => {
   })
 })
 
+/**
+ * Structure is the tree (volumes, chapters, scenes, drag to reorder, edit,
+ * history); Outline is the same scenes as a flat, filterable, searchable list.
+ * They were two sidebar items over one tree; now one panel, two views.
+ */
+const view = ref('structure')
+
+/**
+ * Title-only adds. A writer starting a chapter has a title, at most; the
+ * six-field dialog stays behind Edit for everything else. Enter adds and keeps
+ * the row open for the next one; Escape closes it.
+ */
+const inlineAdd = ref(null) // 'section' | <sectionId>
+const inlineTitle = ref('')
+function startInlineAdd(target) {
+  inlineAdd.value = target
+  inlineTitle.value = ''
+  nextTick(() => document.getElementById('inline-add-input')?.focus())
+}
+function cancelInlineAdd() {
+  inlineAdd.value = null
+  inlineTitle.value = ''
+}
+async function commitInlineAdd() {
+  const title = inlineTitle.value.trim()
+  if (!title || inlineAdd.value === null) return
+  if (inlineAdd.value === 'section') {
+    const id = await manuscriptStore.addSectionData(projectStore.currentProjectId, {
+      title,
+      summary: '',
+      status: 'planning',
+      tags: []
+    })
+    activeSectionExpanded.value = id
+  } else {
+    await manuscriptStore.addSubsectionData(projectStore.currentProjectId, inlineAdd.value, {
+      title,
+      summary: '',
+      status: 'planning',
+      tags: []
+    })
+  }
+  inlineTitle.value = ''
+}
+
 function openAddSection() {
   editingSection.value = null
   newSection.value = { title: '', summary: '', status: 'planning', tags: [] }
@@ -206,6 +253,7 @@ async function fileLooseDraftAsSection() {
       title: `${terms.value.section} ${sortedSections.value.length + 1}`,
       summary: '',
       tags: [],
+      status: 'drafting',
       content,
       wordCount: countWords(stripHtmlTags(content))
     })
@@ -380,328 +428,380 @@ function handleSnapshotRestored(content) {
 
 <template>
   <div class="h-full flex flex-col bg-bg-primary overflow-hidden">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
+    <div
+      class="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0 gap-2"
+    >
       <h2 class="type-display text-[11px] text-text-primary">{{ terms.sections }}</h2>
-      <BaseButton variant="soft" size="sm" icon="plus" @click="openAddSection">
-        Add {{ terms.sectionLc }}
-      </BaseButton>
+      <div class="flex items-center gap-2">
+        <BaseSegmented
+          v-model="view"
+          size="sm"
+          aria-label="Structure view"
+          :options="[
+            { value: 'structure', label: 'Structure' },
+            { value: 'outline', label: 'Outline' }
+          ]"
+        />
+        <BaseButton variant="soft" size="sm" icon="plus" @click="startInlineAdd('section')">
+          Add {{ terms.sectionLc }}
+        </BaseButton>
+      </div>
     </div>
-
     <div
-      v-if="allTags.length > 0"
-      class="flex items-center gap-1.5 px-4 py-1.5 border-b border-border-subtle overflow-x-auto shrink-0"
+      v-if="inlineAdd === 'section'"
+      class="flex items-center gap-2 px-4 py-2 border-b border-border-subtle bg-bg-secondary shrink-0"
     >
-      <span class="text-xs text-text-hint font-ui shrink-0">Filter:</span>
-      <button
-        v-for="tag in allTags"
-        :key="tag"
-        :class="[
-          'px-2 py-0.5 text-xs rounded-sm font-ui shrink-0',
-          tagFilter.includes(tag)
-            ? 'btn-primary'
-            : 'bg-bg-tertiary text-text-hint hover:text-text-secondary'
-        ]"
-        @click="toggleTagFilter(tag)"
-      >
-        {{ tag }}
-      </button>
-      <button
-        v-if="tagFilter.length > 0"
-        class="text-xs text-text-hint hover:text-danger font-ui shrink-0"
-        @click="tagFilter = []"
-      >
-        Clear
-      </button>
+      <input
+        id="inline-add-input"
+        v-model="inlineTitle"
+        type="text"
+        :placeholder="`${terms.section} title — Enter adds, Esc closes`"
+        class="flex-1 h-8 px-3 rounded-sm border border-border-subtle bg-bg-elevated font-ui text-xs text-text-primary placeholder:text-text-hint focus:outline-none focus:border-accent"
+        @keydown.enter.prevent="commitInlineAdd"
+        @keydown.esc.prevent="cancelInlineAdd"
+      />
+      <BaseButton variant="ghost" size="sm" @click="cancelInlineAdd">Done</BaseButton>
     </div>
-
-    <div
-      class="flex items-center justify-between px-4 pt-2.5 pb-2 border-b border-border-subtle shrink-0"
-    >
-      <span class="label-micro text-text-hint">Volumes</span>
-      <BaseButton variant="ghost" size="sm" icon="plus" @click="openAddVolume">Add</BaseButton>
-    </div>
-
-    <div
-      v-if="volumeStore.volumes.length > 0"
-      class="px-3 pt-2 pb-1.5 border-b border-border-subtle space-y-1.5 shrink-0"
-    >
+    <SubsectionOutline v-if="view === 'outline'" embedded class="flex-1 min-h-0" />
+    <template v-else>
       <div
-        v-for="volume in volumeStore.volumes"
-        :key="volume.id"
-        class="bg-bg-secondary rounded-md overflow-hidden"
+        v-if="allTags.length > 0"
+        class="flex items-center gap-1.5 px-4 py-1.5 border-b border-border-subtle overflow-x-auto shrink-0"
+      >
+        <span class="text-xs text-text-hint font-ui shrink-0">Filter:</span>
+        <button
+          v-for="tag in allTags"
+          :key="tag"
+          :class="[
+            'px-2 py-0.5 text-xs rounded-sm font-ui shrink-0',
+            tagFilter.includes(tag)
+              ? 'btn-primary'
+              : 'bg-bg-tertiary text-text-hint hover:text-text-secondary'
+          ]"
+          @click="toggleTagFilter(tag)"
+        >
+          {{ tag }}
+        </button>
+        <button
+          v-if="tagFilter.length > 0"
+          class="text-xs text-text-hint hover:text-danger font-ui shrink-0"
+          @click="tagFilter = []"
+        >
+          Clear
+        </button>
+      </div>
+
+      <div
+        class="flex items-center justify-between px-4 pt-2.5 pb-2 border-b border-border-subtle shrink-0"
+      >
+        <span class="label-micro text-text-hint">Volumes</span>
+        <BaseButton variant="ghost" size="sm" icon="plus" @click="openAddVolume">Add</BaseButton>
+      </div>
+
+      <div
+        v-if="volumeStore.volumes.length > 0"
+        class="px-3 pt-2 pb-1.5 border-b border-border-subtle space-y-1.5 shrink-0"
       >
         <div
-          class="flex items-center justify-between px-2.5 py-2 cursor-pointer"
-          @click="toggleVolumeExpand(volume.id)"
-        >
-          <div class="flex items-center gap-2 min-w-0">
-            <BaseIcon
-              :name="expandedVolumes.has(volume.id) ? 'chevron-down' : 'chevron-right'"
-              :size="14"
-              class="text-text-hint flex-shrink-0"
-            />
-            <span
-              class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              :style="{ background: volume.color || 'var(--vers-default-fallback)' }"
-            ></span>
-            <span
-              class="font-ui text-sm font-medium text-text-primary truncate"
-              :title="volume.title"
-              >{{ volume.title }}</span
-            >
-            <span
-              class="text-xs text-text-hint bg-bg-primary border border-border-subtle rounded-sm px-2 py-0.5 whitespace-nowrap"
-            >
-              {{ getSectionsInVolume(volume.id).length }} {{ terms.sectionsLc }}
-            </span>
-          </div>
-          <div class="flex items-center gap-0.5" @click.stop>
-            <button
-              class="p-1 text-text-hint hover:text-text-secondary rounded"
-              :title="`Assign ${terms.sectionsLc}`"
-              :class="
-                assignMode && assignVolumeId === volume.id ? 'bg-surface-hover text-accent' : ''
-              "
-              @click="toggleAssignMode(volume.id)"
-            >
-              <BaseIcon name="folder-plus" :size="14" />
-            </button>
-            <button
-              class="p-1 text-text-hint hover:text-text-secondary rounded"
-              title="Edit volume"
-              @click="openEditVolume(volume)"
-            >
-              <BaseIcon name="pencil" :size="14" />
-            </button>
-            <button
-              class="p-1 text-text-hint hover:text-danger rounded"
-              title="Delete volume"
-              @click="deleteVolume(volume)"
-            >
-              <BaseIcon name="trash-2" :size="14" />
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="expandedVolumes.has(volume.id)"
-          class="border-t border-border-subtle px-3 py-2 space-y-1.5"
+          v-for="volume in volumeStore.volumes"
+          :key="volume.id"
+          class="bg-bg-secondary rounded-md overflow-hidden"
         >
           <div
-            v-for="section in getSectionsInVolume(volume.id)"
-            :key="section.id"
-            class="flex items-center justify-between bg-bg-primary rounded px-2.5 py-1.5"
+            class="flex items-center justify-between px-2.5 py-2 cursor-pointer"
+            @click="toggleVolumeExpand(volume.id)"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <span class="text-sm text-text-primary font-medium">{{
-                section.title || `${terms.section} ${section.order + 1}`
-              }}</span>
-              <span
-                class="text-xs font-medium px-2 py-0.5 rounded-sm bg-bg-secondary text-text-secondary"
-                >{{ getStatusLabel(section.status) }}</span
-              >
-            </div>
-            <button
-              class="p-1 text-text-hint hover:text-danger rounded"
-              :title="`Remove ${terms.sectionLc} from volume`"
-              @click="removeFromVolume(section)"
-            >
-              <BaseIcon name="x" :size="12" />
-            </button>
-          </div>
-          <div v-if="getSectionsInVolume(volume.id).length === 0" class="text-center py-2">
-            <p class="text-xs text-text-hint">No {{ terms.sectionsLc }} assigned</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-3 pt-3 pb-2">
-      <p class="label-micro text-text-hint mx-1 mb-2">
-        {{ terms.sections }}
-      </p>
-
-      <div
-        v-if="hasLooseDraft"
-        :class="[
-          'mb-2 rounded-lg border px-3 py-2 flex items-center justify-between gap-2 transition-colors',
-          isLooseDraftActive
-            ? 'border-accent/40 bg-accent/10'
-            : 'border-dashed border-border-subtle hover:bg-surface-hover'
-        ]"
-      >
-        <button
-          type="button"
-          class="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
-          :title="`Open the text written outside any ${terms.sectionLc}`"
-          @click="selectLooseDraft"
-        >
-          <span class="block text-sm font-medium text-text-primary font-ui truncate">
-            Loose draft
-          </span>
-          <span class="block text-xs text-text-hint font-ui">
-            {{ looseDraftWords.toLocaleString() }} words &middot; not in any {{ terms.sectionLc }}
-          </span>
-        </button>
-        <button
-          type="button"
-          class="shrink-0 text-xs px-2.5 py-1 rounded-md border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-hover font-ui disabled:opacity-50"
-          :disabled="filingDraft"
-          :title="`Move this text into a new ${terms.sectionLc}`"
-          @click="fileLooseDraftAsSection"
-        >
-          File as {{ terms.sectionLc }}
-        </button>
-      </div>
-
-      <div
-        v-if="filteredSections.length === 0 && sortedSections.length > 0"
-        class="text-center py-8"
-      >
-        <p class="text-text-hint font-ui text-sm mb-4">
-          No {{ terms.sectionsLc }} match the selected tags.
-        </p>
-        <button class="px-4 py-2 btn-primary rounded-lg font-ui" @click="tagFilter = []">
-          Clear Filters
-        </button>
-      </div>
-      <div v-else-if="filteredSections.length === 0" class="text-center py-8">
-        <p class="text-text-hint font-ui text-sm mb-4">
-          No {{ terms.sectionsLc }} yet. Add the first one to give the manuscript a shape.
-        </p>
-        <button class="px-4 py-2 btn-primary rounded-lg font-ui" @click="openAddSection">
-          Add first {{ terms.sectionLc }}
-        </button>
-      </div>
-
-      <draggable
-        :list="filteredSections"
-        item-key="id"
-        v-bind="sectionDragOptions"
-        class="divide-y divide-border-subtle"
-        @end="updateSectionOrder"
-      >
-        <template #item="{ element: section }">
-          <div
-            :id="'section-' + section.id"
-            :class="[
-              'rounded-lg overflow-hidden transition-colors',
-              activeSectionExpanded === section.id ? 'bg-bg-secondary' : '',
-              assignMode ? 'ring-2 ring-accent cursor-pointer' : ''
-            ]"
-          >
-            <div
-              :class="[
-                'flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors',
-                assignMode ? 'hover:bg-surface-hover' : 'hover:bg-surface-hover cursor-pointer',
-                manuscriptStore.activeSectionId === section.id
-                  ? 'shadow-[inset_2px_0_0_0_rgb(var(--vers-accent-primary-rgb))]'
-                  : ''
-              ]"
-              @click="assignMode ? assignSectionToVolume(section.id) : selectSection(section.id)"
-            >
               <BaseIcon
-                name="grip-vertical"
-                :size="14"
-                class="text-text-hint flex-shrink-0 cursor-grab"
-              />
-              <span
-                class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                :style="{
-                  background: getVolumeForSection(section)?.color || 'var(--vers-default-other)'
-                }"
-              ></span>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm font-medium text-text-primary">{{
-                    section.title || `${terms.section} ${section.order + 1}`
-                  }}</span>
-                  <span
-                    class="text-xs font-medium px-2 py-0.5 rounded-sm bg-bg-secondary text-text-secondary"
-                    >{{ getStatusLabel(section.status) }}</span
-                  >
-                </div>
-                <div class="flex items-center gap-3 mt-0.5">
-                  <span class="text-xs text-text-hint flex items-center gap-1">
-                    <BaseIcon name="align-left" :size="12" class="flex-shrink-0" />
-                    {{ getSectionWordCount(section.id) }} words
-                  </span>
-                  <span class="text-xs text-text-hint flex items-center gap-1">
-                    <BaseIcon name="list" :size="12" class="flex-shrink-0" />
-                    {{ subsectionsBySection[section.id]?.length || 0 }} {{ terms.subsectionsLc }}
-                  </span>
-                </div>
-              </div>
-              <BaseIcon
-                :name="activeSectionExpanded === section.id ? 'chevron-down' : 'chevron-right'"
+                :name="expandedVolumes.has(volume.id) ? 'chevron-down' : 'chevron-right'"
                 :size="14"
                 class="text-text-hint flex-shrink-0"
               />
+              <span
+                class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                :style="{ background: volume.color || 'var(--vers-default-fallback)' }"
+              ></span>
+              <span
+                class="font-ui text-sm font-medium text-text-primary truncate"
+                :title="volume.title"
+                >{{ volume.title }}</span
+              >
+              <span
+                class="text-xs text-text-hint bg-bg-primary border border-border-subtle rounded-sm px-2 py-0.5 whitespace-nowrap"
+              >
+                {{ getSectionsInVolume(volume.id).length }}
+                {{
+                  getSectionsInVolume(volume.id).length === 1 ? terms.sectionLc : terms.sectionsLc
+                }}
+              </span>
             </div>
+            <div class="flex items-center gap-0.5" @click.stop>
+              <button
+                class="p-1 text-text-hint hover:text-text-secondary rounded"
+                :title="`Assign ${terms.sectionsLc}`"
+                :class="
+                  assignMode && assignVolumeId === volume.id ? 'bg-surface-hover text-accent' : ''
+                "
+                @click="toggleAssignMode(volume.id)"
+              >
+                <BaseIcon name="folder-plus" :size="14" />
+              </button>
+              <button
+                class="p-1 text-text-hint hover:text-text-secondary rounded"
+                title="Edit volume"
+                @click="openEditVolume(volume)"
+              >
+                <BaseIcon name="pencil" :size="14" />
+              </button>
+              <button
+                class="p-1 text-text-hint hover:text-danger rounded"
+                title="Delete volume"
+                @click="deleteVolume(volume)"
+              >
+                <BaseIcon name="trash-2" :size="14" />
+              </button>
+            </div>
+          </div>
 
+          <div
+            v-if="expandedVolumes.has(volume.id)"
+            class="border-t border-border-subtle px-3 py-2 space-y-1.5"
+          >
             <div
-              v-if="activeSectionExpanded === section.id"
-              class="border-t border-border-subtle bg-bg-secondary p-3"
+              v-for="section in getSectionsInVolume(volume.id)"
+              :key="section.id"
+              class="flex items-center justify-between bg-bg-primary rounded px-2.5 py-1.5"
             >
-              <div class="flex flex-col gap-1.5 mb-2.5">
-                <!-- Row 1: action buttons -->
-                <div class="flex items-center gap-1">
-                  <button
-                    class="text-xs px-2.5 py-1 bg-accent/10 text-accent hover:bg-accent/20 rounded-md font-medium transition-colors"
-                    @click="openAddSubsection(section.id)"
-                  >
-                    + {{ terms.subsection }}
-                  </button>
-                  <button
-                    class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-                    @click="openEditSection(section)"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-                    @click="openSectionSnapshot(section)"
-                  >
-                    History
-                  </button>
-                  <button
-                    v-if="section.volumeId"
-                    class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
-                    @click="removeFromVolume(section)"
-                  >
-                    Unassign
-                  </button>
-                  <!-- Destructive: pushed to the far edge and quiet until hovered,
-                       so it does not read as one of the everyday actions. -->
-                  <button
-                    class="ml-auto p-1 rounded-md text-text-hint hover:text-danger hover:bg-surface-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
-                    :title="`Delete ${terms.sectionLc}`"
-                    :aria-label="`Delete ${terms.sectionLc}`"
-                    @click="deleteSection(section)"
-                  >
-                    <BaseIcon name="trash-2" :size="14" />
-                  </button>
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-sm text-text-primary font-medium">{{
+                  section.title || `${terms.section} ${section.order + 1}`
+                }}</span>
+                <span
+                  class="text-xs font-medium px-2 py-0.5 rounded-sm bg-bg-secondary text-text-secondary"
+                  >{{ getStatusLabel(section.status) }}</span
+                >
+              </div>
+              <button
+                class="p-1 text-text-hint hover:text-danger rounded"
+                :title="`Remove ${terms.sectionLc} from volume`"
+                @click="removeFromVolume(section)"
+              >
+                <BaseIcon name="x" :size="12" />
+              </button>
+            </div>
+            <div v-if="getSectionsInVolume(volume.id).length === 0" class="text-center py-2">
+              <p class="text-xs text-text-hint">No {{ terms.sectionsLc }} assigned</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-3 pt-3 pb-2">
+        <p class="label-micro text-text-hint mx-1 mb-2">
+          {{ terms.sections }}
+        </p>
+
+        <div
+          v-if="hasLooseDraft"
+          :class="[
+            'mb-2 rounded-lg border px-3 py-2 flex items-center justify-between gap-2 transition-colors',
+            isLooseDraftActive
+              ? 'border-accent/40 bg-accent/10'
+              : 'border-dashed border-border-subtle hover:bg-surface-hover'
+          ]"
+        >
+          <button
+            type="button"
+            class="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+            :title="`Open the text written outside any ${terms.sectionLc}`"
+            @click="selectLooseDraft"
+          >
+            <span class="block text-sm font-medium text-text-primary font-ui truncate">
+              Loose draft
+            </span>
+            <span class="block text-xs text-text-hint font-ui">
+              {{ looseDraftWords.toLocaleString() }} words &middot; not in any {{ terms.sectionLc }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="shrink-0 text-xs px-2.5 py-1 rounded-md border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-hover font-ui disabled:opacity-50"
+            :disabled="filingDraft"
+            :title="`Move this text into a new ${terms.sectionLc}`"
+            @click="fileLooseDraftAsSection"
+          >
+            File as {{ terms.sectionLc }}
+          </button>
+        </div>
+
+        <div
+          v-if="filteredSections.length === 0 && sortedSections.length > 0"
+          class="text-center py-8"
+        >
+          <p class="text-text-hint font-ui text-sm mb-4">
+            No {{ terms.sectionsLc }} match the selected tags.
+          </p>
+          <button class="px-4 py-2 btn-primary rounded-lg font-ui" @click="tagFilter = []">
+            Clear Filters
+          </button>
+        </div>
+        <div v-else-if="filteredSections.length === 0" class="text-center py-8">
+          <p class="text-text-hint font-ui text-sm mb-4">
+            No {{ terms.sectionsLc }} yet. Add the first one to give the manuscript a shape.
+          </p>
+          <button
+            class="px-4 py-2 btn-primary rounded-lg font-ui"
+            @click="startInlineAdd('section')"
+          >
+            Add first {{ terms.sectionLc }}
+          </button>
+        </div>
+
+        <draggable
+          :list="filteredSections"
+          item-key="id"
+          v-bind="sectionDragOptions"
+          class="divide-y divide-border-subtle"
+          @end="updateSectionOrder"
+        >
+          <template #item="{ element: section }">
+            <div
+              :id="'section-' + section.id"
+              :class="[
+                'rounded-lg overflow-hidden transition-colors',
+                activeSectionExpanded === section.id ? 'bg-bg-secondary' : '',
+                assignMode ? 'ring-2 ring-accent cursor-pointer' : ''
+              ]"
+            >
+              <div
+                :class="[
+                  'flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors',
+                  assignMode ? 'hover:bg-surface-hover' : 'hover:bg-surface-hover cursor-pointer',
+                  manuscriptStore.activeSectionId === section.id
+                    ? 'shadow-[inset_2px_0_0_0_rgb(var(--vers-accent-primary-rgb))]'
+                    : ''
+                ]"
+                @click="assignMode ? assignSectionToVolume(section.id) : selectSection(section.id)"
+              >
+                <BaseIcon
+                  name="grip-vertical"
+                  :size="14"
+                  class="text-text-hint flex-shrink-0 cursor-grab"
+                />
+                <span
+                  class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  :style="{
+                    background: getVolumeForSection(section)?.color || 'var(--vers-default-other)'
+                  }"
+                ></span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-text-primary">{{
+                      section.title || `${terms.section} ${section.order + 1}`
+                    }}</span>
+                    <span
+                      class="text-xs font-medium px-2 py-0.5 rounded-sm bg-bg-secondary text-text-secondary"
+                      >{{ getStatusLabel(section.status) }}</span
+                    >
+                  </div>
+                  <div class="flex items-center gap-3 mt-0.5">
+                    <span class="text-xs text-text-hint flex items-center gap-1">
+                      <BaseIcon name="align-left" :size="12" class="flex-shrink-0" />
+                      {{ getSectionWordCount(section.id) }} words
+                    </span>
+                    <span class="text-xs text-text-hint flex items-center gap-1">
+                      <BaseIcon name="list" :size="12" class="flex-shrink-0" />
+                      {{ subsectionsBySection[section.id]?.length || 0 }}
+                      {{
+                        (subsectionsBySection[section.id]?.length || 0) === 1
+                          ? terms.subsectionLc
+                          : terms.subsectionsLc
+                      }}
+                    </span>
+                  </div>
                 </div>
+                <BaseIcon
+                  :name="activeSectionExpanded === section.id ? 'chevron-down' : 'chevron-right'"
+                  :size="14"
+                  class="text-text-hint flex-shrink-0"
+                />
               </div>
 
-              <draggable
-                :list="subsectionsBySection[section.id]"
-                item-key="id"
-                v-bind="subsectionDragOptions"
-                class="space-y-0.5 min-h-[40px]"
-                @end="() => updateSubsectionOrder(section.id)"
+              <div
+                v-if="activeSectionExpanded === section.id"
+                class="border-t border-border-subtle bg-bg-secondary p-3"
               >
-                <template #item="{ element: subsection }">
-                  <div
-                    class="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-surface-hover transition-colors"
-                  >
-                    <BaseIcon
-                      name="grip-vertical"
-                      :size="13"
-                      class="text-text-hint flex-shrink-0 cursor-grab"
-                    />
-                    <!-- prettier-ignore -->
-                    <span
+                <div v-if="inlineAdd === section.id" class="flex items-center gap-2 mb-2">
+                  <input
+                    id="inline-add-input"
+                    v-model="inlineTitle"
+                    type="text"
+                    :placeholder="`${terms.subsection} title — Enter adds, Esc closes`"
+                    class="flex-1 h-8 px-3 rounded-sm border border-border-subtle bg-bg-elevated font-ui text-xs text-text-primary placeholder:text-text-hint focus:outline-none focus:border-accent"
+                    @keydown.enter.prevent="commitInlineAdd"
+                    @keydown.esc.prevent="cancelInlineAdd"
+                  />
+                  <BaseButton variant="ghost" size="sm" @click="cancelInlineAdd">Done</BaseButton>
+                </div>
+                <div class="flex flex-col gap-1.5 mb-2.5">
+                  <!-- Row 1: action buttons -->
+                  <div class="flex items-center gap-1">
+                    <button
+                      class="text-xs px-2.5 py-1 bg-accent/10 text-accent hover:bg-accent/20 rounded-md font-medium transition-colors"
+                      @click="startInlineAdd(section.id)"
+                    >
+                      + {{ terms.subsection }}
+                    </button>
+                    <button
+                      class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
+                      @click="openEditSection(section)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
+                      @click="openSectionSnapshot(section)"
+                    >
+                      History
+                    </button>
+                    <button
+                      v-if="section.volumeId"
+                      class="text-xs px-2.5 py-1 bg-bg-primary text-text-secondary border border-border-subtle rounded-md hover:bg-surface-hover"
+                      @click="removeFromVolume(section)"
+                    >
+                      Unassign
+                    </button>
+                    <!-- Destructive: pushed to the far edge and quiet until hovered,
+                       so it does not read as one of the everyday actions. -->
+                    <button
+                      class="ml-auto p-1 rounded-md text-text-hint hover:text-danger hover:bg-surface-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+                      :title="`Delete ${terms.sectionLc}`"
+                      :aria-label="`Delete ${terms.sectionLc}`"
+                      @click="deleteSection(section)"
+                    >
+                      <BaseIcon name="trash-2" :size="14" />
+                    </button>
+                  </div>
+                </div>
+
+                <draggable
+                  :list="subsectionsBySection[section.id]"
+                  item-key="id"
+                  v-bind="subsectionDragOptions"
+                  class="space-y-0.5 min-h-[40px]"
+                  @end="() => updateSubsectionOrder(section.id)"
+                >
+                  <template #item="{ element: subsection }">
+                    <div
+                      class="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-surface-hover transition-colors"
+                    >
+                      <BaseIcon
+                        name="grip-vertical"
+                        :size="13"
+                        class="text-text-hint flex-shrink-0 cursor-grab"
+                      />
+                      <!-- prettier-ignore -->
+                      <span
                       class="text-xs font-medium flex-1 min-w-0 cursor-pointer hover:text-accent"
                       :class="
  manuscriptStore.activeSubsectionId === subsection.id
@@ -711,67 +811,69 @@ function handleSnapshotRestored(content) {
                       @click="handleSubsectionClick(subsection)"
                       >{{ subsection.title || 'Untitled Subsection' }}</span
                     >
-                    <!-- Generator verdicts: a scene kept for review still has
+                      <!-- Generator verdicts: a scene kept for review still has
                          prose; a failed one has none. Icon only — the row is
                          already dense. -->
-                    <span
-                      v-if="subsection.contentStatus === 'review'"
-                      class="shrink-0 text-warning"
-                      title="Generated, but the quality gate asked for a look — open it or regenerate the scene"
-                    >
-                      <BaseIcon name="alert-triangle" :size="12" />
-                    </span>
-                    <span
-                      v-else-if="subsection.contentStatus === 'failed'"
-                      class="shrink-0 text-danger"
-                      title="Generation failed — no prose yet. Continue drafting from the Generator to fill it"
-                    >
-                      <BaseIcon name="circle-off" :size="12" />
-                    </span>
-                    <button
-                      class="bg-transparent border-none text-xs text-text-secondary cursor-pointer px-1.5 py-0.5 hover:text-text-primary"
-                      @click="openEditSubsection(subsection)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      class="bg-transparent border-none text-xs text-danger cursor-pointer px-1.5 py-0.5 hover:opacity-80"
-                      :title="`Delete ${terms.subsectionLc}`"
-                      @click="deleteSubsection(subsection)"
-                    >
-                      <BaseIcon name="x" :size="12" />
-                    </button>
-                  </div>
-                </template>
-              </draggable>
+                      <span
+                        v-if="subsection.contentStatus === 'review'"
+                        class="shrink-0 text-warning"
+                        title="Generated, but the quality gate asked for a look — open it or regenerate the scene"
+                      >
+                        <BaseIcon name="alert-triangle" :size="12" />
+                      </span>
+                      <span
+                        v-else-if="subsection.contentStatus === 'failed'"
+                        class="shrink-0 text-danger"
+                        title="Generation failed — no prose yet. Continue drafting from the Generator to fill it"
+                      >
+                        <BaseIcon name="circle-off" :size="12" />
+                      </span>
+                      <button
+                        class="bg-transparent border-none text-xs text-text-secondary cursor-pointer px-1.5 py-0.5 hover:text-text-primary"
+                        @click="openEditSubsection(subsection)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        class="bg-transparent border-none text-xs text-danger cursor-pointer px-1.5 py-0.5 hover:opacity-80"
+                        :title="`Delete ${terms.subsectionLc}`"
+                        @click="deleteSubsection(subsection)"
+                      >
+                        <BaseIcon name="x" :size="12" />
+                      </button>
+                    </div>
+                  </template>
+                </draggable>
 
-              <div v-if="!subsectionsBySection[section.id]?.length" class="text-center py-3">
-                <p class="text-xs text-text-hint">
-                  No {{ terms.subsectionsLc }} yet. Write straight into the {{ terms.sectionLc }},
-                  or split it into {{ terms.subsectionsLc }}
-                  to move through it scene by scene.
-                </p>
+                <div v-if="!subsectionsBySection[section.id]?.length" class="text-center py-3">
+                  <p class="text-xs text-text-hint">
+                    No {{ terms.subsectionsLc }} yet. Write straight into the {{ terms.sectionLc }},
+                    or split it into {{ terms.subsectionsLc }}
+                    to move through it scene by scene.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </template>
-      </draggable>
+          </template>
+        </draggable>
 
-      <div
-        v-if="sortedSections.length > 0"
-        class="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between"
-      >
-        <span class="text-xs text-text-hint"
-          >Total: {{ totalWordCount.toLocaleString() }} words<template v-if="hasLooseDraft">
-            &middot; {{ looseDraftWords.toLocaleString() }} loose</template
-          ></span
+        <div
+          v-if="sortedSections.length > 0"
+          class="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between"
         >
-        <span class="text-xs text-text-hint"
-          >{{ sortedSections.length }} {{ terms.sectionsLc }} &middot; {{ totalSubsectionCount }}
-          {{ terms.subsectionsLc }}</span
-        >
+          <span class="text-xs text-text-hint"
+            >Total: {{ totalWordCount.toLocaleString() }} words<template v-if="hasLooseDraft">
+              &middot; {{ looseDraftWords.toLocaleString() }} loose</template
+            ></span
+          >
+          <span class="text-xs text-text-hint"
+            >{{ sortedSections.length }}
+            {{ sortedSections.length === 1 ? terms.sectionLc : terms.sectionsLc }} &middot;
+            {{ totalSubsectionCount }} {{ terms.subsectionsLc }}</span
+          >
+        </div>
       </div>
-    </div>
+    </template>
 
     <Modal :show="showSectionModal" @close="showSectionModal = false">
       <div class="p-6">

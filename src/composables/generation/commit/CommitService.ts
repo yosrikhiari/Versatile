@@ -225,9 +225,9 @@ export class CommitService {
    * Build the manuscript by aggregating scene content into chapter (section) content.
    *
    * Called from Delegator.handleCommitted via the COMMITTED phase transition.
-   * Joins each section's subsections' HTML content (ordered by `order`, skipping
-   * empties), separated by `<hr>`. Updates section `content`, `wordCount` (sum of
-   * subsection counts), and `status: 'generated'`.
+   * Marks every run-created section that has written scenes as `generated`.
+   * It no longer copies the scenes' HTML into the section body: prose lives in
+   * the scene rows only, so word counts and exports never see it twice.
    *
    * Scope guard: only aggregates sections created in THIS run (tracked via
    * `runCreatedSectionIds`), so hand-written/edited chapters are never clobbered.
@@ -257,14 +257,13 @@ export class CommitService {
       const htmlParts = subs.map((s: any) => s.content).filter(Boolean)
       if (htmlParts.length === 0) continue
 
-      const joinedHtml = htmlParts.join('<hr>')
-      const totalWords = subs.reduce((sum: number, s: any) => sum + (s.wordCount || 0), 0)
-
-      await this.manuscriptStore.updateSectionData(section.id, {
-        content: joinedHtml,
-        wordCount: totalWords,
-        status: 'generated'
-      })
+      // Prose lives in exactly one place. The section body used to receive a
+      // copy of every scene joined with <hr>, and its wordCount the scene sum;
+      // every counter then added body + scenes and reported the chapter at
+      // twice its length (functional audit 2026-09-15). The chapter is marked
+      // generated; its scenes hold the text, and the editor shows them when
+      // the chapter row is opened.
+      await this.manuscriptStore.updateSectionData(section.id, { status: 'generated' })
     }
   }
 

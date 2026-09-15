@@ -1,9 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { CommitService } from '@/composables/generation/commit/CommitService'
 
-// buildManuscript's scope guard: only sections created in THIS run get
-// chapter-level content aggregation, so hand-written chapters are never
-// clobbered. These pin the guard in both directions. (The live defect was
+// buildManuscript's scope guard: only sections created in THIS run are
+// touched, so hand-written chapters are never clobbered. These pin the guard in both directions. (The live defect was
 // upstream — the generator never populated or passed the set — fixed
 // alongside; the guard itself is pinned here so the fix stays fixed.)
 
@@ -39,16 +38,16 @@ const bySection = {
 }
 
 describe('CommitService.buildManuscript scope guard', () => {
-  it('aggregates run-created sections ordered with word sums', async () => {
+  it('marks run-created sections generated without copying their scenes into the body', async () => {
     const { svc, updated } = serviceWith(sections, bySection, new Set(['run-ch1']))
     await svc.buildManuscript([], [])
     expect(updated).toHaveLength(1)
     expect(updated[0][0]).toBe('run-ch1')
-    expect(updated[0][1]).toMatchObject({ wordCount: 4, status: 'generated' })
-    expect(updated[0][1].content).toContain('<hr>')
-    expect(updated[0][1].content.indexOf('Second part')).toBeLessThan(
-      updated[0][1].content.indexOf('First.')
-    )
+    expect(updated[0][1]).toEqual({ status: 'generated' })
+    // Prose lives in the scene rows only: a copy here made every counter
+    // report the chapter at twice its length.
+    expect(updated[0][1]).not.toHaveProperty('content')
+    expect(updated[0][1]).not.toHaveProperty('wordCount')
   })
 
   it('leaves hand-written sections untouched', async () => {

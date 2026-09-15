@@ -12,6 +12,10 @@ import BaseChip from '../ui/BaseChip.vue'
 import draggable from 'vuedraggable'
 import EmptyState from '../shared/EmptyState.vue'
 
+const props = defineProps({
+  /** Rendered inside the Chapters panel: no title row of its own. */
+  embedded: Boolean
+})
 const manuscriptStore = useManuscriptStore()
 const projectStore = useProjectStore()
 const terms = computed(() => projectStore.structureTerms)
@@ -111,7 +115,8 @@ onMounted(() => {
   <div class="h-full flex flex-col bg-bg-secondary overflow-hidden">
     <div class="px-4 py-3 border-b border-border-subtle">
       <div class="flex items-center justify-between mb-3 gap-2">
-        <h2 class="type-display text-[11px] text-text-primary">Outline</h2>
+        <h2 v-if="!props.embedded" class="type-display text-[11px] text-text-primary">Outline</h2>
+        <span v-else class="label-micro text-text-hint">View</span>
         <BaseSegmented
           v-model="viewMode"
           size="sm"
@@ -163,7 +168,11 @@ onMounted(() => {
         v-if="sortedSections.length === 0"
         icon="folder-plus"
         :title="`No ${terms.sectionsLc} yet`"
-        :description="`Add ${terms.sectionsLc} from ${terms.sections} in the sidebar; their ${terms.subsectionsLc} are outlined here.`"
+        :description="
+          props.embedded
+            ? `Add a ${terms.sectionLc} with the button above; its ${terms.subsectionsLc} are outlined here.`
+            : `Add ${terms.sectionsLc} from ${terms.sections} in the sidebar; their ${terms.subsectionsLc} are outlined here.`
+        "
       />
 
       <div v-else-if="viewMode === 'sections'" class="divide-y divide-border-subtle">
@@ -202,8 +211,13 @@ onMounted(() => {
                 />
                 <span aria-hidden="true">·</span>
                 <span>
-                  {{ getSectionTotalSubsections(section.id) }} {{ terms.subsectionsLc }} ·
-                  {{ getSectionWordCount(section.id).toLocaleString() }} words
+                  {{ getSectionTotalSubsections(section.id) }}
+                  {{
+                    getSectionTotalSubsections(section.id) === 1
+                      ? terms.subsectionLc
+                      : terms.subsectionsLc
+                  }}
+                  · {{ getSectionWordCount(section.id).toLocaleString() }} words
                 </span>
               </div>
             </div>
@@ -220,7 +234,7 @@ onMounted(() => {
                 class="px-2 py-1 text-xs text-accent hover:bg-surface-hover rounded font-ui"
                 @click="openAddSubsection(section.id)"
               >
-                + Add Subsection
+                + Add {{ terms.subsection }}
               </button>
             </div>
 
@@ -308,7 +322,7 @@ onMounted(() => {
         >
           <div class="flex items-center justify-between mb-1">
             <span class="text-xs text-accent font-ui">
-              Sec. {{ subsection.sectionOrder + 1 }} · {{ subsection.sectionTitle }}
+              {{ terms.section }} {{ subsection.sectionOrder + 1 }} · {{ subsection.sectionTitle }}
             </span>
             <span class="text-xs text-text-hint font-ui">
               {{ getSubsectionWordCount(subsection) }} words

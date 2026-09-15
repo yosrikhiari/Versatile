@@ -125,7 +125,7 @@ export function useSectionSchemaManager() {
   async function deleteSubsection(subsection: any) {
     if (
       await showConfirm(
-        'Delete Subsection',
+        `Delete ${projectStore.structureTerms.subsectionLc}`,
         `Delete "${subsection.title || 'Untitled'}"?`,
         'Delete',
         'danger'

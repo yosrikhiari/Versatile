@@ -86,10 +86,12 @@ describe('WhatIfPanel', () => {
     })
   }
 
-  it('points at Sections when no scene is open instead of dead-ending', () => {
+  it("points at the structure panel, in the project's own vocabulary, when no scene is open", () => {
     const w = mountWithScene(false)
+    const terms = useProjectStore().structureTerms
     expect(w.text()).toContain('Open one from')
-    expect(w.text()).toContain('Sections')
+    // A novel says Chapters; the panel must not hard-code "Sections".
+    expect(w.text()).toContain(terms.sections)
     expect(w.text()).not.toContain('Nothing generated yet')
   })
 

@@ -836,7 +836,10 @@ export function useVolumeStoryGenerator() {
       progress.current = 1
       progress.statusText = 'Creating volume...'
       const vId = await volumeStore.createVolume(projectId, {
-        title: `${enhancedSynopsis.slice(0, 60)}...`,
+        // The title used to be the first 60 characters of the assembled prompt
+        // ("Genre: Literary\nWhat this scene should be about: ..."), which is
+        // what the Chapters panel then showed as the volume's name.
+        title: `Volume ${(volumeStore.volumes as any[]).length + 1}`,
         description: `Generated story — ${genre}, ${tone}`,
         // `getNextColor()` picks the first colour not already in use, from the
         // store's palette. Hardcoding `#6366f1` — which is simply VOLUME_COLORS[0]
@@ -891,7 +894,7 @@ export function useVolumeStoryGenerator() {
 
       // Phase 1 (Stage A — Story Bible): Bootstrap entities
       progress.current = 2
-      progress.statusText = 'Conjuring Characters & World...'
+      progress.statusText = 'Building characters and world…'
       activeStage = 'bible'
       await runStageWithHeartbeat(
         projectId,
@@ -2110,16 +2113,10 @@ export function useVolumeStoryGenerator() {
       const htmlParts = subs.map((s: any) => s.content).filter(Boolean)
       if (htmlParts.length === 0) continue
 
-      const joinedHtml = htmlParts.join('<hr>')
-      const totalWords = subs.reduce((sum: number, s: any) => sum + (s.wordCount || 0), 0)
-
+      // Prose lives in the scene rows only (see CommitService.buildManuscript).
       await manuscriptStore.updateSectionData(
         section.id,
-        {
-          content: joinedHtml,
-          wordCount: totalWords,
-          status: 'generated'
-        },
+        { status: 'generated' },
         projectStore.currentProjectId
       )
     }
@@ -2466,6 +2463,46 @@ export function useVolumeStoryGenerator() {
   }
 
   /**
+   * Write one scene into an existing scene row, with the writer's brief as the
+   * instruction. This is what "Generate scene" means when a scene is open: the
+   * prose lands where the cursor is. It used to spin up the whole volume
+   * pipeline instead and create a new volume and chapter for one scene.
+   */
+  async function writeSceneInto({
+    projectId,
+    subsectionId,
+    instructions,
+    targetWords,
+    onChunk
+  }: any) {
+    if (isContinuing.value) return null
+    const survey = await surveyContinuation(projectId)
+    const target = survey?.scenes.find((s: any) => s.subsectionId === subsectionId)
+    if (!survey || !target) return null
+
+    const run = await getGenRun(projectId)
+    const storyBibleDocs = await beginContinuation(projectId, 'Write scene', 1)
+    try {
+      const report = await writeScenesInto([{ ...target, brief: instructions || target.brief }], {
+        projectId,
+        survey,
+        checkpointPlan: null,
+        targetWords: targetWords || 1200,
+        storyBibleDocs,
+        storyArc: run?.state?.storyArc || null,
+        storyContract: run?.state?.storyContract || '',
+        instructions,
+        onChunk
+      })
+      return endContinuation(report)
+    } catch (err: any) {
+      error.value = describeRunFailure(err)
+      isContinuing.value = false
+      throw err
+    }
+  }
+
+  /**
    * Plan and write new chapters that continue the existing story.
    *
    * The existing draft is passed to the director as evidence and to the writer
@@ -2748,6 +2785,7 @@ export function useVolumeStoryGenerator() {
     continuationReport,
     surveyContinuation,
     continueDrafting,
+    writeSceneInto,
     extendStory,
     expandScene,
     describeContinuation: describeReport,

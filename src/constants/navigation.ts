@@ -64,12 +64,22 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Structure',
     items: [
-      { label: 'Outline', panel: 'outline', icon: 'list', keywords: ['beats', 'summary'] },
       {
         label: 'Sections',
         panel: 'sections',
         icon: 'book-marked',
-        keywords: ['chapters', 'scenes', 'volumes', 'sections', 'structure'],
+        // Outline was a second nav item over the same tree; it is now a view
+        // inside this panel, so its old words still find it in the palette.
+        keywords: [
+          'chapters',
+          'scenes',
+          'volumes',
+          'sections',
+          'structure',
+          'outline',
+          'beats',
+          'summary'
+        ],
         termKey: 'sections'
       },
       { label: 'Canvas', panel: 'canvas', icon: 'palette', keywords: ['board', 'storyboard'] },

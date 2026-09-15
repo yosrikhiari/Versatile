@@ -52,9 +52,14 @@ export function useFlowSave(editorRef: any) {
       const wordCount = countWords(stripHtmlTags(content))
 
       if (saveSubId) {
+        const sub0 = (manuscriptStore.subsections || []).find((s) => s.id === saveSubId)
         await manuscriptStore.updateSubsectionData(
           saveSubId,
-          { content, wordCount },
+          // A row with prose is no longer "planning": the status follows the
+          // words without asking (functional audit 2026-09-15).
+          wordCount > 0 && (!sub0?.status || sub0.status === 'planning')
+            ? { content, wordCount, status: 'drafting' }
+            : { content, wordCount },
           projectStore.currentProjectId
         )
         const sub = manuscriptStore.subsections.find((s) => s.id === saveSubId)
@@ -64,9 +69,12 @@ export function useFlowSave(editorRef: any) {
             .catch((err) => console.error('[FlowEditor] dialogue reindex failed:', err))
         }
       } else if (saveSecId) {
+        const sec0 = (manuscriptStore.sections || []).find((s) => s.id === saveSecId)
         await manuscriptStore.updateSectionData(
           saveSecId,
-          { content, wordCount },
+          wordCount > 0 && (!sec0?.status || sec0.status === 'planning')
+            ? { content, wordCount, status: 'drafting' }
+            : { content, wordCount },
           projectStore.currentProjectId
         )
       } else {

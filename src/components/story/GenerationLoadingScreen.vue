@@ -43,10 +43,10 @@ function getState(stepNumber) {
 }
 
 const stages = [
-  { id: 1, label: 'Creating Volume Archive' },
-  { id: 2, label: 'Conjuring Characters & World' },
-  { id: 3, label: 'Forging the Story Graph' },
-  { id: 4, label: 'Sealing the Arc Contract' }
+  { id: 1, label: 'Setting up the volume' },
+  { id: 2, label: 'Building characters and world' },
+  { id: 3, label: 'Building the story graph' },
+  { id: 4, label: 'Fixing the arc' }
 ]
 </script>
 
@@ -109,7 +109,7 @@ const stages = [
             v-if="getState(2) === 'active'"
             class="text-xs text-text-hint italic py-1 opacity-50 fade-in-slow"
           >
-            Waiting for the ether...
+            Waiting for the model…
           </div>
         </div>
 
@@ -138,7 +138,7 @@ const stages = [
         class="text-xs text-text-hint hover:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded px-3 py-2 bg-transparent"
         @click="emit('cancel')"
       >
-        [ Abandon Conjuration ]
+        Stop this run
       </button>
     </div>
   </div>

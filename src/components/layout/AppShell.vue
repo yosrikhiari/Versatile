@@ -372,7 +372,8 @@ function handleSidebarNav(name) {
     polish: togglePolish,
     'story-bible': toggleStoryBible,
     canvas: toggleCanvas,
-    outline: toggleOutline,
+    // 'outline' is kept for deep links and the palette: it opens the structure panel.
+    outline: toggleSections,
     sections: toggleSections,
     network: toggleNetwork,
     timeline: toggleTimeline,

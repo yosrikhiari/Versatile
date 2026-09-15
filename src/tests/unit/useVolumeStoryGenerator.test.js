@@ -1103,23 +1103,23 @@ describe('useVolumeStoryGenerator', () => {
 })
 
 describe('aggregateChapterContent', () => {
-  it('joins subsection HTML with <hr> and sums wordCount', async () => {
+  it('marks run-created sections generated and leaves their body empty', async () => {
     const gen = useVolumeStoryGenerator()
     gen.runCreatedSectionIds.value = new Set(['sec-1', 'sec-2'])
 
     await gen.aggregateChapterContent()
 
-    // Check sec-1: 2 scenes with content, joined by <hr>
+    // Prose lives in the scene rows only. The body used to receive a copy of
+    // the scenes joined with <hr> and the scene word sum, and every counter
+    // then reported the chapter at twice its length.
     expect(aggMockSections.value.find((s) => s.id === 'sec-1')).toMatchObject({
-      content: '<p>Scene 1 prose</p><hr><p>Scene 2 prose</p>',
-      wordCount: 250, // 100 + 150
+      content: '',
+      wordCount: 0,
       status: 'generated'
     })
-
-    // Check sec-2: 1 scene with content
     expect(aggMockSections.value.find((s) => s.id === 'sec-2')).toMatchObject({
-      content: '<p>Only scene in Ch2</p>',
-      wordCount: 200,
+      content: '',
+      wordCount: 0,
       status: 'generated'
     })
   })
@@ -1164,17 +1164,20 @@ describe('aggregateChapterContent', () => {
     })
   })
 
-  it('skips subsections with empty content', async () => {
+  it('does not touch a section whose scenes are all empty', async () => {
     const gen = useVolumeStoryGenerator()
     gen.runCreatedSectionIds.value = new Set(['sec-1'])
+    // Shared fixture: an earlier case marked sec-1 generated. Start it fresh.
+    const sec1 = aggMockSections.value.find((s) => s.id === 'sec-1')
+    sec1.status = 'planning'
+    for (const sub of aggMockSubsections.value.filter((s) => s.sectionId === 'sec-1')) {
+      sub.content = ''
+    }
 
     await gen.aggregateChapterContent()
 
-    // Should only include sub-1 and sub-2, not sub-3 (empty)
     expect(aggMockSections.value.find((s) => s.id === 'sec-1')).toMatchObject({
-      content: '<p>Scene 1 prose</p><hr><p>Scene 2 prose</p>',
-      wordCount: 250,
-      status: 'generated'
+      status: 'planning'
     })
   })
 })

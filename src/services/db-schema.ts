@@ -462,5 +462,13 @@ export const SCHEMA_VERSIONS = [
       contentVectors:
         '++id, projectId, kind, refId, model, dim, embeddingStatus, updatedAt, &[projectId+kind+refId]'
     }
-  }
+  },
+  /**
+   * v52: data fix, no store change. Generated chapters used to carry a copy of
+   * their scenes' HTML (joined with `<hr>`) plus the scene word sum, so every
+   * counter reported them at twice their length. The copy is no longer written;
+   * this clears it where it exists (only when the body equals the join exactly,
+   * so a hand-edited chapter body is never touched).
+   */
+  { version: 52, stores: {} }
 ]

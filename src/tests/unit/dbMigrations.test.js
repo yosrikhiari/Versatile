@@ -290,6 +290,64 @@ describe('v35 migration (branches description/status)', () => {
   })
 })
 
+describe('v52 migration (chapter body is not a copy of its scenes)', () => {
+  it('clears a section body that exactly equals its scenes joined with <hr>, and nothing else', async () => {
+    const seed = async (db) => {
+      await db.sections.bulkAdd([
+        {
+          id: 1,
+          projectId: 'p1',
+          title: 'Generated',
+          order: 0,
+          content: '<p>A.</p><hr><p>B.</p>',
+          wordCount: 2
+        },
+        {
+          id: 2,
+          projectId: 'p1',
+          title: 'Hand-written',
+          order: 1,
+          content: '<p>Mine.</p>',
+          wordCount: 1
+        },
+        { id: 3, projectId: 'p1', title: 'Empty', order: 2, content: '', wordCount: 0 }
+      ])
+      await db.volumes.bulkAdd([
+        {
+          id: 1,
+          projectId: 'p1',
+          title:
+            'Genre: Literary' + String.fromCharCode(10) + 'What this scene should be about: ...',
+          description: 'Generated story'
+        },
+        { id: 2, projectId: 'p1', title: 'Part Two', description: '' }
+      ])
+      await db.subsections.bulkAdd([
+        { id: 11, projectId: 'p1', sectionId: 1, order: 0, content: '<p>A.</p>', wordCount: 1 },
+        { id: 12, projectId: 'p1', sectionId: 1, order: 1, content: '<p>B.</p>', wordCount: 1 },
+        { id: 21, projectId: 'p1', sectionId: 2, order: 0, content: '<p>Scene.</p>', wordCount: 1 }
+      ])
+    }
+    const verify = async (db) => {
+      const s = await db.sections.toArray()
+      const byId = Object.fromEntries(s.map((x) => [x.id, x]))
+      expect(byId[1].content).toBe('')
+      expect(byId[1].wordCount).toBe(0)
+      expect(byId[2].content).toBe('<p>Mine.</p>')
+      expect(byId[2].wordCount).toBe(1)
+      expect(byId[3].content).toBe('')
+      const vols = await db.volumes.toArray()
+      expect(vols.find((v) => v.id === 1).title).toBe('Volume 1')
+      expect(vols.find((v) => v.id === 2).title).toBe('Part Two')
+    }
+    const beforeVersion52 = SCHEMA_VERSIONS.filter((v) => v.version <= 51)
+    const db = await withMigration({ version: 52, beforeSchemas: beforeVersion52, seed })
+    await verify(db)
+    db.close()
+    await db.delete()
+  })
+})
+
 describe('full schema version chain smoke test', () => {
   it('opens at latest version without error', async () => {
     const db = new Dexie(uniqueDbName())
