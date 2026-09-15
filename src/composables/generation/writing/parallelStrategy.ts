@@ -133,20 +133,21 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
     // and the run walked through all 300 of them, marked the stage done, and
     // reported a finished novel. Consecutive failures with nothing written is
     // the signal that this is not bad luck.
-    let consecutiveWriteFailures = 0
-    const noteSceneOutcome = (ok: boolean) => {
+    //
+    // Counted in the run-health ledger (`write_failed`), not in a local
+    // counter: one bookkeeping for "how many scenes failed" and "how many in a
+    // row", read back through `runHealth.failedScenes()` / `.streak()`.
+    const noteSceneOutcome = (ok: boolean, sceneIndex?: number, detail?: string) => {
       if (ok) {
-        consecutiveWriteFailures = 0
+        runHealth.resetStreak('write_failed')
         return
       }
-      runFailedScenes.value++
-      consecutiveWriteFailures++
-      if (
-        consecutiveWriteFailures >= WRITE_FAILURE_STREAK_ABORT &&
-        writtenScenes.value.every((s: any) => !s)
-      ) {
+      runHealth.record('write_failed', { stage: 'writer', sceneIndex, detail })
+      runFailedScenes.value = runHealth.failedScenes()
+      const streak = runHealth.streak('write_failed')
+      if (streak >= WRITE_FAILURE_STREAK_ABORT && writtenScenes.value.every((s: any) => !s)) {
         throw new Error(
-          `Aborting: the first ${consecutiveWriteFailures} scenes all failed to produce prose. ` +
+          `Aborting: the first ${streak} scenes all failed to produce prose. ` +
             `Check the model and context settings for this project — nothing has been written, ` +
             `so no work is lost.`
         )
@@ -274,7 +275,7 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
             .updateSubsectionData(scene.subsectionId, { contentStatus: 'failed' }, projectId)
             .catch(() => {})
         }
-        noteSceneOutcome(false)
+        noteSceneOutcome(false, sceneIndex, err?.message || String(err))
         return { success: false, sceneIndex, error: err.message }
       }
     }
@@ -463,7 +464,7 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
             .updateSubsectionData(scene.subsectionId, { contentStatus: 'failed' }, projectId)
             .catch(() => {})
         }
-        noteSceneOutcome(false)
+        noteSceneOutcome(false, sceneIndex, err?.message || String(err))
         return { success: false, sceneIndex, error: err.message }
       }
     }
@@ -625,7 +626,8 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
       const gateEvals = [...anchorEvals, ...middleOutcomes.map((r: any) => r?.eval)].filter(Boolean)
       const judged = gateEvals.filter((e: any) => !e.evalUnavailable && e.score != null)
       const failed = judged.filter((e) => !isCleanPass(e))
-      runFailedScenes.value = failed.length
+      // The gate recorded each of these as `critique_failed`; the ledger is the count.
+      runFailedScenes.value = runHealth.failedScenes()
       if (
         judged.length >= QUALITY_FLOOR_MIN_JUDGED &&
         failed.length / judged.length >= QUALITY_FLOOR_FAIL_RATIO

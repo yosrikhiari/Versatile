@@ -26,6 +26,19 @@ was verified.
   never got digests.
 - Custom fields and tags round-trip through the character/location sync blob.
 
+### Generation — one budget, one failure ledger (2026-09-15)
+- `useDelegatorGeneration` accepts the orchestrator's director / writer /
+  critic / sync instances and wires the session budget onto them. It used to
+  build a second instance set, wire the budget there, and rely on
+  `useVolumeStoryGenerator` re-assigning the budget onto the real ones
+  (architecture review C2). One set now; `gen.sessionBudget` exposes it.
+- The three ad-hoc failure counters (`runFailedScenes` increments,
+  `runConsecutiveFailures`, `consecutiveWriteFailures`) are replaced by two
+  ledger kinds — `critique_failed` (kept-for-review after retries) and
+  `write_failed` (no prose) — with `RunHealth.streak()`, `resetStreak()` and
+  `failedScenes()`; the quality floor and the write-streak abort read those.
+  `runFailedScenes` remains as the exposed number, derived from the ledger.
+
 ### Sync — foreign keys crossed as local ids (2026-09-15)
 - `branches.sourceBranchId` and `volumeEntities.entityId` were pushed as the
   browser's local ids (`sectionId`/`volumeId` were translated; these two were

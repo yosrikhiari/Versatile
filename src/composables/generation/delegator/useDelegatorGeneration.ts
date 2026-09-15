@@ -25,7 +25,26 @@ import {
   createGraphTool
 } from './tools'
 
-export function useDelegatorGeneration() {
+/**
+ * Composable instances the orchestrator already owns. When supplied, the
+ * Delegator's memory holds THOSE objects, so the session budget wired here
+ * lands on the instances that do the work. `useStoryWriter()` and friends are
+ * factories, not singletons: when the Delegator built its own set, its budget
+ * sat on instances nothing called, and `useVolumeStoryGenerator` had to
+ * re-assign the same budget onto its real ones after the fact — two parallel
+ * instance sets and one seam that, if either side forgot, produced a limit
+ * that reported itself and capped nothing.
+ */
+export interface DelegatorInstanceOverrides {
+  director?: any
+  writer?: any
+  critic?: any
+  sync?: any
+  bootstrapper?: any
+  storyDocuments?: any
+}
+
+export function useDelegatorGeneration(overrides: DelegatorInstanceOverrides = {}) {
   const memory = createAgentMemory()
 
   // --- Wire Pinia stores ---
@@ -34,15 +53,13 @@ export function useDelegatorGeneration() {
   memory.instances.volumeStore = useVolumeStore()
   memory.instances.storyGraphStore = useStoryGraphStore()
 
-  // --- Wire Vue composable service instances ---
-  memory.instances.bootstrapper = useEntityBootstrapper()
-  memory.instances.storyDocuments = useStoryDocuments()
-
-  // --- Wire Vue composable service instances ---
-  memory.instances.director = useStoryDirector()
-  memory.instances.writer = useStoryWriter()
-  memory.instances.critic = useStoryCritic()
-  memory.instances.sync = useChapterGenerationSync()
+  // --- Wire Vue composable service instances (the caller's when it has them) ---
+  memory.instances.bootstrapper = overrides.bootstrapper ?? useEntityBootstrapper()
+  memory.instances.storyDocuments = overrides.storyDocuments ?? useStoryDocuments()
+  memory.instances.director = overrides.director ?? useStoryDirector()
+  memory.instances.writer = overrides.writer ?? useStoryWriter()
+  memory.instances.critic = overrides.critic ?? useStoryCritic()
+  memory.instances.sync = overrides.sync ?? useChapterGenerationSync()
 
   // --- Wire graph builder ---
   memory.instances.graphBuilder = { buildPreliminaryEdges }
@@ -74,7 +91,7 @@ export function useDelegatorGeneration() {
     graph: createGraphTool(memory)
   }
 
-  // --- Wire SessionBudget into composable instances ---
+  // --- Wire SessionBudget into composable instances — the single source ---
   const _budget = new SessionBudget()
   memory.instances.sessionBudget = _budget
   memory.instances.director.sessionBudget = _budget

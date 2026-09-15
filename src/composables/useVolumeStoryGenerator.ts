@@ -250,7 +250,6 @@ export function useVolumeStoryGenerator() {
     })
     throwIfAborted()
   }
-  const runConsecutiveFailures = ref(0)
   const runFailedScenes = ref(0)
   const currentSceneResult = ref<any | null>(null)
   const currentWriteIndex = ref(0)
@@ -306,7 +305,16 @@ export function useVolumeStoryGenerator() {
   const storyDocuments = useStoryDocuments()
   const branchStore = useBranchStore()
 
-  const delegatorApi = useDelegatorGeneration()
+  // The Delegator holds THESE instances (not a second set of its own), so the
+  // session budget it wires is on the objects every generation call goes through.
+  const delegatorApi = useDelegatorGeneration({
+    director,
+    writer,
+    critic,
+    sync,
+    bootstrapper,
+    storyDocuments
+  })
   const phase = delegatorApi.memory.phase
 
   /** Every entity the plan names, so scoping can never hide someone a scene must cast. */
@@ -371,19 +379,11 @@ export function useVolumeStoryGenerator() {
     const budget = delegatorApi.memory.instances.sessionBudget
     if (!budget) return null
     budget.configureForRun({ ...size, localProvider: isOllamaProvider() })
-
-    // Hand it to the instances that actually do the work.
-    //
-    // `useDelegatorGeneration` wires the budget into its OWN director/writer/critic,
-    // but `useStoryWriter()` and friends are factories, not singletons — the
-    // instances this composable calls are different objects that never received
-    // it. Every generation call therefore passed `sessionBudget: null`, so the
-    // budget counted nothing and capped nothing while still being reported as a
-    // limit. A ceiling that cannot fire is worse than no ceiling, because it
-    // reads like protection.
-    ;(director as any).sessionBudget = budget
-    ;(writer as any).sessionBudget = budget
-    ;(critic as any).sessionBudget = budget
+    // The Delegator was handed this composable's director/writer/critic at
+    // construction and wired the budget onto them, so there is one instance
+    // set and one budget. (It used to build its own set, wire the budget there,
+    // and this function re-assigned it onto the real ones — a seam that, when
+    // either half was forgotten, produced a limit that capped nothing.)
     return budget
   }
 
@@ -685,7 +685,6 @@ export function useVolumeStoryGenerator() {
     lastSyncedResultIndex.value = 0
     hasPendingBatches.value = false
     pendingBatchStart.value = 0
-    runConsecutiveFailures.value = 0
     runFailedScenes.value = 0
     error.value = null
     progress.total = plan.length
@@ -808,7 +807,6 @@ export function useVolumeStoryGenerator() {
     // One-click mode: run every phase to completion with no human gates
     autoMode.value = !!auto
     if (auto) sceneReviewMode.value = false
-    runConsecutiveFailures.value = 0
     runFailedScenes.value = 0
 
     currentTaskId = actLog.addTask({ name: 'Story Generator', type: 'generation' })
@@ -1335,7 +1333,6 @@ export function useVolumeStoryGenerator() {
     recordSceneDigest,
     rejectedPatterns,
     researchRagOptions,
-    runConsecutiveFailures,
     runFailedScenes,
     runHealth,
     scenePlan,
@@ -2692,7 +2689,6 @@ export function useVolumeStoryGenerator() {
     writeParams.value = null
     sceneReviewMode.value = false
     autoMode.value = false
-    runConsecutiveFailures.value = 0
     runFailedScenes.value = 0
     evalUnavailableCount.value = 0
     currentSceneResult.value = null
@@ -2711,6 +2707,10 @@ export function useVolumeStoryGenerator() {
   }
 
   return {
+    /** The run's one session budget — the Delegator's, shared by every instance. */
+    get sessionBudget() {
+      return delegatorApi.memory.instances.sessionBudget
+    },
     phase,
     progress,
     error,

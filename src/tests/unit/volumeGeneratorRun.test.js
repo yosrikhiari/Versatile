@@ -377,6 +377,25 @@ describe('volume generator end-to-end run (model faked)', () => {
     expect(codes).not.toContain('bible_quiet')
   }, 60_000)
 
+  it('runs every model call through the one session budget the Delegator owns', async () => {
+    // The Delegator used to build its own director/writer/critic and wire the
+    // budget there; the orchestrator's real instances got it only through a
+    // second assignment. One instance set now: the budget the Delegator holds
+    // is the budget every writer, critic and director call carries.
+    const { gen } = await runOneChapter()
+    expect(gen.phase.value).toBe('complete')
+    const budget = gen.sessionBudget
+    expect(budget).toBeTruthy()
+    const budgeted = calls.filter((c) => c.opts.sessionBudget)
+    expect(budgeted.length).toBeGreaterThan(0)
+    expect(budgeted.every((c) => c.opts.sessionBudget === budget)).toBe(true)
+    // Prose, metadata and critique all count against it — no parallel set.
+    const kinds = new Set(budgeted.map((c) => c.opts.schemaName || 'prose'))
+    expect(kinds.has('scene_evaluation')).toBe(true)
+    expect(kinds.has('scene_metadata')).toBe(true)
+    expect(kinds.has('prose')).toBe(true)
+  }, 60_000)
+
   it('critiques each scene once, even with inline evaluation on', async () => {
     // Auto mode already critiques inside the gate; the anchor evaluation used
     // to run the critic a second time over the same prose and keep that verdict.

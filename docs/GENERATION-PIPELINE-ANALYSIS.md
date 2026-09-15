@@ -125,7 +125,7 @@ one scene-plan call per chapter — 109 calls before any prose for a 100-chapter
 | M2 | Scene gate, parallel strategy and batch strategy extracted verbatim into `generation/writing/{sceneGate,parallelStrategy,batchStrategy}.ts` with explicit context interfaces; the orchestrator is 2,795 lines. Per-scene failures in the parallel path now log their reason (they were swallowed into a result object). | `generation/writing/` |
 | M3 | `useGenerationRunController` (state + handlers per pipeline) and `GenerationRunView` (the shared phases) replace the two copies; the panel is 932 lines after the 2026-09-14 panel pass. | `composables/generation/`, `components/story/` |
 
-Not done: M4 (the four failure counters) — left as-is; it is correct, just wordy.
+M4 (the four failure counters) — done 2026-09-15: `critique_failed` / `write_failed` ledger kinds with `streak()` / `failedScenes()`; the two consecutive counters are gone.
 
 ## 7. What shipped (third pass — running the book)
 

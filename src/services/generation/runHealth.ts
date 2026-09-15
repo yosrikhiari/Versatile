@@ -50,8 +50,19 @@ export type DegradationKind =
   | 'eval_unavailable'
   /** The terminal consistency audit threw instead of reporting. */
   | 'audit_unavailable'
-  /** A quality gate raised blocking flags. */
+  /** A quality gate raised blocking flags (prose quality, run-level floor). */
   | 'gate_failed'
+  /**
+   * A scene still failed critique after every retry and its best attempt was
+   * kept for review. Its own kind so the streak means "consecutive scenes the
+   * critic rejected" — the signal the quality floor reads.
+   */
+  | 'critique_failed'
+  /**
+   * A scene produced no prose at all. Distinct from `critique_failed`: that
+   * judges prose the model wrote, this says the pipeline is not writing.
+   */
+  | 'write_failed'
   /** A scene contributed no story-bible changes despite usable metadata. */
   | 'sync_empty'
   /** A derived surface (canvas, documents, story context) failed to refresh. */
@@ -140,7 +151,9 @@ const SCENE_DEGRADING: DegradationKind[] = [
   'metadata_failed',
   'metadata_skipped',
   'eval_unavailable',
-  'gate_failed'
+  'gate_failed',
+  'critique_failed',
+  'write_failed'
 ]
 
 export class RunHealth {
@@ -204,6 +217,32 @@ export class RunHealth {
 
   countByKind(kind: DegradationKind): number {
     return this.events.filter((e) => e.kind === kind).length
+  }
+
+  /** Consecutive events of one kind since the last success or `resetStreak`. */
+  streak(kind: DegradationKind): number {
+    return this.streaks.get(kind) || 0
+  }
+
+  /**
+   * Clear one kind's streak without touching the others — a scene that wrote
+   * prose but failed critique ends the "not writing" streak and extends the
+   * "critic rejected it" streak; `recordSuccess` (which clears all) is only
+   * for a scene that came through clean.
+   */
+  resetStreak(kind: DegradationKind): void {
+    this.streaks.delete(kind)
+  }
+
+  /** Distinct scenes that produced no prose or were kept after failing critique. */
+  failedScenes(): number {
+    const scenes = new Set<number>()
+    for (const e of this.events) {
+      if (e.sceneIndex != null && (e.kind === 'critique_failed' || e.kind === 'write_failed')) {
+        scenes.add(e.sceneIndex)
+      }
+    }
+    return scenes.size
   }
 
   /** Distinct scenes touched by at least one scene-degrading event. */

@@ -591,7 +591,7 @@ export function createSceneGate(ctx: SceneGateContext) {
           // the verdict is no longer derived from it.
           `Quality gate failed after ${maxAttempts} attempt(s): ${chosenEval.verdictReason || `score ${chosenEval.score}`}${chosenEval.issues?.length ? ` — issues: ${chosenEval.issues.map((i: any) => i.description).join('; ')}` : ''}`
       gateFailure = reason
-      runHealth.record('gate_failed', { stage: 'critic', sceneIndex, detail: reason })
+      runHealth.record('critique_failed', { stage: 'critic', sceneIndex, detail: reason })
       console.warn(`[sceneGate] scene ${sceneIndex + 1} kept for review: ${reason}`)
       actLog.appendThought(
         ctx.currentTaskId,

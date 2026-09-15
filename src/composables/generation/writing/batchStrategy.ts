@@ -33,7 +33,6 @@ export interface BatchStrategyContext extends SceneGateContext {
   prefetchStats: any
   progress: any
   researchRagOptions: () => any
-  runConsecutiveFailures: Ref<number>
   runFailedScenes: Ref<number>
   sceneReviewMode: Ref<boolean>
   scopedEntitiesBlob: (projectId: any) => Promise<string>
@@ -88,7 +87,6 @@ export function createBatchStrategy(ctx: BatchStrategyContext, sceneGate: SceneG
     promptAdjuster,
     rejectedPatterns,
     researchRagOptions,
-    runConsecutiveFailures,
     runFailedScenes,
     runHealth,
     scenePlan,
@@ -337,22 +335,27 @@ export function createBatchStrategy(ctx: BatchStrategyContext, sceneGate: SceneG
         // is reported (once, loudly) rather than ending the run — the run-health
         // ledger's `prose_rejected` budget still halts a model that is actually
         // looping, which is the case this abort was written for.
+        // The gate already recorded the rejection as `critique_failed` with
+        // the scene index; the ledger's streak is the consecutive count and
+        // `failedScenes()` the total — no parallel counters to keep in step.
         const judged = chosenEval && !chosenEval.evalUnavailable && chosenEval.score != null
         if (judged && !isCleanPass(chosenEval)) {
-          runFailedScenes.value++
-          runConsecutiveFailures.value++
+          runFailedScenes.value = runHealth.failedScenes()
           logRejectedPattern(
             `Scene ${scene.sceneNumber} failed critique after ${maxAttempts} attempt(s)`,
             fullProse.slice(0, 200)
           )
-          if (runConsecutiveFailures.value === QUALITY_FLOOR_CONSECUTIVE) {
-            const warning = `Quality floor breached: ${runConsecutiveFailures.value} scenes in a row fell below the critic's floor after retries and were kept for review. The writer or critic model may be mismatched for this gate.`
+          const streak = runHealth.streak('critique_failed')
+          if (streak === QUALITY_FLOOR_CONSECUTIVE) {
+            const warning = `Quality floor breached: ${streak} scenes in a row fell below the critic's floor after retries and were kept for review. The writer or critic model may be mismatched for this gate.`
             console.warn(`[useVolumeStoryGenerator] ${warning}`)
             runHealth.record('gate_failed', { stage: 'qualityFloor', detail: warning })
-            actLog.appendThought(ctx.currentTaskId, null, `\n⚠ ${warning}\n`)
+            actLog.appendThought(ctx.currentTaskId, null, `
+⚠ ${warning}
+`)
           }
         } else {
-          runConsecutiveFailures.value = 0
+          runHealth.resetStreak('critique_failed')
         }
       } else if (inlineEvalEnabled.value) {
         const criticResult = await critic.evaluateScene({

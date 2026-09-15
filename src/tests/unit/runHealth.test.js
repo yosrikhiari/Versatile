@@ -106,6 +106,42 @@ describe('degraded scene counting', () => {
   })
 })
 
+describe('failure bookkeeping — one ledger, no parallel counters', () => {
+  // The orchestrator kept `runFailedScenes`, `runConsecutiveFailures` and the
+  // parallel path's `consecutiveWriteFailures` beside the ledger, each with
+  // its own idea of "failure". These are the reads that replaced them.
+  it('counts distinct failed scenes across critique and write failures', () => {
+    const h = new RunHealth()
+    h.record('critique_failed', { sceneIndex: 0 })
+    h.record('critique_failed', { sceneIndex: 0 }) // retried, same scene
+    h.record('write_failed', { sceneIndex: 4 })
+    h.record('gate_failed', { sceneIndex: 7, stage: 'proseQuality' }) // a warning, not a failed scene
+    expect(h.failedScenes()).toBe(2)
+  })
+
+  it('keeps critique and write streaks apart, and resets one without the other', () => {
+    const h = new RunHealth()
+    h.record('write_failed', { sceneIndex: 0 })
+    h.record('write_failed', { sceneIndex: 1 })
+    h.record('critique_failed', { sceneIndex: 2 })
+    expect(h.streak('write_failed')).toBe(2)
+    expect(h.streak('critique_failed')).toBe(1)
+    // A scene that wrote prose but failed critique ends the "not writing" streak only.
+    h.resetStreak('write_failed')
+    expect(h.streak('write_failed')).toBe(0)
+    expect(h.streak('critique_failed')).toBe(1)
+    h.recordSuccess()
+    expect(h.streak('critique_failed')).toBe(0)
+  })
+
+  it('treats both as scene-degrading', () => {
+    const h = new RunHealth()
+    h.record('critique_failed', { sceneIndex: 1 })
+    h.record('write_failed', { sceneIndex: 2 })
+    expect(h.degradedScenes()).toBe(2)
+  })
+})
+
 describe('invariants', () => {
   const clean = {
     scenesWritten: 10,
