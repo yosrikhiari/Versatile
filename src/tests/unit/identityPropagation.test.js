@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { buildSkeletonPrompt, buildTitleVarietyBlock } from '@/composables/useStoryDirector'
 
 // Every setting audited here exists in the data model. The question this file

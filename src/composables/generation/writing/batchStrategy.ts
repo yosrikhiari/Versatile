@@ -98,7 +98,6 @@ export function createBatchStrategy(ctx: BatchStrategyContext, sceneGate: SceneG
     volumeId,
     workspaceType,
     writeParams,
-    writer,
     writtenScenes
   } = ctx
   const { makeSceneStream, writeSceneWithGate, chapterLogBefore } = sceneGate
@@ -110,8 +109,7 @@ export function createBatchStrategy(ctx: BatchStrategyContext, sceneGate: SceneG
   async function prefetchNextScene(index: any) {
     if (speculativeCache.has(index)) return
     if (!writeParams.value) return
-    const { projectId, storyArc, storyContract, onChunk, storyBibleDocs, sections } =
-      writeParams.value
+    const { projectId, storyArc, storyContract, storyBibleDocs } = writeParams.value
     const scene = scenePlan.value[index]
     if (!scene) return
 

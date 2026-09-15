@@ -26,11 +26,6 @@ function makeEquals(toArrayFn) {
   return { equals }
 }
 
-function makeCompositeEquals(toArrayFn) {
-  const equals = vi.fn(() => ({ toArray: vi.fn(toArrayFn) }))
-  return { equals }
-}
-
 describe('db-dialogue', () => {
   describe('getDialogueByProject', () => {
     it('returns dialogue entries for a project', async () => {

@@ -23,7 +23,6 @@
  */
 
 import { db } from './db-core'
-import { addSection, addVolume } from './db-structure'
 import { countWords } from '../utils/textUtils'
 import {
   saveNodeInstances,

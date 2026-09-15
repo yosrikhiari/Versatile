@@ -61,7 +61,7 @@ describe('sparkStore', () => {
 
     try {
       await store.generatePrompt('seed', [], null)
-    } catch (e) {
+    } catch {
       // Expected
     }
 

@@ -8,7 +8,6 @@ import {
   deleteChatSessionsByCharacter as removeSessionsByCharacter
 } from '../services/db-chats'
 import { syncQueue } from '../services/sync-queue'
-import { FEATURES } from '../config/ai'
 
 syncQueue.register('chatSessions', async (_id, session) => {
   await persistSession(session)

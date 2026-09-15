@@ -122,7 +122,7 @@ export const useStoryAssistantStore = defineStore('storyAssistant', () => {
       query: question,
       topN: MAX_CONTEXT_CHUNKS
     })
-    return reranked.map(({ _rerankScore, _rerankIndex, id, ...rest }) => rest as StoryMatch)
+    return reranked.map(({ _rerankScore, _rerankIndex, id: _id, ...rest }) => rest as StoryMatch)
   }
 
   async function ask(question: string): Promise<AssistantTurn | null> {

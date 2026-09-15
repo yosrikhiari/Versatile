@@ -37,7 +37,6 @@ const { dryRun } = useContextRetrieval()
 
 const contextSelectorRef = ref(null)
 
-const activeTab = ref('blueprint')
 const idea = ref('')
 const tone = ref('tense')
 const targetLength = ref('full')
@@ -175,16 +174,6 @@ function saveOpenAIKeyLocal() {
 function clearHistory() {
   if (projectStore.currentProjectId) {
     sparkStore.clearHistoryData(projectStore.currentProjectId)
-  }
-}
-
-function switchTab(tab) {
-  activeTab.value = tab
-  if (tab !== 'freewrite') {
-    sparkStore.currentContent = null
-  }
-  if (tab !== 'blueprint') {
-    sparkStore.currentOutline = null
   }
 }
 </script>

@@ -113,7 +113,7 @@ export function buildSceneMemory(completedScenes: any, memoryLimit: any, current
 export function buildSceneContext({
   completedScenes,
   characters,
-  currentSceneIndex,
+  _currentSceneIndex,
   currentSceneBrief,
   options
 }: any) {

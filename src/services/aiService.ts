@@ -1,5 +1,5 @@
 import { PROVIDERS, FEATURES, PROVIDER_MODELS } from '../config/ai'
-import { resolveOptimalModel, getModelMetadata, isProviderUsable } from '../config/modelRouting'
+import { resolveOptimalModel, isProviderUsable } from '../config/modelRouting'
 import { getApiKeyStorageKey } from '../config/storageKeys'
 import { getOllamaUtilityModel } from '../config/ollama'
 import { useSettingsStore } from '../stores/settingsStore'

@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
 const THEME_KEY = 'versatile-theme'
 

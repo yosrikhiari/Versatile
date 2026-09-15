@@ -10,7 +10,7 @@ function createMockTable() {
       return Promise.resolve(row.hash)
     }),
     count: vi.fn(() => Promise.resolve(store.size)),
-    where: vi.fn((index) => ({
+    where: vi.fn((_index) => ({
       equals: vi.fn((val) => ({
         toArray: vi.fn(() =>
           Promise.resolve(

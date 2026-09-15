@@ -8,9 +8,9 @@ import { domId } from '../../utils/domId'
  */
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  label: String,
+  label: { type: String, default: '' },
   /** Secondary line under the label, for consequences worth spelling out. */
-  description: String,
+  description: { type: String, default: '' },
   disabled: Boolean,
   size: {
     type: String,

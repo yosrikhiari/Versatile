@@ -17,7 +17,7 @@ describe('analyzeArc injector seam', () => {
     const stub = vi.fn(async () => ({ pacing: [], setupPayoffs: [], droppedThreads: [] }))
     const out = await analyzeArc(scenes, {}, { generateJson: stub })
     expect(stub).toHaveBeenCalledOnce()
-    const [prompt, system, opts] = stub.mock.calls[0]
+    const [prompt, , opts] = stub.mock.calls[0]
     expect(prompt).toContain('Full manuscript (2 scenes)')
     expect(opts.schemaName).toBe('arc_analysis')
     expect(aiGenerateJson).not.toHaveBeenCalled()

@@ -32,8 +32,6 @@ const COMBINATORS = [
 const editing = ref(null) // { rowId, field }
 const draft = ref('')
 
-const fieldByKey = computed(() => new Map(store.fields.map((f) => [f.key, f])))
-
 function opNeedsValue(op) {
   return FILTER_OPS.find((o) => o.op === op)?.needsValue ?? true
 }

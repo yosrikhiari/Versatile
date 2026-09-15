@@ -38,14 +38,6 @@ const headerTitle = computed(() => {
   return `Chat with ${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`
 })
 
-const lastStreamingMessage = computed(() => {
-  const msgs = chatStore.activeMessages
-  if (msgs.length === 0) return null
-  const last = msgs[msgs.length - 1]
-  if (last.role === 'assistant' && chatStore.isStreaming) return last
-  return null
-})
-
 function matchesCharacterSet(session) {
   return (
     session &&

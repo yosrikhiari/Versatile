@@ -77,11 +77,9 @@ export function createParallelStrategy(ctx: ParallelStrategyContext, sceneGate: 
     runHealth,
     scenePlan,
     scopedEntitiesBlob,
-    settings,
     spineArray,
     throwIfAborted,
     workspaceType,
-    writer,
     writtenScenes
   } = ctx
   const { makeSceneStream, writeSceneWithGate, chapterLogBefore } = sceneGate

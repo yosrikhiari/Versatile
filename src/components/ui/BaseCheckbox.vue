@@ -13,8 +13,8 @@ const props = defineProps({
   modelValue: { type: [Boolean, Array], default: false },
   /** Required when `modelValue` is an array — the item this box contributes. */
   value: { type: [String, Number, Object], default: undefined },
-  label: String,
-  description: String,
+  label: { type: String, default: '' },
+  description: { type: String, default: '' },
   disabled: Boolean,
   /** Renders the dash state for a partially-selected group. */
   indeterminate: Boolean

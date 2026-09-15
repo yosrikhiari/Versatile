@@ -2,16 +2,12 @@ import { getAuthorProfile, getLatestStateSnapshot, getSessionArchive } from '../
 import { useAuthorModel } from './useAuthorModel'
 import { useStateSummarizer } from './useStateSummarizer'
 import { CONTEXT_SOURCES, ARCHIVE_TYPES, createDryRunPreview } from '../config/archive'
-import { useSettingsStore } from '../stores/settingsStore'
 import { fitToBudget, type Block } from '../services/ai/contextBudget'
-import { inputBudgetForModel, resolveMaxTokens } from '../services/ai/modelBudget'
-import { getConfiguredModel, getConfiguredProvider } from '../services/aiService'
+import { inputBudgetForModel } from '../services/ai/modelBudget'
+import { getConfiguredModel } from '../services/aiService'
 
 export function useContextRetrieval() {
-  const settingsStore = useSettingsStore()
-
   function getContextBudget(model?: string): number {
-    const provider = getConfiguredProvider('context_retrieval')
     const usedModel = model || getConfiguredModel('context_retrieval')
     return inputBudgetForModel(usedModel || 'unknown')
   }

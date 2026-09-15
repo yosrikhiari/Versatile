@@ -12,12 +12,6 @@ interface AnthropicOptions {
   schemaName?: string
 }
 
-interface Usage {
-  promptTokens: number
-  completionTokens: number
-  totalTokens: number
-}
-
 function timeoutSignal(options: AnthropicOptions) {
   const timeoutMs = options.timeout || 120000
   const controller = new AbortController()

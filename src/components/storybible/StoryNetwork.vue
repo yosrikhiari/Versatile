@@ -184,8 +184,6 @@ const edgeFilters = [
   }
 ]
 
-const forceRefreshKey = ref(0)
-
 const manualGroups = ref([])
 
 const nodeParents = ref({}) // { 'char-1': 'group-123', 'char-2': null }
@@ -388,22 +386,6 @@ const entityColors = {
   character: 'var(--vers-entity-character)',
   location: 'var(--vers-entity-location)',
   plotThread: 'var(--vers-entity-plotThread)'
-}
-
-const edgeColors = {
-  appears_in: 'var(--vers-edge-appears_in)',
-  involved_in: 'var(--vers-edge-involved_in)',
-  located_at: 'var(--vers-edge-located_at)',
-  intersects_with: 'var(--vers-edge-intersects_with)',
-  features: 'var(--vers-edge-features)',
-  connects_to: 'var(--vers-edge-connects_to)',
-  ally: 'var(--vers-edge-ally)',
-  enemy: 'var(--vers-edge-enemy)',
-  family: 'var(--vers-edge-family)',
-  romantic: 'var(--vers-edge-romantic)',
-  mentor: 'var(--vers-edge-mentor)',
-  rival: 'var(--vers-edge-rival)',
-  neutral: 'var(--vers-edge-neutral)'
 }
 
 // Option C — edges are neutral hairlines by default and only take the accent on

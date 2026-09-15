@@ -108,7 +108,6 @@ describe('recordObservedUsage', () => {
       recordObservedUsage('gpt-4o', 1000, 1220)
       recordObservedUsage('gpt-4o', 1000, 1180)
       recordObservedUsage('gpt-4o', 1000, 1200)
-      const before = getCalibration('gpt-4o')
       // Ratio 1.205 — within 2σ of the ~1.2 factor (stddev ≈ 0.006).
       recordObservedUsage('gpt-4o', 1000, 1205)
       const report = getCalibrationReport()['gpt-4o']

@@ -171,8 +171,6 @@ const STOP_WORDS: Set<string> = new Set([
 
 const VERB_SUFFIXES = ['ed', 'ing', 'tion', 's', 'es', 'ize', 'ify', 'en', 'ate']
 
-const MAX_SAFE_CHUNK_SIZE = 300000
-
 function cosineSimilarity(a: number[], b: number[]): number {
   if (!a || !b || a.length !== b.length) return 0
   let dotProduct = 0,

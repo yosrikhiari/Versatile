@@ -4,7 +4,6 @@ import { aiGenerate, aiStream, aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
 import { SessionBudget } from '../services/aiProviderBudget'
 
-import { formatEvalFeedback } from '../services/evalFeedback'
 import { getVoiceProfile } from '../config/voiceProfiles'
 import { buildPersonaBlock } from '../config/writerPersonas'
 import { computeComplexityLevel } from '../config/modelRouting'

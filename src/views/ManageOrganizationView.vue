@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
-import { listOrganizations, inviteMember, removeMember } from '../services/orgApi'
+import { listOrganizations, inviteMember } from '../services/orgApi'
 import BaseIcon from '../components/shared/BaseIcon.vue'
 
 const router = useRouter()
@@ -54,16 +54,6 @@ async function handleInvite() {
   }
 }
 
-async function handleRemove(orgId, userId) {
-  if (!confirm('Remove this member from the organization?')) return
-  try {
-    await removeMember(orgId, userId)
-    orgs.value = await listOrganizations()
-  } catch (err) {
-    inviteError.value = err.message
-  }
-}
-
 function switchOrg(orgId) {
   auth.switchOrg(orgId)
 }
@@ -71,12 +61,6 @@ function switchOrg(orgId) {
 function formatDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString()
-}
-
-const roleLabels = {
-  0: 'Admin',
-  1: 'Member',
-  2: 'Viewer'
 }
 </script>
 

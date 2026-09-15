@@ -12,19 +12,19 @@ import { domId } from '../../utils/domId'
  */
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
-  label: String,
+  label: { type: String, default: '' },
   type: { type: String, default: 'text' },
-  placeholder: String,
+  placeholder: { type: String, default: '' },
   /** Lucide icon name shown inside the field's leading edge. */
-  icon: String,
+  icon: { type: String, default: '' },
   /** Static trailing text — a unit or currency, e.g. `words`. */
-  suffix: String,
-  hint: String,
+  suffix: { type: String, default: '' },
+  hint: { type: String, default: '' },
   /** Non-empty switches the field to its error styling and announces it. */
-  error: String,
+  error: { type: String, default: '' },
   disabled: Boolean,
   required: Boolean,
-  rows: Number
+  rows: { type: Number, default: 0 }
 })
 
 const emit = defineEmits(['update:modelValue'])

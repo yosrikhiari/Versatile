@@ -188,7 +188,7 @@ describe('writeScene', () => {
   })
 
   it('passes complexity to aiStream options', async () => {
-    mockAiStream.mockImplementationOnce(async (user, system, onChunk, opts) => {
+    mockAiStream.mockImplementationOnce(async (user, system, onChunk, _opts) => {
       onChunk('prose', 'prose')
     })
     const { writeScene } = useStoryWriter()

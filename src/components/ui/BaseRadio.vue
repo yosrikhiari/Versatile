@@ -14,8 +14,8 @@ const props = defineProps({
   value: { type: [String, Number, Boolean], required: true },
   /** Shared across the group so the browser treats it as one set. */
   name: { type: String, required: true },
-  label: String,
-  description: String,
+  label: { type: String, default: '' },
+  description: { type: String, default: '' },
   disabled: Boolean
 })
 

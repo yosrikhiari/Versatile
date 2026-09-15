@@ -17,7 +17,7 @@ describe('detectRepetitions injector seam', () => {
     const stub = vi.fn(async () => ({ repetitions: [] }))
     const out = await detectRepetitions(scenes, {}, { generateJson: stub })
     expect(stub).toHaveBeenCalledOnce()
-    const [prompt, system, opts] = stub.mock.calls[0]
+    const [prompt, , opts] = stub.mock.calls[0]
     expect(prompt).toContain('Full manuscript (2 scenes)')
     expect(opts.schemaName).toBe('repetition_detection')
     expect(aiGenerateJson).not.toHaveBeenCalled()

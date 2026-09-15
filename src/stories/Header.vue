@@ -46,8 +46,8 @@ import './header.css'
 defineProps<{ user: { name: string } | null }>()
 
 defineEmits<{
-  (event: 'createAccount'): void
-  (event: 'login'): void
-  (event: 'logout'): void
+  (_event: 'createAccount'): void
+  (_event: 'login'): void
+  (_event: 'logout'): void
 }>()
 </script>

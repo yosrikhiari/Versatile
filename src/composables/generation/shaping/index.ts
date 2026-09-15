@@ -11,11 +11,6 @@ const LABEL_HEADINGS: Record<string, string> = {
 
 export function shapeContext(rawContext: any, options: any = {}) {
   const { entities } = rawContext
-  const entityType = rawContext.entityType || 'unknown'
-
-  const totalCharacters = entities.characters?.length || 0
-  const totalLocations = entities.locations?.length || 0
-  const totalPlotThreads = entities.plotThreads?.length || 0
 
   // Optional semantic ranking. Null (the common case) means the per-type slices
   // below keep the original recency/timeline ordering.

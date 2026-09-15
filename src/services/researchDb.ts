@@ -1,5 +1,4 @@
 import { db as _db } from './db-core'
-import { VectorIndex } from './vectorIndex'
 
 const db = _db as any
 

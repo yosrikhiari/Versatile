@@ -65,11 +65,10 @@ export function useCharacterChat() {
   const store = useCharacterChatStore()
   let abortController: AbortController | null = null
 
-  async function sendMessage(text: any, options: any = {}) {
+  async function sendMessage(text: any, _options: any = {}) {
     if (!store.activeSession) return
     abortController = new AbortController()
 
-    const projectId = store.activeSession.projectId
     const characterIds = store.activeSession.characterIds
     const characterProfiles = characterIds.map((id: any) => getCharacterById(id)).filter(Boolean)
 

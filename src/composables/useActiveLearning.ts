@@ -5,7 +5,7 @@ import {
   generateRecommendations,
   generateReport
 } from '../evaluation/activeLearningAnalyzer'
-import { getDefaultThreshold, getDimensionsForWorkspace } from '../config/evalDimensions'
+import { getDimensionsForWorkspace } from '../config/evalDimensions'
 import dimensionPromptMap from '../evaluation/dimensionPromptMap.json'
 
 const CALIBRATION_KEY = 'versatile_active_learning_calibration'

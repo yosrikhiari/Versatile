@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useBranchStore } from '../../stores/branchStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
@@ -12,8 +12,6 @@ const manuscriptStore = useManuscriptStore()
 const newBranchName = ref('')
 const renameMap = ref({})
 const renamingId = ref(null)
-const compareA = ref(null)
-const compareB = ref(null)
 
 const branches = computed(() => branchStore.branches)
 

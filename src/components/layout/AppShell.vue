@@ -25,8 +25,6 @@ import { useAuthStore } from '../../stores/authStore'
 import { useBranchStore } from '../../stores/branchStore'
 import { useTheme } from '../../composables/useTheme'
 
-import { CREATIVE_WORKSPACE_TYPES } from '../../config/workspace'
-
 const projectStore = useProjectStore()
 
 const activePanelName = ref(null)
@@ -53,7 +51,7 @@ const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, {
   build: false
 })
 
-const props = defineProps({
+defineProps({
   focusMode: {
     type: Boolean,
     default: false
@@ -78,10 +76,6 @@ const emit = defineEmits([
 const authStore = useAuthStore()
 const branchStore = useBranchStore()
 const router = useRouter()
-
-const isNarrativeWorkspace = computed(() =>
-  CREATIVE_WORKSPACE_TYPES.includes(projectStore.activeWorkspaceType)
-)
 
 const wordCount = computed(() => projectStore.manuscriptWordCount)
 const projectName = computed(() => projectStore.currentProjectName)

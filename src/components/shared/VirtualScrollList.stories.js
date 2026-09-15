@@ -46,7 +46,7 @@ LargeBuffer.args = { itemCount: 1000, buffer: 20 }
 export const FewItems = Template.bind({})
 FewItems.args = { itemCount: 5 }
 
-export const Empty = (args) => ({
+export const Empty = (_args) => ({
   components: { VirtualScrollList },
   setup: () => ({
     items: []

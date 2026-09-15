@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { PROVIDERS, FEATURES, FEATURE_DEFAULTS, PROVIDER_MODELS } from '../../config/ai'
+import { FEATURES } from '../../config/ai'
 
 vi.mock('../../config/ai', () => ({
   PROVIDERS: {

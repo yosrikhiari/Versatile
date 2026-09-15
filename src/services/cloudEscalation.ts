@@ -50,7 +50,7 @@ function estimateCost(
   inputTokens: number,
   outputTokens: number,
   provider: string,
-  model: string
+  _model: string
 ): number {
   const rates: Record<string, { input: number; output: number }> = {
     openai: { input: 0.005, output: 0.015 },

@@ -14,10 +14,6 @@ vi.mock('@/services/embeddingService', () => ({
   getEmbedding: mockGetEmbedding
 }))
 
-function vec(...values) {
-  return values
-}
-
 async function seed(chunks) {
   await db.researchChunks.clear()
   await addResearchChunks(

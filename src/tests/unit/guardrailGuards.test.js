@@ -149,7 +149,7 @@ describe('piiGuard', () => {
     // Results carry a `timestamp: Date.now()`; comparing them whole made this
     // fail whenever the millisecond ticked between the two calls (it did, under
     // a full-suite load). The claim is about the regex, so compare without it.
-    const strip = (rs) => rs.map(({ timestamp, ...rest }) => rest)
+    const strip = (rs) => rs.map(({ _timestamp, ...rest }) => rest)
     const first = guard({ layer: OUTPUT, data })
     const second = guard({ layer: OUTPUT, data })
     expect(strip(second)).toEqual(strip(first))

@@ -99,7 +99,7 @@ describe('clear', () => {
 
 describe('applyAlternative', () => {
   it('returns prose for a valid index', () => {
-    const { alternatives, generateAlternatives, applyAlternative } = useWhatIf()
+    const { alternatives, applyAlternative } = useWhatIf()
     alternatives.value = mockAlternatives.alternatives
     const prose = applyAlternative(1)
     expect(prose).toBe('The door burst open.')

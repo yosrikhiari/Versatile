@@ -33,8 +33,7 @@ import {
   failAnalysisTask,
   resetStuckAnalysisTasks,
   getAnalysisQueueStats,
-  getAnalysisQueueItems,
-  type AnalysisQueueItem
+  getAnalysisQueueItems
 } from '../services/analysisQueue'
 
 export function useDigestBackfill() {

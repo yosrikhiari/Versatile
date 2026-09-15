@@ -86,7 +86,6 @@ afterEach(() => {
 
 describe('aiService — chaos engineering', () => {
   const RESULT = { text: 'generated text', usage: null }
-  const ONCHUNK = vi.fn()
 
   it('retries and succeeds after transient network failure', async () => {
     mockOllamaModule.generate

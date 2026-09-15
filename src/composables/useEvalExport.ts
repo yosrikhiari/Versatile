@@ -1,5 +1,4 @@
 import { computed } from 'vue'
-import { useProjectStore } from '../stores/projectStore'
 import { db as _coreDb } from '../services/db-core'
 import { getProject } from '../services/db-projects'
 import { WORKSPACE_TYPES } from '../config/workspace'
@@ -8,7 +7,6 @@ const db = _coreDb as any
 const WTypes = WORKSPACE_TYPES as Record<string, string>
 
 export function useEvalExport() {
-  const projectStore = useProjectStore()
   const exporting = computed(() => false)
 
   async function fetchFullEvalHistory(projectId: any) {

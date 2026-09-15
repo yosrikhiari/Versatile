@@ -29,8 +29,7 @@ const MS_DAY = 24 * 60 * 60 * 1000
 describe('aiProviderBudget', () => {
   describe('constructor and defaults', () => {
     it('uses DEFAULT_PROVIDER_BUDGETS when no custom budgets given', async () => {
-      const { ProviderBudget, DEFAULT_PROVIDER_BUDGETS } =
-        await import('@/services/aiProviderBudget')
+      const { ProviderBudget } = await import('@/services/aiProviderBudget')
       const pb = new ProviderBudget()
       expect(pb.budgets.ollama).toBeNull()
       expect(pb.budgets.openai).toBeDefined()

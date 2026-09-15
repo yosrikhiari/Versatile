@@ -86,17 +86,6 @@ function getWorker(): Worker {
   return worker
 }
 
-function terminateWorker(): void {
-  if (worker) {
-    worker.terminate()
-    worker = null
-    for (const [, entry] of pending) {
-      entry.reject(new Error('Worker terminated'))
-    }
-    pending.clear()
-  }
-}
-
 let directFns: Record<string, (...args: unknown[]) => unknown> | null = null
 
 async function directCall(method: string, ...args: unknown[]): Promise<unknown> {

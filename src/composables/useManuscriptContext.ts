@@ -10,11 +10,10 @@ import { computeSemanticChunks } from './useSemanticChunking'
 import { getSubsections } from '../services/dbService'
 import { useSettingsStore } from '../stores/settingsStore'
 import { EMBEDDING_DEFAULTS } from '../config/ai'
-import { inputBudgetForModel, resolveMaxTokens } from '../services/ai/modelBudget'
-import { getConfiguredModel, getConfiguredProvider } from '../services/aiService'
+import { inputBudgetForModel } from '../services/ai/modelBudget'
+import { getConfiguredModel } from '../services/aiService'
 
 function getManuscriptBudget(model?: string): number {
-  const provider = getConfiguredProvider('manuscript_context')
   const usedModel = model || getConfiguredModel('manuscript_context')
   return inputBudgetForModel(usedModel || 'unknown')
 }

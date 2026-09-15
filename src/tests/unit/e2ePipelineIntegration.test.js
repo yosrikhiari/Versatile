@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  gateDimensionCoverage,
-  gateScoreDistribution,
-  gateRevisionEffectiveness
-} from '../../services/evalGates'
+import { gateDimensionCoverage, gateScoreDistribution } from '../../services/evalGates'
 import { computeDegradation } from '../../services/degradation'
 
 const mockAiGenerate = vi.fn()

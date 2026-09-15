@@ -123,7 +123,7 @@ vi.mock('@/guardrails/integration/composableGuardrails', () => ({
   guardPlan: vi.fn(async () => ({ ok: true }))
 }))
 
-let useStoryDirector, enforceStructure
+let useStoryDirector
 beforeEach(async () => {
   setActivePinia(createPinia())
   vi.resetModules()
@@ -131,7 +131,6 @@ beforeEach(async () => {
   calls.length = 0
   const mod = await import('@/composables/useStoryDirector')
   useStoryDirector = mod.useStoryDirector
-  enforceStructure = mod.enforceStructure
 })
 
 async function planTenVolumes() {

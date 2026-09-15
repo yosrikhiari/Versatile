@@ -5,7 +5,7 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import BaseIcon from '../shared/BaseIcon.vue'
 
-const props = defineProps({
+defineProps({
   show: Boolean
 })
 

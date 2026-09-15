@@ -13,9 +13,9 @@ const props = defineProps({
   min: { type: Number, default: 0 },
   max: { type: Number, default: Infinity },
   step: { type: Number, default: 1 },
-  label: String,
+  label: { type: String, default: '' },
   /** Unit shown after the value, e.g. `words`. */
-  suffix: String,
+  suffix: { type: String, default: '' },
   disabled: Boolean,
   size: {
     type: String,

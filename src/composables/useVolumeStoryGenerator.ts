@@ -12,7 +12,6 @@ import { useEvalStore } from '../stores/evalStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useVolumeStore } from '../stores/volumeStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
-import { useStoryGraphStore } from '../stores/storyGraphStore'
 import { useBranchStore } from '../stores/branchStore'
 import { useStoryDirector } from './useStoryDirector'
 import { useEntityBootstrapper } from './useEntityBootstrapper'
@@ -312,7 +311,6 @@ export function useVolumeStoryGenerator() {
   const storyBibleStore = useStoryBibleStore()
   const volumeStore = useVolumeStore()
   const manuscriptStore = useManuscriptStore()
-  const storyGraphStore = useStoryGraphStore()
   const storyDocuments = useStoryDocuments()
   const branchStore = useBranchStore()
 
@@ -583,7 +581,7 @@ export function useVolumeStoryGenerator() {
   // Resume an interrupted one-click run. Truth comes from the DB (which
   // subsections already hold prose), NOT the checkpoint counter — so we only
   // ever fill scenes that are still empty and never overwrite written prose.
-  async function resumeGeneration({ projectId, onChunk, onPhaseChange }: any) {
+  async function resumeGeneration({ projectId, onChunk }: any) {
     if (phase.value !== 'idle') return { resumed: false, reason: 'busy' }
 
     // Clear and seed evalStore from persisted history for project-scoped eval tracking
@@ -1420,7 +1418,7 @@ export function useVolumeStoryGenerator() {
   const sceneGate = createSceneGate(strategyCtx)
   const { makeSceneStream, writeSceneWithGate, chapterLogBefore } = sceneGate
   const { runParallelGeneration } = createParallelStrategy(strategyCtx, sceneGate)
-  const { prefetchNextScene, writeOneBatch } = createBatchStrategy(strategyCtx, sceneGate)
+  const { writeOneBatch } = createBatchStrategy(strategyCtx, sceneGate)
 
   /**
    * Write batches until something other than "keep going" happens.
@@ -1466,7 +1464,7 @@ export function useVolumeStoryGenerator() {
     synopsis,
     sparkContext,
     focus,
-    onPhaseChange,
+    _onPhaseChange,
     onChunk
   }: any) {
     if (phase.value !== 'plan-preview') return

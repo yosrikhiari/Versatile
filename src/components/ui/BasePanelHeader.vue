@@ -12,9 +12,9 @@ import BaseIcon from '../shared/BaseIcon.vue'
 defineProps({
   title: { type: String, required: true },
   /** Lucide icon name shown before the title. */
-  icon: String,
+  icon: { type: String, default: '' },
   /** Short right-aligned metric — "12 lines", "3 findings". */
-  meta: String,
+  meta: { type: String, default: '' },
   /** Shows a chevron that reports and toggles `collapsed`. */
   collapsible: Boolean,
   collapsed: Boolean,

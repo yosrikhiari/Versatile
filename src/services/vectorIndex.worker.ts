@@ -5,19 +5,13 @@
  * to prevent blocking the UI during large-scale semantic search operations.
  */
 
-import type { VectorIndexConfig, SearchResult } from '../services/vectorIndex'
+import type { VectorIndexConfig } from '../services/vectorIndex'
 import { VectorIndex } from '../services/vectorIndex'
 
 interface VectorIndexWorkerRequest {
   id: number
   method: 'build' | 'search' | 'getStats' | 'serialize'
   args: unknown[]
-}
-
-interface WorkerResponse {
-  id: number
-  result?: unknown
-  error?: string
 }
 
 const indexes = new Map<string, VectorIndex>()
@@ -27,7 +21,7 @@ function indexFor(key: string): VectorIndex | null {
 }
 
 self.onmessage = async function (e: MessageEvent<VectorIndexWorkerRequest>) {
-  const { id, method, args } = e.data
+  const { method, args } = e.data
 
   try {
     let result: unknown

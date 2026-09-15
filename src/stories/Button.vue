@@ -26,11 +26,11 @@ const props = withDefaults(
      */
     backgroundColor?: string
   }>(),
-  { primary: false }
+  { primary: false, size: 'medium', backgroundColor: undefined }
 )
 
 const emit = defineEmits<{
-  (e: 'click', id: number): void
+  (_e: 'click', _id: number): void
 }>()
 
 const classes = computed(() => ({

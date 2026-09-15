@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 // Top-level mock data for aggregateChapterContent tests
 const aggMockSections = ref([
@@ -51,18 +51,6 @@ const aggMockSubsections = ref([
     contentStatus: 'generated'
   }
 ])
-const aggMockSubsectionsBySection = computed(() => {
-  const grouped = {}
-  for (const sub of aggMockSubsections.value) {
-    if (!grouped[sub.sectionId]) grouped[sub.sectionId] = []
-    grouped[sub.sectionId].push(sub)
-  }
-  for (const key in grouped) {
-    grouped[key].sort((a, b) => (a.order || 0) - (b.order || 0))
-  }
-  return grouped
-})
-let aggMockUpdateSectionData
 
 vi.mock('@/stores/manuscriptStore', () => ({
   useManuscriptStore: () => ({

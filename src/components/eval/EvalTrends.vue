@@ -111,17 +111,6 @@ export default {
       }))
     })
 
-    const _sceneLabels = computed(() => {
-      const seen = new Set()
-      return rawResults.value
-        .filter((r) => {
-          if (seen.has(r.sceneId)) return false
-          seen.add(r.sceneId)
-          return true
-        })
-        .map((r) => `S${r.sceneId?.slice?.(0, 4) || r.sceneId}` || '?')
-    })
-
     const overallScores = computed(() => {
       return rawResults.value.map((r) => r.score).filter((s) => s != null)
     })

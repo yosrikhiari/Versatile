@@ -5,7 +5,7 @@ import { useProjectStore } from '../../stores/projectStore'
 import BaseIcon from '../shared/BaseIcon.vue'
 import AppTooltip from '../shared/AppTooltip.vue'
 
-const props = defineProps({
+defineProps({
   collapsed: {
     type: Boolean,
     default: false

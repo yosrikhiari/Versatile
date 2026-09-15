@@ -1,5 +1,4 @@
 import { ref, computed } from 'vue'
-import { useProjectStore } from '../stores/projectStore'
 import { useStoryBibleStore } from '../stores/storyBibleStore'
 import { useManuscriptStore } from '../stores/manuscriptStore'
 import { useNotifications } from '../composables/useNotifications'
@@ -15,7 +14,6 @@ import {
 } from '../services/db-dialogue'
 
 export function useDialogueIndexer() {
-  const projectStore = useProjectStore()
   const storyBibleStore = useStoryBibleStore()
   const manuscriptStore = useManuscriptStore()
   const { addToast } = useNotifications()
@@ -23,19 +21,6 @@ export function useDialogueIndexer() {
   const indexing = ref(false)
   const progress = ref({ current: 0, total: 0 })
   const lastResult = ref<any>(null)
-
-  function buildCharacterMap() {
-    const map: Record<string, any> = {}
-    for (const char of storyBibleStore.characters) {
-      map[char.name.toLowerCase()] = {
-        id: char.id,
-        name: char.name,
-        color: char.color || '#6366f1',
-        aliases: (char.aliases || []).map((a: any) => a.toLowerCase())
-      }
-    }
-    return map
-  }
 
   async function indexSubsection(subsection: any) {
     const html = subsection.content || ''

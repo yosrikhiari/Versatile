@@ -103,11 +103,11 @@ describe('IdempotencyTracker', () => {
       })
     )
 
-    const p1 = tracker.dedup('ollama', 'llama3', 0.7, 'writer.scene', 'sys', 'slow', slow)
+    tracker.dedup('ollama', 'llama3', 0.7, 'writer.scene', 'sys', 'slow', slow)
     await new Promise((r) => setTimeout(r, 0))
     expect(tracker.size).toBe(1)
 
-    const p2 = tracker.dedup('ollama', 'gpt4', 0.7, 'writer.scene', 'sys', 'fast', fast)
+    tracker.dedup('ollama', 'gpt4', 0.7, 'writer.scene', 'sys', 'fast', fast)
     await new Promise((r) => setTimeout(r, 0))
     expect(tracker.size).toBe(2)
 

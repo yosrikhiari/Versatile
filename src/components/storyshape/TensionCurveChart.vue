@@ -1,13 +1,6 @@
 <script setup>
 import { computed } from 'vue'
 
-function hexToRgba(hex, alpha) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
 const emit = defineEmits(['hover', 'leave'])
 
 const props = defineProps({
@@ -53,8 +46,6 @@ const areaPath = computed(() => {
 
   return `${curve} L${lastX},${bottomY} L${firstX},${bottomY} Z`
 })
-
-const shadowColor = computed(() => hexToRgba(props.color, 0.2))
 
 const hoverX = computed(() => {
   if (props.hoverIndex === null || !props.data || props.data.length === 0) return null

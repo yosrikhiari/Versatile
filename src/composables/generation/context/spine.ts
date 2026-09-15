@@ -55,7 +55,6 @@ function compressSpine(spine: any, tokenCap = 800) {
 
 const SPINE_TIMEOUT_MS = 120000
 // Silence budget between streamed tokens of one spine entry.
-const SPINE_IDLE_TIMEOUT_MS = 90000
 
 /**
  * The outline's progression contract for one chapter — its events (one per

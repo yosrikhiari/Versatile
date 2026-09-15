@@ -44,7 +44,7 @@ function buildBriefSection(sceneBrief: any) {
  * @param {number} sceneId
  * @returns {string}
  */
-function buildJsonOutputInstructions(sceneId: any) {
+function buildJsonOutputInstructions(_sceneId: any) {
   return `Respond ONLY with valid JSON in this exact shape. No markdown. No preamble. No explanation outside the JSON.
 
 {

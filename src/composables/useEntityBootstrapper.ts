@@ -187,8 +187,6 @@ const MAX_ARC_CHAPTERS_IN_PROMPT = 40
 
 // The expansion call is one bounded request, but it sits inside the planner's
 // idle watchdog, so give it the same silence tolerances planning uses.
-const EXPAND_IDLE_TIMEOUT_MS = 90_000
-const EXPAND_FIRST_TOKEN_TIMEOUT_MS = 300_000
 
 function summarizeArc(chapters: any[]) {
   const list = Array.isArray(chapters) ? chapters : []

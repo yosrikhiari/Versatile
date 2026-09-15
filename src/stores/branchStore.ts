@@ -2,14 +2,12 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
   getBranches,
-  getBranch,
   createBranch,
   updateBranch,
   deleteBranch,
   ensureMainBranch
 } from '../services/dbService'
 import { useLoading } from '../utils/useLoading'
-import { useProjectStore } from './projectStore'
 
 export interface Branch {
   id: string

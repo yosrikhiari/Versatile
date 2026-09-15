@@ -389,7 +389,7 @@ const WORKSPACE_OVERRIDES = {
 export function computeComplexityLevel({
   feature,
   sceneBrief,
-  storyArc,
+  _storyArc,
   chapterIndex,
   totalChapters
 }: any) {

@@ -16,9 +16,9 @@ const props = defineProps({
     default: 'info',
     validator: (v) => ['info', 'success', 'warning', 'danger'].includes(v)
   },
-  title: String,
+  title: { type: String, default: '' },
   /** Overrides the per-variant default icon. */
-  icon: String,
+  icon: { type: String, default: '' },
   dismissible: Boolean,
   /**
    * Edge-to-edge presentation for app-level notification bars: no rounding, no

@@ -1,4 +1,3 @@
-import * as signalR from '@microsoft/signalr'
 import { ensureConnection, disconnect as signalrDisconnect } from './signalrService'
 
 interface BackendStreamOptions {
@@ -54,7 +53,7 @@ export async function backendStream(
       if (onChunk) onChunk(text, chunks.join(''))
     }
 
-    function onEndHandler(finishReason?: string): void {
+    function onEndHandler(_finishReason?: string): void {
       cleanup()
       resolve(chunks.join(''))
     }
