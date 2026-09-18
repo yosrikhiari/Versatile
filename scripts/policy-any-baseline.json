@@ -47,7 +47,7 @@
   "src/composables/generation/writing/bibleSync.ts": 12,
   "src/composables/generation/writing/liveDraft.ts": 18,
   "src/composables/generation/writing/parallelStrategy.ts": 49,
-  "src/composables/generation/writing/sceneGate.ts": 51,
+  "src/composables/generation/writing/sceneGate.ts": 40,
   "src/composables/rag/useQueryRewriter.ts": 1,
   "src/composables/rag/useRagSelfRefine.ts": 2,
   "src/composables/useActiveLearning.ts": 10,

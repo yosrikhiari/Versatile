@@ -79,15 +79,49 @@ Clean Architecture, one solution (`Versatile.slnx`):
   (`aiResponseCache.ts`), token calibration and context budgeting
   (`src/services/ai/`) — the old `MAX_CONTEXT_CHARS` constants are gone;
   retrieval reports the budget it actually enforces.
-- **One orchestrator, two write strategies**. `useVolumeStoryGenerator`
+- **One orchestrator, three write strategies**. `useVolumeStoryGenerator`
   owns the phase machine (Delegator, no-bypass invariant), checkpoints
-  and resume. The scene gate and the two strategies live in
-  `composables/generation/writing/`: `sceneGate.ts` (write → critique →
-  retry, `chapterLogBefore` so every critic call sees prior scenes),
+  and resume. The scene gate and the strategies live in
+  `composables/generation/writing/`: `sceneGate.ts` (the gate rules, as
+  `writeSceneWithGate` for the legacy paths and as the primitives
+  `draftAttempt` / `critiqueAttempt` / `markGateOutcome` for the graph;
+  `chapterLogBefore` so every critic call sees prior scenes),
   `batchStrategy.ts` (sequential, review-mode prefetch of scene *i+1*
   aware of scene *i*), `parallelStrategy.ts` (chapter anchors first, then
-  middle scenes in bounded waves). Chapter mode (`useChapterStoryGenerator`)
-  and arc mode share `useGenerationRunController` + `GenerationRunView`.
+  middle scenes in bounded waves), and `graphStrategy.ts` — the
+  **LangGraph multi-agent graph** (ADR-0001, `docs/adr/`): Writer and
+  Critic as separate nodes on separate device lanes so the Critic judges
+  scene *N* while the Writer drafts *N+1*; an **Editor** (`useStoryEditor`)
+  deciding each superstep — a pure function in `workflow` mode, a model
+  choosing among `legalMoves()` in `agentic` mode, validated and logged to
+  `agentDecisions`; checkpoints per superstep in Dexie (`graph/dexieSaver.ts`,
+  `graphCheckpoints`). Selected by `settings.orchestrator` (default
+  `legacy`). Chapter mode (`useChapterStoryGenerator`) and arc mode share
+  `useGenerationRunController` + `GenerationRunView`.
+- **Role placement** (`src/config/roles.ts`): each agent role — director,
+  writer, critic, editor, utility — names a model and a device. `aiService`
+  resolves the model and the semaphore lane (`ollama:gpu` / `ollama:cpu`,
+  `providerGate.ts`) from it and forwards `num_gpu` / `keep_alive` /
+  `num_ctx` to Ollama. The one hard rule, measured on the 8 GB reference
+  GPU: one distinct GPU model per run, because a second one evicts the
+  first and every switch reloads from disk (12–18 s). The multi-agent
+  preset keeps Writer and Director on the GPU prose model and runs the
+  Critic and Editor on a small CPU model, so the judge is not the author
+  and nothing swaps.
+- **Tracing through AgentOps** (`src/config/agentops.ts`, off by default):
+  the Ollama provider keeps its request path — stall detection, first-token
+  budget, partial-output salvage — and swaps only the transport
+  (`providers/agentopsTransport.ts`): `POST <gateway>/v1/chat/completions`
+  streamed as SSE instead of Ollama's NDJSON `/api/generate`. Every call
+  carries `X-Agent-Role` and `X-Client-Ref` (`<run>/<step>/<role>`, set per
+  superstep by the graph through `services/traceContext.ts`), the gateway
+  forwards `options` / `format` / `keep_alive` / `think` (AgentOps v1.1,
+  ADR-0009 there) and records their values — never the prompt, never the
+  schema — on the `model.generate` span, and answers `X-Trace-ID`, which the
+  transport reports back so the Agents panel lists each call's trace with a
+  link into the Tower inspector. Every placed model must be registered on
+  the gateway (`OLLAMA_MODELS`); the transport names that fix when the
+  gateway answers `unknown_model`.
 - **Run contract**: gates warn, never silently discard prose. A scene
   that fails the gate after `SCENE_MAX_ATTEMPTS` is committed as its best
   attempt with `contentStatus: 'review'` and a `gate_failed` health event;

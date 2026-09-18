@@ -62,7 +62,10 @@ npm run test:e2e           # boots `npm run dev` automatically
 ```
 
 Specs in `e2e/`: `smoke`, `auth`, `responsive`, `panel-dock` (right-docked
-panels, canvas dominant) and `generator-reskin`. Full user journeys are
+panels, canvas dominant), `generator-reskin` and `agents-panel` (the Agents
+panel: orchestrator switch reveals the empty state, the tracing switch
+toggles, a second GPU model shows the eviction error while editing and the
+CPU device clears it — skipped when Ollama serves only one model). Full user journeys are
 covered by mocked pipeline tests in
 `src/tests/unit/e2ePipelineIntegration.test.js` instead.
 
@@ -108,3 +111,41 @@ on `master`, pushes the API image to GHCR. The Sonar uploads are advisory
 403 since the stored `SONAR_TOKEN` stopped being accepted — regenerate it at
 sonarcloud.io and update the repository secret to get reports back. `eval-regression.yml` and
 `chromatic.yml` are separate.
+
+## Multi-agent graph (2026-09-18)
+
+- `rolePlacement.test.js` — the placement table: inheritance, lanes, `num_gpu`,
+  the one-GPU-model rule and the judge-is-author warning.
+- `storyEditor.test.js` — `legalMoves()` as the fence, the workflow policy,
+  answer validation (illegal move, missing lane, one scene on both lanes),
+  agentic fallbacks (illegal answer, failed call).
+- `dexieSaver.test.js` — checkpoint round-trip through Dexie, hydration in a
+  fresh instance, pending writes, `deleteThread`.
+- `graphStrategy.test.js` — the graph with a scripted Writer and Critic: proves
+  the Critic starts on scene 0 before the Writer finishes scene 1 (two lanes),
+  a failed scene is revised with the critic's feedback, every scene commits,
+  one bible sync per chapter, every superstep logged, a Dexie checkpoint row
+  exists; agentic mode honours a model's accept-for-review; a two-GPU-model
+  placement is refused before any draft.
+- A hook that *returns* a spy (`beforeEach(() => spy.mockReset())`) hands
+  Vitest a teardown function; use braces. Found the hard way.
+- Real-model run: `tools/generate-sample.mjs` with `settings.orchestrator =
+  'langgraph'` (see `docs/GENERATION-PIPELINE-ANALYSIS.md` §9 for the A/B
+  protocol). Mocked tests prove the control flow, not the prose.
+- `OrchestrationPanel.test.js` — the Agents panel mounted: legacy vs graph
+  state, the empty state that leads to the generator, a live run rendered
+  from the store (lanes, activity per role, scenes, decisions, warnings),
+  placement edited in place, the preset, the tracing switch and the Traces
+  list.
+- `agentopsTransport.test.js` — the AgentOps wire shape (OpenAI messages,
+  `max_tokens` from `num_predict`, `options` / `format` / `keep_alive` /
+  `think`, the role and a ≤64-char client ref in headers), SSE parsing
+  across chunk boundaries, the trace id reported per call, the native path
+  untouched when tracing is off, `unknown_model` → "register it in
+  `OLLAMA_MODELS`", a mid-stream gateway error surfaced.
+- A traced real run: start AgentOps v1.1 with
+  `OLLAMA_MODELS=qwen3:8b,qwen2.5:3b-instruct` (plus Postgres for spans),
+  switch `Trace via AgentOps` on in the Agents panel, run one chapter, then
+  open a trace from the panel's Traces list: `model.generate` must carry
+  `agent_role`, `params.num_gpu` (0 for the critic), `params.keep_alive` and
+  no prompt text. Recorded in `docs/GENERATION-PIPELINE-ANALYSIS.md` §9.

@@ -25,6 +25,7 @@ import { aiGenerate, aiStream } from '../composables/useAiService'
 import { FEATURES } from '../config/ai'
 import { STORAGE_KEYS } from '../config/storageKeys'
 import Dexie from 'dexie'
+import { resolveRolePlacement } from '../config/roles'
 
 const LOG_PREFIX = '[OllamaService]'
 
@@ -230,6 +231,7 @@ export async function ollamaEmbeddings(
   }
 
   const embeddingModel = model || getEmbeddingModel()
+  const embedPlacement = resolveRolePlacement('embedding')
   log('Generating embedding with model:', embeddingModel, 'text length:', text.length)
 
   const controller = new AbortController()
@@ -241,7 +243,10 @@ export async function ollamaEmbeddings(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: embeddingModel,
-        input: text
+        input: text,
+        // Same placement as every other embed call (config/roles.ts `embedding`).
+        keep_alive: embedPlacement.keepAlive,
+        ...(embedPlacement.numGpu != null ? { options: { num_gpu: embedPlacement.numGpu } } : {})
       }),
       signal: controller.signal
     })

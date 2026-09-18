@@ -42,6 +42,12 @@ export const NAV_GROUPS: NavGroup[] = [
         keywords: ['draft', 'scene', 'chapter', 'ai', 'spark']
       },
       {
+        label: 'Agents',
+        panel: 'orchestration',
+        icon: 'workflow',
+        keywords: ['orchestration', 'langgraph', 'writer', 'critic', 'editor', 'lanes', 'placement']
+      },
+      {
         label: 'Polish',
         panel: 'polish',
         icon: 'brush',

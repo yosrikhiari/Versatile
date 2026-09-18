@@ -8,7 +8,11 @@
  * Progress streams to `reports/live/<slug>/progress.log`; the finished book
  * (and the plan, health records and per-scene metadata) land beside it.
  *
- * Env: LIVE_TITLE, LIVE_CHAPTERS, LIVE_SCENES, LIVE_WORDS, OLLAMA_HOST, LIVE_MODEL
+ * Env: LIVE_TITLE, LIVE_CHAPTERS, LIVE_SCENES, LIVE_WORDS, OLLAMA_HOST, LIVE_MODEL,
+ *      LIVE_ORCHESTRATOR (legacy | langgraph), LIVE_MODE (workflow | agentic),
+ *      LIVE_PRESET (multi-agent → Critic and Editor on qwen2.5:3b-instruct, CPU)
+ *      LIVE_TRACE=agentops (route every model call through the AgentOps gateway at
+ *      LIVE_AGENTOPS_URL, default http://localhost:8080; trace ids land in health.json)
  * (prose model; unset keeps the app default — the utility model is always qwen3:8b).
  */
 import 'fake-indexeddb/auto'
@@ -65,10 +69,23 @@ describe('live: The Salt Road', () => {
       JSON.stringify({
         ollamaEndpoint: HOST,
         ...(process.env.LIVE_MODEL ? { ollamaModel: process.env.LIVE_MODEL } : {}),
+        ...(process.env.LIVE_ORCHESTRATOR ? { orchestrator: process.env.LIVE_ORCHESTRATOR } : {}),
+        ...(process.env.LIVE_MODE ? { orchestratorMode: process.env.LIVE_MODE } : {}),
         embeddingProvider: 'ollama',
         embeddingModel: 'snowflake-arctic-embed2'
       })
     )
+    if (process.env.LIVE_PRESET === 'multi-agent') {
+      const { applyRolePreset, MULTI_AGENT_PRESET } = await import('@/config/roles')
+      applyRolePreset(MULTI_AGENT_PRESET)
+    }
+    if (process.env.LIVE_TRACE === 'agentops') {
+      const { setAgentOpsTracing, setAgentOpsUrl } = await import('@/config/agentops')
+      setAgentOpsTracing(true)
+      if (process.env.LIVE_AGENTOPS_URL) setAgentOpsUrl(process.env.LIVE_AGENTOPS_URL)
+    }
+    const { recentTraces } = await import('@/services/traceContext')
+    const { useOrchestrationStore } = await import('@/stores/orchestrationStore')
 
     const { db } = await import('@/services/db-core')
     await db.delete()
@@ -135,7 +152,10 @@ describe('live: The Salt Road', () => {
       }
     }, 5000)
 
-    log(`start ${TITLE}: ${CHAPTERS} chapters × ${SCENES} scenes × ${WORDS} words @ ${HOST}`)
+    log(
+      `start ${TITLE}: ${CHAPTERS} chapters × ${SCENES} scenes × ${WORDS} words @ ${HOST} ` +
+        `orchestrator=${process.env.LIVE_ORCHESTRATOR || 'legacy'} mode=${process.env.LIVE_MODE || 'workflow'} preset=${process.env.LIVE_PRESET || 'none'} trace=${process.env.LIVE_TRACE || 'off'}`
+    )
     try {
       await gen.startGeneration({
         projectId,
@@ -183,6 +203,19 @@ describe('live: The Salt Road', () => {
         {
           phase: gen.phase.value,
           error: gen.error.value,
+          // Every gateway trace this process reported (AgentOps tracing on),
+          // and what the Agents panel saw of the graph run.
+          traces: recentTraces().map((t) => ({
+            traceId: t.traceId,
+            agentRole: t.agentRole,
+            clientRef: t.clientRef,
+            model: t.model,
+            at: t.at
+          })),
+          orchestration: {
+            decisions: useOrchestrationStore().run.decisions,
+            tracesSeenByPanel: useOrchestrationStore().run.traces.length
+          },
           violations: gen.runHealthViolations.value,
           failedScenes: gen.runFailedScenes.value,
           bibleChangesCommitted: gen.bibleChangesDiscovered.value,

@@ -8,6 +8,7 @@ import { db } from '@/services/db-core'
 // schema, bump the version and update the expected map below.
 // See docs/database-schema-changelog.md for per-version documentation.
 const EXPECTED = {
+  agentDecisions: '++id | [projectId+ts], [runId+ts], projectId, runId, ts',
   aiResponseCache: 'hash | [provider+model+temperature+feature], createdAt',
   analysisQueue:
     '++id | [projectId+status], createdAt, payload, projectId, status, taskType, updatedAt',
@@ -31,6 +32,7 @@ const EXPECTED = {
   evalResults:
     '++id | [projectId+evalType], [projectId+sceneId+evalType], [projectId+sceneId], evalType, projectId, sceneId, score, timestamp',
   genRuns: '++id | &projectId, updatedAt',
+  graphCheckpoints: 'threadId | projectId, updatedAt',
   generatedStories: '++id | generatedAt, projectId, qualityScore, title, totalWords',
   // v47: edges carry a validity window in chapter-space, so a relationship that
   // reverses mid-book is representable instead of being dropped as a duplicate.
@@ -111,7 +113,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(53)
+    expect(verno).toBe(54)
   })
 
   it('has exactly the expected set of tables', () => {

@@ -25,6 +25,21 @@ import {
   DEFAULT_MODEL,
   UNCENSORED_MODEL
 } from '../../config/ollama'
+import {
+  MULTI_AGENT_PRESET,
+  applyRolePreset,
+  getRolePlacement,
+  placementProblems,
+  resetRolePlacements,
+  setRolePlacement
+} from '../../config/roles'
+import {
+  DEFAULT_AGENTOPS_URL,
+  getAgentOpsUrl,
+  isAgentOpsTracing,
+  setAgentOpsTracing,
+  setAgentOpsUrl
+} from '../../config/agentops'
 
 const emit = defineEmits(['close', 'model-changed'])
 const settingsStore = useSettingsStore()
@@ -88,7 +103,71 @@ function saveModel() {
 
 function saveUtilityModel() {
   setOllamaUtilityModel(selectedUtilityModel.value || null)
+  refreshPlacement()
 }
+
+// ── Orchestrator and role placement ──────────────────────────────────────
+//
+// The multi-agent graph (composables/generation/writing/graphStrategy.ts) lets
+// each role run its own model on its own device. The table below is read by
+// aiService on every call; the problems list is the same check the run makes
+// before it starts, shown here so a bad placement is caught while editing it.
+const AGENT_ROLES = [
+  { key: 'writer', label: 'Writer', hint: 'drafts the prose (inherits the prose model)' },
+  {
+    key: 'director',
+    label: 'Director',
+    hint: 'plans structure and spine (inherits the prose model)'
+  },
+  {
+    key: 'critic',
+    label: 'Critic',
+    hint: 'judges each draft — a different model keeps the judge from being the author'
+  },
+  {
+    key: 'editor',
+    label: 'Editor',
+    hint: 'decides the next step in agentic mode; small and fast is enough'
+  },
+  {
+    key: 'embedding',
+    label: 'Embedder',
+    hint: 'the retrieval embeddings — on the CPU so it never evicts the writer from the GPU (model: embedding settings)'
+  }
+]
+const placements = ref({})
+const placementIssues = ref([])
+
+// AgentOps tracing lives in config (services must not import stores); the
+// Agents panel edits the same keys.
+const agentOpsTracing = ref(isAgentOpsTracing())
+const agentOpsUrl = ref(getAgentOpsUrl())
+function saveAgentOps() {
+  setAgentOpsTracing(agentOpsTracing.value)
+  setAgentOpsUrl(agentOpsUrl.value || DEFAULT_AGENTOPS_URL)
+  agentOpsUrl.value = getAgentOpsUrl()
+}
+
+function refreshPlacement() {
+  const next = {}
+  for (const r of AGENT_ROLES) next[r.key] = getRolePlacement(r.key)
+  placements.value = next
+  placementIssues.value = placementProblems()
+}
+function savePlacement(role) {
+  const pl = placements.value[role]
+  setRolePlacement(role, { model: pl.model || null, device: pl.device })
+  refreshPlacement()
+}
+function applyMultiAgentPreset() {
+  applyRolePreset(MULTI_AGENT_PRESET)
+  refreshPlacement()
+}
+function resetPlacement() {
+  resetRolePlacements()
+  refreshPlacement()
+}
+refreshPlacement()
 
 async function saveOpenAIKey() {
   await settingsStore.setOpenaiApiKey(openAIKey.value)
@@ -354,6 +433,148 @@ defineExpose({
           A smaller model that fits entirely in VRAM finishes these several times faster, and a
           10-chapter plan is ~11 of them before any prose is written.
         </p>
+      </div>
+    </div>
+
+    <div class="bg-bg-tertiary rounded-lg p-4 space-y-3" data-test="orchestrator-settings">
+      <h3 class="text-sm font-medium text-text-primary">Generation orchestrator</h3>
+      <p class="text-11px text-text-hint leading-snug">
+        How a one-click run is driven. <strong>Legacy</strong> is the anchor-first parallel
+        strategy. <strong>LangGraph</strong> runs the Writer and the Critic as separate agents on
+        separate device lanes (the Critic judges scene N while the Writer drafts scene N+1),
+        checkpoints after every step, and lets an Editor decide what happens next.
+      </p>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="orchestrator" class="block text-xs text-text-secondary mb-1"
+            >Orchestrator</label
+          >
+          <select
+            id="orchestrator"
+            :value="settingsStore.orchestrator"
+            class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            @change="settingsStore.setOrchestrator($event.target.value)"
+          >
+            <option value="legacy">Legacy (parallel strategy)</option>
+            <option value="langgraph">LangGraph (multi-agent graph)</option>
+          </select>
+        </div>
+        <div>
+          <label for="orchestrator-mode" class="block text-xs text-text-secondary mb-1"
+            >Editor</label
+          >
+          <select
+            id="orchestrator-mode"
+            :value="settingsStore.orchestratorMode"
+            :disabled="settingsStore.orchestrator !== 'langgraph'"
+            class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+            @change="settingsStore.setOrchestratorMode($event.target.value)"
+          >
+            <option value="workflow">Workflow (fixed order, no model)</option>
+            <option value="agentic">Agentic (a model chooses among legal moves)</option>
+          </select>
+        </div>
+      </div>
+
+      <h4 class="text-xs font-medium text-text-primary pt-1">Role placement</h4>
+      <p class="text-11px text-text-hint leading-snug">
+        One model per role, on the GPU or the CPU. On an 8 GB card a second GPU model evicts the
+        first and every switch reloads from disk (12–18 s measured), so keep one GPU model and put
+        the roles that must differ from it on the CPU. Leave a model blank to inherit the prose
+        model (Writer, Director) or the utility model (Critic, Editor).
+      </p>
+      <div
+        v-for="r in AGENT_ROLES"
+        :key="r.key"
+        class="grid grid-cols-[6rem_1fr_6rem] gap-2 items-center"
+        :data-test="'role-' + r.key"
+      >
+        <div>
+          <div class="text-xs text-text-primary">{{ r.label }}</div>
+          <div class="text-11px text-text-hint leading-snug">{{ r.hint }}</div>
+        </div>
+        <span v-if="r.key === 'embedding'" class="text-11px text-text-hint"
+          >{{ settingsStore.embeddingModel }} (embedding settings)</span
+        >
+        <select
+          v-else-if="placements[r.key]"
+          v-model="placements[r.key].model"
+          :aria-label="r.label + ' model'"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          @change="savePlacement(r.key)"
+        >
+          <option :value="null">Inherit</option>
+          <option v-for="model in availableModels" :key="model" :value="model">{{ model }}</option>
+        </select>
+        <select
+          v-if="placements[r.key]"
+          v-model="placements[r.key].device"
+          :aria-label="r.label + ' device'"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          @change="savePlacement(r.key)"
+        >
+          <option value="gpu">GPU</option>
+          <option value="cpu">CPU</option>
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="px-3 py-1.5 bg-surface-hover text-text-secondary rounded-lg hover:bg-bg-secondary text-sm"
+          data-test="apply-multi-agent-preset"
+          @click="applyMultiAgentPreset"
+        >
+          Apply multi-agent preset
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 bg-surface-hover text-text-secondary rounded-lg hover:bg-bg-secondary text-sm"
+          @click="resetPlacement"
+        >
+          Reset
+        </button>
+      </div>
+      <p
+        v-for="(issue, i) in placementIssues"
+        :key="i"
+        :class="[
+          'text-11px leading-snug',
+          issue.level === 'error' ? 'text-danger' : 'text-warning'
+        ]"
+        data-test="placement-issue"
+      >
+        {{ issue.level === 'error' ? '✕' : '⚠' }} {{ issue.message }}
+      </p>
+
+      <h4 class="text-xs font-medium text-text-primary pt-1">Tracing (AgentOps)</h4>
+      <p class="text-11px text-text-hint leading-snug">
+        Route every local model call through the AgentOps gateway so it lands as a trace — the agent
+        role, the placement (<code>num_gpu</code>, <code>num_ctx</code>, <code>keep_alive</code>)
+        and the sampling values on its spans, never the prompt. Every model a role is placed on must
+        be registered on the gateway (<code>OLLAMA_MODELS=qwen3:8b,qwen2.5:3b-instruct</code>).
+      </p>
+      <div class="grid grid-cols-[auto_1fr] gap-3 items-center">
+        <label class="flex items-center gap-2 text-xs text-text-primary">
+          <input
+            id="agentops-tracing"
+            v-model="agentOpsTracing"
+            type="checkbox"
+            class="accent-accent"
+            data-test="agentops-tracing"
+            @change="saveAgentOps"
+          />
+          Trace via AgentOps
+        </label>
+        <input
+          id="agentops-url"
+          v-model="agentOpsUrl"
+          type="url"
+          aria-label="AgentOps URL"
+          :placeholder="DEFAULT_AGENTOPS_URL"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          data-test="agentops-url"
+          @change="saveAgentOps"
+        />
       </div>
     </div>
 

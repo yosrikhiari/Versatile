@@ -53,6 +53,8 @@
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",
     "@fontsource-variable/geist": "^5.2.9",
+    "@langchain/core": "^1.2.11",
+    "@langchain/langgraph": "^1.4.15",
     "@microsoft/signalr": "^10.0.11",
     "@tiptap/core": "^3.31.3",
     "@tiptap/extension-highlight": "^3.31.3",
@@ -79,7 +81,8 @@
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
     "vue-router": "^4.2.0",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "zod": "^3.25.76"
   },
   "lint-staged": {
     "*.{js,ts,vue,css}": "prettier --write",

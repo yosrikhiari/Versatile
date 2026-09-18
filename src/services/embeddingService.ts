@@ -4,6 +4,16 @@ import { resolveEmbeddingConfig } from './embeddingConfig'
 import { getBulkCachedEmbeddings, setEmbeddingCacheEntry } from './researchDb'
 import { slotFor } from './providerGate'
 import { armTimeLimit } from '../config/timeLimits'
+import { resolveRolePlacement } from '../config/roles'
+
+/** `keep_alive` + `num_gpu` for the embedder, from the `embedding` role placement. */
+function embeddingPlacement(): { keep_alive: string; options?: { num_gpu: number } } {
+  const placement = resolveRolePlacement('embedding')
+  return {
+    keep_alive: placement.keepAlive,
+    ...(placement.numGpu != null ? { options: { num_gpu: placement.numGpu } } : {})
+  }
+}
 
 const BACKEND_API_BASE = '/api'
 const MISTRAL_API_URL = `${BACKEND_API_BASE}/embedding/mistral`
@@ -195,7 +205,12 @@ async function embedBatchInternal(
             body: JSON.stringify({
               model: model || 'nomic-embed-text',
               input: uncachedInputs,
-              keep_alive: '5m'
+              // Placement of the embedding role (config/roles.ts): on the CPU by
+              // default so the 1.1 GiB embedder never evicts the writer from the
+              // GPU. The traced run of 2026-09-18 showed this path — not the
+              // provider's — is the one the bootstrap and planning stages use,
+              // and it was still loading the embedder on the GPU.
+              ...embeddingPlacement()
             }),
             signal: controller.signal
           })

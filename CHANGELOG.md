@@ -7,6 +7,63 @@ was verified.
 
 ## [Unreleased]
 
+### Multi-agent writing on LangGraph (2026-09-18)
+- **A second writing orchestrator.** `Settings → AI → Generation orchestrator`
+  switches a one-click run from the legacy parallel strategy to a LangGraph
+  graph (`composables/generation/writing/graphStrategy.ts`) in which the Writer
+  and the Critic are separate agents on separate device lanes: the Critic
+  judges scene N on the CPU while the Writer drafts scene N+1 on the GPU. Every
+  gate rule is the same code (`sceneGate`'s new `draftAttempt` /
+  `critiqueAttempt` / `markGateOutcome` primitives, from which the legacy
+  `writeSceneWithGate` is now composed). Default stays `legacy`. ADR-0001.
+- **An Editor agent.** `useStoryEditor` decides each superstep what each lane
+  does. `workflow` mode is the legacy order as a pure function; `agentic` mode
+  asks a small model to choose among `legalMoves()` — revise with a specific
+  instruction, accept a near-miss for review, stop early — validates the
+  answer against that set, and falls back to the workflow order on anything
+  else. Every decision is logged with what the Editor saw (`agentDecisions`,
+  schema v54).
+- **Role placement.** `src/config/roles.ts` maps director / writer / critic /
+  editor / utility to a model and a device (GPU or CPU); `aiService` resolves
+  the model, the semaphore lane and the Ollama `num_gpu` / `keep_alive` /
+  `num_ctx` options from it. A run refuses to start on two different GPU
+  models (measured: a second GPU model evicts the first, 12–18 s per switch)
+  and warns when the Critic is the Writer's model. Settings has the table and
+  a one-click multi-agent preset (Critic and Editor on `qwen2.5:3b-instruct`,
+  CPU).
+- **Checkpoints per superstep.** `graph/dexieSaver.ts` persists LangGraph's
+  `MemorySaver` per run thread (`graphCheckpoints`), so a killed tab resumes
+  mid-chapter, not at the stage boundary.
+- Writer and Critic calls now carry `role: 'writer'` / `role: 'critic'`; the
+  retry feedback no longer prints `[object Object]` for an issue that only had
+  a description.
+- **Agents panel.** A `Write → Agents` sidebar panel
+  (`components/orchestration/OrchestrationPanel.vue`, `orchestrationStore`)
+  shows the orchestrator and mode, every role with its model, device and what
+  it is doing this superstep, both lanes, every scene's status, and the
+  Editor's decisions with their source — and edits placement, preset,
+  orchestrator and mode in place. `BaseSelect` joins the primitives.
+- **Tracing through AgentOps.** `Trace via AgentOps` (Agents panel or
+  `Settings → AI`) routes every local model call through the AgentOps gateway
+  as an OpenAI-shaped SSE stream with `X-Agent-Role` / `X-Client-Ref`
+  headers; the placement (`num_gpu`, `num_ctx`, `keep_alive`, `think`) and the
+  sampling values ride along and land on the gateway's spans, never the
+  prompt. The trace id comes back per call and the panel's **Traces** section
+  links each one into the Tower inspector. `services/traceContext.ts` is the
+  join (run id + superstep → client ref). Needs AgentOps ≥ v1.1 with the
+  placed models in `OLLAMA_MODELS`; the transport says so when the gateway
+  answers `unknown_model`.
+- **What the first traced runs found** (`docs/GENERATION-PIPELINE-ANALYSIS.md`
+  §9): the writer's real draft path (`writeSceneStructured` and its top-up)
+  reached the gateway with no role — only the older `writeScene` carried
+  `role: 'writer'`; fixed, with a test on the prose call and the top-up. Two
+  embedding paths (`embeddingService.ts`, `ollamaService.ts`) posted
+  `/api/embed` without the `embedding` placement and still loaded the 1.1 GiB
+  embedder on the GPU during planning; both now spread it. Same two scenes:
+  18.6 → 8.1 → 6.6 minutes, zero evictions on the third run. The live harness
+  takes `LIVE_TRACE=agentops` and records every trace id and the Editor's
+  decisions in `health.json`.
+
 ### Backend and sync, checked (2026-09-15)
 - `docs/sync-status.md` matches the code again (a removed `Research` entity is
   gone from it) and records what was verified: the API boots on an empty

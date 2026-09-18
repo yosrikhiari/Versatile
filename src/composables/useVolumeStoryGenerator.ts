@@ -1419,6 +1419,17 @@ export function useVolumeStoryGenerator() {
   const { makeSceneStream, writeSceneWithGate, chapterLogBefore } = sceneGate
   const { runParallelGeneration } = createParallelStrategy(strategyCtx, sceneGate)
   const { writeOneBatch } = createBatchStrategy(strategyCtx, sceneGate)
+  // The multi-agent graph (Writer and Critic on separate lanes, an Editor
+  // deciding each step). Selected per run by `settings.orchestrator`; the
+  // legacy parallel strategy stays the default and the fallback. Loaded on
+  // demand: LangGraph is ~325 KB gzipped and a legacy run never needs it.
+  async function runGraphGeneration(
+    params: Parameters<typeof runParallelGeneration>[0],
+    options: { mode: 'workflow' | 'agentic' }
+  ) {
+    const { createGraphStrategy } = await import('./generation/writing/graphStrategy')
+    return createGraphStrategy(strategyCtx, sceneGate).runGraphGeneration(params, options)
+  }
 
   /**
    * Write batches until something other than "keep going" happens.
@@ -1699,14 +1710,18 @@ export function useVolumeStoryGenerator() {
       await runStageWithHeartbeat(
         projectId,
         'prose',
-        (heartbeat) =>
-          runParallelGeneration({
+        (heartbeat) => {
+          const params = {
             ...writeParams.value,
             onChunk: (payload: any) => {
               heartbeat(payload?.scene?.title || `scene ${payload?.sceneIndex ?? ''}`)
               onChunk?.(payload)
             }
-          }),
+          }
+          return settings.orchestrator === 'langgraph'
+            ? runGraphGeneration(params, { mode: settings.orchestratorMode })
+            : runParallelGeneration(params)
+        },
         undefined,
         // The writer already forwards `abort.signal()` per scene; chaining it
         // here too keeps the stage controller from outliving a stopped run.

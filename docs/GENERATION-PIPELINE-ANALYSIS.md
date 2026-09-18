@@ -229,3 +229,105 @@ have independent defaults: switching prose to dolphin no longer drags planning, 
 and the critic along with it (`ollamaConfig.test.js`). The gate floor stays at 7; it is not
 recalibrated per model, because the point of the floor is that dolphin's prose *is* weaker.
 
+
+## 9. Multi-agent on LangGraph (fifth pass — 2026-09-18)
+
+**What changed.** The writing stage has a second orchestrator
+(`writing/graphStrategy.ts`, ADR-0001): a LangGraph graph where the Writer and the
+Critic are separate nodes on separate device lanes, and an Editor decides each
+superstep. The measured constraint that shaped it: on the 8 GB reference GPU a
+second GPU model evicts the first (12–18 s per switch), while a 3B model with
+`num_gpu: 0` runs on the CPU at ~11 tok/s concurrently with the GPU model.
+
+**What it buys.** (1) A Critic that is not the Writer — `qwen2.5:3b-instruct` on
+the CPU by preset — so the judge is not the author. (2) The critique's wall-clock
+cost overlaps the next draft instead of queueing behind it; with lookahead 2 the
+Writer is never idle waiting for a verdict. (3) A model-made control decision
+(agentic mode) that passes the "is it agentic" test: it chooses whether to
+revise, what to revise with which instruction, whether to accept a near-miss,
+and when to stop — inside the fence of legal moves.
+
+**The A/B to run before the preset becomes the default** (same premise,
+*the-salt-road*, same seed settings):
+
+| Run | Orchestrator | Writer | Critic | Editor | Measure |
+|---|---|---|---|---|---|
+| A | legacy | qwen3:8b | qwen3:8b | — | baseline: 29/30 gate passes, 62 min |
+| B | langgraph / workflow | qwen3:8b | qwen3:8b | pure function | isolates the graph (should match A) |
+| C | langgraph / workflow | qwen3:8b | qwen2.5:3b (CPU) | pure function | the different-family critic |
+| D | langgraph / agentic | qwen3:8b | qwen2.5:3b (CPU) | qwen2.5:3b (CPU) | the agent |
+
+For each: gate pass rate, wall time, tokens per role, swap count (must be 0),
+`agentDecisions` — model vs fallback counts — and a blind read of six scenes.
+Before C: run the small critic over the 30 existing salt-road scenes and compare
+its ranking with the recorded 8B verdicts; if they do not agree at all, the
+CPU critic goes back to the drawing board (a larger CPU model, or the 8B critic
+in a batched pass) before the pipeline is rebuilt around it.
+
+**Known gaps.** `commitNode` mirrors `parallelStrategy`'s commit path rather than
+sharing it (fold once the graph is the default); the graph does not do
+anchor-first ordering (scenes are written in plan order, which the lookahead
+makes continuity-friendly but loses the legacy path's cross-chapter
+parallelism); resume by `threadId` exists in the API but has no UI yet.
+
+**First real run (2026-09-18, `reports/live/the-graph-test/`).** 1 chapter × 2 scenes ×
+500 words, `orchestrator=langgraph mode=agentic preset=multi-agent`, Writer `qwen3:8b` on the
+GPU, Critic and Editor `qwen2.5:3b-instruct` on the CPU. 18.6 min end to end, `error=null`,
+553 words, bible synced. What the log and Ollama's own log showed:
+
+- The two lanes are real: `draft scene 2 · critique scene 1` and `draft scene 1 · critique
+  scene 2` ran as single supersteps with both models resident (`ollama ps`: 8B 6.3 GB VRAM,
+  3B 2.2 GB CPU).
+- Both scenes failed the 3B critic's first verdict and were revised with its feedback; both
+  committed for review (best scores 6 and one unparsable verdict) — `degraded_rate 2/2`. That
+  is the CPU critic being weak or strict, not the graph: the exact question run C of the A/B
+  above answers, and the reason the preset is not the default.
+- **The embedder was the swap.** `snowflake-arctic-embed2` (1.1 GiB) is loaded on the GPU for
+  the retrieval context before each draft; with the 8B at 16k context there is no room, so
+  Ollama evicted the writer for the embedder and the embedder for the writer — about a
+  minute per scene, and the legacy path pays it too. Fixed by placing the embedding role on
+  the CPU by default (`config/roles.ts`, `embedding`).
+
+**Second real run, traced (2026-09-18, `reports/live/the-traced-run-1/`).** Same shape at
+1,000 words per scene, every model call routed through AgentOps v1.1 with the agent role
+and `<run>/<step>/<role>` on the spans. **8.1 min** end to end (vs 18.6), 948 words,
+`error=null`, synced 2 — the embedder fix is most of the difference. Three more things the
+trace and the log showed:
+
+- **Two more embedding paths were still on the GPU.** The provider's `generateEmbedding`
+  honoured the placement, but `embeddingService.ts` (the bootstrap/planning retrieval) and
+  `ollamaService.generateEmbedding` posted `/api/embed` directly with no `num_gpu` — Ollama's
+  log still read *"predicted to exceed available memory, evicting"* for a 1.1 GiB model
+  twice during planning. Both now spread the `embedding` placement. Writing-stage embeds
+  loaded as a third runner without eviction (`loaded runners count=3`).
+- **The writer's calls arrived at the gateway untagged.** 22 traces: `critic` ×4,
+  `editor` ×2, `utility` ×6, and 10 with no role — every draft and top-up. `writeSceneStructured`
+  (the path every strategy and the graph use) never passed `role: 'writer'`; only the older
+  `writeScene` did. Fixed, with a regression test that asserts the role on the prose call
+  and its top-up. Placement was unaffected (the writer inherits the GPU default), the
+  *trace* was — which is exactly what a trace with roles is for.
+- **The agentic Editor contributed nothing yet.** Of 7 decisions, 5 had one legal move per
+  lane (no model call) and the 2 model answers were rejected — `commit` and `critique` with
+  `target: null` — so the workflow order took over both times. The 3B did not hold the
+  schema's `target` field; the fence and the fallback did their job, and the decision log
+  says so. Run D of the A/B measures this; a 3B Editor may need a stricter schema
+  (`target` required per action) or a larger CPU model.
+- The 3B critic again failed 2/2 (score 6, `show_tell` 4): consistent with the first run.
+
+**Third run (2026-09-18, `reports/live/the-traced-run/`), with both fixes.** **6.6 min**,
+882 words, `error=null`, synced 2. 22 traces: `writer` ×4 (two drafts, two revises — now
+tagged), `critic` ×4, `editor` ×2, `utility` ×6, 6 untagged (bootstrap calls that carry no
+role by design). **Zero evictions from the run**: Ollama's log shows `loaded runners
+count=3` (8B on the GPU, 3B and embedder on the CPU) from the first draft to the last
+commit; the two evictions logged a minute later belong to `criticProbe.live.js`, which the
+live config runs next in its own jsdom (tracing off, 8B reloaded at 16k) — not to this run.
+Unchanged: the 3B critic failed 2/2 (scene 2 scored 7 overall but `show_tell` 5 under the
+dimension floor), and both agentic Editor answers were rejected (`commit` with no target,
+`critique #1` when #1 was not awaiting a verdict). The graph is proven; the 3B judge and
+the 3B editor are the open questions, and they are runs C and D.
+
+| Run | Scenes | Words | Wall | Embedder | Writer tagged | Editor model answers accepted |
+|---|---|---|---|---|---|---|
+| the-graph-test | 2 | 553 | 18.6 min | GPU, evicting the writer each scene | — (not traced) | 0 / 0 (workflow-only steps) |
+| the-traced-run-1 | 2 | 948 | 8.1 min | provider on CPU; two stray paths still GPU | no — untagged | 0 / 2 |
+| the-traced-run | 2 | 882 | 6.6 min | CPU everywhere, 0 evictions | yes | 0 / 2 |

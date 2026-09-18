@@ -477,5 +477,22 @@ export const SCHEMA_VERSIONS = [
    * the generator wrote into (a `generated` chapter whose prose is in its
    * scenes), rows above the manuscript's real size are brought down to it.
    */
-  { version: 53, stores: {} }
+  { version: 53, stores: {} },
+  /**
+   * v54: the LangGraph writing orchestrator (composables/generation/writing/
+   * graphStrategy.ts). `graphCheckpoints` holds one row per run thread: the
+   * checkpointer's serialized storage and pending writes, so a killed run
+   * resumes at its last completed superstep. `agentDecisions` is the Editor
+   * agent's decision log — one row per superstep: the state summary it saw,
+   * the action it chose, whether that action was legal and executed, and
+   * whether the workflow default had to stand in. Both are per project;
+   * neither is synced.
+   */
+  {
+    version: 54,
+    stores: {
+      graphCheckpoints: 'threadId, projectId, updatedAt',
+      agentDecisions: '++id, projectId, runId, ts, [projectId+ts], [runId+ts]'
+    }
+  }
 ]
