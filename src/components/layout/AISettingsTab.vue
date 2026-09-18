@@ -121,6 +121,11 @@ const AGENT_ROLES = [
     key: 'editor',
     label: 'Editor',
     hint: 'decides the next step in agentic mode; small and fast is enough'
+  },
+  {
+    key: 'embedding',
+    label: 'Embedder',
+    hint: 'the retrieval embeddings — on the CPU so it never evicts the writer from the GPU (model: embedding settings)'
   }
 ]
 const placements = ref({})
@@ -470,8 +475,11 @@ defineExpose({
           <div class="text-xs text-text-primary">{{ r.label }}</div>
           <div class="text-11px text-text-hint leading-snug">{{ r.hint }}</div>
         </div>
+        <span v-if="r.key === 'embedding'" class="text-11px text-text-hint"
+          >{{ settingsStore.embeddingModel }} (embedding settings)</span
+        >
         <select
-          v-if="placements[r.key]"
+          v-else-if="placements[r.key]"
           v-model="placements[r.key].model"
           :aria-label="r.label + ' model'"
           class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"

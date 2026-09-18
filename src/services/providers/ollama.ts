@@ -7,6 +7,7 @@ import {
   getOllamaMinP
 } from '../../config/ollama'
 import { PROVIDERS } from '../../config/ai'
+import { resolveRolePlacement } from '../../config/roles'
 import { resolveTimeLimit } from '../../config/timeLimits'
 import { TokenLimitError } from '../ai/tokenLimitError'
 import { recordThroughput } from '../generationEstimate'
@@ -573,11 +574,19 @@ export async function generateEmbedding(text: string, model = 'nomic-embed-text'
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
 
+  // Where the embedder runs (config/roles.ts). On the CPU by default so it
+  // never evicts the writer from the GPU — see the note on the `embedding` role.
+  const placement = resolveRolePlacement('embedding')
   try {
     const response = await fetch(`${getOllamaEndpoint()}/api/embed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, input: text }),
+      body: JSON.stringify({
+        model,
+        input: text,
+        keep_alive: placement.keepAlive,
+        ...(placement.numGpu != null ? { options: { num_gpu: placement.numGpu } } : {})
+      }),
       signal: controller.signal
     })
 

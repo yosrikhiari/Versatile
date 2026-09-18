@@ -31,7 +31,7 @@
 import { STORAGE_KEYS } from './storageKeys'
 import { getOllamaModel, getOllamaUtilityModel } from './ollama'
 
-export type RoleName = 'director' | 'writer' | 'critic' | 'editor' | 'utility'
+export type RoleName = 'director' | 'writer' | 'critic' | 'editor' | 'utility' | 'embedding'
 export type RoleDevice = 'gpu' | 'cpu'
 
 export interface RolePlacement {
@@ -44,7 +44,14 @@ export interface RolePlacement {
   keepAlive: string
 }
 
-export const ROLE_NAMES: RoleName[] = ['director', 'writer', 'critic', 'editor', 'utility']
+export const ROLE_NAMES: RoleName[] = [
+  'director',
+  'writer',
+  'critic',
+  'editor',
+  'utility',
+  'embedding'
+]
 
 /**
  * Defaults are deliberately conservative: everything on the GPU on the prose /
@@ -57,7 +64,16 @@ export const DEFAULT_ROLE_PLACEMENT: Record<RoleName, RolePlacement> = {
   writer: { model: null, device: 'gpu', numCtx: null, keepAlive: '30m' },
   critic: { model: null, device: 'gpu', numCtx: null, keepAlive: '30m' },
   editor: { model: null, device: 'gpu', numCtx: 4096, keepAlive: '30m' },
-  utility: { model: null, device: 'gpu', numCtx: null, keepAlive: '30m' }
+  utility: { model: null, device: 'gpu', numCtx: null, keepAlive: '30m' },
+  // The embedding model runs on the CPU by default. Observed in Ollama's log
+  // during a live run (2026-09-18): the 8B writer at 16k context fills the GPU,
+  // so loading `snowflake-arctic-embed2` (1.1 GiB) for the retrieval context
+  // before each draft evicted the writer, and reloading the writer evicted the
+  // embedder — about a minute lost per scene, on the legacy path too. A 566M
+  // embedder answers a handful of queries per scene in well under a second on
+  // the CPU. The model itself stays the embedding setting's; only the device
+  // is placed here.
+  embedding: { model: null, device: 'cpu', numCtx: null, keepAlive: '30m' }
 }
 
 /**
@@ -71,7 +87,8 @@ export const MULTI_AGENT_PRESET: Record<RoleName, RolePlacement> = {
   writer: { model: null, device: 'gpu', numCtx: null, keepAlive: '30m' },
   critic: { model: 'qwen2.5:3b-instruct', device: 'cpu', numCtx: 8192, keepAlive: '30m' },
   editor: { model: 'qwen2.5:3b-instruct', device: 'cpu', numCtx: 4096, keepAlive: '30m' },
-  utility: { model: null, device: 'gpu', numCtx: null, keepAlive: '30m' }
+  utility: { model: null, device: 'gpu', numCtx: null, keepAlive: '30m' },
+  embedding: { model: null, device: 'cpu', numCtx: null, keepAlive: '30m' }
 }
 
 function storageKey(role: RoleName): string {
@@ -131,6 +148,8 @@ export function resolveRoleModel(role: RoleName): string | null {
   const placement = getRolePlacement(role)
   if (placement.model) return placement.model
   if (role === 'writer' || role === 'director') return getOllamaModel() || null
+  // The embedding model is chosen by the embedding settings, not here.
+  if (role === 'embedding') return null
   return getOllamaUtilityModel()
 }
 

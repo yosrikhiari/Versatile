@@ -269,3 +269,21 @@ sharing it (fold once the graph is the default); the graph does not do
 anchor-first ordering (scenes are written in plan order, which the lookahead
 makes continuity-friendly but loses the legacy path's cross-chapter
 parallelism); resume by `threadId` exists in the API but has no UI yet.
+
+**First real run (2026-09-18, `reports/live/the-graph-test/`).** 1 chapter × 2 scenes ×
+500 words, `orchestrator=langgraph mode=agentic preset=multi-agent`, Writer `qwen3:8b` on the
+GPU, Critic and Editor `qwen2.5:3b-instruct` on the CPU. 18.6 min end to end, `error=null`,
+553 words, bible synced. What the log and Ollama's own log showed:
+
+- The two lanes are real: `draft scene 2 · critique scene 1` and `draft scene 1 · critique
+  scene 2` ran as single supersteps with both models resident (`ollama ps`: 8B 6.3 GB VRAM,
+  3B 2.2 GB CPU).
+- Both scenes failed the 3B critic's first verdict and were revised with its feedback; both
+  committed for review (best scores 6 and one unparsable verdict) — `degraded_rate 2/2`. That
+  is the CPU critic being weak or strict, not the graph: the exact question run C of the A/B
+  above answers, and the reason the preset is not the default.
+- **The embedder was the swap.** `snowflake-arctic-embed2` (1.1 GiB) is loaded on the GPU for
+  the retrieval context before each draft; with the 8B at 16k context there is no room, so
+  Ollama evicted the writer for the embedder and the embedder for the writer — about a
+  minute per scene, and the legacy path pays it too. Fixed by placing the embedding role on
+  the CPU by default (`config/roles.ts`, `embedding`).
