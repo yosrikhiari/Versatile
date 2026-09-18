@@ -229,3 +229,43 @@ have independent defaults: switching prose to dolphin no longer drags planning, 
 and the critic along with it (`ollamaConfig.test.js`). The gate floor stays at 7; it is not
 recalibrated per model, because the point of the floor is that dolphin's prose *is* weaker.
 
+
+## 9. Multi-agent on LangGraph (fifth pass — 2026-09-18)
+
+**What changed.** The writing stage has a second orchestrator
+(`writing/graphStrategy.ts`, ADR-0001): a LangGraph graph where the Writer and the
+Critic are separate nodes on separate device lanes, and an Editor decides each
+superstep. The measured constraint that shaped it: on the 8 GB reference GPU a
+second GPU model evicts the first (12–18 s per switch), while a 3B model with
+`num_gpu: 0` runs on the CPU at ~11 tok/s concurrently with the GPU model.
+
+**What it buys.** (1) A Critic that is not the Writer — `qwen2.5:3b-instruct` on
+the CPU by preset — so the judge is not the author. (2) The critique's wall-clock
+cost overlaps the next draft instead of queueing behind it; with lookahead 2 the
+Writer is never idle waiting for a verdict. (3) A model-made control decision
+(agentic mode) that passes the "is it agentic" test: it chooses whether to
+revise, what to revise with which instruction, whether to accept a near-miss,
+and when to stop — inside the fence of legal moves.
+
+**The A/B to run before the preset becomes the default** (same premise,
+*the-salt-road*, same seed settings):
+
+| Run | Orchestrator | Writer | Critic | Editor | Measure |
+|---|---|---|---|---|---|
+| A | legacy | qwen3:8b | qwen3:8b | — | baseline: 29/30 gate passes, 62 min |
+| B | langgraph / workflow | qwen3:8b | qwen3:8b | pure function | isolates the graph (should match A) |
+| C | langgraph / workflow | qwen3:8b | qwen2.5:3b (CPU) | pure function | the different-family critic |
+| D | langgraph / agentic | qwen3:8b | qwen2.5:3b (CPU) | qwen2.5:3b (CPU) | the agent |
+
+For each: gate pass rate, wall time, tokens per role, swap count (must be 0),
+`agentDecisions` — model vs fallback counts — and a blind read of six scenes.
+Before C: run the small critic over the 30 existing salt-road scenes and compare
+its ranking with the recorded 8B verdicts; if they do not agree at all, the
+CPU critic goes back to the drawing board (a larger CPU model, or the 8B critic
+in a batched pass) before the pipeline is rebuilt around it.
+
+**Known gaps.** `commitNode` mirrors `parallelStrategy`'s commit path rather than
+sharing it (fold once the graph is the default); the graph does not do
+anchor-first ordering (scenes are written in plan order, which the lookahead
+makes continuity-friendly but loses the legacy path's cross-chapter
+parallelism); resume by `threadId` exists in the API but has no UI yet.

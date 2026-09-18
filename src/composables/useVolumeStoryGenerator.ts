@@ -68,7 +68,6 @@ import { LiveDraftBridge, proseToHtml, countProseWords } from './generation/writ
 import { createSceneGate } from './generation/writing/sceneGate'
 import { createParallelStrategy } from './generation/writing/parallelStrategy'
 import { createBatchStrategy } from './generation/writing/batchStrategy'
-import { createGraphStrategy } from './generation/writing/graphStrategy'
 import { WRITE_FAILURE_STREAK_ABORT } from './generation/writing/limits'
 import { SceneInteractionService } from './generation/interaction'
 import { SceneSpeculativeCache } from '../services/speculativeGenManager'
@@ -1422,8 +1421,15 @@ export function useVolumeStoryGenerator() {
   const { writeOneBatch } = createBatchStrategy(strategyCtx, sceneGate)
   // The multi-agent graph (Writer and Critic on separate lanes, an Editor
   // deciding each step). Selected per run by `settings.orchestrator`; the
-  // legacy parallel strategy stays the default and the fallback.
-  const { runGraphGeneration } = createGraphStrategy(strategyCtx, sceneGate)
+  // legacy parallel strategy stays the default and the fallback. Loaded on
+  // demand: LangGraph is ~325 KB gzipped and a legacy run never needs it.
+  async function runGraphGeneration(
+    params: Parameters<typeof runParallelGeneration>[0],
+    options: { mode: 'workflow' | 'agentic' }
+  ) {
+    const { createGraphStrategy } = await import('./generation/writing/graphStrategy')
+    return createGraphStrategy(strategyCtx, sceneGate).runGraphGeneration(params, options)
+  }
 
   /**
    * Write batches until something other than "keep going" happens.

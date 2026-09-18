@@ -6,14 +6,14 @@ Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL
 
 - **Frontend**: Vue 3 (Composition API), TypeScript, Pinia stores, TipTap 3 editor, Vite 8, Vitest 5
 - **Backend**: .NET 10, PostgreSQL 16 (RLS), Redis, Entity Framework Core, SignalR
-- **AI**: 5 providers (Ollama default, OpenAI, Anthropic, Gemini, Groq); Ollama runs a prose model and a separate `qwen3:8b` utility model
+- **AI**: 5 providers (Ollama default, OpenAI, Anthropic, Gemini, Groq); Ollama runs a prose model and a separate `qwen3:8b` utility model; per-role placement (`src/config/roles.ts`: director / writer / critic / editor, GPU or CPU) feeds the LangGraph writing orchestrator (`writing/graphStrategy.ts`, ADR-0001) — one GPU model per run, Critic/Editor on a CPU model by preset
 - **Storage**: IndexedDB via Dexie 4 (offline-first, schema v54), PostgreSQL (server)
 - **Build/CI**: npm/vite for frontend, dotnet for backend
 
 ## Key Conventions
 
 - **Stores** in `src/stores/` — Pinia with setup syntax (`defineStore('name', () => { ... })`), 20 of them
-- **Composables** in `src/composables/` — reusable composition logic; the generation engine is under `composables/generation/` (writing strategies, context, commit, consistency, delegator, lifecycle)
+- **Composables** in `src/composables/` — reusable composition logic; the generation engine is under `composables/generation/` (writing strategies incl. the LangGraph graph, context, commit, consistency, delegator, graph checkpointer, lifecycle)
 - **Components** in `src/components/` — organized by domain (`storybible/`, `editor/`, etc.); panels are built from the `Base*` primitives in `components/ui/` (`BasePanelHeader`, `BaseSection`) — no ad-hoc cards or eyebrows
 - **Tests** in `src/tests/unit/` — Vitest with `vi.useFakeTimers()` for debounce tests
 - **API calls** go through services in `src/services/`

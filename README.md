@@ -20,7 +20,8 @@ Nothing leaves the device unless you opt in — the cloud tier is per-project an
 - **Spark** — AI prompts and outlines from user-provided ideas
 - **Polish** — paragraph-level prose analysis (repetition, pacing, dialogue, show-don't-tell, etc.)
 - **Story Generator** — Ideate / Chapter / Arc / Blurb tabs over one pipeline: bible → network → plan → spine → prose → consistency → chapter gate
-- **Director / Writer / Critic** — multi-agent pipeline with streaming output, per-scene quality scoring, and warn-only gates that never discard prose
+- **Director / Writer / Critic** — the three LLM roles, with streaming output, per-scene quality scoring, and warn-only gates that never discard prose
+- **Multi-agent orchestration on LangGraph** (opt-in, `Settings → AI → Generation orchestrator`) — the Writer and the Critic run as separate agents on separate device lanes (the Critic judges scene N on the CPU while the Writer drafts N+1 on the GPU, so the judge can be a different model with zero swaps on 8 GB), an Editor agent decides each step in `agentic` mode inside a fence of legal moves, every decision is logged, and the graph checkpoints per step so a killed tab resumes mid-chapter. Role placement (which model, which device) is a Settings table with a one-click preset. ADR-0001.
 - **Digest layer** — per-scene digests rolled up into chapter and volume digests, an entity-state timeline, and deterministic contradiction rules that run before any LLM call
 - **Cloud escalation (opt-in, per project)** — route whole-manuscript audits or second-opinion critiques to a cloud provider with an explicit disclosure of what is sent
 - **Entity Generation** — AI-assisted character, location, and plot thread creation

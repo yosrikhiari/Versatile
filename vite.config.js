@@ -89,6 +89,11 @@ export default defineConfig({
           // Without this they land in vendor-misc, which is statically imported,
           // and every page load pays for them. Own chunk keeps them lazy.
           if (id.includes('node_modules/gpt-tokenizer')) return 'vendor-tokenizer'
+          // LangGraph (+ @langchain/core) is ~325 KB gzipped and only reached
+          // through the dynamic import in useVolumeStoryGenerator when the
+          // orchestrator is 'langgraph'. Same reasoning as the tokenizer above.
+          if (id.includes('node_modules/@langchain') || id.includes('node_modules/zod'))
+            return 'vendor-langgraph'
           if (id.includes('node_modules')) return 'vendor-misc'
         }
       }
