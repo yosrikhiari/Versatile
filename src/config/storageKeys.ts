@@ -20,6 +20,10 @@ export const STORAGE_KEYS = {
   OLLAMA_REPEAT_LAST_N: 'versatile_ollama_repeat_last_n',
   OLLAMA_TOP_P: 'versatile_ollama_top_p',
   OLLAMA_MIN_P: 'versatile_ollama_min_p',
+  /** Per-role model/device placement (config/roles.ts); one key per role. */
+  ROLE_PLACEMENT_PREFIX: 'versatile_role_placement_',
+  /** Which writing orchestrator a run uses: 'legacy' | 'langgraph' (settingsStore). */
+  ORCHESTRATOR: 'versatile_orchestrator',
   OPENAI_KEY: 'versatile_openai_key',
   OPENAI_FALLBACK_PROMPTED: 'versatile_openai_fallback_prompted',
   EMBEDDING_MODEL: 'versatile_embedding_model',

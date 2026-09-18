@@ -319,12 +319,7 @@ export function createSceneGate(ctx: SceneGateContext) {
 
     // Spend prompt budget on this scene's cast, not the whole bible. Falls back
     // to the caller's full dump when the scene names nobody to scope on.
-    const sceneEntitiesJson =
-      buildSceneEntitiesBlob(scene, {
-        characters: storyBibleStore.characters,
-        locations: storyBibleStore.locations,
-        plotThreads: storyBibleStore.plotThreads
-      }) || existingEntitiesJson
+    const sceneEntitiesJson = sceneEntitiesFor(scene, existingEntitiesJson)
 
     if (shouldChunkScene(scene)) {
       return writeSceneChunked({
@@ -347,241 +342,418 @@ export function createSceneGate(ctx: SceneGateContext) {
 
     let baselineWordCount = 0
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      throwIfAborted()
-      let fullProse = ''
-      let result: any
-      try {
-        result = await (writer.writeSceneStructured as any)({
-          sceneBrief: scene,
-          storyArc,
-          chapterLog,
-          storyBible,
-          spineContext: spineContext.value,
-          anchorRole,
-          anchorConstraints,
-          signal: abort.signal(),
-          onChunk: (_chunk: any, proseChunk: any) => {
-            fullProse += proseChunk || ''
-            emitChunk?.(proseChunk, fullProse)
-          },
-          onRawChunk: (chunk: any) => actLog.appendThought(ctx.currentTaskId, scenePhase, chunk),
-          embeddingContext,
-          storyContract,
-          rejectedPatterns: extraRejected,
-          existingEntitiesJson: sceneEntitiesJson,
-          pastEvalResults: attemptFeedback || undefined,
-          focusInstructions: attemptFocusInstructions || undefined
-        })
-      } catch (err: any) {
-        // A rejected attempt is not a failed scene. The writer refuses to hand
-        // back looping prose OR a model refusal ("I'm sorry, but I can't..."),
-        // so re-roll — that is the response this retry loop already exists for.
-        // Anything else is a real error and propagates.
-        if (!isUnsalvageableProse(err)) throw err
-
-        runHealth.record('prose_rejected', {
-          stage: 'writer',
-          sceneIndex,
-          detail: err?.message || 'rejected output'
-        })
-        actLog.appendThought(
-          ctx.currentTaskId,
-          scenePhase,
-          `\n⚠ Attempt ${attempt + 1} was rejected (${err?.message || 'unusable output'}). Retrying.\n`
-        )
-        // Out of attempts: let the caller treat the scene as failed rather than
-        // committing prose the guard rejected.
-        if (attempt === maxAttempts - 1) throw err
-        continue
-      }
-      const proseText = result.prose
+      const drafted = await draftAttempt({
+        scene,
+        sceneIndex,
+        scenePhase,
+        storyArc,
+        chapterLog,
+        storyBible,
+        storyContract,
+        sceneEntitiesJson,
+        embeddingContext,
+        extraRejected,
+        anchorRole,
+        anchorConstraints,
+        emitChunk,
+        attemptFeedback,
+        attemptFocusInstructions,
+        attempt,
+        maxAttempts
+      })
+      if (!drafted.ok) continue
+      const { prose: proseText, structured } = drafted
       if (attempt === 0) {
         baselineWordCount = countWords(proseText)
       }
 
       if (!retryGate) {
         chosenProse = proseText
-        chosenStructured = result.structured
+        chosenStructured = structured
         break
       }
 
-      const criticResult = await critic.evaluateScene({
-        draft: proseText,
-        sceneBrief: scene,
+      const judged = await critiqueAttempt({
+        proseText,
+        structured,
+        scene,
+        sceneIndex,
+        scenePhase,
         storyBible,
         chapterLog,
-        existingEntitiesJson: sceneEntitiesJson,
-        focusInstructions: attemptFocusInstructions
+        sceneEntitiesJson,
+        attemptFocusInstructions,
+        baselineWordCount
       })
+      const criticResult = judged.criticResult
       if (!chosenEval || attemptScore(criticResult) > attemptScore(chosenEval)) {
         chosenProse = proseText
-        chosenStructured = result.structured
+        chosenStructured = structured
         chosenEval = criticResult
       }
+      if (judged.accept) break
 
-      const dimCov = gateDimensionCoverage(criticResult, workspaceType.value)
-      const scoreDist = gateScoreDistribution(criticResult)
-      if (!dimCov.pass && dimCov.warnings.length > 0) {
-        console.warn('[evalGate] dimensionCoverage:', dimCov.warnings.join('; '))
-      }
-      if (!scoreDist.pass && scoreDist.flags.length > 0) {
-        console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
-        // A scored verdict with nothing to say is counted, not acted on: one is
-        // a clean scene, all of them is a flat critic (`critic_flat`).
-        if (
-          criticResult?.score != null &&
-          !criticResult.evalUnavailable &&
-          (criticResult.issues || []).length === 0
-        ) {
-          runHealth.record('eval_suspect', {
-            stage: 'critic',
-            sceneIndex,
-            detail: scoreDist.flags.join('; ')
-          })
-        }
-      }
+      attemptFeedback = judged.feedback
+      attemptFocusInstructions = judged.focusInstructions
+    }
 
-      const proseQ = gateProseQuality(
-        criticResult,
-        baselineWordCount,
-        countWords(proseText),
-        Number(scene?.estimatedWords) || 0,
-        proseText
+    const gateFailure = markGateOutcome({
+      chosenProse,
+      chosenStructured,
+      chosenEval,
+      maxAttempts,
+      sceneIndex,
+      retryGate
+    })
+
+    return { chosenProse, chosenStructured, chosenEval, gateFailure }
+  }
+
+  // ── Gate primitives ───────────────────────────────────────────────────────
+  //
+  // `writeSceneWithGate` above is the legacy sequential composition: draft →
+  // critique → maybe draft again, all on one path. The LangGraph strategy
+  // (`writing/graphStrategy.ts`) needs the same pieces as separate nodes so the
+  // Writer (GPU lane) and the Critic (CPU lane) can run at the same time and an
+  // Editor can decide between them. Every gate rule — rejection handling, the
+  // deterministic checks, cloud escalation, run-health records, the review
+  // marking — lives in these three functions and nowhere else, so the two
+  // orchestrators cannot drift apart on what "passes" means.
+
+  interface DraftAttemptArgs {
+    scene: any
+    sceneIndex: number
+    scenePhase: any
+    storyArc: any
+    chapterLog: string
+    storyBible: any
+    storyContract: any
+    sceneEntitiesJson: string
+    embeddingContext: string
+    extraRejected: any
+    anchorRole: any
+    anchorConstraints: any
+    emitChunk: ((proseChunk: any, fullProse: any) => void) | undefined
+    attemptFeedback: any
+    attemptFocusInstructions: any
+    /** 0-based attempt number and the cap, for the rejection bookkeeping. */
+    attempt: number
+    maxAttempts: number
+  }
+
+  type DraftAttemptResult =
+    { ok: true; prose: string; structured: any } | { ok: false; rejected: true; error: any }
+
+  /**
+   * One Writer call. A rejected draft (looping prose, a refusal) is reported,
+   * not thrown, unless it was the last allowed attempt — the caller decides
+   * whether to try again. Anything that is not a rejection propagates.
+   */
+  async function draftAttempt(args: DraftAttemptArgs): Promise<DraftAttemptResult> {
+    const {
+      scene,
+      sceneIndex,
+      scenePhase,
+      storyArc,
+      chapterLog,
+      storyBible,
+      storyContract,
+      sceneEntitiesJson,
+      embeddingContext,
+      extraRejected,
+      anchorRole,
+      anchorConstraints,
+      emitChunk,
+      attemptFeedback,
+      attemptFocusInstructions,
+      attempt,
+      maxAttempts
+    } = args
+    throwIfAborted()
+    let fullProse = ''
+    try {
+      const result = await (writer.writeSceneStructured as any)({
+        sceneBrief: scene,
+        storyArc,
+        chapterLog,
+        storyBible,
+        spineContext: spineContext.value,
+        anchorRole,
+        anchorConstraints,
+        signal: abort.signal(),
+        onChunk: (_chunk: any, proseChunk: any) => {
+          fullProse += proseChunk || ''
+          emitChunk?.(proseChunk, fullProse)
+        },
+        onRawChunk: (chunk: any) => actLog.appendThought(ctx.currentTaskId, scenePhase, chunk),
+        embeddingContext,
+        storyContract,
+        rejectedPatterns: extraRejected,
+        existingEntitiesJson: sceneEntitiesJson,
+        pastEvalResults: attemptFeedback || undefined,
+        focusInstructions: attemptFocusInstructions || undefined
+      })
+      return { ok: true, prose: result.prose, structured: result.structured }
+    } catch (err: any) {
+      // A rejected attempt is not a failed scene. The writer refuses to hand
+      // back looping prose OR a model refusal ("I'm sorry, but I can't..."),
+      // so re-roll — that is the response the retry loop exists for.
+      // Anything else is a real error and propagates.
+      if (!isUnsalvageableProse(err)) throw err
+
+      runHealth.record('prose_rejected', {
+        stage: 'writer',
+        sceneIndex,
+        detail: err?.message || 'rejected output'
+      })
+      actLog.appendThought(
+        ctx.currentTaskId,
+        scenePhase,
+        `\n⚠ Attempt ${attempt + 1} was rejected (${err?.message || 'unusable output'}). Retrying.\n`
       )
-      if (!proseQ.pass && proseQ.flags.length > 0) {
-        console.warn('[evalGate] proseQuality:', proseQ.flags.join('; '))
-        runHealth.record('gate_failed', {
-          stage: 'proseQuality',
+      // Out of attempts: let the caller treat the scene as failed rather than
+      // committing prose the guard rejected.
+      if (attempt === maxAttempts - 1) throw err
+      return { ok: false, rejected: true, error: err }
+    }
+  }
+
+  interface CritiqueAttemptArgs {
+    proseText: string
+    structured: any
+    scene: any
+    sceneIndex: number
+    scenePhase: any
+    storyBible: any
+    chapterLog: string
+    sceneEntitiesJson: string
+    attemptFocusInstructions: any
+    /** Word count of the first attempt, the reference for the prose-quality gate. */
+    baselineWordCount: number
+  }
+
+  interface CritiqueAttemptResult {
+    criticResult: any
+    /** True when the gate is satisfied (or could not run): stop retrying. */
+    accept: boolean
+    /** Feedback and focus for the next attempt when `accept` is false. */
+    feedback: string | undefined
+    focusInstructions: string | undefined
+    proseQ: { pass: boolean; flags: string[] }
+    continuityOk: boolean
+  }
+
+  /**
+   * One Critic call plus every deterministic check, escalation offer and
+   * health record that surrounds it. Pure with respect to the caller's choice
+   * of best attempt: it judges, it does not select.
+   */
+  async function critiqueAttempt(args: CritiqueAttemptArgs): Promise<CritiqueAttemptResult> {
+    const {
+      proseText,
+      structured,
+      scene,
+      sceneIndex,
+      scenePhase,
+      storyBible,
+      chapterLog,
+      sceneEntitiesJson,
+      attemptFocusInstructions,
+      baselineWordCount
+    } = args
+
+    const criticResult = await critic.evaluateScene({
+      draft: proseText,
+      sceneBrief: scene,
+      storyBible,
+      chapterLog,
+      existingEntitiesJson: sceneEntitiesJson,
+      focusInstructions: attemptFocusInstructions
+    })
+
+    const dimCov = gateDimensionCoverage(criticResult, workspaceType.value)
+    const scoreDist = gateScoreDistribution(criticResult)
+    if (!dimCov.pass && dimCov.warnings.length > 0) {
+      console.warn('[evalGate] dimensionCoverage:', dimCov.warnings.join('; '))
+    }
+    if (!scoreDist.pass && scoreDist.flags.length > 0) {
+      console.warn('[evalGate] scoreDistribution:', scoreDist.flags.join('; '))
+      // A scored verdict with nothing to say is counted, not acted on: one is
+      // a clean scene, all of them is a flat critic (`critic_flat`).
+      if (
+        criticResult?.score != null &&
+        !criticResult.evalUnavailable &&
+        (criticResult.issues || []).length === 0
+      ) {
+        runHealth.record('eval_suspect', {
+          stage: 'critic',
           sceneIndex,
-          detail: proseQ.flags.join('; ')
+          detail: scoreDist.flags.join('; ')
         })
       }
+    }
 
-      // Metadata status, recorded from the value the writer already returns.
-      // This is the signal whose silent absence froze the story bible: a scene
-      // that skipped extraction contributed no entities, no keyFacts, and so no
-      // context for the scene after it.
-      const metaStatus = chosenStructured?.metadataStatus ?? result?.structured?.metadataStatus
-      if (metaStatus === 'failed' || metaStatus === 'skipped') {
-        runHealth.record(`metadata_${metaStatus}` as any, { stage: 'writer', sceneIndex })
-      }
+    const proseQ = gateProseQuality(
+      criticResult,
+      baselineWordCount,
+      countWords(proseText),
+      Number(scene?.estimatedWords) || 0,
+      proseText
+    )
+    if (!proseQ.pass && proseQ.flags.length > 0) {
+      console.warn('[evalGate] proseQuality:', proseQ.flags.join('; '))
+      runHealth.record('gate_failed', {
+        stage: 'proseQuality',
+        sceneIndex,
+        detail: proseQ.flags.join('; ')
+      })
+    }
 
-      // A critic that cannot parse its own output makes the run look healthier
-      // and cheaper than it is: the gate exits, the draft is accepted, and
-      // nothing in the UI says the quality gate never ran. Retrying the writer
-      // would not help — it is the critic that failed — so we still break, but
-      // loudly, where the user is actually looking.
-      if (criticResult?.evalUnavailable) {
-        evalUnavailableCount.value += 1
-        // `evalUnavailableCount` was incremented, reset, and exposed on the
-        // return object — with no consumer anywhere in the codebase. Routing it
-        // through the ledger gives it one: enough of these in a row and the run
-        // stops rather than writing another ten scenes unchecked.
-        runHealth.record('eval_unavailable', { stage: 'critic', sceneIndex })
+    // Metadata status, recorded from the value the writer already returns.
+    // This is the signal whose silent absence froze the story bible: a scene
+    // that skipped extraction contributed no entities, no keyFacts, and so no
+    // context for the scene after it.
+    const metaStatus = structured?.metadataStatus
+    if (metaStatus === 'failed' || metaStatus === 'skipped') {
+      runHealth.record(`metadata_${metaStatus}` as any, { stage: 'writer', sceneIndex })
+    }
+
+    // A critic that cannot parse its own output makes the run look healthier
+    // and cheaper than it is: the gate exits, the draft is accepted, and
+    // nothing in the UI says the quality gate never ran. Retrying the writer
+    // would not help — it is the critic that failed — so we still accept, but
+    // loudly, where the user is actually looking.
+    if (criticResult?.evalUnavailable) {
+      evalUnavailableCount.value += 1
+      runHealth.record('eval_unavailable', { stage: 'critic', sceneIndex })
+      actLog.appendThought(
+        ctx.currentTaskId,
+        scenePhase,
+        "\n⚠ Quality gate did not run for this scene — the critic's output could not be parsed. The draft was accepted unchecked.\n"
+      )
+    }
+    const continuityOk = ((criticResult?.dimensionScores as any)?.continuity ?? 10) >= 6
+
+    // Cloud escalation check: if eval is unavailable or has suspect scores and
+    // user has cloud escalation enabled, offer to escalate this scene's
+    // evaluation to a cloud provider for a second opinion.
+    if (canUseCloudEscalation()) {
+      const needsEscalation =
+        criticResult?.evalUnavailable ||
+        (criticResult?.score != null && (criticResult.score < 3 || criticResult.score > 9)) ||
+        (criticResult?.issues?.length === 0 &&
+          criticResult?.score != null &&
+          criticResult.score >= 7)
+
+      if (needsEscalation) {
+        const disclosure = await buildCloudDisclosure({
+          projectId: writeParams.value?.projectId || '',
+          operation: 'escalation-on-failure',
+          text: proseText,
+          systemPrompt:
+            'You are an expert fiction editor. Evaluate this scene for quality, continuity, voice, and adherence to the story bible. Provide a score 1-10, dimension scores, issues, and strengths.',
+          provider: settings.aiProvider,
+          model: settings.ollamaModel
+        })
+
+        // A non-blocking offer — the user can choose to escalate or continue.
         actLog.appendThought(
           ctx.currentTaskId,
           scenePhase,
-          "\n⚠ Quality gate did not run for this scene — the critic's output could not be parsed. The draft was accepted unchecked.\n"
+          `\n☁ Cloud escalation available: ${disclosure.warning}\n` +
+            `Operation: ${disclosure.operation}\n` +
+            `Estimated tokens: ${disclosure.estimatedTokens}\n` +
+            `Estimated cost: $${disclosure.estimatedCostUsd.toFixed(4)}\n` +
+            `Provider: ${disclosure.provider} (${disclosure.model})\n`
         )
-      }
-      const continuityOk = ((criticResult.dimensionScores as any)?.continuity ?? 10) >= 6
 
-      // Cloud escalation check: if eval is unavailable or has suspect scores and
-      // user has cloud escalation enabled, offer to escalate this scene's
-      // evaluation to a cloud provider for a second opinion.
-      if (canUseCloudEscalation()) {
-        const needsEscalation =
-          criticResult?.evalUnavailable ||
-          (criticResult?.score != null && (criticResult.score < 3 || criticResult.score > 9)) ||
-          (criticResult?.issues?.length === 0 &&
-            criticResult?.score != null &&
-            criticResult.score >= 7)
-
-        if (needsEscalation) {
-          const disclosure = await buildCloudDisclosure({
-            // `writeParamsVal` is runParallelGeneration's local — it does not
-            // exist in this scope, so this threw a ReferenceError (optional
-            // chaining does not shield an undeclared identifier) every time a
-            // scene qualified for cloud escalation.
+        // Audit tier goes one step further: the project opt-in is advance
+        // consent, so request the second opinion immediately instead of
+        // waiting on the offer. Best-effort — the outcome is a ledger
+        // note either way, never a run failure.
+        try {
+          const auto = await maybeAutoEscalateScene({
             projectId: writeParams.value?.projectId || '',
+            tier: getAnalysisTier(),
+            cloudAvailable: true,
+            projectOptIn: !!settings.cloudAuditOptIn,
+            provider: settings.aiProvider,
+            model: settings.ollamaModel,
             operation: 'escalation-on-failure',
             text: proseText,
             systemPrompt:
-              'You are an expert fiction editor. Evaluate this scene for quality, continuity, voice, and adherence to the story bible. Provide a score 1-10, dimension scores, issues, and strengths.',
-            provider: settings.aiProvider,
-            model: settings.ollamaModel
+              'You are an expert fiction editor. Evaluate this scene for quality, continuity, voice, and adherence to the story bible. Provide a score 1-10, dimension scores, issues, and strengths.'
           })
-
-          // Store the disclosure for the UI to present to the user
-          // This is a non-blocking offer - the user can choose to escalate or continue
-          actLog.appendThought(
-            ctx.currentTaskId,
-            scenePhase,
-            `\n☁ Cloud escalation available: ${disclosure.warning}\n` +
-              `Operation: ${disclosure.operation}\n` +
-              `Estimated tokens: ${disclosure.estimatedTokens}\n` +
-              `Estimated cost: $${disclosure.estimatedCostUsd.toFixed(4)}\n` +
-              `Provider: ${disclosure.provider} (${disclosure.model})\n`
-          )
-
-          // Audit tier goes one step further: the project opt-in is advance
-          // consent, so request the second opinion immediately instead of
-          // waiting on the offer. Best-effort — the outcome is a ledger
-          // note either way, never a run failure.
-          try {
-            const auto = await maybeAutoEscalateScene({
-              projectId: writeParams.value?.projectId || '',
-              tier: getAnalysisTier(),
-              cloudAvailable: true,
-              projectOptIn: !!settings.cloudAuditOptIn,
-              provider: settings.aiProvider,
-              model: settings.ollamaModel,
-              operation: 'escalation-on-failure',
-              text: proseText,
-              systemPrompt:
-                'You are an expert fiction editor. Evaluate this scene for quality, continuity, voice, and adherence to the story bible. Provide a score 1-10, dimension scores, issues, and strengths.'
-            })
-            if (auto.note) {
-              actLog.appendThought(ctx.currentTaskId, scenePhase, `\n${auto.note}\n`)
-            }
-          } catch {
-            // maybeAutoEscalateScene never throws by contract; this guards
-            // the ledger call itself so a logging failure cannot break the run.
+          if (auto.note) {
+            actLog.appendThought(ctx.currentTaskId, scenePhase, `\n${auto.note}\n`)
           }
+        } catch {
+          // maybeAutoEscalateScene never throws by contract; this guards
+          // the ledger call itself so a logging failure cannot break the run.
         }
       }
-
-      if (
-        !criticResult ||
-        criticResult.evalUnavailable ||
-        (criticResult.pass && continuityOk && proseQ.pass)
-      ) {
-        break
-      }
-
-      const evalSnapshot = {
-        sceneIndex: sceneIndex + 1,
-        passed: criticResult.pass,
-        score: criticResult.score,
-        dimensionScores: criticResult.dimensionScores || null,
-        topIssues: (criticResult.issues || []).slice(0, 3).map((iss: any) => iss.text || iss)
-      }
-      attemptFeedback = formatEvalFeedback([evalSnapshot])
-      const retryResult = promptAdjuster.updateAdjustments([evalSnapshot], {
-        workspaceType: workspaceType.value
-      })
-      attemptFocusInstructions = retryResult.focusInstructions
     }
 
-    // Out of attempts with the critic still unhappy. This used to throw, and the
-    // callers treated the scene as failed: no prose committed, the subsection
-    // left empty, and every later scene drafted against a hole in the chapter
-    // log. Measured per-dimension averages on real output sit *below* the
-    // gate's floor (voice 5.67, show_tell 6.83 — see criticVerdict.ts), so on a
-    // one-click book run this dropped a large share of scenes outright. The
-    // best attempt is kept instead: committed, marked for review, and recorded
-    // as `gate_failed` so the run's health still reports it honestly. Losing
-    // a 6/10 scene is worse than keeping one the author can regenerate.
+    const accept =
+      !criticResult ||
+      criticResult.evalUnavailable ||
+      (criticResult.pass && continuityOk && proseQ.pass)
+    if (accept) {
+      return {
+        criticResult,
+        accept: true,
+        feedback: undefined,
+        focusInstructions: undefined,
+        proseQ,
+        continuityOk
+      }
+    }
+
+    const evalSnapshot = {
+      sceneIndex: sceneIndex + 1,
+      passed: criticResult.pass,
+      score: criticResult.score,
+      dimensionScores: criticResult.dimensionScores || null,
+      topIssues: (criticResult.issues || []).slice(0, 3).map((iss: any) => iss.text || iss)
+    }
+    const feedback = formatEvalFeedback([evalSnapshot])
+    const retryResult = promptAdjuster.updateAdjustments([evalSnapshot], {
+      workspaceType: workspaceType.value
+    })
+    return {
+      criticResult,
+      accept: false,
+      feedback,
+      focusInstructions: retryResult.focusInstructions,
+      proseQ,
+      continuityOk
+    }
+  }
+
+  interface GateOutcomeArgs {
+    chosenProse: string
+    chosenStructured: any
+    chosenEval: any
+    maxAttempts: number
+    sceneIndex: number
+    retryGate: boolean
+  }
+
+  /**
+   * Out of attempts with the critic still unhappy. This used to throw, and the
+   * callers treated the scene as failed: no prose committed, the subsection
+   * left empty, and every later scene drafted against a hole in the chapter
+   * log. Measured per-dimension averages on real output sit *below* the
+   * gate's floor (voice 5.67, show_tell 6.83 — see criticVerdict.ts), so on a
+   * one-click book run this dropped a large share of scenes outright. The
+   * best attempt is kept instead: committed, marked for review, and recorded
+   * as `gate_failed` so the run's health still reports it honestly. Losing
+   * a 6/10 scene is worse than keeping one the author can regenerate.
+   *
+   * Returns the review reason, or null for a clean scene.
+   */
+  function markGateOutcome(args: GateOutcomeArgs): string | null {
+    const { chosenProse, chosenStructured, chosenEval, maxAttempts, sceneIndex, retryGate } = args
     let gateFailure: string | null = null
     if (retryGate && chosenEval && !chosenEval.evalUnavailable && !isCleanPass(chosenEval)) {
       // Feed the verdict's weakest dimension into the adjuster so a rejected scene
@@ -618,9 +790,30 @@ export function createSceneGate(ctx: SceneGateContext) {
     if (chosenProse && chosenStructured?.metadataStatus === 'ok' && !gateFailure) {
       runHealth.recordSuccess()
     }
-
-    return { chosenProse, chosenStructured, chosenEval, gateFailure }
+    return gateFailure
   }
 
-  return { makeSceneStream, writeSceneChunked, chapterLogBefore, writeSceneWithGate }
+  /** The entity blob a scene is written and judged against (its own cast, else the full dump). */
+  function sceneEntitiesFor(scene: any, existingEntitiesJson: string | undefined): string {
+    return (
+      buildSceneEntitiesBlob(scene, {
+        characters: storyBibleStore.characters,
+        locations: storyBibleStore.locations,
+        plotThreads: storyBibleStore.plotThreads
+      }) ||
+      existingEntitiesJson ||
+      ''
+    )
+  }
+
+  return {
+    makeSceneStream,
+    writeSceneChunked,
+    chapterLogBefore,
+    writeSceneWithGate,
+    draftAttempt,
+    critiqueAttempt,
+    markGateOutcome,
+    sceneEntitiesFor
+  }
 }

@@ -19,6 +19,10 @@ interface OllamaOptions {
   temperature?: number
   stop?: string[]
   numCtx?: number
+  /** Role placement: 0 keeps the model entirely on the CPU (config/roles.ts). */
+  numGpu?: number
+  /** Ollama keep_alive duration string, e.g. '30m'. */
+  keepAlive?: string
   repeatPenalty?: number
   repeatLastN?: number
   topP?: number
@@ -171,6 +175,7 @@ function buildOllamaOptions(options: OllamaOptions = {}) {
   if (Array.isArray(options.stop) && options.stop.length) opts.stop = options.stop
   const numCtx = options.numCtx ?? getOllamaNumCtx()
   if (numCtx > 0) opts.num_ctx = numCtx
+  if (typeof options.numGpu === 'number') opts.num_gpu = options.numGpu
 
   // Always sent. An unset Ollama sampling option is not "no opinion" — it is the
   // server's default silently applying, and the defaults here (repeat_last_n=64)
@@ -312,6 +317,10 @@ async function runStream(
         stream: true,
         think: options.think ?? THINKING_DISABLED_BY_DEFAULT,
         ...(options.format ? { format: options.format } : {}),
+        // A placed role asks Ollama to keep its model resident between calls;
+        // without it a CPU-placed Critic would be unloaded after Ollama's default
+        // five minutes and reloaded (5-18 s) on the next scene.
+        ...(options.keepAlive ? { keep_alive: options.keepAlive } : {}),
         ...buildOllamaOptions(options)
       }),
       signal: controller.signal

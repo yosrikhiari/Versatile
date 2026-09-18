@@ -2,6 +2,7 @@ import { PROVIDERS, FEATURES, PROVIDER_MODELS } from '../config/ai'
 import { resolveOptimalModel, isProviderUsable } from '../config/modelRouting'
 import { getApiKeyStorageKey } from '../config/storageKeys'
 import { getOllamaUtilityModel } from '../config/ollama'
+import { resolveRolePlacement, type RoleName, type RoleRuntime } from '../config/roles'
 import { useSettingsStore } from '../stores/settingsStore'
 import { decrypt } from './ollamaService'
 import { sanitizeJson, repairTruncatedJson } from './ai/aiHelpers'
@@ -97,8 +98,14 @@ export interface AiGenerateOptions {
    * metadata, relationship and spine passes) as opposed to prose. On a local
    * provider these are routed to the configured utility model, which is where
    * most of a run's non-prose latency goes.
+   *
+   * The agent roles (`director` | `writer` | `critic` | `editor`) resolve through
+   * the placement table in `config/roles.ts`: a model, a device (`gpu` | `cpu`)
+   * and therefore a semaphore lane, so a CPU-placed Critic can run while the
+   * GPU-placed Writer is busy. `prose` is the historical name for the writer's
+   * default and is kept for callers that still pass it.
    */
-  role?: 'utility' | 'prose'
+  role?: RoleName | 'prose'
   schema?: Record<string, unknown>
   schemaName?: string
   /**
@@ -130,6 +137,12 @@ interface ProviderOptions {
   repeatLastN?: number
   topP?: number
   minP?: number
+  /** Role placement (config/roles.ts): `num_gpu: 0` puts a model on the CPU. */
+  numGpu?: number
+  /** Ollama keep_alive so a placed model stays resident between calls. */
+  keepAlive?: string
+  /** Context window for this role, overriding the global num_ctx. */
+  numCtx?: number
 }
 
 interface LangfuseTrace {
@@ -470,7 +483,45 @@ export function resolveOptimalConfig(
     const utility = getOllamaUtilityModel()
     if (utility) return { provider: resolved.provider, model: utility }
   }
+  // Agent roles: the placement table decides the model (and, below, the device
+  // lane). Same local-only scope as utility routing — a hosted provider's choice
+  // is the user's own.
+  const placed = placementFor(options.role)
+  if (placed?.model && resolved.provider === PROVIDERS.OLLAMA) {
+    return { provider: resolved.provider, model: placed.model }
+  }
   return resolved
+}
+
+/** The placement runtime for an agent role; null for `utility`, `prose` and unset. */
+function placementFor(role: AiGenerateOptions['role']): RoleRuntime | null {
+  if (!role || role === 'utility' || role === 'prose') return null
+  return resolveRolePlacement(role)
+}
+
+/**
+ * The semaphore lane for a call. Ollama calls default to the GPU lane so that
+ * unplaced work (metadata, the Director, utility JSON) still serialises with
+ * the Writer on the one GPU; only an explicitly CPU-placed role gets the
+ * parallel `ollama:cpu` lane. Hosted providers keep their own lane.
+ */
+function laneFor(providerName: string, role: AiGenerateOptions['role']): string {
+  if (providerName !== PROVIDERS.OLLAMA) return providerName
+  const placed = placementFor(role)
+  return placed ? placed.lane : 'ollama:gpu'
+}
+
+/** Provider options contributed by a role placement (none for unplaced calls). */
+function placementOptions(
+  role: AiGenerateOptions['role']
+): Pick<ProviderOptions, 'numGpu' | 'keepAlive' | 'numCtx'> {
+  const placed = placementFor(role)
+  if (!placed) return {}
+  return {
+    numGpu: placed.numGpu,
+    keepAlive: placed.keepAlive,
+    numCtx: placed.numCtx ?? undefined
+  }
 }
 
 /**
@@ -488,6 +539,8 @@ function localModelFor(feature: string, options: AiGenerateOptions): string | nu
     const utility = getOllamaUtilityModel()
     if (utility) return utility
   }
+  const placed = placementFor(options.role)
+  if (placed?.model) return placed.model
   return store.ollamaModel || null
 }
 
@@ -703,7 +756,8 @@ export async function aiGenerate(
         // native structured output would stream fine for eight minutes while the
         // stage watchdog, hearing nothing, declared "made no progress" and killed
         // the run.
-        onToken: options.onToken
+        onToken: options.onToken,
+        ...placementOptions(options.role)
       }
 
       async function trackGenerate(
@@ -725,7 +779,10 @@ export async function aiGenerate(
           const result = await withRetry(
             () => {
               const generate = () =>
-                foregroundSlot(providerName)(() =>
+                foregroundSlot(
+                  providerName,
+                  laneFor(providerName, options.role)
+                )(() =>
                   latencyBudget.wrap(feature, () =>
                     pm.generate(prompt, systemPrompt, modelName, opts)
                   )()
@@ -843,7 +900,8 @@ export async function aiStream(
     stop: options.stop,
     timeout: options.timeout,
     idleTimeout: options.idleTimeout,
-    firstTokenTimeout: options.firstTokenTimeout
+    firstTokenTimeout: options.firstTokenTimeout,
+    ...placementOptions(options.role)
   }
 
   let emittedAny = false
@@ -876,7 +934,10 @@ export async function aiStream(
     const text = await withRetry(
       () => {
         const stream = () =>
-          foregroundSlot(provider)(() =>
+          foregroundSlot(
+            provider,
+            laneFor(provider, options.role)
+          )(() =>
             latencyBudget.wrap(feature, () =>
               providerModule.stream(prompt, systemPrompt, model, trackedOnChunk, providerOptions)
             )()
@@ -1007,12 +1068,16 @@ export async function aiGenerateStructured(
         repeatPenalty: options.repeatPenalty,
         repeatLastN: options.repeatLastN,
         topP: options.topP,
-        minP: options.minP
+        minP: options.minP,
+        ...placementOptions(options.role)
       }
       const result = await withRetry(
         () => {
           const generate = () =>
-            foregroundSlot(provider)(() =>
+            foregroundSlot(
+              provider,
+              laneFor(provider, options.role)
+            )(() =>
               latencyBudget.wrap(feature, () =>
                 providerModule.generateStructured!(prompt, systemPrompt, model, schema, structOpts)
               )()

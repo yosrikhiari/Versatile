@@ -57,6 +57,12 @@ export function createSemaphore(limit: number): SemaphoreFn {
  */
 export const PROVIDER_CONCURRENCY: Record<string, number> = {
   ollama: 1,
+  // Device lanes (config/roles.ts). The GPU lane is the historical `ollama`
+  // slot under a new name: one generation at a time on the one GPU. The CPU
+  // lane is a second, independent slot for a role placed with `num_gpu: 0`, so
+  // a CPU Critic can judge scene N while the GPU Writer drafts scene N+1.
+  'ollama:gpu': 1,
+  'ollama:cpu': 1,
   default: 4
 }
 
@@ -175,8 +181,11 @@ const FOREGROUND_LINGER_MS = 30_000
  * they still serialise against everything else, they just never claim priority
  * — which is the whole distinction between the two.
  */
-export function foregroundSlot(provider: string): SemaphoreFn {
-  const slot = slotFor(provider)
+export function foregroundSlot(provider: string, lane: string = provider): SemaphoreFn {
+  // The semaphore is per lane (which physical resource), the foreground marker
+  // stays per provider (which background work must yield): a CPU-lane critic is
+  // still "the run is busy on Ollama" as far as indexing is concerned.
+  const slot = slotFor(lane)
   return async function withForegroundSlot<T>(fn: () => Promise<T>): Promise<T> {
     // Claimed before the wait for the slot, not after: a batch that has not
     // started yet should see the marker and yield, rather than starting and
