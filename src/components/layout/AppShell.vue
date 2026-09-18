@@ -324,6 +324,10 @@ function toggleCostDashboard() {
   activePanelName.value = activePanelName.value === 'cost-dashboard' ? null : 'cost-dashboard'
 }
 
+function toggleOrchestration() {
+  activePanelName.value = activePanelName.value === 'orchestration' ? null : 'orchestration'
+}
+
 function toggleSpark() {
   toggleStoryGenerator()
 }
@@ -379,7 +383,8 @@ function handleSidebarNav(name) {
     'beta-reader': toggleBetaReader,
     whatif: toggleWhatIf,
     related: toggleRelated,
-    'cost-dashboard': toggleCostDashboard
+    'cost-dashboard': toggleCostDashboard,
+    orchestration: toggleOrchestration
   }
   map[name]?.()
 }
@@ -739,6 +744,13 @@ watch(
           class="tool-panel w-full lg:w-[380px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="beta-reader"></slot>
+        </aside>
+        <aside
+          v-else-if="activePanelName === 'orchestration' && !flowMode && !focusMode"
+          key="orchestration"
+          class="tool-panel w-full lg:w-[380px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
+        >
+          <slot name="orchestration"></slot>
         </aside>
         <aside
           v-else-if="activePanelName === 'cost-dashboard' && !flowMode && !focusMode"

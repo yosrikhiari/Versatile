@@ -51,6 +51,7 @@ import { rethrowIfFatal } from '../lifecycle'
 import { PARALLEL_SCENE_LIMIT, SCENE_MAX_ATTEMPTS, WRITE_FAILURE_STREAK_ABORT } from './limits'
 import { syncChapterToBible } from './bibleSync'
 import { DexieSaver } from '../graph/dexieSaver'
+import { useOrchestrationStore } from '../../../stores/orchestrationStore'
 import {
   useStoryEditor,
   type EditorAction,
@@ -245,6 +246,7 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
     writtenScenes
   } = ctx
   const editor = useStoryEditor()
+  const live = useOrchestrationStore()
 
   async function runGraphGeneration(writeParamsVal: WriteParams, options: GraphStrategyOptions) {
     if (!writeParamsVal) return
@@ -255,8 +257,10 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
 
     // The one hard placement rule. A run that would swap GPU models on every
     // scene is refused up front with the measured reason; warnings are logged.
+    const warnings: string[] = []
     for (const problem of placementProblems()) {
       if (problem.level === 'error') throw new Error(problem.message)
+      warnings.push(problem.message)
       actLog.appendThought(ctx.currentTaskId, null, `\n⚠ ${problem.message}\n`)
     }
     const writerRt = resolveRolePlacement('writer')
@@ -278,6 +282,7 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
     })
     const { storyArc, storyBibleDocs, storyContract, projectId, onChunk } = writeParamsVal
     const runId = options.threadId ?? `${projectId}:${Date.now().toString(36)}`
+    live.startRun({ runId, projectId, mode, warnings })
     editor.sessionBudget = ctx.writer?.sessionBudget ?? null
 
     const ragOptions = buildRagOptions(projectId, writeParamsVal.research)
@@ -345,6 +350,13 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
       const scenePhase = actLog.addPhase(ctx.currentTaskId, phaseName)
       const stream = sceneGate.makeSceneStream({ scene, sceneIndex: record.index, onChunk })
       await gate()
+      live.setLane(writerRt.device, {
+        kind: record.attempts > 0 ? 'revise' : 'draft',
+        role: 'writer',
+        sceneIndex: record.index,
+        sceneTitle: record.title,
+        attempt: record.attempts + 1
+      })
       try {
         throwIfAborted()
         const chapter = chaptersWithScenes[record.chapterIndex]
@@ -470,6 +482,13 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
         ctx.currentTaskId,
         `Judging: "${scene.title || `Scene ${scene.sceneNumber}`}"`
       )
+      live.setLane(criticRt.device, {
+        kind: 'critique',
+        role: 'critic',
+        sceneIndex: record.index,
+        sceneTitle: record.title,
+        attempt: record.attempts
+      })
       try {
         const judged = await sceneGate.critiqueAttempt({
           proseText: record.draft.prose,
@@ -728,6 +747,22 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
       }
       progress.statusText =
         tasks.map((t) => `${t.kind} scene ${t.index + 1}`).join(' · ') || 'Finishing…'
+      // Everything a superstep changed, for the Orchestration panel. Lanes are
+      // idle here by definition: the nodes of the previous superstep have all
+      // returned, and the next ones announce themselves when they start.
+      live.clearLanes()
+      live.setStep(state.step + 1)
+      live.setScenes(
+        summarize(state.scenes).map((sc) => {
+          const m = marked.find((x) => x.index === sc.index)
+          return m
+            ? { ...sc, status: m.status }
+            : committing.has(sc.index)
+              ? { ...sc, status: 'committed' }
+              : sc
+        })
+      )
+      live.pushDecision(decision)
       return { decisions: [decision], tasks, step: state.step + 1, finished, scenes: marked }
     }
 
@@ -798,10 +833,18 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
       signal: ctx.abort?.signal?.()
     }
     const resuming = !!options.threadId
-    const finalState = (await compiled.invoke(
-      resuming ? null : { scenes: initial },
-      config
-    )) as WritingStateType
+    let finalState: WritingStateType
+    try {
+      finalState = (await compiled.invoke(
+        resuming ? null : { scenes: initial },
+        config
+      )) as WritingStateType
+    } catch (err: unknown) {
+      live.endRun(errorMessage(err))
+      throw err
+    }
+    live.setScenes(summarize(finalState.scenes))
+    live.endRun(null)
 
     // ── Wrap-up: the same reporting the parallel strategy does ──────────
     if (inlineEvalEnabled.value) {

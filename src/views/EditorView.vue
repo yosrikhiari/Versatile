@@ -28,6 +28,7 @@ import StoryGeneratorPanel from '../components/story/StoryGeneratorPanel.vue'
 import VoiceLabPanel from '../components/voice-lab/VoiceLabPanel.vue'
 import StoryShapePanel from '../components/storyshape/StoryShapePanel.vue'
 import ConsistencyPanel from '../components/consistency/ConsistencyPanel.vue'
+import OrchestrationPanel from '../components/orchestration/OrchestrationPanel.vue'
 import BetaReaderPanel from '../components/betareader/BetaReaderPanel.vue'
 import WhatIfPanel from '../components/whatif/WhatIfPanel.vue'
 import CostDashboard from '../components/cost/CostDashboard.vue'
@@ -240,6 +241,11 @@ function navigateFindingTo(open, payload) {
   nextTick(() => {
     consistencyNavigateTarget.value = payload
   })
+}
+
+/** The Orchestration panel's empty state points at the generator. */
+function handleOrchestrationNavigate(panel) {
+  if (panel === 'story-generator') appShell.value?.toggleStoryGenerator()
 }
 
 function handleConsistencyNavigate(action) {
@@ -473,6 +479,9 @@ function handleOnboardingSkipWrapper() {
       </template>
       <template #cost-dashboard>
         <CostDashboard />
+      </template>
+      <template #orchestration>
+        <OrchestrationPanel @navigate="handleOrchestrationNavigate" />
       </template>
     </AppShell>
 
