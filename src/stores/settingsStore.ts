@@ -49,7 +49,17 @@ const DEFAULT_SETTINGS = {
   // Chapter generation gets its own pipeline, its own delegator and its own
   // acceptance gate. The flag is the zero-deploy way back: turning it off
   // hides the Chapter tab and leaves the arc path exactly as it was.
-  enableChapterGeneration: true
+  enableChapterGeneration: true,
+  // Which writing orchestrator a one-click run uses (useVolumeStoryGenerator).
+  //   'legacy'    — the anchor-first parallel strategy, unchanged.
+  //   'langgraph' — the multi-agent graph (writing/graphStrategy.ts): Writer and
+  //                 Critic on separate device lanes, an Editor deciding each step,
+  //                 checkpoints per superstep. Its `mode` is below.
+  // Default stays legacy until the graph path has a real run behind it.
+  orchestrator: 'legacy' as 'legacy' | 'langgraph',
+  //   'workflow' — the Editor is a pure function (the legacy order).
+  //   'agentic'  — the Editor is a model choosing among legal moves.
+  orchestratorMode: 'workflow' as 'workflow' | 'agentic'
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -67,6 +77,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const analysisTier = ref(DEFAULT_SETTINGS.analysisTier)
   const cloudAuditOptIn = ref(DEFAULT_SETTINGS.cloudAuditOptIn)
   const enableChapterGeneration = ref(DEFAULT_SETTINGS.enableChapterGeneration)
+  const orchestrator = ref<'legacy' | 'langgraph'>(DEFAULT_SETTINGS.orchestrator)
+  const orchestratorMode = ref<'workflow' | 'agentic'>(DEFAULT_SETTINGS.orchestratorMode)
 
   const featureModels = useLocalStorage<Record<string, any>>(STORAGE_KEYS.FEATURE_MODELS, {})
 
@@ -122,6 +134,10 @@ export const useSettingsStore = defineStore('settings', () => {
         if (data.cloudAuditOptIn !== undefined) cloudAuditOptIn.value = !!data.cloudAuditOptIn
         // Explicit `!== undefined` for the same reason as `localOnly`: turning
         // the flag off is a real choice, and truthiness would undo it on load.
+        if (data.orchestrator === 'legacy' || data.orchestrator === 'langgraph')
+          orchestrator.value = data.orchestrator
+        if (data.orchestratorMode === 'workflow' || data.orchestratorMode === 'agentic')
+          orchestratorMode.value = data.orchestratorMode
         if (data.enableChapterGeneration !== undefined)
           enableChapterGeneration.value = !!data.enableChapterGeneration
       }
@@ -163,7 +179,9 @@ export const useSettingsStore = defineStore('settings', () => {
           embeddingThreshold: embeddingThreshold.value,
           analysisTier: analysisTier.value,
           cloudAuditOptIn: cloudAuditOptIn.value,
-          enableChapterGeneration: enableChapterGeneration.value
+          enableChapterGeneration: enableChapterGeneration.value,
+          orchestrator: orchestrator.value,
+          orchestratorMode: orchestratorMode.value
         })
       )
     } catch (e) {
@@ -214,6 +232,16 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setLocalOnly(value: any) {
     localOnly.value = !!value
+    saveSettings()
+  }
+
+  function setOrchestrator(value: 'legacy' | 'langgraph') {
+    orchestrator.value = value === 'langgraph' ? 'langgraph' : 'legacy'
+    saveSettings()
+  }
+
+  function setOrchestratorMode(value: 'workflow' | 'agentic') {
+    orchestratorMode.value = value === 'agentic' ? 'agentic' : 'workflow'
     saveSettings()
   }
 
@@ -330,6 +358,8 @@ export const useSettingsStore = defineStore('settings', () => {
     embeddingThreshold.value = DEFAULT_SETTINGS.embeddingThreshold
     analysisTier.value = DEFAULT_SETTINGS.analysisTier
     cloudAuditOptIn.value = DEFAULT_SETTINGS.cloudAuditOptIn
+    orchestrator.value = DEFAULT_SETTINGS.orchestrator
+    orchestratorMode.value = DEFAULT_SETTINGS.orchestratorMode
     enableChapterGeneration.value = DEFAULT_SETTINGS.enableChapterGeneration
     featureModels.value = {}
     saveSettings()
@@ -390,6 +420,10 @@ export const useSettingsStore = defineStore('settings', () => {
     cloudAuditOptIn,
     enableChapterGeneration,
     setEnableChapterGeneration,
+    orchestrator,
+    orchestratorMode,
+    setOrchestrator,
+    setOrchestratorMode,
     featureModels,
     resolveFeatureProvider,
     resolveFeatureModel,

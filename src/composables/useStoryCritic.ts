@@ -347,6 +347,9 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
       const callCritic = (prompt: string) =>
         aiGenerateJson(prompt, activePrompts.critic, {
           feature: FEATURES.STORY_GENERATION,
+          // The Critic role: a different model from the Writer when the placement
+          // table says so (the judge should not be the author), on its own lane.
+          role: 'critic',
           temperature: 0.3,
           maxTokens: 1000,
           schema: criticSchema,
@@ -522,6 +525,7 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
           const prompt = formatCharacterCheck(char, ledger, charScenes)
           const parsed: any = await aiGenerateJson(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
             feature: FEATURES.STORY_GENERATION,
+            role: 'critic',
             temperature: 0.3,
             maxTokens: 1000,
             schema: CONTRADICTION_SCHEMA,
@@ -541,6 +545,7 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
           const prompt = formatLocationCheck(loc, ledger, locScenes)
           const parsed: any = await aiGenerateJson(systemNote + prompt, CONSISTENCY_CRITIC_PROMPT, {
             feature: FEATURES.STORY_GENERATION,
+            role: 'critic',
             temperature: 0.3,
             maxTokens: 1000,
             schema: CONTRADICTION_SCHEMA,

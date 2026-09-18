@@ -855,13 +855,21 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
             fullText += chunk
             onChunk(chunk, fullText)
           },
-          { feature: FEATURES.STORY_GENERATION, complexity, sessionBudget: _sessionBudget }
+          {
+            feature: FEATURES.STORY_GENERATION,
+            complexity,
+            sessionBudget: _sessionBudget,
+            // The Writer role: resolves through the placement table (config/roles.ts)
+            // — the prose model on the GPU lane by default.
+            role: 'writer'
+          }
         )
       } else {
         fullText = await aiGenerate(userPrompt, systemPrompt, {
           feature: FEATURES.STORY_GENERATION,
           complexity,
-          sessionBudget: _sessionBudget
+          sessionBudget: _sessionBudget,
+          role: 'writer'
         })
       }
 

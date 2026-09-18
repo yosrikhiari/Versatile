@@ -237,3 +237,52 @@ export async function clearGenRun(projectId: string) {
     console.warn('Failed to clear generation checkpoint:', error)
   }
 }
+
+// ── Editor-agent decision log (schema v54, `agentDecisions`) ───────────────
+//
+// One row per superstep of the LangGraph writing strategy: the summary the
+// Editor saw, the decision it made (or the workflow default that stood in),
+// and whether the model's answer was rejected. Append-only; read newest-first
+// through the `[runId+ts]` index, never `toArray()` then sort.
+
+export interface AgentDecisionRow {
+  id?: number
+  projectId: string
+  runId: string
+  ts: number
+  step: number
+  mode: 'workflow' | 'agentic'
+  source: 'model' | 'workflow' | 'fallback'
+  gpu: { action: string; target: number | null; instructions?: string }
+  cpu: { action: string; target: number | null }
+  why: string
+  rejected?: { raw: unknown; reason: string } | null
+  /** The compact scene summary the Editor was shown. */
+  scenes: Array<{ index: number; status: string; attempts: number; score: number | null }>
+}
+
+export async function logAgentDecision(row: AgentDecisionRow): Promise<void> {
+  try {
+    await db.agentDecisions.add(row)
+  } catch (err) {
+    // The log is observability, never a reason to stop writing a book.
+    console.warn('[db-generation] agent decision not logged:', err)
+  }
+}
+
+export async function listAgentDecisions(
+  projectId: string,
+  runId: string,
+  limit = 200
+): Promise<AgentDecisionRow[]> {
+  const rows: AgentDecisionRow[] = []
+  await db.agentDecisions
+    .where('[runId+ts]')
+    .between([runId, 0], [runId, Number.MAX_SAFE_INTEGER])
+    .reverse()
+    .until(() => rows.length >= limit)
+    .each((row: AgentDecisionRow) => {
+      if (row.projectId === projectId) rows.push(row)
+    })
+  return rows
+}

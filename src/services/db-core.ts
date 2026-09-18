@@ -29,6 +29,8 @@ export interface VersatileTables {
   evalPreferences: VersatileTable
   evalResults: VersatileTable
   genRuns: VersatileTable
+  graphCheckpoints: VersatileTable
+  agentDecisions: VersatileTable
   generatedStories: VersatileTable
   graphEdges: VersatileTable
   graphGroupsV2: VersatileTable
