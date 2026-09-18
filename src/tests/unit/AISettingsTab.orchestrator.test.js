@@ -75,4 +75,16 @@ describe('AISettingsTab — orchestrator and role placement', () => {
     expect(getRolePlacement('critic')).toMatchObject({ model: 'gemma3:4b', device: 'gpu' })
     expect(issues.some((t) => /✕/.test(t) && /evicts the first/.test(t))).toBe(true)
   })
+
+  it('persists the AgentOps tracing switch and URL', async () => {
+    const { isAgentOpsTracing, getAgentOpsUrl } = await import('@/config/agentops')
+    const wrapper = mount(AISettingsTab)
+    await flush()
+    expect(isAgentOpsTracing()).toBe(false)
+    await wrapper.find('[data-test="agentops-tracing"]').setValue(true)
+    await wrapper.find('[data-test="agentops-url"]').setValue('http://gateway:9090/')
+    await wrapper.find('[data-test="agentops-url"]').trigger('change')
+    expect(isAgentOpsTracing()).toBe(true)
+    expect(getAgentOpsUrl()).toBe('http://gateway:9090')
+  })
 })

@@ -33,6 +33,13 @@ import {
   resetRolePlacements,
   setRolePlacement
 } from '../../config/roles'
+import {
+  DEFAULT_AGENTOPS_URL,
+  getAgentOpsUrl,
+  isAgentOpsTracing,
+  setAgentOpsTracing,
+  setAgentOpsUrl
+} from '../../config/agentops'
 
 const emit = defineEmits(['close', 'model-changed'])
 const settingsStore = useSettingsStore()
@@ -130,6 +137,17 @@ const AGENT_ROLES = [
 ]
 const placements = ref({})
 const placementIssues = ref([])
+
+// AgentOps tracing lives in config (services must not import stores); the
+// Agents panel edits the same keys.
+const agentOpsTracing = ref(isAgentOpsTracing())
+const agentOpsUrl = ref(getAgentOpsUrl())
+function saveAgentOps() {
+  setAgentOpsTracing(agentOpsTracing.value)
+  setAgentOpsUrl(agentOpsUrl.value || DEFAULT_AGENTOPS_URL)
+  agentOpsUrl.value = getAgentOpsUrl()
+}
+
 function refreshPlacement() {
   const next = {}
   for (const r of AGENT_ROLES) next[r.key] = getRolePlacement(r.key)
@@ -527,6 +545,37 @@ defineExpose({
       >
         {{ issue.level === 'error' ? '✕' : '⚠' }} {{ issue.message }}
       </p>
+
+      <h4 class="text-xs font-medium text-text-primary pt-1">Tracing (AgentOps)</h4>
+      <p class="text-11px text-text-hint leading-snug">
+        Route every local model call through the AgentOps gateway so it lands as a trace — the agent
+        role, the placement (<code>num_gpu</code>, <code>num_ctx</code>, <code>keep_alive</code>)
+        and the sampling values on its spans, never the prompt. Every model a role is placed on must
+        be registered on the gateway (<code>OLLAMA_MODELS=qwen3:8b,qwen2.5:3b-instruct</code>).
+      </p>
+      <div class="grid grid-cols-[auto_1fr] gap-3 items-center">
+        <label class="flex items-center gap-2 text-xs text-text-primary">
+          <input
+            id="agentops-tracing"
+            v-model="agentOpsTracing"
+            type="checkbox"
+            class="accent-accent"
+            data-test="agentops-tracing"
+            @change="saveAgentOps"
+          />
+          Trace via AgentOps
+        </label>
+        <input
+          id="agentops-url"
+          v-model="agentOpsUrl"
+          type="url"
+          aria-label="AgentOps URL"
+          :placeholder="DEFAULT_AGENTOPS_URL"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          data-test="agentops-url"
+          @change="saveAgentOps"
+        />
+      </div>
     </div>
 
     <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">

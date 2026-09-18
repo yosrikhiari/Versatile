@@ -52,6 +52,7 @@ import { PARALLEL_SCENE_LIMIT, SCENE_MAX_ATTEMPTS, WRITE_FAILURE_STREAK_ABORT } 
 import { syncChapterToBible } from './bibleSync'
 import { DexieSaver } from '../graph/dexieSaver'
 import { useOrchestrationStore } from '../../../stores/orchestrationStore'
+import { onTrace, setTraceContext } from '../../../services/traceContext'
 import {
   useStoryEditor,
   type EditorAction,
@@ -283,6 +284,10 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
     const { storyArc, storyBibleDocs, storyContract, projectId, onChunk } = writeParamsVal
     const runId = options.threadId ?? `${projectId}:${Date.now().toString(36)}`
     live.startRun({ runId, projectId, mode, warnings })
+    // Every model call made from here on carries `<run>/<step>/<role>` to the
+    // AgentOps gateway (when tracing is on) and its trace id comes back here.
+    setTraceContext({ runId, step: 0 })
+    const stopTraces = onTrace((report) => live.pushTrace(report))
     editor.sessionBudget = ctx.writer?.sessionBudget ?? null
 
     const ragOptions = buildRagOptions(projectId, writeParamsVal.research)
@@ -752,6 +757,7 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
       // returned, and the next ones announce themselves when they start.
       live.clearLanes()
       live.setStep(state.step + 1)
+      setTraceContext({ runId, step: state.step + 1 })
       live.setScenes(
         summarize(state.scenes).map((sc) => {
           const m = marked.find((x) => x.index === sc.index)
@@ -842,6 +848,9 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
     } catch (err: unknown) {
       live.endRun(errorMessage(err))
       throw err
+    } finally {
+      stopTraces()
+      setTraceContext(null)
     }
     live.setScenes(summarize(finalState.scenes))
     live.endRun(null)

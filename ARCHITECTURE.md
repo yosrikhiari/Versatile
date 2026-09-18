@@ -108,6 +108,20 @@ Clean Architecture, one solution (`Versatile.slnx`):
   preset keeps Writer and Director on the GPU prose model and runs the
   Critic and Editor on a small CPU model, so the judge is not the author
   and nothing swaps.
+- **Tracing through AgentOps** (`src/config/agentops.ts`, off by default):
+  the Ollama provider keeps its request path — stall detection, first-token
+  budget, partial-output salvage — and swaps only the transport
+  (`providers/agentopsTransport.ts`): `POST <gateway>/v1/chat/completions`
+  streamed as SSE instead of Ollama's NDJSON `/api/generate`. Every call
+  carries `X-Agent-Role` and `X-Client-Ref` (`<run>/<step>/<role>`, set per
+  superstep by the graph through `services/traceContext.ts`), the gateway
+  forwards `options` / `format` / `keep_alive` / `think` (AgentOps v1.1,
+  ADR-0009 there) and records their values — never the prompt, never the
+  schema — on the `model.generate` span, and answers `X-Trace-ID`, which the
+  transport reports back so the Agents panel lists each call's trace with a
+  link into the Tower inspector. Every placed model must be registered on
+  the gateway (`OLLAMA_MODELS`); the transport names that fix when the
+  gateway answers `unknown_model`.
 - **Run contract**: gates warn, never silently discard prose. A scene
   that fails the gate after `SCENE_MAX_ATTEMPTS` is committed as its best
   attempt with `contentStatus: 'review'` and a `gate_failed` health event;

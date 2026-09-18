@@ -12,7 +12,14 @@ import {
   resetRolePlacements,
   setRolePlacement
 } from '../../config/roles'
+import {
+  agentOpsTraceUrl,
+  getAgentOpsUrl,
+  isAgentOpsTracing,
+  setAgentOpsTracing
+} from '../../config/agentops'
 import BasePanelHeader from '../ui/BasePanelHeader.vue'
+import BaseSwitch from '../ui/BaseSwitch.vue'
 import BaseSection from '../ui/BaseSection.vue'
 import BaseSegmented from '../ui/BaseSegmented.vue'
 import BaseSelect from '../ui/BaseSelect.vue'
@@ -136,6 +143,20 @@ const STATUS_COLOR = {
 
 const recentDecisions = computed(() => run.value.decisions.slice(-8).reverse())
 
+// ── AgentOps tracing ─────────────────────────────────────────────────────
+// A plain config value (services must not import stores), mirrored into a ref
+// so the switch is reactive; the Settings tab edits the same key.
+const tracing = ref(isAgentOpsTracing())
+function setTracing(on) {
+  setAgentOpsTracing(on)
+  tracing.value = on
+}
+const gatewayUrl = computed(() => getAgentOpsUrl())
+const recentTraces = computed(() => run.value.traces.slice(-8).reverse())
+function traceLink(t) {
+  return agentOpsTraceUrl(t.traceId)
+}
+
 function describeAction(a) {
   if (!a) return '—'
   if (a.target == null) return a.action
@@ -194,6 +215,14 @@ const elapsed = computed(() => {
               role.
             </template>
           </p>
+          <BaseSwitch
+            :model-value="tracing"
+            label="Trace via AgentOps"
+            :description="`Every local model call goes through the gateway at ${gatewayUrl} and lands as a trace with the agent role, placement and sampling values — never the prompt. Each placed model must be registered there (OLLAMA_MODELS).`"
+            size="sm"
+            data-test="tracing-switch"
+            @update:model-value="setTracing($event)"
+          />
         </div>
       </BaseSection>
 
@@ -363,6 +392,32 @@ const elapsed = computed(() => {
             <BaseChip size="sm" :color="STATUS_COLOR[s.status] || 'neutral'">{{
               s.status
             }}</BaseChip>
+          </li>
+        </ul>
+      </BaseSection>
+
+      <BaseSection
+        v-if="isGraph && recentTraces.length"
+        title="Traces"
+        description="The gateway trace of each model call this run, newest first. Open one to see the route, the placement and the timing on its spans."
+        :meta="`${run.traces.length}`"
+        dense
+      >
+        <ul class="space-y-1" data-test="trace-list">
+          <li
+            v-for="t in recentTraces"
+            :key="t.traceId"
+            class="flex items-center gap-2 font-ui text-11px leading-4"
+          >
+            <BaseChip size="sm" color="neutral">{{ t.agentRole || 'unplaced' }}</BaseChip>
+            <a
+              :href="traceLink(t)"
+              target="_blank"
+              rel="noopener"
+              class="font-mono text-text-primary hover:text-accent"
+              >{{ t.traceId.slice(0, 8) }}</a
+            >
+            <span class="min-w-0 flex-1 truncate text-text-hint">{{ t.clientRef }}</span>
           </li>
         </ul>
       </BaseSection>

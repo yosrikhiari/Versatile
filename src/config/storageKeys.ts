@@ -24,6 +24,9 @@ export const STORAGE_KEYS = {
   ROLE_PLACEMENT_PREFIX: 'versatile_role_placement_',
   /** Which writing orchestrator a run uses: 'legacy' | 'langgraph' (settingsStore). */
   ORCHESTRATOR: 'versatile_orchestrator',
+  /** Route local model calls through the AgentOps gateway ('true' | 'false') and where it is. */
+  AGENTOPS_TRACING: 'versatile_agentops_tracing',
+  AGENTOPS_URL: 'versatile_agentops_url',
   OPENAI_KEY: 'versatile_openai_key',
   OPENAI_FALLBACK_PROMPTED: 'versatile_openai_fallback_prompted',
   EMBEDDING_MODEL: 'versatile_embedding_model',

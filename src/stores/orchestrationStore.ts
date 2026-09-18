@@ -15,6 +15,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { EditorDecision, EditorSceneSummary } from '../types/orchestration'
+import type { TraceReport } from '../services/traceContext'
 import { ROLE_NAMES, resolveRolePlacement, type RoleName, type RoleRuntime } from '../config/roles'
 
 export type LaneName = 'gpu' | 'cpu'
@@ -43,6 +44,8 @@ export interface RunSnapshot {
   roles: Record<RoleName, RoleRuntime> | null
   warnings: string[]
   error: string | null
+  /** Gateway traces reported for this run (AgentOps tracing on), newest last. */
+  traces: TraceReport[]
 }
 
 const idle = (): LaneActivity => ({
@@ -55,6 +58,7 @@ const idle = (): LaneActivity => ({
 })
 
 const MAX_DECISIONS = 60
+const MAX_TRACES = 120
 
 export const useOrchestrationStore = defineStore('orchestration', () => {
   const run = ref<RunSnapshot>({
@@ -69,7 +73,8 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
     decisions: [],
     roles: null,
     warnings: [],
-    error: null
+    error: null,
+    traces: []
   })
 
   const active = computed(() => !!run.value.runId && run.value.finishedAt == null)
@@ -99,7 +104,8 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
       decisions: [],
       roles: currentRoles(),
       warnings: args.warnings,
-      error: null
+      error: null,
+      traces: []
     }
   }
 
@@ -124,6 +130,11 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
     run.value.decisions = next.length > MAX_DECISIONS ? next.slice(-MAX_DECISIONS) : next
   }
 
+  function pushTrace(report: TraceReport) {
+    const next = run.value.traces.concat(report)
+    run.value.traces = next.length > MAX_TRACES ? next.slice(-MAX_TRACES) : next
+  }
+
   function endRun(error: string | null = null) {
     run.value.finishedAt = Date.now()
     run.value.error = error
@@ -143,7 +154,8 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
       decisions: [],
       roles: null,
       warnings: [],
-      error: null
+      error: null,
+      traces: []
     }
   }
 
@@ -157,6 +169,7 @@ export const useOrchestrationStore = defineStore('orchestration', () => {
     setLane,
     clearLanes,
     pushDecision,
+    pushTrace,
     endRun,
     reset
   }

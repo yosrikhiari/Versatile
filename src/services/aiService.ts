@@ -143,6 +143,8 @@ interface ProviderOptions {
   keepAlive?: string
   /** Context window for this role, overriding the global num_ctx. */
   numCtx?: number
+  /** The agent role, for the AgentOps trace (`X-Agent-Role`); null when unplaced. */
+  agentRole?: string | null
 }
 
 interface LangfuseTrace {
@@ -514,13 +516,16 @@ function laneFor(providerName: string, role: AiGenerateOptions['role']): string 
 /** Provider options contributed by a role placement (none for unplaced calls). */
 function placementOptions(
   role: AiGenerateOptions['role']
-): Pick<ProviderOptions, 'numGpu' | 'keepAlive' | 'numCtx'> {
+): Pick<ProviderOptions, 'numGpu' | 'keepAlive' | 'numCtx' | 'agentRole'> {
   const placed = placementFor(role)
-  if (!placed) return {}
+  // Every call names its role on the trace, placed or not: 'utility' and
+  // 'prose' calls are the bulk of a run and are worth telling apart there.
+  if (!placed) return { agentRole: role ?? null }
   return {
     numGpu: placed.numGpu,
     keepAlive: placed.keepAlive,
-    numCtx: placed.numCtx ?? undefined
+    numCtx: placed.numCtx ?? undefined,
+    agentRole: placed.role
   }
 }
 

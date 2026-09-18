@@ -11,6 +11,9 @@ import { resolveRolePlacement } from '../../config/roles'
 import { resolveTimeLimit } from '../../config/timeLimits'
 import { TokenLimitError } from '../ai/tokenLimitError'
 import { recordThroughput } from '../generationEstimate'
+import { isAgentOpsTracing } from '../../config/agentops'
+import { reportTrace } from '../traceContext'
+import { buildAgentOpsRequest, describeAgentOpsError, parseAgentOpsLine } from './agentopsTransport'
 
 interface OllamaOptions {
   apiKey?: string
@@ -24,6 +27,11 @@ interface OllamaOptions {
   numGpu?: number
   /** Ollama keep_alive duration string, e.g. '30m'. */
   keepAlive?: string
+  /**
+   * The agent role making this call (config/roles.ts). Only used when tracing
+   * through AgentOps: it is sent as `X-Agent-Role` and lands on the trace.
+   */
+  agentRole?: string | null
   repeatPenalty?: number
   repeatLastN?: number
   topP?: number
@@ -308,34 +316,64 @@ async function runStream(
       }
     }
 
-    const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: model,
-        system: systemPrompt,
-        prompt: prompt,
-        stream: true,
-        think: options.think ?? THINKING_DISABLED_BY_DEFAULT,
-        ...(options.format ? { format: options.format } : {}),
-        // A placed role asks Ollama to keep its model resident between calls;
-        // without it a CPU-placed Critic would be unloaded after Ollama's default
-        // five minutes and reloaded (5-18 s) on the next scene.
-        ...(options.keepAlive ? { keep_alive: options.keepAlive } : {}),
-        ...buildOllamaOptions(options)
-      }),
-      signal: controller.signal
-    })
+    // Two transports, one request path. Native Ollama is NDJSON on
+    // /api/generate; through AgentOps it is the OpenAI chat shape streamed as
+    // SSE, with the role and a client ref in headers so the gateway's trace can
+    // be joined back to this run (services/traceContext.ts).
+    const traced = isAgentOpsTracing()
+    const think = options.think ?? THINKING_DISABLED_BY_DEFAULT
+    const ollamaOptions = buildOllamaOptions(options).options ?? {}
+    const gateway = traced
+      ? buildAgentOpsRequest({
+          model,
+          systemPrompt,
+          prompt,
+          ollamaOptions,
+          format: options.format,
+          keepAlive: options.keepAlive,
+          think,
+          agentRole: options.agentRole
+        })
+      : null
+    const response = gateway
+      ? await fetch(gateway.url, {
+          method: 'POST',
+          headers: gateway.headers,
+          body: gateway.body,
+          signal: controller.signal
+        })
+      : await fetch(`${getOllamaEndpoint()}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: model,
+            system: systemPrompt,
+            prompt: prompt,
+            stream: true,
+            think,
+            ...(options.format ? { format: options.format } : {}),
+            // A placed role asks Ollama to keep its model resident between calls;
+            // without it a CPU-placed Critic would be unloaded after Ollama's default
+            // five minutes and reloaded (5-18 s) on the next scene.
+            ...(options.keepAlive ? { keep_alive: options.keepAlive } : {}),
+            ...(Object.keys(ollamaOptions).length ? { options: ollamaOptions } : {})
+          }),
+          signal: controller.signal
+        })
 
     if (!response.ok) {
       let detail = ''
+      let errBody: { error?: { code?: string; message?: string } } | null = null
       try {
-        const errBody = await response.json()
-        detail = errBody.error || JSON.stringify(errBody)
+        errBody = await response.json()
+        const e = errBody?.error
+        detail = typeof e === 'string' ? e : e?.message || JSON.stringify(errBody)
       } catch {
         // Response body wasn't JSON; fall through and throw with status only.
       }
-      const msg = `Ollama error (${response.status}): ${detail}`.trim()
+      const msg = gateway
+        ? describeAgentOpsError(response.status, errBody, model)
+        : `Ollama error (${response.status}): ${detail}`.trim()
       if (
         /(?:context length exceeded|context_length_exceeded|maximum context|prompt too large)/i.test(
           msg
@@ -344,6 +382,18 @@ async function runStream(
         throw new TokenLimitError(msg, PROVIDERS.OLLAMA, model, options.maxTokens)
       }
       throw decorateOllamaError(msg, detail)
+    }
+
+    const traceId = gateway ? response.headers.get('X-Trace-ID') : null
+    if (gateway && traceId) {
+      reportTrace({
+        traceId,
+        clientRef: gateway.clientRef,
+        agentRole: gateway.agentRole,
+        model,
+        at: Date.now(),
+        backend: null
+      })
     }
 
     const reader = response.body!.getReader()
@@ -413,6 +463,17 @@ async function runStream(
 
         for (const line of lines) {
           if (!line.trim()) continue
+          if (gateway) {
+            const chunk = parseAgentOpsLine(line)
+            if (!chunk) continue
+            if (chunk.error) throw new Error(`AgentOps stream failed: ${chunk.error}`)
+            if (chunk.text) {
+              fullResponse += chunk.text
+              if (onChunk) onChunk(chunk.text, fullResponse)
+            }
+            if (chunk.usage) Object.assign(usage, chunk.usage)
+            continue
+          }
           try {
             const parsed = JSON.parse(line)
             if (parsed.response) {

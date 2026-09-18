@@ -132,4 +132,35 @@ describe('OrchestrationPanel', () => {
     })
     expect(wrapper.findAll('[data-test="placement-issue"]')).toHaveLength(0)
   })
+
+  it('toggles AgentOps tracing in place and lists the traces a run reported', async () => {
+    const { isAgentOpsTracing } = await import('@/config/agentops')
+    const settings = useSettingsStore()
+    settings.setOrchestrator('langgraph')
+    const wrapper = mount(OrchestrationPanel)
+    await flush()
+    expect(isAgentOpsTracing()).toBe(false)
+    expect(wrapper.find('[data-test="trace-list"]').exists()).toBe(false)
+
+    await wrapper.find('[data-test="tracing-switch"] button').trigger('click')
+    expect(isAgentOpsTracing()).toBe(true)
+
+    const live = useOrchestrationStore()
+    live.startRun({ runId: 'p1:r', projectId: 'p1', mode: 'workflow', warnings: [] })
+    live.pushTrace({
+      traceId: 'abc123def4567890',
+      clientRef: 'p1:r/1/critic',
+      agentRole: 'critic',
+      model: 'qwen2.5:3b-instruct',
+      at: Date.now(),
+      backend: null
+    })
+    await flush()
+    const list = wrapper.find('[data-test="trace-list"]')
+    expect(list.text()).toContain('critic')
+    expect(list.text()).toContain('abc123de')
+    expect(list.find('a').attributes('href')).toBe(
+      'http://localhost:8080/#/traces/abc123def4567890'
+    )
+  })
 })

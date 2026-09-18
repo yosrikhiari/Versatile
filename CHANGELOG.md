@@ -37,6 +37,22 @@ was verified.
 - Writer and Critic calls now carry `role: 'writer'` / `role: 'critic'`; the
   retry feedback no longer prints `[object Object]` for an issue that only had
   a description.
+- **Agents panel.** A `Write → Agents` sidebar panel
+  (`components/orchestration/OrchestrationPanel.vue`, `orchestrationStore`)
+  shows the orchestrator and mode, every role with its model, device and what
+  it is doing this superstep, both lanes, every scene's status, and the
+  Editor's decisions with their source — and edits placement, preset,
+  orchestrator and mode in place. `BaseSelect` joins the primitives.
+- **Tracing through AgentOps.** `Trace via AgentOps` (Agents panel or
+  `Settings → AI`) routes every local model call through the AgentOps gateway
+  as an OpenAI-shaped SSE stream with `X-Agent-Role` / `X-Client-Ref`
+  headers; the placement (`num_gpu`, `num_ctx`, `keep_alive`, `think`) and the
+  sampling values ride along and land on the gateway's spans, never the
+  prompt. The trace id comes back per call and the panel's **Traces** section
+  links each one into the Tower inspector. `services/traceContext.ts` is the
+  join (run id + superstep → client ref). Needs AgentOps ≥ v1.1 with the
+  placed models in `OLLAMA_MODELS`; the transport says so when the gateway
+  answers `unknown_model`.
 
 ### Backend and sync, checked (2026-09-15)
 - `docs/sync-status.md` matches the code again (a removed `Research` entity is

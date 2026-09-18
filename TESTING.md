@@ -129,3 +129,20 @@ sonarcloud.io and update the repository secret to get reports back. `eval-regres
 - Real-model run: `tools/generate-sample.mjs` with `settings.orchestrator =
   'langgraph'` (see `docs/GENERATION-PIPELINE-ANALYSIS.md` §9 for the A/B
   protocol). Mocked tests prove the control flow, not the prose.
+- `OrchestrationPanel.test.js` — the Agents panel mounted: legacy vs graph
+  state, the empty state that leads to the generator, a live run rendered
+  from the store (lanes, activity per role, scenes, decisions, warnings),
+  placement edited in place, the preset, the tracing switch and the Traces
+  list.
+- `agentopsTransport.test.js` — the AgentOps wire shape (OpenAI messages,
+  `max_tokens` from `num_predict`, `options` / `format` / `keep_alive` /
+  `think`, the role and a ≤64-char client ref in headers), SSE parsing
+  across chunk boundaries, the trace id reported per call, the native path
+  untouched when tracing is off, `unknown_model` → "register it in
+  `OLLAMA_MODELS`", a mid-stream gateway error surfaced.
+- A traced real run: start AgentOps v1.1 with
+  `OLLAMA_MODELS=qwen3:8b,qwen2.5:3b-instruct` (plus Postgres for spans),
+  switch `Trace via AgentOps` on in the Agents panel, run one chapter, then
+  open a trace from the panel's Traces list: `model.generate` must carry
+  `agent_role`, `params.num_gpu` (0 for the critic), `params.keep_alive` and
+  no prompt text. Recorded in `docs/GENERATION-PIPELINE-ANALYSIS.md` §9.
