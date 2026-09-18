@@ -62,7 +62,10 @@ npm run test:e2e           # boots `npm run dev` automatically
 ```
 
 Specs in `e2e/`: `smoke`, `auth`, `responsive`, `panel-dock` (right-docked
-panels, canvas dominant) and `generator-reskin`. Full user journeys are
+panels, canvas dominant), `generator-reskin` and `agents-panel` (the Agents
+panel: orchestrator switch reveals the empty state, the tracing switch
+toggles, a second GPU model shows the eviction error while editing and the
+CPU device clears it — skipped when Ollama serves only one model). Full user journeys are
 covered by mocked pipeline tests in
 `src/tests/unit/e2ePipelineIntegration.test.js` instead.
 
