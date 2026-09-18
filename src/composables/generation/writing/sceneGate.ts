@@ -1,5 +1,12 @@
 import type { Ref } from 'vue'
-import type { GatedScene, WriteSceneWithGateArgs } from '../types'
+import type {
+  CriticVerdict,
+  DraftedScene,
+  GatedScene,
+  SceneBrief,
+  StoryArc,
+  WriteSceneWithGateArgs
+} from '../types'
 import {
   countWords,
   gateDimensionCoverage,
@@ -421,28 +428,28 @@ export function createSceneGate(ctx: SceneGateContext) {
   // orchestrators cannot drift apart on what "passes" means.
 
   interface DraftAttemptArgs {
-    scene: any
+    scene: SceneBrief
     sceneIndex: number
-    scenePhase: any
-    storyArc: any
+    scenePhase: number | string | undefined
+    storyArc: StoryArc | null | undefined
     chapterLog: string
-    storyBible: any
-    storyContract: any
+    storyBible: string | undefined
+    storyContract: string | undefined
     sceneEntitiesJson: string
     embeddingContext: string
-    extraRejected: any
-    anchorRole: any
-    anchorConstraints: any
-    emitChunk: ((proseChunk: any, fullProse: any) => void) | undefined
-    attemptFeedback: any
-    attemptFocusInstructions: any
+    extraRejected: string[] | undefined
+    anchorRole: string | undefined
+    anchorConstraints: string | undefined
+    emitChunk: ((proseChunk: string, fullProse: string) => void) | undefined
+    attemptFeedback: string | null | undefined
+    attemptFocusInstructions: string | undefined
     /** 0-based attempt number and the cap, for the rejection bookkeeping. */
     attempt: number
     maxAttempts: number
   }
 
   type DraftAttemptResult =
-    { ok: true; prose: string; structured: any } | { ok: false; rejected: true; error: any }
+    ({ ok: true } & DraftedScene) | { ok: false; rejected: true; error: unknown }
 
   /**
    * One Writer call. A rejected draft (looping prose, a refusal) is reported,
@@ -472,7 +479,7 @@ export function createSceneGate(ctx: SceneGateContext) {
     throwIfAborted()
     let fullProse = ''
     try {
-      const result = await (writer.writeSceneStructured as any)({
+      const result: DraftedScene = await writer.writeSceneStructured({
         sceneBrief: scene,
         storyArc,
         chapterLog,
@@ -481,11 +488,11 @@ export function createSceneGate(ctx: SceneGateContext) {
         anchorRole,
         anchorConstraints,
         signal: abort.signal(),
-        onChunk: (_chunk: any, proseChunk: any) => {
+        onChunk: (_chunk: string, proseChunk: string) => {
           fullProse += proseChunk || ''
           emitChunk?.(proseChunk, fullProse)
         },
-        onRawChunk: (chunk: any) => actLog.appendThought(ctx.currentTaskId, scenePhase, chunk),
+        onRawChunk: (chunk: string) => actLog.appendThought(ctx.currentTaskId, scenePhase, chunk),
         embeddingContext,
         storyContract,
         rejectedPatterns: extraRejected,
@@ -494,22 +501,23 @@ export function createSceneGate(ctx: SceneGateContext) {
         focusInstructions: attemptFocusInstructions || undefined
       })
       return { ok: true, prose: result.prose, structured: result.structured }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // A rejected attempt is not a failed scene. The writer refuses to hand
       // back looping prose OR a model refusal ("I'm sorry, but I can't..."),
       // so re-roll — that is the response the retry loop exists for.
       // Anything else is a real error and propagates.
       if (!isUnsalvageableProse(err)) throw err
+      const message = err instanceof Error ? err.message : String(err)
 
       runHealth.record('prose_rejected', {
         stage: 'writer',
         sceneIndex,
-        detail: err?.message || 'rejected output'
+        detail: message || 'rejected output'
       })
       actLog.appendThought(
         ctx.currentTaskId,
         scenePhase,
-        `\n⚠ Attempt ${attempt + 1} was rejected (${err?.message || 'unusable output'}). Retrying.\n`
+        `\n⚠ Attempt ${attempt + 1} was rejected (${message || 'unusable output'}). Retrying.\n`
       )
       // Out of attempts: let the caller treat the scene as failed rather than
       // committing prose the guard rejected.
@@ -520,20 +528,20 @@ export function createSceneGate(ctx: SceneGateContext) {
 
   interface CritiqueAttemptArgs {
     proseText: string
-    structured: any
-    scene: any
+    structured: DraftedScene['structured']
+    scene: SceneBrief
     sceneIndex: number
-    scenePhase: any
-    storyBible: any
+    scenePhase: number | string | undefined
+    storyBible: string | undefined
     chapterLog: string
     sceneEntitiesJson: string
-    attemptFocusInstructions: any
+    attemptFocusInstructions: string | undefined
     /** Word count of the first attempt, the reference for the prose-quality gate. */
     baselineWordCount: number
   }
 
   interface CritiqueAttemptResult {
-    criticResult: any
+    criticResult: CriticVerdict
     /** True when the gate is satisfied (or could not run): stop retrying. */
     accept: boolean
     /** Feedback and focus for the next attempt when `accept` is false. */
@@ -562,7 +570,7 @@ export function createSceneGate(ctx: SceneGateContext) {
       baselineWordCount
     } = args
 
-    const criticResult = await critic.evaluateScene({
+    const criticResult: CriticVerdict = await critic.evaluateScene({
       draft: proseText,
       sceneBrief: scene,
       storyBible,
@@ -632,7 +640,7 @@ export function createSceneGate(ctx: SceneGateContext) {
         "\n⚠ Quality gate did not run for this scene — the critic's output could not be parsed. The draft was accepted unchecked.\n"
       )
     }
-    const continuityOk = ((criticResult?.dimensionScores as any)?.continuity ?? 10) >= 6
+    const continuityOk = (criticResult?.dimensionScores?.continuity ?? 10) >= 6
 
     // Cloud escalation check: if eval is unavailable or has suspect scores and
     // user has cloud escalation enabled, offer to escalate this scene's
@@ -714,7 +722,12 @@ export function createSceneGate(ctx: SceneGateContext) {
       passed: criticResult.pass,
       score: criticResult.score,
       dimensionScores: criticResult.dimensionScores || null,
-      topIssues: (criticResult.issues || []).slice(0, 3).map((iss: any) => iss.text || iss)
+      // `iss.text || iss` used to hand the writer "[object Object]" for an
+      // issue that only had a description; name the issue instead.
+      topIssues: (criticResult.issues || [])
+        .slice(0, 3)
+        .map((iss) => iss.text || iss.description || '')
+        .filter(Boolean)
     }
     const feedback = formatEvalFeedback([evalSnapshot])
     const retryResult = promptAdjuster.updateAdjustments([evalSnapshot], {
@@ -732,8 +745,8 @@ export function createSceneGate(ctx: SceneGateContext) {
 
   interface GateOutcomeArgs {
     chosenProse: string
-    chosenStructured: any
-    chosenEval: any
+    chosenStructured: DraftedScene['structured']
+    chosenEval: CriticVerdict | null
     maxAttempts: number
     sceneIndex: number
     retryGate: boolean
@@ -768,12 +781,15 @@ export function createSceneGate(ctx: SceneGateContext) {
         )
       }
 
-      const reason = chosenEval.issues?.find((i: any) => i.type === 'repetition')
-        ? `Repetition detected: ${chosenEval.issues.find((i: any) => i.type === 'repetition').description}`
+      const issueText = (i: NonNullable<CriticVerdict['issues']>[number]) =>
+        i.description || i.text || ''
+      const repetition = (chosenEval.issues || []).find((i) => i.type === 'repetition')
+      const reason = repetition
+        ? `Repetition detected: ${issueText(repetition)}`
         : // `verdictReason` names the dimension that actually failed ("voice scored
           // 6"), which is the actionable part. The score alone says nothing now that
           // the verdict is no longer derived from it.
-          `Quality gate failed after ${maxAttempts} attempt(s): ${chosenEval.verdictReason || `score ${chosenEval.score}`}${chosenEval.issues?.length ? ` — issues: ${chosenEval.issues.map((i: any) => i.description).join('; ')}` : ''}`
+          `Quality gate failed after ${maxAttempts} attempt(s): ${chosenEval.verdictReason || `score ${chosenEval.score}`}${chosenEval.issues?.length ? ` — issues: ${chosenEval.issues.map(issueText).join('; ')}` : ''}`
       gateFailure = reason
       runHealth.record('critique_failed', { stage: 'critic', sceneIndex, detail: reason })
       console.warn(`[sceneGate] scene ${sceneIndex + 1} kept for review: ${reason}`)
@@ -794,7 +810,7 @@ export function createSceneGate(ctx: SceneGateContext) {
   }
 
   /** The entity blob a scene is written and judged against (its own cast, else the full dump). */
-  function sceneEntitiesFor(scene: any, existingEntitiesJson: string | undefined): string {
+  function sceneEntitiesFor(scene: SceneBrief, existingEntitiesJson: string | undefined): string {
     return (
       buildSceneEntitiesBlob(scene, {
         characters: storyBibleStore.characters,

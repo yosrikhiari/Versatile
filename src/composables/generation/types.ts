@@ -80,6 +80,27 @@ export interface GatedScene {
   gateFailure?: string | null
 }
 
+/**
+ * The critic's verdict on one draft, as the gate consumes it. Everything is
+ * optional because a parse failure yields `{ evalUnavailable: true }` and the
+ * gate must still make a decision.
+ */
+export interface CriticVerdict {
+  score?: number | null
+  pass?: boolean
+  evalUnavailable?: boolean
+  dimensionScores?: Record<string, number> | null
+  issues?: Array<{ severity?: string; type?: string; description?: string; text?: string }>
+  verdictReason?: string
+  [extra: string]: unknown
+}
+
+/** One writer attempt before the gate has looked at it. */
+export interface DraftedScene {
+  prose: string
+  structured: (Record<string, unknown> & { metadataStatus?: string; keyFacts?: unknown[] }) | null
+}
+
 /** Arguments to the gated writer, one scene at a time. */
 export interface WriteSceneWithGateArgs {
   scene: SceneBrief
