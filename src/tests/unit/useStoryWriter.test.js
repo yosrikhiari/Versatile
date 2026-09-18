@@ -244,6 +244,23 @@ describe('writeSceneStructured (prose-first, two calls)', () => {
     expect(prosePrompt).not.toContain('"usedEntities"')
   })
 
+  it('tags the prose call and its top-up with the writer role', async () => {
+    // The role is what places the call (GPU lane, keep_alive) and what the
+    // AgentOps trace groups by. The first traced real run showed this path's
+    // calls arriving at the gateway untagged: only the older `writeScene`
+    // carried `role: 'writer'`. A short scene exercises the top-up too.
+    mockAiGenerate.mockResolvedValueOnce('Short.').mockResolvedValue(longEnoughProse)
+    const { writeSceneStructured } = useStoryWriter()
+    await writeSceneStructured({
+      sceneBrief: { ...baseSceneBrief, targetWords: 400 },
+      storyArc: defaultArc
+    })
+    expect(mockAiGenerate.mock.calls.length).toBeGreaterThanOrEqual(2)
+    for (const call of mockAiGenerate.mock.calls) {
+      expect(call[2]).toMatchObject({ role: 'writer' })
+    }
+  })
+
   it('makes exactly two model calls for a scene that meets its target', async () => {
     // Net-neutral vs the old summary call. A scene that comes back short costs
     // extra calls to top up — see the length-target block below — but that is

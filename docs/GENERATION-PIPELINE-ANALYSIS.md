@@ -287,3 +287,47 @@ GPU, Critic and Editor `qwen2.5:3b-instruct` on the CPU. 18.6 min end to end, `e
   Ollama evicted the writer for the embedder and the embedder for the writer — about a
   minute per scene, and the legacy path pays it too. Fixed by placing the embedding role on
   the CPU by default (`config/roles.ts`, `embedding`).
+
+**Second real run, traced (2026-09-18, `reports/live/the-traced-run-1/`).** Same shape at
+1,000 words per scene, every model call routed through AgentOps v1.1 with the agent role
+and `<run>/<step>/<role>` on the spans. **8.1 min** end to end (vs 18.6), 948 words,
+`error=null`, synced 2 — the embedder fix is most of the difference. Three more things the
+trace and the log showed:
+
+- **Two more embedding paths were still on the GPU.** The provider's `generateEmbedding`
+  honoured the placement, but `embeddingService.ts` (the bootstrap/planning retrieval) and
+  `ollamaService.generateEmbedding` posted `/api/embed` directly with no `num_gpu` — Ollama's
+  log still read *"predicted to exceed available memory, evicting"* for a 1.1 GiB model
+  twice during planning. Both now spread the `embedding` placement. Writing-stage embeds
+  loaded as a third runner without eviction (`loaded runners count=3`).
+- **The writer's calls arrived at the gateway untagged.** 22 traces: `critic` ×4,
+  `editor` ×2, `utility` ×6, and 10 with no role — every draft and top-up. `writeSceneStructured`
+  (the path every strategy and the graph use) never passed `role: 'writer'`; only the older
+  `writeScene` did. Fixed, with a regression test that asserts the role on the prose call
+  and its top-up. Placement was unaffected (the writer inherits the GPU default), the
+  *trace* was — which is exactly what a trace with roles is for.
+- **The agentic Editor contributed nothing yet.** Of 7 decisions, 5 had one legal move per
+  lane (no model call) and the 2 model answers were rejected — `commit` and `critique` with
+  `target: null` — so the workflow order took over both times. The 3B did not hold the
+  schema's `target` field; the fence and the fallback did their job, and the decision log
+  says so. Run D of the A/B measures this; a 3B Editor may need a stricter schema
+  (`target` required per action) or a larger CPU model.
+- The 3B critic again failed 2/2 (score 6, `show_tell` 4): consistent with the first run.
+
+**Third run (2026-09-18, `reports/live/the-traced-run/`), with both fixes.** **6.6 min**,
+882 words, `error=null`, synced 2. 22 traces: `writer` ×4 (two drafts, two revises — now
+tagged), `critic` ×4, `editor` ×2, `utility` ×6, 6 untagged (bootstrap calls that carry no
+role by design). **Zero evictions from the run**: Ollama's log shows `loaded runners
+count=3` (8B on the GPU, 3B and embedder on the CPU) from the first draft to the last
+commit; the two evictions logged a minute later belong to `criticProbe.live.js`, which the
+live config runs next in its own jsdom (tracing off, 8B reloaded at 16k) — not to this run.
+Unchanged: the 3B critic failed 2/2 (scene 2 scored 7 overall but `show_tell` 5 under the
+dimension floor), and both agentic Editor answers were rejected (`commit` with no target,
+`critique #1` when #1 was not awaiting a verdict). The graph is proven; the 3B judge and
+the 3B editor are the open questions, and they are runs C and D.
+
+| Run | Scenes | Words | Wall | Embedder | Writer tagged | Editor model answers accepted |
+|---|---|---|---|---|---|---|
+| the-graph-test | 2 | 553 | 18.6 min | GPU, evicting the writer each scene | — (not traced) | 0 / 0 (workflow-only steps) |
+| the-traced-run-1 | 2 | 948 | 8.1 min | provider on CPU; two stray paths still GPU | no — untagged | 0 / 2 |
+| the-traced-run | 2 | 882 | 6.6 min | CPU everywhere, 0 evictions | yes | 0 / 2 |

@@ -407,7 +407,9 @@ Write the continuation now as prose. Output ONLY the new text — no headings, n
       maxTokens,
       signal,
       complexity,
-      sessionBudget
+      sessionBudget,
+      // The top-up is the Writer's work too: same placement, same trace role.
+      role: 'writer' as const
     }
 
     try {
@@ -1150,7 +1152,13 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
             maxTokens,
             signal,
             complexity,
-            sessionBudget: _sessionBudget
+            sessionBudget: _sessionBudget,
+            // The Writer role (config/roles.ts). This is the path every strategy
+            // and the graph draft through; the first traced run showed its calls
+            // reaching the gateway untagged while `writeScene` — the older path
+            // nothing calls in a run — carried the role. A trace with the role
+            // on it is what made the gap visible.
+            role: 'writer'
           }
         )
       } else {
@@ -1159,7 +1167,8 @@ Write the scene now as prose. Output ONLY the scene text — no JSON, no heading
           maxTokens,
           signal,
           complexity,
-          sessionBudget: _sessionBudget
+          sessionBudget: _sessionBudget,
+          role: 'writer'
         })
       }
 

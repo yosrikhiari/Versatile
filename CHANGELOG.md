@@ -53,6 +53,16 @@ was verified.
   join (run id + superstep → client ref). Needs AgentOps ≥ v1.1 with the
   placed models in `OLLAMA_MODELS`; the transport says so when the gateway
   answers `unknown_model`.
+- **What the first traced runs found** (`docs/GENERATION-PIPELINE-ANALYSIS.md`
+  §9): the writer's real draft path (`writeSceneStructured` and its top-up)
+  reached the gateway with no role — only the older `writeScene` carried
+  `role: 'writer'`; fixed, with a test on the prose call and the top-up. Two
+  embedding paths (`embeddingService.ts`, `ollamaService.ts`) posted
+  `/api/embed` without the `embedding` placement and still loaded the 1.1 GiB
+  embedder on the GPU during planning; both now spread it. Same two scenes:
+  18.6 → 8.1 → 6.6 minutes, zero evictions on the third run. The live harness
+  takes `LIVE_TRACE=agentops` and records every trace id and the Editor's
+  decisions in `health.json`.
 
 ### Backend and sync, checked (2026-09-15)
 - `docs/sync-status.md` matches the code again (a removed `Research` entity is
