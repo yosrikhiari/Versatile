@@ -6,6 +6,10 @@ An offline-first fiction writing environment: a distraction-free editor, a story
 
 Nothing leaves the device unless you opt in — the cloud tier is per-project and discloses exactly what it sends.
 
+![Versatile tour: editor, Agents panel, chapters, story bible, network, timeline, story shape](docs/img/tour.gif)
+
+<sub>The sample story, on the local build. The Agents panel ([full size](docs/img/agents-panel.png)) is where each role — Director, Writer, Critic, Editor — gets a model and a device, and where a run can be traced through AgentOps.</sub>
+
 ## Features
 
 ### Writing Environment
