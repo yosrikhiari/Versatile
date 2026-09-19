@@ -6,6 +6,7 @@
  * the same reactive refs.
  */
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useProjectStore } from '../stores/projectStore'
 import { useFlowStore } from '../stores/flowStore'
 
@@ -16,6 +17,11 @@ export function useFlowSession() {
 
   const projectStore = useProjectStore()
   const timer = useFlowStore()
+  // Setup stores unwrap refs on access, so reading `timer.isRunning`
+  // snapshots a static boolean. `storeToRefs` keeps live refs instead —
+  // without it every consumer saw `*.value === undefined` and the whole
+  // Flow UI (timer, nudges, desaturation, end modal) never engaged.
+  const timerRefs = storeToRefs(timer)
 
   // Expose projectStore session data alongside timer state
   const sessionWordCount = computed(() => projectStore.sessionWordCount)
@@ -26,17 +32,17 @@ export function useFlowSession() {
   const dailyProgress = computed(() => projectStore.dailyProgress)
 
   _instance = {
-    // Timer state (reactive refs)
-    isRunning: timer.isRunning,
-    isPaused: timer.isPaused,
-    remaining: timer.remaining,
-    duration: timer.duration,
-    isDesaturated: timer.isDesaturated,
-    isNudging: timer.isNudging,
-    showBackspaceToast: timer.showBackspaceToast,
-    showSessionEndModal: timer.showSessionEndModal,
-    sessionWordCountEnd: timer.sessionWordCountEnd,
-    idleSeconds: timer.idleSeconds,
+    // Timer state (live refs into the store)
+    isRunning: timerRefs.isRunning,
+    isPaused: timerRefs.isPaused,
+    remaining: timerRefs.remaining,
+    duration: timerRefs.duration,
+    isDesaturated: timerRefs.isDesaturated,
+    isNudging: timerRefs.isNudging,
+    showBackspaceToast: timerRefs.showBackspaceToast,
+    showSessionEndModal: timerRefs.showSessionEndModal,
+    sessionWordCountEnd: timerRefs.sessionWordCountEnd,
+    idleSeconds: timerRefs.idleSeconds,
 
     // Session/daily metrics (computed from projectStore)
     sessionWordCount,

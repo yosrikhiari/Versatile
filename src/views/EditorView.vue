@@ -157,7 +157,9 @@ useKeyboardShortcuts({
   onToggleFlow: (running) => {
     running ? timer.startSession(20) : timer.endSession()
   },
-  timerIsRunning: timer.isRunning.value,
+  // Live ref (not `.value`): the shortcut reads it at keypress time so the
+  // second `f` ends the session. A snapshot would always restart it.
+  timerIsRunning: timer.isRunning,
   onToggleSpark: () => appShell.value?.toggleSpark(),
   onToggleStoryGenerator: () => appShell.value?.toggleStoryGenerator(),
   onTogglePolish: () => appShell.value?.togglePolish(),

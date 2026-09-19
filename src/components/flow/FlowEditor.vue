@@ -285,7 +285,10 @@ defineExpose({
 
     <div
       ref="scrollContainer"
-      :class="['flex-1 overflow-y-auto scrollbar-thin', flow.isDesaturated ? 'desaturated' : '']"
+      :class="[
+        'flex-1 overflow-y-auto scrollbar-thin',
+        flow.isDesaturated.value ? 'desaturated' : ''
+      ]"
     >
       <EmptyState
         v-if="isEmptyContent"

@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, unref } from 'vue'
 
 export function useKeyboardShortcuts(shortcuts: any) {
   function handleKeydown(e: any) {
@@ -47,7 +47,10 @@ export function useKeyboardShortcuts(shortcuts: any) {
     }
 
     if (e.key === 'f' && !e.ctrlKey && !e.metaKey && shortcuts.onToggleFlow) {
-      if (shortcuts.timerIsRunning) {
+      // Read live (a ref or getter result, not a setup-time snapshot) so the
+      // second press ends the session instead of restarting it. `unref`
+      // keeps plain booleans working as before.
+      if (unref(shortcuts.timerIsRunning)) {
         shortcuts.onToggleFlow(false)
       } else {
         shortcuts.onToggleFlow(true)

@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('vue', () => ({
   onMounted: (cb) => cb(),
-  onUnmounted: vi.fn()
+  onUnmounted: vi.fn(),
+  unref: (v) => (v !== null && typeof v === 'object' && 'value' in v ? v.value : v)
 }))
 
 function dispatchOnBody(key, opts = {}) {
@@ -74,6 +75,20 @@ describe('useKeyboardShortcuts', () => {
     useKeyboardShortcuts({ onToggleFlow, timerIsRunning: true })
     dispatchOnBody('f')
     expect(onToggleFlow).toHaveBeenCalledWith(false)
+  })
+
+  it('follows a live timerIsRunning ref across presses (start then end)', async () => {
+    const onToggleFlow = vi.fn()
+    const { useKeyboardShortcuts } = await import('../../composables/useKeyboardShortcuts')
+    // A setup-time snapshot (`timerIsRunning: false`) would restart the
+    // session on every press; a live ref toggles start/end correctly.
+    const timerIsRunning = { value: false }
+    useKeyboardShortcuts({ onToggleFlow, timerIsRunning })
+    dispatchOnBody('f')
+    expect(onToggleFlow).toHaveBeenLastCalledWith(true)
+    timerIsRunning.value = true
+    dispatchOnBody('f')
+    expect(onToggleFlow).toHaveBeenLastCalledWith(false)
   })
 
   it('calls number action on key 1', async () => {
