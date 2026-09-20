@@ -1,8 +1,14 @@
 # Versatile — Fiction Writing Assistant
 
+[![ci](https://github.com/yosrikhiari/Versatile/actions/workflows/ci.yml/badge.svg)](https://github.com/yosrikhiari/Versatile/actions/workflows/ci.yml) [![backend-ci](https://github.com/yosrikhiari/Versatile/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/yosrikhiari/Versatile/actions/workflows/backend-ci.yml)
+
 An offline-first fiction writing environment: a distraction-free editor, a story bible, chapters / scenes / timeline, a story network graph, and a local-AI pipeline that plans, drafts and critiques whole books on your own machine. Built with Vue 3, Pinia and Dexie (IndexedDB); Ollama by default for every model call; an optional .NET 10 backend for accounts, sync and collaboration.
 
 Nothing leaves the device unless you opt in — the cloud tier is per-project and discloses exactly what it sends.
+
+![Versatile tour: editor, Agents panel, chapters, story bible, network, timeline, story shape](docs/img/tour.gif)
+
+<sub>The sample story, on the local build. The Agents panel ([full size](docs/img/agents-panel.png)) is where each role — Director, Writer, Critic, Editor — gets a model and a device, and where a run can be traced through AgentOps.</sub>
 
 ## Features
 
