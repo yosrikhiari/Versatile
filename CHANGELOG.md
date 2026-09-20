@@ -7,6 +7,24 @@ was verified.
 
 ## [Unreleased]
 
+### Character group chat (2026-09-20)
+- **Group conversations.** Tick 2+ character cards in the Story Bible
+  ("Group chat (N)") to open the existing chat modal with the whole cast: a
+  LangGraph director (`useGroupChatDirector`, utility lane) picks 1–3
+  speakers per turn with a labeled surprise, and each speaker is voiced
+  through the unchanged responder path (streaming, cleanup, persistence).
+  Solo chat is byte-identical. Intensity (Calm/Lively/Chaotic) lives in the
+  chat header; replies carry the chapter digest; one `SessionBudget` caps the
+  turn with streamed replies kept.
+- **Fixes the Chromium probes found.** Test in Settings verifies the pasted
+  key without requiring Save; SettingsModal closes on Escape like every
+  other modal; a modal claim (`editor`/`bible`) stops two live views of one
+  session opening at once; bible ids travel uncoerced so speaker names
+  resolve under strict equality.
+- Verified: 30 new tests green; full frontend suite green; typecheck, lint
+  (0 errors) and policy clean; live Groq turn (director + 2 voices, ~1.5 s)
+  and local-Ollama turn measured in Chromium with zero console errors.
+
 ### Hosted AI keys via env + Cloudflare Workers AI (2026-09-20)
 - **`GEMINI_API_KEY`, `GROQ_API_KEY`, `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`**
   in `.env` (see `.env.example`) now reach the backend: compose maps them to

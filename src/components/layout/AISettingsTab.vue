@@ -211,7 +211,13 @@ function loadFeatureSelections() {
 async function testProvider(provider) {
   testingProvider.value = provider
   providerStatus.value[provider] = null
-  const result = await settingsStore.testProviderConnection(provider)
+  // Test the typed value, not the saved one: pasting a key and pressing Test
+  // must verify that key. Saving still happens only via Save (saveAllSettings).
+  const result = await settingsStore.testProviderConnection(
+    provider,
+    apiKeys.value[provider] || '',
+    cloudflareAccountId.value || ''
+  )
   providerStatus.value[provider] = result
   testingProvider.value = null
 }

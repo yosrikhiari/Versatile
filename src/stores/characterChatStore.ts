@@ -28,6 +28,8 @@ export interface ChatSession {
   messages: any[]
   createdAt: number
   updatedAt: number
+  /** Group-chat surprise intensity: 'calm' | 'lively' | 'chaotic'. Absent = lively. */
+  energy?: string
 }
 
 export const useCharacterChatStore = defineStore('characterChat', () => {
@@ -36,6 +38,15 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
   const isStreaming = ref(false)
   const streamError = ref<any | null>(null)
   const isLoading = ref(false)
+  // Which surface owns the visible chat modal ('editor' | 'bible' | null).
+  // Two surfaces render CharacterChatSession (EditorView's modal and
+  // StoryBiblePanel's modal); without a claim, a session started by one
+  // opens the other too, and the user gets two live views of one store.
+  const modalClaim = ref<string | null>(null)
+
+  function claimChatModal(owner: string | null) {
+    modalClaim.value = owner
+  }
 
   const activeSession = computed(() => {
     if (!activeSessionId.value) return null
@@ -87,7 +98,7 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
     }
   }
 
-  async function startSession(characterIds: any, projectId: any, title = '') {
+  async function startSession(characterIds: any, projectId: any, title = '', energy = 'lively') {
     const id = `session_${Date.now()}_${sessionIdCounter++}`
     const displayTitle = title || characterIds.join(', ')
     const session = {
@@ -97,7 +108,8 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
       title: displayTitle,
       messages: [],
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      energy
     }
     sessions.value[id] = session
     activeSessionId.value = id
@@ -133,6 +145,14 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
   function updateSessionTitle(title: any) {
     if (!activeSession.value) return
     activeSession.value.title = title
+    activeSession.value.updatedAt = Date.now()
+    scheduleSave()
+  }
+
+  function setSessionEnergy(energy: string) {
+    if (!activeSession.value) return
+    if (energy !== 'calm' && energy !== 'lively' && energy !== 'chaotic') return
+    activeSession.value.energy = energy
     activeSession.value.updatedAt = Date.now()
     scheduleSave()
   }
@@ -243,6 +263,8 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
   return {
     sessions,
     activeSessionId,
+    modalClaim,
+    claimChatModal,
     isStreaming,
     streamError,
     isLoading,
@@ -256,6 +278,7 @@ export const useCharacterChatStore = defineStore('characterChat', () => {
     addCharacterToSession,
     removeCharacterFromSession,
     updateSessionTitle,
+    setSessionEnergy,
     addMessage,
     appendToLastMessage,
     setLastMessageContent,

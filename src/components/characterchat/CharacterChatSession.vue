@@ -4,6 +4,7 @@ import { useCharacterChatStore } from '../../stores/characterChatStore'
 import { useCharacterChat } from '../../composables/useCharacterChat'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseSegmented from '../ui/BaseSegmented.vue'
 
 const props = defineProps({
   characterIds: {
@@ -37,6 +38,18 @@ const headerTitle = computed(() => {
   if (names.length === 1) return `Chat with ${names[0]}`
   return `Chat with ${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`
 })
+
+const energyOptions = [
+  { value: 'calm', label: 'Calm' },
+  { value: 'lively', label: 'Lively' },
+  { value: 'chaotic', label: 'Chaotic' }
+]
+
+const sessionEnergy = computed(() => chatStore.activeSession?.energy || 'lively')
+
+function setEnergy(value) {
+  chatStore.setSessionEnergy(value)
+}
 
 function matchesCharacterSet(session) {
   return (
@@ -117,13 +130,23 @@ watch(
       class="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-bg-secondary"
     >
       <h3 class="text-sm font-medium text-text-primary">{{ headerTitle }}</h3>
-      <button
-        class="p-1.5 hover:bg-surface-hover rounded-lg transition-colors"
-        title="Close"
-        @click="emit('close')"
-      >
-        <BaseIcon name="x" :size="16" class="text-text-hint" />
-      </button>
+      <div class="flex items-center gap-2">
+        <BaseSegmented
+          v-if="characters.length > 1"
+          :model-value="sessionEnergy"
+          :options="energyOptions"
+          size="sm"
+          aria-label="Surprise intensity"
+          @update:model-value="setEnergy"
+        />
+        <button
+          class="p-1.5 hover:bg-surface-hover rounded-lg transition-colors"
+          title="Close"
+          @click="emit('close')"
+        >
+          <BaseIcon name="x" :size="16" class="text-text-hint" />
+        </button>
+      </div>
     </div>
 
     <div
@@ -143,40 +166,44 @@ watch(
       ref="messagesContainer"
       class="flex-1 overflow-y-auto px-4 py-3 space-y-3 scroll-smooth"
     >
-      <div
-        v-for="msg in chatStore.activeMessages"
-        :key="msg.id"
-        :class="['flex gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start']"
-      >
-        <div v-if="msg.role !== 'user'" class="flex-shrink-0 self-end">
-          <img
-            v-if="getMessagePortrait(msg)"
-            :src="getMessagePortrait(msg)"
-            :alt="getMessageCharacterName(msg) || 'Character'"
-            class="w-7 h-7 rounded-full object-cover"
-          />
-          <div v-else class="w-7 h-7 rounded-sm bg-surface-hover flex items-center justify-center">
-            <BaseIcon name="user" :size="12" class="text-accent" />
-          </div>
+      <template v-for="msg in chatStore.activeMessages" :key="msg.id">
+        <div v-if="msg.directorNote" class="flex justify-center">
+          <div class="text-11px text-text-hint px-3 py-1">{{ msg.directorNote }}</div>
         </div>
+        <div :class="['flex gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start']">
+          <div v-if="msg.role !== 'user'" class="flex-shrink-0 self-end">
+            <img
+              v-if="getMessagePortrait(msg)"
+              :src="getMessagePortrait(msg)"
+              :alt="getMessageCharacterName(msg) || 'Character'"
+              class="w-7 h-7 rounded-full object-cover"
+            />
+            <div
+              v-else
+              class="w-7 h-7 rounded-sm bg-surface-hover flex items-center justify-center"
+            >
+              <BaseIcon name="user" :size="12" class="text-accent" />
+            </div>
+          </div>
 
-        <div
-          :class="[
-            'max-w-[75%] rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words',
-            msg.role === 'user'
-              ? 'bg-surface-hover text-text-primary rounded-br-md'
-              : 'bg-bg-tertiary border border-border-subtle text-text-primary rounded-bl-md'
-          ]"
-        >
           <div
-            v-if="msg.role !== 'user' && getMessageCharacterName(msg)"
-            class="text-xs font-medium text-accent mb-1"
+            :class="[
+              'max-w-[75%] rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words',
+              msg.role === 'user'
+                ? 'bg-surface-hover text-text-primary rounded-br-md'
+                : 'bg-bg-tertiary border border-border-subtle text-text-primary rounded-bl-md'
+            ]"
           >
-            {{ getMessageCharacterName(msg) }}
+            <div
+              v-if="msg.role !== 'user' && getMessageCharacterName(msg)"
+              class="text-xs font-medium text-accent mb-1"
+            >
+              {{ getMessageCharacterName(msg) }}
+            </div>
+            <div>{{ msg.content }}</div>
           </div>
-          <div>{{ msg.content }}</div>
         </div>
-      </div>
+      </template>
 
       <div v-if="chatStore.isStreaming" class="flex justify-start gap-2">
         <div

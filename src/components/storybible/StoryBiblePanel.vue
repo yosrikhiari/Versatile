@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
+import { useCharacterChatStore } from '../../stores/characterChatStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useVolumeStore } from '../../stores/volumeStore'
 import {
@@ -17,6 +18,7 @@ import { useStoryDocuments } from '../../composables/useStoryDocuments'
 import { useNotifications } from '../../composables/useNotifications'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseCheckbox from '../ui/BaseCheckbox.vue'
 import EmptyState from '../shared/EmptyState.vue'
 import Skeleton from '../shared/Skeleton.vue'
 import CharacterPortrait from './CharacterPortrait.vue'
@@ -98,8 +100,25 @@ function handleDragStart(event, character) {
 }
 
 function openChat(character) {
+  useCharacterChatStore().claimChatModal('bible')
   chattingCharacterIds.value = [character.id]
   showChatModal.value = true
+}
+
+const selectedChatIds = ref([])
+
+function openGroupChat() {
+  if (selectedChatIds.value.length < 2) return
+  useCharacterChatStore().claimChatModal('bible')
+  chattingCharacterIds.value = [...selectedChatIds.value]
+  selectedChatIds.value = []
+  showChatModal.value = true
+}
+
+function onChatModalClose() {
+  const chatStore = useCharacterChatStore()
+  if (chatStore.modalClaim === 'bible') chatStore.claimChatModal(null)
+  showChatModal.value = false
 }
 
 const roleEditingId = ref(null)
@@ -636,6 +655,15 @@ defineExpose({ refresh })
                 <BaseIcon v-else name="sparkles" :size="12" />
                 {{ isGenerating ? 'Generating...' : 'Generate' }}
               </button>
+              <button
+                v-if="selectedChatIds.length >= 2"
+                class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors font-ui"
+                title="Chat with the selected characters"
+                @click="openGroupChat"
+              >
+                <BaseIcon name="message-square" :size="12" />
+                Group chat ({{ selectedChatIds.length }})
+              </button>
             </div>
             <div
               v-for="character in filteredCharacters"
@@ -654,6 +682,12 @@ defineExpose({ refresh })
               />
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
+                  <BaseCheckbox
+                    v-model="selectedChatIds"
+                    :value="character.id"
+                    :aria-label="`Select ${character.name} for group chat`"
+                    @click.stop
+                  />
                   <!--
                     An <img> is implicitly draggable, so grabbing the portrait
                     started the browser's own image drag *alongside* the card's
@@ -1076,12 +1110,12 @@ defineExpose({ refresh })
       :show="showChatModal"
       max-width="max-w-2xl"
       panel-class="p-0 overflow-hidden w-full"
-      @close="showChatModal = false"
+      @close="onChatModalClose"
     >
       <CharacterChatSession
         :character-ids="chattingCharacterIds"
         :project-id="projectStore.currentProjectId"
-        @close="showChatModal = false"
+        @close="onChatModalClose"
       />
     </Modal>
   </ErrorBoundary>

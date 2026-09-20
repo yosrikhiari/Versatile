@@ -88,7 +88,11 @@ watch(
 watch(
   () => characterChatStore.activeSessionId,
   (newId) => {
-    if (newId && characterChatStore.activeSession) {
+    // Another surface may already own the visible chat (StoryBiblePanel
+    // claims 'bible' when it opens its modal). Opening here as well produced
+    // two live views of one session. Bubble chats arrive unclaimed and open.
+    if (newId && characterChatStore.activeSession && characterChatStore.modalClaim !== 'bible') {
+      characterChatStore.claimChatModal('editor')
       chattingCharacterIds.value = [...characterChatStore.activeSession.characterIds]
       showCharacterChatModal.value = true
     }
@@ -305,6 +309,7 @@ async function handleOnboardingCompleteWrapper() {
 
 function onCharacterChatClose() {
   showCharacterChatModal.value = false
+  if (characterChatStore.modalClaim === 'editor') characterChatStore.claimChatModal(null)
   characterChatStore.clearSession()
 }
 

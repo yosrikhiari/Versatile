@@ -393,23 +393,31 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  async function testProviderConnection(provider: any) {
+  // Tests exactly what the caller passes: the Settings tab hands over the
+  // currently typed input so Test verifies the pasted value, not the last
+  // saved one. Empty override falls back to the stored key. Nothing here
+  // saves — saving stays exclusively in setStoredApiKey/saveAllSettings.
+  async function testProviderConnection(
+    provider: any,
+    keyOverride?: string,
+    accountIdOverride?: string
+  ) {
     if (provider === PROVIDERS.OLLAMA) {
       return await testOllamaConnection()
     }
-    const key = await getStoredApiKey(provider)
+    const key = keyOverride?.trim() || (await getStoredApiKey(provider))
     if (!key) {
       return { success: false, message: 'No API key configured' }
     }
-    if (provider === PROVIDERS.CLOUDFLARE && !cloudflareAccountId.value) {
+    const accountId =
+      provider === PROVIDERS.CLOUDFLARE
+        ? accountIdOverride?.trim() || cloudflareAccountId.value
+        : undefined
+    if (provider === PROVIDERS.CLOUDFLARE && !accountId) {
       return { success: false, message: 'No Cloudflare account ID configured' }
     }
     try {
-      const ok = await aiTestConnection(
-        provider,
-        key,
-        provider === PROVIDERS.CLOUDFLARE ? cloudflareAccountId.value : undefined
-      )
+      const ok = await aiTestConnection(provider, key, accountId)
       return ok
         ? { success: true, message: 'Connection successful' }
         : { success: false, message: 'Connection failed' }

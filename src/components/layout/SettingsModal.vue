@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseTab from '../ui/BaseTab.vue'
@@ -15,6 +15,22 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'model-changed'])
+
+// Escape closes like every other modal (shared Modal.vue does this; this
+// bespoke shell never did — Escape left the backdrop swallowing all clicks).
+function onKeydown(e) {
+  if (e.key === 'Escape' && props.show) emit('close')
+}
+
+watch(
+  () => props.show,
+  (visible) => {
+    if (visible) document.addEventListener('keydown', onKeydown)
+    else document.removeEventListener('keydown', onKeydown)
+  },
+  { immediate: true }
+)
+onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 const projectStore = useProjectStore()
 const activeTab = ref('ai')
