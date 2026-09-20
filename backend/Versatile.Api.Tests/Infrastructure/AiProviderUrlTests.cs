@@ -103,6 +103,33 @@ public class AiProviderUrlTests
     }
 
     [Fact]
+    public async Task Cloudflare_TestConnection_HitsAccountRunPath()
+    {
+        var (provider, handler) = Create("https://api.cloudflare.com/client/v4/",
+            http => new CloudflareChatProvider(http, "token", "acct123"),
+            """{"result":{"response":"hi"},"success":true,"errors":[],"messages":[]}""");
+
+        var result = await provider.TestConnectionAsync("@cf/meta/llama-3.1-8b-instruct");
+
+        handler.LastRequest!.Method.Should().Be(HttpMethod.Post);
+        handler.LastRequest!.RequestUri!.AbsoluteUri.Should().Be(
+            "https://api.cloudflare.com/client/v4/accounts/acct123/ai/run/@cf/meta/llama-3.1-8b-instruct");
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Cloudflare_ListModels_ReturnsCuratedCatalogue()
+    {
+        var (provider, _) = Create("https://api.cloudflare.com/client/v4/",
+            http => new CloudflareChatProvider(http, "token", "acct123"));
+
+        var result = await provider.ListModelsAsync();
+
+        result.Success.Should().BeTrue();
+        result.Models.Should().Contain(m => m.Id == "@cf/meta/llama-3.1-8b-instruct");
+    }
+
+    [Fact]
     public async Task Ollama_ListModels_HitsApiTags()
     {
         // Base mirrors the factory's normalized output (TrimEnd('/') + "/").

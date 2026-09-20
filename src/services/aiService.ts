@@ -22,6 +22,7 @@ import * as openaiProvider from './providers/openai'
 import * as anthropicProvider from './providers/anthropic'
 import * as geminiProvider from './providers/gemini'
 import * as groqProvider from './providers/groq'
+import * as cloudflareProvider from './providers/cloudflare'
 import { useCostTrackingStore } from '../stores/costTrackingStore'
 import { computeCost } from '../config/modelPricing'
 import { providerBudget, SessionBudget, SessionBudgetExceededError } from './aiProviderBudget'
@@ -120,6 +121,8 @@ export interface AiGenerateOptions {
 
 interface ProviderOptions {
   apiKey: string | undefined
+  /** Cloudflare Workers AI account ID (Settings > AI Providers); ignored by other providers. */
+  accountId?: string
   signal?: AbortSignal
   temperature?: number
   maxTokens?: number
@@ -183,7 +186,7 @@ interface ProviderModule {
     schema: Record<string, unknown>,
     options: ProviderOptions & { schemaName?: string }
   ): Promise<StructuredResult>
-  testConnection(apiKey?: string): Promise<boolean>
+  testConnection(apiKey?: string, accountId?: string): Promise<boolean>
   listModels?(): Promise<string[]>
 }
 
@@ -301,7 +304,8 @@ const PROVIDER_MAP: Record<string, ProviderModule> = {
   [PROVIDERS.OPENAI]: openaiProvider as unknown as ProviderModule,
   [PROVIDERS.ANTHROPIC]: anthropicProvider as unknown as ProviderModule,
   [PROVIDERS.GEMINI]: geminiProvider as unknown as ProviderModule,
-  [PROVIDERS.GROQ]: groqProvider as unknown as ProviderModule
+  [PROVIDERS.GROQ]: groqProvider as unknown as ProviderModule,
+  [PROVIDERS.CLOUDFLARE]: cloudflareProvider as unknown as ProviderModule
 }
 
 const IDEMPOTENCY_TTL_MS = 60_000
@@ -389,6 +393,19 @@ async function getApiKey(provider: string): Promise<string | null> {
     return await decrypt(encrypted)
   } catch {
     return ''
+  }
+}
+
+/**
+ * Cloudflare Workers AI addresses `accounts/{accountId}/ai/run/{model}`, so it
+ * needs an account ID on top of the token. Stored in settings (not a secret);
+ * other providers ignore the field.
+ */
+function getCloudflareAccountId(): string | undefined {
+  try {
+    return useSettingsStore().cloudflareAccountId || undefined
+  } catch {
+    return undefined
   }
 }
 
@@ -749,6 +766,7 @@ export async function aiGenerate(
 
       const providerOptions: ProviderOptions = {
         apiKey: apiKey || undefined,
+        accountId: getCloudflareAccountId(),
         signal: options.signal,
         temperature: options.temperature,
         maxTokens: budget.maxTokens,
@@ -862,6 +880,7 @@ export async function aiGenerate(
           fbModel,
           {
             apiKey: fbKey || undefined,
+            accountId: getCloudflareAccountId(),
             signal: options.signal,
             temperature: options.temperature,
             maxTokens: fbBudget.maxTokens,
@@ -899,6 +918,7 @@ export async function aiStream(
 
   const providerOptions: ProviderOptions = {
     apiKey: apiKey || undefined,
+    accountId: getCloudflareAccountId(),
     signal: options.signal,
     temperature: options.temperature,
     maxTokens: budget.maxTokens,
@@ -997,6 +1017,7 @@ export async function aiStream(
         latencyBudget.wrap(feature, () =>
           PROVIDER_MAP[fbProvider]!.stream(prompt, systemPrompt, fbModel, trackedOnChunk, {
             apiKey: fbKey || undefined,
+            accountId: getCloudflareAccountId(),
             signal: options.signal,
             temperature: options.temperature,
             maxTokens: fbBudget.maxTokens,
@@ -1062,6 +1083,7 @@ export async function aiGenerateStructured(
       providerBudget.check(provider)
       const structOpts: ProviderOptions & { schemaName?: string } = {
         apiKey: apiKey || undefined,
+        accountId: getCloudflareAccountId(),
         signal: options.signal,
         temperature: options.temperature,
         maxTokens: budget.maxTokens,
@@ -1175,13 +1197,17 @@ export async function aiGenerateStructured(
   return parsed
 }
 
-export async function aiTestConnection(provider: string, apiKey: string): Promise<boolean> {
+export async function aiTestConnection(
+  provider: string,
+  apiKey: string,
+  accountId?: string
+): Promise<boolean> {
   const providerModule = PROVIDER_MAP[provider]
   if (!providerModule) throw new Error(`Unknown provider: ${provider}`)
   if (provider === PROVIDERS.OLLAMA) {
     return await providerModule.testConnection()
   }
-  return await providerModule.testConnection(apiKey)
+  return await providerModule.testConnection(apiKey, accountId)
 }
 
 export async function aiListModels(): Promise<string[]> {

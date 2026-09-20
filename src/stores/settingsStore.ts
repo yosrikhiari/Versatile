@@ -50,6 +50,10 @@ const DEFAULT_SETTINGS = {
   // acceptance gate. The flag is the zero-deploy way back: turning it off
   // hides the Chapter tab and leaves the arc path exactly as it was.
   enableChapterGeneration: true,
+  // Cloudflare Workers AI account ID. The API token is the secret (stored per
+  // provider like every other key); the account ID only addresses the URL, so
+  // it lives here in plain settings next to the Ollama endpoint.
+  cloudflareAccountId: '',
   // Which writing orchestrator a one-click run uses (useVolumeStoryGenerator).
   //   'legacy'    — the anchor-first parallel strategy, unchanged.
   //   'langgraph' — the multi-agent graph (writing/graphStrategy.ts): Writer and
@@ -74,6 +78,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const embeddingProvider = ref(DEFAULT_SETTINGS.embeddingProvider)
   const embeddingModel = ref(DEFAULT_SETTINGS.embeddingModel)
   const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
+  const cloudflareAccountId = ref(DEFAULT_SETTINGS.cloudflareAccountId)
   const analysisTier = ref(DEFAULT_SETTINGS.analysisTier)
   const cloudAuditOptIn = ref(DEFAULT_SETTINGS.cloudAuditOptIn)
   const enableChapterGeneration = ref(DEFAULT_SETTINGS.enableChapterGeneration)
@@ -127,6 +132,8 @@ export const useSettingsStore = defineStore('settings', () => {
         if (data.embeddingModel) embeddingModel.value = data.embeddingModel
         if (data.embeddingThreshold !== undefined)
           embeddingThreshold.value = data.embeddingThreshold
+        if (typeof data.cloudflareAccountId === 'string')
+          cloudflareAccountId.value = data.cloudflareAccountId
         if (data.analysisTier) analysisTier.value = data.analysisTier
         // Explicit `!== undefined` for the same reason as `localOnly`: an
         // opt-in the user never gave must survive a save/load round-trip
@@ -177,6 +184,7 @@ export const useSettingsStore = defineStore('settings', () => {
           embeddingProvider: embeddingProvider.value,
           embeddingModel: embeddingModel.value,
           embeddingThreshold: embeddingThreshold.value,
+          cloudflareAccountId: cloudflareAccountId.value,
           analysisTier: analysisTier.value,
           cloudAuditOptIn: cloudAuditOptIn.value,
           enableChapterGeneration: enableChapterGeneration.value,
@@ -326,6 +334,11 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
+  function setCloudflareAccountId(accountId: string) {
+    cloudflareAccountId.value = (accountId || '').trim()
+    saveSettings()
+  }
+
   function setAnalysisTier(tier: string) {
     if (['local', 'cloud-on-demand', 'cloud-audit'].includes(tier)) {
       analysisTier.value = tier
@@ -388,8 +401,15 @@ export const useSettingsStore = defineStore('settings', () => {
     if (!key) {
       return { success: false, message: 'No API key configured' }
     }
+    if (provider === PROVIDERS.CLOUDFLARE && !cloudflareAccountId.value) {
+      return { success: false, message: 'No Cloudflare account ID configured' }
+    }
     try {
-      const ok = await aiTestConnection(provider, key)
+      const ok = await aiTestConnection(
+        provider,
+        key,
+        provider === PROVIDERS.CLOUDFLARE ? cloudflareAccountId.value : undefined
+      )
       return ok
         ? { success: true, message: 'Connection successful' }
         : { success: false, message: 'Connection failed' }
@@ -412,6 +432,8 @@ export const useSettingsStore = defineStore('settings', () => {
     embeddingProvider,
     embeddingModel,
     embeddingThreshold,
+    cloudflareAccountId,
+    setCloudflareAccountId,
     // Exported alongside its setter. Without it `settings.analysisTier` was
     // undefined at runtime, so canUseCloudEscalation's `!== 'local'` test was
     // always true: a user who chose the local tier still had cloud escalation

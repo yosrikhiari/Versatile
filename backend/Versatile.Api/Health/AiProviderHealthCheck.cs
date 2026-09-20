@@ -19,8 +19,18 @@ public class AiProviderHealthCheck : IHealthCheck
     {
         try
         {
-            var openAiKey = _configuration["Ai:OpenAi:ApiKey"];
-            if (string.IsNullOrEmpty(openAiKey))
+            // Healthy when ANY provider key is present — local Ollama needs none,
+            // and a Gemini/Groq/Cloudflare-only setup is a valid configuration.
+            var candidates = new[]
+            {
+                _configuration["Ai:OpenAi:ApiKey"],
+                _configuration["Ai:Anthropic:ApiKey"],
+                _configuration["Ai:Gemini:ApiKey"],
+                _configuration["Ai:Groq:ApiKey"],
+                _configuration["Ai:MistralKey"],
+                _configuration["Ai:Cloudflare:ApiToken"],
+            };
+            if (candidates.All(string.IsNullOrEmpty))
                 return HealthCheckResult.Degraded("No AI provider API key configured");
 
             var factoryResolved = _factory is not null;

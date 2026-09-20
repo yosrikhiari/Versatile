@@ -22,6 +22,7 @@ public sealed class AiProviderFactory : IChatProviderFactory
     private const string AnthropicBase = "https://api.anthropic.com/v1/";
     private const string GeminiBase = "https://generativelanguage.googleapis.com/v1beta/models/";
     private const string GroqBase = "https://api.groq.com/openai/v1/";
+    private const string CloudflareBase = "https://api.cloudflare.com/client/v4/";
 
     public AiProviderFactory(IServiceProvider serviceProvider, IConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
@@ -54,6 +55,16 @@ public sealed class AiProviderFactory : IChatProviderFactory
                 http.BaseAddress = new Uri(GroqBase);
                 return new GroqChatProvider(http, key ?? throw new InvalidOperationException("Groq API key not configured"));
 
+            case "cloudflare":
+                http.BaseAddress = new Uri(CloudflareBase);
+                var accountId = _configuration["Ai:Cloudflare:AccountId"];
+                if (string.IsNullOrEmpty(accountId))
+                    throw new InvalidOperationException("Cloudflare account ID not configured (Ai:Cloudflare:AccountId)");
+                return new CloudflareChatProvider(
+                    http,
+                    key ?? throw new InvalidOperationException("Cloudflare API token not configured"),
+                    accountId);
+
             case "ollama":
                 var ollamaUrl = (_configuration["Ai:Ollama:BaseUrl"] ?? "http://localhost:11434").TrimEnd('/') + "/";
                 http.BaseAddress = new Uri(ollamaUrl);
@@ -69,19 +80,38 @@ public sealed class AiProviderFactory : IChatProviderFactory
         if (provider.Equals("ollama", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        if (!Guid.TryParse(userId, out var guid))
-            return null;
+        // Per-user key first (Settings > AI Providers in the UI, synced to the DB).
+        if (Guid.TryParse(userId, out var guid))
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var keysService = scope.ServiceProvider.GetRequiredService<KeyManagementService>();
 
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var keysService = scope.ServiceProvider.GetRequiredService<KeyManagementService>();
+            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == guid);
+            if (user?.ApiKeysEncrypted != null && user.ApiKeysNonce != null)
+            {
+                var json = keysService.Decrypt(user.ApiKeysEncrypted, user.ApiKeysNonce);
+                var keys = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                if (keys?.TryGetValue(provider, out var userKey) == true
+                    && !string.IsNullOrEmpty(userKey))
+                    return userKey;
+            }
+        }
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == guid);
-        if (user?.ApiKeysEncrypted == null || user.ApiKeysNonce == null)
-            return null;
-
-        var json = keysService.Decrypt(user.ApiKeysEncrypted, user.ApiKeysNonce);
-        var keys = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-        return keys?.GetValueOrDefault(provider);
+        // Env fallback: the .env / compose values for server-side paths where no
+        // per-user key exists. Placeholder and empty values count as missing.
+        var envKey = provider.ToLowerInvariant() switch
+        {
+            "openai" => _configuration["Ai:OpenAi:ApiKey"],
+            "anthropic" => _configuration["Ai:Anthropic:ApiKey"],
+            "gemini" => _configuration["Ai:Gemini:ApiKey"],
+            "groq" => _configuration["Ai:Groq:ApiKey"],
+            "cloudflare" => _configuration["Ai:Cloudflare:ApiToken"],
+            _ => null,
+        };
+        return IsMissing(envKey) ? null : envKey;
     }
+
+    private static bool IsMissing(string? value) =>
+        string.IsNullOrEmpty(value) || value.StartsWith("set-via-env-var-", StringComparison.Ordinal);
 }

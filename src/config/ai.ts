@@ -3,7 +3,8 @@ export const PROVIDERS = {
   OPENAI: 'openai',
   ANTHROPIC: 'anthropic',
   GEMINI: 'gemini',
-  GROQ: 'groq'
+  GROQ: 'groq',
+  CLOUDFLARE: 'cloudflare'
 }
 
 export const PROVIDER_LABELS = {
@@ -11,30 +12,31 @@ export const PROVIDER_LABELS = {
   [PROVIDERS.OPENAI]: 'OpenAI',
   [PROVIDERS.ANTHROPIC]: 'Anthropic (Claude)',
   [PROVIDERS.GEMINI]: 'Google Gemini',
-  [PROVIDERS.GROQ]: 'Groq'
+  [PROVIDERS.GROQ]: 'Groq',
+  [PROVIDERS.CLOUDFLARE]: 'Cloudflare Workers AI'
 }
 
 export const PROVIDER_BASE_URLS = {
   [PROVIDERS.OPENAI]: 'https://api.openai.com/v1',
   [PROVIDERS.ANTHROPIC]: 'https://api.anthropic.com/v1',
   [PROVIDERS.GEMINI]: 'https://generativelanguage.googleapis.com/v1beta',
-  [PROVIDERS.GROQ]: 'https://api.groq.com/openai/v1'
+  [PROVIDERS.GROQ]: 'https://api.groq.com/openai/v1',
+  [PROVIDERS.CLOUDFLARE]: 'https://api.cloudflare.com/client/v4'
 }
 
 export const PROVIDER_MODELS = {
   [PROVIDERS.OPENAI]: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
   [PROVIDERS.ANTHROPIC]: ['claude-sonnet-4-5', 'claude-opus-4-5', 'claude-haiku-4-5'],
-  [PROVIDERS.GEMINI]: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro'],
-  [PROVIDERS.GROQ]: [
-    'openai/gpt-oss-120b',
-    'openai/gpt-oss-20b',
-    'qwen/qwen3-32b',
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'meta-llama/llama-4-scout-17b-16e-instruct',
-    'mixtral-8x7b-32768',
-    'gemma2-9b-it',
-    'allam-2-7b'
+  // Live-verified 2026-09-20: the 2.x Gemini models return "no longer
+  // available to new users" and the llama-3.1/mixtral/gemma2 Groq models are
+  // retired. Only IDs that answered a real generation call are listed here.
+  [PROVIDERS.GEMINI]: ['gemini-3.6-flash', 'gemini-3.5-flash'],
+  [PROVIDERS.GROQ]: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
+  [PROVIDERS.CLOUDFLARE]: [
+    '@cf/meta/llama-3.1-8b-instruct',
+    '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+    '@cf/mistral/mistral-7b-instruct-v0.2',
+    '@cf/google/gemma-2-9b-it'
   ]
 }
 

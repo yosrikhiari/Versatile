@@ -52,6 +52,7 @@ const availableModels = ref([])
 const selectedUtilityModel = ref(getOllamaUtilityModel() || '')
 const openAIKey = ref('')
 const apiKeys = ref({})
+const cloudflareAccountId = ref('')
 const testingProvider = ref(null)
 const providerStatus = ref({})
 const newFallback = ref('')
@@ -192,6 +193,11 @@ async function loadAllProviderKeys() {
   for (const p of NON_OLLAMA_PROVIDERS.value) {
     apiKeys.value[p] = (await settingsStore.getStoredApiKey(p)) || ''
   }
+  cloudflareAccountId.value = settingsStore.cloudflareAccountId || ''
+}
+
+function loadCloudflareAccountId() {
+  cloudflareAccountId.value = settingsStore.cloudflareAccountId || ''
 }
 
 function loadFeatureSelections() {
@@ -217,6 +223,7 @@ async function saveAllSettings() {
   for (const p of NON_OLLAMA_PROVIDERS.value) {
     await settingsStore.setStoredApiKey(p, apiKeys.value[p] || '')
   }
+  settingsStore.setCloudflareAccountId(cloudflareAccountId.value || '')
   for (const f of FEATURE_LIST) {
     const provider = featureProviderSelections.value[f]
     const model = featureModelSelections.value[f]
@@ -261,6 +268,7 @@ defineExpose({
   loadOpenAIKey,
   loadEndpoint,
   loadAllProviderKeys,
+  loadCloudflareAccountId,
   loadFeatureSelections
 })
 </script>
@@ -604,6 +612,15 @@ defineExpose({
           >
             {{ testingProvider === p ? '...' : 'Test' }}
           </button>
+        </div>
+        <div v-if="p === PROVIDERS.CLOUDFLARE" class="flex gap-2">
+          <input
+            id="cloudflare-account-id"
+            v-model="cloudflareAccountId"
+            type="text"
+            placeholder="Cloudflare account ID (Dashboard > Workers & Pages > Overview)"
+            class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent font-mono text-xs"
+          />
         </div>
         <div
           v-if="providerStatus[p]"

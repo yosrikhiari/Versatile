@@ -113,6 +113,25 @@ export const MODEL_META = {
     contextWindow: 1048576,
     capabilityTier: COST_TIERS.STANDARD
   },
+  // Live-verified 2026-09-20 (see PROVIDER_MODELS in config/ai.ts).
+  'gemini-3.6-flash': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 1048576,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'gemini-3.5-flash': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 1048576,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  'qwen/qwen3.8-27b': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 32768,
+    capabilityTier: COST_TIERS.STANDARD
+  },
   'openai/gpt-oss-120b': {
     costTier: COST_TIERS.BUDGET,
     speedTier: SPEED_TIERS.MEDIUM,
@@ -162,6 +181,30 @@ export const MODEL_META = {
     capabilityTier: COST_TIERS.BUDGET
   },
   'allam-2-7b': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 8192,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  '@cf/meta/llama-3.1-8b-instruct': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 32768,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.MEDIUM,
+    contextWindow: 32768,
+    capabilityTier: COST_TIERS.STANDARD
+  },
+  '@cf/mistral/mistral-7b-instruct-v0.2': {
+    costTier: COST_TIERS.BUDGET,
+    speedTier: SPEED_TIERS.FAST,
+    contextWindow: 8192,
+    capabilityTier: COST_TIERS.BUDGET
+  },
+  '@cf/google/gemma-2-9b-it': {
     costTier: COST_TIERS.BUDGET,
     speedTier: SPEED_TIERS.FAST,
     contextWindow: 8192,

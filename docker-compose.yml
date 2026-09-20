@@ -53,7 +53,12 @@ services:
       # NOTE: empty string trips the DI guard (it means "explicitly unset"), so
       # the default reproduces appsettings.json's inert placeholder (local-dev behavior).
       Ai__OpenAi__ApiKey: ${OPENAI_API_KEY:-set-via-env-var-Ai__OpenAi__ApiKey}
+      Ai__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
+      Ai__Gemini__ApiKey: ${GEMINI_API_KEY:-}
+      Ai__Groq__ApiKey: ${GROQ_API_KEY:-}
       Ai__MistralKey: ${MISTRAL_API_KEY:-}
+      Ai__Cloudflare__ApiToken: ${CLOUDFLARE_API_TOKEN:-}
+      Ai__Cloudflare__AccountId: ${CLOUDFLARE_ACCOUNT_ID:-}
       Ai__Ollama__BaseUrl: ${OLLAMA_BASE_URL:-http://ollama:11434}
     # Published for debugging; production behind nginx needs only the proxy.
     # Remove this block to keep the API reachable solely via the frontend service.

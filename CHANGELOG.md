@@ -7,6 +7,24 @@ was verified.
 
 ## [Unreleased]
 
+### Hosted AI keys via env + Cloudflare Workers AI (2026-09-20)
+- **`GEMINI_API_KEY`, `GROQ_API_KEY`, `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`**
+  in `.env` (see `.env.example`) now reach the backend: compose maps them to
+  `Ai__*`, `AiProviderFactory` falls back to them when no per-user key exists,
+  and the health check counts any provider key instead of OpenAI-only. Browser
+  calls still use the keys in Settings > AI Providers.
+- **New Cloudflare Workers AI provider** on both sides
+  (`services/providers/cloudflare.ts`, `CloudflareChatProvider.cs`): generate,
+  streaming, test-connection probe, curated model list; account-ID field in
+  Settings (the token alone cannot address the API).
+- **Model catalogs refreshed to live-verified IDs.** Gemini 2.x returns
+  "no longer available" and Groq retired its llama-3.1/mixtral/gemma2 models,
+  so the dropdowns now list Gemini `3.6-flash` / `3.5-flash` and Groq
+  `gpt-oss-120b` / `gpt-oss-20b` / `qwen3.8-27b` — every one answered a real
+  generation call before being listed.
+- Verified: live generate+stream on all three providers; frontend suite 3141
+  green; backend `Api.Tests` 239 green; typecheck and policy clean.
+
 ### Multi-agent writing on LangGraph (2026-09-18)
 - **A second writing orchestrator.** `Settings → AI → Generation orchestrator`
   switches a one-click run from the legacy parallel strategy to a LangGraph

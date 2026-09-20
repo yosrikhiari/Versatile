@@ -29,6 +29,8 @@ export const STORAGE_KEYS = {
   AGENTOPS_URL: 'versatile_agentops_url',
   OPENAI_KEY: 'versatile_openai_key',
   OPENAI_FALLBACK_PROMPTED: 'versatile_openai_fallback_prompted',
+  /** Cloudflare Workers AI account ID (not a secret; the token is the secret). */
+  CLOUDFLARE_ACCOUNT: 'versatile_cloudflare_account',
   EMBEDDING_MODEL: 'versatile_embedding_model',
 
   // Dynamic Keys (Prefixes)
