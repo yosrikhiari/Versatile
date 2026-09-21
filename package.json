@@ -70,7 +70,7 @@
     "diff": "^3.5.1",
     "docx": "^9.7.1",
     "dompurify": "^3.4.15",
-    "focus-trap": "^8.2.1",
+    "focus-trap": "^8.2.2",
     "gpt-tokenizer": "^3.4.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
