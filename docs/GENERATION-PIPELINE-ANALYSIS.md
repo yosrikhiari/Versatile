@@ -513,33 +513,45 @@ Two further things that probe exposed:
 Paired, not A/B-of-two-books: the Ollama path sends no `seed`, so two whole
 books measure sampling noise as much as the change. Same scene brief, same
 bible, same chapter log, same prior scenes; only `embeddingContext` differs.
-Five scenes at increasing depth, `reports/live/continuity-probe/`.
+Five scenes at increasing depth, **five repeats per cell, 50 generations, zero
+errors**. `continuityProbe.live.js`, `tools/continuity-probe.py`.
 
 The five-dimension critic cannot answer this — §10 showed it returns 8/10 for
-all thirty scenes — so the measure has to match the change. What a continuity
-budget should buy is prose anchored to people the story already established,
-and a **callback** (a named character in the draft who is *not* in that scene's
-brief) can only be produced by remembering a scene nobody just handed over.
+all thirty scenes — so the measure had to match the change. A **callback** is a
+mention of a named character who is not in that scene's own brief: the writer
+can only produce one by remembering a scene nobody handed it.
 
-| | narrow (350) | wide (3,793) |
+| scene | narrow cited / callbacks | wide cited / callbacks |
 |---|---|---|
-| mean context | 469 tok | 796 tok |
-| mean earlier scenes cited | 5.0 | 17.4 |
-| named-character callbacks | 1 | 3 |
-| named mentions | 10 | 13 |
-| mean grounding | 0.80 | 0.82 |
+| 8 | 5 / 0.6 | 6 / 0.8 |
+| 14 | 5 / 0.0 | 12 / 0.8 |
+| 20 | 5 / 0.4 | 18 / 0.4 |
+| 26 | 5 / 0.4 | 24 / 0.8 |
+| 29 | 5 / 0.0 | 27 / 0.4 |
 
-**The mechanism is confirmed; the benefit is not.** Three callbacks against one,
-over five scenes, with one unseeded sample per cell, is not a result — the
-counts are too small to separate from noise, and grounding is flat. The first
-metric was weaker still: every "invented name" it flagged (`Old`, `Man`, `Well`,
-`Silence`) was a false positive from sentence-internal capitalisation, and there
-were 17 name observations in total.
+Exact paired permutation over per-scene means: callbacks **+0.36, p = 0.125**;
+named mentions +0.56, p = 0.438; distinct callbacks +0.36, p = 0.125. Direction
+favours the wider budget on four of five scenes, but that is not significance
+and the effect is under one callback per scene.
 
-Answering this properly needs repeats — roughly five per cell, ~50 generations —
-or a denser measure than name counting. Until then the change stands on "the
-writer now receives 3× the continuity it did", which is measured, and not on
-"the prose is better", which is not.
+**The budget is free.** 27.9 minutes for the wide arm against 28.9 for narrow —
+3.5x the context at no wall-clock cost, because prefill on a resident model is
+cheap next to generation. This is not a speed-for-quality trade.
+
+**The metric was wrong, not merely weak.** Every scene brief carries
+`charactersPresent`, so the writer is *told* who is in the scene and rarely
+needs to recall anyone. Callbacks are near zero in both arms because the
+pipeline's own design makes them unnecessary. The plausible value of a
+continuity budget was never "remembers names" — it is "does not contradict what
+already happened", i.e. facts and events. Measuring that needs a judge
+(`checkContradictions` against the fact ledger); a deterministic metric aimed at
+the wrong quantity is worse than a noisy one aimed at the right one.
+
+**Standing conclusion.** The wider budget is kept on narrow grounds: it delivers
+3.5x the continuity (measured), costs nothing (measured), and shows no sign of
+harm — "lost in the middle" did not appear at ~1,100 tokens of summaries. It is
+**not** shown to improve the prose. Anyone revisiting this should measure facts,
+not names.
 
 **Still unmeasured: whether the prose is better.** §10 established that the gate
 passes 30/30 regardless of content, so the pipeline cannot currently tell you

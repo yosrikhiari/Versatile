@@ -2,60 +2,89 @@
 
     python tools/continuity-probe.py [armA] [armB]     # default narrow wide
 
-Reads `reports/live/continuity-probe/<arm>/summary.json` and the saved drafts
-beside it. The arms are paired: same brief, same bible, same chapter log, same
-prior scenes — only `embeddingContext` differs (350 tokens vs the new budget).
+The arms are paired: same brief, same bible, same chapter log, same prior
+scenes — only `embeddingContext` differs (350 tokens vs the new budget). Each
+scene is generated REPEATS times per arm, because the Ollama path sends no
+`seed` and one sample per cell cannot separate an effect from sampling noise.
 
-Two measures, because the harness's own one is weak:
+Measures, densest first. Counting *occurrences* rather than distinct names is
+deliberate: distinct-name counts gave ~3 observations per scene, which is too
+few to see through the variance.
 
-1. `grounding` from the harness — capitalised words in the draft that appear in
-   the prior scenes. Simple, but it catches sentence-internal words like "Old"
-   and "Well" as invented names, and there are only ~3 observations per scene.
+  callbackMentions  occurrences of a named character who is NOT in this scene's
+                    brief. The writer can only produce one by remembering a
+                    scene nobody handed it — the thing a continuity budget buys.
+  namedMentions     occurrences of any known named character.
+  distinctCallbacks how many different such characters appear.
 
-2. **Named-character callbacks** — computed here from the corpus's own
-   `charactersPresent` fields rather than a regex. A callback is a named
-   character who appears in the draft but is NOT in that scene's brief: the
-   writer can only produce one if it remembers a scene it was not just handed.
-   That is the thing a continuity budget is supposed to buy, so it is the
-   primary measure.
-
-Neither arm is seeded (the Ollama path sends no `seed`), so this is one sample
-per cell. Treat a difference as a signal to investigate, not a result.
+Significance: exact paired permutation over the per-scene means. Five scenes
+gives 2^5 = 32 sign assignments, so the smallest attainable two-sided p is
+0.0625 — enough to detect a consistent effect, not enough to detect a small
+one. That limit is stated rather than hidden.
 """
 
 import json
 import pathlib
 import re
 import sys
+from itertools import product
 
 ROOT = pathlib.Path("reports/live/continuity-probe")
 CORPUS = pathlib.Path("reports/live/critic-rank-agreement/corpus.json")
 
+# Descriptor words that appear inside `charactersPresent` strings like
+# "Old Man at the Well" or "Merchant Yusuf" and are not the character's name.
+NOT_NAMES = {"Old", "Man", "Another", "Merchant", "Official", "Trader", "Her",
+             "Dying", "Mechanic", "Traveler", "Witness", "Well", "Son", "The", "An"}
+
 
 def named_characters(corpus):
-    """Single-token proper names from the briefs, e.g. Nesrin, Halim, Kemal."""
     names = set()
     for c in corpus:
         for raw in c["sceneBrief"].get("charactersPresent") or []:
             for tok in re.findall(r"\b[A-Z][a-zçğıöşü]{2,}\b", str(raw)):
-                if tok not in {"Old", "Man", "Another", "Merchant", "Official", "Trader", "Her"}:
+                if tok not in NOT_NAMES:
                     names.add(tok)
     return names
 
 
 def brief_names(scene_brief, known):
-    present = set()
+    out = set()
     for raw in scene_brief.get("charactersPresent") or []:
         for tok in re.findall(r"\b[A-Z][a-zçğıöşü]{2,}\b", str(raw)):
             if tok in known:
-                present.add(tok)
-    return present
+                out.add(tok)
+    return out
+
+
+def measure(prose, known, in_brief):
+    counts = {n: len(re.findall(rf"\b{re.escape(n)}\b", prose)) for n in known}
+    named_mentions = sum(counts.values())
+    callback_mentions = sum(v for n, v in counts.items() if n not in in_brief)
+    distinct_callbacks = sum(1 for n, v in counts.items() if v and n not in in_brief)
+    return named_mentions, callback_mentions, distinct_callbacks
+
+
+def mean(xs):
+    return sum(xs) / len(xs) if xs else 0.0
+
+
+def perm_test(diffs):
+    """Exact two-sided paired permutation test on the sign of each difference."""
+    observed = abs(mean(diffs))
+    hits = 0
+    total = 0
+    for signs in product([1, -1], repeat=len(diffs)):
+        total += 1
+        if abs(mean([s * d for s, d in zip(signs, diffs)])) >= observed - 1e-12:
+            hits += 1
+    return hits / total
 
 
 def load(arm):
     p = ROOT / arm / "summary.json"
     if not p.exists():
-        raise SystemExit(f"missing {p} — run: ARM={arm} npx vitest run --config vitest.live.config.js src/tests/live/continuityProbe.live.js")
+        raise SystemExit(f"missing {p} — run ARM={arm} with REPEATS set")
     return json.loads(p.read_text(encoding="utf-8"))
 
 
@@ -65,42 +94,55 @@ def main():
     corpus = json.loads(CORPUS.read_text(encoding="utf-8"))
     by_index = {c["index"]: c for c in corpus}
     known = named_characters(corpus)
-    print(f"named characters in the corpus: {sorted(known)}\n")
+    print(f"named characters: {sorted(known)}")
 
     sa, sb = load(arm_a), load(arm_b)
-    print(f"{'':6s} {'':4s} | {arm_a:^33s} | {arm_b:^33s}")
-    print(f"{'scene':6s} {'prior':>5s} | {'ctx':>5s} {'cited':>5s} {'words':>5s} {'call':>4s} {'grnd':>5s} | "
-          f"{'ctx':>5s} {'cited':>5s} {'words':>5s} {'call':>4s} {'grnd':>5s}")
+    print(f"repeats per scene: {arm_a}={sa.get('repeats', 1)}  {arm_b}={sb.get('repeats', 1)}\n")
 
-    rows_a = {r["index"]: r for r in sa["results"]}
-    rows_b = {r["index"]: r for r in sb["results"]}
-    totals = {arm_a: [0, 0], arm_b: [0, 0]}
-
-    for idx in sorted(set(rows_a) & set(rows_b)):
-        cells = []
-        for arm, rows in ((arm_a, rows_a), (arm_b, rows_b)):
-            r = rows[idx]
-            prose = (ROOT / arm / f"{idx:02d}.prose.txt").read_text(encoding="utf-8")
-            in_prose = {n for n in known if re.search(rf"\b{re.escape(n)}\b", prose)}
-            in_brief = brief_names(by_index[idx]["sceneBrief"], known)
-            callbacks = in_prose - in_brief
-            totals[arm][0] += len(callbacks)
-            totals[arm][1] += len(in_prose)
-            cells.append(
-                f"{r['contextTokensApprox']:5d} {r['earlierScenesCited']:5d} {r['words']:5d} "
-                f"{len(callbacks):4d} {r['grounding'] if r['grounding'] is not None else 0:5.2f}"
+    per_arm = {}
+    for arm, s in ((arm_a, sa), (arm_b, sb)):
+        by_scene = {}
+        for r in s["results"]:
+            stem = f"{r['index']:02d}-r{r.get('repeat', 1)}"
+            f = ROOT / arm / f"{stem}.prose.txt"
+            if not f.exists():
+                continue
+            prose = f.read_text(encoding="utf-8")
+            in_brief = brief_names(by_index[r["index"]]["sceneBrief"], known)
+            nm, cm, dc = measure(prose, known, in_brief)
+            by_scene.setdefault(r["index"], []).append(
+                {"named": nm, "callbacks": cm, "distinct": dc,
+                 "words": r["words"], "cited": r["earlierScenesCited"],
+                 "ctx": r["contextTokensApprox"]}
             )
-        print(f"{idx:6d} {rows_a[idx]['priorScenes']:5d} | {cells[0]} | {cells[1]}")
+        per_arm[arm] = by_scene
+
+    scenes = sorted(set(per_arm[arm_a]) & set(per_arm[arm_b]))
+    print(f"{'scene':>5} | {arm_a:^30s} | {arm_b:^30s}")
+    print(f"{'':>5} | {'cited':>5} {'callb/rep':>10} {'named/rep':>10} | "
+          f"{'cited':>5} {'callb/rep':>10} {'named/rep':>10}")
+    metrics = {"callbacks": [], "named": [], "distinct": []}
+    for idx in scenes:
+        cells = []
+        vals = {}
+        for arm in (arm_a, arm_b):
+            rows = per_arm[arm][idx]
+            vals[arm] = {k: mean([r[k] for r in rows]) for k in ("callbacks", "named", "distinct")}
+            cells.append(
+                f"{mean([r['cited'] for r in rows]):5.0f} "
+                f"{vals[arm]['callbacks']:10.1f} {vals[arm]['named']:10.1f}"
+            )
+        for k in metrics:
+            metrics[k].append(vals[arm_b][k] - vals[arm_a][k])
+        print(f"{idx:>5} | {cells[0]} | {cells[1]}")
 
     print()
-    for arm, s in ((arm_a, sa), (arm_b, sb)):
-        cb, named = totals[arm]
-        print(
-            f"{arm:7s} budget {s['budgetTokens']:>5} tok | mean ctx {s['meanContextTokens']:>5} tok | "
-            f"mean cited {s['meanEarlierScenesCited']:>5} | callbacks {cb:>3} | named mentions {named:>3} | "
-            f"mean grounding {s['meanGrounding']}"
-        )
-    print("\nOne sample per cell, unseeded. A gap here is a lead, not a finding.")
+    for k, diffs in metrics.items():
+        p = perm_test(diffs)
+        direction = "wider better" if mean(diffs) > 0 else "narrower better" if mean(diffs) < 0 else "no difference"
+        print(f"{k:>10}: mean paired diff {mean(diffs):+.2f}  ({direction})  exact p = {p:.4f}")
+    print(f"\nFloor on p with {len(scenes)} paired scenes is {2 / 2 ** len(scenes):.4f}.")
+    print("A p at or near that floor means consistent direction, not a large effect.")
 
 
 if __name__ == "__main__":

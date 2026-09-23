@@ -37,6 +37,14 @@ import { STORAGE_KEYS } from '@/config/storageKeys'
 const HOST = process.env.OLLAMA_HOST || 'http://localhost:11434'
 const ARM = process.env.ARM || 'wide'
 const MODEL = process.env.LIVE_MODEL || 'qwen3:8b'
+/**
+ * Repeats per scene. One sample per cell cannot separate a real effect from
+ * sampling noise — the first pass of this probe produced 3 callbacks against 1
+ * and that difference was indistinguishable from chance. There is no `seed` on
+ * the Ollama path to remove the variance, so the only way to see through it is
+ * to measure it: repeats give each scene a distribution instead of a point.
+ */
+const REPEATS = Number(process.env.REPEATS || 1)
 
 /** The old cap, and the new budget at the default 16,384-token window. */
 const ARMS = { narrow: 350, wide: 3793 }
@@ -224,57 +232,58 @@ describe(`live: continuity probe [${ARM}]`, () => {
         .slice(-20)
         .join('\n')
 
-      const t0 = Date.now()
-      let prose = ''
-      let error = null
-      try {
-        const result = await writer.writeSceneStructured({
-          sceneBrief: target.sceneBrief,
-          storyArc: null,
-          chapterLog,
-          storyBible: target.storyBible,
-          embeddingContext,
-          storyContract: '',
-          existingEntitiesJson: null
-        })
-        prose = result?.prose || ''
-      } catch (e) {
-        error = String(e && e.message ? e.message : e)
-      }
-      const ms = Date.now() - t0
+      for (let rep = 1; rep <= REPEATS; rep++) {
+        const t0 = Date.now()
+        let prose = ''
+        let error = null
+        try {
+          const result = await writer.writeSceneStructured({
+            sceneBrief: target.sceneBrief,
+            storyArc: null,
+            chapterLog,
+            storyBible: target.storyBible,
+            embeddingContext,
+            storyContract: '',
+            existingEntitiesJson: null
+          })
+          prose = result?.prose || ''
+        } catch (e) {
+          error = String(e && e.message ? e.message : e)
+        }
+        const ms = Date.now() - t0
 
-      const found = properNouns(prose)
-      const grounded = [...found].filter((n) => established.has(n))
-      const invented = [...found].filter((n) => !established.has(n))
-      const row = {
-        arm: ARM,
-        budgetTokens: budget,
-        index,
-        title: target.title,
-        priorScenes: prior.length,
-        contextChars: embeddingContext.length,
-        contextTokensApprox: Math.round(embeddingContext.length / 4),
-        earlierScenesCited: (embeddingContext.match(/^- Scene /gm) || []).length,
-        words: prose.trim() ? prose.trim().split(/\s+/).length : 0,
-        grounded: grounded.length,
-        invented: invented.length,
-        grounding: found.size ? +(grounded.length / found.size).toFixed(3) : null,
-        groundedNames: grounded.sort(),
-        inventedNames: invented.sort(),
-        ms,
-        error
+        const found = properNouns(prose)
+        const grounded = [...found].filter((n) => established.has(n))
+        const invented = [...found].filter((n) => !established.has(n))
+        const row = {
+          arm: ARM,
+          budgetTokens: budget,
+          index,
+          repeat: rep,
+          title: target.title,
+          priorScenes: prior.length,
+          contextChars: embeddingContext.length,
+          contextTokensApprox: Math.round(embeddingContext.length / 4),
+          earlierScenesCited: (embeddingContext.match(/^- Scene /gm) || []).length,
+          words: prose.trim() ? prose.trim().split(/\s+/).length : 0,
+          grounded: grounded.length,
+          invented: invented.length,
+          grounding: found.size ? +(grounded.length / found.size).toFixed(3) : null,
+          groundedNames: grounded.sort(),
+          inventedNames: invented.sort(),
+          ms,
+          error
+        }
+        results.push(row)
+        const stem = `${String(index).padStart(2, '0')}-r${rep}`
+        writeFileSync(join(OUT, `${stem}.json`), JSON.stringify(row, null, 2))
+        writeFileSync(join(OUT, `${stem}.prose.txt`), prose)
+        console.log(
+          `[${ARM} scene ${index} r${rep}] ctx=${row.contextTokensApprox}tok cited=${row.earlierScenesCited} ` +
+            `words=${row.words} grounded=${row.grounded} invented=${row.invented} ` +
+            `grounding=${row.grounding} ${(ms / 1000).toFixed(1)}s${error ? ` ERROR=${error}` : ''}`
+        )
       }
-      results.push(row)
-      writeFileSync(
-        join(OUT, `${String(index).padStart(2, '0')}.json`),
-        JSON.stringify(row, null, 2)
-      )
-      writeFileSync(join(OUT, `${String(index).padStart(2, '0')}.prose.txt`), prose)
-      console.log(
-        `[${ARM} scene ${index}] ctx=${row.contextTokensApprox}tok cited=${row.earlierScenesCited} ` +
-          `words=${row.words} grounded=${row.grounded} invented=${row.invented} ` +
-          `grounding=${row.grounding} ${(ms / 1000).toFixed(1)}s${error ? ` ERROR=${error}` : ''}`
-      )
     }
 
     const ok = results.filter((r) => !r.error && r.grounding !== null)
@@ -288,6 +297,7 @@ describe(`live: continuity probe [${ARM}]`, () => {
           startedAt: new Date(startedAt).toISOString(),
           totalMinutes: +((Date.now() - startedAt) / 60000).toFixed(1),
           scenes: results.length,
+          repeats: REPEATS,
           errors: results.filter((r) => r.error).length,
           meanContextTokens: Math.round(
             results.reduce((a, r) => a + r.contextTokensApprox, 0) / (results.length || 1)
@@ -306,6 +316,6 @@ describe(`live: continuity probe [${ARM}]`, () => {
         2
       )
     )
-    expect(results.length).toBe(TEST_SCENES.length)
+    expect(results.length).toBe(TEST_SCENES.length * REPEATS)
   })
 })
