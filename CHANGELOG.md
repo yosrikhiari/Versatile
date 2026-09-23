@@ -7,6 +7,20 @@ was verified.
 
 ## [Unreleased]
 
+### Contradiction checking, and what it measured (2026-09-23)
+- **A single scene can contradict the ledger, and was never checked.**
+  `checkContradictions` only examined an entity appearing in two or more of the
+  scenes given to it. Handed one scene it returned 0 for everything — including
+  prose stating a living character had been dead for two years. The threshold is
+  now 1 when a fact ledger is supplied and 2 when it is not.
+- **All four write paths carry the fact ledger.** batchStrategy (both sites) and
+  graphStrategy were still unwired, which would have quietly invalidated any
+  experiment run through them.
+- **Measured: the ledger did not reduce contradictions.** 24 generations paired,
+  mean difference +0.67 per scene *against* the hypothesis at p = 0.25 — no
+  detectable effect, trending the wrong way. See
+  `docs/GENERATION-PIPELINE-ANALYSIS.md` §14.
+
 ### Chapters linked by what actually happened (2026-09-23)
 - **The writer now receives the established-facts ledger.** `buildFactLedger`
   existed with all three callers in `ConsistencyService` — read after the prose

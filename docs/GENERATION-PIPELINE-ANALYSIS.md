@@ -611,3 +611,55 @@ fact-level measure (`checkContradictions` against the ledger), not name counting
 **Increment 2, not done:** the graph itself. `getRelationshipContext(seeds, 2,
 chapterNumber)` is ready to call; it needs store access from the generation path
 and a decision on how many seeds to walk.
+
+## 14. Does the fact ledger reduce contradictions? (ninth pass — 2026-09-23)
+
+The measure §12 said was the right one. Paired: identical brief, bible, chapter
+log, prior scenes and retrieval context; the only difference is whether
+`storyState` carries the ledger. 4 scenes × 3 repeats × 2 arms, 24 generations
+and 24 judge calls, 0 errors. `contradictionProbe.live.js`.
+
+**The instrument had to be fixed before it could be trusted.**
+`checkContradictions` only examined an entity appearing in two or more of the
+scenes given to it. Handed one scene it returned 0 for everything, including
+prose stating a living character "had been dead for two years" — identical to
+the clean control. The threshold is now 1 when a ledger is supplied (there is
+canon to contradict) and 2 when it is not. Without calibrating first, this probe
+would have measured 0 in both arms and reported a confident null.
+
+| scene | nofacts (per repeat) | facts (per repeat) |
+|---|---|---|
+| 14 | 0, 0, 0 → 0.0 | 0, 0, 0 → 0.0 |
+| 20 | 3, 5, 3 → 3.7 | 4, 6, 2 → 4.0 |
+| 26 | 4, 2, 4 → 3.3 | 4, 3, 4 → 3.7 |
+| 29 | 2, 0, 0 → 0.7 | 4, 4, 0 → 2.7 |
+
+Mean paired difference **+0.67 contradictions per scene** with the ledger, exact
+paired permutation **p = 0.25** (floor 0.125 at four pairs). Output length is
+unchanged: 775 vs 783 mean words.
+
+**The ledger did not reduce contradictions, and the direction is against the
+hypothesis.** p = 0.25 is not significance, so the honest reading is "no
+detectable effect, trending the wrong way", not "it makes things worse".
+
+Two candidate explanations, neither tested:
+
+1. Noise. Four pairs, three repeats, an LLM judge, and per-scene variance that
+   is visibly large (scene 29 ran 2/0/0 against 4/4/0).
+2. Engagement. A writer given forty facts writes prose that touches them and
+   sometimes gets one wrong; a writer given none writes vaguer prose with less
+   to contradict. Under this reading the metric partly counts engagement with
+   the story rather than damage to it, and the arms are not comparable on it.
+
+Explanation 2 would mean the measure is still not right — a scene that never
+mentions the debt cannot contradict the debt. Distinguishing them needs a
+denominator: contradictions per *ledger fact the prose actually engages with*.
+That is not built.
+
+**Standing conclusion.** Three mechanisms are now measured and true: the critic
+sees whole scenes (§10), the writer gets 3.5x the continuity at no cost (§11,
+§12), and chapters are linked by observed facts rather than planned ones (§13).
+**No measured improvement in output quality has been demonstrated by any of
+them.** The pipeline is better instrumented and better grounded; whether it
+writes better prose is unproven, and three separate probes have now failed to
+show it.
