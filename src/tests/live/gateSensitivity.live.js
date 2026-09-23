@@ -32,7 +32,12 @@ const MODEL = process.env.LIVE_MODEL || 'qwen3:8b'
 const REPEATS = Number(process.env.REPEATS || 2)
 const TEST_SCENES = [8, 14, 20, 26]
 
-const OUT = join(process.cwd(), 'reports', 'live', 'gate-sensitivity')
+const OUT = join(
+  process.cwd(),
+  'reports',
+  'live',
+  process.env.FOCUSED === '1' ? 'gate-sensitivity-focused' : 'gate-sensitivity'
+)
 mkdirSync(OUT, { recursive: true })
 
 /** A line of dialogue: contains a quoted span. */
@@ -150,6 +155,11 @@ describe('live: gate sensitivity to injected defects', () => {
     await useProjectStore().loadProject(
       await createProject('Gate Sensitivity', 'Literary historical fiction', 'gate-sens', 1)
     )
+
+    // FOCUSED=1 runs the same injections through the production critic with the
+    // focused path enabled — the acceptance test for docs §17a.
+    const { setFocusedCritic } = await import('@/composables/useStoryCritic')
+    setFocusedCritic(process.env.FOCUSED === '1')
 
     const { setRolePlacement } = await import('@/config/roles')
     setRolePlacement('critic', { model: MODEL, device: 'gpu', numCtx: 8192, keepAlive: '30m' })

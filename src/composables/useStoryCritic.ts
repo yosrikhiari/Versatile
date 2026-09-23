@@ -9,10 +9,11 @@ import {
   getDimensionNames,
   formatDimensionRubrics
 } from '../config/evalDimensions'
-import { deriveVerdict } from '../services/criticVerdict'
+import { deriveVerdict, CRITIC_VERDICT_CONFIG } from '../services/criticVerdict'
 import { sanitizeJson } from '../services/ai/aiHelpers'
 import { guardCritique } from '../guardrails/integration/composableGuardrails'
 import { recordQualityForOutput } from '../services/aiResponseCache'
+import { STORAGE_KEYS } from '../config/storageKeys'
 
 /**
  * Detect excessive repetition in prose.
@@ -129,6 +130,48 @@ function buildCriticSchema(dimensionNames: string[]) {
       pass: { type: 'boolean' }
     },
     required: ['score', 'dimensionScores', 'issues', 'strengths', 'pass']
+  }
+}
+
+/**
+ * One dimension, its own rubric, nothing else.
+ *
+ * Measured (docs §16-17a): the combined call passed 40 of 40 scenes with a
+ * deliberately injected defect, and the targeted dimension moved -0.1, -0.8,
+ * -0.1 and +0.2 -- the continuity contradiction scoring HIGHER than the clean
+ * control. Asked one dimension at a time over the same scenes and injections,
+ * the same model on the same hardware moved -0.38, -2.75, -0.88 and -0.50, in
+ * the right direction every time. The model can do this job; five questions in
+ * one call was stopping it.
+ *
+ * `issue` is requested but not required: a dimension that scores well has
+ * nothing to report, and forcing a string there invites invention.
+ */
+const FOCUSED_DIMENSION_SCHEMA = {
+  type: 'object',
+  properties: {
+    score: { type: 'number' },
+    issue: { type: 'string' }
+  },
+  required: ['score']
+}
+
+/** Judge one dimension per call instead of five at once. Off by default. */
+export function isFocusedCriticEnabled(): boolean {
+  try {
+    // STORAGE_KEYS ref
+    return localStorage.getItem(STORAGE_KEYS.CRITIC_FOCUSED) === 'true'
+  } catch {
+    return false
+  }
+}
+
+export function setFocusedCritic(enabled: boolean) {
+  try {
+    // STORAGE_KEYS ref
+    localStorage.setItem(STORAGE_KEYS.CRITIC_FOCUSED, enabled ? 'true' : 'false')
+  } catch {
+    /* private mode — the default (off) stands */
   }
 }
 
@@ -337,23 +380,14 @@ export function useStoryCritic() {
       const draftTruncated = draft.length > DRAFT_CHAR_CAP
       const draftText = draftTruncated ? draft.slice(0, DRAFT_CHAR_CAP) : draft
 
-      const userPrompt = `Evaluate this scene draft across ALL of the following dimensions:
-${dimsList}
-
-You MUST provide a score (1-10) for each dimension in the "dimensionScores" field of your JSON response.
-
-SCORING SCALE — use these anchors. Do not default to a middling score; if a
-dimension is genuinely excellent say so, and if it is genuinely weak say so.
-${rubrics}
-
-${
-  focusInstructions
-    ? `FOCUS AREAS (pay extra attention to these dimensions based on historical weaknesses):
-${focusInstructions}
-
-`
-    : ''
-}SCENE BRIEF:
+      /**
+       * Everything about the scene, with no judging instruction attached.
+       *
+       * Both modes need this verbatim; only the question in front of it differs.
+       * Keeping it in one place is what makes the focused mode a swap of the
+       * question rather than a second prompt to maintain.
+       */
+      const sceneBlock = `SCENE BRIEF:
 - Title: ${sceneBrief.title}
 - Emotional goal: ${sceneBrief.emotionalGoal}
 - Characters present: ${sceneBrief.charactersPresent.join(', ')}
@@ -377,7 +411,26 @@ ${
   draftTruncated
     ? '\n[The draft was cut here for length. Judge only what you were given; do NOT treat the missing ending as an unresolved scene or a continuity fault.]\n'
     : ''
-}
+}`
+
+      const userPrompt = `Evaluate this scene draft across ALL of the following dimensions:
+${dimsList}
+
+You MUST provide a score (1-10) for each dimension in the "dimensionScores" field of your JSON response.
+
+SCORING SCALE — use these anchors. Do not default to a middling score; if a
+dimension is genuinely excellent say so, and if it is genuinely weak say so.
+${rubrics}
+
+${
+  focusInstructions
+    ? `FOCUS AREAS (pay extra attention to these dimensions based on historical weaknesses):
+${focusInstructions}
+
+`
+    : ''
+}${sceneBlock}
+
 Return JSON evaluation with dimensionScores covering all listed dimensions.`
 
       const criticSchema = buildCriticSchema(promptDims)
@@ -394,7 +447,95 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
           sessionBudget: _sessionBudget
         }).catch(() => null)
 
-      let parsed: any = await callCritic(userPrompt)
+      /**
+       * The focused path: one call per dimension, then the same shape the
+       * combined call returns, so everything downstream -- `deriveVerdict`, the
+       * guardrails, persistence -- is untouched.
+       *
+       * Sequential on purpose. The calls are ~1.1 s each against one resident
+       * model, and five of them come to roughly what the single combined call
+       * costs; firing them in parallel at one GPU buys nothing and makes the
+       * budget accounting harder to read.
+       */
+      async function focusedCritique() {
+        const dimensionScores: Record<string, number> = {}
+        const issues: { type: string; severity: string; description: string }[] = []
+        const minDimension = CRITIC_VERDICT_CONFIG.minDimensionScore
+        for (const dimension of promptDims) {
+          // What this dimension is actually judged against. The shared block
+          // labels the bible "character descriptions for voice check", which is
+          // true for voice and actively misleading for continuity — the first
+          // acceptance run caught the contradiction at -0.12 with that framing
+          // against -0.50 when the bible was named as established fact.
+          const FRAMING: Record<string, string> = {
+            continuity:
+              'The STORY BIBLE below is established fact. Prose that contradicts it — a character who is dead, a debt that never existed — is a continuity failure however well written.',
+            voice:
+              'Judge whether the characters sound like different people, and like the people the STORY BIBLE describes.',
+            show_tell:
+              'Judge dramatisation against summary. A paragraph that reports what happened instead of enacting it is telling.',
+            pacing:
+              'Judge whether every passage earns its place. Material that advances neither plot, character nor tension is filler.',
+            emotional_goal:
+              'Judge the scene against the emotional goal in its brief, and nothing else.'
+          }
+          const prompt = `Judge ONE aspect of this scene: ${dimension}.
+
+${FRAMING[dimension] || ''}
+
+SCORING SCALE — use these anchors and nothing else:
+${formatDimensionRubrics(categoryType, [dimension])}
+
+If the scene is weak on this aspect, say so — a middling default is worse than
+an honest low mark. Name the problem in "issue" only if there is one.
+
+${sceneBlock}
+
+Return JSON: { "score": number, "issue": "one sentence, or omit if none" }`
+          // NOT `activePrompts.critic`: that system prompt instructs the model
+          // to return the full five-dimension object, which contradicts the one
+          // question being asked here.
+          const focusedSystem = `You are a story editor judging exactly one aspect of a scene: ${dimension}. You judge that aspect and nothing else, and you are willing to mark it low.`
+          const parsedDim = (await aiGenerateJson(prompt, focusedSystem, {
+            feature: FEATURES.STORY_GENERATION,
+            role: 'critic',
+            temperature: 0.3,
+            maxTokens: 300,
+            schema: FOCUSED_DIMENSION_SCHEMA,
+            schemaName: `focused_${dimension}`,
+            sessionBudget: _sessionBudget
+          }).catch(() => null)) as { score?: number; issue?: string } | null
+          if (!parsedDim || typeof parsedDim.score !== 'number') continue
+          dimensionScores[dimension] = parsedDim.score
+          const issue = typeof parsedDim.issue === 'string' ? parsedDim.issue.trim() : ''
+          if (issue && parsedDim.score < minDimension) {
+            issues.push({
+              type: dimension,
+              // The dimension floor is what `deriveVerdict` fails a scene on, so
+              // a score under it is the major kind by definition.
+              severity: 'major',
+              description: issue
+            })
+          } else if (issue) {
+            issues.push({ type: dimension, severity: 'minor', description: issue })
+          }
+        }
+        if (Object.keys(dimensionScores).length === 0) return null
+        const values = Object.values(dimensionScores)
+        return {
+          // No summary number is asked for: measured over thirty scenes it is a
+          // constant (§10, §15) and `deriveVerdict` keys on the weakest
+          // dimension anyway. The mean is reported for display only.
+          score: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10,
+          dimensionScores,
+          issues,
+          strengths: []
+        }
+      }
+
+      let parsed: any = isFocusedCriticEnabled()
+        ? await focusedCritique()
+        : await callCritic(userPrompt)
       // One retry when the model produced JSON that judges nothing. The
       // grammar now requires the fields, so this is a backstop for a provider
       // that ignores `required` (or a text-mode fallback), not the normal path.

@@ -24,6 +24,8 @@ export const STORAGE_KEYS = {
   ROLE_PLACEMENT_PREFIX: 'versatile_role_placement_',
   /** Which writing orchestrator a run uses: 'legacy' | 'langgraph' (settingsStore). */
   ORCHESTRATOR: 'versatile_orchestrator',
+  /** Judge one dimension per call instead of five at once — see docs §16–17a. */
+  CRITIC_FOCUSED: 'versatile_critic_focused',
   /** Route local model calls through the AgentOps gateway ('true' | 'false') and where it is. */
   AGENTOPS_TRACING: 'versatile_agentops_tracing',
   AGENTOPS_URL: 'versatile_agentops_url',

@@ -841,3 +841,56 @@ summary score is uninformative — and replace the single five-dimension call
 behind it with one focused call per dimension. Then re-run
 `gateSensitivity.live.js`: the defects it injects are the acceptance test, and
 today they all pass 40/40.
+
+## 18. The focused gate in production (twelfth pass — 2026-09-23)
+
+§17a said to keep `deriveVerdict` and replace the single five-dimension call
+behind it with one focused call per dimension. Built, behind
+`STORAGE_KEYS.CRITIC_FOCUSED`, **off by default**. `gateSensitivity.live.js`
+with `FOCUSED=1` is its acceptance test — the same injected defects, through the
+production critic.
+
+**The first port scored worse than the standalone probe, and the acceptance test
+caught why.** Two bugs, both mine:
+
+- It passed `activePrompts.critic` as the system prompt. That prompt instructs
+  the model to return the full five-dimension object, contradicting the single
+  question the user prompt asks. Replaced with a focused system prompt.
+- The shared scene block labels the bible *"character descriptions for voice
+  check"* — true for voice, actively misleading for continuity. The focused
+  prompt now prepends a per-dimension framing line, naming the bible as
+  established fact when continuity is what is being judged.
+
+| defect | target | combined (today) | focused (fixed) |
+|---|---|---|---|
+| control (clean prose) | — | passes 8/8 | **passes 6/8** |
+| every line of dialogue identical | voice | −0.12, passes 8/8 | **−1.00, fails 0/8** |
+| paragraphs replaced with summary | show_tell | −0.75, passes 8/8 | **−2.50, fails 0/8** |
+| filler advancing nothing | pacing | −0.12, passes 8/8 | −0.50, fails 4/8 |
+| a named character stated dead | continuity | +0.25, passes 8/8 | **+0.00, passes 6/8** |
+
+**Voice and show_tell are solved.** Both go from undetectable to caught on every
+scene. Pacing is caught half the time.
+
+**Continuity is not, and should not be fixed here.** The injection contradicts
+the first line of the bible it is given (`Ch1: Halim is alive and leading a
+caravan`), so the fixture is sound and the judge simply cannot see it — the same
+result the standalone probe got (−0.50, 2 of 4). But `checkContradictions`
+**did** catch that exact injection in isolation (§14 calibration: one
+contradiction, correctly diagnosed as alive-versus-dead). The dedicated
+contradiction judge against the fact ledger is the right home for continuity;
+asking the scene critic for a continuity number is not.
+
+**Cost is not the objection.** 3.4 minutes for the focused acceptance run
+against 3.7 for the combined one, on identical work.
+
+**Why it stays off by default.** Clean prose now fails 2 of 8. A gate that can
+fail will sometimes fail good work, and the separation is real (6/8 against 0/8),
+but flipping the default changes every generation run — more revision attempts,
+longer runs — and that deserves its own measurement rather than riding along
+with this one. The generation contract already limits the damage: gates warn
+rather than discard, and a failed scene commits its best attempt as `review`.
+
+**Recommended finish, not built:** route continuity through
+`checkContradictions` against the ledger instead of the focused critic, re-run
+the acceptance test, then measure run-level impact before changing the default.
