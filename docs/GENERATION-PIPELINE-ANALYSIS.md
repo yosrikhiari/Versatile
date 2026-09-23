@@ -331,3 +331,94 @@ the 3B editor are the open questions, and they are runs C and D.
 | the-graph-test | 2 | 553 | 18.6 min | GPU, evicting the writer each scene | — (not traced) | 0 / 0 (workflow-only steps) |
 | the-traced-run-1 | 2 | 948 | 8.1 min | provider on CPU; two stray paths still GPU | no — untagged | 0 / 2 |
 | the-traced-run | 2 | 882 | 6.6 min | CPU everywhere, 0 evictions | yes | 0 / 2 |
+
+## 10. What the critic actually sees (sixth pass — 2026-09-23)
+
+§9 put one check in front of A/B run C: score the 30 committed salt-road scenes
+with the small CPU critic and compare its ranking with the 8B's. Running it
+answered a different question, because two of its premises turned out to be
+false.
+
+**The 8B verdicts were never recorded.** `health.json` keeps `failedScenes` and
+`consistency`, not per-scene scores, so both critics were re-scored here through
+the same `evaluateScene` path on identical inputs. Corpus, harness and analysis:
+`reports/live/critic-rank-agreement/`, `src/tests/live/criticRankAgreement.live.js`,
+`tools/critic-rank-agreement.py`.
+
+**There was no ranking to agree with.** `qwen3:8b` scored **8/10 on all thirty
+scenes**. Five distinct dimension vectors covered the set, fourteen scenes shared
+one of them, `voice` was 9 on 29/30 and `emotional_goal` 10 on 29/30. The only
+dimension that moved was `continuity`, and since `deriveVerdict` fails a scene on
+its weakest dimension, continuity alone decided every pass and fail. The
+five-dimension rubric was doing one dimension's work.
+
+### Two defects, both invisible from outside
+
+- **The critic read 74% of each scene.** `draft.slice(0, 4000)` against scenes of
+  4,380–6,313 chars: all thirty truncated, 26% unseen on average, 37% at worst.
+  The critic was judging prose that stopped mid-action and marking it down for
+  it. All seven gate failures were `continuity: 6`.
+- **The rubric was dead code.** Every dimension in `evalDimensions.ts` carries a
+  1–10 anchor set and nothing outside that file ever read `.rubric`. The prompt
+  asked for five numbers and named no scale, so the model returned a plausible
+  constant.
+
+Fixed: the critic gets the whole draft (24,000-char runaway guard, and when it
+bites the prompt says so, because a cut ending is not a defect in the writing);
+`formatDimensionRubrics` sends the 1/3/5/7/9/10 rungs (~600 tokens of an 8k
+window). `computeSummary`'s fallback keeps the head *and* tail of a scene — that
+path only runs when metadata extraction failed or was skipped, and it was not
+observed firing in any run here.
+
+### Before and after, same model, same thirty scenes
+
+| | qwen3:8b before | qwen3:8b after | qwen2.5:3b before | qwen2.5:3b after |
+|---|---|---|---|---|
+| Passes the gate | 23/30 | **30/30** | 0/30 | 7/30 |
+| Overall score | 8 on all 30 | 8 on all 30 | 4–6 | 5–7 |
+| Distinct dimension vectors | 5 | 8 | — | — |
+| Saw the whole scene | no | **30/30** | no | **30/30** |
+
+**All seven gate failures were truncation artifacts.** With the full text the same
+model on the same scenes never drops a dimension below 7. The anchors widened the
+dimension spread (`voice` unpinned from 9-on-29 to a 7/8/9 spread) but did not
+unpin the overall score.
+
+### What this means for run C
+
+Agreement between the two critics after the fix: raw 23.3%, **Cohen's kappa
+0.000** — but that number is degenerate, because the 8B now passes everything and
+there is nothing to agree about. The one real movement is `continuity` rank
+agreement, **+0.011 → +0.428**: the earlier "the CPU critic agrees at chance"
+reading was substantially an artifact of the broken prompt.
+
+So the blocker on run C is not the CPU critic. It is that the 8B is a degenerate
+judge — one score and one verdict for every scene, before and after — and runs
+A–D all use gate pass rate as their primary measure. That measure is now provably
+30/30 regardless of content. **Calibrate the gate against scenes labelled by hand
+before spending four hours on A/B runs**, or every number inherits the flaw.
+
+Caveat: the 3B's scenes ordering barely survived the prompt change (rho +0.172
+against itself). That is suggestive of instability, not proof — the prompt did
+genuinely change. A same-prompt test-retest has not been run.
+
+### End-to-end (2026-09-23, `reports/live/the-long-scene-run/`)
+
+1 chapter × 2 scenes × 2,400 words, legacy orchestrator, 12.9 min, `error=null`,
+2,354 words, 2 synced, one continuity rewrite over two passes. Both scenes cleared
+the old cap (6,653 and 6,857 chars) and the scene tail reached a model 2/2; 34
+calls, largest prompt 12,417 chars. A 1,000-word run does **not** exercise this —
+its scenes came in at ~2,600 chars, under the old cap.
+
+`saltRoad.live.js` now writes `scenes.json` and `wire.json`: per-scene words,
+chars, `overOldCriticCap`, the summary, `sceneTailReachedAModel`, and the prompt
+sizes. A run could previously say only what came out of it, which is how a
+four-thousand-character slice survived three live runs. AgentOps cannot fill this
+gap — `PRIVACY.md` strips prompts from every read path on purpose — so the
+capture is local to the run.
+
+Three guards in `useStoryCritic.consistency.test.js` keep it from returning: the
+prompt must carry a long scene's ending, must carry the anchors, and must say so
+when a runaway draft really is cut. This is the third time this codebase shipped a
+prompt that silently dropped the end of a scene (see `chunkProseForMetadata`),
+which is why they are tests and not comments.

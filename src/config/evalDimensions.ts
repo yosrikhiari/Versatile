@@ -475,3 +475,42 @@ export function getDefaultThreshold(workspaceType: any) {
   if (values.length === 0) return 7
   return values.reduce((sum, d) => sum + d.defaultThreshold, 0) / values.length
 }
+
+/**
+ * The scoring anchors for a workspace's dimensions, as prompt text.
+ *
+ * Every dimension above carries a 1-10 `rubric`, and until 2026-09-23 no model
+ * ever saw one: the critic prompt asked for five numbers and named no scale.
+ * Measured on the 30 committed salt-road scenes, `qwen3:8b` answered with the
+ * same vector for 14 of them and scored every scene 8/10 overall — with nothing
+ * to anchor against, an unanchored 1-10 request returns a plausible constant.
+ *
+ * Only the odd rungs plus the extremes are sent. The full ten lines per
+ * dimension is ~900 tokens of the critic's 8k budget for wording a model does
+ * not need; 1/3/5/7/9/10 fixes the scale with a third of the tokens.
+ */
+const ANCHOR_RUNGS = [1, 3, 5, 7, 9, 10]
+
+interface EvalDimension {
+  label: string
+  description: string
+  rubric: Record<number, string>
+  weight: number
+  defaultThreshold: number
+  focusInstruction?: string
+}
+
+export function formatDimensionRubrics(workspaceType: string, dimensionNames?: string[]): string {
+  const dims = getDimensionsForWorkspace(workspaceType) as Record<string, EvalDimension>
+
+  const names = dimensionNames && dimensionNames.length ? dimensionNames : Object.keys(dims)
+  const blocks: string[] = []
+  for (const name of names) {
+    const dim = dims[name]
+    if (!dim || !dim.rubric) continue
+    const lines = ANCHOR_RUNGS.filter((n) => dim.rubric[n]).map((n) => `  ${n} = ${dim.rubric[n]}`)
+    if (!lines.length) continue
+    blocks.push(`${name} (${dim.label} — threshold ${dim.defaultThreshold}):\n${lines.join('\n')}`)
+  }
+  return blocks.join('\n\n')
+}

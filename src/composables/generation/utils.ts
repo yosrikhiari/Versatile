@@ -91,12 +91,32 @@ function sliceSummary(fullProse: any) {
  * @param {object} [structured] The writer's parsed JSON, when the caller has it.
  * @returns {Promise<string>}
  */
+/**
+ * What the summarizer is allowed to read, when it has to read at all.
+ *
+ * This was `prose.slice(0, 3000)`, and the scene summary is not a throwaway:
+ * `sceneContext` feeds it to every later scene as "previous events" and embeds
+ * it for semantic retrieval, so it is the story's memory of that scene. The
+ * committed salt-road scenes run 4,380-6,313 chars, so a head slice summarized
+ * the first ~55% of a scene and dropped the outcome — the one thing the next
+ * scene has to follow on from. Keeping the head and the tail costs the same
+ * tokens and keeps the ending, which is where a scene says what changed.
+ */
+const SUMMARY_EXCERPT_MAX_CHARS = 3000
+
+export function excerptForSummary(prose: string, max = SUMMARY_EXCERPT_MAX_CHARS): string {
+  if (prose.length <= max) return prose
+  const head = Math.floor(max * 0.6)
+  const tail = max - head
+  return `${prose.slice(0, head)}\n\n[... middle of the scene omitted ...]\n\n${prose.slice(-tail)}`
+}
+
 export async function computeSummary(fullProse: any, structured: any) {
   const provided = structured?.summary
   if (typeof provided === 'string' && provided.trim()) return cleanSummary(provided)
 
   try {
-    const summaryPrompt = `You are a copyeditor. Summarize the following narrative scene in exactly one concise sentence:\n\n"${String(fullProse || '').slice(0, 3000)}"`
+    const summaryPrompt = `You are a copyeditor. Summarize the following narrative scene in exactly one concise sentence:\n\n"${excerptForSummary(String(fullProse || ''))}"`
     const summaryResponse = await aiGenerate(
       summaryPrompt,
       'Summarize the scene in one sentence.',

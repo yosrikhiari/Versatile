@@ -4,7 +4,8 @@ import {
   normalizeField,
   wrapApiError,
   buildEnhancedSynopsis,
-  FIELD_LENGTH_CONSTRAINTS
+  FIELD_LENGTH_CONSTRAINTS,
+  excerptForSummary
 } from '@/composables/generation/utils'
 
 describe('sanitizeJsonResponse', () => {
@@ -137,5 +138,34 @@ describe('buildEnhancedSynopsis', () => {
     const out = buildEnhancedSynopsis('Premise.', '', 'Two siblings argue.')
     expect(out).toContain('What this scene / chapter should be about:\nTwo siblings argue.')
     expect(out).not.toContain('brainstorming')
+  })
+})
+
+describe('excerptForSummary', () => {
+  it('returns short prose untouched', () => {
+    const prose = 'A short scene.'
+    expect(excerptForSummary(prose)).toBe(prose)
+  })
+
+  it('keeps the ending of a long scene', () => {
+    // The old `slice(0, 3000)` dropped the outcome, and the summary it produced
+    // is what every later scene reads as "previous events".
+    const prose = 'HEAD' + 'x'.repeat(5000) + 'THE DOOR CLOSED BEHIND HER.'
+    const out = excerptForSummary(prose)
+    expect(out.startsWith('HEAD')).toBe(true)
+    expect(out).toContain('THE DOOR CLOSED BEHIND HER.')
+    expect(out).toContain('middle of the scene omitted')
+  })
+
+  it('stays within the character budget plus the elision marker', () => {
+    const prose = 'y'.repeat(20000)
+    const out = excerptForSummary(prose, 3000)
+    expect(out.length).toBeLessThan(3000 + 60)
+  })
+
+  it('honours a custom budget', () => {
+    const prose = 'z'.repeat(1000)
+    const out = excerptForSummary(prose, 100)
+    expect(out.length).toBeLessThan(200)
   })
 })

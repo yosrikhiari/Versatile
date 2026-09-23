@@ -60,7 +60,7 @@
   "src/composables/useAuthorModel.ts": 2,
   "src/composables/useAutoPromptAdjuster.ts": 1,
   "src/composables/useChapterGenerationSync.ts": 12,
-  "src/composables/useCharacterChat.ts": 14,
+  "src/composables/useCharacterChat.ts": 12,
   "src/composables/useClickOutside.ts": 5,
   "src/composables/useConsistencyChecker.ts": 3,
   "src/composables/useContextCompactor.ts": 14,

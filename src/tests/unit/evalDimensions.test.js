@@ -3,7 +3,8 @@ import {
   EVAL_DIMENSIONS,
   getDimensionsForWorkspace,
   getDimensionNames,
-  getDefaultThreshold
+  getDefaultThreshold,
+  formatDimensionRubrics
 } from '@/config/evalDimensions'
 
 describe('EVAL_DIMENSIONS', () => {
@@ -117,5 +118,45 @@ describe('getDefaultThreshold', () => {
   it('returns 7 for unknown workspace type', () => {
     const avg = getDefaultThreshold('unknown')
     expect(avg).toBe(7)
+  })
+})
+
+describe('formatDimensionRubrics', () => {
+  it('emits anchors for every requested dimension', () => {
+    const text = formatDimensionRubrics('creative', ['continuity', 'show_tell'])
+    expect(text).toContain('continuity')
+    expect(text).toContain('show_tell')
+    // The anchors are what the critic was missing: a 1-10 request with no scale
+    // made qwen3:8b answer 8/10 for all 30 scenes of a real run.
+    for (const rung of [1, 3, 5, 7, 9, 10]) {
+      expect(text).toContain(`  ${rung} = `)
+    }
+    expect(text).toContain('threshold 7')
+  })
+
+  it('skips the even middle rungs to keep the prompt small', () => {
+    const text = formatDimensionRubrics('creative', ['pacing'])
+    expect(text).not.toContain('  2 = ')
+    expect(text).not.toContain('  4 = ')
+    expect(text).not.toContain('  6 = ')
+    expect(text).not.toContain('  8 = ')
+  })
+
+  it('defaults to every dimension of the workspace', () => {
+    const text = formatDimensionRubrics('creative')
+    for (const name of getDimensionNames('creative')) {
+      expect(text).toContain(name)
+    }
+  })
+
+  it('stays within a sane share of the critic context window', () => {
+    // The critic role runs at numCtx 8192. Roughly 4 chars per token, so the
+    // anchors must stay well under a couple of thousand tokens.
+    const text = formatDimensionRubrics('creative')
+    expect(text.length / 4).toBeLessThan(1200)
+  })
+
+  it('ignores dimensions that carry no rubric', () => {
+    expect(formatDimensionRubrics('creative', ['not_a_dimension'])).toBe('')
   })
 })

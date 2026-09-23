@@ -59,8 +59,43 @@ function words(text) {
   return t ? t.split(/\s+/).length : 0
 }
 
+/**
+ * Every prompt this run sends to Ollama, so a run can answer "what did the
+ * model actually see?".
+ *
+ * A run used to be able to say only what came out. That is how
+ * `draft.slice(0, 4000)` in the critic survived three live runs: the prose was
+ * fine, the verdicts looked plausible, and nothing recorded that the judge had
+ * been handed 74% of a scene. AgentOps cannot fill this in -- PRIVACY.md has it
+ * strip prompts from every read path on purpose -- so the capture lives here,
+ * local to the run, and is written next to the book.
+ */
+const wireCalls = []
+function captureOllamaCalls() {
+  const realFetch = globalThis.fetch.bind(globalThis)
+  globalThis.fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input?.url || ''
+    if (init?.body && /\/api\/(generate|chat)/.test(url)) {
+      try {
+        const body = JSON.parse(init.body)
+        wireCalls.push({
+          at: Date.now(),
+          model: body.model,
+          numCtx: body.options?.num_ctx ?? null,
+          promptChars: (body.prompt || JSON.stringify(body.messages || '')).length,
+          prompt: body.prompt || JSON.stringify(body.messages || '')
+        })
+      } catch {
+        /* an unparsable body is not worth failing a two-hour run over */
+      }
+    }
+    return realFetch(input, init)
+  }
+}
+
 describe('live: The Salt Road', () => {
   it('writes the book', async () => {
+    captureOllamaCalls()
     setActivePinia(createPinia())
     localStorage.setItem(STORAGE_KEYS.OLLAMA_ENDPOINT, HOST)
     localStorage.setItem(STORAGE_KEYS.OLLAMA_UTILITY_MODEL, 'qwen3:8b')
@@ -283,6 +318,64 @@ describe('live: The Salt Road', () => {
       }
     }
     writeFileSync(join(OUT, 'book.md'), book)
+
+    // Per scene: what was written, what the story will remember of it, and
+    // whether any prompt this run sent actually contained the whole thing.
+    const sceneRows = []
+    for (const s of sections) {
+      const scenes = subs
+        .filter((x) => x.sectionId === s.id)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      for (const sc of scenes) {
+        const prose = (sc.content || '')
+          .replace(/<[^>]+>/g, '\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim()
+        const tail = prose.slice(-120)
+        // The summary lives on the generator's `writtenScenes` entry, not on the
+        // `subsections` row -- that is where `sceneContext` reads it from when it
+        // tells a later scene what happened earlier. Reading `sc.summary` here
+        // reported an empty summary for every scene and looked like a data-loss
+        // bug; it was this dump looking in the wrong place.
+        const written = (gen.writtenScenes?.value || []).find((w) => w && w.subsectionId === sc.id)
+        const summary = written?.summary || null
+        sceneRows.push({
+          title: sc.title,
+          words: words(prose),
+          chars: prose.length,
+          // The old critic cap. True means this scene would have been cut.
+          overOldCriticCap: prose.length > 4000,
+          summary,
+          summaryChars: (summary || '').length,
+          // Did ANY prompt carry the scene end? If a scene is over the old cap
+          // and this is false, something is still truncating.
+          sceneTailReachedAModel: tail.length > 40 && wireCalls.some((c) => c.prompt.includes(tail))
+        })
+      }
+    }
+    writeFileSync(join(OUT, 'scenes.json'), JSON.stringify(sceneRows, null, 2))
+    writeFileSync(
+      join(OUT, 'wire.json'),
+      JSON.stringify(
+        {
+          calls: wireCalls.length,
+          maxPromptChars: wireCalls.reduce((m, c) => Math.max(m, c.promptChars), 0),
+          byModel: wireCalls.reduce((acc, c) => {
+            acc[c.model] = (acc[c.model] || 0) + 1
+            return acc
+          }, {}),
+          // Prompts themselves stay out of the dump: the sizes are the signal,
+          // and a book's prose does not need a second copy on disk.
+          promptChars: wireCalls.map((c) => c.promptChars)
+        },
+        null,
+        2
+      )
+    )
+    log(
+      `scenes dumped: ${sceneRows.length}, over old critic cap: ${sceneRows.filter((r) => r.overOldCriticCap).length}, ` +
+        `tail reached a model: ${sceneRows.filter((r) => r.sceneTailReachedAModel).length}/${sceneRows.length}`
+    )
     log(
       `done phase=${gen.phase.value} error=${gen.error.value} chapters=${sections.length} scenes=${subs.length} words=${total} bibleChanges=${gen.bibleChangesDiscovered.value} synced=${gen.scenesSynced.value}`
     )

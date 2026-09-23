@@ -355,3 +355,72 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
     expect(critic.isEvaluating.value).toBe(false)
   })
 })
+
+/**
+ * The critic must judge the WHOLE scene, and it must be told the scale.
+ *
+ * Both of these were broken in production and neither was visible from the
+ * outside: `draft.slice(0, 4000)` hid the last 26% of every scene in a real
+ * 30-scene run, and the 1-10 rubric in `evalDimensions.ts` was never
+ * interpolated into any prompt. The measured cost of the first was 7 of 30
+ * scenes failed for `continuity: 6` and sent back for revision; with the full
+ * text the same model and the same scenes pass 30/30.
+ *
+ * This is the third time this codebase has shipped a prompt that silently
+ * dropped the end of a scene (see `chunkProseForMetadata` in useStoryWriter),
+ * so it is a test, not a comment.
+ */
+describe('Critic prompt — what the model actually receives', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  async function promptForDraft(draft) {
+    mockAiGenerate.mockResolvedValue(makeResponse({ score: 8 }))
+    const { useStoryCritic } = await import('@/composables/useStoryCritic')
+    await useStoryCritic().evaluateScene({
+      draft,
+      sceneBrief: {
+        title: 'T',
+        emotionalGoal: 'G',
+        charactersPresent: ['A'],
+        payoff: 'P',
+        tension: 'm'
+      },
+      storyBible: '## A — someone\n## B — someone else',
+      chapterLog: ''
+    })
+    expect(mockAiGenerate).toHaveBeenCalled()
+    return String(mockAiGenerate.mock.calls[0][0])
+  }
+
+  it('sends the end of a long scene, not just the first 4000 chars', async () => {
+    const ending = 'SHE SET THE LAST STONE DOWN AND TURNED FOR HOME.'
+    // Varied on purpose: repetitive filler trips the repetition detector and
+    // the critic short-circuits before it ever builds a prompt.
+    const body = Array.from(
+      { length: 300 },
+      (_, i) =>
+        `Marker${i} bore${i} the${i} salt${i} sacks${i} westward${i} past dune${i} at hour${i}.`
+    ).join(' ')
+    const draft = `${body} ${ending}`
+    expect(draft.length).toBeGreaterThan(5000)
+    const prompt = await promptForDraft(draft)
+    expect(prompt).toContain(ending)
+  })
+
+  it('includes the scoring anchors so the scale is not invented', async () => {
+    const prompt = await promptForDraft('A short scene.')
+    expect(prompt).toContain('SCORING SCALE')
+    expect(prompt).toMatch(/continuity \(Continuity — threshold 7\)/)
+    expect(prompt).toContain('  1 = ')
+    expect(prompt).toContain('  10 = ')
+  })
+
+  it('says so when a runaway draft really is cut', async () => {
+    const prompt = await promptForDraft('x'.repeat(30000))
+    expect(prompt).toContain('The draft was cut here for length')
+    expect(prompt).toContain('do NOT treat the missing ending')
+  })
+})

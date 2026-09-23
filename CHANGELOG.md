@@ -7,6 +7,33 @@ was verified.
 
 ## [Unreleased]
 
+### The critic reads the whole scene (2026-09-23)
+- **The quality gate was judging 74% of every scene.** `useStoryCritic` sent
+  `draft.slice(0, 4000)`; the committed salt-road scenes are 4,380-6,313 chars,
+  so all thirty were truncated and the critic marked prose down for stopping
+  mid-action. Measured on those thirty scenes, all seven gate failures were this
+  artifact: `qwen3:8b` passes **23/30 before, 30/30 after**, and no dimension
+  falls below 7 once it can see the ending. A 24,000-char runaway guard remains,
+  and when it bites the prompt says so.
+- **The scoring rubric reached no model.** Every dimension in
+  `evalDimensions.ts` carries a 1-10 anchor set and nothing outside that file
+  read `.rubric`, so the critic was asked for five numbers with no scale and
+  returned a constant: 8/10 on all thirty scenes, five distinct dimension
+  vectors, `voice` 9 on 29/30. `formatDimensionRubrics` now sends the
+  1/3/5/7/9/10 rungs (~600 tokens of an 8k window); the dimension spread widens,
+  the overall score does not.
+- **Scene summaries keep their ending.** `computeSummary`'s fallback summarized
+  `prose.slice(0, 3000)` -- about 55% of a scene -- and that summary is what
+  `sceneContext` feeds later scenes as previous events. Head-and-tail excerpt at
+  the same token cost. Fallback only: the path runs when metadata extraction
+  failed or was skipped.
+- **A run now records what the model saw.** `saltRoad.live.js` writes
+  `scenes.json` and `wire.json` (per-scene chars, `overOldCriticCap`, summary,
+  `sceneTailReachedAModel`, prompt sizes). Verified end to end on 1 x 2 x 2,400
+  words: `error=null`, both scenes over the old cap, tail reached a model 2/2,
+  34 calls, largest prompt 12,417 chars. Three regression tests keep the prompt
+  honest. See `docs/GENERATION-PIPELINE-ANALYSIS.md` §10.
+
 ### Character group chat (2026-09-20)
 - **Group conversations.** Tick 2+ character cards in the Story Bible
   ("Group chat (N)") to open the existing chat modal with the whole cast: a

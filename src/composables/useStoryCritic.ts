@@ -4,7 +4,11 @@ import { aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
 import { SessionBudget } from '../services/aiProviderBudget'
 
-import { getDefaultThreshold, getDimensionNames } from '../config/evalDimensions'
+import {
+  getDefaultThreshold,
+  getDimensionNames,
+  formatDimensionRubrics
+} from '../config/evalDimensions'
 import { deriveVerdict } from '../services/criticVerdict'
 import { sanitizeJson } from '../services/ai/aiHelpers'
 import { guardCritique } from '../guardrails/integration/composableGuardrails'
@@ -307,11 +311,29 @@ export function useStoryCritic() {
 
       const promptDims = getDimensionNames(categoryType)
       const dimsList = promptDims.map((d) => `  - ${d}`).join('\n')
+      const rubrics = formatDimensionRubrics(categoryType, promptDims)
+
+      // The critic sees the WHOLE scene. It used to see `draft.slice(0, 4000)`:
+      // on the 30 salt-road scenes (4,380-6,313 chars) that hid the last 26% of
+      // every single one, so the critic judged prose that stopped mid-action and
+      // marked it down for it — `continuity` was the lowest dimension on 29/30
+      // scenes and the sole reason for all 7 gate failures. A 6k-char scene is
+      // ~1.6k tokens against the critic role's 8k window, so there is room.
+      // The cap that remains is a runaway guard, and when it bites the prompt
+      // says so, because "the text you were given ends early" is not a defect
+      // in the writing.
+      const DRAFT_CHAR_CAP = 24000
+      const draftTruncated = draft.length > DRAFT_CHAR_CAP
+      const draftText = draftTruncated ? draft.slice(0, DRAFT_CHAR_CAP) : draft
 
       const userPrompt = `Evaluate this scene draft across ALL of the following dimensions:
 ${dimsList}
 
 You MUST provide a score (1-10) for each dimension in the "dimensionScores" field of your JSON response.
+
+SCORING SCALE — use these anchors. Do not default to a middling score; if a
+dimension is genuinely excellent say so, and if it is genuinely weak say so.
+${rubrics}
 
 ${
   focusInstructions
@@ -339,8 +361,12 @@ ${storyBible || '(No story bible)'}
 ${hasFewCharacters ? 'NOTE: Fewer than 2 characters defined. Skip continuity and voice checks.' : ''}
 
 DRAFT TEXT:
-${draft.slice(0, 4000)}
-
+${draftText}
+${
+  draftTruncated
+    ? '\n[The draft was cut here for length. Judge only what you were given; do NOT treat the missing ending as an unresolved scene or a continuity fault.]\n'
+    : ''
+}
 Return JSON evaluation with dimensionScores covering all listed dimensions.`
 
       const criticSchema = buildCriticSchema(promptDims)
