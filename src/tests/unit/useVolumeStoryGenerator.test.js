@@ -1194,3 +1194,78 @@ describe('aggregateChapterContent', () => {
     })
   })
 })
+
+/**
+ * The continuity budget.
+ *
+ * `sceneContext` — the only block carrying what actually happened in the story —
+ * used to be capped at a flat 350 tokens, inherited from a 1,400-character limit
+ * under an old 4:1 guess. Measured on a real run: the writer's window is 16,384
+ * tokens, the largest prompt the pipeline produced was 3,104, and continuity got
+ * 2.8% of the budget while ~9,500 tokens went unused.
+ */
+describe('retrievalBudgetTokens', () => {
+  it('scales with the context window', async () => {
+    const { retrievalBudgetTokens } = await import('@/composables/generation/context/sceneContext')
+    // 16384 - 2240 output - 1500 scaffold = 12644 usable; 30% of that.
+    expect(retrievalBudgetTokens(16384)).toBe(3793)
+    expect(retrievalBudgetTokens(32768)).toBeGreaterThan(retrievalBudgetTokens(16384))
+  })
+
+  it('never drops below the old 350-token floor', async () => {
+    const { retrievalBudgetTokens } = await import('@/composables/generation/context/sceneContext')
+    // A tiny window behaves exactly as it did before the change.
+    expect(retrievalBudgetTokens(2048)).toBe(350)
+    expect(retrievalBudgetTokens(4096)).toBe(350)
+  })
+})
+
+describe('buildEmbeddingContext budget', () => {
+  it('carries more than three earlier scenes when there is room', () => {
+    // Ten prior scenes that all share the current scene's character, so the
+    // relevance filter keeps every one of them and only the budget decides.
+    const prior = []
+    for (let n = 1; n <= 10; n++) {
+      prior.push({
+        sceneNumber: n,
+        title: `Scene ${n}`,
+        prose: `Nesrin walked the salt road for the ${n}th day.`,
+        // Roughly the length of a real scene summary (~60 tokens). Toy
+        // one-liners all fit inside 350 tokens, which hides the difference the
+        // budget makes — the thing this test exists to show.
+        summary:
+          `On day ${n} Nesrin hauls the salt west past the marker stones, ` +
+          `weighs the load against Halim's tally, argues with the tax-farmer ` +
+          `at the checkpoint, and learns something she would rather not know ` +
+          `about what the sacks actually contain this season.`,
+        characters: ['Nesrin']
+      })
+    }
+    const current = { sceneNumber: 11, title: 'Scene 11', charactersPresent: ['Nesrin'] }
+
+    const generous = buildEmbeddingContext(current, prior, 4000)
+    const old = buildEmbeddingContext(current, prior, 350)
+
+    const count = (text) => (text.match(/^- Scene /gm) || []).length
+    // The old cap could not fit more than a handful; the budget fits the rest.
+    expect(count(generous)).toBeGreaterThan(count(old))
+    expect(count(generous)).toBeGreaterThan(3)
+  })
+
+  it('still respects the budget it is given', () => {
+    const prior = []
+    for (let n = 1; n <= 40; n++) {
+      prior.push({
+        sceneNumber: n,
+        title: `Scene ${n}`,
+        prose: 'x'.repeat(200),
+        summary: 'Nesrin does something notable. '.repeat(10),
+        characters: ['Nesrin']
+      })
+    }
+    const current = { sceneNumber: 41, title: 'Scene 41', charactersPresent: ['Nesrin'] }
+    const ctx = buildEmbeddingContext(current, prior, 600)
+    // 4 chars per token is the prose ratio the budget is expressed in.
+    expect(ctx.length / 4).toBeLessThan(900)
+  })
+})

@@ -160,13 +160,27 @@ export function fitToBudget(
   }
 }
 
+/**
+ * Who survives when the budget is tight.
+ *
+ * `sceneContext` was last at 10, so prior-scene continuity was the first thing
+ * dropped. That ordering treats it as the least valuable block, and it is the
+ * opposite: the bible, entities and contract are static and re-derivable — they
+ * say the same thing on scene 1 and scene 30 — while `sceneContext` is the only
+ * block that carries what actually happened in the story so far. Losing it is
+ * the one loss nothing downstream can recover.
+ *
+ * It now sits above `chapterLog`, which holds the same information in weaker
+ * form (one line per scene, no prose), and below `spine`, which is the
+ * chapter-level contract the scene is written against.
+ */
 const SCENE_PRIORITY: Record<string, number> = {
   storyContract: 100,
   entities: 80,
   storyBible: 60,
   spine: 50,
-  chapterLog: 30,
-  sceneContext: 10
+  sceneContext: 40,
+  chapterLog: 30
 }
 
 const DEFAULT_CONTEXT_TOKENS = 16384

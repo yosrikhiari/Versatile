@@ -315,3 +315,22 @@ describe('describeBudget', () => {
     expect(describeBudget(r)).toContain('bible')
   })
 })
+
+describe('fitSceneContext priority — continuity over the chapter log', () => {
+  it('sacrifices the chapter log before the retrieved scene context', () => {
+    // `sceneContext` sat at priority 10, below `chapterLog`, so the block
+    // carrying what actually happened in the story was the first one dropped.
+    // The chapter log holds the same information in weaker form — one line per
+    // scene, no prose — so it is the cheaper thing to lose.
+    // contextTokens 3000 floors the budget at 1000, so one of the two has to go.
+    const r = fitSceneContext({
+      storyContract: prose(100),
+      sceneContext: prose(500),
+      logSummary: prose(500),
+      contextTokens: 3000
+    })
+    expect(r.storyContract).not.toBe('')
+    expect(r.logSummary).toBe('')
+    expect(r.sceneContext).not.toBe('')
+  })
+})

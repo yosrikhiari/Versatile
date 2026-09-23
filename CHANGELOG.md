@@ -7,6 +7,23 @@ was verified.
 
 ## [Unreleased]
 
+### The writer gets the story back (2026-09-23)
+- **Continuity had 2.8% of the context budget.** `sceneContext` was capped at a
+  flat 350 tokens of the writer's 12,644-token budget and sat last in the
+  sacrifice order, while a real run used only 19% of the 16,384-token window.
+  The cap was an old 1,400-character limit converted to tokens, never
+  re-examined. It is now 30% of the usable window (3,793 tokens at the default),
+  floored at 350 so a small `num_ctx` is unchanged, and `sceneContext` outranks
+  `chapterLog` — which holds the same events in weaker form.
+- **The ranking had nowhere to put anything.** The preceding scene's verbatim
+  ending is ~344 tokens, so the old budget left room for exactly one earlier
+  scene no matter how many were relevant. Measured over the 30 salt-road scenes:
+  1 earlier scene before, 3 / 8 / 18 / 27 after at 5 / 10 / 20 / 29 prior scenes.
+- **Retrieval ranks at any book length.** The "more than 25 prior scenes" switch
+  is gone; ranking runs from 3 prior scenes up and the budget decides its depth.
+  See `docs/GENERATION-PIPELINE-ANALYSIS.md` §11 for the wrong turn this took
+  first (filling the budget with every scene buries the relevant ones).
+
 ### The critic reads the whole scene (2026-09-23)
 - **The quality gate was judging 74% of every scene.** `useStoryCritic` sent
   `draft.slice(0, 4000)`; the committed salt-road scenes are 4,380-6,313 chars,

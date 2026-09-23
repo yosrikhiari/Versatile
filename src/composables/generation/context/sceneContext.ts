@@ -3,12 +3,56 @@ import { cosineSimilarity } from '../../../services/ollamaService'
 import { multiHopRetrieval as multiHopRetrieve } from '../../../services/ragMultiHopRetrieval'
 import { formatCitationContext } from '../../../services/ragCitationInjector'
 import { estimateTokens } from '../../../services/ai/contextBudget'
+import { getOllamaNumCtx } from '../../../config/ollama'
 
-// Was EMBEDDING_CONTEXT_MAX_CHARS = 1400, i.e. ~350 tokens under the old 4:1
-// guess. Same intent, now measured in the unit the model actually charges in.
-const EMBEDDING_CONTEXT_MAX_TOKENS = 350
+/**
+ * How many tokens of prior-scene continuity the writer may receive.
+ *
+ * This was the constant 350 — inherited from `EMBEDDING_CONTEXT_MAX_CHARS =
+ * 1400` under an old 4:1 character guess, converted to tokens to "keep the same
+ * intent". The intent was kept; nobody re-asked whether it was right. Measured
+ * on a real run (2026-09-23): the writer's window is 16,384 tokens, of which
+ * 12,644 are budget after output and scaffold, and the largest prompt the
+ * pipeline actually produced was 3,104 tokens — 19% of the window. Continuity,
+ * the one channel carrying what happened in the story, held 2.8% of the budget
+ * while ~9,500 tokens went unused.
+ *
+ * So the cap is now a share of the window rather than a number. The floor is
+ * the old 350 so a small `num_ctx` behaves exactly as before.
+ *
+ * Note the reserves duplicate `fitSceneContext`'s: this has to be computed
+ * BEFORE the blocks are assembled, and that trims them after. They are
+ * deliberately the same numbers — if one moves, move both.
+ */
+const RETRIEVAL_OUTPUT_RESERVE_TOKENS = 2240
+const RETRIEVAL_SCAFFOLD_RESERVE_TOKENS = 1500
+const RETRIEVAL_BUDGET_SHARE = 0.3
+const RETRIEVAL_MIN_TOKENS = 350
+
+function retrievalBudgetTokens(numCtx?: number): number {
+  const ctx = typeof numCtx === 'number' && numCtx > 0 ? numCtx : getOllamaNumCtx()
+  const usable = Math.max(
+    1000,
+    ctx - RETRIEVAL_OUTPUT_RESERVE_TOKENS - RETRIEVAL_SCAFFOLD_RESERVE_TOKENS
+  )
+  return Math.max(RETRIEVAL_MIN_TOKENS, Math.round(usable * RETRIEVAL_BUDGET_SHARE))
+}
+
+/** How much of the immediately preceding scene's ending is carried verbatim. */
+const PRECEDING_ENDING_CHARS = 1200
+
 const CONSISTENCY_FIX_ROUNDS = 2
 const CONSISTENCY_FIX_MAX_SCENES = 3
+
+/**
+ * Only a warning threshold now, not a switch.
+ *
+ * It used to decide the retrieval strategy: at or below 25 prior scenes the
+ * positional rule ran, above it the embedding ranking did. That is a proxy for
+ * the real question — does what we want to send fit in the budget? — so the
+ * strategy is chosen on that directly, and this stays to flag that a long book
+ * is leaning on prose excerpts because embeddings were unavailable.
+ */
 const PROSE_EXCERPT_MAX_SCENES = 25
 
 function buildFactLedger(spine: any, writtenScenes: any) {
@@ -204,8 +248,9 @@ function planConsistencyFixes(report: any, writtenScenes: any) {
   return fixes
 }
 
-function buildEmbeddingContext(currentScene: any, priorScenes: any) {
+function buildEmbeddingContext(currentScene: any, priorScenes: any, budgetTokens?: number) {
   if (priorScenes.length === 0) return ''
+  const budget = typeof budgetTokens === 'number' ? budgetTokens : retrievalBudgetTokens()
 
   if (priorScenes.length > PROSE_EXCERPT_MAX_SCENES) {
     console.warn(
@@ -220,25 +265,38 @@ function buildEmbeddingContext(currentScene: any, priorScenes: any) {
   const precedingScene = priorScenes.at(-1)
   if (precedingScene) {
     const endingExcerpt =
-      precedingScene.prose.length > 1200
-        ? '...' + precedingScene.prose.slice(-1200)
+      precedingScene.prose.length > PRECEDING_ENDING_CHARS
+        ? '...' + precedingScene.prose.slice(-PRECEDING_ENDING_CHARS)
         : precedingScene.prose
     context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}"]\n${endingExcerpt}\n\n`
   }
 
   const olderScene = priorScenes.at(-2)
-  if (olderScene && estimateTokens(context) < EMBEDDING_CONTEXT_MAX_TOKENS) {
+  if (olderScene && estimateTokens(context) < budget) {
     context += `[Summary of Scene ${olderScene.sceneNumber}: "${olderScene.title}"]\n${olderScene.summary || olderScene.prose.slice(0, 300) + '...'}\n\n`
   }
 
-  const relevant = selectRelevantPriorScenes(currentScene, priorScenes.slice(0, -2), 3)
-  if (relevant.length) {
-    context += `[Earlier related scenes]\n`
-    for (const s of relevant) {
-      if (estimateTokens(context) >= EMBEDDING_CONTEXT_MAX_TOKENS) break
-      context += `- Scene ${s.sceneNumber} ("${s.title}"): ${s.summary || s.prose.slice(0, 200) + '...'}\n`
+  // Everything else that fits, best-first. The old limit of 3 was a companion
+  // to the 350-token cap — under it a fourth line would rarely have fit anyway.
+  // With a real budget the limit is the budget, so `selectRelevantPriorScenes`
+  // ranks the whole remainder and the loop stops when the room runs out.
+  // Ranked, not dumped. `selectRelevantPriorScenes` keeps only scenes sharing a
+  // character or the location, and that filter is the point: padding the budget
+  // with every remaining scene buries the relevant ones instead of adding to
+  // them. The budget decides HOW MANY of the ranked list fit — it does not
+  // decide to stop ranking.
+  const candidates = priorScenes.slice(0, -2)
+  const ordered = selectRelevantPriorScenes(currentScene, candidates, candidates.length)
+  if (ordered.length) {
+    let header = `[Earlier related scenes]\n`
+    let added = 0
+    for (const s of ordered) {
+      const line = `- Scene ${s.sceneNumber} ("${s.title}"): ${s.summary || s.prose.slice(0, 200) + '...'}\n`
+      if (estimateTokens(context + header + line) >= budget) break
+      header += line
+      added += 1
     }
-    context += '\n'
+    if (added) context += header + '\n'
   }
 
   return context.trim()
@@ -319,8 +377,21 @@ async function buildResearchContext(currentScene: any, ragOptions?: any): Promis
 }
 
 async function buildBaseRetrievalContext(currentScene: any, priorScenes: any, k = 5) {
-  if (!priorScenes || priorScenes.length <= PROSE_EXCERPT_MAX_SCENES) {
-    return buildEmbeddingContext(currentScene, priorScenes || [])
+  const budget = retrievalBudgetTokens()
+  if (!priorScenes || priorScenes.length === 0) return ''
+
+  // Rank whenever there is anything to rank.
+  //
+  // The switch used to be "more than 25 prior scenes": under it, relevance was
+  // decided by whether a scene happened to share a character name; over it, by
+  // meaning. Nothing about scene 25 makes semantic retrieval start being worth
+  // it — a 9-scene book has the same question, just fewer candidates. The
+  // budget now decides how deep the ranked list goes; this decides only that it
+  // IS ranked. Below three prior scenes there is nothing to choose between, so
+  // the positional path (preceding ending + the one before it) is the whole
+  // answer and costs no embedding call.
+  if (priorScenes.length < 3) {
+    return buildEmbeddingContext(currentScene, priorScenes, budget)
   }
   try {
     const query = [
@@ -359,22 +430,31 @@ async function buildBaseRetrievalContext(currentScene: any, priorScenes: any, k 
     if (scored.length === 0) return buildEmbeddingContext(currentScene, priorScenes)
 
     scored.sort((a, b) => b.score - a.score)
-    const top = scored.slice(0, k).map((x) => x.s)
+    // `k` is the floor, not the ceiling: it is what callers asked for, and the
+    // budget decides how many more of the ranked list actually fit.
+    const top = scored.map((x) => x.s)
 
     let context = ''
     const preceding = priorScenes.at(-1)
     if (preceding) {
       const end =
-        preceding.prose.length > 1200 ? '...' + preceding.prose.slice(-1200) : preceding.prose
+        preceding.prose.length > PRECEDING_ENDING_CHARS
+          ? '...' + preceding.prose.slice(-PRECEDING_ENDING_CHARS)
+          : preceding.prose
       context += `[Ending of Preceding Scene ${preceding.sceneNumber}: "${preceding.title}"]\n${end}\n\n`
     }
 
     const others = top.filter((s) => s !== preceding)
     if (others.length) {
-      context += `[Semantically related earlier scenes]\n`
+      let header = `[Semantically related earlier scenes]\n`
+      let added = 0
       for (const s of others) {
-        context += `- Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}\n`
+        const line = `- Scene ${s.sceneNumber} ("${s.title}"): ${s.summary}\n`
+        if (added >= k && estimateTokens(context + header + line) >= budget) break
+        header += line
+        added += 1
       }
+      if (added) context += header
     }
     return context.trim()
   } catch (err) {
@@ -392,7 +472,7 @@ export {
   selectRelevantPriorScenes,
   buildRetrievalContext,
   buildResearchContext,
-  EMBEDDING_CONTEXT_MAX_TOKENS,
+  retrievalBudgetTokens,
   CONSISTENCY_FIX_ROUNDS,
   CONSISTENCY_FIX_MAX_SCENES,
   PROSE_EXCERPT_MAX_SCENES

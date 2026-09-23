@@ -422,3 +422,66 @@ prompt must carry a long scene's ending, must carry the anchors, and must say so
 when a runaway draft really is cut. This is the third time this codebase shipped a
 prompt that silently dropped the end of a scene (see `chunkProseForMetadata`),
 which is why they are tests and not comments.
+
+## 11. The continuity budget (seventh pass — 2026-09-23)
+
+§10 measured what the critic saw. This measures what the *writer* sees of the
+story so far, and the answer was: almost nothing, for a reason nobody had
+re-examined.
+
+**The numbers.** The writer runs at `num_ctx` 16,384. After the output reserve
+(2,240) and scaffold (1,500) that leaves 12,644 tokens of budget. `sceneContext`
+— the only block carrying what actually happened in prior scenes — was capped at
+**350 tokens, 2.8% of the budget**, and sat at priority 10, last of six, so it
+was also the first block dropped. The largest prompt a real run produced was
+**3,104 tokens, 19% of the window**: roughly 9,500 tokens went unused while the
+one irreplaceable block was rationed.
+
+The cap was not a decision. It is `EMBEDDING_CONTEXT_MAX_CHARS = 1400` under an
+old 4:1 character guess, converted to 350 tokens to "keep the same intent".
+
+**The cap was tighter than it looked.** The preceding scene's ending rides
+verbatim at 1,200 chars ≈ 344 tokens — which is the entire 350-token budget. The
+`[Earlier related scenes]` block, `selectRelevantPriorScenes` and its scoring
+therefore had room for exactly one line before the loop broke. Measured over the
+30 committed salt-road scenes:
+
+| Prior scenes | 350-token budget | 3,793-token budget |
+|---|---|---|
+| 5 | 1 earlier scene | 3 earlier scenes (418 tok) |
+| 10 | 1 | 8 (566 tok) |
+| 20 | 1 | 18 (830 tok) |
+| 29 | 1 | 27 (1,103 tok) |
+
+**What changed.**
+
+1. `retrievalBudgetTokens()` — 30% of the usable window instead of a constant,
+   floored at the old 350 so a small `num_ctx` behaves exactly as before.
+2. `SCENE_PRIORITY.sceneContext` 10 → 40, above `chapterLog`. The bible,
+   entities and contract are static and re-derivable; the chapter log holds the
+   same events in weaker form. Prior-scene content is the one loss nothing
+   downstream can recover.
+3. The strategy switch is no longer "more than 25 prior scenes". Nothing about
+   scene 25 makes semantic retrieval start being worth it — a 9-scene book has
+   the same question with fewer candidates. It now ranks whenever there are 3 or
+   more prior scenes, and the budget decides how deep the ranked list goes.
+
+**A wrong turn worth recording.** The first implementation of (3) was "if every
+summary fits the budget, send them all — ranking can only lose information".
+`src/tests/evaluation/productionRetrieval.test.js` failed on it, correctly:
+padding the budget with every remaining scene does not add to the relevant ones,
+it buries them, and the sibling assertion (a fantasy scene retrieves
+predominantly fantasy scenes) would have gone with it. **The budget decides how
+deep the ranked list goes; it does not decide to stop ranking.**
+
+**Verified.** 3,190 unit tests, typecheck, policy and lint green; a real 2×3×1,200
+run completed `error=null`, 6 scenes, 2,378 words, 6 synced, two continuity
+rewrite passes, 10.7 min. The prompt grew only 3,104 → 3,344 tokens there, which
+is the expected result at that size: a 6-scene book has at most 4 candidates. The
+gain scales with book length, which is what the table above measures.
+
+**Still unmeasured: whether the prose is better.** §10 established that the gate
+passes 30/30 regardless of content, so the pipeline cannot currently tell you
+whether more continuity helps or hurts — "lost in the middle" is a real risk at
+1,100 tokens of summaries. Calibrating the gate against hand-labelled scenes
+remains the prerequisite for answering that.
