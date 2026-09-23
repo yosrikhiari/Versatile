@@ -806,3 +806,38 @@ they can share the resident model.
 demonstrated for any change made today (§12, §14). What it changes is the
 prospect of demonstrating one: a gate that responds to defects is the instrument
 every earlier probe lacked.
+
+### 17a. Which half of the focused call mattered (2026-09-23)
+
+§17 changed two things at once — one dimension per call, and `evidence` before
+`score` with an instruction to quote the deciding text. `NO_EVIDENCE=1` drops
+the evidence field and keeps everything else.
+
+| defect | dimension | with evidence | score only |
+|---|---|---|---|
+| dialogue made identical | voice | −0.62 | −0.38 |
+| paragraphs replaced with summary | show_tell | −2.12 | **−2.75** |
+| filler advancing nothing | pacing | −1.00 | −0.88 |
+| a named character stated dead | continuity | −1.00 | −0.50 |
+| **mean** | | **−1.19** | **−1.12** |
+
+**The focus did the work, not the evidence field.** −1.12 against −1.19 is the
+same answer, and `show_tell` is caught harder without it.
+
+**And the cheap version is the fast one.** 64 score-only calls took 1.2 minutes
+against 6.9 for the same calls with a quote — 1.1 s per call, because nothing
+generates a 300-character justification. Five focused calls is therefore ≈5.6 s
+per scene against ≈6.2 s for the combined call measured in §10, so a gate that
+detects defects costs **no more than the gate that does not**.
+
+One thing that comparison does not cover: production also needs `issues` for
+revision feedback, and the focused arms return a score alone. Adding an issues
+array back will cost some of the saving, so "cost-neutral" holds for the scoring
+half and has to be re-measured for a full replacement.
+
+**Recommended shape**, on this evidence: keep `deriveVerdict` as it is — it
+already keys on the weakest dimension, which is the right design when the
+summary score is uninformative — and replace the single five-dimension call
+behind it with one focused call per dimension. Then re-run
+`gateSensitivity.live.js`: the defects it injects are the acceptance test, and
+today they all pass 40/40.

@@ -30,8 +30,19 @@ const HOST = process.env.OLLAMA_HOST || 'http://localhost:11434'
 const MODEL = process.env.LIVE_MODEL || 'qwen3:8b'
 const REPEATS = Number(process.env.REPEATS || 2)
 const TEST_SCENES = [8, 14, 20, 26]
+/**
+ * NO_EVIDENCE=1 drops the `evidence` field and the instruction to quote.
+ * The §17 arm changed two things at once — one dimension per call AND evidence
+ * before the score — so on its own it cannot say which produced the gain.
+ */
+const NO_EVIDENCE = process.env.NO_EVIDENCE === '1'
 
-const OUT = join(process.cwd(), 'reports', 'live', 'focused-gate')
+const OUT = join(
+  process.cwd(),
+  'reports',
+  'live',
+  process.env.NO_EVIDENCE === '1' ? 'focused-gate-noevidence' : 'focused-gate'
+)
 mkdirSync(OUT, { recursive: true })
 
 const DIALOGUE = /[“"][^“”"]{4,}[”"]/
@@ -104,11 +115,13 @@ const DEFECTS = {
 
 const FOCUSED_SCHEMA = {
   type: 'object',
-  properties: {
-    evidence: { type: 'string' },
-    score: { type: 'number' }
-  },
+  properties: { evidence: { type: 'string' }, score: { type: 'number' } },
   required: ['evidence', 'score']
+}
+const SCORE_ONLY_SCHEMA = {
+  type: 'object',
+  properties: { score: { type: 'number' } },
+  required: ['score']
 }
 
 describe('live: focused single-dimension gate', () => {
@@ -149,14 +162,18 @@ describe('live: focused single-dimension gate', () => {
      */
     async function judge(dimension, prose, brief, bible) {
       const rubric = formatDimensionRubrics('creative', [dimension])
+      const evidenceLines = NO_EVIDENCE
+        ? `If the scene is weak on this aspect, say so — a middling default is worse than
+an honest low mark.`
+        : `First quote the specific text that decides your score, then give the score.
+If the scene is weak on this aspect, say so — a middling default is worse than
+an honest low mark.`
       const prompt = `Judge ONE aspect of this scene: ${dimension}.
 
 SCORING SCALE — use these anchors and nothing else:
 ${rubric}
 
-First quote the specific text that decides your score, then give the score.
-If the scene is weak on this aspect, say so — a middling default is worse than
-an honest low mark.
+${evidenceLines}
 
 SCENE BRIEF:
 - Title: ${brief.title}
@@ -169,7 +186,7 @@ ${bible}
 SCENE:
 ${prose}
 
-Return JSON: { "evidence": "the text that decides it", "score": number }`
+Return JSON: ${NO_EVIDENCE ? '{ "score": number }' : '{ "evidence": "the text that decides it", "score": number }'}`
       const parsed = await aiGenerateJson(
         prompt,
         `You are a story editor judging exactly one aspect: ${dimension}. You quote evidence, then score.`,
@@ -178,8 +195,8 @@ Return JSON: { "evidence": "the text that decides it", "score": number }`
           role: 'critic',
           temperature: 0.3,
           maxTokens: 500,
-          schema: FOCUSED_SCHEMA,
-          schemaName: 'focused_dimension'
+          schema: NO_EVIDENCE ? SCORE_ONLY_SCHEMA : FOCUSED_SCHEMA,
+          schemaName: NO_EVIDENCE ? 'focused_score_only' : 'focused_dimension'
         }
       ).catch(() => null)
       return parsed && typeof parsed.score === 'number'
