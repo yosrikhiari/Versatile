@@ -480,6 +480,67 @@ rewrite passes, 10.7 min. The prompt grew only 3,104 → 3,344 tokens there, whi
 is the expected result at that size: a 6-scene book has at most 4 candidates. The
 gain scales with book length, which is what the table above measures.
 
+**Correction to the table above (2026-09-23, same day).** Those numbers come
+from calling `buildEmbeddingContext` directly at two budgets, which is the
+*positional* path only. They are a fair measurement of that helper and NOT a
+before/after of the pipeline, which is how the commit message and the first
+version of this section read:
+
+- At 25 or fewer prior scenes the old pipeline did take the positional path, so
+  "1 earlier scene" is right there.
+- Above 25 it already used embedding retrieval at `k = 5`, so the old figure for
+  29 prior scenes is **5, not 1**.
+- The new pipeline takes the embedding path from 3 prior scenes up, where `k`
+  is a floor, so it never emits fewer than 5 either.
+
+Measured end to end by `continuityProbe.live.js`, earlier scenes actually cited
+by the pipeline: **6 / 12 / 18 / 24 / 27** at 7 / 13 / 19 / 25 / 28 prior
+scenes, against 5 at every depth when the budget is pinned to 350.
+
+Two further things that probe exposed:
+
+- **The budget is not a hard cap.** The preceding scene's ending is appended
+  before any budget check, so a 350-token budget produced 448–479 tokens in
+  practice. Nothing downstream breaks — `fitSceneContext` trims later — but the
+  number is a target, not a ceiling.
+- **`k` as a floor blunts the comparison.** Pinning the budget to 350 in the new
+  code still cites 5 scenes, so the probe's "narrow" arm is *not* the old
+  behaviour. It isolates the effect of the budget within the new design, which
+  is all it can honestly claim.
+
+## 12. Does the extra context help? (2026-09-23)
+
+Paired, not A/B-of-two-books: the Ollama path sends no `seed`, so two whole
+books measure sampling noise as much as the change. Same scene brief, same
+bible, same chapter log, same prior scenes; only `embeddingContext` differs.
+Five scenes at increasing depth, `reports/live/continuity-probe/`.
+
+The five-dimension critic cannot answer this — §10 showed it returns 8/10 for
+all thirty scenes — so the measure has to match the change. What a continuity
+budget should buy is prose anchored to people the story already established,
+and a **callback** (a named character in the draft who is *not* in that scene's
+brief) can only be produced by remembering a scene nobody just handed over.
+
+| | narrow (350) | wide (3,793) |
+|---|---|---|
+| mean context | 469 tok | 796 tok |
+| mean earlier scenes cited | 5.0 | 17.4 |
+| named-character callbacks | 1 | 3 |
+| named mentions | 10 | 13 |
+| mean grounding | 0.80 | 0.82 |
+
+**The mechanism is confirmed; the benefit is not.** Three callbacks against one,
+over five scenes, with one unseeded sample per cell, is not a result — the
+counts are too small to separate from noise, and grounding is flat. The first
+metric was weaker still: every "invented name" it flagged (`Old`, `Man`, `Well`,
+`Silence`) was a false positive from sentence-internal capitalisation, and there
+were 17 name observations in total.
+
+Answering this properly needs repeats — roughly five per cell, ~50 generations —
+or a denser measure than name counting. Until then the change stands on "the
+writer now receives 3× the continuity it did", which is measured, and not on
+"the prose is better", which is not.
+
 **Still unmeasured: whether the prose is better.** §10 established that the gate
 passes 30/30 regardless of content, so the pipeline cannot currently tell you
 whether more continuity helps or hurts — "lost in the middle" is a real risk at

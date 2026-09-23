@@ -334,8 +334,17 @@ function selectRelevantPriorScenes(currentScene: any, candidates: any, limit: an
  * a research library was written from a plan that had seen it and prose that
  * never had.
  */
-async function buildRetrievalContext(currentScene: any, priorScenes: any, k = 5, ragOptions?: any) {
-  const baseContext = await buildBaseRetrievalContext(currentScene, priorScenes, k)
+async function buildRetrievalContext(
+  currentScene: any,
+  priorScenes: any,
+  k = 5,
+  ragOptions?: any,
+  // Explicit budget for experiments that need to hold everything else equal and
+  // vary only how much continuity the writer receives. Production leaves it
+  // unset and takes `retrievalBudgetTokens()`.
+  budgetTokens?: number
+) {
+  const baseContext = await buildBaseRetrievalContext(currentScene, priorScenes, k, budgetTokens)
   const citations = await buildResearchContext(currentScene, ragOptions)
   return [baseContext, citations].filter(Boolean).join('\n\n')
 }
@@ -376,8 +385,13 @@ async function buildResearchContext(currentScene: any, ragOptions?: any): Promis
   }
 }
 
-async function buildBaseRetrievalContext(currentScene: any, priorScenes: any, k = 5) {
-  const budget = retrievalBudgetTokens()
+async function buildBaseRetrievalContext(
+  currentScene: any,
+  priorScenes: any,
+  k = 5,
+  budgetTokens?: number
+) {
+  const budget = typeof budgetTokens === 'number' ? budgetTokens : retrievalBudgetTokens()
   if (!priorScenes || priorScenes.length === 0) return ''
 
   // Rank whenever there is anything to rank.
