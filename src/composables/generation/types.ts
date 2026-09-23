@@ -109,6 +109,13 @@ export interface WriteSceneWithGateArgs {
   scenePhase?: number | string
   storyArc: StoryArc | null | undefined
   chapterLog?: string
+  /**
+   * The chapter this scene belongs to, used to scope the established-facts
+   * ledger. Omitted means "no scoping", which the anchor-first writer makes
+   * unsafe once any later chapter has been drafted — see
+   * `buildStoryStateContext`.
+   */
+  chapterNumber?: number | null
   storyBible?: string
   storyContract?: string
   existingEntitiesJson?: string

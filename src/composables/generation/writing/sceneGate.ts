@@ -28,6 +28,7 @@ import { buildSceneEntitiesBlob } from '../context/sceneContext'
 import { attemptScore, isCleanPass } from '../runMechanics'
 import { isFatalRunError } from '../lifecycle'
 import { RECENT_SCENE_LOG_LIMIT, SCENE_MAX_ATTEMPTS } from './limits'
+import { buildStoryStateContext } from '../context/sceneContext'
 
 /**
  * Everything the scene gate reaches for in the orchestrator's scope.
@@ -305,6 +306,8 @@ export function createSceneGate(ctx: SceneGateContext) {
     scenePhase,
     storyArc,
     chapterLog = '',
+    /** Facts from chapters after this one are its own future — see buildStoryStateContext. */
+    chapterNumber = null,
     storyBible,
     storyContract,
     existingEntitiesJson,
@@ -350,6 +353,10 @@ export function createSceneGate(ctx: SceneGateContext) {
     let baselineWordCount = 0
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const drafted = await draftAttempt({
+        // The chapter-scoped fact ledger. `buildFactLedger` has existed for a
+        // while with all three callers in ConsistencyService — read AFTER the
+        // prose to find contradictions, never before to prevent them.
+        storyState: buildStoryStateContext(writtenScenes.value, chapterNumber),
         scene,
         sceneIndex,
         scenePhase,
@@ -428,6 +435,8 @@ export function createSceneGate(ctx: SceneGateContext) {
   // orchestrators cannot drift apart on what "passes" means.
 
   interface DraftAttemptArgs {
+    /** Chapter-scoped established facts, computed once per scene. */
+    storyState?: string
     scene: SceneBrief
     sceneIndex: number
     scenePhase: number | string | undefined
@@ -468,6 +477,7 @@ export function createSceneGate(ctx: SceneGateContext) {
       sceneEntitiesJson,
       embeddingContext,
       extraRejected,
+      storyState,
       anchorRole,
       anchorConstraints,
       emitChunk,
@@ -484,6 +494,7 @@ export function createSceneGate(ctx: SceneGateContext) {
         storyArc,
         chapterLog,
         storyBible,
+        storyState,
         spineContext: spineContext.value,
         anchorRole,
         anchorConstraints,

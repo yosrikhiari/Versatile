@@ -7,6 +7,23 @@ was verified.
 
 ## [Unreleased]
 
+### Chapters linked by what actually happened (2026-09-23)
+- **The writer now receives the established-facts ledger.** `buildFactLedger`
+  existed with all three callers in `ConsistencyService` — read after the prose
+  to find contradictions, never before to prevent them. The writer's only
+  cross-chapter signal was the spine, generated from the outline before any
+  prose exists, so chapter 5 opened against a description of what chapter 4 was
+  *planned* to do. An `ESTABLISHED FACTS` block now rides under the spine
+  (priority 45), built from prose only, stating that facts take precedence over
+  the plan where they differ.
+- **Scoped to the chapter, which is not optional.** The anchor-first writer
+  drafts every chapter's opener before any middles, so chapter 5's facts sit in
+  `writtenScenes` while a chapter-1 middle is written — unscoped, that middle
+  would be handed its own ending.
+- Verified live: 2 of 23 model calls carried the block, exactly the two
+  chapter-2 anchors, with five real `Ch1:` facts in it. See
+  `docs/GENERATION-PIPELINE-ANALYSIS.md` §13. Not claimed: better prose.
+
 ### The writer gets the story back (2026-09-23)
 - **Continuity had 2.8% of the context budget.** `sceneContext` was capped at a
   flat 350 tokens of the writer's 12,644-token budget and sat last in the

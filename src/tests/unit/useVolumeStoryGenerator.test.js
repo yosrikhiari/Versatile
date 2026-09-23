@@ -1269,3 +1269,44 @@ describe('buildEmbeddingContext budget', () => {
     expect(ctx.length / 4).toBeLessThan(900)
   })
 })
+
+/**
+ * The established-facts ledger reaching the WRITER.
+ *
+ * `buildFactLedger` has existed for a while with all three of its callers in
+ * `ConsistencyService` — read after the prose to find contradictions, never
+ * before to prevent them. The writer's only cross-chapter signal was the spine,
+ * which is generated from the outline before any prose exists.
+ */
+describe('buildStoryStateContext', () => {
+  const scenes = [
+    { chapterId: 1, keyFacts: ['Halim is alive', 'The debt is 40 kurus'] },
+    { chapterId: 2, keyFacts: ['The salt is cut with something that kills'] },
+    { chapterId: 5, keyFacts: ['Nesrin reaches the coast'] }
+  ]
+
+  it('tags every fact with the chapter that established it', async () => {
+    const { buildStoryStateContext } = await import('@/composables/generation/context/sceneContext')
+    const out = buildStoryStateContext(scenes, 5)
+    expect(out).toContain('Ch1: Halim is alive')
+    expect(out).toContain('Ch2: The salt is cut with something that kills')
+  })
+
+  it('never shows a scene facts from its own future', async () => {
+    const { buildStoryStateContext } = await import('@/composables/generation/context/sceneContext')
+    // The anchor-first writer drafts every chapter's opener before any middles,
+    // so chapter 5's facts are already in `writtenScenes` while a chapter-2
+    // middle is being written. Without scoping it would be handed the ending.
+    const out = buildStoryStateContext(scenes, 2)
+    expect(out).toContain('Ch1: Halim is alive')
+    expect(out).toContain('Ch2: The salt is cut')
+    expect(out).not.toContain('Nesrin reaches the coast')
+  })
+
+  it('is empty when nothing has been established yet', async () => {
+    const { buildStoryStateContext } = await import('@/composables/generation/context/sceneContext')
+    expect(buildStoryStateContext([], 1)).toBe('')
+    expect(buildStoryStateContext(null, 1)).toBe('')
+    expect(buildStoryStateContext([{ chapterId: null, keyFacts: ['x'] }], 1)).toBe('')
+  })
+})

@@ -179,6 +179,10 @@ const SCENE_PRIORITY: Record<string, number> = {
   entities: 80,
   storyBible: 60,
   spine: 50,
+  // Facts the prose actually established, by chapter. Ranked just under the
+  // spine (the chapter's planned contract) and above the retrieved scenes,
+  // because a fact is a shorter and harder statement of the same history.
+  storyState: 45,
   sceneContext: 40,
   chapterLog: 30
 }
@@ -193,6 +197,7 @@ export function fitSceneContext({
   existingEntitiesJson = '',
   sceneContext = '',
   logSummary = '',
+  storyState = '',
   outputTokens = 2240,
   contextTokens = DEFAULT_CONTEXT_TOKENS
 }: {
@@ -202,6 +207,7 @@ export function fitSceneContext({
   existingEntitiesJson?: string
   sceneContext?: string
   logSummary?: string
+  storyState?: string
   outputTokens?: number
   contextTokens?: number
 } = {}): {
@@ -211,6 +217,7 @@ export function fitSceneContext({
   spineContext: string
   logSummary: string
   sceneContext: string
+  storyState: string
   note: string
   fits: boolean
 } {
@@ -238,6 +245,7 @@ export function fitSceneContext({
         minTokens: 400
       },
       { name: 'spine', text: spineContext, priority: SCENE_PRIORITY.spine, minTokens: 200 },
+      { name: 'storyState', text: storyState, priority: SCENE_PRIORITY.storyState },
       { name: 'chapterLog', text: logSummary, priority: SCENE_PRIORITY.chapterLog },
       { name: 'sceneContext', text: sceneContext, priority: SCENE_PRIORITY.sceneContext }
     ],
@@ -251,6 +259,7 @@ export function fitSceneContext({
     existingEntitiesJson: pick('entities'),
     storyContextBlock: pick('storyBible'),
     spineContext: pick('spine'),
+    storyState: pick('storyState'),
     logSummary: pick('chapterLog'),
     sceneContext: pick('sceneContext'),
     note: describeBudget(result),

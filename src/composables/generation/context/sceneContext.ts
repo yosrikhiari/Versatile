@@ -99,6 +99,44 @@ function buildFactLedger(spine: any, writtenScenes: any) {
   return ledger
 }
 
+/**
+ * The durable facts the story has actually established, by chapter, for the
+ * writer.
+ *
+ * `buildFactLedger` has existed for a while and all three of its callers are in
+ * `ConsistencyService` — it is read after the prose is written, to find
+ * contradictions, and never before, to prevent them. So the writer's only
+ * cross-chapter signal was `spineContext`, which is generated from the OUTLINE
+ * before any prose exists: chapter 5 opens against a description of what
+ * chapter 4 was *planned* to do, not what it did.
+ *
+ * Passing `null` for the spine is deliberate. `buildFactLedger` then emits only
+ * facts lifted from written prose, which is the point — a planned fact is what
+ * the spine already carries, and mixing the two would hide which is which.
+ *
+ * `chapterNumber` is not optional in practice: the anchor-first writer drafts
+ * every chapter's opening and closing scene before any middles, so by the time
+ * a chapter-1 middle is written, chapter 5's anchors are in `writtenScenes`.
+ * Without the filter that middle would be handed facts from its own future.
+ */
+interface LedgerScene {
+  chapterId?: number | string | null
+  keyFacts?: string[]
+}
+
+function buildStoryStateContext(
+  writtenScenes: LedgerScene[] | null | undefined,
+  chapterNumber?: number | null
+): string {
+  const scoped = (Array.isArray(writtenScenes) ? writtenScenes : []).filter((s) => {
+    if (!s || s.chapterId == null) return false
+    if (chapterNumber == null) return true
+    return Number(s.chapterId) <= Number(chapterNumber)
+  })
+  if (scoped.length === 0) return ''
+  return buildFactLedger(null, scoped).join('\n')
+}
+
 function fullCharacter(c: any) {
   return { name: c.name, role: c.role, description: c.description, traits: c.traits || [] }
 }
@@ -479,6 +517,7 @@ async function buildBaseRetrievalContext(
 
 export {
   buildFactLedger,
+  buildStoryStateContext,
   buildExistingEntitiesBlob,
   buildSceneEntitiesBlob,
   planConsistencyFixes,

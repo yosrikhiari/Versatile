@@ -558,3 +558,56 @@ passes 30/30 regardless of content, so the pipeline cannot currently tell you
 whether more continuity helps or hurts — "lost in the middle" is a real risk at
 1,100 tokens of summaries. Calibrating the gate against hand-labelled scenes
 remains the prerequisite for answering that.
+
+## 13. Linking the chapters (eighth pass — 2026-09-23)
+
+§11 asked whether chapters are actually connected. They were not: chapter N+1's
+opener is anchored to `prevSpine.emotionalStateAtEnd`, one sentence generated
+from the OUTLINE before any prose existed, so a chapter opens against a
+description of what the previous chapter was *planned* to do.
+
+**Nothing needed building.** Every piece of a chapter knowledge graph already
+existed and none of it reached the writer:
+
+| Piece | Where | Reached the writer |
+|---|---|---|
+| Chapter-stamped edges (`fromChapter`/`untilChapter`) | `storyGraphStore`, 15–20 per run | no |
+| Time-slice reader — the graph as it stood at chapter N | `sliceEdgesAtChapter` | no |
+| Path-walking formatter | `getRelationshipContext(ids, depth, atChapter)` | no |
+| Chapter-keyed fact ledger (`Ch3: <fact>`) | `buildFactLedger` | no |
+
+`buildFactLedger`'s three callers are all in `ConsistencyService` — it is read
+*after* the prose to find contradictions and never *before* to prevent them. The
+graph's only consumer is entity generation, which calls `getRelationshipContext`
+**without** `atChapter`, hitting exactly the bug its own doc warns about: "a
+scene in chapter 3 is described using a betrayal that has not happened yet and
+an alliance that ended twenty chapters ago".
+
+**Increment 1: the fact ledger reaches the writer.** `buildStoryStateContext`
+emits the chapter-tagged ledger, built from prose only (`buildFactLedger(null,
+…)`) — the spine already carries the planned facts and mixing them would hide
+which is which. It rides as an `ESTABLISHED FACTS` block under the spine at
+priority 45, with wording that says facts take precedence over the plan where
+they differ.
+
+**Chapter scoping is not optional.** The anchor-first writer drafts every
+chapter's opening and closing scene before any middles, so chapter 5's facts are
+in `writtenScenes` while a chapter-1 middle is being written. Without the filter
+that middle would be handed its own ending. A test pins it.
+
+**Verified end to end** (`reports/live/the-proof-run/`, 2 chapters × 2 scenes):
+`error=null`, 4 scenes, 1,548 words, 4 synced, 6.6 min, and **2 of 23 model
+calls carried the block** — exactly the two chapter-2 anchors, since chapter 1's
+are written before anything exists. The ledger had real content (five `Ch1:`
+facts lifted from the prose), so the feared inert case — correct wiring carrying
+an empty ledger because metadata extraction returned nothing — did not occur.
+CI guards: the chapter tagging, the future-facts exclusion, the block reaching
+the assembled prompt, and no block when nothing is established.
+
+**Not claimed: better prose.** Same limit as §12. This is a mechanism proof.
+Whether linking chapters by observed facts reduces contradictions needs the
+fact-level measure (`checkContradictions` against the ledger), not name counting.
+
+**Increment 2, not done:** the graph itself. `getRelationshipContext(seeds, 2,
+chapterNumber)` is ready to call; it needs store access from the generation path
+and a decision on how many seeds to walk.

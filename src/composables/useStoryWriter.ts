@@ -889,6 +889,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     storyArc,
     chapterLog,
     storyBible,
+    storyState,
     onChunk,
     onRawChunk,
     embeddingContext,
@@ -908,6 +909,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     sceneBrief: SceneBrief
     storyArc: StoryArc | null | undefined
     chapterLog?: string
+    storyState?: string
     storyBible?: string
     onChunk?: ChunkHandler
     onRawChunk?: (chunk: string) => void
@@ -1028,6 +1030,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
         existingEntitiesJson,
         sceneContext,
         logSummary,
+        storyState,
         outputTokens
       })
       if (fitted.note) {
@@ -1097,7 +1100,15 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
         ? `\nNOVEL SPINE (read this to maintain cross-chapter coherence):\n${fitted.spineContext}\n`
         : ''
 
-      const userPrompt = `${contractSection}${spineSection}${anchorSection}
+      // What the prose actually established, chapter by chapter — as against the
+      // spine directly above it, which is what the outline PLANNED before a word
+      // was written. Where the two disagree, the facts are the true ones, and
+      // the wording says so.
+      const stateSection = fitted.storyState
+        ? `\nESTABLISHED FACTS (what earlier chapters actually established — these are true, and take precedence over the spine's plan where they differ):\n${fitted.storyState}\n`
+        : ''
+
+      const userPrompt = `${contractSection}${spineSection}${stateSection}${anchorSection}
 Write scene ${sceneId}: "${sceneTitle}"
 
 CHAPTER LOG (what has happened before this scene):

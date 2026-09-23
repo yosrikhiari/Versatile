@@ -360,6 +360,17 @@ describe('live: The Salt Road', () => {
         {
           calls: wireCalls.length,
           maxPromptChars: wireCalls.reduce((m, c) => Math.max(m, c.promptChars), 0),
+          // Did the established-facts ledger actually reach a model? Counting
+          // the block by its heading is the only proof that the wiring works
+          // end to end — a unit test can show the string is built, not that it
+          // survived the budget trimmer and got sent.
+          storyStatePrompts: wireCalls.filter((c) => c.prompt.includes('ESTABLISHED FACTS')).length,
+          storyStateSample: (() => {
+            const hit = wireCalls.find((c) => c.prompt.includes('ESTABLISHED FACTS'))
+            if (!hit) return null
+            const start = hit.prompt.indexOf('ESTABLISHED FACTS')
+            return hit.prompt.slice(start, start + 600)
+          })(),
           byModel: wireCalls.reduce((acc, c) => {
             acc[c.model] = (acc[c.model] || 0) + 1
             return acc

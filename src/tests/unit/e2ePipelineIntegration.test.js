@@ -393,3 +393,46 @@ describe('Director → Writer → Critic → Quality Gates pipeline', () => {
     expect(gateScoreDistribution(critique, { min: 5 }).pass).toBe(true)
   })
 })
+
+/**
+ * The established-facts ledger has to survive the budget trimmer and reach the
+ * prompt. `buildStoryStateContext` being correct is not the same as the writer
+ * receiving it: `fitSceneContext` can trim or drop any block, and the section
+ * is only emitted when `fitted.storyState` is non-empty.
+ */
+describe('writer prompt — established facts', () => {
+  it('sends the chapter-tagged ledger and marks it as taking precedence', async () => {
+    mockAiGenerate.mockResolvedValue('Nesrin walked the salt road at dawn.')
+    mockAiGenerateJson.mockResolvedValue(mockMetadata)
+
+    const { useStoryWriter } = await import('@/composables/useStoryWriter')
+    await useStoryWriter().writeSceneStructured({
+      sceneBrief: baseBrief,
+      storyArc: defaultArc,
+      storyState: 'Ch1: Halim is alive\nCh2: The salt is cut with something that kills'
+    })
+
+    const prompt = String(mockAiGenerate.mock.calls.at(-1)?.[0] || '')
+    expect(prompt).toContain('ESTABLISHED FACTS')
+    expect(prompt).toContain('Ch1: Halim is alive')
+    expect(prompt).toContain('Ch2: The salt is cut with something that kills')
+    // The spine is the plan; the ledger is what happened. When they disagree the
+    // prompt has to say which one wins, or the writer has no way to choose.
+    expect(prompt).toContain('take precedence')
+  })
+
+  it('emits no section at all when nothing has been established', async () => {
+    mockAiGenerate.mockResolvedValue('Nesrin walked the salt road at dawn.')
+    mockAiGenerateJson.mockResolvedValue(mockMetadata)
+
+    const { useStoryWriter } = await import('@/composables/useStoryWriter')
+    await useStoryWriter().writeSceneStructured({
+      sceneBrief: baseBrief,
+      storyArc: defaultArc,
+      storyState: ''
+    })
+
+    const prompt = String(mockAiGenerate.mock.calls.at(-1)?.[0] || '')
+    expect(prompt).not.toContain('ESTABLISHED FACTS')
+  })
+})
