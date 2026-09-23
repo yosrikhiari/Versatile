@@ -707,3 +707,58 @@ weakest dimension rather than the score — which is the right design given this
 
 The remaining route to a gate that discriminates is calibration against scenes
 labelled by hand, which no amount of prompt or schema work substitutes for.
+
+## 16. The gate cannot detect defects (tenth pass — 2026-09-23)
+
+§10 found the gate passing 30/30 with a constant score. §15 ruled out emission
+order. Both were attempts to improve the judgement. Neither asked the prior
+question: **does the gate respond to a defect at all?**
+
+Answering it needs no human labels. Take committed scenes that already pass,
+break one specific thing in each by string surgery, and see whether the matching
+dimension falls. The ground truth is not anyone's taste — it is "every line of
+dialogue now reads identically, so `voice` should drop".
+`gateSensitivity.live.js`, 4 scenes × 5 variants × 2 repeats, 40 evaluations, 0
+errors, 3.7 min.
+
+| injected defect | target | that dimension | score | passed |
+|---|---|---|---|---|
+| control | — | continuity 7.0, voice 9.0, emotional_goal 9.0, show_tell 8.8, pacing 8.0 | 8.0 | 8/8 |
+| every line of dialogue replaced with one generic line | voice | **−0.1** | 8.0 | 8/8 |
+| half the paragraphs replaced with flat summary | show_tell | **−0.8** | 8.0 | 8/8 |
+| three filler paragraphs, +819 chars advancing nothing | pacing | **−0.1** | 8.0 | 8/8 |
+| a named character stated dead, the debt denied | continuity | **+0.2** | 8.0 | 8/8 |
+
+**40 out of 40 passed.** The one real signal is `show_tell` falling 0.8 for its
+own defect, which is movement in the right direction and nowhere near enough to
+fail a scene against a threshold of 7. The continuity contradiction — the single
+most damaging defect a novel can carry, and the dimension `deriveVerdict` keys
+on — moved the score *up*.
+
+**This settles the question threshold calibration was supposed to answer.**
+Calibration adjusts where the line sits; it cannot help when the measurement
+does not move. §10, §12 and §14 all reported "no detectable effect" through this
+gate, and now it is clear why: the instrument reads the same number whatever it
+is shown.
+
+**What did work.** The first version of the `told_not_shown` and `padding`
+injections inserted identical text repeatedly. `detectRepetition` — a
+deterministic check, no model — caught it immediately and decisively: score 1,
+`pass: false`, dimension scores empty. It was so unambiguous that it exposed the
+bug in the fixtures. The deterministic guard in this pipeline works; the LLM
+scoring beside it does not.
+
+That asymmetry is the finding worth acting on. Defects that can be defined can
+be checked deterministically — repetition already is; length against the brief
+already is; a contradiction against the fact ledger can be
+(`checkContradictions` now catches a single scene against the ledger, §14, and
+detected the injected "dead for two years" case in isolation). The five-number
+LLM rubric is the part that carries no information, and every attempt to fix it
+from the prompt side has now failed: required fields (§10 background), rubric
+anchors (§10), emission order (§15).
+
+**Not yet tested:** whether asking about one dimension per call, instead of five
+at once, restores sensitivity. That is the last cheap prompt-side hypothesis. If
+it also fails, the honest conclusion is that an 8B model cannot do this job and
+the gate should be rebuilt out of deterministic checks plus the contradiction
+judge, which demonstrably do detect things.
