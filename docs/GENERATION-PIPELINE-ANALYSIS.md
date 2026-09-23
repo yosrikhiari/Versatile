@@ -762,3 +762,47 @@ at once, restores sensitivity. That is the last cheap prompt-side hypothesis. If
 it also fails, the honest conclusion is that an 8B model cannot do this job and
 the gate should be rebuilt out of deterministic checks plus the contradiction
 judge, which demonstrably do detect things.
+
+## 17. One question at a time restores the gate (eleventh pass — 2026-09-23)
+
+§16 established that the five-dimension gate cannot detect injected defects. The
+last cheap explanation from the prompt side was dilution: one call asks for five
+numbers, five rubrics, an issues array and a strengths array over a
+6,000-character scene. `focusedGate.live.js` tests it — same scenes, same
+injections, but one dimension per call with only that dimension's rubric, each
+variant paired against its own control on the identical question. 64 calls, 0
+unparsed, 6.9 min.
+
+| defect | dimension | combined (§16) | focused control → injected | delta | scenes caught |
+|---|---|---|---|---|---|
+| every line of dialogue made identical | voice | −0.1 | 8.38 → 7.75 | **−0.62** | 2/4 |
+| half the paragraphs replaced with summary | show_tell | −0.8 | 8.50 → 6.38 | **−2.12** | 4/4 |
+| three filler paragraphs advancing nothing | pacing | −0.1 | 7.75 → 6.75 | **−1.00** | 4/4 |
+| a named character stated dead | continuity | **+0.2** | 7.50 → 6.50 | **−1.00** | 2/4 |
+
+All four move the right way; mean −1.19, exact paired permutation p = 0.125,
+which is the floor at four pairs. `show_tell` and `pacing` are caught on 4 of 4
+scenes. The continuity contradiction flips from +0.2 to −1.00.
+
+**So the model can do this job; the combined call was preventing it.** That
+reverses the pessimistic reading of §16 — the problem is not an 8B ceiling, it is
+asking one question five ways at once.
+
+**A confound, stated because it changes what to build.** The focused prompt
+differs from production in TWO ways: one dimension per call, and `evidence`
+before `score` in the schema, with an instruction to quote the text that decides
+the mark. Either could be doing the work. §15 found that moving `score` after the
+other *dimension scores* made things worse, which does not settle this — quoting
+evidence is reasoning, while emitting four more numbers is not. Untangling them
+is one more probe arm and should happen before production is rebuilt around
+either.
+
+**Cost, if this becomes the gate.** Five focused calls per scene instead of one:
+~30 s against ~6 s of critic time per scene, so roughly 15 minutes against 3 on a
+30-scene book. Affordable for a gate that works, and the calls are independent so
+they can share the resident model.
+
+**What this does not change.** No output-quality improvement has been
+demonstrated for any change made today (§12, §14). What it changes is the
+prospect of demonstrating one: a gate that responds to defects is the instrument
+every earlier probe lacked.
