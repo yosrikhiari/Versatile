@@ -663,3 +663,47 @@ sees whole scenes (§10), the writer gets 3.5x the continuity at no cost (§11,
 them.** The pipeline is better instrumented and better grounded; whether it
 writes better prose is unproven, and three separate probes have now failed to
 show it.
+
+## 15. Why the overall score is a constant — one hypothesis, killed (2026-09-23)
+
+§10 left the gate passing 30/30 with `score` a flat 8/10 across all thirty
+committed scenes, before and after the rubric anchors. Everything downstream
+waits on that: a gate that never fails cannot measure a change.
+
+**The hypothesis.** `buildCriticSchema` listed `score` as its FIRST property, and
+under Ollama's grammar-constrained decoding property order is emission order. So
+the model had to commit to one number for the whole scene before assessing a
+single dimension or naming a single issue — a guess, not a summary. The schema's
+own comment already applies that reasoning to `pass` ("the verdict is written
+after the judgement rather than first"); it just never applied it to `score`.
+
+**The test.** Reorder to `dimensionScores → issues → strengths → score → pass`
+and re-score the same thirty scenes with the same model.
+
+| schema order | score | distinct dimension vectors | pass |
+|---|---|---|---|
+| score first (original) | 8 × 30 | 8 | 30/30 |
+| score last | **9 × 30** | **4** | 30/30 |
+| score first (re-run after revert) | 8 × 30 | 7 | 30/30 |
+
+**Disconfirmed, and it was a regression.** The score stayed constant, just at 9
+instead of 8. Worse, three dimensions that had varied — continuity (7×21, 9×9),
+voice (7×4, 8×4, 9×22) and show_tell (8×13, 9×17) — each collapsed to a single
+value, halving the distinct vectors from 8 to 4. The third row gives the noise
+floor for this measurement: two runs of the identical configuration produced 8
+and 7 vectors, so 4 is a real difference and not run-to-run variance.
+
+Reverted. The comment in `buildCriticSchema` now says not to try it again and
+why.
+
+**What this rules out.** Emission order is not what pins the overall score. Two
+explanations remain, neither tested: the model has no calibrated notion of a
+1–10 scene score and lands on its prior regardless of what it is shown (the
+rubric anchors already failed to move it, which fits), or the prompt asks for a
+summary number in a way that invites a default. Either way the conclusion from
+§10 stands unchanged: **`score` is unusable as a signal, the discriminating
+information is in `dimensionScores`, and `deriveVerdict` already keys on the
+weakest dimension rather than the score — which is the right design given this.**
+
+The remaining route to a gate that discriminates is calibration against scenes
+labelled by hand, which no amount of prompt or schema work substitutes for.

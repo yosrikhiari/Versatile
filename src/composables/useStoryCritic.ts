@@ -90,6 +90,17 @@ function detectRepetition(prose: string): { hasRepetition: boolean; details: str
  * Property order is the emission order under the grammar: the score and the
  * per-dimension scores come before `pass`, so the verdict is written after the
  * judgement rather than first.
+ *
+ * Do not move `score` after `dimensionScores`. It looks like it should help —
+ * emitting one number for the whole scene before assessing any dimension is a
+ * guess, not a summary, and `score` is a flat 8/10 across all thirty committed
+ * salt-road scenes (§10). It was tried and measured on those thirty scenes
+ * (`reports/live/critic-rank-agreement/gpu8b-reordered/`): the score stayed
+ * constant, just at 9 instead of 8, and the dimensions got WORSE — distinct
+ * dimension vectors fell from 8 to 4, with continuity, voice and show_tell each
+ * collapsing to a single value where they had previously varied. Whatever pins
+ * the overall score, emission order is not it, and the order below discriminates
+ * better. See §15.
  */
 function buildCriticSchema(dimensionNames: string[]) {
   const dims = dimensionNames.length
