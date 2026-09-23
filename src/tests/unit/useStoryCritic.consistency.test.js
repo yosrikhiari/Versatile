@@ -424,3 +424,56 @@ describe('Critic prompt — what the model actually receives', () => {
     expect(prompt).toContain('do NOT treat the missing ending')
   })
 })
+
+/**
+ * A single scene can contradict the ledger, and the checker used to refuse to
+ * look.
+ *
+ * `checkContradictions` only examined an entity appearing in two or more of the
+ * scenes it was given. That is right when the scenes are all it has — one scene
+ * cannot disagree with itself. It is wrong when a fact ledger is supplied,
+ * because then there is canon to contradict from the first scene onward.
+ * Measured against a real model (2026-09-23): a lone scene stating that a
+ * living character "had been dead for two years", against a ledger saying he
+ * leads the caravan, returned zero issues.
+ */
+describe('checkContradictions — how many scenes an entity needs', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  const characters = [{ name: 'Halim', role: 'caravan master' }]
+  const oneScene = [{ sceneNumber: 3, title: 'T', characters: ['Halim'], prose: 'Halim was dead.' }]
+
+  it('checks a single scene when a ledger gives it something to contradict', async () => {
+    mockAiGenerate.mockResolvedValue(
+      JSON.stringify({ contradictions: [{ type: 'timeline', description: 'alive vs dead' }] })
+    )
+    const { useStoryCritic } = await import('@/composables/useStoryCritic')
+    const report = await useStoryCritic().checkContradictions({
+      characters,
+      locations: [],
+      sceneProse: oneScene,
+      synopsis: '',
+      ledger: ['Ch1: Halim is alive and leads the caravan']
+    })
+    expect(mockAiGenerate).toHaveBeenCalled()
+    expect(report.characterIssues).toHaveLength(1)
+  })
+
+  it('still skips a single scene when there is no ledger', async () => {
+    mockAiGenerate.mockResolvedValue(JSON.stringify({ contradictions: [] }))
+    const { useStoryCritic } = await import('@/composables/useStoryCritic')
+    const report = await useStoryCritic().checkContradictions({
+      characters,
+      locations: [],
+      sceneProse: oneScene,
+      synopsis: '',
+      ledger: []
+    })
+    // Nothing to contradict, so no call is worth making.
+    expect(mockAiGenerate).not.toHaveBeenCalled()
+    expect(report.characterIssues).toHaveLength(0)
+  })
+})

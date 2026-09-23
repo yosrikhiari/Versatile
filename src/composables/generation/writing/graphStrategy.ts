@@ -45,6 +45,7 @@ import { logAgentDecision, updateGenRunStage } from '../../../services/db-genera
 import { placementProblems, resolveRolePlacement } from '../../../config/roles'
 import { buildRetrievalContext } from '../context/sceneContext'
 import { computeSummary } from '../utils'
+import { buildStoryStateContext } from '../context/sceneContext'
 import { proseToHtml, countProseWords } from './liveDraft'
 import { assertProse, attemptScore, isCleanPass } from '../runMechanics'
 import { rethrowIfFatal } from '../lifecycle'
@@ -83,6 +84,7 @@ export interface GraphSceneGate {
     scenePhase: number | string | undefined
     storyArc: StoryArc | null | undefined
     chapterLog: string
+    storyState?: string
     storyBible: string | undefined
     storyContract: string | undefined
     sceneEntitiesJson: string
@@ -409,6 +411,12 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
           scenePhase,
           storyArc,
           chapterLog,
+          // Chapter-scoped established facts, same as the legacy path. Without
+          // this the graph orchestrator silently writes with no fact ledger.
+          storyState: buildStoryStateContext(
+            ctx.writtenScenes.value,
+            chaptersWithScenes[record.chapterIndex]?.chapterMeta?.chapterNumber ?? null
+          ),
           storyBible: storyBibleDocs,
           storyContract,
           sceneEntitiesJson: sceneGate.sceneEntitiesFor(scene, existingEntitiesJson),

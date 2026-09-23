@@ -103,6 +103,22 @@ export function createBatchStrategy(ctx: BatchStrategyContext, sceneGate: SceneG
   const { makeSceneStream, writeSceneWithGate, chapterLogBefore } = sceneGate
 
   /**
+   * Which chapter a scene index belongs to, by walking the plan's scene counts.
+   * The batch path has no `chapterMeta` in hand the way the parallel path does,
+   * and an unscoped fact ledger hands a scene facts from its own future.
+   */
+  function chapterNumberFor(sceneIndex: number): number | null {
+    let offset = 0
+    for (const c of chapterPlan.value || []) {
+      const count = (c as { scenes?: unknown[] })?.scenes?.length ?? 0
+      if (sceneIndex < offset + count)
+        return (c as { chapterNumber?: number })?.chapterNumber ?? null
+      offset += count
+    }
+    return null
+  }
+
+  /**
    * Best-effort speculative prefetch of a single scene.
    * Fails silently — the cache is an optimisation, never a correctness requirement.
    */
@@ -135,6 +151,7 @@ export function createBatchStrategy(ctx: BatchStrategyContext, sceneGate: SceneG
         scenePhase,
         storyArc,
         chapterLog,
+        chapterNumber: chapterNumberFor(index),
         storyBible: storyBibleDocs,
         storyContract,
         existingEntitiesJson,
@@ -257,6 +274,7 @@ export function createBatchStrategy(ctx: BatchStrategyContext, sceneGate: SceneG
             scenePhase,
             storyArc,
             chapterLog,
+            chapterNumber: chapterNumberFor(i),
             storyBible: storyBibleDocs,
             storyContract: effectiveStoryContract,
             existingEntitiesJson,

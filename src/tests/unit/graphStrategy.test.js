@@ -14,7 +14,12 @@ vi.mock('@/services/langfuseService', () => ({
 }))
 vi.mock('@/services/researchScope', () => ({ buildRagOptions: () => null }))
 vi.mock('@/composables/generation/context/sceneContext', () => ({
-  buildRetrievalContext: async () => ''
+  buildRetrievalContext: async () => '',
+  // The graph path builds the chapter-scoped fact ledger per scene. Omitting it
+  // here made every scene fail with "No export is defined on the mock", which
+  // `graphStrategy` caught and logged per scene — the run reported completion
+  // having written nothing.
+  buildStoryStateContext: () => 'Ch1: a fact the story established'
 }))
 vi.mock('@/composables/generation/utils', () => ({
   computeSummary: async (prose) => `summary of ${prose.slice(0, 10)}`

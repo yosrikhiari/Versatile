@@ -543,9 +543,23 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
         )
       }
 
+      /**
+       * How many scenes an entity needs before it is worth checking.
+       *
+       * This was a flat 2 for both characters and locations: with fewer, there
+       * is no second scene to contradict the first. That reasoning holds only
+       * when the scenes are all the checker has. When a fact LEDGER is supplied
+       * the entity has something to contradict from the first scene onward —
+       * and the checker was declining to look. Measured 2026-09-23: a single
+       * scene stating a living character "had been dead for two years", against
+       * a ledger saying he leads the caravan, returned zero issues. With the
+       * same input and this threshold it is caught.
+       */
+      const minScenes = Array.isArray(ledger) && ledger.length > 0 ? 1 : 2
+
       // Build task factories for characters and locations
       const charTasks = characters
-        .filter((char: any) => (scenesByChar.get(char.name)?.length || 0) >= 2)
+        .filter((char: any) => (scenesByChar.get(char.name)?.length || 0) >= minScenes)
         .map((char: any) => async () => {
           const charScenes = scenesByChar.get(char.name)
           const prompt = formatCharacterCheck(char, ledger, charScenes)
@@ -565,7 +579,7 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
         })
 
       const locTasks = locations
-        .filter((loc: any) => (scenesByLoc.get(loc.name)?.length || 0) >= 2)
+        .filter((loc: any) => (scenesByLoc.get(loc.name)?.length || 0) >= minScenes)
         .map((loc: any) => async () => {
           const locScenes = scenesByLoc.get(loc.name)
           const prompt = formatLocationCheck(loc, ledger, locScenes)
