@@ -1094,3 +1094,42 @@ Also fixed: `useGroupChat.test.js` timed out under full-suite load (2 of 4
 runs). Its first group test was the first code path to lazily import
 `groupChatGraph` (LangGraph). The import now happens in `beforeAll` under the
 60 s hook timeout. The suite then passed 3 of 3 full runs.
+
+## 22. §14 retracted: the ledger did not make contradictions worse (2026-09-24)
+
+§14 concluded that handing the writer the ESTABLISHED FACTS ledger produced
+**more** contradictions (+0.67/scene, p = 0.25, "trending the wrong way"). The
+24 scenes it wrote were saved, so they were re-graded with the §20 isolated
+continuity checker (29-30/30 on planted contradictions, 0/30 false on clean
+prose), against the same ledger each scene was written with
+(`tools/judge-probes/rejudge_contradictions.py`):
+
+| | with ledger | without |
+|---|---|---|
+| `checkContradictions` (§14 judge) | 31 | 23 |
+| isolated checker, quotes verified by code | **0** | **0** |
+
+Two of the old judge's heaviest verdicts, read by hand against their ledgers:
+- scene 20 r2 (with the ledger, **6** "contradictions"): every event matches the
+  facts. The nearest candidate is "the mule's infection" against "the mule is
+  gravely injured", which is a detail, not a contradiction.
+- scene 26 r1 (without it, **4**): Nesrin confronting Ahmed in a room.
+  Nothing in chapters 7-8 is contradicted. "You were there when the trader
+  warned me" concerns who was present, which the ledger never states.
+
+**Retraction:** §14's difference was the old judge's false alarms, not the
+writer. In 24 generations neither arm contradicts the ledger, so the ledger
+neither hurts nor measurably helps at this depth. The no-ledger arm already
+carries the same facts through the chapter log and retrieval. Measuring a
+benefit needs facts the writer cannot get any other way.
+
+Not claimed: the isolated checker's recall on *subtle* natural contradictions.
+It is measured only on a blatant planted one.
+
+**Open, and more important than the ledger:** `checkContradictions` still
+drives the chapter-boundary audit in `ConsistencyService`, and its findings
+trigger **rewrites** (`CONSISTENCY_FIX_ROUNDS` × `CONSISTENCY_FIX_MAX_SCENES`).
+If it raises false alarms at the rate these two scenes suggest (10 flags, 0
+real), the audit is rewriting correct scenes. Next: measure its false-alarm rate
+on the 30 clean corpus scenes against their ledgers, and compare it with the
+isolated checker, before touching the audit.
