@@ -298,3 +298,85 @@ export function pacingVote(
     confirmed
   }
 }
+
+/**
+ * The chapter audit, isolated (§23). `checkContradictions` drives the
+ * chapter-boundary audit, whose findings trigger rewrites. Measured on the 30
+ * corpus scenes against their ledgers (`auditFalseAlarm.live.js`) it accused
+ * 10/30 clean scenes (26 accusations, every one read false: "collapsed under
+ * the salt in Ch2, which contradicts carrying it later") and named the planted
+ * "dead two years" in 1/30. The isolated checker on the same scenes: 0/30 and
+ * 30/30.
+ *
+ * A scene is checked only against facts from EARLIER chapters: a fact from
+ * later ("Ch9: Halim dies") would make every earlier "Halim is alive" look
+ * like a contradiction. Facts without a chapter tag always apply.
+ */
+export function factsBeforeChapter(ledger: string[], chapterNumber: number | null): string[] {
+  if (chapterNumber == null || !Number.isFinite(chapterNumber)) return ledger
+  return ledger.filter((line) => {
+    const m = /^Ch(\d+)\s*:/.exec(line)
+    return !m || Number(m[1]) < chapterNumber
+  })
+}
+
+/**
+ * Verified contradictions → the report shape the audit already consumes.
+ * `between` carries the scene's own sentence, which `planConsistencyFixes`
+ * matches back to exactly the scene that must be rewritten.
+ */
+/** One finding in the audit's report shape (`planConsistencyFixes` reads it). */
+export interface AuditContradiction {
+  type: string
+  description: string
+  between: string[]
+}
+
+export function contradictionsToReport(
+  found: Array<{ sentence: string; fact: string }>,
+  names: string[]
+): {
+  characterIssues: Array<{ character: string; contradictions: AuditContradiction[] }>
+  locationIssues: Array<{ location: string; contradictions: AuditContradiction[] }>
+} {
+  const byName = new Map<string, AuditContradiction[]>()
+  for (const c of found) {
+    const name = names.find((n) => c.sentence.includes(n)) || names[0] || 'Story'
+    if (!byName.has(name)) byName.set(name, [])
+    byName.get(name)!.push({
+      type: 'fact',
+      description: `"${c.sentence}" contradicts the established fact "${c.fact}"`,
+      between: [c.sentence, c.fact]
+    })
+  }
+  return {
+    characterIssues: [...byName.entries()].map(([character, contradictions]) => ({
+      character,
+      contradictions
+    })),
+    locationIssues: []
+  }
+}
+
+/**
+ * Check the checker (§23, DeepSeekMath-V2's meta-verification). A quoted pair
+ * can be real text on both sides and still not be a contradiction: the audit
+ * flagged "Halim warns her about the salt's strange properties" against
+ * "Halim warns her of its unnatural qualities" — a paraphrase that AGREES.
+ * Each verified pair gets one yes/no question; only "cannot both be true"
+ * survives. Asked only for flagged pairs, so clean prose pays nothing.
+ */
+export const CONFIRM_SCHEMA = {
+  type: 'object',
+  properties: { bothCanBeTrue: { type: 'boolean' } },
+  required: ['bothCanBeTrue']
+}
+
+export function buildConfirmPrompt(sentence: string, fact: string): string {
+  return `STATEMENT A (an established fact): ${fact}
+STATEMENT B (from a new scene): ${sentence}
+
+Can A and B both be true in the same story? A statement that repeats, paraphrases, adds detail to, or agrees with the other CAN be true alongside it. Answer false only if believing B means A must be false.
+
+Return JSON: { "bothCanBeTrue": true or false }`
+}

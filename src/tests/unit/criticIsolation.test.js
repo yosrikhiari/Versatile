@@ -333,6 +333,32 @@ ${lines(8)}`,
     )
   })
 
+  it('drops a verified pair the confirming question says can both be true', async () => {
+    // The audit's one remaining false alarm on 30 scenes (§23): a paraphrase
+    // of the fact, quoted exactly on both sides, flagged as a contradiction.
+    vi.mocked(aiGenerateJson).mockImplementation(async (_p, _s, opts) => {
+      if (opts.schemaName === 'focused_continuity_facts')
+        return {
+          contradictions: [
+            { sentence: 'Abe had been dead for two years by then.', fact: 'Abe: alive and well.' }
+          ]
+        }
+      if (opts.schemaName === 'confirm_contradiction') return { bothCanBeTrue: true }
+      if (opts.schemaName === 'focused_pacing_paragraphs')
+        return { labels: Array(opts.schema.properties.labels.minItems).fill('ADVANCES') }
+      return { score: 8 }
+    })
+    const v = await critic.evaluateScene({
+      draft: `Abe had been dead for two years by then.
+
+${lines(8)}`,
+      sceneBrief: { title: 't', emotionalGoal: 'dread', charactersPresent: ['Abe'] },
+      storyBible: 'Abe: alive and well.',
+      chapterLog: ''
+    })
+    expect(v.dimensionScores.continuity).toBe(8)
+  })
+
   it('sends the voice judge the dialogue only', async () => {
     answer()
     await evaluate(`Narration nobody should judge for voice.\n\n${lines(8)}`)
@@ -340,5 +366,36 @@ ${lines(8)}`,
       .mocked(aiGenerateJson)
       .mock.calls.find((c) => c[2].schemaName === 'focused_voice_isolated')
     expect(call[0]).not.toContain('Narration nobody should judge')
+  })
+})
+
+describe('the chapter audit, isolated', () => {
+  it('checks a scene only against facts from earlier chapters', async () => {
+    const { factsBeforeChapter } = await import('@/composables/criticIsolation')
+    const ledger = [
+      'Ch1: Halim is alive',
+      'Ch3: Nesrin reaches the well',
+      'Ch9: Halim dies',
+      'untagged fact'
+    ]
+    expect(factsBeforeChapter(ledger, 3)).toEqual(['Ch1: Halim is alive', 'untagged fact'])
+    expect(factsBeforeChapter(ledger, null)).toEqual(ledger)
+  })
+
+  it('reports in the shape the audit consumes, and points the fix at the right scene', async () => {
+    const { contradictionsToReport } = await import('@/composables/criticIsolation')
+    const { planConsistencyFixes } = await import('@/composables/generation/context/sceneContext')
+    const report = contradictionsToReport(
+      [{ sentence: 'Halim had been dead for two years.', fact: 'Ch1: Halim is alive' }],
+      ['Nesrin', 'Halim']
+    )
+    expect(report.characterIssues[0].character).toBe('Halim')
+    const scenes = [
+      { prose: 'Nesrin walked with Halim.', characters: ['Halim'] },
+      { prose: 'Later. Halim had been dead for two years. The wind rose.', characters: ['Nesrin'] },
+      { prose: 'Halim laughed at the gate.', characters: ['Halim'] }
+    ]
+    // The latest scene with Halim is index 2, but the quote is in scene 1.
+    expect([...planConsistencyFixes(report, scenes).keys()]).toEqual([1])
   })
 })

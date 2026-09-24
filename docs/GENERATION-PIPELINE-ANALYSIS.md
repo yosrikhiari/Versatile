@@ -1133,3 +1133,42 @@ If it raises false alarms at the rate these two scenes suggest (10 flags, 0
 real), the audit is rewriting correct scenes. Next: measure its false-alarm rate
 on the 30 clean corpus scenes against their ledgers, and compare it with the
 isolated checker, before touching the audit.
+
+## 23. The chapter audit accused good scenes and missed the real one (2026-09-24)
+
+§22 read two of `checkContradictions`' heaviest verdicts and found no
+contradiction in either. That judge drives the chapter-boundary audit in
+`ConsistencyService`, and its findings trigger **rewrites**. Measured the way
+§20 measured the scene gate (`auditFalseAlarm.live.js`: every corpus scene
+against its own ledger, called as the audit groups scenes, flagged text saved):
+
+| 30 scenes | `checkContradictions` | isolated | isolated + confirm |
+|---|---|---|---|
+| clean scenes accused | **10/30** (26 accusations) | 3/30 | **0/30** |
+| planted "dead two years" named | **1/30** | 30/30 | **30/30** |
+
+Every old accusation read was false: "collapses under the salt in Ch2, which
+contradicts her carrying it later", "her clothes smelled of damp earth in one
+scene and of iron in another", "Yusuf leans on a crate in one scene and waits
+at a gate in another". People recover, smells change, and characters move.
+So the audit rewrote correct scenes and let the real contradiction through
+29 times out of 30.
+
+**Shipped, behind the focused flag:** with a ledger, `checkContradictions` now
+checks each scene's sentences that name someone in the story against the facts
+of **earlier chapters only**. A later fact ("Ch9: Halim dies") must not make an
+earlier "Halim is alive" a contradiction. It returns the audit's existing
+report shape, with `between` holding the scene's own sentence, so
+`planConsistencyFixes` targets exactly the scene that holds it (pinned by a
+test where the latest scene with the character is not the one at fault).
+
+**Check the checker.** The isolated audit's 3 remaining accusations were the
+same pair: "Halim warns her about the salt's strange properties" against the
+fact "Halim warns her of its unnatural qualities". Both quotes were real, and
+they agree. Each code-verified pair now gets one yes/no question: can both be
+true? Only "no" survives (DeepSeekMath-V2's meta-verification, here a
+3-token answer). It runs only on flagged pairs, and it applies to the scene
+gate's continuity check as well. Result: 0/30 clean, 30/30 planted.
+
+Not claimed: recall on subtle natural contradictions. The planted one is
+blatant, and §22's 24 generated scenes contained none to find.

@@ -4,13 +4,17 @@ import { aiGenerateJson } from './useAiService'
 import {
   bibleFacts,
   bibleNames,
+  buildConfirmPrompt,
   buildContinuityPrompt,
   buildPacingPrompt,
   buildVoicePrompt,
   dialogueDistinctRatio,
   extractDialogueLines,
   fillerParagraphs,
+  CONFIRM_SCHEMA,
   CONTINUITY_SCHEMA,
+  contradictionsToReport,
+  factsBeforeChapter,
   JUDGE_SAMPLING,
   MIN_DISTINCT_DIALOGUE,
   MIN_VOICE_LINES,
@@ -336,6 +340,33 @@ export function useStoryCritic() {
   const consistencyReport = ref<any>(null)
   let _sessionBudget: SessionBudget | null = null
 
+  /**
+   * Keep only the pairs that cannot both be true (see buildConfirmPrompt).
+   * A failed call keeps the pair: the quote was already verified by code, and
+   * dropping evidence because a second call failed would hide it.
+   */
+  async function confirmContradictions(pairs: Array<{ sentence: string; fact: string }>) {
+    const kept: Array<{ sentence: string; fact: string }> = []
+    for (const pair of pairs) {
+      const answer = (await aiGenerateJson(
+        buildConfirmPrompt(pair.sentence, pair.fact),
+        'You decide whether two statements about a story contradict each other.',
+        {
+          feature: FEATURES.STORY_GENERATION,
+          role: 'critic',
+          temperature: 0,
+          maxTokens: 30,
+          schema: CONFIRM_SCHEMA,
+          schemaName: 'confirm_contradiction',
+          sessionBudget: _sessionBudget,
+          ...JUDGE_SAMPLING
+        }
+      ).catch(() => null)) as { bothCanBeTrue?: boolean } | null
+      if (answer?.bothCanBeTrue !== true) kept.push(pair)
+    }
+    return kept
+  }
+
   async function evaluateScene({
     draft,
     sceneBrief,
@@ -626,7 +657,9 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
             }
           ).catch(() => null)) as { contradictions?: unknown } | null
           if (!parsed) return null
-          const verified = verifyContradictions(parsed.contradictions, draftText, facts)
+          const verified = await confirmContradictions(
+            verifyContradictions(parsed.contradictions, draftText, facts)
+          )
           if (!verified.length) return { score: 8 }
           return {
             score: 3,
@@ -890,6 +923,57 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
     const report: { characterIssues: any[]; locationIssues: any[]; error?: string } = {
       characterIssues: [],
       locationIssues: []
+    }
+
+    // Focused mode: each scene's sentences against the facts of earlier
+    // chapters, quotes verified by code (criticIsolation.ts, §23). The
+    // entity-by-entity judge below accused 10/30 clean scenes and caught the
+    // planted contradiction 1/30; this one measured 0/30 and 30/30.
+    if (isFocusedCriticEnabled() && Array.isArray(ledger) && ledger.length > 0) {
+      try {
+        const names = [
+          ...new Set([
+            ...(characters || [])
+              .map((c: { name?: unknown }) => String(c?.name || ''))
+              .filter(Boolean),
+            ...bibleNames(ledger.join('\n'))
+          ])
+        ]
+        const found: Array<{ sentence: string; fact: string }> = []
+        const seen = new Set<string>()
+        for (const scene of sceneProse || []) {
+          const prose = String(scene?.prose || '')
+          if (!prose || seen.has(prose)) continue
+          seen.add(prose)
+          const chapter = Number(scene?.chapterNumber ?? scene?.chapterId)
+          const facts = factsBeforeChapter(ledger, Number.isFinite(chapter) ? chapter : null)
+          const sentences = splitSentences(prose).filter((s) => names.some((n) => s.includes(n)))
+          if (!facts.length || !sentences.length) continue
+          const parsed = (await aiGenerateJson(
+            buildContinuityPrompt({ facts, sentences }),
+            'You check new prose against established facts. You report only contradictions you can quote on both sides.',
+            {
+              feature: FEATURES.STORY_GENERATION,
+              role: 'critic',
+              temperature: 0,
+              maxTokens: 600,
+              schema: CONTINUITY_SCHEMA,
+              schemaName: 'audit_continuity_facts',
+              sessionBudget: _sessionBudget,
+              ...JUDGE_SAMPLING
+            }
+          ).catch(() => null)) as { contradictions?: unknown } | null
+          if (parsed)
+            found.push(
+              ...(await confirmContradictions(
+                verifyContradictions(parsed.contradictions, prose, facts)
+              ))
+            )
+        }
+        return contradictionsToReport(found, names)
+      } finally {
+        isCheckingConsistency.value = false
+      }
     }
 
     try {
