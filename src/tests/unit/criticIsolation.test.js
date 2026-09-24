@@ -7,6 +7,8 @@ import {
   fillerParagraphs,
   buildVoicePrompt,
   MIN_VOICE_LINES,
+  pacingVote,
+  unreverseParagraphNumbers,
   verifyContradictions,
   bibleNames
 } from '@/composables/criticIsolation'
@@ -67,6 +69,21 @@ describe('criticIsolation helpers', () => {
     })
     expect(prompt).toContain('1. "Go,"')
     expect(prompt).not.toContain('The light lay flat')
+  })
+})
+
+describe('pacing vote', () => {
+  it('maps reversed paragraph numbers back to reading order', () => {
+    // 5 paragraphs shown reversed: reversed #1 is original #5
+    expect(unreverseParagraphNumbers([1, 4], 5)).toEqual([2, 5])
+  })
+
+  it('fails only with two forward flags and at least one confirmed', () => {
+    expect(pacingVote([2, 5], [5]).score).toBe(5)
+    expect(pacingVote([2, 5], []).score).toBe(7)
+    expect(pacingVote([2, 5], null).score).toBe(7)
+    expect(pacingVote([3], [3]).score).toBe(7)
+    expect(pacingVote([], null).score).toBe(8)
   })
 })
 
@@ -140,11 +157,17 @@ describe('focused critic routes voice and pacing through isolated input', () => 
     mod.setFocusedCritic(false)
   })
 
-  function answer({ pacingLabels = null, voice = 8, other = 8 } = {}) {
+  function answer({ pacingLabels = null, reversedLabels = null, voice = 8, other = 8 } = {}) {
     vi.mocked(aiGenerateJson).mockImplementation(async (_prompt, _system, opts) => {
       if (opts.schemaName === 'focused_pacing_paragraphs') {
         const n = opts.schema.properties.labels.minItems
         return { labels: pacingLabels || Array(n).fill('ADVANCES') }
+      }
+      // The confirming pass sees the paragraphs reversed; by default it agrees.
+      if (opts.schemaName === 'focused_pacing_paragraphs_reversed') {
+        const n = opts.schema.properties.labels.minItems
+        const labels = reversedLabels || pacingLabels || Array(n).fill('ADVANCES')
+        return { labels: reversedLabels ? labels : [...labels].reverse() }
       }
       if (opts.schemaName === 'focused_voice_isolated') return { score: voice }
       return { score: other }
@@ -182,6 +205,46 @@ describe('focused critic routes voice and pacing through isolated input', () => 
     expect(v.dimensionScores.pacing).toBe(5)
     expect(v.pass).toBe(false)
     expect(v.issues.find((i) => i.type === 'pacing').description).toMatch(/Paragraphs 2, 5/)
+  })
+
+  it('does not fail pacing when the reversed pass confirms none of the flags', async () => {
+    const flags = [
+      'ADVANCES',
+      'FILLER',
+      'ADVANCES',
+      'ADVANCES',
+      'FILLER',
+      'ADVANCES',
+      'ADVANCES',
+      'ADVANCES'
+    ]
+    answer({ pacingLabels: flags, reversedLabels: Array(8).fill('ADVANCES') })
+    const v = await evaluate(lines(8))
+    expect(v.dimensionScores.pacing).toBe(7)
+  })
+
+  it('asks the confirming pass only when the forward pass would fail', async () => {
+    answer()
+    await evaluate(lines(8))
+    const names = vi.mocked(aiGenerateJson).mock.calls.map((c) => c[2].schemaName)
+    expect(names).not.toContain('focused_pacing_paragraphs_reversed')
+  })
+
+  it('show_tell does not see paragraphs pacing already failed as filler', async () => {
+    const draft = [
+      'Ada ran for the gate.',
+      'Nothing about the hour was remarkable, and the light was ordinary.',
+      'Bo caught her arm.',
+      'The dust settled the way dust settles.',
+      'She pulled free.'
+    ].join('\n\n')
+    answer({ pacingLabels: ['ADVANCES', 'FILLER', 'ADVANCES', 'FILLER', 'ADVANCES'] })
+    await evaluate(draft)
+    const showTell = vi
+      .mocked(aiGenerateJson)
+      .mock.calls.find((c) => c[2].schemaName === 'focused_show_tell')
+    expect(showTell[0]).toContain('Bo caught her arm.')
+    expect(showTell[0]).not.toContain('Nothing about the hour was remarkable')
   })
 
   it('skips voice below the minimum dialogue, instead of scoring a sample too small', async () => {

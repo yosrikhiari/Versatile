@@ -268,3 +268,33 @@ For each real contradiction, copy the sentence EXACTLY and the fact EXACTLY. If 
 
 Return JSON: { "contradictions": [ { "sentence": "...", "fact": "..." } ] }`
 }
+
+/**
+ * Pacing by two votes (§21). Borderline paragraphs flip under small changes in
+ * how the list is presented; planted filler does not. So a failing forward pass
+ * is re-asked with the paragraphs in reverse order (which also cancels drift
+ * down the list), and the scene fails only when at least one forward flag is
+ * confirmed. The rule was chosen on the odd corpus scenes (clean fails 1/15 →
+ * 0/15, padded 15/15 kept) and held on the even ones unchanged (1/15 → 0/15,
+ * 15/15). The confirming call only happens when the forward pass would fail,
+ * so clean prose pays nothing extra.
+ */
+export function unreverseParagraphNumbers(reversed: number[], count: number): number[] {
+  return reversed.map((i) => count + 1 - i).sort((a, b) => a - b)
+}
+
+export function pacingVote(
+  forward: number[],
+  reversed: number[] | null
+): { score: number; filler: number[]; confirmed: number[] } {
+  const confirmed = reversed ? forward.filter((i) => reversed.includes(i)) : []
+  const failing = forward.length >= 2 && confirmed.length >= 1
+  return {
+    // Unconfirmed flags still pass, as one flagged paragraph always has.
+    score: failing
+      ? pacingScoreFromFiller(forward.length)
+      : pacingScoreFromFiller(Math.min(1, forward.length)),
+    filler: forward,
+    confirmed
+  }
+}

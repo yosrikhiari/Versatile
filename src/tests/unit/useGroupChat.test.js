@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
 vi.mock('../../composables/useAiService', () => ({
@@ -25,6 +25,15 @@ const CHARACTERS = [
   { id: 'c-leo', name: 'Leo', role: 'father', goal: 'quiet', voice: 'few words' },
   { id: 'c-mara', name: 'Mara', role: 'friend', goal: 'peace', voice: 'warm' }
 ]
+
+// The group branch lazily imports groupChatGraph, which pulls in LangGraph.
+// Cold, under full-suite load, that import alone took the first group test
+// past the 15 s test timeout (2 of 4 full runs on 2026-09-24, passing in 2.4 s
+// alone). Load it here, under the 60 s hook timeout, so the tests time the
+// behaviour and not the module load.
+beforeAll(async () => {
+  await import('@/composables/generation/chat/groupChatGraph')
+})
 
 beforeEach(async () => {
   vi.clearAllMocks()

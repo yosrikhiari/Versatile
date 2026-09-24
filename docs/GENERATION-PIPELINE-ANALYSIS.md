@@ -1023,3 +1023,74 @@ the penalty finding, so it is worth one re-test under `JUDGE_SAMPLING`.
 every run (more revisions, longer runs), and that is a run-level measurement of
 its own. The combined critic (`callCritic`) still uses the prose sampling
 defaults. Whether `JUDGE_SAMPLING` helps it is untested.
+
+## 21. Blame once, confirm before failing, and what the gate costs a run (2026-09-24)
+
+Three items from §20's residuals, all measured on 30 scenes (odd scenes
+choose, even scenes held out).
+
+**Per-paragraph show/tell is dead, confirmed.** Re-tested under
+`JUDGE_SAMPLING` (`showtell_probe.py`): 61% of clean paragraphs were labelled
+REPORTED, the same 61% as the planted telling paragraphs, so the labels carry
+no signal. But the same probe labelled **88 of 90 planted filler paragraphs
+REPORTED**. Filler really is flat telling. The show_tell co-fail on padded
+scenes (15/30 in §20) was one flawed paragraph being failed twice, not a
+leaking judge.
+
+**Blame once.** Pacing now runs first, and when it fails a scene, the
+paragraphs it named are removed from the text the show_tell judge reads. On
+the 30-scene acceptance run, padding → show_tell co-fails went **15 → 0**, and
+padded scenes naming only pacing went 12 → 25. The trade: on `told_not_shown`
+(content-free summaries, which are filler as much as telling), pacing now owns
+3 of the paragraphs and show_tell was named 27/30 instead of 30/30. Caught
+stays 30/30.
+
+**Confirm before failing (pacing).** A pacing pass that would fail the scene
+is re-asked with the paragraphs **reversed**, and the scene fails only if at
+least one forward flag is confirmed (`pacingVote`). This is DeepSeek-GRM-style
+voting at k = 2, and it only runs when the first pass would fail, so clean
+prose pays nothing extra (`pacing_vote_probe.py`):
+
+| | forward only | forward + reversed confirm |
+|---|---|---|
+| clean fails, odd (chosen) | 1/15 | **0/15** |
+| clean fails, even (held out) | 1/15 | **0/15** |
+| padded caught, odd / even | 15/15 / 15/15 | 15/15 / 15/15 |
+
+**Confirm before failing (voice): not shipped.** Clean scene 10 failed voice
+(5) in the acceptance run after passing (7) in an earlier one, which looked
+like sampling noise. A probe of 3 forward draws plus 1 reversed pass per scene
+(`voice_confirm_probe.py`) says otherwise: the clean scenes that fail voice
+fail on every draw, and the reversed pass agrees. Confirmation changed nothing
+(odd 3/33 → 3/33, even 4/24 → 4/24). Read by hand, the failing dialogue really
+is interchangeable: scene 17 is "Does it hurt?" / "It does," / "But not enough
+to stop us." / "This will help," / "I know." Scene 2, rated 9, has "Trust is a
+luxury among traders. We deal in certainty, not faith." These are **true
+positives on a model-written corpus that was never gold**. "Clean" meant "not
+injected", not "good".
+
+**Acceptance** (`gate-sensitivity-focused-30-vote`): caught 133/145, target
+named 126/145, other dimensions pushed under the floor 113 → 99, **clean fails
+1/30** (0/15 odd, 1/15 even; the one is scene 10's voice, per the paragraph
+above). Pacing clean fails: **0/30**.
+
+**What the gate costs a run** (`saltRoad.live.js`, 2 chapters × 3 scenes, same
+settings, `LIVE_FOCUSED=1` against the default):
+
+| | gate off (combined) | gate on (focused) |
+|---|---|---|
+| wall time | 13.4 min | 10.8 min |
+| model calls | 41 (6 judge) | 66 (38 judge) |
+| prose (writer) calls | 10 | 9 |
+| scenes committed as `review` | 0/6 | 1/6 |
+
+The focused gate adds about 32 short judge calls and no measurable time. The
+writer dominates the run, and the 2.6-minute gap in the gate-on run's favour is
+the noise between two different books. One run per arm measures cost, not
+quality. Whether gated books read better needs the gate itself on both books'
+committed scenes, and more than six of them.
+
+Also fixed: `useGroupChat.test.js` timed out under full-suite load (2 of 4
+runs). Its first group test was the first code path to lazily import
+`groupChatGraph` (LangGraph). The import now happens in `beforeAll` under the
+60 s hook timeout. The suite then passed 3 of 3 full runs.

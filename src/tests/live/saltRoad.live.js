@@ -13,6 +13,8 @@
  *      LIVE_PRESET (multi-agent → Critic and Editor on qwen2.5:3b-instruct, CPU)
  *      LIVE_TRACE=agentops (route every model call through the AgentOps gateway at
  *      LIVE_AGENTOPS_URL, default http://localhost:8080; trace ids land in health.json)
+ *      LIVE_FOCUSED=1 (the focused, input-isolated critic instead of the combined
+ *      one; wire.json then splits writer calls from judge calls, §21)
  * (prose model; unset keeps the app default — the utility model is always qwen3:8b).
  */
 import 'fake-indexeddb/auto'
@@ -71,6 +73,25 @@ function words(text) {
  * local to the run, and is written next to the book.
  */
 const wireCalls = []
+
+/**
+ * Judge or writer, from what the call asks for. The gate on/off comparison
+ * (§21) is a question about how many extra calls the gate costs a run, and
+ * the wire is the only place every call passes through.
+ */
+function callKind(body) {
+  const text = `${body.system || ''}
+${body.prompt || JSON.stringify(body.messages || '')}`
+  if (
+    /story critic|story editor judging|Judge ONE aspect|label paragraphs of fiction|check new prose against established facts|judge dialogue voice|dimensionScores/i.test(
+      text
+    )
+  )
+    return 'judge'
+  if (body.format) return 'structured'
+  return 'prose'
+}
+
 function captureOllamaCalls() {
   const realFetch = globalThis.fetch.bind(globalThis)
   globalThis.fetch = async (input, init) => {
@@ -83,7 +104,8 @@ function captureOllamaCalls() {
           model: body.model,
           numCtx: body.options?.num_ctx ?? null,
           promptChars: (body.prompt || JSON.stringify(body.messages || '')).length,
-          prompt: body.prompt || JSON.stringify(body.messages || '')
+          prompt: body.prompt || JSON.stringify(body.messages || ''),
+          kind: callKind(body)
         })
       } catch {
         /* an unparsable body is not worth failing a two-hour run over */
@@ -118,6 +140,10 @@ describe('live: The Salt Road', () => {
       const { setAgentOpsTracing, setAgentOpsUrl } = await import('@/config/agentops')
       setAgentOpsTracing(true)
       if (process.env.LIVE_AGENTOPS_URL) setAgentOpsUrl(process.env.LIVE_AGENTOPS_URL)
+    }
+    if (process.env.LIVE_FOCUSED === '1') {
+      const { setFocusedCritic } = await import('@/composables/useStoryCritic')
+      setFocusedCritic(true)
     }
     const { recentTraces } = await import('@/services/traceContext')
     const { useOrchestrationStore } = await import('@/stores/orchestrationStore')
@@ -341,6 +367,8 @@ describe('live: The Salt Road', () => {
         const summary = written?.summary || null
         sceneRows.push({
           title: sc.title,
+          // 'review' when the gate could not clear the scene in its attempts.
+          contentStatus: sc.contentStatus ?? null,
           words: words(prose),
           chars: prose.length,
           // The old critic cap. True means this scene would have been cut.
@@ -359,6 +387,14 @@ describe('live: The Salt Road', () => {
       JSON.stringify(
         {
           calls: wireCalls.length,
+          focusedCritic: process.env.LIVE_FOCUSED === '1',
+          byKind: wireCalls.reduce((acc, c) => {
+            acc[c.kind] = (acc[c.kind] || 0) + 1
+            return acc
+          }, {}),
+          wallMinutes: wireCalls.length
+            ? +((wireCalls[wireCalls.length - 1].at - wireCalls[0].at) / 60000).toFixed(1)
+            : 0,
           maxPromptChars: wireCalls.reduce((m, c) => Math.max(m, c.promptChars), 0),
           // Did the established-facts ledger actually reach a model? Counting
           // the block by its heading is the only proof that the wiring works

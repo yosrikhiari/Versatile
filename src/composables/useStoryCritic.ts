@@ -15,7 +15,8 @@ import {
   MIN_DISTINCT_DIALOGUE,
   MIN_VOICE_LINES,
   pacingLabelsSchema,
-  pacingScoreFromFiller,
+  pacingVote,
+  unreverseParagraphNumbers,
   splitParagraphs,
   splitSentences,
   verifyContradictions
@@ -406,7 +407,7 @@ export function useStoryCritic() {
        * Keeping it in one place is what makes the focused mode a swap of the
        * question rather than a second prompt to maintain.
        */
-      const sceneBlock = `SCENE BRIEF:
+      const sceneBlockFor = (text: string) => `SCENE BRIEF:
 - Title: ${sceneBrief.title}
 - Emotional goal: ${sceneBrief.emotionalGoal}
 - Characters present: ${sceneBrief.charactersPresent.join(', ')}
@@ -425,12 +426,13 @@ ${storyBible || '(No story bible)'}
 ${hasFewCharacters ? 'NOTE: Fewer than 2 characters defined. Skip continuity and voice checks.' : ''}
 
 DRAFT TEXT:
-${draftText}
+${text}
 ${
   draftTruncated
     ? '\n[The draft was cut here for length. Judge only what you were given; do NOT treat the missing ending as an unresolved scene or a continuity fault.]\n'
     : ''
 }`
+      const sceneBlock = sceneBlockFor(draftText)
 
       const userPrompt = `Evaluate this scene draft across ALL of the following dimensions:
 ${dimsList}
@@ -488,9 +490,11 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
          * little dialogue to have a voice, or the call failed (the same
          * treatment the whole-scene path gives a failed call).
          */
-        async function isolatedDimension(
-          dimension: 'voice' | 'pacing'
-        ): Promise<{ score: number; issue?: (typeof issues)[number] } | null> {
+        async function isolatedDimension(dimension: 'voice' | 'pacing'): Promise<{
+          score: number
+          issue?: (typeof issues)[number]
+          filler?: number[]
+        } | null> {
           if (dimension === 'voice') {
             const lines = extractDialogueLines(draftText)
             if (lines.length < MIN_VOICE_LINES) return null
@@ -542,29 +546,43 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
 
           const paragraphs = splitParagraphs(draftText)
           if (paragraphs.length === 0) return null
-          const parsedPacing = (await aiGenerateJson(
-            buildPacingPrompt({
-              paragraphs,
-              emotionalGoal: sceneBrief?.emotionalGoal || '',
-              whatChanges: sceneBrief?.whatChanges || sceneBrief?.change || ''
-            }),
-            'You label paragraphs of fiction precisely, one label per paragraph.',
-            {
-              feature: FEATURES.STORY_GENERATION,
-              role: 'critic',
-              temperature: 0,
-              maxTokens: 20 * paragraphs.length + 50,
-              schema: pacingLabelsSchema(paragraphs.length),
-              schemaName: 'focused_pacing_paragraphs',
-              sessionBudget: _sessionBudget,
-              ...JUDGE_SAMPLING
-            }
-          ).catch(() => null)) as { labels?: unknown } | null
-          if (!parsedPacing || !Array.isArray(parsedPacing.labels)) return null
-          const filler = fillerParagraphs(parsedPacing.labels)
-          const score = pacingScoreFromFiller(filler.length)
+          const labelPass = async (paras: string[], name: string) => {
+            const parsed = (await aiGenerateJson(
+              buildPacingPrompt({
+                paragraphs: paras,
+                emotionalGoal: sceneBrief?.emotionalGoal || '',
+                whatChanges: sceneBrief?.whatChanges || sceneBrief?.change || ''
+              }),
+              'You label paragraphs of fiction precisely, one label per paragraph.',
+              {
+                feature: FEATURES.STORY_GENERATION,
+                role: 'critic',
+                temperature: 0,
+                maxTokens: 20 * paras.length + 50,
+                schema: pacingLabelsSchema(paras.length),
+                schemaName: name,
+                sessionBudget: _sessionBudget,
+                ...JUDGE_SAMPLING
+              }
+            ).catch(() => null)) as { labels?: unknown } | null
+            return parsed && Array.isArray(parsed.labels) ? fillerParagraphs(parsed.labels) : null
+          }
+          const forward = await labelPass(paragraphs, 'focused_pacing_paragraphs')
+          if (!forward) return null
+          // Only a pass that would fail the scene is re-asked (see pacingVote).
+          const reversedRaw =
+            forward.length >= 2
+              ? await labelPass([...paragraphs].reverse(), 'focused_pacing_paragraphs_reversed')
+              : null
+          const vote = pacingVote(
+            forward,
+            reversedRaw ? unreverseParagraphNumbers(reversedRaw, paragraphs.length) : null
+          )
+          const filler = vote.filler
+          const score = vote.score
           return {
             score,
+            filler,
             issue: filler.length
               ? {
                   type: 'pacing',
@@ -620,7 +638,31 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
           }
         }
 
+        // Pacing runs first so its verdict can be used below: a paragraph it
+        // has already failed as filler is not handed to show_tell as well.
+        // Filler IS flat telling ("Nothing about the hour was remarkable") —
+        // an isolated show/tell labeller called 88 of 90 planted filler
+        // paragraphs REPORTED — so without this one flawed paragraph was
+        // failed twice, and show_tell co-failed on 15 of 30 padded scenes.
+        const pacingJudged = promptDims.includes('pacing')
+          ? await isolatedDimension('pacing')
+          : null
+        const pacingFailed =
+          pacingJudged && pacingJudged.score < minDimension ? pacingJudged.filler || [] : []
+        const showTellText = pacingFailed.length
+          ? splitParagraphs(draftText)
+              .filter((_, i) => !pacingFailed.includes(i + 1))
+              .join('\n\n')
+          : draftText
+
         for (const dimension of promptDims) {
+          if (dimension === 'pacing') {
+            if (pacingJudged) {
+              dimensionScores[dimension] = pacingJudged.score
+              if (pacingJudged.issue) issues.push(pacingJudged.issue)
+            }
+            continue
+          }
           if (dimension === 'continuity') {
             const judged = await isolatedContinuity()
             if (judged) {
@@ -629,7 +671,7 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
             }
             continue
           }
-          if (dimension === 'voice' || dimension === 'pacing') {
+          if (dimension === 'voice') {
             const judged = await isolatedDimension(dimension)
             if (judged) {
               dimensionScores[dimension] = judged.score
@@ -664,7 +706,7 @@ ${formatDimensionRubrics(categoryType, [dimension])}
 If the scene is weak on this aspect, say so — a middling default is worse than
 an honest low mark. Name the problem in "issue" only if there is one.
 
-${sceneBlock}
+${dimension === 'show_tell' ? sceneBlockFor(showTellText) : sceneBlock}
 
 Return JSON: { "score": number, "issue": "one sentence, or omit if none" }`
           // NOT `activePrompts.critic`: that system prompt instructs the model
