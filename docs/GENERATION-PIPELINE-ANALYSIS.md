@@ -1189,3 +1189,52 @@ audit path unless combined mode is pinned.
 What is still not shown: that gated books *read better*. That needs more than
 one book per arm, with committed scenes compared by a judge that §19–§23
 showed can see.
+
+## 25. Repair in place instead of writing the scene again (2026-09-24)
+
+A failed gate used to mean one thing: `sceneGate` asked the writer for the
+whole scene again. That is about 75 s of generation, it discards every
+paragraph that was fine, and the new draft can bring new problems, with only
+`SCENE_MAX_ATTEMPTS` = 2 tries. Since §19–§23 the focused critic says
+**exactly** what is wrong for two dimensions: the filler paragraphs by number
+(confirmed by the reversed pass), and the contradicting sentence with the fact
+it breaks (code-verified, then "can both be true?"). Those now travel as data on
+the issue (`paragraphs`, `evidence`).
+
+When those are the **only** failing dimensions (`planRepair`), the gate cuts
+the paragraphs with no model call, and rewrites each contradicting sentence
+with one short call (`repairSentence`). It then judges the result through the
+same `critiqueAttempt`. If that passes, it is the scene. If not, the loop
+continues to the full rewrite as before, so a repair can only save work.
+
+Probe (`tools/judge-probes/repair_probe.py`, 30 scenes, odd chooses / even
+held out):
+
+| | odd | even |
+|---|---|---|
+| padded scene passes after cutting confirmed filler | 14/15 | 13/15 |
+| real paragraphs cut / planted cut | 2 / 34 | 4 / 35 |
+| cutting every *forward* flag instead: real paragraphs cut | 5 | 10 |
+| contradiction scene passes after one sentence rewrite | 15/15 | 14/15 |
+
+Only confirmed flags are cut; cutting every forward flag took 2–3× more real
+prose.
+
+The end-to-end test (`volumeGeneratorRun.test.js`, "repairs a scene in place")
+passed **vacuously** on its first version. The fake writer returned HTML with
+no blank lines, so the critic saw one paragraph and there was nothing to cut. It
+was caught by asserting the critic saw ≥ 3 paragraphs. The second version then
+showed the gate's 80% length floor refusing a repair that cut two thirds of a
+scene, and sending it back to the writer. That is the right call, and it is why
+the fixture now has 12 paragraphs.
+
+Not yet in `graphStrategy` (the LangGraph path composes the gate primitives
+itself).
+
+**First real run** (`saltRoad.live.js`, 2 chapters × 3 scenes, same settings as
+§21, `repairs` in `wire.json`): 9.8 min, 8 writer calls, **0 of 6 scenes left for
+review** (the §21 gate-on run left 1). The repair fired **once** and did not
+clear that scene by itself. The full rewrite then did, as designed. So on real
+prose a repair is rarer than on planted defects: it only fires when pacing or
+continuity are the *only* failures, and real failures are often voice or
+emotional goal. How often it saves a rewrite needs more than one book.
