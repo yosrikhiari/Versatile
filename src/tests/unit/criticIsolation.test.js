@@ -412,3 +412,39 @@ describe('focused critic default (§24)', () => {
     expect(isFocusedCriticEnabled()).toBe(true)
   })
 })
+
+describe('repair in place (§25)', () => {
+  it('plans a repair only when every failing dimension carries its evidence', async () => {
+    const { planRepair } = await import('@/composables/criticIsolation')
+    const verdict = {
+      dimensionScores: { pacing: 5, continuity: 3, voice: 8 },
+      issues: [
+        { type: 'pacing', paragraphs: [2, 5] },
+        { type: 'continuity', evidence: [{ sentence: 'Abe was dead.', fact: 'Abe: alive' }] }
+      ]
+    }
+    expect(planRepair(verdict, 7)).toEqual({
+      cut: [2, 5],
+      rewrites: [{ sentence: 'Abe was dead.', fact: 'Abe: alive' }]
+    })
+    // voice failing: nothing located to repair, so the writer gets it back
+    expect(planRepair({ ...verdict, dimensionScores: { pacing: 5, voice: 4 } }, 7)).toBeNull()
+    // pacing failing without paragraph numbers (e.g. the combined critic)
+    expect(
+      planRepair({ dimensionScores: { pacing: 5 }, issues: [{ type: 'pacing' }] }, 7)
+    ).toBeNull()
+    expect(planRepair({ dimensionScores: { pacing: 8 }, issues: [] }, 7)).toBeNull()
+  })
+
+  it('cuts paragraphs by the critic numbering and replaces sentences where they stand', async () => {
+    const { applyRepair } = await import('@/composables/criticIsolation')
+    const prose = 'One.\n\nFiller here.\n\nAbe was dead. Then rain.\n\nFour.'
+    expect(
+      applyRepair(prose, [2], [{ sentence: 'Abe was dead.', replacement: 'Abe was tired.' }])
+    ).toBe('One.\n\nAbe was tired. Then rain.\n\nFour.')
+    // an empty replacement deletes the sentence; a paragraph left empty goes too
+    expect(
+      applyRepair('A.\n\nAbe was dead.', [], [{ sentence: 'Abe was dead.', replacement: '' }])
+    ).toBe('A.')
+  })
+})

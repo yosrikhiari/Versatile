@@ -13,7 +13,8 @@ import {
   gateProseQuality,
   gateScoreDistribution
 } from '../../../services/evalGates'
-import { deriveVerdict } from '../../../services/criticVerdict'
+import { deriveVerdict, CRITIC_VERDICT_CONFIG } from '../../../services/criticVerdict'
+import { applyRepair, planRepair } from '../../criticIsolation'
 import { getDefaultThreshold } from '../../../config/evalDimensions'
 import { formatEvalFeedback } from '../../../services/evalFeedback'
 import {
@@ -407,6 +408,40 @@ export function createSceneGate(ctx: SceneGateContext) {
       }
       if (judged.accept) break
 
+      // Repair in place before writing the scene again (§25). When the only
+      // failures are ones the gate located -- filler paragraphs, a sentence
+      // that contradicts a fact -- cut or rewrite exactly those and judge the
+      // result. A pacing repair costs no writing call; a full retry costs a
+      // whole scene and discards every paragraph that was fine. If the repair
+      // does not pass, the loop carries on to the full rewrite as before.
+      const repaired = await repairInPlace(proseText, criticResult)
+      if (repaired) {
+        const rejudged = await critiqueAttempt({
+          proseText: repaired,
+          structured: structured ? { ...structured, prose: repaired } : structured,
+          scene,
+          sceneIndex,
+          scenePhase,
+          storyBible,
+          chapterLog,
+          sceneEntitiesJson,
+          attemptFocusInstructions,
+          baselineWordCount
+        })
+        console.info(
+          `[sceneGate] scene ${sceneIndex + 1}: repaired in place -> ${rejudged.accept ? 'passes' : 'still fails'}`
+        )
+        if (rejudged.accept || attemptScore(rejudged.criticResult) > attemptScore(chosenEval)) {
+          chosenProse = repaired
+          chosenStructured = structured ? { ...structured, prose: repaired } : structured
+          chosenEval = rejudged.criticResult
+        }
+        if (rejudged.accept) break
+        attemptFeedback = rejudged.feedback
+        attemptFocusInstructions = rejudged.focusInstructions
+        continue
+      }
+
       attemptFeedback = judged.feedback
       attemptFocusInstructions = judged.focusInstructions
     }
@@ -421,6 +456,27 @@ export function createSceneGate(ctx: SceneGateContext) {
     })
 
     return { chosenProse, chosenStructured, chosenEval, gateFailure }
+  }
+
+  /**
+   * The repaired prose, or null when the verdict names nothing repairable,
+   * a sentence rewrite call failed, or nothing would change (see planRepair).
+   */
+  async function repairInPlace(
+    proseText: string,
+    verdict: CriticVerdict | null
+  ): Promise<string | null> {
+    const plan = planRepair(verdict, CRITIC_VERDICT_CONFIG.minDimensionScore)
+    if (!plan) return null
+    if (plan.rewrites.length && typeof critic?.repairSentence !== 'function') return null
+    const replacements: Array<{ sentence: string; replacement: string }> = []
+    for (const r of plan.rewrites) {
+      const replacement = await critic.repairSentence(r.sentence, r.fact)
+      if (replacement == null) return null
+      replacements.push({ sentence: r.sentence, replacement })
+    }
+    const repaired = applyRepair(proseText, plan.cut, replacements)
+    return repaired && repaired !== proseText ? repaired : null
   }
 
   // ── Gate primitives ───────────────────────────────────────────────────────

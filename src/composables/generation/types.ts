@@ -90,7 +90,16 @@ export interface CriticVerdict {
   pass?: boolean
   evalUnavailable?: boolean
   dimensionScores?: Record<string, number> | null
-  issues?: Array<{ severity?: string; type?: string; description?: string; text?: string }>
+  issues?: Array<{
+    severity?: string
+    type?: string
+    description?: string
+    text?: string
+    /** Pacing: the confirmed filler paragraphs, 1-based (§25 repair). */
+    paragraphs?: number[]
+    /** Continuity: code-verified quote pairs (§25 repair). */
+    evidence?: Array<{ sentence: string; fact: string }>
+  }>
   verdictReason?: string
   [extra: string]: unknown
 }

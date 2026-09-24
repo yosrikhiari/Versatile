@@ -80,16 +80,27 @@ const wireCalls = []
  * the wire is the only place every call passes through.
  */
 function callKind(body) {
+  if (/careful line editor/i.test(body.system || '')) return 'repair'
   const text = `${body.system || ''}
 ${body.prompt || JSON.stringify(body.messages || '')}`
   if (
-    /story critic|story editor judging|Judge ONE aspect|label paragraphs of fiction|check new prose against established facts|judge dialogue voice|dimensionScores/i.test(
+    /story critic|story editor judging|Judge ONE aspect|label paragraphs of fiction|check new prose against established facts|judge dialogue voice|dimensionScores|two statements about a story contradict/i.test(
       text
     )
   )
     return 'judge'
   if (body.format) return 'structured'
   return 'prose'
+}
+
+/** In-place repairs the scene gate made (§25), from its console line. */
+const repairs = []
+const realInfo = console.info.bind(console)
+console.info = (...args) => {
+  const line = args.map(String).join(' ')
+  const m = /\[sceneGate\] scene (\d+): repaired in place -> (passes|still fails)/.exec(line)
+  if (m) repairs.push({ scene: Number(m[1]), passes: m[2] === 'passes' })
+  realInfo(...args)
 }
 
 function captureOllamaCalls() {
@@ -387,6 +398,7 @@ describe('live: The Salt Road', () => {
         {
           calls: wireCalls.length,
           focusedCritic: isFocusedCriticEnabled(),
+          repairs,
           byKind: wireCalls.reduce((acc, c) => {
             acc[c.kind] = (acc[c.kind] || 0) + 1
             return acc

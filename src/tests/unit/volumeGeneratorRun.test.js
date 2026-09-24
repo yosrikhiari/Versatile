@@ -16,7 +16,10 @@ import { setActivePinia, createPinia } from 'pinia'
  */
 
 const calls = []
-/** 'kind' passes every scene; 'harsh' fails every one on pacing. */
+/**
+ * 'kind' passes every scene; 'harsh' fails every one on pacing; 'filler' is
+ * the focused critic flagging paragraphs 2-3 of a first draft as filler (§25).
+ */
 let criticMood = 'kind'
 /** 'rich' introduces an entity and an edge in scene 2; 'quiet' introduces nothing. */
 let metadataMood = 'rich'
@@ -41,7 +44,23 @@ function sceneText(n) {
 
 function proseFor(user) {
   const m = /Scene (\d+)/.exec(user || '')
-  return sceneText(m ? m[1] : 'x')
+  const html = sceneText(m ? m[1] : 'x')
+  // Real models answer in plain text with blank lines between paragraphs, and
+  // the focused critic numbers paragraphs by those. The repair test needs that
+  // shape, and a realistic one: 12 paragraphs, so cutting two keeps 83% --
+  // over the gate's 80% length floor, which (correctly) sends a scene that
+  // lost two thirds of itself back to the writer. The other tests keep the
+  // HTML they were written against.
+  if (criticMood === 'filler') {
+    const sentences = html
+      .replace(/<\/?p>/g, ' ')
+      .trim()
+      .split(/(?<=\.)\s+(?=Ines noted)/)
+    const paras = []
+    for (let i = 0; i < sentences.length; i += 4) paras.push(sentences.slice(i, i + 4).join(' '))
+    return paras.join('\n\n')
+  }
+  return html
 }
 
 function answer(user, system, opts = {}) {
@@ -165,6 +184,25 @@ function answer(user, system, opts = {}) {
     case 'spine_entry':
       return { emotionalStateAtEnd: 'dread', keyFacts: ['the body was found'], summary: 'found' }
     case 'contradiction_report':
+      return { contradictions: [] }
+    // The focused critic (§19-§25): used only by the test that turns it on.
+    case 'focused_pacing_paragraphs':
+    case 'focused_pacing_paragraphs_reversed': {
+      const n = opts.schema.properties.labels.minItems
+      // The first draft (12 paragraphs, 13 once the writer has added its own):
+      // flag 2 and 3 (the reversed pass sees them
+      // as n-1 and n-2, i.e. the same two). The repaired scene, two shorter, is
+      // clean.
+      const flagged =
+        n >= 12 ? (name === 'focused_pacing_paragraphs' ? [2, 3] : [n - 1, n - 2]) : []
+      return {
+        labels: Array.from({ length: n }, (_, i) =>
+          flagged.includes(i + 1) ? 'FILLER' : 'ADVANCES'
+        )
+      }
+    }
+    case 'focused_continuity_facts':
+    case 'audit_continuity_facts':
       return { contradictions: [] }
     case 'title_repair':
       return { titles: [] }
@@ -338,6 +376,46 @@ describe('volume generator end-to-end run (model faked)', () => {
     expect(withProse.every((s) => s.contentStatus === 'review')).toBe(true)
     // The ledger still says so: every scene degraded trips the rate invariant.
     expect(gen.runHealthViolations.value.some((v) => v.code === 'degraded_rate')).toBe(true)
+  }, 60_000)
+
+  it('repairs a scene in place when the only failure is located filler (§25)', async () => {
+    // Focused critic for this test only; the file pins the combined one.
+    localStorage.setItem('versatile_critic_focused', 'true')
+    criticMood = 'filler'
+    const { gen, projectId } = await runOneChapter()
+    expect(gen.phase.value).toBe('complete')
+
+    // One draft per scene: the gate cut the filler instead of asking the
+    // writer for the whole scene again.
+    const drafts = calls.filter((c) => !c.opts.schema && /Scene \d+/.test(c.user))
+    const perScene = new Map()
+    for (const d of drafts) {
+      const n = /Scene (\d+)/.exec(d.user)[1]
+      perScene.set(n, (perScene.get(n) || 0) + 1)
+    }
+    expect([...perScene.values()].every((k) => k === 1)).toBe(true)
+
+    const subs = await db.subsections.where('projectId').equals(projectId).toArray()
+    const withProse = subs.filter((s) => (s.content || '').trim())
+    expect(withProse).toHaveLength(3)
+    // Cleared by the repair, not kept for review.
+    expect(withProse.every((s) => s.contentStatus === 'generated')).toBe(true)
+    // The critic really saw separate paragraphs (else nothing could be cut)...
+    const pacing = calls.filter((c) => c.opts.schemaName === 'focused_pacing_paragraphs')
+    expect(pacing.some((c) => c.opts.schema.properties.labels.minItems >= 3)).toBe(true)
+    // ...and exactly the flagged two are gone: each committed scene is 10 of
+    // its 12 paragraphs, with the opening intact.
+    const words = (t) =>
+      String(t || '')
+        .replace(/<[^>]+>/g, ' ')
+        .split(/\s+/)
+        .filter(Boolean).length
+    const draftWords = words(proseFor('Scene 1'))
+    for (const s of withProse) {
+      expect(s.content).toMatch(/opens\./)
+      expect(words(s.content)).toBeLessThan(draftWords * 0.9)
+      expect(words(s.content)).toBeGreaterThan(draftWords * 0.75)
+    }
   }, 60_000)
 
   it('commits what the writer discovered to the bible and the graph', async () => {

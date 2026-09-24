@@ -5,6 +5,7 @@ import {
   bibleFacts,
   bibleNames,
   buildConfirmPrompt,
+  buildSentenceRepairPrompt,
   buildContinuityPrompt,
   buildPacingPrompt,
   buildVoicePrompt,
@@ -20,6 +21,7 @@ import {
   MIN_VOICE_LINES,
   pacingLabelsSchema,
   pacingVote,
+  SENTENCE_REPAIR_SCHEMA,
   unreverseParagraphNumbers,
   splitParagraphs,
   splitSentences,
@@ -517,7 +519,13 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
        */
       async function focusedCritique() {
         const dimensionScores: Record<string, number> = {}
-        const issues: { type: string; severity: string; description: string }[] = []
+        const issues: {
+          type: string
+          severity: string
+          description: string
+          paragraphs?: number[]
+          evidence?: Array<{ sentence: string; fact: string }>
+        }[] = []
         const minDimension = CRITIC_VERDICT_CONFIG.minDimensionScore
 
         /**
@@ -626,7 +634,11 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
                   severity: score < minDimension ? 'major' : 'minor',
                   // Paragraph numbers are the point: the reviser can cut or
                   // rework exactly these instead of rewriting the scene.
-                  description: `Paragraph${filler.length > 1 ? 's' : ''} ${filler.join(', ')} advance${filler.length > 1 ? '' : 's'} neither plot, character nor tension.`
+                  description: `Paragraph${filler.length > 1 ? 's' : ''} ${filler.join(', ')} advance${filler.length > 1 ? '' : 's'} neither plot, character nor tension.`,
+                  // What a repair may cut: only flags the reversed pass agreed
+                  // with (§25 — cutting every forward flag took 2-3x more real
+                  // prose).
+                  paragraphs: vote.confirmed
                 }
               : undefined
           }
@@ -672,7 +684,10 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
             issue: {
               type: 'continuity',
               severity: 'major',
-              description: verified.map((c) => `"${c.sentence}" contradicts "${c.fact}"`).join('; ')
+              description: verified
+                .map((c) => `"${c.sentence}" contradicts "${c.fact}"`)
+                .join('; '),
+              evidence: verified
             }
           }
         }
@@ -1082,8 +1097,32 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
     return report
   }
 
+  /**
+   * One sentence, rewritten so it no longer contradicts one fact (§25). The
+   * scene-gate repair uses it instead of writing the whole scene again.
+   * Returns null when the call fails; '' means "delete the sentence".
+   */
+  async function repairSentence(sentence: string, fact: string): Promise<string | null> {
+    const parsed = (await aiGenerateJson(
+      buildSentenceRepairPrompt(sentence, fact),
+      'You are a careful line editor for fiction.',
+      {
+        feature: FEATURES.STORY_GENERATION,
+        role: 'critic',
+        temperature: 0,
+        maxTokens: 200,
+        schema: SENTENCE_REPAIR_SCHEMA,
+        schemaName: 'repair_sentence',
+        sessionBudget: _sessionBudget,
+        ...JUDGE_SAMPLING
+      }
+    ).catch(() => null)) as { sentence?: unknown } | null
+    return parsed && typeof parsed.sentence === 'string' ? parsed.sentence.trim() : null
+  }
+
   return {
     evaluateScene,
+    repairSentence,
     isEvaluating,
     checkContradictions,
     isCheckingConsistency,
