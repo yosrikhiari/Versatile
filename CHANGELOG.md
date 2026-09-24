@@ -7,6 +7,35 @@ was verified.
 
 ## [Unreleased]
 
+### The quality gate can see, and is on by default (2026-09-24)
+- **The focused critic is the default** (§24, `b9befad8`). The combined critic
+  (one call, five scores) passed 40 of 40 scenes with deliberately planted
+  defects. The focused one judges each dimension on only the evidence it
+  depends on: voice from dialogue alone, pacing per paragraph, continuity from
+  the bible's facts plus the sentences that name someone in it, with quotes
+  verified by code. On 30 scenes it caught 133 of 145 planted defects and
+  failed 1 clean scene, whose dialogue, read by hand, really is
+  interchangeable. A book run showed no measurable extra time.
+  `setFocusedCritic(false)` restores the old critic. §19–§21, `485a11dd`.
+- **The chapter audit stopped rewriting good scenes.** Its contradiction judge
+  accused 10 of 30 correct scenes ("collapsed under the salt in Ch2, which
+  contradicts carrying it later") and caught a planted contradiction 1 time in
+  30. It now checks each scene against earlier chapters' facts only, with both
+  quotes verified and a "can both be true?" confirmation: 0 of 30 accused, 30 of
+  30 caught. §23, `2da1aa14`.
+- **Judge calls no longer use prose sampling.** `repeat_penalty 1.15` pushed
+  label lists toward the less-repeated label. Clean scenes failing pacing went
+  7/30 → 1/30 with a neutral penalty, and to 0/30 once a failing pacing verdict
+  must be confirmed by a reversed pass.
+- **Retracted:** "the ledger did not reduce contradictions … trending the wrong
+  way" (below). Re-graded by a checker that can see, the same 24 scenes contain
+  0 contradictions with the ledger and 0 without. The difference was the old
+  judge's false alarms. §22, `31d0478f`.
+- **The benchmark stopped grading itself.** `pipeline:benchmark` exited 0 with
+  28 of 28 cases errored, and without a cloud key it judged each output with the
+  model that wrote it. Added `JUDGE_MODEL`, a `selfJudged` flag and a failing exit
+  code. `1785e9aa`.
+
 ### Contradiction checking, and what it measured (2026-09-23)
 - **A single scene can contradict the ledger, and was never checked.**
   `checkContradictions` only examined an entity appearing in two or more of the
