@@ -180,13 +180,19 @@ const FOCUSED_DIMENSION_SCHEMA = {
   required: ['score']
 }
 
-/** Judge one dimension per call instead of five at once. Off by default. */
+/**
+ * The focused, input-isolated critic (and the isolated chapter audit). ON by
+ * default since §24: on 30 scenes it caught 133/145 planted defects where the
+ * combined critic caught 0/16, failed 1/30 clean scenes, the audit accused
+ * 0/30 good scenes (was 10/30), and a book run showed no measurable extra
+ * time. Only an explicit `false` turns it off.
+ */
 export function isFocusedCriticEnabled(): boolean {
   try {
     // STORAGE_KEYS ref
-    return localStorage.getItem(STORAGE_KEYS.CRITIC_FOCUSED) === 'true'
+    return localStorage.getItem(STORAGE_KEYS.CRITIC_FOCUSED) !== 'false'
   } catch {
-    return false
+    return true
   }
 }
 
@@ -195,7 +201,7 @@ export function setFocusedCritic(enabled: boolean) {
     // STORAGE_KEYS ref
     localStorage.setItem(STORAGE_KEYS.CRITIC_FOCUSED, enabled ? 'true' : 'false')
   } catch {
-    /* private mode — the default (off) stands */
+    /* private mode — the default (on) stands */
   }
 }
 

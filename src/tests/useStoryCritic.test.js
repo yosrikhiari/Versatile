@@ -50,6 +50,13 @@ beforeEach(() => {
   vi.mocked(evalDimensions.getDimensionNames).mockReturnValue(mockCreativeDims)
 })
 
+// These tests cover the COMBINED critic (one call, five scores) and the
+// pipeline wired to it; its mocks answer in that shape. The focused critic is
+// the default since §24 and has its own tests (criticIsolation.test.js), so
+// pin the combined one here rather than let the default change what is tested.
+beforeEach(() => {
+  localStorage.setItem('versatile_critic_focused', 'false')
+})
 describe('useStoryCritic — dimensionScores extraction', () => {
   async function assertDimensionScores(aiResponseText, expectations) {
     const { aiGenerate } = await import('../services/aiService')

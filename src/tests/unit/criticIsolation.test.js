@@ -399,3 +399,16 @@ describe('the chapter audit, isolated', () => {
     expect([...planConsistencyFixes(report, scenes).keys()]).toEqual([1])
   })
 })
+
+describe('focused critic default (§24)', () => {
+  it('is on when nothing is stored, and only an explicit false turns it off', async () => {
+    const { isFocusedCriticEnabled, setFocusedCritic } =
+      await import('@/composables/useStoryCritic')
+    localStorage.removeItem('versatile_critic_focused')
+    expect(isFocusedCriticEnabled()).toBe(true)
+    setFocusedCritic(false)
+    expect(isFocusedCriticEnabled()).toBe(false)
+    setFocusedCritic(true)
+    expect(isFocusedCriticEnabled()).toBe(true)
+  })
+})

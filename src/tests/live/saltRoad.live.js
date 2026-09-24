@@ -13,8 +13,8 @@
  *      LIVE_PRESET (multi-agent → Critic and Editor on qwen2.5:3b-instruct, CPU)
  *      LIVE_TRACE=agentops (route every model call through the AgentOps gateway at
  *      LIVE_AGENTOPS_URL, default http://localhost:8080; trace ids land in health.json)
- *      LIVE_FOCUSED=1 (the focused, input-isolated critic instead of the combined
- *      one; wire.json then splits writer calls from judge calls, §21)
+ *      LIVE_FOCUSED=0|1 (the combined critic, or the focused input-isolated one —
+ *      the default since §24; wire.json splits writer calls from judge calls)
  * (prose model; unset keeps the app default — the utility model is always qwen3:8b).
  */
 import 'fake-indexeddb/auto'
@@ -141,10 +141,9 @@ describe('live: The Salt Road', () => {
       setAgentOpsTracing(true)
       if (process.env.LIVE_AGENTOPS_URL) setAgentOpsUrl(process.env.LIVE_AGENTOPS_URL)
     }
-    if (process.env.LIVE_FOCUSED === '1') {
-      const { setFocusedCritic } = await import('@/composables/useStoryCritic')
-      setFocusedCritic(true)
-    }
+    const { setFocusedCritic, isFocusedCriticEnabled } =
+      await import('@/composables/useStoryCritic')
+    if (process.env.LIVE_FOCUSED) setFocusedCritic(process.env.LIVE_FOCUSED === '1')
     const { recentTraces } = await import('@/services/traceContext')
     const { useOrchestrationStore } = await import('@/stores/orchestrationStore')
 
@@ -387,7 +386,7 @@ describe('live: The Salt Road', () => {
       JSON.stringify(
         {
           calls: wireCalls.length,
-          focusedCritic: process.env.LIVE_FOCUSED === '1',
+          focusedCritic: isFocusedCriticEnabled(),
           byKind: wireCalls.reduce((acc, c) => {
             acc[c.kind] = (acc[c.kind] || 0) + 1
             return acc

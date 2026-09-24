@@ -1172,3 +1172,20 @@ gate's continuity check as well. Result: 0/30 clean, 30/30 planted.
 
 Not claimed: recall on subtle natural contradictions. The planted one is
 blatant, and §22's 24 generated scenes contained none to find.
+
+## 24. The focused critic is the default (2026-09-24)
+
+`isFocusedCriticEnabled()` now returns true unless the setting is explicitly
+`false`. The evidence it rests on: §20–§21 (133/145 planted defects caught
+on 30 scenes, 1/30 clean fails, and that one a true positive on reading),
+§23 (the audit: 0/30 good scenes accused, 30/30 caught), and §21's book run
+(+32 short judge calls, no measurable wall time). The combined critic stays
+available (`setFocusedCritic(false)`). The five test files that cover it pin it
+explicitly, so the default cannot silently change what they test.
+`saltRoad.live.js` takes `LIVE_FOCUSED=0|1`, and `wire.json` records the mode
+that actually ran. `contradictionProbe.live.js` now grades through the isolated
+audit path unless combined mode is pinned.
+
+What is still not shown: that gated books *read better*. That needs more than
+one book per arm, with committed scenes compared by a judge that §19–§23
+showed can see.
