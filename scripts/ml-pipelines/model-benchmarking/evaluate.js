@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { getAvailableProviders, expandModelVariants, runTest } from './providers.js'
+import { getAvailableProviders, expandModelVariants, runTest, selectJudge } from './providers.js'
 import { judgeOutput } from './judge.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -291,8 +291,27 @@ async function evaluate() {
     console.log('  set GEMINI_API_KEY=...')
     console.log('  set GROQ_API_KEY=gsk_...')
     console.log('  (Ollama is always checked at http://localhost:11434)')
-    process.exit(0)
+    // Nothing was measured, so this is not a pass.
+    process.exit(1)
   }
+
+  // Say who grades, before anything runs. A judge that is also one of the
+  // models under test grades its own work; allowed, never silent.
+  const judge = selectJudge()
+  if (judge) {
+    console.log(`Judge: ${judge.providerId} / ${judge.model}`)
+    if (judge.selfJudged) {
+      console.log(
+        `  WARNING: ${judge.model} is also under test — it will grade its own output.` +
+          ' Set JUDGE_MODEL to a different model for an independent score.'
+      )
+    }
+    console.log()
+  }
+
+  // Reasons this run must not report success. Collected across suites so one
+  // bad suite does not hide another, then turned into the exit code at the end.
+  const failures = []
 
   for (const suite of suites) {
     const resultsByProvider = {}
@@ -350,6 +369,7 @@ async function evaluate() {
           const scored = await judgeOutput(result.output, test, prompt)
           runs.push({ result, scored })
         }
+        const unjudged = runs.filter((r) => r.scored.judged === false).length
 
         if (runs.length === 0) {
           // runTest returns latencyMs (not elapsedMs); reading elapsedMs here
@@ -385,8 +405,11 @@ async function evaluate() {
           const rep = runs[runs.length - 1]
           const costStr = meanCost != null ? ` $${meanCost}` : ''
           const spreadStr = REPEATS > 1 ? ` ±${stdev} (n=${runs.length})` : ''
+          const unjudgedStr = unjudged
+            ? `  UNJUDGED ${unjudged}/${runs.length} (placeholder score)`
+            : ''
           process.stdout.write(
-            `${String(meanLatency).padStart(7)}ms  ${meanScore}/10${spreadStr}  ${rep.result.wordCount}w${costStr}\n`
+            `${String(meanLatency).padStart(7)}ms  ${meanScore}/10${spreadStr}  ${rep.result.wordCount}w${costStr}${unjudgedStr}\n`
           )
           resultsByProvider[cfg.id].push({
             testId: test.id,
@@ -398,6 +421,7 @@ async function evaluate() {
             scoreStdDev: stdev,
             runScores: scores,
             repeats: runs.length,
+            unjudged,
             wordCount: rep.result.wordCount,
             charCount: rep.result.charCount,
             inputTokens: rep.result.inputTokens,
@@ -419,6 +443,25 @@ async function evaluate() {
 
     printResults(available, resultsByProvider, aggregates, rankings)
 
+    for (const [pid, agg] of Object.entries(aggregates)) {
+      if (agg.status === 'all_errors') {
+        const firstError = resultsByProvider[pid].find((r) => r.error)?.error
+        failures.push(
+          `${suite.label}: ${pid} completed 0 of ${suite.tests.length} (${firstError || 'unknown error'})`
+        )
+      }
+    }
+    const unjudgedCells = Object.entries(resultsByProvider).flatMap(([pid, rows]) =>
+      rows.filter((r) => r.unjudged).map((r) => `${pid}/${r.testId}`)
+    )
+    if (unjudgedCells.length) {
+      failures.push(
+        `${suite.label}: ${unjudgedCells.length} result(s) carry a placeholder score because the judge failed: ` +
+          unjudgedCells.slice(0, 5).join(', ') +
+          (unjudgedCells.length > 5 ? ', …' : '')
+      )
+    }
+
     const report = {
       timestamp: new Date().toISOString(),
       pipeline: 'model-benchmarking',
@@ -426,6 +469,7 @@ async function evaluate() {
       suiteVersion: suite.version,
       testCount: suite.tests.length,
       repeats: REPEATS,
+      judge,
       providers: available.map((c) => ({ id: c.id, label: c.label, model: c.model })),
       aggregates,
       rankings,
@@ -441,6 +485,14 @@ async function evaluate() {
     )
     writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8')
     console.log(`Report: ${reportPath}`)
+  }
+
+  // A benchmark in which a model answered nothing, or whose scores are
+  // placeholders, used to exit 0 — 28 of 28 errors reported as success.
+  if (failures.length) {
+    console.error('\nBENCHMARK FAILED:')
+    for (const f of failures) console.error(`  - ${f}`)
+    process.exitCode = 1
   }
 }
 

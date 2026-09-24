@@ -47,6 +47,10 @@ Compares providers on a shared test suite, producing a JSON report with per-test
 - `OLLAMA_MODEL` — single Ollama model (default: `phi4-mini:3.8b`)
 - `OLLAMA_MODELS` — comma-separated list for multi-model comparison in one run: `phi4-mini:3.8b,dolphin-mistral:7b`
 - `OLLAMA_ENDPOINT` — custom Ollama host (default: `http://localhost:11434`)
+- `JUDGE_MODEL` — the model that grades the outputs. Defaults to the first remote provider with a key (Groq: `llama-3.3-70b-versatile`), else Ollama `qwen3:8b`. It is deliberately separate from `OLLAMA_MODEL`: the old fallback graded each output with the model that wrote it. If the judge is also under test the run prints a warning and the report records `judge.selfJudged: true`. Note that every remote default judge is also one of that provider's benchmarked models (Groq benchmarks `llama-3.3-70b-versatile` and judges with it), so with a key set, pick a `JUDGE_MODEL` outside the contest.
+- `JUDGE_PROVIDER` — force the judging provider (`ollama`, `groq`, …).
+
+**Exit code:** `1` when any provider completes 0 cases in a suite (for example a model that is not installed), or when any score is a placeholder because the judge call failed; the reasons print under `BENCHMARK FAILED`. `1` also when no provider is available. Earlier versions exited `0` in all of these cases.
 
 ## Active Learning
 

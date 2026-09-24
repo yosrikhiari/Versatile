@@ -321,6 +321,9 @@ async function callOllama(prompt, systemPrompt, model, options = {}) {
         system: systemPrompt,
         prompt,
         stream: false,
+        // Only sent when asked: the judge turns reasoning off so a thinking
+        // model (qwen3) spends its budget on the verdict, not a hidden essay.
+        ...(options.think !== undefined ? { think: options.think } : {}),
         options: { temperature, num_predict: 4096 }
       })
     })
@@ -353,15 +356,32 @@ const JUDGE_MODELS = {
   ollama: null
 }
 
+/**
+ * The local judge. Deliberately NOT `OLLAMA_MODEL`: that is the model under
+ * test, and before this existed the fallback judged every output with the
+ * model that wrote it — phi4-mini grading phi4-mini, 10/10 on an 83-word
+ * answer. `JUDGE_MODEL` overrides it for whichever provider judges.
+ */
+export const DEFAULT_OLLAMA_JUDGE = 'qwen3:8b'
+
+/** Models the run is benchmarking, so a judge can be checked against them. */
+export function modelsUnderTest() {
+  return expandModelVariants(getAvailableProviders()).map((p) => p.model)
+}
+
 export function selectJudge() {
   const override = process.env.JUDGE_PROVIDER
   if (override) {
     const baseId = resolveBaseId(override)
     if (PROVIDER_DISPATCH[baseId]) {
-      return {
+      return withSelfJudgeFlag({
         providerId: override,
-        model: JUDGE_MODELS[baseId] || PROVIDER_CONFIGS.find((p) => p.id === baseId)?.model
-      }
+        model:
+          process.env.JUDGE_MODEL ||
+          JUDGE_MODELS[baseId] ||
+          (baseId === 'ollama' ? DEFAULT_OLLAMA_JUDGE : null) ||
+          PROVIDER_CONFIGS.find((p) => p.id === baseId)?.model
+      })
     }
   }
 
@@ -370,13 +390,28 @@ export function selectJudge() {
     const cfg = PROVIDER_CONFIGS.find((p) => p.id === pid)
     if (!cfg) continue
     if (pid === 'ollama') {
-      return { providerId: 'ollama', model: process.env.OLLAMA_MODEL || 'phi4-mini:3.8b' }
+      return withSelfJudgeFlag({
+        providerId: 'ollama',
+        model: process.env.JUDGE_MODEL || DEFAULT_OLLAMA_JUDGE
+      })
     }
     if (process.env[cfg.envKey]) {
-      return { providerId: pid, model: JUDGE_MODELS[pid] || cfg.model }
+      return withSelfJudgeFlag({
+        providerId: pid,
+        model: process.env.JUDGE_MODEL || JUDGE_MODELS[pid] || cfg.model
+      })
     }
   }
   return null
+}
+
+/**
+ * A judge that is also a contestant scores itself. Not forbidden — with one
+ * local model it may be the only option — but it must be visible, so the
+ * report carries `selfJudged` and the console says so.
+ */
+function withSelfJudgeFlag(judge) {
+  return { ...judge, selfJudged: modelsUnderTest().includes(judge.model) }
 }
 
 export async function callModel(providerId, prompt, systemPrompt, model, options = {}) {

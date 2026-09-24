@@ -136,7 +136,10 @@ export async function judgeOutput(output, test, taskInstruction) {
           severity: 'major',
           message: 'No judge provider available; using midpoint scores'
         }
-      ]
+      ],
+      // The score above is a placeholder, not a verdict — evaluate.js fails
+      // the run rather than average placeholders into a real-looking number.
+      judged: false
     }
   }
 
@@ -148,7 +151,8 @@ export async function judgeOutput(output, test, taskInstruction) {
     // Judge deterministically (temperature 0) so the same output scores
     // identically across runs — a benchmark judged at 0.7 is not reproducible.
     const result = await callModel(judge.providerId, prompt, systemPrompt, judge.model, {
-      temperature: 0
+      temperature: 0,
+      ...(judge.providerId.startsWith('ollama') ? { think: false } : {})
     })
     const parsed = parseJudgeResponse(result)
 
@@ -174,7 +178,9 @@ export async function judgeOutput(output, test, taskInstruction) {
       dimensionScores,
       issues: Array.isArray(parsed.issues) ? parsed.issues : [],
       wordCount,
-      judgeRationale: parsed.rationale || null
+      judgeRationale: parsed.rationale || null,
+      judged: true,
+      judge: { providerId: judge.providerId, model: judge.model, selfJudged: judge.selfJudged }
     }
   } catch (err) {
     const fallback = midpointFallback(test)
@@ -183,7 +189,8 @@ export async function judgeOutput(output, test, taskInstruction) {
       wordCount,
       issues: [
         { type: 'judge_error', severity: 'major', message: `Judge call failed: ${err.message}` }
-      ]
+      ],
+      judged: false
     }
   }
 }
