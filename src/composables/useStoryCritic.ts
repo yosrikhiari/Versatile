@@ -1,6 +1,25 @@
 import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { aiGenerateJson } from './useAiService'
+import {
+  bibleFacts,
+  bibleNames,
+  buildContinuityPrompt,
+  buildPacingPrompt,
+  buildVoicePrompt,
+  dialogueDistinctRatio,
+  extractDialogueLines,
+  fillerParagraphs,
+  CONTINUITY_SCHEMA,
+  JUDGE_SAMPLING,
+  MIN_DISTINCT_DIALOGUE,
+  MIN_VOICE_LINES,
+  pacingLabelsSchema,
+  pacingScoreFromFiller,
+  splitParagraphs,
+  splitSentences,
+  verifyContradictions
+} from './criticIsolation'
 import { FEATURES } from '../config/ai'
 import { SessionBudget } from '../services/aiProviderBudget'
 
@@ -461,7 +480,163 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         const dimensionScores: Record<string, number> = {}
         const issues: { type: string; severity: string; description: string }[] = []
         const minDimension = CRITIC_VERDICT_CONFIG.minDimensionScore
+
+        /**
+         * voice and pacing are judged on isolated input (see criticIsolation.ts):
+         * whole-scene judging let one flaw drag every dimension down. Returns
+         * the score and issue, or null when the dimension is not judged — too
+         * little dialogue to have a voice, or the call failed (the same
+         * treatment the whole-scene path gives a failed call).
+         */
+        async function isolatedDimension(
+          dimension: 'voice' | 'pacing'
+        ): Promise<{ score: number; issue?: (typeof issues)[number] } | null> {
+          if (dimension === 'voice') {
+            const lines = extractDialogueLines(draftText)
+            if (lines.length < MIN_VOICE_LINES) return null
+            // Free, exact, and runs first: verbatim looping is not a matter of
+            // taste, so it needs no model to call it.
+            const distinct = dialogueDistinctRatio(lines)
+            if (distinct < MIN_DISTINCT_DIALOGUE) {
+              return {
+                score: 2,
+                issue: {
+                  type: 'voice',
+                  severity: 'major',
+                  description: `Dialogue repeats itself: only ${Math.round(distinct * 100)}% of ${lines.length} lines are distinct.`
+                }
+              }
+            }
+            const parsedVoice = (await aiGenerateJson(
+              buildVoicePrompt({
+                lines,
+                storyBible: storyBible || '',
+                charactersPresent: sceneBrief?.charactersPresent || sceneBrief?.characters || [],
+                rubric: formatDimensionRubrics(categoryType, ['voice'])
+              }),
+              'You judge dialogue voice from dialogue alone, and you are willing to mark it low.',
+              {
+                feature: FEATURES.STORY_GENERATION,
+                role: 'critic',
+                temperature: 0.3,
+                maxTokens: 300,
+                schema: FOCUSED_DIMENSION_SCHEMA,
+                schemaName: 'focused_voice_isolated',
+                sessionBudget: _sessionBudget,
+                ...JUDGE_SAMPLING
+              }
+            ).catch(() => null)) as { score?: number; issue?: string } | null
+            if (!parsedVoice || typeof parsedVoice.score !== 'number') return null
+            const issueText = typeof parsedVoice.issue === 'string' ? parsedVoice.issue.trim() : ''
+            return {
+              score: parsedVoice.score,
+              issue: issueText
+                ? {
+                    type: 'voice',
+                    severity: parsedVoice.score < minDimension ? 'major' : 'minor',
+                    description: issueText
+                  }
+                : undefined
+            }
+          }
+
+          const paragraphs = splitParagraphs(draftText)
+          if (paragraphs.length === 0) return null
+          const parsedPacing = (await aiGenerateJson(
+            buildPacingPrompt({
+              paragraphs,
+              emotionalGoal: sceneBrief?.emotionalGoal || '',
+              whatChanges: sceneBrief?.whatChanges || sceneBrief?.change || ''
+            }),
+            'You label paragraphs of fiction precisely, one label per paragraph.',
+            {
+              feature: FEATURES.STORY_GENERATION,
+              role: 'critic',
+              temperature: 0,
+              maxTokens: 20 * paragraphs.length + 50,
+              schema: pacingLabelsSchema(paragraphs.length),
+              schemaName: 'focused_pacing_paragraphs',
+              sessionBudget: _sessionBudget,
+              ...JUDGE_SAMPLING
+            }
+          ).catch(() => null)) as { labels?: unknown } | null
+          if (!parsedPacing || !Array.isArray(parsedPacing.labels)) return null
+          const filler = fillerParagraphs(parsedPacing.labels)
+          const score = pacingScoreFromFiller(filler.length)
+          return {
+            score,
+            issue: filler.length
+              ? {
+                  type: 'pacing',
+                  severity: score < minDimension ? 'major' : 'minor',
+                  // Paragraph numbers are the point: the reviser can cut or
+                  // rework exactly these instead of rewriting the scene.
+                  description: `Paragraph${filler.length > 1 ? 's' : ''} ${filler.join(', ')} advance${filler.length > 1 ? '' : 's'} neither plot, character nor tension.`
+                }
+              : undefined
+          }
+        }
+
+        /**
+         * Continuity against the bible's facts, with code-verified quotes (see
+         * criticIsolation.ts). Null when there is nothing to check — no bible,
+         * or no sentence mentions anyone in it — or when the call failed.
+         */
+        async function isolatedContinuity(): Promise<{
+          score: number
+          issue?: (typeof issues)[number]
+        } | null> {
+          const facts = bibleFacts(storyBible || '')
+          const names = bibleNames(storyBible || '')
+          if (!facts.length || !names.length) return null
+          const sentences = splitSentences(draftText).filter((s) =>
+            names.some((n) => s.includes(n))
+          )
+          if (!sentences.length) return null
+          const parsed = (await aiGenerateJson(
+            buildContinuityPrompt({ facts, sentences }),
+            'You check new prose against established facts. You report only contradictions you can quote on both sides.',
+            {
+              feature: FEATURES.STORY_GENERATION,
+              role: 'critic',
+              temperature: 0,
+              maxTokens: 600,
+              schema: CONTINUITY_SCHEMA,
+              schemaName: 'focused_continuity_facts',
+              sessionBudget: _sessionBudget,
+              ...JUDGE_SAMPLING
+            }
+          ).catch(() => null)) as { contradictions?: unknown } | null
+          if (!parsed) return null
+          const verified = verifyContradictions(parsed.contradictions, draftText, facts)
+          if (!verified.length) return { score: 8 }
+          return {
+            score: 3,
+            issue: {
+              type: 'continuity',
+              severity: 'major',
+              description: verified.map((c) => `"${c.sentence}" contradicts "${c.fact}"`).join('; ')
+            }
+          }
+        }
+
         for (const dimension of promptDims) {
+          if (dimension === 'continuity') {
+            const judged = await isolatedContinuity()
+            if (judged) {
+              dimensionScores[dimension] = judged.score
+              if (judged.issue) issues.push(judged.issue)
+            }
+            continue
+          }
+          if (dimension === 'voice' || dimension === 'pacing') {
+            const judged = await isolatedDimension(dimension)
+            if (judged) {
+              dimensionScores[dimension] = judged.score
+              if (judged.issue) issues.push(judged.issue)
+            }
+            continue
+          }
           // What this dimension is actually judged against. The shared block
           // labels the bible "character descriptions for voice check", which is
           // true for voice and actively misleading for continuity — the first
@@ -503,7 +678,8 @@ Return JSON: { "score": number, "issue": "one sentence, or omit if none" }`
             maxTokens: 300,
             schema: FOCUSED_DIMENSION_SCHEMA,
             schemaName: `focused_${dimension}`,
-            sessionBudget: _sessionBudget
+            sessionBudget: _sessionBudget,
+            ...JUDGE_SAMPLING
           }).catch(() => null)) as { score?: number; issue?: string } | null
           if (!parsedDim || typeof parsedDim.score !== 'number') continue
           dimensionScores[dimension] = parsedDim.score

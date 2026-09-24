@@ -147,6 +147,25 @@ describe('robustness', () => {
     }
   })
 
+  it('names every failing dimension, so a tie is not decided by dimension order', () => {
+    // Recorded shape (§20): a faithful show-tell defect scored show_tell 5 and
+    // emotional_goal 5; the old reason named only emotional_goal, first in order.
+    const v = deriveVerdict(
+      {
+        dimensionScores: { continuity: 7, voice: 8, emotional_goal: 5, show_tell: 5, pacing: 3 },
+        issues: []
+      },
+      THRESHOLD
+    )
+    expect(v.pass).toBe(false)
+    expect(v.failingDimensions.map((d) => d.name)).toEqual([
+      'pacing',
+      'emotional_goal',
+      'show_tell'
+    ])
+    expect(v.reason).toMatch(/pacing scored 3, emotional_goal scored 5, show_tell scored 5, below/)
+  })
+
   it('treats NaN as absent rather than as a number', () => {
     const v = deriveVerdict({ score: 8, dimensionScores: { a: NaN, b: 9 }, issues: [] }, THRESHOLD)
     expect(v.dimensionMean).toBe(9)

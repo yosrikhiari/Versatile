@@ -783,11 +783,16 @@ export function createSceneGate(ctx: SceneGateContext) {
       // Feed the verdict's weakest dimension into the adjuster so a rejected scene
       // produces a matching focus area (reconciles the two "weak dimension" rules).
       const verdict = deriveVerdict(chosenEval, getDefaultThreshold(workspaceType.value))
-      if (verdict.weakestDimension) {
+      // Every failing dimension, not just the first-listed weakest: on a tie the
+      // weakest is an accident of dimension order (§20).
+      const failing = verdict.failingDimensions?.length
+        ? verdict.failingDimensions
+        : verdict.weakestDimension
+          ? [verdict.weakestDimension]
+          : []
+      if (failing.length) {
         promptAdjuster.updateAdjustments(
-          [
-            { dimensionScores: { [verdict.weakestDimension.name]: verdict.weakestDimension.score } }
-          ],
+          [{ dimensionScores: Object.fromEntries(failing.map((d) => [d.name, d.score])) }],
           { workspaceType: workspaceType.value }
         )
       }

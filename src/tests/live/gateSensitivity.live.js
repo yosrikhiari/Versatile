@@ -30,15 +30,36 @@ import { STORAGE_KEYS } from '@/config/storageKeys'
 const HOST = process.env.OLLAMA_HOST || 'http://localhost:11434'
 const MODEL = process.env.LIVE_MODEL || 'qwen3:8b'
 const REPEATS = Number(process.env.REPEATS || 2)
-const TEST_SCENES = [8, 14, 20, 26]
+// SCENES=all runs every corpus scene: four scenes were enough to see the gate
+// move, not to choose a threshold and then test it on scenes it was not
+// chosen on (§20). The index list is filled in once the corpus is loaded.
+const ALL_SCENES = process.env.SCENES === 'all'
+const TEST_SCENES = ALL_SCENES ? [] : [8, 14, 20, 26]
 
 const OUT = join(
   process.cwd(),
   'reports',
   'live',
-  process.env.FOCUSED === '1' ? 'gate-sensitivity-focused' : 'gate-sensitivity'
+  (process.env.FOCUSED === '1' ? 'gate-sensitivity-focused' : 'gate-sensitivity') +
+    (ALL_SCENES ? '-30' : '') +
+    (process.env.OUT_SUFFIX ? `-${process.env.OUT_SUFFIX}` : '')
 )
 mkdirSync(OUT, { recursive: true })
+
+const TOLD_FAITHFUL_PATH = join(
+  process.cwd(),
+  'reports',
+  'live',
+  'judge-probes',
+  'told-faithful.json'
+)
+const TOLD_FAITHFUL = existsSync(TOLD_FAITHFUL_PATH)
+  ? JSON.parse(readFileSync(TOLD_FAITHFUL_PATH, 'utf-8'))
+  : {}
+
+// DEFECTS=control,told_faithful runs a subset; a new fixture should not cost a
+// rerun of every other one.
+const ONLY = process.env.DEFECTS ? new Set(process.env.DEFECTS.split(',')) : null
 
 /** A line of dialogue: contains a quoted span. */
 const DIALOGUE = /[“"][^“”"]{4,}[”"]/
@@ -83,6 +104,25 @@ const DEFECTS = {
       const paras = prose.split(/\n\s*\n/)
       return paras
         .map((p, i) => (i % 2 === 0 && p.length > 200 ? summaries[k++ % summaries.length] : p))
+        .join('\n\n')
+    }
+  },
+  // show_tell, without also being filler. `told_not_shown` swaps paragraphs for
+  // content-free sentences, which are filler too and gut the emotional beat, so
+  // a verdict of "pacing" on it is not wrong (§20). Here the same paragraphs
+  // become one plain sentence that keeps their plot facts, generated once by
+  // tools/judge-probes/make_told_faithful.py and cached — fixed text, like the
+  // other injections. Scenes without a cached entry are left unchanged (and
+  // therefore skipped).
+  told_faithful: {
+    dimension: 'show_tell',
+    apply: (prose, { index }) => {
+      const sums = TOLD_FAITHFUL[index]
+      if (!sums) return prose
+      let k = 0
+      return prose
+        .split(/\n\s*\n/)
+        .map((p, i) => (i % 2 === 0 && p.length > 200 && k < sums.length ? sums[k++] : p))
         .join('\n\n')
     }
   },
@@ -170,11 +210,13 @@ describe('live: gate sensitivity to injected defects', () => {
     const results = []
     const startedAt = Date.now()
 
+    if (ALL_SCENES) TEST_SCENES.push(...corpus.map((c) => c.index))
     for (const index of TEST_SCENES) {
       const scene = corpus.find((c) => c.index === index)
       if (!scene) continue
       for (const [defect, spec] of Object.entries(DEFECTS)) {
-        const draft = spec.apply(scene.draft, { bible: scene.storyBible })
+        if (ONLY && !ONLY.has(defect)) continue
+        const draft = spec.apply(scene.draft, { bible: scene.storyBible, index })
         const changed = draft !== scene.draft || defect === 'control'
         if (!changed) {
           // An injection that did not alter the prose would silently become a
@@ -209,6 +251,9 @@ describe('live: gate sensitivity to injected defects', () => {
             pass: verdict ? verdict.pass : null,
             dimensionScores: verdict ? verdict.dimensionScores || {} : {},
             issueCount: verdict && Array.isArray(verdict.issues) ? verdict.issues.length : null,
+            // The text, not just the count: whether a verdict points at the
+            // planted passage (pacing names paragraph numbers) is the question.
+            issues: verdict && Array.isArray(verdict.issues) ? verdict.issues : [],
             verdictReason: verdict ? verdict.verdictReason || null : null,
             ms: Date.now() - t0,
             error

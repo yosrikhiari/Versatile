@@ -60,6 +60,14 @@ export interface Verdict {
   /** Why, in one phrase, for the activity log and the eval record. */
   reason: string
   weakestDimension: { name: string; score: number } | null
+  /**
+   * Every dimension under the floor, lowest first. `weakestDimension` alone
+   * picks one, and on a tie it picked whichever came first in the list: over 30
+   * scenes with a faithful show-tell defect, show_tell tied for lowest with
+   * emotional_goal on 11 verdicts and lost all 11 on list order (§20). A tie is
+   * two failures; the verdict should say so.
+   */
+  failingDimensions: Array<{ name: string; score: number }>
   dimensionMean: number | null
   majorIssueCount: number
   /**
@@ -95,6 +103,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
         pass: false,
         reason: 'no score and no dimension scores — the critique carries no verdict',
         weakestDimension: null,
+        failingDimensions: [],
         dimensionMean: null,
         majorIssueCount,
         usedScoreFallback: true
@@ -107,6 +116,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
           ? 'passed on self-reported score (no dimension scores available)'
           : `self-reported score ${score} below threshold ${threshold}`,
       weakestDimension: null,
+      failingDimensions: [],
       dimensionMean: null,
       majorIssueCount,
       usedScoreFallback: true
@@ -116,12 +126,18 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
   const mean = dims.reduce((sum, [, v]) => sum + v, 0) / dims.length
   const weakest = dims.reduce((lo, cur) => (cur[1] < lo[1] ? cur : lo))
   const weakestDimension = { name: weakest[0], score: weakest[1] }
+  // Stable sort: equal scores keep their dimension order, but ALL are listed.
+  const failingDimensions = dims
+    .filter(([, v]) => v < CRITIC_VERDICT_CONFIG.minDimensionScore)
+    .map(([name, score]) => ({ name, score }))
+    .sort((a, b) => a.score - b.score)
 
-  if (weakest[1] < CRITIC_VERDICT_CONFIG.minDimensionScore) {
+  if (failingDimensions.length) {
     return {
       pass: false,
-      reason: `${weakest[0]} scored ${weakest[1]}, below the minimum ${CRITIC_VERDICT_CONFIG.minDimensionScore}`,
+      reason: `${failingDimensions.map((d) => `${d.name} scored ${d.score}`).join(', ')}, below the minimum ${CRITIC_VERDICT_CONFIG.minDimensionScore}`,
       weakestDimension,
+      failingDimensions,
       dimensionMean: mean,
       majorIssueCount,
       usedScoreFallback: false
@@ -133,6 +149,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       pass: false,
       reason: `${majorIssueCount} major issues (max ${CRITIC_VERDICT_CONFIG.maxMajorIssues - 1})`,
       weakestDimension,
+      failingDimensions,
       dimensionMean: mean,
       majorIssueCount,
       usedScoreFallback: false
@@ -144,6 +161,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       pass: false,
       reason: `dimension mean ${mean.toFixed(1)} below threshold ${threshold}`,
       weakestDimension,
+      failingDimensions,
       dimensionMean: mean,
       majorIssueCount,
       usedScoreFallback: false
@@ -154,6 +172,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
     pass: true,
     reason: `all dimensions at or above ${CRITIC_VERDICT_CONFIG.minDimensionScore} (weakest: ${weakest[0]} ${weakest[1]})`,
     weakestDimension,
+    failingDimensions,
     dimensionMean: mean,
     majorIssueCount,
     usedScoreFallback: false

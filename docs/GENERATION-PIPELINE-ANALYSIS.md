@@ -894,3 +894,132 @@ rather than discard, and a failed scene commits its best attempt as `review`.
 **Recommended finish, not built:** route continuity through
 `checkContradictions` against the ledger instead of the focused critic, re-run
 the acceptance test, then measure run-level impact before changing the default.
+
+## 19. Why the focused gate named the wrong dimension (thirteenth pass — 2026-09-24)
+
+§18's focused gate caught voice and show_tell defects but often **blamed the
+wrong dimension**: a scene whose paragraphs were replaced by summary failed on
+`voice`. Four measurements, each killing or confirming one explanation:
+
+| probe | finding |
+|---|---|
+| biggest drop vs lowest score | show_tell had the **biggest drop 4/4** on the summary defect; it lost only the "lowest score" race because dimensions sit at different baselines (voice 5 on a clean scene 14). |
+| "quote the passage" (DeepSeekMath-V2-style verifier, 53 calls) | every failing dimension quoted a passage that exists — and for defects, **the planted one**. The judge *sees* the flaw; it pins it on whichever dimension it is asked about (halo). Quote-exists filtering removes nothing. |
+| classify each quoted passage (one multiple-choice call) | right for local flaws (summary → show_tell 4/4, "dead two years" → continuity 3/3, both ~1.0 probability), wrong for pattern flaws (flat voice, filler) and biased toward show_tell on clean passages. Not shipped. |
+| baseline-relative attribution (offline) | worse than lowest-score (6/16 vs 10/16). Killed. |
+| **input isolation** (probe, 60 calls) | give each judge only its evidence. **Voice from dialogue alone**: clean 8.7–9.0, flattened 3.0–3.6 on 2 of 3, other defects barely move it. **Pacing as per-paragraph ADVANCES/FILLER labels**: 10/12 planted fillers flagged at the exact paragraph numbers, 2 false flags on 4 clean scenes. Per-paragraph show/tell labels **failed** (84–88% of clean paragraphs called "reported"). |
+
+**Shipped (`criticIsolation.ts`, focused mode only, still off by default):** voice
+is judged on the dialogue lines alone, skipped under `MIN_VOICE_LINES` (6) —
+scene 14 has 2 lines, and its "clean scene fails voice" was a verdict about a
+sample too small to carry one — with a free verbatim-repetition guard in front;
+pacing is per-paragraph labels, fail at ≥ 2 filler paragraphs, and the issue
+names the paragraphs so a reviser can cut exactly those. show_tell and
+emotional_goal stay whole-scene. Tests: `criticIsolation.test.js`.
+
+Acceptance (`gateSensitivity.live.js FOCUSED=1`, `tools/gate-attribution.py`):
+
+| | combined | focused, whole scene (§18) | focused, isolated |
+|---|---|---|---|
+| defects caught | 0/16 | 11/16 | 15/16 |
+| target dimension named | 0/16 | 9/16 | 11/16 |
+| other dimensions pushed under the floor | 0 | 13 | 9 |
+| clean scenes failed | 0/4 | 1/4 | **2/4** |
+
+By defect: padding named 2/4 → **4/4** (with paragraph numbers); summary 4/4
+both; voice 3/4 both (the 4th is scene 14, now correctly not judged);
+contradiction named **0/4** both — its three "catches" are pacing false flags,
+not detections. Continuity still belongs to `checkContradictions` (§18).
+
+**Not solved: pacing false flags on clean prose.** The same labelling prompt
+flagged 0 paragraphs of clean scene 8 through `/api/chat` (probe) and 3
+through `/api/generate` (production). Deterministic per format, unstable
+across formats on borderline paragraphs. Clean counts over both runs
+{0,1,0,1,3,2,0,1} overlap padded counts {3,3,2,4,4,3,3,4}; the ≥ 2 threshold
+was set from the probe and was NOT re-tuned on the acceptance scenes. Next:
+per-label probabilities (logprobs) so only confident FILLER counts, and the
+30-scene defect set so thresholds are chosen on data they are not tested on.
+The voice-flatten −7 in production is the verbatim guard firing on a fixture
+that repeats one line; the LLM voice judge's own sensitivity is the probe's
+2-of-3, which needs a non-verbatim voice fixture to measure properly.
+
+## 20. Closing the gate's blind spots on 30 scenes (fourteenth pass — 2026-09-24)
+
+§19 left two problems: clean scenes failing pacing, and continuity named 0/4.
+Everything below is measured on all 30 corpus scenes. Odd scenes chose any
+threshold and even scenes were held out, because four scenes were enough to
+see the gate move but not to tune it and then test it on the same prose.
+
+**1. The pacing false flags came from `repeat_penalty`.** The Ollama provider
+always sends the prose sampling defaults (`repeat_penalty 1.15`,
+`repeat_last_n 512`). A label array is the same two words repeated, so the
+penalty pushes the model off "ADVANCES" as the list grows. That is why §19's
+probe (no penalty) and the production run disagreed. A probe replicating the
+production request exactly (`tools/judge-probes/pacing_penalty_probe.py`):
+
+| clean prose, 30 scenes | penalty 1.15 (production) | penalty 1.0 |
+|---|---|---|
+| false FILLER flags | 32 | 9 |
+| scenes failing at ≥ 2 flags | 7/30 | 1/30 |
+| padded scenes caught at ≥ 2 | 30/30 | 30/30 |
+
+With the penalty off, ≥ 2 flags was chosen on the odd scenes (1/15 clean fail,
+15/15 caught) and gave 0/15 clean fails and 15/15 caught on the held-out even
+scenes. Fix: `JUDGE_SAMPLING = { repeatPenalty: 1 }` on every focused judge
+call. Judge output is labels and scores, not prose.
+
+**2. "Summary → pacing" was my fixture, not the judge.** `told_not_shown`
+swaps paragraphs for content-free sentences, which really are filler. The new
+`told_faithful` fixture (`make_told_faithful.py`, cached) turns the same
+paragraphs into one plain sentence that keeps their plot facts. On it, pacing
+moved −0.07 (2/30) while show_tell moved −1.83. Pacing isolation holds.
+
+**3. Ties named the wrong dimension.** `deriveVerdict` named one "weakest"
+dimension, so on a tie the first in list order won. On `told_faithful`,
+show_tell tied with emotional_goal on 11 verdicts and lost all 11. The verdict
+now carries `failingDimensions` (lowest first), and the reason lists all of
+them. `sceneGate` feeds every failing dimension to the prompt adjuster, not
+just the first.
+
+**4. Continuity by isolation, with evidence checked by code.** The judge sees
+the bible's lines as facts plus only the scene sentences that name someone in
+the bible. It returns `{sentence, fact}` pairs, and `verifyContradictions`
+keeps a pair only if both strings are really there (letters and digits
+only, so "Hal,im" still matches). Probe: planted contradiction 29/30 (the one
+miss was that garbled quote, now tolerated), clean 0/30, 6 invented quotes
+dropped. It also surfaced a real error in committed scene 14 ("since the day
+Halim died" against "Halim is alive"). The same prose had passed every
+earlier critic.
+
+**Acceptance: the production critic, 30 scenes × 6 variants**
+(`FOCUSED=1 SCENES=all OUT_SUFFIX=final`, `tools/gate-attribution.py --split`):
+
+| | combined (default) | §18 focused, 4 scenes | **final, 30 scenes** | held-out half |
+|---|---|---|---|---|
+| defects caught | 0/16 | 11/16 | **133/145** | 64/72 |
+| target dimension among the failures | 0/16 | 9/16 | **129/145** | 63/72 |
+| clean scenes failed | 0/4 | 1/4 | **2/30** | 1/15 |
+
+| defect | named | notes |
+|---|---|---|
+| contradiction | **30/30** | was 8/30 with the whole-scene judge |
+| padding | 30/30 | with paragraph numbers |
+| told_not_shown | 30/30 | |
+| voice_flatten | 18/25 | the other 7: 6 scenes with < 6 dialogue lines (not judged), 1 stopped by the repetition guard. 18/18 where voice can be judged. |
+| told_faithful | 21/30 | the mildest defect, and some cached summaries keep imagery |
+
+**Residuals, not hidden.** The two clean fails are pacing on scenes 4 and 5.
+Scene 4's flagged paragraphs are slow, atmospheric material (arguably a
+correct fail). Scene 5's paragraph 5 is plot-moving dialogue, a real false
+flag. Co-failures remain only in the two judges that still read the whole scene:
+show_tell fails with padding (15/30) and voice_flatten (8/25), and
+emotional_goal fails with both summary fixtures. The isolated judges barely
+leak. Some of that is defensible (stated feelings do weaken the emotional
+beat), but show_tell is the next candidate for isolation. A per-paragraph
+show/tell label failed in §19, but that probe ran through `/api/chat`, before
+the penalty finding, so it is worth one re-test under `JUDGE_SAMPLING`.
+
+**Still off by default.** The gate now discriminates. Turning it on changes
+every run (more revisions, longer runs), and that is a run-level measurement of
+its own. The combined critic (`callCritic`) still uses the prose sampling
+defaults. Whether `JUDGE_SAMPLING` helps it is untested.
