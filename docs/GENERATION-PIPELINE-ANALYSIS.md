@@ -1382,3 +1382,48 @@ plus a within-scene check; (2) pacing thresholds recalibrated on reviewer
 labels, odd/even split; (3) show_tell extract-then-check; (4) emotional_goal
 as an isolated multiple-choice question. Every change is judged on this
 78-scene set.
+
+## 30. Masterpieces as the control: the gate prefers LLM style to Chekhov (2026-09-25)
+
+§29 left one question: are the reviewers right, or just harsh? The control is
+published literature. Twelve public-domain passages (Chekhov, Wharton, Joyce,
+Mansfield, Conan Doyle, Wells; Project Gutenberg, downloaded with the user's OK,
+`tools/labelling/build_masterpieces.py`), each cut at a scene break to
+556–851 words and given the same brief shape as a generated scene, were judged
+by the production gate (`gateOnPool.live.js`, `POOL_DIR=reports/live/masterpieces`)
+and by two fresh reviewers under the same v1 rubric. The reviewers could
+recognise the famous ones; that is noted, not controlled.
+
+| | reviewers: revise | gate: fail |
+|---|---|---|
+| 12 masterpiece passages | **1/12** (both passes; a brief mismatch of mine: Mattie is not in the excerpt) | **11/12** |
+| 78 generated scenes | 53/78 (pass 1) | 12/78 |
+
+The gate scored "The Lady with the Dog" show_tell 3, Conan Doyle 3, Joyce 5,
+and Wells pacing 1, while every one of the 78 generated scenes got show_tell
+7–9. The reviewers marked **0** show_tell, pacing or continuity problems in
+the masterpieces (both passes).
+
+**Reading.** On show_tell and pacing the gate does not measure quality. It
+measures resemblance to LLM prose: it rewards the generated house style
+("the scent of X clung to the air", "her pulse thudded") and punishes the
+narrative summary that masters use deliberately. This is the surface-feature
+bias the research brief warned about (arXiv 2609.13773). That is why it caught
+none of the reviewers' problems (§29): it scores the wrong thing, not the
+right thing weakly. The rubric allows summary "for transitions, time jumps";
+the gate applies show-don't-tell literally, the reviewers apply "at a moment
+that matters".
+
+It also settles §29's open question: the reviewers pass the masterpieces
+and fault the generated prose, which is the right direction.
+
+**Also, my own review of the user's 12** (`claude-labels/main-12.json`; the
+same model family, so not a human check, and not independent on
+pool-harbour-08, whose reviewer notes I had seen): all three labellers agree on
+42 of 50 decided cells. Where we differ I am the *stricter* one (show_tell and
+pacing on two orchard scenes).
+
+**What changes.** The masterpiece passages join the 78 as a fixed control.
+Every gate change must now (a) catch the reviewers' problems on generated
+scenes and (b) pass the masterpieces. A show_tell or pacing judge that fails
+Chekhov is disqualified however well it does on planted defects.

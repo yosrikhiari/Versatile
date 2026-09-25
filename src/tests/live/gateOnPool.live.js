@@ -18,7 +18,9 @@ import { STORAGE_KEYS } from '@/config/storageKeys'
 
 const HOST = process.env.OLLAMA_HOST || 'http://localhost:11434'
 const MODEL = process.env.LIVE_MODEL || 'qwen3:8b'
-const DIR = join(process.cwd(), 'reports', 'live', 'labelling')
+// POOL_DIR=reports/live/masterpieces runs the same gate over the known-good
+// controls (§30); default is the labelling pool.
+const DIR = join(process.cwd(), ...(process.env.POOL_DIR || 'reports/live/labelling').split('/'))
 
 describe('live: gate verdicts on the labelling pool', () => {
   it('judges every pool scene with the production critic', async () => {
