@@ -1323,3 +1323,62 @@ first.
 6. Repair vs rewrite at matched compute on 30 failed scenes.
 7. Only then: gated vs ungated books, compared pairwise by a judge that is
    not the gate.
+
+## 29. On real scenes the gate is nearly blind again (2026-09-25)
+
+Step 1 of the §27 plan, with the labelling reshaped: 78 scenes was too much
+for one person (`LABELLING-RUBRIC.md` addendum). All 78 pool scenes were
+labelled twice by independent Claude reviewers under the frozen v1 rubric,
+never shown the gate's verdicts, second pass blind to the first. The human
+reference is 12 of them (labelling desk artifact), **still to be labelled**:
+every number below is **reviewer labels, not human labels**.
+
+**Are the reviewers consistent?** Pass 1 vs pass 2: continuity κ 0.75, voice
+0.66, show_tell 0.68, pacing 0.85, emotional_goal 0.89, overall keep/revise
+0.59. That is substantial to near-perfect agreement, so a usable reference.
+
+**The gate vs the reviewers' consensus** (scenes where both passes agree;
+gate = production focused critic, `gateOnPool.live.js`; Wilson 95%):
+
+| dimension | reviewer problems caught | false alarms on reviewer-fine |
+|---|---|---|
+| continuity | **0/13** (0–23%) | 0/29 |
+| voice | 0/5 | 1/37 |
+| show_tell | **0/28** (0–12%) | 0/37 |
+| pacing | **0/22** (0–15%) | 3/49 |
+| emotional_goal | 0/10 | 2/45 |
+
+The gate fails 12/78 scenes. The reviewers would revise 46 of the 64 they
+agree on. The planted-defect numbers (133/145) measured blatant defects;
+real ones are subtler.
+
+**The reviewers are right where it can be checked.** Their continuity notes
+quote the text: scene 14 "since the day Halim died" (facts: Halim alive);
+scene 9 "the amulet Halim had given her before he died"; scene 6 a man
+"lying lifeless… the silence of death" who then coughs and dies; the harbour
+scene "closed the laptop… leaving only the faint glow of the screen". The gate
+scored continuity 8 on each.
+
+**Why each dimension misses:**
+- *Continuity, presupposition.* Scene 14's sentence reaches the isolated
+  checker, and the checker claims nothing. The planted defect was an assertion
+  ("X had been dead for two years"); real errors are presupposed inside a
+  clause ("since the day Halim died"). The small judge checks what a sentence
+  asserts, not what it assumes. Also, the gate has no within-scene check at
+  all, and the rubric (and the reviewers) count self-contradictions.
+- *Pacing, threshold.* There is a weak signal: on reviewer-problem scenes the
+  gate flags one paragraph (score 7) 32% of the time, against 16% on fine
+  scenes. On scene 9 it flagged ¶13 where the reviewers said ¶13–15. The "≥ 2
+  flags, confirmed" rule was tuned on blatant planted filler and passes that.
+- *Show_tell, no signal.* 7s and 8s alike on problem and fine scenes.
+- *Emotional_goal, degenerate.* 7 on every problem scene and 42/45 fine
+  ones, the constant-score failure of §10 and §15, back.
+
+**What this changes:** the planted-defect harness stays as a regression
+test, but the gate's real job is now measured against the reviewer consensus
+(and the 12 human labels when they exist). The plan reorders around the
+misses: (1) continuity via claim extraction that includes presuppositions,
+plus a within-scene check; (2) pacing thresholds recalibrated on reviewer
+labels, odd/even split; (3) show_tell extract-then-check; (4) emotional_goal
+as an isolated multiple-choice question. Every change is judged on this
+78-scene set.
