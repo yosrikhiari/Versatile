@@ -198,6 +198,79 @@ beforeEach(async () => {
   await db.graphCheckpoints.clear()
 })
 
+describe('graph strategy — repair in place (§25)', () => {
+  it('commits a repaired draft instead of asking the Writer for the scene again', async () => {
+    const { ctx, manuscriptStore, writtenScenes } = makeCtx()
+    const { gate } = makeGate({
+      verdicts: { 1: [{ score: 5, pass: false, issues: [{ type: 'pacing' }] }] }
+    })
+    gate.repairAttempt = vi.fn(async (args) => ({
+      prose: `${args.proseText} (filler cut)`,
+      structured: args.structured,
+      judged: {
+        criticResult: { score: 8, pass: true, dimensionScores: { pacing: 8 }, issues: [] },
+        accept: true,
+        feedback: undefined,
+        focusInstructions: undefined
+      }
+    }))
+
+    const { runGraphGeneration } = createGraphStrategy(ctx, gate)
+    await runGraphGeneration(
+      { projectId: 'p1', storyArc: null, storyBibleDocs: '', storyContract: '', onChunk: null },
+      { mode: 'workflow', lookahead: 2 }
+    )
+
+    // Only the failed verdict was offered for repair, with that verdict.
+    expect(gate.repairAttempt).toHaveBeenCalledTimes(1)
+    expect(gate.repairAttempt.mock.calls[0][0].sceneIndex).toBe(1)
+    expect(gate.repairAttempt.mock.calls[0][0].verdict.pass).toBe(false)
+    // One draft per scene: the repair cleared scene 1.
+    const drafts = gate.draftAttempt.mock.calls.map((c) => c[0])
+    expect(drafts.filter((d) => d.sceneIndex === 1)).toHaveLength(1)
+    // What landed is the repaired prose, committed as generated.
+    expect(writtenScenes.value[1].prose).toMatch(/\(filler cut\)$/)
+    const status = manuscriptStore.updateSubsectionData.mock.calls.find(
+      (c) => c[0] === 'sub-2' && c[1].contentStatus
+    )
+    expect(status[1].contentStatus).toBe('generated')
+  })
+
+  it('falls back to a new draft when the repair does not pass', async () => {
+    const { ctx } = makeCtx()
+    const { gate } = makeGate({
+      verdicts: {
+        1: [
+          { score: 5, pass: false },
+          { score: 8, pass: true }
+        ]
+      }
+    })
+    gate.repairAttempt = vi.fn(async (args) => ({
+      prose: `${args.proseText} (repaired)`,
+      structured: args.structured,
+      judged: {
+        criticResult: { score: 5.5, pass: false, dimensionScores: { pacing: 5 }, issues: [] },
+        accept: false,
+        feedback: 'still slow',
+        focusInstructions: 'fix pacing'
+      }
+    }))
+
+    const { runGraphGeneration } = createGraphStrategy(ctx, gate)
+    await runGraphGeneration(
+      { projectId: 'p1', storyArc: null, storyBibleDocs: '', storyContract: '', onChunk: null },
+      { mode: 'workflow', lookahead: 2 }
+    )
+
+    const drafts = gate.draftAttempt.mock.calls.map((c) => c[0])
+    const retry = drafts.find((d) => d.sceneIndex === 1 && d.attempt === 1)
+    expect(retry).toBeDefined()
+    // The Writer is told what the repair could not fix.
+    expect(retry.attemptFeedback).toBe('still slow')
+  })
+})
+
 describe('graph strategy — workflow mode', () => {
   it('writes every scene, critiques while drafting, revises a failed scene, syncs each chapter, and logs every step', async () => {
     const { ctx, manuscriptStore, writtenScenes } = makeCtx()

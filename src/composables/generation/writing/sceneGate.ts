@@ -414,26 +414,24 @@ export function createSceneGate(ctx: SceneGateContext) {
       // result. A pacing repair costs no writing call; a full retry costs a
       // whole scene and discards every paragraph that was fine. If the repair
       // does not pass, the loop carries on to the full rewrite as before.
-      const repaired = await repairInPlace(proseText, criticResult)
+      const repaired = await repairAttempt({
+        proseText,
+        structured,
+        scene,
+        sceneIndex,
+        scenePhase,
+        storyBible,
+        chapterLog,
+        sceneEntitiesJson,
+        attemptFocusInstructions,
+        baselineWordCount,
+        verdict: criticResult
+      })
       if (repaired) {
-        const rejudged = await critiqueAttempt({
-          proseText: repaired,
-          structured: structured ? { ...structured, prose: repaired } : structured,
-          scene,
-          sceneIndex,
-          scenePhase,
-          storyBible,
-          chapterLog,
-          sceneEntitiesJson,
-          attemptFocusInstructions,
-          baselineWordCount
-        })
-        console.info(
-          `[sceneGate] scene ${sceneIndex + 1}: repaired in place -> ${rejudged.accept ? 'passes' : 'still fails'}`
-        )
+        const rejudged = repaired.judged
         if (rejudged.accept || attemptScore(rejudged.criticResult) > attemptScore(chosenEval)) {
-          chosenProse = repaired
-          chosenStructured = structured ? { ...structured, prose: repaired } : structured
+          chosenProse = repaired.prose
+          chosenStructured = repaired.structured
           chosenEval = rejudged.criticResult
         }
         if (rejudged.accept) break
@@ -477,6 +475,30 @@ export function createSceneGate(ctx: SceneGateContext) {
     }
     const repaired = applyRepair(proseText, plan.cut, replacements)
     return repaired && repaired !== proseText ? repaired : null
+  }
+
+  /**
+   * Gate primitive: repair a judged draft in place and judge the repair
+   * (§25). Null when the verdict names nothing repairable. Shared by the
+   * legacy loop and the LangGraph critique node, so "what a repair may touch"
+   * and "how a repair is judged" cannot drift between orchestrators.
+   */
+  async function repairAttempt(
+    args: CritiqueAttemptArgs & { verdict: CriticVerdict | null }
+  ): Promise<{
+    prose: string
+    structured: DraftedScene['structured']
+    judged: CritiqueAttemptResult
+  } | null> {
+    const { verdict, ...critiqueArgs } = args
+    const prose = await repairInPlace(args.proseText, verdict)
+    if (!prose) return null
+    const structured = args.structured ? { ...args.structured, prose } : args.structured
+    const judged = await critiqueAttempt({ ...critiqueArgs, proseText: prose, structured })
+    console.info(
+      `[sceneGate] scene ${args.sceneIndex + 1}: repaired in place -> ${judged.accept ? 'passes' : 'still fails'}`
+    )
+    return { prose, structured, judged }
   }
 
   // ── Gate primitives ───────────────────────────────────────────────────────
@@ -901,6 +923,7 @@ export function createSceneGate(ctx: SceneGateContext) {
     writeSceneWithGate,
     draftAttempt,
     critiqueAttempt,
+    repairAttempt,
     markGateOutcome,
     sceneEntitiesFor
   }

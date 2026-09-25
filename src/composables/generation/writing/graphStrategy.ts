@@ -115,6 +115,33 @@ export interface GraphSceneGate {
     feedback: string | undefined
     focusInstructions: string | undefined
   }>
+  /**
+   * Repair a judged draft in place and judge the repair (§25), or null when
+   * the verdict names nothing repairable. Optional so a gate without it (a
+   * test double) simply never repairs.
+   */
+  repairAttempt?: (args: {
+    proseText: string
+    structured: DraftedScene['structured']
+    scene: SceneBrief
+    sceneIndex: number
+    scenePhase: number | string | undefined
+    storyBible: string | undefined
+    chapterLog: string
+    sceneEntitiesJson: string
+    attemptFocusInstructions: string | undefined
+    baselineWordCount: number
+    verdict: CriticVerdict | null
+  }) => Promise<{
+    prose: string
+    structured: DraftedScene['structured']
+    judged: {
+      criticResult: CriticVerdict
+      accept: boolean
+      feedback: string | undefined
+      focusInstructions: string | undefined
+    }
+  } | null>
   markGateOutcome: (args: {
     chosenProse: string
     chosenStructured: DraftedScene['structured']
@@ -503,7 +530,7 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
         attempt: record.attempts
       })
       try {
-        const judged = await sceneGate.critiqueAttempt({
+        const critiqueArgs = {
           proseText: record.draft.prose,
           structured: record.draft.structured,
           scene,
@@ -514,18 +541,44 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
           sceneEntitiesJson: sceneGate.sceneEntitiesFor(scene, existingEntitiesJson),
           attemptFocusInstructions: record.focusInstructions ?? undefined,
           baselineWordCount: record.baselineWordCount
-        })
-        const verdict = judged.criticResult
-        const isBetter = !record.best || attemptScore(verdict) > attemptScore(record.best.verdict)
+        }
+        let judged = await sceneGate.critiqueAttempt(critiqueArgs)
+        let draft: DraftedScene = record.draft
+        let best = record.best
+        const consider = (d: DraftedScene, v: CriticVerdict) => {
+          if (!best || attemptScore(v) > attemptScore(best.verdict)) best = { draft: d, verdict: v }
+        }
+        consider(draft, judged.criticResult)
+
+        // Repair in place before the Editor sees a failure (§25), on this lane:
+        // cutting located filler and rewriting a contradicting sentence are
+        // critic-sized jobs. The Editor then decides on the repaired draft --
+        // which usually means accepting it rather than asking the Writer for
+        // the whole scene again.
+        if (retryGate && !judged.accept && sceneGate.repairAttempt) {
+          const repaired = await sceneGate.repairAttempt({
+            ...critiqueArgs,
+            verdict: judged.criticResult
+          })
+          if (repaired) {
+            draft = { prose: repaired.prose, structured: repaired.structured }
+            // An accepted repair is the scene, whatever its score says.
+            if (repaired.judged.accept) best = { draft, verdict: repaired.judged.criticResult }
+            else consider(draft, repaired.judged.criticResult)
+            judged = repaired.judged
+          }
+        }
+
         actLog.updatePhase(ctx.currentTaskId, scenePhase, { status: 'done' })
         return {
           scenes: [
             {
               ...record,
               status: 'critiqued' as const,
-              verdict,
+              draft,
+              verdict: judged.criticResult,
               accepted: judged.accept,
-              best: isBetter ? { draft: record.draft, verdict } : record.best,
+              best,
               feedback: judged.feedback ?? record.feedback,
               focusInstructions: judged.focusInstructions ?? record.focusInstructions
             }

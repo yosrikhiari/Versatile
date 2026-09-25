@@ -1238,3 +1238,31 @@ clear that scene by itself. The full rewrite then did, as designed. So on real
 prose a repair is rarer than on planted defects: it only fires when pacing or
 continuity are the *only* failures, and real failures are often voice or
 emotional goal. How often it saves a rewrite needs more than one book.
+
+## 26. Repair in place on the LangGraph path (2026-09-25)
+
+§25's repair ran only in the legacy loop. `graphStrategy` composes the gate
+primitives itself (draft node, critique node, Editor decision), so it never
+repaired. The repair is now one gate primitive, `repairAttempt`, which
+repairs the judged draft, judges the repair, and returns the repaired draft
+with its verdict, or null. The legacy loop and the graph's critique node both
+call it, so what a repair may touch and how it is judged cannot drift between
+orchestrators.
+
+In the graph it runs inside the critique node, on the critic's lane. Cutting
+located filler and rewriting one sentence are critic-sized jobs. The Editor then
+decides on the repaired draft, which usually means accepting it rather than
+putting a whole-scene redraft on the GPU lane. `repairAttempt` is optional
+on `GraphSceneGate`, so a gate without it (a test double) simply never
+repairs.
+
+Tests (`graphStrategy.test.js`): a scene that fails and whose repair passes is
+drafted once and commits the repaired prose as `generated`; a repair that fails
+falls back to a new draft carrying the repair's feedback. Both were checked
+against a mutation: with the repair call disabled, both fail.
+
+Real run (`LIVE_ORCHESTRATOR=langgraph`, 2 chapters × 3 scenes): complete, 8.7
+min, 51 calls, 6/6 generated, **0 repairs**. The one scene the gate sent back
+had no repairable failure. The run shows the graph path end to end with the
+change in place; the repair itself on this path is shown by the tests, not by
+this run.
