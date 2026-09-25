@@ -93,8 +93,17 @@ def main():
         s["order"] = i + 1
         s["words"] = len(s["prose"].split())
         s["dialogueLines"] = len(re.findall(r"[“\"][^“”\"]{2,}[”\"]", s["prose"]))
+    # The human's share (§28): three of the shortest scenes from each story.
+    # All 78 are labelled twice by independent model reviewers; these 12 are
+    # the human reference that says whether those labels can stand in.
+    def story(sc):
+        return "salt" if not sc["source"].startswith("pool-") else sc["source"][5:]
+    quick = []
+    for st in ["salt", "harbour", "orbit", "orchard"]:
+        quick += [sc["id"] for sc in sorted((x for x in pool if story(x) == st), key=lambda x: x["words"])[:3]]
+    quick.sort(key=lambda i: next(sc["order"] for sc in pool if sc["id"] == i))
     os.makedirs(OUT_DIR, exist_ok=True)
-    json.dump({"rubric": "v1", "built": "2026-09-25", "scenes": pool},
+    json.dump({"rubric": "v1", "built": "2026-09-25", "quick": quick, "scenes": pool},
               open(f"{OUT_DIR}/scenes.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(f"pool: {len(pool)} scenes, {sum(s['words'] for s in pool)} words "
           f"-> {OUT_DIR}/scenes.json")

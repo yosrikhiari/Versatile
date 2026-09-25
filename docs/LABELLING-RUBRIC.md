@@ -38,3 +38,19 @@ A week after the first pass, re-label about 20 scenes (the page's
 **Re-label pass**), without looking at your first answers. Agreement between
 the two passes is the stand-in for a second human: it caps how well the gate
 can be expected to agree with you.
+
+## Addendum, 2026-09-25: who labels (the questions above are unchanged)
+
+78 scenes turned out to be too much for one person. The labels now come from:
+
+- **The human reference: 12 scenes**, three of the shortest from each story
+  (`quick` in `scenes.json`). The re-label pass is 6 of them.
+- **Independent model reviewers: all 78, twice.** Two separate passes by
+  Claude reviewers apply this same rubric. They are never shown the gate's
+  verdicts, and the second pass cannot see the first
+  (`reports/live/labelling/claude-labels/`).
+
+The 12 human labels decide how far the reviewers' labels can stand in for a
+human: their agreement on those 12 is reported first. Every gate number
+measured against reviewer labels is reported as that, never as "human
+labels".
