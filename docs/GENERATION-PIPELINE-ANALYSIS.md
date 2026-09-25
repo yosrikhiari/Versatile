@@ -1541,3 +1541,22 @@ nearly all of it the claim extraction.
 actions into states ("the dying man collapses" → "the Worker is dead") and
 merges people ("a worker" / "the Worker"), so a death followed by an action
 vanishes before anything checks it. Written down, not built.
+
+**Show-tell: extract-then-check is a negative result.** The candidate
+(`tools/judge-bench/showtell_extract.py`) lists the sentences that name a
+feeling, report a realisation, or summarise a moment, then asks of each "is
+it also shown in the sentences around it?". A scene's score is its unshown
+telling sentences per 100 sentences. All 77 bench scenes scored:
+
+| | |
+|---|---|
+| separates reviewer problems from fine (AUC; 0.5 = chance) | 0.46 overall; 0.46 on the current pipeline (4 vs 34); 0.35 in the salt-corpus |
+| pass mark chosen on the odd half (rate ≥ 25), tested on the even half | caught 11/15, false alarms **13/17** |
+| masterpieces failed at that mark | **7/12** |
+
+The masterpieces tell *more* than generated prose (median about 30 unshown
+per 100, up to 79 for Wells). The reviewers' complaint is telling *at a moment
+that matters*, not the amount of telling, and a rate cannot see which moment
+matters. show_tell stays advisory; the candidate is not ported. A next
+attempt would have to locate the scene's key moment first (from the brief's
+"what changes") and judge only that passage, dramatised or summarised.
