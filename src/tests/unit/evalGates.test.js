@@ -375,3 +375,29 @@ describe('gateProseQuality — malformed tokens', () => {
     expect(result.flags.some((f) => /malformed|script/.test(f))).toBe(true)
   })
 })
+
+describe('gateProseQuality — advisory dimensions (§31)', () => {
+  let gateProseQuality
+
+  beforeAll(async () => {
+    gateProseQuality = (await import('../../services/evalGates')).gateProseQuality
+  })
+
+  // The focused gate's show_tell / pacing / emotional_goal are reported, never
+  // failing. This gate's own average must not let them fail a scene anyway.
+  const scores = { continuity: 9, voice: 8, show_tell: 3, pacing: 5, emotional_goal: 5 }
+
+  it('fails on the average when the dimensions are not advisory', () => {
+    const r = gateProseQuality({ dimensionScores: scores }, 0, 0)
+    expect(r.flags.some((f) => /Average dimension score/.test(f))).toBe(true)
+  })
+
+  it('leaves advisory dimensions out of the average', () => {
+    const r = gateProseQuality(
+      { dimensionScores: scores, advisoryDimensions: ['show_tell', 'pacing', 'emotional_goal'] },
+      0,
+      0
+    )
+    expect(r.flags.some((f) => /Average dimension score/.test(f))).toBe(false)
+  })
+})

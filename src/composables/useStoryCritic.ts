@@ -4,13 +4,20 @@ import { aiGenerateJson } from './useAiService'
 import {
   bibleFacts,
   bibleNames,
+  buildClaimsPrompt,
   buildConfirmPrompt,
+  buildFactConfirmPrompt,
+  buildFactHitsPrompt,
   buildSentenceRepairPrompt,
+  claimHitsToCandidates,
+  CLAIMS_SCHEMA,
   buildContinuityPrompt,
   buildPacingPrompt,
   buildVoicePrompt,
   dialogueDistinctRatio,
   extractDialogueLines,
+  FACT_CONFIRM_SCHEMA,
+  FACT_HITS_SCHEMA,
   fillerParagraphs,
   CONFIRM_SCHEMA,
   CONTINUITY_SCHEMA,
@@ -25,6 +32,7 @@ import {
   unreverseParagraphNumbers,
   splitParagraphs,
   splitSentences,
+  validClaims,
   verifyContradictions
 } from './criticIsolation'
 import { FEATURES } from '../config/ai'
@@ -35,7 +43,11 @@ import {
   getDimensionNames,
   formatDimensionRubrics
 } from '../config/evalDimensions'
-import { deriveVerdict, CRITIC_VERDICT_CONFIG } from '../services/criticVerdict'
+import {
+  deriveVerdict,
+  CRITIC_VERDICT_CONFIG,
+  FOCUSED_ADVISORY_DIMENSIONS
+} from '../services/criticVerdict'
 import { sanitizeJson } from '../services/ai/aiHelpers'
 import { guardCritique } from '../guardrails/integration/composableGuardrails'
 import { recordQualityForOutput } from '../services/aiResponseCache'
@@ -660,24 +672,73 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
             names.some((n) => s.includes(n))
           )
           if (!sentences.length) return null
-          const parsed = (await aiGenerateJson(
-            buildContinuityPrompt({ facts, sentences }),
-            'You check new prose against established facts. You report only contradictions you can quote on both sides.',
-            {
+          // Two checks, merged (§31). The direct one asks for contradictions
+          // the sentences STATE; the claims one extracts what they state or
+          // ASSUME, matches the claims, and confirms each (sentence, fact).
+          // On 12 planted contradictions each caught 4, different ones (the
+          // direct check misses "since the day Halim died"; the claims check
+          // missed "the doubled oxygen rations"); neither raised a false alarm
+          // on 29 reviewer-fine scenes. A check that fails is skipped; both
+          // failing leaves continuity unjudged, never a fabricated verdict.
+          const judgeCall = (
+            prompt: string,
+            system: string,
+            schema: Record<string, unknown>,
+            name: string,
+            max: number
+          ) =>
+            aiGenerateJson(prompt, system, {
               feature: FEATURES.STORY_GENERATION,
               role: 'critic',
               temperature: 0,
-              maxTokens: 600,
-              schema: CONTINUITY_SCHEMA,
-              schemaName: 'focused_continuity_facts',
+              maxTokens: max,
+              schema,
+              schemaName: name,
               sessionBudget: _sessionBudget,
               ...JUDGE_SAMPLING
-            }
-          ).catch(() => null)) as { contradictions?: unknown } | null
-          if (!parsed) return null
-          const verified = await confirmContradictions(
-            verifyContradictions(parsed.contradictions, draftText, facts)
+            }).catch(() => null)
+          const direct = (await judgeCall(
+            buildContinuityPrompt({ facts, sentences }),
+            'You check new prose against established facts. You report only contradictions you can quote on both sides.',
+            CONTINUITY_SCHEMA,
+            'focused_continuity_facts',
+            600
+          )) as { contradictions?: unknown } | null
+          const verified: Array<{ sentence: string; fact: string }> = direct
+            ? await confirmContradictions(
+                verifyContradictions(direct.contradictions, draftText, facts)
+              )
+            : []
+          const extracted = await judgeCall(
+            buildClaimsPrompt(sentences),
+            'You extract the factual content of fiction, sentence by sentence, precisely.',
+            CLAIMS_SCHEMA,
+            'focused_continuity_claims',
+            4000
           )
+          const claims = extracted ? validClaims(extracted, sentences.length) : []
+          const matched = claims.length
+            ? await judgeCall(
+                buildFactHitsPrompt(facts, claims),
+                'You check claims from new prose against established facts.',
+                FACT_HITS_SCHEMA,
+                'focused_continuity_matches',
+                2000
+              )
+            : null
+          if (!direct && !extracted) return null
+          const already = new Set(verified.map((v) => `${v.sentence}\u0000${v.fact}`))
+          for (const c of claimHitsToCandidates(matched, claims, sentences, facts)) {
+            if (already.has(`${c.sentence}\u0000${c.fact}`)) continue
+            const ok = (await judgeCall(
+              buildFactConfirmPrompt(c.fact, c.claim, c.sentence),
+              'You check a new scene against what a story has already established.',
+              FACT_CONFIRM_SCHEMA,
+              'confirm_fact_contradiction',
+              30
+            )) as { contradicts?: unknown } | null
+            if (ok?.contradicts === true) verified.push({ sentence: c.sentence, fact: c.fact })
+          }
           if (!verified.length) return { score: 8 }
           return {
             score: 3,
@@ -801,7 +862,9 @@ Return JSON: { "score": number, "issue": "one sentence, or omit if none" }`
           score: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10,
           dimensionScores,
           issues,
-          strengths: []
+          strengths: [],
+          // Judged and reported, not failing (§31, criticVerdict.ts).
+          advisoryDimensions: FOCUSED_ADVISORY_DIMENSIONS
         }
       }
 
@@ -886,7 +949,13 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
       // borderline, and a deliberately contradictory clear-fail all came back at
       // 8/10, so `score >= threshold` passed every one of them and the pipeline
       // gate could not reject anything. See services/criticVerdict.ts.
-      const verdict = deriveVerdict({ score, dimensionScores, issues }, threshold)
+      const advisoryDimensions: readonly string[] = Array.isArray(parsed.advisoryDimensions)
+        ? parsed.advisoryDimensions
+        : []
+      const verdict = deriveVerdict(
+        { score, dimensionScores, issues, advisoryDimensions },
+        threshold
+      )
       const pass = verdict.pass
 
       // A malformed critique silently corrupts score aggregation downstream,
@@ -912,7 +981,11 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
         // which is the actionable part.
         verdictReason: verdict.reason,
         weakestDimension: verdict.weakestDimension,
-        dimensionMean: verdict.dimensionMean
+        dimensionMean: verdict.dimensionMean,
+        // Carried so every later re-derivation (scene gate, repair plan)
+        // treats these dimensions the same way.
+        advisoryDimensions,
+        advisoryBelowFloor: verdict.advisoryBelowFloor
       }
     } catch {
       return {

@@ -7,7 +7,11 @@
  * `score >= threshold` rule therefore passed a deliberately broken scene.
  */
 import { describe, it, expect } from 'vitest'
-import { deriveVerdict, CRITIC_VERDICT_CONFIG } from '@/services/criticVerdict'
+import {
+  deriveVerdict,
+  CRITIC_VERDICT_CONFIG,
+  FOCUSED_ADVISORY_DIMENSIONS
+} from '@/services/criticVerdict'
 
 const THRESHOLD = 7
 
@@ -169,5 +173,72 @@ describe('robustness', () => {
   it('treats NaN as absent rather than as a number', () => {
     const v = deriveVerdict({ score: 8, dimensionScores: { a: NaN, b: 9 }, issues: [] }, THRESHOLD)
     expect(v.dimensionMean).toBe(9)
+  })
+
+  describe('advisory dimensions (§31)', () => {
+    const advisoryDimensions = FOCUSED_ADVISORY_DIMENSIONS
+    // Recorded shape: "The Lady with the Dog" under the focused gate scored
+    // show_tell 3; continuity and voice were fine.
+    const chekhov = {
+      dimensionScores: { continuity: 9, voice: 8, emotional_goal: 7, show_tell: 3, pacing: 7 },
+      issues: [{ type: 'show_tell', severity: 'major', description: 'tells' }]
+    }
+
+    it('fails without them, passes with them, and still reports the low score', () => {
+      expect(deriveVerdict(chekhov, THRESHOLD).pass).toBe(false)
+      const v = deriveVerdict({ ...chekhov, advisoryDimensions }, THRESHOLD)
+      expect(v.pass).toBe(true)
+      expect(v.failingDimensions).toEqual([])
+      expect(v.advisoryBelowFloor).toEqual([{ name: 'show_tell', score: 3 }])
+      expect(v.reason).toMatch(/advisory, not failing: show_tell 3/)
+    })
+
+    it('does not count advisory major issues toward the major-issue limit', () => {
+      const issues = ['show_tell', 'pacing', 'emotional_goal'].map((type) => ({
+        type,
+        severity: 'major'
+      }))
+      const v = deriveVerdict(
+        { dimensionScores: { continuity: 9, voice: 9 }, issues, advisoryDimensions },
+        THRESHOLD
+      )
+      expect(v.majorIssueCount).toBe(0)
+      expect(v.pass).toBe(true)
+    })
+
+    it('keeps advisory scores out of the mean', () => {
+      const v = deriveVerdict(
+        {
+          dimensionScores: { continuity: 8, voice: 8, show_tell: 1, pacing: 1, emotional_goal: 1 },
+          issues: [],
+          advisoryDimensions
+        },
+        THRESHOLD
+      )
+      expect(v.dimensionMean).toBe(8)
+      expect(v.pass).toBe(true)
+    })
+
+    it('still fails a gating dimension, and names only it', () => {
+      const v = deriveVerdict(
+        {
+          dimensionScores: { continuity: 4, voice: 8, show_tell: 3 },
+          issues: [],
+          advisoryDimensions
+        },
+        THRESHOLD
+      )
+      expect(v.pass).toBe(false)
+      expect(v.failingDimensions).toEqual([{ name: 'continuity', score: 4 }])
+    })
+
+    it('passes when every judged dimension is advisory', () => {
+      const v = deriveVerdict(
+        { dimensionScores: { show_tell: 2, pacing: 2 }, issues: [], advisoryDimensions },
+        THRESHOLD
+      )
+      expect(v.pass).toBe(true)
+      expect(v.usedScoreFallback).toBe(false)
+    })
   })
 })

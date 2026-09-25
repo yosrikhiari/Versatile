@@ -206,7 +206,9 @@ const NAME_STOPWORDS = new Set([
 
 /** Capitalised words in the bible: the people and places a sentence can contradict. */
 export function bibleNames(bible: string): string[] {
-  const found = String(bible || '').match(/\b[A-Z][a-z]{2,}\b/g) || []
+  // Accented capitals too: "Élodie" is a name the facts use (§31).
+  const found =
+    String(bible || '').match(/(?<![\p{L}\p{N}])[A-ZÀ-Ý][a-zà-ÿ]{2,}(?![\p{L}\p{N}])/gu) || []
   return [...new Set(found.filter((w) => !NAME_STOPWORDS.has(w)))]
 }
 
@@ -267,6 +269,168 @@ Differences of detail, new information, and things the facts do not mention are 
 For each real contradiction, copy the sentence EXACTLY and the fact EXACTLY. If there are none, return an empty list.
 
 Return JSON: { "contradictions": [ { "sentence": "...", "fact": "..." } ] }`
+}
+
+/**
+ * Scene continuity by claims (§31). The one-shot prompt above found 0 of the 9
+ * story-fact contradictions two reviewers marked in real scenes, because most
+ * of them are ASSUMED, not stated: "It hadn't been warm since the day Halim
+ * died" never says "Halim is dead". So the check runs in three narrow steps,
+ * each one a question a small model answers reliably:
+ *
+ *   1. extract: every fact each sentence states or takes for granted
+ *   2. match:   which claims cannot be true if the facts are true
+ *   3. confirm: per (sentence, fact) -- the facts are the story SO FAR; a
+ *               scene may show a change, not assume one the story never told
+ *
+ * On the bench (tools/judge-bench): 3/9 reviewer problems caught (the old
+ * check: 0/9), 0/29 false alarms on reviewer-fine scenes with facts, 4/10
+ * planted contradictions it was not tuned on, and every flag on the planted
+ * sentence itself. Low recall, high precision: a false alarm costs a rewrite.
+ */
+export const CLAIMS_SCHEMA = {
+  type: 'object',
+  properties: {
+    claims: {
+      type: 'array',
+      maxItems: 60,
+      items: {
+        type: 'object',
+        properties: {
+          s: { type: 'integer' },
+          about: { type: 'string' },
+          claim: { type: 'string' }
+        },
+        required: ['s', 'about', 'claim']
+      }
+    }
+  },
+  required: ['claims']
+}
+
+export interface SceneClaim {
+  s: number
+  about: string
+  claim: string
+}
+
+export function buildClaimsPrompt(sentences: string[]): string {
+  return `Below are the numbered sentences of one scene.
+
+For each sentence that states OR TAKES FOR GRANTED a checkable fact, write the fact as a short plain claim:
+- whether someone is alive or dead, conscious, injured
+- where someone or something is, who is present
+- what has already happened, what someone already knows or has
+- the physical state of an object (open/closed, lit/dark, full/empty)
+Include facts a sentence only assumes: "The kettle had stayed cold since the winter Marek drowned" -> "Marek is dead"; "She paid back what she owed Anya" -> "She owed Anya a debt".
+A fact inside a thought, feeling or memory is still a fact: "She wondered why the letter Piet sent her was unsigned" -> "Piet sent her a letter". Write each fact as its own claim, stripped of the feeling around it.
+Skip mood, description, similes, opinions and anything uncheckable. Several claims per sentence are fine; most sentences have none.
+
+${sentences.map((s, i) => `[${i + 1}] ${s}`).join('\n')}
+
+"about" names the one person or thing the claim is about, always spelled the same way ("the guard", "Marek", "the lantern").
+
+Return JSON: { "claims": [ { "s": sentence number, "about": "...", "claim": "..." } ] }`
+}
+
+/** Claims with a sentence number that exists and a non-empty text. */
+export function validClaims(parsed: unknown, sentenceCount: number): SceneClaim[] {
+  const claims = (parsed as { claims?: unknown })?.claims
+  if (!Array.isArray(claims)) return []
+  return claims.filter(
+    (c): c is SceneClaim =>
+      Number.isInteger(c?.s) &&
+      c.s >= 1 &&
+      c.s <= sentenceCount &&
+      typeof c?.claim === 'string' &&
+      c.claim.trim().length > 0
+  )
+}
+
+export const FACT_HITS_SCHEMA = {
+  type: 'object',
+  properties: {
+    hits: {
+      type: 'array',
+      maxItems: 20,
+      items: {
+        type: 'object',
+        properties: { claim: { type: 'integer' }, fact: { type: 'string' } },
+        required: ['claim', 'fact']
+      }
+    }
+  },
+  required: ['hits']
+}
+
+export function buildFactHitsPrompt(facts: string[], claims: SceneClaim[]): string {
+  return `ESTABLISHED FACTS (true):
+${facts.join('\n')}
+
+CLAIMS from a new scene:
+${claims.map((c, i) => `[${i + 1}] ${c.claim}`).join('\n')}
+
+Which claims CANNOT be true if the facts are true (a dead character alive or an alive one dead, an event that did not happen, a denied relationship or debt)? New information and details the facts do not mention are NOT contradictions.
+Copy the fact exactly. If none, return an empty list.
+
+Return JSON: { "hits": [ { "claim": claim number, "fact": "..." } ] }`
+}
+
+/**
+ * Hits → (sentence, fact, claim) candidates. The fact must be one of the facts
+ * (matched on letters and digits, as `verifyContradictions` does), and each
+ * (sentence, fact) pair is kept once, so it is confirmed once.
+ */
+export function claimHitsToCandidates(
+  parsed: unknown,
+  claims: SceneClaim[],
+  sentences: string[],
+  facts: string[]
+): Array<{ sentence: string; fact: string; claim: string }> {
+  const hits = (parsed as { hits?: unknown })?.hits
+  if (!Array.isArray(hits)) return []
+  const out: Array<{ sentence: string; fact: string; claim: string }> = []
+  const seen = new Set<string>()
+  for (const h of hits) {
+    const claim = Number.isInteger(h?.claim) ? claims[h.claim - 1] : undefined
+    const f = alnum(h?.fact)
+    const fact =
+      f.length >= 8 ? facts.find((k) => alnum(k).includes(f) || f.includes(alnum(k))) : undefined
+    if (!claim || !fact) continue
+    const sentence = sentences[claim.s - 1]
+    const key = `${sentence}\u0000${fact}`
+    if (!sentence || seen.has(key)) continue
+    seen.add(key)
+    out.push({ sentence, fact, claim: claim.claim })
+  }
+  return out
+}
+
+export const FACT_CONFIRM_SCHEMA = {
+  type: 'object',
+  properties: { contradicts: { type: 'boolean' } },
+  required: ['contradicts']
+}
+
+/**
+ * The confirming question. Asked as "can both be true?" of a Chapter 1 fact
+ * ("Halim is alive") and a later claim ("Halim is dead"), the model answers
+ * yes -- he could have died since. The facts are the story so far, so the
+ * question is whether the scene assumes a change the story never told. A
+ * reasoning-first variant caught more (5/9 vs 3/9 on probe pairs) but raised
+ * false alarms from 0/8 to 2/8, and was not adopted.
+ */
+export function buildFactConfirmPrompt(fact: string, claim: string, sentence: string): string {
+  return `ESTABLISHED (true as of the story so far; nothing told since has changed it):
+${fact}
+
+NEW SCENE, one sentence: ${sentence}
+What that sentence says or assumes: ${claim}
+
+A new scene may add details the story has not mentioned, and may SHOW something change within the scene itself. It may not assume, as already having happened, a change the story never told (a death, a sale, a debt paid or reversed), and may not state the opposite of what is established.
+Does the sentence contradict what is established?
+
+Return JSON: { "contradicts": true or false }`
 }
 
 /**
@@ -407,12 +571,16 @@ export function planRepair(
       paragraphs?: number[]
       evidence?: Array<{ sentence: string; fact: string }>
     }>
+    advisoryDimensions?: readonly string[] | null
   } | null,
   minDimension: number
 ): RepairPlan | null {
   if (!verdict?.dimensionScores) return null
+  // Advisory dimensions do not fail the scene, so they are not repaired
+  // either; one would otherwise veto the repair of a real failure (§31).
+  const advisory = new Set(verdict.advisoryDimensions || [])
   const failing = Object.entries(verdict.dimensionScores)
-    .filter(([, v]) => typeof v === 'number' && v < minDimension)
+    .filter(([k, v]) => !advisory.has(k) && typeof v === 'number' && v < minDimension)
     .map(([k]) => k)
   if (!failing.length) return null
   const issues = verdict.issues || []

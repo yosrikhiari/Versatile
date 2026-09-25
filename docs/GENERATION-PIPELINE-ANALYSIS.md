@@ -1427,3 +1427,117 @@ pacing on two orchard scenes).
 Every gate change must now (a) catch the reviewers' problems on generated
 scenes and (b) pass the masterpieces. A show_tell or pacing judge that fails
 Chekhov is disqualified however well it does on planted defects.
+
+## 31. Acting on the real-scene test: three dimensions stop failing scenes (2026-09-25)
+
+**The bench.** `tools/judge-bench/bench.py` scores any candidate judge on the two
+tests §29–§30 set: catch what both reviewer passes called a problem (and stay
+quiet where both said fine), and pass the 12 masterpieces. Results are cached
+per scene, so a re-score is free and a stopped run resumes.
+
+**First, a confound in the labels.** Split by where the scene came from, the
+reviewers' problems are not spread evenly:
+
+| dimension | salt-corpus (old, ~980-word scenes): problem / fine | current pipeline (~410 words): problem / fine |
+|---|---|---|
+| continuity | 11 / 12 | **6 / 30** |
+| voice | 3 / 12 | 2 / 25 |
+| show_tell | 24 / 3 | 4 / 34 |
+| pacing | 22 / 4 | **0 / 45** |
+| emotional_goal | 7 / 13 | 3 / 32 |
+
+Every pacing problem, and 24 of 28 show_tell problems, is in the older
+salt-corpus. Word count alone separates the reviewers' pacing problems from
+fine scenes at AUC 0.97 (`tools/judge-bench/pacing_features.py`); paragraph
+redundancy measured with embeddings adds little once length is controlled
+(AUC 0.68 inside the 500–1000-word band, 15 vs 3 scenes). So a judge can score
+well on those two dimensions just by recognising the old corpus. Any result on
+them has to be read within a source, and on the current pipeline there is
+almost nothing to catch: the reviewers found **no** pacing problems in 45
+current scenes.
+
+**What the gate costs on current output.** It failed 11 of the 48 current
+scenes: 8 on emotional_goal, 3 on pacing, 1 on voice. In **none** of the 11
+did the reviewers mark a problem on the dimension the gate blamed. Every such
+failure buys a repair or a rewrite. On the masterpieces the failures are
+show_tell 11, pacing 6, emotional_goal 3. The pacing judge is not just weak,
+it points the wrong way: it scored all 22 reviewer pacing problems 7–8
+(pass), and scored three reviewer-fine scenes 1, 3 and 5.
+
+**Change.** In the focused critic (the default), `show_tell`, `pacing` and
+`emotional_goal` are now **advisory** (`FOCUSED_ADVISORY_DIMENSIONS`,
+`criticVerdict.ts`): judged and reported exactly as before, but excluded from
+the floor, the major-issue count and the mean, so they cannot fail a scene or
+trigger repair. Continuity and voice still gate: both were validated on
+planted defects (§17–§23) and neither fails a masterpiece. The combined critic
+is unchanged. A dimension comes off the list only when a replacement passes
+the bench.
+
+One leak was found while testing: `gateProseQuality` (`evalGates.ts`) takes its
+own average of every dimension score, which would have let advisory scores
+fail a scene through a second door. It now skips them too. The e2e test that
+used to assert a pacing cut (§25) now asserts that a scene whose only
+complaint is filler is committed as written. The cut still exists in
+`planRepair` for a future pacing judge that passes the bench; nothing in
+production reaches it today. The legacy loop has no e2e test of the
+continuity repair (the LangGraph path has two).
+
+**Continuity: a second check for what a sentence assumes.** Of the 17
+continuity problems both reviewers marked, 9 contradict the story facts and 8
+contradict something earlier in the same scene. On the 9, production scored
+continuity 8 every time (0/9 caught). Most are *assumed*, not stated: "It
+hadn't been warm since the day Halim died" never says "Halim is dead", and the
+one-shot check asks which sentences *state* a contradiction.
+
+The candidate (`tools/judge-bench/continuity_claims.py`) runs three narrow
+steps: extract every fact each sentence states or takes for granted; match
+those claims against the facts; confirm each (sentence, fact) once. Three
+versions, each traced to a specific failure:
+
+| version | confirming question | reviewer facts problems | false alarms (29 fine) | note |
+|---|---|---|---|---|
+| v1 | "can both be true?" of the whole sentence | 3/9 | 0 | **invalid**: a prompt example was copied from a bench scene (salt-corpus-14) |
+| v2 | "can both be true?" of the bare claim | 1/9 | – | "Halim is alive" (Ch1) vs "Halim is dead": *both can be true, he could have died since* |
+| v3 | the facts are the story **so far**; a scene may show a change, not assume one never told | **3/9** | **0/29** | adopted |
+
+The v2 answer is the real question, and the facts settle it: they are the
+story so far, so a scene that takes a death for granted when the story never
+told one contradicts it. A reasoning-first confirmation (write down what the
+fact says and what the sentence assumes, then answer) caught more on probe
+pairs (5/9 vs 3/9) but raised false alarms from 0/8 to 2/8 ("Élodie walked the
+orchard one last time" flagged against the sale). It was not adopted: a false
+alarm buys a rewrite.
+
+Of the 6 misses, one (salt-corpus-07, "the debt Halim owed her") is a doubtful
+label: the facts say Nesrin must repay *her debt* but not to whom, so a debt
+Halim owes her is not ruled out. One (salt-corpus-25) is in dialogue that
+names nobody from the facts, so the name filter never sends it.
+
+*Held-out check.* The candidate was debugged on those 9, so 12 new
+contradictions were planted, one per reviewer-fine scene, in varied wording
+(a burial, a waved-through tax, a debt denied, doubled rations; two naming
+nobody from the facts; `continuity_plants.py`). Every plant is flagged on its
+own sentence, never elsewhere.
+
+| on 12 planted contradictions | caught |
+|---|---|
+| old one-shot check (live, production code) | 4/12 |
+| claims check v3 (bench, and the TypeScript port live: identical) | 4/12 |
+| **both, merged** (live, production code) | **5/12**, no flag off the planted sentence |
+
+They catch *different* plants: only the claims check finds the assumed death
+("the only thing left of Halim after the sandstorm took him"); only the direct
+check finds "with the doubled oxygen rations". So production now runs both and
+merges what each confirms (`isolatedContinuity`, `useStoryCritic.ts`); each
+(sentence, fact) is confirmed once. Neither plant naming nobody from the facts
+is caught by either: the name filter is a known blind spot. Recall is still
+low. The misses all die at the last step, the confirming question.
+
+*Cost.* The critic took 4.9 minutes over the 12 planted scenes with both
+checks, 1.2 with the direct check alone: about 18 seconds more per scene,
+nearly all of it the claim extraction.
+
+*Parked: contradictions inside one scene* (8 of the 17). Extraction flattens
+actions into states ("the dying man collapses" → "the Worker is dead") and
+merges people ("a worker" / "the Worker"), so a death followed by an action
+vanishes before anything checks it. Written down, not built.

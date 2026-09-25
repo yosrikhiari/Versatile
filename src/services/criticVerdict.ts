@@ -49,10 +49,40 @@ export const CRITIC_VERDICT_CONFIG = {
   enforceMean: true
 } as const
 
+/**
+ * Dimensions the focused critic still judges and reports, but that do not fail
+ * a scene (§31). On 78 real scenes labelled by two independent reviewers and 12
+ * public-domain masterpieces:
+ *
+ *   show_tell       caught 0 of the reviewers' problems; failed 11/12 masterpieces
+ *   pacing          scored the reviewers' 22 pacing problems 7-8 (all pass) and
+ *                   failed 6/12 masterpieces (Wells 1, Joyce/Doyle/Chekhov 3)
+ *   emotional_goal  failed 8 of the pipeline's current 48 scenes, none of which
+ *                   the reviewers faulted on it; failed 3/12 masterpieces
+ *
+ * They reward LLM house style and punish deliberate narrative summary, so a
+ * failure on them buys a rewrite that moves the prose the wrong way. Continuity
+ * and voice keep the gate: both were validated on planted defects (§17-§23) and
+ * neither fails a masterpiece. A dimension leaves this list only when a
+ * replacement judge passes the bench (tools/judge-bench): catches the
+ * reviewers' problems AND passes the masterpieces.
+ */
+export const FOCUSED_ADVISORY_DIMENSIONS: readonly string[] = [
+  'show_tell',
+  'pacing',
+  'emotional_goal'
+]
+
 export interface CritiqueLike {
   score?: number | null
   dimensionScores?: Record<string, number | null> | null
   issues?: Array<{ severity?: string; type?: string; description?: string }> | null
+  /**
+   * Scored and reported, never failing: excluded from the floor, the
+   * major-issue count and the mean. Set by the focused critic; a critique
+   * without it is judged on every dimension, as before.
+   */
+  advisoryDimensions?: readonly string[] | null
 }
 
 export interface Verdict {
@@ -68,6 +98,8 @@ export interface Verdict {
    * two failures; the verdict should say so.
    */
   failingDimensions: Array<{ name: string; score: number }>
+  /** Advisory dimensions under the floor: reported, not failing (§31). */
+  advisoryBelowFloor: Array<{ name: string; score: number }>
   dimensionMean: number | null
   majorIssueCount: number
   /**
@@ -90,9 +122,30 @@ function numericDimensions(dimensionScores: Record<string, number | null> | null
  * so it is fully testable against the recorded corpus.
  */
 export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdict {
-  const dims = numericDimensions(critique?.dimensionScores)
+  const advisory = new Set(critique?.advisoryDimensions || [])
+  const allDims = numericDimensions(critique?.dimensionScores)
+  const dims = allDims.filter(([name]) => !advisory.has(name))
+  const advisoryBelowFloor = allDims
+    .filter(([name, v]) => advisory.has(name) && v < CRITIC_VERDICT_CONFIG.minDimensionScore)
+    .map(([name, score]) => ({ name, score }))
   const issues = Array.isArray(critique?.issues) ? critique.issues : []
-  const majorIssueCount = issues.filter((i) => i?.severity === 'major').length
+  const majorIssueCount = issues.filter(
+    (i) => i?.severity === 'major' && !advisory.has(String(i?.type || ''))
+  ).length
+
+  if (allDims.length > 0 && dims.length === 0) {
+    // Every judged dimension is advisory: nothing here can fail the scene.
+    return {
+      pass: majorIssueCount < CRITIC_VERDICT_CONFIG.maxMajorIssues,
+      reason: 'only advisory dimensions were judged',
+      weakestDimension: null,
+      failingDimensions: [],
+      advisoryBelowFloor,
+      dimensionMean: null,
+      majorIssueCount,
+      usedScoreFallback: false
+    }
+  }
 
   if (dims.length === 0) {
     // No dimensional signal. Fall back to the self-reported score, and say so —
@@ -104,6 +157,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
         reason: 'no score and no dimension scores — the critique carries no verdict',
         weakestDimension: null,
         failingDimensions: [],
+        advisoryBelowFloor,
         dimensionMean: null,
         majorIssueCount,
         usedScoreFallback: true
@@ -117,6 +171,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
           : `self-reported score ${score} below threshold ${threshold}`,
       weakestDimension: null,
       failingDimensions: [],
+      advisoryBelowFloor,
       dimensionMean: null,
       majorIssueCount,
       usedScoreFallback: true
@@ -138,6 +193,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       reason: `${failingDimensions.map((d) => `${d.name} scored ${d.score}`).join(', ')}, below the minimum ${CRITIC_VERDICT_CONFIG.minDimensionScore}`,
       weakestDimension,
       failingDimensions,
+      advisoryBelowFloor,
       dimensionMean: mean,
       majorIssueCount,
       usedScoreFallback: false
@@ -150,6 +206,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       reason: `${majorIssueCount} major issues (max ${CRITIC_VERDICT_CONFIG.maxMajorIssues - 1})`,
       weakestDimension,
       failingDimensions,
+      advisoryBelowFloor,
       dimensionMean: mean,
       majorIssueCount,
       usedScoreFallback: false
@@ -162,6 +219,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       reason: `dimension mean ${mean.toFixed(1)} below threshold ${threshold}`,
       weakestDimension,
       failingDimensions,
+      advisoryBelowFloor,
       dimensionMean: mean,
       majorIssueCount,
       usedScoreFallback: false
@@ -170,9 +228,14 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
 
   return {
     pass: true,
-    reason: `all dimensions at or above ${CRITIC_VERDICT_CONFIG.minDimensionScore} (weakest: ${weakest[0]} ${weakest[1]})`,
+    reason:
+      `all dimensions at or above ${CRITIC_VERDICT_CONFIG.minDimensionScore} (weakest: ${weakest[0]} ${weakest[1]})` +
+      (advisoryBelowFloor.length
+        ? `; advisory, not failing: ${advisoryBelowFloor.map((d) => `${d.name} ${d.score}`).join(', ')}`
+        : ''),
     weakestDimension,
     failingDimensions,
+    advisoryBelowFloor,
     dimensionMean: mean,
     majorIssueCount,
     usedScoreFallback: false

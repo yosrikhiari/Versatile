@@ -7,6 +7,31 @@ was verified.
 
 ## [Unreleased]
 
+### The gate stops failing good prose; continuity sees what a sentence assumes (2026-09-25)
+- **show_tell, pacing and emotional_goal are advisory in the focused critic**
+  (§31). Judged against two independent reviewers on 78 real scenes and
+  against 12 public-domain masterpieces, they measured LLM house style, not
+  quality: show_tell caught none of the reviewers' problems and failed 11/12
+  masterpieces; pacing scored all 22 reviewer pacing problems as passes; on the
+  pipeline's current output they failed 11 of 48 scenes that the reviewers did
+  not fault on those dimensions. They are still judged and reported, but no
+  longer fail a scene, count as major issues, enter the mean, or trigger a
+  repair (`FOCUSED_ADVISORY_DIMENSIONS`, `criticVerdict.ts`; the prose-quality
+  gate's own average skips them too). Masterpieces failing the gate:
+  11/12 → 0/12. Continuity and voice still gate.
+- **Scene continuity also checks what sentences assume.** A claims check
+  (extract stated and presupposed facts, match them, confirm each pair: "a
+  scene may show a change, not assume one the story never told") runs beside
+  the direct check, and their confirmed findings are merged. Reviewer
+  story-fact contradictions caught: 0/9 → 3/9; planted contradictions 4/12 →
+  5/12; false alarms 0/29 before and after. About 18 s more critic time per
+  scene. Names with accented capitals (Élodie) now count as bible names.
+- **The judge bench** (`tools/judge-bench/`): any candidate judge is scored on
+  the reviewers' consensus labels and the masterpieces, cached per scene.
+  Found on the way: the reviewers' pacing and show_tell problems sit almost
+  entirely in the older salt-corpus scenes (pacing: 22/22), so results on
+  those dimensions must be read within a source.
+
 ### The quality gate can see, and is on by default (2026-09-24)
 - **The focused critic is the default** (§24, `b9befad8`). The combined critic
   (one call, five scores) passed 40 of 40 scenes with deliberately planted

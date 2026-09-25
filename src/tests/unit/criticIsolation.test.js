@@ -187,7 +187,7 @@ describe('focused critic routes voice and pacing through isolated input', () => 
       chapterLog: ''
     })
 
-  it('names the filler paragraphs and fails pacing at two', async () => {
+  it('names the filler paragraphs and scores pacing under the floor at two', async () => {
     const draft = lines(8)
     answer({
       pacingLabels: [
@@ -203,8 +203,10 @@ describe('focused critic routes voice and pacing through isolated input', () => 
     })
     const v = await evaluate(draft)
     expect(v.dimensionScores.pacing).toBe(5)
-    expect(v.pass).toBe(false)
     expect(v.issues.find((i) => i.type === 'pacing').description).toMatch(/Paragraphs 2, 5/)
+    // Reported, not failing: pacing is advisory in the focused gate (§31).
+    expect(v.pass).toBe(true)
+    expect(v.advisoryBelowFloor).toEqual([{ name: 'pacing', score: 5 }])
   })
 
   it('does not fail pacing when the reversed pass confirms none of the flags', async () => {
@@ -273,90 +275,139 @@ describe('focused critic routes voice and pacing through isolated input', () => 
     for (const c of calls) expect(c[2].repeatPenalty).toBe(1)
   })
 
-  it('continuity sees only the sentences that name someone in the bible, and drops claims it cannot verify', async () => {
+  // Continuity by claims (§31): extract what each sentence states or assumes,
+  // match claims against the facts, confirm each (sentence, fact) once.
+  function continuityModel({
+    claims,
+    hits,
+    contradicts = true,
+    direct = [],
+    bothCanBeTrue = false
+  }) {
     vi.mocked(aiGenerateJson).mockImplementation(async (_p, _s, opts) => {
-      if (opts.schemaName === 'focused_continuity_facts')
-        return {
-          contradictions: [
-            { sentence: 'A had been dead for two years by then.', fact: 'A: a character.' },
-            { sentence: 'A invented this line entirely.', fact: 'A: a character.' }
-          ]
-        }
+      if (opts.schemaName === 'focused_continuity_claims') return { claims }
+      if (opts.schemaName === 'focused_continuity_matches') return { hits }
+      if (opts.schemaName === 'focused_continuity_facts') return { contradictions: direct }
+      if (opts.schemaName === 'confirm_fact_contradiction') return { contradicts }
+      if (opts.schemaName === 'confirm_contradiction') return { bothCanBeTrue }
       if (opts.schemaName === 'focused_pacing_paragraphs')
         return { labels: Array(opts.schema.properties.labels.minItems).fill('ADVANCES') }
       return { score: 8 }
     })
-    // "Abe" is the only name in this bible, so only the sentence naming him is sent.
-    const v = await critic.evaluateScene({
-      draft: `The road was long and nobody spoke of it.
+  }
+  const confirmCalls = () =>
+    vi
+      .mocked(aiGenerateJson)
+      .mock.calls.filter((c) => c[2].schemaName === 'confirm_fact_contradiction')
+  const presupposed = `The road was long and nobody spoke of it.
 
-Abe had been dead for two years by then.
+It had not been warm since the day Abe died.
 
-${lines(8)}`,
+${lines(8)}`
+  const scene = (draft) =>
+    critic.evaluateScene({
+      draft,
       sceneBrief: { title: 't', emotionalGoal: 'dread', charactersPresent: ['Abe'] },
       storyBible: 'Abe: alive and well.',
       chapterLog: ''
     })
+
+  it('continuity sees only the sentences that name someone in the bible, and drops a hit on a fact that is not in it', async () => {
+    continuityModel({
+      claims: [{ s: 1, about: 'Abe', claim: 'Abe is dead' }],
+      hits: [{ claim: 1, fact: 'Abe: a character invented by the model.' }]
+    })
+    const v = await scene(presupposed)
     const call = vi
       .mocked(aiGenerateJson)
-      .mock.calls.find((c) => c[2].schemaName === 'focused_continuity_facts')
-    expect(call[0]).toContain('Abe had been dead')
+      .mock.calls.find((c) => c[2].schemaName === 'focused_continuity_claims')
+    // "Abe" is the only name in this bible, so only the sentence naming him is sent.
+    expect(call[0]).toContain('[1] It had not been warm since the day Abe died.')
     expect(call[0]).not.toContain('The road was long')
-    // neither mocked claim quotes the real draft + bible exactly, so nothing verifies
+    expect(confirmCalls()).toHaveLength(0)
     expect(v.dimensionScores.continuity).toBe(8)
   })
 
-  it('a verified contradiction fails continuity and quotes both sides', async () => {
-    vi.mocked(aiGenerateJson).mockImplementation(async (_p, _s, opts) => {
-      if (opts.schemaName === 'focused_continuity_facts')
-        return {
-          contradictions: [
-            { sentence: 'Abe had been dead for two years by then.', fact: 'Abe: alive and well.' }
-          ]
-        }
-      if (opts.schemaName === 'focused_pacing_paragraphs')
-        return { labels: Array(opts.schema.properties.labels.minItems).fill('ADVANCES') }
-      return { score: 8 }
+  it('a confirmed contradiction the sentence only assumes fails continuity and quotes both sides', async () => {
+    continuityModel({
+      claims: [{ s: 1, about: 'Abe', claim: 'Abe is dead' }],
+      hits: [{ claim: 1, fact: 'Abe: alive and well.' }]
     })
-    const v = await critic.evaluateScene({
-      draft: `Abe had been dead for two years by then.
-
-${lines(8)}`,
-      sceneBrief: { title: 't', emotionalGoal: 'dread', charactersPresent: ['Abe'] },
-      storyBible: 'Abe: alive and well.',
-      chapterLog: ''
-    })
+    const v = await scene(presupposed)
+    expect(confirmCalls()[0][0]).toMatch(/What that sentence says or assumes: Abe is dead/)
     expect(v.dimensionScores.continuity).toBe(3)
     expect(v.pass).toBe(false)
-    expect(v.issues.find((i) => i.type === 'continuity').description).toMatch(
-      /contradicts "Abe: alive/
-    )
+    const issue = v.issues.find((i) => i.type === 'continuity')
+    expect(issue.description).toMatch(/contradicts "Abe: alive/)
+    // The evidence is the real sentence, so the in-place repair can find it.
+    expect(issue.evidence).toEqual([
+      { sentence: 'It had not been warm since the day Abe died.', fact: 'Abe: alive and well.' }
+    ])
   })
 
-  it('drops a verified pair the confirming question says can both be true', async () => {
-    // The audit's one remaining false alarm on 30 scenes (§23): a paraphrase
-    // of the fact, quoted exactly on both sides, flagged as a contradiction.
-    vi.mocked(aiGenerateJson).mockImplementation(async (_p, _s, opts) => {
-      if (opts.schemaName === 'focused_continuity_facts')
-        return {
-          contradictions: [
-            { sentence: 'Abe had been dead for two years by then.', fact: 'Abe: alive and well.' }
-          ]
-        }
-      if (opts.schemaName === 'confirm_contradiction') return { bothCanBeTrue: true }
-      if (opts.schemaName === 'focused_pacing_paragraphs')
-        return { labels: Array(opts.schema.properties.labels.minItems).fill('ADVANCES') }
-      return { score: 8 }
+  it('drops a match the confirming question rejects', async () => {
+    continuityModel({
+      claims: [{ s: 1, about: 'Abe', claim: 'Abe is dead' }],
+      hits: [{ claim: 1, fact: 'Abe: alive and well.' }],
+      contradicts: false
     })
-    const v = await critic.evaluateScene({
-      draft: `Abe had been dead for two years by then.
+    expect((await scene(presupposed)).dimensionScores.continuity).toBe(8)
+  })
 
-${lines(8)}`,
-      sceneBrief: { title: 't', emotionalGoal: 'dread', charactersPresent: ['Abe'] },
-      storyBible: 'Abe: alive and well.',
-      chapterLog: ''
+  it('confirms each (sentence, fact) pair once, however many claims it yields', async () => {
+    continuityModel({
+      claims: [
+        { s: 1, about: 'Abe', claim: 'Abe is dead' },
+        { s: 1, about: 'Abe', claim: 'Abe died on a cold day' }
+      ],
+      hits: [
+        { claim: 1, fact: 'Abe: alive and well.' },
+        { claim: 2, fact: 'Abe: alive and well.' }
+      ]
     })
-    expect(v.dimensionScores.continuity).toBe(8)
+    await scene(presupposed)
+    expect(confirmCalls()).toHaveLength(1)
+  })
+
+  it('keeps what the direct check confirms when the claims check finds nothing', async () => {
+    // Planted "doubled oxygen rations": the direct check caught it, the
+    // claims check did not (§31). The two are merged.
+    continuityModel({
+      claims: [],
+      hits: [],
+      direct: [
+        { sentence: 'It had not been warm since the day Abe died.', fact: 'Abe: alive and well.' }
+      ]
+    })
+    const v = await scene(presupposed)
+    expect(v.dimensionScores.continuity).toBe(3)
+    expect(v.issues.find((i) => i.type === 'continuity').evidence).toHaveLength(1)
+  })
+
+  it('does not confirm again, or list twice, a pair the direct check already confirmed', async () => {
+    continuityModel({
+      claims: [{ s: 1, about: 'Abe', claim: 'Abe is dead' }],
+      hits: [{ claim: 1, fact: 'Abe: alive and well.' }],
+      direct: [
+        { sentence: 'It had not been warm since the day Abe died.', fact: 'Abe: alive and well.' }
+      ]
+    })
+    const v = await scene(presupposed)
+    expect(confirmCalls()).toHaveLength(0)
+    expect(v.issues.find((i) => i.type === 'continuity').evidence).toHaveLength(1)
+  })
+
+  it('judges with the claims check alone when the direct check fails', async () => {
+    continuityModel({
+      claims: [{ s: 1, about: 'Abe', claim: 'Abe is dead' }],
+      hits: [{ claim: 1, fact: 'Abe: alive and well.' }]
+    })
+    const inner = vi.mocked(aiGenerateJson).getMockImplementation()
+    vi.mocked(aiGenerateJson).mockImplementation(async (p, s, opts) => {
+      if (opts.schemaName === 'focused_continuity_facts') throw new Error('provider down')
+      return inner(p, s, opts)
+    })
+    expect((await scene(presupposed)).dimensionScores.continuity).toBe(3)
   })
 
   it('sends the voice judge the dialogue only', async () => {
@@ -434,6 +485,20 @@ describe('repair in place (§25)', () => {
       planRepair({ dimensionScores: { pacing: 5 }, issues: [{ type: 'pacing' }] }, 7)
     ).toBeNull()
     expect(planRepair({ dimensionScores: { pacing: 8 }, issues: [] }, 7)).toBeNull()
+    // An advisory dimension is neither repaired nor allowed to veto the
+    // repair of a real failure (§31): emotional_goal has no located fix.
+    const withAdvisory = {
+      dimensionScores: { continuity: 4, emotional_goal: 5 },
+      issues: [
+        { type: 'continuity', evidence: [{ sentence: 'Abe was dead.', fact: 'Abe is alive' }] }
+      ],
+      advisoryDimensions: ['emotional_goal']
+    }
+    expect(planRepair(withAdvisory, 7)).toEqual({
+      cut: [],
+      rewrites: [{ sentence: 'Abe was dead.', fact: 'Abe is alive' }]
+    })
+    expect(planRepair({ ...withAdvisory, advisoryDimensions: [] }, 7)).toBeNull()
   })
 
   it('cuts paragraphs by the critic numbering and replaces sentences where they stand', async () => {

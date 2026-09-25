@@ -244,7 +244,14 @@ export function gateProseQuality(
   }
   const dimScores = critiqueResult?.dimensionScores
   if (dimScores) {
-    const values = Object.values(dimScores).filter((v) => typeof v === 'number') as number[]
+    // Advisory dimensions (§31, criticVerdict.ts) are reported, never failing;
+    // averaging them in here would let them fail the scene through this door.
+    const advisory = new Set<string>(
+      Array.isArray(critiqueResult?.advisoryDimensions) ? critiqueResult.advisoryDimensions : []
+    )
+    const values = Object.entries(dimScores)
+      .filter(([name, v]) => !advisory.has(name) && typeof v === 'number')
+      .map(([, v]) => v) as number[]
     if (values.length > 0) {
       const avg = values.reduce((a, b) => a + b, 0) / values.length
       const threshold = DEFINITION_OF_MASTERPIECE.proseQuality.minAvgDimensionScore

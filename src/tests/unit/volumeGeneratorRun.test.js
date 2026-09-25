@@ -378,15 +378,18 @@ describe('volume generator end-to-end run (model faked)', () => {
     expect(gen.runHealthViolations.value.some((v) => v.code === 'degraded_rate')).toBe(true)
   }, 60_000)
 
-  it('repairs a scene in place when the only failure is located filler (§25)', async () => {
-    // Focused critic for this test only; the file pins the combined one.
+  it('accepts a scene as written when its only complaint is advisory filler (§31)', async () => {
+    // Focused critic for this test only; the file pins the combined one. The
+    // critic flags two filler paragraphs in every scene. Pacing is advisory in
+    // the focused gate -- the pacing judge scored the reviewers' 22 pacing
+    // problems as passes and failed 6/12 masterpieces -- so the scene must be
+    // neither rewritten nor cut. (Before §31 this test asserted the cut, §25.)
     localStorage.setItem('versatile_critic_focused', 'true')
     criticMood = 'filler'
     const { gen, projectId } = await runOneChapter()
     expect(gen.phase.value).toBe('complete')
 
-    // One draft per scene: the gate cut the filler instead of asking the
-    // writer for the whole scene again.
+    // One draft per scene: no rewrite.
     const drafts = calls.filter((c) => !c.opts.schema && /Scene \d+/.test(c.user))
     const perScene = new Map()
     for (const d of drafts) {
@@ -398,13 +401,11 @@ describe('volume generator end-to-end run (model faked)', () => {
     const subs = await db.subsections.where('projectId').equals(projectId).toArray()
     const withProse = subs.filter((s) => (s.content || '').trim())
     expect(withProse).toHaveLength(3)
-    // Cleared by the repair, not kept for review.
     expect(withProse.every((s) => s.contentStatus === 'generated')).toBe(true)
-    // The critic really saw separate paragraphs (else nothing could be cut)...
+    // The critic really judged separate paragraphs and flagged filler...
     const pacing = calls.filter((c) => c.opts.schemaName === 'focused_pacing_paragraphs')
     expect(pacing.some((c) => c.opts.schema.properties.labels.minItems >= 3)).toBe(true)
-    // ...and exactly the flagged two are gone: each committed scene is 10 of
-    // its 12 paragraphs, with the opening intact.
+    // ...and nothing was cut: every committed scene keeps all 12 paragraphs.
     const words = (t) =>
       String(t || '')
         .replace(/<[^>]+>/g, ' ')
@@ -413,8 +414,7 @@ describe('volume generator end-to-end run (model faked)', () => {
     const draftWords = words(proseFor('Scene 1'))
     for (const s of withProse) {
       expect(s.content).toMatch(/opens\./)
-      expect(words(s.content)).toBeLessThan(draftWords * 0.9)
-      expect(words(s.content)).toBeGreaterThan(draftWords * 0.75)
+      expect(words(s.content)).toBeGreaterThanOrEqual(draftWords * 0.95)
     }
   }, 60_000)
 
