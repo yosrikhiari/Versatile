@@ -1266,3 +1266,60 @@ min, 51 calls, 6/6 generated, **0 repairs**. The one scene the gate sent back
 had no repairable failure. The run shows the graph path end to end with the
 change in place; the repair itself on this path is shown by the tests, not by
 this run.
+
+## 27. What is still imperfect, and the plan (2026-09-25)
+
+**How sure the numbers are** (Wilson 95%): caught 133/145 = 86–95%;
+contradictions 30/30 = 89–100% (blatant planted only); faithful telling 21/30
+= 52–83%; **clean false fails 1/30 = 0.6–17%, which is not established**.
+Thirty clean scenes cannot show a low false-alarm rate.
+
+**Telling markers, a negative result** (`tools/judge-probes/telling_markers.py`,
+no model calls). Named emotions ("she was afraid") and filter verbs ("she
+realized") per 100 words, counted in code: the faithful-telling fixture has 0.00
+named emotions/100w, and only more filter verbs (0.61 vs 0.12). At scene level
+the telling version has more markers than its clean scene in 18/30, close to
+chance. The fixture's telling is *summarised action*, not named emotion, so
+a lexical signal cannot be judged on it, and a named-emotion defect is needed
+first.
+
+**What research says** (checked on arXiv/GitHub; see the report for detail):
+- *Inter-dimension dependence* is a named effect: a judge's reasoning uses
+  off-target evidence (arXiv 2608.23783, "DimCheck": filter the evidence,
+  then judge). One rubric per call, which we already do, is the no-training
+  fix for prompt-level interference (2608.14684). What remains comes from the
+  scene content.
+- No reliable show-vs-tell detector exists. Frontier models locate
+  "unnecessary exposition" at 0.46 precision (LAMP, 2409.14509). Small models
+  do extraction and narrow yes/no reliably, and a taste judgment unreliably;
+  that is why §19's per-paragraph DRAMATISED/REPORTED label failed.
+- Absolute emotional-impact scores are weak (ρ ≈ 0.51 at best, 2406.12680)
+  and biased to surface features (2609.13773). Pairwise both-orders comparison
+  works better (2507.00769).
+- Contradiction recall on natural errors: ConStory-Bench (2603.05890, MIT,
+  Hugging Face, LLM-labelled) and FlawedFictions (2504.11900, human-verified,
+  data on request).
+- Our planted-defect method is FBI (2406.13439). It adds a human check that
+  each planted flaw is real. An honest false-alarm rate needs a human-labelled
+  set of about 60–100 scenes with the rubric frozen first (2404.12272), and a
+  bias-corrected rate (2511.21140).
+- Repair vs regenerate is untested for fiction. A code study at matched compute
+  favoured regeneration 40–3 (2609.00854).
+
+**Plan, in order:**
+1. Human-labelled set: about 80 real scenes, rubric frozen first, 20
+   re-labelled a week later. All gate numbers reported against it.
+2. show_tell as extract-then-check: a named-emotion defect; the model quotes
+   emotion-naming sentences, code verifies them; one yes/no per quote, "also
+   shown within ±2 sentences?"; fail on the share of named-but-unshown
+   emotions against the clean-scene distribution.
+3. emotional_goal: remove emotion-naming sentences, then a multiple-choice
+   "what does the reader feel?"; then a pairwise comparison against a flat
+   version, in both orders.
+4. Two-pass evidence filtering for whatever still reads the whole scene;
+   yes/no probabilities; pass marks from the step-1 labels.
+5. Continuity recall on ConStory-Bench chunked to scene size, with about 50
+   disagreements hand-checked.
+6. Repair vs rewrite at matched compute on 30 failed scenes.
+7. Only then: gated vs ungated books, compared pairwise by a judge that is
+   not the gate.
