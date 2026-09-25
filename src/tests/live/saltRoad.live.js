@@ -30,17 +30,60 @@ const SCENES = Number(process.env.LIVE_SCENES || 3)
 const WORDS = Number(process.env.LIVE_WORDS || 2400)
 const HOST = process.env.OLLAMA_HOST || 'http://localhost:11434'
 
-const GENRE = 'Literary historical fiction'
-const TONE = 'restrained, precise, quietly tense'
-const SYNOPSIS =
-  'Ottoman Anatolia, 1868. Nesrin, a widowed salt-carrier, inherits her husband’s debt to the ' +
-  'caravan master Halim and his route along the Salt Road from the Tuz lake to the coast. To ' +
-  'keep her son and her mules, she must complete one full season of hauling salt through a ' +
-  'province where the tax-farmers are tightening, the old road is being bypassed by the new ' +
-  'railway survey, and a rumour spreads that the salt itself is being cut with something that ' +
-  'kills. Over ten chapters she learns the road, its people and its quiet crimes — and has to ' +
-  'decide whether to expose what she finds when the man cutting the salt is the only one who ' +
-  'can cancel her debt.'
+/**
+ * LIVE_PREMISE picks the story. The default is the Salt Road every earlier
+ * report measured; the others exist so a human-labelled test set (§28) is not
+ * one book's style: a gate calibrated on one voice has only been shown to
+ * work on that voice.
+ */
+const PREMISES = {
+  salt: {
+    genre: 'Literary historical fiction',
+    tone: 'restrained, precise, quietly tense',
+    synopsis:
+      'Ottoman Anatolia, 1868. Nesrin, a widowed salt-carrier, inherits her husband’s debt to the ' +
+      'caravan master Halim and his route along the Salt Road from the Tuz lake to the coast. To ' +
+      'keep her son and her mules, she must complete one full season of hauling salt through a ' +
+      'province where the tax-farmers are tightening, the old road is being bypassed by the new ' +
+      'railway survey, and a rumour spreads that the salt itself is being cut with something that ' +
+      'kills. Over ten chapters she learns the road, its people and its quiet crimes — and has to ' +
+      'decide whether to expose what she finds when the man cutting the salt is the only one who ' +
+      'can cancel her debt.'
+  },
+  harbour: {
+    genre: 'Contemporary crime thriller',
+    tone: 'lean, wry, fast',
+    synopsis:
+      'Marseille, present day. Ines Carvalho, a customs inspector two years from her pension, ' +
+      'signs off a container that turns out to hold a body — and the next morning the body is ' +
+      'gone and the paperwork says the container was empty. Her partner Tomas wants her to let ' +
+      'it go; the harbourmaster Marguerite wants to know why she is asking. Ines has to find out ' +
+      'who moved a corpse through the busiest port in France before her own signature hangs her.'
+  },
+  orbit: {
+    genre: 'Near-future science fiction',
+    tone: 'clinical, lonely, occasionally funny',
+    synopsis:
+      'A six-person mining station in orbit around Ceres loses contact with Earth for forty ' +
+      'days. Engineer Adaeze Obi, the youngest on board, is the only one who believes the silence ' +
+      'is deliberate. As air margins tighten and the commander, Petrov, rations more than oxygen, ' +
+      'Adaeze must decide whom to trust with the one working transmitter she has rebuilt in secret.'
+  },
+  orchard: {
+    genre: 'Family drama',
+    tone: 'warm, observant, bittersweet',
+    synopsis:
+      'Three adult siblings return to their late mother’s apple orchard in Normandy to sell it. ' +
+      'Élodie, the eldest, has already found a buyer; Samir, the middle one, has quietly been ' +
+      'paying the orchard’s debts for years; Lucie, the youngest, wants to stay and run it. Over ' +
+      'one harvest week, an old letter in the cider barn changes what each of them believes ' +
+      'their mother wanted.'
+  }
+}
+const PREMISE = PREMISES[process.env.LIVE_PREMISE || 'salt'] || PREMISES.salt
+const GENRE = PREMISE.genre
+const TONE = PREMISE.tone
+const SYNOPSIS = PREMISE.synopsis
 
 const slug = TITLE.toLowerCase()
   .replace(/[^a-z0-9]+/g, '-')
