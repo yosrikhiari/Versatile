@@ -728,6 +728,12 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
             : null
           if (!direct && !extracted) return null
           const already = new Set(verified.map((v) => `${v.sentence}\u0000${v.fact}`))
+          // One confirming question per pair. Two more (the fact and the
+          // sentence spelled out first) raised planted recall -- set A 5 -> 9
+          // of 11, held-out set B 6 -> 9 of 14 -- but on the 78 real scenes
+          // added 3 false alarms in 42 clean scenes for 1 more reviewer
+          // problem caught, and took the critic from 25.6 to 59.2 minutes.
+          // Not kept (§32; the candidates are in tools/judge-bench).
           for (const c of claimHitsToCandidates(matched, claims, sentences, facts)) {
             if (already.has(`${c.sentence}\u0000${c.fact}`)) continue
             const ok = (await judgeCall(

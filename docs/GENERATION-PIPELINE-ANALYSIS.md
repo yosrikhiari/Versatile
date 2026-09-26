@@ -1560,3 +1560,127 @@ that matters*, not the amount of telling, and a rate cannot see which moment
 matters. show_tell stays advisory; the candidate is not ported. A next
 attempt would have to locate the scene's key moment first (from the brief's
 "what changes") and judge only that passage, dramatised or summarised.
+
+## 32. The four open items: research, then one bench each (2026-09-25)
+
+A literature pass (FactTrack 2407.16347, ConStory-Bench 2603.05890,
+FlawedFictions 2504.11900, ContraDoc 2311.09182, "Lost in Inference"
+2411.14103, speaker verification 2405.10150, "Distinguishing Fictional Voices"
+LaTeCH 2024, Underwood's narrative-time method) set one candidate per item.
+Recurring finding: one direct question to a small model gives high precision
+and very low recall (ContraDoc, GPT-4o-mini: P 89 / R 5.6); decomposing into
+short checkable statements is what raises recall (FactTrack: R 5.6 → 62.8).
+Ollama 0.34 returns token log-probabilities, so a probability threshold was
+testable.
+
+**Correction to §31.** Plant 11 of set A ("the grave … the only place the man
+who ruled the Salt Road could not reach her") does not contradict "Halim is
+alive"; it assumes it. Set A has 11 valid plants; merged production caught 5.
+
+### Continuity: three confirming questions instead of one
+
+A development set (`confirm_dev.py`) holds every (sentence, fact) pair that
+reaches the confirming step on plant set A, the reviewers' 9 facts-type
+scenes (pairs labelled by hand) and the 29 reviewer-fine scenes: 14
+contradictions, 145 not. Held-out set B (`continuity_plants_b.py`) was
+written before any experiment: 14 new contradictions and 6 hard negatives
+(sentences that touch a fact and agree with it).
+
+| confirmer (dev pairs) | caught /14 | false alarms /145 |
+|---|---|---|
+| C0 today: "the facts are the story so far … contradicts?" | 7 | 0 |
+| C1 same, as A/B/C, read as P(A) | 7 at 0.5 (9 only at a threshold near 0) | 0 |
+| C2 the fact spelled out first (what must be/have been true) | 8 | 0 |
+| C3 the sentence spelled out first (what it states or assumes about the fact's topic) | 3 at 0.5; best ranking, AUC 0.94 | 0 |
+| C4 both spelled out | 6 | 2 |
+| **any of C0, C2, C3** | **9** | **0** |
+
+Probabilities are near 0 or 1, so a threshold buys little. The traces
+showed why C0 misses: the extracted claim it is shown often drops the part
+that contradicts ("Lucie cried for a week" for "cried after she was told
+about the sale"; "the tax-farmer waved Nesrin through" without "without
+asking for salt"). C3 replaces the claim with the sentence's own spelled-out
+assumptions; C2 spells out the fact. They catch different pairs.
+
+Held-out set B, same code, run once:
+
+| | contradictions caught /14 | hard negatives flagged /6 | flags off the planted sentence /20 |
+|---|---|---|---|
+| C0 | 6 | 0 | 0 |
+| **any of C0, C2, C3** | **9** | **0** | **0** |
+
+12 of the 14 plants reached the confirming step at all; the other two are
+lost at matching (the doubled-rations plant of set A was also matched to the
+wrong fact).
+
+**Then the real scenes said no.** Ported to production (C0, then C3, then C2,
+first "contradicts" wins; a JSON letter instead of log-probabilities) it
+matched the bench on planted scenes, live: set B 9/14 with 0/6 hard negatives,
+set A 9/11 valid (yesterday's code: 5). On the 78 real scenes, live:
+
+| | yesterday | with the three confirmers |
+|---|---|---|
+| reviewer continuity problems caught | 3/17 | 4/17 |
+| **false alarms on reviewer-fine scenes** | **0/42** | **3/42** |
+| critic minutes, 78 scenes | 25.6 | 59.2 |
+
+The new alarms are plainly wrong ("Lucie finally lifted her gaze" against
+"Lucie has not been informed of the sale"; "You've changed things, Nesrin"
+against "Nesrin begins documenting her findings"; "Halim warns her about the
+salt's strange properties" against the fact that he did). Planted sets hide
+this: a plant is blunt, and the clean sentences around it rarely sit close to
+a fact, while real scenes are full of sentences that do. **Reverted**: one
+confirming question, as yesterday. Lesson: a held-out *planted* set does not
+measure false alarms on real prose; only the real clean scenes do.
+
+### Contradictions inside one scene: partly solved, not shipped
+
+| design | reviewer problems flagged /8 | masterpieces failed /12 | fine scenes failed /42 |
+|---|---|---|---|
+| W3 one scan per category for verbatim quotes (ConStory-style) | 0/7, stopped | – | – |
+| W4 quotes collected per 3-paragraph chunk, one pair search, self-contradicting sentences | 3 (2 at the reviewers' place) | 2 | 0 |
+| W4b = W4 with a stricter confirming question | 3 | **1** | **0** |
+
+W3 failed as the research predicted for whole-scene prompts: on a 1,056-word
+scene the model returned the one-word quote "dying" twelve times. The two
+masterpiece alarms were a change of time (Joyce: "her mother was alive" then,
+"dead" now) and a rhetorical line (Mansfield: "you won't bring a drunken
+workman back to life"); the stricter question removed the second, and a
+FactTrack-style "when is each true?" question rejected everything, true
+contradictions included. W4b is real progress (0 → 2–3 of 8, 0/42 false
+alarms) but fails Joyce and costs 4–9 calls per scene, so it is not wired
+in. The masterpieces were used to tune W4b, so they are no longer a clean
+control for it.
+
+### Voice: a counting bug, and a negative result
+
+Line-level blind attribution is near chance even for published novels, so
+the candidate was style numbers per character (line length, questions,
+contractions, person, hedges, 25 function words): between-character distance
+over within-character spread (`voice_style.py`). Problems vs fine: **AUC
+0.53**; the masterpieces score lower than generated scenes; only 4 of 12 have
+three lines per speaker. With a scene's worth of dialogue it is noise.
+
+The false fail was a counting bug. repair-run-04 has six quoted fragments,
+exactly `MIN_VOICE_LINES`, but four speeches: a tag splits a speech in two
+("You carry enough to feed a village," he said, "but …"). A fragment ending
+in a comma or dash now continues into the next quoted fragment of the same
+paragraph across a short tag (`extractDialogueLines`). On the 90 bench
+scenes this drops 6 below the minimum, all voice-fine to both reviewers,
+including the false fail; no reviewer voice problem or masterpiece changes.
+Voice still catches none of the 5 reviewer voice problems. The live rerun
+also showed the voice judge is unstable at the pass line: two scenes with
+unchanged dialogue went from 7 (pass) to 5 (fail) between runs, one of them a
+reviewer-fine scene. A score that flips at the threshold on identical input
+needs a vote or a margin before it can fail a scene; that is the next voice
+step.
+
+### Show-tell at the key moment: also negative
+
+The brief's "what changes" located the turning point (one line written per
+masterpiece), then two questions: is the change shown, and how much story
+time passes in it. "Shown": 11/12 masterpieces, 4/4 current problems, 12/12
+current fine, so there is no signal. Words per story-minute separated the
+current problems from fine scenes weakly (AUC 0.77, 4 vs 12) but the
+masterpieces sit among the problems (median about 27), so any pass mark
+that catches the problems fails most masterpieces. show_tell stays advisory.

@@ -38,6 +38,21 @@ describe('criticIsolation helpers', () => {
     ])
   })
 
+  it('counts a speech split by a tag once, but never joins two paragraphs (§32)', () => {
+    const split =
+      'He weighed the sack. "You carry enough to feed a village," he said, "but leave some behind."'
+    expect(extractDialogueLines(split)).toEqual([
+      'You carry enough to feed a village, but leave some behind.'
+    ])
+    expect(extractDialogueLines('"Go now," said Ada.\n\n"Not yet," said Ben.')).toEqual([
+      'Go now,',
+      'Not yet,'
+    ])
+    // A long stretch of narration between two quotes is not a tag.
+    const far = `"Wait," she said. ${'The wind moved through the reeds. '.repeat(4)}"Now."`
+    expect(extractDialogueLines(far)).toHaveLength(2)
+  })
+
   it('splits on blank lines and drops empties', () => {
     expect(splitParagraphs('a\n\n\n b \n\n\nc')).toEqual(['a', 'b', 'c'])
   })

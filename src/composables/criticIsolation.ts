@@ -37,11 +37,30 @@ export const JUDGE_SAMPLING = { repeatPenalty: 1 } as const
 /** A line of dialogue: the text inside a quoted span. */
 const DIALOGUE = /[“"]([^“”"]{2,})[”"]/g
 
+/**
+ * One entry per speech. A speech interrupted by a tag ("You carry enough," he
+ * said, "but leave some behind.") is one speech: a fragment that ends in a
+ * comma or dash continues into the next quoted fragment of the SAME paragraph,
+ * across a short tag (a new paragraph is a new speaker). Counted as fragments, a scene of
+ * four speeches reached MIN_VOICE_LINES and was judged, and failed, on voice
+ * (repair-run-04, §32); 8 of 78 pool scenes were over the line only by
+ * fragments, all of them voice-fine to both reviewers.
+ */
 export function extractDialogueLines(draft: string): string[] {
+  const text = String(draft || '')
   const out: string[] = []
-  for (const m of String(draft || '').matchAll(DIALOGUE)) {
+  let continues = false
+  let lastEnd = 0
+  for (const m of text.matchAll(DIALOGUE)) {
     const line = m[1].trim()
-    if (line) out.push(line)
+    if (!line) continue
+    const start = m.index ?? 0
+    const between = text.slice(lastEnd, start)
+    const sameSpeech = continues && out.length && between.length <= 80 && !/\n\s*\n/.test(between)
+    if (sameSpeech) out[out.length - 1] += ` ${line}`
+    else out.push(line)
+    continues = /[,—–-]$/.test(line)
+    lastEnd = start + m[0].length
   }
   return out
 }
