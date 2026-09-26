@@ -606,6 +606,74 @@ export async function generateStructured(
   }
 }
 
+/**
+ * The model's probability for each of a few one-token answers ("A", "B", "C"),
+ * read from the log-probabilities of its first output token (Ollama >= 0.12.11).
+ *
+ * Asked as a JSON field constrained to an enum, qwen3:8b answered "A" for
+ * sentences whose unconstrained P(A) was 0.0001 -- three false contradictions
+ * on 42 clean scenes (§32). The probability is what the judge actually
+ * believes. Returns null, never a guess, when it cannot be read: through the
+ * AgentOps gateway (OpenAI shape, no log-probabilities), on any HTTP error, or
+ * when none of the choices is among the top tokens. Non-streaming on purpose:
+ * one token needs no liveness evidence, and the ceiling bounds it.
+ */
+export async function choiceProbabilities(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  choices: string[],
+  options: OllamaOptions = {}
+): Promise<Record<string, number> | null> {
+  if (isAgentOpsTracing()) return null
+  const ollamaOptions = buildOllamaOptions({ ...options, maxTokens: 1, temperature: 0 }).options
+  const controller = new AbortController()
+  const ceilingMs = resolveTimeLimit(FIRST_TOKEN_TIMEOUT_MS)
+  const timer = ceilingMs > 0 ? setTimeout(() => controller.abort(), ceilingMs) : undefined
+  const onAbort = () => controller.abort(options.signal!.reason)
+  options.signal?.addEventListener('abort', onAbort, { once: true })
+  try {
+    await ensureModelAvailable(model)
+    const response = await fetch(`${getOllamaEndpoint()}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        system: systemPrompt,
+        prompt,
+        stream: false,
+        think: false,
+        logprobs: true,
+        top_logprobs: 20,
+        ...(options.keepAlive ? { keep_alive: options.keepAlive } : {}),
+        ...(ollamaOptions ? { options: ollamaOptions } : {})
+      }),
+      signal: controller.signal
+    })
+    if (!response.ok) return null
+    const data = (await response.json()) as {
+      logprobs?: Array<{ top_logprobs?: Array<{ token?: string; logprob?: number }> }>
+    }
+    const top = data.logprobs?.[0]?.top_logprobs
+    if (!Array.isArray(top)) return null
+    const mass: Record<string, number> = Object.fromEntries(choices.map((c) => [c, 0]))
+    for (const t of top) {
+      const key = String(t?.token ?? '')
+        .trim()
+        .toUpperCase()
+      if (key in mass && typeof t.logprob === 'number') mass[key] += Math.exp(t.logprob)
+    }
+    const total = Object.values(mass).reduce((a, b) => a + b, 0)
+    if (!(total > 0)) return null
+    return Object.fromEntries(Object.entries(mass).map(([k, v]) => [k, v / total]))
+  } catch {
+    return null
+  } finally {
+    if (timer) clearTimeout(timer)
+    options.signal?.removeEventListener('abort', onAbort)
+  }
+}
+
 export async function listModels() {
   try {
     const response = await fetch(`${getOllamaEndpoint()}/api/tags`)

@@ -37,18 +37,31 @@ export const JUDGE_SAMPLING = { repeatPenalty: 1 } as const
 /** A line of dialogue: the text inside a quoted span. */
 const DIALOGUE = /[“"]([^“”"]{2,})[”"]/g
 
-/**
- * One entry per speech. A speech interrupted by a tag ("You carry enough," he
- * said, "but leave some behind.") is one speech: a fragment that ends in a
- * comma or dash continues into the next quoted fragment of the SAME paragraph,
- * across a short tag (a new paragraph is a new speaker). Counted as fragments, a scene of
- * four speeches reached MIN_VOICE_LINES and was judged, and failed, on voice
- * (repair-run-04, §32); 8 of 78 pool scenes were over the line only by
- * fragments, all of them voice-fine to both reviewers.
- */
 export function extractDialogueLines(draft: string): string[] {
-  const text = String(draft || '')
   const out: string[] = []
+  for (const m of String(draft || '').matchAll(DIALOGUE)) {
+    const line = m[1].trim()
+    if (line) out.push(line)
+  }
+  return out
+}
+
+/**
+ * How many speeches the dialogue holds, for the MIN_VOICE_LINES test only. A
+ * speech interrupted by a tag ("You carry enough," he said, "but leave some
+ * behind.") is one speech: a fragment ending in a comma or dash continues into
+ * the next quoted fragment of the SAME paragraph across a short tag. Counted
+ * as fragments, a scene of four speeches reached the minimum and was judged,
+ * and failed, on voice (repair-run-04, §32).
+ *
+ * The judge itself still reads the fragments (`extractDialogueLines`): fed the
+ * merged speeches instead, it scored two reviewer-fine scenes 5 where their
+ * fragments had scored 7, on both of two runs (§33). It reacts to how lines
+ * are split, so the fix changes only whether a scene is judged.
+ */
+export function countSpeeches(draft: string): number {
+  const text = String(draft || '')
+  let count = 0
   let continues = false
   let lastEnd = 0
   for (const m of text.matchAll(DIALOGUE)) {
@@ -56,13 +69,12 @@ export function extractDialogueLines(draft: string): string[] {
     if (!line) continue
     const start = m.index ?? 0
     const between = text.slice(lastEnd, start)
-    const sameSpeech = continues && out.length && between.length <= 80 && !/\n\s*\n/.test(between)
-    if (sameSpeech) out[out.length - 1] += ` ${line}`
-    else out.push(line)
+    const sameSpeech = continues && count > 0 && between.length <= 80 && !/\n\s*\n/.test(between)
+    if (!sameSpeech) count++
     continues = /[,—–-]$/.test(line)
     lastEnd = start + m[0].length
   }
-  return out
+  return count
 }
 
 export function splitParagraphs(draft: string): string[] {
@@ -450,6 +462,98 @@ A new scene may add details the story has not mentioned, and may SHOW something 
 Does the sentence contradict what is established?
 
 Return JSON: { "contradicts": true or false }`
+}
+
+/**
+ * Two more confirming questions, asked only when the one above says no (§32).
+ * Each spells out one side, after FactTrack (arXiv 2407.16347), then asks for
+ * one letter -- A contradicts, B compatible, C unrelated -- whose probability
+ * is read from the model (`aiChoiceProbabilities`); P(A) >= 0.5 confirms.
+ *
+ *   fact side:     2-3 things that must be true if the fact is (once per fact)
+ *   sentence side: what the sentence states or takes for granted about the
+ *                  fact's topic; the extracted claim dropped the contradicting
+ *                  part in 4 of 8 development misses
+ *
+ * Dev pairs: 7/14 -> 9/14 caught, 0/145 false alarms; held-out set B: 6/14 ->
+ * 9/14, 0/6 hard negatives. A first port asked for the letter as a JSON enum
+ * and raised false alarms on real clean scenes from 0/42 to 3/42: the enum
+ * answer was "A" where the model's own P(A) was 0.0001.
+ */
+export const IMPLICATIONS_SCHEMA = {
+  type: 'object',
+  properties: { implies: { type: 'array', maxItems: 3, items: { type: 'string' } } },
+  required: ['implies']
+}
+
+export function buildFactImplicationsPrompt(fact: string): string {
+  return `STORY FACT: ${fact}
+
+Write 2 or 3 short statements that must be true, now or in the past, if this fact is true. Include what must already have happened. Plain words, one idea each.
+Example: "Mira must repay her loan" -> "Mira borrowed money", "Mira owes money now".
+
+Return JSON: { "implies": [ "..." ] }`
+}
+
+export const ASSUMPTIONS_SCHEMA = {
+  type: 'object',
+  properties: { assumes: { type: 'array', maxItems: 3, items: { type: 'string' } } },
+  required: ['assumes']
+}
+
+export function buildSentenceAssumptionsPrompt(fact: string, sentence: string): string {
+  return `SENTENCE: ${sentence}
+
+TOPIC: the same people, things or events as this story fact: ${fact}
+
+Write up to 3 short statements that the sentence states OR that must be true for it to make sense, about that topic only. Include what must already have happened. Plain words, one idea each. If the sentence says nothing about the topic, return an empty list.
+Example: "She laid flowers where they had buried Tomas" -> "Tomas is dead", "Tomas was buried".
+
+Return JSON: { "assumes": [ "..." ] }`
+}
+
+/** Short statements from a model answer: strings only, at most three. */
+export function statementList(parsed: unknown, key: 'implies' | 'assumes'): string[] {
+  const list = (parsed as Record<string, unknown> | null)?.[key]
+  return Array.isArray(list)
+    ? list.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).slice(0, 3)
+    : []
+}
+
+export const CONFIRM_CHOICES = ['A', 'B', 'C']
+export const CONFIRM_MIN_PROBABILITY = 0.5
+
+export function buildThreeWayPrompt({
+  fact,
+  sentence,
+  claim,
+  implies,
+  assumes
+}: {
+  fact: string
+  sentence: string
+  claim?: string
+  implies?: string[]
+  assumes?: string[]
+}): string {
+  const means = implies?.length ? `Which means: ${implies.join('; ')}.\n` : ''
+  const says = assumes?.length
+    ? `What that sentence states or takes for granted about this: ${assumes.join('; ')}`
+    : `What that sentence says or assumes: ${claim || ''}`
+  return `ESTABLISHED (true as of the story so far; nothing told since has changed it):
+${fact}
+${means}
+NEW SCENE, one sentence: ${sentence}
+${says}
+
+A new scene may add details the story has not mentioned, and may SHOW something change within the scene itself. It may not assume, as already having happened, a change the story never told (a death, a sale, a debt paid or reversed), and may not state the opposite of what is established.
+
+Which is it?
+A) the sentence contradicts what is established
+B) the sentence is compatible with it
+C) the sentence is unrelated to it
+
+Answer with one letter only.`
 }
 
 /**

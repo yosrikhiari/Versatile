@@ -1,5 +1,6 @@
 import { sanitizeJson } from '../services/ai/aiHelpers'
 import {
+  aiChoiceProbabilities,
   aiGenerate,
   aiStream,
   aiGenerateStructured,
@@ -7,7 +8,7 @@ import {
   type AiGenerateOptions
 } from '../services/aiService'
 
-export { aiGenerate, aiStream, aiGenerateStructured, resolveFeatureConfig }
+export { aiChoiceProbabilities, aiGenerate, aiStream, aiGenerateStructured, resolveFeatureConfig }
 
 /**
  * `T` is the caller's expected parse shape. It is an assertion, not a guarantee —

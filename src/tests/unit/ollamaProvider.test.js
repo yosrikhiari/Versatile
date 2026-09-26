@@ -491,3 +491,45 @@ describe('ollama testConnection', () => {
     expect(result).toBe(true)
   })
 })
+
+describe('choiceProbabilities (§32)', () => {
+  const logprobs = (top) => ({
+    ok: true,
+    json: () => Promise.resolve({ response: 'A', logprobs: [{ token: 'A', top_logprobs: top }] })
+  })
+
+  it('reads the first token and normalises the mass of the named choices', async () => {
+    mockFetch.mockResolvedValueOnce(mockTags([{ name: 'qwen3:8b' }])).mockResolvedValueOnce(
+      logprobs([
+        { token: 'B', logprob: Math.log(0.6) },
+        { token: 'A', logprob: Math.log(0.2) },
+        { token: ' c', logprob: Math.log(0.1) },
+        { token: 'The', logprob: Math.log(0.1) }
+      ])
+    )
+    const p = await ollama.choiceProbabilities('q', 's', 'qwen3:8b', ['A', 'B', 'C'])
+    expect(p.A).toBeCloseTo(0.2 / 0.9)
+    expect(p.B).toBeCloseTo(0.6 / 0.9)
+    expect(p.C).toBeCloseTo(0.1 / 0.9)
+    const body = JSON.parse(mockFetch.mock.calls[1][1].body)
+    expect(body).toMatchObject({ stream: false, think: false, logprobs: true, top_logprobs: 20 })
+    expect(body.format).toBeUndefined()
+    expect(body.options.num_predict).toBe(1)
+    expect(body.options.temperature).toBe(0)
+  })
+
+  it('returns null rather than a guess when it cannot read an answer', async () => {
+    mockFetch.mockResolvedValueOnce(mockTags([{ name: 'qwen3:8b' }]))
+    mockFetch.mockResolvedValueOnce({ ok: false, json: () => Promise.resolve({}) })
+    expect(await ollama.choiceProbabilities('q', 's', 'qwen3:8b', ['A', 'B'])).toBeNull()
+
+    mockFetch.mockResolvedValueOnce(logprobs([{ token: 'Hello', logprob: 0 }]))
+    expect(await ollama.choiceProbabilities('q', 's', 'qwen3:8b', ['A', 'B'])).toBeNull()
+
+    mockFetch.mockRejectedValueOnce(new Error('connection refused'))
+    expect(await ollama.choiceProbabilities('q', 's', 'qwen3:8b', ['A', 'B'])).toBeNull()
+
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ response: 'A' }) })
+    expect(await ollama.choiceProbabilities('q', 's', 'qwen3:8b', ['A', 'B'])).toBeNull()
+  })
+})

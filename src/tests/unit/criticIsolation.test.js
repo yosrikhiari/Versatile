@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
+  countSpeeches,
   extractDialogueLines,
   splitParagraphs,
   dialogueDistinctRatio,
@@ -13,7 +14,10 @@ import {
   bibleNames
 } from '@/composables/criticIsolation'
 
-vi.mock('@/composables/useAiService', () => ({ aiGenerateJson: vi.fn() }))
+vi.mock('@/composables/useAiService', () => ({
+  aiGenerateJson: vi.fn(),
+  aiChoiceProbabilities: vi.fn(async () => null)
+}))
 vi.mock('@/stores/projectStore', () => ({
   useProjectStore: vi.fn(() => ({
     activeWorkspaceType: 'creative',
@@ -38,19 +42,19 @@ describe('criticIsolation helpers', () => {
     ])
   })
 
-  it('counts a speech split by a tag once, but never joins two paragraphs (§32)', () => {
+  it('counts a speech split by a tag once, but never joins two paragraphs (§32, §33)', () => {
     const split =
       'He weighed the sack. "You carry enough to feed a village," he said, "but leave some behind."'
+    expect(countSpeeches(split)).toBe(1)
+    // The judge still reads the fragments as written.
     expect(extractDialogueLines(split)).toEqual([
-      'You carry enough to feed a village, but leave some behind.'
+      'You carry enough to feed a village,',
+      'but leave some behind.'
     ])
-    expect(extractDialogueLines('"Go now," said Ada.\n\n"Not yet," said Ben.')).toEqual([
-      'Go now,',
-      'Not yet,'
-    ])
+    expect(countSpeeches('"Go now," said Ada.\n\n"Not yet," said Ben.')).toBe(2)
     // A long stretch of narration between two quotes is not a tag.
     const far = `"Wait," she said. ${'The wind moved through the reeds. '.repeat(4)}"Now."`
-    expect(extractDialogueLines(far)).toHaveLength(2)
+    expect(countSpeeches(far)).toBe(2)
   })
 
   it('splits on blank lines and drops empties', () => {
@@ -158,11 +162,13 @@ describe('continuity evidence is verified by code', () => {
 
 describe('focused critic routes voice and pacing through isolated input', () => {
   let aiGenerateJson
+  let aiChoiceProbabilities
   let critic
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    ;({ aiGenerateJson } = await import('@/composables/useAiService'))
+    ;({ aiGenerateJson, aiChoiceProbabilities } = await import('@/composables/useAiService'))
+    vi.mocked(aiChoiceProbabilities).mockImplementation(async () => null)
     const mod = await import('@/composables/useStoryCritic')
     mod.setFocusedCritic(true)
     critic = mod.useStoryCritic()
@@ -201,6 +207,19 @@ describe('focused critic routes voice and pacing through isolated input', () => 
       storyBible: 'A: a character.\nB: another character.',
       chapterLog: ''
     })
+
+  it('does not judge voice when tag-split fragments reach the minimum but speeches do not (§33)', async () => {
+    // Six fragments, three speeches: the shape of repair-run-04's false fail.
+    const draft = Array.from(
+      { length: 3 },
+      (_, i) => `"Speech ${i} starts here," ${i % 2 ? 'A' : 'B'} said, "and it ends here."`
+    ).join('\n\n')
+    answer({ voice: 3 })
+    const v = await evaluate(`${draft}\n\n${lines(6).replace(/"/g, '')}`)
+    expect(v.dimensionScores.voice ?? null).toBeNull()
+    const names = vi.mocked(aiGenerateJson).mock.calls.map((c) => c[2].schemaName)
+    expect(names).not.toContain('focused_voice_isolated')
+  })
 
   it('names the filler paragraphs and scores pacing under the floor at two', async () => {
     const draft = lines(8)
@@ -297,9 +316,18 @@ describe('focused critic routes voice and pacing through isolated input', () => 
     hits,
     contradicts = true,
     direct = [],
-    bothCanBeTrue = false
+    bothCanBeTrue = false,
+    assumes = [],
+    probA = () => null
   }) {
+    // probA(prompt) -> P("A") for a letter question, or null when unreadable.
+    vi.mocked(aiChoiceProbabilities).mockImplementation(async (prompt) => {
+      const a = probA(prompt)
+      return a == null ? null : { A: a, B: 1 - a, C: 0 }
+    })
     vi.mocked(aiGenerateJson).mockImplementation(async (_p, _s, opts) => {
+      if (opts.schemaName === 'sentence_assumptions') return { assumes }
+      if (opts.schemaName === 'fact_implications') return { implies: ['Abe breathes'] }
       if (opts.schemaName === 'focused_continuity_claims') return { claims }
       if (opts.schemaName === 'focused_continuity_matches') return { hits }
       if (opts.schemaName === 'focused_continuity_facts') return { contradictions: direct }
@@ -423,6 +451,76 @@ ${lines(8)}`
       return inner(p, s, opts)
     })
     expect((await scene(presupposed)).dimensionScores.continuity).toBe(3)
+  })
+
+  describe('the three confirming questions, read as probabilities (§32)', () => {
+    const one = {
+      claims: [{ s: 1, about: 'Abe', claim: 'Abe felt cold' }],
+      hits: [{ claim: 1, fact: 'Abe: alive and well.' }],
+      contradicts: false
+    }
+    const letterPrompts = () => vi.mocked(aiChoiceProbabilities).mock.calls.map((c) => c[0])
+    const names = () => vi.mocked(aiGenerateJson).mock.calls.map((c) => c[2].schemaName)
+
+    it('the sentence side confirms at P(A) >= 0.5, with the assumption in place of the claim', async () => {
+      continuityModel({
+        ...one,
+        assumes: ['Abe is dead'],
+        probA: (p) => (p.includes('takes for granted about this: Abe is dead') ? 0.97 : 0.01)
+      })
+      const v = await scene(presupposed)
+      expect(v.dimensionScores.continuity).toBe(3)
+      expect(letterPrompts()).toHaveLength(1)
+      expect(letterPrompts()[0]).not.toContain('Abe felt cold')
+      expect(letterPrompts()[0]).toMatch(/Answer with one letter only\.$/)
+    })
+
+    it('the fact side confirms when the sentence side does not', async () => {
+      continuityModel({
+        ...one,
+        assumes: ['Abe is dead'],
+        probA: (p) => (p.includes('Which means: Abe breathes.') ? 0.8 : 0.2)
+      })
+      expect((await scene(presupposed)).dimensionScores.continuity).toBe(3)
+    })
+
+    it('a low probability does not confirm; the one that sank the JSON port was 0.0001', async () => {
+      continuityModel({ ...one, assumes: ['Abe is dead'], probA: () => 0.0001 })
+      expect((await scene(presupposed)).dimensionScores.continuity).toBe(8)
+    })
+
+    it('an unreadable probability counts as no, never as a guess', async () => {
+      continuityModel({ ...one, assumes: ['Abe is dead'], probA: () => null })
+      expect((await scene(presupposed)).dimensionScores.continuity).toBe(8)
+    })
+
+    it('asks nothing more once the first question confirms', async () => {
+      continuityModel({ ...one, contradicts: true, probA: () => 0.99 })
+      await scene(presupposed)
+      expect(names()).not.toContain('sentence_assumptions')
+      expect(letterPrompts()).toHaveLength(0)
+    })
+
+    it('spells a fact out once however many sentences it is checked against', async () => {
+      continuityModel({
+        ...one,
+        claims: [
+          { s: 1, about: 'Abe', claim: 'Abe felt cold' },
+          { s: 2, about: 'Abe', claim: 'Abe is gone' }
+        ],
+        hits: [
+          { claim: 1, fact: 'Abe: alive and well.' },
+          { claim: 2, fact: 'Abe: alive and well.' }
+        ],
+        probA: () => 0.01
+      })
+      await scene(`It had not been warm since the day Abe died.
+
+Nobody had seen Abe in years.
+
+${lines(8)}`)
+      expect(names().filter((n) => n === 'fact_implications')).toHaveLength(1)
+    })
   })
 
   it('sends the voice judge the dialogue only', async () => {

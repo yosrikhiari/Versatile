@@ -1684,3 +1684,82 @@ current fine, so there is no signal. Words per story-minute separated the
 current problems from fine scenes weakly (AUC 0.77, 4 vs 12) but the
 masterpieces sit among the problems (median about 27), so any pass mark
 that catches the problems fails most masterpieces. show_tell stays advisory.
+
+## 33. Fixing what §32 left: two corrections, then two fixes that hold (2026-09-26)
+
+**Correction 1: the continuity false alarms were a porting bug.** The three
+confirmers were benched by reading the model's probability for "A"; the port
+asked for the letter as a JSON field constrained to `"A" | "B" | "C"`. For
+the same prompts, qwen3:8b's own P(A) for "Lucie finally lifted her gaze"
+(against "Lucie has not been informed of the sale") was 0.0001, and the JSON
+answer was "A". A constrained enum is not the model's most likely answer.
+
+**Correction 2: the voice judge did not flip on identical input.** The two
+"new" voice false alarms (salt-corpus-10, gate-off-run-03) had *changed*
+input: the §32 dialogue fix merged their 8 fragments into 6 speeches, and fed
+the merged speeches the judge scored both 5, with the same wording, on both
+runs. The judge reacts to how lines are split. The fix removed one false fail
+and caused two.
+
+**Correction 3: the timings were contended.** Jester's scheduled tasks
+(JesterNightly*, every 15-30 minutes) call the same qwen3:8b through
+`/api/chat` with default options; each alternation with Versatile's calls
+reloads the model (about 18 s per call in the Ollama log). The 59.2 minutes of
+§32 is not a cost measurement. The runs below were made with the Jester tasks
+paused (with the user's OK, restored afterwards).
+
+### The fixes
+
+1. **Probabilities, not JSON letters.** `ollama.choiceProbabilities` asks for
+   one token with `logprobs` (non-streaming, `think: false`) and returns the
+   normalised mass of the named choices, or null (AgentOps gateway, HTTP
+   error, no choice among the top tokens). `aiChoiceProbabilities` runs it on
+   the role's model, placement and lane; local Ollama only. The confirmers
+   count an unreadable probability as "no". Smoke test:
+   `src/tests/live/choiceProbe.live.js`.
+2. **Speeches decide, fragments are judged.** `countSpeeches` joins a
+   tag-split speech (within a paragraph, across a short tag) for the
+   `MIN_VOICE_LINES` test only; the judge reads `extractDialogueLines`
+   fragments as before.
+3. The voice second vote added in between was removed: its only evidence was
+   correction 2's misdiagnosis.
+
+### Clean live results (Jester paused)
+
+| | yesterday's code | now |
+|---|---|---|
+| reviewer continuity problems caught (78 real scenes) | 3/17 | 3/17 |
+| continuity false alarms on reviewer-fine scenes | 0/42 | **0/42** |
+| voice false alarms on reviewer-fine scenes | 1/37 | **0/37** |
+| current-pipeline scenes failing the gate | 1/48 | **0/48** |
+| planted set A (11 valid) | 5 | **7** |
+| planted held-out set B (14; 6 hard negatives) | 6 (bench) | **9**, 0/6 negatives |
+| critic minutes, set A (12 scenes) | 5.1 | 6.0 (+18%) |
+| critic minutes, 78 scenes | – | 32.1 |
+
+One flag in set B landed off the planted sentence, a false alarm: "Lucie's
+laughter echoed somewhere behind the trees, light and careless" against
+"Lucie has not been informed of the sale". So the extra confirmers are not
+free of false alarms on sentences that sit close to a fact: 1 in 32 planted
+scenes, 0 in the 42 real clean ones. On real scenes they have not yet caught
+anything the single question missed; their gains are on assumed
+contradictions (buried, sold, never owed), which the reviewer set has few of.
+
+### Within-scene: still not shippable
+
+The "then vs now" masterpiece alarm (Joyce) survives every confirming
+question tried: with the surrounding passage (it also rejected all three true
+positives), and as a probability (P = 1.0 for Joyce; one true positive
+dropped to 0.002). The model reads "her mother was alive … then" and "that
+was a long time ago … her mother was dead" as a contradiction. A second
+masterpiece control was built for the next attempt
+(`tools/labelling/build_masterpieces_b.py`: 12 passages chosen mechanically
+at 35% and 65% through the same six books), and not yet run.
+
+### Show-tell and pacing: what a fourth attempt needs
+
+Three judge designs failed the masterpiece rule (§29-§32). On the current
+pipeline the reviewers found 4 show-tell and 0 pacing problems in 48 scenes,
+too few to calibrate anything. Both stay advisory. A further attempt needs
+more labelled current-pipeline scenes first (at least ~20 problems per
+dimension), not another judge.

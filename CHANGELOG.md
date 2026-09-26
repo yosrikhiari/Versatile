@@ -7,6 +7,22 @@ was verified.
 
 ## [Unreleased]
 
+### Continuity confirms what sentences assume; the voice false fail is gone (2026-09-26)
+- **Two more confirming questions for continuity, read as probabilities**
+  (§32-§33). When the first question says no, the critic spells out what the
+  sentence takes for granted, then what the fact implies, and asks for one
+  letter whose probability it reads from Ollama (`aiChoiceProbabilities`,
+  `ollama.choiceProbabilities`). Planted contradictions caught: 5 -> 7 of 11,
+  held-out 9 of 14 with 0 of 6 hard negatives; false alarms on 42 real clean
+  scenes stay 0. About 18% more critic time. An earlier port that asked for
+  the letter as a JSON enum raised real false alarms to 3/42 and was not kept.
+- **Voice is judged only with enough speeches**: a speech split by a tag counts
+  once (`countSpeeches`), while the judge still reads the fragments. Voice
+  false alarms on reviewer-fine scenes 1/37 -> 0/37.
+- The judge bench gained a held-out plant set, a confirmer development set,
+  within-scene and voice candidates, and a second masterpiece control
+  (`tools/judge-bench/`, `tools/labelling/build_masterpieces_b.py`).
+
 ### The gate stops failing good prose; continuity sees what a sentence assumes (2026-09-25)
 - **show_tell, pacing and emotional_goal are advisory in the focused critic**
   (§31). Judged against two independent reviewers on 78 real scenes and

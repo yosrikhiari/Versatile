@@ -339,3 +339,45 @@ Return JSON: {{ "earlierTime": "...", "laterTime": "...", "sameTime": true or fa
                                               "sameTime": {"type": "boolean"}, "contradicts": {"type": "boolean"}},
              "required": ["earlierTime", "laterTime", "sameTime", "contradicts"]}, 120)
     return r.get("contradicts") is True and r.get("sameTime") is True, r
+
+
+def confirm_pair_ctx(prose, earlier, later):
+    """W5: the stricter question (RULES_V2) with the passage around and between
+    the two sentences, so "then" and "now" are visible. Up to 60 words before
+    the earlier sentence, the text between (middle abridged past 160 words),
+    and the later sentence."""
+    from continuity_claims import alnum  # noqa: F401
+    a, b = prose.find(earlier[:40]), prose.find(later[:40])
+    if a < 0 or b < 0 or b <= a:
+        return confirm_pair_v2(earlier, later)
+    before = " ".join(prose[:a].split()[-60:])
+    between = prose[a + len(earlier):b].split()
+    mid = " ".join(between) if len(between) <= 160 else " ".join(between[:80]) + " [...] " + " ".join(between[-80:])
+    r = gen("You check one scene of fiction for a contradiction between two of its sentences.",
+            f"""PASSAGE (for context): ...{before}
+>>> EARLIER SENTENCE: {earlier}
+{mid}
+>>> LATER SENTENCE: {later}
+
+{RULES_V2}
+Read the earlier sentence as true at the time it describes. Using the passage to tell WHEN each sentence applies, does the later sentence, about the same moment or a later one, require the earlier one to be false?
+
+Return JSON: {{ "contradicts": true or false }}""",
+            {"type": "object", "properties": {"contradicts": {"type": "boolean"}}, "required": ["contradicts"]}, 30)
+    return r.get("contradicts") is True
+
+
+def confirm_pair_prob(earlier, later):
+    """W6: the W4b question as one letter, read as P(A) (see §32: a JSON
+    boolean/enum answer is not the model's most likely answer)."""
+    from confirm_variants import letter_probs
+    return letter_probs("You check one scene of fiction for a contradiction between two of its sentences.",
+                        f"""EARLIER SENTENCE: {earlier}
+LATER SENTENCE: {later}
+
+{RULES_V2}
+Read the earlier sentence as true, at the time it describes. Does the later sentence, about the SAME moment or a later one, require the earlier one to be false?
+A) yes, it contradicts
+B) no
+
+Answer with one letter only.""")["A"]

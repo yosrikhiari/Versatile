@@ -1,13 +1,17 @@
 import { ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
-import { aiGenerateJson } from './useAiService'
+import { aiChoiceProbabilities, aiGenerateJson } from './useAiService'
 import {
   bibleFacts,
   bibleNames,
+  ASSUMPTIONS_SCHEMA,
   buildClaimsPrompt,
   buildConfirmPrompt,
   buildFactConfirmPrompt,
   buildFactHitsPrompt,
+  buildFactImplicationsPrompt,
+  buildSentenceAssumptionsPrompt,
+  buildThreeWayPrompt,
   buildSentenceRepairPrompt,
   claimHitsToCandidates,
   CLAIMS_SCHEMA,
@@ -15,10 +19,14 @@ import {
   buildPacingPrompt,
   buildVoicePrompt,
   dialogueDistinctRatio,
+  countSpeeches,
   extractDialogueLines,
   FACT_CONFIRM_SCHEMA,
   FACT_HITS_SCHEMA,
   fillerParagraphs,
+  IMPLICATIONS_SCHEMA,
+  CONFIRM_CHOICES,
+  CONFIRM_MIN_PROBABILITY,
   CONFIRM_SCHEMA,
   CONTINUITY_SCHEMA,
   contradictionsToReport,
@@ -32,6 +40,7 @@ import {
   unreverseParagraphNumbers,
   splitParagraphs,
   splitSentences,
+  statementList,
   validClaims,
   verifyContradictions
 } from './criticIsolation'
@@ -554,7 +563,8 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
         } | null> {
           if (dimension === 'voice') {
             const lines = extractDialogueLines(draftText)
-            if (lines.length < MIN_VOICE_LINES) return null
+            // Speeches, not fragments, decide whether there is enough to judge.
+            if (countSpeeches(draftText) < MIN_VOICE_LINES) return null
             // Free, exact, and runs first: verbatim looping is not a matter of
             // taste, so it needs no model to call it.
             const distinct = dialogueDistinctRatio(lines)
@@ -568,26 +578,30 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
                 }
               }
             }
-            const parsedVoice = (await aiGenerateJson(
-              buildVoicePrompt({
-                lines,
-                storyBible: storyBible || '',
-                charactersPresent: sceneBrief?.charactersPresent || sceneBrief?.characters || [],
-                rubric: formatDimensionRubrics(categoryType, ['voice'])
-              }),
-              'You judge dialogue voice from dialogue alone, and you are willing to mark it low.',
-              {
-                feature: FEATURES.STORY_GENERATION,
-                role: 'critic',
-                temperature: 0.3,
-                maxTokens: 300,
-                schema: FOCUSED_DIMENSION_SCHEMA,
-                schemaName: 'focused_voice_isolated',
-                sessionBudget: _sessionBudget,
-                ...JUDGE_SAMPLING
-              }
-            ).catch(() => null)) as { score?: number; issue?: string } | null
-            if (!parsedVoice || typeof parsedVoice.score !== 'number') return null
+            const askVoice = async (schemaName: string) => {
+              const r = (await aiGenerateJson(
+                buildVoicePrompt({
+                  lines,
+                  storyBible: storyBible || '',
+                  charactersPresent: sceneBrief?.charactersPresent || sceneBrief?.characters || [],
+                  rubric: formatDimensionRubrics(categoryType, ['voice'])
+                }),
+                'You judge dialogue voice from dialogue alone, and you are willing to mark it low.',
+                {
+                  feature: FEATURES.STORY_GENERATION,
+                  role: 'critic',
+                  temperature: 0.3,
+                  maxTokens: 300,
+                  schema: FOCUSED_DIMENSION_SCHEMA,
+                  schemaName,
+                  sessionBudget: _sessionBudget,
+                  ...JUDGE_SAMPLING
+                }
+              ).catch(() => null)) as { score?: number; issue?: string } | null
+              return r && typeof r.score === 'number' ? { score: r.score, issue: r.issue } : null
+            }
+            const parsedVoice = await askVoice('focused_voice_isolated')
+            if (!parsedVoice) return null
             const issueText = typeof parsedVoice.issue === 'string' ? parsedVoice.issue.trim() : ''
             return {
               score: parsedVoice.score,
@@ -728,12 +742,40 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
             : null
           if (!direct && !extracted) return null
           const already = new Set(verified.map((v) => `${v.sentence}\u0000${v.fact}`))
-          // One confirming question per pair. Two more (the fact and the
-          // sentence spelled out first) raised planted recall -- set A 5 -> 9
-          // of 11, held-out set B 6 -> 9 of 14 -- but on the 78 real scenes
-          // added 3 false alarms in 42 clean scenes for 1 more reviewer
-          // problem caught, and took the critic from 25.6 to 59.2 minutes.
-          // Not kept (§32; the candidates are in tools/judge-bench).
+          // Three confirming questions, cheapest first; any "contradicts"
+          // confirms (buildThreeWayPrompt, §32). The two letter questions are
+          // read as probabilities; when they cannot be (hosted provider,
+          // AgentOps tracing) they count as "no", never as a guess.
+          const implied = new Map<string, Promise<string[]>>()
+          const impliedBy = (fact: string) => {
+            if (!implied.has(fact)) {
+              implied.set(
+                fact,
+                judgeCall(
+                  buildFactImplicationsPrompt(fact),
+                  'You spell out what a story fact implies.',
+                  IMPLICATIONS_SCHEMA,
+                  'fact_implications',
+                  200
+                ).then((r) => statementList(r, 'implies'))
+              )
+            }
+            return implied.get(fact) as Promise<string[]>
+          }
+          const contradicts = async (prompt: string) => {
+            const p = await aiChoiceProbabilities(
+              prompt,
+              'You check a new scene against what a story has already established.',
+              CONFIRM_CHOICES,
+              {
+                feature: FEATURES.STORY_GENERATION,
+                role: 'critic',
+                sessionBudget: _sessionBudget,
+                ...JUDGE_SAMPLING
+              }
+            ).catch(() => null)
+            return (p?.A ?? 0) >= CONFIRM_MIN_PROBABILITY
+          }
           for (const c of claimHitsToCandidates(matched, claims, sentences, facts)) {
             if (already.has(`${c.sentence}\u0000${c.fact}`)) continue
             const ok = (await judgeCall(
@@ -743,7 +785,35 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
               'confirm_fact_contradiction',
               30
             )) as { contradicts?: unknown } | null
-            if (ok?.contradicts === true) verified.push({ sentence: c.sentence, fact: c.fact })
+            let confirmed = ok?.contradicts === true
+            if (!confirmed) {
+              const assumes = statementList(
+                await judgeCall(
+                  buildSentenceAssumptionsPrompt(c.fact, c.sentence),
+                  'You spell out what a sentence of fiction states and takes for granted.',
+                  ASSUMPTIONS_SCHEMA,
+                  'sentence_assumptions',
+                  200
+                ),
+                'assumes'
+              )
+              confirmed =
+                assumes.length > 0 &&
+                (await contradicts(
+                  buildThreeWayPrompt({ fact: c.fact, sentence: c.sentence, assumes })
+                ))
+            }
+            if (!confirmed) {
+              confirmed = await contradicts(
+                buildThreeWayPrompt({
+                  fact: c.fact,
+                  sentence: c.sentence,
+                  claim: c.claim,
+                  implies: await impliedBy(c.fact)
+                })
+              )
+            }
+            if (confirmed) verified.push({ sentence: c.sentence, fact: c.fact })
           }
           if (!verified.length) return { score: 8 }
           return {

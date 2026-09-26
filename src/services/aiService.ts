@@ -1210,6 +1210,40 @@ export async function aiTestConnection(
   return await providerModule.testConnection(apiKey, accountId)
 }
 
+/**
+ * A judge's probability for each one-token choice (ollama `choiceProbabilities`),
+ * on the same model, placement and lane as every other call for this role.
+ * Local Ollama only: null for a hosted provider, so a caller treats the
+ * question as unasked rather than guessing an answer.
+ */
+export async function aiChoiceProbabilities(
+  prompt: string,
+  systemPrompt: string,
+  choices: string[],
+  options: AiGenerateOptions = {}
+): Promise<Record<string, number> | null> {
+  const feature = options.feature || FEATURES.CONTENT
+  const config = resolveOptimalConfig(feature, options)
+  const provider = options.provider || config.provider
+  const model = options.model || config.model
+  if (provider !== PROVIDERS.OLLAMA || !model) return null
+  if (options.sessionBudget && !options.sessionBudget.check().allowed) return null
+  try {
+    return await foregroundSlot(
+      provider,
+      laneFor(provider, options.role)
+    )(() =>
+      ollamaProvider.choiceProbabilities(prompt, systemPrompt, model, choices, {
+        signal: options.signal,
+        repeatPenalty: options.repeatPenalty,
+        ...placementOptions(options.role)
+      })
+    )
+  } catch {
+    return null
+  }
+}
+
 export async function aiListModels(): Promise<string[]> {
   return await ollamaProvider.listModels()
 }
