@@ -1763,3 +1763,57 @@ pipeline the reviewers found 4 show-tell and 0 pacing problems in 48 scenes,
 too few to calibrate anything. Both stay advisory. A further attempt needs
 more labelled current-pipeline scenes first (at least ~20 problems per
 dimension), not another judge.
+
+## 34. "Names the wrong dimension", re-measured on today's gate (2026-09-26)
+
+The first-day report listed: the combined critic passed 40/40 planted
+defects; the focused one caught them but "often names the wrong dimension (a
+scene turned into summary failed on voice)". §19-§25 fixed most of it; §31
+made show_tell, pacing and emotional_goal advisory. Re-run on today's code:
+the 30-scene planted-defect harness, one repeat
+(`gate-sensitivity-focused-30-s34`), read by a new tool that separates the two
+costs of a wrong label (`tools/gate-blame.py`): a wrong **fail** (a gating
+dimension, continuity or voice, under the floor that is not the defect's
+target) re-writes a scene for the wrong reason; a wrong **warning** (an
+advisory one) only tells the author the wrong thing.
+
+| defect | n | target flagged | scene failed | wrong fail | wrong warning (dimensions) |
+|---|---|---|---|---|---|
+| voice_flatten | 25 | 18 | 20 | 0 | 11 (show_tell 10, emotional_goal 5, pacing 2) |
+| told_not_shown | 30 | 28 | 2 | 0 | 30 (pacing 29, emotional_goal 25) |
+| told_faithful | 30 | 23 | 4 | 1 | 11 (emotional_goal 8, pacing 3) |
+| padding | 30 | 30 | 5 | 1 | 4 |
+| contradiction | 30 | 30 | 30 | 1 | 8 (pacing 6) |
+
+* **A scene turned into summary no longer fails on voice**: voice was not
+  pushed under the floor on any of the 60 summary variants. The summary
+  defects now fail 6/60 scenes (on gating dimensions they already failed
+  clean), and are *flagged* on show_tell 51/60.
+* **Wrong fails: 3/145.** Two are one scene's voice (scene 10: 7 clean, 5 on
+  the padding and contradiction variants, whose dialogue is identical), one
+  a continuity flag on a machine-written summary line ("missing him and
+  feeling his absence" against "Halim is alive").
+* **The "clean" corpus is not clean.** 4/30 clean scenes now fail on
+  continuity; all four are real: scenes 9 and 14 ("before he died", "since
+  the day Halim died") and 6 (the dying man) are reviewer-consensus
+  continuity problems (§29), 21 ("the mule's still body" against "gravely
+  injured") had one reviewer's "problem". The gate of §25 scored all four 8.
+* **Most remaining wrong warnings are right by construction.**
+  told_not_shown replaces paragraphs with content-free sentences, which are
+  filler and gut the emotional beat, so pacing and emotional_goal *should*
+  drop (the harness says so, §20). The ones that are wrong -- show_tell on
+  flattened voices (10), emotional_goal on faithful summaries (8) -- are on
+  advisory dimensions whose judges have no signal on real scenes (§29-§32).
+  They are left as they are.
+
+**Voice at the pass line.** Temperature was the obvious suspect (the voice
+judge sampled at 0.3, every other focused judge at 0). A probe of the voice
+judge alone (`src/tests/live/voiceTemperature.live.js`, production prompt
+and options) says no: scene 10's dialogue scored 7 five times out of five at
+both temperatures, and temperature 0 added one false alarm on 31
+reviewer-fine scenes (0.3: 0/31; flattened voices caught 29/43 vs 28/43).
+The 7 -> 5 drop inside the full run does not reproduce in isolation; it is
+run-to-run nondeterminism of the inference engine, not sampling.
+No margin rule separates it either: voice scores come in steps (clean 7 or 9;
+flattened 2, 3, 5 or 7), and 5 is where 11/29 real flattened voices land.
+Nothing changed; recorded as a known 2/145 wrong-fail source.
