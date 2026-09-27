@@ -14,8 +14,11 @@ const { state } = vi.hoisted(() => ({ state: {} }))
 vi.mock('@/composables/useWhatIf', () => ({
   useWhatIf: () => state.whatIf
 }))
-vi.mock('@/composables/useWhatIfGenerator', () => ({
-  useWhatIfGenerator: () => state.forker
+vi.mock('@/composables/useWhatIfBranch', () => ({
+  useWhatIfBranch: () => state.branches
+}))
+vi.mock('@/services/db-snapshots', () => ({
+  addSnapshot: (...a) => state.addSnapshot(...a)
 }))
 vi.mock('@/composables/useStoryDocuments', () => ({
   renderExtractedVoiceGuide: () => ['voice guide line']
@@ -60,13 +63,14 @@ describe('WhatIfPanel', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     state.whatIf = makeWhatIf()
-    state.forker = {
-      isGenerating: ref(false),
-      progress: ref({ total: 0, done: 0, label: '' }),
-      error: ref(null),
-      generate: vi.fn(async () => {}),
-      reset: vi.fn()
+    state.branches = {
+      state: { busy: false, message: '', detail: '', error: '' },
+      fork: vi.fn(async () => ({ id: 'b9', whatIf: { status: 'forked' } })),
+      plan: vi.fn(async () => ({})),
+      list: vi.fn(async () => [])
     }
+    state.addSnapshot = vi.fn(async () => 1)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     // The fork needs a project to write the branch under.
     useProjectStore().currentProjectId = 'p1'
     manuscriptStore = useManuscriptStore()
@@ -119,8 +123,17 @@ describe('WhatIfPanel', () => {
     cards[1].vm.$emit('insert', 1)
     expect(state.insertAtCursor).toHaveBeenCalledWith('\n\nInes ran for the customs house.\n\n')
 
+    // Replace asks, keeps the old text in the scene's history, and stores HTML.
     cards[0].vm.$emit('replace', 0)
-    expect(spy).toHaveBeenCalledWith('s1', { content: 'Ines lied about the tide.' })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(window.confirm).toHaveBeenCalledTimes(1)
+    expect(state.addSnapshot).toHaveBeenCalledWith(
+      'p1',
+      's1',
+      '<p>The body was there.</p>',
+      'Before What If alternative'
+    )
+    expect(spy).toHaveBeenCalledWith('s1', { content: '<p>Ines lied about the tide.</p>' })
   })
 
   it('Clear empties the list', async () => {
@@ -145,14 +158,17 @@ describe('WhatIfPanel', () => {
     await w.vm.$nextTick()
     expect(w.find('[data-test="timeline"]').exists()).toBe(false)
     expect(w.text()).toContain('The change')
-    const fork = w.findAll('button').find((b) => /Rewrite the rest as a branch/.test(b.text()))
+    const fork = w.find('[data-test="plan-branch"]')
     expect(fork.attributes('disabled')).toBeDefined()
 
     await w.find('textarea').setValue('Ines never finds the body.')
     expect(fork.attributes('disabled')).toBeUndefined()
     await fork.trigger('click')
-    expect(state.forker.generate).toHaveBeenCalledTimes(1)
-    expect(state.forker.generate.mock.calls[0][0]).toBe('p1')
-    expect(state.forker.generate.mock.calls[0][2]).toBe('Ines never finds the body.')
+    await new Promise((r) => setTimeout(r, 0))
+    // Forks at the PICKED scene (the old fork ignored it) and plans the branch.
+    expect(state.branches.fork).toHaveBeenCalledTimes(1)
+    const [pid, , sceneId, premise] = state.branches.fork.mock.calls[0]
+    expect([pid, sceneId, premise]).toEqual(['p1', 's1', 'Ines never finds the body.'])
+    expect(state.branches.plan).toHaveBeenCalledWith('p1', 'b9')
   })
 })

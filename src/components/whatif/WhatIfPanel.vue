@@ -1,12 +1,15 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, watch } from 'vue'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { useWhatIf } from '../../composables/useWhatIf'
-import { useWhatIfGenerator } from '../../composables/useWhatIfGenerator'
+import { useWhatIfBranch } from '../../composables/useWhatIfBranch'
 import { useProjectStore } from '../../stores/projectStore'
 import { useBranchStore } from '../../stores/branchStore'
 import { renderExtractedVoiceGuide } from '../../composables/useStoryDocuments'
+import { addSnapshot } from '../../services/db-snapshots'
+import { proseToHtml } from '../../composables/generation/writing/liveDraft'
+import { stripHtmlBlock } from '../../utils/textUtils'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BasePanelHeader from '../ui/BasePanelHeader.vue'
 import BaseSection from '../ui/BaseSection.vue'
@@ -14,24 +17,24 @@ import BaseButton from '../ui/BaseButton.vue'
 import BaseAlert from '../ui/BaseAlert.vue'
 import WhatIfAlternative from './WhatIfAlternative.vue'
 import WhatIfTimeline from './WhatIfTimeline.vue'
+import WhatIfBranchView from './WhatIfBranchView.vue'
 
 const manuscriptStore = useManuscriptStore()
 const storyBibleStore = useStoryBibleStore()
 const projectStore = useProjectStore()
 const terms = computed(() => projectStore.structureTerms)
 const branchStore = useBranchStore()
-const {
-  isGenerating: isForking,
-  progress: forkProgress,
-  generate: forkGenerate
-} = useWhatIfGenerator()
-const forkError = ref(null)
+const branches = useWhatIfBranch()
 const { isGenerating, alternatives, error, generateAlternatives, clear } = useWhatIf()
 const insertAtCursor = inject('insertAtCursor', null)
 
+/** alternatives | timeline (pick a scene) | edit (describe the change) | branches | branch */
 const mode = ref('alternatives')
 const divergencePoint = ref(null)
 const changeDescription = ref('')
+const branchError = ref(null)
+const openBranchId = ref(null)
+const whatIfBranches = ref([])
 
 const hasDivergence = computed(
   () => divergencePoint.value?.sectionId && divergencePoint.value?.subsectionId
@@ -44,32 +47,40 @@ const sourceSub = computed(() => {
   return manuscriptStore.activeSubsection
 })
 
+async function refreshBranches() {
+  const pid = projectStore.currentProjectId
+  whatIfBranches.value = pid ? await branches.list(pid) : []
+}
+watch(() => projectStore.currentProjectId, refreshBranches, { immediate: true })
+
+/** The scenes before `sub`, in reading order: what has happened so far. */
+function storyBefore(sub) {
+  const out = []
+  for (const sec of manuscriptStore.sortedSections) {
+    for (const s of manuscriptStore.subsectionsBySection[sec.id] || []) {
+      if (s.id === sub?.id) return out.slice(-15)
+      out.push(
+        `${sec.title || ''} / ${s.title || 'Scene'}: ${s.summary || s.description || ''}`.trim()
+      )
+    }
+  }
+  return out.slice(-15)
+}
+
 async function handleGenerate() {
   const sub = sourceSub.value
   if (!sub) return
   await generateAlternatives({
-    sceneProse: sub.content || '',
-    sceneBrief: sub.brief || {},
-    chapterLog: getChapterLog(),
-    // The whole point of the feature. Collected by the textarea below and, until
-    // now, never sent — so the author typed a premise and got alternatives that
-    // ignored it.
+    sceneProse: stripHtmlBlock(sub.content || ''),
+    // The scene's brief is its `description` (and what it was read to be);
+    // the panel used to read a `brief` field no scene has, so it sent nothing.
+    sceneBrief: { intent: sub.description || '', summary: sub.summary || '' },
+    // Only what happened BEFORE this scene. The old log was every scene title
+    // in the book, the future included, under "what has happened before".
+    chapterLog: storyBefore(sub),
     premise: changeDescription.value,
-    // An alternative is meant to replace this scene, so it has to sound like the
-    // same author. This is the same measured profile the main writer now gets.
     voiceProfile: renderExtractedVoiceGuide(storyBibleStore.voiceProfile).join('\n')
   })
-}
-
-function getChapterLog() {
-  return (
-    manuscriptStore.sections?.flatMap(
-      (ch) =>
-        manuscriptStore.subsectionsBySection[ch.id]?.map(
-          (s) => s.title || s.content?.slice(0, 80)
-        ) || []
-    ) || []
-  )
 }
 
 function handleApply(index) {
@@ -80,32 +91,59 @@ function handleApply(index) {
   }
 }
 
-function handleReplace(index) {
+async function handleReplace(index) {
   const prose = alternatives.value[index]?.prose
-  if (!prose) return
-  if (hasDivergence.value) {
-    manuscriptStore.updateSubsectionData(divergencePoint.value.subsectionId, { content: prose })
-  } else {
-    manuscriptStore.updateSubsectionData(manuscriptStore.activeSubsectionId, { content: prose })
-  }
+  const sub = sourceSub.value
+  if (!prose || !sub) return
+  if (
+    !confirm(
+      `Replace "${sub.title || 'this scene'}" with this version? The current text is saved to its history first.`
+    )
+  )
+    return
+  // Snapshot, then HTML: the old Replace wrote plain text into an HTML field
+  // with no way back.
+  if (sub.content)
+    await addSnapshot(
+      projectStore.currentProjectId,
+      sub.id,
+      sub.content,
+      'Before What If alternative'
+    )
+  await manuscriptStore.updateSubsectionData(sub.id, { content: proseToHtml(prose) })
 }
 
 function handleClear() {
   clear()
 }
 
-// Forking rewrites every scene after the divergence point onto a new branch. It
-// is reversible (the original branch is untouched) but it is not cheap, so it is
-// a separate, explicitly-labelled action rather than something "Generate" does.
-async function handleFork() {
+/** Fork the book at the chosen scene and plan the branch. */
+async function handlePlanBranch() {
   const projectId = projectStore.currentProjectId
-  if (!projectId || !changeDescription.value.trim() || isForking.value) return
-  forkError.value = null
+  const sub = sourceSub.value
+  if (!projectId || !sub || !changeDescription.value.trim() || branches.state.busy) return
+  branchError.value = null
   try {
-    await forkGenerate(projectId, branchStore.activeBranchId, changeDescription.value.trim())
+    const branch = await branches.fork(
+      projectId,
+      branchStore.activeBranchId,
+      sub.id,
+      changeDescription.value.trim()
+    )
+    await refreshBranches()
+    openBranch(branch.id)
+    await branches.plan(projectId, branch.id)
+    // Re-mount the view so it shows the saved plan.
+    openBranchId.value = null
+    openBranch(branch.id)
   } catch (e) {
-    forkError.value = typeof e === 'string' ? e : e?.message || 'Branch generation failed'
+    branchError.value = e?.message || 'The branch could not be created'
   }
+}
+
+function openBranch(id) {
+  openBranchId.value = id
+  mode.value = 'branch'
 }
 
 function handleSelectDivergence(selection) {
@@ -120,6 +158,14 @@ function handleChangePoint() {
   clear()
   mode.value = 'timeline'
 }
+
+const STATUS = {
+  forked: 'not planned',
+  planned: 'planned',
+  writing: 'writing',
+  written: 'written',
+  merged: 'merged'
+}
 </script>
 
 <template>
@@ -131,13 +177,28 @@ function handleChangePoint() {
     >
       <template #actions>
         <BaseButton
-          v-if="mode === 'alternatives'"
+          v-if="mode === 'alternatives' || mode === 'branch'"
           variant="ghost"
           size="sm"
           icon="git-branch-plus"
           @click="mode = 'timeline'"
         >
           Diverge
+        </BaseButton>
+        <BaseButton
+          v-if="whatIfBranches.length && mode !== 'branches'"
+          variant="ghost"
+          size="sm"
+          icon="git-branch"
+          data-test="what-if-branches"
+          @click="
+            () => {
+              refreshBranches()
+              mode = 'branches'
+            }
+          "
+        >
+          Branches ({{ whatIfBranches.length }})
         </BaseButton>
         <BaseButton v-if="alternatives.length" variant="ghost" size="sm" @click="handleClear">
           Clear
@@ -153,12 +214,47 @@ function handleChangePoint() {
     />
 
     <div v-else class="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+      <!-- ── One branch: plan, write, compare, merge ──────────────────── -->
+      <WhatIfBranchView
+        v-if="mode === 'branch' && openBranchId != null"
+        :key="openBranchId"
+        :branch-id="openBranchId"
+        @closed="
+          () => {
+            refreshBranches()
+            mode = 'alternatives'
+          }
+        "
+      />
+
+      <!-- ── Every What If branch of the book ─────────────────────────── -->
+      <BaseSection
+        v-else-if="mode === 'branches'"
+        first
+        title="What If branches"
+        description="Each one is a copy of the book that changes at one scene. Open one to plan, write, compare or merge it."
+      >
+        <ul class="divide-y divide-border-subtle">
+          <li v-for="b in whatIfBranches" :key="b.id">
+            <button
+              class="w-full text-left py-2 font-ui text-sm text-text-primary hover:text-accent transition-colors"
+              @click="openBranch(b.id)"
+            >
+              {{ b.name }}
+              <span class="block font-ui text-xs text-text-hint">
+                {{ STATUS[b.whatIf.status] || b.whatIf.status }}
+              </span>
+            </button>
+          </li>
+        </ul>
+      </BaseSection>
+
       <!-- ── Diverging from a chosen point ────────────────────────────── -->
-      <template v-if="mode === 'edit'">
+      <template v-else-if="mode === 'edit'">
         <BaseSection
           first
           title="The change"
-          description="What happens differently at this point. Everything after it is rewritten around that."
+          description="What happens differently at this scene. A branch rewrites only the later scenes the change reaches; alternatives rewrite this scene alone."
         >
           <template #actions>
             <BaseButton variant="ghost" size="sm" icon="pencil" @click="handleChangePoint">
@@ -171,9 +267,7 @@ function handleChangePoint() {
               <BaseIcon name="map-pin" :size="12" class="shrink-0" />
               <span class="truncate">
                 Diverging from
-                <span class="text-text-primary">{{
-                  sourceSub?.title || sourceSub?.brief?.summary || 'selected scene'
-                }}</span>
+                <span class="text-text-primary">{{ sourceSub?.title || 'selected scene' }}</span>
               </span>
             </p>
 
@@ -181,34 +275,30 @@ function handleChangePoint() {
               v-model="changeDescription"
               rows="3"
               autofocus
-              placeholder="e.g. Nesrin refuses Halim's terms at the lake and hires her own guide."
+              aria-label="What changes"
+              placeholder="e.g. What if Zeena never goes to Bettsbridge?"
               class="w-full px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-y transition-colors duration-150"
             />
 
             <BaseAlert v-if="error" variant="danger">{{ error }}</BaseAlert>
-            <BaseAlert v-if="forkError" variant="danger">{{ forkError }}</BaseAlert>
+            <BaseAlert v-if="branchError" variant="danger">{{ branchError }}</BaseAlert>
 
             <div class="flex flex-wrap items-center justify-end gap-2">
-              <!-- The heavier sibling: rewrites the rest of the story on a new
-                   branch instead of offering replacements for this one scene. -->
               <BaseButton
                 variant="secondary"
                 size="md"
                 icon="git-branch-plus"
-                :loading="isForking"
-                :disabled="isForking || isGenerating || !changeDescription.trim()"
+                :loading="branches.state.busy"
+                :disabled="branches.state.busy || isGenerating || !changeDescription.trim()"
                 :title="
                   changeDescription.trim()
-                    ? 'Fork a new branch and rewrite every scene after this point'
+                    ? 'Copy the book into a branch and plan which later scenes the change reaches'
                     : 'Describe the change first'
                 "
-                @click="handleFork"
+                data-test="plan-branch"
+                @click="handlePlanBranch"
               >
-                {{
-                  isForking
-                    ? forkProgress.label || 'Building branch'
-                    : 'Rewrite the rest as a branch'
-                }}
+                {{ branches.state.busy ? branches.state.message : 'Plan a branch' }}
               </BaseButton>
               <BaseButton
                 variant="primary"
@@ -221,12 +311,6 @@ function handleChangePoint() {
                 {{ isGenerating ? 'Generating' : 'Generate alternatives' }}
               </BaseButton>
             </div>
-            <p
-              v-if="isForking && forkProgress.total > 0"
-              class="font-ui text-xs text-text-hint text-right tabular-nums"
-            >
-              {{ forkProgress.current }} / {{ forkProgress.total }} scenes rewritten
-            </p>
           </div>
         </BaseSection>
       </template>
@@ -236,7 +320,7 @@ function handleChangePoint() {
         <BaseSection
           first
           title="Alternatives"
-          description="Three ways the current scene could continue, in the manuscript's voice."
+          description="Other ways the current scene could go, in the manuscript's voice."
         >
           <p
             v-if="!manuscriptStore.activeSubsection"
@@ -246,6 +330,13 @@ function handleChangePoint() {
             <span class="text-text-secondary">{{ terms.sections }}</span> in the sidebar to begin.
           </p>
           <div v-else class="space-y-3">
+            <textarea
+              v-model="changeDescription"
+              rows="2"
+              aria-label="What if (optional)"
+              placeholder="What if… (optional)"
+              class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-none focus:ring-1 focus:ring-accent resize-y"
+            />
             <BaseAlert v-if="error" variant="danger">{{ error }}</BaseAlert>
             <div class="flex justify-end">
               <BaseButton
@@ -263,9 +354,9 @@ function handleChangePoint() {
         </BaseSection>
       </template>
 
-      <!-- ── Results (both modes) ─────────────────────────────────────── -->
+      <!-- ── Results ──────────────────────────────────────────────────── -->
       <div
-        v-if="alternatives.length"
+        v-if="alternatives.length && (mode === 'alternatives' || mode === 'edit')"
         class="px-4 border-t border-border-subtle divide-y divide-border-subtle"
       >
         <WhatIfAlternative
@@ -278,12 +369,15 @@ function handleChangePoint() {
         />
       </div>
       <p
-        v-else-if="!isGenerating && (mode === 'edit' || manuscriptStore.activeSubsection)"
+        v-else-if="
+          !isGenerating &&
+          (mode === 'edit' || (mode === 'alternatives' && manuscriptStore.activeSubsection))
+        "
         class="px-4 py-6 font-ui text-xs text-text-hint leading-5 border-t border-border-subtle"
       >
         {{
           mode === 'edit'
-            ? 'Describe the change, then generate to see how the scene could go instead.'
+            ? 'Describe the change, then plan a branch, or generate alternatives for this scene.'
             : 'Nothing generated yet. Alternatives appear here; insert one at the cursor or replace the scene with it.'
         }}
       </p>

@@ -2565,6 +2565,72 @@ export function useVolumeStoryGenerator() {
   }
 
   /**
+   * Write a What If branch's rewritten scenes (WHATIF-AND-IMPORT-PLAN.md,
+   * step 4). The branch is the active manuscript; the scenes the plan revises
+   * are blank with their new brief in `description`, so they are exactly the
+   * survey's unwritten scenes, written in reading order against the prose
+   * before each one -- the kept scenes included.
+   *
+   * The canon is the caller's, not the story documents: those describe the
+   * whole book, including the future this branch replaces. An imported book
+   * has no run to take a story arc from, so its read profile stands in.
+   */
+  async function writeWhatIf({
+    projectId,
+    canon,
+    instructions,
+    targetWords,
+    onChunk
+  }: {
+    projectId: string
+    canon: string
+    instructions: string
+    targetWords?: number
+    onChunk?: (chunk: string) => void
+  }) {
+    if (isContinuing.value) return null
+    const survey = await surveyContinuation(projectId)
+    if (!survey) return null
+    const targets = survey.unwritten
+    if (targets.length === 0) {
+      return endContinuation({ ...emptyReport(), skipped: survey.scenes.length })
+    }
+    const run = await getGenRun(projectId)
+    const { getProject } = await import('../services/db-projects')
+    const profile = (await getProject(projectId))?.storyProfile
+    const storyArc =
+      run?.state?.storyArc ||
+      (profile
+        ? {
+            genre: profile.genre,
+            tone: profile.tone,
+            centralConflict: profile.centralConflict,
+            premise: profile.premise,
+            themes: profile.themes
+          }
+        : null)
+    await beginContinuation(projectId, 'Write What If', targets.length)
+    try {
+      const report = await writeScenesInto(targets, {
+        projectId,
+        survey,
+        checkpointPlan: null,
+        targetWords: targetWords || 1200,
+        storyBibleDocs: canon,
+        storyArc,
+        storyContract: '',
+        instructions,
+        onChunk
+      })
+      return endContinuation(report)
+    } catch (err) {
+      error.value = describeRunFailure(err as Error)
+      isContinuing.value = false
+      throw err
+    }
+  }
+
+  /**
    * Write one scene into an existing scene row, with the writer's brief as the
    * instruction. This is what "Generate scene" means when a scene is open: the
    * prose lands where the cursor is. It used to spin up the whole volume
@@ -2890,6 +2956,7 @@ export function useVolumeStoryGenerator() {
     continuationReport,
     surveyContinuation,
     continueDrafting,
+    writeWhatIf,
     writeSceneInto,
     extendStory,
     expandScene,
