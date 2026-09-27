@@ -1559,7 +1559,7 @@ export function useVolumeStoryGenerator() {
     // written without one are not in that index at all: the generated chapters
     // showed up in memory for the rest of the session and then vanished on the
     // next load, which is the "my generated chapters aren't in the editor" bug.
-    const branchId = (branchStore as any).activeBranch?.id
+    const branchId = await (branchStore as any).branchIdFor(projectId)
     const batchResults = await batchCreatePlanStructure({ projectId, groups, branchId })
 
     // Track run-created sections for chapter aggregation: buildManuscript

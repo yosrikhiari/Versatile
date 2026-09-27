@@ -170,8 +170,10 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     isLoading.value = true
     loadError.value = null
     try {
-      const branchStore = useBranchStore()
-      const branchId = (branchStore as any).activeBranch?.id
+      // Awaited, not read off the store: the shell loads the branches in
+      // parallel with this, and reading before it finished loaded every
+      // branch's rows at once (duplicate chapters) or the last project's branch.
+      const branchId = (await useBranchStore().branchIdFor(projectId)) ?? undefined
       // Independent reads — batch them instead of paying 4 sequential
       // IndexedDB round trips (fails fast into the catch below, as before).
       const [loadedSections, loadedSubsections, loadedElements, loadedRelationships] =
@@ -206,8 +208,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   }
 
   async function addSectionData(projectId: any, data: any) {
-    const branchStore = useBranchStore()
-    const branchId = (branchStore as any).activeBranch?.id
+    const branchId = await useBranchStore().branchIdFor(projectId)
     const order = sections.value.length
     const id = await addSection(
       projectId,
@@ -249,8 +250,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   }
 
   async function addSubsectionData(projectId: any, sectionId: any, data: any) {
-    const branchStore = useBranchStore()
-    const branchId = (branchStore as any).activeBranch?.id
+    const branchId = await useBranchStore().branchIdFor(projectId)
     const sectionSubsections = subsections.value.filter((s) => s.sectionId === sectionId)
     const order = sectionSubsections.length
     const id = await addSubsection(projectId, toPlain({ ...data, sectionId, order, branchId }))
@@ -414,8 +414,25 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     manuscriptContent.value = text
   }
 
+  /**
+   * The manuscript as plain text in reading order: every scene of every
+   * chapter, chapters by `order`. A text set with `setManuscriptContent` (only
+   * Storybook does) takes precedence. This used to return that field alone,
+   * which nothing in the app set, so voice extraction reported "no manuscript
+   * text" on every project.
+   */
   function getFullText() {
-    return manuscriptContent.value
+    if (manuscriptContent.value) return manuscriptContent.value
+    return sortedSections.value
+      .flatMap((sec: any) => [
+        stripHtmlTags(String(sec.content || '')),
+        ...(subsectionsBySection.value[sec.id] || []).map((sub: any) =>
+          stripHtmlTags(String(sub.content || ''))
+        )
+      ])
+      .map((t: string) => t.trim())
+      .filter(Boolean)
+      .join('\n\n')
   }
 
   function clearManuscript() {

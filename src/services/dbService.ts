@@ -74,7 +74,9 @@ export {
   createBranch,
   updateBranch,
   deleteBranch,
-  ensureMainBranch
+  ensureMainBranch,
+  adoptUnbranchedRows,
+  copyManuscriptToBranch
 } from './db-branches'
 export {
   getSparkHistory,

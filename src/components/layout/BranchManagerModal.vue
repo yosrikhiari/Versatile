@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue'
 import { useBranchStore } from '../../stores/branchStore'
 import { useProjectStore } from '../../stores/projectStore'
-import { useManuscriptStore } from '../../stores/manuscriptStore'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 defineProps({
@@ -13,7 +12,6 @@ const emit = defineEmits(['close'])
 
 const branchStore = useBranchStore()
 const projectStore = useProjectStore()
-const manuscriptStore = useManuscriptStore()
 
 const searchQuery = ref('')
 const newBranchName = ref('')
@@ -29,8 +27,7 @@ const filteredBranches = computed(() => {
 })
 
 async function handleSwitch(branchId) {
-  await branchStore.setActiveBranch(branchId)
-  manuscriptStore.loadManuscript(projectStore.currentProjectId)
+  await branchStore.switchTo(projectStore.currentProjectId, branchId)
 }
 
 async function handleDelete(branch) {

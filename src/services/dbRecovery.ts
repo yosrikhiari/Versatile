@@ -5,34 +5,37 @@ import { db, table } from './dbService'
 import { trackError } from '../composables/useErrorTracker'
 
 /**
+ * Rebuildable caches: left out of a backup (they are large and regenerate on
+ * their own) and never cleared by a restore.
+ */
+const CACHE_STORES = new Set([
+  'aiResponseCache',
+  'embeddingCache',
+  'contentVectors',
+  'analysisQueue',
+  'graphCheckpoints'
+])
+
+/**
+ * Every store a backup covers, read from the live schema. These lists used to
+ * be written out by hand and had fallen behind it: chapters and scenes
+ * (`sections`, `subsections`), branches and every later table were missing,
+ * so a recovery backup held no prose and restoring it -- which clears first --
+ * deleted all of it.
+ */
+export function backupStores(): string[] {
+  return (db as unknown as { tables: Array<{ name: string }> }).tables
+    .map((t) => t.name)
+    .filter((n) => !CACHE_STORES.has(n))
+}
+
+/**
  * Check database integrity and connection
  */
 export async function checkDatabaseHealth() {
   try {
-    // Try to access each store
-    const stores = [
-      'projects',
-      'manuscripts',
-      'characters',
-      'locations',
-      'plotThreads',
-      'sparkHistory',
-      'annotations',
-      'snippets',
-      'dailyGoals',
-      'revisionComments',
-      'characterRelationships',
-      'storyElements',
-      'graphEdges',
-      'groupEdges',
-      'graphNodeInstances',
-      'snapshots',
-      'volumes',
-      'volumeEntities'
-    ]
-
     const results: Record<string, { status: string; count?: number; error?: string }> = {}
-    for (const store of stores) {
+    for (const store of backupStores()) {
       try {
         const count = await table(store).count()
         results[store] = { status: 'ok', count }
@@ -48,30 +51,10 @@ export async function checkDatabaseHealth() {
 }
 
 /**
- * Clear all data from the database (DESTRUCTIVE - use with caution)
+ * Clear data from the database (DESTRUCTIVE - use with caution). With no
+ * argument, every backed-up store; caches are never touched.
  */
-export async function clearAllData() {
-  const stores = [
-    'volumeEntities',
-    'graphEdges',
-    'groupEdges',
-    'graphNodeInstances',
-    'snapshots',
-    'revisions',
-    'annotations',
-    'snippets',
-    'dailyGoals',
-    'characterRelationships',
-    'storyElements',
-    'plotThreads',
-    'locations',
-    'characters',
-    'manuscripts',
-    'projects',
-    'sparkHistory',
-    'volumes'
-  ]
-
+export async function clearAllData(stores: string[] = backupStores()) {
   for (const store of stores) {
     try {
       await table(store).clear()
@@ -86,28 +69,7 @@ export async function clearAllData() {
  */
 export async function exportAllData() {
   const data: Record<string, any[]> = {}
-  const stores = [
-    'projects',
-    'manuscripts',
-    'characters',
-    'locations',
-    'plotThreads',
-    'sparkHistory',
-    'annotations',
-    'snippets',
-    'dailyGoals',
-    'revisionComments',
-    'characterRelationships',
-    'storyElements',
-    'graphEdges',
-    'groupEdges',
-    'graphNodeInstances',
-    'snapshots',
-    'volumes',
-    'volumeEntities'
-  ]
-
-  for (const store of stores) {
+  for (const store of backupStores()) {
     try {
       data[store] = await table(store).toArray()
     } catch (err) {
@@ -124,35 +86,16 @@ export async function exportAllData() {
 }
 
 /**
- * Import data back into database
+ * Import data back into database. Only the stores the backup actually holds
+ * are cleared and restored: a backup written before a store existed (every
+ * older backup lacks chapters and scenes) must not wipe that store.
  */
 export async function importData(backupData: Record<string, any[]>) {
-  // Clear existing data first
-  await clearAllData()
-
-  const stores = [
-    'projects',
-    'manuscripts',
-    'characters',
-    'locations',
-    'plotThreads',
-    'sparkHistory',
-    'annotations',
-    'snippets',
-    'dailyGoals',
-    'revisionComments',
-    'characterRelationships',
-    'storyElements',
-    'graphEdges',
-    'groupEdges',
-    'graphNodeInstances',
-    'snapshots',
-    'volumes',
-    'volumeEntities'
-  ]
+  const stores = backupStores().filter((s) => Array.isArray(backupData[s]))
+  await clearAllData(stores)
 
   for (const store of stores) {
-    if (backupData[store] && backupData[store].length > 0) {
+    if (backupData[store].length > 0) {
       try {
         await table(store).bulkAdd(backupData[store])
         console.info(`Restored ${backupData[store].length} ${store}`)

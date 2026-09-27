@@ -2,12 +2,10 @@
 import { ref, computed } from 'vue'
 import { useBranchStore } from '../../stores/branchStore'
 import { useProjectStore } from '../../stores/projectStore'
-import { useManuscriptStore } from '../../stores/manuscriptStore'
 import BaseIcon from '../shared/BaseIcon.vue'
 
 const branchStore = useBranchStore()
 const projectStore = useProjectStore()
-const manuscriptStore = useManuscriptStore()
 
 const newBranchName = ref('')
 const renameMap = ref({})
@@ -16,11 +14,7 @@ const renamingId = ref(null)
 const branches = computed(() => branchStore.branches)
 
 async function handleSwitch(branchId) {
-  await branchStore.setActiveBranch(branchId)
-}
-
-function handleBranchSwitch() {
-  manuscriptStore.loadManuscript(projectStore.currentProjectId)
+  await branchStore.switchTo(projectStore.currentProjectId, branchId)
 }
 
 function startRename(branch) {
@@ -168,10 +162,7 @@ function statusColor(status) {
               v-if="branch.id !== branchStore.activeBranchId"
               class="grid place-items-center w-7 h-7 rounded text-text-hint hover:text-text-primary hover:bg-surface-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               title="Switch to this branch"
-              @click="
-                handleSwitch(branch.id)
-                handleBranchSwitch()
-              "
+              @click="handleSwitch(branch.id)"
             >
               <BaseIcon name="arrow-right" :size="14" />
             </button>
