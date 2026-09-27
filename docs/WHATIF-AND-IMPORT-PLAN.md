@@ -239,7 +239,18 @@ are updated as steps land.
 
    It also runs for hand-written projects, from a "Analyse the book" button. The beta
    reader stops trusting skipped digests. Covers G4–G5.
-4. **What-if branch, rebuilt.** Fork at the scene with source links, then plan,
+4. **What-if branch, rebuilt.** *Done 27 Sep, tried live on Ethan Frome
+   ("What if Zeena never goes to Bettsbridge?", diverging at ch. IV): scenes
+   before the change byte-identical (G6); plan in ~50 s; 6 scenes rewritten
+   (~23k words) in 54 min with Jester sharing the GPU; the change carried in
+   IV-VII and IX, but VIII still said "after Zeena left" and the kept epilogue
+   still told of the sled crash -- so every scene after the change is now read
+   and checked, in order, against the change and the rewritten scenes' facts
+   ("Check again" re-runs it). The planner took three live attempts: one call
+   for all scenes (dropped everything), a one-letter answer per scene (p=1.00
+   keep for all, no room to reason), then reason-first per scene with briefs
+   that see only their own scene (a view of earlier briefs made every brief a
+   copy of the first). See analysis doc §37.* Originally: Fork at the scene with source links, then plan,
    write/keep/repair, then compare and merge, with cancel and pause. The branch list
    is mounted in the panel; the stale store/job code is removed or wired up. Covers G6, G8.
 5. **Alternatives mode fixes** (decision 11).

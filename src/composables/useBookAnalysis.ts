@@ -154,7 +154,7 @@ function paragraphsOf(html: string): string[] {
   return parts.length ? parts : [stripHtmlBlock(html)]
 }
 
-async function readScene(
+export async function readScene(
   bookTitle: string,
   scene: BookScene,
   signal: AbortSignal

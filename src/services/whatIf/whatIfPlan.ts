@@ -31,7 +31,15 @@ export interface PlannedScene extends BranchScene {
   brief: string
   reason: string
   /** Filled in by the write step. */
-  outcome?: 'written' | 'failed' | 'kept' | 'repaired' | 'needs review' | 'dropped'
+  outcome?:
+    | 'written'
+    | 'written, repaired'
+    | 'written, needs review'
+    | 'failed'
+    | 'kept'
+    | 'repaired'
+    | 'needs review'
+    | 'dropped'
 }
 
 export interface WhatIfPlan {
@@ -40,28 +48,6 @@ export interface WhatIfPlan {
   divergenceFact: string
   divergence: BranchScene
   scenes: PlannedScene[]
-}
-
-export const PLAN_SCHEMA = {
-  type: 'object',
-  properties: {
-    divergenceFact: { type: 'string' },
-    divergenceBrief: { type: 'string' },
-    scenes: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          sceneNumber: { type: 'number' },
-          action: { type: 'string', enum: ['keep', 'revise', 'drop'] },
-          brief: { type: 'string' },
-          reason: { type: 'string' }
-        },
-        required: ['sceneNumber', 'action']
-      }
-    }
-  },
-  required: ['divergenceFact', 'divergenceBrief', 'scenes']
 }
 
 export const PLAN_SYSTEM =
@@ -93,91 +79,111 @@ export function storySoFar(before: BranchScene[], maxFacts = 15): string {
   ].join('')
 }
 
-export function planPrompt(args: {
+// ── the per-scene planner (what runs on a local model) ─────────────────────
+//
+// One call planning every later scene at once was the first live attempt on
+// Ethan Frome: an 8B model dropped every scene after the change and wrote a
+// brief ("free from Zeena's presence") that contradicted the change it had
+// just stated. The gate work found the same: one small question per call
+// beats one big judgement (§16-17). So: the change first, then one question
+// per scene, then a brief only for the scenes that change.
+//
+// The per-scene question is answered reason-first (what the scene needs, what
+// the change makes false, then the decision) and NOT as a one-letter choice
+// read from probabilities: on the live read the one-letter version said
+// "keep" with probability 1.00 for every scene -- including the evening that
+// only happens because Zeena is away -- and kept saying it when the options
+// were reordered. A look-up question ("do these two quotes contradict?")
+// works as one token (§33); this one needs a step of reasoning first.
+
+export const DIVERGENCE_SCHEMA = {
+  type: 'object',
+  properties: { divergenceFact: { type: 'string' }, divergenceBrief: { type: 'string' } },
+  required: ['divergenceFact', 'divergenceBrief']
+}
+
+export function divergencePrompt(args: {
   bookTitle: string
   premise: string
   before: BranchScene[]
   divergence: BranchScene
-  later: BranchScene[]
 }): string {
-  const later = args.later
-    .map(
-      (s) =>
-        `${s.sceneNumber}. [${s.chapterTitle}] "${s.title}": ${clip(s.summary || '(not summarised)', 45)}`
-    )
-    .join('\n')
   return `BOOK: ${args.bookTitle}
 
-THE STORY UP TO THE CHANGE:
+THE STORY SO FAR:
 ${storySoFar(args.before)}
 
-THE SCENE WHERE IT CHANGES (scene ${args.divergence.sceneNumber}, "${args.divergence.title}"):
+THE SCENE WHERE IT CHANGES ("${args.divergence.title}", ${args.divergence.chapterTitle}):
 ${args.divergence.summary || '(not summarised)'}
 
 WHAT IF: ${args.premise}
 
-THE SCENES THAT FOLLOW IN THE BOOK AS WRITTEN:
-${later || '(none: this is the last scene)'}
+- "divergenceFact": the change as one plain fact that is now true from this scene on: only what is different, in the premise's own terms. Do not add consequences.
+- "divergenceBrief": what this scene must now show, in 1-2 sentences, given that fact.`
+}
 
-Plan the alternate version:
-- "divergenceFact": the change as one plain fact that is now true (e.g. "Mattie stays at the farm; Zeena leaves for Bettsbridge alone.").
-- "divergenceBrief": what scene ${args.divergence.sceneNumber} must now show, in 1-2 sentences.
-- "scenes": one entry for EVERY scene listed above, by its number:
-  - "keep" if the scene can stay as written (the change does not reach it);
-  - "revise" if it must change, with "brief": what it must now show, in 1-2 sentences;
-  - "drop" if it can no longer happen at all.
-  Give a short "reason" for each. Change only what the change forces.`
+export const FATE_SCHEMA = {
+  type: 'object',
+  properties: {
+    needs: { type: 'string' },
+    conflict: { type: 'string' },
+    action: { type: 'string', enum: ['keep', 'revise', 'drop'] }
+  },
+  required: ['needs', 'conflict', 'action']
 }
 
 /**
- * The model's plan made complete and safe: every later scene gets exactly one
- * decision (a missing or unreadable one is `keep` -- the book as written is
- * the default, and the author sees and can change every row); the scene of
- * the change is always rewritten; a `revise` with no brief gets one built from
- * the scene's own summary and the change.
+ * Whether the change reaches one ORIGINAL scene. It sees the change and the
+ * scene only -- not the alternate version so far: on the live read one odd
+ * brief ("Zeena remains awake and present") leaked into every later reason.
  */
-export function cleanPlan(
-  raw: unknown,
-  premise: string,
-  divergence: BranchScene,
-  later: BranchScene[]
-): WhatIfPlan {
-  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
-  const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
-  const fact = str(r.divergenceFact) || premise
-  const byNumber = new Map<number, Record<string, unknown>>()
-  for (const x of Array.isArray(r.scenes) ? r.scenes : []) {
-    const item = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>
-    const n = Number(item.sceneNumber)
-    if (Number.isFinite(n) && !byNumber.has(n)) byNumber.set(n, item)
-  }
-  const fallbackBrief = (s: BranchScene) =>
-    `${s.summary || s.title} -- rewritten so it follows from: ${fact}`
-  const scenes: PlannedScene[] = later.map((s) => {
-    const item = byNumber.get(s.sceneNumber) || {}
-    const action = (['keep', 'revise', 'drop'] as const).find((a) => a === item.action) || 'keep'
-    return {
-      ...s,
-      action,
-      brief: action === 'revise' ? str(item.brief) || fallbackBrief(s) : '',
-      reason:
-        str(item.reason) || (byNumber.has(s.sceneNumber) ? '' : 'not planned; kept as written')
-    }
-  })
-  return {
-    premise,
-    divergenceFact: fact,
-    divergence: divergence,
-    scenes: [
-      {
-        ...divergence,
-        action: 'revise',
-        brief: str(r.divergenceBrief) || `${premise}. ${fallbackBrief(divergence)}`,
-        reason: 'the scene where the story changes'
-      },
-      ...scenes
-    ]
-  }
+export function sceneFatePrompt(args: { divergenceFact: string; scene: BranchScene }): string {
+  return `In an alternate version of a novel, one thing changed: ${args.divergenceFact}
+
+A scene from the ORIGINAL book ("${args.scene.title}", ${args.scene.chapterTitle}):
+${args.scene.summary || args.scene.title}
+
+Answer in order:
+- "needs": what this scene needs to be true (who is where, who knows what, what has happened).
+- "conflict": which of those the change makes false, or "none".
+- "action": "keep" if the conflict is none; "revise" if the scene can still happen in a changed form (prefer this); "drop" only if nothing in it can happen at all.`
+}
+
+/** A scene's fate from the model's reason-first answer; null when it gave none. */
+export function decideFate(answer: unknown): { action: SceneAction; reason: string } | null {
+  const a = (answer && typeof answer === 'object' ? answer : null) as Record<string, unknown> | null
+  if (!a) return null
+  const conflict = typeof a.conflict === 'string' ? a.conflict.trim() : ''
+  const none = !conflict || /^(none|no conflict|nothing)\b/i.test(conflict)
+  const action = (['keep', 'revise', 'drop'] as const).find((x) => x === a.action)
+  if (!action) return null
+  // A decision that contradicts its own reason follows the reason.
+  if (none) return { action: 'keep', reason: 'the change does not reach it' }
+  return { action: action === 'keep' ? 'revise' : action, reason: conflict }
+}
+
+export const BRIEF_SCHEMA = {
+  type: 'object',
+  properties: { brief: { type: 'string' } },
+  required: ['brief']
+}
+
+/**
+ * A changed scene's new brief, from the change and the ORIGINAL scene only.
+ * On the live read, any view of the alternate version so far -- all of it,
+ * or just the last three scenes marked "do not repeat" -- made an 8B model
+ * write every brief from chapter V on as a copy of the first one ("a charged,
+ * intimate moment in the kitchen"). Without it, each brief grew out of its own
+ * scene (the hired girl, the money, Mattie leaving alone). Continuity between
+ * scenes is the writer's job: it writes each one against the prose before it.
+ */
+export function sceneBriefPrompt(args: { divergenceFact: string; scene: BranchScene }): string {
+  return `In an alternate version of a novel, one thing changed: ${args.divergenceFact}
+
+THIS SCENE IN THE ORIGINAL BOOK ("${args.scene.title}", ${args.scene.chapterTitle}):
+${args.scene.summary || args.scene.title}
+
+"brief": 1-2 sentences: what this scene shows in the alternate version. Keep its own events, place and people from the original wherever the change allows, and change only what the change forces. It must agree with the change (if someone stayed, they are there).`
 }
 
 /**

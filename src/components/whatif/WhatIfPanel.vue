@@ -132,10 +132,8 @@ async function handlePlanBranch() {
     )
     await refreshBranches()
     openBranch(branch.id)
+    // The open branch view reloads itself when the plan is saved.
     await branches.plan(projectId, branch.id)
-    // Re-mount the view so it shows the saved plan.
-    openBranchId.value = null
-    openBranch(branch.id)
   } catch (e) {
     branchError.value = e?.message || 'The branch could not be created'
   }

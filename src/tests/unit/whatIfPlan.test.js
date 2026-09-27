@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
-  cleanPlan,
-  planPrompt,
+  decideFate,
+  divergencePrompt,
+  sceneFatePrompt,
+  sceneBriefPrompt,
   branchCanon,
   storySoFar,
   replaceSentenceInHtml
@@ -19,72 +21,64 @@ const scene = (n, ch, extra = {}) => ({
   ...extra
 })
 
-describe('cleanPlan', () => {
-  const divergence = scene(3, 2)
-  const later = [scene(4, 2), scene(5, 3), scene(6, 3)]
-
-  it('gives every later scene one decision; missing and invalid ones stay as written', () => {
-    const plan = cleanPlan(
-      {
-        divergenceFact: 'Mattie stays.',
-        divergenceBrief: 'Zeena leaves alone.',
-        scenes: [
-          { sceneNumber: 4, action: 'revise', brief: 'They talk.' },
-          { sceneNumber: 5, action: 'explode' },
-          { sceneNumber: 4, action: 'drop' }
-        ]
-      },
-      'What if Mattie stayed?',
-      divergence,
-      later
-    )
-    expect(plan.divergenceFact).toBe('Mattie stays.')
-    expect(plan.scenes.map((s) => [s.sceneNumber, s.action])).toEqual([
-      [3, 'revise'],
-      [4, 'revise'],
-      [5, 'keep'],
-      [6, 'keep']
-    ])
-    expect(plan.scenes[0].brief).toBe('Zeena leaves alone.')
-    expect(plan.scenes[1].brief).toBe('They talk.')
-    expect(plan.scenes[3].reason).toMatch(/not planned/)
+describe('decideFate (reason first)', () => {
+  it('follows the stated conflict', () => {
+    expect(
+      decideFate({ needs: 'Zeena away', conflict: 'Zeena is home now', action: 'revise' })
+    ).toEqual({ action: 'revise', reason: 'Zeena is home now' })
+    expect(decideFate({ conflict: 'none', action: 'keep' }).action).toBe('keep')
+    expect(decideFate({ conflict: 'It cannot happen', action: 'drop' }).action).toBe('drop')
   })
 
-  it('an unreadable answer still yields a whole plan, rewriting only the change', () => {
-    const plan = cleanPlan(null, 'What if Mattie stayed?', divergence, later)
-    expect(plan.divergenceFact).toBe('What if Mattie stayed?')
-    expect(plan.scenes.map((s) => s.action)).toEqual(['revise', 'keep', 'keep', 'keep'])
-    expect(plan.scenes[0].brief).toMatch(/Summary 3\..*rewritten so it follows from/)
+  it('a decision that contradicts its own reason follows the reason', () => {
+    expect(decideFate({ conflict: 'None.', action: 'drop' }).action).toBe('keep')
+    expect(decideFate({ conflict: 'Zeena is present now', action: 'keep' }).action).toBe('revise')
+    // "nothing" must be a whole word: "nothingness of the fields" is a conflict.
+    expect(decideFate({ conflict: 'nothingness spreads', action: 'revise' }).action).toBe('revise')
   })
 
-  it('a revise without a brief gets one from the scene and the change', () => {
-    const plan = cleanPlan(
-      { divergenceFact: 'F.', scenes: [{ sceneNumber: 6, action: 'revise' }] },
-      'P',
-      divergence,
-      later
-    )
-    expect(plan.scenes.at(-1).brief).toBe('Summary 6. -- rewritten so it follows from: F.')
+  it('no usable answer is no decision', () => {
+    expect(decideFate(null)).toBeNull()
+    expect(decideFate({ conflict: 'x', action: 'explode' })).toBeNull()
+  })
+})
+
+describe('prompts', () => {
+  it('the change is stated without consequences; fate and brief see the change and the original scene only', () => {
+    const d = divergencePrompt({
+      bookTitle: 'EF',
+      premise: 'Zeena stays',
+      before: [scene(1, 1)],
+      divergence: scene(2, 1)
+    })
+    expect(d).toContain('WHAT IF: Zeena stays')
+    expect(d).toMatch(/Do not add consequences/)
+    const q = sceneFatePrompt({ divergenceFact: 'Zeena stays.', scene: scene(5, 3) })
+    expect(q).toContain('Zeena stays.')
+    expect(q).toContain('Summary 5.')
+    expect(q.indexOf('"needs"')).toBeLessThan(q.indexOf('"conflict"'))
+    expect(q.indexOf('"conflict"')).toBeLessThan(q.indexOf('"action"'))
+    // Any view of the alternate version so far made every brief a copy of the
+    // first (live read, 27 Sep): the brief sees its own scene and the change.
+    const b = sceneBriefPrompt({ divergenceFact: 'Zeena stays.', scene: scene(5, 3) })
+    expect(b).toContain('Summary 5.')
+    expect(b).not.toMatch(/alternate version so far|last scenes/i)
   })
 })
 
 describe('the canon never includes the future', () => {
-  const before = [scene(1, 1), scene(2, 1)]
-  const later = [scene(4, 2, { summary: 'Mattie and Ethan sled into the elm.' })]
-
   it('the writer canon has only scenes before the change, and the change as a fact', () => {
-    const plan = cleanPlan({ divergenceFact: 'Mattie stays.' }, 'P', scene(3, 2), later)
-    const canon = branchCanon(plan, before)
+    const plan = {
+      premise: 'P',
+      divergenceFact: 'Mattie stays.',
+      divergence: scene(3, 2),
+      scenes: []
+    }
+    const canon = branchCanon(plan, [scene(1, 1), scene(2, 1)])
     expect(canon).toContain('Summary 1.')
     expect(canon).toContain('Fact 2.')
     expect(canon).toContain('Mattie stays.')
-    expect(canon).not.toContain('elm')
     expect(canon).not.toContain('Summary 3.')
-  })
-
-  it('the planner sees later scenes as a list to decide on', () => {
-    const p = planPrompt({ bookTitle: 'EF', premise: 'P', before, divergence: scene(3, 2), later })
-    expect(p).toContain('4. [Ch 2] "S4": Mattie and Ethan sled into the elm.')
     expect(storySoFar([])).toMatch(/opening scene/)
   })
 })

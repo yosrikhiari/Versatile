@@ -38,6 +38,8 @@ const ACTIONS = [
 ]
 const OUTCOME = {
   written: 'rewritten',
+  'written, repaired': 'rewritten, then repaired',
+  'written, needs review': 'rewritten, needs review',
   failed: 'not written',
   kept: 'kept, consistent',
   repaired: 'kept, repaired',
@@ -57,14 +59,25 @@ const counts = computed(() => {
 
 async function load() {
   const list = await w.list(projectId.value)
-  branch.value = list.find((b) => String(b.id) === String(props.branchId)) || null
-  plan.value = branch.value?.whatIf?.plan ? structuredClone(branch.value.whatIf.plan) : null
+  const found = list.find((b) => String(b.id) === String(props.branchId)) || null
+  // Copied from the plain row: structuredClone refuses Vue's reactive proxy
+  // (DataCloneError), which is how a saved plan once failed to appear.
+  plan.value = found?.whatIf?.plan ? JSON.parse(JSON.stringify(found.whatIf.plan)) : null
+  branch.value = found
   if (status.value === 'written' || status.value === 'merged') {
     rows.value = await w.compare(projectId.value, props.branchId)
     chosen.value = rows.value.filter((r) => r.action !== 'drop').map((r) => r.sourceId)
   }
 }
 watch(() => props.branchId, load, { immediate: true })
+// A run started elsewhere (the panel's Plan a branch) ends while this view is
+// open: show what it saved.
+watch(
+  () => state.busy,
+  (busy) => {
+    if (!busy) load()
+  }
+)
 
 async function act(fn) {
   error.value = ''
@@ -90,6 +103,7 @@ const merge = () =>
     if (source != null) await branchStore.switchTo(projectId.value, source)
   })
 const openInEditor = () => branchStore.switchTo(projectId.value, props.branchId)
+const recheck = () => act(() => w.recheck(projectId.value, props.branchId))
 const remove = () =>
   act(async () => {
     if (!confirm('Delete this What If branch and everything written in it?')) return
@@ -273,7 +287,18 @@ const text = (html) => stripHtmlBlock(html || '')
             </details>
           </li>
         </ul>
-        <div v-if="status === 'written'" class="mt-3 flex justify-end">
+        <div v-if="status === 'written'" class="mt-3 flex flex-wrap justify-end gap-2">
+          <BaseButton
+            variant="ghost"
+            size="md"
+            icon="scan-search"
+            :disabled="state.busy"
+            data-test="recheck"
+            title="Check every scene after the change against it again, e.g. after editing"
+            @click="recheck"
+          >
+            Check again
+          </BaseButton>
           <BaseButton
             variant="primary"
             size="md"

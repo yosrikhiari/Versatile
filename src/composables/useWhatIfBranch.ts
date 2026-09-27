@@ -19,6 +19,7 @@
  * for summaries to plan from; an unread one plans from titles.
  */
 import { reactive } from 'vue'
+import type { useStoryCritic } from './useStoryCritic'
 import type { Table } from 'dexie'
 import { db } from '../services/db-core'
 import { createBranch, updateBranch, copyManuscriptToBranch } from '../services/db-branches'
@@ -31,10 +32,15 @@ import { stripHtmlBlock, countWords } from '../utils/textUtils'
 import { aiGenerateJson } from './useAiService'
 import { FEATURES } from '../config/ai'
 import {
-  PLAN_SCHEMA,
   PLAN_SYSTEM,
-  planPrompt,
-  cleanPlan,
+  DIVERGENCE_SCHEMA,
+  divergencePrompt,
+  FATE_SCHEMA,
+  sceneFatePrompt,
+  decideFate,
+  BRIEF_SCHEMA,
+  sceneBriefPrompt,
+  type PlannedScene,
   branchCanon,
   replaceSentenceInHtml,
   type BranchScene,
@@ -144,6 +150,111 @@ function splitAt(scenes: BranchScene[], divergenceId: Id) {
   return { before: scenes.slice(0, at), divergence: scenes[at], later: scenes.slice(at + 1) }
 }
 
+const PLAN_OPTS = { feature: FEATURES.STORY_GENERATION, role: 'utility' as const }
+
+/**
+ * The plan, one small question at a time (see whatIfPlan's per-scene planner):
+ * the change as a fact, then each later scene's fate (reason first), then a
+ * brief for each scene that changes, written knowing the alternate version so
+ * far.
+ */
+async function planPerScene(
+  bookTitle: string,
+  premise: string,
+  before: BranchScene[],
+  divergence: BranchScene,
+  later: BranchScene[]
+): Promise<WhatIfPlan> {
+  const div = (await aiGenerateJson(
+    divergencePrompt({ bookTitle, premise, before, divergence }),
+    PLAN_SYSTEM,
+    {
+      ...PLAN_OPTS,
+      temperature: 0.3,
+      schema: DIVERGENCE_SCHEMA,
+      schemaName: 'what_if_change'
+    }
+  ).catch(() => null)) as { divergenceFact?: string; divergenceBrief?: string } | null
+  const fact = div?.divergenceFact?.trim() || premise
+  const first: PlannedScene = {
+    ...divergence,
+    action: 'revise',
+    brief: div?.divergenceBrief?.trim() || `${premise}. ${divergence.summary}`,
+    reason: 'the scene where the story changes'
+  }
+  const scenes: PlannedScene[] = []
+  for (const scene of later) {
+    whatIfState.detail = `Scene ${scene.sceneNumber} of ${later.at(-1)?.sceneNumber ?? scene.sceneNumber}`
+    const answer = await aiGenerateJson(
+      sceneFatePrompt({ divergenceFact: fact, scene }),
+      PLAN_SYSTEM,
+      { ...PLAN_OPTS, temperature: 0, schema: FATE_SCHEMA, schemaName: 'what_if_scene' }
+    ).catch(() => null)
+    // No usable answer: the scene stays as written, and says so.
+    const fate = decideFate(answer) || {
+      action: 'keep' as const,
+      reason: 'no decision; kept as written'
+    }
+    const planned: PlannedScene = { ...scene, action: fate.action, brief: '', reason: fate.reason }
+    if (fate.action === 'revise') {
+      const b = (await aiGenerateJson(
+        sceneBriefPrompt({ divergenceFact: fact, scene }),
+        PLAN_SYSTEM,
+        { ...PLAN_OPTS, temperature: 0.3, schema: BRIEF_SCHEMA, schemaName: 'what_if_brief' }
+      ).catch(() => null)) as { brief?: string } | null
+      planned.brief =
+        b?.brief?.trim() ||
+        `${scene.summary || scene.title} -- rewritten so it follows from: ${fact}`
+    }
+    scenes.push(planned)
+  }
+  whatIfState.detail = ''
+  return { premise, divergenceFact: fact, divergence, scenes: [first, ...scenes] }
+}
+
+/**
+ * One scene against a list of facts: the critic's quoted contradictions, each
+ * repaired sentence by sentence. 'review' when a repair could not be placed.
+ */
+async function checkAndRepair(
+  critic: ReturnType<typeof useStoryCritic>,
+  characters: unknown,
+  subsectionId: Id,
+  ledger: string[]
+): Promise<'ok' | 'repaired' | 'needs review'> {
+  const row = await tables.subsections.get(subsectionId)
+  let html = String(row?.content || '')
+  const report = (await critic
+    .checkContradictions({
+      characters,
+      locations: [],
+      sceneProse: [{ prose: stripHtmlBlock(html), chapterNumber: null }],
+      synopsis: '',
+      ledger
+    })
+    .catch(() => null)) as {
+    characterIssues?: Array<{ contradictions: Array<{ between: string[] }> }>
+  } | null
+  const pairs = (report?.characterIssues || []).flatMap((i) =>
+    i.contradictions.map((c) => c.between)
+  )
+  if (!pairs.length) return 'ok'
+  let allFixed = true
+  for (const [sentence, fact] of pairs) {
+    const fixed = await critic.repairSentence(sentence, fact)
+    const r =
+      fixed == null ? { html, replaced: false } : replaceSentenceInHtml(html, sentence, fixed)
+    allFixed = allFixed && r.replaced
+    html = r.html
+  }
+  await updateSubsection(subsectionId as string, {
+    content: html,
+    wordCount: countWords(stripHtmlBlock(html)),
+    ...(allFixed ? {} : { contentStatus: 'review' })
+  })
+  return allFixed ? 'repaired' : 'needs review'
+}
+
 export function useWhatIfBranch() {
   async function run<T>(phase: typeof whatIfState.phase, message: string, fn: () => Promise<T>) {
     if (whatIfState.busy) throw new Error('A What If is already running.')
@@ -191,24 +302,8 @@ export function useWhatIfBranch() {
       const scenes = await branchScenes(projectId, branchId)
       const { before, divergence, later } = splitAt(scenes, b.whatIf.divergenceId)
       const project = await getProject(projectId)
-      const raw = await aiGenerateJson(
-        planPrompt({
-          bookTitle: String(project?.name || 'Untitled'),
-          premise: b.whatIf.premise,
-          before,
-          divergence,
-          later
-        }),
-        PLAN_SYSTEM,
-        {
-          feature: FEATURES.STORY_GENERATION,
-          role: 'utility',
-          temperature: 0.3,
-          schema: PLAN_SCHEMA,
-          schemaName: 'what_if_plan'
-        }
-      ).catch(() => null)
-      const planned = cleanPlan(raw, b.whatIf.premise, divergence, later)
+      const bookTitle = String(project?.name || 'Untitled')
+      const planned = await planPerScene(bookTitle, b.whatIf.premise, before, divergence, later)
       await saveMeta(branchId, { plan: planned, status: 'planned' })
       return planned
     })
@@ -219,7 +314,88 @@ export function useWhatIfBranch() {
     await saveMeta(branchId, { plan: planned })
   }
 
-  /** Carry out the plan in the branch, then check what was kept. */
+  /**
+   * Read the rewritten scenes (summary, facts: the branch's own knowledge),
+   * then check every scene after the change, in order, against the change
+   * and the facts of the rewritten scenes before it, repairing what
+   * contradicts. Runs after writing; `recheck` runs it again on its own.
+   */
+  async function verify(projectId: Id, planned: WhatIfPlan) {
+    // Every scene after the change, rewritten or kept, checked in order
+    // against the change and the facts of the rewritten scenes before it.
+    // The first live branch checked only the kept scenes and only against
+    // the change: a rewritten chapter VIII still said "after Zeena left"
+    // (the writer's own gate does not know the change), and the kept
+    // epilogue passed while still recounting the sled crash the rewritten
+    // chapter IX no longer has.
+    whatIfState.phase = 'checking'
+    whatIfState.message = 'Reading the rewritten scenes'
+    const project = await getProject(projectId)
+    const { readScene } = await import('./useBookAnalysis')
+    const { writeSceneAnalysis } = await import('../services/generation/sceneAnalysis')
+    const factsOf = new Map<Id, string[]>()
+    for (const s of planned.scenes.filter((x) => x.outcome === 'written')) {
+      whatIfState.detail = s.title
+      const row = await tables.subsections.get(s.subsectionId)
+      const html = String(row?.content || '')
+      const reading = await readScene(
+        String(project?.name || 'Untitled'),
+        {
+          subsectionId: s.subsectionId,
+          sectionId: (row?.sectionId as Id) ?? '',
+          volumeId: null,
+          chapterNumber: s.chapterNumber,
+          sceneNumber: s.sceneNumber,
+          chapterTitle: s.chapterTitle,
+          title: s.title,
+          html
+        },
+        new AbortController().signal
+      ).catch(() => null)
+      if (!reading) continue
+      factsOf.set(s.subsectionId, reading.keyFacts)
+      // The branch's own knowledge of the new scene (summary, facts, cast).
+      await writeSceneAnalysis({
+        projectId: projectId as string,
+        subsectionId: s.subsectionId as string,
+        prose: stripHtmlBlock(html),
+        structured: {
+          summary: reading.summary,
+          keyFacts: reading.keyFacts,
+          metadataStatus: 'ok',
+          usedEntities: { characterNames: reading.characters.map((c) => c.name) }
+        },
+        scene: {
+          sceneNumber: s.sceneNumber,
+          chapterNumber: s.chapterNumber,
+          title: s.title,
+          pov: reading.pov,
+          location: reading.location
+        }
+      }).catch(() => null)
+      if (reading.summary)
+        await updateSubsection(s.subsectionId as string, { summary: reading.summary })
+    }
+
+    whatIfState.message = 'Checking every scene after the change against it'
+    const { useStoryCritic } = await import('./useStoryCritic')
+    const { useStoryBibleStore } = await import('../stores/storyBibleStore')
+    const critic = useStoryCritic()
+    const characters = useStoryBibleStore().characters
+    const ledger: string[] = [planned.divergenceFact]
+    for (const s of planned.scenes) {
+      if (s.action === 'drop' || s.outcome === 'failed') continue
+      whatIfState.detail = s.title
+      const verdict = await checkAndRepair(critic, characters, s.subsectionId, [...ledger])
+      if (s.action === 'keep') s.outcome = verdict === 'ok' ? 'kept' : verdict
+      else if (verdict !== 'ok')
+        s.outcome = verdict === 'repaired' ? 'written, repaired' : 'written, needs review'
+      ledger.push(...(factsOf.get(s.subsectionId) || []))
+    }
+    whatIfState.detail = ''
+  }
+
+  /** Carry out the plan in the branch, then check every scene after the change. */
   function write(projectId: Id, branchId: Id) {
     return run('writing', 'Rewriting the scenes the change reaches', async () => {
       const b = await getBranchRow(branchId)
@@ -285,49 +461,25 @@ export function useWhatIfBranch() {
         s.outcome = stripHtmlBlock(String(row?.content || '')) ? 'written' : 'failed'
       }
 
-      // The kept scenes after the change, checked against it.
-      whatIfState.phase = 'checking'
-      whatIfState.message = 'Checking the scenes that were kept'
-      const { useStoryCritic } = await import('./useStoryCritic')
-      const { useStoryBibleStore } = await import('../stores/storyBibleStore')
-      const critic = useStoryCritic()
-      const characters = useStoryBibleStore().characters
-      for (const s of planned.scenes.filter((x) => x.action === 'keep')) {
-        const row = await tables.subsections.get(s.subsectionId)
-        let html = String(row?.content || '')
-        const report = await critic
-          .checkContradictions({
-            characters,
-            locations: [],
-            sceneProse: [{ prose: stripHtmlBlock(html), chapterNumber: null }],
-            synopsis: '',
-            ledger: [planned.divergenceFact]
-          })
-          .catch(() => null)
-        const pairs = (report?.characterIssues || []).flatMap(
-          (i: { contradictions: Array<{ between: string[] }> }) =>
-            i.contradictions.map((c) => c.between)
-        )
-        if (!pairs.length) {
-          s.outcome = 'kept'
-          continue
-        }
-        let allFixed = true
-        for (const [sentence, fact] of pairs) {
-          const fixed = await critic.repairSentence(sentence, fact)
-          const r =
-            fixed == null ? { html, replaced: false } : replaceSentenceInHtml(html, sentence, fixed)
-          allFixed = allFixed && r.replaced
-          html = r.html
-        }
-        await updateSubsection(s.subsectionId as string, {
-          content: html,
-          wordCount: countWords(stripHtmlBlock(html)),
-          ...(allFixed ? {} : { contentStatus: 'review' })
-        })
-        s.outcome = allFixed ? 'repaired' : 'needs review'
-      }
+      await verify(projectId, planned)
       await saveMeta(branchId, { plan: planned, status: 'written' })
+      return planned
+    })
+  }
+
+  /** Check a written branch again (after the author has edited its scenes). */
+  function recheck(projectId: Id, branchId: Id) {
+    return run('checking', 'Checking every scene after the change against it', async () => {
+      const b = await getBranchRow(branchId)
+      const planned = b.whatIf.plan
+      if (!planned) throw new Error('Plan the branch first.')
+      for (const s of planned.scenes) {
+        if (s.outcome === 'written, repaired' || s.outcome === 'written, needs review')
+          s.outcome = 'written'
+        if (s.outcome === 'repaired' || s.outcome === 'needs review') s.outcome = 'kept'
+      }
+      await verify(projectId, planned)
+      await saveMeta(branchId, { plan: planned })
       return planned
     })
   }
@@ -400,5 +552,5 @@ export function useWhatIfBranch() {
       .sort((a, b) => String(b.whatIf.createdAt).localeCompare(String(a.whatIf.createdAt)))
   }
 
-  return { fork, plan, savePlan, write, compare, merge, list, state: whatIfState }
+  return { fork, plan, savePlan, write, recheck, compare, merge, list, state: whatIfState }
 }

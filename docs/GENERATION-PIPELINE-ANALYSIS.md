@@ -2086,3 +2086,53 @@ coordinates. A group dropped into a group now sets `parentGroupId`. The
 
 Still open: within-scene contradictions (needs a stronger model or a trained
 checker, §35) and the user's 12 labels.
+
+## 37. What If on any novel: import, read, branch (2026-09-27)
+
+Plan: `docs/WHATIF-AND-IMPORT-PLAN.md`. Four steps, each measured on the six
+Project Gutenberg books in `reports/live/masterpieces/raw/`.
+
+**1. Data integrity (2c10308b).** Rows without a branch are adopted by main on
+open; a fork copies the book (and, from 4a, its knowledge) with a
+`sourceSubsectionId`/`sourceSectionId` link on every copy; deleting a branch
+removes its rows; the recovery backup covers every table and never clears one
+the backup lacks (the old list had no chapters or scenes, so a restore deleted
+all prose); the JSON import remaps every reference.
+
+**2. Import (2964895c).** txt/md/docx/epub/html, no new dependency. Chapters
+from headings, else the book's own contents page, else numbered headings;
+scenes at the author's breaks. All six books: right chapter count and titles,
+every word accounted for (scenes + front/back matter + headings = total).
+
+**3. Reading the book (f352ea15).** Per scene: summary, POV, place, cast, key
+facts, relationships, from the local model; then names/places resolved across
+the book and each scene fed through the writer's own sync path (bible,
+chapter-stamped edges, `ok` digests). Ethan Frome, 34,787 words: 10.8 min
+end to end; 7 characters, 21 places, 15 links. The first live read found eight
+defects (duplicate digests from stringified ids, a second concurrent run,
+bracketed names, "Ned" merged into "Mrs. Ned Hale", generic places, one-scene
+family misreadings, label churn, a link dropped for a person not yet in the
+bible) and a speed bug (background calls waited out their own 30 s foreground
+linger: 16 -> 10.8 min).
+
+**4. What If as a branch (e349f5fc, 2e6ed6bd, and this section's fixes).**
+Story knowledge per branch (schema v55). Fork at the scene, plan, write with
+the continuation writer against the story up to the change, check kept scenes
+with the critic and repair them, compare and merge with snapshots.
+
+The planner took three live attempts on Ethan Frome ("What if Zeena never goes
+to Bettsbridge, and stays home the night Ethan and Mattie were to be alone?"):
+
+| attempt | how | what came back |
+|---|---|---|
+| 1 | one call plans every later scene | every scene after the change dropped; scene V's brief "free from Zeena's presence" contradicted the change |
+| 2 | one-letter A/B/C per scene, read from probabilities | "as written" at p = 1.00 for all 7 scenes, including the evening that only exists because Zeena is away; same answer with the options reordered (not position bias -- no reasoning) |
+| 3a | reason first (needs -> conflict -> action), briefs see the alternate version so far | decisions sensible; every brief from V on a copy of the first ("a charged, intimate moment in the kitchen") |
+| 3b | briefs see only the change and their own original scene | each brief grows from its own scene (the hired girl, the money, Mattie leaving alone -- no sled crash) |
+
+So: one question per call (as in the gate work, §16-17); a question that needs
+reasoning must be allowed to reason before it answers (a one-token read works
+for look-ups, §33, not for this); and a small model anchors on any example it
+is shown, so a per-item prompt must not show the other items' answers. Two of
+seven briefs still contradicted the change after 3b; the plan is editable for
+exactly that, and the live run used two author edits.

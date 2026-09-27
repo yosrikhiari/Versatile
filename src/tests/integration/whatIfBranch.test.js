@@ -4,20 +4,38 @@ import { setActivePinia, createPinia } from 'pinia'
 /**
  * WHATIF-AND-IMPORT-PLAN.md step 4, gates G6 (the fork is exact) and G8
  * (merge updates the source scenes it came from, snapshot first), over the
- * real schema. The model's plan, the writer and the critic are stand-ins.
+ * real schema. The model, the writer and the critic are stand-ins.
  */
 
-const aiGenerateJson = vi.fn(async () => ({
-  divergenceFact: 'Zeena stayed home.',
-  divergenceBrief: 'Zeena decides not to go to Bettsbridge.',
-  scenes: [
-    { sceneNumber: 3, action: 'keep', reason: 'unaffected' },
-    { sceneNumber: 4, action: 'drop', reason: 'cannot happen now' }
-  ]
-}))
+// A stand-in model that answers the planner's three questions by what they
+// ask: the change, one scene's fate (reason first), or a scene's new brief.
+function defaultModel(prompt) {
+  if (prompt.includes('"divergenceFact"')) {
+    return {
+      divergenceFact: 'Zeena stayed home.',
+      divergenceBrief: 'Zeena decides not to go to Bettsbridge.'
+    }
+  }
+  if (prompt.includes('"needs"')) {
+    return prompt.includes('great elm')
+      ? { needs: 'Zeena away', conflict: 'the sled ride needs Zeena away', action: 'drop' }
+      : { needs: 'the village gathers', conflict: 'none', action: 'keep' }
+  }
+  if (prompt.includes('Record, from this passage only')) {
+    // The scene reader, on a rewritten scene.
+    return {
+      summary: 'Zeena stays by the stove.',
+      keyFacts: ['Zeena is at home all evening.'],
+      characters: [{ name: 'Zeena' }],
+      places: [],
+      relationships: []
+    }
+  }
+  return { brief: 'A new brief.' }
+}
+const aiGenerateJson = vi.fn()
 vi.mock('@/composables/useAiService', () => ({
-  aiGenerateJson: (...a) => aiGenerateJson(...a),
-  aiChoiceProbabilities: vi.fn(async () => null)
+  aiGenerateJson: (...a) => aiGenerateJson(...a)
 }))
 
 // The writer: fills every blank scene of the active branch, and records what it was told.
@@ -43,9 +61,11 @@ vi.mock('@/composables/useVolumeStoryGenerator', () => ({
 }))
 
 // The critic: the kept "Church" scene contradicts the change; its repair is a new sentence.
+const criticCalls = []
 vi.mock('@/composables/useStoryCritic', () => ({
   useStoryCritic: () => ({
     async checkContradictions({ sceneProse, ledger }) {
+      criticCalls.push({ prose: sceneProse[0].prose, ledger })
       const prose = sceneProse[0].prose
       return prose.includes('Zeena was away.')
         ? {
@@ -64,6 +84,8 @@ let db
 beforeEach(async () => {
   setActivePinia(createPinia())
   writerCalls.length = 0
+  criticCalls.length = 0
+  aiGenerateJson.mockReset().mockImplementation(async (p) => defaultModel(p))
   db = (await import('@/services/db-core')).db
   for (const t of [
     'projects',
@@ -129,17 +151,18 @@ describe('What If as a branch', () => {
     expect(copies.every((c) => c.sourceSubsectionId != null)).toBe(true)
     expect(branch.whatIf.divergenceId).toBe(copyOf[bySceneNo[2].id].id)
 
-    // plan
+    // plan: the change, then one reason-first question per later scene
     const plan = await w.plan(projectId, branch.id)
+    expect(plan.divergenceFact).toBe('Zeena stayed home.')
     expect(plan.scenes.map((s) => [s.sceneNumber, s.action])).toEqual([
       [2, 'revise'],
       [3, 'keep'],
       [4, 'drop']
     ])
-    const planPrompt = aiGenerateJson.mock.calls[0][0]
-    expect(planPrompt).toContain('WHAT IF: What if Zeena stayed home?')
-    // The planner does see what follows: it must decide about it.
-    expect(planPrompt).toContain('Ethan and Mattie sled into the great elm.')
+    expect(plan.scenes[2].reason).toBe('the sled ride needs Zeena away')
+    const prompts = aiGenerateJson.mock.calls.map((c) => c[0])
+    expect(prompts[0]).toContain('WHAT IF: What if Zeena stayed home?')
+    expect(prompts.filter((p) => p.includes('"needs"'))).toHaveLength(2)
 
     // write
     const written = await w.write(projectId, branch.id)
@@ -153,6 +176,14 @@ describe('What If as a branch', () => {
     expect(writerCalls[0].canon).toContain('Ethan meets Mattie at the church door.')
     expect(writerCalls[0].canon).not.toContain('elm')
     expect(writerCalls[0].canon).not.toContain('Zeena leaves for Bettsbridge')
+    // Every scene after the change is checked, the rewritten one included,
+    // and a later scene is checked against what the rewritten one established.
+    expect(criticCalls.map((c) => c.prose)).toEqual([
+      'Zeena stays by the stove.',
+      expect.stringContaining('The village gathers.')
+    ])
+    expect(criticCalls[0].ledger).toEqual(['Zeena stayed home.'])
+    expect(criticCalls[1].ledger).toEqual(['Zeena stayed home.', 'Zeena is at home all evening.'])
     const after = await db.subsections.where({ projectId, branchId: branch.id }).toArray()
     expect(after).toHaveLength(3)
     const church = after.find((s) => s.sourceSubsectionId === bySceneNo[3].id)
@@ -186,13 +217,42 @@ describe('What If as a branch', () => {
     expect((await db.branches.get(branch.id)).whatIf.status).toBe('merged')
   })
 
-  it('an unreadable plan still keeps the book and rewrites only the scene of the change', async () => {
+  it('an unreadable answer keeps the book as written and rewrites only the scene of the change', async () => {
     const { projectId, main, bySceneNo } = await book()
-    aiGenerateJson.mockResolvedValueOnce('not json at all')
+    aiGenerateJson.mockResolvedValue('not json at all')
     const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')
     const w = useWhatIfBranch()
     const branch = await w.fork(projectId, main, bySceneNo[3].id, 'What if the church burned?')
     const plan = await w.plan(projectId, branch.id)
     expect(plan.scenes.map((s) => s.action)).toEqual(['revise', 'keep'])
+    expect(plan.divergenceFact).toBe('What if the church burned?')
+  })
+
+  it('each changed scene gets its own brief, from its own original and the change', async () => {
+    const { projectId, main, bySceneNo } = await book()
+    aiGenerateJson.mockImplementation(async (p) =>
+      p.includes('"needs"')
+        ? { needs: 'x', conflict: 'Zeena would be there', action: 'revise' }
+        : defaultModel(p)
+    )
+    const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')
+    const w = useWhatIfBranch()
+    const branch = await w.fork(projectId, main, bySceneNo[2].id, 'What if Zeena stayed home?')
+    const plan = await w.plan(projectId, branch.id)
+    expect(plan.scenes.map((s) => s.action)).toEqual(['revise', 'revise', 'revise'])
+    expect(plan.scenes[1].reason).toBe('Zeena would be there')
+    const briefPrompts = aiGenerateJson.mock.calls
+      .map((c) => c[0])
+      .filter((p) => p.includes('"brief"'))
+    expect(briefPrompts).toHaveLength(2)
+    // Each brief question is about its own scene, and never sees another
+    // scene's new brief (that made every brief a copy of the first, live).
+    expect(briefPrompts[0]).toContain('The village gathers without Zeena.')
+    expect(briefPrompts[1]).toContain('Ethan and Mattie sled into the great elm.')
+    expect(briefPrompts.every((p) => p.includes('Zeena stayed home.'))).toBe(true)
+    expect(briefPrompts.some((p) => p.includes('A new brief.'))).toBe(false)
+    expect(briefPrompts.some((p) => p.includes('Zeena decides not to go to Bettsbridge.'))).toBe(
+      false
+    )
   })
 })
