@@ -1979,3 +1979,64 @@ reviewers caught that the gate did not: real-14's repair kept "the road that
 claimed him" and "Halim's memory" (a death still implied), real-21's "the
 animal's still body" sits badly beside "the mule stirs, weakly". The next
 repair iteration should look at the whole paragraph, not the one sentence.
+
+### Step 7: do gated books read better? Answered at the scene level
+
+The plan's last step was 3-4 small books with the gate on against 3-4 with it
+off, read blind. Not run, by decision (2026-09-27): the gate now intervenes
+rarely. In the three latest live books every scene committed as `generated`
+and the whole set saw one in-place repair; on the 48 current-pipeline scenes
+of §29 the gate fails none. Two books that differ in one scene in ten or
+fifteen cannot show a difference with four pairs, and a null there would say
+nothing. What the gate does, it does at the scene level, and that is
+measured:
+
+* where it intervenes it is right: continuity failures on the corpus are
+  real contradictions (§34), and it raises no continuity or voice false
+  alarm on the 42/37 reviewer-fine scenes (§33);
+* its fix works: the adopted repair passes 31/34 and, read blind, removes
+  the contradiction in 27-28/30 against a rewrite's 24/30, at similar
+  quality and ~1/70 of the time (step 6);
+* it no longer damages good prose: masterpieces failing 11/12 -> 0/12 (§31).
+
+So the honest answer is: a gated book differs from an ungated one in the few
+scenes that carried a contradiction or flat dialogue, and in those scenes the
+gated version is better. Whether that is visible to a reader over a whole
+book is not measurable with the runs a single GPU can afford.
+
+### Step 5: contradictions in real prose (ConStory-Bench)
+
+ConStory-Bench (arXiv 2603.05890, MIT): one model's file,
+`evaluations/gpt4o_1120.csv` (21 MB, downloaded with the user's OK to the
+gitignored `reports/live/constory/`), 2,000 GPT-4o stories of about 1,300
+words, each with the ConStory-Checker's findings (exact quote and the quote
+it contradicts). The labels are an LLM checker's, not human. The
+within-scene candidate W4b (§32) read 20 English stories with a finding in a
+"state" category (memory, knowledge, appearance, quantity, name, time,
+geography; both quotes found verbatim) and 20 with no finding at all
+(`tools/judge-bench/constory_within.py`, seed 20260926):
+
+| | flagged | flagged at the labelled quotes |
+|---|---|---|
+| stories with a finding (20) | 1 | **0** |
+| stories with none (20) | 0 | 0 |
+
+So on natural contradictions in someone else's prose it finds essentially
+nothing (0/20 located, 95% range 0-16%), while raising no false alarm (0/20).
+That fits §32 (2-3 of 8 on our own scenes) and the research (whole-document
+checking by an 8B model is near chance, FlawedFictions). Within-scene
+contradiction detection stays unshipped; a step up would need a stronger
+model or a trained checker, not another prompt.
+
+### Where section 7 of the plan stands
+
+| step | status |
+|---|---|
+| 1 labelled real scenes | done (§28-§29); the user's own 12 still unlabelled |
+| 2 show-tell | negative three ways; advisory (§31-§32) |
+| 3 emotional goal | reader's multiple choice, advisory (this section) |
+| 4 off-topic evidence filter | moot since §31 (those dimensions only warn) |
+| 5 contradictions on real prose | measured: within-scene 0/20 located, 0/20 false |
+| 6 repair vs rewrite | repair stays first: ties on quality, resolves more, ~1/70 the time |
+| 7 gated vs ungated books | answered at the scene level (the gate intervenes ~1 in 10-15 scenes) |
+| 8 small fixes | Editor 24/24 legal, retrieval eval that can fail, spine as written, lost-facts bug |
