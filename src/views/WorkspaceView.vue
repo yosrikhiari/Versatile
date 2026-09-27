@@ -12,6 +12,7 @@ import BaseButton from '../components/ui/BaseButton.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import OrganizationSwitcher from '../components/org/OrganizationSwitcher.vue'
 import CreateOrganizationDialog from '../components/org/CreateOrganizationDialog.vue'
+import ImportNovelModal from '../components/import/ImportNovelModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -21,6 +22,7 @@ const showCreateOrg = ref(false)
 const projects = ref([])
 const loading = ref(true)
 const showCreate = ref(false)
+const showImportNovel = ref(false)
 const seedingSample = ref(false)
 const newProjectName = ref('')
 const newProjectGenre = ref('')
@@ -161,9 +163,20 @@ async function handleLogout() {
             }}
           </p>
         </div>
-        <BaseButton variant="primary" size="lg" icon="plus" @click="showCreate = true">
-          New
-        </BaseButton>
+        <div class="flex items-center gap-2">
+          <BaseButton
+            variant="ghost"
+            size="lg"
+            icon="book-open"
+            data-test="import-novel"
+            @click="showImportNovel = true"
+          >
+            Import a novel
+          </BaseButton>
+          <BaseButton variant="primary" size="lg" icon="plus" @click="showCreate = true">
+            New
+          </BaseButton>
+        </div>
       </div>
 
       <!-- Stats only once there is something to chart; a first run got a
@@ -222,6 +235,16 @@ async function handleLogout() {
           @click="openSample"
         >
           Open the sample story
+        </BaseButton>
+        <BaseButton
+          variant="ghost"
+          size="sm"
+          icon="book-open"
+          custom-class="mt-1"
+          data-test="import-novel-empty"
+          @click="showImportNovel = true"
+        >
+          Import a novel you have already written
         </BaseButton>
       </EmptyState>
 
@@ -312,5 +335,6 @@ async function handleLogout() {
     </div>
 
     <CreateOrganizationDialog v-if="showCreateOrg" @close="showCreateOrg = false" />
+    <ImportNovelModal :show="showImportNovel" @close="showImportNovel = false" />
   </div>
 </template>

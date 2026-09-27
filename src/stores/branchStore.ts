@@ -55,10 +55,13 @@ export const useBranchStore = defineStore('branch', () => {
     activeBranchId.value = branchId
   }
 
-  async function doInit(projectId: string): Promise<string | null> {
-    if (projectIdLoaded.value !== projectId) activeBranchId.value = null
-    await loadBranches(projectId)
-    projectIdLoaded.value = projectId
+  // `projectId` is passed through as given: project ids are numbers, and a
+  // stringified id matches no row in an indexed `where`. Only the comparison
+  // key is a string.
+  async function doInit(projectId: string | number): Promise<string | null> {
+    if (projectIdLoaded.value !== String(projectId)) activeBranchId.value = null
+    await loadBranches(projectId as string)
+    projectIdLoaded.value = String(projectId)
     const main = mainBranch.value
     if (!activeBranch.value) {
       activeBranchId.value = main ? main.id : branches.value[0]?.id || null
@@ -75,7 +78,7 @@ export const useBranchStore = defineStore('branch', () => {
   async function initForProject(projectId: string | number): Promise<string | null> {
     const pid = String(projectId)
     if (pending && pending.projectId === pid) return pending.promise
-    const promise = doInit(pid).finally(() => {
+    const promise = doInit(projectId).finally(() => {
       if (pending?.promise === promise) pending = null
     })
     pending = { projectId: pid, promise }
@@ -96,7 +99,7 @@ export const useBranchStore = defineStore('branch', () => {
    * otherwise kept showing the previous branch's text.
    */
   async function switchTo(projectId: string | number, branchId: string) {
-    await loadBranches(String(projectId))
+    await loadBranches(projectId as string)
     projectIdLoaded.value = String(projectId)
     activeBranchId.value = branchId
     const { useManuscriptStore } = await import('./manuscriptStore')

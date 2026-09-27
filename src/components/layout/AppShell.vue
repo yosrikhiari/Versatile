@@ -11,6 +11,7 @@ import BaseIcon from '../shared/BaseIcon.vue'
 import GoalProgressBar from '../shared/GoalProgressBar.vue'
 import ProjectSettingsModal from './ProjectSettingsModal.vue'
 import BranchManagerModal from './BranchManagerModal.vue'
+import ImportNovelModal from '../import/ImportNovelModal.vue'
 import StoryLookupModal from '../storybible/StoryLookupModal.vue'
 import CompileManuscript from '../export/CompileManuscript.vue'
 import StoryAssistantChat from '../assistant/StoryAssistantChat.vue'
@@ -39,6 +40,7 @@ function focusMain() {
 const showProjectSettings = ref(false)
 const showStoryLookup = ref(false)
 const showCompile = ref(false)
+const showImportNovel = ref(false)
 const showStoryAssistant = ref(false)
 const showBranchManager = ref(false)
 const showProjectDropdown = ref(false)
@@ -109,7 +111,13 @@ const paletteActions = computed(() => [
     icon: 'file-text',
     keywords: ['word', 'docx', 'scrivener', 'manuscript']
   },
-  { id: 'import', label: 'Import project', icon: 'download', hint: 'Ctrl+I' },
+  { id: 'import', label: 'Import project backup (.json)', icon: 'download', hint: 'Ctrl+I' },
+  {
+    id: 'import-novel',
+    label: 'Import a novel',
+    icon: 'book-open',
+    keywords: ['manuscript', 'docx', 'epub', 'txt', 'markdown', 'word', 'upload']
+  },
   {
     id: 'insert-template',
     label: 'Insert a template',
@@ -138,6 +146,9 @@ const PALETTE_ACTIONS = {
   'export-pdf': () => emit('export-pdf'),
   'export-rtf': () => emit('export-rtf'),
   import: () => emit('import'),
+  'import-novel': () => {
+    showImportNovel.value = true
+  },
   'project-settings': () => {
     showProjectSettings.value = true
   },
@@ -477,6 +488,19 @@ watch(
                 Create new project
               </button>
               <button
+                class="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-surface-hover flex items-center gap-2 transition-colors duration-150"
+                data-test="import-novel-menu"
+                @click="
+                  () => {
+                    showProjectDropdown = false
+                    showImportNovel = true
+                  }
+                "
+              >
+                <BaseIcon name="book-open" :size="14" />
+                Import a novel
+              </button>
+              <button
                 v-for="project in projects"
                 :key="project.id"
                 :class="[
@@ -798,6 +822,7 @@ watch(
       @open-ai-settings="emit('open-settings')"
     />
     <BranchManagerModal :show="showBranchManager" @close="showBranchManager = false" />
+    <ImportNovelModal :show="showImportNovel" @close="showImportNovel = false" />
     <CompileManuscript
       :show="showCompile"
       :project-id="projectStore.currentProjectId"

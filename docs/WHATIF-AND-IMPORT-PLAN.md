@@ -169,7 +169,16 @@ are updated as steps land.
    - The JSON import remaps every id, exports and imports branches, and strips sync
      fields. It gets a real test that calls `importProject`.
    - Fix `getFullText` (voice extraction).
-2. **Novel importer.** `src/services/import/` holds decoders (txt/md/docx/epub/html) that
+2. **Novel importer.** *Done 27 Sep:* all six Gutenberg books import with the
+   right chapter count, first and last title (contents page for five, Roman
+   numerals + the frame story as a prologue for Ethan Frome), every word
+   accounted for (scenes + front/back matter + headings = total, exactly),
+   Holmes' numbered parts as scenes. docx/epub/md/html/txt, UTF-8/16/1252.
+   Reached from the projects page, the project menu and Ctrl+K. Checked in the
+   running app on Ethan Frome and Dubliners. Found on the way: a chapter row
+   carrying its scenes' word count doubles every counter (fixed before commit),
+   and step 1's branch store queried numeric project ids as strings (fixed).
+   Original description: `src/services/import/` holds decoders (txt/md/docx/epub/html) that
    produce `{ blocks }` (heading level, paragraph, break), plus a structure detector
    (headings, numerals, `Chapter N`, parts, prologue/epilogue, front and back matter,
    Gutenberg boilerplate), plus the row writer. `ImportNovelModal.vue` does the preview
