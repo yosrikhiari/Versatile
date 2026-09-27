@@ -14,7 +14,7 @@
 import 'fake-indexeddb/auto'
 import { it, expect } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import { STORAGE_KEYS } from '@/config/storageKeys'
 
@@ -31,6 +31,24 @@ Rewrite this sentence so that nothing in it states OR implies anything the fact 
 
 Return JSON: { "sentence": "the rewritten sentence, or empty" }`
 }
+
+// v3 (§35): v2 deleted 32 of 34 sentences -- right for the planted
+// sentence, which is nothing but the contradiction, wrong for a real scene
+// whose opening line it removed. v3 prefers a rewrite that keeps whatever
+// else the sentence says.
+export function repairPromptV3(sentence, fact) {
+  return `This sentence from a scene contradicts an established fact of the story.
+
+FACT: ${fact}
+SENTENCE: ${sentence}
+
+Rewrite this sentence so that nothing in it states OR implies anything the fact rules out: change every word and phrase that depends on the contradiction, not only the main verb. Keep everything else the sentence says, its place in the scene, its voice and roughly its length. Return an empty string to delete it ONLY if nothing in it survives without the contradiction.
+
+Return JSON: { "sentence": "the rewritten sentence, or empty" }`
+}
+
+const VARIANT = process.env.REPAIR_PROMPT === 'v3' ? 'v3' : 'v2'
+const PROMPT = VARIANT === 'v3' ? repairPromptV3 : repairPromptV2
 
 it('stricter sentence repair on the same failing drafts', async () => {
   setActivePinia(createPinia())
@@ -60,15 +78,17 @@ it('stricter sentence repair on the same failing drafts', async () => {
   const rows = JSON.parse(
     readFileSync(join(process.cwd(), 'reports/live/repair-vs-rewrite.json'), 'utf-8')
   )
-  const out = []
+  const outPath = join(process.cwd(), `reports/live/repair-prompt-${VARIANT}.json`)
+  const out = existsSync(outPath) ? JSON.parse(readFileSync(outPath, 'utf-8')) : []
+  const seen = new Set(out.map((r) => r.id))
   for (const r of rows) {
-    if (r.skipped || !r.before?.evidence?.length) continue
+    if (r.skipped || !r.before?.evidence?.length || seen.has(r.id)) continue
     const c = corpus.find((x) => x.index === Number(r.id.split('-')[1]))
     const t = Date.now()
     const replacements = []
     for (const e of r.before.evidence) {
       const res = await aiGenerateJson(
-        repairPromptV2(e.sentence, e.fact),
+        PROMPT(e.sentence, e.fact),
         'You are a careful line editor for fiction.',
         {
           feature: FEATURES.STORY_GENERATION,
@@ -106,7 +126,7 @@ it('stricter sentence repair on the same failing drafts', async () => {
       replacements
     })
     writeFileSync(
-      join(process.cwd(), 'reports/live/repair-prompt-v2.json'),
+      join(process.cwd(), `reports/live/repair-prompt-${VARIANT}.json`),
       JSON.stringify(out, null, 1)
     )
   }

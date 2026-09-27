@@ -1891,3 +1891,91 @@ rewriteSceneForConsistency`) rebuilt the scene record without `chapterId` and
 ledger, the writer's established facts and the spine. It now keeps them
 (the rewrite's own facts when it returns some). Regression test
 `consistencyRewriteKeepsFacts.test.js`, mutation-checked.
+
+Live check (2026-09-27, `saltRoad.live.js` 2 chapters x 3 scenes, alone on
+the GPU): 3 writer prompts carried the "WRITTEN SO FAR" block, chapter 1 as
+its prose summary ("Nesrin investigates the poisoning of a mule near the Salt
+Road...") and its lifted facts, then chapter 2 as planned. The harness now
+records `spineWrittenPrompts` and a sample in `wire.json`.
+
+### Step 3: emotional goal as a reader's multiple choice (advisory)
+
+The 1-10 emotional_goal judge was a near-constant 7. The replacement asks
+"what will a reader most likely feel by the end?" among the brief's goal and
+three alternatives written from the brief alone (a different feeling, same
+characters), and reads the right letter's probability
+(`buildEmotionChoicePrompt`, `aiChoiceProbabilities`). A first bench drew the
+wrong answers from "other stories" by id prefix -- but gate-*, repair-run and
+graph-repair-run are all Salt Road books, so they were other Nesrin goals and
+often just as true; drawing from genuinely other stories only tests names.
+Same-scene alternatives fixed that (`tools/judge-bench/emotion_mcq.py` v2:
+AUC 0.84). Live in production code on the 78 and the masterpieces:
+
+| | 1-10 judge | multiple choice |
+|---|---|---|
+| reviewer emotional-goal problems flagged | 1/10 | **6/10** |
+| reviewer-fine scenes flagged | 2/45 | 9/45 |
+| masterpieces flagged | 4/12 | **1/12** |
+
+It stays advisory (0/48 current scenes fail either way); its warning names
+what a reader would feel instead. Several "false" flags are honest ambiguity
+(Ethan Frome: "Ethan's guilt and the weight of his past" is a fair reading).
+When probabilities cannot be read it falls back to the 1-10 judge.
+
+### Step 6: repair in place vs a full rewrite
+
+`src/tests/live/repairVsRewrite.live.js`: the 30 corpus scenes with the
+planted contradiction plus the 4 corpus scenes that fail on their own text,
+each fixed from the same verdict both ways.
+
+| | repair (prompt at the time) | full rewrite |
+|---|---|---|
+| passes afterwards | 20/33 | **32/34** |
+| time to fix (median) | **1 s** | 69 s |
+| original words kept | 100% | ~60% |
+| still failing on | continuity, 13/13 | 1 voice, 1 continuity |
+
+Every failed repair had one cause: "change as little as possible" produced
+"Halim had been leading a caravan for two years by then, buried past the
+salt flats". A follow-up (`repairPromptV2.live.js`) on the same verdicts:
+
+| repair prompt | passes | sentences deleted | real (4) passing |
+|---|---|---|---|
+| minimal change (was production) | 20/34 | 0 | 2 |
+| nothing may state or imply the contradicted fact | 31/34 | **32** | 3 |
+| **same, rewrite rather than delete (now production)** | **31/34** | **0** | 3 |
+
+The middle wording deleted the planted sentence (correct: it is nothing but
+the contradiction) and also a real scene's opening line (wrong). The adopted
+one keeps the sentence: "Halim had been traveling the Salt Road for two years
+by then, leading a caravan..."; "since the day Halim died" -> "since the day
+the caravan left". It was chosen on these same 34 (4 real), so a blind
+quality read of repair vs rewrite follows as the independent check.
+
+Found while running these: two live runs hung for good (a request accepted by
+Ollama and never answered, GPU idle, no timeout because time limits ship
+off), both while two clients alternated `num_ctx` on one model and forced a
+reload on every switch. Flagged as a separate task (a liveness guard that
+never kills a slow healthy call).
+
+**Blind quality read.** For the 30 scenes where both the adopted repair and
+the rewrite pass the gate, two independent reviewers per scene (Claude
+agents, method hidden, A/B order randomised, key kept outside the repo)
+judged which is the better scene and whether the contradiction is really
+gone (`reports/live/repair-review/`):
+
+| | repair in place | full rewrite |
+|---|---|---|
+| better scene, both reviewers agreeing (agree on 25/30) | 11 | 14 |
+| contradiction really gone (reviewer 1 / reviewer 2) | **28 / 27** of 30 | 24 / 24 of 30 |
+| time to fix | ~1 s | ~69 s |
+
+Quality is close to a tie with a slight lean to the rewrite, and the repair
+removes the contradiction more reliably: six rewrites passed the gate while
+still contradicting the facts. The plan's rule was "keep repair only if it
+wins or ties at lower cost"; it ties at about 1/70 of the cost, so the gate
+keeps repairing first and rewriting only when the repair fails. What the
+reviewers caught that the gate did not: real-14's repair kept "the road that
+claimed him" and "Halim's memory" (a death still implied), real-21's "the
+animal's still body" sits badly beside "the mule stirs, weakly". The next
+repair iteration should look at the whole paragraph, not the one sentence.

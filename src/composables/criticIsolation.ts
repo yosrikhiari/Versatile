@@ -805,13 +805,26 @@ export const SENTENCE_REPAIR_SCHEMA = {
   required: ['sentence']
 }
 
+/**
+ * The repair prompt (§35). The first version asked to "change as little as
+ * possible": the model swapped "had been dead" for "had been leading a
+ * caravan" and kept "buried past the salt flats", so 13 of 33 repairs still
+ * failed (20/33 passed; a full rewrite, 69 s instead of 1 s, passed 32/34).
+ * Asking that nothing left may state or imply what the fact rules out raised
+ * it to 31/34 -- but that wording deleted 32 of 34 sentences, the opening
+ * line of a real scene among them. This one prefers a rewrite that keeps the
+ * rest of the sentence: 31/34 passing, 0 deleted, 3 of the 4 real
+ * contradictions fixed ("since the day Halim died" -> "since the day the
+ * caravan left"). Chosen on those same 34 scenes; the blind quality read of
+ * repair vs rewrite is the independent check.
+ */
 export function buildSentenceRepairPrompt(sentence: string, fact: string): string {
   return `This sentence from a scene contradicts an established fact of the story.
 
 FACT: ${fact}
 SENTENCE: ${sentence}
 
-Rewrite ONLY this sentence so it no longer contradicts the fact. Keep its place in the scene, its voice and length; change as little as possible. If the sentence cannot be saved, return an empty string to delete it.
+Rewrite this sentence so that nothing in it states OR implies anything the fact rules out: change every word and phrase that depends on the contradiction, not only the main verb. Keep everything else the sentence says, its place in the scene, its voice and roughly its length. Return an empty string to delete it ONLY if nothing in it survives without the contradiction.
 
 Return JSON: { "sentence": "the rewritten sentence, or empty" }`
 }
