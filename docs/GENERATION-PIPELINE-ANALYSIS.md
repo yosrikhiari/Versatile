@@ -2040,3 +2040,49 @@ model or a trained checker, not another prompt.
 | 6 repair vs rewrite | repair stays first: ties on quality, resolves more, ~1/70 the time |
 | 7 gated vs ungated books | answered at the scene level (the gate intervenes ~1 in 10-15 scenes) |
 | 8 small fixes | Editor 24/24 legal, retrieval eval that can fail, spine as written, lost-facts bug |
+
+## 36. Hardening, and whether a quadtree would help the canvas (2026-09-27)
+
+**Lost-request guard** (`ollama.ts`, f6366958). With time limits off (the
+default) `resolveTimeLimit` returns 0 and every provider timer is disabled,
+so a request Ollama accepted and never answered hung forever -- two live runs
+on 2026-09-26/27, while another client forced model reloads by alternating
+`num_ctx`. A request that has produced *nothing* for 10 minutes is now
+aborted and sent once more (`OllamaLostRequestError`); once a token has
+streamed the request is never cut. `choiceProbabilities` gets the same
+ceiling. Four fake-timer tests; removing the guard fails them.
+
+**Quadtree: no.** The Story Network is Vue Flow (DOM nodes, SVG edges): the
+browser does hit-testing, and `only-render-visible-elements` culls with a
+linear `getNodesInside`. The only O(N^2) loop is the overlap pass after
+"Arrange" (`StoryNetwork.vue`, 5 passes over ungrouped nodes, once per
+click). Real networks are ~20-150 nodes, 3-15 groups. Micro-benchmark
+(Node 24, 160x96 nodes at constant density; microseconds):
+
+| N | viewport, loop | viewport, tree | tree build | close pairs, loop | close pairs, tree incl. build |
+|---|---|---|---|---|---|
+| 50 | 1.6 | 1.7 | 102 | 7 | 233 |
+| 150 | 2.4 | 3.6 | 85 | 78 | 259 |
+| 500 | 5.3 | 2.5 | 302 | 894 | 1,064 |
+| 5,000 | 47 | 3.8 | 11,333 | 76,328 | 21,441 |
+| 50,000 | 1,808 | 6 | 232,432 | -- | 433,196 |
+
+The tree wins from ~1,000 nodes for pairs and ~5,000 for viewport queries
+once its (re)build is counted; at our N the loops are under 1% of a frame.
+Revisit only with thousands of canvas items or a live force layout, and then
+use `d3-quadtree`/`rbush`, not a hand-rolled tree.
+
+**Found while auditing the hit-tests** (f6366958): node drag, drag highlight
+and drop tested the node's absolute position against `group.x/y`, which are
+parent-relative for nested groups, and took the first match rather than the
+innermost -- only group re-parenting did it right. Now all use
+`innermostGroupAt` (`utils/networkGrouping.ts`, absolute box, smallest
+wins). `handleDrop` subtracted the Vue Flow root's rect and then called
+`screenToFlowCoordinate`, which subtracts it again (the handler is bound on
+that root), so every sidebar drop landed offset; it now passes client
+coordinates. A group dropped into a group now sets `parentGroupId`. The
+`storyCanvasMap` upload test's fixed 20 ms FileReader wait became
+`vi.waitFor`. Suite 3,062 pass.
+
+Still open: within-scene contradictions (needs a stronger model or a trained
+checker, §35) and the user's 12 labels.
