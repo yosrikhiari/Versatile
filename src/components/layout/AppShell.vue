@@ -16,6 +16,7 @@ import StoryLookupModal from '../storybible/StoryLookupModal.vue'
 import CompileManuscript from '../export/CompileManuscript.vue'
 import StoryAssistantChat from '../assistant/StoryAssistantChat.vue'
 import RecapBanner from './RecapBanner.vue'
+import BookAnalysisBanner from '../import/BookAnalysisBanner.vue'
 import ContextStatusIndicator from './ContextStatusIndicator.vue'
 import GuardrailIndicator from '../../guardrails/reporting/components/GuardrailIndicator.vue'
 import NetworkStatusBadge from '../shared/NetworkStatusBadge.vue'
@@ -113,6 +114,12 @@ const paletteActions = computed(() => [
   },
   { id: 'import', label: 'Import project backup (.json)', icon: 'download', hint: 'Ctrl+I' },
   {
+    id: 'read-book',
+    label: 'Understand this book',
+    icon: 'book-open',
+    keywords: ['analyse', 'analyze', 'story bible', 'characters', 'network', 'summaries', 'import']
+  },
+  {
     id: 'import-novel',
     label: 'Import a novel',
     icon: 'book-open',
@@ -146,6 +153,14 @@ const PALETTE_ACTIONS = {
   'export-pdf': () => emit('export-pdf'),
   'export-rtf': () => emit('export-rtf'),
   import: () => emit('import'),
+  'read-book': async () => {
+    const { useBookAnalysis } = await import('../../composables/useBookAnalysis')
+    if (projectStore.currentProjectId) {
+      useBookAnalysis()
+        .run(projectStore.currentProjectId)
+        .catch(() => {})
+    }
+  },
   'import-novel': () => {
     showImportNovel.value = true
   },
@@ -636,6 +651,7 @@ watch(
     </header>
 
     <RecapBanner />
+    <BookAnalysisBanner />
 
     <div class="flex-1 flex overflow-hidden">
       <SidebarNav

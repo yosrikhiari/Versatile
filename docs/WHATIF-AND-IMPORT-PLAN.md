@@ -185,7 +185,49 @@ are updated as steps land.
    and edits with the `Base*` primitives. It is reached from the project list
    ("Import a novel") and Ctrl+K. Fixture tests on the 6 Gutenberg books and small
    hand-made .docx/.epub/.md files cover G1–G3.
-3. **The understanding pass.** `useBookAnalysis` is a resumable queue. Per scene it
+3. **The understanding pass.** *Done 27 Sep, measured live on Ethan Frome
+   (34,787 words, 12 scenes, qwen3:8b on the RTX 4060, Jester paused):
+   10.8 min end to end after the fixes below (about 16 before). 7 characters
+   with the right roles and aliases, 21 places, 15 chapter-stamped links
+   ("Ethan Frome married to Zeena Frome" from ch. 1, never closed; "in love
+   with Mattie" ch. 2-9 then "formerly close to" at ch. 10), 12 `ok` digests,
+   an accurate story profile. The first live read found eight defects, all
+   fixed with tests: ids stringified (two digests per scene), two concurrent
+   runs linking twice (atomic claims + a Web Lock per book), bracketed notes in
+   names ("Zeena (his wife)"), "Ned" merged into "Mrs. Ned Hale", unmerged and
+   generic places (37 -> 21), one-scene family misreadings and a
+   twice-misread marriage (vote + marriage exclusivity), relation wording
+   churn (a small type vocabulary + one relationship per pair over the book),
+   a link to a person not yet in the bible dropped silently, and every
+   background call waiting out its own 30 s foreground linger (a `background`
+   option on aiService: -30% time). Built as:*
+   `useBookAnalysis` on the existing durable `analysisQueue` (claims now
+   filtered by task type, so the open-project digest backfill can no longer
+   take and fail these jobs; completed jobs keep their result, so a stopped
+   read resumes). Stage 1 reads each scene (passages of <= 2,500 words) into
+   summary / pov / location / cast / places / key facts / relationships.
+   Stage 2 resolves names across the book by rule (the one full name that
+   contains a short form; "Frome" in two full names is left for the model's
+   probability over the candidates, merged only above 0.6). Stage 3, chapter
+   by chapter, feeds each scene as the writer's own structured record through
+   `syncChapterToBible` (bible entities, graph nodes, chapter-stamped edges)
+   and `writeSceneAnalysis` (ok digests + entity states), then the rollup,
+   a story profile, the voice profile and the search index. A person named in
+   one scene only is cast, not a bible entry. Banner offers it on imported
+   books; Ctrl+K "Understand this book" for any book. Integration test on
+   the real schema/stores (mock model), mutation-checked.
+
+   **Decision: no message broker (RabbitMQ/Kafka) for this.** Considered at
+   the user's suggestion. The work runs in the browser against a local GPU
+   that serves one request at a time by design (providerGate); a broker adds
+   a server hop and a mandatory backend to an offline-first feature without
+   adding throughput. What the job needs -- durability, resume, retry,
+   failed items, ordering, stages -- the IndexedDB queue already provides.
+   Revisit when analysis moves server-side (many users, a GPU worker pool):
+   then Redis Streams or MassTransit on RabbitMQ next to the existing
+   Postgres outbox, Kafka only at event-stream scale.
+
+   Original description: `useBookAnalysis` is a resumable queue. Per scene it
    produces summary, key facts, cast, location, POV and time markers (chunked for
    long scenes). After that, book-level work runs:
    - character and place resolution with aliases into the story bible;

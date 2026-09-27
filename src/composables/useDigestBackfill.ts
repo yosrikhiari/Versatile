@@ -106,12 +106,12 @@ export function useDigestBackfill() {
     failed.value = 0
 
     // Reset any stuck 'running' items from a previous crash
-    await resetStuckAnalysisTasks(projectId)
+    await resetStuckAnalysisTasks(projectId, ['sceneDigest'])
 
     try {
       let totalProcessed = 0
       while (!cancelled) {
-        const task = await claimNextAnalysisTask(projectId)
+        const task = await claimNextAnalysisTask(projectId, ['sceneDigest'])
         if (!task) break // No more pending tasks
 
         await awaitForegroundIdle()

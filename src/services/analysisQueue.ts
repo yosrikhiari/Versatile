@@ -20,6 +20,8 @@ export type AnalysisTaskType =
   | 'volumeDigest'
   | 'entityStates'
   | 'contradictionCheck'
+  /** Read one scene of an imported/hand-written book with the model (useBookAnalysis). */
+  | 'bookScene'
   | 'custom'
 
 export interface AnalysisQueueItem {
@@ -42,6 +44,8 @@ export interface AnalysisQueueItem {
   retryCount?: number
   /** Max retries before giving up. */
   maxRetries?: number
+  /** What a completed item produced, when a later stage reads it back. */
+  result?: unknown
 }
 
 /**
@@ -77,23 +81,30 @@ export async function enqueueAnalysisTasks(
  * Get the next pending item for a project, mark it running, and return it.
  * Returns null if no pending items.
  */
-export async function claimNextAnalysisTask(projectId: string): Promise<AnalysisQueueItem | null> {
-  // Find first pending item
-  const item = await db.analysisQueue
-    .where('[projectId+status]')
-    .equals([projectId, 'pending'])
-    .first()
-  if (!item) return null
-
-  // Atomically claim it
-  const updated = await db.analysisQueue.update(item.id, {
-    status: 'running',
-    progress: 0,
-    updatedAt: new Date().toISOString()
+export async function claimNextAnalysisTask(
+  projectId: string,
+  taskTypes?: AnalysisTaskType[]
+): Promise<AnalysisQueueItem | null> {
+  // Find the first pending item of the types this worker handles. Unfiltered,
+  // the digest backfill that runs on every project open claimed the book
+  // analysis's items too and failed them as digest tasks without prose.
+  //
+  // Find and mark in ONE read-write transaction. IndexedDB runs read-write
+  // transactions on the same store one at a time, across tabs, so no two
+  // workers can both see the item as pending. Found-then-updated in two steps,
+  // a second worker (another tab, or a hot-reloaded copy of the module) took
+  // the same item and a book's chapters were linked twice.
+  return db.transaction('rw', db.analysisQueue, async () => {
+    const item = await db.analysisQueue
+      .where('[projectId+status]')
+      .equals([projectId, 'pending'])
+      .filter((i: AnalysisQueueItem) => !taskTypes || taskTypes.includes(i.taskType))
+      .first()
+    if (!item) return null
+    const now = new Date().toISOString()
+    await db.analysisQueue.update(item.id, { status: 'running', progress: 0, updatedAt: now })
+    return { ...item, status: 'running', progress: 0, updatedAt: now }
   })
-  if (!updated) return null // Race condition, try again
-
-  return { ...item, status: 'running', progress: 0, updatedAt: new Date().toISOString() }
 }
 
 /**
@@ -109,10 +120,11 @@ export async function updateAnalysisTaskProgress(id: number, progress: number): 
 /**
  * Mark an item as completed.
  */
-export async function completeAnalysisTask(id: number): Promise<void> {
+export async function completeAnalysisTask(id: number, result?: unknown): Promise<void> {
   await db.analysisQueue.update(id, {
     status: 'completed',
     progress: 100,
+    ...(result !== undefined ? { result } : {}),
     updatedAt: new Date().toISOString()
   })
 }
@@ -205,10 +217,14 @@ export async function clearAnalysisQueueHistory(
 /**
  * Reset stuck 'running' items back to 'pending' (e.g., after crash).
  */
-export async function resetStuckAnalysisTasks(projectId: string): Promise<number> {
+export async function resetStuckAnalysisTasks(
+  projectId: string,
+  taskTypes?: AnalysisTaskType[]
+): Promise<number> {
   const stuck = await db.analysisQueue
     .where('[projectId+status]')
     .equals([projectId, 'running'])
+    .filter((i: AnalysisQueueItem) => !taskTypes || taskTypes.includes(i.taskType))
     .toArray()
   if (!stuck.length) return 0
 

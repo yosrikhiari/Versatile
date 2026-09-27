@@ -30,9 +30,16 @@ import { latencyBudget } from './latencyBudget'
 import {
   createSemaphore,
   foregroundSlot,
+  slotFor,
   resetSemaphores,
   PROVIDER_CONCURRENCY
 } from './providerGate'
+
+/** The slot a call takes: foreground (claims priority) unless it is background work. */
+function callSlot(provider: string, lane: string, background?: boolean) {
+  return background ? slotFor(lane) : foregroundSlot(provider, lane)
+}
+
 import { langfuseService } from './langfuseService'
 import * as aiResponseCache from './aiResponseCache'
 import { trackError } from '../composables/useErrorTracker'
@@ -107,6 +114,14 @@ export interface AiGenerateOptions {
    * default and is kept for callers that still pass it.
    */
   role?: RoleName | 'prose'
+  /**
+   * Background work (book analysis, indexing): take the provider slot but do
+   * not claim foreground priority. A foreground call leaves a 30 s marker
+   * behind it (FOREGROUND_LINGER_MS) that background loops wait out before
+   * each unit -- so a background loop whose own calls claimed foreground
+   * waited 30 s after every call it made, on an idle GPU.
+   */
+  background?: boolean
   schema?: Record<string, unknown>
   schemaName?: string
   /**
@@ -802,9 +817,10 @@ export async function aiGenerate(
           const result = await withRetry(
             () => {
               const generate = () =>
-                foregroundSlot(
+                callSlot(
                   providerName,
-                  laneFor(providerName, options.role)
+                  laneFor(providerName, options.role),
+                  options.background
                 )(() =>
                   latencyBudget.wrap(feature, () =>
                     pm.generate(prompt, systemPrompt, modelName, opts)
@@ -959,9 +975,10 @@ export async function aiStream(
     const text = await withRetry(
       () => {
         const stream = () =>
-          foregroundSlot(
+          callSlot(
             provider,
-            laneFor(provider, options.role)
+            laneFor(provider, options.role),
+            options.background
           )(() =>
             latencyBudget.wrap(feature, () =>
               providerModule.stream(prompt, systemPrompt, model, trackedOnChunk, providerOptions)
@@ -1013,7 +1030,11 @@ export async function aiStream(
       }
       const fbModel = defaultModelForProvider(fbProvider)!
       const fbBudget = await prepareCallBudget(fbModel, systemPrompt, prompt, options.maxTokens)
-      return await foregroundSlot(fbProvider)(() =>
+      return await callSlot(
+        fbProvider,
+        fbProvider,
+        options.background
+      )(() =>
         latencyBudget.wrap(feature, () =>
           PROVIDER_MAP[fbProvider]!.stream(prompt, systemPrompt, fbModel, trackedOnChunk, {
             apiKey: fbKey || undefined,
@@ -1101,9 +1122,10 @@ export async function aiGenerateStructured(
       const result = await withRetry(
         () => {
           const generate = () =>
-            foregroundSlot(
+            callSlot(
               provider,
-              laneFor(provider, options.role)
+              laneFor(provider, options.role),
+              options.background
             )(() =>
               latencyBudget.wrap(feature, () =>
                 providerModule.generateStructured!(prompt, systemPrompt, model, schema, structOpts)
@@ -1229,9 +1251,10 @@ export async function aiChoiceProbabilities(
   if (provider !== PROVIDERS.OLLAMA || !model) return null
   if (options.sessionBudget && !options.sessionBudget.check().allowed) return null
   try {
-    return await foregroundSlot(
+    return await callSlot(
       provider,
-      laneFor(provider, options.role)
+      laneFor(provider, options.role),
+      options.background
     )(() =>
       ollamaProvider.choiceProbabilities(prompt, systemPrompt, model, choices, {
         signal: options.signal,
