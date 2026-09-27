@@ -326,3 +326,42 @@ export function sortGroupsParentFirst(groups: Group[]): Group[] {
   }
   return [...groups].sort((a, b) => depth(a) - depth(b))
 }
+
+interface GroupBox {
+  id: string
+  width: number
+  height: number
+}
+
+/**
+ * The innermost group whose box contains `point`, with the point expressed
+ * relative to that group -- or null and the point unchanged.
+ *
+ * `point` and the value `absOf` returns are absolute canvas coordinates. A
+ * nested group's stored x/y is relative to its parent, so testing an absolute
+ * point against `group.x` (what the node drag/drop handlers did) missed nested
+ * groups or matched the wrong box, and the first match in array order won
+ * even when a smaller group inside it held the point. Ties on area keep the
+ * earlier group. `skip` excludes groups (e.g. the one being dragged).
+ */
+export function innermostGroupAt<G extends GroupBox>(
+  point: { x: number; y: number },
+  groups: G[],
+  absOf: (g: G) => { x: number; y: number },
+  skip: (g: G) => boolean = () => false
+): { group: G | null; relative: { x: number; y: number } } {
+  let best: G | null = null
+  let bestAbs = { x: 0, y: 0 }
+  for (const g of groups) {
+    if (skip(g)) continue
+    const a = absOf(g)
+    const inside =
+      point.x >= a.x && point.x <= a.x + g.width && point.y >= a.y && point.y <= a.y + g.height
+    if (inside && (!best || g.width * g.height < best.width * best.height)) {
+      best = g
+      bestAbs = a
+    }
+  }
+  if (!best) return { group: null, relative: { x: point.x, y: point.y } }
+  return { group: best, relative: { x: point.x - bestAbs.x, y: point.y - bestAbs.y } }
+}

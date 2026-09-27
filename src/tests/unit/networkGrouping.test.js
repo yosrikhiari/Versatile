@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   computeVolumeGroups,
   wouldCreateCycle,
-  sortGroupsParentFirst
+  sortGroupsParentFirst,
+  innermostGroupAt
 } from '@/utils/networkGrouping'
 
 describe('computeVolumeGroups', () => {
@@ -242,5 +243,48 @@ describe('sortGroupsParentFirst', () => {
       { id: 'b', parentGroupId: null }
     ]
     expect(sortGroupsParentFirst(groups).map((g) => g.id)).toEqual(['a', 'b'])
+  })
+})
+
+describe('innermostGroupAt', () => {
+  // outer at (100,100) 400x400; inner nested in outer at relative (50,50) 100x100
+  // => inner's absolute box is (150,150)-(250,250).
+  const outer = { id: 'outer', x: 100, y: 100, width: 400, height: 400, parentGroupId: null }
+  const inner = { id: 'inner', x: 50, y: 50, width: 100, height: 100, parentGroupId: 'outer' }
+  const byId = new Map([outer, inner].map((g) => [g.id, g]))
+  const absOf = (g) => {
+    let x = 0
+    let y = 0
+    for (let cur = g; cur; cur = cur.parentGroupId ? byId.get(cur.parentGroupId) : null) {
+      x += cur.x
+      y += cur.y
+    }
+    return { x, y }
+  }
+
+  it('picks the nested group, not the outer one listed first', () => {
+    const r = innermostGroupAt({ x: 200, y: 200 }, [outer, inner], absOf)
+    expect(r.group.id).toBe('inner')
+    expect(r.relative).toEqual({ x: 50, y: 50 })
+  })
+
+  it('uses the absolute box of a nested group (its stored x/y is parent-relative)', () => {
+    // (60,60) lies inside inner's *stored* box (50,50)-(150,150) but outside every real box.
+    expect(innermostGroupAt({ x: 60, y: 60 }, [outer, inner], absOf).group).toBeNull()
+  })
+
+  it('falls back to the outer group outside the inner box', () => {
+    const r = innermostGroupAt({ x: 400, y: 120 }, [inner, outer], absOf)
+    expect(r.group.id).toBe('outer')
+    expect(r.relative).toEqual({ x: 300, y: 20 })
+  })
+
+  it('returns the point unchanged when no group holds it, and honours skip', () => {
+    expect(innermostGroupAt({ x: 1, y: 2 }, [outer], absOf)).toEqual({
+      group: null,
+      relative: { x: 1, y: 2 }
+    })
+    const r = innermostGroupAt({ x: 200, y: 200 }, [outer, inner], absOf, (g) => g.id === 'inner')
+    expect(r.group.id).toBe('outer')
   })
 })

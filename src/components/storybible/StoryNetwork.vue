@@ -14,7 +14,11 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useNotifications } from '../../composables/useNotifications'
 import { useNetworkSuggestions } from '../../composables/useNetworkSuggestions'
 import { groupNetworkByVolume } from '../../composables/useVolumeGrouping'
-import { wouldCreateCycle, sortGroupsParentFirst } from '../../utils/networkGrouping'
+import {
+  wouldCreateCycle,
+  sortGroupsParentFirst,
+  innermostGroupAt
+} from '../../utils/networkGrouping'
 import { useStoryGraphPersistence } from '../../composables/useStoryGraphPersistence'
 import {
   collectRelationshipTypes,
@@ -783,55 +787,45 @@ onNodeDragStop(({ node }) => {
   const realBaseId = getRealEntityId(node.id)
   const absPos = getAbsoluteNodePosition(node)
 
-  for (const group of manualGroups.value) {
-    const inside =
-      absPos.x >= group.x &&
-      absPos.x <= group.x + group.width &&
-      absPos.y >= group.y &&
-      absPos.y <= group.y + group.height
-
-    if (inside) {
-      const currentParent = nodeParents.value[node.id]
-      if (currentParent === group.id) {
-        const relativePos = {
-          x: absPos.x - group.x,
-          y: absPos.y - group.y
-        }
-        nodeParents.value[node.id] = group.id
-        nodePositions.value[node.id] = relativePos
-        storyGraphStore.saveNodePosition(projectStore.currentProjectId, node.id, relativePos)
-        return
-      }
-
-      if (isDuplicateInScope(realBaseId, group.id)) {
-        const prevParent = nodeParents.value[node.id]
-        if (prevParent) {
-          const prevGroup = manualGroups.value.find((g) => g.id === prevParent)
-          if (prevGroup) {
-            const prevPos = nodePositions.value[node.id] || { x: 0, y: 0 }
-            nodeParents.value[node.id] = prevParent
-            nodePositions.value[node.id] = prevPos
-            storyGraphStore.saveNodePosition(projectStore.currentProjectId, node.id, prevPos)
-          }
-        } else {
-          const prevPos = nodePositions.value[node.id] || absPos
-          nodeParents.value[node.id] = null
-          nodePositions.value[node.id] = prevPos
-          storyGraphStore.saveNodePosition(projectStore.currentProjectId, node.id, prevPos)
-        }
-        addToast('Already in this group')
-        return
-      }
-
-      const relativePos = {
-        x: absPos.x - group.x,
-        y: absPos.y - group.y
-      }
+  // Innermost group by its absolute box: a nested group's x/y is parent-relative.
+  const { group, relative: relativePos } = innermostGroupAt(
+    absPos,
+    manualGroups.value,
+    getAbsoluteGroupPosition
+  )
+  if (group) {
+    const currentParent = nodeParents.value[node.id]
+    if (currentParent === group.id) {
       nodeParents.value[node.id] = group.id
       nodePositions.value[node.id] = relativePos
       storyGraphStore.saveNodePosition(projectStore.currentProjectId, node.id, relativePos)
       return
     }
+
+    if (isDuplicateInScope(realBaseId, group.id)) {
+      const prevParent = nodeParents.value[node.id]
+      if (prevParent) {
+        const prevGroup = manualGroups.value.find((g) => g.id === prevParent)
+        if (prevGroup) {
+          const prevPos = nodePositions.value[node.id] || { x: 0, y: 0 }
+          nodeParents.value[node.id] = prevParent
+          nodePositions.value[node.id] = prevPos
+          storyGraphStore.saveNodePosition(projectStore.currentProjectId, node.id, prevPos)
+        }
+      } else {
+        const prevPos = nodePositions.value[node.id] || absPos
+        nodeParents.value[node.id] = null
+        nodePositions.value[node.id] = prevPos
+        storyGraphStore.saveNodePosition(projectStore.currentProjectId, node.id, prevPos)
+      }
+      addToast('Already in this group')
+      return
+    }
+
+    nodeParents.value[node.id] = group.id
+    nodePositions.value[node.id] = relativePos
+    storyGraphStore.saveNodePosition(projectStore.currentProjectId, node.id, relativePos)
+    return
   }
 
   nodeParents.value[node.id] = null
@@ -848,19 +842,8 @@ onNodeDrag(({ node }) => {
   }
 
   const absPos = getAbsoluteNodePosition(node)
-
-  for (const group of manualGroups.value) {
-    const inside =
-      absPos.x >= group.x &&
-      absPos.x <= group.x + group.width &&
-      absPos.y >= group.y &&
-      absPos.y <= group.y + group.height
-
-    if (inside) {
-      dragOverGroupId.value = group.id
-      return
-    }
-  }
+  const { group } = innermostGroupAt(absPos, manualGroups.value, getAbsoluteGroupPosition)
+  dragOverGroupId.value = group ? group.id : null
 })
 
 onPaneClick(() => {
@@ -1054,38 +1037,32 @@ function handleDrop(event) {
     const baseId = `${prefixFromType(entity.type)}-${entity.id}`
     const entityLabel = entity.name || entity.label || entity.title || 'Entity'
 
-    const clientRect = event.currentTarget.getBoundingClientRect()
-    const x = event.clientX - clientRect.left
-    const y = event.clientY - clientRect.top
+    // screenToFlowCoordinate takes client coordinates and subtracts the Vue Flow
+    // root's offset itself; this handler is bound on that same root, so
+    // subtracting currentTarget's rect first shifted every drop by the offset.
+    const flowPosition = screenToFlowCoordinate({ x: event.clientX, y: event.clientY })
 
-    const flowPosition = screenToFlowCoordinate({ x, y })
-
-    let parentId = null
-    let relativePos = flowPosition
-    for (const group of manualGroups.value) {
-      const insideX = flowPosition.x >= group.x && flowPosition.x <= group.x + group.width
-      const insideY = flowPosition.y >= group.y && flowPosition.y <= group.y + group.height
-      if (insideX && insideY) {
-        parentId = group.id
-        relativePos = {
-          x: flowPosition.x - group.x,
-          y: flowPosition.y - group.y
-        }
-        break
-      }
-    }
+    const { group: dropGroup, relative: relativePos } = innermostGroupAt(
+      flowPosition,
+      manualGroups.value,
+      getAbsoluteGroupPosition,
+      (g) =>
+        entity.type === 'group' &&
+        (g.id === baseId || wouldCreateCycle(baseId, g.id, currentParentOf()))
+    )
+    const parentId = dropGroup ? dropGroup.id : null
 
     if (entity.type === 'group') {
       const groupNode = manualGroups.value.find((g) => g.id === baseId)
       if (groupNode) {
-        if (parentId) {
-          groupNode.x = relativePos.x
-          groupNode.y = relativePos.y
-          nodeParents.value[baseId] = parentId
-        } else {
-          groupNode.x = flowPosition.x
-          groupNode.y = flowPosition.y
-          nodeParents.value[baseId] = null
+        // relativePos is relative to parentId's box (or absolute with no parent);
+        // a group's placement is its parentGroupId, so it must move with x/y.
+        groupNode.x = relativePos.x
+        groupNode.y = relativePos.y
+        groupNode.parentGroupId = parentId
+        nodeParents.value[baseId] = parentId
+        if (projectStore.currentProjectId) {
+          storyGraphStore.saveGroups(projectStore.currentProjectId, manualGroups.value)
         }
       }
       return

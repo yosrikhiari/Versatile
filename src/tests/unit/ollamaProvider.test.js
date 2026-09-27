@@ -533,3 +533,90 @@ describe('choiceProbabilities (§32)', () => {
     expect(await ollama.choiceProbabilities('q', 's', 'qwen3:8b', ['A', 'B'])).toBeNull()
   })
 })
+
+describe('lost-request guard with time limits off (§36)', () => {
+  // A request Ollama accepts and never answers: fetch settles only on abort.
+  const hanging = (_url, init) =>
+    new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () =>
+        reject(new DOMException('Aborted', 'AbortError'))
+      )
+    })
+
+  async function withLimitsOff(run) {
+    vi.useFakeTimers()
+    const timeLimits = await import('@/config/timeLimits')
+    timeLimits.__setTimeLimitsEnabled(false)
+    try {
+      return await run()
+    } finally {
+      timeLimits.__setTimeLimitsEnabled(true)
+      vi.useRealTimers()
+    }
+  }
+
+  it('sends a request that produced nothing for 10 minutes once more, and returns its answer', async () => {
+    await withLimitsOff(async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      mockFetch
+        .mockResolvedValueOnce(mockTags([{ name: 'llama3' }]))
+        .mockImplementationOnce(hanging)
+        .mockResolvedValueOnce(makeStreamResponse(['{"response":"back"}\n', '{"done":true}\n']))
+      const p = ollama.generate('q', 's', 'llama3')
+      await vi.advanceTimersByTimeAsync(600_000)
+      const { text } = await p
+      expect(text).toBe('back')
+      expect(warn.mock.calls.some((c) => /sending it once more/.test(String(c[0])))).toBe(true)
+      warn.mockRestore()
+    })
+  })
+
+  it('reports a second loss instead of retrying forever', async () => {
+    await withLimitsOff(async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      mockFetch
+        .mockResolvedValueOnce(mockTags([{ name: 'llama3' }]))
+        .mockImplementationOnce(hanging)
+        .mockImplementationOnce(hanging)
+      const p = ollama.generate('q', 's', 'llama3')
+      const settled = p.catch((e) => e)
+      await vi.advanceTimersByTimeAsync(1_200_000)
+      const err = await settled
+      expect(err.name).toBe('OllamaLostRequestError')
+      warn.mockRestore()
+    })
+  })
+
+  it('does not touch a slow call that has started streaming', async () => {
+    await withLimitsOff(async () => {
+      mockFetch.mockResolvedValueOnce(mockTags([{ name: 'llama3' }]))
+      // First token at 9 minutes, the rest after: slow but alive.
+      const reader = { read: vi.fn(), cancel: vi.fn() }
+      const enc = (t) => ({ done: false, value: new TextEncoder().encode(t) })
+      reader.read
+        .mockImplementationOnce(
+          () => new Promise((r) => setTimeout(() => r(enc('{"response":"slow"}\n')), 540_000))
+        )
+        .mockImplementationOnce(
+          () => new Promise((r) => setTimeout(() => r(enc('{"done":true}\n')), 300_000))
+        )
+        .mockResolvedValue({ done: true })
+      mockFetch.mockResolvedValueOnce({ ok: true, body: { getReader: () => reader } })
+      const p = ollama.generate('q', 's', 'llama3')
+      await vi.advanceTimersByTimeAsync(900_000)
+      expect((await p).text).toBe('slow')
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it('bounds a one-token probability call and answers null', async () => {
+    await withLimitsOff(async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockTags([{ name: 'qwen3:8b' }]))
+        .mockImplementationOnce(hanging)
+      const p = ollama.choiceProbabilities('q', 's', 'qwen3:8b', ['A', 'B'])
+      await vi.advanceTimersByTimeAsync(600_000)
+      expect(await p).toBeNull()
+    })
+  })
+})

@@ -146,10 +146,12 @@ describe('StoryCanvas map view', () => {
     const file = new File(['x'], 'map.png', { type: 'image/png' })
     Object.defineProperty(input.element, 'files', { value: [file] })
     await input.trigger('change')
-    await new Promise((r) => setTimeout(r, 20))
-    await flushPromises()
-    expect(dbProjects.updateProjectMeta).toHaveBeenCalledWith('p1', {
-      mapBackground: expect.stringMatching(/^data:image\/png/)
-    })
+    // FileReader finishes on its own schedule; a fixed 20 ms wait lost the race
+    // under full-suite load, so poll for the write instead.
+    await vi.waitFor(() =>
+      expect(dbProjects.updateProjectMeta).toHaveBeenCalledWith('p1', {
+        mapBackground: expect.stringMatching(/^data:image\/png/)
+      })
+    )
   })
 })

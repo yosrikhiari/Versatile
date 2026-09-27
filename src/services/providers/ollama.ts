@@ -117,6 +117,30 @@ const FIRST_TOKEN_TIMEOUT_MS = 480_000
  */
 const ABSOLUTE_CEILING_MS = 900_000
 
+/**
+ * The one guard that stays on when time limits are switched off (§36).
+ *
+ * With limits off every timer above resolves to 0, so a request Ollama
+ * accepts and never answers waits forever. That happened twice in live runs
+ * (2026-09-26/27): two clients alternated `num_ctx` on one model, Ollama
+ * reloaded the runner on every switch, and a request was left with no answer --
+ * GPU idle, no further `[GIN]` line, the run frozen for good. Ten minutes of
+ * complete silence is well past any legitimate one (the first-token budget,
+ * sized to outlast the slowest stage, is eight), so a request silent that long
+ * before its first token is treated as lost and sent again once; silent that
+ * long mid-stream it is a stall, reported with its partial output. Healthy
+ * slow calls stream, and a streaming call never reaches either.
+ */
+const LOST_REQUEST_MS = 600_000
+
+/** A request that produced nothing at all for LOST_REQUEST_MS with limits off. */
+export class OllamaLostRequestError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'OllamaLostRequestError'
+  }
+}
+
 export class OllamaStalledError extends Error {
   /** Tokens received before the stall — non-empty output may still be salvageable. */
   partial: string
@@ -288,10 +312,22 @@ async function runStream(
    */
   let firstTokenTimer: ReturnType<typeof setTimeout> | undefined
   let firstTokenExpired = false
+  // With time limits off, the lost-request guard (LOST_REQUEST_MS) stands in
+  // for the first-token and idle timers; with them on it stays out of the way.
+  const lostMs = firstTokenMs > 0 ? 0 : LOST_REQUEST_MS
+  const stallMs = idleMs > 0 ? idleMs : LOST_REQUEST_MS
+  let lostTimer: ReturnType<typeof setTimeout> | undefined
+  let lostRequest = false
 
   try {
     await ensureModelAvailable(model)
 
+    if (lostMs > 0) {
+      lostTimer = setTimeout(() => {
+        lostRequest = true
+        controller.abort(new DOMException(`No response within ${lostMs}ms`, 'TimeoutError'))
+      }, lostMs)
+    }
     if (firstTokenMs > 0) {
       firstTokenTimer = setTimeout(() => {
         firstTokenExpired = true
@@ -427,11 +463,13 @@ async function runStream(
         // second full budget.
         let result: ReadableStreamReadResult<Uint8Array>
         try {
-          result =
-            sawFirstToken && idleMs > 0
-              ? await readWithTimeout(reader, idleMs)
-              : await reader.read()
+          result = sawFirstToken ? await readWithTimeout(reader, stallMs) : await reader.read()
         } catch (err) {
+          if (lostRequest) {
+            throw new OllamaLostRequestError(
+              `Ollama accepted the request and produced nothing for ${lostMs}ms`
+            )
+          }
           if (firstTokenExpired) {
             throw new OllamaStalledError(
               `Ollama produced no output within ${firstTokenMs}ms (prompt evaluation stalled)`,
@@ -443,9 +481,9 @@ async function runStream(
             // No progress for `idleMs`. This is the real hang signal; report it
             // with whatever was produced so callers can salvage partial work.
             throw new OllamaStalledError(
-              `Ollama stopped producing tokens for ${idleMs}ms (received ${fullResponse.length} chars)`,
+              `Ollama stopped producing tokens for ${stallMs}ms (received ${fullResponse.length} chars)`,
               fullResponse,
-              idleMs
+              stallMs
             )
           }
           throw err
@@ -454,6 +492,7 @@ async function runStream(
         if (!sawFirstToken) {
           sawFirstToken = true
           clearTimeout(firstTokenTimer)
+          clearTimeout(lostTimer)
         }
 
         buffered += decoder.decode(result.value, { stream: true })
@@ -522,7 +561,12 @@ async function runStream(
 
     return { text: fullResponse, usage }
   } catch (error) {
-    if (error instanceof OllamaStalledError) throw error
+    if (error instanceof OllamaStalledError || error instanceof OllamaLostRequestError) throw error
+    if (lostRequest && !externalSignal?.aborted) {
+      throw new OllamaLostRequestError(
+        `Ollama accepted the request and produced nothing for ${lostMs}ms`
+      )
+    }
     // Reached when the deadline expired inside `fetch` — i.e. Ollama never
     // flushed a header because it was still loading the model or evaluating the
     // prompt. The abort surfaces as a generic AbortError, so the flag is what
@@ -544,7 +588,29 @@ async function runStream(
   } finally {
     clearTimeout(ceilingTimer)
     clearTimeout(firstTokenTimer)
+    clearTimeout(lostTimer)
     if (externalSignal) externalSignal.removeEventListener('abort', onAbort)
+  }
+}
+
+/**
+ * A lost request produced nothing -- no tokens reached the caller -- so sending
+ * it again is safe and is the fix: the first attempt was dropped, not slow.
+ * Once only; a second loss is reported.
+ */
+async function runStreamRetryingLost(
+  prompt: string,
+  systemPrompt: string,
+  model: string,
+  onChunk: ((text: string, full: string) => void) | null | undefined,
+  options: OllamaOptions
+): Promise<StreamRunResult> {
+  try {
+    return await runStream(prompt, systemPrompt, model, onChunk, options)
+  } catch (err) {
+    if (!(err instanceof OllamaLostRequestError) || options.signal?.aborted) throw err
+    console.warn(`[ollama] ${model}: ${err.message}; sending it once more`)
+    return await runStream(prompt, systemPrompt, model, onChunk, options)
   }
 }
 
@@ -554,7 +620,7 @@ export async function generate(
   model: string,
   options: OllamaOptions = {}
 ) {
-  const { text, usage } = await runStream(
+  const { text, usage } = await runStreamRetryingLost(
     prompt,
     systemPrompt,
     model,
@@ -571,7 +637,7 @@ export async function stream(
   onChunk?: (text: string, full: string) => void,
   options: OllamaOptions = {}
 ) {
-  const { text } = await runStream(prompt, systemPrompt, model, onChunk, options)
+  const { text } = await runStreamRetryingLost(prompt, systemPrompt, model, onChunk, options)
   return text
 }
 
@@ -588,7 +654,7 @@ export async function generateStructured(
   schema: Record<string, unknown>,
   options: OllamaOptions = {}
 ) {
-  const raw = await runStream(prompt, systemPrompt, model, options.onToken ?? null, {
+  const raw = await runStreamRetryingLost(prompt, systemPrompt, model, options.onToken ?? null, {
     ...options,
     format: schema
   })
@@ -628,8 +694,10 @@ export async function choiceProbabilities(
   if (isAgentOpsTracing()) return null
   const ollamaOptions = buildOllamaOptions({ ...options, maxTokens: 1, temperature: 0 }).options
   const controller = new AbortController()
-  const ceilingMs = resolveTimeLimit(FIRST_TOKEN_TIMEOUT_MS)
-  const timer = ceilingMs > 0 ? setTimeout(() => controller.abort(), ceilingMs) : undefined
+  // One token: bounded even with time limits off, since a lost request here
+  // would hang the critic with nothing to salvage (null is a safe answer).
+  const ceilingMs = resolveTimeLimit(FIRST_TOKEN_TIMEOUT_MS) || LOST_REQUEST_MS
+  const timer = setTimeout(() => controller.abort(), ceilingMs)
   const onAbort = () => controller.abort(options.signal!.reason)
   options.signal?.addEventListener('abort', onAbort, { once: true })
   try {
