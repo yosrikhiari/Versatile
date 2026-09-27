@@ -10,8 +10,17 @@ vi.mock('@/services/aiService', () => ({
   resolveFeatureConfig: vi.fn()
 }))
 
-const { legalMoves, workflowDecision, validateEditorAnswer, buildEditorPrompt, useStoryEditor } =
-  await import('@/composables/useStoryEditor')
+const {
+  legalMoves,
+  workflowDecision,
+  validateEditorAnswer,
+  buildEditorPrompt,
+  buildEditorSchema,
+  legalPairs,
+  moveLabel,
+  planLabel,
+  useStoryEditor
+} = await import('@/composables/useStoryEditor')
 
 const scene = (index, over = {}) => ({
   index,
@@ -152,6 +161,67 @@ describe('validateEditorAnswer', () => {
       ).reason
     ).toMatch(/both lanes/)
     expect(validateEditorAnswer('nope', legal).reason).toBe('not an object')
+  })
+})
+
+describe('editor-v3: one choice among the legal (gpu, cpu) pairs', () => {
+  const legal = {
+    gpu: [
+      { action: 'revise', target: 1 },
+      { action: 'draft', target: 3 },
+      { action: 'wait', target: null }
+    ],
+    cpu: [
+      { action: 'critique', target: 2 },
+      { action: 'commit', target: 1 }
+    ]
+  }
+
+  it('offers every pair except one scene on both lanes with different actions', () => {
+    const labels = legalPairs(legal).map(planLabel)
+    expect(labels).toContain('gpu: revise #1 / cpu: critique #2')
+    expect(labels).toContain('gpu: wait / cpu: commit #1')
+    // The probe's 13/24 v2 rejections were exactly this pair.
+    expect(labels).not.toContain('gpu: revise #1 / cpu: commit #1')
+    expect(labels).toHaveLength(5)
+    expect(buildEditorSchema(legal).properties.plan.enum).toEqual(labels)
+    expect(moveLabel({ action: 'stop', target: null })).toBe('stop')
+  })
+
+  it('reads a plan back into both moves, with revise instructions', () => {
+    const { decision, reason } = validateEditorAnswer(
+      {
+        plan: 'gpu: revise #1 / cpu: critique #2',
+        instructions: 'cut the flashback',
+        why: 'continuity failed'
+      },
+      legal
+    )
+    expect(reason).toBeNull()
+    expect(decision.gpu).toEqual({ action: 'revise', target: 1, instructions: 'cut the flashback' })
+    expect(decision.cpu).toEqual({ action: 'critique', target: 2 })
+  })
+
+  it('rejects a plan that is not offered', () => {
+    expect(
+      validateEditorAnswer({ plan: 'gpu: revise #1 / cpu: commit #1', why: 'x' }, legal).reason
+    ).toMatch(/not a legal plan/)
+  })
+
+  it('sends the per-call plan schema and lists the plans in the prompt', async () => {
+    const s = state([
+      scene(0, { status: 'drafted' }),
+      scene(1),
+      scene(2),
+      scene(3, { status: 'critiqued', score: 6, pass: false, attempts: 1 })
+    ])
+    const plans = legalPairs(legalMoves(s)).map(planLabel)
+    aiGenerateJson.mockResolvedValue({ plan: plans[0], why: 'keep both lanes busy' })
+    const d = await useStoryEditor().decideAgentic(s)
+    const call = aiGenerateJson.mock.calls.at(-1)
+    expect(call[2].schema.properties.plan.enum).toEqual(plans)
+    for (const p of plans) expect(call[0]).toContain(`- ${p}`)
+    expect(d.source).toBe('model')
   })
 })
 

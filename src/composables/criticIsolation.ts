@@ -557,6 +557,69 @@ Answer with one letter only.`
 }
 
 /**
+ * Emotional goal as a reader's multiple choice (§35, plan step 3). The 1-10
+ * judge was a near-constant 7: 0/10 reviewer emotional-goal problems caught,
+ * 3/12 masterpieces failed. Asked instead "what will a reader most likely
+ * feel?" among the scene's own goal and three alternatives written from the
+ * brief (never the prose), with the right letter's probability read from the
+ * model: 8/10 caught, 1/12 masterpieces failed, 9/45 reviewer-fine scenes
+ * flagged (some honestly ambiguous). Advisory, like before; the warning now
+ * names what a reader would feel instead.
+ */
+export const EMOTION_ALTERNATIVES_SCHEMA = {
+  type: 'object',
+  properties: {
+    alternatives: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'string' } }
+  },
+  required: ['alternatives']
+}
+
+export function buildEmotionAlternativesPrompt(brief: {
+  title?: string
+  characters?: string[]
+  emotionalGoal: string
+}): string {
+  return `SCENE BRIEF
+Title: ${brief.title || ''}
+Characters: ${(brief.characters || []).join(', ')}
+Intended emotional effect: ${brief.emotionalGoal}
+
+Write 3 alternative emotional effects a scene with the same characters and situation could aim for INSTEAD. Each must be a clearly different feeling from the intended one and from each other (for example hope, grief, amusement, relief, anger, tenderness, awe, dread), phrased the same way and about the same length, naming the same characters.
+
+Return JSON: { "alternatives": ["...", "...", "..."] }`
+}
+
+export const EMOTION_CHOICES = ['A', 'B', 'C', 'D']
+
+/**
+ * The four options in a fixed order for a given goal (a string hash, so a
+ * scene re-judged gets the same order) and the goal's letter.
+ */
+export function emotionOptions(
+  goal: string,
+  alternatives: string[]
+): { options: string[]; right: string } | null {
+  const alts = alternatives.filter((a) => typeof a === 'string' && a.trim()).slice(0, 3)
+  if (alts.length < 3 || !goal.trim()) return null
+  let h = 0
+  for (const ch of goal) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  const at = h % 4
+  const options = [...alts]
+  options.splice(at, 0, goal.trim())
+  return { options, right: EMOTION_CHOICES[at] }
+}
+
+export function buildEmotionChoicePrompt(prose: string, options: string[]): string {
+  return `SCENE:
+${prose}
+
+What will a reader most likely feel by the end of this scene?
+${options.map((o, i) => `${EMOTION_CHOICES[i]}) ${o}`).join('\n')}
+
+Answer with one letter only.`
+}
+
+/**
  * Pacing by two votes (§21). Borderline paragraphs flip under small changes in
  * how the list is presented; planted filler does not. So a failing forward pass
  * is re-asked with the paragraphs in reverse order (which also cancels drift

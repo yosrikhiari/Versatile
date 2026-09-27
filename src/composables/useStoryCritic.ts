@@ -7,6 +7,8 @@ import {
   ASSUMPTIONS_SCHEMA,
   buildClaimsPrompt,
   buildConfirmPrompt,
+  buildEmotionAlternativesPrompt,
+  buildEmotionChoicePrompt,
   buildFactConfirmPrompt,
   buildFactHitsPrompt,
   buildFactImplicationsPrompt,
@@ -20,6 +22,9 @@ import {
   buildVoicePrompt,
   dialogueDistinctRatio,
   countSpeeches,
+  EMOTION_ALTERNATIVES_SCHEMA,
+  EMOTION_CHOICES,
+  emotionOptions,
   extractDialogueLines,
   FACT_CONFIRM_SCHEMA,
   FACT_HITS_SCHEMA,
@@ -869,6 +874,64 @@ Return JSON evaluation with dimensionScores covering all listed dimensions.`
               if (judged.issue) issues.push(judged.issue)
             }
             continue
+          }
+          if (dimension === 'emotional_goal' && sceneBrief?.emotionalGoal) {
+            // A reader's multiple choice (buildEmotionChoicePrompt, §35). When
+            // the probabilities cannot be read (a hosted provider, AgentOps
+            // tracing) this falls through to the 1-10 judge below.
+            const goal = String(sceneBrief.emotionalGoal)
+            const alts = await aiGenerateJson(
+              buildEmotionAlternativesPrompt({
+                title: sceneBrief.title,
+                characters: sceneBrief.charactersPresent || sceneBrief.characters || [],
+                emotionalGoal: goal
+              }),
+              'You write alternative emotional goals for a scene of fiction.',
+              {
+                feature: FEATURES.STORY_GENERATION,
+                role: 'critic',
+                temperature: 0,
+                maxTokens: 300,
+                schema: EMOTION_ALTERNATIVES_SCHEMA,
+                schemaName: 'emotion_alternatives',
+                sessionBudget: _sessionBudget,
+                ...JUDGE_SAMPLING
+              }
+            ).catch(() => null)
+            const set = emotionOptions(
+              goal,
+              Array.isArray((alts as { alternatives?: unknown } | null)?.alternatives)
+                ? ((alts as { alternatives: unknown[] }).alternatives.filter(
+                    (a) => typeof a === 'string'
+                  ) as string[])
+                : []
+            )
+            const p = set
+              ? await aiChoiceProbabilities(
+                  buildEmotionChoicePrompt(draftText, set.options),
+                  'You are an attentive reader of fiction.',
+                  EMOTION_CHOICES,
+                  {
+                    feature: FEATURES.STORY_GENERATION,
+                    role: 'critic',
+                    sessionBudget: _sessionBudget,
+                    ...JUDGE_SAMPLING
+                  }
+                ).catch(() => null)
+              : null
+            if (set && p) {
+              const reached = (p[set.right] ?? 0) >= 0.5
+              dimensionScores[dimension] = reached ? 8 : 4
+              if (!reached) {
+                const picked = EMOTION_CHOICES.reduce((a, b) => ((p[b] ?? 0) > (p[a] ?? 0) ? b : a))
+                issues.push({
+                  type: 'emotional_goal',
+                  severity: 'major',
+                  description: `A reader would more likely feel: "${set.options[EMOTION_CHOICES.indexOf(picked)]}" than the goal: "${goal}".`
+                })
+              }
+              continue
+            }
           }
           // What this dimension is actually judged against. The shared block
           // labels the bible "character descriptions for voice check", which is

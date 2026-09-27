@@ -146,3 +146,78 @@ describe('generateSpine', () => {
     expect(spine.filter(Boolean)).toHaveLength(40)
   })
 })
+
+describe('spineContextFromProse (§35)', () => {
+  let spineContextFromProse
+  beforeEach(async () => {
+    ;({ spineContextFromProse } = await import('@/composables/generation/context/spine'))
+  })
+
+  const spine = [1, 2, 3, 4].map((n) => ({
+    chapterNumber: n,
+    chapterTitle: `C${n}`,
+    emotionalStateAtEnd: `planned emotion ${n}`,
+    readerKnowledgeAtEnd: `planned knowledge ${n}`,
+    transitionToNext: `planned transition ${n}`,
+    keyFacts: [`planned fact ${n}`]
+  }))
+  const written = [
+    {
+      chapterId: 1,
+      sceneNumber: 1,
+      summary: 'Ada leaves the mill.',
+      keyFacts: ['Ada owns a knife']
+    },
+    {
+      chapterId: 1,
+      sceneNumber: 3,
+      summary: 'Ada burns the ledger.',
+      keyFacts: ['The ledger is ash']
+    },
+    { chapterId: 2, sceneNumber: 5, summary: null, keyFacts: [] },
+    // An anchor of a later chapter, drafted early by the anchor-first writer.
+    { chapterId: 4, sceneNumber: 10, summary: 'Ada is arrested.', keyFacts: ['Ada is in jail'] }
+  ]
+
+  it('shows earlier chapters as written: the closing scene summary and the prose facts', () => {
+    const text = spineContextFromProse(spine, written, 3)
+    expect(text).toMatch(/Chapter 1 \(C1\), as written: Ada burns the ledger\./)
+    expect(text).toMatch(/Established: Ada owns a knife; The ledger is ash/)
+    expect(text).not.toMatch(/planned emotion 1/)
+  })
+
+  it('keeps a chapter without a written summary, the current one and later ones as planned', () => {
+    const text = spineContextFromProse(spine, written, 3)
+    expect(text).toMatch(/PLANNED FROM HERE/)
+    expect(text).toMatch(/planned emotion 2/)
+    expect(text).toMatch(/planned emotion 3/)
+    // A later chapter's early-drafted anchor does not leak backwards.
+    expect(text).not.toMatch(/Ada is arrested|Ada is in jail/)
+    expect(text).toMatch(/planned emotion 4/)
+  })
+
+  it('is the planned spine when nothing before the chapter is written, or no chapter is given', async () => {
+    const { compressSpine } = await import('@/composables/generation/context/spine')
+    expect(spineContextFromProse(spine, written, 1)).toBe(compressSpine(spine))
+    expect(spineContextFromProse(spine, written, null)).toBe(compressSpine(spine))
+    expect(spineContextFromProse([], written, 3)).toBe('')
+  })
+
+  it('drops the oldest written chapters first when over the token cap', () => {
+    const long = Array.from({ length: 8 }, (_, i) => ({
+      chapterId: i + 1,
+      sceneNumber: i + 1,
+      summary: `Summary of chapter ${i + 1}. ${'Things happen at length. '.repeat(20)}`,
+      keyFacts: []
+    }))
+    const big = Array.from({ length: 9 }, (_, i) => ({
+      ...spine[0],
+      chapterNumber: i + 1,
+      chapterTitle: `C${i + 1}`
+    }))
+    const text = spineContextFromProse(big, long, 9, 300)
+    expect(text).toMatch(/\[spine truncated\]$/)
+    expect(text).toMatch(/Summary of chapter 8/)
+    expect(text).not.toMatch(/Summary of chapter 1\./)
+  })
+})

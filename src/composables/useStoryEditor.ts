@@ -46,7 +46,7 @@ export type {
   LegalMoves
 }
 
-export const EDITOR_PROMPT_VERSION = 'editor-v1'
+export const EDITOR_PROMPT_VERSION = 'editor-v3'
 
 /**
  * Every move the state allows on each lane. The workflow policy picks the
@@ -129,31 +129,53 @@ export function workflowDecision(state: EditorState): EditorDecision {
   }
 }
 
-const EDITOR_SYSTEM_PROMPT = `You are the editor running a novel-writing pipeline. A Writer drafts scenes on one lane and a Critic judges them on another; both can work at the same time. Each step you choose ONE action for each lane from the legal moves you are given. You may only choose listed moves. Prefer finishing the book within budget over perfection: revise when the critic's issues are specific and fixable, commit a scene for review when they are vague or the score is close to passing, and never leave a lane idle when it has a legal move. Reply with JSON only.`
+export const EDITOR_SYSTEM_PROMPT = `You are the editor running a novel-writing pipeline. A Writer drafts scenes on one lane and a Critic judges them on another; both can work at the same time. Each step you choose ONE action for each lane from the legal moves you are given. You may only choose listed moves. Prefer finishing the book within budget over perfection: revise when the critic's issues are specific and fixable, commit a scene for review when they are vague or the score is close to passing, and never leave a lane idle when it has a legal move. Reply with JSON only.`
 
-const EDITOR_SCHEMA = {
-  type: 'object',
-  properties: {
-    gpu: {
-      type: 'object',
-      properties: {
-        action: { type: 'string', enum: ['draft', 'critique', 'revise', 'commit', 'stop', 'wait'] },
-        target: { type: ['integer', 'null'] },
-        instructions: { type: 'string' }
-      },
-      required: ['action', 'target']
+/** How a move is written to the model and read back: "draft #3", "wait". */
+export function moveLabel(m: EditorAction): string {
+  return m.target == null ? m.action : `${m.action} #${m.target}`
+}
+
+/**
+ * Every legal (gpu, cpu) pair: each lane's legal moves, minus pairs that put
+ * one scene on both lanes with different actions ("revise #1" + "commit #1"),
+ * which `validateEditorAnswer` rejects.
+ */
+export function legalPairs(legal: LegalMoves): Array<{ gpu: EditorAction; cpu: EditorAction }> {
+  const pairs: Array<{ gpu: EditorAction; cpu: EditorAction }> = []
+  for (const gpu of legal.gpu) {
+    for (const cpu of legal.cpu) {
+      if (gpu.target != null && gpu.target === cpu.target && gpu.action !== cpu.action) continue
+      pairs.push({ gpu, cpu })
+    }
+  }
+  return pairs
+}
+
+/** How a pair is written to the model and read back. */
+export function planLabel(p: { gpu: EditorAction; cpu: EditorAction }): string {
+  return `gpu: ${moveLabel(p.gpu)} / cpu: ${moveLabel(p.cpu)}`
+}
+
+/**
+ * The answer schema, built per call (editor-v3). A fixed schema (`action` any
+ * of six, `target` any integer or null) let the 3B Editor answer 17 of 24
+ * probe states illegally ("critique #1" not offered, a bare "draft"); a
+ * per-lane enum of legal moves (v2) removed every illegal move but still let
+ * it pick "revise #1" on one lane and "commit #1" on the other (13/24). The
+ * answer is now ONE choice among the legal pairs, so constrained decoding can
+ * only produce an executable plan; `validateEditorAnswer` stays the fence.
+ */
+export function buildEditorSchema(legal: LegalMoves) {
+  return {
+    type: 'object',
+    properties: {
+      plan: { type: 'string', enum: legalPairs(legal).map(planLabel) },
+      instructions: { type: 'string' },
+      why: { type: 'string' }
     },
-    cpu: {
-      type: 'object',
-      properties: {
-        action: { type: 'string', enum: ['draft', 'critique', 'revise', 'commit', 'stop', 'wait'] },
-        target: { type: ['integer', 'null'] }
-      },
-      required: ['action', 'target']
-    },
-    why: { type: 'string' }
-  },
-  required: ['gpu', 'cpu', 'why']
+    required: ['plan', 'why']
+  }
 }
 
 function describeScene(s: EditorSceneSummary): string {
@@ -164,7 +186,7 @@ function describeScene(s: EditorSceneSummary): string {
 }
 
 function describeMoves(moves: EditorAction[]): string {
-  return moves.map((m) => (m.target == null ? m.action : `${m.action} #${m.target}`)).join(' | ')
+  return moves.map(moveLabel).join(' | ')
 }
 
 export function buildEditorPrompt(state: EditorState, legal: LegalMoves): string {
@@ -185,8 +207,11 @@ export function buildEditorPrompt(state: EditorState, legal: LegalMoves): string
     `LEGAL MOVES — gpu lane: ${describeMoves(legal.gpu)}`,
     `LEGAL MOVES — cpu lane: ${describeMoves(legal.cpu)}`,
     '',
-    'Choose one move per lane. For "revise", add one sentence of instructions naming what to fix.',
-    'Reply as JSON: {"gpu": {"action", "target", "instructions"?}, "cpu": {"action", "target"}, "why": "one sentence"}'
+    'LEGAL PLANS (one move per lane, together):',
+    ...legalPairs(legal).map((p) => `- ${planLabel(p)}`),
+    '',
+    'Choose one plan. If it revises a scene, add one sentence of instructions naming what to fix.',
+    'Reply as JSON: {"plan": one plan exactly as listed, "instructions"?: "...", "why": "one sentence"}'
   ]
     .filter((l) => l !== '')
     .join('\n')
@@ -205,20 +230,47 @@ export function validateEditorAnswer(
   legal: LegalMoves
 ): { decision: Omit<EditorDecision, 'source'> | null; reason: string | null } {
   if (!raw || typeof raw !== 'object') return { decision: null, reason: 'not an object' }
-  const r = raw as { gpu?: unknown; cpu?: unknown; why?: unknown }
+  const r = raw as {
+    gpu?: unknown
+    cpu?: unknown
+    why?: unknown
+    plan?: unknown
+    instructions?: unknown
+  }
+  const why0 =
+    typeof r.why === 'string' && r.why.trim() ? r.why.trim().slice(0, 300) : 'no reason given'
+  if (typeof r.plan === 'string') {
+    // editor-v3: one plan among the legal pairs.
+    const pair = legalPairs(legal).find((p) => planLabel(p) === (r.plan as string).trim())
+    if (!pair) return { decision: null, reason: `${r.plan} is not a legal plan` }
+    const gpu: EditorAction = { ...pair.gpu }
+    if (gpu.action === 'revise' && typeof r.instructions === 'string' && r.instructions.trim()) {
+      gpu.instructions = r.instructions.trim().slice(0, 400)
+    }
+    return { decision: { gpu, cpu: { ...pair.cpu }, why: why0 }, reason: null }
+  }
   const pick = (lane: 'gpu' | 'cpu'): EditorAction | string => {
     const v = r[lane]
     if (!v || typeof v !== 'object') return `${lane}: missing`
-    const { action, target, instructions } = v as {
+    const { move, action, target, instructions } = v as {
+      move?: unknown
       action?: unknown
       target?: unknown
       instructions?: unknown
     }
-    if (typeof action !== 'string') return `${lane}: no action`
-    const tgt = typeof target === 'number' && Number.isInteger(target) ? target : null
-    const candidate: EditorAction = { action: action as EditorActionName, target: tgt }
-    const match = legal[lane].find((m) => sameMove(m, candidate))
-    if (!match) return `${lane}: ${action}${tgt != null ? ` #${tgt}` : ''} is not a legal move`
+    let candidate: EditorAction
+    if (typeof move === 'string') {
+      // editor-v2: the move as its label, e.g. "draft #3".
+      const byLabel = legal[lane].find((m) => moveLabel(m) === move.trim())
+      if (!byLabel) return `${lane}: ${move} is not a legal move`
+      candidate = { action: byLabel.action, target: byLabel.target }
+    } else {
+      if (typeof action !== 'string') return `${lane}: no action`
+      const tgt = typeof target === 'number' && Number.isInteger(target) ? target : null
+      candidate = { action: action as EditorActionName, target: tgt }
+      const match = legal[lane].find((m) => sameMove(m, candidate))
+      if (!match) return `${lane}: ${action}${tgt != null ? ` #${tgt}` : ''} is not a legal move`
+    }
     if (candidate.action === 'revise' && typeof instructions === 'string' && instructions.trim()) {
       candidate.instructions = instructions.trim().slice(0, 400)
     }
@@ -262,7 +314,7 @@ export function useStoryEditor() {
         role: 'editor',
         temperature: 0.2,
         maxTokens: 300,
-        schema: EDITOR_SCHEMA,
+        schema: buildEditorSchema(legal),
         schemaName: 'editor_decision',
         sessionBudget: _sessionBudget,
         signal

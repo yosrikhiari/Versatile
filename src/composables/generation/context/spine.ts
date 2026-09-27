@@ -175,7 +175,90 @@ This chapter must pick up from that.
   return spine
 }
 
+interface SpineEntryLike {
+  chapterNumber: number | string
+  chapterTitle?: string
+}
+
+interface WrittenForSpine {
+  chapterId?: number | string | null
+  sceneNumber?: number | null
+  summary?: string | null
+  keyFacts?: string[] | null
+}
+
+/**
+ * The spine as the writer of `chapterNumber` should see it (§35): chapters
+ * BEFORE it as they were written -- the closing written scene's summary and
+ * the facts lifted from its prose -- and the rest as planned.
+ *
+ * The spine is generated from the outline before any prose exists, and was
+ * compressed once, so chapter 5 was written against what chapters 1-4 were
+ * planned to do. The fact ledger already switched to written facts
+ * (`buildStoryStateContext`); this does the same for the chapter arc. A
+ * chapter with no written summary yet stays planned. Later chapters stay
+ * planned on purpose: they are the road ahead, and the anchor-first writer
+ * may already have drafted their anchors -- those must not leak backwards.
+ */
+function spineContextFromProse(
+  spine: Array<SpineEntryLike | null | undefined>,
+  writtenScenes: Array<WrittenForSpine | null | undefined> | null | undefined,
+  chapterNumber: number | null | undefined,
+  tokenCap = 800
+): string {
+  if (!Array.isArray(spine) || spine.length === 0) return ''
+  if (chapterNumber == null) return compressSpine(spine, tokenCap)
+  const byChapter = new Map<string, WrittenForSpine[]>()
+  for (const s of Array.isArray(writtenScenes) ? writtenScenes : []) {
+    if (!s || s.chapterId == null) continue
+    const key = String(s.chapterId)
+    if (!byChapter.has(key)) byChapter.set(key, [])
+    byChapter.get(key)!.push(s)
+  }
+  const written: string[] = []
+  const planned: SpineEntryLike[] = []
+  for (const entry of spine) {
+    if (!entry) continue
+    const scenes = byChapter.get(String(entry.chapterNumber)) || []
+    const last = [...scenes]
+      .filter((s) => typeof s.summary === 'string' && s.summary.trim())
+      .sort((a, b) => Number(a.sceneNumber ?? 0) - Number(b.sceneNumber ?? 0))
+      .at(-1)
+    if (Number(entry.chapterNumber) < Number(chapterNumber) && last) {
+      const facts = scenes
+        .flatMap((s) => (Array.isArray(s.keyFacts) ? s.keyFacts : []))
+        .filter((f) => typeof f === 'string' && f.trim())
+        .slice(0, 5)
+      written.push(
+        `Chapter ${entry.chapterNumber} (${entry.chapterTitle}), as written: ${String(last.summary).trim()}` +
+          (facts.length ? `\n- Established: ${facts.join('; ')}` : '')
+      )
+    } else {
+      planned.push(entry)
+    }
+  }
+  if (!written.length) return compressSpine(spine, tokenCap)
+  const plannedText = planned.length
+    ? `\nPLANNED FROM HERE:\n${compressSpine(planned, tokenCap)}`
+    : ''
+  const text = `WRITTEN SO FAR:\n${written.join('\n')}${plannedText}`
+  if (estimateTokens(text) <= tokenCap) return text
+  const room = Math.max(1, tokenCap - estimateTokens(SPINE_TRUNCATION_MARKER))
+  // Keep the most recent written chapters and the plan: drop the oldest first.
+  const keep = [...written]
+  while (
+    keep.length > 1 &&
+    estimateTokens(`WRITTEN SO FAR:\n${keep.join('\n')}${plannedText}`) > room
+  )
+    keep.shift()
+  return (
+    trimToTokens(`WRITTEN SO FAR:\n${keep.join('\n')}${plannedText}`, room) +
+    SPINE_TRUNCATION_MARKER
+  )
+}
+
 export {
+  spineContextFromProse,
   isOllamaProvider,
   PARALLEL_CHAPTER_LIMIT,
   formatFullSpineEntry,

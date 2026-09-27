@@ -30,6 +30,7 @@ import { attemptScore, isCleanPass } from '../runMechanics'
 import { isFatalRunError } from '../lifecycle'
 import { RECENT_SCENE_LOG_LIMIT, SCENE_MAX_ATTEMPTS } from './limits'
 import { buildStoryStateContext } from '../context/sceneContext'
+import { spineContextFromProse } from '../context/spine'
 
 /**
  * Everything the scene gate reaches for in the orchestrator's scope.
@@ -52,6 +53,11 @@ export interface SceneGateContext {
   scenePlan: Ref<any[]>
   settings: any
   spineContext: Ref<any>
+  /**
+   * The spine entries themselves. When given, each draft sees earlier chapters
+   * as written rather than as planned (`spineContextFromProse`, §35).
+   */
+  spineArray?: Ref<any[]>
   storyBibleStore: any
   throwIfAborted: () => void
   workspaceType: { value: any }
@@ -358,6 +364,9 @@ export function createSceneGate(ctx: SceneGateContext) {
         // while with all three callers in ConsistencyService — read AFTER the
         // prose to find contradictions, never before to prevent them.
         storyState: buildStoryStateContext(writtenScenes.value, chapterNumber),
+        spine: ctx.spineArray?.value?.length
+          ? spineContextFromProse(ctx.spineArray.value, writtenScenes.value, chapterNumber)
+          : undefined,
         scene,
         sceneIndex,
         scenePhase,
@@ -515,6 +524,8 @@ export function createSceneGate(ctx: SceneGateContext) {
   interface DraftAttemptArgs {
     /** Chapter-scoped established facts, computed once per scene. */
     storyState?: string
+    /** The spine as this scene's chapter should see it, computed once per scene. */
+    spine?: string
     scene: SceneBrief
     sceneIndex: number
     scenePhase: number | string | undefined
@@ -573,7 +584,7 @@ export function createSceneGate(ctx: SceneGateContext) {
         chapterLog,
         storyBible,
         storyState,
-        spineContext: spineContext.value,
+        spineContext: args.spine ?? spineContext.value,
         anchorRole,
         anchorConstraints,
         signal: abort.signal(),

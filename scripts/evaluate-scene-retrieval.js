@@ -1,3 +1,9 @@
+// NOTE (§35): this eval is circular and cannot fail. Its "relevant" scenes are
+// chosen by the same TF-IDF cosine it then ranks with (getRelevantSceneIndices),
+// over synthetic keyword-list documents, so MRR is 1.0 by construction. The
+// eval that measures production retrieval on a real book, with ground truth the
+// retriever does not define, is tools/retrieval-eval/fact_retrieval.py
+// (MRR 0.67 for the production setup; chance ~0.21).
 import { writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   countSpeeches,
+  EMOTION_CHOICES,
+  emotionOptions,
   extractDialogueLines,
   splitParagraphs,
   dialogueDistinctRatio,
@@ -520,6 +522,56 @@ Nobody had seen Abe in years.
 
 ${lines(8)}`)
       expect(names().filter((n) => n === 'fact_implications')).toHaveLength(1)
+    })
+  })
+
+  describe('emotional goal as a reader multiple choice (§35)', () => {
+    const goal = 'dread'
+    const brief = { title: 't', emotionalGoal: goal, charactersPresent: ['A', 'B'] }
+    const run = async ({ alternatives = ['hope', 'grief', 'relief'], probs } = {}) => {
+      vi.mocked(aiGenerateJson).mockImplementation(async (_p, _s, opts) => {
+        if (opts.schemaName === 'emotion_alternatives') return { alternatives }
+        if (opts.schemaName === 'focused_pacing_paragraphs')
+          return { labels: Array(opts.schema.properties.labels.minItems).fill('ADVANCES') }
+        return { score: 7 }
+      })
+      vi.mocked(aiChoiceProbabilities).mockImplementation(async () => probs ?? null)
+      return critic.evaluateScene({
+        draft: lines(8),
+        sceneBrief: brief,
+        storyBible: 'A: a character.',
+        chapterLog: ''
+      })
+    }
+
+    it('scores 8 when the reader most likely feels the goal', async () => {
+      const { options, right } = emotionOptions(goal, ['hope', 'grief', 'relief'])
+      expect(options[EMOTION_CHOICES.indexOf(right)]).toBe(goal)
+      const v = await run({ probs: { A: 0, B: 0, C: 0, D: 0, [right]: 0.9 } })
+      expect(v.dimensionScores.emotional_goal).toBe(8)
+      expect(v.issues.find((i) => i.type === 'emotional_goal')).toBeUndefined()
+    })
+
+    it('scores 4 and names what a reader would feel instead', async () => {
+      const { options, right } = emotionOptions(goal, ['hope', 'grief', 'relief'])
+      const other = EMOTION_CHOICES.find((l) => l !== right)
+      const v = await run({ probs: { A: 0, B: 0, C: 0, D: 0, [other]: 0.95, [right]: 0.05 } })
+      expect(v.dimensionScores.emotional_goal).toBe(4)
+      expect(v.issues.find((i) => i.type === 'emotional_goal').description).toContain(
+        `"${options[EMOTION_CHOICES.indexOf(other)]}" than the goal: "dread"`
+      )
+    })
+
+    it('falls back to the 1-10 judge when the probabilities cannot be read', async () => {
+      const v = await run({ probs: null })
+      expect(v.dimensionScores.emotional_goal).toBe(7)
+      const names = vi.mocked(aiGenerateJson).mock.calls.map((c) => c[2].schemaName)
+      expect(names).toContain('focused_emotional_goal')
+    })
+
+    it('keeps one option order per goal', () => {
+      expect(emotionOptions(goal, ['x', 'y', 'z'])).toEqual(emotionOptions(goal, ['x', 'y', 'z']))
+      expect(emotionOptions(goal, ['x', 'y'])).toBeNull()
     })
   })
 

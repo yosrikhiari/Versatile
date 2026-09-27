@@ -455,6 +455,14 @@ describe('live: The Salt Road', () => {
           // end to end — a unit test can show the string is built, not that it
           // survived the budget trimmer and got sent.
           storyStatePrompts: wireCalls.filter((c) => c.prompt.includes('ESTABLISHED FACTS')).length,
+          // §35: writer prompts that carried earlier chapters as written.
+          spineWrittenPrompts: wireCalls.filter((c) => c.prompt.includes('WRITTEN SO FAR')).length,
+          spineWrittenSample: (() => {
+            const hit = wireCalls.find((c) => c.prompt.includes('WRITTEN SO FAR'))
+            if (!hit) return null
+            const start = hit.prompt.indexOf('WRITTEN SO FAR')
+            return hit.prompt.slice(start, start + 700)
+          })(),
           storyStateSample: (() => {
             const hit = wireCalls.find((c) => c.prompt.includes('ESTABLISHED FACTS'))
             if (!hit) return null

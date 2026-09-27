@@ -1817,3 +1817,77 @@ run-to-run nondeterminism of the inference engine, not sampling.
 No margin rule separates it either: voice scores come in steps (clean 7 or 9;
 flattened 2, 3, 5 or 7), and 5 is where 11/29 real flattened voices land.
 Nothing changed; recorded as a known 2/145 wrong-fail source.
+
+## 35. The plan's remaining steps (2026-09-26)
+
+Section 7 of the report lists the plan. Steps 1-2 are done (§28-§31), step 4
+is mostly moot since §31 (the dimensions it would filter only warn). This
+section covers step 8 (small fixes), step 3 (emotional goal), step 5
+(contradictions on real prose) and step 6 (repair vs rewrite).
+
+### Step 8a: the Editor answers only legal moves
+
+The agentic Editor (LangGraph path, `qwen2.5:3b-instruct` on CPU in the
+multi-agent preset) answered with a fixed schema: `action` any of six,
+`target` any integer or null. Every model decision in the two earlier agentic
+runs was illegal (`commit` with no target, `critique #1` not offered) and fell
+back to the workflow. A 2x2 book run no longer exercises it at all: with the
+gate passing almost every scene each step has one legal move per lane and the
+model is never asked. So a probe asks it on 24 run states that do have
+choices (`src/tests/live/editorLegality.live.js`):
+
+| answer schema | legal answers |
+|---|---|
+| v1: fixed (any action, any target) | 7/24 |
+| v2: each lane an enum of its legal moves | 11/24 (0 illegal moves; 13 put one scene on both lanes, "revise #1" + "commit #1") |
+| **v3: one enum of legal (gpu, cpu) pairs** | **24/24** |
+
+`buildEditorSchema` now builds one `plan` enum per call from `legalPairs`
+(pairs that would put one scene on both lanes are left out), the prompt lists
+the plans, and `validateEditorAnswer` reads a plan back (the old shape still
+validates). With the plans listed in the prompt, even the v1 schema reaches
+20/24: listing the options does most of the work, constraining the answer
+closes the rest. `EDITOR_PROMPT_VERSION` is `editor-v3`.
+
+### Step 8b: a retrieval eval that can fail
+
+`scripts/evaluate-scene-retrieval.js` scored MRR 1.0 because it is circular:
+its "relevant" scenes are chosen by the same TF-IDF cosine it ranks with,
+over documents built from genre keyword lists. `tools/retrieval-eval/
+fact_retrieval.py` asks what production does -- rank a book's earlier scenes
+by embedding similarity to a query -- with ground truth the retriever does not
+define: the 40 ledger facts of the 30-scene Salt Road corpus as queries, the 3
+scenes of the fact's chapter as relevant, 27 same-book scenes as hard
+negatives.
+
+| docs | scorer | MRR | hit@1 | hit@3 |
+|---|---|---|---|---|
+| summary | BM25 | 0.449 | 0.28 | 0.55 |
+| **summary** | **nomic-embed-text (production)** | **0.671** | 0.60 | 0.68 |
+| summary | nomic + task prefixes | 0.608 | 0.47 | 0.65 |
+| summary | snowflake-arctic-embed2 | 0.594 | 0.45 | 0.68 |
+| prose | nomic-embed-text | 0.607 | 0.50 | 0.65 |
+
+Chance is about 0.21. Production's choices (summaries, nomic, no prefixes)
+are the best of those tried; the nomic task prefixes, which production omits,
+do not help here (40 queries: a 0.06 difference is 2-3 queries). The old
+script now says in its header that it is circular.
+
+### Step 8c: the spine as written, and a lost-facts bug
+
+The chapter spine is generated from the outline before any prose exists and
+was compressed once, so every scene was written against what earlier
+chapters were *planned* to do. (The fact ledger already switched to facts
+lifted from prose.) `spineContextFromProse` now gives each draft the chapters
+before its own as written -- the closing written scene's summary and the facts
+from its prose -- and the rest as planned; later chapters stay planned even
+when the anchor-first writer has already drafted their anchors, so nothing
+leaks backwards. The scene gate builds it per scene (`spineArray` was already
+in its context).
+
+Found on the way: the continuity fix-rewrite (`ConsistencyService.
+rewriteSceneForConsistency`) rebuilt the scene record without `chapterId` and
+`keyFacts`, so every scene a continuity fix touched dropped out of the fact
+ledger, the writer's established facts and the spine. It now keeps them
+(the rewrite's own facts when it returns some). Regression test
+`consistencyRewriteKeepsFacts.test.js`, mutation-checked.

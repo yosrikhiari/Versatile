@@ -49,6 +49,23 @@ def letter_probs(system, prompt):
     return {k: v / z for k, v in p.items()}
 
 
+def letter_probs_n(system, prompt, letters="ABCD"):
+    """letter_probs for any set of one-letter choices."""
+    body = {"model": MODEL, "system": system, "prompt": prompt, "stream": False, "think": False,
+            "logprobs": True, "top_logprobs": 20, "keep_alive": "30m",
+            "options": {**OPTS, "num_predict": 1}}
+    req = urllib.request.Request(HOST + "/api/generate", data=json.dumps(body).encode(),
+                                 headers={"Content-Type": "application/json"})
+    d = json.load(urllib.request.urlopen(req, timeout=600))
+    p = {k: 0.0 for k in letters}
+    for t in d["logprobs"][0]["top_logprobs"]:
+        k = t["token"].strip().upper()
+        if k in p:
+            p[k] += math.exp(t["logprob"])
+    z = sum(p.values()) or 1.0
+    return {k: v / z for k, v in p.items()}
+
+
 def c1(fact, claim, sentence, extra=""):
     return letter_probs("You check a new scene against what a story has already established.",
                         f"""ESTABLISHED (true as of the story so far; nothing told since has changed it):

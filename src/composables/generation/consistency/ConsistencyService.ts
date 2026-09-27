@@ -236,7 +236,18 @@ export class ConsistencyService {
       existingEntitiesJson
     })
     const fullProse = result.prose
+    const previous = this.writtenScenes.value[sceneIndex] || {}
+    const rewrittenFacts = (result.structured as { keyFacts?: unknown } | undefined)?.keyFacts
     this.writtenScenes.value[sceneIndex] = {
+      // Kept through the rewrite (§35): without `chapterId` and `keyFacts` the
+      // fact ledger, the writer's established facts and the spine silently
+      // lost every scene a continuity fix had touched.
+      ...(previous.chapterId != null ? { chapterId: previous.chapterId } : {}),
+      keyFacts: Array.isArray(rewrittenFacts)
+        ? rewrittenFacts
+        : Array.isArray(previous.keyFacts)
+          ? previous.keyFacts
+          : [],
       title: scene.title || `Scene ${scene.sceneNumber}`,
       prose: fullProse,
       // Reuses the summary the writer already returned; only costs a separate
