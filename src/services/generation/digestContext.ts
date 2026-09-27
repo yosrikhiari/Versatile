@@ -2,7 +2,8 @@ import {
   getProjectDigests,
   getProjectChapterDigests,
   putChapterDigest,
-  putVolumeDigest
+  putVolumeDigest,
+  digestBranchScope
 } from '../db-digests'
 import { rollupAllDigests, type BookDigest } from './digestRollup'
 import { getSections, getSubsections } from '../db-structure'
@@ -108,9 +109,12 @@ async function sectionPlacement(projectId: string) {
   const chapterOfScene = new Map<string, number>()
   const volumeOfChapter = new Map<number, string | null>()
   try {
+    // Only the branch being read: a what-if copy shares chapter order with
+    // its source, and counting both numbered every chapter twice.
+    const branchId = digestBranchScope(projectId)?.branchId as string | undefined
     const [sections, subsections] = await Promise.all([
-      getSections(projectId),
-      getSubsections(projectId)
+      getSections(projectId, branchId),
+      getSubsections(projectId, null, branchId)
     ])
     const sorted = orderSections(sections as any[])
     const chapterOfSection = new Map<string, number>()

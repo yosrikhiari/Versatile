@@ -55,9 +55,11 @@ const EXPECTED = {
   // one live digest per scene, replaced rather than accumulated.
   sceneDigests: '++id | &[projectId+subsectionId], contentHash, projectId, subsectionId, updatedAt',
   // v45: hierarchical digest rollup + entity-state timeline for contradiction detection.
+  // v55: per branch, so a what-if copy cannot overwrite its source's rollups.
   chapterDigests:
-    '++id | &[projectId+chapterNumber], chapterNumber, contentHash, projectId, updatedAt, volumeId',
-  volumeDigests: '++id | &[projectId+volumeId], contentHash, projectId, updatedAt, volumeId',
+    '++id | &[projectId+branchId+chapterNumber], [projectId+chapterNumber], branchId, chapterNumber, contentHash, projectId, updatedAt, volumeId',
+  volumeDigests:
+    '++id | &[projectId+branchId+volumeId], [projectId+volumeId], branchId, contentHash, projectId, updatedAt, volumeId',
   // v47: +[projectId+sceneId] (replace-per-scene, and the key the previously
   // unreachable per-scene query needed), +[projectId+chapterNumber] (chapter
   // slice), +[projectId+entityType+entityId] (which getEntityStatesForEntity
@@ -96,7 +98,8 @@ const EXPECTED = {
     '++id | &[volumeId+entityType+entityId], apiId, assignedAt, entityId, entityType, isPrimary, lastSyncedAt, syncStatus, volumeId',
   volumes:
     '++id | apiId, chapterIds, color, description, lastSyncedAt, projectId, syncStatus, title',
-  volumeDigests: '++id | &[projectId+volumeId], contentHash, projectId, updatedAt, volumeId'
+  volumeDigests:
+    '++id | &[projectId+branchId+volumeId], [projectId+volumeId], branchId, contentHash, projectId, updatedAt, volumeId'
 }
 
 describe('resolved Dexie schema', () => {
@@ -113,7 +116,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(54)
+    expect(verno).toBe(55)
   })
 
   it('has exactly the expected set of tables', () => {

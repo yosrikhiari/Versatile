@@ -1,7 +1,33 @@
 // Mirrors db-core: demo seed runs in dev/test only, never production builds.
 const DEV_MODE = import.meta.env.DEV === true
 
+type V55Row = Record<string, unknown> & {
+  id?: unknown
+  projectId?: unknown
+  branchId?: unknown
+  name?: unknown
+}
+type V55Table = {
+  toArray(): Promise<V55Row[]>
+  update(id: unknown, changes: Record<string, unknown>): Promise<unknown>
+}
+type V55Tables = Partial<Record<'branches' | 'chapterDigests' | 'volumeDigests', V55Table>>
+
 export const MIGRATIONS = {
+  55: async (transaction: unknown) => {
+    // Existing rollups describe the book as it was read: its main branch.
+    const trans = transaction as V55Tables
+    const branches = (await trans.branches?.toArray()) ?? []
+    const mainOf = new Map<string, unknown>()
+    for (const b of branches) if (b.name === 'main') mainOf.set(String(b.projectId), b.id)
+    for (const table of [trans.chapterDigests, trans.volumeDigests]) {
+      if (!table) continue
+      for (const row of await table.toArray()) {
+        const main = mainOf.get(String(row.projectId))
+        if (row.branchId == null && main != null) await table.update(row.id, { branchId: main })
+      }
+    }
+  },
   53: async (trans: any) => {
     // Only projects the generator wrote into carried the double count, and in
     // those the daily total could never legitimately exceed the manuscript's

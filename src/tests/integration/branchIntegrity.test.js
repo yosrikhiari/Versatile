@@ -24,6 +24,8 @@ const TABLES = [
   'volumeEntities',
   'sceneDigests',
   'entityStates',
+  'chapterDigests',
+  'volumeDigests',
   'storyDocuments',
   'voiceProfiles'
 ]
@@ -117,7 +119,7 @@ describe('deleteBranch', () => {
       projectId: 'p1',
       entityType: 'character',
       entityId: 'c1',
-      sceneId: copyId
+      sceneId: String(copyId) // how deriveEntityStates stores it
     })
 
     await branches.deleteBranch(fork.id)
@@ -269,5 +271,57 @@ describe('recovery backup', () => {
     await recovery.importData(JSON.parse(JSON.stringify(backup)))
     const subs = await db.subsections.toArray()
     expect(subs.map((s) => s.content).sort()).toEqual(['<p>Alpha.</p>', '<p>Beta.</p>'])
+  })
+})
+
+describe('story knowledge per branch (v55)', () => {
+  it('a fork copies digests, states and rollups; reads and rollups follow the scoped branch', async () => {
+    const digests = await import('@/services/db-digests')
+    const main = await branches.ensureMainBranch('pk')
+    const src = await book('pk', main.id)
+    await db.sceneDigests.add({
+      projectId: 'pk',
+      subsectionId: src.a,
+      contentHash: 'h',
+      summary: 'main A',
+      sceneNumber: 1
+    })
+    await db.entityStates.add({
+      projectId: 'pk',
+      entityType: 'character',
+      entityId: 'c',
+      sceneId: String(src.a)
+    })
+    await db.chapterDigests.add({
+      projectId: 'pk',
+      branchId: main.id,
+      chapterNumber: 1,
+      summary: 'main ch1'
+    })
+    const fork = await branches.createBranch('pk', 'what-if', main.id)
+    const maps = await branches.copyManuscriptToBranch('pk', main.id, fork.id)
+    const copyA = maps.subsections.get(src.a)
+
+    digests.setDigestBranchScope('pk', fork.id, false)
+    const inFork = await digests.getProjectDigests('pk')
+    expect(inFork.map((d) => [d.subsectionId, d.summary])).toEqual([[copyA, 'main A']])
+    expect((await digests.getEntityStatesForProject('pk')).map((s) => s.sceneId)).toEqual([
+      String(copyA)
+    ])
+    expect((await digests.getProjectChapterDigests('pk')).map((c) => c.summary)).toEqual([
+      'main ch1'
+    ])
+
+    // A rollup in the branch writes the branch's row, never main's.
+    await digests.putChapterDigest({ projectId: 'pk', chapterNumber: 1, summary: 'what-if ch1' })
+    expect((await digests.getProjectChapterDigests('pk')).map((c) => c.summary)).toEqual([
+      'what-if ch1'
+    ])
+    digests.setDigestBranchScope('pk', main.id, true)
+    expect((await digests.getProjectChapterDigests('pk')).map((c) => c.summary)).toEqual([
+      'main ch1'
+    ])
+    expect((await digests.getProjectDigests('pk')).map((d) => d.subsectionId)).toEqual([src.a])
+    digests.setDigestBranchScope('pk', null)
   })
 })

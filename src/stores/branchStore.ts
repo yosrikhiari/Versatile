@@ -10,6 +10,7 @@ import {
   copyManuscriptToBranch
 } from '../services/dbService'
 import { useLoading } from '../utils/useLoading'
+import { setDigestBranchScope } from '../services/db-digests'
 
 export interface Branch {
   id: string
@@ -51,8 +52,19 @@ export const useBranchStore = defineStore('branch', () => {
 
   const mainBranch = computed(() => branches.value.find((b) => b.name === 'main') || null)
 
+  /** Story knowledge (digests, entity states) is read for the active branch only. */
+  function scopeKnowledge() {
+    if (!projectIdLoaded.value) return
+    setDigestBranchScope(
+      projectIdLoaded.value,
+      activeBranchId.value,
+      activeBranch.value?.name === 'main'
+    )
+  }
+
   async function setActiveBranch(branchId: any) {
     activeBranchId.value = branchId
+    scopeKnowledge()
   }
 
   // `projectId` is passed through as given: project ids are numbers, and a
@@ -67,6 +79,7 @@ export const useBranchStore = defineStore('branch', () => {
       activeBranchId.value = main ? main.id : branches.value[0]?.id || null
     }
     if (main) await adoptUnbranchedRows(projectId, main.id)
+    scopeKnowledge()
     return activeBranchId.value
   }
 
@@ -102,6 +115,7 @@ export const useBranchStore = defineStore('branch', () => {
     await loadBranches(projectId as string)
     projectIdLoaded.value = String(projectId)
     activeBranchId.value = branchId
+    scopeKnowledge()
     const { useManuscriptStore } = await import('./manuscriptStore')
     await useManuscriptStore().loadManuscript(projectId)
   }
@@ -133,6 +147,7 @@ export const useBranchStore = defineStore('branch', () => {
     if (activeBranchId.value === id) {
       const main = branches.value.find((b) => b.name === 'main')
       activeBranchId.value = main ? main.id : branches.value[0]?.id || null
+      scopeKnowledge()
     }
   }
 

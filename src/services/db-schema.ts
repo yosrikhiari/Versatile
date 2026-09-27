@@ -494,5 +494,22 @@ export const SCHEMA_VERSIONS = [
       graphCheckpoints: 'threadId, projectId, updatedAt',
       agentDecisions: '++id, projectId, runId, ts, [projectId+ts], [runId+ts]'
     }
+  },
+  /**
+   * v55: story knowledge per branch (WHATIF-AND-IMPORT-PLAN.md, decision 9).
+   * A what-if branch copies the book, so its chapter 5 would have overwritten
+   * main's chapter-5 rollup under the old unique `[projectId+chapterNumber]`.
+   * Chapter and volume digests gain `branchId`; the unique key becomes
+   * `[projectId+branchId+chapterNumber]` / `[projectId+branchId+volumeId]`, and
+   * the old compound index stays, non-unique, for the per-chapter lookups.
+   */
+  {
+    version: 55,
+    stores: {
+      chapterDigests:
+        '++id, projectId, branchId, chapterNumber, volumeId, contentHash, updatedAt, [projectId+chapterNumber], &[projectId+branchId+chapterNumber]',
+      volumeDigests:
+        '++id, projectId, branchId, volumeId, contentHash, updatedAt, [projectId+volumeId], &[projectId+branchId+volumeId]'
+    }
   }
 ]

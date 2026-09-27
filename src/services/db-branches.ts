@@ -58,7 +58,10 @@ export async function deleteBranch(id: Id) {
         .toArray()
       for (const sub of subs as Row[]) {
         await db.sceneDigests.where({ projectId: branch.projectId, subsectionId: sub.id }).delete()
-        await db.entityStates.where({ projectId: branch.projectId, sceneId: sub.id }).delete()
+        // Entity states store the scene id as a string (deriveEntityStates).
+        await db.entityStates
+          .where({ projectId: branch.projectId, sceneId: String(sub.id) })
+          .delete()
       }
       await db.subsections.where({ projectId: branch.projectId, branchId: id }).delete()
       await db.sections.where({ projectId: branch.projectId, branchId: id }).delete()
@@ -158,7 +161,51 @@ export async function copyManuscriptToBranch(
       subsections.set(sub.id, id)
     }
   })
+  await copyKnowledge(projectId, sourceBranchId, targetBranchId, subsections)
   return { sections, subsections }
+}
+
+/**
+ * The branch starts knowing what its source knew: each copied scene gets its
+ * source's digest and entity states, and the source's chapter and volume
+ * rollups are copied under the new branch. Without this a fresh what-if branch
+ * had no summaries, facts or timeline until the whole book was read again.
+ */
+async function copyKnowledge(
+  projectId: Id,
+  sourceBranchId: Id,
+  targetBranchId: Id,
+  subsections: Map<Id, Id>
+) {
+  const source = (await db.branches.get(sourceBranchId)) as Row | undefined
+  const sourceIsMain = source?.name === 'main'
+  const fromSource = (row: Row) =>
+    row.branchId == null ? sourceIsMain : String(row.branchId) === String(sourceBranchId)
+  const bySource = new Map([...subsections].map(([from, to]) => [String(from), to]))
+  const now = new Date().toISOString()
+  await db.transaction(
+    'rw',
+    [db.sceneDigests, db.entityStates, db.chapterDigests, db.volumeDigests],
+    async () => {
+      const digests: Row[] = await db.sceneDigests.where('projectId').equals(projectId).toArray()
+      for (const d of digests) {
+        const to = bySource.get(String(d.subsectionId))
+        if (to != null)
+          await db.sceneDigests.add({ ...copyOf(d), subsectionId: to, updatedAt: now })
+      }
+      const states: Row[] = await db.entityStates.where('projectId').equals(projectId).toArray()
+      const copies = states
+        .filter((st) => bySource.has(String(st.sceneId)))
+        .map((st) => ({ ...copyOf(st), sceneId: String(bySource.get(String(st.sceneId))) }))
+      if (copies.length) await db.entityStates.bulkAdd(copies)
+      for (const table of [db.chapterDigests, db.volumeDigests]) {
+        const rows: Row[] = await table.where('projectId').equals(projectId).toArray()
+        for (const row of rows.filter(fromSource)) {
+          await table.add({ ...copyOf(row), branchId: targetBranchId, updatedAt: now })
+        }
+      }
+    }
+  )
 }
 
 export async function ensureMainBranch(projectId: any) {

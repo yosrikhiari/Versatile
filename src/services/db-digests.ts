@@ -11,6 +11,57 @@ import type { EntityStateRecord } from './generation/entityStates'
 
 const db = _db as any
 
+// ── branch scope ───────────────────────────────────────────────────────────
+//
+// Story knowledge follows the branch being read (WHATIF-AND-IMPORT-PLAN.md,
+// decision 9). Scene digests and entity states are keyed by scene, so each
+// branch already has its own and reads only need filtering to the branch's
+// scenes; chapter and volume digests carry `branchId` (schema v55). The branch
+// store sets the scope whenever the active branch changes; with no scope set
+// (tests, a project not opened through the store) reads are project-wide, as
+// they always were.
+
+interface BranchScope {
+  branchId: string | number
+  isMain: boolean
+}
+const scopes = new Map<string, BranchScope>()
+
+export function setDigestBranchScope(
+  projectId: string | number,
+  branchId: string | number | null,
+  isMain = false
+) {
+  if (branchId == null) scopes.delete(String(projectId))
+  else scopes.set(String(projectId), { branchId, isMain })
+}
+
+export function digestBranchScope(projectId: string | number): BranchScope | null {
+  return scopes.get(String(projectId)) || null
+}
+
+/** The scene ids of the scoped branch, or null for "every scene of the project". */
+async function scopedSceneIds(projectId: string): Promise<Set<string> | null> {
+  const scope = digestBranchScope(projectId)
+  if (!scope) return null
+  const ids = await db.subsections.where({ projectId, branchId: scope.branchId }).primaryKeys()
+  return new Set(ids.map((id: unknown) => String(id)))
+}
+
+type ScopedRow = { branchId?: unknown; subsectionId?: unknown; sceneId?: unknown }
+
+/** A chapter/volume digest row belongs to the scoped branch (legacy rows: main). */
+function inScope(projectId: string, row: { branchId?: unknown }): boolean {
+  const scope = digestBranchScope(projectId)
+  if (!scope) return true
+  if (row.branchId == null) return scope.isMain
+  return String(row.branchId) === String(scope.branchId)
+}
+
+function scopeBranchId(projectId: string) {
+  return digestBranchScope(projectId)?.branchId ?? null
+}
+
 export async function putSceneDigest(digest: SceneDigest) {
   const existing = await db.sceneDigests
     .where('[projectId+subsectionId]')
@@ -28,7 +79,11 @@ export async function getSceneDigest(projectId: string, subsectionId: string) {
 }
 
 export async function getProjectDigests(projectId: string): Promise<SceneDigest[]> {
-  const rows = await db.sceneDigests.where('projectId').equals(projectId).toArray()
+  const [all, ids] = await Promise.all([
+    db.sceneDigests.where('projectId').equals(projectId).toArray(),
+    scopedSceneIds(projectId)
+  ])
+  const rows = ids ? all.filter((d: ScopedRow) => ids.has(String(d.subsectionId))) : all
   return rows.sort((a: any, b: any) => (a.sceneNumber ?? 0) - (b.sceneNumber ?? 0))
 }
 
@@ -72,6 +127,8 @@ export async function getDigestCoverage(
 /** Chapter digest — rollup of scene digests within one chapter. */
 export interface ChapterDigest {
   projectId: string
+  /** The branch this rollup describes (v55); absent on rows written before branches mattered. */
+  branchId?: string | number | null
   chapterNumber: number
   volumeId: string | null
   contentHash: string
@@ -88,6 +145,7 @@ export interface ChapterDigest {
 /** Volume digest — rollup of chapter digests within one volume. */
 export interface VolumeDigest {
   projectId: string
+  branchId?: string | number | null
   volumeId: string
   contentHash: string
   updatedAt: string
@@ -109,9 +167,16 @@ export type { EntityStateRecord }
 export type EntityState = EntityStateRecord
 
 export async function putChapterDigest(digest: ChapterDigest) {
+  const branchId = digest.branchId ?? scopeBranchId(digest.projectId)
+  digest = { ...digest, branchId }
   const existing = await db.chapterDigests
     .where('[projectId+chapterNumber]')
     .equals([digest.projectId, digest.chapterNumber])
+    .filter(
+      (row: ScopedRow) =>
+        (row.branchId ?? null) === (branchId ?? null) ||
+        (row.branchId == null && inScope(digest.projectId, row))
+    )
     .first()
   if (existing) {
     await db.chapterDigests.update(existing.id, digest)
@@ -124,18 +189,28 @@ export async function getChapterDigest(projectId: string, chapterNumber: number)
   return db.chapterDigests
     .where('[projectId+chapterNumber]')
     .equals([projectId, chapterNumber])
+    .filter((row: ScopedRow) => inScope(projectId, row))
     .first()
 }
 
 export async function getProjectChapterDigests(projectId: string): Promise<ChapterDigest[]> {
-  const rows = await db.chapterDigests.where('projectId').equals(projectId).toArray()
+  const rows = (await db.chapterDigests.where('projectId').equals(projectId).toArray()).filter(
+    (row: ScopedRow) => inScope(projectId, row)
+  )
   return rows.sort((a: any, b: any) => (a.chapterNumber ?? 0) - (b.chapterNumber ?? 0))
 }
 
 export async function putVolumeDigest(digest: VolumeDigest) {
+  const branchId = digest.branchId ?? scopeBranchId(digest.projectId)
+  digest = { ...digest, branchId }
   const existing = await db.volumeDigests
     .where('[projectId+volumeId]')
     .equals([digest.projectId, digest.volumeId])
+    .filter(
+      (row: ScopedRow) =>
+        (row.branchId ?? null) === (branchId ?? null) ||
+        (row.branchId == null && inScope(digest.projectId, row))
+    )
     .first()
   if (existing) {
     await db.volumeDigests.update(existing.id, digest)
@@ -145,12 +220,16 @@ export async function putVolumeDigest(digest: VolumeDigest) {
 }
 
 export async function getVolumeDigest(projectId: string, volumeId: string) {
-  return db.volumeDigests.where('[projectId+volumeId]').equals([projectId, volumeId]).first()
+  return db.volumeDigests
+    .where('[projectId+volumeId]')
+    .equals([projectId, volumeId])
+    .filter((row: ScopedRow) => inScope(projectId, row))
+    .first()
 }
 
 export async function getProjectVolumeDigests(projectId: string): Promise<VolumeDigest[]> {
   const rows = await db.volumeDigests.where('projectId').equals(projectId).toArray()
-  return rows
+  return rows.filter((row: ScopedRow) => inScope(projectId, row))
 }
 
 /** Entity state timeline — tracks state changes per entity for contradiction candidate generation. */
@@ -167,7 +246,11 @@ export async function putEntityState(state: EntityState) {
 }
 
 export async function getEntityStatesForProject(projectId: string): Promise<EntityState[]> {
-  return db.entityStates.where('projectId').equals(projectId).toArray()
+  const [rows, ids] = await Promise.all([
+    db.entityStates.where('projectId').equals(projectId).toArray(),
+    scopedSceneIds(projectId)
+  ])
+  return ids ? rows.filter((s: ScopedRow) => ids.has(String(s.sceneId))) : rows
 }
 
 export async function getEntityStatesForEntity(
@@ -219,7 +302,7 @@ export async function replaceSceneEntityStates(
 
 /** Every state row for a project, in story order (chapter, then scene). */
 export async function getEntityStateTimeline(projectId: string): Promise<EntityState[]> {
-  const rows = await db.entityStates.where('projectId').equals(projectId).toArray()
+  const rows = await getEntityStatesForProject(projectId)
   return rows.sort(
     (a: any, b: any) =>
       (a.chapterNumber ?? 0) - (b.chapterNumber ?? 0) || (a.sceneNumber ?? 0) - (b.sceneNumber ?? 0)
