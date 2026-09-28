@@ -151,6 +151,22 @@ const LEAVE_VERB =
 const RETURN_WORD =
   /\b(return\w*|came back|comes back|coming back|back (?:from|home)|home from|got back)\b/i
 const NOT_A_LEAVING = /\b(absence|without (?:her|him)|had (?:left|gone)|since (?:she|he))\b/i
+const ABSENCE_CUE =
+  "(absence|absent|away|gone|missing|wasn[’']t (?:coming|there|home|here)|hadn[’']t come|was not (?:coming|there|home|here))"
+
+/** The first sentence of the scene that puts the person's name next to an absence. */
+function namedAbsence(prose: string, who: TrackedCharacter): string {
+  const sentences = prose.split(/(?<=[.!?”"])\s+/)
+  return (
+    sentences.find((s) =>
+      who.forms.some(
+        (f) =>
+          new RegExp(`\\b${escapeRe(f)}\\b(?:\\W+\\w+){0,2}?\\W+${ABSENCE_CUE}\\b`, 'i').test(s) ||
+          new RegExp(`\\b${ABSENCE_CUE}\\W+of\\W+${escapeRe(f)}\\b`, 'i').test(s)
+      )
+    ) || ''
+  ).trim()
+}
 
 const norm = (s: string) =>
   String(s || '')
@@ -189,7 +205,12 @@ export function decidePresence(
     return q && norm(q).length >= 8 && text.includes(norm(q)) ? q : ''
   }
   const names = (q: string) => (q && mentions(q, who) ? q : '')
-  const away = names(quoted(a.assumesAway))
+  // The model saw the absence but quoted a sentence without the name ("Her
+  // things remained in their place..."): take the scene's own sentence that
+  // puts the name next to an absence ("Zeena wasn't coming."), if there is
+  // one (§41, trial 2). Next to, so "Ethan felt Zeena's absence" is not Ethan.
+  const unnamed = quoted(a.assumesAway)
+  const away = names(unnamed) || (unnamed && a.present !== 'yes' ? namedAbsence(prose, who) : '')
   const returning = names(quoted(a.shownReturn))
   const back = RETURN_WORD.test(returning) ? returning : ''
   const leaving = names(quoted(a.shownLeaving))

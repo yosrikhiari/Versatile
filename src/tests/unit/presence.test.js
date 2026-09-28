@@ -223,6 +223,55 @@ describe('decidePresence', () => {
     ).toEqual({ present: false, where: 'Bettsbridge', scene: 'V' })
   })
 
+  it('trial 2: an unnamed quote falls back to the sentence that puts the name next to an absence', () => {
+    const prose =
+      "Zeena hadn't come. Her things remained in their place, untouched. Zeena wasn’t coming. Ethan felt Zeena's absence like cold."
+    const r = decidePresence(
+      {
+        present: 'no',
+        shownLeaving: '',
+        shownReturn: '',
+        assumesAway: 'Her things remained in their place, untouched.'
+      },
+      prose,
+      zeena,
+      vii,
+      'VIII'
+    )
+    expect(r.issue?.sentence).toBe("Zeena hadn't come.")
+    // the same fallback never makes Ethan "away" from Zeena's absence
+    const ethan = { name: 'Ethan Frome', forms: ['Ethan Frome', 'Ethan'] }
+    expect(
+      decidePresence(
+        {
+          present: 'no',
+          shownLeaving: '',
+          shownReturn: '',
+          assumesAway: 'Her things remained in their place, untouched.'
+        },
+        prose,
+        ethan,
+        { present: true, where: 'in the kitchen', scene: 'VII' },
+        'VIII'
+      ).issue
+    ).toBeNull()
+    // and not when the model says the person is here
+    expect(
+      decidePresence(
+        {
+          present: 'yes',
+          shownLeaving: '',
+          shownReturn: '',
+          assumesAway: 'Her things remained in their place, untouched.'
+        },
+        prose,
+        zeena,
+        vii,
+        'VIII'
+      ).issue
+    ).toBeNull()
+  })
+
   it('a scene that shows the person sets where they are', () => {
     const r = decidePresence(
       {
