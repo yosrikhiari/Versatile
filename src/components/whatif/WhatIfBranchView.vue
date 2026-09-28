@@ -104,6 +104,14 @@ const merge = () =>
   })
 const openInEditor = () => branchStore.switchTo(projectId.value, props.branchId)
 const recheck = () => act(() => w.recheck(projectId.value, props.branchId))
+// A flagged scene is written again with its missing events as rules (§40).
+const canRewrite = (s) =>
+  status.value === 'written' &&
+  s.action !== 'drop' &&
+  (s.presenceIssues?.length || /needs review/.test(s.outcome || ''))
+const rewriteScene = (s) =>
+  act(() => w.rewriteScene(projectId.value, props.branchId, s.subsectionId))
+const undoRewrite = (s) => act(() => w.undoRewrite(props.branchId, s.subsectionId))
 const remove = () =>
   act(async () => {
     if (!confirm('Delete this What If branch and everything written in it?')) return
@@ -212,6 +220,34 @@ const text = (html) => stripHtmlBlock(html || '')
                 >
                   “{{ p.sentence }}”: {{ p.fact }}
                 </p>
+                <div
+                  v-if="canRewrite(s) || (s.previousContent != null && status === 'written')"
+                  class="flex gap-1 pt-0.5"
+                >
+                  <BaseButton
+                    v-if="canRewrite(s)"
+                    variant="secondary"
+                    size="sm"
+                    icon="pen-line"
+                    :loading="state.busy && state.message === 'Rewriting the scene'"
+                    :disabled="state.busy"
+                    data-test="rewrite-scene"
+                    @click="rewriteScene(s)"
+                  >
+                    Rewrite this scene
+                  </BaseButton>
+                  <BaseButton
+                    v-if="s.previousContent != null"
+                    variant="ghost"
+                    size="sm"
+                    icon="undo-2"
+                    :disabled="state.busy"
+                    data-test="undo-rewrite"
+                    @click="undoRewrite(s)"
+                  >
+                    Undo rewrite
+                  </BaseButton>
+                </div>
               </div>
               <BaseSegmented
                 v-model="s.action"

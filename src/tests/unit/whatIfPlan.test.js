@@ -6,7 +6,8 @@ import {
   sceneBriefPrompt,
   branchCanon,
   storySoFar,
-  replaceSentenceInHtml
+  replaceSentenceInHtml,
+  rewriteBrief
 } from '@/services/whatIf/whatIfPlan'
 
 const scene = (n, ch, extra = {}) => ({
@@ -123,5 +124,30 @@ describe('the stated change keeps the premise', async () => {
       'Zeena never goes to Bettsbridge; she stays home the night Ethan and Mattie were to be alone together.'
     expect(chooseDivergenceFact(faithful, premise)).toBe(faithful)
     expect(chooseDivergenceFact('', premise)).toBe(premiseAsFact(premise))
+  })
+})
+
+describe('rewriteBrief (§40)', () => {
+  const fact =
+    'Zeena Frome is still at the kitchen door: last shown there in VII, and the story never shows Zeena Frome leaving.'
+  it('keeps what the scene is for and adds each missing event once, as a rule', () => {
+    const b = rewriteBrief({
+      ...scene(9, 'VIII'),
+      action: 'revise',
+      brief: 'Ethan and Mattie spend the evening together.',
+      reason: '',
+      presenceIssues: [
+        { who: 'Zeena Frome', sentence: "Zeena's absence left the house hushed.", fact },
+        { who: 'Zeena Frome', sentence: 'After Zeena left, the stove went cold.', fact }
+      ]
+    })
+    expect(b.startsWith('Ethan and Mattie spend the evening together.\nMUST HOLD:\n- ')).toBe(true)
+    expect(b.split('\n- ')).toHaveLength(2)
+    expect(b).toContain(fact)
+    expect(b).toContain('Zeena Frome is not gone, absent or returning')
+  })
+  it('a kept scene is rewritten from its summary; no issues means no rules', () => {
+    const kept = { ...scene(12, 'Epilogue'), action: 'keep', brief: '', reason: '' }
+    expect(rewriteBrief(kept)).toBe(kept.summary || `The scene "${kept.title}" of Epilogue.`)
   })
 })

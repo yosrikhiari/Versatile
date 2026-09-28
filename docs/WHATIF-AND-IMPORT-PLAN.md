@@ -253,7 +253,9 @@ are updated as steps land.
    copy of the first). See analysis doc §37.* *After the live run (§38-§39): the stated change keeps the author's premise;
    a who-is-where check follows each person the change names through the later
    scenes and flags a missing event for review (someone treated as gone, or shown coming
-   back, when no scene showed them leave). A fact check cannot see those.* Originally: Fork at the scene with source links, then plan,
+   back, when no scene showed them leave). A fact check cannot see those.
+   A flagged scene can be written again with the missing event as a rule in
+   its brief ("Rewrite this scene", §40), with undo.* Originally: Fork at the scene with source links, then plan,
    write/keep/repair, then compare and merge, with cancel and pause. The branch list
    is mounted in the panel; the stale store/job code is removed or wired up. Covers G6, G8.
 5. **Alternatives mode fixes** (decision 11).

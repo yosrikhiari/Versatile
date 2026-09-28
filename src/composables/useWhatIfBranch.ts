@@ -53,6 +53,7 @@ import {
   sceneBriefPrompt,
   type PlannedScene,
   branchCanon,
+  rewriteBrief,
   replaceSentenceInHtml,
   type BranchScene,
   type WhatIfPlan
@@ -331,7 +332,11 @@ export function useWhatIfBranch() {
    * and the facts of the rewritten scenes before it, repairing what
    * contradicts. Runs after writing; `recheck` runs it again on its own.
    */
-  async function verify(projectId: Id, planned: WhatIfPlan) {
+  async function verify(projectId: Id, planned: WhatIfPlan, only?: Id) {
+    // `only`: check one scene again (after "Rewrite this scene", §40). The
+    // scenes before it are unchanged, so their facts come from their digests
+    // and each person's last sighting from the previous walk.
+    const isOnly = (id: Id) => only == null || String(id) === String(only)
     // Every scene after the change, rewritten or kept, checked in order
     // against the change and the facts of the rewritten scenes before it.
     // The first live branch checked only the kept scenes and only against
@@ -345,7 +350,14 @@ export function useWhatIfBranch() {
     const { readScene } = await import('./useBookAnalysis')
     const { writeSceneAnalysis } = await import('../services/generation/sceneAnalysis')
     const factsOf = new Map<Id, string[]>()
-    for (const s of planned.scenes.filter((x) => x.outcome === 'written')) {
+    for (const s of planned.scenes) {
+      if (s.outcome !== 'written') continue
+      if (!isOnly(s.subsectionId)) {
+        const digest = (await getSceneDigest(projectId as string, s.subsectionId as string)) as
+          { keyFacts?: string[] } | undefined
+        if (digest?.keyFacts?.length) factsOf.set(s.subsectionId, digest.keyFacts)
+        continue
+      }
       whatIfState.detail = s.title
       const row = await tables.subsections.get(s.subsectionId)
       const html = String(row?.content || '')
@@ -396,6 +408,14 @@ export function useWhatIfBranch() {
     const ledger: string[] = [planned.divergenceFact]
     for (const s of planned.scenes) {
       if (s.action === 'drop' || s.outcome === 'failed') continue
+      if (!isOnly(s.subsectionId)) {
+        if (
+          only == null ||
+          planned.scenes.indexOf(s) < planned.scenes.findIndex((x) => isOnly(x.subsectionId))
+        )
+          ledger.push(...(factsOf.get(s.subsectionId) || []))
+        continue
+      }
       whatIfState.detail = s.title
       const verdict = await checkAndRepair(critic, characters, s.subsectionId, [...ledger])
       if (s.action === 'keep') s.outcome = verdict === 'ok' ? 'kept' : verdict
@@ -417,13 +437,18 @@ export function useWhatIfBranch() {
       `${planned.divergenceFact} ${premiseAsFact(planned.premise)}`,
       characters as Array<{ name?: unknown; aliases?: unknown }>
     )
+    const target = only == null ? null : planned.scenes.find((x) => isOnly(x.subsectionId))
     for (const who of tracked) {
       let last: Whereabouts | null = null
+      const known = target?.lastSeen && who.name in target.lastSeen
       for (const s of planned.scenes) {
         if (s.action === 'drop' || s.outcome === 'failed') continue
+        if (known && s !== target) continue
+        if (target && known) last = target.lastSeen?.[who.name] ?? null
         const row = await tables.subsections.get(s.subsectionId)
         const prose = stripHtmlBlock(String(row?.content || ''))
         if (!mentions(prose, who)) continue
+        s.lastSeen = { ...(s.lastSeen || {}), [who.name]: last }
         whatIfState.detail = `${who.name} · ${s.title}`
         const answer = await aiGenerateJson(
           presencePrompt({ who, last, sceneTitle: `${s.chapterTitle}, ${s.title}`, prose }),
@@ -432,13 +457,114 @@ export function useWhatIfBranch() {
         ).catch(() => null)
         const { issue, next } = decidePresence(answer, prose, who, last, `${s.chapterTitle}`)
         last = next
-        if (!issue) continue
-        await updateSubsection(s.subsectionId as string, { contentStatus: 'review' })
-        s.outcome = s.action === 'keep' ? 'needs review' : 'written, needs review'
-        s.presenceIssues = [...(s.presenceIssues || []), { who: who.name, ...issue }]
+        if (issue && isOnly(s.subsectionId)) {
+          await updateSubsection(s.subsectionId as string, { contentStatus: 'review' })
+          s.outcome = s.action === 'keep' ? 'needs review' : 'written, needs review'
+          s.presenceIssues = [...(s.presenceIssues || []), { who: who.name, ...issue }]
+        }
+        if (s === target) break
       }
     }
     whatIfState.detail = ''
+  }
+
+  /** The writer, on the branch, over its blank scenes (each with its brief). */
+  async function writePending(
+    projectId: Id,
+    branchId: Id,
+    canon: string,
+    planned: WhatIfPlan,
+    targetWords: number
+  ) {
+    const { useBranchStore } = await import('../stores/branchStore')
+    await useBranchStore().switchTo(projectId as string, branchId as string)
+    const w = await writer()
+    const { watch } = await import('vue')
+    const stop = watch(
+      () => w.progress.statusText,
+      (t) => (whatIfState.detail = t),
+      { immediate: true }
+    )
+    await w
+      .writeWhatIf({
+        projectId,
+        canon,
+        instructions: `WHAT IF: ${planned.premise}\nTHE CHANGE (now true): ${planned.divergenceFact}`,
+        targetWords
+      })
+      .finally(() => {
+        stop()
+        whatIfState.detail = ''
+      })
+  }
+
+  /**
+   * "Rewrite this scene" (§40): write one flagged scene again, with every
+   * missing event the who-is-where check found as a rule in its brief, then
+   * check that scene again. The old text is kept for undo. A one-sentence
+   * repair could not fix a chapter built on an event that never happened;
+   * the scene has to be written knowing it did not.
+   */
+  function rewriteScene(projectId: Id, branchId: Id, subsectionId: Id) {
+    return run('writing', 'Rewriting the scene', async () => {
+      const b = await getBranchRow(branchId)
+      const planned = b.whatIf.plan
+      const s = planned?.scenes.find((x) => String(x.subsectionId) === String(subsectionId))
+      if (!planned || !s || s.action === 'drop')
+        throw new Error('That scene is not in this branch.')
+      const scenes = await branchScenes(projectId, branchId)
+      const { before } = splitAt(scenes, b.whatIf.divergenceId)
+      const row = await tables.subsections.get(s.subsectionId)
+      const old = String(row?.content || '')
+      const brief = rewriteBrief(s)
+      const targetWords = Number(row?.wordCount) || countWords(stripHtmlBlock(old)) || 1200
+      await updateSubsection(s.subsectionId as string, {
+        description: brief,
+        content: '',
+        wordCount: 0,
+        contentStatus: 'pending'
+      })
+      await deleteSceneDigest(projectId as string, s.subsectionId as string)
+      await deleteSceneEntityStates(projectId as string, String(s.subsectionId))
+      await writePending(projectId, branchId, branchCanon(planned, before), planned, targetWords)
+      const now = await tables.subsections.get(s.subsectionId)
+      if (!stripHtmlBlock(String(now?.content || ''))) {
+        // Nothing written: put the scene back as it was.
+        await updateSubsection(s.subsectionId as string, {
+          content: old,
+          wordCount: countWords(stripHtmlBlock(old)),
+          contentStatus: 'review'
+        })
+        throw new Error('The writer produced nothing; the scene is unchanged.')
+      }
+      s.previousContent = old
+      s.action = 'revise'
+      s.brief = brief
+      s.outcome = 'written'
+      delete s.presenceIssues
+      await verify(projectId, planned, s.subsectionId)
+      await saveMeta(branchId, { plan: planned })
+      return planned
+    })
+  }
+
+  /** Put back the text a "Rewrite this scene" replaced. */
+  function undoRewrite(branchId: Id, subsectionId: Id) {
+    return run('writing', 'Putting the scene back', async () => {
+      const b = await getBranchRow(branchId)
+      const planned = b.whatIf.plan
+      const s = planned?.scenes.find((x) => String(x.subsectionId) === String(subsectionId))
+      if (!planned || !s || s.previousContent == null) throw new Error('Nothing to undo.')
+      await updateSubsection(s.subsectionId as string, {
+        content: s.previousContent,
+        wordCount: countWords(stripHtmlBlock(s.previousContent)),
+        contentStatus: 'review'
+      })
+      delete s.previousContent
+      s.outcome = 'written, needs review'
+      await saveMeta(branchId, { plan: planned })
+      return planned
+    })
   }
 
   /** Carry out the plan in the branch, then check every scene after the change. */
@@ -482,26 +608,7 @@ export function useWhatIfBranch() {
       }
       await saveMeta(branchId, { plan: planned, status: 'writing' })
 
-      const { useBranchStore } = await import('../stores/branchStore')
-      await useBranchStore().switchTo(projectId as string, branchId as string)
-      const w = await writer()
-      const { watch } = await import('vue')
-      const stop = watch(
-        () => w.progress.statusText,
-        (t) => (whatIfState.detail = t),
-        { immediate: true }
-      )
-      await w
-        .writeWhatIf({
-          projectId,
-          canon: branchCanon(planned, before),
-          instructions: `WHAT IF: ${planned.premise}\nTHE CHANGE (now true): ${planned.divergenceFact}`,
-          targetWords
-        })
-        .finally(() => {
-          stop()
-          whatIfState.detail = ''
-        })
+      await writePending(projectId, branchId, branchCanon(planned, before), planned, targetWords)
       for (const s of revised) {
         const row = await tables.subsections.get(s.subsectionId)
         s.outcome = stripHtmlBlock(String(row?.content || '')) ? 'written' : 'failed'
@@ -599,5 +706,17 @@ export function useWhatIfBranch() {
       .sort((a, b) => String(b.whatIf.createdAt).localeCompare(String(a.whatIf.createdAt)))
   }
 
-  return { fork, plan, savePlan, write, recheck, compare, merge, list, state: whatIfState }
+  return {
+    fork,
+    plan,
+    savePlan,
+    write,
+    rewriteScene,
+    undoRewrite,
+    recheck,
+    compare,
+    merge,
+    list,
+    state: whatIfState
+  }
 }

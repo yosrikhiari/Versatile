@@ -30,9 +30,17 @@ export interface PlannedScene extends BranchScene {
   /** For `revise`: what the scene must now do. */
   brief: string
   reason: string
-  /** Filled in by the write step. */
   /** Missing events the who-is-where check found in this scene (§39). */
   presenceIssues?: Array<{ who: string; sentence: string; fact: string }>
+  /**
+   * Where each tracked person was last shown before this scene, as the
+   * who-is-where walk found it: lets one rewritten scene be checked again
+   * without re-reading every scene before it.
+   */
+  lastSeen?: Record<string, { present: boolean; where: string; scene: string } | null>
+  /** The scene's text before "Rewrite this scene", for undo (§40). */
+  previousContent?: string
+  /** Filled in by the write step. */
   outcome?:
     | 'written'
     | 'written, repaired'
@@ -237,6 +245,25 @@ ${storySoFar(before, 25)}
 
 THE CHANGE -- this is now true, and every later scene follows from it:
 ${plan.divergenceFact}`
+}
+
+/**
+ * The brief for "Rewrite this scene" (§40): what the scene is for, plus every
+ * missing event the who-is-where check found, as a rule the writer must hold.
+ * A one-sentence repair could not fix these (it kept the absence in new
+ * words); the whole scene is written again knowing the person never left.
+ */
+export function rewriteBrief(scene: PlannedScene): string {
+  const base =
+    (scene.action === 'revise' && scene.brief.trim()) ||
+    scene.summary.trim() ||
+    `The scene "${scene.title}" of ${scene.chapterTitle}.`
+  const byWho = new Map((scene.presenceIssues || []).map((p) => [p.who, p]))
+  const rules = [...byWho.values()].map(
+    (p) =>
+      `- ${p.fact} So in this scene ${p.who} is not gone, absent or returning: keep ${p.who} where the story left them, or show ${p.who} leave.`
+  )
+  return rules.length ? `${base}\nMUST HOLD:\n${rules.join('\n')}` : base
 }
 
 /**

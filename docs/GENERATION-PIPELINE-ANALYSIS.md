@@ -2283,3 +2283,42 @@ test branch.)
 
 Next: offer "rewrite this scene" from a flagged scene, with the missing
 event's fact in the brief, which is the tool that can actually fix VIII.
+
+## 40. "Rewrite this scene" for a flagged scene (2026-09-28)
+
+§39 ended with the who-is-where check able to find chapter VIII's missing
+event but not fix it: a one-sentence repair kept the absence in new words.
+The tool that can change a chapter built on an event that never happened is
+the writer, told that it did not happen.
+
+**What it does** (`rewriteScene` in `useWhatIfBranch`, a button on every
+flagged scene of a written branch):
+
+1. The brief (`rewriteBrief`) is what the scene is for -- its plan brief, or
+   for a kept scene its summary -- plus a MUST HOLD rule per person the
+   check flagged, from the check's own fact: "Zeena Frome is still at the
+   kitchen door: last shown there in VII, and the story never shows Zeena
+   Frome leaving. So in this scene Zeena Frome is not gone, absent or
+   returning: keep her where the story left her, or show her leave."
+2. The scene is blanked and written by the same writer and canon as the
+   branch (the rest of the branch is not touched), at the old scene's
+   length. The old text is kept on the plan; "Undo rewrite" puts it back.
+   If the writer produces nothing, the scene is restored at once.
+3. Only that scene is checked again: `verify(..., only)` reads it, checks
+   it against the facts of the scenes before it (from their digests, not
+   re-read), and asks the who-is-where question once per person, starting
+   from where the last full check saw them (`lastSeen`, saved per scene).
+   The integration test asserts one presence question and one fact check,
+   and fails if the rewrite re-checks the whole branch.
+
+**Live, on the Ethan Frome branch (chapter VIII, clicked in the app):**
+9.9 minutes, most of it the writer. The new chapter opens "Zeena stood at
+the kitchen door..." and keeps her in the house throughout; the old one had
+six sentences treating her as gone ("Zeena's absence left the house
+hushed", "after Zeena left", "Zeena's return came late"), the new one none.
+3,502 words against 3,629 before. The single-scene check passed it (no
+missing event, fact check clean), so the row reads "rewritten" with "Undo
+rewrite" beside it. This branch's last full check predates `lastSeen`, so
+this first rewrite walked Zeena's earlier scenes (the fallback); a branch
+checked from now on answers from the saved sighting. One scene is not a
+rate: it shows the path works end to end, not how often a rewrite holds.

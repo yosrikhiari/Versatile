@@ -306,5 +306,26 @@ describe('What If as a branch', () => {
     // Check again starts a fresh list: it does not pile onto the last run's.
     const again = await w.recheck(projectId, branch.id)
     expect(again.scenes.find((s) => s.sceneNumber === 3).presenceIssues).toHaveLength(1)
+
+    // Rewrite this scene (§40): written again with the missing event as a
+    // rule, then only that scene is checked again.
+    const asked = () =>
+      aiGenerateJson.mock.calls.filter((c) => String(c[0]).includes('"assumesAway"')).length
+    const [askedBefore, criticBefore] = [asked(), criticCalls.length]
+    const rewritten = await w.rewriteScene(projectId, branch.id, kept.subsectionId)
+    const scene = rewritten.scenes.find((s) => s.sceneNumber === 3)
+    const now = await db.subsections.get(kept.subsectionId)
+    expect(now.description).toContain('MUST HOLD')
+    expect(now.description).toContain('Zeena Frome is still at home by the stove')
+    expect(now.content).toBe('<p>Zeena stays by the stove.</p>')
+    expect(scene.presenceIssues).toBeUndefined()
+    expect(scene.outcome).toBe('written')
+    expect(scene.previousContent).toContain('After Zeena left')
+    // one presence question and one fact check, for that scene alone
+    expect(asked() - askedBefore).toBe(1)
+    expect(criticCalls.length - criticBefore).toBe(1)
+
+    await w.undoRewrite(branch.id, kept.subsectionId)
+    expect((await db.subsections.get(kept.subsectionId)).content).toContain('After Zeena left')
   })
 })
