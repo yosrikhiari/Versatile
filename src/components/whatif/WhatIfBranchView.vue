@@ -204,6 +204,14 @@ const text = (html) => stripHtmlBlock(html || '')
                 <p v-if="s.outcome" class="font-ui text-xs text-text-secondary">
                   {{ OUTCOME[s.outcome] || s.outcome }}
                 </p>
+                <p
+                  v-for="(p, i) in s.presenceIssues || []"
+                  :key="i"
+                  class="font-ui text-xs text-text-hint"
+                  data-test="presence-issue"
+                >
+                  “{{ p.sentence }}”: {{ p.fact }}
+                </p>
               </div>
               <BaseSegmented
                 v-model="s.action"

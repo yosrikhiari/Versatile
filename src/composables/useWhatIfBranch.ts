@@ -30,11 +30,21 @@ import { addSnapshot } from '../services/db-snapshots'
 import { orderSections } from '../utils/sectionOrder'
 import { stripHtmlBlock, countWords } from '../utils/textUtils'
 import { aiGenerateJson } from './useAiService'
+import {
+  PRESENCE_SCHEMA,
+  PRESENCE_SYSTEM,
+  trackedCharacters,
+  mentions,
+  presencePrompt,
+  decidePresence,
+  type Whereabouts
+} from '../services/whatIf/presence'
 import { FEATURES } from '../config/ai'
 import {
   PLAN_SYSTEM,
   DIVERGENCE_SCHEMA,
   chooseDivergenceFact,
+  premiseAsFact,
   divergencePrompt,
   FATE_SCHEMA,
   sceneFatePrompt,
@@ -393,6 +403,41 @@ export function useWhatIfBranch() {
         s.outcome = verdict === 'repaired' ? 'written, repaired' : 'written, needs review'
       ledger.push(...(factsOf.get(s.subsectionId) || []))
     }
+
+    // Who is where: a person the change names, last SHOWN somewhere and
+    // treated as gone later with no scene showing them leave (§39). The fact
+    // check above cannot see a missing event; this walks each person's
+    // whereabouts through the scenes in order. It flags and does not rewrite:
+    // live, a one-sentence repair kept the absence in new words ("The silence
+    // of Zeena's absence...") and, on a false alarm, changed the original
+    // epilogue. A scene built on an event that never happened needs the
+    // author, or a rewrite, not a patched sentence.
+    whatIfState.message = 'Following where each person the change names is'
+    const tracked = trackedCharacters(
+      `${planned.divergenceFact} ${premiseAsFact(planned.premise)}`,
+      characters as Array<{ name?: unknown; aliases?: unknown }>
+    )
+    for (const who of tracked) {
+      let last: Whereabouts | null = null
+      for (const s of planned.scenes) {
+        if (s.action === 'drop' || s.outcome === 'failed') continue
+        const row = await tables.subsections.get(s.subsectionId)
+        const prose = stripHtmlBlock(String(row?.content || ''))
+        if (!mentions(prose, who)) continue
+        whatIfState.detail = `${who.name} · ${s.title}`
+        const answer = await aiGenerateJson(
+          presencePrompt({ who, last, sceneTitle: `${s.chapterTitle}, ${s.title}`, prose }),
+          PRESENCE_SYSTEM,
+          { ...PLAN_OPTS, temperature: 0, schema: PRESENCE_SCHEMA, schemaName: 'whereabouts' }
+        ).catch(() => null)
+        const { issue, next } = decidePresence(answer, prose, who, last, `${s.chapterTitle}`)
+        last = next
+        if (!issue) continue
+        await updateSubsection(s.subsectionId as string, { contentStatus: 'review' })
+        s.outcome = s.action === 'keep' ? 'needs review' : 'written, needs review'
+        s.presenceIssues = [...(s.presenceIssues || []), { who: who.name, ...issue }]
+      }
+    }
     whatIfState.detail = ''
   }
 
@@ -478,6 +523,7 @@ export function useWhatIfBranch() {
         if (s.outcome === 'written, repaired' || s.outcome === 'written, needs review')
           s.outcome = 'written'
         if (s.outcome === 'repaired' || s.outcome === 'needs review') s.outcome = 'kept'
+        delete s.presenceIssues
       }
       await verify(projectId, planned)
       await saveMeta(branchId, { plan: planned })

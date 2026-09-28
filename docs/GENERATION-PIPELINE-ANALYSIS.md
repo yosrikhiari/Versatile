@@ -2183,3 +2183,103 @@ missing event. Catching this needs a check on who is where across scenes
 (the entity-state timeline), not another prompt -- backlog. Until then the
 compare screen, which shows every rewritten scene before a merge, is the
 safeguard.
+
+## 39. Who is where: catching a missing event (2026-09-28)
+
+§38 ended on a limit: chapter VIII of the Ethan Frome branch says "after
+Zeena left" and "Zeena's absence", but the rewritten chapters keep her at
+home and never show her leaving. No stated fact is contradicted, so the
+fact check cannot see it. What is wrong is an event that never happened.
+
+**The check** (`services/whatIf/presence.ts`, run at the end of
+`verify()` in `useWhatIfBranch`):
+
+1. Track the characters the change names: those whose bible name, alias,
+   first or last name (titles skipped) appear in the stated change or the
+   premise.
+2. For each tracked person, read the scenes after the change in order,
+   only those that mention them. One narrow question per scene, reason
+   first (the planner showed an 8B model needs that order): is the person
+   here (yes / no / unclear), where, the sentence that SHOWS them arrive,
+   leave or die, and a sentence that treats them as away.
+3. Code decides, not the model. Both quotes must be found in the prose
+   (at least 8 letters). A missing event is: last shown present, and
+   either a sentence treats them as gone while they are not in the scene,
+   or the scene shows them coming BACK -- with no leaving shown. A quoted
+   leaving must contain a leaving word (left, went, drove, died...).
+4. The scene is FLAGGED, not rewritten: it goes to "needs review" /
+   "written, needs review", and the branch screen lists the sentence under
+   the scene with the reason ("X is still <where>: last shown there in
+   <scene>, and the story never shows X leaving"). See the fourth run below
+   for why it does not repair.
+
+A first or last name two
+characters share ("Frome": Ethan and Zeena) is not tracked as a form of
+either.
+
+Nothing is assumed from the premise: the first scene that shows a person
+sets where they are. So "What if Mattie leaves for good?" does not flag
+later scenes where she is away, because a scene shows her leave.
+
+**Tests.** `presence.test.js` (the chapter VIII case, a shown leaving is
+not an issue, quotes must be in the text, no earlier sighting means no
+issue) and an integration test in which a kept scene says "After Zeena
+left, the house was quiet." after scenes that keep her by the stove: it is
+flagged for review. Disabling the rule fails that test.
+
+**The first live run missed chapter VIII** (recheck of branch 10, 26 min;
+the version above is the fix). Replaying Zeena's scenes showed why: the
+first version asked one question, "a move shown", and for chapter VIII the
+model quoted "Zeena's return came late, her footsteps slow and deliberate on
+the porch steps". A return is the proof of a leaving nobody saw, but the
+rule took it as the move that explains her absence. In IV-VII it had also
+quoted plain presence ("Zeena stood at the kitchen door") as moves. Hence
+the split into leaving / return and the leaving-word rule, each with a test
+that fails when the rule is removed.
+
+**The second live run found three false alarms and still missed VIII**
+(19.5 min). Asked about Ethan, the model quoted "Zeena's absence was like a
+door left open" as Ethan being away, and the repair rewrote that sentence
+six times; "Mattie appeared behind them" was taken for a return; an
+epilogue line of gossip ("when Ethan's off somewheres") was flagged. And
+"Zeena waited until he had gone" in V passed a plain leaving-word test, so
+Zeena was recorded as gone before VIII. The fix is code, not prompt: every
+quote must name the person; a return must say one (returned, came back,
+home from...); a leaving verb must follow the person's name within three
+words and not be an absence or an earlier leaving ("had left"); and a
+sentence flagged again after its repair, or a repair that changes nothing,
+stops as "needs review". The prompt also excludes habits, memories and
+wishes. Each live failure is now a unit test.
+
+**Measured on the branch as it stands, repairs off** (three people, every
+later scene that names them, 21 reads, 2.4 min): **1 flag, Zeena in chapter
+VIII** ("Zeena's absence left a hollow space in the house"); 0 flags for
+Ethan and Mattie and none in the epilogue. The branch text by then carried
+the second run's bad repairs (a test branch; nothing merged).
+
+**Third and fourth live runs, and why the check flags instead of repairing.**
+Run 3 (10 min) caught chapter VIII, but the repair was not placed: the
+model wraps its quotes in quotation marks, so the sentence was not found
+(now stripped; covered by the integration test). It also showed that "Check
+again" kept the previous run's issue list (now reset). Run 4 (29.8 min) is
+the verdict on repair: VIII was caught, but the one-sentence repair kept the
+absence in new words ("Zeena's absence was like a silence..." -> "The
+silence of Zeena's absence..."), round after round, until the re-flag guard
+stopped it. And one false alarm in the kept epilogue (Zeena, years later)
+had its repair change the book's own sentence ("Nobody knows Zeena's
+thoughts." -> "No one can say what Zeena is thinking."). A scene built on an
+event that never happened needs a rewrite or the author, not a patched
+sentence; so the check now flags and never edits. (The two epilogue
+sentences changed by runs 2 and 4 were restored from the original on the
+test branch.)
+
+| run | chapter VIII | false alarms | note |
+|---|---|---|---|
+| 1 | missed | 0 | a "return" excused the absence |
+| 2 | missed | 3 (Ethan x2 scenes, Mattie) | wrong-person quotes, arrival = return, "he had gone" |
+| diagnostic (repairs off) | caught | 0 of 20 other reads | after the code checks |
+| 3 | caught, repair not placed | 0 | quoted quotes |
+| 4 | caught, repair useless | 1 (epilogue) | -> flag only |
+
+Next: offer "rewrite this scene" from a flagged scene, with the missing
+event's fact in the brief, which is the tool that can actually fix VIII.

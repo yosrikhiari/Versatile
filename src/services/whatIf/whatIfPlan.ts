@@ -31,6 +31,8 @@ export interface PlannedScene extends BranchScene {
   brief: string
   reason: string
   /** Filled in by the write step. */
+  /** Missing events the who-is-where check found in this scene (§39). */
+  presenceIssues?: Array<{ who: string; sentence: string; fact: string }>
   outcome?:
     | 'written'
     | 'written, repaired'

@@ -21,6 +21,22 @@ function defaultModel(prompt) {
       ? { needs: 'Zeena away', conflict: 'the sled ride needs Zeena away', action: 'drop' }
       : { needs: 'the village gathers', conflict: 'none', action: 'keep' }
   }
+  if (prompt.includes('"assumesAway"')) {
+    // The who-is-where question.
+    if (prompt.includes('After Zeena left, the house was quiet.')) {
+      return {
+        present: 'no',
+        where: '',
+        shownMove: '',
+        // wrapped in quotation marks, as the live model does
+        assumesAway: '"After Zeena left, the house was quiet."'
+      }
+    }
+    if (prompt.includes('Zeena stays by the stove.')) {
+      return { present: 'yes', where: 'at home by the stove', shownMove: '', assumesAway: '' }
+    }
+    return { present: 'unclear', where: '', shownMove: '', assumesAway: '' }
+  }
   if (prompt.includes('Record, from this passage only')) {
     // The scene reader, on a rewritten scene.
     return {
@@ -255,5 +271,40 @@ describe('What If as a branch', () => {
     expect(briefPrompts.some((p) => p.includes('Zeena decides not to go to Bettsbridge.'))).toBe(
       false
     )
+  })
+
+  it('who is where: a person shown at home and later treated as gone, never shown leaving, is flagged for review', async () => {
+    const { projectId, main, bySceneNo } = await book()
+    // The fact check misses this sentence (as it did on the live branch):
+    // nothing it is given says Zeena is still at home.
+    await db.subsections.update(bySceneNo[3].id, {
+      content: '<p>Church. The village gathers. After Zeena left, the house was quiet.</p>'
+    })
+    const { useStoryBibleStore } = await import('@/stores/storyBibleStore')
+    const bible = useStoryBibleStore()
+    bible.characters.push({ id: 1, name: 'Zeena Frome', aliases: ['Zeena'] })
+    const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')
+    const w = useWhatIfBranch()
+    const branch = await w.fork(projectId, main, bySceneNo[2].id, 'What if Zeena stayed home?')
+    await w.plan(projectId, branch.id)
+    const written = await w.write(projectId, branch.id)
+    const kept = written.scenes.find((s) => s.sceneNumber === 3)
+    expect(kept.presenceIssues).toEqual([
+      {
+        who: 'Zeena Frome',
+        sentence: 'After Zeena left, the house was quiet.',
+        fact: expect.stringContaining('still at home by the stove')
+      }
+    ])
+    // flagged for the author, not rewritten (a sentence patch kept the
+    // absence live, and on a false alarm changed the original epilogue)
+    expect(kept.outcome).toBe('needs review')
+    const row = await db.subsections.get(kept.subsectionId)
+    expect(row.content).toContain('After Zeena left')
+    expect(row.contentStatus).toBe('review')
+
+    // Check again starts a fresh list: it does not pile onto the last run's.
+    const again = await w.recheck(projectId, branch.id)
+    expect(again.scenes.find((s) => s.sceneNumber === 3).presenceIssues).toHaveLength(1)
   })
 })
