@@ -2497,3 +2497,16 @@ and the Epilogue keep; no drop. (The Traveller's Return also came out
 revise, from the first question, where run-to-run variation is expected.)
 This fixes the cause of §42's wrong-side flags; the kept-scene attribution
 stays as the safety net for the planner's remaining misses.
+
+**Branch 16 written and counted** (the live plan above, 8 chapters
+rewritten, 78.6 min): 0 flags, every outcome "written" or "kept". Read in
+full: all 28 Weena sentences in the ten later chapters are memory, absence
+or echo ("No trace of Weena", "Weena's absence was a wound", "the memory of
+Weena's touch"); nowhere is she with the Traveller, so 0 is correct, not a
+miss. Same premise as §42's T4: T4 kept 2 chapters contradicting the change
+and got 3 wrong-side flags; branch 16 kept none and got none. Not tested
+here: the §42 other-time filter -- no chapter after the change shows Weena
+present, so there is no sighting for a memory to be flagged against.
+Writer defects no check looks for: several chapters slip from the book's
+first person into third ("his throat"), and "Weena's dress lay folded in
+his hands" sits oddly with her staying behind.
