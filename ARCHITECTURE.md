@@ -155,6 +155,93 @@ Clean Architecture, one solution (`Versatile.slnx`):
   book headless under fake-indexeddb and stream progress to
   `reports/live/<slug>/`.
 
+## Imported books and What If
+
+![Import, understand, branch](docs/img/diagrams/whatif-overview.svg)
+
+- **Import** (`src/services/import/`): `decoders.ts` turns a `.txt`, `.md`,
+  `.docx`, `.epub` or `.html` file into blocks; `structure.ts` finds chapters
+  from the most trustworthy signal first (the file's headings, then its
+  contents page, then running numbers) and scenes at the author's breaks;
+  `writeProject.ts` writes the project in one bulk transaction, recording the
+  imported word count so the writing statistics do not count it as written.
+
+  ![Chapter detection order](docs/img/diagrams/import-chapter-detection.svg)
+
+- **Reading the book** (`useBookAnalysis.ts`, `services/import/bookAnalysis.ts`):
+  the utility model reads each scene once (summary, key facts, cast, places,
+  relationships), names are matched to one person ("Holmes" = "Sherlock
+  Holmes"), and each scene goes through the same `syncChapterToBible` /
+  `writeSceneAnalysis` path a generated book uses, so bible, network and
+  digests look the same whichever way the book arrived. Reads go through the
+  durable `analysisQueue`, saved as each lands, so a stop resumes at the next
+  unread scene. It reads the manuscript that is open in the editor.
+
+  ![Reading pipeline](docs/img/diagrams/book-reading-pipeline.svg)
+
+- **A What If is a branch** (`useWhatIfBranch.ts`, `services/whatIf/`): a full
+  copy of the book (every copied scene keeps `sourceSubsectionId`) with its
+  own knowledge (digests are scoped per branch, schema v55). Fork, plan,
+  write, then merge only the chosen scenes back, snapshot first.
+
+  ![Fork, plan, write, merge](docs/img/diagrams/whatif-branch-flow.svg)
+
+- **The planner** (`whatIfPlan.ts`): the change as one fact (the author's own
+  premise when the model's version drops its key words), then one small,
+  reason-first question per later scene: keep, revise or drop. A scene the
+  first answer would keep gets a second look (`sceneEvidence`, `secondLook`)
+  with its own sentences about the people the change names; it can only move
+  keep to revise, never to drop. Each revised scene gets a brief written from
+  its own original only (a view of other briefs made them copies).
+
+  ![Planner second look](docs/img/diagrams/whatif-planner-second-look.svg)
+
+- **Checking the branch** (`verify`): the rewritten scenes are read, then
+  every scene after the change is checked in order against the change plus
+  the facts of the scenes before it; contradicting sentences are repaired.
+
+  ![Fact check with a growing list of facts](docs/img/diagrams/whatif-fact-check.svg)
+
+- **Who is where** (`presence.ts`): a fact check cannot see an event that
+  never happened. For each person the change names, each later scene answers
+  one question (here? where? a leaving shown? a return shown? a sentence
+  treating them as away?), and code decides: quotes must be in the text and
+  name the person; a leaving must be theirs; a habit, memory or past-tense
+  sentence is not "gone now" unless it says so plainly. Last shown present,
+  now treated as gone (or shown coming back), no leaving shown: the scene is
+  flagged for review and never edited.
+
+  ![Who is where](docs/img/diagrams/whatif-who-is-where.svg)
+  ![Habits and memories are not "gone now"](docs/img/diagrams/whatif-other-time-filter.svg)
+
+  If the last sighting came from a scene the plan kept unchanged, the flag
+  says the kept scene may be the wrong side, and it is not a rule for a
+  rewrite.
+
+  ![Flags from kept scenes](docs/img/diagrams/whatif-kept-scene-flags.svg)
+
+- **Rewrite this scene**: the flagged scene is written again with each missing
+  event as a MUST HOLD rule in its brief, then only that scene is checked
+  (earlier facts from digests, each person from the saved `lastSeen`). The
+  old text is kept for Undo. A code check then tests the rewrite against its
+  own rule, which the who-is-where question misses when the person is also
+  in the scene.
+
+  ![Rewrite this scene](docs/img/diagrams/whatif-rewrite-scene.svg)
+  ![The rule check after a rewrite](docs/img/diagrams/whatif-rewrite-rule-check.svg)
+
+- **Editor invariant (branch switches)**: loading a scene into the editor is
+  not an edit (`setContent(..., { emitUpdate: false })`, TipTap 3 emits by
+  default); a reload drops an open id that is no longer loaded; the autosave
+  refuses to write an empty editor over a scene the view cannot see. Without
+  these a branch switch saved the original book's open chapter as empty.
+
+  ![Branch switch and autosave](docs/img/diagrams/editor-branch-switch-autosave.svg)
+
+Every step above was measured on real books before it shipped; the numbers,
+and the designs that were tried and dropped, are in
+`docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§43.
+
 ## Deployment
 
 `docker-compose.yml`: `postgres` (pgdata), `redis` (redisdata), `api`

@@ -36,6 +36,22 @@ Nothing leaves the device unless you opt in — the cloud tier is per-project an
 - **Author Voice Learning** — statistical voice profiling without LLM calls
 - **Beta Reader / Consistency / What If / Story Shape / Voice Lab / Character Chat** panels
 
+### Import a novel, then ask "What if…?"
+
+![Import a book, let Versatile read it, then branch it](docs/img/diagrams/whatif-overview.svg)
+
+- **Import** a manuscript (`.txt`, `.md`, `.docx`, `.epub`, `.html`) with a preview first. Chapters are found from the file's own headings, then its contents page, then running numbers; scenes split at the author's breaks ([how](docs/img/diagrams/import-chapter-detection.svg)).
+- **Read the book once**: the local model reads each scene and fills the story bible, the network and the scene digests through the same code a generated book uses. Every result is saved as it lands, so a stopped read resumes at the next unread scene ([pipeline](docs/img/diagrams/book-reading-pipeline.svg)). *Ethan Frome* reads in about 11 minutes, *The Time Machine* in 15, on an 8 GB GPU.
+- **What If** turns a premise ("What if Zeena never goes to Bettsbridge?") into a branch: a full copy of the book, a plan for every later scene (keep, rewrite or drop, all editable), the rewritten scenes written by the book's own writer, and a merge of only the scenes you pick back into the main book, snapshot first.
+
+![Fork, plan, write, merge](docs/img/diagrams/whatif-branch-flow.svg)
+
+- **Every scene after the change is checked**, in order, against the change and the facts of the scenes before it ([fact check](docs/img/diagrams/whatif-fact-check.svg)), and a **who-is-where** check follows each person the change names: someone last shown at home and later treated as gone, with no scene showing them leave, is flagged for review, never silently rewritten ([how](docs/img/diagrams/whatif-who-is-where.svg)).
+- **Rewrite this scene** writes a flagged scene again with the missing event as a rule in its brief, checks only that scene, and keeps the old text for **Undo** ([flow](docs/img/diagrams/whatif-rewrite-scene.svg)).
+- The planner decides each scene from its summary, then takes a **second look** at any scene it would keep, reading that scene's own sentences about the people the change is about ([why](docs/img/diagrams/whatif-planner-second-look.svg)).
+
+How each part was measured, including what did not work, is in `docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§43. The design is in `ARCHITECTURE.md` and `docs/WHATIF-AND-IMPORT-PLAN.md`.
+
 ### Knowing your story (Obsidian-style)
 
 - **Properties & tags** on every character, location and plot thread; **POV / setting / cast** on every scene, set by hand or by the generator, and read back by the digest layer
@@ -62,7 +78,7 @@ Nothing leaves the device unless you opt in — the cloud tier is per-project an
 
 ```
 src/
-├── components/         — 140 Vue components across 27 feature dirs
+├── components/         — 144 Vue components across 29 feature dirs
 │   └── ui/             — Base* primitives (panel header, section, button, chip, field …)
 ├── composables/        — ~150 composition modules
 │   ├── generation/     — the generation engine, split by concern:
@@ -76,19 +92,23 @@ src/
 │   ├── useStoryDirector.ts         — planning (skeleton + per-chapter scenes)
 │   ├── useStoryWriter.ts           — prose + metadata extraction
 │   ├── useStoryCritic.ts           — scoring and contradiction audit
+│   ├── useBookAnalysis.ts          — read an imported book: bible, network, digests
+│   ├── useWhatIfBranch.ts          — What If: fork, plan, write, check, rewrite, merge
 │   └── ...
-├── services/           — ~125 modules
-│   ├── db-schema.ts / db-core.ts   — Dexie schema (v51), 26 db-* table modules
+├── services/           — ~135 modules
+│   ├── db-schema.ts / db-core.ts   — Dexie schema (v55), 25 db-* table modules
 │   ├── storyQuery.ts / storyVectorIndex.ts / compileManuscript.ts — query, semantic index, compile
 │   ├── aiService.ts    — unified AI provider interface
 │   ├── providers/      — OpenAI, Anthropic, Gemini, Groq, Ollama adapters
 │   ├── ai/             — token calibration, model/context budgets, prompt store
 │   ├── generation/     — digests, rollups, deterministic contradictions, gates, run health
+│   ├── import/         — decoders (txt/md/docx/epub/html), chapter detection, project writer
+│   ├── whatIf/         — the What If planner prompts and the who-is-where check
 │   ├── vectorIndex*.ts — IVF index + worker
 │   └── sync-engine.ts  — offline-to-server sync (14 synced tables)
 ├── stores/             — 23 Pinia stores (setup syntax)
 ├── config/             — providers, models, prompts, eval rubrics, gate config, workspaces
-└── tests/              — unit (259 files), integration, audit, evaluation, live
+└── tests/              — unit (288 files), integration, audit, evaluation, live
 ```
 
 See `ARCHITECTURE.md` for the system map, `API.md` for the backend contract, `TESTING.md` for every suite, and `docs/GENERATION-PIPELINE-ANALYSIS.md` for how a run behaves.
@@ -142,7 +162,7 @@ The .NET 10 API adds accounts, organisations, sync and collaboration. `docker co
 | `npm run build`            | Production build (pre-compressed `.br`/`.gz` assets)            |
 | `npm run preview`          | Preview production build                                        |
 | `npm test`                 | Run unit tests (watch mode)                                     |
-| `npm run test:run`         | Run unit tests once (≈3,060 tests)                              |
+| `npm run test:run`         | Run unit tests once (≈3,360 tests)                              |
 | `npm run test:coverage`    | Run tests with coverage report                                  |
 | `npm run test:e2e`         | Playwright smoke/auth/responsive/panel specs (boots dev server) |
 | `npm run typecheck`        | `tsc --noEmit`                                                  |
@@ -171,7 +191,7 @@ writes a 2-scene sample with critic scores and gate verdicts to `reports/`.
 - **Framework**: Vue 3 (Composition API, `<script setup>`), TypeScript throughout `src/`
 - **State**: Pinia (23 stores)
 - **Editor**: Tiptap 3 (ProseMirror)
-- **Persistence**: Dexie 4, schema v54 (IndexedDB)
+- **Persistence**: Dexie 4, schema v55 (IndexedDB)
 - **Styling**: Tailwind CSS 3.4 over `--vers-*` tokens (`docs/DESIGN-TOKENS.md`); the visual system and the primitives catalogue are in `DESIGN.md`, every primitive has a Storybook story, and `npm run policy` enforces both. The UI/UX backlog with demos: `docs/UX-ENHANCEMENTS.html`
 - **Build**: Vite 8
 - **Testing**: Vitest 5 + jsdom + fake-indexeddb; Playwright; xUnit for the backend

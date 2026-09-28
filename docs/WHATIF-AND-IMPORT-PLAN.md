@@ -2,6 +2,11 @@
 
 Plan v1, 2026-09-27. Status: approved to start (build order step 1 onward).
 
+> **Built.** Steps 1–4 are done and measured (analysis doc §37–§43). How it
+> works now, with diagrams: `ARCHITECTURE.md`, "Imported books and What If".
+>
+> ![Fork, plan, write, merge](img/diagrams/whatif-branch-flow.svg)
+
 ## 0. In one sentence
 
 Let an author bring in a novel they already have (a .txt, .md, .docx or .epub),

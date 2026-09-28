@@ -7,6 +7,37 @@ was verified.
 
 ## [Unreleased]
 
+### What If on any novel: import, read, branch, check, rewrite (2026-09-27 – 2026-09-28)
+![Import, understand, branch](docs/img/diagrams/whatif-overview.svg)
+- **Novel import** (`services/import/`): txt, md, docx, epub and html, with a
+  preview; chapters from headings, then the contents page, then numbering.
+  All six test books from Project Gutenberg import exactly.
+- **Reading an imported book** (`useBookAnalysis`): bible, network and digests
+  through the writer's own sync path, over a resumable queue. *Ethan Frome*
+  10.8 min, *The Time Machine* 15.1 min on an 8 GB GPU.
+- **What If as a branch** (`useWhatIfBranch`, schema v55 per-branch digests):
+  fork, plan every later scene, write with the book's writer, check, compare,
+  merge chosen scenes with snapshots (§37–§38).
+- **Who-is-where check** (`presence.ts`, §39): flags an event the story skips
+  (someone treated as gone who was never shown leaving). It flags; it does not
+  edit (§39: sentence repair kept the absence and changed an original line).
+- **Rewrite this scene** with the missing event as a rule, single-scene
+  re-check, undo, and a rule check on the result (§40–§41). Four trial
+  branches: 9 real missing events, 6 flagged, 6 fixed.
+- **False alarms** from habits, memories and the past set aside in code (§42):
+  on the recorded answers, 9 flags -> 5, all four false alarms gone, all five
+  real ones kept. Flags whose evidence comes from a kept scene say so.
+- **Planner second look** (§43): a scene it would keep is re-read with its own
+  sentences about the people the change names; keep -> revise only. On 32
+  scenes: 4 correct flips, 0 drops (quotes in the single question caused 7
+  drops). Same premise before and after: 2 contradicting kept chapters -> 0,
+  3 wrong-side flags -> 0.
+- **Fixed: a branch switch could save the open chapter as empty** (§42).
+  TipTap 3 counts `setContent` as an edit; the editor now loads with
+  `emitUpdate: false`, drops a stale open id, and never autosaves an empty
+  editor over a scene it cannot see.
+- Writing statistics no longer count an imported book as words written.
+
 ### Continuity confirms what sentences assume; the voice false fail is gone (2026-09-26)
 - **Two more confirming questions for continuity, read as probabilities**
   (§32-§33). When the first question says no, the critic spells out what the

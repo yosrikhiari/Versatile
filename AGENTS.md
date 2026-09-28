@@ -7,12 +7,12 @@ Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL
 - **Frontend**: Vue 3 (Composition API), TypeScript, Pinia stores, TipTap 3 editor, Vite 8, Vitest 5
 - **Backend**: .NET 10, PostgreSQL 16 (RLS), Redis, Entity Framework Core, SignalR
 - **AI**: 5 providers (Ollama default, OpenAI, Anthropic, Gemini, Groq); Ollama runs a prose model and a separate `qwen3:8b` utility model; per-role placement (`src/config/roles.ts`: director / writer / critic / editor, GPU or CPU) feeds the LangGraph writing orchestrator (`writing/graphStrategy.ts`, ADR-0001) — one GPU model per run, Critic/Editor on a CPU model by preset
-- **Storage**: IndexedDB via Dexie 4 (offline-first, schema v54), PostgreSQL (server)
+- **Storage**: IndexedDB via Dexie 4 (offline-first, schema v55), PostgreSQL (server)
 - **Build/CI**: npm/vite for frontend, dotnet for backend
 
 ## Key Conventions
 
-- **Stores** in `src/stores/` — Pinia with setup syntax (`defineStore('name', () => { ... })`), 20 of them
+- **Stores** in `src/stores/` — Pinia with setup syntax (`defineStore('name', () => { ... })`), 23 of them
 - **Composables** in `src/composables/` — reusable composition logic; the generation engine is under `composables/generation/` (writing strategies incl. the LangGraph graph, context, commit, consistency, delegator, graph checkpointer, lifecycle)
 - **Components** in `src/components/` — organized by domain (`storybible/`, `editor/`, etc.); panels are built from the `Base*` primitives in `components/ui/` (`BasePanelHeader`, `BaseSection`) — no ad-hoc cards or eyebrows
 - **Tests** in `src/tests/unit/` — Vitest with `vi.useFakeTimers()` for debounce tests
@@ -56,7 +56,7 @@ Run `npm run policy` before you finish: it checks that every token is documented
 
 ## Testing
 
-- `npm run test:run` — Vitest suite (≈3,060 tests, ~2 min)
+- `npm run test:run` — Vitest suite (≈3,360 tests, ~2.5 min)
 - `npm run typecheck` — `tsc --noEmit`, zero errors
 - `npm run lint` — ESLint (0 errors; the four `services must not import stores` warnings are the known architectural debt)
 - `npm run format` — Prettier over `src/**/*.{js,ts,vue,css}`; CI checks the same scope
