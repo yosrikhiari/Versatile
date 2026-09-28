@@ -15,6 +15,17 @@ updates:
     labels:
       - "dependencies"
       - "npm"
+    # Packages that must move together arrive in one PR. One at a time, a
+    # vue-router major needed a pinia major it did not bring, and failed.
+    groups:
+      vue-router-pinia:
+        patterns: ["vue-router", "pinia", "@pinia/*"]
+      storybook:
+        patterns: ["storybook", "@storybook/*"]
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
+      tiptap:
+        patterns: ["@tiptap/*"]
 
   - package-ecosystem: "nuget"
     directory: "/backend"
@@ -29,3 +40,16 @@ updates:
     labels:
       - "dependencies"
       - "nuget"
+    # The .NET 10 packages share transitive dependencies: bumped one PR at a
+    # time, Http.Resilience 10.10 needed Extensions.Http 10.0.12 (NU1605) and
+    # EF Core Design 10.0.12 met EF Core 10.0.11 in the tests (CS1705).
+    groups:
+      dotnet-platform:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.EntityFrameworkCore*"
+          - "Microsoft.Extensions.*"
+      opentelemetry:
+        patterns: ["OpenTelemetry*"]
+      test-stack:
+        patterns: ["xunit*", "coverlet*", "Microsoft.NET.Test.Sdk", "Moq", "FluentAssertions"]
