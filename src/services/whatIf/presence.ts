@@ -151,6 +151,13 @@ const LEAVE_VERB =
 const RETURN_WORD =
   /\b(return\w*|came back|comes back|coming back|back (?:from|home)|home from|got back)\b/i
 const NOT_A_LEAVING = /\b(absence|without (?:her|him)|had (?:left|gone)|since (?:she|he))\b/i
+// Another time, not now (§42, the four false alarms counted in §41): a
+// habit ("I always try to pick a day when Ethan's off somewheres"), a memory
+// ("He thought about Mattie -- how she had laughed"), the past ("Zeena Frome
+// had sent Mattie off in a hurry"), a moment ago ("where Mattie had sat just
+// hours ago").
+const ANOTHER_TIME =
+  /\b(always|usually|often|whenever|used to|tries to|try to|every (?:time|day|week|year)|thought (?:about|of)|remembered|recalled|remembering|(?:hours|days|weeks|years|moments?|minutes?) ago|had (?!been\b|not\b)[a-z]+)\b/i
 const ABSENCE_CUE =
   "(absence|absent|away|gone|missing|wasn[’']t (?:coming|there|home|here)|hadn[’']t come|was not (?:coming|there|home|here))"
 
@@ -215,9 +222,23 @@ export function decidePresence(
   // things remained in their place..."): take the scene's own sentence that
   // puts the name next to an absence ("Zeena wasn't coming."), if there is
   // one (§41, trial 2). Next to, so "Ethan felt Zeena's absence" is not Ethan.
+  // A sentence about another time -- a habit, a memory, a moment ago -- is
+  // not the person gone now (§42): unless it plainly puts the name next to
+  // an absence, it is set aside the same way, and the scene's own named
+  // absence, if any, stands in.
+  const plainlyGone = (q: string) =>
+    who.forms.some((f) =>
+      new RegExp(
+        `\\b(?:after|since)\\s+${escapeRe(f)}\\s+(?:had\\s+)?(?:left|gone)\\b|\\b${escapeRe(f)}\\s+had\\s+(?:left|gone)\\b`,
+        'i'
+      ).test(q)
+    )
+  const now = (q: string) =>
+    q && !namedAbsence(q, who) && !plainlyGone(q) && ANOTHER_TIME.test(q) ? '' : q
   const unnamed = quoted(a.assumesAway)
-  const away = names(unnamed) || (unnamed && a.present !== 'yes' ? namedAbsence(prose, who) : '')
-  const returning = names(quoted(a.shownReturn))
+  const away =
+    now(names(unnamed)) || (unnamed && a.present !== 'yes' ? namedAbsence(prose, who) : '')
+  const returning = now(names(quoted(a.shownReturn)))
   const back = RETURN_WORD.test(returning) ? returning : ''
   const leaving = names(quoted(a.shownLeaving))
   const leaves = who.forms.some((f) =>

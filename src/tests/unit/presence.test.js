@@ -317,3 +317,57 @@ describe('namedAbsence', () => {
       expect(namedAbsence(no, zeena), no).toBe('')
   })
 })
+
+describe('another time is not gone now (§42)', () => {
+  const zeena = { name: 'Zeena Frome', forms: ['Zeena Frome', 'Zeena'] }
+  const ethan = { name: 'Ethan Frome', forms: ['Ethan Frome', 'Ethan'] }
+  const mattie = { name: 'Mattie Silver', forms: ['Mattie Silver', 'Mattie'] }
+  const here = { present: true, where: 'at home', scene: 'VII' }
+  const away = (who, q, prose = q) =>
+    decidePresence(
+      { present: 'no', shownLeaving: '', shownReturn: '', assumesAway: q },
+      prose,
+      who,
+      here,
+      'X'
+    ).issue?.sentence ?? null
+
+  it('the four false alarms counted in §41 are not flagged', () => {
+    expect(away(ethan, 'Only I always try to pick a day when Ethan’s off somewheres.')).toBeNull()
+    expect(
+      away(zeena, 'Zeena Frome had sent Mattie off in a hurry because she had a hired girl coming,')
+    ).toBeNull()
+    expect(
+      away(mattie, 'He thought about Mattie—how she had laughed when he first brought her home')
+    ).toBeNull()
+    expect(
+      away(
+        mattie,
+        'He dropped his coat on the chair by the hearth—same place Mattie had sat just hours ago.'
+      )
+    ).toBeNull()
+  })
+
+  it('the real ones still are, memory words or not', () => {
+    for (const q of [
+      'The silence of Zeena’s absence allowed the cold to settle without resistance.',
+      'Zeena wasn’t coming.',
+      'He looked away, toward the trees where the wind had carried Zeena’s absence all winter long.',
+      'Zeena’s gone, but she’ll come back.',
+      "Zeena hadn't returned yet.",
+      'He thought of Zeena’s absence, of the way she’d left without warning.'
+    ])
+      expect(away(zeena, q), q).toBe(q)
+  })
+
+  it('a set-aside quote falls back to the scene’s own named absence; "after she left" is plain', () => {
+    const prose =
+      "He thought about Zeena, how she had laughed. Zeena's absence left the house hushed."
+    expect(away(zeena, 'He thought about Zeena, how she had laughed.', prose)).toBe(
+      "Zeena's absence left the house hushed."
+    )
+    expect(away(zeena, 'The stove had gone quiet after Zeena left.')).toBe(
+      'The stove had gone quiet after Zeena left.'
+    )
+  })
+})
