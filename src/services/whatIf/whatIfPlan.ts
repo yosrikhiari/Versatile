@@ -8,6 +8,7 @@
  * meant to replace.
  */
 import { escapeHtml } from '../import/blocks'
+import { povRule } from './pov'
 
 export type SceneAction = 'keep' | 'revise' | 'drop'
 
@@ -41,6 +42,8 @@ export interface PlannedScene extends BranchScene {
     string,
     { present: boolean; where: string; scene: string; kept?: boolean } | null
   >
+  /** Told in another narrative person than its original (§44). */
+  povDrift?: { from: string; to: string; originalRate: number; rewrittenRate: number }
   /** The scene's text before "Rewrite this scene", for undo (§40). */
   previousContent?: string
   /** Filled in by the write step. */
@@ -302,7 +305,7 @@ ${plan.divergenceFact}`
  * A one-sentence repair could not fix these (it kept the absence in new
  * words); the whole scene is written again knowing the person never left.
  */
-export function rewriteBrief(scene: PlannedScene): string {
+export function rewriteBrief(scene: PlannedScene, person?: 'first' | 'third' | 'unclear'): string {
   const base =
     (scene.action === 'revise' && scene.brief.trim()) ||
     scene.summary.trim() ||
@@ -316,6 +319,9 @@ export function rewriteBrief(scene: PlannedScene): string {
     (p) =>
       `- ${p.fact} So in this scene ${p.who} is not gone, absent or returning: keep ${p.who} where the story left them, or show ${p.who} leave.`
   )
+  // The original's narrative person, when it is clear (§44).
+  const pov = person ? povRule(person) : ''
+  if (pov) rules.push(`- ${pov}`)
   return rules.length ? `${base}\nMUST HOLD:\n${rules.join('\n')}` : base
 }
 

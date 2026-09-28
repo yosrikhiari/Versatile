@@ -2510,3 +2510,42 @@ present, so there is no sighting for a memory to be flagged against.
 Writer defects no check looks for: several chapters slip from the book's
 first person into third ("his throat"), and "Weena's dress lay folded in
 his hands" sits oddly with her staying behind.
+
+## 44. Point-of-view drift (2026-09-28)
+
+§43's written branch showed a writer defect no check looked for: chapters of
+The Time Machine, told by the Traveller as "I", came back as "he" ("the
+scent of burning fruit lingered in his throat").
+
+**Measure, by code** (`services/whatIf/pov.ts`): first-person pronouns (I,
+me, my, mine, myself, and we/us/our -- a frame narrator speaks as "we") per
+1,000 words of narration, with quoted speech removed. A rewrite is compared
+with ITS OWN original, never with the book: Ethan Frome has a first-person
+frame around third-person chapters.
+
+On the original chapters of both books (29) the measure separates cleanly:
+third-person chapters score exactly 0 (Ethan Frome I-IX, dialogue removed),
+first-person ones 28-94. Thresholds: >= 10 first, <= 2 third, between (or
+under 150 words of narration) unclear and never flagged. On the 34 rewritten
+scenes of the six trial branches: 11 drifts (all seven rewritten chapters of
+branch 16, first -> third; the first-person epilogue scenes IX 2-3 of both
+Zeena branches, rewritten in the third person -- "He reached for it but
+hesitated"), 23 unchanged, 0 unclear. Read in samples: every drift real.
+
+**In the product.** Prevention: `write` adds a NARRATION line to each
+rewritten scene's brief, from that scene's original ("first person ("I"), as
+the original scene is told"). Detection: `verify` flags a rewritten scene
+told in another person than its original ("written, needs review", shown on
+the branch screen as "Told in the third person; the original scene is in the
+first"). "Rewrite this scene" carries the rule in its MUST HOLD list and the
+single-scene re-check clears the flag when it holds. Tests fail without the
+detection and without the brief rule.
+
+**Live**: "Rewrite this scene" on two of branch 16's drifted chapters, with
+the NARRATION rule in the brief: The Morlocks third (0) -> first (74), "The
+cold bit through my boots as I stepped over the broken stones" (10.8 min);
+The Palace of Green Porcelain third (0) -> first (76), "rough under my
+fingers even through the wool of my coat" (11.2 min). Both pass the
+single-scene re-check. Two of two is an example, not a rate; the brief rule
+now also goes into every first write, which is where branch 16's seven
+drifts came from.

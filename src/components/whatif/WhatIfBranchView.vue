@@ -110,9 +110,10 @@ const canRewrite = (s) =>
   s.action !== 'drop' &&
   // A flag that blames the kept scene's side is not fixed by rewriting this
   // one (§42); the author rewrites the kept scene or edits by hand.
-  (s.presenceIssues?.length
-    ? s.presenceIssues.some((p) => !p.fromKept)
-    : /needs review/.test(s.outcome || ''))
+  (s.povDrift ||
+    (s.presenceIssues?.length
+      ? s.presenceIssues.some((p) => !p.fromKept)
+      : /needs review/.test(s.outcome || '')))
 const rewriteScene = (s) =>
   act(() => w.rewriteScene(projectId.value, props.branchId, s.subsectionId))
 const undoRewrite = (s) => act(() => w.undoRewrite(props.branchId, s.subsectionId))
@@ -223,6 +224,10 @@ const text = (html) => stripHtmlBlock(html || '')
                   data-test="presence-issue"
                 >
                   “{{ p.sentence }}”: {{ p.fact }}
+                </p>
+                <p v-if="s.povDrift" class="font-ui text-xs text-text-hint" data-test="pov-drift">
+                  Told in the {{ s.povDrift.to }} person; the original scene is in the
+                  {{ s.povDrift.from }}.
                 </p>
                 <div
                   v-if="canRewrite(s) || (s.previousContent != null && status === 'written')"

@@ -230,6 +230,12 @@ Clean Architecture, one solution (`Versatile.slnx`):
   ![Rewrite this scene](docs/img/diagrams/whatif-rewrite-scene.svg)
   ![The rule check after a rewrite](docs/img/diagrams/whatif-rewrite-rule-check.svg)
 
+- **Narrative person** (`pov.ts`): each rewrite's brief says which person to
+  narrate in, taken from that scene's original, and the check flags a
+  rewrite told in another person (first-person pronouns per 1,000 words of
+  narration, speech removed; compared with the scene's own original, since a
+  book can mix a first-person frame with third-person chapters).
+
 - **Editor invariant (branch switches)**: loading a scene into the editor is
   not an edit (`setContent(..., { emitUpdate: false })`, TipTap 3 emits by
   default); a reload drops an open id that is no longer loaded; the autosave

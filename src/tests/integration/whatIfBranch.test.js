@@ -296,6 +296,45 @@ describe('What If as a branch', () => {
     expect(fates.find((p) => p.includes('great elm'))).not.toContain('quoted')
   })
 
+  it('a rewrite keeps its original narrative person, or is flagged and rewritten with the rule (§44)', async () => {
+    const { projectId, main, bySceneNo } = await book()
+    const pad = Array.from({ length: 160 }, () => 'the').join(' ')
+    const firstPerson = `<p>I walked to the church and I waited by the door. ${pad} My hands were cold.</p>`
+    const thirdPerson = `<p>He walked to the church and he waited by the door. ${pad} His hands were cold.</p>`
+    await db.subsections.update(bySceneNo[3].id, { content: firstPerson })
+    const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')
+    const w = useWhatIfBranch()
+    const branch = await w.fork(projectId, main, bySceneNo[2].id, 'What if Zeena stayed home?')
+    const plan = await w.plan(projectId, branch.id)
+    const church = plan.scenes.find((s) => s.sceneNumber === 3)
+    church.action = 'revise'
+    church.brief = 'The village gathers.'
+    await w.savePlan(branch.id, plan)
+    globalThis.__writerText = thirdPerson
+    try {
+      const written = await w.write(projectId, branch.id)
+      const scene = written.scenes.find((s) => s.sceneNumber === 3)
+      // the writer was told which person to keep
+      const row = await db.subsections.get(scene.subsectionId)
+      expect(row.description).toContain('NARRATION: first person')
+      // it did not keep it: flagged, not edited
+      expect(scene.povDrift).toMatchObject({ from: 'first', to: 'third' })
+      expect(scene.outcome).toBe('written, needs review')
+      expect(row.contentStatus).toBe('review')
+      // Rewrite this scene carries the rule; a first-person rewrite clears it
+      globalThis.__writerText = firstPerson
+      const again = await w.rewriteScene(projectId, branch.id, scene.subsectionId)
+      const fixed = again.scenes.find((s) => s.sceneNumber === 3)
+      expect((await db.subsections.get(scene.subsectionId)).description).toContain(
+        '- NARRATION: first person'
+      )
+      expect(fixed.povDrift).toBeUndefined()
+      expect(fixed.outcome).toBe('written')
+    } finally {
+      delete globalThis.__writerText
+    }
+  })
+
   it('a branch switch does not leave the old branch scene open in the editor (§42)', async () => {
     const { projectId, main, bySceneNo } = await book()
     const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')

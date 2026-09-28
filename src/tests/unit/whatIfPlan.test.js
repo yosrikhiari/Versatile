@@ -218,3 +218,18 @@ describe('secondLook (§43)', () => {
     expect(secondLook(drop, { action: 'revise', reason: 'y' })).toBe(drop)
   })
 })
+
+describe('rewriteBrief keeps the original narrative person (§44)', () => {
+  it('adds the narration rule when the original person is clear', () => {
+    const s = {
+      ...scene(9, 'The Morlocks'),
+      action: 'revise',
+      brief: 'He hides in the ruins.',
+      reason: ''
+    }
+    expect(rewriteBrief(s, 'first')).toContain(
+      'MUST HOLD:' + String.fromCharCode(10) + '- NARRATION: first person ("I")'
+    )
+    expect(rewriteBrief(s, 'unclear')).toBe('He hides in the ruins.')
+  })
+})

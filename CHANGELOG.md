@@ -7,6 +7,21 @@ was verified.
 
 ## [Unreleased]
 
+### Point-of-view drift check; CI green on the dependency PRs (2026-09-28)
+- **A rewrite keeps its original's narrative person** (§44,
+  `services/whatIf/pov.ts`). Code measures first-person pronouns per 1,000
+  words of narration (speech removed) and compares each rewritten scene with
+  its own original. On both books' 29 original chapters it separates cleanly
+  (third person 0, first 28-94); on 34 trial rewrites it finds the 11 real
+  drifts and nothing else. Each rewrite's brief now names the person to keep;
+  a drift is flagged "needs review", and Rewrite this scene carries the rule
+  (two drifted chapters rewritten live: both back in the first person).
+- **Dependency updates move together.** The .NET 10 packages share
+  transitive dependencies: bumped one PR at a time they failed (NU1605,
+  CS1705). All now on 10.0.12 (Http.Resilience 10.10.0), backend tests incl.
+  694 integration tests pass; vue-router 5 needs pinia 3 and both moved
+  together (unit, build and Playwright pass). Dependabot groups these now.
+
 ### What If on any novel: import, read, branch, check, rewrite (2026-09-27 – 2026-09-28)
 ![Import, understand, branch](docs/img/diagrams/whatif-overview.svg)
 - **Novel import** (`services/import/`): txt, md, docx, epub and html, with a
