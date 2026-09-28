@@ -133,3 +133,23 @@ describe('useWritingStats', () => {
     expect(stats.streaks.value).toEqual({ current: 0, longest: 0 })
   })
 })
+
+describe('an imported book is not a day of writing', () => {
+  it('starts an imported project from what it arrived with, or from its first day', async () => {
+    rows.value = [
+      // Project 1: imported with 35,000 words, then 400 written.
+      row(1, daysAgo(1), 35000),
+      row(1, daysAgo(0), 35400),
+      // Project 2: imported before importedWords existed.
+      row(2, daysAgo(1), 60000),
+      row(2, daysAgo(0), 60150),
+      // Project 3: written from scratch.
+      row(3, daysAgo(0), 300)
+    ]
+    const stats = useWritingStats()
+    await stats.load([1, 2, 3], { 1: 35000, 2: 'first' })
+    expect(stats.dailyNet.value.get(daysAgo(1))).toBe(0)
+    expect(stats.dailyNet.value.get(daysAgo(0))).toBe(400 + 150 + 300)
+    expect(stats.totalWordsWritten.value).toBe(850)
+  })
+})

@@ -122,6 +122,44 @@ WHAT IF: ${args.premise}
 - "divergenceBrief": what this scene must now show, in 1-2 sentences, given that fact.`
 }
 
+/** "What if Zeena stays home?" -> "Zeena stays home." : the author's premise as a statement. */
+export function premiseAsFact(premise: string): string {
+  const t = premise
+    .trim()
+    .replace(/^what\s+if\s+/i, '')
+    .replace(/\?+\s*$/, '')
+    .trim()
+  if (!t) return premise.trim()
+  return t.charAt(0).toUpperCase() + t.slice(1) + (/[.!]$/.test(t) ? '' : '.')
+}
+
+const FACT_STOPWORDS = new Set(
+  'what when where which while with would could should there their them they this that than then have been were from into onto upon about after before never ever also only just even still some'.split(
+    ' '
+  )
+)
+const contentWords = (s: string) =>
+  new Set((s.toLowerCase().match(/[a-zÀ-ɏ]{4,}/g) || []).filter((w) => !FACT_STOPWORDS.has(w)))
+
+/**
+ * The change as the writer and the checker will hold it. The model's
+ * one-line version is used only if it keeps most of the premise's own words;
+ * otherwise the premise itself, as a statement. On the live read the model
+ * turned "stays home the night Ethan and Mattie were to be alone" into "stays
+ * home instead of going to Bettsbridge" -- and against that, chapter VIII's
+ * "after Zeena left" was not a contradiction the checker would call.
+ */
+export function chooseDivergenceFact(modelFact: string | undefined, premise: string): string {
+  const fromPremise = premiseAsFact(premise)
+  const fact = (modelFact || '').trim()
+  if (!fact) return fromPremise
+  const want = contentWords(premise)
+  if (!want.size) return fact
+  const have = contentWords(fact)
+  const kept = [...want].filter((w) => have.has(w)).length / want.size
+  return kept >= 0.7 ? fact : fromPremise
+}
+
 export const FATE_SCHEMA = {
   type: 'object',
   properties: {

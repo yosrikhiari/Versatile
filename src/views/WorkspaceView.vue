@@ -68,7 +68,17 @@ onMounted(async () => {
 
   // Writing history for the activity panel — one query over dailyGoals for all
   // of this user's projects, after the list is known.
-  await loadWritingStats(projects.value.map((p) => p.id))
+  // An imported book starts from what it arrived with; one imported before
+  // `importedWords` existed starts from its first recorded day.
+  const startFrom = Object.fromEntries(
+    projects.value
+      .filter((p) => p.source === 'import')
+      .map((p) => [String(p.id), typeof p.importedWords === 'number' ? p.importedWords : 'first'])
+  )
+  await loadWritingStats(
+    projects.value.map((p) => p.id),
+    startFrom
+  )
   heatmapColumns.value = buildGrid(26)
 
   loading.value = false

@@ -107,6 +107,9 @@ export async function createProjectFromBook(
     source: 'import',
     importedAt: now,
     importMethod: book.method,
+    // What the book arrived with: the writing statistics start this project
+    // from here, so an imported novel is not counted as a day of writing.
+    importedWords: words,
     ...(book.frontMatter.length ? { frontMatter: book.frontMatter.join('\n\n') } : {})
   })
 

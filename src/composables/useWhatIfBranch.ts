@@ -34,6 +34,7 @@ import { FEATURES } from '../config/ai'
 import {
   PLAN_SYSTEM,
   DIVERGENCE_SCHEMA,
+  chooseDivergenceFact,
   divergencePrompt,
   FATE_SCHEMA,
   sceneFatePrompt,
@@ -175,7 +176,7 @@ async function planPerScene(
       schemaName: 'what_if_change'
     }
   ).catch(() => null)) as { divergenceFact?: string; divergenceBrief?: string } | null
-  const fact = div?.divergenceFact?.trim() || premise
+  const fact = chooseDivergenceFact(div?.divergenceFact, premise)
   const first: PlannedScene = {
     ...divergence,
     action: 'revise',

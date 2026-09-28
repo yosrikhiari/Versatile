@@ -2136,3 +2136,50 @@ for look-ups, §33, not for this); and a small model anchors on any example it
 is shown, so a per-item prompt must not show the other items' answers. Two of
 seven briefs still contradicted the change after 3b; the plan is editable for
 exactly that, and the live run used two author edits.
+
+## 38. The three open items from §37 (2026-09-28)
+
+**The recheck on the live Ethan Frome branch** (6 rewritten scenes read, 7
+scenes after the change checked, 16 min): the kept epilogue was caught
+(contradictions with the new ending; the sentence repair could not be placed,
+so it is marked `review`). Rewritten chapter VIII ("Zeena's absence…",
+"after Zeena left") passed.
+
+**Writing statistics counted imported books as writing** (the workspace
+showed 312,896 words "this week" for six test imports). `useWritingStats`
+derived each day's output as the growth of a project's total from 0, so an
+import day counted the whole book, and inflated the streak and best day. The
+import now stores `importedWords` and the statistics start an imported
+project from it (projects imported earlier: from their first recorded day).
+
+**The stated change was too narrow.** The planner reduced "stays home the
+night Ethan and Mattie were to be alone" to "stays home instead of going to
+Bettsbridge". `chooseDivergenceFact` keeps the model's wording only if it keeps
+>= 70% of the premise's content words, else uses the premise itself as a
+statement. Kept -- the stated change is now what the author wrote -- but it
+does not rescue chapter VIII (below).
+
+**Name matching in the focused continuity check, measured before changing.**
+The check reads only sentences naming a character as the bible spells it
+("Ethan Frome"), plus capitalised words from the facts it is given. Measured
+on the ORIGINAL Ethan Frome chapters I-VIII (clean text; each against the
+true facts of the chapters before it) and on the branch's chapter VIII:
+
+| names | sentences checked (clean I-VIII) | false alarms (clean) | branch VIII vs full premise |
+|---|---|---|---|
+| full bible names (kept) | 429 | 0 / 8 | 50 checked, 0 flags |
+| + first/last names, aliases | 453 (+6%) | 1 / 8 | 52 checked, 0 flags |
+
+First names mostly reach the check already through the facts; widening added
+one false alarm and no catch, so it was not shipped. The 18-of-257 figure in
+§37 was chapter VIII against the one-sentence change alone.
+
+**Why chapter VIII passes, even against the full premise:** it is not a
+contradiction of the premise. The premise fixes one night; chapter VIII is a
+later day. "After Zeena left" contradicts the branch's own continuity (the
+rewritten chapters keep her at home and nothing shows her leaving), and no
+fact states "Zeena is still at home". A fact-contradiction check cannot see a
+missing event. Catching this needs a check on who is where across scenes
+(the entity-state timeline), not another prompt -- backlog. Until then the
+compare screen, which shows every rewritten scene before a merge, is the
+safeguard.

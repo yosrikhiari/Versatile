@@ -64,6 +64,8 @@ describe('createProjectFromBook', () => {
     expect(bySceneNo[1].order).toBe(1)
     expect(written).toMatchObject({ chapters: 3, scenes: 4 })
     expect((await db.projects.get(pid)).source).toBe('import')
+    // The writing statistics start from here (an import is not a day of writing).
+    expect((await db.projects.get(pid)).importedWords).toBe(written.words)
   })
 
   it('the editor load path sees every imported chapter and scene', async () => {

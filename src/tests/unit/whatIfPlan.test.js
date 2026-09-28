@@ -101,3 +101,27 @@ describe('replaceSentenceInHtml', () => {
     ).toBe(false)
   })
 })
+
+describe('the stated change keeps the premise', async () => {
+  const { premiseAsFact, chooseDivergenceFact } = await import('@/services/whatIf/whatIfPlan')
+  const premise =
+    'What if Zeena never goes to Bettsbridge, and stays home the night Ethan and Mattie were to be alone?'
+
+  it('turns the question into a statement', () => {
+    expect(premiseAsFact(premise)).toBe(
+      'Zeena never goes to Bettsbridge, and stays home the night Ethan and Mattie were to be alone.'
+    )
+    expect(premiseAsFact('what if the church burned')).toBe('The church burned.')
+  })
+
+  it('keeps the model’s wording only when it keeps the premise’s terms', () => {
+    // The live read's version dropped "the night ... alone": the premise wins.
+    expect(
+      chooseDivergenceFact('Zeena decides to stay home instead of going to Bettsbridge.', premise)
+    ).toBe(premiseAsFact(premise))
+    const faithful =
+      'Zeena never goes to Bettsbridge; she stays home the night Ethan and Mattie were to be alone together.'
+    expect(chooseDivergenceFact(faithful, premise)).toBe(faithful)
+    expect(chooseDivergenceFact('', premise)).toBe(premiseAsFact(premise))
+  })
+})

@@ -46,7 +46,17 @@ export function useWritingStats() {
   const trackedDays = ref<Set<string>>(new Set())
   const perProject = ref<ProjectSeries[]>([])
 
-  async function load(projectIds: Array<string | number>) {
+  /**
+   * `startFrom` is each project's word count before any writing was tracked:
+   * a number, or 'first' to start from its first recorded day. Without it an
+   * imported novel's whole length landed on the import day as "words written"
+   * (the workspace showed 312,896 in a week for six test imports), and pushed
+   * the streak and best day with it.
+   */
+  async function load(
+    projectIds: Array<string | number>,
+    startFrom: Record<string, number | 'first'> = {}
+  ) {
     loading.value = true
     try {
       const rows = await getDailyStatsForProjects(projectIds)
@@ -65,7 +75,9 @@ export function useWritingStats() {
       for (const [projectId, entries] of byProject) {
         entries.sort((a, b) => String(a.date).localeCompare(String(b.date)))
 
-        let previousTotal = 0
+        const start = startFrom[projectId]
+        let previousTotal =
+          start === 'first' ? Number(entries[0]?.wordCount) || 0 : Number(start) || 0
         for (const entry of entries) {
           const total = Number(entry.wordCount) || 0
           const delta = total - previousTotal

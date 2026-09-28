@@ -225,7 +225,8 @@ describe('What If as a branch', () => {
     const branch = await w.fork(projectId, main, bySceneNo[3].id, 'What if the church burned?')
     const plan = await w.plan(projectId, branch.id)
     expect(plan.scenes.map((s) => s.action)).toEqual(['revise', 'keep'])
-    expect(plan.divergenceFact).toBe('What if the church burned?')
+    // The premise itself, as a statement.
+    expect(plan.divergenceFact).toBe('The church burned.')
   })
 
   it('each changed scene gets its own brief, from its own original and the change', async () => {
