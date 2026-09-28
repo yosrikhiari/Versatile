@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 732 232" width="732" height="232" role="img" aria-labelledby="t d"><title id="t">Reading pipeline: read, match names, link, finish, over a durable queue</title><desc id="d">Each scene&#x27;s reading is saved the moment it is done, so a stop loses nothing. The linking step feeds every scene through the same code that fills the bible for a generated book.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="731" height="231" rx="10"/>
+<defs><marker id="rb1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+<rect x="20" y="20" width="150" height="54" rx="6" class="node"/><text x="95" y="43" text-anchor="middle" font-size="12">1 · read each scene</text><text x="95" y="61" text-anchor="middle" font-size="10" class="m">local model, one at a time</text>
+<rect x="195" y="20" width="150" height="54" rx="6" class="node"/><text x="270" y="43" text-anchor="middle" font-size="12">2 · match names</text><text x="270" y="61" text-anchor="middle" font-size="10" class="m">Holmes = Sherlock Holmes</text>
+<rect x="370" y="20" width="150" height="54" rx="6" class="node hl"/><text x="445" y="43" text-anchor="middle" font-size="12">3 · link, chapter by chapter</text><text x="445" y="61" text-anchor="middle" font-size="10" class="a">the writer's own code</text>
+<rect x="545" y="20" width="140" height="54" rx="6" class="node"/><text x="615" y="43" text-anchor="middle" font-size="12">4 · finish</text><text x="615" y="61" text-anchor="middle" font-size="10" class="m">profile, voice, search</text>
+<line x1="170" y1="47" x2="193" y2="47" class="edge" marker-end="url(#rb1)"/><line x1="345" y1="47" x2="368" y2="47" class="edge" marker-end="url(#rb1)"/><line x1="520" y1="47" x2="543" y2="47" class="edge" marker-end="url(#rb1)"/>
+<rect x="20" y="120" width="170" height="40" rx="4" class="node code"/><text x="105" y="145" text-anchor="middle" font-size="11">job queue (in the browser)</text>
+<line x1="95" y1="74" x2="95" y2="118" class="edge dash" marker-end="url(#rb1)"/><text x="100" y="100" font-size="10" class="m">each result saved</text>
+<rect x="370" y="120" width="315" height="40" rx="4" class="node"/><text x="527" y="138" text-anchor="middle" font-size="11">story bible · network links (with chapter) ·</text><text x="527" y="153" text-anchor="middle" font-size="11">scene digests: what a generated book has</text>
+<line x1="445" y1="74" x2="445" y2="118" class="edge" marker-end="url(#rb1)"/>
+<text x="230" y="185" font-size="11" class="m">stopped or crashed? the next run resumes at the next unread scene</text></svg>
