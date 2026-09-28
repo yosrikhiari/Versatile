@@ -7,7 +7,9 @@ import {
   branchCanon,
   storySoFar,
   replaceSentenceInHtml,
-  rewriteBrief
+  rewriteBrief,
+  sceneEvidence,
+  secondLook
 } from '@/services/whatIf/whatIfPlan'
 
 const scene = (n, ch, extra = {}) => ({
@@ -164,5 +166,55 @@ describe('rewriteBrief and kept-side flags (§42)', () => {
       ]
     })
     expect(b).toBe('The Traveller walks on alone.')
+  })
+})
+
+describe('the planner sees what the scene says about the people the change names (§43)', () => {
+  const weena = { forms: ['Weena'] }
+  const palace =
+    'I made my way to the ruins. The green porcelain gleamed. Suddenly Weena came very close to my side. We went on. “Little Weena ran with me.”'
+
+  it('quotes the scene’s own sentences that name them, in order', () => {
+    expect(sceneEvidence(palace, [weena])).toEqual([
+      'Suddenly Weena came very close to my side.',
+      '“Little Weena ran with me.”'
+    ])
+    expect(sceneEvidence('Nobody here.', [weena])).toEqual([])
+    expect(sceneEvidence(palace, [weena], 1)).toHaveLength(1)
+  })
+
+  it('the fate question carries them after the summary; without them it is unchanged', () => {
+    const scene = { ...scene9(), summary: 'The narrator explores the ruins of the Palace.' }
+    const plain = sceneFatePrompt({ divergenceFact: 'Weena stays behind.', scene })
+    const withIt = sceneFatePrompt({
+      divergenceFact: 'Weena stays behind.',
+      scene,
+      evidence: ['Suddenly Weena came very close to my side.']
+    })
+    expect(plain).not.toContain('quoted')
+    expect(withIt).toContain('- "Suddenly Weena came very close to my side."')
+    expect(withIt.indexOf('explores the ruins')).toBeLessThan(withIt.indexOf('Suddenly Weena'))
+    expect(withIt.indexOf('Suddenly Weena')).toBeLessThan(withIt.indexOf('"needs"'))
+  })
+})
+
+function scene9() {
+  return { ...scene(9, 'The Palace of Green Porcelain') }
+}
+
+describe('secondLook (§43)', () => {
+  const keep = { action: 'keep', reason: 'the change does not reach it' }
+  it('moves a kept scene to revise when its own words show the change reaches it', () => {
+    expect(secondLook(keep, { action: 'revise', reason: 'Weena runs at his side' })).toEqual({
+      action: 'revise',
+      reason: 'Weena runs at his side'
+    })
+  })
+  it('never turns it into a drop, and never touches a scene already revised or dropped', () => {
+    expect(secondLook(keep, { action: 'drop', reason: 'x' }).action).toBe('revise')
+    expect(secondLook(keep, { action: 'keep', reason: 'none' })).toBe(keep)
+    expect(secondLook(keep, null)).toBe(keep)
+    const drop = { action: 'drop', reason: 'the crash cannot happen' }
+    expect(secondLook(drop, { action: 'revise', reason: 'y' })).toBe(drop)
   })
 })

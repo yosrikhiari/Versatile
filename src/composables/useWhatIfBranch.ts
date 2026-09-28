@@ -49,6 +49,8 @@ import {
   divergencePrompt,
   FATE_SCHEMA,
   sceneFatePrompt,
+  sceneEvidence,
+  secondLook,
   decideFate,
   BRIEF_SCHEMA,
   sceneBriefPrompt,
@@ -189,6 +191,13 @@ async function planPerScene(
     }
   ).catch(() => null)) as { divergenceFact?: string; divergenceBrief?: string } | null
   const fact = chooseDivergenceFact(div?.divergenceFact, premise)
+  // Who the change is about, so each scene's fate is decided on what its own
+  // text says about them, not on a summary that dropped them (§43).
+  const { useStoryBibleStore } = await import('../stores/storyBibleStore')
+  const people = trackedCharacters(
+    `${fact} ${premiseAsFact(premise)}`,
+    useStoryBibleStore().characters as Array<{ name?: unknown; aliases?: unknown }>
+  )
   const first: PlannedScene = {
     ...divergence,
     action: 'revise',
@@ -198,15 +207,24 @@ async function planPerScene(
   const scenes: PlannedScene[] = []
   for (const scene of later) {
     whatIfState.detail = `Scene ${scene.sceneNumber} of ${later.at(-1)?.sceneNumber ?? scene.sceneNumber}`
-    const answer = await aiGenerateJson(
-      sceneFatePrompt({ divergenceFact: fact, scene }),
-      PLAN_SYSTEM,
-      { ...PLAN_OPTS, temperature: 0, schema: FATE_SCHEMA, schemaName: 'what_if_scene' }
-    ).catch(() => null)
+    const ask = (evidence?: string[]) =>
+      aiGenerateJson(sceneFatePrompt({ divergenceFact: fact, scene, evidence }), PLAN_SYSTEM, {
+        ...PLAN_OPTS,
+        temperature: 0,
+        schema: FATE_SCHEMA,
+        schemaName: 'what_if_scene'
+      }).catch(() => null)
     // No usable answer: the scene stays as written, and says so.
-    const fate = decideFate(answer) || {
+    let fate = decideFate(await ask()) || {
       action: 'keep' as const,
       reason: 'no decision; kept as written'
+    }
+    // A scene about to be kept gets a second look at its own sentences about
+    // the people the change names: a summary drops them (§43).
+    if (fate.action === 'keep' && people.length) {
+      const row = await tables.subsections.get(scene.subsectionId)
+      const evidence = sceneEvidence(stripHtmlBlock(String(row?.content || '')), people)
+      if (evidence.length) fate = secondLook(fate, decideFate(await ask(evidence)))
     }
     const planned: PlannedScene = { ...scene, action: fate.action, brief: '', reason: fate.reason }
     if (fate.action === 'revise') {

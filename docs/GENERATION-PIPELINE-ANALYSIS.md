@@ -2457,3 +2457,43 @@ that is no longer loaded; `useFlowSave` refuses an empty save to a scene the
 view cannot see. Tests fail without each of the last two; live, the same
 sequence (open the original Introduction, switch branch, wait 12 s) leaves
 it untouched, and typing still autosaves to the right scene.
+
+## 43. The planner keeps chapters the change reaches (2026-09-28)
+
+§42's fresh branch showed the weak link: the planner kept "The Morlocks" and
+"The Palace of Green Porcelain" for "Weena stays behind", though in both
+Weena runs at the Traveller's side. Cause: each scene's fate is decided on
+its one-line summary, and summaries drop the people ("The narrator explores
+the ruins of the Palace") -- the text says "Suddenly Weena came very close
+to my side".
+
+**Fix** (`sceneEvidence`, `secondLook`). The people the change names are
+tracked as in the who-is-where check; the scene's own sentences that name
+them (up to 8, quoted) are the evidence. The first fate question is
+unchanged (summary only). A scene it would KEEP gets a second look: the
+same question with the quotes. The second look can only move keep to
+revise.
+
+**Measured on the five trial branches, original text, 32 later scenes, the
+same scenes asked both ways (25 min):**
+
+| design | keep -> revise | new drops |
+|---|---|---|
+| quotes in the one question | 4 | 7 |
+| quotes as a second look at kept scenes only | 4 | 0 |
+
+With the quotes in the only question, the 8B model also turned 7 scenes it
+had marked revise into drops (a drop deletes the scene) -- hence the
+one-way second look. The four flips, all right on reading: The Time
+Machine's "Trap of the White Sphinx" for "Weena is never lost" (its "keen
+stab of pain" -- the implied miss of §41, now caught at planning); for
+"Weena stays behind": "The Morlocks" ("Little Weena ran with me"), "The
+Palace of Green Porcelain" ("Weena came very close to my side"), "The
+Trap". Every scene still kept had no sentence naming the people.
+
+**Live**, the product's planner on a fresh branch with §42's premise (1.4
+min): The Morlocks, the Palace and the Trap now revise; The Further Vision
+and the Epilogue keep; no drop. (The Traveller's Return also came out
+revise, from the first question, where run-to-run variation is expected.)
+This fixes the cause of §42's wrong-side flags; the kept-scene attribution
+stays as the safety net for the planner's remaining misses.

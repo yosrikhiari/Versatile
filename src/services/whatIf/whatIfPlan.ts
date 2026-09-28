@@ -188,16 +188,47 @@ export const FATE_SCHEMA = {
  * scene only -- not the alternate version so far: on the live read one odd
  * brief ("Zeena remains awake and present") leaked into every later reason.
  */
-export function sceneFatePrompt(args: { divergenceFact: string; scene: BranchScene }): string {
+export function sceneFatePrompt(args: {
+  divergenceFact: string
+  scene: BranchScene
+  /** The scene's own sentences about the people the change names (§43). */
+  evidence?: string[]
+}): string {
+  const said = args.evidence?.length
+    ? `\n\nWhat the scene itself says about the people the change is about (quoted):\n${args.evidence.map((e) => `- "${e}"`).join('\n')}`
+    : ''
   return `In an alternate version of a novel, one thing changed: ${args.divergenceFact}
 
 A scene from the ORIGINAL book ("${args.scene.title}", ${args.scene.chapterTitle}):
-${args.scene.summary || args.scene.title}
+${args.scene.summary || args.scene.title}${said}
 
 Answer in order:
 - "needs": what this scene needs to be true (who is where, who knows what, what has happened).
 - "conflict": which of those the change makes false, or "none".
 - "action": "keep" if the conflict is none; "revise" if the scene can still happen in a changed form (prefer this); "drop" only if nothing in it can happen at all.`
+}
+
+/**
+ * The scene's own sentences that name someone the change is about, in order,
+ * at most `max` (§43). A one-line summary drops the people: "The narrator
+ * explores the ruins of the Palace" -- while the text says "Suddenly Weena
+ * came very close to my side", which a change "Weena stays behind" reaches.
+ */
+export function sceneEvidence(
+  prose: string,
+  people: Array<{ forms: string[] }>,
+  max = 8
+): string[] {
+  const named = (s: string) =>
+    people.some((p) =>
+      p.forms.some((f) => new RegExp(`\\b${f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(s))
+    )
+  return prose
+    .split(/(?<=[.!?”"])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && named(s))
+    .map((s) => (s.length > 240 ? `${s.slice(0, 237)}...` : s))
+    .slice(0, max)
 }
 
 /** A scene's fate from the model's reason-first answer; null when it gave none. */
@@ -211,6 +242,21 @@ export function decideFate(answer: unknown): { action: SceneAction; reason: stri
   // A decision that contradicts its own reason follows the reason.
   if (none) return { action: 'keep', reason: 'the change does not reach it' }
   return { action: action === 'keep' ? 'revise' : action, reason: conflict }
+}
+
+/**
+ * The second look at a scene the planner wants to keep (§43). The first
+ * answer comes from the summary alone; the second from the same question with
+ * the scene's own sentences about the people the change names. It can only
+ * move keep to revise: shown the quotes in the first question, the model also
+ * turned 7 of 32 revisable scenes into drops, and a drop deletes a scene.
+ */
+export function secondLook(
+  first: { action: SceneAction; reason: string },
+  withEvidence: { action: SceneAction; reason: string } | null
+): { action: SceneAction; reason: string } {
+  if (first.action !== 'keep' || !withEvidence || withEvidence.action === 'keep') return first
+  return { action: 'revise', reason: withEvidence.reason }
 }
 
 export const BRIEF_SCHEMA = {

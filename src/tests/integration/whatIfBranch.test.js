@@ -273,6 +273,29 @@ describe('What If as a branch', () => {
     )
   })
 
+  it('the planner decides each scene on its own sentences about the people the change names (§43)', async () => {
+    const { projectId, main, bySceneNo } = await book()
+    const { useStoryBibleStore } = await import('@/stores/storyBibleStore')
+    useStoryBibleStore().characters.push({ id: 1, name: 'Zeena Frome', aliases: ['Zeena'] })
+    const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')
+    const w = useWhatIfBranch()
+    const branch = await w.fork(projectId, main, bySceneNo[2].id, 'What if Zeena stayed home?')
+    await w.plan(projectId, branch.id)
+    const fates = aiGenerateJson.mock.calls
+      .map((c) => String(c[0]))
+      .filter((p) => p.includes('"needs"'))
+    // "The village gathers without Zeena." is the summary; the scene's own
+    // text is the evidence the planner is shown.
+    // The first question is the summary alone; the kept church scene then
+    // gets a second look with its own sentences about her.
+    const church = fates.filter((p) => p.includes('The village gathers without Zeena.'))
+    expect(church).toHaveLength(2)
+    expect(church[0]).not.toContain('quoted')
+    expect(church[1]).toContain('- "Zeena was away."')
+    // A scene that never names her gets no quotes.
+    expect(fates.find((p) => p.includes('great elm'))).not.toContain('quoted')
+  })
+
   it('a branch switch does not leave the old branch scene open in the editor (§42)', async () => {
     const { projectId, main, bySceneNo } = await book()
     const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')
