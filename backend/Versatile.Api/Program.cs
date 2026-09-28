@@ -161,21 +161,21 @@ try
             Version = "v1",
             Description = "Fiction writing assistant API"
         });
-        options.AddSecurityDefinition("Bearer", new()
+        // Swashbuckle 10 / Microsoft.OpenApi 2: the scheme is a concrete class
+        // (the parameter is now an interface), and a requirement is built per
+        // document, referencing the scheme by id.
+        options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
         {
             Name = "Authorization",
-            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Type = Microsoft.OpenApi.SecuritySchemeType.Http,
             Scheme = "bearer",
             BearerFormat = "JWT",
-            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            In = Microsoft.OpenApi.ParameterLocation.Header,
             Description = "Enter your JWT token"
         });
-        options.AddSecurityRequirement(new()
+        options.AddSecurityRequirement(document => new Microsoft.OpenApi.OpenApiSecurityRequirement
         {
-            {
-                new() { Reference = new() { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "Bearer" } },
-                Array.Empty<string>()
-            }
+            [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", document)] = []
         });
     });
 
