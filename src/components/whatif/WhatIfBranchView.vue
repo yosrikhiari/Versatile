@@ -108,7 +108,11 @@ const recheck = () => act(() => w.recheck(projectId.value, props.branchId))
 const canRewrite = (s) =>
   status.value === 'written' &&
   s.action !== 'drop' &&
-  (s.presenceIssues?.length || /needs review/.test(s.outcome || ''))
+  // A flag that blames the kept scene's side is not fixed by rewriting this
+  // one (§42); the author rewrites the kept scene or edits by hand.
+  (s.presenceIssues?.length
+    ? s.presenceIssues.some((p) => !p.fromKept)
+    : /needs review/.test(s.outcome || ''))
 const rewriteScene = (s) =>
   act(() => w.rewriteScene(projectId.value, props.branchId, s.subsectionId))
 const undoRewrite = (s) => act(() => w.undoRewrite(props.branchId, s.subsectionId))

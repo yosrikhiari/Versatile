@@ -151,3 +151,18 @@ describe('rewriteBrief (§40)', () => {
     expect(rewriteBrief(kept)).toBe(kept.summary || `The scene "${kept.title}" of Epilogue.`)
   })
 })
+
+describe('rewriteBrief and kept-side flags (§42)', () => {
+  it('a flag whose sighting came from a kept scene is not a MUST HOLD rule', () => {
+    const b = rewriteBrief({
+      ...scene(9, 'In the Darkness'),
+      action: 'revise',
+      brief: 'The Traveller walks on alone.',
+      reason: '',
+      presenceIssues: [
+        { who: 'Weena', sentence: "Weena's absence...", fact: 'kept...', fromKept: true }
+      ]
+    })
+    expect(b).toBe('The Traveller walks on alone.')
+  })
+})

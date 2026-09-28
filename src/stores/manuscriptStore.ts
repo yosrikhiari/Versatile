@@ -375,6 +375,18 @@ export const useManuscriptStore = defineStore('manuscript', () => {
       activeSubsectionId.value = null
     }
     placeProjectId = projectId
+    // A reload can swap the rows under the editor (a branch switch loads other
+    // ids). An id that is no longer loaded is not "what is open" any more.
+    if (
+      activeSubsectionId.value != null &&
+      !subsections.value.some((x) => x.id === activeSubsectionId.value)
+    )
+      activeSubsectionId.value = null
+    if (
+      activeSectionId.value != null &&
+      !sections.value.some((x) => x.id === activeSectionId.value)
+    )
+      activeSectionId.value = null
     // A reload within the same project (branch switch, a generation run) keeps
     // whatever is open.
     if (activeSectionId.value != null || activeSubsectionId.value != null) return

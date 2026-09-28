@@ -220,8 +220,16 @@ watch(activeContent, (newContent) => {
   if (newContent === lastPushedHtml) return
   lastPushedHtml = null
   if (editor.value?.getHTML() !== newContent) {
+    // Anything typed belongs to the row it was typed in: write it there before
+    // the editor is repointed, never after (the save reads the editor's HTML).
+    flushSave()
     const savedScroll = scrollContainer.value?.scrollTop ?? 0
-    editor.value.commands.setContent(newContent || '')
+    // A load is not an edit. TipTap 3's setContent emits `update` by default,
+    // which scheduled a save of the loaded text to whatever id was active: on a
+    // branch switch, the empty editor into the old branch's scene (a live What
+    // If run blanked the original book's first chapter this way, §42).
+    editor.value.commands.setContent(newContent || '', { emitUpdate: false })
+    contentSize.value = editor.value.state.doc.textContent.length
     requestAnimationFrame(() => {
       if (scrollContainer.value) {
         scrollContainer.value.scrollTop = savedScroll

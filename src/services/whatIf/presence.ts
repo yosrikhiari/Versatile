@@ -39,6 +39,13 @@ export interface Whereabouts {
   where: string
   /** The scene that last showed it. */
   scene: string
+  /**
+   * That scene was kept unchanged from the original book. Its sighting is the
+   * old story's unless the plan was right that the change does not reach it
+   * (§42: a kept chapter had Weena at his side when the change says she
+   * stayed behind).
+   */
+  kept?: boolean
 }
 
 export const PRESENCE_SCHEMA = {
@@ -190,6 +197,12 @@ export interface PresenceIssue {
   sentence: string
   /** Why the sentence is wrong, shown to the author beside it. */
   fact: string
+  /**
+   * The last sighting came from a kept scene: the conflict is real, but the
+   * kept scene may be the wrong side of it, so this is not a rule for a
+   * rewrite of this scene.
+   */
+  fromKept?: boolean
 }
 
 /**
@@ -201,7 +214,8 @@ export function decidePresence(
   prose: string,
   who: TrackedCharacter,
   last: Whereabouts | null,
-  sceneTitle: string
+  sceneTitle: string,
+  keptScene = false
 ): { issue: PresenceIssue | null; next: Whereabouts | null } {
   const a = (answer && typeof answer === 'object' ? answer : {}) as Record<string, unknown>
   const text = norm(prose)
@@ -259,15 +273,26 @@ export function decidePresence(
   let issue: PresenceIssue | null = null
   const gone = (away && !present) || back
   if (last?.present && gone && !left) {
-    issue = {
-      sentence: away || back,
-      fact: `${who.name} is still ${last.where || 'where the story last showed them'}: last shown there in ${last.scene}, and the story never shows ${who.name} leaving.`
-    }
+    issue = last.kept
+      ? {
+          sentence: away || back,
+          fact: `${who.name} was last shown ${last.where || 'in the story'} in ${last.scene}, a scene kept unchanged from the original book, and no scene shows ${who.name} leaving. If the change means ${who.name} is gone by now, ${last.scene} is the scene to rewrite; if not, this sentence is wrong.`,
+          fromKept: true
+        }
+      : {
+          sentence: away || back,
+          fact: `${who.name} is still ${last.where || 'where the story last showed them'}: last shown there in ${last.scene}, and the story never shows ${who.name} leaving.`
+        }
   }
 
   let next = last
   if (present)
-    next = { present: true, where: where || last?.where || 'in the scene', scene: sceneTitle }
+    next = {
+      present: true,
+      where: where || last?.where || 'in the scene',
+      scene: sceneTitle,
+      ...(keptScene ? { kept: true } : {})
+    }
   else if (left) next = { present: false, where: where || 'away', scene: sceneTitle }
   return { issue, next }
 }

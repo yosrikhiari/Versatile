@@ -273,6 +273,22 @@ describe('What If as a branch', () => {
     )
   })
 
+  it('a branch switch does not leave the old branch scene open in the editor (§42)', async () => {
+    const { projectId, main, bySceneNo } = await book()
+    const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')
+    const branch = await useWhatIfBranch().fork(projectId, main, bySceneNo[2].id, 'What if?')
+    const { useManuscriptStore } = await import('@/stores/manuscriptStore')
+    const { useBranchStore } = await import('@/stores/branchStore')
+    const ms = useManuscriptStore()
+    await useBranchStore().switchTo(projectId, main)
+    ms.activeSubsectionId = bySceneNo[1].id
+    await useBranchStore().switchTo(projectId, branch.id)
+    // The main-branch scene is not in the branch's rows: it must not stay
+    // "open", or the editor loads '' and autosaves it over the original.
+    expect(ms.subsections.some((s) => s.id === bySceneNo[1].id)).toBe(false)
+    expect(ms.activeSubsectionId).not.toBe(bySceneNo[1].id)
+  })
+
   it('who is where: a person shown at home and later treated as gone, never shown leaving, is flagged for review', async () => {
     const { projectId, main, bySceneNo } = await book()
     // The fact check misses this sentence (as it did on the live branch):

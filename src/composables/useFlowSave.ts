@@ -53,6 +53,17 @@ export function useFlowSave(editorRef: any) {
 
       if (saveSubId) {
         const sub0 = (manuscriptStore.subsections || []).find((s) => s.id === saveSubId)
+        // Never write an empty editor over a row this view cannot see (another
+        // branch, deleted): that is a stale target, not the writer clearing it.
+        if (!sub0 && wordCount === 0) {
+          console.warn('[useFlowSave] refused an empty save to an unloaded scene', saveSubId)
+          isSaving.value = false
+          if (_flushResolver) {
+            _flushResolver()
+            _flushResolver = null
+          }
+          return
+        }
         await manuscriptStore.updateSubsectionData(
           saveSubId,
           // A row with prose is no longer "planning": the status follows the

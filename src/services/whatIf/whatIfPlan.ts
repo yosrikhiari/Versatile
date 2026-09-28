@@ -31,13 +31,16 @@ export interface PlannedScene extends BranchScene {
   brief: string
   reason: string
   /** Missing events the who-is-where check found in this scene (§39). */
-  presenceIssues?: Array<{ who: string; sentence: string; fact: string }>
+  presenceIssues?: Array<{ who: string; sentence: string; fact: string; fromKept?: boolean }>
   /**
    * Where each tracked person was last shown before this scene, as the
    * who-is-where walk found it: lets one rewritten scene be checked again
    * without re-reading every scene before it.
    */
-  lastSeen?: Record<string, { present: boolean; where: string; scene: string } | null>
+  lastSeen?: Record<
+    string,
+    { present: boolean; where: string; scene: string; kept?: boolean } | null
+  >
   /** The scene's text before "Rewrite this scene", for undo (§40). */
   previousContent?: string
   /** Filled in by the write step. */
@@ -258,7 +261,11 @@ export function rewriteBrief(scene: PlannedScene): string {
     (scene.action === 'revise' && scene.brief.trim()) ||
     scene.summary.trim() ||
     `The scene "${scene.title}" of ${scene.chapterTitle}.`
-  const byWho = new Map((scene.presenceIssues || []).map((p) => [p.who, p]))
+  // A flag whose last sighting is a kept scene is not a rule for this scene:
+  // the kept scene may be the one that is wrong (§42).
+  const byWho = new Map(
+    (scene.presenceIssues || []).filter((p) => !p.fromKept).map((p) => [p.who, p])
+  )
   const rules = [...byWho.values()].map(
     (p) =>
       `- ${p.fact} So in this scene ${p.who} is not gone, absent or returning: keep ${p.who} where the story left them, or show ${p.who} leave.`

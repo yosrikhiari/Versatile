@@ -160,4 +160,26 @@ describe('useFlowSave records progress for structured saves', () => {
       projectStore.saveDocumentNow.mock.invocationCallOrder[0]
     )
   })
+
+  it('does not blank a scene that is no longer loaded (a branch switch swapped the rows)', async () => {
+    const { manuscriptStore } = setupMocks()
+    manuscriptStore.activeSubsectionId = 124 // the old branch's scene, still "open"
+    manuscriptStore.subsections = [{ id: 900 }] // the new branch's rows only
+    useFlowSave({ value: { getHTML: () => '<p></p>' } }).scheduleSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(manuscriptStore.updateSubsectionData).not.toHaveBeenCalled()
+  })
+
+  it('still saves real text typed into a scene just before it was unloaded', async () => {
+    const { manuscriptStore } = setupMocks()
+    manuscriptStore.activeSubsectionId = 124
+    manuscriptStore.subsections = [{ id: 900 }]
+    useFlowSave({ value: { getHTML: () => '<p>words typed a moment ago</p>' } }).scheduleSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(manuscriptStore.updateSubsectionData).toHaveBeenCalledWith(
+      124,
+      expect.objectContaining({ content: '<p>words typed a moment ago</p>' }),
+      'p1'
+    )
+  })
 })

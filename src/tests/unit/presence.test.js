@@ -371,3 +371,47 @@ describe('another time is not gone now (§42)', () => {
     )
   })
 })
+
+describe('a sighting from a kept scene (§42, trial 4)', () => {
+  const weena = { name: 'Weena', forms: ['Weena'] }
+  const prose = "Weena's absence left a hollow space in the silence."
+  const ans = { present: 'no', shownLeaving: '', shownReturn: '', assumesAway: prose }
+
+  it('still flags the conflict, but says the kept scene may be the wrong side', () => {
+    const inPalace = {
+      present: true,
+      where: 'in the Palace',
+      scene: 'The Palace of Green Porcelain',
+      kept: true
+    }
+    const r = decidePresence(ans, prose, weena, inPalace, 'In the Darkness')
+    expect(r.issue?.fromKept).toBe(true)
+    expect(r.issue?.fact).toContain('kept unchanged from the original book')
+    expect(r.issue?.fact).toContain('The Palace of Green Porcelain is the scene to rewrite')
+  })
+
+  it('a kept scene marks its sighting; a rewritten one clears the mark', () => {
+    const seen = decidePresence(
+      { present: 'yes', where: 'at his side' },
+      'Weena ran with me.',
+      weena,
+      null,
+      'The Morlocks',
+      true
+    )
+    expect(seen.next).toEqual({
+      present: true,
+      where: 'at his side',
+      scene: 'The Morlocks',
+      kept: true
+    })
+    const again = decidePresence(
+      { present: 'yes', where: 'by the river' },
+      'Weena sat by the river.',
+      weena,
+      seen.next,
+      'Explanation'
+    )
+    expect(again.next).toEqual({ present: true, where: 'by the river', scene: 'Explanation' })
+  })
+})

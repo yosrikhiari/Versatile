@@ -2393,3 +2393,67 @@ between-scenes check does not look for. False alarms: 3 across four
 branches (a habit, a memory, someone in the next room), each only a
 "needs review", never an edit. Nine events and four branches find the
 holes; they are not a rate to quote.
+
+## 42. The false alarms (2026-09-28)
+
+§41 counted four false alarms (three, plus one the recorded replay found in
+the kept epilogue). All four describe the person at another time, not now:
+a habit ("Only I always try to pick a day when Ethan's off somewheres"), the
+past ("Zeena Frome had sent Mattie off in a hurry"), a memory ("He thought
+about Mattie -- how she had laughed"), a moment ago ("same place Mattie had
+sat just hours ago"). The prompt already says "not a habit, a memory or a
+wish"; the 8B model does not keep to it, so code does (`14bd436d`).
+
+**Rule.** A quoted away or return sentence with an other-time cue (always,
+usually, try to, whenever, thought about/of, remembered, ... ago, had
+<verb>) is set aside -- unless it plainly has the person gone: the name next
+to an absence ("Zeena's absence", "Zeena wasn't coming"), or "after/since
+Zeena left", "Zeena had left/gone". A set-aside quote falls back to the
+scene's own named absence, as an unnamed one does (§41). "He thought of
+Zeena's absence" therefore still counts; "the stove had gone quiet after
+Zeena left" still counts.
+
+**Measured first, then fixed.** Before touching the code, every
+who-is-where answer on the four trial branches was recorded -- current text
+and, for rewritten scenes, the text before the rewrite (74 reads, 8.2 min).
+The same recorded answers, re-scored with the new code: 9 flags -> 5. The
+four dropped are exactly the four false alarms; the five kept are the five
+real ones (B10 VIII before its rewrite; T2 VIII, IX; T3 IX x2).
+
+That is in-sample: the rule was written from these sentences. So one fresh
+branch, which the rule has never seen, was run with it (below).
+
+**The fresh branch (T4, out of sample).** The Time Machine, "What if Weena
+stays behind with the Eloi instead of following the Time Traveller?", 5
+chapters rewritten, 59 min, run with the new rule. No habit, memory or past
+false alarm. Three flags, all Weena, all "Weena's absence..." in rewritten
+chapters -- and on reading, the rewritten chapters are the right ones: the
+planner KEPT "The Morlocks" and "The Palace of Green Porcelain" unchanged,
+where in the original Weena runs at his side ("Little Weena ran with me").
+A real inconsistency, but the flag blamed the side that follows the change,
+and "Rewrite this scene" on it would have forced Weena back in. So the check
+now remembers whether a sighting came from a kept scene; if the last
+sighting did, the flag says so ("...a scene kept unchanged from the original
+book. If the change means Weena is gone by now, The Palace of Green
+Porcelain is the scene to rewrite; if not, this sentence is wrong") and is
+never a MUST HOLD rule for a rewrite (no button when it is the only flag).
+On every flag so far this splits cleanly: the 5 real flags all had their
+last sighting in a rewritten scene (unchanged behaviour), T4's 3 all in a
+kept one. The fact check did not catch the two kept chapters contradicting
+"Weena stays behind" -- the planner's keep decision is the weak link here.
+
+**A data-loss bug found on the way.** T4's writer wrote a new
+"Introduction" -- a chapter before the change -- because the branch had
+copied it blank. The ORIGINAL book's Introduction had been saved as
+"<p></p>" at 11:02:40, ten seconds after T1's write switched the editor to
+its branch. Cause: the switch reloads the rows; the open scene's id (a main
+branch id) was kept although no longer loaded; the editor loaded '' for it;
+TipTap 3's setContent emits `update` by default (TipTap 2 did not), so the
+load counted as an edit; the 10 s autosave wrote the empty editor to the old
+id. Restored from the branch copy made at the fork (1,680 words). Fixed in
+three places: FlowEditor loads with `emitUpdate: false` and flushes a
+pending save to its own scene first; `restoreLastPlace` drops an open id
+that is no longer loaded; `useFlowSave` refuses an empty save to a scene the
+view cannot see. Tests fail without each of the last two; live, the same
+sequence (open the original Introduction, switch branch, wait 12 s) leaves
+it untouched, and typing still autosaves to the right scene.

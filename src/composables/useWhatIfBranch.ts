@@ -456,7 +456,14 @@ export function useWhatIfBranch() {
           PRESENCE_SYSTEM,
           { ...PLAN_OPTS, temperature: 0, schema: PRESENCE_SCHEMA, schemaName: 'whereabouts' }
         ).catch(() => null)
-        const { issue, next } = decidePresence(answer, prose, who, last, `${s.chapterTitle}`)
+        const { issue, next } = decidePresence(
+          answer,
+          prose,
+          who,
+          last,
+          `${s.chapterTitle}`,
+          s.action === 'keep'
+        )
         last = next
         if (issue && isOnly(s.subsectionId)) {
           await updateSubsection(s.subsectionId as string, { contentStatus: 'review' })
@@ -538,7 +545,9 @@ export function useWhatIfBranch() {
         })
         throw new Error('The writer produced nothing; the scene is unchanged.')
       }
-      const ruled = [...new Set((s.presenceIssues || []).map((p) => p.who))]
+      const ruled = [
+        ...new Set((s.presenceIssues || []).filter((p) => !p.fromKept).map((p) => p.who))
+      ]
       s.previousContent = old
       s.action = 'revise'
       s.brief = brief
