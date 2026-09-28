@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  namedAbsence,
   trackedCharacters,
   mentions,
   presencePrompt,
@@ -294,5 +295,25 @@ describe('decidePresence', () => {
     expect(p).toContain('last shown present: at home at the farm (VII)')
     expect(p.indexOf('"present"')).toBeLessThan(p.indexOf('"shownLeaving"'))
     expect(p.indexOf('"shownReturn"')).toBeLessThan(p.indexOf('"assumesAway"'))
+  })
+})
+
+describe('namedAbsence', () => {
+  const zeena = { name: 'Zeena Frome', forms: ['Zeena Frome', 'Zeena'] }
+  it('finds the name next to an absence, and only there', () => {
+    for (const yes of [
+      "Zeena's absence left the house hushed.",
+      'Zeena was gone by morning.',
+      'Zeena wasn’t coming.',
+      "Zeena hadn't come.",
+      'He felt the absence of Zeena like cold.'
+    ])
+      expect(namedAbsence(yes, zeena), yes).toBe(yes)
+    for (const no of [
+      'Zeena only looked away, toward the fire.',
+      'Zeena turned toward the stairs, walking away from it.',
+      'Since the day Zeena left for Bettsbridge, nothing had changed.'
+    ])
+      expect(namedAbsence(no, zeena), no).toBe('')
   })
 })

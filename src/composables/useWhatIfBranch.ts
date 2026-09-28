@@ -35,6 +35,7 @@ import {
   PRESENCE_SYSTEM,
   trackedCharacters,
   mentions,
+  namedAbsence,
   presencePrompt,
   decidePresence,
   type Whereabouts
@@ -537,12 +538,40 @@ export function useWhatIfBranch() {
         })
         throw new Error('The writer produced nothing; the scene is unchanged.')
       }
+      const ruled = [...new Set((s.presenceIssues || []).map((p) => p.who))]
       s.previousContent = old
       s.action = 'revise'
       s.brief = brief
       s.outcome = 'written'
       delete s.presenceIssues
       await verify(projectId, planned, s.subsectionId)
+      // The rewrite was told these people never left. A sentence that still
+      // puts one of them next to an absence breaks that rule even when they
+      // are also in the scene -- the case the who-is-where question lets
+      // through (a live rewrite kept "He thought of Zeena's absence, of the
+      // way she'd left" and passed, §41).
+      const prose = stripHtmlBlock(String(now?.content || ''))
+      const { useStoryBibleStore } = await import('../stores/storyBibleStore')
+      const characters = useStoryBibleStore().characters as Array<{
+        name?: unknown
+        aliases?: unknown
+      }>
+      for (const who of trackedCharacters(ruled.join(' '), characters)) {
+        if (!ruled.includes(who.name)) continue
+        const sentence = namedAbsence(prose, who)
+        if (!sentence) continue
+        s.outcome = 'written, needs review'
+        s.presenceIssues = [
+          ...(s.presenceIssues || []),
+          {
+            who: who.name,
+            sentence,
+            fact: `Rewritten with the rule that ${who.name} never left, but this sentence still has ${who.name} gone.`
+          }
+        ]
+      }
+      if (s.outcome === 'written, needs review')
+        await updateSubsection(s.subsectionId as string, { contentStatus: 'review' })
       await saveMeta(branchId, { plan: planned })
       return planned
     })

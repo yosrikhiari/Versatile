@@ -67,7 +67,7 @@ vi.mock('@/composables/useVolumeStoryGenerator', () => ({
       const blank = await db.subsections.where({ projectId: args.projectId, branchId }).toArray()
       for (const s of blank.filter((x) => x.contentStatus === 'pending')) {
         await db.subsections.update(s.id, {
-          content: '<p>Zeena stays by the stove.</p>',
+          content: globalThis.__writerText || '<p>Zeena stays by the stove.</p>',
           contentStatus: 'generated'
         })
       }
@@ -327,5 +327,27 @@ describe('What If as a branch', () => {
 
     await w.undoRewrite(branch.id, kept.subsectionId)
     expect((await db.subsections.get(kept.subsectionId)).content).toContain('After Zeena left')
+
+    // A rewrite that keeps her present but still says she is gone breaks its
+    // own MUST HOLD rule; the who-is-where question lets that through (she
+    // is "present"), so code checks the rule itself (§41, live T3 VIII).
+    await w.recheck(projectId, branch.id)
+    globalThis.__writerText =
+      "<p>Zeena stays by the stove. He thought of Zeena's absence all the same.</p>"
+    try {
+      const again = await w.rewriteScene(projectId, branch.id, kept.subsectionId)
+      const s3 = again.scenes.find((s) => s.sceneNumber === 3)
+      expect(s3.outcome).toBe('written, needs review')
+      expect(s3.presenceIssues).toEqual([
+        {
+          who: 'Zeena Frome',
+          sentence: "He thought of Zeena's absence all the same.",
+          fact: expect.stringContaining('never left')
+        }
+      ])
+      expect((await db.subsections.get(kept.subsectionId)).contentStatus).toBe('review')
+    } finally {
+      delete globalThis.__writerText
+    }
   })
 })

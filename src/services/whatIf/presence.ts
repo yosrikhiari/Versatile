@@ -154,14 +154,20 @@ const NOT_A_LEAVING = /\b(absence|without (?:her|him)|had (?:left|gone)|since (?
 const ABSENCE_CUE =
   "(absence|absent|away|gone|missing|wasn[’']t (?:coming|there|home|here)|hadn[’']t come|was not (?:coming|there|home|here))"
 
-/** The first sentence of the scene that puts the person's name next to an absence. */
-function namedAbsence(prose: string, who: TrackedCharacter): string {
+/**
+ * The first sentence of the scene that puts the person's name next to an
+ * absence: "Zeena's absence", "Zeena was gone", "Zeena wasn't coming", "the
+ * absence of Zeena". Only a possessive or a few linking words may come
+ * between ("Zeena only looked away" is not an absence).
+ */
+export function namedAbsence(prose: string, who: TrackedCharacter): string {
   const sentences = prose.split(/(?<=[.!?”"])\s+/)
+  const link = '(?:\\s+(?:was|is|had|has|been|still|long|already|now))*'
   return (
     sentences.find((s) =>
       who.forms.some(
         (f) =>
-          new RegExp(`\\b${escapeRe(f)}\\b(?:\\W+\\w+){0,2}?\\W+${ABSENCE_CUE}\\b`, 'i').test(s) ||
+          new RegExp(`\\b${escapeRe(f)}\\b(?:[’']s)?${link}\\s+${ABSENCE_CUE}\\b`, 'i').test(s) ||
           new RegExp(`\\b${ABSENCE_CUE}\\W+of\\W+${escapeRe(f)}\\b`, 'i').test(s)
       )
     ) || ''

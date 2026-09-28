@@ -2322,3 +2322,74 @@ rewrite" beside it. This branch's last full check predates `lastSeen`, so
 this first rewrite walked Zeena's earlier scenes (the fallback); a branch
 checked from now on answers from the saved sighting. One scene is not a
 rate: it shows the path works end to end, not how often a rewrite holds.
+
+## 41. More branches, counted (2026-09-28)
+
+§40 was one example. This runs the whole What If path on more branches,
+through the product's own functions only (fork, plan as planned, write with
+the full check, then "Rewrite this scene" on each flag), and counts. Flags
+are judged real or false by reading the sentence against the branch.
+
+**Branches.** B10 (Ethan Frome, "Zeena stays home", from §39-40); T1 (The
+Time Machine, newly imported and read, 15.1 min, 11 characters -- one of
+them "He", a reader defect: "What if Weena is never lost in the forest
+fire?", 3 chapters rewritten, 23 min); T2 (Ethan Frome, the Zeena premise
+again on a fresh branch, 7 rewritten, 51 min); T3 (Ethan Frome, "What if
+Zeena lets Mattie stay?", 5 rewritten, 34 min), meant as a control where
+nobody leaves -- but the writer made Zeena leave on its own (below).
+
+**A rule found wanting, fixed on the same text** (`c157c02c`). T2's chapter
+VIII says "Zeena wasn't coming", yet passed: the model saw the absence but
+quoted "Her things remained in their place, untouched" -- no name, so the
+§39 "quote must name the person" rule threw it away. Now, when the model
+says the person is away and its quote lacks the name, code takes the
+scene's own sentence that puts the name next to an absence (possessive or
+linking words only between: "Zeena's absence", "Zeena was gone", "Zeena
+wasn't coming"; "Zeena only looked away" is not one; "Ethan felt Zeena's
+absence" never makes Ethan away). Same saved text (B10, T1, T2), one model
+answer per person per scene, both rules, 46 reads:
+
+| rule | flags | real | false |
+|---|---|---|---|
+| §39 as shipped | 2 | 0 | 2 |
+| + named-absence fallback | 4 | 2 (T2 VIII, T2 IX) | the same 2 |
+
+**The "control" found the writer's own mistake.** T3's rewritten VII shows
+Zeena home ("Zeena stood at the foot of the stairs"); the writer then
+drifted back to the book's plot: VIII "Zeena's not coming back tonight...
+She stayed in Bettsbridge", IX "Zeena's gone, but she'll come back",
+"Zeena hadn't returned yet". The check flagged all three; all three real,
+no false alarm.
+
+**Rewrites** ("Rewrite this scene", check re-run on the new text):
+
+| scene | flag | minutes | result |
+|---|---|---|---|
+| B10 VIII | real | 9.9 | fixed (6 "gone" sentences -> 0) |
+| T2 VIII | real (+ a Mattie false alarm in its brief) | 7.3 | fixed (3 -> 0) |
+| T2 IX (scene 1) | real | 4.8 | fixed (1 -> 0) |
+| T3 VIII | real | 8.0 | NOT fixed -- "He thought of Zeena's absence, of the way she'd left without warning" -- and the re-check passed it |
+| T3 IX (scene 1) | real | 7.0 | fixed |
+| T3 IX (scene 2) | real | 7.2 | fixed |
+| T2 IX (scene 2) | false (a memory) | 4.1 | rewritten harmlessly |
+
+5 of 6 real flags fixed in one rewrite. The sixth exposed a re-check blind
+spot: Zeena is also in the new chapter (named 24 times), the question
+answers "present", and an absence sentence is only an issue when the person
+is not present. After a rewrite, though, the brief said she never left, so
+any sentence putting her next to an absence breaks that rule whether or not
+she is present. **Rule check after a rewrite** (code only, no model call):
+each person the brief's MUST HOLD names is looked up with the same
+named-absence pattern; a hit keeps the scene at "needs review" with the
+sentence. On the six rewritten scenes as they stand it flags exactly T3
+VIII and none of the five that held. With that flag in place, a second "Rewrite this scene" on T3 VIII (8.1 min) fixed it: no absence sentence, rule check clean, Zeena named 19 times. So 6 of 6 real flags ended fixed -- 5 on the first rewrite, 1 on the second, which only happened because the rule check caught the first.
+
+**Tally, new rules.** Real missing events found by reading: 9; flagged: 6, all fixed
+(B10 VIII; T2 VIII, IX; T3 VIII, IX x2). Missed: T1's kept chapter only
+implies Weena is gone ("where I had saved Weena, and that suddenly gave me
+a keen stab of pain"); T2 V and T3 IX scene 3 say she is gone in a scene
+where she is present -- contradictions inside one scene, which this
+between-scenes check does not look for. False alarms: 3 across four
+branches (a habit, a memory, someone in the next room), each only a
+"needs review", never an edit. Nine events and four branches find the
+holes; they are not a rate to quote.
