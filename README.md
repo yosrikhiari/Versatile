@@ -171,6 +171,7 @@ The .NET 10 API adds accounts, organisations, sync and collaboration. `docker co
 | `npm run audit:manuscript` | Re-measure duplicate/degraded prose in a generated manuscript   |
 | `npm run eval:snapshot`    | Critic regression baseline against a local model                |
 | `npm run storybook`        | Component stories with the a11y addon                           |
+| `npm run docs:report`      | Rebuild `docs/REPORT.md` and its figures from `docs/REPORT.html` |
 
 Long-running, real-model runs live outside the unit suite:
 

@@ -48,7 +48,8 @@
     "pipeline:drift:edge": "npx vite-node scripts/ml-pipelines/drift-monitor/monitor.js --source scripts/ml-pipelines/drift-monitor/sample-drift-edge-evals.json --threshold 1",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "chromatic": "npx chromatic --project-token=$CHROMATIC_PROJECT_TOKEN"
+    "chromatic": "npx chromatic --project-token=$CHROMATIC_PROJECT_TOKEN",
+    "docs:report": "python tools/report-to-md.py"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",

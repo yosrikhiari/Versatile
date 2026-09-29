@@ -1,5 +1,5 @@
-<!-- Markdown copy of the Versatile judge and What If report. The figures are
-standalone SVGs in docs/img/report/ (light and dark). Generated from the HTML report. -->
+<!-- Generated from docs/REPORT.html by tools/report-to-md.py (npm run docs:report);
+edit the HTML and regenerate. Figures are standalone SVGs in docs/img/report/. -->
 
 *Versatile · generation pipeline · 24 September 2026*
 
