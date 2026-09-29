@@ -472,12 +472,19 @@ export function useStoryCritic() {
        * Keeping it in one place is what makes the focused mode a swap of the
        * question rather than a second prompt to maintain.
        */
+      // Two brief shapes reach the critic: the planner's (`emotionalGoal`,
+      // `charactersPresent`) and continuation's (`goal`, `characters` -- What
+      // If and "continue writing"). Reading only the first threw on the second
+      // (`charactersPresent.join`), the catch below turned that into "critic
+      // output could not be parsed", and no continuation scene was ever judged.
+      const briefLine = (v: unknown) => (v == null || v === '' ? '(not given)' : String(v))
+      const cast = sceneBrief.charactersPresent || sceneBrief.characters || []
       const sceneBlockFor = (text: string) => `SCENE BRIEF:
-- Title: ${sceneBrief.title}
-- Emotional goal: ${sceneBrief.emotionalGoal}
-- Characters present: ${sceneBrief.charactersPresent.join(', ')}
-- Payoff: ${sceneBrief.payoff}
-- Tension: ${sceneBrief.tension}
+- Title: ${briefLine(sceneBrief.title)}
+- Emotional goal: ${briefLine(sceneBrief.emotionalGoal ?? sceneBrief.goal)}
+- Characters present: ${briefLine(cast.join(', '))}
+- Payoff: ${briefLine(sceneBrief.payoff ?? sceneBrief.change)}
+- Tension: ${briefLine(sceneBrief.tension ?? sceneBrief.obstacle)}
 
 CHAPTER LOG (previous events):
 ${chapterLog || '(First scene)'}
@@ -1126,7 +1133,13 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
         advisoryDimensions,
         advisoryBelowFloor: verdict.advisoryBelowFloor
       }
-    } catch {
+    } catch (err) {
+      // Never silent: a bug here (not a model failure) looked exactly like an
+      // unparseable critic for every continuation scene (§47).
+      console.warn(
+        '[useStoryCritic] Scene evaluation threw — the quality gate did NOT run for this scene:',
+        err
+      )
       return {
         pass: true,
         score: null,

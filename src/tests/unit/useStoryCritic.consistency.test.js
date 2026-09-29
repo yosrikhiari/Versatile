@@ -79,6 +79,30 @@ describe('Critic Consistency — evaluateScene parsing & scoring', () => {
     expect(result.strengths).toEqual(['Engaging'])
   })
 
+  it('judges a continuation brief (goal / characters), not only a planner brief (§47)', async () => {
+    // What If and "continue writing" send this shape; reading
+    // charactersPresent.join on it threw, and every such scene went unjudged.
+    mockAiGenerate.mockResolvedValue(makeResponse({ score: 8 }))
+    const { briefForScene } = await import('@/composables/generation/continuation/plan')
+    const { useStoryCritic } = await import('@/composables/useStoryCritic')
+    const sceneBrief = briefForScene(
+      { sceneNumber: 2, title: 'The Morlocks', brief: 'He hides in the ruins.', chapterTitle: 'X' },
+      null,
+      1200
+    )
+    const result = await useStoryCritic().evaluateScene({
+      draft: 'Scene text.',
+      sceneBrief,
+      storyBible: 'Bible',
+      chapterLog: ''
+    })
+    expect(result.evalUnavailable).toBeUndefined()
+    expect(result.score).toBe(8)
+    const prompt = String(mockAiGenerate.mock.calls[0][0])
+    expect(prompt).toContain('Emotional goal: He hides in the ruins.')
+    expect(prompt).not.toContain('undefined')
+  })
+
   it('flags scene as not-passing when major issues exist', async () => {
     mockAiGenerate.mockResolvedValue(
       makeResponse({
