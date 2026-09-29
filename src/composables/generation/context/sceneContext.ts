@@ -1,5 +1,5 @@
 import { getEmbedding } from '../../../services/embeddingService'
-import { lastParagraph } from '../../../services/generation/precedingEnding'
+import { precedingEnding, tenseNote } from '../../../services/generation/precedingEnding'
 import { cosineSimilarity } from '../../../services/ollamaService'
 import { multiHopRetrieval as multiHopRetrieve } from '../../../services/ragMultiHopRetrieval'
 import { formatCitationContext } from '../../../services/ragCitationInjector'
@@ -300,12 +300,13 @@ function buildEmbeddingContext(currentScene: any, priorScenes: any, budgetTokens
 
   const precedingScene = priorScenes.at(-1)
   if (precedingScene) {
-    // Its last paragraph only (§48): the writer copied the 1,200-character
-    // ending it used to be shown.
-    const endingExcerpt = lastParagraph(precedingScene.prose)
+    // Its last paragraph in its own tense only (§48): the writer copied the
+    // 1,200-character ending it used to be shown, and takes its tense from
+    // whatever paragraph it is shown.
+    const ending = precedingEnding(precedingScene.prose)
     // Already in the book: the new scene starts after it, and must not
     // repeat it (§47 -- the writer copies this excerpt otherwise).
-    context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}" — already written; start after it, do not repeat it]\n${endingExcerpt}\n\n`
+    context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}" — already written; start after it, do not repeat it${tenseNote(ending.tense)}]\n${ending.text}\n\n`
   }
 
   const olderScene = priorScenes.at(-2)
@@ -488,8 +489,8 @@ async function buildBaseRetrievalContext(
     let context = ''
     const preceding = priorScenes.at(-1)
     if (preceding) {
-      const end = lastParagraph(preceding.prose)
-      context += `[Ending of Preceding Scene ${preceding.sceneNumber}: "${preceding.title}" — already written; start after it, do not repeat it]\n${end}\n\n`
+      const end = precedingEnding(preceding.prose)
+      context += `[Ending of Preceding Scene ${preceding.sceneNumber}: "${preceding.title}" — already written; start after it, do not repeat it${tenseNote(end.tense)}]\n${end.text}\n\n`
     }
 
     const others = top.filter((s) => s !== preceding)

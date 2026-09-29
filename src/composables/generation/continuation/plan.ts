@@ -1,5 +1,5 @@
 import { countWords, stripHtmlTags } from '../../../utils/textUtils'
-import { lastParagraph } from '../../../services/generation/precedingEnding'
+import { precedingEnding, tenseNote } from '../../../services/generation/precedingEnding'
 /**
  * Working out what a continuation run should do, from what is already on disk.
  *
@@ -170,12 +170,15 @@ export function neighbourContext(survey: ContinuationSurvey, index: number, maxS
     .filter((s) => s.summary && s.summary.trim())
     .map((s) => `- ${s.chapterTitle} — "${s.title}": ${s.summary.trim()}`)
 
+  // The last paragraph in the scene's own tense, and that tense named: the
+  // writer takes its tense from this excerpt (§48).
+  const ending = precedingEnding(String(last.prose))
   return [
     earlier.length ? `EARLIER SCENES (summaries):\n${earlier.join('\n')}` : '',
     // Not "continue from it": the writer read that as "start with it" and
     // copied the text it was shown (§47).
-    `HOW THE PRECEDING SCENE ENDS (${last.chapterTitle} — "${last.title}"; already written and canon; the new scene starts AFTER this — do not repeat, quote or paraphrase it):\n` +
-      lastParagraph(String(last.prose))
+    `HOW THE PRECEDING SCENE ENDS (${last.chapterTitle} — "${last.title}"; already written and canon; the new scene starts AFTER this — do not repeat, quote or paraphrase it${tenseNote(ending.tense)}):\n` +
+      ending.text
   ]
     .filter(Boolean)
     .join('\n\n')

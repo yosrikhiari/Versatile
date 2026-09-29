@@ -136,6 +136,19 @@ describe('neighbourContext', () => {
     expect(ctx).toContain('Ethan meets Mattie.')
   })
 
+  it('names the tense of the scene before, and does not show a slipped last paragraph (§48)', () => {
+    const past =
+      '<p>I walked to the door and looked out. The yard was empty; I stood and waited.</p>'
+    const slip = '<p>Then I move, slow and sure. The silence is thick; I step forward and wait.</p>'
+    const s3 = surveyManuscript(
+      [section('a', 'One', 0)],
+      [sub('s1', 'a', 'First', 0, past.repeat(5) + slip), sub('s2', 'a', 'Second', 1, '')]
+    )
+    const ctx = neighbourContext(s3, 1)
+    expect(ctx).toContain('told in the past tense')
+    expect(ctx).not.toContain('Then I move')
+  })
+
   it('tells the writer the new scene starts after this text, not with it (§47)', () => {
     const ctx = neighbourContext(survey, 1)
     expect(ctx).toContain('starts AFTER this')
