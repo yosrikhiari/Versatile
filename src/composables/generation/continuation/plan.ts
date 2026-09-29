@@ -1,4 +1,5 @@
 import { countWords, stripHtmlTags } from '../../../utils/textUtils'
+import { lastParagraph } from '../../../services/generation/precedingEnding'
 /**
  * Working out what a continuation run should do, from what is already on disk.
  *
@@ -30,6 +31,8 @@ export interface ManuscriptScene {
   /** Title of the chapter this scene belongs to. */
   chapterTitle: string
   chapterSummary: string
+  /** The scene's own summary (its row's, or the writer's once written). */
+  summary: string
 }
 
 export interface ContinuationSurvey {
@@ -77,7 +80,8 @@ export function surveyManuscript(sections: any[], subsections: any[]): Continuat
         contentStatus: sub.contentStatus || (hasProse(sub) ? 'generated' : 'pending'),
         sceneNumber: sub.sceneNumber || scenes.length + 1,
         chapterTitle: section.title || '',
-        chapterSummary: section.summary || ''
+        chapterSummary: section.summary || '',
+        summary: sub.summary || ''
       })
     }
   }
@@ -142,42 +146,39 @@ export function briefForScene(
 }
 
 /**
- * Prose the model should read before writing at `index`.
+ * What the model reads about the scenes before `index` (§48): the last
+ * paragraph of the scene just before, word for word, so the new text joins
+ * it -- and only summaries of the ones before that.
  *
- * Continuation is only worth anything if the new text joins the old text, so the
- * scene immediately before is always included when it exists; the rest of the
- * budget goes to the most recent prose before that.
+ * It used to be the last 1,200 characters of each of the three scenes
+ * before, under "continue from it". The writer copied those tails into the
+ * new scene (§46-§47): 7 of 8 chapters of a live branch, and 2,511 words the
+ * copy guard had to remove on the next one even with a "do not repeat"
+ * header. What is not shown cannot be copied.
  */
-export function neighbourContext(
-  survey: ContinuationSurvey,
-  index: number,
-  maxScenes = 3,
-  maxCharsPerScene = 1200
-): string {
+export function neighbourContext(survey: ContinuationSurvey, index: number, maxScenes = 3): string {
   const before = survey.scenes
     .slice(0, index)
     .filter((s) => s.wordCount > 0)
     .slice(-maxScenes)
 
-  if (before.length === 0) return ''
+  const last = before.at(-1)
+  if (!last) return ''
 
-  const parts = before.map((s) => {
-    const text = stripHtmlTags(String(s.prose))
-    // The tail, not the head: what a scene has to continue from is how the
-    // previous one ended.
-    const excerpt =
-      text.length > maxCharsPerScene
-        ? '…' + text.slice(text.length - maxCharsPerScene).replace(/^\S*\s/, '')
-        : text
-    return `[${s.chapterTitle} — "${s.title}"]\n${excerpt}`
-  })
+  const earlier = before
+    .slice(0, -1)
+    .filter((s) => s.summary && s.summary.trim())
+    .map((s) => `- ${s.chapterTitle} — "${s.title}": ${s.summary.trim()}`)
 
-  return (
+  return [
+    earlier.length ? `EARLIER SCENES (summaries):\n${earlier.join('\n')}` : '',
     // Not "continue from it": the writer read that as "start with it" and
-    // copied these tails into the new scene, up to 208 words at a time (§47).
-    'HOW THE PRECEDING SCENES END (already written and canon; the new scene starts AFTER this — do not repeat, quote or paraphrase any of it):\n' +
-    parts.join('\n\n')
-  )
+    // copied the text it was shown (§47).
+    `HOW THE PRECEDING SCENE ENDS (${last.chapterTitle} — "${last.title}"; already written and canon; the new scene starts AFTER this — do not repeat, quote or paraphrase it):\n` +
+      lastParagraph(String(last.prose))
+  ]
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 export interface ContinuationReport {

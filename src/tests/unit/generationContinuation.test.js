@@ -111,6 +111,31 @@ describe('neighbourContext', () => {
     expect(ctx).toContain('canon')
   })
 
+  it('shows the last paragraph of the scene before and only summaries of older ones (§48)', () => {
+    const s3 = surveyManuscript(
+      [section('a', 'One', 0)],
+      [
+        {
+          ...sub('s1', 'a', 'First', 0, '<p>Old prose the writer must not see.</p>'),
+          summary: 'Ethan meets Mattie.'
+        },
+        sub(
+          's2',
+          'a',
+          'Second',
+          1,
+          '<p>A long middle paragraph.</p><p>The gate closed behind him.</p>'
+        ),
+        sub('s3', 'a', 'Third', 2, '')
+      ]
+    )
+    const ctx = neighbourContext(s3, 2)
+    expect(ctx).toContain('The gate closed behind him.')
+    expect(ctx).not.toContain('A long middle paragraph')
+    expect(ctx).not.toContain('Old prose')
+    expect(ctx).toContain('Ethan meets Mattie.')
+  })
+
   it('tells the writer the new scene starts after this text, not with it (§47)', () => {
     const ctx = neighbourContext(survey, 1)
     expect(ctx).toContain('starts AFTER this')

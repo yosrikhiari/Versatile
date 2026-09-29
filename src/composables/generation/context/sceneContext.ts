@@ -1,4 +1,5 @@
 import { getEmbedding } from '../../../services/embeddingService'
+import { lastParagraph } from '../../../services/generation/precedingEnding'
 import { cosineSimilarity } from '../../../services/ollamaService'
 import { multiHopRetrieval as multiHopRetrieve } from '../../../services/ragMultiHopRetrieval'
 import { formatCitationContext } from '../../../services/ragCitationInjector'
@@ -37,9 +38,6 @@ function retrievalBudgetTokens(numCtx?: number): number {
   )
   return Math.max(RETRIEVAL_MIN_TOKENS, Math.round(usable * RETRIEVAL_BUDGET_SHARE))
 }
-
-/** How much of the immediately preceding scene's ending is carried verbatim. */
-const PRECEDING_ENDING_CHARS = 1200
 
 const CONSISTENCY_FIX_ROUNDS = 2
 const CONSISTENCY_FIX_MAX_SCENES = 3
@@ -302,10 +300,9 @@ function buildEmbeddingContext(currentScene: any, priorScenes: any, budgetTokens
 
   const precedingScene = priorScenes.at(-1)
   if (precedingScene) {
-    const endingExcerpt =
-      precedingScene.prose.length > PRECEDING_ENDING_CHARS
-        ? '...' + precedingScene.prose.slice(-PRECEDING_ENDING_CHARS)
-        : precedingScene.prose
+    // Its last paragraph only (§48): the writer copied the 1,200-character
+    // ending it used to be shown.
+    const endingExcerpt = lastParagraph(precedingScene.prose)
     // Already in the book: the new scene starts after it, and must not
     // repeat it (§47 -- the writer copies this excerpt otherwise).
     context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}" — already written; start after it, do not repeat it]\n${endingExcerpt}\n\n`
@@ -491,11 +488,8 @@ async function buildBaseRetrievalContext(
     let context = ''
     const preceding = priorScenes.at(-1)
     if (preceding) {
-      const end =
-        preceding.prose.length > PRECEDING_ENDING_CHARS
-          ? '...' + preceding.prose.slice(-PRECEDING_ENDING_CHARS)
-          : preceding.prose
-      context += `[Ending of Preceding Scene ${preceding.sceneNumber}: "${preceding.title}"]\n${end}\n\n`
+      const end = lastParagraph(preceding.prose)
+      context += `[Ending of Preceding Scene ${preceding.sceneNumber}: "${preceding.title}" — already written; start after it, do not repeat it]\n${end}\n\n`
     }
 
     const others = top.filter((s) => s !== preceding)

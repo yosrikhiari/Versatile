@@ -2444,10 +2444,13 @@ export function useVolumeStoryGenerator() {
         target.prose = prose
         target.wordCount = wordCount
 
+        const summary = await computeSummary(prose, chosenStructured)
+        // The next scene is shown this summary, not this scene's prose (§48).
+        target.summary = summary
         writtenScenes.value[target.index] = {
           title: target.title,
           prose,
-          summary: await computeSummary(prose, chosenStructured),
+          summary,
           characters: scene.charactersPresent || scene.characters || [],
           location: scene.location || '',
           sceneNumber: target.sceneNumber,

@@ -476,13 +476,21 @@ describe('buildEmbeddingContext', () => {
     expect(result).toContain('Summary of scene 2')
   })
 
-  it('truncates preceding scene prose if longer than 1200 chars', () => {
-    const longProse = 'x'.repeat(1500)
+  it('shows only the last paragraph of the preceding scene, at most 500 chars (§48)', () => {
+    // The writer copied the 1,200-character ending it used to be shown.
+    const early = 'The first paragraph is long and old. '.repeat(20)
+    const lastPara = 'She closed the door. ' + 'The lamp went out. '.repeat(40)
     const current = makeScene(3, 'Scene 3', 'test')
-    const prior = [makeScene(1, 'Scene 1', 'prose'), makeScene(2, 'Scene 2', longProse)]
+    const prior = [
+      makeScene(1, 'Scene 1', 'prose'),
+      makeScene(2, 'Scene 2', `${early}\n\n${lastPara}`)
+    ]
     const result = buildEmbeddingContext(current, prior)
-    expect(result.length).toBeLessThan(1500)
-    expect(result).toContain('...' + 'x'.repeat(1200))
+    expect(result).not.toContain('The first paragraph')
+    expect(result).toContain('The lamp went out.')
+    const ending = result.split('do not repeat it]\n')[1].split('\n')[0]
+    expect(ending.length).toBeLessThanOrEqual(501)
+    expect(ending.startsWith('…The lamp')).toBe(true)
   })
 
   it('uses prose slice when summary is missing for older scene', () => {
