@@ -153,6 +153,18 @@ describe('neighbourContext', () => {
 })
 
 describe('sessionConfigForRun', () => {
+  it('budgets every section of long scenes: a What If branch of long chapters is not cut short (§48)', async () => {
+    const { sectionsForScene } = await import('@/composables/generation/sceneChunker')
+    expect(sectionsForScene(800)).toBe(1)
+    expect(sectionsForScene(2600)).toBe(3)
+    expect(sectionsForScene(10000)).toBe(4)
+    // The live branch: 8 chapters of ~2,600 words, each section judged by the
+    // focused critic at ~15 calls. The old sizing (8 scenes, 8 calls each)
+    // stopped at 228 calls, after 5 chapters.
+    const cfg = sessionConfigForRun({ chapters: 3, scenes: 8 * sectionsForScene(2600) })
+    expect(cfg.hardCapCalls).toBeGreaterThanOrEqual(8 * 3 * 15 * 2)
+  })
+
   it('scales with the requested structure instead of a fixed ceiling', () => {
     const small = sessionConfigForRun({ chapters: 1, scenes: 3 })
     const novel = sessionConfigForRun({ chapters: 100, scenes: 300 })

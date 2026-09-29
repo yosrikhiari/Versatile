@@ -90,6 +90,7 @@ import {
   describeFinalizeReport
 } from '../services/generation/finalizeArtifacts'
 import { RunHealth, describeRunHealth } from '../services/generation/runHealth'
+import { sectionsForScene } from './generation/sceneChunker'
 import { mapPlanScenes } from '../services/generation/planScenes'
 import { writeSceneAnalysis } from '../services/generation/sceneAnalysis'
 import { buildSceneAnalysisInput } from '../services/generation/sceneAnalysisInput'
@@ -2494,7 +2495,12 @@ export function useVolumeStoryGenerator() {
   }
 
   /** Shared setup for every continuation run. */
-  async function beginContinuation(projectId: any, label: string, sceneCount: number) {
+  async function beginContinuation(
+    projectId: any,
+    label: string,
+    sceneCount: number,
+    wordsPerScene?: number
+  ) {
     abort.renew()
     isCancelling.value = false
     clearPauseState()
@@ -2508,7 +2514,12 @@ export function useVolumeStoryGenerator() {
     currentTaskId = actLog.addTask({ name: label, type: 'generation' })
     progress.current = 0
     progress.total = sceneCount
-    sizeSessionBudget({ chapters: Math.max(1, Math.ceil(sceneCount / 3)), scenes: sceneCount })
+    // A long scene is written in sections, each with its own writer call and
+    // critique: budget those, or a run of long chapters runs out part-way (§48).
+    sizeSessionBudget({
+      chapters: Math.max(1, Math.ceil(sceneCount / 3)),
+      scenes: sceneCount * sectionsForScene(wordsPerScene)
+    })
     return useStoryDocuments().getStoryDocumentContext(projectId)
   }
 
@@ -2546,7 +2557,12 @@ export function useVolumeStoryGenerator() {
 
     const run = await getGenRun(projectId)
     const checkpointPlan = Array.isArray(run?.state?.scenePlan) ? run.state.scenePlan : null
-    const storyBibleDocs = await beginContinuation(projectId, 'Continue drafting', targets.length)
+    const storyBibleDocs = await beginContinuation(
+      projectId,
+      'Continue drafting',
+      targets.length,
+      targetWords || 1200
+    )
 
     try {
       const report = await writeScenesInto(targets, {
@@ -2612,7 +2628,7 @@ export function useVolumeStoryGenerator() {
             themes: profile.themes
           }
         : null)
-    await beginContinuation(projectId, 'Write What If', targets.length)
+    await beginContinuation(projectId, 'Write What If', targets.length, targetWords || 1200)
     try {
       const report = await writeScenesInto(targets, {
         projectId,

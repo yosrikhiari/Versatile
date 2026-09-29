@@ -321,7 +321,12 @@ const DEFAULT_SESSION_CONFIG: Required<SessionBudgetConfig> = {
  * a book, which is far worse than letting a legitimate run finish.
  */
 const CALLS_PER_CHAPTER = 4
-const CALLS_PER_SCENE = 8
+// Per written unit -- a scene, or a section of a long one (sectionsForScene).
+// Measured (§48): the focused critic, the default since §24, asks one call per
+// dimension plus the continuity and emotion checks, so a judged section costs
+// ~15 calls. At 8, a What If branch of 8 long chapters hit the hard cap after
+// 5 and the last 3 chapters were never written.
+const CALLS_PER_SCENE = 16
 const TOKENS_PER_CHAPTER = 6_000
 const TOKENS_PER_SCENE = 40_000
 /** Headroom over the estimate before the ceiling bites. */
