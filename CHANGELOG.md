@@ -7,6 +7,17 @@ was verified.
 
 ## [Unreleased]
 
+### Repetition check; a live branch on the new checks (2026-09-29)
+- **A rewritten scene that copies another scene is flagged** (§46,
+  `services/whatIf/repetition.ts`). Code compares six-word phrases between
+  scenes: no two chapters of either original book share a run over 12
+  words; a run of 25 or 5% of phrases is flagged "needs review", and
+  Rewrite this scene is told not to reuse the passage. On a live branch 7 of
+  8 rewritten chapters repeated earlier ones (runs of 39-208 words).
+- **Person and tense held on a live branch**: the same premise that drifted
+  to the third person in all 7 chapters of branch 16 kept the first person
+  and the past tense in all 8 rewrites once the briefs carried the rules.
+
 ### Tense drift check (2026-09-29)
 - **A rewrite keeps its original's tense** (§45,
   `services/whatIf/tense.ts`). Code counts 56 paired past/present verb forms

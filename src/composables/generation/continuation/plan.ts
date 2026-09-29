@@ -173,7 +173,9 @@ export function neighbourContext(
   })
 
   return (
-    'IMMEDIATELY PRECEDING PROSE (this is already written and is canon — continue from it):\n' +
+    // Not "continue from it": the writer read that as "start with it" and
+    // copied these tails into the new scene, up to 208 words at a time (§47).
+    'HOW THE PRECEDING SCENES END (already written and canon; the new scene starts AFTER this — do not repeat, quote or paraphrase any of it):\n' +
     parts.join('\n\n')
   )
 }

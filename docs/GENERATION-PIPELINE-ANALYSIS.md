@@ -2609,3 +2609,52 @@ Not measured: how often the writer (qwen3:8b / the prose model) actually
 slips tense. Branch 16's read-through (§43) found person drift, not tense
 drift; this check is prevention plus a net, and its rate on real rewrites
 is the next count to take.
+
+## 46. A live branch after §44-§45, and repetition across chapters (2026-09-29)
+
+The browser pane's storage had been reset, so both books were imported and
+read again (The Time Machine: 16.2 min, 12 characters, 22 places, 23 links)
+and branch 16's premise written again on the new code: "What if Weena
+stays behind with the Eloi instead of following the Time Traveller?",
+forked at "Explanation". Plan 6.8 min (7 chapters rewritten, 1 kept, 1
+dropped, plus the Epilogue), writing 60.3 min (branch 16: 78.6).
+
+**Person and tense: 0 of 8 flagged.** Every rewrite stayed first person
+(rate 60-78) and past tense (97-100%); branch 16, without the brief rules,
+drifted to the third person in all 7 of its rewritten chapters.
+
+**Who-is-where: 1 flag, a false alarm.** The Epilogue's "Weena's absence
+gnawed through the quiet" -- but the next sentence is "The Eloi had taken
+her, or she'd chosen them": absent from the narrator, still among the Eloi,
+as the premise says.
+
+**A defect no check saw: repetition across chapters.** "When Night Came"
+opened with the first 1,173 characters of "The Morlocks", word for word.
+
+**Measure, by code** (`services/whatIf/repetition.ts`): six-word phrases
+(lower case, punctuation dropped) two scenes share, as a share of the
+smaller scene's, and the longest run of words they have in common.
+Calibration: within each original book no two chapters share a run over
+12 words or 0.66% of their phrases (202 pairs: "the world of Eight Hundred
+and Two Thousand Seven Hundred and One" is the longest); the generated
+corpus runs stay at <= 12 words and <= 3.2%, except one book where chapter
+6 and chapter 7 share a 190-word passage (and another pair 34) -- the
+main writer copies too, not only What If. Threshold: a run of >= 25 words
+or >= 5% of phrases.
+
+**On the branch: 7 of 8 rewritten chapters repeat earlier ones**, runs of
+39 to 208 words; only the first chapter written is clean. The writer
+carries whole passages forward from the chapters it has just written. Where
+it is shown them is in the shared continuation pipeline
+(`writeScenesInto`); that is the cause to fix next, and the check below is
+the net.
+
+**In the product.** `verify` compares each written scene with every scene
+of the branch before it and with the kept scenes after it (never with its
+own original: a rewrite may keep the original's sentences); of two written
+scenes the later carries the flag, so rewriting it fixes the pair. The
+flag ("Repeats 208 words of "The Morlocks": ...") marks the scene "needs
+review"; Rewrite this scene adds a NEW WORDS rule naming the chapters and
+the start of the passage; the re-check clears it. Tests fail without the
+detection, when both scenes of a pair are flagged, without the brief rule,
+and when the flag is never cleared (4 mutations).

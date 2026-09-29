@@ -241,6 +241,11 @@ Clean Architecture, one solution (`Versatile.slnx`):
   or a past-tense rewrite with at least two more present-tense paragraphs
   than its original (paired verb forms such as "was / is", speech removed).
 
+- **Repetition** (`repetition.ts`): each written scene is compared with the
+  other scenes of the branch (six-word phrases; a shared run of 25 words or
+  5% of phrases), the later of two written scenes carries the flag, and
+  Rewrite this scene is told which passage not to reuse.
+
 - **Editor invariant (branch switches)**: loading a scene into the editor is
   not an edit (`setContent(..., { emitUpdate: false })`, TipTap 3 emits by
   default); a reload drops an open id that is no longer loaded; the autosave
@@ -251,7 +256,7 @@ Clean Architecture, one solution (`Versatile.slnx`):
 
 Every step above was measured on real books before it shipped; the numbers,
 and the designs that were tried and dropped, are in
-`docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§45; the same story with diagrams is
+`docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§46; the same story with diagrams is
 `docs/REPORT.md`.
 
 ## Deployment

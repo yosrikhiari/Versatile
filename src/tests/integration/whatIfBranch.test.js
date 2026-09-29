@@ -65,9 +65,13 @@ vi.mock('@/composables/useVolumeStoryGenerator', () => ({
       const { useBranchStore } = await import('@/stores/branchStore')
       const branchId = useBranchStore().activeBranchId
       const blank = await db.subsections.where({ projectId: args.projectId, branchId }).toArray()
+      // __writerText: one text for every scene, or a function of the row
+      // (so a test can give one scene its own text and not trip §46).
+      const text = globalThis.__writerText
       for (const s of blank.filter((x) => x.contentStatus === 'pending')) {
         await db.subsections.update(s.id, {
-          content: globalThis.__writerText || '<p>Zeena stays by the stove.</p>',
+          content:
+            (typeof text === 'function' ? text(s) : text) || '<p>Zeena stays by the stove.</p>',
           contentStatus: 'generated'
         })
       }
@@ -118,6 +122,9 @@ beforeEach(async () => {
     await db[t].clear()
   }
 })
+
+/** Writer text for scene 3 only; every other scene gets the default. */
+const only3 = (text) => (row) => (row.sceneNumber === 3 ? text : null)
 
 async function book() {
   const { decodeFile } = await import('@/services/import/decoders')
@@ -310,7 +317,7 @@ describe('What If as a branch', () => {
     church.action = 'revise'
     church.brief = 'The village gathers.'
     await w.savePlan(branch.id, plan)
-    globalThis.__writerText = thirdPerson
+    globalThis.__writerText = only3(thirdPerson)
     try {
       const written = await w.write(projectId, branch.id)
       const scene = written.scenes.find((s) => s.sceneNumber === 3)
@@ -322,7 +329,7 @@ describe('What If as a branch', () => {
       expect(scene.outcome).toBe('written, needs review')
       expect(row.contentStatus).toBe('review')
       // Rewrite this scene carries the rule; a first-person rewrite clears it
-      globalThis.__writerText = firstPerson
+      globalThis.__writerText = only3(firstPerson)
       const again = await w.rewriteScene(projectId, branch.id, scene.subsectionId)
       const fixed = again.scenes.find((s) => s.sceneNumber === 3)
       expect((await db.subsections.get(scene.subsectionId)).description).toContain(
@@ -353,7 +360,7 @@ describe('What If as a branch', () => {
     church.action = 'revise'
     church.brief = 'The village gathers.'
     await w.savePlan(branch.id, plan)
-    globalThis.__writerText = present
+    globalThis.__writerText = only3(present)
     try {
       const written = await w.write(projectId, branch.id)
       const scene = written.scenes.find((s) => s.sceneNumber === 3)
@@ -374,7 +381,7 @@ describe('What If as a branch', () => {
           2
         ) +
         para('He walked to the church and waited by the door. The yard was empty; he stood there.')
-      globalThis.__writerText = slid
+      globalThis.__writerText = only3(slid)
       const again = await w.rewriteScene(projectId, branch.id, scene.subsectionId)
       const partly = again.scenes.find((s) => s.sceneNumber === 3)
       expect((await db.subsections.get(scene.subsectionId)).description).toContain(
@@ -384,12 +391,52 @@ describe('What If as a branch', () => {
       expect(partly.tenseSlip).toMatchObject({ added: 2 })
       expect(partly.outcome).toBe('written, needs review')
       // and a past-tense rewrite clears it
-      globalThis.__writerText = past
+      globalThis.__writerText = only3(past)
       const fixed = (await w.rewriteScene(projectId, branch.id, scene.subsectionId)).scenes.find(
         (s) => s.sceneNumber === 3
       )
       expect(fixed.tenseSlip).toBeUndefined()
       expect(fixed.outcome).toBe('written')
+    } finally {
+      delete globalThis.__writerText
+    }
+  })
+
+  it('a written scene that repeats a passage of another scene is flagged, and rewritten without it (§46)', async () => {
+    const { projectId, main, bySceneNo } = await book()
+    const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')
+    const w = useWhatIfBranch()
+    const branch = await w.fork(projectId, main, bySceneNo[2].id, 'What if Zeena stayed home?')
+    const plan = await w.plan(projectId, branch.id)
+    for (const n of [3, 4]) {
+      const s = plan.scenes.find((x) => x.sceneNumber === n)
+      s.action = 'revise'
+      s.brief = n === 3 ? 'The village gathers.' : 'They ride down the hill.'
+    }
+    await w.savePlan(branch.id, plan)
+    // the writer copies the same passage into both chapters (3 and 4)
+    const passage =
+      '<p>The air was thick with the scent of damp earth and crushed grass, and Ethan moved through the snow with the weight of his own silence pressing against him like a hand on his chest.</p>'
+    globalThis.__writerText = (row) => (row.sceneNumber >= 3 ? passage : null)
+    try {
+      const written = await w.write(projectId, branch.id)
+      const church = written.scenes.find((s) => s.sceneNumber === 3)
+      const sled = written.scenes.find((s) => s.sceneNumber === 4)
+      // the later of the two carries the flag; the earlier is left alone
+      expect(church.repeats).toBeUndefined()
+      expect(sled.repeats).toHaveLength(1)
+      expect(sled.repeats[0]).toMatchObject({ with: 'Two', subsectionId: church.subsectionId })
+      expect(sled.repeats[0].run).toBeGreaterThanOrEqual(25)
+      expect(sled.outcome).toBe('written, needs review')
+      // Rewrite this scene says what not to repeat; new words clear it
+      globalThis.__writerText =
+        '<p>They took the sled to the top of School House Hill, and Mattie laughed when the runners caught.</p>'
+      const again = await w.rewriteScene(projectId, branch.id, sled.subsectionId)
+      const brief = (await db.subsections.get(sled.subsectionId)).description
+      expect(brief).toContain('- NEW WORDS:')
+      expect(brief).toContain('"Two"')
+      const fixed = again.scenes.find((s) => s.sceneNumber === 4)
+      expect(fixed.repeats).toBeUndefined()
     } finally {
       delete globalThis.__writerText
     }

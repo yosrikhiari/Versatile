@@ -42,6 +42,7 @@ import {
 } from '../services/whatIf/presence'
 import { narrativePerson, povDrift, povRule } from '../services/whatIf/pov'
 import { narrativeTense, presentStretch, tenseDrift, tenseRule } from '../services/whatIf/tense'
+import { isRepeat, overlap } from '../services/whatIf/repetition'
 import { FEATURES } from '../config/ai'
 import {
   PLAN_SYSTEM,
@@ -519,7 +520,51 @@ export function useWhatIfBranch() {
       s.outcome = 'written, needs review'
       await updateSubsection(s.subsectionId as string, { contentStatus: 'review' })
     }
+    await flagRepeats(projectId, planned, isOnly)
     whatIfState.detail = ''
+  }
+
+  /**
+   * Repetition across scenes (§46): a written scene that repeats a passage of
+   * another scene of the branch -- on a live branch the writer opened one
+   * chapter with the first 1,173 characters of the chapter before. Each
+   * written scene is compared with every scene before it and with the kept
+   * scenes after it; of two written scenes, the later carries the flag, so
+   * rewriting it fixes the pair. Code only, no model call.
+   */
+  async function flagRepeats(projectId: Id, planned: WhatIfPlan, isOnly: (id: Id) => boolean) {
+    const isWritten = (s: PlannedScene) => String(s.outcome || '').startsWith('written')
+    const todo = planned.scenes.filter((s) => isWritten(s) && isOnly(s.subsectionId))
+    if (!todo.length) return
+    const first = await tables.subsections.get(todo[0].subsectionId)
+    const order = await branchScenes(projectId, first?.branchId as Id)
+    const written = new Set(planned.scenes.filter(isWritten).map((s) => String(s.subsectionId)))
+    const rows = await Promise.all(order.map((o) => tables.subsections.get(o.subsectionId)))
+    const text = order.map((_, i) => stripHtmlBlock(String(rows[i]?.content || '')))
+    for (const s of todo) {
+      const at = order.findIndex((o) => String(o.subsectionId) === String(s.subsectionId))
+      if (at < 0) continue
+      const repeats: NonNullable<PlannedScene['repeats']> = []
+      order.forEach((o, i) => {
+        if (i === at || (i > at && written.has(String(o.subsectionId)))) return
+        const found = overlap(text[at], text[i])
+        if (!isRepeat(found)) return
+        repeats.push({
+          with: o.chapterTitle,
+          subsectionId: o.subsectionId,
+          run: found.longestRun,
+          share: Math.round(found.share * 1000) / 1000,
+          sample: found.sample
+        })
+      })
+      if (!repeats.length) {
+        delete s.repeats
+        continue
+      }
+      s.repeats = repeats.sort((a, b) => b.run - a.run).slice(0, 3)
+      s.outcome = 'written, needs review'
+      await updateSubsection(s.subsectionId as string, { contentStatus: 'review' })
+    }
   }
 
   /** The writer, on the branch, over its blank scenes (each with its brief). */
@@ -736,6 +781,7 @@ export function useWhatIfBranch() {
         delete s.povDrift
         delete s.tenseDrift
         delete s.tenseSlip
+        delete s.repeats
       }
       await verify(projectId, planned)
       await saveMeta(branchId, { plan: planned })

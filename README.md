@@ -50,7 +50,7 @@ Nothing leaves the device unless you opt in — the cloud tier is per-project an
 - **Rewrite this scene** writes a flagged scene again with the missing event as a rule in its brief, checks only that scene, and keeps the old text for **Undo** ([flow](docs/img/diagrams/whatif-rewrite-scene.svg)).
 - The planner decides each scene from its summary, then takes a **second look** at any scene it would keep, reading that scene's own sentences about the people the change is about ([why](docs/img/diagrams/whatif-planner-second-look.svg)).
 
-How each part was measured, including what did not work, is in [`docs/REPORT.md`](docs/REPORT.md) (the full report, with its 174 diagrams) and `docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§45. The design is in `ARCHITECTURE.md` and `docs/WHATIF-AND-IMPORT-PLAN.md`.
+How each part was measured, including what did not work, is in [`docs/REPORT.md`](docs/REPORT.md) (the full report, with its 178 diagrams) and `docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§46. The design is in `ARCHITECTURE.md` and `docs/WHATIF-AND-IMPORT-PLAN.md`.
 
 ### Knowing your story (Obsidian-style)
 

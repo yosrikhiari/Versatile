@@ -306,7 +306,9 @@ function buildEmbeddingContext(currentScene: any, priorScenes: any, budgetTokens
       precedingScene.prose.length > PRECEDING_ENDING_CHARS
         ? '...' + precedingScene.prose.slice(-PRECEDING_ENDING_CHARS)
         : precedingScene.prose
-    context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}"]\n${endingExcerpt}\n\n`
+    // Already in the book: the new scene starts after it, and must not
+    // repeat it (§47 -- the writer copies this excerpt otherwise).
+    context += `[Ending of Preceding Scene ${precedingScene.sceneNumber}: "${precedingScene.title}" — already written; start after it, do not repeat it]\n${endingExcerpt}\n\n`
   }
 
   const olderScene = priorScenes.at(-2)

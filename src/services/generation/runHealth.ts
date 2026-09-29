@@ -59,6 +59,12 @@ export type DegradationKind =
   /** A quality gate raised blocking flags (prose quality, run-level floor). */
   | 'gate_failed'
   /**
+   * The writer copied prose it was shown as context (how the preceding scenes
+   * end) and the copied sentences were removed (§47). The scene is repaired,
+   * not degraded -- but a run full of them is a prompt problem.
+   */
+  | 'copied_context'
+  /**
    * A scene still failed critique after every retry and its best attempt was
    * kept for review. Its own kind so the streak means "consecutive scenes the
    * critic rejected" — the signal the quality floor reads.

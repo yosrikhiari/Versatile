@@ -249,3 +249,30 @@ describe('rewriteBrief keeps the original tense (§45)', () => {
     expect(rewriteBrief(s, 'unclear', 'unclear')).toBe('He hides in the ruins.')
   })
 })
+
+describe('rewriteBrief names the passages not to repeat (§46)', () => {
+  it('adds one NEW WORDS rule naming each chapter once and the start of the passage', () => {
+    const s = {
+      ...scene(9, 'When Night Came'),
+      action: 'revise',
+      brief: 'Night falls.',
+      reason: '',
+      repeats: [
+        {
+          with: 'The Morlocks',
+          subsectionId: 5,
+          run: 190,
+          share: 0.2,
+          sample: 'The air was thick'
+        },
+        { with: 'The Morlocks', subsectionId: 5, run: 30, share: 0.05, sample: 'I climbed' }
+      ]
+    }
+    const brief = rewriteBrief(s)
+    expect(brief).toContain(
+      '- NEW WORDS: the last version repeated a passage of "The Morlocks" ("The air was thick...")'
+    )
+    expect(brief.match(/The Morlocks/g)).toHaveLength(1)
+    expect(rewriteBrief({ ...s, repeats: [] })).toBe('Night falls.')
+  })
+})

@@ -49,6 +49,14 @@ export interface PlannedScene extends BranchScene {
   tenseDrift?: { from: Tense; to: Tense; originalPast: number; rewrittenPast: number }
   /** A past-tense scene that slides into the present for a stretch (§45). */
   tenseSlip?: { added: number; sample: string }
+  /** Passages repeated from other scenes of the branch (§46). */
+  repeats?: Array<{
+    with: string
+    subsectionId: string | number
+    run: number
+    share: number
+    sample: string
+  }>
   /** The scene's text before "Rewrite this scene", for undo (§40). */
   previousContent?: string
   /** Filled in by the write step. */
@@ -334,6 +342,14 @@ export function rewriteBrief(
   // And its tense (§45).
   const t = tense ? tenseRule(tense) : ''
   if (t) rules.push(`- ${t}`)
+  // Passages the last version copied from other chapters (§46).
+  const repeats = scene.repeats || []
+  if (repeats.length) {
+    const from = [...new Set(repeats.map((r) => `"${r.with}"`))].join(', ')
+    rules.push(
+      `- NEW WORDS: the last version repeated a passage of ${from} ("${repeats[0].sample}..."). Tell this scene in sentences of its own; do not reuse passages from other chapters.`
+    )
+  }
   return rules.length ? `${base}\nMUST HOLD:\n${rules.join('\n')}` : base
 }
 

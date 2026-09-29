@@ -113,6 +113,7 @@ const canRewrite = (s) =>
   (s.povDrift ||
     s.tenseDrift ||
     s.tenseSlip ||
+    s.repeats?.length ||
     (s.presenceIssues?.length
       ? s.presenceIssues.some((p) => !p.fromKept)
       : /needs review/.test(s.outcome || '')))
@@ -241,6 +242,14 @@ const text = (html) => stripHtmlBlock(html || '')
                 </p>
                 <p v-if="s.tenseSlip" class="font-ui text-xs text-text-hint" data-test="tense-slip">
                   Slips into the present tense for a stretch: “{{ s.tenseSlip.sample }}…”
+                </p>
+                <p
+                  v-for="(r, i) in s.repeats || []"
+                  :key="`rep-${i}`"
+                  class="font-ui text-xs text-text-hint"
+                  data-test="repeat"
+                >
+                  Repeats {{ r.run }} words of “{{ r.with }}”: “{{ r.sample }}…”
                 </p>
                 <div
                   v-if="canRewrite(s) || (s.previousContent != null && status === 'written')"

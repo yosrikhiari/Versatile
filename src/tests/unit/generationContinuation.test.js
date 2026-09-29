@@ -111,6 +111,13 @@ describe('neighbourContext', () => {
     expect(ctx).toContain('canon')
   })
 
+  it('tells the writer the new scene starts after this text, not with it (§47)', () => {
+    const ctx = neighbourContext(survey, 1)
+    expect(ctx).toContain('starts AFTER this')
+    expect(ctx).toContain('do not repeat')
+    expect(ctx).not.toContain('continue from it')
+  })
+
   it('is empty at the start of a manuscript', () => {
     expect(neighbourContext(survey, 0)).toBe('')
   })

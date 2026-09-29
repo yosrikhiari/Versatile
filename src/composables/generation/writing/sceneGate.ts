@@ -31,6 +31,7 @@ import { isFatalRunError } from '../lifecycle'
 import { RECENT_SCENE_LOG_LIMIT, SCENE_MAX_ATTEMPTS } from './limits'
 import { buildStoryStateContext } from '../context/sceneContext'
 import { spineContextFromProse } from '../context/spine'
+import { dropCopiedSentences } from '../../../services/generation/copyGuard'
 
 /**
  * Everything the scene gate reaches for in the orchestrator's scope.
@@ -600,7 +601,24 @@ export function createSceneGate(ctx: SceneGateContext) {
         pastEvalResults: attemptFeedback || undefined,
         focusInstructions: attemptFocusInstructions || undefined
       })
-      return { ok: true, prose: result.prose, structured: result.structured }
+      // The writer is shown how the preceding scenes end, and copies it
+      // (§47): 7 of 8 chapters of a live branch opened with or reused a
+      // passage of the chapter before. Those sentences are removed here, for
+      // every strategy, and counted.
+      const guarded = dropCopiedSentences(result.prose, embeddingContext)
+      if (guarded.dropped) {
+        runHealth.record('copied_context', {
+          stage: 'writer',
+          sceneIndex,
+          detail: `${guarded.dropped} sentences (${guarded.words} words) repeated the preceding prose and were removed: "${guarded.sample}"`
+        })
+        actLog.appendThought(
+          ctx.currentTaskId,
+          scenePhase,
+          `\n⚠ Removed ${guarded.dropped} sentences (${guarded.words} words) copied from the preceding scenes.\n`
+        )
+      }
+      return { ok: true, prose: guarded.prose, structured: result.structured }
     } catch (err: unknown) {
       // A rejected attempt is not a failed scene. The writer refuses to hand
       // back looping prose OR a model refusal ("I'm sorry, but I can't..."),
