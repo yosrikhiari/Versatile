@@ -9,6 +9,7 @@
  */
 import { escapeHtml } from '../import/blocks'
 import { povRule } from './pov'
+import { tenseRule, type Tense } from './tense'
 
 export type SceneAction = 'keep' | 'revise' | 'drop'
 
@@ -44,6 +45,10 @@ export interface PlannedScene extends BranchScene {
   >
   /** Told in another narrative person than its original (§44). */
   povDrift?: { from: string; to: string; originalRate: number; rewrittenRate: number }
+  /** Told in another tense than its original (§45). */
+  tenseDrift?: { from: Tense; to: Tense; originalPast: number; rewrittenPast: number }
+  /** A past-tense scene that slides into the present for a stretch (§45). */
+  tenseSlip?: { added: number; sample: string }
   /** The scene's text before "Rewrite this scene", for undo (§40). */
   previousContent?: string
   /** Filled in by the write step. */
@@ -305,7 +310,11 @@ ${plan.divergenceFact}`
  * A one-sentence repair could not fix these (it kept the absence in new
  * words); the whole scene is written again knowing the person never left.
  */
-export function rewriteBrief(scene: PlannedScene, person?: 'first' | 'third' | 'unclear'): string {
+export function rewriteBrief(
+  scene: PlannedScene,
+  person?: 'first' | 'third' | 'unclear',
+  tense?: Tense
+): string {
   const base =
     (scene.action === 'revise' && scene.brief.trim()) ||
     scene.summary.trim() ||
@@ -322,6 +331,9 @@ export function rewriteBrief(scene: PlannedScene, person?: 'first' | 'third' | '
   // The original's narrative person, when it is clear (§44).
   const pov = person ? povRule(person) : ''
   if (pov) rules.push(`- ${pov}`)
+  // And its tense (§45).
+  const t = tense ? tenseRule(tense) : ''
+  if (t) rules.push(`- ${t}`)
   return rules.length ? `${base}\nMUST HOLD:\n${rules.join('\n')}` : base
 }
 

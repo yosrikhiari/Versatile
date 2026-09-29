@@ -41,6 +41,7 @@ import {
   type Whereabouts
 } from '../services/whatIf/presence'
 import { narrativePerson, povDrift, povRule } from '../services/whatIf/pov'
+import { narrativeTense, presentStretch, tenseDrift, tenseRule } from '../services/whatIf/tense'
 import { FEATURES } from '../config/ai'
 import {
   PLAN_SYSTEM,
@@ -501,15 +502,20 @@ export function useWhatIfBranch() {
         tables.subsections.get(s.subsectionId),
         tables.subsections.get(s.sourceSubsectionId)
       ])
-      const drift = povDrift(
-        stripHtmlBlock(String(src?.content || '')),
-        stripHtmlBlock(String(row?.content || ''))
-      )
-      if (!drift) {
-        delete s.povDrift
-        continue
-      }
-      s.povDrift = drift
+      const before = stripHtmlBlock(String(src?.content || ''))
+      const after = stripHtmlBlock(String(row?.content || ''))
+      const drift = povDrift(before, after)
+      if (drift) s.povDrift = drift
+      else delete s.povDrift
+      // And tense (§45): the whole scene in another tense, or a past-tense
+      // scene that slides into the present for a stretch.
+      const tDrift = tenseDrift(before, after)
+      const slip = tDrift ? null : presentStretch(before, after)
+      if (tDrift) s.tenseDrift = tDrift
+      else delete s.tenseDrift
+      if (slip) s.tenseSlip = slip
+      else delete s.tenseSlip
+      if (!drift && !tDrift && !slip) continue
       s.outcome = 'written, needs review'
       await updateSubsection(s.subsectionId as string, { contentStatus: 'review' })
     }
@@ -566,8 +572,12 @@ export function useWhatIfBranch() {
       const old = String(row?.content || '')
       const src =
         s.sourceSubsectionId == null ? null : await tables.subsections.get(s.sourceSubsectionId)
-      const person = narrativePerson(stripHtmlBlock(String(src?.content || ''))).person
-      const brief = rewriteBrief(s, person)
+      const srcProse = stripHtmlBlock(String(src?.content || ''))
+      const brief = rewriteBrief(
+        s,
+        narrativePerson(srcProse).person,
+        narrativeTense(srcProse).tense
+      )
       const targetWords = Number(row?.wordCount) || countWords(stripHtmlBlock(old)) || 1200
       await updateSubsection(s.subsectionId as string, {
         description: brief,
@@ -675,14 +685,19 @@ export function useWhatIfBranch() {
           await deleteSubsection(id as string)
           s.outcome = 'dropped'
         } else if (s.action === 'revise') {
-          // The writer keeps the original's narrative person (§44): a
-          // rewrite told in "he" what the book tells in "I".
+          // The writer keeps the original's narrative person (§44) and tense
+          // (§45): a rewrite told in "he" or "walks" what the book tells in
+          // "I" and "walked".
           const original = await tables.subsections.get(id)
-          const rule = povRule(
-            narrativePerson(stripHtmlBlock(String(original?.content || ''))).person
-          )
+          const prose = stripHtmlBlock(String(original?.content || ''))
+          const rules = [
+            povRule(narrativePerson(prose).person),
+            tenseRule(narrativeTense(prose).tense)
+          ]
+            .filter(Boolean)
+            .join('\n')
           await updateSubsection(id as string, {
-            description: rule ? `${s.brief}\n${rule}` : s.brief,
+            description: rules ? `${s.brief}\n${rules}` : s.brief,
             content: '',
             wordCount: 0,
             contentStatus: 'pending'
@@ -719,6 +734,8 @@ export function useWhatIfBranch() {
         if (s.outcome === 'repaired' || s.outcome === 'needs review') s.outcome = 'kept'
         delete s.presenceIssues
         delete s.povDrift
+        delete s.tenseDrift
+        delete s.tenseSlip
       }
       await verify(projectId, planned)
       await saveMeta(branchId, { plan: planned })

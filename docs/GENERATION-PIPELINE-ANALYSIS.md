@@ -2549,3 +2549,63 @@ fingers even through the wool of my coat" (11.2 min). Both pass the
 single-scene re-check. Two of two is an example, not a rate; the brief rule
 now also goes into every first write, which is where branch 16's seven
 drifts came from.
+
+## 45. Tense drift (2026-09-29)
+
+The companion of §44. A rewrite told in the present where its original is
+told in the past ("She walks to the door"), or a past-tense scene that
+slides into the present for a few paragraphs, reads wrong at once, and
+nothing checked for it.
+
+**Measure, by code** (`services/whatIf/tense.ts`): unambiguous past and
+present verb forms in the narration, speech removed -- 56 paired verbs
+("was / is", "said / says", "looked / looks"), the same verbs on both sides
+so neither tense gets more chances, plus "I / we + base verb" ("I walk")
+for first-person present. The share of past forms decides: >= 75% past,
+<= 35% present, in between or under 10 markers unclear and never flagged.
+As in §44, a rewrite is compared with ITS OWN original: the corpus has real
+present-tense scenes (the Chekhov sample, "wakes up... He looks sour").
+
+One trap, found on the originals: the old convention for a speech over
+several paragraphs opens each paragraph with a quote mark and closes only
+the last, so "“It is a law of nature we overlook..." looked like present
+narration. Such paragraphs now count as speech -- unless most of a scene's
+paragraphs are like that, because then the whole scene is one told story
+(The Time Machine is the Traveller talking) and it is narration.
+
+**Calibration.** Original chapters of both books (29): 28 past (Ethan
+Frome 97-100%, The Time Machine 78-98%; the low one is "The Sunset of
+Mankind", which muses in the timeless present), 1 unclear (the Epilogue,
+17 markers). Corpus (134 scenes): 117 past, 15 present (0-30% past -- the
+high ones are present-tense scenes with memories, "She had known this
+moment would come"), 2 unclear. Nothing lands between 30% and 78%.
+
+**The stretch check**: a paragraph with >= 4 markers and <= 20% past is a
+present paragraph. 0 in the 117 past-tense corpus scenes; 3 in the two
+books (all The Time Machine, all timeless remarks). So a rewrite is flagged
+when it has at least 2 MORE present paragraphs than its original, and only
+when its original is past and the rewrite is not wholly present (that is
+the whole-scene drift).
+
+**Planted slips** (there are no stored rewrites to count: the trial
+branches of §41-§44 lived in the browser pane's storage, which was reset):
+each original chapter put wholly in the present -> 28/29 caught (the
+Epilogue is too short to judge); three long paragraphs in the middle of a
+chapter put in the present -> 23/26 caught (the 3 missed have planted
+paragraphs with 0-3 markers each, mostly speech); an unchanged copy of each
+chapter -> 0/29 flagged.
+
+**In the product**, the same shape as §44. `write` adds a TENSE line to each
+rewritten scene's brief from its original ("past tense ("she walked", "he
+said"), as the original scene is told"). `verify` flags a whole-scene drift
+("Told in the present tense; the original scene is in the past") or a
+stretch ("Slips into the present tense for a stretch: ..."), both "needs
+review". Rewrite this scene carries the rule in MUST HOLD; the re-check
+clears the flag when it holds. Tests fail without the drift detection,
+without the stretch detection, without the write rule, and without the
+rewrite rule.
+
+Not measured: how often the writer (qwen3:8b / the prose model) actually
+slips tense. Branch 16's read-through (§43) found person drift, not tense
+drift; this check is prevention plus a net, and its rate on real rewrites
+is the next count to take.

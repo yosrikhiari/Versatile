@@ -236,6 +236,11 @@ Clean Architecture, one solution (`Versatile.slnx`):
   narration, speech removed; compared with the scene's own original, since a
   book can mix a first-person frame with third-person chapters).
 
+- **Tense** (`tense.ts`): the same for tense. The brief says past or present
+  from the scene's original; the check flags a rewrite in the other tense,
+  or a past-tense rewrite with at least two more present-tense paragraphs
+  than its original (paired verb forms such as "was / is", speech removed).
+
 - **Editor invariant (branch switches)**: loading a scene into the editor is
   not an edit (`setContent(..., { emitUpdate: false })`, TipTap 3 emits by
   default); a reload drops an open id that is no longer loaded; the autosave
@@ -246,7 +251,7 @@ Clean Architecture, one solution (`Versatile.slnx`):
 
 Every step above was measured on real books before it shipped; the numbers,
 and the designs that were tried and dropped, are in
-`docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§44; the same story with diagrams is
+`docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§45; the same story with diagrams is
 `docs/REPORT.md`.
 
 ## Deployment

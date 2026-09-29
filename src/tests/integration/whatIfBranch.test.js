@@ -335,6 +335,66 @@ describe('What If as a branch', () => {
     }
   })
 
+  it('a rewrite keeps its original tense, or is flagged and rewritten with the rule (§45)', async () => {
+    const { projectId, main, bySceneNo } = await book()
+    const para = (p) => Array.from({ length: 4 }, () => `<p>${p}</p>`).join('')
+    const past = para(
+      'He walked to the church and waited by the door. The yard was empty; he stood there.'
+    )
+    const present = para(
+      'He walks to the church and waits by the door. The yard is empty; he stands there.'
+    )
+    await db.subsections.update(bySceneNo[3].id, { content: past })
+    const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')
+    const w = useWhatIfBranch()
+    const branch = await w.fork(projectId, main, bySceneNo[2].id, 'What if Zeena stayed home?')
+    const plan = await w.plan(projectId, branch.id)
+    const church = plan.scenes.find((s) => s.sceneNumber === 3)
+    church.action = 'revise'
+    church.brief = 'The village gathers.'
+    await w.savePlan(branch.id, plan)
+    globalThis.__writerText = present
+    try {
+      const written = await w.write(projectId, branch.id)
+      const scene = written.scenes.find((s) => s.sceneNumber === 3)
+      // the writer was told which tense to keep
+      const row = await db.subsections.get(scene.subsectionId)
+      expect(row.description).toContain('TENSE: past tense')
+      // it did not keep it: flagged, not edited
+      expect(scene.tenseDrift).toMatchObject({ from: 'past', to: 'present' })
+      expect(scene.outcome).toBe('written, needs review')
+      expect(row.contentStatus).toBe('review')
+      // Rewrite this scene carries the rule; a past-tense rewrite that
+      // slides into the present for two paragraphs is still flagged
+      const slid =
+        para(
+          'He walked to the church and waited by the door. The yard was empty; he stood there.'
+        ) +
+        '<p>He walks to the church and waits by the door. The yard is empty; he stands there.</p>'.repeat(
+          2
+        ) +
+        para('He walked to the church and waited by the door. The yard was empty; he stood there.')
+      globalThis.__writerText = slid
+      const again = await w.rewriteScene(projectId, branch.id, scene.subsectionId)
+      const partly = again.scenes.find((s) => s.sceneNumber === 3)
+      expect((await db.subsections.get(scene.subsectionId)).description).toContain(
+        '- TENSE: past tense'
+      )
+      expect(partly.tenseDrift).toBeUndefined()
+      expect(partly.tenseSlip).toMatchObject({ added: 2 })
+      expect(partly.outcome).toBe('written, needs review')
+      // and a past-tense rewrite clears it
+      globalThis.__writerText = past
+      const fixed = (await w.rewriteScene(projectId, branch.id, scene.subsectionId)).scenes.find(
+        (s) => s.sceneNumber === 3
+      )
+      expect(fixed.tenseSlip).toBeUndefined()
+      expect(fixed.outcome).toBe('written')
+    } finally {
+      delete globalThis.__writerText
+    }
+  })
+
   it('a branch switch does not leave the old branch scene open in the editor (§42)', async () => {
     const { projectId, main, bySceneNo } = await book()
     const { useWhatIfBranch } = await import('@/composables/useWhatIfBranch')

@@ -233,3 +233,19 @@ describe('rewriteBrief keeps the original narrative person (§44)', () => {
     expect(rewriteBrief(s, 'unclear')).toBe('He hides in the ruins.')
   })
 })
+
+describe('rewriteBrief keeps the original tense (§45)', () => {
+  it('adds the tense rule after the narration rule when the tense is clear', () => {
+    const s = {
+      ...scene(9, 'The Morlocks'),
+      action: 'revise',
+      brief: 'He hides in the ruins.',
+      reason: ''
+    }
+    const nl = String.fromCharCode(10)
+    expect(rewriteBrief(s, 'first', 'past')).toContain('- NARRATION: first person ("I")')
+    expect(rewriteBrief(s, 'first', 'past')).toContain(nl + '- TENSE: past tense')
+    expect(rewriteBrief(s, 'unclear', 'past')).toContain('MUST HOLD:' + nl + '- TENSE: past tense')
+    expect(rewriteBrief(s, 'unclear', 'unclear')).toBe('He hides in the ruins.')
+  })
+})

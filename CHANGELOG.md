@@ -7,6 +7,18 @@ was verified.
 
 ## [Unreleased]
 
+### Tense drift check (2026-09-29)
+- **A rewrite keeps its original's tense** (§45,
+  `services/whatIf/tense.ts`). Code counts 56 paired past/present verb forms
+  in the narration (speech removed, including speeches that run over several
+  paragraphs) and compares each rewritten scene with its own original. On
+  both books' 29 chapters: 28 past (78-100%), 1 too short; on 134 corpus
+  scenes: 117 past, 15 present (0-30% past), nothing in between. It also
+  catches a past-tense rewrite that slides into the present for a stretch
+  (23/26 planted three-paragraph slips, 0/29 false on unchanged chapters).
+  Each rewrite's brief names the tense; a drift or a stretch is flagged
+  "needs review" and Rewrite this scene carries the rule.
+
 ### Point-of-view drift check; CI green on the dependency PRs (2026-09-28)
 - **A rewrite keeps its original's narrative person** (§44,
   `services/whatIf/pov.ts`). Code measures first-person pronouns per 1,000
