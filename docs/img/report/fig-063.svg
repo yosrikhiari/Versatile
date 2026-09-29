@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 732 182" width="732" height="182" role="img" aria-labelledby="t d"><title id="t">Planted harness becomes a regression test; the 78 real scenes measure every gate change</title><desc id="d">Two test sets with two jobs. Planted flaws keep old catches from regressing. The 78 labelled real scenes decide whether a change to the gate is an improvement.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="731" height="181" rx="10"/><defs><marker id="dc50_k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs><rect class="node" x="20" y="20" width="210" height="50" rx="6"/><text x="125" y="41" font-size="12" text-anchor="middle">Planted-defect harness</text><text x="125" y="57" font-size="11" class="m" text-anchor="middle">"can it see?"</text><line class="edge" x1="230" y1="45" x2="288" y2="45" marker-end="url(#dc50_k)"/><rect class="node" x="290" y="20" width="200" height="50" rx="6"/><text x="390" y="49" font-size="12" text-anchor="middle">regression test</text><text x="505" y="50" font-size="11" class="m">keeps old catches caught</text><rect class="node hl" x="20" y="85" width="210" height="50" rx="6"/><text x="125" y="106" font-size="12" text-anchor="middle">78 real scenes + labels</text><text x="125" y="122" font-size="11" class="m" text-anchor="middle">"does it see?"</text><line class="edge" x1="230" y1="110" x2="288" y2="110" marker-end="url(#dc50_k)"/><rect class="node hl" x="290" y="85" width="200" height="50" rx="6"/><text x="390" y="114" font-size="12" text-anchor="middle">every gate change</text><text x="505" y="115" font-size="11" class="a">what a reader would notice</text></svg>

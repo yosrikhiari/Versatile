@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 772 182" width="772" height="182" role="img" aria-labelledby="t d"><title id="t">Old rule 0 real and 2 false flags; new rule 2 real and the same 2 false</title><desc id="d">The model saw Zeena’s absence but quoted a sentence without her name, and 5u’s rule threw it away. Now code takes the scene’s own sentence that puts her name right next to an absence. On the same text: two more real flags, no new false alarm.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="771" height="181" rx="10"/><text x="300" y="18" font-size="11" class="a">real</text><text x="420" y="18" font-size="11" class="w">false alarm</text><text x="20" y="48" font-size="12">rule as shipped (5u)</text><rect x="420" y="30" width="28" height="26" rx="3" class="node bad"/><rect x="454" y="30" width="28" height="26" rx="3" class="node bad"/><text x="300" y="48" font-size="11" class="m">none</text><text x="20" y="88" font-size="12">+ name-next-to-absence fallback</text><rect x="300" y="70" width="28" height="26" rx="3" class="node hl"/><rect x="334" y="70" width="28" height="26" rx="3" class="node hl"/><rect x="420" y="70" width="28" height="26" rx="3" class="node bad"/><rect x="454" y="70" width="28" height="26" rx="3" class="node bad"/><text x="20" y="120" font-size="11" class="m">same saved text, one model answer per person per scene, 46 reads</text><text x="20" y="138" font-size="11" class="m">new flags: “Zeena wasn’t coming.” and “…the wind had carried Zeena’s absence all winter long.”</text></svg>

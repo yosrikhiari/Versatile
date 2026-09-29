@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 752 207" width="752" height="207" role="img" aria-labelledby="t d"><title id="t">Facts such as continuity can fail a scene; taste dimensions are warnings only</title><desc id="d">Where the gate stands after 5l: it decides only where claims can be checked, and only advises where the question is taste.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="751" height="206" rx="10"/><rect class="node hl" x="20" y="20" width="330" height="130" rx="6"/><text x="185" y="65" font-size="12" text-anchor="middle">Facts: checkable</text><text x="185" y="81" font-size="11" class="m" text-anchor="middle">continuity decides pass / fail</text><text x="185" y="97" font-size="11" class="m" text-anchor="middle">real errors caught,</text><text x="185" y="113" font-size="11" class="g" text-anchor="middle">0 false alarms on clean scenes</text><rect class="node" x="370" y="20" width="330" height="130" rx="6"/><text x="535" y="65" font-size="12" text-anchor="middle">Taste: not yet</text><text x="535" y="81" font-size="11" class="m" text-anchor="middle">show-tell, pacing, emotional goal</text><text x="535" y="97" font-size="11" class="m" text-anchor="middle">warnings only</text><text x="535" y="113" font-size="11" class="w" text-anchor="middle">3 attempts, no judge that works</text><text x="360" y="168" font-size="11" class="m" text-anchor="middle">a small local model checks facts reliably, not taste</text></svg>

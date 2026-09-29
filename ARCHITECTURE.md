@@ -246,7 +246,8 @@ Clean Architecture, one solution (`Versatile.slnx`):
 
 Every step above was measured on real books before it shipped; the numbers,
 and the designs that were tried and dropped, are in
-`docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§43.
+`docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§44; the same story with diagrams is
+`docs/REPORT.md`.
 
 ## Deployment
 

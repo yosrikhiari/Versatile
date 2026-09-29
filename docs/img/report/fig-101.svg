@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 792 262" width="792" height="262" role="img" aria-labelledby="t d"><title id="t">Four planner designs and what each produced</title><desc id="d">Four ways to ask the same model the same thing. Only the last, one question per scene with room to reason and no view of the other answers, produced a usable plan.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="791" height="261" rx="10"/>
+<text x="20" y="27" font-size="12">1 · one call for all scenes</text>
+<rect x="300" y="10" width="220" height="24" rx="4" class="node bad"/><text x="410" y="27" text-anchor="middle" font-size="11">plan 8 scenes at once</text><text x="540" y="27" font-size="11" class="w">dropped everything</text>
+<text x="20" y="77" font-size="12">2 · one letter per scene</text>
+<rect x="300" y="60" width="22" height="24" rx="3" class="node bad"/><text x="311" y="77" text-anchor="middle" font-size="10">A</text><rect x="328" y="60" width="22" height="24" rx="3" class="node bad"/><text x="339" y="77" text-anchor="middle" font-size="10">A</text><rect x="356" y="60" width="22" height="24" rx="3" class="node bad"/><text x="367" y="77" text-anchor="middle" font-size="10">A</text><rect x="384" y="60" width="22" height="24" rx="3" class="node bad"/><text x="395" y="77" text-anchor="middle" font-size="10">A</text><rect x="412" y="60" width="22" height="24" rx="3" class="node bad"/><text x="423" y="77" text-anchor="middle" font-size="10">A</text><rect x="440" y="60" width="22" height="24" rx="3" class="node bad"/><text x="451" y="77" text-anchor="middle" font-size="10">A</text><rect x="468" y="60" width="22" height="24" rx="3" class="node bad"/><text x="479" y="77" text-anchor="middle" font-size="10">A</text><rect x="496" y="60" width="22" height="24" rx="3" class="node bad"/><text x="507" y="77" text-anchor="middle" font-size="10">A</text>
+<text x="540" y="77" font-size="11" class="w">"keep" at 100%, every time</text>
+<text x="20" y="127" font-size="12">3a · reasons first; sees earlier briefs</text>
+<rect x="300" y="110" width="22" height="24" rx="3" class="node"/><rect x="328" y="110" width="22" height="24" rx="3" class="node"/><rect x="356" y="110" width="22" height="24" rx="3" class="node"/><rect x="384" y="110" width="22" height="24" rx="3" class="node"/><rect x="412" y="110" width="22" height="24" rx="3" class="node"/><rect x="440" y="110" width="22" height="24" rx="3" class="node"/><rect x="468" y="110" width="22" height="24" rx="3" class="node"/><rect x="496" y="110" width="22" height="24" rx="3" class="node"/>
+<path d="M311,136 C350,160 490,160 521,136" class="edge w dash"/><text x="540" y="127" font-size="11" class="w">each brief copies the first</text>
+<text x="20" y="197" font-size="12" class="a">3b · reasons first; own scene only</text>
+<rect x="300" y="180" width="22" height="24" rx="3" class="node hl"/><rect x="328" y="180" width="22" height="24" rx="3" class="node hl"/><rect x="356" y="180" width="22" height="24" rx="3" class="node hl"/><rect x="384" y="180" width="22" height="24" rx="3" class="node hl"/><rect x="412" y="180" width="22" height="24" rx="3" class="node hl"/><rect x="440" y="180" width="22" height="24" rx="3" class="node hl"/><rect x="468" y="180" width="22" height="24" rx="3" class="node hl"/><rect x="496" y="180" width="22" height="24" rx="3" class="node hl"/>
+<text x="540" y="197" font-size="11" class="a">distinct, fitting briefs</text></svg>

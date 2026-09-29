@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 732 202" width="732" height="202" role="img" aria-labelledby="t d"><title id="t">Relationship timeline before and after stabilising</title><desc id="d">Before, each chapter&#x27;s differently worded description of the same marriage closed the previous link. Now, one link lasts until something actually changes.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="731" height="201" rx="10"/>
+<text x="20" y="20" font-size="12">Ethan ↔ Zeena, chapters 1 → 10</text>
+<text x="150" y="40" text-anchor="middle" font-size="10" class="m">1</text><text x="204" y="40" text-anchor="middle" font-size="10" class="m">2</text><text x="258" y="40" text-anchor="middle" font-size="10" class="m">3</text><text x="312" y="40" text-anchor="middle" font-size="10" class="m">4</text><text x="366" y="40" text-anchor="middle" font-size="10" class="m">5</text><text x="420" y="40" text-anchor="middle" font-size="10" class="m">6</text><text x="474" y="40" text-anchor="middle" font-size="10" class="m">7</text><text x="528" y="40" text-anchor="middle" font-size="10" class="m">8</text><text x="582" y="40" text-anchor="middle" font-size="10" class="m">9</text><text x="636" y="40" text-anchor="middle" font-size="10" class="m">10</text>
+<text x="20" y="72" font-size="11">before</text>
+<rect x="123" y="60" width="54" height="16" class="barB"/><text x="150" y="72" text-anchor="middle" font-size="9">married</text>
+<rect x="177" y="60" width="54" height="16" class="barB" opacity=".6"/><text x="204" y="72" text-anchor="middle" font-size="9">neglect</text>
+<rect x="285" y="60" width="54" height="16" class="barB"/><text x="312" y="72" text-anchor="middle" font-size="9">married</text>
+<rect x="339" y="60" width="54" height="16" class="barB" opacity=".6"/><text x="366" y="72" text-anchor="middle" font-size="9">cares</text>
+<rect x="393" y="60" width="54" height="16" class="barB"/><text x="420" y="72" text-anchor="middle" font-size="9">married</text>
+<rect x="501" y="60" width="54" height="16" class="barB"/><text x="528" y="72" text-anchor="middle" font-size="9">married</text>
+<text x="20" y="112" font-size="11" class="a">after</text>
+<rect x="123" y="100" width="540" height="16" class="barA"/><text x="393" y="112" text-anchor="middle" font-size="10" fill="var(--paper)">married to, chapter 1 onward, never closed</text>
+<text x="20" y="150" font-size="11" class="m">labels folded into ~15 types · a mood never replaces a marriage · a family link needs two scenes</text></svg>

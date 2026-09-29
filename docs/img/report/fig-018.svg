@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 932 322" width="932" height="322" role="img" aria-labelledby="t d"><title id="t">Two probability charts for the pacing score of scene 8. Clean version: 99.7 percent on 7. Padded version: 68 percent on 7, 8 percent on 6, 24 percent on 5. Both print the integer 7 and pass; the expected scores are 7.00 and 6.43.</title><desc id="d">Same judge, same question. The printed number hides the doubt, and the probabilities show it. The judge had noticed the filler: it put 32% on &quot;below 7&quot;. It just didn&#x27;t print that. The expected score is Σ probability × score.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="931" height="321" rx="10"/>
+    <text x="30" y="24" font-size="13" font-weight="600">Scene 8, pacing — clean</text>
+    <text x="480" y="24" font-size="13" font-weight="600">Scene 8, pacing — three filler paragraphs planted</text>
+    
+    <g>
+      <line class="grid" x1="30" y1="220" x2="400" y2="220"/>
+      <line class="grid" x1="30" y1="140" x2="400" y2="140"/>
+      <line class="grid" x1="30" y1="60" x2="400" y2="60"/>
+      <text x="26" y="224" font-size="10" class="m" text-anchor="end">0</text>
+      <text x="26" y="144" font-size="10" class="m" text-anchor="end">50%</text>
+      <text x="26" y="64" font-size="10" class="m" text-anchor="end">100%</text>
+      
+      <text x="77" y="238" font-size="11" text-anchor="middle">3</text>
+      <text x="132" y="238" font-size="11" text-anchor="middle">4</text>
+      <text x="187" y="238" font-size="11" text-anchor="middle">5</text>
+      <text x="242" y="238" font-size="11" text-anchor="middle">6</text>
+      <text x="297" y="238" font-size="11" text-anchor="middle">7</text>
+      <text x="352" y="238" font-size="11" text-anchor="middle">8</text>
+      <rect class="barB" x="279" y="60.5" width="36" height="159.5"/>
+      <text x="297" y="54" font-size="11" text-anchor="middle">99.7%</text>
+      <text x="30" y="262" font-size="12">Model prints: <tspan font-weight="600">7 → pass</tspan></text>
+      <text x="30" y="280" font-size="12">Expected score: <tspan font-weight="600" class="num">7.00</tspan></text>
+    </g>
+    <g>
+      <line class="grid" x1="480" y1="220" x2="850" y2="220"/>
+      <line class="grid" x1="480" y1="140" x2="850" y2="140"/>
+      <line class="grid" x1="480" y1="60" x2="850" y2="60"/>
+      <text x="476" y="224" font-size="10" class="m" text-anchor="end">0</text>
+      <text x="476" y="144" font-size="10" class="m" text-anchor="end">50%</text>
+      <text x="476" y="64" font-size="10" class="m" text-anchor="end">100%</text>
+      <text x="527" y="238" font-size="11" text-anchor="middle">3</text>
+      <text x="582" y="238" font-size="11" text-anchor="middle">4</text>
+      <text x="637" y="238" font-size="11" text-anchor="middle">5</text>
+      <text x="692" y="238" font-size="11" text-anchor="middle">6</text>
+      <text x="747" y="238" font-size="11" text-anchor="middle">7</text>
+      <text x="802" y="238" font-size="11" text-anchor="middle">8</text>
+      <rect class="barA" x="619" y="181" width="36" height="39"/>
+      <text x="637" y="175" font-size="11" text-anchor="middle">24%</text>
+      <rect class="barA" x="674" y="207" width="36" height="13"/>
+      <text x="692" y="201" font-size="11" text-anchor="middle">8%</text>
+      <rect class="barB" x="729" y="112" width="36" height="108"/>
+      <text x="747" y="106" font-size="11" text-anchor="middle">68%</text>
+      <text x="480" y="262" font-size="12">Model prints: <tspan font-weight="600">7 → pass</tspan> (same as clean)</text>
+      <text x="480" y="280" font-size="12">Expected score: <tspan font-weight="600" class="a num">6.43</tspan> — the doubt is visible</text>
+    </g>
+  </svg>

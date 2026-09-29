@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 972 332" width="972" height="332" role="img" aria-labelledby="t d"><title id="t">Before: every judge reads the whole scene, so a summary paragraph leaks into voice, pacing and emotion. After: the voice judge reads only dialogue lines and the pacing judge labels each paragraph, so the summary paragraph reaches only the show-tell judge and the paragraph labels.</title><desc id="d">Green boxes are plain code splitting the scene. The judge sees less, so there&#x27;s less to leak. Pacing now answers which paragraphs, so a rewrite can cut exactly those instead of redoing the whole scene.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="971" height="331" rx="10"/>
+    <defs>
+      <marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+      <marker id="ar5w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="w"/></marker>
+    </defs>
+    <text x="20" y="22" class="m" font-size="12" font-weight="600" letter-spacing="1">BEFORE — every judge reads everything</text>
+    <rect class="node bad" x="20" y="40" width="170" height="100" rx="8"/>
+    <text x="105" y="64" font-size="13" text-anchor="middle">Whole scene</text>
+    <text x="105" y="86" font-size="11" class="w" text-anchor="middle">incl. a summary</text>
+    <text x="105" y="102" font-size="11" class="w" text-anchor="middle">paragraph (the flaw)</text>
+    <rect class="node" x="300" y="32" width="130" height="30" rx="6"/><text x="365" y="52" font-size="12" text-anchor="middle">voice −1.5</text>
+    <rect class="node" x="300" y="68" width="130" height="30" rx="6"/><text x="365" y="88" font-size="12" text-anchor="middle">show-tell −2.5</text>
+    <rect class="node" x="300" y="104" width="130" height="30" rx="6"/><text x="365" y="124" font-size="12" text-anchor="middle">pacing −1.5</text>
+    <path class="edge w" d="M190 90 L298 47" marker-end="url(#ar5w)"/>
+    <path class="edge" d="M190 90 L298 83" marker-end="url(#ar5)"/>
+    <path class="edge w" d="M190 90 L298 119" marker-end="url(#ar5w)"/>
+    <text x="455" y="70" font-size="11" class="w">the flaw leaks into</text>
+    <text x="455" y="86" font-size="11" class="w">every question →</text>
+    <text x="455" y="102" font-size="11" class="w">wrong one named</text>
+
+    <line class="grid" x1="20" y1="160" x2="920" y2="160"/>
+
+    <text x="20" y="184" class="a" font-size="12" font-weight="600" letter-spacing="1">AFTER — each judge reads only its evidence</text>
+    <rect class="node" x="20" y="200" width="170" height="80" rx="8"/>
+    <text x="105" y="236" font-size="13" text-anchor="middle">Whole scene</text>
+    <text x="105" y="254" font-size="11" class="m" text-anchor="middle">split by code</text>
+    <rect class="node code" x="240" y="196" width="170" height="28" rx="6"/><text x="325" y="215" font-size="11" text-anchor="middle">dialogue lines only</text>
+    <rect class="node code" x="240" y="228" width="170" height="28" rx="6"/><text x="325" y="247" font-size="11" text-anchor="middle">whole scene</text>
+    <rect class="node code" x="240" y="260" width="170" height="28" rx="6"/><text x="325" y="279" font-size="11" text-anchor="middle">numbered paragraphs</text>
+    <rect class="node hl" x="470" y="196" width="190" height="28" rx="6"/><text x="565" y="215" font-size="12" text-anchor="middle">voice (skip if &lt; 6 lines)</text>
+    <rect class="node" x="470" y="228" width="190" height="28" rx="6"/><text x="565" y="247" font-size="12" text-anchor="middle">show-tell, emotion</text>
+    <rect class="node hl" x="470" y="260" width="190" height="28" rx="6"/><text x="565" y="279" font-size="12" text-anchor="middle">pacing: label each ¶</text>
+    <line class="edge" x1="190" y1="240" x2="238" y2="210" marker-end="url(#ar5)"/>
+    <line class="edge" x1="190" y1="240" x2="238" y2="242" marker-end="url(#ar5)"/>
+    <line class="edge" x1="190" y1="240" x2="238" y2="274" marker-end="url(#ar5)"/>
+    <line class="edge" x1="410" y1="210" x2="468" y2="210" marker-end="url(#ar5)"/>
+    <line class="edge" x1="410" y1="242" x2="468" y2="242" marker-end="url(#ar5)"/>
+    <line class="edge" x1="410" y1="274" x2="468" y2="274" marker-end="url(#ar5)"/>
+    <text x="690" y="214" font-size="11" class="m">summary has no dialogue → can't leak</text>
+    <text x="690" y="278" font-size="11" class="a">"¶ 2, 15, 26 are filler"</text>
+  </svg>

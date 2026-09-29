@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 732 167" width="732" height="167" role="img" aria-labelledby="t d"><title id="t">Three readers agree on 42 of 50 decisions and differ on 8</title><desc id="d">A third careful reader agreed with both reviewer groups on 42 of 50 decisions. It&#x27;s the same model family, so this is a consistency check, not a human one.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="731" height="166" rx="10"/><text x="20" y="22" font-size="12" font-weight="600">50 decisions on your 12 scenes, three readers</text><rect class="barA" x="20" y="40" width="504" height="24"/><rect class="barB" x="524" y="40" width="96" height="24"/><text x="272" y="82" font-size="11" class="a" text-anchor="middle">all three agree: 42</text><text x="572" y="82" font-size="11" class="m" text-anchor="middle">differ: 8</text><text x="20" y="115" font-size="11" class="m">where we differ, I'm the stricter one (show-tell, pacing on two orchard scenes)</text></svg>

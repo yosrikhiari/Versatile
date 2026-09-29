@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 732 152" width="732" height="152" role="img" aria-labelledby="t d"><title id="t">Branch scenes: identical, rewritten, contradicting, dropped</title><desc id="d">The live Ethan Frome branch. The scenes before the change were untouched. The change carried through five of six rewritten scenes. Chapter VIII and the kept epilogue did not follow it.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="731" height="151" rx="10"/>
+<rect x="20" y="30" width="50" height="34" rx="4" class="node"/><text x="45" y="52" text-anchor="middle" font-size="10">Prol.</text><rect x="76" y="30" width="50" height="34" rx="4" class="node"/><text x="101" y="52" text-anchor="middle" font-size="10">I</text><rect x="132" y="30" width="50" height="34" rx="4" class="node"/><text x="157" y="52" text-anchor="middle" font-size="10">II</text><rect x="188" y="30" width="50" height="34" rx="4" class="node"/><text x="213" y="52" text-anchor="middle" font-size="10">III</text><rect x="244" y="30" width="50" height="34" rx="4" class="node hl"/><text x="269" y="52" text-anchor="middle" font-size="10">IV</text><rect x="300" y="30" width="50" height="34" rx="4" class="node hl"/><text x="325" y="52" text-anchor="middle" font-size="10">V</text><rect x="356" y="30" width="50" height="34" rx="4" class="node hl"/><text x="381" y="52" text-anchor="middle" font-size="10">VI</text><rect x="412" y="30" width="50" height="34" rx="4" class="node hl"/><text x="437" y="52" text-anchor="middle" font-size="10">VII</text><rect x="468" y="30" width="50" height="34" rx="4" class="node bad"/><text x="493" y="52" text-anchor="middle" font-size="10">VIII</text><rect x="524" y="30" width="50" height="34" rx="4" class="node hl"/><text x="549" y="52" text-anchor="middle" font-size="10">IX·1</text><rect x="580" y="30" width="50" height="34" rx="4" class="node"/><text x="605" y="52" text-anchor="middle" font-size="10">IX·2</text><rect x="636" y="30" width="50" height="34" rx="4" class="node bad"/><text x="661" y="52" text-anchor="middle" font-size="10">IX·3</text>
+<text x="130" y="84" text-anchor="middle" font-size="10" class="m">identical to the book (4/4)</text>
+<text x="370" y="84" text-anchor="middle" font-size="10" class="a">rewritten: Zeena at home</text>
+<text x="496" y="104" text-anchor="middle" font-size="10" class="w">"after Zeena left"</text>
+<text x="608" y="84" text-anchor="middle" font-size="10" class="m">IX·2 dropped</text>
+<text x="636" y="104" text-anchor="middle" font-size="10" class="w">kept: sled crash</text></svg>

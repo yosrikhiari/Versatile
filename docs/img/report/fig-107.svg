@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 732 156" width="732" height="156" role="img" aria-labelledby="t d"><title id="t">Name matching: sentences read and false alarms, full names versus name forms</title><desc id="d">Widening the name filter read 6% more sentences, raised one false alarm where there had been none, and caught nothing new. So it was not shipped.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="731" height="155" rx="10"/><text x="20" y="40" font-size="12">full bible names (kept)</text><rect x="220" y="30" width="257" height="12" class="barB"/><text x="483" y="40" font-size="10" class="m">429 sentences read</text><text x="600" y="40" font-size="12" class="g">0 false alarms</text><text x="20" y="74" font-size="12">+ first names, aliases</text><rect x="220" y="64" width="272" height="12" class="barB"/><text x="498" y="74" font-size="10" class="m">453 sentences read</text><text x="600" y="74" font-size="12" class="w">1 false alarm</text><text x="20" y="112" font-size="11" class="m">clean original chapters I–VIII, each against the true facts of the chapters before it · new catches: 0</text></svg>

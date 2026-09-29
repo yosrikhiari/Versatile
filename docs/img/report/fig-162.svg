@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 712 167" width="712" height="167" role="img" aria-labelledby="t d"><title id="t">One big question versus several small ones</title><desc id="d">One dimension per call fixed voice and show-tell detection. One claim per call does the same for continuity.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="711" height="166" rx="10"/><rect class="node bad" x="20" y="20" width="240" height="40" rx="6"/><text x="140" y="44" font-size="12" text-anchor="middle">"Is this scene good?"</text><text x="275" y="45" font-size="11" class="w">one big question: small model does poorly</text><rect class="node hl" x="20" y="85" width="120" height="36" rx="6"/><text x="80" y="107" font-size="12" text-anchor="middle">voice?</text><rect class="node hl" x="150" y="85" width="120" height="36" rx="6"/><text x="210" y="107" font-size="12" text-anchor="middle">one claim?</text><rect class="node hl" x="280" y="85" width="120" height="36" rx="6"/><text x="340" y="107" font-size="12" text-anchor="middle">filler ¶?</text><text x="420" y="108" font-size="11" class="a">small questions: it does fine</text></svg>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 932 262" width="932" height="262" role="img" aria-labelledby="t d"><title id="t">Pacing voting: forward pass flags paragraphs; if two or more, a reversed pass runs; the scene fails only if at least one flag is confirmed. Clean-scene pacing failures went from 1 of 15 to 0 of 15 on both halves; padded scenes stayed 15 of 15.</title><desc id="d">Clean scenes almost never reach the second pass, so they pay nothing. Only a scene about to fail gets the extra check.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="931" height="261" rx="10"/>
+    <defs><marker id="ar7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+    <rect class="node" x="20" y="70" width="140" height="56" rx="8"/><text x="90" y="95" font-size="13" text-anchor="middle">Paragraphs</text><text x="90" y="112" font-size="11" class="m" text-anchor="middle">1, 2, 3 … n</text>
+    <rect class="node hl" x="200" y="70" width="170" height="56" rx="8"/><text x="285" y="95" font-size="13" text-anchor="middle">Forward pass</text><text x="285" y="112" font-size="11" class="m" text-anchor="middle">flags filler</text>
+    <rect class="node" x="420" y="12" width="170" height="44" rx="8"/><text x="505" y="39" font-size="12" text-anchor="middle">&lt; 2 flags → pass</text>
+    <rect class="node hl" x="420" y="120" width="170" height="56" rx="8"/><text x="505" y="145" font-size="13" text-anchor="middle">Reversed pass</text><text x="505" y="162" font-size="11" class="m" text-anchor="middle">n … 3, 2, 1</text>
+    <rect class="node code" x="640" y="120" width="240" height="56" rx="8"/><text x="760" y="145" font-size="12" text-anchor="middle">fail only if ≥ 1 flag agrees</text><text x="760" y="162" font-size="11" class="m" text-anchor="middle">code compares the two lists</text>
+    <line class="edge" x1="160" y1="98" x2="198" y2="98" marker-end="url(#ar7)"/>
+    <path class="edge" d="M370 90 L418 40" marker-end="url(#ar7)"/>
+    <path class="edge" d="M370 108 L418 145" marker-end="url(#ar7)"/>
+    <text x="392" y="140" font-size="11" class="m">≥ 2</text>
+    <line class="edge" x1="590" y1="148" x2="638" y2="148" marker-end="url(#ar7)"/>
+    <text x="20" y="214" font-size="12">Clean scenes failing pacing: <tspan class="num">1/15 → 0/15</tspan> on the half the rule was picked on, and <tspan class="num a" font-weight="600">1/15 → 0/15</tspan> on the held-out half. Padded scenes: 15/15 both.</text>
+  </svg>

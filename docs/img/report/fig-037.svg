@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 932 252" width="932" height="252" role="img" aria-labelledby="t d"><title id="t">Chapter audit on 30 scenes. Old checker: accused 10 clean scenes, caught the planted contradiction in 1. Isolated checker: accused 3, caught 30. Isolated plus confirm: accused 0, caught 30.</title><desc id="d">The old audit accused good scenes and let the real contradiction through 29 times out of 30. Every accusation I read was false: &quot;she collapsed under the salt in chapter 2, which contradicts her carrying it later&quot;; &quot;her clothes smelled of earth in one scene and of iron in another&quot;.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="931" height="251" rx="10"/>
+    
+    <text x="20" y="22" font-size="13" font-weight="600">Chapter audit, 30 scenes</text>
+    <text x="330" y="48" font-size="11" class="m" text-anchor="end">clean scenes accused</text>
+    <text x="560" y="48" font-size="11" class="m">planted contradiction caught</text>
+
+    <text x="20" y="84" font-size="12">Old checker</text>
+    <rect class="barB" x="230" y="70" width="100" height="18"/><text x="224" y="84" font-size="11" class="num w" text-anchor="end">10</text>
+    <rect class="barB" x="560" y="70" width="10" height="18"/><text x="576" y="84" font-size="11" class="num w">1</text>
+
+    <text x="20" y="130" font-size="12">Isolated</text>
+    <rect class="barB" x="300" y="116" width="30" height="18"/><text x="294" y="130" font-size="11" class="num" text-anchor="end">3</text>
+    <rect class="barA" x="560" y="116" width="300" height="18"/><text x="866" y="130" font-size="11" class="num a">30</text>
+
+    <text x="20" y="176" font-size="12" font-weight="600">Isolated + "can both be true?"</text>
+    <text x="324" y="176" font-size="11" class="num g" text-anchor="end">0</text>
+    <rect class="barA" x="560" y="162" width="300" height="18"/><text x="866" y="176" font-size="11" class="num a" font-weight="600">30</text>
+    <line class="grid" x1="340" y1="60" x2="340" y2="190"/><line class="grid" x1="550" y1="60" x2="550" y2="190"/>
+    <text x="20" y="210" font-size="11" class="m">Left bars grow leftward: shorter is better. Right bars: longer is better.</text>
+  </svg>

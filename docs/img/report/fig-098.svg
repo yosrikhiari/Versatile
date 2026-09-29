@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 732 242" width="732" height="242" role="img" aria-labelledby="t d"><title id="t">Current path versus broker path to the same GPU</title><desc id="d">Both paths end at the same single GPU. The broker adds three servers that must run, and takes away working offline, without adding any speed.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="731" height="241" rx="10"/>
+<defs><marker id="rb5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+<text x="20" y="28" font-size="12" class="a">now</text>
+<rect x="60" y="14" width="120" height="30" rx="4" class="node"/><text x="120" y="33" text-anchor="middle" font-size="11">browser tab</text>
+<rect x="210" y="14" width="160" height="30" rx="4" class="node code"/><text x="290" y="33" text-anchor="middle" font-size="11">job queue (IndexedDB)</text>
+<rect x="400" y="14" width="120" height="30" rx="4" class="node hl"/><text x="460" y="33" text-anchor="middle" font-size="11">Ollama · 1 GPU</text>
+<line x1="180" y1="29" x2="208" y2="29" class="edge" marker-end="url(#rb5)"/><line x1="370" y1="29" x2="398" y2="29" class="edge" marker-end="url(#rb5)"/>
+<text x="540" y="33" font-size="11" class="m">works offline</text>
+<text x="20" y="98" font-size="12" class="w">broker</text>
+<rect x="60" y="84" width="100" height="30" rx="4" class="node"/><text x="110" y="103" text-anchor="middle" font-size="11">browser tab</text>
+<rect x="180" y="84" width="90" height="30" rx="4" class="node bad"/><text x="225" y="103" text-anchor="middle" font-size="11">gateway</text>
+<rect x="290" y="84" width="90" height="30" rx="4" class="node bad"/><text x="335" y="103" text-anchor="middle" font-size="11">broker</text>
+<rect x="400" y="84" width="90" height="30" rx="4" class="node bad"/><text x="445" y="103" text-anchor="middle" font-size="11">worker</text>
+<rect x="510" y="84" width="120" height="30" rx="4" class="node hl"/><text x="570" y="103" text-anchor="middle" font-size="11">Ollama · 1 GPU</text>
+<line x1="160" y1="99" x2="178" y2="99" class="edge" marker-end="url(#rb5)"/><line x1="270" y1="99" x2="288" y2="99" class="edge" marker-end="url(#rb5)"/><line x1="380" y1="99" x2="398" y2="99" class="edge" marker-end="url(#rb5)"/><line x1="490" y1="99" x2="508" y2="99" class="edge" marker-end="url(#rb5)"/>
+<text x="345" y="140" text-anchor="middle" font-size="11" class="w">three new servers that must be running · same one GPU at the end</text>
+<text x="345" y="175" text-anchor="middle" font-size="11" class="m">a broker pays off when many workers share the work; here there is one</text></svg>

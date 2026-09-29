@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 932 362" width="932" height="362" role="img" aria-labelledby="t d"><title id="t">AUC per dimension, printed integer versus probability-weighted score. Voice 0.78 to 0.81. Show-tell 1.00 to 1.00. Pacing 0.62 to 0.94. Continuity 0.50 to 0.88. All pooled 0.77 to 0.91.</title><desc id="d">Each dimension compares 4 broken scenes against the same 4 scenes clean, on that dimension&#x27;s own score. Pacing and continuity improve the most, because the printed number was stuck on 7 for almost every scene, so it couldn&#x27;t rank anything.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="931" height="361" rx="10"/>
+    
+    <line class="grid" x1="200" y1="30" x2="200" y2="285"/>
+    <line class="grid" x1="324" y1="30" x2="324" y2="285"/>
+    <line class="grid" x1="448" y1="30" x2="448" y2="285"/>
+    <line class="grid" x1="572" y1="30" x2="572" y2="285"/>
+    <line class="grid" x1="696" y1="30" x2="696" y2="285"/>
+    <line class="grid" x1="820" y1="30" x2="820" y2="285"/>
+    <text x="200" y="302" font-size="11" class="m" text-anchor="middle">0.5 coin flip</text>
+    <text x="324" y="302" font-size="11" class="m" text-anchor="middle">0.6</text>
+    <text x="448" y="302" font-size="11" class="m" text-anchor="middle">0.7</text>
+    <text x="572" y="302" font-size="11" class="m" text-anchor="middle">0.8</text>
+    <text x="696" y="302" font-size="11" class="m" text-anchor="middle">0.9</text>
+    <text x="820" y="302" font-size="11" class="m" text-anchor="middle">1.0 perfect</text>
+
+    <rect class="barB" x="200" y="12" width="14" height="10"/><text x="220" y="21" font-size="11">printed number (today)</text>
+    <rect class="barA" x="380" y="12" width="14" height="10"/><text x="400" y="21" font-size="11">probability-weighted</text>
+
+    
+    <text x="188" y="56" font-size="13" text-anchor="end">voice</text>
+    <rect class="barB" x="200" y="40" width="347" height="16"/><text x="553" y="53" font-size="11" class="num">0.78</text>
+    <rect class="barA" x="200" y="58" width="384" height="16"/><text x="590" y="71" font-size="11" class="num a">0.81</text>
+
+    <text x="188" y="106" font-size="13" text-anchor="end">show vs tell</text>
+    <rect class="barB" x="200" y="90" width="620" height="16"/><text x="826" y="103" font-size="11" class="num">1.00</text>
+    <rect class="barA" x="200" y="108" width="620" height="16"/><text x="826" y="121" font-size="11" class="num a">1.00</text>
+
+    <text x="188" y="156" font-size="13" text-anchor="end">pacing</text>
+    <rect class="barB" x="200" y="140" width="149" height="16"/><text x="355" y="153" font-size="11" class="num">0.62</text>
+    <rect class="barA" x="200" y="158" width="546" height="16"/><text x="752" y="171" font-size="11" class="num a">0.94</text>
+
+    <text x="188" y="206" font-size="13" text-anchor="end">continuity</text>
+    <rect class="barB" x="200" y="190" width="2" height="16"/><text x="208" y="203" font-size="11" class="num">0.50</text>
+    <rect class="barA" x="200" y="208" width="471" height="16"/><text x="677" y="221" font-size="11" class="num a">0.88</text>
+
+    <text x="188" y="256" font-size="13" text-anchor="end" font-weight="600">all pooled</text>
+    <rect class="barB" x="200" y="240" width="335" height="16"/><text x="541" y="253" font-size="11" class="num">0.77</text>
+    <rect class="barA" x="200" y="258" width="508" height="16"/><text x="714" y="271" font-size="11" class="num a" font-weight="600">0.91</text>
+  </svg>

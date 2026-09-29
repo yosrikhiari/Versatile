@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 692 162" width="692" height="162" role="img" aria-labelledby="t d"><title id="t">Regenerating beat targeted edits 40 to 3 in a code study</title><desc id="d">The only direct comparison found (on code) favours regenerating, 40 to 3. Nobody has tested it for fiction, so the repair has to earn its place in a fair head-to-head (run later, in 5o).</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="691" height="161" rx="10"/><text x="20" y="22" font-size="12" font-weight="600">A 2026 code study, equal compute: which fix won</text><text x="200" y="59" font-size="11" text-anchor="end">regenerate from scratch</text><rect class="barB" x="210" y="46" width="360" height="18"/><text x="576" y="60" font-size="11">40</text><text x="200" y="93" font-size="11" text-anchor="end">targeted edits</text><rect class="barA" x="210" y="80" width="27" height="18"/><text x="243" y="94" font-size="11" class="a">3</text><text x="210" y="122" font-size="11" class="m">code, not fiction: untested for prose</text></svg>

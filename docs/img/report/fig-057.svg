@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 932 282" width="932" height="282" role="img" aria-labelledby="t d"><title id="t">Real problems the reviewers agree on versus what the gate caught: continuity 13 vs 0, show-tell 28 vs 0, pacing 22 vs 0, emotional goal 10 vs 0, voice 5 vs 0.</title><desc id="d">The gate failed 12 of 78 scenes. The reviewers would revise 46 of the 64 scenes they agree on. The 133/145 from the planted tests measured blatant flaws. Real flaws are quieter.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="931" height="281" rx="10"/>
+    <text x="20" y="22" font-size="13" font-weight="600">Real problems both reviewer groups agree on, and how many the gate caught</text>
+    
+    <text x="188" y="62" font-size="12" text-anchor="end">show vs tell</text>
+    <rect class="barB" x="200" y="50" width="560" height="16"/><text x="766" y="63" font-size="11" class="num">28 found</text>
+    <text x="206" y="82" font-size="11" class="num w">gate caught 0</text>
+    <text x="188" y="112" font-size="12" text-anchor="end">pacing</text>
+    <rect class="barB" x="200" y="100" width="440" height="16"/><text x="646" y="113" font-size="11" class="num">22 found</text>
+    <text x="206" y="132" font-size="11" class="num w">gate caught 0</text>
+    <text x="188" y="162" font-size="12" text-anchor="end">continuity</text>
+    <rect class="barB" x="200" y="150" width="260" height="16"/><text x="466" y="163" font-size="11" class="num">13 found</text>
+    <text x="206" y="182" font-size="11" class="num w">gate caught 0</text>
+    <text x="188" y="212" font-size="12" text-anchor="end">emotional goal · voice</text>
+    <rect class="barB" x="200" y="200" width="200" height="16"/><rect class="barB" x="404" y="200" width="100" height="16"/><text x="510" y="213" font-size="11" class="num">10 · 5 found</text>
+    <text x="206" y="232" font-size="11" class="num w">gate caught 0 · 0</text>
+  </svg>

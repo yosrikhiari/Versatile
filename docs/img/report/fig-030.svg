@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 732 192" width="732" height="192" role="img" aria-labelledby="t d"><title id="t">Reported rate: clean 61 percent, planted telling 61 percent, filler 88 of 90</title><desc id="d">Per-paragraph show-tell labels can&#x27;t tell clean from telling (61% each). But nearly every filler paragraph counts as &quot;reported&quot;: filler is telling, so one flaw was failing two judges.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="731" height="191" rx="10"/><text x="20" y="22" font-size="12" font-weight="600">Share of paragraphs labelled "reported"</text><text x="218" y="53" font-size="12" text-anchor="end">clean paragraphs</text><rect class="barB" x="230" y="40" width="244" height="18"/><text x="480" y="53" font-size="11">61%</text><text x="218" y="85" font-size="12" text-anchor="end">planted telling</text><rect class="barB" x="230" y="72" width="244" height="18"/><text x="480" y="85" font-size="11">61%</text><text x="218" y="117" font-size="12" text-anchor="end">planted filler</text><rect class="barA" x="230" y="104" width="391" height="18"/><text x="627" y="117" font-size="11" class="a">88 / 90</text><text x="230" y="150" font-size="11" class="m">same rate for clean and telling: no signal. Filler is flat telling.</text></svg>

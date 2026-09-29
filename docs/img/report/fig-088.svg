@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 652 262" width="652" height="262" role="img" aria-labelledby="t d"><title id="t">Nested group: stored relative position versus real position</title><desc id="d">A nested group stores its position relative to its parent. The old check compared a real position against that relative one. It now compares real against real, and the smallest group containing the point wins.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="651" height="261" rx="10"/>
+<defs><marker id="qa4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker><marker id="qa4w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="w"/></marker></defs>
+<rect x="30" y="30" width="260" height="180" rx="6" class="node"/><text x="40" y="48" font-size="11" class="m">outer group at (100, 100)</text>
+<rect x="110" y="90" width="120" height="90" rx="6" class="node hl"/><text x="118" y="106" font-size="11" class="a">inner, stored (50, 50)</text>
+<text x="118" y="122" font-size="11" class="a">= real (150, 150)</text>
+<circle cx="170" cy="150" r="5" class="a"/>
+<rect x="330" y="40" width="270" height="56" rx="4" class="node bad"/><text x="465" y="62" text-anchor="middle" font-size="12">old: node at (170,150) vs inner's</text><text x="465" y="80" text-anchor="middle" font-size="12">stored box (50..170) → wrong answer</text>
+<rect x="330" y="120" width="270" height="56" rx="4" class="node code"/><text x="465" y="142" text-anchor="middle" font-size="12">now: vs inner's real box (150..270)</text><text x="465" y="160" text-anchor="middle" font-size="12">smallest match wins → inner</text>
+<line x1="176" y1="150" x2="328" y2="70" class="edge w dash" marker-end="url(#qa4w)"/>
+<line x1="176" y1="152" x2="328" y2="148" class="edge a" marker-end="url(#qa4)"/>
+</svg>

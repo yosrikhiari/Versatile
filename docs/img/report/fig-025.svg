@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 992 232" width="992" height="232" role="img" aria-labelledby="t d"><title id="t">Clean scenes failing pacing: 7 of 30 with the repeat penalty, 1 of 30 without. False filler flags: 32 with, 9 without. Padded scenes caught: 30 of 30 either way.</title><desc id="d">A setting chosen for writing quietly broke a component that isn&#x27;t writing. The fix is one line: judge calls now use repeatPenalty: 1 (neutral). On the held-out half: 0 of 15 clean scenes fail pacing, 15 of 15 padded scenes caught.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="991" height="231" rx="10"/>
+    <text x="20" y="24" font-size="13" font-weight="600">Same 30 clean scenes, same prompt; only the penalty changes</text>
+    
+    <text x="238" y="66" font-size="12" text-anchor="end">false "filler" flags</text>
+    <rect class="barB" x="250" y="52" width="560" height="18"/><text x="816" y="66" font-size="12" class="num">32 with penalty</text>
+    <rect class="barA" x="250" y="74" width="158" height="18"/><text x="414" y="88" font-size="12" class="num a">9 without</text>
+    <text x="238" y="132" font-size="12" text-anchor="end">clean scenes failing</text>
+    <rect class="barB" x="250" y="118" width="122" height="18"/><text x="378" y="132" font-size="12" class="num">7 / 30 with penalty</text>
+    <rect class="barA" x="250" y="140" width="18" height="18"/><text x="274" y="154" font-size="12" class="num a">1 / 30 without</text>
+    <text x="250" y="190" font-size="11" class="m">Padded scenes caught: 30 / 30 either way. Nothing is lost by switching it off.</text>
+  </svg>

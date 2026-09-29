@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 672 162" width="672" height="162" role="img" aria-labelledby="t d"><title id="t">An untrusted judge that can fail scenes causes rewrites; as a warning it does no harm</title><desc id="d">Demoting a judge to a warning costs nothing and stops the damage while a replacement is built.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="671" height="161" rx="10"/><defs><marker id="dc88_k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs><rect class="node" x="20" y="20" width="170" height="40" rx="6"/><text x="105" y="44" font-size="12" text-anchor="middle">Untrusted judge</text><line class="edge" x1="190" y1="40" x2="238" y2="40" marker-end="url(#dc88_k)"/><rect class="node bad" x="240" y="20" width="160" height="40" rx="6"/><text x="320" y="44" font-size="12" text-anchor="middle">can fail scenes</text><text x="415" y="45" font-size="11" class="w">fails Chekhov, forces rewrites</text><rect class="node" x="20" y="80" width="170" height="40" rx="6"/><text x="105" y="104" font-size="12" text-anchor="middle">Untrusted judge</text><line class="edge" x1="190" y1="100" x2="238" y2="100" marker-end="url(#dc88_k)"/><rect class="node hl" x="240" y="80" width="160" height="40" rx="6"/><text x="320" y="104" font-size="12" text-anchor="middle">warns only</text><text x="415" y="105" font-size="11" class="a">damage stops the same day</text></svg>

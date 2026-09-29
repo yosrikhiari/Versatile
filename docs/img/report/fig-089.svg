@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 672 152" width="672" height="152" role="img" aria-labelledby="t d"><title id="t">Lost request: 10 silent minutes, cancel, retry once</title><desc id="d">With time limits off, a request Ollama accepted but never answered hung forever. After 10 silent minutes it is now cancelled and sent once more.</desc><style>
+svg{--paper:#ffffff;--ink:#1b2130;--muted:#586174;--line:#d9dee7;--accent:#2f56c9;--accent-soft:#e3e9fb;--warn:#b4480f;--warn-soft:#fbeadf;--good:#18794a;--good-soft:#e0f2e8;--bar:#a9b2c3;color:var(--ink)}
+@media (prefers-color-scheme: dark){svg{--paper:#191d27;--ink:#e5e8ee;--muted:#9ba4b6;--line:#2c3342;--accent:#86a4ff;--accent-soft:#1f2a4a;--warn:#f0925c;--warn-soft:#3a2418;--good:#5fcf93;--good-soft:#15301f;--bar:#4b5468}}
+.bg{fill:var(--paper);stroke:var(--line)}
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:currentColor}
+.m{fill:var(--muted)}.a{fill:var(--accent)}.w{fill:var(--warn)}.g{fill:var(--good)}
+.node{fill:var(--paper);stroke:currentColor;stroke-width:1.2}
+.node.hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.node.bad{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+.node.code{fill:var(--good-soft);stroke:var(--good);stroke-width:1.4}
+.node.dash{stroke-dasharray:5 4}
+.edge{stroke:currentColor;stroke-width:1.3;fill:none}
+.edge.dash{stroke-dasharray:5 4;opacity:.7}.edge.a{stroke:var(--accent)}.edge.w{stroke:var(--warn)}
+.barA{fill:var(--accent)}.barB{fill:var(--bar)}.grid{stroke:var(--line);stroke-width:1}
+</style><rect class="bg" x="-15.5" y="-15.5" width="671" height="151" rx="10"/>
+<defs><marker id="qa5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+<line x1="30" y1="60" x2="610" y2="60" class="edge"/>
+<rect x="30" y="45" width="70" height="30" rx="4" class="node"/><text x="65" y="65" text-anchor="middle" font-size="11">request</text>
+<text x="230" y="50" text-anchor="middle" font-size="11" class="m">no answer, no tokens … 10 minutes</text>
+<rect x="360" y="45" width="100" height="30" rx="4" class="node bad"/><text x="410" y="65" text-anchor="middle" font-size="11">cancel</text>
+<line x1="460" y1="60" x2="498" y2="60" class="edge" marker-end="url(#qa5)"/>
+<rect x="500" y="45" width="110" height="30" rx="4" class="node hl"/><text x="555" y="65" text-anchor="middle" font-size="11">send once more</text>
+<text x="320" y="100" text-anchor="middle" font-size="11" class="m">a request that has started answering is never cut, however slow</text>
+</svg>
