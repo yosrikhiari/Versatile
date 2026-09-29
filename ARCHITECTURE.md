@@ -246,6 +246,11 @@ Clean Architecture, one solution (`Versatile.slnx`):
   5% of phrases), the later of two written scenes carries the flag, and
   Rewrite this scene is told which passage not to reuse.
 
+- **Copy guard** (`services/generation/copyGuard.ts`, in `draftAttempt`):
+  the writer is shown how the preceding scenes end; sentences of a draft
+  that are mostly a 15+ word passage of that context are removed and
+  recorded (`copied_context` in runHealth), on every writing strategy.
+
 - **Editor invariant (branch switches)**: loading a scene into the editor is
   not an edit (`setContent(..., { emitUpdate: false })`, TipTap 3 emits by
   default); a reload drops an open id that is no longer loaded; the autosave
@@ -256,7 +261,7 @@ Clean Architecture, one solution (`Versatile.slnx`):
 
 Every step above was measured on real books before it shipped; the numbers,
 and the designs that were tried and dropped, are in
-`docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§46; the same story with diagrams is
+`docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§47; the same story with diagrams is
 `docs/REPORT.md`.
 
 ## Deployment

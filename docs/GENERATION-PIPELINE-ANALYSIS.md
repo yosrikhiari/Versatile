@@ -2658,3 +2658,55 @@ review"; Rewrite this scene adds a NEW WORDS rule naming the chapters and
 the start of the passage; the re-check clears it. Tests fail without the
 detection, when both scenes of a pair are flagged, without the brief rule,
 and when the flag is never cleared (4 mutations).
+
+## 47. Stopping the writer copying its context; the critic never ran on continuation (2026-09-29)
+
+**Where the copies come from.** On §46's branch every copied passage sits in
+the last ~1,200 characters of an earlier chapter (92-98% of the way through
+it) -- exactly the excerpt `neighbourContext` shows the writer for each of
+the three scenes before the one it writes, under "IMMEDIATELY PRECEDING
+PROSE (this is already written and is canon -- continue from it)". Pairs
+where the passage is at the start of both chapters are second-hand: both
+copied the same tail. The drafting path does the same with "Ending of
+Preceding Scene" (1,200 characters), which is where the corpus book's
+190-word copy came from.
+
+**Fix** (2a1632f9): (1) the headers now say the text is already in the book,
+the new scene starts after it and must not repeat it; (2) a guard in
+`draftAttempt` -- the one function every strategy drafts through, the
+LangGraph path and chunked sections included -- removes the sentences of a
+draft that are mostly (>= half their words) part of a >= 15-word passage of
+the context it was shown, and records `copied_context` in runHealth. No two
+chapters of either original book share a run over 12 words, so 15 is a copy.
+Replayed: on both books and 9 generated runs (116k words) it removes
+nothing; on §46's 8 chapters it removes 2,965 words and the repeat flags
+drop 7 -> 1 (33 of 37 removed sentences in one chapter start verbatim in
+the context, the other 4 are near copies).
+
+**Live** (branch 4, same premise, fix loaded): repetition flags 7 -> 1, and
+apart from that one (26 words) no two chapters share more than 13 words in
+a row -- the originals' level. But the guard did the work, not the
+wording: it removed 158 sentences (2,511 words) in 12 of the 24 sections,
+about what the replay removed from branch 3. The model copies whatever it
+is shown, however it is labelled. Each chapter is written as 3 sections in
+parallel, all shown the same tails, so one tail can be copied into a
+chapter more than once. The one repeat that got through (26 words, from the
+last 365 characters of "When Night Came", which the guard removes when
+replayed) is not explained yet; the §46 check flags it. Chapters came out
+shorter (1,695-2,680 words; branch 3: 1,471-2,629 with the copies). Person
+and tense held again in all 8 rewrites; the who-is-where check raised 0
+flags (branch 3: 1 false alarm).
+
+**Found on the way: the critic never judged a continuation scene.** Every
+one of the 24 sections logged "the critic's output could not be parsed".
+Not a model failure: continuation briefs have `goal` / `characters`, the
+critic's prompt read `sceneBrief.charactersPresent.join()`, which threw,
+and a bare `catch {}` turned that into "evaluation unavailable". So the
+quality gate and its repair step have never run on What If or "continue
+writing" (66d94ead: the brief block reads both shapes, the catch logs;
+live, the same chapter is judged in 123 s instead of failing in 0.0 s).
+
+Next: show the writer less to copy (the last paragraph of the preceding
+scene and summaries of the others, not three 1,200-character tails) and
+measure whether the guard then has anything left to remove; and a branch
+written with the critic running, since none so far has been.

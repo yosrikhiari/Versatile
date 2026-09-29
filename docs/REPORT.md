@@ -1670,37 +1670,61 @@ Reading the chapters showed something else. “When Night Came” opens with the
 
 > **Where this leaves it.** Person and tense now hold on a real branch, and copying between chapters is found by code with no false alarms on the books. But copying is the biggest flaw on this branch: 7 of 8 chapters. A net that flags seven chapters for rewriting is the wrong fix. The next step is to find where the writer is shown its own recent chapters and stop it from copying them. All tests pass.
 
+## 5ad. Stopping the copying, and a critic that never ran (29 Sep)
+
+5ac found the writer repeating long passages of the chapters before it. The first job was to find out where it gets them.
+
+![The writer is shown the last 1,200 characters of the three chapters before it and copies them into the new chapter](img/report/fig-144.svg)
+
+*The writer was told to “continue from” three chapter endings, and it did so literally: it wrote them out again. Book drafting shows the same kind of excerpt (“Ending of Preceding Scene”), which is where a generated book’s 190-word copy came from.*
+
+### The fix
+
+There are two parts. The headers now say the text is already in the book and the new scene starts after it, without repeating it. And a guard removes, by code, any sentence of a new draft that is mostly a 15-word-or-longer passage of what the writer was shown. The guard sits in the one function every writing path goes through. On both original books and nine generated runs it removes nothing. Branch 4 is the same premise written again with the fix on:
+
+![Repetition flags 7 to 1; longest shared passage 208 to 26 words (13 without the flagged pair); 2,511 copied words removed](img/report/fig-145.svg)
+
+*With the fix, the chapters no longer repeat each other, apart from one 26-word passage that the repetition check flags. But the guard did the work, not the new wording: it removed about as much as the old branch had copied. The model copies what it is shown, however it is labelled.*
+
+### Found on the way
+
+![The critic crashed on continuation briefs and reported it as unparseable output; now it reads both shapes and judges the scene](img/report/fig-146.svg)
+
+*Found while checking the copy fix: all 24 sections of the branch were “accepted unchecked”. The cause was not the model. Continuation scenes use a different brief shape, and the critic crashed on it before asking anything. So the quality gate, and the repair step behind it, had never run on a What If or “continue writing” scene.*
+
+> **Where this leaves it.** Chapters no longer repeat each other: one flag instead of seven, and the check catches what gets through. The cleaner fix is still to show the writer less to copy: the last paragraph of the chapter before and summaries of the rest, instead of three long endings. That can be measured by how much the guard still has to remove. Also, every branch so far was written with the critic switched off by this bug, so the next branch is the first one the quality gate will actually judge. Code: `2a1632f9` and `66d94ead`, pushed; 3,391 tests pass.
+
 ## 6. The day-one proposal: a judge made of small, checkable pieces
 
 *This was the plan on the first morning. Section 5g shows what was actually built. The main difference: "read the probabilities" turned out to matter less than controlling what each judge reads.*
 
-![Proposed steps mapped to what was built, plus input isolation which was not planned](img/report/fig-144.svg)
+![Proposed steps mapped to what was built, plus input isolation which was not planned](img/report/fig-147.svg)
 
 *The day-one plan against what was built. Most pieces landed. The surprise was that controlling what each judge reads mattered more than reading its probabilities.*
 
 Here is what the scene judge becomes. The rule behind every piece: **ask small questions, prefer code over opinion, and demand evidence**. Top row is today, bottom row is the proposal. Both start at the same draft and end at the same decision.
 
-![Today: draft goes to one critic call with five scores, then pass or rewrite the whole scene. Proposed: draft goes through code checks, five focused questions read as probabilities, a quote check, and a claim-by-claim contradiction check against the fact ledger, then a verdict with quoted problems and a rewrite of only those sentences.](img/report/fig-145.svg)
+![Today: draft goes to one critic call with five scores, then pass or rewrite the whole scene. Proposed: draft goes through code checks, five focused questions read as probabilities, a quote check, and a claim-by-claim contradiction check against the fact ledger, then a verdict with quoted problems and a rewrite of only those sentences.](img/report/fig-148.svg)
 
 *Blue pieces are new. Green is the code layer you already have, which should grow. The continuity dimension moves out of the scene critic into step ④, where your own §14 calibration already showed the contradiction checker can see a planted death.*
 
 ## 7. How to move from here: the plan (updated 27 Sep)
 
-**Status on 27 Sep (see 5o): every step of this plan now has a measured answer.** Steps 3, 6 and 8 changed the app: a new emotional-goal judge, a better repair prompt, Editor plans, the spine as written, and a lost-facts bug fixed. Steps 5 and 7 produced findings, not changes. Still open beyond this plan: within-scene contradictions (needs a stronger checker) and the 12 scenes for you to label. **New since 27 Sep (5q):** What If on any novel, which means importing, understanding and branching. Steps 1–3 of that plan are done (5r: Versatile now reads an imported book and fills its story bible and network; *Ethan Frome* in 10.8 minutes). Step 4 is done too (5s): What If forks at a scene, plans keep / rewrite / drop per scene, writes with the real writer, checks every later scene against the change, and merges with snapshots. It was tried live on *Ethan Frome*. Fixes after the live run, and a measured limit, are in 5t. The limit is now a check: 5u follows who is where across scenes and flags chapter VIII's missing event. 5v adds a button that rewrites a flagged scene with the missing event as a rule; chapter VIII now keeps Zeena home. 5w runs it on four branches and counts: 9 real missing events, 6 flagged, 6 fixed, 3 false alarms. 5x removes the habit, memory and past false alarms, points flags from kept chapters at the kept chapter, and fixes a data-loss bug the runs uncovered. 5y fixes the planner: a chapter it would keep gets a second look at its own sentences about the people the change names. 5z writes that branch: nothing contradicting the change is kept, and 0 flags, correctly. 5aa adds a point-of-view check: a rewrite told in “he” where the original says “I” is found by code and flagged, and the rewrite brief now names the person to keep. 5ab does the same for tense: a rewrite told in the present where the original is in the past, or one that slides into the present for a stretch, is found and flagged. 5ac writes a new branch on these checks: person and tense hold in all eight chapters, but seven of them copy long passages of the chapters before, which a new check now finds. The two hardening tasks (a hung-request guard, a flaky test) are done, along with the group-drop bug found while checking whether quadtrees would help (5p: they wouldn't, at these sizes).
+**Status on 27 Sep (see 5o): every step of this plan now has a measured answer.** Steps 3, 6 and 8 changed the app: a new emotional-goal judge, a better repair prompt, Editor plans, the spine as written, and a lost-facts bug fixed. Steps 5 and 7 produced findings, not changes. Still open beyond this plan: within-scene contradictions (needs a stronger checker) and the 12 scenes for you to label. **New since 27 Sep (5q):** What If on any novel, which means importing, understanding and branching. Steps 1–3 of that plan are done (5r: Versatile now reads an imported book and fills its story bible and network; *Ethan Frome* in 10.8 minutes). Step 4 is done too (5s): What If forks at a scene, plans keep / rewrite / drop per scene, writes with the real writer, checks every later scene against the change, and merges with snapshots. It was tried live on *Ethan Frome*. Fixes after the live run, and a measured limit, are in 5t. The limit is now a check: 5u follows who is where across scenes and flags chapter VIII's missing event. 5v adds a button that rewrites a flagged scene with the missing event as a rule; chapter VIII now keeps Zeena home. 5w runs it on four branches and counts: 9 real missing events, 6 flagged, 6 fixed, 3 false alarms. 5x removes the habit, memory and past false alarms, points flags from kept chapters at the kept chapter, and fixes a data-loss bug the runs uncovered. 5y fixes the planner: a chapter it would keep gets a second look at its own sentences about the people the change names. 5z writes that branch: nothing contradicting the change is kept, and 0 flags, correctly. 5aa adds a point-of-view check: a rewrite told in “he” where the original says “I” is found by code and flagged, and the rewrite brief now names the person to keep. 5ab does the same for tense: a rewrite told in the present where the original is in the past, or one that slides into the present for a stretch, is found and flagged. 5ac writes a new branch on these checks: person and tense hold in all eight chapters, but seven of them copy long passages of the chapters before, which a new check now finds. 5ad traces the copies to the chapter endings the writer is shown and removes them by code (one flag instead of seven), and fixes the critic, which had never judged a What If scene. The two hardening tasks (a hung-request guard, a flaky test) are done, along with the group-drop bug found while checking whether quadtrees would help (5p: they wouldn't, at these sizes).
 
-![Judge plan: steps 3, 6, 8 changed the app, 5 and 7 gave findings, two items open; What If track steps 1 to 4 done plus live fixes](img/report/fig-146.svg)
+![Judge plan: steps 3, 6, 8 changed the app, 5 and 7 gave findings, two items open; What If track steps 1 to 4 done plus live fixes](img/report/fig-149.svg)
 
 *Where the plan stood on 27 September. The judge plan has a measured answer for every step, and the What If track has gone from importing a novel to branching it live.*
 
 **Update after the four experiments (5l):** next, in order. (1) Make the voice judge vote twice, and fail only if both votes agree: cheap, and it fixes a measured flip. (2) Continuity: test the extra questions only on sentences that name someone in a fact *and* share a key word with it, and measure false alarms on real clean scenes first. (3) Within-scene: fix the "then vs now" error and re-check the masterpieces. (4) Show-tell and pacing stay as warnings until someone labels more current-pipeline scenes. Today's pipeline had only 4 show-tell problems in 48 scenes, too few to test a judge on.
 
-![Next steps in order: voice votes twice, continuity narrower questions, within-scene fix, show-tell and pacing stay warnings](img/report/fig-147.svg)
+![Next steps in order: voice votes twice, continuity narrower questions, within-scene fix, show-tell and pacing stay warnings](img/report/fig-150.svg)
 
 *The order set after 5l. (Section 5m later showed the voice flip came from changed input, so step ① became a counting fix instead.)*
 
 **Update after acting on it (5k):** show-tell, pacing and emotional goal now only warn, and they come back as gates only when a replacement passes the bench. Continuity gained the "what does a sentence assume?" check. The next levers, in order: **a better continuity confirmer** (every miss dies there); **show-tell judged at the key moment only** (the "count the telling" replacement failed: AUC 0.46, 7/12 masterpieces failed); **within-scene contradictions** (parked, needs a new extraction design); pacing only if today's pipeline starts producing pacing problems, since it produced none in 45 scenes.
 
-![A replacement judge must pass the bench of 78 real scenes and 12 masterpieces to become a gate again](img/report/fig-148.svg)
+![A replacement judge must pass the bench of 78 real scenes and 12 masterpieces to become a gate again](img/report/fig-151.svg)
 
 *A warning-only judge comes back as a gate only through the bench. The first show-tell replacement didn't make it.*
 
@@ -1710,7 +1734,7 @@ Here is what the scene judge becomes. The rule behind every piece: **ask small q
 
 The original plan's first five steps are done (see the box below). This is the plan from here. Order matters: step 1 comes first because **every later number is only as good as the ground truth it's measured against**. Right now that's planted defects and 30 clean scenes.
 
-![Labelled real scenes feed the catch rate, false-alarm rate, writer A/B tests and judge training](img/report/fig-149.svg)
+![Labelled real scenes feed the catch rate, false-alarm rate, writer A/B tests and judge training](img/report/fig-152.svg)
 
 *Every later number is measured against step 1's labels. If they're wrong, everything built on them is wrong too, which is why they come first.*
 
@@ -1729,7 +1753,7 @@ The original plan's first five steps are done (see the box below). This is the p
 
    Generate about 80 real scenes, then freeze a one-page rubric (what counts as filler, telling, flat voice, missed emotion, contradiction) *before* labelling. Label each scene pass/fail per dimension yourself. Re-label 20 of them a week later to measure your own consistency (a stand-in for a second human). While you're at it, confirm each planted defect type really makes a scene worse (FBI's step).
 
-   ![Generate scenes, freeze rubric, label, re-label 20 a week later, measure consistency](img/report/fig-150.svg)
+   ![Generate scenes, freeze rubric, label, re-label 20 a week later, measure consistency](img/report/fig-153.svg)
 
    *The labelling recipe. Freezing the rubric first stops the criteria drifting. Re-labelling 20 scenes later stands in for a second human.*
 
@@ -1739,7 +1763,7 @@ The original plan's first five steps are done (see the box below). This is the p
 
    Add a second telling defect, **named emotions** ("she was afraid"), since today's fixture only covers summarised action. Then rebuild the judge in three steps: (a) the model quotes every sentence that names an emotion, and code checks each quote exists; (b) for each quote, one yes/no question: "is this emotion also shown by an action, gesture or line within 2 sentences?"; (c) fail on the share of named-but-never-shown emotions, compared with what clean scenes normally have, not a fixed number.
 
-   ![Extract named emotions, check quotes in code, ask whether each is shown, fail relative to clean scenes](img/report/fig-151.svg)
+   ![Extract named emotions, check quotes in code, ask whether each is shown, fail relative to clean scenes](img/report/fig-154.svg)
 
    *Step 2's judge: extract, verify in code, ask one narrow question per quote, and fail on the share of named-but-never-shown emotions compared with what clean scenes normally have.*
 
@@ -1749,7 +1773,7 @@ The original plan's first five steps are done (see the box below). This is the p
 
    First: delete the emotion-naming sentences from step 2, then ask a multiple-choice question: "what does the reader most likely feel at the end?" (the goal plus 3 wrong answers). Then, as a second vote: compare the scene against a flat version of itself, "which makes a reader feel [goal] more?", asked in both orders.
 
-   ![Scene and flat version compared in both orders; the vote counts only if both orders agree](img/report/fig-152.svg)
+   ![Scene and flat version compared in both orders; the vote counts only if both orders agree](img/report/fig-155.svg)
 
    *Step 3's second vote: compare the scene with a deliberately flat version of itself, asked in both orders, so the vote counts only when position bias cancels out.*
 
@@ -1759,7 +1783,7 @@ The original plan's first five steps are done (see the box below). This is the p
 
    Whatever still reads the whole scene works in two passes: collect quoted evidence, drop any quote about another dimension, then decide from what's left (the DimCheck idea). Read the model's yes/no probabilities where the question is yes/no, and set pass marks from the step-1 labels instead of a fixed 7.
 
-   ![Fixed pass mark 7 replaced by per-dimension pass marks chosen on half the labels and tested on the rest](img/report/fig-153.svg)
+   ![Fixed pass mark 7 replaced by per-dimension pass marks chosen on half the labels and tested on the rest](img/report/fig-156.svg)
 
    *Step 4 also replaces the fixed 7 with a pass mark per dimension, chosen on half of the labelled scenes and checked on the other half.*
 
@@ -1769,7 +1793,7 @@ The original plan's first five steps are done (see the box below). This is the p
 
    Download ConStory-Bench (public, MIT), cut its stories to scene size, and measure what share of its character and fact contradictions the checker finds. Hand-check about 50 of the disagreements, because its labels come from a model. Email the FlawedFictions author for their human-verified plot holes.
 
-   ![ConStory-Bench stories cut to scene size, checked, compared with labels, disagreements hand-checked](img/report/fig-154.svg)
+   ![ConStory-Bench stories cut to scene size, checked, compared with labels, disagreements hand-checked](img/report/fig-157.svg)
 
    *Step 5: a recall number on natural contradictions. The benchmark's labels come from a model, so the disagreements are checked by hand. (Run in 5o: the within-scene checker found almost none.)*
 
@@ -1779,7 +1803,7 @@ The original plan's first five steps are done (see the box below). This is the p
 
    Take 30 scenes that failed the gate. Fix each one twice at equal compute: once by repair, once by a fresh rewrite. Judge both with the gate and with the step-1 labels. The only direct evidence so far (from code) favours rewriting.
 
-   ![Thirty failed scenes fixed by repair and by rewrite, both judged; repair kept if it wins or ties at lower cost](img/report/fig-155.svg)
+   ![Thirty failed scenes fixed by repair and by rewrite, both judged; repair kept if it wins or ties at lower cost](img/report/fig-158.svg)
 
    *Step 6's fair test. Result in 5o: the repair ties on quality at about 1/70 of the time, so it stays first.*
 
@@ -1789,7 +1813,7 @@ The original plan's first five steps are done (see the box below). This is the p
 
    Write 3–4 small books with the gate on and 3–4 with it off. Compare their committed scenes in pairs using a judge that *isn't* the gate (so the gate doesn't grade itself), and spot-check with your own reading.
 
-   ![Books with and without the gate, paired scenes judged by a different judge](img/report/fig-156.svg)
+   ![Books with and without the gate, paired scenes judged by a different judge](img/report/fig-159.svg)
 
    *Step 7 compares gated and ungated books with a judge other than the gate, so the gate never grades itself. (5o answered it scene by scene instead.)*
 
@@ -1805,7 +1829,7 @@ The original plan's first five steps are done (see the box below). This is the p
 >
 > Fine-tuning a judge (DeepSeek-style RL, or a small LoRA) is tempting. The research agrees it's the path to beating off-the-shelf judges: trained pairwise models reach 78% on human story preferences, above every prompted judge. But it needs the labelled set from step 1. That set is also its training data, so step 1 pays twice.
 
-![Step 1 labels serve as a test set and as training data for a pairwise judge](img/report/fig-157.svg)
+![Step 1 labels serve as a test set and as training data for a pairwise judge](img/report/fig-160.svg)
 
 *The labelled set pays twice: it measures the gate today and later becomes training data. Trained pairwise judges reach 78% on human story preferences, above every prompted judge.*
 
@@ -1815,7 +1839,7 @@ The original plan's first five steps are done (see the box below). This is the p
 
 The bench read a probability; the app asked for a JSON letter. That one difference turned 0 false alarms into 3. When a result doesn't survive the move to production, compare the two calls byte for byte before blaming the idea.
 
-![Reading the probability gives 0 false alarms; a JSON letter gives 3](img/report/fig-158.svg)
+![Reading the probability gives 0 false alarms; a JSON letter gives 3](img/report/fig-161.svg)
 
 *One difference in how the answer was read turned 0 false alarms into 3. Compare the calls byte for byte before blaming the idea.*
 
@@ -1823,7 +1847,7 @@ The bench read a probability; the app asked for a JSON letter. That one differen
 
 Another program sharing the GPU made every call reload the model, and the numbers looked like my code was slow. Look at what else is running, and read the server's own log.
 
-![Slow timing leads to checking other programs and the server log before suspecting code](img/report/fig-159.svg)
+![Slow timing leads to checking other programs and the server log before suspecting code](img/report/fig-162.svg)
 
 *Rule out the machine first: another program sharing the GPU can make your own code look slow.*
 
@@ -1831,7 +1855,7 @@ Another program sharing the GPU made every call reload the model, and the number
 
 A continuity upgrade passed two planted sets with no false alarms, then flagged three harmless sentences in real scenes. Measure false alarms on real clean data, always.
 
-![Planted flaws measure catches; real clean scenes measure false alarms](img/report/fig-160.svg)
+![Planted flaws measure catches; real clean scenes measure false alarms](img/report/fig-163.svg)
 
 *Each test set answers one question. False alarms only show up on real clean text.*
 
@@ -1839,7 +1863,7 @@ A continuity upgrade passed two planted sets with no false alarms, then flagged 
 
 I blamed the voice judge for flipping. In fact my own fix had changed what it saw. Diff the inputs first.
 
-![A flipped score is checked for identical inputs before blaming the judge](img/report/fig-161.svg)
+![A flipped score is checked for identical inputs before blaming the judge](img/report/fig-164.svg)
 
 *Diff the inputs first. Here the "unstable" judge was scoring two different inputs, created by my own fix.*
 
@@ -1847,7 +1871,7 @@ I blamed the voice judge for flipping. In fact my own fix had changed what it sa
 
 Every reviewer pacing problem came from one old batch of long scenes. A judge that only spotted "long" would have looked excellent. Split any test set by source before reading its numbers.
 
-![The old corpus has both long scenes and the pacing problems, so a length detector looks excellent](img/report/fig-162.svg)
+![The old corpus has both long scenes and the pacing problems, so a length detector looks excellent](img/report/fig-165.svg)
 
 *Every reviewer pacing problem came from one batch of long scenes, so spotting length alone scored an AUC of 0.97. Split test sets by source before trusting a score.*
 
@@ -1855,7 +1879,7 @@ Every reviewer pacing problem came from one old batch of long scenes. A judge th
 
 The first continuity result looked good because its example sentence was copied from a test scene. Write examples from scratch, and never from the data you're scoring on.
 
-![A test sentence copied into the prompt example inflates the score](img/report/fig-163.svg)
+![A test sentence copied into the prompt example inflates the score](img/report/fig-166.svg)
 
 *An example sentence copied from the test data hands the model the answer. Write examples from scratch.*
 
@@ -1863,7 +1887,7 @@ The first continuity result looked good because its example sentence was copied 
 
 Three judges were failing good scenes and Chekhov. Turning them into warnings cost nothing and stopped the damage the same day, while better replacements are still being built.
 
-![An untrusted judge that can fail scenes causes rewrites; as a warning it does no harm](img/report/fig-164.svg)
+![An untrusted judge that can fail scenes causes rewrites; as a warning it does no harm](img/report/fig-167.svg)
 
 *Demoting a judge to a warning costs nothing and stops the damage while a replacement is built.*
 
@@ -1871,7 +1895,7 @@ Three judges were failing good scenes and Chekhov. Turning them into warnings co
 
 A quadtree answers "what's on screen" in 6 µs at 50,000 nodes. But at 150 nodes the plain loop takes 2 µs, and building the tree costs more than every query it saves. Know your N first. Reading the code to answer the question still found a real bug.
 
-![At 150 nodes the plain loop takes 2 microseconds versus 89 for a quadtree including build](img/report/fig-165.svg)
+![At 150 nodes the plain loop takes 2 microseconds versus 89 for a quadtree including build](img/report/fig-168.svg)
 
 *Know your N first. At Versatile's size the plain loop beats a quadtree once building the tree is counted.*
 
@@ -1879,7 +1903,7 @@ A quadtree answers "what's on screen" in 6 µs at 50,000 nodes. But at 150 nodes
 
 Asked for one letter, the 8B model said "keep" at 100% for scenes that obviously had to change. Asked for its reasoning first, it got them right. Shown the briefs it had already written, it copied the first into all the others. Shown only the one scene, it wrote a fitting brief for each.
 
-![One letter gives keep at 100 percent; reasoning first gives right answers; earlier briefs get copied](img/report/fig-166.svg)
+![One letter gives keep at 100 percent; reasoning first gives right answers; earlier briefs get copied](img/report/fig-169.svg)
 
 *Two ways a small model goes wrong: forced to answer instantly, and shown its own earlier answers. Reasoning first, and one scene at a time, fixed both.*
 
@@ -1887,7 +1911,7 @@ Asked for one letter, the 8B model said "keep" at 100% for scenes that obviously
 
 The analysis passed its tests the first time. Then one live read of *Ethan Frome* found eight defects: duplicated records, a silently dropped marriage, a husband merged into his wife. Mocked models return what you expect. Real ones don't.
 
-![Mocked models pass the tests; a real live read found 8 defects](img/report/fig-167.svg)
+![Mocked models pass the tests; a real live read found 8 defects](img/report/fig-170.svg)
 
 *One live read of *Ethan Frome* found eight defects that passing tests had hidden.*
 
@@ -1895,7 +1919,7 @@ The analysis passed its tests the first time. Then one live read of *Ethan Frome
 
 Every request looked reasonable. The waste was in the *gaps*: exactly 30 seconds, every time. A regular gap is a rule firing, and here the rule was pausing the program for itself.
 
-![Requests separated by identical 30-second gaps](img/report/fig-168.svg)
+![Requests separated by identical 30-second gaps](img/report/fig-171.svg)
 
 *The waste was in identical 30-second gaps between reasonable requests, a sign that some rule was pausing the program.*
 
@@ -1903,7 +1927,7 @@ Every request looked reasonable. The waste was in the *gaps*: exactly 30 seconds
 
 Three probes found "no effect". The effects may have been there all along, with a ruler that couldn't see them. When every result is "no difference", check the ruler first.
 
-![A writer change measured through a blind judge always reads no difference](img/report/fig-169.svg)
+![A writer change measured through a blind judge always reads no difference](img/report/fig-172.svg)
 
 *Three probes found "no effect" through a judge that couldn't see defects. The ruler has to be checked before any reading means anything.*
 
@@ -1911,7 +1935,7 @@ Three probes found "no effect". The effects may have been there all along, with 
 
 phi4-mini gave itself 8/10 for repeating the question back. A different model gave it 1/10. And "success" must mean something: an exit code of 0 after 28 errors is a lie that CI believes.
 
-![phi4 grades its own answer 8 of 10; another model grades it 1 of 10](img/report/fig-170.svg)
+![phi4 grades its own answer 8 of 10; another model grades it 1 of 10](img/report/fig-173.svg)
 
 *The same empty answer scored 8/10 from its own model and 1/10 from an independent one.*
 
@@ -1919,7 +1943,7 @@ phi4-mini gave itself 8/10 for repeating the question back. A different model ga
 
 The judge found the planted flaw every time, then blamed it on whatever it was asked about. Better instructions didn't fix that. Hiding the flaw from judges it doesn't concern did. Narrow the input, not just the question.
 
-![A flaw visible to all judges gets blamed on any dimension; hidden from the others it gets blamed correctly](img/report/fig-171.svg)
+![A flaw visible to all judges gets blamed on any dimension; hidden from the others it gets blamed correctly](img/report/fig-174.svg)
 
 *Narrow the input, not just the question: a flaw a judge never sees can't be blamed on it.*
 
@@ -1927,7 +1951,7 @@ The judge found the planted flaw every time, then blamed it on whatever it was a
 
 The repair test passed immediately, because it tested nothing: the fake input never reached the code path. Assert the preconditions ("the critic saw at least 3 paragraphs"), not just the outcome.
 
-![A passing test gets a precondition assertion to prove the path was exercised](img/report/fig-172.svg)
+![A passing test gets a precondition assertion to prove the path was exercised](img/report/fig-175.svg)
 
 *Assert that the path under test was reached, not just that the outcome looks right.*
 
@@ -1935,7 +1959,7 @@ The repair test passed immediately, because it tested nothing: the fake input ne
 
 "The facts list makes contradictions worse" was a finding for a week. It was the old judge's false alarms. Saving the raw outputs (the 24 scenes) is what made it cheap to overturn. Keep the evidence, not just the counts.
 
-![Saved scenes re-graded by a better checker overturn the old finding](img/report/fig-173.svg)
+![Saved scenes re-graded by a better checker overturn the old finding](img/report/fig-176.svg)
 
 *Keeping the evidence, not just the counts, made it cheap to overturn a week-old conclusion.*
 
@@ -1943,7 +1967,7 @@ The repair test passed immediately, because it tested nothing: the fake input ne
 
 The last "false fails" weren't false. The judge kept failing the same flat dialogue on every draw, and reading it showed it really was flat. Your test data is only as good as what you know about it: "not broken by me" isn't "good".
 
-![A repeated fail leads to reading the dialogue, which is really flat](img/report/fig-174.svg)
+![A repeated fail leads to reading the dialogue, which is really flat](img/report/fig-177.svg)
 
 *A failure that repeats on every draw is a signal. Reading the scene showed the judge was right.*
 
@@ -1951,7 +1975,7 @@ The last "false fails" weren't false. The judge kept failing the same flat dialo
 
 The old critic gave 8/10 to 30 different scenes, including broken ones. A constant tells you nothing. Watch for it anywhere a model produces a score.
 
-![Thirty scenes all scored 8 of 10, including broken ones](img/report/fig-175.svg)
+![Thirty scenes all scored 8 of 10, including broken ones](img/report/fig-178.svg)
 
 *Schematic of the old critic's scores across 30 scenes: a flat line. A constant tells you nothing about any scene.*
 
@@ -1959,7 +1983,7 @@ The old critic gave 8/10 to 30 different scenes, including broken ones. A consta
 
 One question per call fixed voice and show-tell detection. One claim per call is the same idea for continuity. Small models are decent at small questions and bad at big ones.
 
-![One big question versus several small ones](img/report/fig-176.svg)
+![One big question versus several small ones](img/report/fig-179.svg)
 
 *One dimension per call fixed voice and show-tell detection. One claim per call does the same for continuity.*
 
@@ -1967,7 +1991,7 @@ One question per call fixed voice and show-tell detection. One claim per call is
 
 A printed "7" can hide "30% sure it's a 5". Reading the probabilities is DeepSeek-GRM's voting idea in a single call, for free.
 
-![Ten votes of which seven say 7 and three say 5 equal one call with probabilities 0.7 and 0.3](img/report/fig-177.svg)
+![Ten votes of which seven say 7 and three say 5 equal one call with probabilities 0.7 and 0.3](img/report/fig-180.svg)
 
 *Schematic. The probabilities of one call carry the spread that many separate votes would show, so a printed 7 can't hide the 30% doubt.*
 
@@ -1975,6 +1999,6 @@ A printed "7" can hide "30% sure it's a 5". Reading the probabilities is DeepSee
 
 This is DeepSeek-R1's central lesson, and your repetition guard proved it here. Keep pushing checks down into code, and keep the LLM for what code can't see.
 
-![A code layer handles checkable things; the LLM judge sits above for what code cannot see](img/report/fig-178.svg)
+![A code layer handles checkable things; the LLM judge sits above for what code cannot see](img/report/fig-181.svg)
 
 *Push every check that code can do into code: it is exact, free and can't be flattered. The model sits on top, for the rest.*

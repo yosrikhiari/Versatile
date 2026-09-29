@@ -7,6 +7,19 @@ was verified.
 
 ## [Unreleased]
 
+### The writer stops copying its context; the critic judges continuation scenes (2026-09-29)
+- **Copied context is removed** (§47, `services/generation/copyGuard.ts`,
+  2a1632f9). The writer is shown how the preceding scenes end and copied
+  those tails into new chapters. A guard in `draftAttempt` (every strategy)
+  removes sentences that are mostly a 15+ word passage of that context and
+  records it in runHealth; the context headers say not to repeat it. On a
+  live branch: repetition flags 7 -> 1; 2,511 copied words removed; 0 words
+  removed from either original book or 9 generated runs.
+- **The critic now runs on What If and "continue writing" scenes**
+  (66d94ead). Their briefs made the critic's prompt throw, which was logged
+  as "output could not be parsed"; no continuation scene had ever been
+  judged.
+
 ### Repetition check; a live branch on the new checks (2026-09-29)
 - **A rewritten scene that copies another scene is flagged** (§46,
   `services/whatIf/repetition.ts`). Code compares six-word phrases between
