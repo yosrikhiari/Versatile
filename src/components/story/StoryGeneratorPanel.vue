@@ -233,6 +233,8 @@ const continuityFixesEnabled = volumeRun.continuityFixesEnabled
 const chapterAutoRun = chapterRun.autoRun
 const chapterSceneReviewEnabled = chapterRun.sceneReviewEnabled
 const chapterInlineEvalEnabled = chapterRun.inlineEvalEnabled
+// A chapter run is a volume run underneath (`...inner`): same terminal audit, same fix rounds.
+const chapterContinuityFixesEnabled = chapterRun.continuityFixesEnabled
 const chapterResumableRun = chapterRun.resumableRun
 const resetVolumeStreams = volumeRun.resetStreams
 const handleVolumeChunk = volumeRun.handleChunk
@@ -802,6 +804,8 @@ onBeforeUnmount(() => {
               v-model:auto-run="chapterAutoRun"
               v-model:scene-review="chapterSceneReviewEnabled"
               v-model:inline-eval="chapterInlineEvalEnabled"
+              v-model:continuity-fixes="chapterContinuityFixesEnabled"
+              show-continuity-fixes
               test-prefix="chapter"
               :resumable="chapterResumableRun"
               :research="researchState"

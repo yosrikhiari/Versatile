@@ -97,7 +97,8 @@ export function useGenerationRunController(generator: any, deps: RunControllerDe
       generator.inlineEvalEnabled.value = val
     }
   })
-  // Only the volume generator has fix rounds; the chapter generator has no ref.
+  // Both generators have fix rounds (a chapter run wraps a volume run); the
+  // optional chaining is for a generator that has none.
   const continuityFixesEnabled = computed({
     get: () => !!generator.continuityFixesEnabled?.value,
     set: (val: boolean) => {
