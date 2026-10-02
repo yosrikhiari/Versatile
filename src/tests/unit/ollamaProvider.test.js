@@ -380,6 +380,43 @@ describe('ollama idle timeout', () => {
   })
 })
 
+describe('stopping a streaming call (#106)', () => {
+  it('rejects with the AbortError and leaves no unhandled rejection behind', async () => {
+    // A real body: aborting the fetch errors the stream, as the browser does,
+    // so the provider's own reader.cancel() then rejects with that error.
+    mockFetch.mockResolvedValueOnce(mockTags()).mockImplementationOnce((_url, init) => {
+      let ctl
+      const body = new ReadableStream({
+        start(c) {
+          ctl = c
+          c.enqueue(new TextEncoder().encode(JSON.stringify({ response: 'Ilse ' }) + '\n'))
+        }
+      })
+      init.signal.addEventListener('abort', () =>
+        ctl.error(new DOMException('BodyStreamBuffer was aborted', 'AbortError'))
+      )
+      return Promise.resolve({ ok: true, body, headers: new Headers() })
+    })
+
+    const unhandled = []
+    const onUnhandled = (reason) => unhandled.push(reason)
+    process.on('unhandledRejection', onUnhandled)
+    try {
+      const external = new AbortController()
+      const onChunk = vi.fn(() => external.abort())
+      const err = await ollama
+        .stream('prompt', 'system', 'llama3', onChunk, { signal: external.signal })
+        .catch((e) => e)
+      expect(onChunk).toHaveBeenCalled()
+      expect(err.name).toBe('AbortError')
+      await new Promise((r) => setTimeout(r, 20))
+      expect(unhandled).toEqual([])
+    } finally {
+      process.off('unhandledRejection', onUnhandled)
+    }
+  })
+})
+
 describe('ollama stream', () => {
   it('calls onChunk for each response line', async () => {
     mockFetch

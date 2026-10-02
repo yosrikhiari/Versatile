@@ -442,10 +442,15 @@ async function runStream(
     let thinkingChars = 0
 
     function onStreamAbort() {
+      // `cancel()` returns a promise, and by the time this runs the fetch abort
+      // (`onAbort`, registered first) has usually errored the body already, so
+      // it rejects with that AbortError. The old try/catch only caught a
+      // synchronous throw: every Stop logged "Uncaught (in promise) AbortError:
+      // BodyStreamBuffer was aborted" (#106). The read loop reports the abort.
       try {
-        reader.cancel()
+        reader.cancel().catch(() => {})
       } catch {
-        // Reader may already be closed on abort; ignore.
+        // Reader may already be released; nothing to cancel.
       }
     }
     if (externalSignal) {
