@@ -1383,7 +1383,7 @@ SCENE RULES:
 - ${ch.events?.length ? `Scene k realises EVENT k above — that event is the scene's "whatChanges". Do not merge, reorder, skip or replace them.` : `The ${S} scenes together must move the story from this chapter's start to its goal.`} Each scene's "whatChanges" is a concrete event, decision or discovery — never "begins to", "starts to", "becomes aware", "realizes she must".
 - Do not re-stage anything in ALREADY ESTABLISHED or in earlier chapters of the outline. A scene may refer to it in a clause; it may not be the scene's event.
 - Scene titles must be specific to this chapter's events, not the book's motifs. Do not reuse a title, a location-plus-purpose, or an event from any other chapter in the outline.
-- Vary the surface: not every scene is Ines alone thinking. Put other characters in the room; give them wants that collide with hers.
+- Vary the surface: not every scene is the point-of-view character alone, thinking. Put other characters in the room and give them wants that collide with the point-of-view character's.
 
 Return ONLY JSON with EXACTLY ${S} scenes, no markdown:
 { "scenes": [ { "sceneNumber": 1, "title": "", "emotionalGoal": "", "whatChanges": "", "obstacle": "", "charactersPresent": [], "characterWants": {}, "pov": "", "location": "", "setup": "", "payoff": "", "sensoryAnchor": "", "arcPosition": "setup", "tension": "medium", "pacing": "medium"${plotThreads?.length ? `, "threadIds": []` : ''} } ] }

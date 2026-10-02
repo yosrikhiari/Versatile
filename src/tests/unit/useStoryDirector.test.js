@@ -472,6 +472,41 @@ describe('useStoryDirector', () => {
         // And it must survive assembly rather than being dropped on the way out.
         expect(result.scenes[0].pov).toBe('Kaelen')
       })
+
+      it('does not name a character from another story in the scene rules', async () => {
+        // "not every scene is Ines alone thinking" told every book's planner
+        // about the harbour test story's protagonist, and assumed "hers".
+        const prompts = []
+        mockAiGenerate.mockImplementation((prompt) => {
+          prompts.push(prompt)
+          return /chapter skeleton/i.test(prompt)
+            ? JSON.stringify({
+                storyArc: { premise: 'P', genre: 'F', tone: 'T', centralConflict: 'c' },
+                chapters: [{ chapterNumber: 1, title: 'Ch1', goal: 'g', hookEnding: 'h' }]
+              })
+            : JSON.stringify({ scenes: [{ sceneNumber: 1, title: 'S1', pov: 'Kaelen' }] })
+        })
+
+        const { generateStoryPlan } = useStoryDirector()
+        await generateStoryPlan({
+          goal: {
+            ...goal,
+            structure: {
+              chapters: 1,
+              scenesPerChapter: 1,
+              wordsPerChapter: 1000,
+              chaptersPerVolume: 1,
+              volumes: 1
+            }
+          },
+          evidence: ''
+        })
+
+        const scenePrompt = prompts.find((p) => /Plan EXACTLY/i.test(p))
+        expect(scenePrompt).toMatch(/not every scene is the point-of-view character alone/)
+        expect(scenePrompt).not.toMatch(/\bInes\b/)
+        expect(scenePrompt).not.toMatch(/collide with hers/)
+      })
     })
 
     describe('chapter title variety across batches', () => {

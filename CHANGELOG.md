@@ -37,6 +37,9 @@ was verified.
 - **Reused openings name the scene** (#105): "Ilse walks the breakwater"
   instead of "scene 1", which in a continued book meant the wrong scene.
 - **Stopping a run no longer logs an uncaught AbortError** (#106).
+- **The scene planner no longer names a test character.** Its rules said
+  "not every scene is Ines alone thinking", a name from the harbour test
+  story, told to every book's planner; now "the point-of-view character".
 
 ### The writer stops copying its context; the critic judges continuation scenes (2026-09-29)
 - **Copied context is removed** (§47, `services/generation/copyGuard.ts`,
