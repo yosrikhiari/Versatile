@@ -146,4 +146,82 @@ describe('LiveDraftBridge', () => {
     expect(store.activeSubsectionId).toBe('s2')
     expect(store.activeSectionId).toBe('sec1')
   })
+
+  // UX-AUDIT #52: the draft followed the run across chapters and moved a writer
+  // who was editing elsewhere.
+  describe('follows only while the writer has not moved', () => {
+    it('leaves a writer who opened another scene where they are', () => {
+      bridge.begin({ sceneIndex: 0, subsectionId: 's1' })
+      store.setActiveSection('sec2')
+      store.setActiveSubsection('s3') // the writer goes to edit chapter 2
+      bridge.finish('s1')
+      bridge.begin({ sceneIndex: 1, subsectionId: 's2' })
+      expect(store.activeSubsectionId).toBe('s3')
+      expect(store.activeSectionId).toBe('sec2')
+    })
+
+    it('keeps streaming prose into the scene it no longer shows', () => {
+      bridge.begin({ sceneIndex: 0, subsectionId: 's1' })
+      store.setActiveSubsection('s3')
+      bridge.begin({ sceneIndex: 1, subsectionId: 's2' })
+      bridge.push('s2', 'Still written.')
+      bridge.finish('s2')
+      expect(store.subsections[1].content).toBe('<p>Still written.</p>')
+      expect(store.activeSubsectionId).toBe('s3')
+    })
+
+    it('counts a chapter or the root document as moving away', () => {
+      bridge.begin({ sceneIndex: 0, subsectionId: 's1' })
+      store.setActiveSubsection(null) // chapter overview
+      bridge.finish('s1')
+      bridge.begin({ sceneIndex: 1, subsectionId: 's2' })
+      expect(store.activeSubsectionId).toBeNull()
+    })
+
+    it('does not pull the writer back at the end of the run', () => {
+      bridge.begin({ sceneIndex: 0, subsectionId: 's1' })
+      bridge.finish('s1')
+      store.setActiveSubsection('s3')
+      bridge.focusSubsection('s1') // the run's "show real prose" step
+      expect(store.activeSubsectionId).toBe('s3')
+    })
+
+    it('still lands a writer who watched the run on real prose', () => {
+      bridge.begin({ sceneIndex: 0, subsectionId: 's1' })
+      bridge.finish('s1')
+      bridge.begin({ sceneIndex: 1, subsectionId: 's2' })
+      bridge.finish('s2')
+      bridge.focusSubsection('s1')
+      expect(store.activeSubsectionId).toBe('s1')
+    })
+
+    it('follows again once the writer returns to the scene it placed', () => {
+      bridge.begin({ sceneIndex: 0, subsectionId: 's1' })
+      store.setActiveSubsection('s3')
+      store.setActiveSubsection('s1') // back again
+      bridge.begin({ sceneIndex: 1, subsectionId: 's2' })
+      bridge.finish('s1')
+      expect(store.activeSubsectionId).toBe('s2')
+    })
+
+    it('stays on another in-flight scene the writer chose instead of jumping to the lowest', () => {
+      bridge.begin({ sceneIndex: 0, subsectionId: 's1' })
+      bridge.begin({ sceneIndex: 1, subsectionId: 's2' })
+      bridge.begin({ sceneIndex: 2, subsectionId: 's3' })
+      store.setActiveSubsection('s3') // the writer watches scene 3 instead
+      bridge.finish('s1')
+      expect(store.activeSubsectionId).toBe('s3')
+      // …and is followed from there: scene 3 ends, scene 2 is the one left.
+      bridge.finish('s3')
+      expect(store.activeSubsectionId).toBe('s2')
+    })
+
+    it('starts following again on the next run', () => {
+      bridge.begin({ sceneIndex: 0, subsectionId: 's1' })
+      store.setActiveSubsection('s3')
+      bridge.reset()
+      bridge.begin({ sceneIndex: 0, subsectionId: 's2' })
+      expect(store.activeSubsectionId).toBe('s2')
+    })
+  })
 })

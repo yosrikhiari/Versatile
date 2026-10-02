@@ -79,6 +79,8 @@ export class LiveDraftBridge {
   private enabled: boolean
   private active = new Map<any, SceneHandle>()
   private focusedId: any = null
+  /** The last scene this bridge put in the editor; null until the run opens one. */
+  private placedId: unknown = null
   private timer: any = null
 
   constructor(manuscriptStore: any, { enabled = true }: { enabled?: boolean } = {}) {
@@ -156,14 +158,21 @@ export class LiveDraftBridge {
   /**
    * Open a finished scene in the editor — used when a run completes so the user
    * lands on real prose rather than whatever was open before they started.
+   *
+   * Every automatic move goes through here, so this is where the follow rule
+   * lives: the editor follows the draft only while the writer is still looking
+   * at it. A writer who opened another scene, a chapter or the root document
+   * stays there; the prose keeps streaming into its own scenes either way.
    */
   focusSubsection(subsectionId: any) {
     if (!this.enabled || subsectionId == null) return
+    if (!this.writerIsFollowing()) return
     const row = this.findRow(subsectionId)
     if (!row) return
     if (row.sectionId != null) this.manuscriptStore.setActiveSection(row.sectionId)
     this.manuscriptStore.setActiveSubsection(subsectionId)
     this.focusedId = subsectionId
+    this.placedId = subsectionId
   }
 
   reset() {
@@ -173,6 +182,7 @@ export class LiveDraftBridge {
     }
     this.active.clear()
     this.focusedId = null
+    this.placedId = null
   }
 
   // ─── internals ──────────────────────────────────────────────
@@ -182,9 +192,28 @@ export class LiveDraftBridge {
     return rows.find((s: any) => s.id === subsectionId)
   }
 
+  /**
+   * The writer is following while the editor shows the scene this bridge last
+   * placed there, or any scene still being drafted. Before the run has placed
+   * anything there is nothing to have moved away from.
+   */
+  private writerIsFollowing() {
+    if (this.placedId == null) return true
+    const open = this.manuscriptStore?.activeSubsectionId
+    return open === this.placedId || this.active.has(open)
+  }
+
   private refocus() {
     if (!this.enabled) return
     if (this.focusedId != null && this.active.has(this.focusedId)) return
+    // A writer who clicked into another in-flight scene chose to watch that
+    // one: adopt it rather than pulling them to the lowest index.
+    const open = this.manuscriptStore?.activeSubsectionId
+    if (this.placedId != null && open !== this.placedId && this.active.has(open)) {
+      this.focusedId = open
+      this.placedId = open
+      return
+    }
     let next: SceneHandle | null = null
     for (const handle of this.active.values()) {
       if (!next || handle.sceneIndex < next.sceneIndex) next = handle
